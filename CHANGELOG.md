@@ -37,7 +37,7 @@ semantic versioning.
   sits each component's cards on an alternating band.
 - **Help** explains how the page is organised, and each section sits beside a drawing of the
   dashboard or the inspector: pointing at a row highlights where it appears. New sections cover the
-  inspector and accessibility checks. The Review tab is "Review stories".
+  inspector and accessibility checks. The Review tab is "Review Stories".
 - **Integrity headline wording**: "N components with errors: …", "No errors; N components with
   warnings", "No issues".
 - **GitHub Actions run on Node 24.** The CI and release workflows, and the example in `docs/ci.md`,

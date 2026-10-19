@@ -47,7 +47,7 @@ port and renders against it (its origin is allowed like a Storybook's).
 | Tab | Content |
 | --- | --- |
 | Overview | The latest check's counts and duration, then open items (changed, new, rejected, render errors, coverage errors, new a11y violations, flaky), each linking to its list or starting a review |
-| Review | Every entry, filterable and grouped by component, with the inspector: baseline, current render and diff side by side or overlaid, metrics, gate reasons, change regions. `A` approves, `R` rejects. "Review N changes" starts a session over the changed (or new) entries with progress and a closing summary. |
+| Review Stories | Every entry, filterable and grouped by component, with the inspector: baseline, current render and diff side by side or overlaid, metrics, gate reasons, change regions. `A` approves, `R` rejects. "Review N changes" starts a session over the changed (or new) entries with progress and a closing summary. |
 | Coverage | The integrity ledger: components and entries by status, with the safe repairs |
 | Accessibility | axe violations per entry and per rule, new ones first |
 | Runs | The last check's timing, past runs, and which entries changed in each |

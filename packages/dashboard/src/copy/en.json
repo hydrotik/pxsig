@@ -37,8 +37,8 @@
   },
   "tabs": {
     "overview": "Overview",
-    "review": "Review stories",
-    "reviewCount": "Review stories · {count}",
+    "review": "Review Stories",
+    "reviewCount": "Review Stories · {count}",
     "coverage": "Coverage",
     "coverageCount": "Coverage · {count}",
     "a11y": "Accessibility",
@@ -549,7 +549,7 @@
     },
     "inspector": {
       "title": "Inspector",
-      "description": "Opens on an entry from Review stories, a review session or a link. Images on the left, details on the right.",
+      "description": "Opens on an entry from Review Stories, a review session or a link. Images on the left, details on the right.",
       "rows": {
         "progress": {
           "term": "Review progress",
@@ -623,7 +623,7 @@
         },
         "accepting": {
           "term": "Accepting",
-          "meaning": "Review stories has an accessibility queue for entries whose only issue is new violations; Accept adds them to the entry's accepted list, Reject marks them for a fix, and Undo reverses either. Accepts and undos are logged in a11y-decisions.ndjson. Approving a visual change also accepts the render's violations, and the Approve button says how many."
+          "meaning": "Review Stories has an accessibility queue for entries whose only issue is new violations; Accept adds them to the entry's accepted list, Reject marks them for a fix, and Undo reverses either. Accepts and undos are logged in a11y-decisions.ndjson. Approving a visual change also accepts the render's violations, and the Approve button says how many."
         }
       }
     },
