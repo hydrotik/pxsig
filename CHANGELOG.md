@@ -13,6 +13,12 @@ semantic versioning.
 - **Release re-runs.** `Publish pxsig` skips a version that is already published, like the other
   packages, so a re-run after a partial release (or a dry run of a released version) passes.
 
+### Changed
+
+- **GitHub Actions run on Node 24.** The CI and release workflows, and the example in `docs/ci.md`,
+  use `actions/checkout@v7`, `actions/setup-node@v7`, `actions/upload-artifact@v7`,
+  `actions/download-artifact@v8`, `actions/cache@v6` and `pnpm/action-setup@v6`.
+
 ## 0.2.1 - 2026-10-19
 
 ### Fixed
