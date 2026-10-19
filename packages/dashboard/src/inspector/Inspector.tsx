@@ -58,6 +58,25 @@ interface Loaded {
   cells: HTMLCanvasElement | null;
 }
 
+/** Copies a file's path in the repository; says so for a moment after. */
+function CopyPath({ value, label }: { value: string; label: string }) {
+  const [done, setDone] = React.useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setDone(true);
+      setTimeout(() => setDone(false), 1500);
+    } catch {
+      /* clipboard refused: the path is in the title */
+    }
+  };
+  return (
+    <Button size="sm" variant="ghost" title={value} aria-label={t('inspector.files.path', { label })} onClick={copy}>
+      {done ? t('inspector.files.copied') : t('inspector.files.copyPath')}
+    </Button>
+  );
+}
+
 export function Inspector({
   data,
   target,
@@ -434,7 +453,7 @@ export function Inspector({
           {t('inspector.review.reject')}
         </Button>
         <Button size="sm" disabled={busy || review?.state === 'accepted'} onClick={() => act('approve')} title={t('inspector.review.acceptTitle')}>
-          {t('inspector.review.accept')}
+          {newA11y ? t('inspector.review.acceptCount', { count: newA11y }) : t('inspector.review.accept')}
         </Button>
         {review ? (
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => act('unreview')}>
@@ -920,6 +939,13 @@ export function Inspector({
             {row.a11y?.violations?.length ? (
               <section className={s.sideSection}>
                 <h4 className={s.sectionTitle}>{t('inspector.sections.a11y', { count: row.a11y.violations.length })}</h4>
+                <span className={s.muted}>
+                  {newA11y
+                    ? served && !target?.scenario
+                      ? t('inspector.a11y.stateNew', { count: newA11y })
+                      : tx('inspector.a11y.stateNewStatic', { count: newA11y, command: <Cmd>pxsig serve</Cmd> })
+                    : t('inspector.a11y.stateAccepted')}
+                </span>
                 <ul className={s.resources}>
                   {row.a11y.violations.map((v) => (
                     <li key={v.id}>
@@ -932,9 +958,11 @@ export function Inspector({
                       <span className={s.grow} title={v.help}>
                         {v.id} · {t('inspector.a11y.nodes', { count: v.nodes })}
                       </span>
-                      {row.a11y?.baseline && !row.a11y.baseline.includes(v.id) ? (
+                      {(row.a11y?.baseline ? !row.a11y.baseline.includes(v.id) : newA11y > 0) ? (
                         <Badge variant="destructive">{t('inspector.a11y.new')}</Badge>
-                      ) : null}
+                      ) : (
+                        <Badge variant="secondary">{t('inspector.a11y.accepted')}</Badge>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -955,7 +983,7 @@ export function Inspector({
                           {t('inspector.review.reject')}
                         </Button>
                         <Button size="sm" variant="outline" disabled={busy} onClick={() => act('approve', true)} title={t('inspector.review.acceptTitle')}>
-                          {t('inspector.review.accept')}
+                          {newA11y ? t('inspector.review.acceptCount', { count: newA11y }) : t('inspector.review.accept')}
                         </Button>
                       </>
                     )}
@@ -987,7 +1015,7 @@ export function Inspector({
                       {label}
                     </Link>
                     <span className={`${s.mono} ${s.muted}`}>{sizes[url] ?? ''}</span>
-                    <CopyValue value={repoPath(url)} hideValue label={t('inspector.files.path', { label })} />
+                    <CopyPath value={repoPath(url)} label={label} />
                   </li>
                 ))}
                 <li>

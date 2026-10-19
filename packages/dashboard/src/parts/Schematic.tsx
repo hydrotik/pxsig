@@ -23,8 +23,10 @@ const REGIONS: Record<Layout, Record<string, { box: Box; label?: CopyKey }>> = {
     'tab-help': { box: [218, 24, 26, 11], label: 'tabs.help' },
     cards: { box: [6, 41, 308, 22], label: 'help.schematic.cards' },
     'open-items': { box: [6, 68, 308, 40], label: 'help.schematic.openItems' },
+    // A story card: its outline first, then its parts inside it (drawn in this order).
+    card1: { box: [6, 114, 95, 80] },
     'card-edge': { box: [6, 114, 3, 80] },
-    'card-thumb': { box: [9, 114, 92, 50] },
+    'card-thumb': { box: [9, 115, 91, 49] },
     'card-status': { box: [12, 170, 40, 9], label: 'help.schematic.badge' },
     'card-flags': { box: [55, 170, 42, 9], label: 'help.schematic.flags' },
     'card-stats': { box: [12, 183, 85, 7] },

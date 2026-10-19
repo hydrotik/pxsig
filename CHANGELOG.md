@@ -35,6 +35,12 @@ semantic versioning.
   filters the current view (the Coverage count cards filter the component table); an up-right
   arrow goes somewhere else: another tab, the inspector or a review session (explained on Help). The grouped Review grid
   sits each component's cards on an alternating band.
+- **Accessibility state is spelled out.** The inspector's Accessibility panel opens with one line
+  ("All on this entry's accepted list. Nothing to approve." or "1 new violation…" with Accept /
+  Reject), and each violation is marked New or Accepted. The Accessibility tab says how to accept
+  new violations, starts the review, and counts accepted entries per rule. "Accepted list" replaces
+  "a11y baseline" in the dashboard.
+- **Files: "Copy path"** replaces the icon-only copy control, which read like a second "open" link.
 - **Help** explains how the page is organised, and each section sits beside a drawing of the
   dashboard or the inspector: pointing at a row highlights where it appears. New sections cover the
   inspector and accessibility checks. The Review tab is "Review Stories".

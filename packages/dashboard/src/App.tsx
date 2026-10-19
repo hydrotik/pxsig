@@ -182,7 +182,7 @@ export function App() {
                   <Integrity data={data} onOpen={(r, l) => open(r, l)} />
                 </TabsContent>
                 <TabsContent value="a11y">
-                  <Accessibility data={data} onOpen={(r, l) => open(r, l)} />
+                  <Accessibility data={data} onOpen={(r, l) => open(r, l)} startReview={startReview} />
                 </TabsContent>
                 <TabsContent value="history">
                   <History data={data} />

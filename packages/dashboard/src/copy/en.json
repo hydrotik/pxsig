@@ -252,7 +252,7 @@
       },
       "a11y-new": {
         "title": "New a11y violations",
-        "help": "axe reports violations that are not in the a11y baseline."
+        "help": "axe reports violations that are not on the entry's accepted list."
       },
       "skipped-unaffected": {
         "title": "Not run",
@@ -296,20 +296,23 @@
     "stats": {
       "scanned": "Entries scanned",
       "violations": "Violations",
-      "new": "New since baseline",
+      "new": "New, not accepted",
       "rules": "Rules"
     },
     "title": "Rules",
-    "description": "axe-core results per rule. New counts violations that are not in the a11y baseline ({file}).",
+    "description": "axe-core results per rule. New counts violations that are not on their entry's accepted list ({file}); Accepted counts those that are.",
     "columns": {
       "rule": "Rule",
       "impact": "Impact",
       "description": "Description",
       "entries": "Entries",
       "nodes": "Nodes",
-      "new": "New"
+      "new": "New",
+      "accepted": "Accepted"
     },
-    "empty": "No accessibility results in this check. Checks run with {flag} skip the scan."
+    "empty": "No accessibility results in this check. Checks run with {flag} skip the scan.",
+    "howTo": "New violations are not on their entry's accepted list. Accept or reject them in an accessibility review, or from the Accessibility panel of an entry in the inspector.",
+    "noneNew": "All violations are on their entries' accepted lists. Nothing to approve."
   },
   "runs": {
     "latest": {
@@ -593,11 +596,11 @@
         },
         "a11y": {
           "term": "Accessibility",
-          "meaning": "axe violations on this render. New marks those not on the entry's accepted list."
+          "meaning": "axe violations on this render, each marked New or Accepted, with Accept and Reject for new ones."
         },
         "files": {
           "term": "Files",
-          "meaning": "Links to the renders and generated files. The copy button copies the file's path in the repository."
+          "meaning": "Links to the renders and generated files, each opening in a new tab. Copy path copies the file's path in the repository."
         }
       }
     },
@@ -728,7 +731,11 @@
       "acceptTitle": "Add this entry's current violations to its accepted list (A)",
       "rejectA11yTitle": "Mark the violations for a fix (R)",
       "a11yAccepted": "Accepted",
-      "a11yRejected": "Rejected"
+      "a11yRejected": "Rejected",
+      "acceptCount": {
+        "one": "Accept 1 new",
+        "other": "Accept {count} new"
+      }
     },
     "missing": "Render not found: {before} or {after}. Run the check again.",
     "loading": "Loading renders…",
@@ -786,7 +793,17 @@
         "one": "{count} node",
         "other": "{count} nodes"
       },
-      "new": "New"
+      "new": "New",
+      "accepted": "Accepted",
+      "stateNew": {
+        "one": "1 new violation, not on this entry's accepted list. Accept it, or reject it to mark it for a fix.",
+        "other": "{count} new violations, not on this entry's accepted list. Accept them, or reject them to mark them for a fix."
+      },
+      "stateNewStatic": {
+        "one": "1 new violation, not on this entry's accepted list. Accepting it requires the local server ({command}).",
+        "other": "{count} new violations, not on this entry's accepted list. Accepting them requires the local server ({command})."
+      },
+      "stateAccepted": "All on this entry's accepted list. Nothing to approve."
     },
     "files": {
       "baseSig": "Baseline signature (PNG)",
@@ -795,7 +812,9 @@
       "page": "Diff page (HTML)",
       "record": "Baseline record (JSON)",
       "path": "{label} path",
-      "storybook": "Open in Storybook"
+      "storybook": "Open in Storybook",
+      "copyPath": "Copy path",
+      "copied": "Copied"
     },
     "renders": {
       "baseline": "Baseline render",
