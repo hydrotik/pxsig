@@ -46,14 +46,16 @@ port and renders against it (its origin is allowed like a Storybook's).
 
 | Tab | Content |
 | --- | --- |
-| Overview | Counts per state, the most changed components, accessibility, the latest run |
-| Stories | Every entry, filterable, with the inspector: baseline, current render and diff side by side or overlaid, metrics, gate reasons, change regions. `A` approves, `R` rejects. |
-| Integrity | The ledger: components and entries by status code, with the safe repairs |
+| Overview | Open items (changed, new, rejected, render errors, coverage errors, new a11y violations, flaky), each linking to its list, and the last check in numbers |
+| Review | Every entry, filterable, with the inspector: baseline, current render and diff side by side or overlaid, metrics, gate reasons, change regions. `A` approves, `R` rejects. |
+| Coverage | The integrity ledger: components and entries by status, with the safe repairs |
 | Accessibility | axe violations per entry and per rule, new ones first |
-| History | Past runs, and which entries changed in each |
+| Runs | The last check's timing, past runs, and which entries changed in each |
+| Diagnostics | Scenarios, calibration and benchmark results. Shown only when a report for them exists in the store; pxsig 0.2 does not produce those reports. |
+| Help | The gate as configured, what each status means, keyboard shortcuts, commands |
 
-The Scenarios, Calibration and Performance tabs appear only when a report for them exists in the
-store. pxsig 0.2 does not produce those reports.
+The tab ids in the URL hash are `overview`, `stories`, `integrity`, `a11y`, `history`,
+`diagnostics` and `help`; the older `#scenarios`, `#calibration` and `#performance` open Diagnostics.
 
 With several projects, a switcher in the header picks one. URL parameters:
 

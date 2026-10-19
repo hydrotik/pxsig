@@ -2,19 +2,10 @@ import React from 'react';
 import { SearchBar, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Toolbar, ToolbarFormField, ToolbarLeft, ToolbarRight } from '@hydrotik/design-system';
 import { type Data, type Row, rowsWithPending, statusOf } from '../data';
 import { StoryGrid } from '../parts/StoryGrid';
+import { Cmd, t, tx } from '../copy';
 import * as s from '../dashboard.css';
 
-const FILTERS: [string, string][] = [
-  ['all', 'All results'],
-  ['todo', 'Needs review'],
-  ['changed', 'Changed'],
-  ['new', 'New (no baseline)'],
-  ['flaky', 'Flaky'],
-  ['approved', 'Approved'],
-  ['rejected', 'Rejected'],
-  ['skipped', 'Unaffected (skipped)'],
-  ['drift', 'Any drift (ssim < 1)'],
-];
+const FILTERS = ['all', 'todo', 'changed', 'new', 'error', 'flaky', 'approved', 'rejected', 'skipped', 'drift'] as const;
 
 export function Stories({ data, filter, setFilter, onOpen }: { data: Data; filter: string; setFilter(f: string): void; onOpen(row: Row, list: Row[]): void }) {
   const [q, setQ] = React.useState('');
@@ -34,37 +25,37 @@ export function Stories({ data, filter, setFilter, onOpen }: { data: Data; filte
     const key = (r: Row) => (r.metrics?.ssim ?? 2) - (r.detail ? (r.detail.changedTiles + r.detail.newEdgeTiles) / 1000 : 0);
     return [...rs].sort(sort === 'id' ? (a, b) => a.id.localeCompare(b.id) : sort === 'render' ? (a, b) => (b.renderMs ?? 0) - (a.renderMs ?? 0) : (a, b) => key(a) - key(b));
   }, [all, q, mode, filter, sort, data.review]);
-  if (!check) return <div className={s.empty}>Run `pxsig check --full` to populate this view.</div>;
+  if (!check) return <div className={s.empty}>{tx('empty.noCheck', { command: <Cmd>pxsig check --full</Cmd> })}</div>;
   // No bulk approve: it accepted every changed entry in the suite (ignoring this view's filters)
   // behind one confirm(). Approve per entry in the inspector (A), where the images are on screen.
   return (
     <div className={s.stack}>
       <Toolbar>
         <ToolbarLeft>
-          <ToolbarFormField label="Story" minInlineSize="14rem" flexGrow={1}>
-            <SearchBar value={q} onValueChange={setQ} placeholder="Filter by story id…" />
+          <ToolbarFormField label={t('review.fields.story')} minInlineSize="14rem" flexGrow={1}>
+            <SearchBar value={q} onValueChange={setQ} placeholder={t('review.search')} />
           </ToolbarFormField>
-          <ToolbarFormField label="Result" minInlineSize="11rem">
+          <ToolbarFormField label={t('review.fields.result')} minInlineSize="11rem">
             <Select value={filter} onValueChange={setFilter}>
               <SelectTrigger size="sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {FILTERS.map(([v, l]) => (
+                {FILTERS.map((v) => (
                   <SelectItem key={v} value={v}>
-                    {l}
+                    {t(`review.filters.${v}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </ToolbarFormField>
-          <ToolbarFormField label="Mode" minInlineSize="8rem">
+          <ToolbarFormField label={t('review.fields.mode')} minInlineSize="8rem">
             <Select value={mode} onValueChange={setMode}>
               <SelectTrigger size="sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All modes</SelectItem>
+                <SelectItem value="all">{t('review.allModes')}</SelectItem>
                 {modes.map((m) => (
                   <SelectItem key={m} value={m}>
                     {m}
@@ -73,23 +64,21 @@ export function Stories({ data, filter, setFilter, onOpen }: { data: Data; filte
               </SelectContent>
             </Select>
           </ToolbarFormField>
-          <ToolbarFormField label="Sort" minInlineSize="10rem">
+          <ToolbarFormField label={t('review.fields.sort')} minInlineSize="10rem">
             <Select value={sort} onValueChange={setSort}>
               <SelectTrigger size="sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="worst">Worst first</SelectItem>
-                <SelectItem value="id">Story id</SelectItem>
-                <SelectItem value="render">Slowest render</SelectItem>
+                <SelectItem value="worst">{t('review.sort.worst')}</SelectItem>
+                <SelectItem value="id">{t('review.sort.id')}</SelectItem>
+                <SelectItem value="render">{t('review.sort.render')}</SelectItem>
               </SelectContent>
             </Select>
           </ToolbarFormField>
         </ToolbarLeft>
         <ToolbarRight>
-          <span className={s.muted}>
-            {rows.length} of {all.length}
-          </span>
+          <span className={s.muted}>{t('review.count', { shown: rows.length, total: all.length })}</span>
         </ToolbarRight>
       </Toolbar>
       <StoryGrid data={data} rows={rows} scenario={null} onOpen={onOpen} />

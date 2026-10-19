@@ -2,11 +2,12 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, DataGrid, ToggleGroup, ToggleGroupItem } from '@hydrotik/design-system';
 import { type CalibrationReport, type Data, suiteKeys, suiteTitle } from '../data';
 import { Lines } from '../parts/Charts';
+import { Cmd, t, tx } from '../copy';
 import * as s from '../dashboard.css';
 
 function GridSweep({ cal, title }: { cal: CalibrationReport; title: string }) {
   const grids = cal.grids ?? [];
-  if (!grids.length) return <div className={s.empty}>The {title} calibration has no grids.</div>;
+  if (!grids.length) return <div className={s.empty}>{t('diagnostics.calibration.noGrids', { suite: title })}</div>;
   const pick = (g: (typeof grids)[number], n: string) => g.rules.find((r) => r.name === n);
   const data = grids.map((g) => ({
     grid: g.grid,
@@ -17,8 +18,8 @@ function GridSweep({ cal, title }: { cal: CalibrationReport; title: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{title}: recall by signature grid</CardTitle>
-        <CardDescription>{cal.renders} saved renders{cal.minCellPx ? `, min cell ${cal.minCellPx}px` : ', fixed grids'}. Whole-image signature only. A rule counts only if it raises zero false positives on every noise scenario.</CardDescription>
+        <CardTitle>{t('diagnostics.calibration.gridTitle', { suite: title })}</CardTitle>
+        <CardDescription>{t('diagnostics.calibration.gridDescription', { renders: cal.renders, cells: cal.minCellPx ? t('diagnostics.calibration.minCell', { px: cal.minCellPx }) : t('diagnostics.calibration.fixedGrids') })}</CardDescription>
       </CardHeader>
       <CardContent>
         <Lines
@@ -26,9 +27,9 @@ function GridSweep({ cal, title }: { cal: CalibrationReport; title: string }) {
           x="grid"
           format={(v) => `${v}%`}
           series={[
-            { key: 'default', label: 'v1 rule (ssim / 2%)' },
-            { key: 'calibrated', label: '≥ 2 cells off by > 32' },
-            { key: 'best', label: 'Best zero-FP rule' },
+            { key: 'default', label: t('diagnostics.calibration.seriesDefault') },
+            { key: 'calibrated', label: t('diagnostics.calibration.seriesCalibrated') },
+            { key: 'best', label: t('diagnostics.calibration.seriesBest') },
           ]}
         />
         <DataGrid
@@ -40,11 +41,11 @@ function GridSweep({ cal, title }: { cal: CalibrationReport; title: string }) {
           density="compact"
           showToolbar={false}
           columns={[
-            { id: 'grid', accessorKey: 'grid', header: 'Grid' },
-            { id: 'kb', accessorKey: 'kb', header: 'Record KB' },
-            { id: 'calibrated', accessorKey: 'calibrated', header: '≥2 cells @ 32' },
-            { id: 'fp', accessorKey: 'fp', header: 'False +' },
-            { id: 'best', accessorKey: 'best', header: 'Best zero-FP rule' },
+            { id: 'grid', accessorKey: 'grid', header: t('diagnostics.calibration.grid') },
+            { id: 'kb', accessorKey: 'kb', header: t('diagnostics.calibration.recordKb') },
+            { id: 'calibrated', accessorKey: 'calibrated', header: t('diagnostics.calibration.calibrated') },
+            { id: 'fp', accessorKey: 'fp', header: t('diagnostics.calibration.falsePositives') },
+            { id: 'best', accessorKey: 'best', header: t('diagnostics.calibration.best') },
           ]}
         />
       </CardContent>
@@ -63,10 +64,8 @@ export function Calibration({ data }: { data: Data }) {
       {d ? (
         <Card>
           <CardHeader>
-            <CardTitle>Detail channel (M6): chosen from {d.renders} saved renders</CardTitle>
-            <CardDescription>
-              Signature gate alone catches {d.sigOnly.caught}/{d.sigOnly.changed}; with the detail rule {d.best ? `${d.best.caught}/${d.best.changed}` : '—'}, still zero false positives. Swept in Rust in {Math.round(d.sweepMs)} ms.
-            </CardDescription>
+            <CardTitle>{t('diagnostics.calibration.detailTitle', { count: d.renders })}</CardTitle>
+            <CardDescription>{t('diagnostics.calibration.detailDescription', { sig: `${d.sigOnly.caught}/${d.sigOnly.changed}`, best: d.best ? `${d.best.caught}/${d.best.changed}` : '—', ms: Math.round(d.sweepMs) })}</CardDescription>
           </CardHeader>
           <CardContent>
             <DataGrid
@@ -75,11 +74,11 @@ export function Calibration({ data }: { data: Data }) {
               density="compact"
               showToolbar={false}
               columns={[
-                { id: 'build', accessorKey: 'build', header: 'Tile / block / selection' },
-                { id: 'rule', accessorKey: 'rule', header: 'Rule' },
-                { id: 'caught', accessorKey: 'caught', header: 'Caught' },
-                { id: 'detailOnly', accessorKey: 'detailOnly', header: 'Only by detail' },
-                { id: 'kb', accessorKey: 'kb', header: 'Detail KB / record' },
+                { id: 'build', accessorKey: 'build', header: t('diagnostics.calibration.build') },
+                { id: 'rule', accessorKey: 'rule', header: t('diagnostics.calibration.rule') },
+                { id: 'caught', accessorKey: 'caught', header: t('diagnostics.calibration.detected') },
+                { id: 'detailOnly', accessorKey: 'detailOnly', header: t('diagnostics.calibration.detailOnly') },
+                { id: 'kb', accessorKey: 'kb', header: t('diagnostics.calibration.detailKb') },
               ]}
             />
           </CardContent>
@@ -88,7 +87,7 @@ export function Calibration({ data }: { data: Data }) {
       {suite ? (
         <>
           {suites.length > 1 ? (
-            <ToggleGroup type="single" value={suite} onValueChange={(v) => v && setSuite(v)} aria-label="Calibration suite">
+            <ToggleGroup type="single" value={suite} onValueChange={(v) => v && setSuite(v)} aria-label={t('diagnostics.calibration.suite')}>
               {suites.map((k) => (
                 <ToggleGroupItem key={k} value={k}>
                   {suiteTitle(k, all[k])}
@@ -99,9 +98,7 @@ export function Calibration({ data }: { data: Data }) {
           <GridSweep key={suite} cal={all[suite]} title={suiteTitle(suite, all[suite])} />
         </>
       ) : (
-        <div className={s.empty}>
-          No grid calibration for this project: <code>node tools/calibrate.mjs</code> writes it from the saved scenario renders (<code>--suite &lt;name&gt;</code> for a named suite).
-        </div>
+        <div className={s.empty}>{tx('diagnostics.calibration.empty', { command: <Cmd>node tools/calibrate.mjs</Cmd> })}</div>
       )}
     </div>
   );

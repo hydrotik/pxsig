@@ -5,6 +5,19 @@ semantic versioning.
 
 ## Unreleased
 
+### Changed
+
+- **Dashboard copy and layout.** The Overview lists open items (changed, new, rejected, render
+  errors, coverage errors, new a11y violations, flaky) with a link to each, and the last check in
+  numbers. Gate settings, status definitions, keyboard shortcuts and commands move to a new Help
+  tab; Scenarios, Calibration and Performance merge into one Diagnostics tab (old links still
+  work); Stories, Integrity and History are labelled Review, Coverage and Runs. Coverage badges
+  show titles instead of raw codes. The wording throughout is plainer.
+- **Dashboard copy is in one file**, `packages/dashboard/src/copy/en.json`, read through a typed
+  `t()` helper with placeholders and plural forms, so the dashboard can be translated.
+- **Integrity headline wording**: "N components with errors: …", "No errors; N components with
+  warnings", "No issues".
+
 ### Fixed
 
 - **The Storybook addon registered its panel twice** when listed by name

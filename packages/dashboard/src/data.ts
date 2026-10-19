@@ -3,6 +3,7 @@
  * fetched from the pxsig server (`/__pxsig/data?project=`) and kept fresh over SSE when served.
  */
 import React from 'react';
+import { t } from './copy';
 
 export interface Metrics {
   ssim: number;
@@ -255,7 +256,7 @@ export function suiteKeys(m: Record<string, unknown> | null | undefined): string
 }
 /** A suite's display name: the report's own title, else the key (`default` → General sample). */
 export function suiteTitle(key: string, rep?: { suite?: { title?: string } | null } | null): string {
-  return rep?.suite?.title ?? (key === 'default' ? 'General sample' : key);
+  return rep?.suite?.title ?? (key === 'default' ? t('diagnostics.scenario.defaultSuite') : key);
 }
 
 export const served = typeof location !== 'undefined' && location.protocol.startsWith('http') && !window.PXSIG?.static;
@@ -400,8 +401,8 @@ export function pathsFor(d: Data, id: string, scenario?: { tag: string; name: st
       heat: `${P.diffRoot}${scenario.tag}/${scenario.name}/${id}.diff.png`,
       page: `${P.diffRoot}${scenario.tag}/${scenario.name}/${id}.diff.html`,
       record: null as string | null,
-      beforeLabel: 'control render',
-      afterLabel: `${scenario.name} render`,
+      beforeLabel: t('inspector.renders.control'),
+      afterLabel: t('inspector.renders.scenario', { name: scenario.name }),
     };
   return {
     before: `${P.renders}base/${id}.png`,
@@ -411,8 +412,8 @@ export function pathsFor(d: Data, id: string, scenario?: { tag: string; name: st
     heat: `${P.diffRoot}latest/${id}.diff.png`,
     page: `${P.diffRoot}latest/${id}.diff.html`,
     record: d.sigs[id] ?? null,
-    beforeLabel: 'baseline render',
-    afterLabel: 'latest render',
+    beforeLabel: t('inspector.renders.baseline'),
+    afterLabel: t('inspector.renders.latest'),
   };
 }
 

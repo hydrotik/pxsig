@@ -1,0 +1,627 @@
+{
+  "app": {
+    "title": "pxsig · {project}",
+    "loading": "Loading…",
+    "loadError": "Report data failed to load: {error}",
+    "connection": {
+      "live": "Live",
+      "offline": "Offline",
+      "static": "Static report"
+    },
+    "lastCheck": "Last check {date}",
+    "theme": {
+      "toLight": "Light theme",
+      "toDark": "Dark theme"
+    },
+    "project": "Project",
+    "projectOption": {
+      "one": "{name} · {count} entry",
+      "other": "{name} · {count} entries"
+    },
+    "sections": "Report sections",
+    "embedEmpty": "No result for this story. Run a check from the toolbar."
+  },
+  "tabs": {
+    "overview": "Overview",
+    "review": "Review",
+    "reviewCount": "Review · {count}",
+    "coverage": "Coverage",
+    "coverageCount": "Coverage · {count}",
+    "a11y": "Accessibility",
+    "runs": "Runs",
+    "diagnostics": "Diagnostics",
+    "help": "Help"
+  },
+  "status": {
+    "pass": "Pass",
+    "changed": "Changed",
+    "new": "New",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "flaky": "Flaky",
+    "skipped": "Not run",
+    "error": "Error"
+  },
+  "empty": {
+    "noCheck": "No check results. Run {command}."
+  },
+  "overview": {
+    "openItems": "Open items",
+    "noOpenItems": "No open items.",
+    "columns": {
+      "item": "Item",
+      "count": "Count",
+      "detail": "Detail",
+      "action": "Action"
+    },
+    "items": {
+      "changed": "Changed, awaiting review",
+      "new": "New, no baseline",
+      "rejected": "Rejected, awaiting a fix",
+      "error": "Render errors",
+      "coverage": "Coverage errors",
+      "a11y": "New accessibility violations",
+      "flaky": "Flaky"
+    },
+    "components": {
+      "one": "{count} component",
+      "other": "{count} components"
+    },
+    "ofTotal": "of {total}",
+    "actions": {
+      "review": "Review",
+      "open": "Open",
+      "view": "View"
+    },
+    "lastCheck": "Last check",
+    "stats": {
+      "entries": "Entries",
+      "passed": "Passed",
+      "changed": "Changed",
+      "notRun": "Not run",
+      "modes": "Modes",
+      "duration": "Duration",
+      "finished": "Finished"
+    }
+  },
+  "review": {
+    "filters": {
+      "all": "All results",
+      "todo": "Needs review",
+      "changed": "Changed",
+      "new": "New (no baseline)",
+      "error": "Render error",
+      "flaky": "Flaky",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "skipped": "Not run (unaffected by changes)",
+      "drift": "Any pixel drift (SSIM < 1)"
+    },
+    "fields": {
+      "story": "Story",
+      "result": "Result",
+      "mode": "Mode",
+      "sort": "Sort"
+    },
+    "search": "Filter by story ID",
+    "allModes": "All modes",
+    "sort": {
+      "worst": "Largest change first",
+      "id": "Story ID",
+      "render": "Slowest render"
+    },
+    "count": "{shown} of {total}",
+    "none": "No stories match the filters.",
+    "showMore": "Show more ({count} remaining)",
+    "card": {
+      "notRendered": "Not rendered",
+      "noBaseline": "No baseline. Approve the first render.",
+      "newA11y": "{count} new a11y",
+      "unchanged": "Unchanged",
+      "ssim": "SSIM {value}",
+      "cells": "Cells {value}",
+      "tiles": "Tiles {value}"
+    }
+  },
+  "coverage": {
+    "headline": {
+      "error": {
+        "one": "{count} component with errors",
+        "other": "{count} components with errors"
+      },
+      "warn": {
+        "one": "No errors. {count} component with warnings.",
+        "other": "No errors. {count} components with warnings."
+      },
+      "clean": "No coverage issues.",
+      "code": "{title}: {count}"
+    },
+    "banner": {
+      "label": "Coverage",
+      "viewComponents": "View components",
+      "repair": "Run safe repairs",
+      "repairing": "Repairing…",
+      "repairNote": "Safe repairs register new stories, re-check entries and restore baseline images that pass the gate. They do not approve changes or write signatures.",
+      "nothing": "No issues can be repaired automatically.",
+      "failed": "Repair failed: {error}"
+    },
+    "stats": {
+      "components": "Components",
+      "withErrors": "{count} with errors",
+      "errors": "Errors",
+      "warnings": "Warnings"
+    },
+    "table": {
+      "title": "Coverage by component",
+      "sourceStorybook": "Source: Storybook index, {count} stories in scope. Updated {date}.",
+      "sourceStatic": "Source: static scan of story files, {count} stories in scope. Updated {date}.",
+      "withIssues": "With issues ({count})",
+      "all": "All components ({count})",
+      "status": "Status",
+      "component": "Component",
+      "entries": "Entries",
+      "issues": "Issues",
+      "none": "No components with issues."
+    },
+    "entries": {
+      "description": {
+        "one": "{count} entry. Select a rendered entry to open it.",
+        "other": "{count} entries. Select a rendered entry to open it."
+      },
+      "status": "Status",
+      "entry": "Entry",
+      "detail": "Detail",
+      "noIssues": "No issues"
+    },
+    "empty": "No coverage data. Run {command} or {command2}.",
+    "codes": {
+      "unregistered": {
+        "title": "Not registered",
+        "help": "In the story index but not in the manifest. Not rendered or checked."
+      },
+      "render-error": {
+        "title": "Render error",
+        "help": "The last render failed (timeout, missing selector or Storybook error page)."
+      },
+      "never-checked": {
+        "title": "Never checked",
+        "help": "In the manifest with a signature, but not in the last report."
+      },
+      "missing-baseline-image": {
+        "title": "Baseline image missing",
+        "help": "The signature exists but the baseline image does not, so the baseline cannot be displayed."
+      },
+      "legacy-format": {
+        "title": "Legacy baseline format",
+        "help": "A pre-0.2 .pxsig.json baseline. `pxsig doctor --repair` converts it when the latest render passes the gate."
+      },
+      "unbaselined": {
+        "title": "No baseline",
+        "help": "In the manifest without a signature. The first render needs approval."
+      },
+      "missing-render": {
+        "title": "No render",
+        "help": "No latest render on disk."
+      },
+      "orphaned": {
+        "title": "Orphaned",
+        "help": "A signature or baseline image with no matching story."
+      },
+      "changed": {
+        "title": "Changed",
+        "help": "The render differs from the baseline beyond the gate."
+      },
+      "flaky": {
+        "title": "Flaky",
+        "help": "Failed, then passed on a second render."
+      },
+      "stale": {
+        "title": "Stale",
+        "help": "A source file the entry depends on changed after the last check."
+      },
+      "a11y-new": {
+        "title": "New a11y violations",
+        "help": "axe reports violations that are not in the a11y baseline."
+      },
+      "skipped-unaffected": {
+        "title": "Not run",
+        "help": "Left out of a partial check because no edited file affects it. Baseline present, no result yet."
+      },
+      "drift": {
+        "title": "Pass (minor drift)",
+        "help": "Within the gate, with SSIM below 1."
+      },
+      "excluded": {
+        "title": "Excluded",
+        "help": "Excluded by configuration: a nonVisual folder, parameters.pxsig.disable or the no-pxsig tag."
+      },
+      "ok": {
+        "title": "OK",
+        "help": "Registered, rendered, checked and passing."
+      },
+      "storybook-index-broken": {
+        "title": "Storybook index error",
+        "help": "Storybook responded, but its story index could not be read."
+      },
+      "storybook-unreachable": {
+        "title": "Storybook not reachable",
+        "help": "Stories were read from a static scan of the story files instead."
+      },
+      "project-unlisted": {
+        "title": "Project not listed",
+        "help": "The project has a config file but is not listed in the workspace."
+      },
+      "project-missing": {
+        "title": "Project missing",
+        "help": "A project listed in the workspace has no config file."
+      },
+      "version-skew": {
+        "title": "Version mismatch",
+        "help": "Packages in the workspace depend on different pxsig versions."
+      }
+    }
+  },
+  "a11y": {
+    "stats": {
+      "scanned": "Entries scanned",
+      "violations": "Violations",
+      "new": "New since baseline",
+      "rules": "Rules"
+    },
+    "title": "Rules",
+    "description": "axe-core results per rule. New counts violations that are not in the a11y baseline ({file}).",
+    "columns": {
+      "rule": "Rule",
+      "impact": "Impact",
+      "description": "Description",
+      "entries": "Entries",
+      "nodes": "Nodes",
+      "new": "New"
+    },
+    "empty": "No accessibility results in this check. Checks run with {flag} skip the scan."
+  },
+  "runs": {
+    "latest": {
+      "title": "Last check timing",
+      "render": "Render",
+      "pages": {
+        "one": "{count} page",
+        "other": "{count} pages"
+      },
+      "engine": "Engine",
+      "cached": "{count} cached",
+      "retries": "Retries",
+      "scope": "Scope",
+      "allEntries": "All entries"
+    },
+    "changed": {
+      "title": "Changed entries per run",
+      "description": {
+        "one": "{count} run.",
+        "other": "{count} runs."
+      },
+      "series": "Changed"
+    },
+    "engine": {
+      "title": "Engine time per run",
+      "description": "Milliseconds.",
+      "series": "Engine (ms)"
+    },
+    "table": {
+      "title": "Runs",
+      "when": "Finished",
+      "entries": "Entries",
+      "changed": "Changed",
+      "cached": "Cached",
+      "engine": "Engine",
+      "ids": "Changed entries"
+    },
+    "empty": "No runs recorded. Each check appends to {file}."
+  },
+  "diagnostics": {
+    "description": "Results from the research tools in tools/. Not part of a normal check.",
+    "sections": "Diagnostics section",
+    "tabs": {
+      "scenarios": "Scenarios",
+      "calibration": "Calibration",
+      "performance": "Performance"
+    },
+    "detection": {
+      "title": "Detection rate by suite",
+      "description": "Share of changed renders that failed the gate, per suite. Noise scenarios report false positives.",
+      "whole": "Whole-image signature",
+      "shipped": "Signature and detail channel",
+      "detected": "{detected}/{changed} detected",
+      "falsePositives": "False positives"
+    },
+    "scenario": {
+      "empty": "No scenario data. Run {command}.",
+      "emptySuite": "The {suite} suite has no scenarios.",
+      "suite": "Scenario suite",
+      "defaultSuite": "General sample",
+      "list": "Scenarios",
+      "sampleMatching": "{count} stories matching {pattern}",
+      "sampleEvery": "{count} stories, 1 in {every}",
+      "sampleAll": "{count} stories",
+      "gate": "Gate: grid {grid}, ≥ {minCells} cells over {threshold}, detail channel {detail}",
+      "on": "on",
+      "off": "off",
+      "regression": "Regression",
+      "noise": "Noise",
+      "progressRegression": "{detected}/{changed} detected · whole-image {whole}",
+      "progressNoise": "{clean}/{total} pass",
+      "result": "Scenario result",
+      "changed": "Changed",
+      "detected": "Detected",
+      "wholeOnly": "Whole-image only",
+      "falsePositives": "False positives",
+      "errors": "Errors",
+      "render": "Render",
+      "engine": "Engine",
+      "filter": "Filter renders",
+      "filters": {
+        "changed": "Changed renders",
+        "missed": "Changed, not detected",
+        "detail": "Detected by detail channel only",
+        "fail": "Failed",
+        "all": "All renders"
+      },
+      "sorted": "Sorted by SSIM, lowest first."
+    },
+    "calibration": {
+      "empty": "No grid calibration. Run {command}.",
+      "suite": "Calibration suite",
+      "noGrids": "The {suite} calibration has no grids.",
+      "gridTitle": "{suite}: detection rate by signature grid",
+      "gridDescription": "{renders} saved renders, {cells}. Whole-image signature only. Rules with a false positive on any noise scenario are excluded.",
+      "minCell": "minimum cell {px} px",
+      "fixedGrids": "fixed grids",
+      "seriesDefault": "v1 rule (SSIM / 2%)",
+      "seriesCalibrated": "≥ 2 cells over 32",
+      "seriesBest": "Best rule without false positives",
+      "grid": "Grid",
+      "recordKb": "Record (KB)",
+      "calibrated": "≥ 2 cells over 32",
+      "falsePositives": "False positives",
+      "best": "Best rule without false positives",
+      "detailTitle": "Detail channel: {count} saved renders",
+      "detailDescription": "Signature gate: {sig} detected. With the detail rule: {best} detected, no false positives. Sweep time {ms} ms.",
+      "build": "Tile / block / selection",
+      "rule": "Rule",
+      "detected": "Detected",
+      "detailOnly": "Detail only",
+      "detailKb": "Detail per record (KB)"
+    },
+    "performance": {
+      "empty": "No benchmark data. Run {command}.",
+      "noResults": "The benchmark report has no results. Run {command} again.",
+      "entries": "{count} entries",
+      "cpus": "{count} CPUs",
+      "median": "Median of {count} runs",
+      "engine": "Engine",
+      "batch": {
+        "one": "Batch check, {count} thread",
+        "other": "Batch check, {count} threads"
+      },
+      "vsOne": "{factor} vs 1 thread",
+      "renders": "{count} renders",
+      "capture": "Baseline capture",
+      "inEngine": "{ms} in engine",
+      "perCall": "Per compare, CLI → server",
+      "memory": "Peak memory, batch check",
+      "binary": "Binary size",
+      "fullCheck": "Last full check",
+      "renderTitle": "Render time per story by page count",
+      "renderDescription": "{count} stories per run.",
+      "renderSeries": "ms per story",
+      "pages": {
+        "one": "{count} page",
+        "other": "{count} pages"
+      },
+      "pagesColumn": "Pages",
+      "wall": "Wall time",
+      "msPerStory": "ms per story",
+      "vsOnePage": "vs 1 page",
+      "errors": "Errors",
+      "reloads": "Reloads",
+      "noRender": "No render timings. Benchmarks run with {flag} skip them.",
+      "threadsTitle": "Batch check by thread count",
+      "threadsDescription": "Same renders and verdicts at each thread count. Wall: the whole process. Engine: time reported by the engine.",
+      "threads": "Threads",
+      "wallMs": "Wall (ms)",
+      "engineMs": "Engine (ms)",
+      "vsOneThread": "vs 1 thread",
+      "noThreads": "No batch-check timings.",
+      "perCallTitle": "Single compare: CLI process vs server",
+      "perCallDescription": "Median over {count} entries. The CLI starts a process per compare; {command} keeps one engine running.",
+      "perCallSeries": "ms per compare",
+      "cli": "CLI process",
+      "server": "Server request"
+    }
+  },
+  "help": {
+    "gate": {
+      "title": "Gate",
+      "description": "Applied by the CLI, CI, this dashboard and the Storybook addon. A story can override it with parameters.pxsig.gate.",
+      "signature": "Signature",
+      "signatureValue": "{grid}×{grid} grid, RGB, box-averaged",
+      "wholeImage": "Whole-image rule",
+      "wholeImageValue": "Fails when SSIM < 0.99, more than 2% of cells differ, or ≥ {minCells} cells differ by more than {threshold}",
+      "detail": "Detail channel",
+      "detailValue": "16 px tiles, 4 px blocks. Fails when ≥ 3 tiles change by more than 32 or gain an edge.",
+      "modes": "Modes",
+      "format": "Baseline format",
+      "formatValue": ".psig, signature spec v1"
+    },
+    "statuses": {
+      "title": "Result statuses",
+      "pass": "Within the gate.",
+      "changed": "Differs from the baseline beyond the gate. Approve or reject.",
+      "new": "No baseline. Approving the first render creates one.",
+      "approved": "Change accepted. The latest render becomes the baseline.",
+      "rejected": "Change marked as unwanted. The baseline is unchanged.",
+      "flaky": "Failed, then passed on a second render.",
+      "skipped": "Left out of a partial check: no edited file affects it.",
+      "error": "The render failed."
+    },
+    "coverage": {
+      "title": "Coverage statuses"
+    },
+    "keys": {
+      "title": "Keyboard shortcuts",
+      "description": "In the inspector.",
+      "mode": "Compare mode",
+      "fit": "Fit to view",
+      "actual": "Actual size",
+      "zoom": "Zoom in / out",
+      "change": "Next / previous change",
+      "story": "Previous / next story",
+      "approve": "Approve",
+      "reject": "Reject",
+      "close": "Close"
+    },
+    "commands": {
+      "title": "Commands",
+      "check": "Render and check every entry",
+      "checkChanged": "Re-check the entries affected by changes since main",
+      "serve": "Start the server and this dashboard; re-check on source edits",
+      "doctor": "List coverage issues per component",
+      "repair": "Plan the safe repairs; add --apply to run them"
+    }
+  },
+  "inspector": {
+    "contextScenario": "Scenario · {name}",
+    "contextLatest": "Latest check · {mode}",
+    "withinGate": "Within the gate",
+    "close": "Close",
+    "modes": {
+      "label": "Compare mode",
+      "side": "Side by side",
+      "sideShort": "Side",
+      "swipe": "Swipe",
+      "swipeShort": "Swipe",
+      "onion": "Onion skin",
+      "onionShort": "Onion",
+      "diff": "Pixel diff",
+      "diffShort": "Diff",
+      "heat": "Signature cells",
+      "heatShort": "Cells"
+    },
+    "variant": "Mode",
+    "zoomOut": "Zoom out (−)",
+    "zoomIn": "Zoom in (+)",
+    "fit": "Fit",
+    "fitTitle": "Fit (F)",
+    "actual": "1:1",
+    "actualTitle": "Actual size (0)",
+    "sliders": {
+      "swipe": "Swipe",
+      "opacity": "Opacity",
+      "cells": "Cells",
+      "tolerance": "Tolerance"
+    },
+    "toggles": {
+      "highlight": "Highlight",
+      "highlightLabel": "Highlight changed pixels",
+      "regions": "Regions",
+      "regionsLabel": "Outline changed regions",
+      "tiles": "Detail tiles",
+      "tilesLabel": "Show detail tiles over the limit",
+      "details": "Details",
+      "detailsLabel": "Show details"
+    },
+    "nav": {
+      "prevStory": "Previous story (←)",
+      "nextStory": "Next story (→)",
+      "prevChange": "Previous change (⇧N)",
+      "nextChange": "Next change (N)",
+      "change": "Change {index} / {total}",
+      "noChanges": "No changes",
+      "position": "{index} / {total}"
+    },
+    "review": {
+      "reject": "Reject",
+      "rejectTitle": "Mark the change as unwanted (R)",
+      "approve": "Approve",
+      "approveTitle": "Use the latest render as the baseline (A)",
+      "undo": "Undo",
+      "failed": "{action} failed: {error}"
+    },
+    "missing": "Render not found: {before} or {after}. Run the check again.",
+    "loading": "Loading renders…",
+    "keys": {
+      "mode": "mode",
+      "fit": "fit",
+      "actual": "1:1",
+      "zoom": "zoom",
+      "change": "next / previous change",
+      "story": "story",
+      "approve": "approve",
+      "reject": "reject",
+      "close": "close"
+    },
+    "sections": {
+      "view": "View",
+      "pixel": "Pixel",
+      "changes": "Pixel changes",
+      "metrics": "Metrics",
+      "a11y": "Accessibility ({count})",
+      "files": "Files"
+    },
+    "pixel": {
+      "needsServer": "Pixel values require the local server ({command}).",
+      "hover": "Hover over the image to read pixel values.",
+      "coords": "x {x} y {y}",
+      "cellTile": "cell {cx},{cy} · tile {tx},{ty}",
+      "before": "Before",
+      "after": "After",
+      "outside": "outside",
+      "maxDelta": "Max channel Δ"
+    },
+    "changes": {
+      "pixels": "Changed pixels",
+      "regions": "Regions",
+      "maxDelta": "Max channel Δ",
+      "size": "Size",
+      "noneOver": "No pixel differs by more than {tol}."
+    },
+    "metrics": {
+      "ssim": "SSIM",
+      "cellsOver": "Cells over {threshold}",
+      "maxCell": "Max cell Δ",
+      "edge": "Edge Δ",
+      "tilesChanged": "Detail tiles changed",
+      "newEdges": "New edges",
+      "maxBlock": "Max block Δ",
+      "baseSig": "Baseline signature",
+      "curSig": "Current signature",
+      "heatmap": "Cell heatmap"
+    },
+    "a11y": {
+      "nodes": {
+        "one": "{count} node",
+        "other": "{count} nodes"
+      },
+      "new": "New"
+    },
+    "files": {
+      "baseSig": "Baseline signature (PNG)",
+      "curSig": "Current signature (PNG)",
+      "heat": "Cell heatmap (PNG)",
+      "page": "Diff page (HTML)",
+      "record": "Baseline record (JSON)",
+      "path": "{label} path",
+      "storybook": "Open in Storybook"
+    },
+    "renders": {
+      "baseline": "Baseline render",
+      "latest": "Latest render",
+      "control": "Control render",
+      "scenario": "{name} render"
+    },
+    "stage": {
+      "label": "Image comparison. Drag to pan, scroll to zoom.",
+      "swipe": "Swipe position"
+    }
+  }
+}
