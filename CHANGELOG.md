@@ -3,7 +3,7 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
-## Unreleased: 0.2.0
+## 0.2.0 - 2026-10-19
 
 The first public release.
 

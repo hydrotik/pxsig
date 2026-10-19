@@ -48,10 +48,18 @@ A tag with a prerelease suffix (`v0.2.0-dev.0`, `v0.2.0-rc.1`) publishes under t
    with the dashboard in `dist/`. A platform package already published at that version is skipped,
    so a failed run can be re-run.
 
-`@pxsig/storybook-addon` is not part of this workflow; it is released separately.
+   Then it publishes `@pxsig/storybook-addon` at its own `package.json` version, skipped when that
+   version is already on npm.
 
 Running the workflow by hand (`workflow_dispatch`) on a tag ref does the same. The `dry_run` input
-runs every `npm publish` with `--dry-run`.
+runs every `npm publish` with `--dry-run`. A dry run may also run on a branch: with no tag to compare,
+verify only checks that `Cargo.toml` and `packages/pxsig/package.json` agree, and when no dashboard
+source is available the dashboard job packs a placeholder `index.html` (with a warning) instead of
+failing:
+
+```bash
+gh workflow run release.yml --ref main -f dry_run=true
+```
 
 ## Platform packages
 
