@@ -1,0 +1,22 @@
+{
+  "name": "@example/storybook",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "storybook": "storybook dev -p 6407 --no-open",
+    "build-storybook": "storybook build -o storybook-static --quiet"
+  },
+  "dependencies": {
+    "@example/forms": "workspace:*",
+    "@example/ui": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@pxsig/storybook-addon": "link:../../../../packages/storybook-addon",
+    "@storybook/react": "^10.0.0",
+    "@storybook/react-vite": "^10.0.0",
+    "storybook": "^10.0.0",
+    "vite": "^6.3.5"
+  }
+}

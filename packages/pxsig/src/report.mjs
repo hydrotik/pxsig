@@ -1,0 +1,151 @@
+#!/usr/bin/env node
+/**
+ * report.mjs — the dashboard's data, and the static report (`pxsig report`).
+ *
+ *   pxsig serve                                   # live, every project: http://127.0.0.1:6070
+ *   pxsig report [--project x] [--out dir]        # static: one project, opens from disk
+ *
+ * `buildData(P)` gathers one project's output (<store>/reports/*.json, the run history, review
+ * decisions); the server answers `/__pxsig/data?project=` with it. The dashboard itself ships
+ * prebuilt in `dist/dashboard/` (see packages/dashboard).
+ *
+ * Producers: check.mjs and the server write check.json, review.json and history.ndjson; the
+ * repository's research tools (scenarios, calibration, bench) write scenarios[-<suite>].json,
+ * calibration[-<suite>].json, calibration-gate.json, calibration-detail.json and bench.json.
+ * Every scenarios / calibration suite present is passed on, keyed by suite (`default` for the
+ * unsuffixed file).
+ *
+ * `pxsig report` exits 2 on any error (no project, dashboard not built, unwritable output).
+ */
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { readImage } from './lib/psig.mjs';
+import { openProject } from './lib/workspace.mjs';
+
+const here = dirname(fileURLToPath(import.meta.url));
+/** The prebuilt dashboard (index.html + assets/). */
+export const dashboardDir = resolve(here, '..', 'dist', 'dashboard');
+
+const readJsonFile = (p) => {
+  try {
+    return JSON.parse(readFileSync(p, 'utf8'));
+  } catch {
+    return null;
+  }
+};
+
+function history(P, limit = 100) {
+  const p = join(P.store.reports, 'history.ndjson');
+  if (!existsSync(p)) return [];
+  return readFileSync(p, 'utf8')
+    .trim()
+    .split('\n')
+    .slice(-limit)
+    .map((l) => {
+      try {
+        const r = JSON.parse(l);
+        return { at: r.at, summary: r.summary, failedIds: Object.entries(r.rows ?? {}).filter(([, v]) => v[0] === 0).map(([k]) => k) };
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
+/** Every `<prefix>.json` / `<prefix>-<suite>.json` in the reports folder, keyed by suite. */
+function suites(P, prefix, exclude = []) {
+  const out = {};
+  let names = [];
+  try {
+    names = readdirSync(P.store.reports);
+  } catch {
+    return out;
+  }
+  const re = new RegExp(`^${prefix}(?:-([a-z0-9][a-z0-9-]*))?\\.json$`, 'i');
+  for (const n of names.sort()) {
+    const m = n.match(re);
+    if (!m || exclude.includes(m[1])) continue;
+    const v = readJsonFile(join(P.store.reports, n));
+    if (v) out[m[1] ?? 'default'] = v;
+  }
+  return out;
+}
+
+/**
+ * One project's dashboard data. `base` is the URL prefix of the project's files: `/p/<name>/`
+ * when served, `./` for a static report.
+ */
+export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/` } = {}) {
+  const manifest = readJsonFile(P.manifestPath()) ?? { stories: [] };
+  const read = (name) => readJsonFile(join(P.store.reports, `${name}.json`));
+  return {
+    generatedAt: new Date().toISOString(),
+    project: P.name,
+    store: relative(P.workspaceRoot, P.store.root),
+    check: read('check'),
+    gateCalibration: read('calibration-gate'),
+    /** scenarios.json → `default`, scenarios-<suite>.json → `<suite>`. */
+    scenarioSuites: suites(P, 'scenarios'),
+    /** calibration[-<suite>].json, except the gate and detail calibrations (their own fields). */
+    calibrationSuites: suites(P, 'calibration', ['gate', 'detail']),
+    detailCalibration: read('calibration-detail'),
+    bench: read('bench'),
+    history: history(P),
+    review: read('review') ?? {},
+    integrity: read('integrity'),
+    storybook: { baseUrl: P.storybook.url },
+    // renders/base/<id>.png is the baseline image inside each .psig, served (or written) by id.
+    paths: { diffRoot: `${base}diffs/`, renders: `${base}renders/`, baselines: `${base}baselines/` },
+    sigs: Object.fromEntries((manifest.stories ?? []).map((s) => [s.id, `${base}sig/${encodeURIComponent(s.id)}`])),
+  };
+}
+
+/** index.html with the data inlined (static) or with the placeholder left for the server. */
+export function pageWithData(data) {
+  const html = readFileSync(join(dashboardDir, 'index.html'), 'utf8');
+  const json = JSON.stringify({ ...data, static: true }).replace(/</g, '\\u003c');
+  return html.replace(/<script id="pxsig-data">[\s\S]*?<\/script>|<!--pxsig:data-->/, `<script id="pxsig-data">window.PXSIG=${json}</script>`);
+}
+
+/** Write a static report for one project into `out`: the app, the data and the images it shows. */
+export function writeStaticReport(P, out) {
+  if (!existsSync(join(dashboardDir, 'index.html'))) throw new Error(`the dashboard is not built (${dashboardDir})`);
+  mkdirSync(join(out, 'assets'), { recursive: true });
+  for (const f of readdirSync(join(dashboardDir, 'assets'))) copyFileSync(join(dashboardDir, 'assets', f), join(out, 'assets', f));
+  const data = buildData(P, { base: './' });
+  writeFileSync(join(out, 'index.html'), pageWithData(data));
+  // Images: latest renders and diffs as they are; baseline images out of their .psig files.
+  const copyDir = (from, to) => {
+    if (!existsSync(from)) return;
+    mkdirSync(to, { recursive: true });
+    for (const f of readdirSync(from)) if (/\.(png|html)$/.test(f)) copyFileSync(join(from, f), join(to, f));
+  };
+  copyDir(P.store.latest, join(out, 'renders', 'latest'));
+  copyDir(P.store.diffLatest, join(out, 'diffs', 'latest'));
+  mkdirSync(join(out, 'renders', 'base'), { recursive: true });
+  const manifest = readJsonFile(P.manifestPath()) ?? { stories: [] };
+  let images = 0;
+  for (const e of manifest.stories) {
+    const img = readImage(resolve(P.workspaceRoot, e.sig));
+    if (img) {
+      writeFileSync(join(out, 'renders', 'base', `${e.id}.png`), img);
+      images++;
+    }
+  }
+  return { data, images };
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const { parseArgs, strFlag } = await import('./lib/args.mjs');
+  const { flags } = parseArgs(process.argv.slice(2));
+  try {
+    const P = openProject({ project: strFlag(flags, 'project'), workspace: strFlag(flags, 'workspace') });
+    const out = resolve(strFlag(flags, 'out') ?? join(P.store.reports, 'site'));
+    const { images } = writeStaticReport(P, out);
+    console.log(`[report] ${join(out, 'index.html')} · project ${P.name} · ${images} baseline images`);
+  } catch (e) {
+    console.error(`[report] ${e.message}`);
+    process.exit(2);
+  }
+}

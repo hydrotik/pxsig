@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/pxsig/schema/project.json",
+  "version": 1,
+  "name": "example-single",
+  "srcRoot": "src",
+  "storybook": { "url": "http://localhost:6406", "configDir": ".storybook", "staticDir": "storybook-static" },
+  "modes": {
+    "light": { "globals": "", "colorScheme": "light" },
+    "dark": { "globals": "theme:dark", "colorScheme": "dark" }
+  },
+  "modesByDefault": ["light", "dark"]
+}

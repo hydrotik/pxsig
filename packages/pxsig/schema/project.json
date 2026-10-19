@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pxsig project config (pxsig.config.json)",
+  "description": "Configures one project (package under test). Every key is optional. Relative paths are relative to the project folder; a path starting with \"$workspace/\" is relative to the workspace root.",
+  "type": "object",
+  "additionalProperties": true,
+  "$defs": {
+    "path": {
+      "type": "string",
+      "description": "A path relative to the project folder, \"$workspace/…\" relative to the workspace root, or absolute."
+    },
+    "size": {
+      "type": "array",
+      "description": "[width, height] in CSS pixels.",
+      "items": { "type": "integer", "minimum": 1 },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "detailGate": {
+      "description": "Detail-channel rule: false turns it off, true uses the defaults, an object tunes it.",
+      "oneOf": [
+        { "type": "boolean" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "blockDelta": { "type": "number", "minimum": 0, "description": "A kept tile changed when any of its blocks moved by more than this (0-255). Default 32." },
+            "energyDelta": { "type": "number", "minimum": 0, "description": "A new edge appeared when a tile's edge energy rose by more than this (0-255). Default 48." },
+            "minTiles": { "type": "integer", "minimum": 0, "description": "Fail when at least this many tiles trip either rule. Default 3." }
+          }
+        }
+      ]
+    },
+    "gate": {
+      "type": "object",
+      "description": "Gate thresholds. An entry fails when any rule trips.",
+      "additionalProperties": false,
+      "properties": {
+        "threshold": { "type": "number", "minimum": 0, "description": "Per-cell mean RGB delta (0-255) that counts a cell as changed. Default 24." },
+        "minCells": { "type": "integer", "minimum": 0, "description": "Fail when at least this many cells changed. 0 turns the rule off. Default 3." },
+        "minSsim": { "type": "number", "minimum": 0, "maximum": 1, "description": "Fail when SSIM is below this. Default 0.99." },
+        "maxChangedPct": { "type": "number", "minimum": 0, "maximum": 100, "description": "Fail when more than this percentage of cells changed. Default 2." },
+        "maxEdgePct": { "type": "number", "minimum": 0, "description": "Fail when the Sobel edge-map difference is above this percentage. Off by default." },
+        "detail": { "$ref": "#/$defs/detailGate" }
+      }
+    },
+    "mode": {
+      "type": "object",
+      "description": "Named render settings.",
+      "additionalProperties": false,
+      "properties": {
+        "globals": { "type": "string", "description": "Storybook globals in URL form, e.g. \"theme:dark;density:compact\"." },
+        "colorScheme": { "enum": ["light", "dark"], "description": "Emulated prefers-color-scheme." },
+        "viewport": { "$ref": "#/$defs/size", "description": "Overrides capture.viewport." },
+        "browser": { "enum": ["chromium", "firefox", "webkit"], "description": "Playwright browser. Default chromium." },
+        "extends": { "type": "string", "description": "Another mode's name: its keys are copied first. One level only." }
+      }
+    }
+  },
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1, "description": "File format version." },
+    "name": { "type": "string", "description": "Project name in a single-package repository. In a monorepo the key in pxsig.workspace.json is the name." },
+    "srcRoot": { "$ref": "#/$defs/path", "default": "src", "description": "The folder whose stories belong to this project." },
+    "storybook": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": { "type": "string", "default": "http://localhost:6006", "description": "Where Storybook serves index.json and iframe.html." },
+        "configDir": { "oneOf": [{ "$ref": "#/$defs/path" }, { "type": "null" }], "default": null, "description": "Storybook's config folder; used to resolve story paths from index.json." },
+        "staticDir": { "oneOf": [{ "$ref": "#/$defs/path" }, { "type": "null" }], "default": null, "description": "Reserved. Not used yet." }
+      }
+    },
+    "store": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dir": { "$ref": "#/$defs/path", "default": ".pxsig", "description": "The store folder." },
+        "layout": { "enum": ["package", "colocated"], "default": "package", "description": "package: baselines in <store>/baselines/<component>/. colocated: baselines in <srcRoot>/<component>/__pxsig__/." }
+      }
+    },
+    "capture": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "viewport": { "$ref": "#/$defs/size", "default": [900, 600], "description": "Browser viewport at device scale 1." },
+        "settleMs": { "type": "integer", "minimum": 0, "default": 200, "description": "Minimum wait after fonts load." },
+        "target": { "type": "string", "default": "#storybook-root", "description": "Selector of the element captured." },
+        "waitFor": {
+          "type": "array",
+          "default": [],
+          "description": "Extra waits, each applied when its selector matches.",
+          "items": {
+            "type": "object",
+            "required": ["selector"],
+            "additionalProperties": false,
+            "properties": {
+              "selector": { "type": "string" },
+              "minMs": { "type": "integer", "minimum": 0, "description": "Raise the minimum wait to this." },
+              "stableMarkup": { "type": "string", "description": "Wait until the markup under this selector stops changing." }
+            }
+          }
+        }
+      }
+    },
+    "grid": { "type": "integer", "minimum": 8, "maximum": 256, "default": 64, "description": "Signature grid, cells per side." },
+    "minCellPx": { "type": "integer", "minimum": 0, "default": 8, "description": "Adaptive grid: cells at least this many pixels, capped by grid. 0 turns it off." },
+    "detail": { "type": "boolean", "default": true, "description": "Write the detail channel into new baselines." },
+    "trim": {
+      "default": { "pad": 16, "tolerance": 8 },
+      "description": "Crop renders to their content (right and bottom). false turns it off.",
+      "oneOf": [
+        { "const": false },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pad": { "type": "integer", "minimum": 0, "default": 16 },
+            "tolerance": { "type": "integer", "minimum": 0, "maximum": 255, "default": 8 }
+          }
+        }
+      ]
+    },
+    "gate": { "$ref": "#/$defs/gate" },
+    "modes": {
+      "type": "object",
+      "default": { "default": { "globals": "", "colorScheme": "light" } },
+      "description": "Named modes. A project's modes replace the workspace defaults and the built-in set.",
+      "propertyNames": { "pattern": "^[a-z0-9-]+$" },
+      "additionalProperties": { "$ref": "#/$defs/mode" }
+    },
+    "defaultMode": { "type": ["string", "null"], "default": null, "description": "The mode whose entries keep the bare story id. Default: the first mode." },
+    "modesByDefault": { "type": ["array", "null"], "items": { "type": "string" }, "default": null, "description": "Modes every story renders in. Default: [defaultMode]." },
+    "suites": {
+      "type": "object",
+      "default": {},
+      "description": "Extra manifests (manifest.<suite>.json) for other mode sets.",
+      "propertyNames": { "pattern": "^[a-z0-9-]+$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "modes": { "type": "array", "items": { "type": "string" }, "description": "The suite's modes." },
+          "addModes": { "type": "array", "items": { "type": "string" }, "description": "Another name for modes." }
+        }
+      }
+    },
+    "affects": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "workspaceDeps": { "type": "boolean", "default": true, "description": "A change in a workspace dependency's source selects every entry." },
+        "extra": { "type": "array", "items": { "$ref": "#/$defs/path" }, "default": [], "description": "More paths whose change selects every entry." }
+      }
+    },
+    "nonVisual": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Top-level folders under srcRoot with no visual stories." },
+    "a11y": { "type": "boolean", "default": true, "description": "Run axe on every render." },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requireBaselineImages": { "type": "boolean", "default": true, "description": "Report missing-baseline-image." },
+        "staleAfterSourceChange": { "type": "boolean", "default": true, "description": "Report stale verdicts." },
+        "sourceRoots": { "type": ["array", "null"], "items": { "type": "string" }, "default": null, "description": "Workspace-relative folders whose edits can make a verdict stale. Default: srcRoot." },
+        "maxTracedFiles": { "type": "integer", "minimum": 0, "default": 400, "description": "Above this many edited files, staleness uses the same-folder rule." },
+        "severity": {
+          "type": "object",
+          "default": {},
+          "description": "Per-code severity overrides.",
+          "additionalProperties": { "enum": ["error", "warn", "info"] }
+        },
+        "indexTimeoutMs": { "type": "integer", "minimum": 0, "default": 4000, "description": "Storybook index fetch timeout." },
+        "renderSkewMs": { "type": "integer", "minimum": 0, "default": 5000, "description": "A render written this long after its verdict makes the verdict stale." },
+        "manifests": { "type": "array", "items": { "type": "string" }, "description": "Other manifests (relative to the store) whose baselines are not orphans. Default: every manifest.<suite>.json." }
+      }
+    },
+    "importPathPattern": { "type": "string", "description": "Advanced: a regular expression selecting the project's story files, with the component folder as group 1. Default: files under srcRoot." }
+  }
+}

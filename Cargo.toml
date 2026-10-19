@@ -1,0 +1,31 @@
+# pxsig Rust workspace.
+#
+# pxsig-core: the pure engine: signatures (spec v1), metrics, the detail channel, the .psig container.
+# pxsig-cli:  the `pxsig` binary: capture/compare, parallel check/baseline, affected, pack/cat/attach,
+#             and the stdio daemon the JS server drives. See docs/cli.md.
+
+[workspace]
+resolver = "2"
+members = ["crates/pxsig-core", "crates/pxsig-cli"]
+
+[workspace.package]
+version = "0.2.0-dev.0"
+edition = "2021"
+license = "MIT"
+authors = ["Donovan Adams (Hydrotik LLC)"]
+repository = "https://github.com/hydrotik/pxsig"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+sha2 = "0.10"
+png = "0.17"
+rayon = "1"
+clap = { version = "4", features = ["derive", "env"] }
+anyhow = "1"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"

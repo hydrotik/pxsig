@@ -1,0 +1,8 @@
+{
+  "name": "@example/forms",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "dependencies": { "@example/ui": "workspace:*" },
+  "peerDependencies": { "react": ">=18" }
+}

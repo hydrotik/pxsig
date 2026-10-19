@@ -1,0 +1,48 @@
+{
+  "name": "pxsig",
+  "version": "0.2.0-dev.0",
+  "description": "Visual regression for Storybook: compact pixel signatures with their baseline images, a Rust engine, a dashboard, a Storybook addon and an MCP server.",
+  "license": "MIT",
+  "author": "Donovan Adams (Hydrotik LLC)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hydrotik/pxsig.git",
+    "directory": "packages/pxsig"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "pxsig": "bin/pxsig.mjs"
+  },
+  "exports": {
+    "./workspace": "./src/lib/workspace.mjs",
+    "./psig": "./src/lib/psig.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin",
+    "src",
+    "schema",
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "pngjs": "^7.0.0",
+    "axe-core": "^4.10.0"
+  },
+  "peerDependencies": {
+    "playwright": ">=1.40"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

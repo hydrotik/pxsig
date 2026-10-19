@@ -1,0 +1,23 @@
+{
+  "name": "pxsig-repo",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build:rust": "cargo build --release",
+    "build:dashboard": "pnpm --filter @pxsig/dashboard build",
+    "test": "cargo test --workspace && pnpm --filter pxsig test",
+    "test:examples": "node scripts/examples-test.mjs",
+    "check:clean": "node scripts/check-clean.mjs"
+  },
+  "pnpm": {
+    "overrides": {
+      "vite": "^6.4.1",
+      "vite-node": "^3.2.4"
+    }
+  }
+}

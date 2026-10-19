@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pxsig workspace (pxsig.workspace.json)",
+  "description": "Lists the projects in a repository. Lives at the repository root.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["projects"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1, "description": "File format version." },
+    "projects": {
+      "type": "object",
+      "description": "Project name to project folder, relative to the workspace root. Each folder holds a pxsig.config.json.",
+      "additionalProperties": { "type": "string" }
+    },
+    "defaults": {
+      "$ref": "project.json",
+      "description": "Project config keys applied under each project's own config. Paths here resolve relative to each project folder; use \"$workspace/\" for shared paths."
+    },
+    "server": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535, "default": 6070, "description": "Port pxsig serve tries first; the next ten are tried if it is taken." }
+      }
+    }
+  }
+}

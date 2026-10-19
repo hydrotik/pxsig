@@ -1,0 +1,241 @@
+# Release: build the pxsig binary for every platform, collect the dashboard, publish to npm.
+#
+# Trigger: push a tag vX.Y.Z (or vX.Y.Z-pre.N, published under the `next` dist-tag), or run it by
+# hand on a tag ref (workflow_dispatch). See docs/releasing.md.
+#
+# Published here: `pxsig` and the per-platform binary packages `@pxsig/cli-<platform>-<arch>`.
+# Not published here: `@pxsig/storybook-addon` is released separately, by its own process.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dashboard_artifact_url:
+        description: URL of a prebuilt dashboard tarball (pxsig-dashboard.tar.gz, containing dashboard/). Optional.
+        required: false
+        default: ''
+      dry_run:
+        description: Run npm publish with --dry-run (build and pack everything, publish nothing).
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify versions
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      dist_tag: ${{ steps.v.outputs.dist_tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        name: Tag, Cargo workspace and packages/pxsig/package.json must agree
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE}" != "tag" ] || [[ "${GITHUB_REF_NAME}" != v* ]]; then
+            echo "::error::run this workflow on a tag ref vX.Y.Z (got ${GITHUB_REF_TYPE} ${GITHUB_REF_NAME})"
+            exit 1
+          fi
+          tag="${GITHUB_REF_NAME#v}"
+          cargo=$(awk '/^\[/{t=($0=="[workspace.package]")} t && /^version[ \t]*=/{gsub(/.*=[ \t]*"|".*/,""); print; exit}' Cargo.toml)
+          npm=$(node -p "require('./packages/pxsig/package.json').version")
+          echo "tag=${tag} cargo=${cargo} packages/pxsig=${npm}"
+          if [ "$tag" != "$cargo" ] || [ "$tag" != "$npm" ]; then
+            echo "::error::version mismatch: tag ${tag}, Cargo.toml [workspace.package] ${cargo}, packages/pxsig/package.json ${npm}"
+            exit 1
+          fi
+          if [[ "$tag" == *-* ]]; then dist_tag=next; else dist_tag=latest; fi
+          echo "version=${tag}" >> "$GITHUB_OUTPUT"
+          echo "dist_tag=${dist_tag}" >> "$GITHUB_OUTPUT"
+
+  test:
+    name: Rust tests (linux-x64)
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace
+
+  build:
+    name: Build ${{ matrix.platform }}-${{ matrix.arch }}
+    needs: test
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { platform: darwin, arch: arm64, os: macos-14, target: aarch64-apple-darwin, exe: pxsig }
+          # Cross-compiled on Apple silicon: the Intel macOS runners are being retired.
+          - { platform: darwin, arch: x64, os: macos-14, target: x86_64-apple-darwin, exe: pxsig }
+          - { platform: linux, arch: x64, os: ubuntu-latest, target: x86_64-unknown-linux-gnu, exe: pxsig }
+          - { platform: linux, arch: arm64, os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu, exe: pxsig }
+          - { platform: win32, arch: x64, os: windows-latest, target: x86_64-pc-windows-msvc, exe: pxsig.exe }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - run: cargo build --release --locked --target ${{ matrix.target }} -p pxsig-cli
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pxsig-${{ matrix.platform }}-${{ matrix.arch }}
+          path: target/${{ matrix.target }}/release/${{ matrix.exe }}
+          if-no-files-found: error
+          retention-days: 7
+
+  dashboard:
+    name: Dashboard
+    runs-on: ubuntu-latest
+    needs: verify
+    env:
+      # A git URL (credentials included) of the design-system monorepo the dashboard compiles
+      # from. Empty when the secret is not set: then a prebuilt dashboard must be supplied.
+      DS_SOURCE: ${{ secrets.PXSIG_DS_SOURCE }}
+      DS_REF: ${{ vars.PXSIG_DS_REF }}
+      DASHBOARD_URL: ${{ github.event.inputs.dashboard_artifact_url }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: how
+        name: Choose the dashboard source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${DS_SOURCE}" ]; then
+            echo "mode=build" >> "$GITHUB_OUTPUT"
+          elif [ -n "${DASHBOARD_URL}" ]; then
+            echo "mode=url" >> "$GITHUB_OUTPUT"
+          elif gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json assets --jq '.assets[].name' 2>/dev/null | grep -qx 'pxsig-dashboard.tar.gz'; then
+            echo "mode=release" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::no dashboard: set the PXSIG_DS_SOURCE secret, pass dashboard_artifact_url, or attach pxsig-dashboard.tar.gz to the GitHub release ${GITHUB_REF_NAME} (see docs/releasing.md)"
+            exit 1
+          fi
+
+      # Mode build: compile the dashboard against a checkout of the design system.
+      - if: steps.how.outputs.mode == 'build'
+        uses: pnpm/action-setup@v4
+      - if: steps.how.outputs.mode == 'build'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - if: steps.how.outputs.mode == 'build'
+        name: Build the dashboard
+        shell: bash
+        run: |
+          set -euo pipefail
+          ds="${RUNNER_TEMP}/design-system"
+          git clone --depth 1 ${DS_REF:+--branch "$DS_REF"} "${DS_SOURCE}" "$ds"
+          (cd "$ds" && pnpm install --frozen-lockfile)
+          pnpm install --frozen-lockfile
+          PXSIG_DS_SOURCE="$ds" pnpm --filter @pxsig/dashboard build
+
+      # Modes url / release: unpack a prebuilt pxsig-dashboard.tar.gz (top-level folder dashboard/).
+      - if: steps.how.outputs.mode != 'build'
+        name: Fetch the prebuilt dashboard
+        shell: bash
+        run: |
+          set -euo pipefail
+          dl="${RUNNER_TEMP}/dashboard-download"
+          mkdir -p "$dl"
+          if [ "${{ steps.how.outputs.mode }}" = url ]; then
+            curl -fsSL --retry 3 -o "$dl/pxsig-dashboard.tar.gz" "${DASHBOARD_URL}"
+          else
+            gh release download "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --pattern pxsig-dashboard.tar.gz --dir "$dl"
+          fi
+          # Only dashboard/... entries, no absolute paths, no parent references.
+          tar tzf "$dl/pxsig-dashboard.tar.gz" > "$dl/entries.txt"
+          outside=$(grep -Ev '^(\./)?dashboard(/|$)' "$dl/entries.txt" || true)
+          if [ -n "$outside" ] || grep -Eq '(^/|(^|/)\.\.(/|$))' "$dl/entries.txt"; then
+            echo "::error::pxsig-dashboard.tar.gz must contain only a top-level dashboard/ folder"
+            exit 1
+          fi
+          mkdir -p packages/pxsig/dist
+          rm -rf packages/pxsig/dist/dashboard
+          tar xzf "$dl/pxsig-dashboard.tar.gz" -C packages/pxsig/dist --no-same-owner
+
+      - name: Check the dashboard
+        shell: bash
+        run: |
+          test -f packages/pxsig/dist/dashboard/index.html || { echo "::error::packages/pxsig/dist/dashboard/index.html is missing"; exit 1; }
+          find packages/pxsig/dist/dashboard -type f | sort
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dashboard
+          path: packages/pxsig/dist/dashboard
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    needs: [verify, build, dashboard]
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write # npm provenance
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
+      DIST_TAG: ${{ needs.verify.outputs.dist_tag }}
+      DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pxsig-*
+          path: release-artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          name: dashboard
+          path: packages/pxsig/dist/dashboard
+      # packages/cli-dist/ is git-ignored (packages/cli-*/): generated here, never committed. The
+      # package.json edit (version, optionalDependencies) stays in this job's checkout.
+      - name: Generate the platform packages
+        run: >
+          node scripts/make-platform-packages.mjs
+          --version "$VERSION"
+          --artifacts release-artifacts
+          --out packages/cli-dist
+          --write-optional-deps packages/pxsig/package.json
+      - name: Publish the platform packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          for dir in packages/cli-dist/cli-*/; do
+            name=$(node -p "require('./${dir}package.json').name")
+            if npm view "${name}@${VERSION}" version >/dev/null 2>&1; then
+              echo "${name}@${VERSION} is already published; skipping"
+              continue
+            fi
+            npm publish "$dir" --provenance --access public --tag "$DIST_TAG" $DRY_RUN
+          done
+      - name: Publish pxsig
+        shell: bash
+        working-directory: packages/pxsig
+        run: |
+          set -euo pipefail
+          test -f dist/dashboard/index.html
+          node -p "JSON.stringify(require('./package.json').optionalDependencies, null, 2)"
+          npm publish --provenance --access public --tag "$DIST_TAG" $DRY_RUN
+      # @pxsig/storybook-addon is not published by this workflow: it is released separately.

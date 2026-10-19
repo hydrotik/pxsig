@@ -1,0 +1,4 @@
+packages:
+  - packages/pxsig
+  - packages/storybook-addon
+  - packages/dashboard

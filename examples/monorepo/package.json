@@ -1,0 +1,12 @@
+{
+  "name": "pxsig-example-monorepo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build-storybook": "pnpm --filter ./apps/storybook build-storybook"
+  },
+  "devDependencies": {
+    "pxsig": "link:../../packages/pxsig",
+    "@playwright/test": "^1.58.2"
+  }
+}

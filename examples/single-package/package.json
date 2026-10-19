@@ -1,0 +1,22 @@
+{
+  "name": "pxsig-example-single",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "storybook": "storybook dev -p 6406 --no-open",
+    "build-storybook": "storybook build -o storybook-static --quiet"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@storybook/react": "^10.0.0",
+    "@storybook/react-vite": "^10.0.0",
+    "@pxsig/storybook-addon": "link:../../packages/storybook-addon",
+    "pxsig": "link:../../packages/pxsig",
+    "@playwright/test": "^1.58.2",
+    "storybook": "^10.0.0",
+    "vite": "^6.3.5"
+  }
+}

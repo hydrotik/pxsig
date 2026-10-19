@@ -1,0 +1,38 @@
+# Build output
+/target/
+node_modules/
+dist/
+packages/cli-*/
+
+# Anything a run produces: stores, baselines, renders, diffs, reports (they belong to the project
+# under test, never to this repository; scripts/check-clean.mjs enforces it)
+.pxsig/
+__pxsig__/
+*.psig
+*.pxsig.json
+pxsig-diff/
+.baselines/
+.renders/
+.reports/
+.cache/
+.conformance/
+px-diff-out/
+report/
+
+# Images and binaries: tests synthesise theirs
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.avif
+*.woff
+*.woff2
+*.wasm
+
+# Local
+.DS_Store
+.idea/
+.vscode/
+.env*
+.clean-terms

@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/pxsig/schema/workspace.json",
+  "version": 1,
+  "projects": {
+    "ui": "packages/ui",
+    "forms": "packages/forms"
+  },
+  "defaults": {
+    "storybook": {
+      "url": "http://localhost:6407",
+      "configDir": "$workspace/apps/storybook/.storybook",
+      "staticDir": "$workspace/apps/storybook/storybook-static"
+    }
+  },
+  "server": { "port": 6170 }
+}

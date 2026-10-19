@@ -1,0 +1,77 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  clean:
+    name: Clean repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Names that must never appear come from a secret, so the list itself is never published.
+      - run: node scripts/check-clean.mjs
+        env:
+          PXSIG_CLEAN_TERMS: ${{ secrets.PXSIG_CLEAN_TERMS }}
+
+  rust:
+    name: Rust
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace
+      - run: cargo build --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pxsig-linux-x64
+          path: target/release/pxsig
+          retention-days: 3
+
+  node:
+    name: Node
+    runs-on: ubuntu-latest
+    needs: rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: pxsig-linux-x64
+          path: target/release
+      - run: chmod +x target/release/pxsig
+      - run: pnpm --filter pxsig test
+
+  examples:
+    name: Examples (end to end)
+    runs-on: ubuntu-latest
+    needs: rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: pxsig-linux-x64
+          path: target/release
+      - run: chmod +x target/release/pxsig
+      - run: pnpm --filter pxsig exec playwright install --with-deps chromium
+      - run: node scripts/examples-test.mjs

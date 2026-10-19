@@ -1,0 +1,310 @@
+#!/usr/bin/env node
+/**
+ * check.mjs — the full check, Rust-first (`pxsig check`).
+ *
+ *   pxsig check [--project name] [--suite matrix] [--since main | --changed a.tsx,b.css.ts]
+ *               [--modes dark,light] [--only id,id] [--concurrency 8] [--retries 2] [--no-a11y]
+ *               [--update] [--link-base http://127.0.0.1:6070/report/]
+ *
+ * 1. select   manifest v2 entries; `--since <ref>` asks `pxsig affected` (Rust: import
+ *             graph from git) and skips the rest, carrying their last result forward;
+ * 2. render   the page pool (lib/capture.mjs) across browsers / viewports / themes,
+ *             with masks, interaction states and an axe pass per render;
+ * 3. check    `pxsig check` (Rust): per-entry gates + grids, the detail channel,
+ *             a content cache, run history, and pixel-diff regions for failures;
+ * 4. retry    failures re-render up to `--retries` times; a pass on retry is
+ *             `flaky` (reported, not failing);
+ * 5. a11y     violations compared with the a11y baseline → `new` per entry;
+ * 6. report   <store>/reports/check.json, plus `pxsig report` → summary.md (PR comment)
+ *             and junit.xml.
+ *
+ * `--update` renders the selection and writes baselines instead (`pxsig baseline`: each `.psig`
+ * carries the render as its image) and the a11y baseline. Exit: 0 pass · 1 change found · 2 setup error.
+ *
+ * One writer per store (lib/lock.mjs): the check takes `<store>/reports/.lock`. When the pxsig server
+ * holds it (it serves this project), the selection goes through the server's queue instead
+ * (POST /__pxsig/check, then wait) and the result is read back from its report; `--update`,
+ * `--suite` and `--no-server` refuse instead. Another running check makes this one refuse.
+ *
+ * Storybook: when `storybook.url` does not answer and `storybook.staticDir` holds a build, the
+ * check serves that build itself on a free port (lib/static.mjs).
+ */
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
+import { browserPool, renderStories, STORYBOOK_ERROR } from './lib/capture.mjs';
+import { fetchStoryIndex, loadStoryIndex, oneLine, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
+import { newBatch, record, snapshot } from './lib/approvals.mjs';
+import { parseArgs, strFlag } from './lib/args.mjs';
+import { acquireLock, describeLock, readLock } from './lib/lock.mjs';
+import { buildRow, summarize } from './lib/rows.mjs';
+import { ensureStorybook } from './lib/static.mjs';
+import { ask, humanAtTerminal } from './lib/term.mjs';
+import { flagLayer, openProject, writeRunManifest } from './lib/workspace.mjs';
+
+const { flags } = parseArgs(process.argv.slice(2));
+const str = (k) => strFlag(flags, k);
+const die = (m) => (console.error(`[check] ${m}`), process.exit(2));
+let P;
+try {
+  P = openProject({ workspace: str('workspace'), project: str('project'), flags: flagLayer(flags) });
+} catch (e) {
+  die(e.message);
+}
+const rustBin = P.rustBin;
+const reports = P.store.reports;
+const concurrency = Number(flags.concurrency) || 8;
+const retries = flags.retries === undefined ? 2 : Number(flags.retries);
+const suite = str('suite');
+const manifestPath = P.manifestPath(suite);
+let run;
+try {
+  run = writeRunManifest(P, manifestPath);
+} catch (e) {
+  die(e.message);
+}
+const runPath = run.path;
+const manifest = run.manifest;
+const pngDir = P.store.latest;
+const diffDir = P.store.diffLatest;
+const a11yBaselinePath = P.store.a11y;
+const rel = (p) => relative(P.workspaceRoot, p);
+// A suite run keeps its own report, so the main report stays intact.
+const outName = str('out') ?? (suite ? `check-${suite}` : 'check');
+if (flags.update && !humanAtTerminal())
+  die('--update writes baselines without review: run it yourself in a terminal (refused when piped, in CI or under an agent)');
+if (!existsSync(rustBin)) die(`the pxsig binary is missing (${rustBin}): install the platform package, or build it with \`cargo build --release\``);
+mkdirSync(reports, { recursive: true });
+
+const rust = (args, { allowFail = true } = {}) => {
+  const t = performance.now();
+  const r = spawnSync(rustBin, args, { encoding: 'utf8', maxBuffer: 512 * 1024 * 1024, cwd: P.workspaceRoot });
+  if (r.status === 2 || (!allowFail && r.status !== 0)) die(`pxsig ${args[0]} failed: ${r.stderr || r.stdout}`);
+  return { out: r.stdout, ms: performance.now() - t, status: r.status };
+};
+console.log(`[check] project ${P.name}${suite ? ` · suite ${suite}` : ''} · ${manifest.stories.length} entries · store ${rel(P.store.root)}`);
+
+const t0 = performance.now();
+
+// --- 1. select -----------------------------------------------------------------------
+let entries = manifest.stories;
+const modes = str('modes')?.split(',');
+if (modes) entries = entries.filter((e) => modes.includes(e.mode ?? manifest.defaultMode));
+const only = str('only')?.split(',');
+if (only) entries = entries.filter((e) => only.includes(e.id) || only.includes(e.story));
+let affected = null;
+let affectedIds = null;
+if (str('since') || str('changed')) {
+  const how = str('changed') ? ['--files', str('changed')] : ['--since', str('since')];
+  const r = rust(['affected', '--manifest', runPath, '--root', P.workspaceRoot, ...how, '--json']);
+  affected = JSON.parse(r.out);
+  const ids = new Set(affected.ids);
+  affectedIds = ids;
+  console.log(`[check] affected ${str('changed') ? 'by --changed' : `since ${str('since')}`}: ${affected.changed.length} changed files → ${ids.size} entries (${affected.reason}) in ${r.ms.toFixed(0)} ms`);
+  entries = entries.filter((e) => ids.has(e.id));
+}
+const selected = new Set(entries.map((e) => e.id));
+if (!entries.length && !affected) die('no entries selected');
+
+// --- one writer per store: take the lock, or hand the run to the server that holds it ----------------
+const held = readLock(P);
+if (held && !held.stale && held.holder === 'serve' && !held.foreign) {
+  if (flags.update || suite || flags['no-server'])
+    die(`${describeLock(P, held)}: ${flags.update ? '--update' : suite ? '--suite' : 'this check'} cannot run beside it. Approve in the dashboard, or stop the server and run again.`);
+  await viaServer(held.url ?? P.serverUrl(), [...selected]);
+}
+let lock;
+try {
+  lock = acquireLock(P, { holder: flags.update ? 'check --update' : 'check' });
+} catch (e) {
+  die(e.message);
+}
+
+// --- guard: never render against a broken Storybook ------------------------------------------
+// A failing index (e.g. "Unable to index files") makes every iframe show Storybook's error page;
+// recording those as renders turns a setup problem into hundreds of bogus diffs or baselines.
+if (entries.length) {
+  const sb = await ensureStorybook(P, { log: (m) => console.log(`[check] ${m}`) });
+  manifest.baseUrl = P.storybook.url;
+  if (sb.served) process.once('exit', () => sb.close());
+}
+const sbIndex = entries.length ? await fetchStoryIndex(manifest.baseUrl) : null;
+if (sbIndex && !sbIndex.reachable) die(`setup error: Storybook is not reachable at ${manifest.baseUrl} (${sbIndex.error}); start it, point storybook.url at a running build, or set storybook.staticDir to a built Storybook. Nothing was rendered.`);
+if (sbIndex && !sbIndex.healthy) die(`setup error: Storybook's story index is broken — ${sbIndex.error}. Nothing was rendered or recorded; fix the index (see the Storybook terminal) and re-run.`);
+
+// --- 2. render ---------------------------------------------------------------------------
+const pool = browserPool(P);
+const renderOpts = { ...manifest, concurrency, project: P, a11y: !flags['no-a11y'] };
+const { results, wallMs, reloads = 0 } = entries.length ? await renderStories(pool, entries, pngDir, renderOpts) : { results: [], wallMs: 0 };
+const renderErrors = results.filter((r) => r.error).length;
+console.log(`[check] rendered ${results.length} entries in ${(wallMs / 1000).toFixed(1)} s on ${concurrency} pages · ${reloads} page loads${renderErrors ? ` · ${renderErrors} errors` : ''}`);
+// Sentinel: renders that hit Storybook's error page. Most of the run → a setup problem, not results.
+const sbErrors = results.filter((r) => r.error?.startsWith(STORYBOOK_ERROR));
+if (sbErrors.length && (sbErrors.length === results.length || sbErrors.length >= Math.max(3, results.length / 2))) {
+  await pool.close();
+  die(`setup error: ${sbErrors.length} of ${results.length} renders hit Storybook's error page (${sbErrors[0].error.slice(STORYBOOK_ERROR.length).trim()}). Nothing was recorded.`);
+}
+const render = new Map(results.map((r) => [r.id, r]));
+const onlyFile = join(reports, '.selected.json');
+writeFileSync(onlyFile, JSON.stringify([...selected]));
+// Crop renders to their content (Rust, in place, parallel): the grid lands on the component.
+const trimArgs = manifest.trim ? ['--pad', String(manifest.trim.pad ?? 16), '--tolerance', String(manifest.trim.tolerance ?? 8)] : null;
+const trimDir = (dir, ids) => {
+  if (!trimArgs || !ids.length) return null;
+  writeFileSync(onlyFile, JSON.stringify(ids));
+  const r = JSON.parse(rust(['trim', dir, '--only', `@${onlyFile}`, '--json', ...trimArgs]).out);
+  writeFileSync(onlyFile, JSON.stringify([...selected]));
+  return r;
+};
+const trimmed = trimDir(pngDir, results.filter((r) => r.png).map((r) => r.id));
+if (trimmed) console.log(`[check] trimmed ${trimmed.trimmed}/${trimmed.files} renders to content · ${Math.round((trimmed.pixelsAfter / trimmed.pixelsBefore) * 100)}% of pixels kept · ${trimmed.elapsedMs.toFixed(0)} ms (Rust)`);
+
+// --- --update: write baselines instead of checking ------------------------------------------
+if (flags.update) {
+  const ok = results.filter((r) => r.png).map((r) => r.id);
+  // Writing baselines unseen is the riskiest thing pxsig does: a person at a terminal only, a typed
+  // phrase, and every old baseline snapshotted + logged (lib/approvals.mjs) so `approve undo` works.
+  // For reviewed changes prefer `cli.mjs approve plan` / `apply`, which also checks colour vs shape.
+  const phrase = `UPDATE ${ok.length} BASELINES`;
+  if ((await ask(`--update replaces ${ok.length} baselines with renders nobody reviewed. Type "${phrase}" to continue: `)) !== phrase) {
+    await pool.close();
+    die('not confirmed: nothing was written');
+  }
+  const batch = newBatch('check-update');
+  const before = new Map(ok.map((id) => [id, snapshot(P, entries.find((e) => e.id === id), batch).before]));
+  writeFileSync(onlyFile, JSON.stringify(ok));
+  const b = rust(['baseline', '--manifest', runPath, '--png-dir', pngDir, '--root', P.workspaceRoot, '--only', `@${onlyFile}`, '--json']);
+  const res = JSON.parse(b.out);
+  for (const id of ok) record(P, entries.find((e) => e.id === id), { batch, via: 'check-update', reason: 'pxsig check --update', before: before.get(id) });
+  const a11yBase = existsSync(a11yBaselinePath) ? JSON.parse(readFileSync(a11yBaselinePath, 'utf8')) : {};
+  for (const r of results) if (r.a11y?.violations) a11yBase[r.id] = r.a11y.violations.map((v) => v.id).sort();
+  writeFileSync(a11yBaselinePath, JSON.stringify(a11yBase, null, 2) + '\n');
+  await pool.close();
+  console.log(`[check] baselines: ${res.summary.stories - res.summary.failed} written in ${(res.summary.elapsedMs).toFixed(0)} ms (Rust) · ${res.summary.failed} failed · render errors ${renderErrors}`);
+  for (const e of res.errors) console.error(`  ${e}`);
+  process.exit(res.summary.failed || renderErrors ? 2 : 0);
+}
+
+// --- 3. check (Rust) ------------------------------------------------------------------------
+const checkArgs = (dir, out, extra = []) => [
+  'check', '--manifest', runPath, '--png-dir', dir, '--root', P.workspaceRoot, '--out-dir', out,
+  '--only', `@${onlyFile}`, '--json', ...extra,
+];
+let rc = entries.length
+  ? rust(checkArgs(pngDir, diffDir, ['--cache', join(P.store.cache, 'check'), '--history', join(reports, 'history.ndjson')]))
+  : { out: '{"summary":{"elapsedMs":0},"results":[]}', ms: 0 };
+const rustRes = JSON.parse(rc.out);
+const rows = new Map(rustRes.results.map((r) => [r.id, r]));
+console.log(`[check] Rust check: ${rustRes.results.length} entries, ${rustRes.summary.failed ?? 0} failed, ${rustRes.summary.cached ?? 0} cached · ${rustRes.summary.elapsedMs.toFixed(0)} ms engine (${rc.ms.toFixed(0)} ms process)`);
+
+// --- 4. retry failures: a pass on a fresh render is flaky, not a regression -------------------
+let retryMs = 0;
+for (let attempt = 1; attempt <= retries; attempt++) {
+  const failing = [...rows.values()].filter((r) => r.pass !== true && !r.flaky && render.get(r.id)?.png).map((r) => r.id);
+  if (!failing.length) break;
+  const t = performance.now();
+  const dir = join(P.store.retry, String(attempt));
+  rmSync(dir, { recursive: true, force: true });
+  const again = await renderStories(pool, entries.filter((e) => failing.includes(e.id)), dir, { ...renderOpts, a11y: false });
+  trimDir(dir, again.results.filter((r) => r.png).map((r) => r.id));
+  writeFileSync(onlyFile, JSON.stringify(failing));
+  const res = JSON.parse(rust(checkArgs(dir, join(P.store.diffs, 'retry')), {}).out);
+  for (const r of res.results)
+    if (r.pass === true) {
+      const row = rows.get(r.id);
+      row.flaky = true;
+      row.retry = { attempt, metrics: r.metrics };
+    }
+  retryMs += performance.now() - t;
+  console.log(`[check] retry ${attempt}: ${failing.length} re-rendered · ${res.results.filter((r) => r.pass).length} passed (flaky)`);
+}
+await pool.close();
+writeFileSync(onlyFile, JSON.stringify([...selected]));
+
+// --- 5. a11y: new violations against the a11y baseline ------------------------------------------
+const a11yBase = existsSync(a11yBaselinePath) ? JSON.parse(readFileSync(a11yBaselinePath, 'utf8')) : null;
+
+// --- 6. report -------------------------------------------------------------------------------------------
+const previous = existsSync(join(reports, `${outName}.json`)) ? JSON.parse(readFileSync(join(reports, `${outName}.json`), 'utf8')) : null;
+const prevRows = new Map((previous?.rows ?? []).map((r) => [r.id, r]));
+const out = manifest.stories
+  .filter((e) => (modes ? modes.includes(e.mode ?? manifest.defaultMode) : true))
+  .map((e) => {
+    if (!selected.has(e.id)) {
+      const p = prevRows.get(e.id);
+      // Left out because the import graph says no edit since the ref can change it (--since / --changed).
+      const unaffected = affectedIds != null && !affectedIds.has(e.id) && (!only || only.includes(e.id) || only.includes(e.story));
+      // Carry the whole previous row (verdict time included) so its age stays visible.
+      if (p) return { ...p, skipped: true, inherited: true, ...(unaffected ? { unaffected: true } : {}) };
+      // No previous row: an unaffected entry with a baseline is `skipped-unaffected` (ok, unverified);
+      // anything else is `inherited: false`, which the integrity ledger reports as never-checked.
+      if (unaffected && existsSync(resolve(P.workspaceRoot, e.sig)))
+        return { id: e.id, story: e.story, mode: e.mode, state: e.state, skipped: true, pass: true, metrics: null, inherited: false, unaffected: true, note: 'skipped-unaffected' };
+      return { id: e.id, story: e.story, mode: e.mode, state: e.state, skipped: true, pass: true, metrics: null, inherited: false };
+    }
+    return buildRow(e, rows.get(e.id), render.get(e.id), a11yBase, manifest, null);
+  });
+const checked = out.filter((r) => !r.skipped);
+const summary = summarize(out, {
+  concurrency,
+  renderWallMs: wallMs,
+  pageLoads: reloads,
+  rustEngineMs: rustRes.summary.elapsedMs,
+  rustProcessMs: rc.ms,
+  retryMs,
+  affected: affected ? `${affected.ids.length} affected of ${manifest.stories.length} (${affected.reason})` : null,
+  totalMs: performance.now() - t0,
+});
+const report = { generatedAt: new Date().toISOString(), project: P.name, suite, manifest: { grid: manifest.grid, gate: manifest.gate, modes: manifest.modes, defaultMode: manifest.defaultMode }, summary, affected, rows: out };
+writeFileSync(join(reports, `${outName}.json`), JSON.stringify(report) + '\n');
+// Review decisions belong to the run they were made on: a new run starts clean.
+if (outName === 'check') rmSync(join(reports, 'review.json'), { force: true });
+const link = str('link-base');
+const sfx = outName === 'check' ? '' : `-${outName.replace(/^check-/, '')}`;
+rust(['report', '--input', join(reports, `${outName}.json`), '--format', 'markdown', '--out', join(reports, `summary${sfx}.md`), ...(link ? ['--link-base', link] : [])], { allowFail: false });
+rust(['report', '--input', join(reports, `${outName}.json`), '--format', 'junit', '--out', join(reports, `junit${sfx}.xml`)], { allowFail: false });
+
+console.log(
+  `[check] ${summary.checked} checked · ${summary.passed} pass · ${summary.failed} changed · ${summary.flaky} flaky · ${summary.skipped} skipped · ` +
+    `a11y ${summary.a11yViolations} violations (${summary.a11yNew} new) · ${(summary.totalMs / 1000).toFixed(1)} s total`
+);
+for (const r of checked.filter((x) => !x.pass).slice(0, 20)) console.log(`  CHANGED ${r.id.padEnd(60)} ${r.error ?? (r.reasons ?? []).join('; ')}`);
+console.log(`[check] wrote ${rel(reports)}/${outName}.json, summary${sfx}.md, junit${sfx}.xml`);
+// Integrity: what the run did not cover (unregistered stories, missing images, never-checked…).
+if (outName === 'check' && !suite) {
+  try {
+    const ctx = resolveContext(P);
+    const ledger = await reconcile(ctx, sbIndex ? { index: await loadStoryIndex(ctx, { live: sbIndex }) } : {});
+    writeLedger(ctx, ledger);
+    console.log(`[check] ${oneLine(ledger)}${ledger.summary.status === 'attention' ? ` → pxsig doctor --project ${P.name}` : ''}`);
+  } catch (e) {
+    console.error(`[check] integrity: not computed (${e.message})`);
+  }
+}
+lock.release();
+process.exit(summary.failed ? 1 : 0);
+
+/**
+ * The server holds this store: queue the selection there, wait for its queue to drain, and report
+ * the rows it wrote. Exits with the check's code.
+ */
+async function viaServer(url, ids) {
+  console.log(`[check] the pxsig server at ${url} holds this store: queueing ${ids.length} entries there`);
+  const post = await fetch(`${url}/__pxsig/check`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ project: P.name, ids }) }).catch((e) => ({ ok: false, statusText: e.message }));
+  if (!post.ok) die(`the server holding the store did not take the check (${post.status ?? ''} ${post.statusText ?? ''}); stop it or try again`);
+  const t0 = Date.now();
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 1000));
+    const s = await fetch(`${url}/__pxsig/status`, { signal: AbortSignal.timeout(5000) }).then((r) => r.json()).catch(() => null);
+    if (!s) die('the server went away during the check');
+    if (!s.running && !s.queued) break;
+    if (Date.now() - t0 > (Number(flags['timeout-s']) || 1800) * 1000) die('timed out waiting for the server queue');
+  }
+  const report = JSON.parse(readFileSync(join(reports, 'check.json'), 'utf8'));
+  const want = new Set(ids);
+  const rows = report.rows.filter((r) => want.has(r.id));
+  const failed = rows.filter((r) => !r.pass);
+  console.log(`[check] ${rows.length} checked via the server · ${rows.length - failed.length} pass · ${failed.length} changed · ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+  for (const r of failed.slice(0, 20)) console.log(`  CHANGED ${r.id.padEnd(60)} ${r.error ?? (r.reasons ?? []).join('; ')}`);
+  process.exit(failed.length ? 1 : 0);
+}

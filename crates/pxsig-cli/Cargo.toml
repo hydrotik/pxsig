@@ -1,0 +1,20 @@
+[package]
+name = "pxsig-cli"
+description = "pxsig command-line tool: capture, compare and batch-check rendered PNGs against .psig baselines (spec v1)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "pxsig"
+path = "src/main.rs"
+
+[dependencies]
+pxsig-core = { path = "../pxsig-core" }
+serde.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+png.workspace = true
+rayon.workspace = true
+clap.workspace = true
+anyhow.workspace = true
+sha2.workspace = true

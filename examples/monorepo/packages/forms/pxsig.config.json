@@ -1,0 +1,6 @@
+{
+  "$schema": "../../node_modules/pxsig/schema/project.json",
+  "version": 1,
+  "srcRoot": "src",
+  "store": { "layout": "colocated" }
+}
