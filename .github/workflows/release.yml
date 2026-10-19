@@ -189,18 +189,31 @@ jobs:
     environment: npm
     permissions:
       contents: read
-      id-token: write # npm provenance
+      id-token: write # npm trusted publishing (OIDC) and provenance
     env:
       VERSION: ${{ needs.verify.outputs.version }}
       DIST_TAG: ${{ needs.verify.outputs.dist_tag }}
       DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: https://registry.npmjs.org
+      # Trusted publishing: npm exchanges this job's OIDC identity for a short-lived publish token,
+      # so no long-lived token is stored. It needs npm 11.5.1 or later. A package that does not exist
+      # yet cannot have a trusted publisher: for that first publish only, an `NPM_TOKEN` secret in the
+      # `npm` environment is used if present (delete it afterwards; see docs/releasing.md).
+      - name: npm (trusted publishing)
+        shell: bash
+        env:
+          BOOTSTRAP_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm install -g npm@^11.5.1
+          npm --version
+          if [ -n "$BOOTSTRAP_TOKEN" ]; then
+            echo "::warning::NPM_TOKEN is set: publishing with it (bootstrap). Remove it once trusted publishers are configured."
+            echo "//registry.npmjs.org/:_authToken=${BOOTSTRAP_TOKEN}" > "$HOME/.npmrc"
+          fi
       - uses: actions/download-artifact@v4
         with:
           pattern: pxsig-*
@@ -238,4 +251,15 @@ jobs:
           test -f dist/dashboard/index.html
           node -p "JSON.stringify(require('./package.json').optionalDependencies, null, 2)"
           npm publish --provenance --access public --tag "$DIST_TAG" $DRY_RUN
-      # @pxsig/storybook-addon is not published by this workflow: it is released separately.
+      - name: Publish @pxsig/storybook-addon
+        shell: bash
+        working-directory: packages/storybook-addon
+        run: |
+          set -euo pipefail
+          name=$(node -p "require('./package.json').name")
+          v=$(node -p "require('./package.json').version")
+          if npm view "${name}@${v}" version >/dev/null 2>&1; then
+            echo "${name}@${v} is already published; skipping"
+          else
+            npm publish --provenance --access public --tag "$DIST_TAG" $DRY_RUN
+          fi

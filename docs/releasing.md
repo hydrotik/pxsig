@@ -113,11 +113,18 @@ gh release upload v0.2.0 pxsig-dashboard.tar.gz
 
 ## npm credentials and provenance
 
-- **`NPM_TOKEN`** secret: an npm automation (or granular) token with publish rights to `pxsig`
-  and the `@pxsig` scope. The publish job reads it as `NODE_AUTH_TOKEN`.
-- **`npm` environment**: the publish job runs in it. Put `NPM_TOKEN` there and add required
-  reviewers to hold each release for approval before anything is published.
-- **Provenance**: every package is published with `--provenance` (and `pxsig` also sets
-  `publishConfig.provenance`). The job has `id-token: write` for this. npm checks that the
-  package's `repository` matches the GitHub repository the workflow runs in; the platform packages
-  take it from `Cargo.toml`, and the script fills it into `pxsig`'s package.json when it is missing.
+Releases publish with **npm trusted publishing**: the publish job's GitHub OIDC identity is
+exchanged for a short-lived token, so no npm token is stored. Every package gets provenance.
+
+- **Trusted publishers.** On npmjs.com, for each package (`pxsig`, `@pxsig/storybook-addon` and
+  every `@pxsig/cli-<platform>-<arch>`), open *Settings → Trusted Publisher* and add GitHub
+  Actions with repository `hydrotik/pxsig`, workflow `release.yml` and environment `npm`.
+- **`npm` environment.** The publish job runs in it. Add required reviewers to hold each release
+  for approval before anything is published.
+- **The first publish of a new package.** A trusted publisher can only be set on a package that
+  exists. For a release that creates packages (the first one, or a new platform), put a granular
+  `NPM_TOKEN` secret (publish rights to `pxsig` and `@pxsig`) in the `npm` environment; the job uses
+  it when present and warns. Afterwards, add the trusted publishers and **delete the secret**.
+- **Requirements.** npm 11.5.1 or later (the job installs it) and `id-token: write` (set on the job).
+  npm checks that each package's `repository` matches the GitHub repository the workflow runs in;
+  the platform packages take it from `Cargo.toml`.
