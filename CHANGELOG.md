@@ -3,7 +3,11 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
-## Unreleased
+## 0.2.2 - 2026-10-19
+
+A dashboard pass (plainer copy in one translatable file, review sessions, accessibility decisions,
+a Help tab), a real undo for approvals, and the first release published without an npm token:
+every package goes out through trusted publishing (OIDC).
 
 ### Changed
 
