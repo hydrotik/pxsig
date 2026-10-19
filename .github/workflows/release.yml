@@ -1,10 +1,11 @@
 # Release: build the pxsig binary for every platform, collect the dashboard, publish to npm.
 #
 # Trigger: push a tag vX.Y.Z (or vX.Y.Z-pre.N, published under the `next` dist-tag), or run it by
-# hand on a tag ref (workflow_dispatch). See docs/releasing.md.
+# hand on a tag ref (workflow_dispatch). A dry run (dry_run: true) may also run on a branch. See
+# docs/releasing.md.
 #
-# Published here: `pxsig` and the per-platform binary packages `@pxsig/cli-<platform>-<arch>`.
-# Not published here: `@pxsig/storybook-addon` is released separately, by its own process.
+# Published here: `pxsig`, the per-platform binary packages `@pxsig/cli-<platform>-<arch>` and
+# `@pxsig/storybook-addon`.
 name: release
 
 on:
@@ -36,20 +37,31 @@ jobs:
     outputs:
       version: ${{ steps.v.outputs.version }}
       dist_tag: ${{ steps.v.outputs.dist_tag }}
+      dry_run: ${{ steps.v.outputs.dry_run }}
     steps:
       - uses: actions/checkout@v4
       - id: v
         name: Tag, Cargo workspace and packages/pxsig/package.json must agree
         shell: bash
+        env:
+          DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
         run: |
           set -euo pipefail
-          if [ "${GITHUB_REF_TYPE}" != "tag" ] || [[ "${GITHUB_REF_NAME}" != v* ]]; then
-            echo "::error::run this workflow on a tag ref vX.Y.Z (got ${GITHUB_REF_TYPE} ${GITHUB_REF_NAME})"
-            exit 1
-          fi
-          tag="${GITHUB_REF_NAME#v}"
+          dry_run=false
+          if [ "${DRY_RUN_INPUT}" = "true" ]; then dry_run=true; fi
+          echo "dry_run=${dry_run}" >> "$GITHUB_OUTPUT"
           cargo=$(awk '/^\[/{t=($0=="[workspace.package]")} t && /^version[ \t]*=/{gsub(/.*=[ \t]*"|".*/,""); print; exit}' Cargo.toml)
           npm=$(node -p "require('./packages/pxsig/package.json').version")
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            tag="${GITHUB_REF_NAME#v}"
+          elif [ "$dry_run" = true ]; then
+            # A dry run on a branch has no tag to check: the two version files must still agree.
+            echo "::notice::dry run on ${GITHUB_REF_TYPE} ${GITHUB_REF_NAME}: checking Cargo.toml against packages/pxsig/package.json only"
+            tag="$npm"
+          else
+            echo "::error::run this workflow on a tag ref vX.Y.Z, or pass dry_run (got ${GITHUB_REF_TYPE} ${GITHUB_REF_NAME})"
+            exit 1
+          fi
           echo "tag=${tag} cargo=${cargo} packages/pxsig=${npm}"
           if [ "$tag" != "$cargo" ] || [ "$tag" != "$npm" ]; then
             echo "::error::version mismatch: tag ${tag}, Cargo.toml [workspace.package] ${cargo}, packages/pxsig/package.json ${npm}"
@@ -109,6 +121,7 @@ jobs:
       DS_SOURCE: ${{ secrets.PXSIG_DS_SOURCE }}
       DS_REF: ${{ vars.PXSIG_DS_REF }}
       DASHBOARD_URL: ${{ github.event.inputs.dashboard_artifact_url }}
+      DRY_RUN: ${{ needs.verify.outputs.dry_run }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
@@ -123,6 +136,10 @@ jobs:
             echo "mode=url" >> "$GITHUB_OUTPUT"
           elif gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json assets --jq '.assets[].name' 2>/dev/null | grep -qx 'pxsig-dashboard.tar.gz'; then
             echo "mode=release" >> "$GITHUB_OUTPUT"
+          elif [ "${DRY_RUN}" = true ]; then
+            # Nothing is published in a dry run, so a placeholder lets every other job be checked.
+            echo "::warning::dry run without a dashboard source: packing a placeholder dashboard/index.html"
+            echo "mode=placeholder" >> "$GITHUB_OUTPUT"
           else
             echo "::error::no dashboard: set the PXSIG_DS_SOURCE secret, pass dashboard_artifact_url, or attach pxsig-dashboard.tar.gz to the GitHub release ${GITHUB_REF_NAME} (see docs/releasing.md)"
             exit 1
@@ -146,8 +163,16 @@ jobs:
           pnpm install --frozen-lockfile
           PXSIG_DS_SOURCE="$ds" pnpm --filter @pxsig/dashboard build
 
+      # Mode placeholder (dry run only): an index.html that says so.
+      - if: steps.how.outputs.mode == 'placeholder'
+        name: Write a placeholder dashboard
+        shell: bash
+        run: |
+          mkdir -p packages/pxsig/dist/dashboard
+          echo '<!doctype html><title>pxsig</title><p>Placeholder dashboard from a release dry run.</p>' > packages/pxsig/dist/dashboard/index.html
+
       # Modes url / release: unpack a prebuilt pxsig-dashboard.tar.gz (top-level folder dashboard/).
-      - if: steps.how.outputs.mode != 'build'
+      - if: steps.how.outputs.mode == 'url' || steps.how.outputs.mode == 'release'
         name: Fetch the prebuilt dashboard
         shell: bash
         run: |
@@ -193,7 +218,7 @@ jobs:
     env:
       VERSION: ${{ needs.verify.outputs.version }}
       DIST_TAG: ${{ needs.verify.outputs.dist_tag }}
-      DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
+      DRY_RUN: ${{ needs.verify.outputs.dry_run == 'true' && '--dry-run' || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
