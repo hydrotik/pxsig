@@ -87,8 +87,9 @@ function load(C) {
   const check = readJson(C.checkPath, null);
   if (!check) throw new Error(`no report at ${relative(C.root, C.checkPath)}: run pxsig_check first`);
   const review = readJson(C.reviewPath, {});
+  const a11yReview = readJson(join(dirname(C.reviewPath), 'a11y-review.json'), {});
   const updated = statSync(C.checkPath).mtime;
-  return { check, review, updated };
+  return { check, review, a11yReview, updated };
 }
 
 /** Component name of an entry id: the story title's last segment (`components-hovercard--x` → `hovercard`). */
@@ -394,18 +395,18 @@ const tools = [
   },
   {
     name: 'pxsig_a11y',
-    description: 'Accessibility (axe) violations per entry: all of them, or only those not in the a11y baseline (`only_new`). Filter by component substring.',
+    description: "Accessibility (axe) violations per entry: all of them, or only those not in the entry's accepted list (`only_new`). Filter by component substring. Each entry carries its accessibility decision (accepted / rejected) when one was made since its last check.",
     inputSchema: {
       type: 'object',
       properties: { project: PROJECT, only_new: { type: 'boolean', default: false }, component: { type: 'string' }, limit: { type: 'number', default: 50 } },
       additionalProperties: false,
     },
     async run({ project, only_new = false, component, limit = 50 }) {
-      const { check } = load(ctxOf(project));
+      const { check, a11yReview } = load(ctxOf(project));
       const byRule = {};
       const rows = check.rows.filter((r) => (only_new ? r.a11y?.new : r.a11y?.violations?.length) && (!component || r.id.includes(component.toLowerCase())));
       for (const r of rows) for (const v of r.a11y.violations) byRule[v.id ?? v] = (byRule[v.id ?? v] ?? 0) + 1;
-      return { entries: rows.length, byRule, list: rows.slice(0, limit).map((r) => ({ id: r.id, new: r.a11y.new, violations: r.a11y.violations })) };
+      return { entries: rows.length, byRule, list: rows.slice(0, limit).map((r) => ({ id: r.id, new: r.a11y.new, violations: r.a11y.violations, decision: a11yReview[r.id]?.state ?? null })) };
     },
   },
   {
@@ -537,19 +538,20 @@ const tools = [
   {
     name: 'pxsig_review',
     description:
-      "Approve (the latest render becomes the baseline), reject, or clear the decision on entries. Approving changes what future checks compare against: pass confirm: true ONLY when the user explicitly asked to approve/reject these exact entries in this conversation — never on your own judgement that a change looks intended. Needs the pxsig server.",
+      "Decide on entries. Visual: approve (the latest render becomes the baseline; its axe violations are accepted with it), reject, or unreview (clearing an approval restores the baseline it replaced). Accessibility: a11y-accept (the entry's current axe violations go on its accepted list), a11y-reject (marked for a fix), a11y-unreview (clearing an accept restores the previous list), a11y-unaccept (takes a rule, or every rule, off the accepted list, so it is reported as new). Every action changes what future checks report: pass confirm: true ONLY when the user explicitly asked for this action on these exact entries in this conversation — never on your own judgement that a change looks intended or a violation acceptable. Needs the pxsig server.",
     inputSchema: {
       type: 'object',
       properties: {
         project: PROJECT,
-        action: { type: 'string', enum: ['approve', 'reject', 'unreview'] },
+        action: { type: 'string', enum: ['approve', 'reject', 'unreview', 'a11y-accept', 'a11y-reject', 'a11y-unreview', 'a11y-unaccept'] },
+        rule: { type: 'string', description: 'a11y-unaccept only: the axe rule to take off the accepted list (default: every rule on it).' },
         ids: { type: 'array', items: { type: 'string' }, minItems: 1 },
         confirm: { type: 'boolean', description: 'true only on an explicit user instruction for these ids.' },
       },
       required: ['action', 'ids', 'confirm'],
       additionalProperties: false,
     },
-    async run({ project, action, ids, confirm }) {
+    async run({ project, action, ids, confirm, rule }) {
       if (confirm !== true) throw new Error('refused: review actions need confirm: true, given only on an explicit user instruction for these ids');
       const bad = ids.filter((id) => !ID_RE.test(id));
       if (bad.length) throw new Error(`bad ids: ${bad.join(', ')}`);
@@ -558,7 +560,7 @@ const tools = [
       if (!srv.up) throw new Error(`the pxsig server is not running (${C.serverUrl}); ${srv.hint}`);
       const done = [];
       for (const id of ids) {
-        const r = await http(C, `/__pxsig/${action}`, { method: 'POST', body: { project: C.P.name, id, via: 'mcp' }, timeout: 120_000 });
+        const r = await http(C, `/__pxsig/${action}`, { method: 'POST', body: { project: C.P.name, id, via: 'mcp', ...(rule ? { rule } : {}) }, timeout: 120_000 });
         done.push({ id, entry: r.entry ?? null });
       }
       return { action, done };

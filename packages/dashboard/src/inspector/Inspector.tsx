@@ -8,6 +8,7 @@ import {
   DialogTitle,
   Kbd,
   Link,
+  Progress,
   Slider,
   StaticList,
   StaticListItem,
@@ -20,10 +21,11 @@ import {
   ToolbarRight,
   Badge,
 } from '@hydrotik/design-system';
-import { type Data, type Row, fmt, pathsFor, reviewAction, served, statusOf } from '../data';
+import { type Data, type Queue, type Row, a11yAction, decisionOf, fmt, pathsFor, reviewAction, served, statusOf } from '../data';
 import { analyse, cellsLayer, hex, loadImg, readPixels, type Analysis } from './analyse';
 import { Stage, type Hover, type Mode, type StageApi } from './Stage';
 import { StatusOf } from '../parts/StatusOf';
+import { Cmd, t, tx } from '../copy';
 import * as s from '../dashboard.css';
 
 export interface InspectTarget {
@@ -32,15 +34,11 @@ export interface InspectTarget {
   scenario: { tag: string; name: string } | null;
   /** The list being browsed (←/→). */
   list: Row[];
+  /** A review session over a queue: shows progress, then a summary when every entry is decided. */
+  session?: Queue;
 }
 
-const MODES: [Mode, string, string][] = [
-  ['side', 'Side by side', 'Side'],
-  ['swipe', 'Swipe', 'Swipe'],
-  ['onion', 'Onion skin', 'Onion'],
-  ['diff', 'Pixel diff', 'Diff'],
-  ['heat', 'Signature cells', 'Cells'],
-];
+const MODES: Mode[] = ['side', 'swipe', 'onion', 'diff', 'heat'];
 
 const PREFS_KEY = 'pxsig-inspector';
 const loadPrefs = () => {
@@ -60,17 +58,39 @@ interface Loaded {
   cells: HTMLCanvasElement | null;
 }
 
+/** Copies a file's path in the repository; says so for a moment after. */
+function CopyPath({ value, label }: { value: string; label: string }) {
+  const [done, setDone] = React.useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setDone(true);
+      setTimeout(() => setDone(false), 1500);
+    } catch {
+      /* clipboard refused: the path is in the title */
+    }
+  };
+  return (
+    <Button size="sm" variant="ghost" title={value} aria-label={t('inspector.files.path', { label })} onClick={copy}>
+      {done ? t('inspector.files.copied') : t('inspector.files.copyPath')}
+    </Button>
+  );
+}
+
 export function Inspector({
   data,
   target,
   onNavigate,
   onClose,
+  onGo,
   embedded = false,
 }: {
   data: Data;
   target: InspectTarget | null;
   onNavigate(t: InspectTarget): void;
   onClose(): void;
+  /** Leave the inspector for a tab (and filter): the session summary's next steps. */
+  onGo?(tab: string, filter?: string): void;
   embedded?: boolean;
 }) {
   const prefs = React.useMemo(loadPrefs, []);
@@ -110,6 +130,8 @@ export function Inspector({
   // Embedded in Storybook's short panel the image gets the room; details open on demand.
   const [showSide, setShowSide] = React.useState<boolean>(!embedded);
   const [sizes, setSizes] = React.useState<Record<string, string>>({});
+  // Keep browsing after the session summary appears (to undo or look back).
+  const [stay, setStay] = React.useState(false);
   const stage = React.useRef<StageApi>(null);
 
   const row = target?.row ?? null;
@@ -205,20 +227,37 @@ export function Inspector({
   };
 
   const canReview = served && !target?.scenario;
-  const review = row ? data.review[row.id] : undefined;
-  const act = async (action: 'approve' | 'reject' | 'unreview') => {
+  // In an accessibility session the buttons and A / R decide on the entry's violations, not its render.
+  const a11yMode = !embedded && target?.session === 'a11y';
+  const review = row ? (a11yMode ? data.a11yReview?.[row.id] : data.review[row.id]) : undefined;
+  const a11yDecision = row ? data.a11yReview?.[row.id] : undefined;
+  const label = (action: 'approve' | 'reject' | 'unreview', a11y: boolean) => t(`inspector.review.${action === 'unreview' ? 'undo' : a11y && action === 'approve' ? 'accept' : action}`);
+  const act = async (action: 'approve' | 'reject' | 'unreview', a11y = a11yMode) => {
     if (!row) return;
     setBusy(true);
     try {
-      await reviewAction(action, row.id);
-      if (action !== 'unreview') {
-        const next = list.findIndex(
-          (r, i) => i > index && !r.pass && !data.review[r.id] && r.id !== row.id
-        );
-        if (next >= 0) onNavigate({ ...target!, row: list[next] });
+      await (a11y ? a11yAction(action === 'approve' ? 'accept' : action, row.id) : reviewAction(action, row.id));
+      if (action !== 'unreview' && a11y === a11yMode) {
+        // The next undecided entry after this one, wrapping to the start of the list.
+        const open = (r: Row) => (a11yMode ? !data.a11yReview?.[r.id] : !r.pass && !data.review[r.id]) && r.id !== row.id;
+        const next = [...list.slice(index + 1), ...list.slice(0, Math.max(index, 0))].find(open);
+        if (next) onNavigate({ ...target!, row: next });
       }
     } catch (e) {
-      alert(`${action} failed: ${(e as Error).message}`);
+      alert(t('inspector.review.failed', { action: label(action, a11y), error: (e as Error).message }));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Take one rule off this entry's accepted list: it is reported as new and can be accepted again.
+  const unaccept = async (rule: string) => {
+    if (!row) return;
+    setBusy(true);
+    try {
+      await a11yAction('unaccept', row.id, rule);
+    } catch (e) {
+      alert(t('inspector.review.failed', { action: t('inspector.a11y.unaccept'), error: (e as Error).message }));
     } finally {
       setBusy(false);
     }
@@ -230,13 +269,15 @@ export function Inspector({
       ? (data.check?.rows ?? []).filter((r) => r.story === row.story && !r.skipped)
       : [];
 
-  const onKey = (e: React.KeyboardEvent) => {
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
+  // The summary screen takes no shortcuts (A would re-approve the last entry).
+  const blockKeys = React.useRef(false);
+  const onKey = (e: Pick<KeyboardEvent, 'metaKey' | 'ctrlKey' | 'altKey' | 'key' | 'target' | 'preventDefault'>) => {
+    if (blockKeys.current || e.metaKey || e.ctrlKey || e.altKey) return;
     const t = e.target as HTMLElement;
     if (t.closest('[role="slider"]') && e.key.startsWith('Arrow')) return;
     const k = e.key;
     const run = (f: () => void) => (e.preventDefault(), f());
-    if (k >= '1' && k <= '5') return run(() => setMode(MODES[Number(k) - 1][0]));
+    if (k >= '1' && k <= '5') return run(() => setMode(MODES[Number(k) - 1]));
     if (k === 'f' || k === 'F') return run(() => stage.current?.fit());
     if (k === '0') return run(() => stage.current?.zoomTo(1));
     if (k === '+' || k === '=') return run(() => stage.current?.zoomBy(1.5));
@@ -248,9 +289,26 @@ export function Inspector({
     if ((k === 'a' || k === 'A') && canReview && !busy) return run(() => act('approve'));
     if ((k === 'r' || k === 'R') && canReview && !busy) return run(() => act('reject'));
   };
+  // In the dialog the shortcuts listen on the window: a button that disappears after a click
+  // (Undo, Approve) drops focus to the page, and a listener on the inspector would miss them.
+  const keyRef = React.useRef(onKey);
+  keyRef.current = onKey;
+  React.useEffect(() => {
+    if (embedded) return;
+    const h = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLElement && e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+      keyRef.current(e);
+    };
+    // Capture phase: controls inside the dialog stop some keys from bubbling.
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [embedded]);
 
   if (!row || !p) return null;
   const m = row.metrics;
+  // The engine writes signature images and the diff page only for entries that fail the gate.
+  // Served, the size check says whether they exist; otherwise go by the verdict.
+  const hasArtifacts = sizes[p.heat] ? sizes[p.heat] !== 'missing' : !!target?.scenario || !row.pass;
   const detail = row.detail;
   const W =
     loaded && loaded !== 'missing' ? Math.max(loaded.a.naturalWidth, loaded.b.naturalWidth) : 0;
@@ -278,7 +336,7 @@ export function Inspector({
       {mode === 'swipe' ? (
         <Slider
           className={s.sliderCtl}
-          label="Swipe"
+          label={t('inspector.sliders.swipe')}
           showValue
           formatValue={([v]) => `${v}%`}
           value={[split]}
@@ -289,7 +347,7 @@ export function Inspector({
       {mode === 'onion' ? (
         <Slider
           className={s.sliderCtl}
-          label="Opacity"
+          label={t('inspector.sliders.opacity')}
           showValue
           formatValue={([v]) => `${v}%`}
           value={[onion]}
@@ -300,7 +358,7 @@ export function Inspector({
       {mode === 'heat' ? (
         <Slider
           className={s.sliderCtl}
-          label="Cells"
+          label={t('inspector.sliders.cells')}
           showValue
           formatValue={([v]) => `${v}%`}
           value={[heat]}
@@ -311,7 +369,7 @@ export function Inspector({
       {pixels ? (
         <Slider
           className={s.sliderCtl}
-          label="Tolerance"
+          label={t('inspector.sliders.tolerance')}
           showValue
           value={[tol]}
           max={96}
@@ -323,9 +381,9 @@ export function Inspector({
           <Switch
             checked={showHighlight}
             onCheckedChange={setShowHighlight}
-            aria-label="Highlight changed pixels"
+            aria-label={t('inspector.toggles.highlightLabel')}
           />{' '}
-          Highlight
+          {t('inspector.toggles.highlight')}
         </label>
       ) : null}
       {pixels ? (
@@ -333,9 +391,9 @@ export function Inspector({
           <Switch
             checked={showBoxes}
             onCheckedChange={setShowBoxes}
-            aria-label="Box change regions"
+            aria-label={t('inspector.toggles.regionsLabel')}
           />{' '}
-          Regions
+          {t('inspector.toggles.regions')}
         </label>
       ) : null}
       {detail?.tripped?.length ? (
@@ -343,9 +401,9 @@ export function Inspector({
           <Switch
             checked={showTiles}
             onCheckedChange={setShowTiles}
-            aria-label="Show detail tiles that tripped"
+            aria-label={t('inspector.toggles.tilesLabel')}
           />{' '}
-          Detail tiles
+          {t('inspector.toggles.tiles')}
         </label>
       ) : null}
     </>
@@ -358,7 +416,7 @@ export function Inspector({
         onValueChange={(v) =>
           v && onNavigate({ ...target!, row: siblings.find((r) => r.id === v)! })
         }
-        aria-label="Mode"
+        aria-label={t('inspector.variant')}
       >
         {siblings.map((r) => (
           <ToggleGroupItem
@@ -378,49 +436,67 @@ export function Inspector({
         <Button
           size="icon-sm"
           variant="outline"
-          aria-label="Previous story (←)"
-          title="Previous story (←)"
+          aria-label={t('inspector.nav.prevStory')}
+          title={t('inspector.nav.prevStory')}
           onClick={() => step(-1)}
         >
           ‹
         </Button>
         <span className={s.micro}>
-          {index + 1} / {list.length}
+          {t('inspector.nav.position', { index: index + 1, total: list.length })}
         </span>
         <Button
           size="icon-sm"
           variant="outline"
-          aria-label="Next story (→)"
-          title="Next story (→)"
+          aria-label={t('inspector.nav.nextStory')}
+          title={t('inspector.nav.nextStory')}
           onClick={() => step(1)}
         >
           ›
         </Button>
       </span>
     ) : null;
-  const reviewButtons =
-    canReview && (row.changed || review) ? (
+  const newA11y = row.a11y?.new ?? 0;
+  // Rows from older reports may lack `changed`: a failed verdict is a change.
+  const changed = row.changed ?? !row.pass;
+  const reviewButtons = !canReview ? null : a11yMode ? (
+    newA11y || review ? (
+      <>
+        <Button size="sm" variant="outline" disabled={busy || review?.state === 'rejected'} onClick={() => act('reject')} title={t('inspector.review.rejectA11yTitle')}>
+          {t('inspector.review.reject')}
+        </Button>
+        <Button size="sm" disabled={busy || review?.state === 'accepted'} onClick={() => act('approve')} title={t('inspector.review.acceptTitle')}>
+          {newA11y ? t('inspector.review.acceptCount', { count: newA11y }) : t('inspector.review.accept')}
+        </Button>
+        {review ? (
+          <Button size="sm" variant="ghost" disabled={busy} onClick={() => act('unreview')}>
+            {t('inspector.review.undo')}
+          </Button>
+        ) : null}
+      </>
+    ) : null
+  ) : changed || review ? (
       <>
         <Button
           size="sm"
           variant="outline"
           disabled={busy || review?.state === 'rejected'}
           onClick={() => act('reject')}
-          title="Mark this change as unwanted (R)"
+          title={t('inspector.review.rejectTitle')}
         >
-          Reject
+          {t('inspector.review.reject')}
         </Button>
         <Button
           size="sm"
-          disabled={busy || review?.state === 'approved' || (row.pass && !row.changed)}
+          disabled={busy || review?.state === 'approved' || (row.pass && !changed)}
           onClick={() => act('approve')}
-          title="Accept the latest render as the new baseline (A)"
+          title={t('inspector.review.approveTitle')}
         >
-          Approve
+          {newA11y && !a11yDecision && !review ? t('inspector.review.approveA11y', { count: newA11y }) : t('inspector.review.approve')}
         </Button>
         {review ? (
-          <Button size="sm" variant="ghost" disabled={busy} onClick={() => act('unreview')}>
-            Undo
+          <Button size="sm" variant="ghost" disabled={busy} onClick={() => act('unreview')} title={review.state === 'approved' ? t('inspector.review.undoTitle') : undefined}>
+            {t('inspector.review.undo')}
           </Button>
         ) : null}
       </>
@@ -428,22 +504,85 @@ export function Inspector({
   // Embedded (Storybook panel) there is no Dialog around the body, so no Dialog parts.
   const Title = embedded ? 'h3' : DialogTitle;
   const Desc = embedded ? 'p' : DialogDescription;
+
+  // --- review session: progress while deciding, then a summary with the next steps ---------------
+  const session = embedded ? null : (target?.session ?? null);
+  const decided = session ? list.filter((r) => decisionOf(data, session, r.id)).length : 0;
+  const approvedRows = session ? list.filter((r) => ['approved', 'accepted'].includes(decisionOf(data, session, r.id)?.state ?? '')) : [];
+  const rejectedRows = session ? list.filter((r) => decisionOf(data, session, r.id)?.state === 'rejected') : [];
+  const complete = !!session && list.length > 0 && decided === list.length && !stay;
+  blockKeys.current = complete;
+  const progress = session ? (
+    <div className={s.sessionBar}>
+      <strong>{t(`inspector.session.${session}`)}</strong>
+      <Progress className={s.grow} value={Math.round((decided / (list.length || 1)) * 100)} aria-label={t('inspector.session.label')} />
+      <span className={s.micro}>{t('inspector.session.progress', { done: decided, total: list.length, left: list.length - decided })}</span>
+    </div>
+  ) : null;
+  const rejectedNote =
+    review?.state === 'rejected' && !target?.scenario ? (
+      <div className={s.note}>
+        <span>{t(a11yMode ? 'inspector.a11yRejectedNote' : 'inspector.rejectedNote')}</span>
+        <CopyValue value={`pxsig check ${row.id}`} />
+      </div>
+    ) : null;
+  if (complete)
+    return (
+      <Dialog open onOpenChange={(o) => !o && onClose()}>
+        <DialogContent className={s.summaryDialog} showCloseButton={false} aria-describedby={undefined}>
+          {progress}
+          <div className={s.summary}>
+            <DialogTitle className={s.insTitle}>{t('inspector.session.complete')}</DialogTitle>
+            <StaticList labelWidth="30%">
+              <StaticListItem label={t(a11yMode ? 'inspector.session.accepted' : 'inspector.session.approved', { count: approvedRows.length })}>
+                {a11yMode
+                  ? tx('inspector.session.acceptedNext', { file: <Cmd>{`${data.store ?? '.pxsig'}/a11y.json`}</Cmd> })
+                  : tx('inspector.session.approvedNext', { store: <Cmd>{data.store ?? '.pxsig'}</Cmd> })}
+              </StaticListItem>
+              {rejectedRows.length ? (
+                <StaticListItem label={t('inspector.session.rejected', { count: rejectedRows.length })}>
+                  <span className={s.stack}>
+                    <span>{t(a11yMode ? 'inspector.session.a11yRejectedNext' : 'inspector.session.rejectedNext')}</span>
+                    <CopyValue value={`pxsig check ${rejectedRows.map((r) => r.id).join(' ')}`} />
+                  </span>
+                </StaticListItem>
+              ) : null}
+            </StaticList>
+            <span className={s.row}>
+              <Button size="sm" onClick={() => (onGo ? onGo('overview') : onClose())}>
+                {t('inspector.session.back')}
+              </Button>
+              {rejectedRows.length && onGo ? (
+                <Button size="sm" variant="outline" onClick={() => (a11yMode ? onGo('a11y') : onGo('stories', 'rejected'))}>
+                  {t('inspector.session.viewRejected')}
+                </Button>
+              ) : null}
+              <Button size="sm" variant="ghost" onClick={() => setStay(true)}>
+                {t('inspector.session.backToEntries')}
+              </Button>
+            </span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+
   const body = (
-    <div onKeyDown={onKey} style={{ display: 'contents' }}>
+    <div onKeyDown={embedded ? (e) => onKey(e.nativeEvent) : undefined} style={{ display: 'contents' }}>
+      {progress}
       {embedded ? null : (
         <div className={s.insHead}>
           <div style={{ minInlineSize: 0 }}>
             <div className={s.micro}>
               {target!.scenario
-                ? `scenario · ${target!.scenario.name}`
-                : `latest check · ${row.mode}${row.state ? ` · ${row.state}` : ''}${row.browser && row.browser !== 'chromium' ? ` · ${row.browser}` : ''}`}
+                ? t('inspector.contextScenario', { name: target!.scenario.name })
+                : `${t('inspector.contextLatest', { mode: row.mode })}${row.state ? ` · ${row.state}` : ''}${row.browser && row.browser !== 'chromium' ? ` · ${row.browser}` : ''}`}
             </div>
             <Title className={s.insTitle}>{row.id}</Title>
             <Desc className={s.micro} style={{ margin: 0 }}>
               {row.reasons?.length
                 ? row.reasons.join(' · ')
                 : row.pass
-                  ? 'Within the gate'
+                  ? t('inspector.withinGate')
                   : (row.error ?? '')}
             </Desc>
           </div>
@@ -454,13 +593,14 @@ export function Inspector({
             {reviewButtons}
             {embedded ? null : (
               <Button size="sm" variant="outline" onClick={onClose}>
-                Close
+                {t('inspector.close')}
               </Button>
             )}
           </div>
         </div>
       )}
 
+      {rejectedNote}
       <Toolbar className={s.insToolbar}>
         <ToolbarLeft>
           {embedded ? <StatusOf status={statusOf(row, data.review)} /> : null}
@@ -468,11 +608,11 @@ export function Inspector({
             type="single"
             value={mode}
             onValueChange={(v) => v && setMode(v as Mode)}
-            aria-label="Compare mode"
+            aria-label={t('inspector.modes.label')}
           >
-            {MODES.map(([k, label, short], i) => (
-              <ToggleGroupItem key={k} value={k} title={`${label} (${i + 1})`} aria-label={label}>
-                {embedded ? short : label}
+            {MODES.map((k, i) => (
+              <ToggleGroupItem key={k} value={k} title={`${t(`inspector.modes.${k}`)} (${i + 1})`} aria-label={t(`inspector.modes.${k}`)}>
+                {embedded ? t(`inspector.modes.${k}Short`) : t(`inspector.modes.${k}`)}
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
@@ -480,7 +620,7 @@ export function Inspector({
             <Button
               size="icon-sm"
               variant="outline"
-              aria-label="Zoom out (−)"
+              aria-label={t('inspector.zoomOut')}
               onClick={() => stage.current?.zoomBy(1 / 1.5)}
             >
               −
@@ -495,7 +635,7 @@ export function Inspector({
             <Button
               size="icon-sm"
               variant="outline"
-              aria-label="Zoom in (+)"
+              aria-label={t('inspector.zoomIn')}
               onClick={() => stage.current?.zoomBy(1.5)}
             >
               +
@@ -503,18 +643,18 @@ export function Inspector({
             <Button
               size="sm"
               variant="outline"
-              title="Fit (F)"
+              title={t('inspector.fitTitle')}
               onClick={() => stage.current?.fit()}
             >
-              Fit
+              {t('inspector.fit')}
             </Button>
             <Button
               size="sm"
               variant="outline"
-              title="Actual size (0)"
+              title={t('inspector.actualTitle')}
               onClick={() => stage.current?.zoomTo(1)}
             >
-              1:1
+              {t('inspector.actual')}
             </Button>
           </span>
           {embedded ? null : viewControls}
@@ -524,8 +664,8 @@ export function Inspector({
           {embedded ? reviewButtons : null}
           {embedded ? (
             <label className={s.ctl}>
-              <Switch checked={showSide} onCheckedChange={setShowSide} aria-label="Show details" />{' '}
-              Details
+              <Switch checked={showSide} onCheckedChange={setShowSide} aria-label={t('inspector.toggles.detailsLabel')} />{' '}
+              {t('inspector.toggles.details')}
             </label>
           ) : null}
           {pixels && !embedded ? (
@@ -534,21 +674,21 @@ export function Inspector({
                 size="icon-sm"
                 variant="outline"
                 disabled={!regions.length}
-                aria-label="Previous change (⇧N)"
+                aria-label={t('inspector.nav.prevChange')}
                 onClick={() => stepRegion(-1)}
               >
                 ‹
               </Button>
               <span className={s.micro}>
                 {regions.length
-                  ? `change ${region < 0 ? '–' : region + 1} / ${regions.length}`
-                  : 'no changes'}
+                  ? t('inspector.nav.change', { index: region < 0 ? '–' : region + 1, total: regions.length })
+                  : t('inspector.nav.noChanges')}
               </span>
               <Button
                 size="icon-sm"
                 variant="outline"
                 disabled={!regions.length}
-                aria-label="Next change (N)"
+                aria-label={t('inspector.nav.nextChange')}
                 onClick={() => stepRegion(1)}
               >
                 ›
@@ -561,9 +701,7 @@ export function Inspector({
       <div className={s.insMain}>
         <div className={s.insStageWrap}>
           {loaded === 'missing' ? (
-            <div className={s.empty}>
-              Render missing: {p.before} or {p.after}. Re-run the producer.
-            </div>
+            <div className={s.empty}>{t('inspector.missing', { before: p.before, after: p.after })}</div>
           ) : loaded ? (
             <Stage
               ref={stage}
@@ -590,24 +728,24 @@ export function Inspector({
               onHover={setHover}
             />
           ) : (
-            <div className={s.empty}>Loading renders…</div>
+            <div className={s.empty}>{t('inspector.loading')}</div>
           )}
           {embedded ? null : (
             <div className={s.insHelp}>
               {[
-                ['1–5', 'mode'],
-                ['F', 'fit'],
-                ['0', '1:1'],
-                ['+ −', 'zoom'],
-                ['N ⇧N', 'next / prev change'],
-                ['← →', 'story'],
+                ['1–5', t('inspector.keys.mode')],
+                ['F', t('inspector.keys.fit')],
+                ['0', t('inspector.keys.actual')],
+                ['+ −', t('inspector.keys.zoom')],
+                ['N ⇧N', t('inspector.keys.change')],
+                ['← →', t('inspector.keys.story')],
                 ...(canReview
                   ? [
-                      ['A', 'approve'],
-                      ['R', 'reject'],
+                      ['A', t(a11yMode ? 'inspector.keys.accept' : 'inspector.keys.approve')],
+                      ['R', t('inspector.keys.reject')],
                     ]
                   : []),
-                ...(embedded ? [] : [['Esc', 'close']]),
+                ...(embedded ? [] : [['Esc', t('inspector.keys.close')]]),
               ].map(([k, v]) => (
                 <span key={k}>
                   <Kbd size="sm">{k}</Kbd> {v}
@@ -621,7 +759,7 @@ export function Inspector({
           <aside className={s.insSide}>
             {embedded ? (
               <section className={s.sideSection}>
-                <h4 className={s.sectionTitle}>View</h4>
+                <h4 className={s.sectionTitle}>{t('inspector.sections.view')}</h4>
                 <div className={s.stack}>{viewControls}</div>
                 {pixels ? (
                   <span className={s.row}>
@@ -629,21 +767,21 @@ export function Inspector({
                       size="icon-sm"
                       variant="outline"
                       disabled={!regions.length}
-                      aria-label="Previous change"
+                      aria-label={t('inspector.nav.prevChange')}
                       onClick={() => stepRegion(-1)}
                     >
                       ‹
                     </Button>
                     <span className={s.micro}>
                       {regions.length
-                        ? `change ${region < 0 ? '–' : region + 1} / ${regions.length}`
-                        : 'no changes'}
+                        ? t('inspector.nav.change', { index: region < 0 ? '–' : region + 1, total: regions.length })
+                        : t('inspector.nav.noChanges')}
                     </span>
                     <Button
                       size="icon-sm"
                       variant="outline"
                       disabled={!regions.length}
-                      aria-label="Next change"
+                      aria-label={t('inspector.nav.nextChange')}
                       onClick={() => stepRegion(1)}
                     >
                       ›
@@ -653,29 +791,29 @@ export function Inspector({
               </section>
             ) : null}
             <section className={s.sideSection}>
-              <h4 className={s.sectionTitle}>Pixel</h4>
+              <h4 className={s.sectionTitle}>{t('inspector.sections.pixel')}</h4>
               <div className={s.readout}>
                 {!pixels ? (
-                  <span className={s.muted}>
-                    Pixel readout needs the local server: pxsig serve
-                  </span>
-                ) : !hover ? (
-                  <span className={s.muted}>Hover the image to read pixels.</span>
+                  <span className={s.muted}>{tx('inspector.pixel.needsServer', { command: <Cmd>pxsig serve</Cmd> })}</span>
                 ) : (
+                  // The same rows with or without a pointer, so the panel never changes height.
                   <>
                     <div className={s.pxRow}>
-                      <span className={s.mono}>
-                        x {hover.ix} y {hover.iy}
-                      </span>
-                      <span className={`${s.mono} ${s.muted}`}>
-                        cell {Math.floor(hover.ix / cw)},{Math.floor(hover.iy / chh)} · tile{' '}
-                        {Math.floor(hover.ix / 16)},{Math.floor(hover.iy / 16)}
-                      </span>
+                      {hover ? (
+                        <>
+                          <span className={s.mono}>{t('inspector.pixel.coords', { x: hover.ix, y: hover.iy })}</span>
+                          <span className={`${s.mono} ${s.muted} ${s.oneLine}`}>
+                            {t('inspector.pixel.cellTile', { cx: Math.floor(hover.ix / cw), cy: Math.floor(hover.iy / chh), tx: Math.floor(hover.ix / 16), ty: Math.floor(hover.iy / 16) })}
+                          </span>
+                        </>
+                      ) : (
+                        <span className={`${s.muted} ${s.oneLine}`}>{t('inspector.pixel.hover')}</span>
+                      )}
                     </div>
                     {(
                       [
-                        ['before', hover.before],
-                        ['after', hover.after],
+                        [t('inspector.pixel.before'), hover?.before],
+                        [t('inspector.pixel.after'), hover?.after],
                       ] as const
                     ).map(([label, v]) => (
                       <div className={s.pxRow} key={label}>
@@ -691,15 +829,15 @@ export function Inspector({
                           {label}
                         </span>
                         <span className={s.mono}>
-                          {v
-                            ? `${hex(v[0], v[1], v[2])}${v[3] < 255 ? ` α${v[3]}` : ''}`
-                            : 'outside'}
+                          {!hover ? '—' : v ? `${hex(v[0], v[1], v[2])}${v[3] < 255 ? ` α${v[3]}` : ''}` : t('inspector.pixel.outside')}
                         </span>
                       </div>
                     ))}
                     <div className={s.pxRow}>
-                      <span className={s.micro}>max channel Δ</span>
-                      {dmax > tol ? (
+                      <span className={s.micro}>{t('inspector.pixel.maxDelta')}</span>
+                      {!hover ? (
+                        <span className={s.mono}>—</span>
+                      ) : dmax > tol ? (
                         <Badge variant="destructive">{dmax}</Badge>
                       ) : (
                         <span className={s.mono}>{dmax}</span>
@@ -712,9 +850,9 @@ export function Inspector({
 
             {pixels && analysis ? (
               <section className={s.sideSection}>
-                <h4 className={s.sectionTitle}>Pixel changes</h4>
+                <h4 className={s.sectionTitle}>{t('inspector.sections.changes')}</h4>
                 <StaticList labelWidth="45%">
-                  <StaticListItem label="Changed pixels">
+                  <StaticListItem label={t('inspector.changes.pixels')}>
                     <span className={s.mono}>
                       {fmt.num(analysis.changed)} (
                       {((analysis.changed / (W * H || 1)) * 100).toFixed(
@@ -723,13 +861,13 @@ export function Inspector({
                       %)
                     </span>
                   </StaticListItem>
-                  <StaticListItem label="Regions">
+                  <StaticListItem label={t('inspector.changes.regions')}>
                     <span className={s.mono}>{regions.length}</span>
                   </StaticListItem>
-                  <StaticListItem label="Max channel Δ">
+                  <StaticListItem label={t('inspector.changes.maxDelta')}>
                     <span className={s.mono}>{analysis.maxD}</span>
                   </StaticListItem>
-                  <StaticListItem label="Size">
+                  <StaticListItem label={t('inspector.changes.size')}>
                     <span className={s.mono}>{sizeNote}</span>
                   </StaticListItem>
                 </StaticList>
@@ -752,7 +890,7 @@ export function Inspector({
                     ))
                   ) : (
                     <li className={s.muted}>
-                      {analysis.changed ? '' : `No pixel differs by more than ${tol}.`}
+                      {analysis.changed ? '' : t('inspector.changes.noneOver', { tol })}
                     </li>
                   )}
                 </ol>
@@ -761,93 +899,140 @@ export function Inspector({
 
             {m ? (
               <section className={s.sideSection}>
-                <h4 className={s.sectionTitle}>What pxsig measured</h4>
+                <h4 className={s.sectionTitle}>{t('inspector.sections.metrics')}</h4>
                 <StaticList labelWidth="45%">
-                  <StaticListItem label="SSIM">
+                  <StaticListItem label={t('inspector.metrics.ssim')}>
                     <span className={s.mono}>{m.ssim}</span>{' '}
                     {m.ssim < 0.99 ? <Badge variant="destructive">&lt; 0.99</Badge> : null}
                   </StaticListItem>
-                  <StaticListItem label={`Cells off by > ${m.threshold}`}>
+                  <StaticListItem label={t('inspector.metrics.cellsOver', { threshold: m.threshold })}>
                     <span className={s.mono}>
                       {m.changedCells} ({m.changedCellsPct}%)
                     </span>
                   </StaticListItem>
-                  <StaticListItem label="Max cell Δ">
+                  <StaticListItem label={t('inspector.metrics.maxCell')}>
                     <span className={s.mono}>{m.maxCellDiff}</span>
                   </StaticListItem>
-                  <StaticListItem label="Edge Δ">
+                  <StaticListItem label={t('inspector.metrics.edge')}>
                     <span className={s.mono}>{m.edgeDiffPct}%</span>
                   </StaticListItem>
                   {detail ? (
                     <>
-                      <StaticListItem label="Detail tiles moved">
+                      <StaticListItem label={t('inspector.metrics.tilesChanged')}>
                         <span className={s.mono}>{detail.changedTiles}</span>{' '}
                         {detail.changedTiles + detail.newEdgeTiles >= 3 ? (
                           <Badge variant="destructive">≥ 3</Badge>
                         ) : null}
                       </StaticListItem>
-                      <StaticListItem label="New edges">
+                      <StaticListItem label={t('inspector.metrics.newEdges')}>
                         <span className={s.mono}>{detail.newEdgeTiles}</span>
                       </StaticListItem>
-                      <StaticListItem label="Max block Δ">
+                      <StaticListItem label={t('inspector.metrics.maxBlock')}>
                         <span className={s.mono}>{detail.maxBlockDelta}</span>
                       </StaticListItem>
                     </>
                   ) : null}
                 </StaticList>
+                {hasArtifacts ? (
                 <div className={s.sigs}>
                   <figure>
-                    <img src={p.baseSig} alt="Baseline signature" />
-                    <figcaption className={s.micro}>baseline sig</figcaption>
+                    <img src={p.baseSig} alt={t('inspector.metrics.baseSig')} />
+                    <figcaption className={s.micro}>{t('inspector.metrics.baseSig')}</figcaption>
                   </figure>
                   <figure>
-                    <img src={p.curSig} alt="Current signature" />
-                    <figcaption className={s.micro}>current sig</figcaption>
+                    <img src={p.curSig} alt={t('inspector.metrics.curSig')} />
+                    <figcaption className={s.micro}>{t('inspector.metrics.curSig')}</figcaption>
                   </figure>
                   <figure>
-                    <img src={p.heat} alt="Cell heatmap" />
-                    <figcaption className={s.micro}>cell heatmap</figcaption>
+                    <img src={p.heat} alt={t('inspector.metrics.heatmap')} />
+                    <figcaption className={s.micro}>{t('inspector.metrics.heatmap')}</figcaption>
                   </figure>
                 </div>
+                ) : (
+                  <span className={s.muted}>{t('inspector.artifacts.notWritten')}</span>
+                )}
               </section>
             ) : null}
 
             {row.a11y?.violations?.length ? (
               <section className={s.sideSection}>
-                <h4 className={s.sectionTitle}>Accessibility ({row.a11y.violations.length})</h4>
+                <h4 className={s.sectionTitle}>{t('inspector.sections.a11y', { count: row.a11y.violations.length })}</h4>
+                <span className={s.muted}>
+                  {newA11y
+                    ? served && !target?.scenario
+                      ? t('inspector.a11y.stateNew', { count: newA11y })
+                      : tx('inspector.a11y.stateNewStatic', { count: newA11y, command: <Cmd>pxsig serve</Cmd> })
+                    : t('inspector.a11y.stateAccepted')}
+                </span>
                 <ul className={s.resources}>
                   {row.a11y.violations.map((v) => (
-                    <li key={v.id}>
+                    <li key={v.id} className={s.a11yItem}>
                       <StatusBadge
                         label={v.impact ?? 'n/a'}
                         tone={
                           v.impact === 'critical' || v.impact === 'serious' ? 'error' : 'warning'
                         }
                       />
-                      <span className={s.grow} title={v.help}>
-                        {v.id} · {v.nodes} node{v.nodes === 1 ? '' : 's'}
+                      <span className={s.a11yRule} title={v.help}>
+                        {v.id} · {t('inspector.a11y.nodes', { count: v.nodes })}
                       </span>
-                      {row.a11y?.baseline && !row.a11y.baseline.includes(v.id) ? (
-                        <Badge variant="destructive">new</Badge>
-                      ) : null}
+                      {(row.a11y?.baseline ? !row.a11y.baseline.includes(v.id) : newA11y > 0) ? (
+                        <Badge variant="destructive">{t('inspector.a11y.new')}</Badge>
+                      ) : (
+                        <>
+                          <Badge variant="secondary">{t('inspector.a11y.accepted')}</Badge>
+                          {canReview ? (
+                            <Button size="sm" variant="ghost" disabled={busy} onClick={() => unaccept(v.id)} title={t('inspector.a11y.unacceptTitle')}>
+                              {t('inspector.a11y.unaccept')}
+                            </Button>
+                          ) : null}
+                        </>
+                      )}
                     </li>
                   ))}
                 </ul>
+                {canReview && !a11yMode && (newA11y || a11yDecision) ? (
+                  <span className={s.row}>
+                    {a11yDecision ? (
+                      <>
+                        <Badge variant={a11yDecision.state === 'accepted' ? 'secondary' : 'destructive'}>
+                          {t(a11yDecision.state === 'accepted' ? 'inspector.review.a11yAccepted' : 'inspector.review.a11yRejected')}
+                        </Badge>
+                        <Button size="sm" variant="ghost" disabled={busy} onClick={() => act('unreview', true)}>
+                          {t('inspector.review.undo')}
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="outline" disabled={busy} onClick={() => act('reject', true)} title={t('inspector.review.rejectA11yTitle')}>
+                          {t('inspector.review.reject')}
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={busy} onClick={() => act('approve', true)} title={t('inspector.review.acceptTitle')}>
+                          {newA11y ? t('inspector.review.acceptCount', { count: newA11y }) : t('inspector.review.accept')}
+                        </Button>
+                      </>
+                    )}
+                  </span>
+                ) : null}
               </section>
             ) : null}
 
             <section className={s.sideSection}>
-              <h4 className={s.sectionTitle}>Resources</h4>
+              <h4 className={s.sectionTitle}>{t('inspector.sections.files')}</h4>
               <ul className={s.resources}>
                 {(
                   [
                     [p.beforeLabel, p.before],
                     [p.afterLabel, p.after],
-                    ['baseline signature (png)', p.baseSig],
-                    ['current signature (png)', p.curSig],
-                    ['cell heatmap (png)', p.heat],
-                    ['diff page (html)', p.page],
-                    ...(p.record ? [['baseline record (json)', p.record]] : []),
+                    ...(hasArtifacts
+                      ? [
+                          [t('inspector.files.baseSig'), p.baseSig],
+                          [t('inspector.files.curSig'), p.curSig],
+                          [t('inspector.files.heat'), p.heat],
+                          [t('inspector.files.page'), p.page],
+                        ]
+                      : []),
+                    ...(p.record ? [[t('inspector.files.record'), p.record]] : []),
                   ] as [string, string][]
                 ).map(([label, url]) => (
                   <li key={label}>
@@ -855,12 +1040,12 @@ export function Inspector({
                       {label}
                     </Link>
                     <span className={`${s.mono} ${s.muted}`}>{sizes[url] ?? ''}</span>
-                    <CopyValue value={repoPath(url)} hideValue label={`${label} path`} />
+                    <CopyPath value={repoPath(url)} label={label} />
                   </li>
                 ))}
                 <li>
                   <Link href={sb} external className={s.grow}>
-                    open story in Storybook
+                    {t('inspector.files.storybook')}
                   </Link>
                 </li>
               </ul>

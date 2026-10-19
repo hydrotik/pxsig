@@ -46,14 +46,16 @@ port and renders against it (its origin is allowed like a Storybook's).
 
 | Tab | Content |
 | --- | --- |
-| Overview | Counts per state, the most changed components, accessibility, the latest run |
-| Stories | Every entry, filterable, with the inspector: baseline, current render and diff side by side or overlaid, metrics, gate reasons, change regions. `A` approves, `R` rejects. |
-| Integrity | The ledger: components and entries by status code, with the safe repairs |
+| Overview | The latest check's counts and duration, then open items (changed, new, rejected, render errors, coverage errors, new a11y violations, flaky), each linking to its list or starting a review |
+| Review Stories | Every entry, filterable and grouped by component, with the inspector: baseline, current render and diff side by side or overlaid, metrics, gate reasons, change regions. `A` approves, `R` rejects. "Review N changes" starts a session over the changed (or new) entries with progress and a closing summary. |
+| Coverage | The integrity ledger: components and entries by status, with the safe repairs |
 | Accessibility | axe violations per entry and per rule, new ones first |
-| History | Past runs, and which entries changed in each |
+| Runs | The last check's timing, past runs, and which entries changed in each |
+| Diagnostics | Scenarios, calibration and benchmark results. Shown only when a report for them exists in the store; pxsig 0.2 does not produce those reports. |
+| Help | The gate as configured, what each status means, keyboard shortcuts, commands |
 
-The Scenarios, Calibration and Performance tabs appear only when a report for them exists in the
-store. pxsig 0.2 does not produce those reports.
+The tab ids in the URL hash are `overview`, `stories`, `integrity`, `a11y`, `history`,
+`diagnostics` and `help`; the older `#scenarios`, `#calibration` and `#performance` open Diagnostics.
 
 With several projects, a switcher in the header picks one. URL parameters:
 
@@ -97,7 +99,11 @@ exactly one project.
 | --- | --- |
 | `POST /__pxsig/approve {id, batch?, via?, reason?, kind?}` | The latest render becomes the baseline: a `.psig` with the render as its image. The old baseline is snapshotted to `<store>/history/<batch>/`, the write logged in `approvals.ndjson`, and the a11y baseline follows the render. A NEW entry (no baseline yet) gets its first baseline, logged with `before: null`. 409 when there is no latest render, or when the server does not hold the project's store lock. |
 | `POST /__pxsig/reject {id}` | Records a rejection for the current result. |
-| `POST /__pxsig/unreview {id}` | Clears the decision. |
+| `POST /__pxsig/a11y-accept {id}` | Puts the entry's current axe violations on its accepted list (`<store>/a11y.json`), logged in `<store>/a11y-decisions.ndjson`. 409 when the last check has no axe results for it. |
+| `POST /__pxsig/a11y-reject {id}` | Marks the entry's violations for a fix; the accepted list is unchanged. |
+| `POST /__pxsig/a11y-unaccept {id, rule?}` | Takes `rule` (or every rule) off the entry's accepted list and marks its row's violations new in `check.json` at once; logged. 409 when the rule is not on the list. |
+| `POST /__pxsig/a11y-unreview {id}` | Clears the accessibility decision; after an accept it restores the previous accepted list (logged). Accessibility decisions live in `reports/a11y-review.json` and, like visual ones, end at the entry's next check. |
+| `POST /__pxsig/unreview {id}` | Clears the decision. For an approval it also restores the previous baseline from that approval's snapshot (a first baseline moves to trash/) and its a11y baseline, logged as an undo; 409 when the baseline changed since. |
 | `POST /__pxsig/check {ids? \| story? \| stories? \| all?}` | Queues renders and engine checks; answers 202 with the queued ids. Results merge into `check.json`. Without a project, the check is split across the projects that own the ids. |
 | `POST /__pxsig/repair {apply?, only?}` | The safe repairs: the plan, or with `apply: true` the result. Never prunes. |
 

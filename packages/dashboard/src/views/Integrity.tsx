@@ -1,6 +1,8 @@
 import React from 'react';
 import { Alert, AlertDescription, AlertTitle, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DataGrid, StatPanel, StatusBadge } from '@hydrotik/design-system';
 import { type Data, type IntegrityComponent, type IntegrityEntry, type Row, repairSafe, rowsWithPending, served } from '../data';
+import { Cmd, codeCopy, t, tx } from '../copy';
+import { Affordance } from '../parts/Affordance';
 import * as s from '../dashboard.css';
 
 type Severity = 'error' | 'warn' | 'info';
@@ -9,7 +11,20 @@ const order: Record<Severity, number> = { error: 0, warn: 1, info: 2 };
 
 /** One integrity status → one badge, coloured by severity. */
 export function IntegrityStatus({ code, severity }: { code: string; severity: Severity }) {
-  return <StatusBadge label={code} tone={code === 'ok' || code === 'drift' ? 'success' : code === 'excluded' ? 'neutral' : TONE[severity]} />;
+  const c = codeCopy(code);
+  return <StatusBadge label={c.title} title={c.help || undefined} tone={code === 'ok' || code === 'drift' ? 'success' : code === 'excluded' ? 'neutral' : TONE[severity]} />;
+}
+
+/** The ledger's headline, from its counts (the server's own headline is English-only). */
+export function coverageHeadline(L: NonNullable<Data['integrity']>): string {
+  const sm = L.summary;
+  if (sm.componentsBySeverity.error) {
+    const codes = Object.entries(sm.byCode)
+      .filter(([code]) => L.entries.some((x) => x.issues.some((i) => i.code === code && i.severity === 'error')))
+      .map(([code]) => t('coverage.headline.code', { title: codeCopy(code).title, count: L.entries.filter((x) => x.issues.some((i) => i.code === code && i.severity === 'error')).length }));
+    return [t('coverage.headline.error', { count: sm.componentsBySeverity.error }), ...codes].join(' · ');
+  }
+  return sm.componentsBySeverity.warn ? t('coverage.headline.warn', { count: sm.componentsBySeverity.warn }) : t('coverage.headline.clean');
 }
 
 /**
@@ -27,33 +42,33 @@ export function IntegrityBanner({ data, go }: { data: Data; go(tab: string): voi
     setMsg(null);
     try {
       const r = await repairSafe();
-      setMsg(r.applied?.length ? r.applied.map((x) => `${x.action}: ${x.result}`).join(' · ') : 'Nothing to repair automatically.');
+      setMsg(r.applied?.length ? r.applied.map((x) => `${x.action}: ${x.result}`).join(' · ') : t('coverage.banner.nothing'));
     } catch (e) {
-      setMsg(`Repair failed: ${(e as Error).message}`);
+      setMsg(t('coverage.banner.failed', { error: (e as Error).message }));
     } finally {
       setBusy(false);
     }
   };
   return (
-    <Alert variant={L.summary.status === 'attention' || L.setup.some((x) => x.severity === 'error') ? 'destructive' : 'default'} aria-label="Integrity" style={{ boxSizing: 'border-box' }}>
-      <AlertTitle>{L.summary.headline}</AlertTitle>
+    <Alert variant={L.summary.status === 'attention' || L.setup.some((x) => x.severity === 'error') ? 'destructive' : 'default'} aria-label={t('coverage.banner.label')} style={{ boxSizing: 'border-box' }}>
+      <AlertTitle>{coverageHeadline(L)}</AlertTitle>
       <AlertDescription>
         <div className={s.stack}>
           {L.setup.map((x) => (
             <span key={x.code}>
-              <strong>{x.code}</strong> — {x.reason}
+              <strong>{codeCopy(x.code).title}</strong> · {x.reason}
             </span>
           ))}
           <span className={s.row}>
             <Button size="sm" variant="outline" onClick={() => go('integrity')}>
-              Show components
+              {t('coverage.banner.viewComponents')}
             </Button>
             {served ? (
               <Button size="sm" onClick={run} disabled={busy}>
-                {busy ? 'Repairing…' : 'Repair safe issues'}
+                {busy ? t('coverage.banner.repairing') : t('coverage.banner.repair')}
               </Button>
             ) : null}
-            <span className={s.muted}>Safe repairs never approve and never write a signature; changed and new entries still need you.</span>
+            <span className={s.muted}>{t('coverage.banner.repairNote')}</span>
           </span>
           {msg ? <span className={s.mono}>{msg}</span> : null}
         </div>
@@ -66,8 +81,10 @@ export function Integrity({ data, onOpen }: { data: Data; onOpen(row: Row, list:
   const L = data.integrity;
   const [selected, setSelected] = React.useState<string | null>(null);
   const [all, setAll] = React.useState(false);
-  if (!L) return <div className={s.empty}>No integrity ledger yet: run `pxsig doctor` or `pxsig serve`.</div>;
-  const comps = [...L.components].filter((c) => all || c.severity !== 'info').sort((a, b) => order[a.severity] - order[b.severity] || a.component.localeCompare(b.component));
+  // A count card filters the table below it to the components with that issue.
+  const [code, setCode] = React.useState<string | null>(null);
+  if (!L) return <div className={s.empty}>{tx('coverage.empty', { command: <Cmd>pxsig doctor</Cmd>, command2: <Cmd>pxsig serve</Cmd> })}</div>;
+  const comps = [...L.components].filter((c) => (code ? (c.counts[code] ?? 0) > 0 : all || c.severity !== 'info')).sort((a, b) => order[a.severity] - order[b.severity] || a.component.localeCompare(b.component));
   const entries = L.entries.filter((x) => x.component === selected).sort((a, b) => order[a.severity] - order[b.severity] || a.id.localeCompare(b.id));
   const rows = rowsWithPending(data);
   const byId = new Map(rows.map((r) => [r.id, r]));
@@ -76,31 +93,32 @@ export function Integrity({ data, onOpen }: { data: Data; onOpen(row: Row, list:
   return (
     <div className={s.stack}>
       <StatPanel
-        aria-label="Integrity"
+        className={s.statCards}
+        aria-label={t('tabs.coverage')}
         cards={[
-          { label: 'Components', value: sm.components, unit: `${sm.componentsBySeverity.error} need attention` },
-          { label: 'Errors', value: sm.bySeverity.error, accent: sm.bySeverity.error ? 'error' : 'success' },
-          { label: 'Warnings', value: sm.bySeverity.warn, accent: sm.bySeverity.warn ? 'warning' : undefined },
-          { label: 'Unregistered', value: sm.byCode.unregistered ?? 0, accent: sm.byCode.unregistered ? 'error' : undefined },
-          { label: 'Never checked', value: sm.byCode['never-checked'] ?? 0, accent: sm.byCode['never-checked'] ? 'error' : undefined },
-          { label: 'Missing baseline images', value: sm.byCode['missing-baseline-image'] ?? 0, accent: sm.byCode['missing-baseline-image'] ? 'error' : undefined },
+          { label: t('coverage.stats.components'), value: sm.components, unit: t('coverage.stats.withErrors', { count: sm.componentsBySeverity.error }) },
+          { label: t('coverage.stats.errors'), value: sm.bySeverity.error, accent: sm.bySeverity.error ? 'error' : 'success' },
+          { label: t('coverage.stats.warnings'), value: sm.bySeverity.warn, accent: sm.bySeverity.warn ? 'warning' : undefined },
+          ...(['unregistered', 'never-checked', 'missing-baseline-image'] as const).map((c) =>
+            sm.byCode[c]
+              ? { label: codeCopy(c).title, value: sm.byCode[c], accent: 'error' as const, type: 'filter' as const, active: code === c, onSelect: () => setCode(code === c ? null : c), icon: <Affordance kind="filter" /> }
+              : { label: codeCopy(c).title, value: 0 }
+          ),
         ]}
       />
       <Card>
         <CardHeader>
-          <CardTitle>Coverage and integrity, per component</CardTitle>
-          <CardDescription>
-            Every story in the {ix.source === 'storybook' ? 'Storybook index' : 'static story scan'} ({ix.inScope} in scope) joined with the manifest, signatures, baseline images, renders, the last report and source edits. Ledger {new Date(L.generatedAt).toLocaleString()}.
-          </CardDescription>
+          <CardTitle>{t('coverage.table.title')}</CardTitle>
+          <CardDescription>{t(ix.source === 'storybook' ? 'coverage.table.sourceStorybook' : 'coverage.table.sourceStatic', { count: ix.inScope, date: new Date(L.generatedAt).toLocaleString() })}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className={s.stack}>
             <span className={s.row}>
-              <Button size="sm" variant={all ? 'outline' : 'default'} onClick={() => setAll(false)}>
-                Needing attention ({L.components.filter((c) => c.severity !== 'info').length})
+              <Button size="sm" variant={!code && !all ? 'default' : 'outline'} onClick={() => (setAll(false), setCode(null))}>
+                {t('coverage.table.withIssues', { count: L.components.filter((c) => c.severity !== 'info').length })}
               </Button>
-              <Button size="sm" variant={all ? 'default' : 'outline'} onClick={() => setAll(true)}>
-                All components ({L.components.length})
+              <Button size="sm" variant={!code && all ? 'default' : 'outline'} onClick={() => (setAll(true), setCode(null))}>
+                {t('coverage.table.all', { count: L.components.length })}
               </Button>
             </span>
             {comps.length ? (
@@ -112,18 +130,18 @@ export function Integrity({ data, onOpen }: { data: Data; onOpen(row: Row, list:
                 enablePagination={false}
                 onRowClick={(row: { original: IntegrityComponent }) => setSelected(row.original.component)}
                 columns={[
-                  { id: 'status', accessorKey: 'status', header: 'Status', cell: ({ row }: { row: { original: IntegrityComponent } }) => <IntegrityStatus code={row.original.status} severity={row.original.severity} /> },
-                  { id: 'component', accessorKey: 'component', header: 'Component', cell: ({ row }: { row: { original: IntegrityComponent } }) => <strong>{row.original.component}</strong> },
-                  { id: 'entries', accessorKey: 'entries', header: 'Entries', align: 'right' },
+                  { id: 'status', accessorKey: 'status', header: t('coverage.table.status'), cell: ({ row }: { row: { original: IntegrityComponent } }) => <IntegrityStatus code={row.original.status} severity={row.original.severity} /> },
+                  { id: 'component', accessorKey: 'component', header: t('coverage.table.component'), cell: ({ row }: { row: { original: IntegrityComponent } }) => <strong>{row.original.component}</strong> },
+                  { id: 'entries', accessorKey: 'entries', header: t('coverage.table.entries'), align: 'right' },
                   {
                     id: 'issues',
                     accessorKey: 'counts',
-                    header: 'Issues',
+                    header: t('coverage.table.issues'),
                     cell: ({ row }: { row: { original: IntegrityComponent } }) => (
                       <span className={s.row}>
                         {Object.entries(row.original.counts).map(([code, n]) => (
-                          <Badge key={code} variant={['unregistered', 'never-checked', 'missing-baseline-image', 'render-error'].includes(code) ? 'destructive' : 'secondary'}>
-                            {n} {code}
+                          <Badge key={code} variant={['unregistered', 'never-checked', 'missing-baseline-image', 'render-error'].includes(code) ? 'destructive' : 'secondary'} title={codeCopy(code).help || undefined}>
+                            {t('coverage.headline.code', { title: codeCopy(code).title, count: n })}
                           </Badge>
                         ))}
                       </span>
@@ -132,7 +150,7 @@ export function Integrity({ data, onOpen }: { data: Data; onOpen(row: Row, list:
                 ]}
               />
             ) : (
-              <div className={s.empty}>Every component is clean.</div>
+              <div className={s.empty}>{t('coverage.table.none')}</div>
             )}
           </div>
         </CardContent>
@@ -141,7 +159,7 @@ export function Integrity({ data, onOpen }: { data: Data; onOpen(row: Row, list:
         <Card>
           <CardHeader>
             <CardTitle>{selected}</CardTitle>
-            <CardDescription>{entries.length} entries. Click a rendered entry to open it in the inspector.</CardDescription>
+            <CardDescription>{t('coverage.entries.description', { count: entries.length })}</CardDescription>
           </CardHeader>
           <CardContent>
             <DataGrid
@@ -155,13 +173,13 @@ export function Integrity({ data, onOpen }: { data: Data; onOpen(row: Row, list:
                 if (r && (r.metrics || (r.new && !r.pending))) onOpen(r, rows.filter((x) => entries.some((e) => e.id === x.id)));
               }}
               columns={[
-                { id: 'status', accessorKey: 'status', header: 'Status', cell: ({ row }: { row: { original: IntegrityEntry } }) => <IntegrityStatus code={row.original.status} severity={row.original.severity} /> },
-                { id: 'id', accessorKey: 'id', header: 'Entry', cell: ({ row }: { row: { original: IntegrityEntry } }) => <span className={s.mono}>{row.original.id}</span> },
+                { id: 'status', accessorKey: 'status', header: t('coverage.entries.status'), cell: ({ row }: { row: { original: IntegrityEntry } }) => <IntegrityStatus code={row.original.status} severity={row.original.severity} /> },
+                { id: 'id', accessorKey: 'id', header: t('coverage.entries.entry'), cell: ({ row }: { row: { original: IntegrityEntry } }) => <span className={s.mono}>{row.original.id}</span> },
                 {
                   id: 'why',
                   accessorKey: 'issues',
-                  header: 'Why',
-                  cell: ({ row }: { row: { original: IntegrityEntry } }) => <span className={s.muted}>{row.original.issues.map((i) => `${i.code}: ${i.reason}`).join(' · ') || 'covered, rendered, checked, fresh'}</span>,
+                  header: t('coverage.entries.detail'),
+                  cell: ({ row }: { row: { original: IntegrityEntry } }) => <span className={s.muted}>{row.original.issues.map((i) => `${codeCopy(i.code).title}: ${i.reason}`).join(' · ') || t('coverage.entries.noIssues')}</span>,
                 },
               ]}
             />

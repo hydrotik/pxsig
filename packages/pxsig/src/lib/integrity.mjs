@@ -685,10 +685,10 @@ export function summarise(entries, components) {
   const warnComps = components.filter((c) => c.severity === 'warn');
   const errCodes = Object.keys(CODES).filter((c) => byCode[c] && entries.some((x) => x.issues.some((i) => i.code === c && i.severity === 'error')));
   const headline = errComps.length
-    ? `${errComps.length} component${errComps.length === 1 ? ' needs' : 's need'} attention: ${errCodes.map((c) => phrase(c, entries.filter((x) => x.issues.some((i) => i.code === c && i.severity === 'error')).length)).join(', ')}`
+    ? `${errComps.length} component${errComps.length === 1 ? '' : 's'} with errors: ${errCodes.map((c) => phrase(c, entries.filter((x) => x.issues.some((i) => i.code === c && i.severity === 'error')).length)).join(', ')}`
     : warnComps.length
-      ? `No integrity errors; ${warnComps.length} component${warnComps.length === 1 ? ' has' : 's have'} warnings`
-      : 'Clean: every story is covered, rendered, checked and fresh';
+      ? `No errors; ${warnComps.length} component${warnComps.length === 1 ? '' : 's'} with warnings`
+      : 'No issues';
   return {
     status: errComps.length ? 'attention' : warnComps.length ? 'warnings' : 'clean',
     headline,
@@ -721,5 +721,5 @@ export function filterLedger(ledger, { component, status, severity } = {}) {
   return { components: ledger.components.filter((x) => names.has(x.component)), entries };
 }
 
-/** One line, for check.mjs and the CLI: "integrity: clean" / "integrity: 3 components need attention: …". */
+/** One line, for check.mjs and the CLI: "integrity: No issues" / "integrity: 3 components with errors: …". */
 export const oneLine = (ledger) => `integrity: ${ledger.summary.headline}${ledger.setup.length ? ` · setup: ${ledger.setup.map((s) => s.code).join(', ')}` : ''}`;

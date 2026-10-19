@@ -7,6 +7,7 @@ import React from 'react';
 import type { Region } from '../data';
 import type { Analysis } from './analyse';
 import { canvasOf } from './analyse';
+import { t } from '../copy';
 import * as s from '../dashboard.css';
 
 export type Mode = 'side' | 'swipe' | 'onion' | 'diff' | 'heat';
@@ -249,7 +250,7 @@ export const Stage = React.forwardRef<StageApi, Props>(function Stage(p, ref) {
         data-handle=""
         role="slider"
         tabIndex={0}
-        aria-label="Swipe position"
+        aria-label={t('inspector.stage.swipe')}
         aria-valuenow={p.split}
         aria-valuemin={0}
         aria-valuemax={100}
@@ -283,7 +284,7 @@ export const Stage = React.forwardRef<StageApi, Props>(function Stage(p, ref) {
       ref={stage}
       className={s.insStage}
       tabIndex={0}
-      aria-label="Image comparison. Drag to pan, scroll to zoom."
+      aria-label={t('inspector.stage.label')}
       onPointerDown={(e) => {
         if (e.button !== 0) return;
         drag.current = { x: e.clientX, y: e.clientY, tx: view.current.tx, ty: view.current.ty };

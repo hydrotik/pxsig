@@ -89,12 +89,13 @@ function candidateRevs(file, gitHead) {
 }
 
 /**
- * Restore every entry a batch approved to the baseline it replaced. Returns
+ * Restore every entry a batch approved (or only `ids` of them) to the baseline it replaced. Returns
  * `{ restored: [id], removed: [id], refused: [{ id, why }], source }`; `source` is `history` (the
  * local snapshot) or `git`. With neither available for an entry, it is refused, never guessed.
  */
-export function undo(P, manifest, batch, { git = true } = {}) {
-  const lines = readLog(P).filter((l) => l.batch === batch);
+export function undo(P, manifest, batch, { git = true, ids: only = null } = {}) {
+  const keep = (id) => !only || only.includes(id);
+  const lines = readLog(P).filter((l) => l.batch === batch && keep(l.id));
   const dir = join(P.store.history, batch);
   const local = existsSync(dir);
   if (!local && !lines.length) throw new Error(`no snapshot and no approvals logged for batch ${batch}`);
@@ -111,7 +112,7 @@ export function undo(P, manifest, batch, { git = true } = {}) {
   // The first line per id is the one that holds the pre-batch state.
   const first = new Map();
   for (const l of lines) if (!first.has(l.id)) first.set(l.id, l);
-  const snaps = local ? new Set(readdirSync(dir).filter((n) => n.endsWith('.psig')).map((n) => n.slice(0, -'.psig'.length))) : new Set();
+  const snaps = local ? new Set(readdirSync(dir).filter((n) => n.endsWith('.psig')).map((n) => n.slice(0, -'.psig'.length)).filter(keep)) : new Set();
   const ids = new Set([...snaps, ...first.keys()]);
   for (const id of ids) {
     const entry = byId.get(id);

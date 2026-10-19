@@ -1,37 +1,66 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, DataGrid } from '@hydrotik/design-system';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, DataGrid, StatPanel } from '@hydrotik/design-system';
 import { type Data, fmt } from '../data';
 import { Lines } from '../parts/Charts';
+import { Cmd, t, tx } from '../copy';
 import * as s from '../dashboard.css';
 
+/** The Runs tab: the last check's timing, then every recorded run. */
 export function History({ data }: { data: Data }) {
   const runs = data.history ?? [];
-  if (!runs.length) return <div className={s.empty}>No runs recorded yet: every check appends to the store's reports/history.ndjson.</div>;
+  const sm = data.check?.summary;
+  const latest = sm ? (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('runs.latest.title')}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <StatPanel
+          variant="strip"
+          aria-label={t('runs.latest.title')}
+          cards={[
+            { label: t('runs.latest.render'), value: fmt.ms(sm.renderWallMs), unit: t('runs.latest.pages', { count: sm.concurrency }) },
+            { label: t('runs.latest.engine'), value: fmt.ms(sm.rustEngineMs), unit: t('runs.latest.cached', { count: sm.cached }) },
+            { label: t('runs.latest.retries'), value: fmt.ms(sm.retryMs) },
+            { label: t('runs.latest.scope'), value: sm.affected ?? t('runs.latest.allEntries') },
+          ]}
+        />
+      </CardContent>
+    </Card>
+  ) : null;
+  if (!runs.length)
+    return (
+      <div className={s.stack}>
+        {latest}
+        <div className={s.empty}>{tx('runs.empty', { file: <Cmd>reports/history.ndjson</Cmd> })}</div>
+      </div>
+    );
   const series = runs.map((r, i) => ({ run: i + 1, failed: r.summary.failed, engine: Math.round(r.summary.elapsedMs), cached: r.summary.cached }));
   return (
     <div className={s.stack}>
+      {latest}
       <div className={s.twoCol}>
         <Card>
           <CardHeader>
-            <CardTitle>Changed entries per run</CardTitle>
-            <CardDescription>{runs.length} runs recorded by the Rust check (--history).</CardDescription>
+            <CardTitle>{t('runs.changed.title')}</CardTitle>
+            <CardDescription>{t('runs.changed.description', { count: runs.length })}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Lines data={series} x="run" series={[{ key: 'failed', label: 'Changed' }]} />
+            <Lines data={series} x="run" series={[{ key: 'failed', label: t('runs.changed.series') }]} />
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Engine time per run</CardTitle>
-            <CardDescription>Cache hits make re-checks of unchanged renders near-free.</CardDescription>
+            <CardTitle>{t('runs.engine.title')}</CardTitle>
+            <CardDescription>{t('runs.engine.description')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Lines data={series} x="run" format={(v) => `${v} ms`} series={[{ key: 'engine', label: 'Rust engine ms' }]} />
+            <Lines data={series} x="run" format={(v) => `${v} ms`} series={[{ key: 'engine', label: t('runs.engine.series') }]} />
           </CardContent>
         </Card>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Runs</CardTitle>
+          <CardTitle>{t('runs.table.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <DataGrid
@@ -40,12 +69,12 @@ export function History({ data }: { data: Data }) {
             density="compact"
             showToolbar={false}
             columns={[
-              { id: 'at', accessorKey: 'at', header: 'When' },
-              { id: 'entries', accessorKey: 'entries', header: 'Entries' },
-              { id: 'failed', accessorKey: 'failed', header: 'Changed' },
-              { id: 'cached', accessorKey: 'cached', header: 'Cached' },
-              { id: 'engine', accessorKey: 'engine', header: 'Engine' },
-              { id: 'ids', accessorKey: 'ids', header: 'Changed entries' },
+              { id: 'at', accessorKey: 'at', header: t('runs.table.when') },
+              { id: 'entries', accessorKey: 'entries', header: t('runs.table.entries') },
+              { id: 'failed', accessorKey: 'failed', header: t('runs.table.changed') },
+              { id: 'cached', accessorKey: 'cached', header: t('runs.table.cached') },
+              { id: 'engine', accessorKey: 'engine', header: t('runs.table.engine') },
+              { id: 'ids', accessorKey: 'ids', header: t('runs.table.ids') },
             ]}
           />
         </CardContent>

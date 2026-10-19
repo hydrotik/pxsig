@@ -22,6 +22,27 @@ Without a build, `pxsig serve` still answers its API, and `/report/` answers 404
 dashboard is not built". Changes to the data the dashboard reads (`packages/pxsig/src/report.mjs`)
 and to the server can be developed and tested without it.
 
+## Copy
+
+Every user-facing string is in `src/copy/en.json`, keyed by view (`overview.items.changed`,
+`inspector.review.approve`, …). Views read it with `t(key, vars)` for text and `tx(key, vars)` when
+a placeholder holds a React node, such as a command in `<code>`; both are in `src/copy/index.tsx`.
+
+- Placeholders are `{name}`. Numbers passed in are formatted for the locale.
+- A message with a count can have plural forms, `{ "one": "…", "other": "…" }`, picked with
+  `Intl.PluralRules`.
+- Keys are typed from `en.json`: a key that does not exist fails the type check.
+- Coverage statuses (`coverage.codes.<code>`) have a title and a help line; an unknown code shows
+  as itself.
+
+Style: sentence case, the state first and then the action, no questions, no second person, no
+evaluative adjectives. Explanations belong on the Help tab, not on working screens.
+
+A translation is a sibling file with the same keys (`fr.json`) added to `LOCALES` in
+`src/copy/index.tsx`; the browser's language picks it, and a missing key falls back to English.
+Text that comes from the server (per-entry issue reasons, repair results, gate reasons) is not in
+these files and stays in English.
+
 ## Data
 
 Served, the app reads `/__pxsig/data?project=<name>` and listens to `/__pxsig/events`. A static

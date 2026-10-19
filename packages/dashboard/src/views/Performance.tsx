@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, DataGrid, StatPanel } from '@hydrotik/design-system';
 import { type Data, fmt } from '../data';
 import { HBars } from '../parts/Charts';
+import { Cmd, t, tx } from '../copy';
 import * as s from '../dashboard.css';
 
 const ok = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0;
@@ -12,9 +13,7 @@ export function Performance({ data }: { data: Data }) {
   const c = data.check?.summary;
   if (!b)
     return (
-      <div className={s.empty}>
-        No benchmark data for this project: <code>node tools/bench.mjs</code> writes it.
-      </div>
+      <div className={s.empty}>{tx('diagnostics.performance.empty', { command: <Cmd>node tools/bench.mjs</Cmd> })}</div>
     );
 
   // Batch check by thread count, against one thread.
@@ -33,7 +32,7 @@ export function Performance({ data }: { data: Data }) {
     .map(Number)
     .filter((p) => ok(byConc[p]?.msPerStory))
     .sort((x, y) => x - y);
-  const renders = pools.map((p) => ({ pages: `${p} page${p === 1 ? '' : 's'}`, ms: Math.round(byConc[p].msPerStory) }));
+  const renders = pools.map((p) => ({ pages: t('diagnostics.performance.pages', { count: p }), ms: Math.round(byConc[p].msPerStory) }));
 
   const capWall = b.capture?.rustWallMs;
   const capInternal = b.capture?.rustInternalMs;
@@ -43,36 +42,34 @@ export function Performance({ data }: { data: Data }) {
   const rss = b.memory?.rustPeakRssBytes;
   const bin = b.footprint?.rustBinaryBytes;
   const cards = [
-    ...(top !== undefined ? [{ label: `Batch check · ${top} thread${top === 1 ? '' : 's'}`, value: fmt.ms(wall(top)), unit: one && top !== 1 ? `${fmt.x(one / wall(top))} vs 1 thread` : `${b.stories} renders`, accent: 'success' as const }] : []),
-    ...(ok(capWall) ? [{ label: 'Baselines (capture)', value: fmt.ms(capWall), unit: ok(capInternal) ? `${fmt.ms(capInternal)} in engine` : `${b.stories} renders` }] : []),
-    ...(perCall ? [{ label: 'Per call, CLI → daemon', value: `${callMs(cli!)} → ${callMs(serve!)}`, unit: fmt.x(cli! / serve!) }] : []),
-    ...(ok(rss) ? [{ label: 'Peak memory (batch check)', value: mb(rss) }] : []),
-    ...(ok(bin) ? [{ label: 'Binary size', value: mb(bin) }] : []),
-    ...(c ? [{ label: 'Full check (latest)', value: fmt.ms(c.totalMs), unit: `${c.checked} entries` }] : []),
+    ...(top !== undefined ? [{ label: t('diagnostics.performance.batch', { count: top }), value: fmt.ms(wall(top)), unit: one && top !== 1 ? t('diagnostics.performance.vsOne', { factor: fmt.x(one / wall(top)) }) : t('diagnostics.performance.renders', { count: b.stories }) }] : []),
+    ...(ok(capWall) ? [{ label: t('diagnostics.performance.capture'), value: fmt.ms(capWall), unit: ok(capInternal) ? t('diagnostics.performance.inEngine', { ms: fmt.ms(capInternal) }) : t('diagnostics.performance.renders', { count: b.stories }) }] : []),
+    ...(perCall ? [{ label: t('diagnostics.performance.perCall'), value: `${callMs(cli!)} → ${callMs(serve!)}`, unit: fmt.x(cli! / serve!) }] : []),
+    ...(ok(rss) ? [{ label: t('diagnostics.performance.memory'), value: mb(rss) }] : []),
+    ...(ok(bin) ? [{ label: t('diagnostics.performance.binary'), value: mb(bin) }] : []),
+    ...(c ? [{ label: t('diagnostics.performance.fullCheck'), value: fmt.ms(c.totalMs), unit: t('diagnostics.performance.entries', { count: c.checked }) }] : []),
   ];
   if (!threads.length && !renders.length && !ok(capWall) && !perCall)
     return (
-      <div className={s.empty}>
-        The benchmark report has no results: re-run <code>node tools/bench.mjs</code>.
-      </div>
+      <div className={s.empty}>{tx('diagnostics.performance.noResults', { command: <Cmd>node tools/bench.mjs</Cmd> })}</div>
     );
 
   return (
     <div className={s.stack}>
       <span className={s.muted}>
-        {b.stories} entries · {b.cpus} CPUs{b.cpu ? ` (${b.cpu})` : ''} · median of {b.runs} runs{b.generatedAt ? ` · ${new Date(b.generatedAt).toLocaleString()}` : ''}
+        {[t('diagnostics.performance.entries', { count: b.stories }), `${t('diagnostics.performance.cpus', { count: b.cpus })}${b.cpu ? ` (${b.cpu})` : ''}`, t('diagnostics.performance.median', { count: b.runs }), ...(b.generatedAt ? [new Date(b.generatedAt).toLocaleString()] : [])].join(' · ')}
       </span>
-      {cards.length ? <StatPanel aria-label="Engine" cards={cards} /> : null}
+      {cards.length ? <StatPanel aria-label={t('diagnostics.performance.engine')} cards={cards} /> : null}
       <div className={s.twoCol}>
         <Card>
           <CardHeader>
-            <CardTitle>Rendering: ms per story by page-pool size</CardTitle>
-            <CardDescription>{b.render ? `${b.render.stories} stories per run. ` : ''}Rendering is most of a run; parallel pages are the biggest lever.</CardDescription>
+            <CardTitle>{t('diagnostics.performance.renderTitle')}</CardTitle>
+            {b.render ? <CardDescription>{t('diagnostics.performance.renderDescription', { count: b.render.stories })}</CardDescription> : null}
           </CardHeader>
           <CardContent>
             {renders.length ? (
               <>
-                <HBars data={renders} category="pages" series={[{ key: 'ms', label: 'ms per story' }]} format={(v) => `${v} ms`} height={10} />
+                <HBars data={renders} category="pages" series={[{ key: 'ms', label: t('diagnostics.performance.renderSeries') }]} format={(v) => `${v} ms`} height={10} />
                 <DataGrid
                   data={pools.map((p) => ({
                     id: String(p),
@@ -87,24 +84,24 @@ export function Performance({ data }: { data: Data }) {
                   density="compact"
                   showToolbar={false}
                   columns={[
-                    { id: 'pages', accessorKey: 'pages', header: 'Pages' },
-                    { id: 'wall', accessorKey: 'wall', header: 'Wall' },
-                    { id: 'ms', accessorKey: 'ms', header: 'ms / story' },
-                    { id: 'speedup', accessorKey: 'speedup', header: 'vs 1 page' },
-                    { id: 'errors', accessorKey: 'errors', header: 'Errors' },
-                    { id: 'reloads', accessorKey: 'reloads', header: 'Reloads' },
+                    { id: 'pages', accessorKey: 'pages', header: t('diagnostics.performance.pagesColumn') },
+                    { id: 'wall', accessorKey: 'wall', header: t('diagnostics.performance.wall') },
+                    { id: 'ms', accessorKey: 'ms', header: t('diagnostics.performance.msPerStory') },
+                    { id: 'speedup', accessorKey: 'speedup', header: t('diagnostics.performance.vsOnePage') },
+                    { id: 'errors', accessorKey: 'errors', header: t('diagnostics.performance.errors') },
+                    { id: 'reloads', accessorKey: 'reloads', header: t('diagnostics.performance.reloads') },
                   ]}
                 />
               </>
             ) : (
-              <div className={s.empty}>No render timings in this benchmark (run without --no-render to measure them).</div>
+              <div className={s.empty}>{tx('diagnostics.performance.noRender', { flag: <Cmd>--no-render</Cmd> })}</div>
             )}
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Batch check by thread count</CardTitle>
-            <CardDescription>Same renders, same verdicts. Wall is the whole process; engine is the time the engine reports.</CardDescription>
+            <CardTitle>{t('diagnostics.performance.threadsTitle')}</CardTitle>
+            <CardDescription>{t('diagnostics.performance.threadsDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
             {threads.length ? (
@@ -114,14 +111,14 @@ export function Performance({ data }: { data: Data }) {
                 density="compact"
                 showToolbar={false}
                 columns={[
-                  { id: 'threads', accessorKey: 'threads', header: 'Threads' },
-                  { id: 'wall', accessorKey: 'wall', header: 'Wall ms' },
-                  { id: 'internal', accessorKey: 'internal', header: 'Engine ms' },
-                  { id: 'speedup', accessorKey: 'speedup', header: 'vs 1 thread' },
+                  { id: 'threads', accessorKey: 'threads', header: t('diagnostics.performance.threads') },
+                  { id: 'wall', accessorKey: 'wall', header: t('diagnostics.performance.wallMs') },
+                  { id: 'internal', accessorKey: 'internal', header: t('diagnostics.performance.engineMs') },
+                  { id: 'speedup', accessorKey: 'speedup', header: t('diagnostics.performance.vsOneThread') },
                 ]}
               />
             ) : (
-              <div className={s.empty}>No batch-check timings in this benchmark.</div>
+              <div className={s.empty}>{t('diagnostics.performance.noThreads')}</div>
             )}
           </CardContent>
         </Card>
@@ -129,19 +126,17 @@ export function Performance({ data }: { data: Data }) {
       {perCall ? (
         <Card>
           <CardHeader>
-            <CardTitle>One compare: CLI process vs stdio daemon</CardTitle>
-            <CardDescription>
-              Median over {b.perCall?.samples ?? '?'} entries. A process per call pays start-up every time; <code>pxsig serve</code> keeps one engine open and answers requests over stdio.
-            </CardDescription>
+            <CardTitle>{t('diagnostics.performance.perCallTitle')}</CardTitle>
+            <CardDescription>{tx('diagnostics.performance.perCallDescription', { count: b.perCall?.samples ?? '?', command: <Cmd>pxsig serve</Cmd> })}</CardDescription>
           </CardHeader>
           <CardContent>
             <HBars
               data={[
-                { way: 'CLI process', ms: Number(cli!.toFixed(2)) },
-                { way: 'Daemon request', ms: Number(serve!.toFixed(2)) },
+                { way: t('diagnostics.performance.cli'), ms: Number(cli!.toFixed(2)) },
+                { way: t('diagnostics.performance.server'), ms: Number(serve!.toFixed(2)) },
               ]}
               category="way"
-              series={[{ key: 'ms', label: 'ms per compare' }]}
+              series={[{ key: 'ms', label: t('diagnostics.performance.perCallSeries') }]}
               format={(v) => `${v} ms`}
               height={6}
             />

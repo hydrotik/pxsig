@@ -1,120 +1,111 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, StatPanel, StaticList, StaticListItem, StatusBadge } from '@hydrotik/design-system';
-import { type Data, type ScenarioReport, fmt, suiteKeys, suiteTitle } from '../data';
-import { HBars } from '../parts/Charts';
+import type React from 'react';
+import { Button, Card, CardContent, CardHeader, CardTitle, DataGrid, StatPanel } from '@hydrotik/design-system';
+import { type Data, type Queue, fmt, rowsWithPending, served, statusOf } from '../data';
+import { Cmd, t, tx, type CopyKey } from '../copy';
+import { Affordance } from '../parts/Affordance';
 import * as s from '../dashboard.css';
 
-function recall(rep: ScenarioReport | null) {
-  if (!rep) return null;
-  const regs = rep.scenarios.filter((x) => x.kind === 'regression');
-  const noise = rep.scenarios.filter((x) => x.kind === 'noise');
-  const changed = regs.reduce((a, x) => a + x.summary.changed, 0);
-  return {
-    changed,
-    shipped: regs.reduce((a, x) => a + x.summary.detected, 0),
-    whole: regs.reduce((a, x) => a + x.summary.detectedWholeImage, 0),
-    fp: noise.reduce((a, x) => a + (x.summary.falsePositives ?? 0), 0),
-    noise: noise.reduce((a, x) => a + x.summary.stories, 0),
-  };
+interface Item {
+  id: string;
+  label: string;
+  count: number;
+  detail: string;
+  action: CopyKey;
+  open(): void;
 }
 
-export function Overview({ data, go }: { data: Data; go(tab: string, filter?: string): void }) {
-  const c = data.check;
-  const sm = c?.summary;
-  const suites = suiteKeys(data.scenarioSuites)
-    .map((k) => ({ key: k, title: suiteTitle(k, data.scenarioSuites![k]), r: recall(data.scenarioSuites![k]) }))
-    .filter((x) => x.r) as { key: string; title: string; r: NonNullable<ReturnType<typeof recall>> }[];
-  const fp = suites.reduce((a, x) => a + x.r.fp, 0);
-  const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
-  const g = c?.manifest.gate ?? {};
+/** "dark 9 · light 3": a count split by mode, when there is more than one. */
+const byMode = (modes: string[]) => {
+  const n = new Map<string, number>();
+  for (const m of modes) n.set(m, (n.get(m) ?? 0) + 1);
+  return n.size > 1 ? [...n].map(([m, c]) => `${m} ${c}`).join(' · ') : '';
+};
+
+/** The landing tab: what needs doing, then the last check in numbers. */
+export function Overview({ data, go, startReview }: { data: Data; go(tab: string, filter?: string): void; startReview(kind: Queue): void }) {
+  // With the server, a queue opens straight into the inspector; a static report lists it instead.
+  const review = (kind: Queue) => (served ? startReview(kind) : go('stories', kind));
+  const sm = data.check?.summary;
+  const L = data.integrity;
+  const rows = rowsWithPending(data);
+  const having = (st: ReturnType<typeof statusOf>) => rows.filter((r) => statusOf(r, data.review) === st);
+  const changed = having('changed');
+  const fresh = having('new');
+  const rejected = having('rejected');
+  const errors = having('error').filter((r) => !r.skipped);
+  const flaky = having('flaky');
+  // Entries whose new violations have no decision yet (an accessibility one, or a visual approval).
+  const a11yOpen = rows.filter((r) => (r.a11y?.new ?? 0) > 0 && !data.a11yReview?.[r.id] && data.review[r.id]?.state !== 'approved');
+  const items: Item[] = [
+    { id: 'changed', label: t('overview.items.changed'), count: changed.length, detail: byMode(changed.map((r) => r.mode)), action: served ? 'overview.actions.start' : 'overview.actions.review', open: () => review('changed') },
+    { id: 'new', label: t('overview.items.new'), count: fresh.length, detail: byMode(fresh.map((r) => r.mode)), action: served ? 'overview.actions.start' : 'overview.actions.review', open: () => review('new') },
+    { id: 'rejected', label: t('overview.items.rejected'), count: rejected.length, detail: '', action: 'overview.actions.view', open: () => go('stories', 'rejected') },
+    { id: 'error', label: t('overview.items.error'), count: errors.length, detail: '', action: 'overview.actions.view', open: () => go('stories', 'error') },
+    {
+      id: 'coverage',
+      label: t('overview.items.coverage'),
+      count: L?.summary.bySeverity.error ?? 0,
+      detail: L?.summary.componentsBySeverity.error ? t('overview.components', { count: L.summary.componentsBySeverity.error }) : '',
+      action: 'overview.actions.open',
+      open: () => go('integrity'),
+    },
+    { id: 'a11y', label: t('overview.items.a11y'), count: a11yOpen.length, detail: a11yOpen.length ? t('overview.violations', { count: a11yOpen.reduce((n, r) => n + (r.a11y?.new ?? 0), 0) }) : '', action: served ? 'overview.actions.start' : 'overview.actions.open', open: () => (served ? startReview('a11y') : go('a11y')) },
+    { id: 'flaky', label: t('overview.items.flaky'), count: flaky.length, detail: byMode(flaky.map((r) => r.mode)), action: 'overview.actions.view', open: () => go('stories', 'flaky') },
+  ];
+  const open = items.some((x) => x.count > 0);
   return (
     <div className={s.stack}>
       {sm ? (
         <StatPanel
-          aria-label="Latest check"
+          className={s.statCards}
+          aria-label={t('overview.cards.label')}
           cards={[
-            { label: 'Checked', value: sm.checked, unit: sm.skipped ? `+${sm.skipped} unaffected` : `${sm.modes.join(' · ')}` },
-            { label: 'Passed', value: sm.passed, accent: 'success' },
-            { label: 'Changed', value: sm.failed, accent: sm.failed ? 'error' : undefined, type: 'filter', onSelect: () => go('stories', 'changed') },
-            { label: 'Flaky', value: sm.flaky, accent: sm.flaky ? 'warning' : undefined, type: 'filter', onSelect: () => go('stories', 'flaky') },
-            { label: 'New a11y issues', value: sm.a11yNew, unit: `of ${sm.a11yViolations}`, accent: sm.a11yNew ? 'error' : undefined, type: 'filter', onSelect: () => go('a11y') },
-            { label: 'Total', value: fmt.ms(sm.totalMs), unit: `Rust ${fmt.ms(sm.rustEngineMs)}` },
+            { label: t('overview.cards.checked'), value: sm.checked, unit: sm.skipped ? t('overview.cards.notRun', { count: sm.skipped }) : sm.modes.join(' · ') },
+            { label: t('overview.cards.passed'), value: sm.passed, accent: 'success' },
+            { label: t('overview.cards.changed'), value: sm.failed, accent: sm.failed ? 'error' : undefined, type: 'filter', onSelect: () => review('changed'), icon: <Affordance kind="navigate" /> },
+            { label: t('overview.cards.flaky'), value: sm.flaky, accent: sm.flaky ? 'warning' : undefined, type: 'filter', onSelect: () => go('stories', 'flaky'), icon: <Affordance kind="navigate" /> },
+            { label: t('overview.cards.a11y'), value: sm.a11yNew, unit: t('overview.cards.a11yOf', { count: sm.a11yViolations }), accent: sm.a11yNew ? 'error' : undefined, type: 'filter', onSelect: () => (served ? startReview('a11y') : go('a11y')), icon: <Affordance kind="navigate" /> },
+            // Wall clock for the whole check; rendering in the browser is nearly all of it.
+            { label: t('overview.cards.duration'), value: fmt.ms(sm.totalMs), unit: t('overview.cards.rendering', { time: fmt.ms(sm.renderWallMs) }) },
           ]}
         />
       ) : (
-        <div className={s.empty}>Run `pxsig check --full` to populate this view.</div>
+        <div className={s.empty}>{tx('empty.noCheck', { command: <Cmd>pxsig check --full</Cmd> })}</div>
       )}
-      <div className={s.twoCol}>
-        <Card>
-          <CardHeader>
-            <CardTitle>The gate as shipped</CardTitle>
-            <CardDescription>Applied identically by CI, the dashboard and the Storybook addon. A story can tune it with parameters.pxsig.gate.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <StaticList>
-              <StaticListItem label="Signature">grid {c?.manifest.grid ?? 64}×{c?.manifest.grid ?? 64} RGB, box-averaged</StaticListItem>
-              <StaticListItem label="Whole-image rule">
-                ssim &lt; 0.99, or &gt; 2% of cells, or ≥ {g.minCells ?? 2} cells off by &gt; {g.threshold ?? 32}
-              </StaticListItem>
-              <StaticListItem label="Detail channel">16 px tiles, 4 px blocks: ≥ 3 tiles moved by &gt; 32 or gained an edge</StaticListItem>
-              <StaticListItem label="Modes">{c ? Object.keys(c.manifest.modes ?? {}).join(' · ') : '—'}</StaticListItem>
-              <StaticListItem label="Engine">Rust (pxsig-core), spec v1 signatures in .psig baselines</StaticListItem>
-            </StaticList>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Does it catch real breaks?</CardTitle>
-            <CardDescription>Simulated regressions, recall over renders whose pixels changed. Noise scenarios must never fail.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {suites.length ? (
-              <>
-                <HBars
-                  category="suite"
-                  max={100}
-                  format={(v) => `${v}%`}
-                  series={[
-                    { key: 'whole', label: 'Whole-image signature' },
-                    { key: 'shipped', label: 'With detail channel (shipped)' },
-                  ]}
-                  data={suites.map((x) => ({ suite: x.title, whole: pct(x.r.whole, x.r.changed), shipped: pct(x.r.shipped, x.r.changed) }))}
-                  height={10}
-                />
-                <StaticList orientation="horizontal">
-                  {suites.map((x) => (
-                    <StaticListItem key={x.key} label={x.title}>
-                      {x.r.shipped}/{x.r.changed} caught
-                    </StaticListItem>
-                  ))}
-                  <StaticListItem label="False positives">{fp === 0 ? <StatusBadge status="complete" label="0" /> : <StatusBadge status="failed" label={String(fp)} />}</StaticListItem>
-                </StaticList>
-              </>
-            ) : (
-              <div className={s.empty}>No simulated-regression run for this project yet: <code>node tools/scenarios.mjs</code> writes one.</div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-      {sm ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Where the time goes</CardTitle>
-            <CardDescription>Rendering dominates; the engine is the Rust batch with a content cache.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <StatPanel
-              variant="strip"
-              aria-label="Timing"
-              cards={[
-                { label: 'Render', value: fmt.ms(sm.renderWallMs), unit: `${sm.concurrency} pages` },
-                { label: 'Rust engine', value: fmt.ms(sm.rustEngineMs), unit: `${sm.cached} cached` },
-                { label: 'Retries', value: fmt.ms(sm.retryMs) },
-                { label: 'Affected', value: sm.affected ?? 'all entries' },
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('overview.openItems')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className={s.stack}>
+            {open ? null : <span className={s.muted}>{t('overview.noOpenItems')}</span>}
+            <DataGrid
+              data={items}
+              getRowId={(r: Item) => r.id}
+              density="compact"
+              showToolbar={false}
+              enablePagination={false}
+              onRowClick={(row: { original: Item }) => row.original.count && row.original.open()}
+              columns={[
+                { id: 'label', accessorKey: 'label', header: t('overview.columns.item'), cell: ({ row }: { row: { original: Item } }) => <span className={row.original.count ? undefined : s.muted}>{row.original.label}</span> },
+                { id: 'count', accessorKey: 'count', header: t('overview.columns.count'), align: 'right', cell: ({ row }: { row: { original: Item } }) => <span className={row.original.count ? s.mono : `${s.mono} ${s.muted}`}>{row.original.count}</span> },
+                { id: 'detail', accessorKey: 'detail', header: t('overview.columns.detail'), cell: ({ row }: { row: { original: Item } }) => <span className={s.muted}>{row.original.detail}</span> },
+                {
+                  id: 'action',
+                  header: t('overview.columns.action'),
+                  align: 'right',
+                  cell: ({ row }: { row: { original: Item } }) =>
+                    row.original.count ? (
+                      <Button size="sm" variant="outline" onClick={(e: React.MouseEvent) => (e.stopPropagation(), row.original.open())}>
+                        {t(row.original.action)}
+                      </Button>
+                    ) : null,
+                },
               ]}
             />
-          </CardContent>
-        </Card>
-      ) : null}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

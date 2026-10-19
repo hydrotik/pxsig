@@ -258,7 +258,7 @@ const summary = summarize(out, {
 const report = { generatedAt: new Date().toISOString(), project: P.name, suite, manifest: { grid: manifest.grid, gate: manifest.gate, modes: manifest.modes, defaultMode: manifest.defaultMode }, summary, affected, rows: out };
 writeFileSync(join(reports, `${outName}.json`), JSON.stringify(report) + '\n');
 // Review decisions belong to the run they were made on: a new run starts clean.
-if (outName === 'check') rmSync(join(reports, 'review.json'), { force: true });
+if (outName === 'check') for (const f of ['review.json', 'a11y-review.json']) rmSync(join(reports, f), { force: true });
 const link = str('link-base');
 const sfx = outName === 'check' ? '' : `-${outName.replace(/^check-/, '')}`;
 rust(['report', '--input', join(reports, `${outName}.json`), '--format', 'markdown', '--out', join(reports, `summary${sfx}.md`), ...(link ? ['--link-base', link] : [])], { allowFail: false });

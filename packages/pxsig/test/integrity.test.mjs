@@ -117,7 +117,7 @@ test('roll-ups per component and overall; the headline names the error codes', a
   assert.equal(gamma.counts['missing-baseline-image'], 3);
   assert.equal(led.components.find((c) => c.component === 'components/Alpha').severity, 'info');
   assert.equal(led.summary.status, 'attention');
-  assert.match(led.summary.headline, /components need attention: .*1 unregistered story/);
+  assert.match(led.summary.headline, /components with errors: .*1 unregistered story/);
   assert.equal(led.schemaVersion, 1);
   assert.deepEqual(Object.keys(led).slice(0, 4), ['schemaVersion', 'generatedAt', 'tool', 'sources']);
   // Filtering for a view.

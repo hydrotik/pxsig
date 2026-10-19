@@ -55,6 +55,7 @@ export const cards = style({
 });
 export const storyCard = style({
   all: 'unset',
+  position: 'relative',
   boxSizing: 'border-box',
   display: 'flex',
   flexDirection: 'column',
@@ -71,6 +72,62 @@ export const storyCard = style({
       boxShadow: `0 0 0 3px color-mix(in srgb, ${vars.color.focusRing} 50%, transparent)`,
     },
   },
+});
+// A status edge on each card, so problems stand out while scrolling.
+const edge = (color: string) => ({ borderInlineStartColor: color, borderInlineStartWidth: vars.ring.width });
+globalStyle(`${storyCard}[data-status="changed"]`, edge(vars.color.warning));
+globalStyle(`${storyCard}[data-status="flaky"]`, edge(vars.color.warning));
+globalStyle(`${storyCard}[data-status="new"]`, edge(vars.color.primary));
+globalStyle(`${storyCard}[data-status="error"]`, edge(vars.color.destructive));
+globalStyle(`${storyCard}[data-status="rejected"]`, edge(vars.color.destructive));
+globalStyle(`${storyCard}[data-status="approved"]`, edge(vars.color.success));
+// --- affordance: what a clickable card does, top-right ---------------------------------------
+export const affordance = style({
+  position: 'absolute',
+  // Close to the corner, with the glyph centred on the card's first text row (the label).
+  insetBlockStart: vars.space['1_5'],
+  insetInlineEnd: vars.space['1'],
+  display: 'flex',
+  padding: vars.space['1'],
+  borderRadius: vars.radii.md,
+  // A backing so the icon reads over a thumbnail as well as on a plain card.
+  backgroundColor: `color-mix(in srgb, ${vars.color.surface} 85%, transparent)`,
+  color: vars.color.textMuted,
+  pointerEvents: 'none',
+  zIndex: 1,
+  transition: 'color 120ms',
+});
+globalStyle(`${affordance} svg`, { inlineSize: '0.75rem', blockSize: '0.75rem' });
+globalStyle(`button:hover ${affordance}, a:hover ${affordance}, button:focus-visible ${affordance}`, { color: vars.color.primary });
+// StatPanel's clickable cards are not a positioning context yet (until the pattern moves into the
+// design system); its filter and link cards render as button and a.
+export const statCards = style({});
+globalStyle(`${statCards} button, ${statCards} a`, { position: 'relative' });
+// The icon slot beside the label would take room the label needs; the affordance sits in the corner.
+globalStyle(`${statCards} span:has(> ${affordance})`, { display: 'contents' });
+globalStyle(`${statCards} :is(button, a) > span:has(${affordance})`, { paddingInlineEnd: vars.space['5'] });
+
+export const inlineIcon = style({ inlineSize: '0.75rem', blockSize: '0.75rem', flexShrink: 0 });
+
+// Grouped grid: each component's cards sit on a band, alternating, so a group reads as one row.
+export const groups = style({ display: 'flex', flexDirection: 'column' });
+export const groupBand = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: vars.space['3'],
+  padding: vars.space['3'],
+  borderRadius: vars.radii.lg,
+  selectors: {
+    '&:nth-of-type(odd)': { backgroundColor: `color-mix(in srgb, ${vars.color.text} 4%, transparent)` },
+  },
+});
+export const groupHead = style({
+  display: 'flex',
+  alignItems: 'baseline',
+  gap: vars.space['2'],
+  margin: 0,
+  fontSize: vars.font.size.sm,
+  fontWeight: vars.font.weight.semibold,
 });
 export const thumb = style({
   position: 'relative',
@@ -140,6 +197,50 @@ export const insHead = style({
   borderBlockEnd: `1px solid ${vars.color.border}`,
 });
 export const insTitle = style({ margin: 0, fontFamily: vars.font.family.mono, fontSize: vars.font.size.sm, wordBreak: 'break-all' });
+// Review session: progress above the inspector, a summary when every entry is decided.
+export const sessionBar = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: vars.space['3'],
+  paddingInline: vars.space['4'],
+  paddingBlock: vars.space['2'],
+  borderBlockEnd: `1px solid ${vars.color.border}`,
+  fontSize: vars.font.size.sm,
+});
+export const note = style({
+  display: 'flex',
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  gap: vars.space['2'],
+  paddingInline: vars.space['4'],
+  paddingBlock: vars.space['2'],
+  borderBlockEnd: `1px solid ${vars.color.border}`,
+  backgroundColor: `color-mix(in srgb, ${vars.color.destructive} 8%, transparent)`,
+  fontSize: vars.font.size.sm,
+});
+export const summaryDialog = style({ inlineSize: 'min(100%, 40rem)', padding: 0, gap: 0 });
+export const summary = style({ display: 'flex', flexDirection: 'column', gap: vars.space['4'], padding: vars.space['6'] });
+// --- help: term rows beside a drawing of the screen -----------------------------------------
+export const helpSection = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: vars.space['5'] });
+export const helpRows = style({ display: 'grid', columnGap: vars.space['4'], margin: 0, flex: '2 1 26rem', minInlineSize: 0 });
+export const helpRow = style({
+  display: 'grid',
+  gridColumn: '1 / -1',
+  gridTemplateColumns: 'subgrid',
+  paddingBlock: vars.space['1_5'],
+  paddingInline: vars.space['2'],
+  borderRadius: vars.radii.md,
+  fontSize: vars.font.size.sm,
+  outline: 'none',
+  selectors: {
+    '&[data-active]': { backgroundColor: `color-mix(in srgb, ${vars.color.primary} 10%, transparent)` },
+    '&:focus-visible': { boxShadow: `0 0 0 ${vars.ring.width} color-mix(in srgb, ${vars.color.focusRing} 50%, transparent)` },
+  },
+});
+globalStyle(`${helpRow} dt`, { color: vars.color.textMuted });
+globalStyle(`${helpRow} dd`, { margin: 0 });
+export const helpDrawing = style({ flex: '1 1 18rem', maxInlineSize: '28rem', position: 'sticky', insetBlockStart: vars.space['4'] });
+export const schematic = style({ display: 'block', inlineSize: '100%', blockSize: 'auto' });
 export const insToolbar = style({
   paddingBlock: vars.space['2'],
   paddingInline: vars.space['4'],
@@ -247,7 +348,9 @@ export const insSide = style({
 export const sideSection = style({ display: 'flex', flexDirection: 'column', gap: vars.space['2'] });
 export const sectionTitle = style({ margin: 0, fontSize: vars.font.size.sm, fontWeight: vars.font.weight.semibold });
 export const readout = style({ display: 'flex', flexDirection: 'column', gap: vars.space['1_5'], minBlockSize: '6.5rem' });
-export const pxRow = style({ display: 'flex', alignItems: 'center', gap: vars.space['2'] });
+// Every row is as tall as its tallest content (the Δ badge), with or without a value.
+export const pxRow = style({ display: 'flex', alignItems: 'center', gap: vars.space['2'], minBlockSize: '1.5rem', minInlineSize: 0 });
+export const oneLine = style({ minInlineSize: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: vars.font.size.sm });
 export const swatch = style({
   inlineSize: vars.space['4'],
   blockSize: vars.space['4'],
@@ -288,6 +391,9 @@ globalStyle(`${sigs} img`, {
 });
 export const resources = style({ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: vars.space['1'] });
 globalStyle(`${resources} li`, { display: 'flex', alignItems: 'center', gap: vars.space['2'], fontSize: vars.font.size.xs, minInlineSize: 0 });
+// A violation: impact and rule on the first line; its tag and action wrap below when narrow.
+export const a11yItem = style({ flexWrap: 'wrap', rowGap: vars.space['1'] });
+export const a11yRule = style({ flex: '1 1 9rem', minInlineSize: 0, overflowWrap: 'anywhere' });
 export const grow = style({ flex: 1, minInlineSize: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' });
 export const sliderCtl = style({ inlineSize: '9rem' });
 // Same height as the toolbar's sm buttons so a switch + label lines up with them.
