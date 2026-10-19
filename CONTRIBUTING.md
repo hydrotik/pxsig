@@ -50,11 +50,18 @@ request:
   renders, diffs, reports, `target/` or `dist/`. Those belong to the projects under test.
 - **No absolute home-directory paths.**
 - **No names from other repositories or organisations.** The script also checks a denylist of
-  names. The list is not committed, because it would publish the names. CI reads it from a secret
-  (`PXSIG_CLEAN_TERMS`, comma-separated). Locally, put one name per line in a `.clean-terms` file
-  at the repository root; it is git-ignored. Lines starting with `#` are comments.
+  names. The list is never committed or uploaded anywhere, because that would publish the names:
+  it lives in a git-ignored `.clean-terms` file at the repository root (one name per line, `#`
+  for comments) on the maintainer's machine. CI does not check names.
 
-Run `node scripts/check-clean.mjs` before you push. With `--all` it checks every file on disk,
+Enable the pre-push hook once per clone; it runs the check, denylist included, before every push
+and refuses the push on any problem (or when `.clean-terms` is missing):
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Run `node scripts/check-clean.mjs` by hand any time. With `--all` it checks every file on disk,
 not only tracked ones.
 
 In examples and docs use neutral names: `packages/ui`, `apps/storybook`, `my-design-system`.

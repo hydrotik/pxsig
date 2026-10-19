@@ -1,0 +1,8 @@
+#!/bin/sh
+# Runs before every push: nothing that must stay out of this repository gets published.
+# The denylist of names lives only on your machine (.clean-terms, git-ignored); CI checks
+# everything else. Enable once per clone: git config core.hooksPath .githooks
+node scripts/check-clean.mjs --require-terms || {
+  echo "pre-push: refused. Fix the files above (or add a .clean-terms file), then push again." >&2
+  exit 1
+}

@@ -10,8 +10,10 @@
  *   - absolute home-directory paths
  *   - paths from a consuming repository's package layout (configured below: `forbiddenPaths`)
  *   - a denylist of names that must not appear, matched case-sensitively on word boundaries. The
- *     list is not committed (it would publish the names): it comes from the PXSIG_CLEAN_TERMS
- *     environment variable (comma-separated; a CI secret) and/or a git-ignored `.clean-terms` file.
+ *     list is never committed or uploaded (it would publish the names): it lives in a git-ignored
+ *     `.clean-terms` file on the maintainer's machine (or PXSIG_CLEAN_TERMS, comma-separated), and
+ *     the pre-push hook (.githooks/pre-push) runs this check with `--require-terms` before every
+ *     push. CI runs it without the denylist.
  * Binary-looking files and lockfiles are skipped for the text checks.
  */
 import { execFileSync } from 'node:child_process';
@@ -58,6 +60,11 @@ function terms() {
   return [...new Set(list.map((t) => t.trim()).filter((t) => t && !t.startsWith('#')))];
 }
 
+if (process.argv.includes('--require-terms') && !terms().length) {
+  console.error('[check-clean] no denylist: create .clean-terms (one name per line) before pushing');
+  process.exit(1);
+}
+
 const problems = [];
 const denylist = terms().map((t) => ({ t, re: new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`) }));
 for (const f of files()) {
@@ -87,4 +94,4 @@ if (problems.length) {
   for (const p of problems.slice(0, 200)) console.error(`  ${p}`);
   process.exit(1);
 }
-console.log(`[check-clean] ok · ${denylist.length ? `${denylist.length} denylisted names checked` : 'no denylist configured (set PXSIG_CLEAN_TERMS or .clean-terms)'}`);
+console.log(`[check-clean] ok · ${denylist.length ? `${denylist.length} denylisted names checked` : 'no denylist here (names are checked by the pre-push hook on the maintainer\'s machine)'}`);
