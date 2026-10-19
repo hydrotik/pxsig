@@ -12,8 +12,7 @@
   "main": "preset.cjs",
   "exports": {
     ".": "./preset.cjs",
-    "./preset": "./preset.cjs",
-    "./manager": "./manager.mjs"
+    "./preset": "./preset.cjs"
   },
   "files": [
     "preset.cjs",

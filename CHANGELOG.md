@@ -3,6 +3,16 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
+## Unreleased
+
+### Fixed
+
+- **The Storybook addon registered its panel twice** when listed by name
+  (`addons: ['@pxsig/storybook-addon']`): Storybook loads both a package's `./manager` export and its
+  preset, and the preset already adds the manager. The `./manager` export is gone.
+- **Release re-runs.** `Publish pxsig` skips a version that is already published, like the other
+  packages, so a re-run after a partial release (or a dry run of a released version) passes.
+
 ## 0.2.1 - 2026-10-19
 
 ### Fixed
