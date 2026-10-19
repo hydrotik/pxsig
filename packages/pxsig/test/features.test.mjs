@@ -423,6 +423,15 @@ test('the server: accepting a11y violations updates the accepted list; undo rest
     assert.deepEqual(log.map((l) => l.action), ['accept', 'undo']);
     assert.equal((await post('a11y-reject')).status, 200);
     assert.deepEqual(JSON.parse(readFileSync(a11yPath, 'utf8'))[id], ['aria-hidden-focus'], 'reject leaves the accepted list alone');
+    // Unaccept takes a rule off the list, and the report shows it as new straight away.
+    const r = await fetch(`http://127.0.0.1:${port}/__pxsig/a11y-unaccept`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, rule: 'aria-hidden-focus' }) });
+    assert.equal(r.status, 200);
+    assert.deepEqual(JSON.parse(readFileSync(a11yPath, 'utf8'))[id], []);
+    const row2 = JSON.parse(readFileSync(checkPath, 'utf8')).rows.find((x) => x.id === id);
+    assert.equal(row2.a11y.new, 2);
+    const again = await fetch(`http://127.0.0.1:${port}/__pxsig/a11y-unaccept`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, rule: 'aria-hidden-focus' }) });
+    assert.equal(again.status, 409, 'a rule that is not on the list is refused');
+    assert.equal(readFileSync(join(f.px, 'a11y-decisions.ndjson'), 'utf8').trim().split('\n').map((l) => JSON.parse(l).action).at(-1), 'unaccept');
   } finally {
     proc.kill();
   }

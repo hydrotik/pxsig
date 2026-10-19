@@ -83,7 +83,7 @@ test('review refuses without confirm: true, before touching the server', async (
 test('review offers the accessibility actions, under the same confirm rule', async () => {
   const list = await rpc('tools/list', {});
   const tool = list.result.tools.find((x) => x.name === 'pxsig_review');
-  assert.deepEqual(tool.inputSchema.properties.action.enum, ['approve', 'reject', 'unreview', 'a11y-accept', 'a11y-reject', 'a11y-unreview']);
+  assert.deepEqual(tool.inputSchema.properties.action.enum, ['approve', 'reject', 'unreview', 'a11y-accept', 'a11y-reject', 'a11y-unreview', 'a11y-unaccept']);
   const r = await call('pxsig_review', { action: 'a11y-accept', ids: ['components-button--default'], confirm: false });
   assert.equal(r.isError, true);
   assert.match(r.content[0].text, /confirm: true/);

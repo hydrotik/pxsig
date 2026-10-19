@@ -250,6 +250,19 @@ export function Inspector({
     }
   };
 
+  // Take one rule off this entry's accepted list: it is reported as new and can be accepted again.
+  const unaccept = async (rule: string) => {
+    if (!row) return;
+    setBusy(true);
+    try {
+      await a11yAction('unaccept', row.id, rule);
+    } catch (e) {
+      alert(t('inspector.review.failed', { action: t('inspector.a11y.unaccept'), error: (e as Error).message }));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // Other modes / states of the same story: switch between them in place.
   const siblings =
     row && !target?.scenario
@@ -782,20 +795,25 @@ export function Inspector({
               <div className={s.readout}>
                 {!pixels ? (
                   <span className={s.muted}>{tx('inspector.pixel.needsServer', { command: <Cmd>pxsig serve</Cmd> })}</span>
-                ) : !hover ? (
-                  <span className={s.muted}>{t('inspector.pixel.hover')}</span>
                 ) : (
+                  // The same rows with or without a pointer, so the panel never changes height.
                   <>
                     <div className={s.pxRow}>
-                      <span className={s.mono}>{t('inspector.pixel.coords', { x: hover.ix, y: hover.iy })}</span>
-                      <span className={`${s.mono} ${s.muted}`}>
-                        {t('inspector.pixel.cellTile', { cx: Math.floor(hover.ix / cw), cy: Math.floor(hover.iy / chh), tx: Math.floor(hover.ix / 16), ty: Math.floor(hover.iy / 16) })}
-                      </span>
+                      {hover ? (
+                        <>
+                          <span className={s.mono}>{t('inspector.pixel.coords', { x: hover.ix, y: hover.iy })}</span>
+                          <span className={`${s.mono} ${s.muted} ${s.oneLine}`}>
+                            {t('inspector.pixel.cellTile', { cx: Math.floor(hover.ix / cw), cy: Math.floor(hover.iy / chh), tx: Math.floor(hover.ix / 16), ty: Math.floor(hover.iy / 16) })}
+                          </span>
+                        </>
+                      ) : (
+                        <span className={`${s.muted} ${s.oneLine}`}>{t('inspector.pixel.hover')}</span>
+                      )}
                     </div>
                     {(
                       [
-                        [t('inspector.pixel.before'), hover.before],
-                        [t('inspector.pixel.after'), hover.after],
+                        [t('inspector.pixel.before'), hover?.before],
+                        [t('inspector.pixel.after'), hover?.after],
                       ] as const
                     ).map(([label, v]) => (
                       <div className={s.pxRow} key={label}>
@@ -811,15 +829,15 @@ export function Inspector({
                           {label}
                         </span>
                         <span className={s.mono}>
-                          {v
-                            ? `${hex(v[0], v[1], v[2])}${v[3] < 255 ? ` α${v[3]}` : ''}`
-                            : t('inspector.pixel.outside')}
+                          {!hover ? '—' : v ? `${hex(v[0], v[1], v[2])}${v[3] < 255 ? ` α${v[3]}` : ''}` : t('inspector.pixel.outside')}
                         </span>
                       </div>
                     ))}
                     <div className={s.pxRow}>
                       <span className={s.micro}>{t('inspector.pixel.maxDelta')}</span>
-                      {dmax > tol ? (
+                      {!hover ? (
+                        <span className={s.mono}>—</span>
+                      ) : dmax > tol ? (
                         <Badge variant="destructive">{dmax}</Badge>
                       ) : (
                         <span className={s.mono}>{dmax}</span>
@@ -948,20 +966,27 @@ export function Inspector({
                 </span>
                 <ul className={s.resources}>
                   {row.a11y.violations.map((v) => (
-                    <li key={v.id}>
+                    <li key={v.id} className={s.a11yItem}>
                       <StatusBadge
                         label={v.impact ?? 'n/a'}
                         tone={
                           v.impact === 'critical' || v.impact === 'serious' ? 'error' : 'warning'
                         }
                       />
-                      <span className={s.grow} title={v.help}>
+                      <span className={s.a11yRule} title={v.help}>
                         {v.id} · {t('inspector.a11y.nodes', { count: v.nodes })}
                       </span>
                       {(row.a11y?.baseline ? !row.a11y.baseline.includes(v.id) : newA11y > 0) ? (
                         <Badge variant="destructive">{t('inspector.a11y.new')}</Badge>
                       ) : (
-                        <Badge variant="secondary">{t('inspector.a11y.accepted')}</Badge>
+                        <>
+                          <Badge variant="secondary">{t('inspector.a11y.accepted')}</Badge>
+                          {canReview ? (
+                            <Button size="sm" variant="ghost" disabled={busy} onClick={() => unaccept(v.id)} title={t('inspector.a11y.unacceptTitle')}>
+                              {t('inspector.a11y.unaccept')}
+                            </Button>
+                          ) : null}
+                        </>
                       )}
                     </li>
                   ))}

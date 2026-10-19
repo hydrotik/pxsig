@@ -538,19 +538,20 @@ const tools = [
   {
     name: 'pxsig_review',
     description:
-      "Decide on entries. Visual: approve (the latest render becomes the baseline; its axe violations are accepted with it), reject, or unreview (clearing an approval restores the baseline it replaced). Accessibility: a11y-accept (the entry's current axe violations go on its accepted list), a11y-reject (marked for a fix), a11y-unreview (clearing an accept restores the previous list). Every action changes what future checks report: pass confirm: true ONLY when the user explicitly asked for this action on these exact entries in this conversation — never on your own judgement that a change looks intended or a violation acceptable. Needs the pxsig server.",
+      "Decide on entries. Visual: approve (the latest render becomes the baseline; its axe violations are accepted with it), reject, or unreview (clearing an approval restores the baseline it replaced). Accessibility: a11y-accept (the entry's current axe violations go on its accepted list), a11y-reject (marked for a fix), a11y-unreview (clearing an accept restores the previous list), a11y-unaccept (takes a rule, or every rule, off the accepted list, so it is reported as new). Every action changes what future checks report: pass confirm: true ONLY when the user explicitly asked for this action on these exact entries in this conversation — never on your own judgement that a change looks intended or a violation acceptable. Needs the pxsig server.",
     inputSchema: {
       type: 'object',
       properties: {
         project: PROJECT,
-        action: { type: 'string', enum: ['approve', 'reject', 'unreview', 'a11y-accept', 'a11y-reject', 'a11y-unreview'] },
+        action: { type: 'string', enum: ['approve', 'reject', 'unreview', 'a11y-accept', 'a11y-reject', 'a11y-unreview', 'a11y-unaccept'] },
+        rule: { type: 'string', description: 'a11y-unaccept only: the axe rule to take off the accepted list (default: every rule on it).' },
         ids: { type: 'array', items: { type: 'string' }, minItems: 1 },
         confirm: { type: 'boolean', description: 'true only on an explicit user instruction for these ids.' },
       },
       required: ['action', 'ids', 'confirm'],
       additionalProperties: false,
     },
-    async run({ project, action, ids, confirm }) {
+    async run({ project, action, ids, confirm, rule }) {
       if (confirm !== true) throw new Error('refused: review actions need confirm: true, given only on an explicit user instruction for these ids');
       const bad = ids.filter((id) => !ID_RE.test(id));
       if (bad.length) throw new Error(`bad ids: ${bad.join(', ')}`);
@@ -559,7 +560,7 @@ const tools = [
       if (!srv.up) throw new Error(`the pxsig server is not running (${C.serverUrl}); ${srv.hint}`);
       const done = [];
       for (const id of ids) {
-        const r = await http(C, `/__pxsig/${action}`, { method: 'POST', body: { project: C.P.name, id, via: 'mcp' }, timeout: 120_000 });
+        const r = await http(C, `/__pxsig/${action}`, { method: 'POST', body: { project: C.P.name, id, via: 'mcp', ...(rule ? { rule } : {}) }, timeout: 120_000 });
         done.push({ id, entry: r.entry ?? null });
       }
       return { action, done };

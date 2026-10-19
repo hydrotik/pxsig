@@ -35,6 +35,8 @@ export function Accessibility({ data, onOpen, startReview }: { data: Data; onOpe
   if (!rows.length) return <div className={s.empty}>{tx('a11y.empty', { flag: <Cmd>--no-a11y</Cmd> })}</div>;
   const sm = data.check.summary;
   const open = reviewQueue(data, 'a11y').filter((r) => !decisionOf(data, 'a11y', r.id)).length;
+  // A rule every entry has accepted is greyed out: still listed, nothing to act on.
+  const dim = (r: RuleRow, extra = '') => (r.fresh ? extra : `${extra} ${s.muted}`).trim() || undefined;
   const tone = (i: string) => (i === 'critical' || i === 'serious' ? 'error' : i === 'moderate' ? 'warning' : 'neutral');
   return (
     <div className={s.stack}>
@@ -68,11 +70,17 @@ export function Accessibility({ data, onOpen, startReview }: { data: Data; onOpe
             showToolbar={false}
             onRowClick={(row: { original: RuleRow }) => onOpen(row.original.rows[0], row.original.rows)}
             columns={[
-              { id: 'id', accessorKey: 'id', header: t('a11y.columns.rule'), cell: ({ row }: { row: { original: RuleRow } }) => <span className={s.mono}>{row.original.id}</span> },
-              { id: 'impact', accessorKey: 'impact', header: t('a11y.columns.impact'), cell: ({ row }: { row: { original: RuleRow } }) => <StatusBadge label={row.original.impact} tone={tone(row.original.impact)} /> },
-              { id: 'help', accessorKey: 'help', header: t('a11y.columns.description') },
-              { id: 'entries', accessorKey: 'entries', header: t('a11y.columns.entries') },
-              { id: 'nodes', accessorKey: 'nodes', header: t('a11y.columns.nodes') },
+              {
+                id: 'status',
+                header: t('a11y.columns.status'),
+                cell: ({ row }: { row: { original: RuleRow } }) =>
+                  row.original.fresh ? <StatusBadge label={t('a11y.status.new', { count: row.original.fresh })} tone="error" /> : <StatusBadge label={t('a11y.status.accepted')} tone="neutral" />,
+              },
+              { id: 'id', accessorKey: 'id', header: t('a11y.columns.rule'), cell: ({ row }: { row: { original: RuleRow } }) => <span className={dim(row.original, s.mono)}>{row.original.id}</span> },
+              { id: 'impact', accessorKey: 'impact', header: t('a11y.columns.impact'), cell: ({ row }: { row: { original: RuleRow } }) => (row.original.fresh ? <StatusBadge label={row.original.impact} tone={tone(row.original.impact)} /> : <span className={s.muted}>{row.original.impact}</span>) },
+              { id: 'help', accessorKey: 'help', header: t('a11y.columns.description'), cell: ({ row }: { row: { original: RuleRow } }) => <span className={dim(row.original)}>{row.original.help}</span> },
+              { id: 'entries', accessorKey: 'entries', header: t('a11y.columns.entries'), cell: ({ row }: { row: { original: RuleRow } }) => <span className={dim(row.original)}>{row.original.entries}</span> },
+              { id: 'nodes', accessorKey: 'nodes', header: t('a11y.columns.nodes'), cell: ({ row }: { row: { original: RuleRow } }) => <span className={dim(row.original)}>{row.original.nodes}</span> },
               { id: 'accepted', header: t('a11y.columns.accepted'), cell: ({ row }: { row: { original: RuleRow } }) => <span className={s.muted}>{row.original.entries - row.original.fresh}</span> },
               { id: 'fresh', accessorKey: 'fresh', header: t('a11y.columns.new'), cell: ({ row }: { row: { original: RuleRow } }) => (row.original.fresh ? <Badge variant="destructive">{row.original.fresh}</Badge> : <span className={s.muted}>0</span>) },
             ]}

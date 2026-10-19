@@ -353,8 +353,9 @@ export async function reviewAction(action: 'approve' | 'reject' | 'unreview', id
   if (!r.ok) throw new Error(body.error || r.statusText);
 }
 
-export async function a11yAction(action: 'accept' | 'reject' | 'unreview', id: string): Promise<void> {
-  const r = await fetch(`/__pxsig/a11y-${action}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: withProject({ id }) });
+/** `unaccept` takes `rule` (or every rule) off the entry's accepted list. */
+export async function a11yAction(action: 'accept' | 'reject' | 'unreview' | 'unaccept', id: string, rule?: string): Promise<void> {
+  const r = await fetch(`/__pxsig/a11y-${action}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: withProject(rule ? { id, rule } : { id }) });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body.error || r.statusText);
 }

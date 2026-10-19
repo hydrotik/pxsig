@@ -348,7 +348,9 @@ export const insSide = style({
 export const sideSection = style({ display: 'flex', flexDirection: 'column', gap: vars.space['2'] });
 export const sectionTitle = style({ margin: 0, fontSize: vars.font.size.sm, fontWeight: vars.font.weight.semibold });
 export const readout = style({ display: 'flex', flexDirection: 'column', gap: vars.space['1_5'], minBlockSize: '6.5rem' });
-export const pxRow = style({ display: 'flex', alignItems: 'center', gap: vars.space['2'] });
+// Every row is as tall as its tallest content (the Δ badge), with or without a value.
+export const pxRow = style({ display: 'flex', alignItems: 'center', gap: vars.space['2'], minBlockSize: '1.5rem', minInlineSize: 0 });
+export const oneLine = style({ minInlineSize: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: vars.font.size.sm });
 export const swatch = style({
   inlineSize: vars.space['4'],
   blockSize: vars.space['4'],
@@ -389,6 +391,9 @@ globalStyle(`${sigs} img`, {
 });
 export const resources = style({ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: vars.space['1'] });
 globalStyle(`${resources} li`, { display: 'flex', alignItems: 'center', gap: vars.space['2'], fontSize: vars.font.size.xs, minInlineSize: 0 });
+// A violation: impact and rule on the first line; its tag and action wrap below when narrow.
+export const a11yItem = style({ flexWrap: 'wrap', rowGap: vars.space['1'] });
+export const a11yRule = style({ flex: '1 1 9rem', minInlineSize: 0, overflowWrap: 'anywhere' });
 export const grow = style({ flex: 1, minInlineSize: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' });
 export const sliderCtl = style({ inlineSize: '9rem' });
 // Same height as the toolbar's sm buttons so a switch + label lines up with them.

@@ -21,6 +21,7 @@
  *        with the render as its image); the old baseline is snapshotted and the write logged
  *   POST /__pxsig/reject {id} · /__pxsig/unreview {id}   unreview of an approval restores the old baseline
  *   POST /__pxsig/a11y-accept {id} · a11y-reject · a11y-unreview   the entry's axe violations
+ *   POST /__pxsig/a11y-unaccept {id, rule?}   take a rule (or all) off the entry's accepted list
  *   POST /__pxsig/check {ids?|story?|stories?|all?}   render + Rust check, merged into check.json
  *   POST /__pxsig/repair {apply?, only?}   the safe repairs: plan, or apply (never prunes)
  *   GET  /p/<project>/renders/latest/<id>.png · /p/<project>/renders/base/<id>.png (from the .psig)
@@ -405,6 +406,17 @@ function a11yReview(S, action, id, meta = {}) {
     a11yLog(P, { at, by, via, action: 'accept', id, before, after, reason: meta.reason ?? null });
     av[id] = { state: 'accepted', at, before };
   } else if (action === 'a11y-reject') av[id] = { state: 'rejected', at };
+  else if (action === 'a11y-unaccept') {
+    // Take a rule (or every rule) off the accepted list: the report shows it as new at once.
+    const current = base[id] ?? [];
+    const after = current.filter((r) => meta.rule && r !== meta.rule);
+    if (after.length === current.length) throw httpError(409, `${meta.rule ?? 'nothing'} is not on the accepted list of ${id}`);
+    base[id] = after;
+    writeA11y(P, base);
+    a11yLog(P, { at, by, via, action: 'unaccept', id, before: current, after, rule: meta.rule ?? null });
+    delete av[id];
+    updateCheckRows(S, (r) => (r.id === id && r.a11y?.violations ? { ...r, a11y: { ...r.a11y, baseline: after, new: r.a11y.violations.filter((v) => !after.includes(v.id)).length } } : null));
+  }
   else if (action === 'a11y-unreview') {
     const prev = av[id];
     if (prev?.state === 'accepted') {
@@ -658,7 +670,7 @@ async function api(req, res, action, q) {
   const { id } = body;
   if (typeof id !== 'string' || !/^[a-z0-9-]+--[a-z0-9-]+(__[a-z0-9-]+)?(@[a-z0-9-]+)?$/.test(id)) return json(res, 400, { error: 'bad id' });
   const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : undefined);
-  const meta = { batch: s(body.batch, 80)?.replace(/[^\w.-]/g, ''), via: s(body.via, 20)?.replace(/[^\w-]/g, ''), reason: s(body.reason, 500), kind: s(body.kind, 10) };
+  const meta = { batch: s(body.batch, 80)?.replace(/[^\w.-]/g, ''), via: s(body.via, 20)?.replace(/[^\w-]/g, ''), reason: s(body.reason, 500), kind: s(body.kind, 10), rule: s(body.rule, 80)?.replace(/[^\w-]/g, '') };
   if (action.startsWith('a11y-')) return json(res, 200, { ok: true, project: S.name, id, entry: a11yReview(S, action, id, meta) });
   json(res, 200, { ok: true, project: S.name, id, entry: await review(S, action, id, meta) });
 }

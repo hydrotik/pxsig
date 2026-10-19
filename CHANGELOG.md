@@ -40,6 +40,13 @@ semantic versioning.
   Reject), and each violation is marked New or Accepted. The Accessibility tab says how to accept
   new violations, starts the review, and counts accepted entries per rule. "Accepted list" replaces
   "a11y baseline" in the dashboard.
+- **Unaccept.** An accepted violation in the inspector has an Unaccept button that takes the rule
+  off the entry's accepted list; the report shows it as new at once and it can be accepted again
+  (`POST /__pxsig/a11y-unaccept {id, rule?}`, `pxsig_review` action `a11y-unaccept` with `rule`;
+  logged). The Accessibility tab's rules table leads with a status (N new / Accepted) and greys out
+  rules every entry has accepted.
+- **No layout shift in the pixel readout.** It keeps the same rows with or without a pointer over
+  the image, so the panels below it no longer move.
 - **Files: "Copy path"** replaces the icon-only copy control, which read like a second "open" link.
 - **Help** explains how the page is organised, and each section sits beside a drawing of the
   dashboard or the inspector: pointing at a row highlights where it appears. New sections cover the
