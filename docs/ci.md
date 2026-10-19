@@ -33,12 +33,12 @@ jobs:
     env:
       STORE: packages/ui/.pxsig
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: pnpm
@@ -53,7 +53,7 @@ jobs:
 
       # The last full result from main, so entries a pull request does not touch
       # carry a result forward instead of reading as never checked.
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v6
         with:
           path: ${{ env.STORE }}/reports
           key: pxsig-reports-${{ github.sha }}
@@ -75,7 +75,7 @@ jobs:
         if: always()
         run: npx pxsig report --project ui --out pxsig-report
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: pxsig
@@ -85,7 +85,7 @@ jobs:
             ${{ env.STORE }}/reports/junit.xml
             ${{ env.STORE }}/diffs/latest
 
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         if: github.event_name == 'push'
         with:
           path: ${{ env.STORE }}/reports
