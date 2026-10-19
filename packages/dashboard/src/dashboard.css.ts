@@ -84,8 +84,9 @@ globalStyle(`${storyCard}[data-status="approved"]`, edge(vars.color.success));
 // --- affordance: what a clickable card does, top-right ---------------------------------------
 export const affordance = style({
   position: 'absolute',
-  insetBlockStart: vars.space['2'],
-  insetInlineEnd: vars.space['2'],
+  // Close to the corner, with the glyph centred on the card's first text row (the label).
+  insetBlockStart: vars.space['1_5'],
+  insetInlineEnd: vars.space['1'],
   display: 'flex',
   padding: vars.space['1'],
   borderRadius: vars.radii.md,
