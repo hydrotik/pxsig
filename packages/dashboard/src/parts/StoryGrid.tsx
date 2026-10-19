@@ -29,7 +29,11 @@ export function StoryCard({ data, row, scenario, onOpen }: { data: Data; row: Ro
           {row.state ? <Badge variant="secondary">{row.state}</Badge> : null}
           {row.browser && row.browser !== 'chromium' ? <Badge variant="secondary">{row.browser}</Badge> : null}
           {scenario && row.changed === false ? <Badge variant="secondary">{t('review.card.unchanged')}</Badge> : null}
-          {row.a11y?.new ? <Badge variant="destructive">{t('review.card.newA11y', { count: row.a11y.new })}</Badge> : null}
+          {data.a11yReview?.[row.id] ? (
+            <Badge variant={data.a11yReview[row.id].state === 'accepted' ? 'secondary' : 'destructive'}>{t(data.a11yReview[row.id].state === 'accepted' ? 'review.card.a11yAccepted' : 'review.card.a11yRejected')}</Badge>
+          ) : row.a11y?.new ? (
+            <Badge variant="destructive">{t('review.card.newA11y', { count: row.a11y.new })}</Badge>
+          ) : null}
           {flags.map((i) => (
             <Badge key={i.code} variant={i.severity === 'error' ? 'destructive' : 'secondary'} title={i.reason}>
               {codeCopy(i.code).title}

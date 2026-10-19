@@ -20,6 +20,7 @@
  *   POST /__pxsig/approve {id, batch?, via?, reason?, kind?}   latest render → baseline (`.psig`
  *        with the render as its image); the old baseline is snapshotted and the write logged
  *   POST /__pxsig/reject {id} · /__pxsig/unreview {id}   unreview of an approval restores the old baseline
+ *   POST /__pxsig/a11y-accept {id} · a11y-reject · a11y-unreview   the entry's axe violations
  *   POST /__pxsig/check {ids?|story?|stories?|all?}   render + Rust check, merged into check.json
  *   POST /__pxsig/repair {apply?, only?}   the safe repairs: plan, or apply (never prunes)
  *   GET  /p/<project>/renders/latest/<id>.png · /p/<project>/renders/base/<id>.png (from the .psig)
@@ -42,11 +43,11 @@
  * Binds to 127.0.0.1 only.
  */
 import { execFile, spawn } from 'node:child_process';
-import { createReadStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
+import { appendFileSync, createReadStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
-import { newBatch, paths, record, sha256, snapshot, undo } from './lib/approvals.mjs';
+import { newBatch, paths, record, sha256, snapshot, undo, who } from './lib/approvals.mjs';
 import { browserPool, renderStories, STORYBOOK_ERROR } from './lib/capture.mjs';
 import { fetchStoryIndex, filterLedger, loadStoryIndex, oneLine, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
 import { readHeader, readImage } from './lib/psig.mjs';
@@ -141,6 +142,7 @@ function openState(ref) {
     P,
     name: P.name,
     reviewPath: join(P.store.reports, 'review.json'),
+    a11yReviewPath: join(P.store.reports, 'a11y-review.json'),
     checkPath: join(P.store.reports, 'check.json'),
     ctx: resolveContext(P),
     runPath: null,
@@ -355,6 +357,9 @@ async function runChecks(S) {
       const rv = readJson(S.reviewPath, {});
       for (const id of ids) delete rv[id]; // a fresh verdict replaces a decision on the old one
       writeFileSync(S.reviewPath, `${JSON.stringify(rv, null, 2)}\n`);
+      const av = readJson(S.a11yReviewPath, {});
+      for (const id of ids) delete av[id];
+      writeFileSync(S.a11yReviewPath, `${JSON.stringify(av, null, 2)}\n`);
       const fresh = new Map(entries.map((e) => [e.id, buildRow(e, byId.get(e.id), renders.get(e.id), a11yBase, manifest)]));
       updateCheckRows(S, (r) => fresh.get(r.id), fresh);
       const failed = [...fresh.values()].filter((r) => !r.pass).length;
@@ -371,6 +376,51 @@ async function runChecks(S) {
     }
   })();
   return S.running;
+}
+
+// --- accessibility decisions -------------------------------------------------------------------
+// Separate from the visual verdict: accepting puts an entry's current axe violations on its
+// accepted list (<store>/a11y.json); rejecting marks them for a fix. Both last until the next
+// check of the entry, like review.json. Every accept and undo is logged beside a11y.json.
+
+const a11yLog = (P, line) => appendFileSync(join(dirname(P.store.a11y), 'a11y-decisions.ndjson'), `${JSON.stringify(line)}\n`);
+const writeA11y = (P, base) => writeFileSync(P.store.a11y, `${JSON.stringify(base, null, 2)}\n`);
+
+function a11yReview(S, action, id, meta = {}) {
+  needLock(S);
+  const { P, manifest } = S;
+  if (!manifest.stories.some((e) => e.id === id)) throw httpError(404, `unknown entry ${id}`);
+  const av = readJson(S.a11yReviewPath, {});
+  const base = readJson(P.store.a11y, {});
+  const at = new Date().toISOString();
+  const by = who(P.workspaceRoot);
+  const via = meta.via ?? 'dashboard';
+  if (action === 'a11y-accept') {
+    const row = readJson(S.checkPath, { rows: [] }).rows.find((r) => r.id === id);
+    if (!row?.a11y?.violations) throw httpError(409, `no accessibility results for ${id}; run a check`);
+    const before = base[id] ?? null;
+    const after = row.a11y.violations.map((v) => v.id).sort();
+    base[id] = after;
+    writeA11y(P, base);
+    a11yLog(P, { at, by, via, action: 'accept', id, before, after, reason: meta.reason ?? null });
+    av[id] = { state: 'accepted', at, before };
+  } else if (action === 'a11y-reject') av[id] = { state: 'rejected', at };
+  else if (action === 'a11y-unreview') {
+    const prev = av[id];
+    if (prev?.state === 'accepted') {
+      const current = base[id] ?? null;
+      if (prev.before == null) delete base[id];
+      else base[id] = prev.before;
+      writeA11y(P, base);
+      a11yLog(P, { at, by, via, action: 'undo', id, before: current, after: prev.before });
+    }
+    delete av[id];
+  } else throw httpError(404, 'unknown action');
+  S.quietUntil = Date.now() + 800;
+  writeFileSync(S.a11yReviewPath, `${JSON.stringify(av, null, 2)}\n`);
+  console.log(`[serve] ${S.name}: ${action} ${id}`);
+  broadcast('review', { project: S.name, id, a11y: av[id] ?? null });
+  return av[id] ?? null;
 }
 
 function enqueue(S, body) {
@@ -609,6 +659,7 @@ async function api(req, res, action, q) {
   if (typeof id !== 'string' || !/^[a-z0-9-]+--[a-z0-9-]+(__[a-z0-9-]+)?(@[a-z0-9-]+)?$/.test(id)) return json(res, 400, { error: 'bad id' });
   const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : undefined);
   const meta = { batch: s(body.batch, 80)?.replace(/[^\w.-]/g, ''), via: s(body.via, 20)?.replace(/[^\w-]/g, ''), reason: s(body.reason, 500), kind: s(body.kind, 10) };
+  if (action.startsWith('a11y-')) return json(res, 200, { ok: true, project: S.name, id, entry: a11yReview(S, action, id, meta) });
   json(res, 200, { ok: true, project: S.name, id, entry: await review(S, action, id, meta) });
 }
 

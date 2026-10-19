@@ -93,6 +93,7 @@ export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/` } = {}
     bench: read('bench'),
     history: history(P),
     review: read('review') ?? {},
+    a11yReview: read('a11y-review') ?? {},
     integrity: read('integrity'),
     storybook: { baseUrl: P.storybook.url },
     // renders/base/<id>.png is the baseline image inside each .psig, served (or written) by id.

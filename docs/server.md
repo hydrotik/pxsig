@@ -99,6 +99,9 @@ exactly one project.
 | --- | --- |
 | `POST /__pxsig/approve {id, batch?, via?, reason?, kind?}` | The latest render becomes the baseline: a `.psig` with the render as its image. The old baseline is snapshotted to `<store>/history/<batch>/`, the write logged in `approvals.ndjson`, and the a11y baseline follows the render. A NEW entry (no baseline yet) gets its first baseline, logged with `before: null`. 409 when there is no latest render, or when the server does not hold the project's store lock. |
 | `POST /__pxsig/reject {id}` | Records a rejection for the current result. |
+| `POST /__pxsig/a11y-accept {id}` | Puts the entry's current axe violations on its accepted list (`<store>/a11y.json`), logged in `<store>/a11y-decisions.ndjson`. 409 when the last check has no axe results for it. |
+| `POST /__pxsig/a11y-reject {id}` | Marks the entry's violations for a fix; the accepted list is unchanged. |
+| `POST /__pxsig/a11y-unreview {id}` | Clears the accessibility decision; after an accept it restores the previous accepted list (logged). Accessibility decisions live in `reports/a11y-review.json` and, like visual ones, end at the entry's next check. |
 | `POST /__pxsig/unreview {id}` | Clears the decision. For an approval it also restores the previous baseline from that approval's snapshot (a first baseline moves to trash/) and its a11y baseline, logged as an undo; 409 when the baseline changed since. |
 | `POST /__pxsig/check {ids? \| story? \| stories? \| all?}` | Queues renders and engine checks; answers 202 with the queued ids. Results merge into `check.json`. Without a project, the check is split across the projects that own the ids. |
 | `POST /__pxsig/repair {apply?, only?}` | The safe repairs: the plan, or with `apply: true` the result. Never prunes. |

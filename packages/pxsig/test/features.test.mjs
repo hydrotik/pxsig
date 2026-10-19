@@ -385,6 +385,49 @@ test('the server: undoing an approval restores the baseline it replaced, and log
   }
 });
 
+test('the server: accepting a11y violations updates the accepted list; undo restores it; both are logged', { skip: !hasRust && 'Rust binary not built' }, async () => {
+  const f = fixture();
+  const id = f.ids.a11y;
+  const checkPath = join(f.px, 'reports', 'check.json');
+  const check = JSON.parse(readFileSync(checkPath, 'utf8'));
+  const row = check.rows.find((r) => r.id === id);
+  row.a11y = { violations: [{ id: 'color-contrast', impact: 'serious', help: 'x', nodes: 1, targets: [] }, { id: 'aria-hidden-focus', impact: 'serious', help: 'y', nodes: 1, targets: [] }], new: 1, baseline: ['aria-hidden-focus'] };
+  writeFileSync(checkPath, JSON.stringify(check));
+  const a11yPath = join(f.px, 'a11y.json');
+  writeFileSync(a11yPath, JSON.stringify({ [id]: ['aria-hidden-focus'] }));
+  const port = await new Promise((ok) => {
+    const s = createServer().listen(0, '127.0.0.1', () => {
+      const p = s.address().port;
+      s.close(() => ok(p));
+    });
+  });
+  const proc = spawn(process.execPath, [join(src, 'serve.mjs'), '--port', String(port), '--no-open'], { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } });
+  try {
+    await new Promise((ok, fail) => {
+      let log = '';
+      const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+      proc.stdout.on('data', (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok())));
+      proc.stderr.on('data', (d) => (log += d));
+    });
+    const post = async (action) => {
+      const r = await fetch(`http://127.0.0.1:${port}/__pxsig/${action}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) });
+      return { status: r.status, body: await r.json() };
+    };
+    const accepted = await post('a11y-accept');
+    assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
+    assert.deepEqual(JSON.parse(readFileSync(a11yPath, 'utf8'))[id], ['aria-hidden-focus', 'color-contrast']);
+    assert.equal(JSON.parse(readFileSync(join(f.px, 'reports', 'a11y-review.json'), 'utf8'))[id].state, 'accepted');
+    assert.equal((await post('a11y-unreview')).status, 200);
+    assert.deepEqual(JSON.parse(readFileSync(a11yPath, 'utf8'))[id], ['aria-hidden-focus'], 'undo restored the accepted list');
+    const log = readFileSync(join(f.px, 'a11y-decisions.ndjson'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+    assert.deepEqual(log.map((l) => l.action), ['accept', 'undo']);
+    assert.equal((await post('a11y-reject')).status, 200);
+    assert.deepEqual(JSON.parse(readFileSync(a11yPath, 'utf8'))[id], ['aria-hidden-focus'], 'reject leaves the accepted list alone');
+  } finally {
+    proc.kill();
+  }
+});
+
 // --- colocated .gitattributes ----------------------------------------------------------------------------------
 
 test('init with the colocated layout adds *.psig binary diff=psig to the root .gitattributes, once', () => {

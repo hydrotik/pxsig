@@ -33,6 +33,8 @@ export function Overview({ data, go, startReview }: { data: Data; go(tab: string
   const rejected = having('rejected');
   const errors = having('error').filter((r) => !r.skipped);
   const flaky = having('flaky');
+  // Entries whose new violations have no decision yet (an accessibility one, or a visual approval).
+  const a11yOpen = rows.filter((r) => (r.a11y?.new ?? 0) > 0 && !data.a11yReview?.[r.id] && data.review[r.id]?.state !== 'approved');
   const items: Item[] = [
     { id: 'changed', label: t('overview.items.changed'), count: changed.length, detail: byMode(changed.map((r) => r.mode)), action: served ? 'overview.actions.start' : 'overview.actions.review', open: () => review('changed') },
     { id: 'new', label: t('overview.items.new'), count: fresh.length, detail: byMode(fresh.map((r) => r.mode)), action: served ? 'overview.actions.start' : 'overview.actions.review', open: () => review('new') },
@@ -46,7 +48,7 @@ export function Overview({ data, go, startReview }: { data: Data; go(tab: string
       action: 'overview.actions.open',
       open: () => go('integrity'),
     },
-    { id: 'a11y', label: t('overview.items.a11y'), count: sm?.a11yNew ?? 0, detail: sm?.a11yNew ? t('overview.ofTotal', { total: sm.a11yViolations }) : '', action: 'overview.actions.open', open: () => go('a11y') },
+    { id: 'a11y', label: t('overview.items.a11y'), count: a11yOpen.length, detail: a11yOpen.length ? t('overview.violations', { count: a11yOpen.reduce((n, r) => n + (r.a11y?.new ?? 0), 0) }) : '', action: served ? 'overview.actions.start' : 'overview.actions.open', open: () => (served ? startReview('a11y') : go('a11y')) },
     { id: 'flaky', label: t('overview.items.flaky'), count: flaky.length, detail: byMode(flaky.map((r) => r.mode)), action: 'overview.actions.view', open: () => go('stories', 'flaky') },
   ];
   const open = items.some((x) => x.count > 0);

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button, SearchBar, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Toolbar, ToolbarFormField, ToolbarLeft, ToolbarRight } from '@hydrotik/design-system';
-import { type Data, type Queue, type Row, reviewQueue, rowsWithPending, served, statusOf } from '../data';
+import { type Data, type Queue, type Row, decisionOf, reviewQueue, rowsWithPending, served, statusOf } from '../data';
 import { StoryGrid } from '../parts/StoryGrid';
 import { Cmd, t, tx } from '../copy';
 import * as s from '../dashboard.css';
@@ -10,8 +10,8 @@ const FILTERS = ['all', 'todo', 'changed', 'new', 'error', 'flaky', 'approved', 
 export function Stories({ data, filter, setFilter, onOpen, startReview }: { data: Data; filter: string; setFilter(f: string): void; onOpen(row: Row, list: Row[]): void; startReview(kind: Queue): void }) {
   const [q, setQ] = React.useState('');
   const [grouped, setGrouped] = React.useState(true);
-  const left = (kind: Queue) => reviewQueue(data, kind).filter((r) => !data.review[r.id]).length;
-  const queues = (['changed', 'new'] as const).filter((k) => left(k) > 0);
+  const left = (kind: Queue) => reviewQueue(data, kind).filter((r) => !decisionOf(data, kind, r.id)).length;
+  const queues = (['changed', 'new', 'a11y'] as const).filter((k) => left(k) > 0);
   const [mode, setMode] = React.useState('all');
   const [sort, setSort] = React.useState('worst');
   const check = data.check;

@@ -21,7 +21,7 @@ import {
   ToolbarRight,
   Badge,
 } from '@hydrotik/design-system';
-import { type Data, type Queue, type Row, fmt, pathsFor, reviewAction, served, statusOf } from '../data';
+import { type Data, type Queue, type Row, a11yAction, decisionOf, fmt, pathsFor, reviewAction, served, statusOf } from '../data';
 import { analyse, cellsLayer, hex, loadImg, readPixels, type Analysis } from './analyse';
 import { Stage, type Hover, type Mode, type StageApi } from './Stage';
 import { StatusOf } from '../parts/StatusOf';
@@ -208,20 +208,24 @@ export function Inspector({
   };
 
   const canReview = served && !target?.scenario;
-  const review = row ? data.review[row.id] : undefined;
-  const act = async (action: 'approve' | 'reject' | 'unreview') => {
+  // In an accessibility session the buttons and A / R decide on the entry's violations, not its render.
+  const a11yMode = !embedded && target?.session === 'a11y';
+  const review = row ? (a11yMode ? data.a11yReview?.[row.id] : data.review[row.id]) : undefined;
+  const a11yDecision = row ? data.a11yReview?.[row.id] : undefined;
+  const label = (action: 'approve' | 'reject' | 'unreview', a11y: boolean) => t(`inspector.review.${action === 'unreview' ? 'undo' : a11y && action === 'approve' ? 'accept' : action}`);
+  const act = async (action: 'approve' | 'reject' | 'unreview', a11y = a11yMode) => {
     if (!row) return;
     setBusy(true);
     try {
-      await reviewAction(action, row.id);
-      if (action !== 'unreview') {
+      await (a11y ? a11yAction(action === 'approve' ? 'accept' : action, row.id) : reviewAction(action, row.id));
+      if (action !== 'unreview' && a11y === a11yMode) {
         // The next undecided entry after this one, wrapping to the start of the list.
-        const open = (r: Row) => !r.pass && !data.review[r.id] && r.id !== row.id;
+        const open = (r: Row) => (a11yMode ? !data.a11yReview?.[r.id] : !r.pass && !data.review[r.id]) && r.id !== row.id;
         const next = [...list.slice(index + 1), ...list.slice(0, Math.max(index, 0))].find(open);
         if (next) onNavigate({ ...target!, row: next });
       }
     } catch (e) {
-      alert(t('inspector.review.failed', { action: t(`inspector.review.${action === 'unreview' ? 'undo' : action}`), error: (e as Error).message }));
+      alert(t('inspector.review.failed', { action: label(action, a11y), error: (e as Error).message }));
     } finally {
       setBusy(false);
     }
@@ -420,8 +424,26 @@ export function Inspector({
         </Button>
       </span>
     ) : null;
-  const reviewButtons =
-    canReview && (row.changed || review) ? (
+  const newA11y = row.a11y?.new ?? 0;
+  // Rows from older reports may lack `changed`: a failed verdict is a change.
+  const changed = row.changed ?? !row.pass;
+  const reviewButtons = !canReview ? null : a11yMode ? (
+    newA11y || review ? (
+      <>
+        <Button size="sm" variant="outline" disabled={busy || review?.state === 'rejected'} onClick={() => act('reject')} title={t('inspector.review.rejectA11yTitle')}>
+          {t('inspector.review.reject')}
+        </Button>
+        <Button size="sm" disabled={busy || review?.state === 'accepted'} onClick={() => act('approve')} title={t('inspector.review.acceptTitle')}>
+          {t('inspector.review.accept')}
+        </Button>
+        {review ? (
+          <Button size="sm" variant="ghost" disabled={busy} onClick={() => act('unreview')}>
+            {t('inspector.review.undo')}
+          </Button>
+        ) : null}
+      </>
+    ) : null
+  ) : changed || review ? (
       <>
         <Button
           size="sm"
@@ -434,11 +456,11 @@ export function Inspector({
         </Button>
         <Button
           size="sm"
-          disabled={busy || review?.state === 'approved' || (row.pass && !row.changed)}
+          disabled={busy || review?.state === 'approved' || (row.pass && !changed)}
           onClick={() => act('approve')}
           title={t('inspector.review.approveTitle')}
         >
-          {t('inspector.review.approve')}
+          {newA11y && !a11yDecision && !review ? t('inspector.review.approveA11y', { count: newA11y }) : t('inspector.review.approve')}
         </Button>
         {review ? (
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => act('unreview')} title={review.state === 'approved' ? t('inspector.review.undoTitle') : undefined}>
@@ -453,9 +475,9 @@ export function Inspector({
 
   // --- review session: progress while deciding, then a summary with the next steps ---------------
   const session = embedded ? null : (target?.session ?? null);
-  const decided = session ? list.filter((r) => data.review[r.id]).length : 0;
-  const approvedRows = session ? list.filter((r) => data.review[r.id]?.state === 'approved') : [];
-  const rejectedRows = session ? list.filter((r) => data.review[r.id]?.state === 'rejected') : [];
+  const decided = session ? list.filter((r) => decisionOf(data, session, r.id)).length : 0;
+  const approvedRows = session ? list.filter((r) => ['approved', 'accepted'].includes(decisionOf(data, session, r.id)?.state ?? '')) : [];
+  const rejectedRows = session ? list.filter((r) => decisionOf(data, session, r.id)?.state === 'rejected') : [];
   const complete = !!session && list.length > 0 && decided === list.length && !stay;
   blockKeys.current = complete;
   const progress = session ? (
@@ -468,7 +490,7 @@ export function Inspector({
   const rejectedNote =
     review?.state === 'rejected' && !target?.scenario ? (
       <div className={s.note}>
-        <span>{t('inspector.rejectedNote')}</span>
+        <span>{t(a11yMode ? 'inspector.a11yRejectedNote' : 'inspector.rejectedNote')}</span>
         <CopyValue value={`pxsig check ${row.id}`} />
       </div>
     ) : null;
@@ -480,13 +502,15 @@ export function Inspector({
           <div className={s.summary}>
             <DialogTitle className={s.insTitle}>{t('inspector.session.complete')}</DialogTitle>
             <StaticList labelWidth="30%">
-              <StaticListItem label={t('inspector.session.approved', { count: approvedRows.length })}>
-                {tx('inspector.session.approvedNext', { store: <Cmd>{data.store ?? '.pxsig'}</Cmd> })}
+              <StaticListItem label={t(a11yMode ? 'inspector.session.accepted' : 'inspector.session.approved', { count: approvedRows.length })}>
+                {a11yMode
+                  ? tx('inspector.session.acceptedNext', { file: <Cmd>{`${data.store ?? '.pxsig'}/a11y.json`}</Cmd> })
+                  : tx('inspector.session.approvedNext', { store: <Cmd>{data.store ?? '.pxsig'}</Cmd> })}
               </StaticListItem>
               {rejectedRows.length ? (
                 <StaticListItem label={t('inspector.session.rejected', { count: rejectedRows.length })}>
                   <span className={s.stack}>
-                    <span>{t('inspector.session.rejectedNext')}</span>
+                    <span>{t(a11yMode ? 'inspector.session.a11yRejectedNext' : 'inspector.session.rejectedNext')}</span>
                     <CopyValue value={`pxsig check ${rejectedRows.map((r) => r.id).join(' ')}`} />
                   </span>
                 </StaticListItem>
@@ -497,7 +521,7 @@ export function Inspector({
                 {t('inspector.session.back')}
               </Button>
               {rejectedRows.length && onGo ? (
-                <Button size="sm" variant="outline" onClick={() => onGo('stories', 'rejected')}>
+                <Button size="sm" variant="outline" onClick={() => (a11yMode ? onGo('a11y') : onGo('stories', 'rejected'))}>
                   {t('inspector.session.viewRejected')}
                 </Button>
               ) : null}
@@ -685,7 +709,7 @@ export function Inspector({
                 ['← →', t('inspector.keys.story')],
                 ...(canReview
                   ? [
-                      ['A', t('inspector.keys.approve')],
+                      ['A', t(a11yMode ? 'inspector.keys.accept' : 'inspector.keys.approve')],
                       ['R', t('inspector.keys.reject')],
                     ]
                   : []),
@@ -914,6 +938,29 @@ export function Inspector({
                     </li>
                   ))}
                 </ul>
+                {canReview && !a11yMode && (newA11y || a11yDecision) ? (
+                  <span className={s.row}>
+                    {a11yDecision ? (
+                      <>
+                        <Badge variant={a11yDecision.state === 'accepted' ? 'secondary' : 'destructive'}>
+                          {t(a11yDecision.state === 'accepted' ? 'inspector.review.a11yAccepted' : 'inspector.review.a11yRejected')}
+                        </Badge>
+                        <Button size="sm" variant="ghost" disabled={busy} onClick={() => act('unreview', true)}>
+                          {t('inspector.review.undo')}
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="outline" disabled={busy} onClick={() => act('reject', true)} title={t('inspector.review.rejectA11yTitle')}>
+                          {t('inspector.review.reject')}
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={busy} onClick={() => act('approve', true)} title={t('inspector.review.acceptTitle')}>
+                          {t('inspector.review.accept')}
+                        </Button>
+                      </>
+                    )}
+                  </span>
+                ) : null}
               </section>
             ) : null}
 

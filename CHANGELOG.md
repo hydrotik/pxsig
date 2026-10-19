@@ -22,6 +22,16 @@ semantic versioning.
   end lists what was approved and rejected with the next step for each. A rejected entry shows the
   command to re-check it. The Review grid groups cards by component and marks each card's status
   on its edge.
+- **Accessibility decisions.** Entries whose only issue is new axe violations have their own review
+  queue: Accept puts the violations on the entry's accepted list, Reject marks them for a fix, and
+  Undo restores the previous list. The same controls are in the inspector's Accessibility panel.
+  Accepts and undos are logged in `<store>/a11y-decisions.ndjson`; decisions are kept in
+  `reports/a11y-review.json` until the entry's next check (`POST /__pxsig/a11y-accept`,
+  `a11y-reject`, `a11y-unreview`). Approving a visual change still accepts the render's violations,
+  and its button now says how many ("Approve · accepts 1 new a11y violation").
+- **Help** explains how the page is organised, and each section sits beside a drawing of the
+  dashboard or the inspector: pointing at a row highlights where it appears. New sections cover the
+  inspector and accessibility checks. The Review tab is "Review stories".
 - **Integrity headline wording**: "N components with errors: …", "No errors; N components with
   warnings", "No issues".
 - **GitHub Actions run on Node 24.** The CI and release workflows, and the example in `docs/ci.md`,
@@ -35,6 +45,9 @@ semantic versioning.
   approval's snapshot (a first baseline moves to trash/) and its a11y baseline, and logs the undo.
   It used to clear only the mark and leave the new baseline in place. `undo()` takes `ids` to
   restore part of a batch.
+- **No broken images for passing entries.** The engine writes signature images and the diff page
+  only for entries that fail the gate; the inspector now says so instead of showing empty images and
+  dead links.
 - **Inspector shortcuts after a click.** A, R and the arrow keys worked only while focus stayed
   inside the inspector; after Undo or Approve removed the focused button they did nothing.
 - **The Storybook addon registered its panel twice** when listed by name

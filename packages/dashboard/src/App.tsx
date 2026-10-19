@@ -1,7 +1,7 @@
 import React from 'react';
 import { AppHeader, AppHeaderTitle, AppHeaderToolbar, AppShell, AppShellContent, Badge, Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, TooltipProvider } from '@hydrotik/design-system';
 import { useTheme } from '@hydrotik/theme-provider';
-import { type Data, type Queue, type Row, reviewQueue, rowsWithPending, served, statusOf, switchProject, useData, useProjects } from './data';
+import { type Data, type Queue, type Row, decisionOf, reviewQueue, rowsWithPending, served, statusOf, switchProject, useData, useProjects } from './data';
 import { Inspector, type InspectTarget } from './inspector/Inspector';
 import { Overview } from './views/Overview';
 import { Stories } from './views/Stories';
@@ -123,14 +123,14 @@ export function App() {
     setTab(t as Tab);
   };
   // A review session: the inspector on the first undecided entry of a queue, with progress.
-  const queues = { changed: reviewQueue(data, 'changed'), new: reviewQueue(data, 'new') };
+  const queues = { changed: reviewQueue(data, 'changed'), new: reviewQueue(data, 'new'), a11y: reviewQueue(data, 'a11y') };
+  const undecided = (kind: Queue) => queues[kind].filter((r) => !decisionOf(data, kind, r.id)).length;
   const startReview = (kind: Queue) => {
     const list = queues[kind];
-    const first = list.find((r) => !data.review[r.id]) ?? list[0];
+    const first = list.find((r) => !decisionOf(data, kind, r.id)) ?? list[0];
     if (first) setTarget({ row: first, list, scenario: null, session: kind });
   };
-  const nextQueue: Queue | null = queues.changed.some((r) => !data.review[r.id]) ? 'changed' : queues.new.some((r) => !data.review[r.id]) ? 'new' : null;
-  const undecided = (kind: Queue) => queues[kind].filter((r) => !data.review[r.id]).length;
+  const nextQueue = (['changed', 'new', 'a11y'] as const).find((k) => undecided(k) > 0) ?? null;
   const sm = data.check?.summary;
   // Diagnostics appears only when a research run wrote its data.
   const diagnostics = diagnosticsOf(data).length > 0;

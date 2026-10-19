@@ -28,6 +28,10 @@
       "new": {
         "one": "Approve {count} new entry",
         "other": "Approve {count} new entries"
+      },
+      "a11y": {
+        "one": "Review {count} accessibility entry",
+        "other": "Review {count} accessibility entries"
       }
     }
   },
@@ -70,7 +74,7 @@
       "rejected": "Rejected, awaiting a fix",
       "error": "Render errors",
       "coverage": "Coverage errors",
-      "a11y": "New accessibility violations",
+      "a11y": "Entries with new a11y violations",
       "flaky": "Flaky"
     },
     "components": {
@@ -95,6 +99,10 @@
       "ofTotal": "of {total}",
       "duration": "Duration",
       "rendering": "{time} rendering"
+    },
+    "violations": {
+      "one": "{count} violation",
+      "other": "{count} violations"
     }
   },
   "review": {
@@ -133,7 +141,9 @@
       "unchanged": "Unchanged",
       "ssim": "SSIM {value}",
       "cells": "Cells {value}",
-      "tiles": "Tiles {value}"
+      "tiles": "Tiles {value}",
+      "a11yAccepted": "A11y accepted",
+      "a11yRejected": "A11y rejected"
     },
     "group": {
       "label": "Group",
@@ -611,7 +621,7 @@
         },
         "accepting": {
           "term": "Accepting",
-          "meaning": "Approving an entry's visual change also accepts its current violations. pxsig check --full --update rewrites every accepted list."
+          "meaning": "Review stories has an accessibility queue for entries whose only issue is new violations; Accept adds them to the entry's accepted list, Reject marks them for a fix, and Undo reverses either. Accepts and undos are logged in a11y-decisions.ndjson. Approving a visual change also accepts the render's violations, and the Approve button says how many."
         }
       }
     },
@@ -695,7 +705,16 @@
       "approveTitle": "Use the latest render as the baseline (A)",
       "undo": "Undo",
       "failed": "{action} failed: {error}",
-      "undoTitle": "Restore the previous baseline"
+      "undoTitle": "Restore the previous baseline",
+      "approveA11y": {
+        "one": "Approve · accepts {count} new a11y violation",
+        "other": "Approve · accepts {count} new a11y violations"
+      },
+      "accept": "Accept violations",
+      "acceptTitle": "Add this entry's current violations to its accepted list (A)",
+      "rejectA11yTitle": "Mark the violations for a fix (R)",
+      "a11yAccepted": "Accepted",
+      "a11yRejected": "Rejected"
     },
     "missing": "Render not found: {before} or {after}. Run the check again.",
     "loading": "Loading renders…",
@@ -708,7 +727,8 @@
       "story": "story",
       "approve": "approve",
       "reject": "reject",
-      "close": "close"
+      "close": "close",
+      "accept": "accept"
     },
     "sections": {
       "view": "View",
@@ -786,10 +806,15 @@
       "rejectedNext": "Fix the components, then re-run the check:",
       "back": "Back to overview",
       "viewRejected": "View rejected",
-      "backToEntries": "Back to entries"
+      "backToEntries": "Back to entries",
+      "a11y": "Reviewing accessibility",
+      "accepted": "{count} accepted",
+      "acceptedNext": "Added to each entry's accepted list in {file}. Commit it with the change.",
+      "a11yRejectedNext": "Fix the violations, then re-run the check:"
     },
     "artifacts": {
       "notWritten": "Signature images and the diff page are written only for entries that fail the gate."
-    }
+    },
+    "a11yRejectedNote": "Violations rejected. Fix them, then re-run the check:"
   }
 }

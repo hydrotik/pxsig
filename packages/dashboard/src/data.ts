@@ -236,6 +236,8 @@ export interface Data {
   bench: BenchReport | null;
   history: HistoryRun[];
   review: Record<string, ReviewEntry>;
+  /** Decisions on entries' accessibility violations (a11y-review.json); separate from the visual review. */
+  a11yReview?: Record<string, { state: 'accepted' | 'rejected'; at: string }>;
   storybook: { baseUrl: string };
   paths: { diffRoot: string; renders: string; baselines: string };
   sigs: Record<string, string>;
@@ -351,6 +353,12 @@ export async function reviewAction(action: 'approve' | 'reject' | 'unreview', id
   if (!r.ok) throw new Error(body.error || r.statusText);
 }
 
+export async function a11yAction(action: 'accept' | 'reject' | 'unreview', id: string): Promise<void> {
+  const r = await fetch(`/__pxsig/a11y-${action}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: withProject({ id }) });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.error || r.statusText);
+}
+
 export async function recheck(ids: string[]): Promise<void> {
   const r = await fetch('/__pxsig/check', { method: 'POST', headers: { 'content-type': 'application/json' }, body: withProject({ ids }) });
   const body = await r.json().catch(() => ({}));
@@ -425,17 +433,25 @@ export const fmt = {
   x: (v: number) => `${v >= 10 ? Math.round(v) : v.toFixed(1)}×`,
 };
 
-export type Queue = 'changed' | 'new';
+export type Queue = 'changed' | 'new' | 'a11y';
+
+/** An entry with new axe violations whose visual verdict needs no review: the accessibility queue. */
+const a11yOnly = (r: Row) => (r.a11y?.new ?? 0) > 0 && !['changed', 'new'].includes(statusOf(r, {}));
 
 /**
- * The entries a review session walks: every changed (or new, rendered) entry of the last check,
- * decided or not, largest change first. Progress is how many of them have a decision.
+ * The entries a review session walks: every changed (or new, rendered, or a11y-only) entry of the
+ * last check, decided or not, largest change first. Progress is how many of them have a decision.
  */
 export function reviewQueue(d: Data, kind: Queue): Row[] {
   const size = (r: Row) => (r.metrics?.ssim ?? 2) - (r.detail ? (r.detail.changedTiles + r.detail.newEdgeTiles) / 1000 : 0);
   return rowsWithPending(d)
-    .filter((r) => statusOf(r, {}) === kind && !r.pending)
+    .filter((r) => !r.pending && (kind === 'a11y' ? a11yOnly(r) : statusOf(r, {}) === kind))
     .sort((a, b) => size(a) - size(b) || a.id.localeCompare(b.id));
+}
+
+/** The decision on an entry within a queue: the visual review, or the accessibility one. */
+export function decisionOf(d: Data, kind: Queue | null | undefined, id: string): { state: string } | undefined {
+  return kind === 'a11y' ? d.a11yReview?.[id] : d.review[id];
 }
 
 /** The component an entry belongs to: the integrity ledger's, else the story title's first part. */
