@@ -8,7 +8,8 @@ import * as s from '../dashboard.css';
 
 export type AffordanceKind = 'filter' | 'navigate' | 'open';
 
-const ICON = { filter: Icons.ListFilter, navigate: Icons.ArrowUpRight, open: Icons.Maximize2 } as const;
+// One arrow: down-left brings results into the current view, up-right goes out to another one.
+const ICON = { filter: Icons.ArrowDownLeft, navigate: Icons.ArrowUpRight, open: Icons.Maximize2 } as const;
 
 export function Affordance({ kind }: { kind: AffordanceKind }) {
   const I = ICON[kind];

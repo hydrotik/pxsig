@@ -2,6 +2,7 @@ import React from 'react';
 import { Alert, AlertDescription, AlertTitle, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DataGrid, StatPanel, StatusBadge } from '@hydrotik/design-system';
 import { type Data, type IntegrityComponent, type IntegrityEntry, type Row, repairSafe, rowsWithPending, served } from '../data';
 import { Cmd, codeCopy, t, tx } from '../copy';
+import { Affordance } from '../parts/Affordance';
 import * as s from '../dashboard.css';
 
 type Severity = 'error' | 'warn' | 'info';
@@ -80,8 +81,10 @@ export function Integrity({ data, onOpen }: { data: Data; onOpen(row: Row, list:
   const L = data.integrity;
   const [selected, setSelected] = React.useState<string | null>(null);
   const [all, setAll] = React.useState(false);
+  // A count card filters the table below it to the components with that issue.
+  const [code, setCode] = React.useState<string | null>(null);
   if (!L) return <div className={s.empty}>{tx('coverage.empty', { command: <Cmd>pxsig doctor</Cmd>, command2: <Cmd>pxsig serve</Cmd> })}</div>;
-  const comps = [...L.components].filter((c) => all || c.severity !== 'info').sort((a, b) => order[a.severity] - order[b.severity] || a.component.localeCompare(b.component));
+  const comps = [...L.components].filter((c) => (code ? (c.counts[code] ?? 0) > 0 : all || c.severity !== 'info')).sort((a, b) => order[a.severity] - order[b.severity] || a.component.localeCompare(b.component));
   const entries = L.entries.filter((x) => x.component === selected).sort((a, b) => order[a.severity] - order[b.severity] || a.id.localeCompare(b.id));
   const rows = rowsWithPending(data);
   const byId = new Map(rows.map((r) => [r.id, r]));
@@ -90,12 +93,17 @@ export function Integrity({ data, onOpen }: { data: Data; onOpen(row: Row, list:
   return (
     <div className={s.stack}>
       <StatPanel
+        className={s.statCards}
         aria-label={t('tabs.coverage')}
         cards={[
           { label: t('coverage.stats.components'), value: sm.components, unit: t('coverage.stats.withErrors', { count: sm.componentsBySeverity.error }) },
           { label: t('coverage.stats.errors'), value: sm.bySeverity.error, accent: sm.bySeverity.error ? 'error' : 'success' },
           { label: t('coverage.stats.warnings'), value: sm.bySeverity.warn, accent: sm.bySeverity.warn ? 'warning' : undefined },
-          ...(['unregistered', 'never-checked', 'missing-baseline-image'] as const).map((code) => ({ label: codeCopy(code).title, value: sm.byCode[code] ?? 0, accent: sm.byCode[code] ? ('error' as const) : undefined })),
+          ...(['unregistered', 'never-checked', 'missing-baseline-image'] as const).map((c) =>
+            sm.byCode[c]
+              ? { label: codeCopy(c).title, value: sm.byCode[c], accent: 'error' as const, type: 'filter' as const, active: code === c, onSelect: () => setCode(code === c ? null : c), icon: <Affordance kind="filter" /> }
+              : { label: codeCopy(c).title, value: 0 }
+          ),
         ]}
       />
       <Card>
@@ -106,10 +114,10 @@ export function Integrity({ data, onOpen }: { data: Data; onOpen(row: Row, list:
         <CardContent>
           <div className={s.stack}>
             <span className={s.row}>
-              <Button size="sm" variant={all ? 'outline' : 'default'} onClick={() => setAll(false)}>
+              <Button size="sm" variant={!code && !all ? 'default' : 'outline'} onClick={() => (setAll(false), setCode(null))}>
                 {t('coverage.table.withIssues', { count: L.components.filter((c) => c.severity !== 'info').length })}
               </Button>
-              <Button size="sm" variant={all ? 'default' : 'outline'} onClick={() => setAll(true)}>
+              <Button size="sm" variant={!code && all ? 'default' : 'outline'} onClick={() => (setAll(true), setCode(null))}>
                 {t('coverage.table.all', { count: L.components.length })}
               </Button>
             </span>

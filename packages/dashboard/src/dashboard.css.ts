@@ -96,7 +96,7 @@ export const affordance = style({
   zIndex: 1,
   transition: 'color 120ms',
 });
-globalStyle(`${affordance} svg`, { inlineSize: '0.875rem', blockSize: '0.875rem' });
+globalStyle(`${affordance} svg`, { inlineSize: '0.75rem', blockSize: '0.75rem' });
 globalStyle(`button:hover ${affordance}, a:hover ${affordance}, button:focus-visible ${affordance}`, { color: vars.color.primary });
 // StatPanel's clickable cards are not a positioning context yet (until the pattern moves into the
 // design system); its filter and link cards render as button and a.
@@ -106,7 +106,7 @@ globalStyle(`${statCards} button, ${statCards} a`, { position: 'relative' });
 globalStyle(`${statCards} span:has(> ${affordance})`, { display: 'contents' });
 globalStyle(`${statCards} :is(button, a) > span:has(${affordance})`, { paddingInlineEnd: vars.space['5'] });
 
-export const inlineIcon = style({ inlineSize: '0.875rem', blockSize: '0.875rem', flexShrink: 0 });
+export const inlineIcon = style({ inlineSize: '0.75rem', blockSize: '0.75rem', flexShrink: 0 });
 
 // Grouped grid: each component's cards sit on a band, alternating, so a group reads as one row.
 export const groups = style({ display: 'flex', flexDirection: 'column' });

@@ -119,7 +119,7 @@ export function Help({ data }: { data: Data }) {
         description={t('help.affordance.description')}
         layout="dashboard"
         items={[
-          { term: <span className={s.row}><Icons.ListFilter className={s.inlineIcon} aria-hidden="true" /> {t('help.affordance.filter.term')}</span>, meaning: t('help.affordance.filter.meaning'), at: ['cards'] },
+          { term: <span className={s.row}><Icons.ArrowDownLeft className={s.inlineIcon} aria-hidden="true" /> {t('help.affordance.filter.term')}</span>, meaning: t('help.affordance.filter.meaning'), at: ['cards'] },
           { term: <span className={s.row}><Icons.ArrowUpRight className={s.inlineIcon} aria-hidden="true" /> {t('help.affordance.navigate.term')}</span>, meaning: t('help.affordance.navigate.meaning'), at: ['cards'] },
           { term: <span className={s.row}><Icons.Maximize2 className={s.inlineIcon} aria-hidden="true" /> {t('help.affordance.open.term')}</span>, meaning: t('help.affordance.open.meaning'), at: ['cards', 'card-thumb'] },
         ]}
