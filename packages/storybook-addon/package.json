@@ -3,6 +3,11 @@
   "version": "0.2.0",
   "description": "pxsig in Storybook: a visual-regression panel and sidebar statuses, fed by the pxsig server.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hydrotik/pxsig.git",
+    "directory": "packages/storybook-addon"
+  },
   "author": "Donovan Adams (Hydrotik LLC)",
   "main": "preset.cjs",
   "exports": {
