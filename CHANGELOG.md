@@ -3,6 +3,13 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
+## 0.2.1 - 2026-10-19
+
+### Fixed
+
+- **`@pxsig/storybook-addon` is published.** Its `package.json` had no `repository`, so npm refused
+  the 0.2.0 upload (provenance must match the repository). This is the addon's first release.
+
 ## 0.2.0 - 2026-10-19
 
 The first public release.
