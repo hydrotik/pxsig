@@ -50,6 +50,22 @@ export function Overview({ data, go }: { data: Data; go(tab: string, filter?: st
   const open = items.some((x) => x.count > 0);
   return (
     <div className={s.stack}>
+      {sm ? (
+        <StatPanel
+          aria-label={t('overview.cards.label')}
+          cards={[
+            { label: t('overview.cards.checked'), value: sm.checked, unit: sm.skipped ? t('overview.cards.notRun', { count: sm.skipped }) : sm.modes.join(' · ') },
+            { label: t('overview.cards.passed'), value: sm.passed, accent: 'success' },
+            { label: t('overview.cards.changed'), value: sm.failed, accent: sm.failed ? 'error' : undefined, type: 'filter', onSelect: () => go('stories', 'changed') },
+            { label: t('overview.cards.flaky'), value: sm.flaky, accent: sm.flaky ? 'warning' : undefined, type: 'filter', onSelect: () => go('stories', 'flaky') },
+            { label: t('overview.cards.a11y'), value: sm.a11yNew, unit: t('overview.cards.ofTotal', { total: sm.a11yViolations }), accent: sm.a11yNew ? 'error' : undefined, type: 'filter', onSelect: () => go('a11y') },
+            // Wall clock for the whole check; rendering in the browser is nearly all of it.
+            { label: t('overview.cards.duration'), value: fmt.ms(sm.totalMs), unit: t('overview.cards.rendering', { time: fmt.ms(sm.renderWallMs) }) },
+          ]}
+        />
+      ) : (
+        <div className={s.empty}>{tx('empty.noCheck', { command: <Cmd>pxsig check --full</Cmd> })}</div>
+      )}
       <Card>
         <CardHeader>
           <CardTitle>{t('overview.openItems')}</CardTitle>
@@ -84,30 +100,6 @@ export function Overview({ data, go }: { data: Data; go(tab: string, filter?: st
           </div>
         </CardContent>
       </Card>
-      {sm ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('overview.lastCheck')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <StatPanel
-              variant="strip"
-              aria-label={t('overview.lastCheck')}
-              cards={[
-                { label: t('overview.stats.entries'), value: sm.entries ?? sm.checked + sm.skipped },
-                { label: t('overview.stats.passed'), value: sm.passed },
-                { label: t('overview.stats.changed'), value: sm.failed },
-                { label: t('overview.stats.notRun'), value: sm.skipped },
-                { label: t('overview.stats.modes'), value: sm.modes.join(', ') },
-                { label: t('overview.stats.duration'), value: fmt.ms(sm.totalMs) },
-                { label: t('overview.stats.finished'), value: new Date(data.check!.generatedAt).toLocaleString() },
-              ]}
-            />
-          </CardContent>
-        </Card>
-      ) : (
-        <div className={s.empty}>{tx('empty.noCheck', { command: <Cmd>pxsig check --full</Cmd> })}</div>
-      )}
     </div>
   );
 }

@@ -73,15 +73,17 @@
       "open": "Open",
       "view": "View"
     },
-    "lastCheck": "Last check",
-    "stats": {
-      "entries": "Entries",
+    "cards": {
+      "label": "Latest check",
+      "checked": "Checked",
+      "notRun": "+{count} not run",
       "passed": "Passed",
       "changed": "Changed",
-      "notRun": "Not run",
-      "modes": "Modes",
+      "flaky": "Flaky",
+      "a11y": "New a11y violations",
+      "ofTotal": "of {total}",
       "duration": "Duration",
-      "finished": "Finished"
+      "rendering": "{time} rendering"
     }
   },
   "review": {

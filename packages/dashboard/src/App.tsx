@@ -129,7 +129,7 @@ export function App() {
   return (
     <TooltipProvider>
       <AppShell>
-        <AppHeader status={sm && todo ? 'review-required' : undefined}>
+        <AppHeader status={!sm ? undefined : todo ? 'review-required' : 'approved'}>
           <AppHeaderTitle tag={sm ? sm.modes.join(' · ') : undefined}>{data.project ? t('app.title', { project: data.project }) : 'pxsig'}</AppHeaderTitle>
           <AppHeaderToolbar>
             <ProjectPicker current={data.project} />
