@@ -275,7 +275,11 @@ jobs:
           set -euo pipefail
           test -f dist/dashboard/index.html
           node -p "JSON.stringify(require('./package.json').optionalDependencies, null, 2)"
-          npm publish --provenance --access public --tag "$DIST_TAG" $DRY_RUN
+          if npm view "pxsig@${VERSION}" version >/dev/null 2>&1; then
+            echo "pxsig@${VERSION} is already published; skipping"
+          else
+            npm publish --provenance --access public --tag "$DIST_TAG" $DRY_RUN
+          fi
       - name: Publish @pxsig/storybook-addon
         shell: bash
         working-directory: packages/storybook-addon

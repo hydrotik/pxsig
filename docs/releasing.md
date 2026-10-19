@@ -45,8 +45,8 @@ A tag with a prerelease suffix (`v0.2.0-dev.0`, `v0.2.0-rc.1`) publishes under t
 5. **publish**: generates the platform packages with `scripts/make-platform-packages.mjs` into
    `packages/cli-dist/` (git-ignored), publishes each one, adds them to `pxsig` as exact-version
    `optionalDependencies` (in the job's checkout only; nothing is committed), and publishes `pxsig`
-   with the dashboard in `dist/`. A platform package already published at that version is skipped,
-   so a failed run can be re-run.
+   with the dashboard in `dist/`. Any package already published at that version is skipped, so a
+   failed run can be re-run, and a dry run of a released version checks the build without failing.
 
    Then it publishes `@pxsig/storybook-addon` at its own `package.json` version, skipped when that
    version is already on npm.
