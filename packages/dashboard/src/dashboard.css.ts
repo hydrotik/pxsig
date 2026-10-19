@@ -179,6 +179,27 @@ export const note = style({
 });
 export const summaryDialog = style({ inlineSize: 'min(100%, 40rem)', padding: 0, gap: 0 });
 export const summary = style({ display: 'flex', flexDirection: 'column', gap: vars.space['4'], padding: vars.space['6'] });
+// --- help: term rows beside a drawing of the screen -----------------------------------------
+export const helpSection = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: vars.space['5'] });
+export const helpRows = style({ display: 'grid', columnGap: vars.space['4'], margin: 0, flex: '2 1 26rem', minInlineSize: 0 });
+export const helpRow = style({
+  display: 'grid',
+  gridColumn: '1 / -1',
+  gridTemplateColumns: 'subgrid',
+  paddingBlock: vars.space['1_5'],
+  paddingInline: vars.space['2'],
+  borderRadius: vars.radii.md,
+  fontSize: vars.font.size.sm,
+  outline: 'none',
+  selectors: {
+    '&[data-active]': { backgroundColor: `color-mix(in srgb, ${vars.color.primary} 10%, transparent)` },
+    '&:focus-visible': { boxShadow: `0 0 0 ${vars.ring.width} color-mix(in srgb, ${vars.color.focusRing} 50%, transparent)` },
+  },
+});
+globalStyle(`${helpRow} dt`, { color: vars.color.textMuted });
+globalStyle(`${helpRow} dd`, { margin: 0 });
+export const helpDrawing = style({ flex: '1 1 18rem', maxInlineSize: '28rem', position: 'sticky', insetBlockStart: vars.space['4'] });
+export const schematic = style({ display: 'block', inlineSize: '100%', blockSize: 'auto' });
 export const insToolbar = style({
   paddingBlock: vars.space['2'],
   paddingInline: vars.space['4'],

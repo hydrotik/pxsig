@@ -33,8 +33,8 @@
   },
   "tabs": {
     "overview": "Overview",
-    "review": "Review",
-    "reviewCount": "Review · {count}",
+    "review": "Review stories",
+    "reviewCount": "Review stories · {count}",
     "coverage": "Coverage",
     "coverageCount": "Coverage · {count}",
     "a11y": "Accessibility",
@@ -136,7 +136,9 @@
       "tiles": "Tiles {value}"
     },
     "group": {
-      "label": "Group by component",
+      "label": "Group",
+      "component": "By component",
+      "none": "None",
       "count": "{status} {count}"
     }
   },
@@ -459,7 +461,7 @@
   "help": {
     "gate": {
       "title": "Gate",
-      "description": "Applied by the CLI, CI, this dashboard and the Storybook addon. A story can override it with parameters.pxsig.gate.",
+      "description": "Applied by the CLI, CI, this dashboard and the Storybook addon. A story can override it with parameters.pxsig.gate. The measured values appear under Metrics in the inspector.",
       "signature": "Signature",
       "signatureValue": "{grid}×{grid} grid, RGB, box-averaged",
       "wholeImage": "Whole-image rule",
@@ -479,10 +481,12 @@
       "rejected": "Change marked as unwanted. The baseline is unchanged.",
       "flaky": "Failed, then passed on a second render.",
       "skipped": "Left out of a partial check: no edited file affects it.",
-      "error": "The render failed."
+      "error": "The render failed.",
+      "description": "The badge on each card and in the inspector header. The card's left edge uses the same colour."
     },
     "coverage": {
-      "title": "Coverage statuses"
+      "title": "Coverage statuses",
+      "description": "Shown on the Coverage tab, and as extra badges on a card when an entry has a coverage issue."
     },
     "keys": {
       "title": "Keyboard shortcuts",
@@ -503,7 +507,135 @@
       "checkChanged": "Re-check the entries affected by changes since main",
       "serve": "Start the server and this dashboard; re-check on source edits",
       "doctor": "List coverage issues per component",
-      "repair": "Plan the safe repairs; add --apply to run them"
+      "repair": "Plan the safe repairs; add --apply to run them",
+      "description": "Run from the repository root."
+    },
+    "intro": "Reference for this dashboard. Each section covers one part of the screen. Point at a row, or move to it with Tab, to see where it appears in the drawing beside it.",
+    "tabs": {
+      "title": "Tabs",
+      "description": "What each tab is for.",
+      "rows": {
+        "overview": {
+          "meaning": "Counts from the latest check, then open items, each with a link or a review session."
+        },
+        "review": {
+          "meaning": "Every entry. Filter, group by component, and open one in the inspector. Review sessions start here."
+        },
+        "coverage": {
+          "meaning": "Whether each story is registered, rendered, checked and current, per component, with safe repairs."
+        },
+        "a11y": {
+          "meaning": "axe violations by rule, new ones first."
+        },
+        "runs": {
+          "meaning": "Timing of the latest check and of every past run."
+        },
+        "help": {
+          "meaning": "This page."
+        }
+      }
+    },
+    "inspector": {
+      "title": "Inspector",
+      "description": "Opens on an entry from Review stories, a review session or a link. Images on the left, details on the right.",
+      "rows": {
+        "progress": {
+          "term": "Review progress",
+          "meaning": "In a review session: how many entries have a decision, and how many are left."
+        },
+        "entry": {
+          "term": "Entry",
+          "meaning": "The entry ID, its mode, and the reason it failed the gate."
+        },
+        "review": {
+          "term": "Approve, Reject, Undo",
+          "meaning": "Approve writes the latest render as the baseline. Reject marks the change as unwanted. Undo reverses either; for an approval it restores the previous baseline."
+        },
+        "note": {
+          "term": "Rejected note",
+          "meaning": "The command to re-check the entry once it is fixed."
+        },
+        "modes": {
+          "term": "Compare modes",
+          "meaning": "Side by side, swipe, onion skin, pixel diff, or the signature cells the gate compares."
+        },
+        "changes": {
+          "term": "Change navigation",
+          "meaning": "Steps through the regions where pixels differ."
+        },
+        "pixel": {
+          "term": "Pixel",
+          "meaning": "The colour under the pointer in both renders. Requires the local server."
+        },
+        "pixelChanges": {
+          "term": "Pixel changes",
+          "meaning": "Pixels that differ by more than the tolerance, grouped into regions."
+        },
+        "metrics": {
+          "term": "Metrics",
+          "meaning": "What the gate measured. A red value is over its limit."
+        },
+        "sigs": {
+          "term": "Signature images",
+          "meaning": "The baseline and current signatures and the cell heatmap. Written only for entries that fail the gate; a passing entry shows a note instead."
+        },
+        "a11y": {
+          "term": "Accessibility",
+          "meaning": "axe violations on this render. New marks those not on the entry's accepted list."
+        },
+        "files": {
+          "term": "Files",
+          "meaning": "Links to the renders and generated files. The copy button copies the file's path in the repository."
+        }
+      }
+    },
+    "a11y": {
+      "title": "Accessibility checks",
+      "description": "How axe results are collected, compared and accepted.",
+      "rows": {
+        "scan": {
+          "term": "Scan",
+          "meaning": "axe-core runs on every render, right after the screenshot."
+        },
+        "accepted": {
+          "term": "Accepted list",
+          "meaning": "Each entry's accepted violations, by rule, in a11y.json in the store."
+        },
+        "new": {
+          "term": "New violation",
+          "meaning": "A rule that is not on the entry's accepted list. Counted on the Overview and the Accessibility tab, and marked on the entry's card."
+        },
+        "effect": {
+          "term": "Effect on the check",
+          "meaning": "None. New violations are reported but do not fail the check."
+        },
+        "accepting": {
+          "term": "Accepting",
+          "meaning": "Approving an entry's visual change also accepts its current violations. pxsig check --full --update rewrites every accepted list."
+        }
+      }
+    },
+    "schematic": {
+      "dashboard": "Drawing of the dashboard",
+      "inspector": "Drawing of the inspector",
+      "reviewButton": "Review",
+      "status": "Status",
+      "cards": "Latest check",
+      "openItems": "Open items",
+      "badge": "Status",
+      "flags": "Coverage",
+      "progress": "Review progress",
+      "entry": "Entry",
+      "storyNav": "‹ 1/12 ›",
+      "review": "Reject · Approve · Undo",
+      "note": "Rejected note",
+      "modes": "Compare modes",
+      "zoom": "Zoom",
+      "view": "View options",
+      "changes": "Changes ‹ ›",
+      "stage": "Baseline and latest render",
+      "keys": "Shortcuts",
+      "sigs": "Signatures"
     }
   },
   "inspector": {
@@ -655,6 +787,9 @@
       "back": "Back to overview",
       "viewRejected": "View rejected",
       "backToEntries": "Back to entries"
+    },
+    "artifacts": {
+      "notWritten": "Signature images and the diff page are written only for entries that fail the gate."
     }
   }
 }

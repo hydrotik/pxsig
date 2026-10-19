@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, SearchBar, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, Toolbar, ToolbarFormField, ToolbarLeft, ToolbarRight } from '@hydrotik/design-system';
+import { Button, SearchBar, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Toolbar, ToolbarFormField, ToolbarLeft, ToolbarRight } from '@hydrotik/design-system';
 import { type Data, type Queue, type Row, reviewQueue, rowsWithPending, served, statusOf } from '../data';
 import { StoryGrid } from '../parts/StoryGrid';
 import { Cmd, t, tx } from '../copy';
@@ -88,11 +88,19 @@ export function Stories({ data, filter, setFilter, onOpen, startReview }: { data
               </SelectContent>
             </Select>
           </ToolbarFormField>
+          <ToolbarFormField label={t('review.group.label')} minInlineSize="10rem">
+            <Select value={grouped ? 'component' : 'none'} onValueChange={(v) => setGrouped(v === 'component')}>
+              <SelectTrigger size="sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="component">{t('review.group.component')}</SelectItem>
+                <SelectItem value="none">{t('review.group.none')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </ToolbarFormField>
         </ToolbarLeft>
         <ToolbarRight>
-          <label className={s.ctl}>
-            <Switch checked={grouped} onCheckedChange={setGrouped} aria-label={t('review.group.label')} /> {t('review.group.label')}
-          </label>
           <span className={s.muted}>{t('review.count', { shown: rows.length, total: all.length })}</span>
         </ToolbarRight>
       </Toolbar>

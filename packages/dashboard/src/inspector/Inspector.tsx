@@ -270,6 +270,9 @@ export function Inspector({
 
   if (!row || !p) return null;
   const m = row.metrics;
+  // The engine writes signature images and the diff page only for entries that fail the gate.
+  // Served, the size check says whether they exist; otherwise go by the verdict.
+  const hasArtifacts = sizes[p.heat] ? sizes[p.heat] !== 'missing' : !!target?.scenario || !row.pass;
   const detail = row.detail;
   const W =
     loaded && loaded !== 'missing' ? Math.max(loaded.a.naturalWidth, loaded.b.naturalWidth) : 0;
@@ -869,6 +872,7 @@ export function Inspector({
                     </>
                   ) : null}
                 </StaticList>
+                {hasArtifacts ? (
                 <div className={s.sigs}>
                   <figure>
                     <img src={p.baseSig} alt={t('inspector.metrics.baseSig')} />
@@ -883,6 +887,9 @@ export function Inspector({
                     <figcaption className={s.micro}>{t('inspector.metrics.heatmap')}</figcaption>
                   </figure>
                 </div>
+                ) : (
+                  <span className={s.muted}>{t('inspector.artifacts.notWritten')}</span>
+                )}
               </section>
             ) : null}
 
@@ -917,10 +924,14 @@ export function Inspector({
                   [
                     [p.beforeLabel, p.before],
                     [p.afterLabel, p.after],
-                    [t('inspector.files.baseSig'), p.baseSig],
-                    [t('inspector.files.curSig'), p.curSig],
-                    [t('inspector.files.heat'), p.heat],
-                    [t('inspector.files.page'), p.page],
+                    ...(hasArtifacts
+                      ? [
+                          [t('inspector.files.baseSig'), p.baseSig],
+                          [t('inspector.files.curSig'), p.curSig],
+                          [t('inspector.files.heat'), p.heat],
+                          [t('inspector.files.page'), p.page],
+                        ]
+                      : []),
                     ...(p.record ? [[t('inspector.files.record'), p.record]] : []),
                   ] as [string, string][]
                 ).map(([label, url]) => (
