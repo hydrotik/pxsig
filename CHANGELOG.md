@@ -7,30 +7,41 @@ semantic versioning.
 
 ### Changed
 
-- **Dashboard copy and layout.** The Overview lists open items (changed, new, rejected, render
-  errors, coverage errors, new a11y violations, flaky) with a link to each, and the last check in
-  numbers. Gate settings, status definitions, keyboard shortcuts and commands move to a new Help
-  tab; Scenarios, Calibration and Performance merge into one Diagnostics tab (old links still
-  work); Stories, Integrity and History are labelled Review, Coverage and Runs. Coverage badges
-  show titles instead of raw codes. The wording throughout is plainer.
+- **Dashboard layout and copy.** Under the latest-check cards, the Overview lists open items
+  (changed, new, rejected, render errors, coverage errors, new a11y violations, flaky), each with a
+  link. The Duration card shows the rendering time beside the total. Gate settings, status
+  definitions, keyboard shortcuts and commands move to a new Help tab; Scenarios, Calibration and
+  Performance merge into one Diagnostics tab (old links still work); Stories, Integrity and History
+  are labelled Review, Coverage and Runs. Coverage badges show titles instead of raw codes. The
+  wording throughout is plainer.
 - **Dashboard copy is in one file**, `packages/dashboard/src/copy/en.json`, read through a typed
   `t()` helper with placeholders and plural forms, so the dashboard can be translated.
+- **Review sessions in the dashboard.** "Review N changes" (header, Overview, Review tab) opens the
+  inspector on the first undecided entry of a queue, largest change first; changed entries and new
+  ones (a first baseline) are separate queues. A progress bar counts decisions, and a summary at the
+  end lists what was approved and rejected with the next step for each. A rejected entry shows the
+  command to re-check it. The Review grid groups cards by component and marks each card's status
+  on its edge.
 - **Integrity headline wording**: "N components with errors: …", "No errors; N components with
   warnings", "No issues".
+- **GitHub Actions run on Node 24.** The CI and release workflows, and the example in `docs/ci.md`,
+  use `actions/checkout@v7`, `actions/setup-node@v7`, `actions/upload-artifact@v7`,
+  `actions/download-artifact@v8`, `actions/cache@v6` and `pnpm/action-setup@v6`.
 
 ### Fixed
 
+- **Undo in the dashboard now undoes.** Clearing an approval (`POST /__pxsig/unreview`, the
+  inspector's Undo, `pxsig_review` with `unreview`) restores the baseline it replaced from that
+  approval's snapshot (a first baseline moves to trash/) and its a11y baseline, and logs the undo.
+  It used to clear only the mark and leave the new baseline in place. `undo()` takes `ids` to
+  restore part of a batch.
+- **Inspector shortcuts after a click.** A, R and the arrow keys worked only while focus stayed
+  inside the inspector; after Undo or Approve removed the focused button they did nothing.
 - **The Storybook addon registered its panel twice** when listed by name
   (`addons: ['@pxsig/storybook-addon']`): Storybook loads both a package's `./manager` export and its
   preset, and the preset already adds the manager. The `./manager` export is gone.
 - **Release re-runs.** `Publish pxsig` skips a version that is already published, like the other
   packages, so a re-run after a partial release (or a dry run of a released version) passes.
-
-### Changed
-
-- **GitHub Actions run on Node 24.** The CI and release workflows, and the example in `docs/ci.md`,
-  use `actions/checkout@v7`, `actions/setup-node@v7`, `actions/upload-artifact@v7`,
-  `actions/download-artifact@v8`, `actions/cache@v6` and `pnpm/action-setup@v6`.
 
 ## 0.2.1 - 2026-10-19
 

@@ -19,7 +19,7 @@
  *   GET  /__pxsig/projects · /__pxsig/status · /__pxsig/data · /__pxsig/events · /__pxsig/integrity
  *   POST /__pxsig/approve {id, batch?, via?, reason?, kind?}   latest render → baseline (`.psig`
  *        with the render as its image); the old baseline is snapshotted and the write logged
- *   POST /__pxsig/reject {id} · /__pxsig/unreview {id}
+ *   POST /__pxsig/reject {id} · /__pxsig/unreview {id}   unreview of an approval restores the old baseline
  *   POST /__pxsig/check {ids?|story?|stories?|all?}   render + Rust check, merged into check.json
  *   POST /__pxsig/repair {apply?, only?}   the safe repairs: plan, or apply (never prunes)
  *   GET  /p/<project>/renders/latest/<id>.png · /p/<project>/renders/base/<id>.png (from the .psig)
@@ -46,7 +46,7 @@ import { createReadStream, existsSync, mkdirSync, readFileSync, rmSync, statSync
 import { createServer } from 'node:http';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
-import { newBatch, record, snapshot } from './lib/approvals.mjs';
+import { newBatch, paths, record, sha256, snapshot, undo } from './lib/approvals.mjs';
 import { browserPool, renderStories, STORYBOOK_ERROR } from './lib/capture.mjs';
 import { fetchStoryIndex, filterLedger, loadStoryIndex, oneLine, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
 import { readHeader, readImage } from './lib/psig.mjs';
@@ -265,15 +265,39 @@ async function approve(S, id, meta = {}) {
     detail: e.detail !== false && manifest.detail !== false,
     entry: { id: e.id, story: e.story ?? null, mode: e.mode ?? null, state: e.state ?? null },
   });
-  // The a11y baseline follows the approved render.
+  // The a11y baseline follows the approved render; the old list is kept so an undo can put it back.
   const row = readJson(S.checkPath, { rows: [] }).rows.find((r) => r.id === id);
+  let a11yBefore;
   if (row?.a11y?.violations) {
     const base = readJson(P.store.a11y, {});
+    a11yBefore = base[id] ?? null;
     base[id] = row.a11y.violations.map((v) => v.id).sort();
     writeFileSync(P.store.a11y, `${JSON.stringify(base, null, 2)}\n`);
   }
   const logged = record(P, e, { batch, via: meta.via ?? 'dashboard', reason: meta.reason ?? null, kind: meta.kind ?? null, before });
-  return { ...res, batch, after: logged.after };
+  return { ...res, batch, after: logged.after, ...(a11yBefore !== undefined ? { a11yBefore } : {}) };
+}
+
+/**
+ * Undo one approval made through the server: restore that entry's previous baseline from the
+ * batch snapshot (a first baseline goes to trash/), put its a11y baseline back, and log it like
+ * `pxsig approve undo`. Refuses, changing nothing, when the baseline was rewritten since.
+ */
+function unapprove(S, id, entry) {
+  const { P, manifest } = S;
+  const e = manifest.stories.find((s) => s.id === id);
+  if (!e) throw httpError(404, `unknown entry ${id}`);
+  const before = sha256(paths(P, e).sig);
+  const res = undo(P, manifest, entry.batch, { git: false, ids: [id] });
+  if (res.refused.length) throw httpError(409, `cannot undo ${id}: ${res.refused[0].why}`);
+  if (!res.restored.length && !res.removed.length) throw httpError(409, `cannot undo ${id}: nothing in batch ${entry.batch} to restore`);
+  record(P, e, { batch: `${entry.batch}-undo`, via: 'undo', reason: `undo ${entry.batch} (dashboard)`, before });
+  if ('a11yBefore' in entry) {
+    const base = readJson(P.store.a11y, {});
+    if (entry.a11yBefore == null) delete base[id];
+    else base[id] = entry.a11yBefore;
+    writeFileSync(P.store.a11y, `${JSON.stringify(base, null, 2)}\n`);
+  }
 }
 
 async function review(S, action, id, meta = {}) {
@@ -281,7 +305,10 @@ async function review(S, action, id, meta = {}) {
   const rv = readJson(S.reviewPath, {});
   if (action === 'approve') rv[id] = { state: 'approved', at: new Date().toISOString(), ...(await approve(S, id, meta)) };
   else if (action === 'reject') rv[id] = { state: 'rejected', at: new Date().toISOString() };
-  else if (action === 'unreview') delete rv[id];
+  else if (action === 'unreview') {
+    if (rv[id]?.state === 'approved' && rv[id].batch) unapprove(S, id, rv[id]);
+    delete rv[id];
+  }
   else throw httpError(404, 'unknown action');
   S.quietUntil = Date.now() + 800;
   writeFileSync(S.reviewPath, `${JSON.stringify(rv, null, 2)}\n`);

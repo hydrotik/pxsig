@@ -19,7 +19,17 @@
       "other": "{name} · {count} entries"
     },
     "sections": "Report sections",
-    "embedEmpty": "No result for this story. Run a check from the toolbar."
+    "embedEmpty": "No result for this story. Run a check from the toolbar.",
+    "startReview": {
+      "changed": {
+        "one": "Review {count} change",
+        "other": "Review {count} changes"
+      },
+      "new": {
+        "one": "Approve {count} new entry",
+        "other": "Approve {count} new entries"
+      }
+    }
   },
   "tabs": {
     "overview": "Overview",
@@ -71,7 +81,8 @@
     "actions": {
       "review": "Review",
       "open": "Open",
-      "view": "View"
+      "view": "View",
+      "start": "Start review"
     },
     "cards": {
       "label": "Latest check",
@@ -123,6 +134,10 @@
       "ssim": "SSIM {value}",
       "cells": "Cells {value}",
       "tiles": "Tiles {value}"
+    },
+    "group": {
+      "label": "Group by component",
+      "count": "{status} {count}"
     }
   },
   "coverage": {
@@ -547,7 +562,8 @@
       "approve": "Approve",
       "approveTitle": "Use the latest render as the baseline (A)",
       "undo": "Undo",
-      "failed": "{action} failed: {error}"
+      "failed": "{action} failed: {error}",
+      "undoTitle": "Restore the previous baseline"
     },
     "missing": "Render not found: {before} or {after}. Run the check again.",
     "loading": "Loading renders…",
@@ -624,6 +640,21 @@
     "stage": {
       "label": "Image comparison. Drag to pan, scroll to zoom.",
       "swipe": "Swipe position"
+    },
+    "rejectedNote": "Rejected. Fix the component, then re-run the check:",
+    "session": {
+      "label": "Review progress",
+      "changed": "Reviewing changes",
+      "new": "Approving new entries",
+      "progress": "{done} of {total} reviewed · {left} left",
+      "complete": "Review complete",
+      "approved": "{count} approved",
+      "approvedNext": "Baselines are written to {store}. Commit them with the change.",
+      "rejected": "{count} rejected",
+      "rejectedNext": "Fix the components, then re-run the check:",
+      "back": "Back to overview",
+      "viewRejected": "View rejected",
+      "backToEntries": "Back to entries"
     }
   }
 }

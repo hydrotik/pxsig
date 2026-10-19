@@ -46,8 +46,8 @@ port and renders against it (its origin is allowed like a Storybook's).
 
 | Tab | Content |
 | --- | --- |
-| Overview | Open items (changed, new, rejected, render errors, coverage errors, new a11y violations, flaky), each linking to its list, and the last check in numbers |
-| Review | Every entry, filterable, with the inspector: baseline, current render and diff side by side or overlaid, metrics, gate reasons, change regions. `A` approves, `R` rejects. |
+| Overview | The latest check's counts and duration, then open items (changed, new, rejected, render errors, coverage errors, new a11y violations, flaky), each linking to its list or starting a review |
+| Review | Every entry, filterable and grouped by component, with the inspector: baseline, current render and diff side by side or overlaid, metrics, gate reasons, change regions. `A` approves, `R` rejects. "Review N changes" starts a session over the changed (or new) entries with progress and a closing summary. |
 | Coverage | The integrity ledger: components and entries by status, with the safe repairs |
 | Accessibility | axe violations per entry and per rule, new ones first |
 | Runs | The last check's timing, past runs, and which entries changed in each |
@@ -99,7 +99,7 @@ exactly one project.
 | --- | --- |
 | `POST /__pxsig/approve {id, batch?, via?, reason?, kind?}` | The latest render becomes the baseline: a `.psig` with the render as its image. The old baseline is snapshotted to `<store>/history/<batch>/`, the write logged in `approvals.ndjson`, and the a11y baseline follows the render. A NEW entry (no baseline yet) gets its first baseline, logged with `before: null`. 409 when there is no latest render, or when the server does not hold the project's store lock. |
 | `POST /__pxsig/reject {id}` | Records a rejection for the current result. |
-| `POST /__pxsig/unreview {id}` | Clears the decision. |
+| `POST /__pxsig/unreview {id}` | Clears the decision. For an approval it also restores the previous baseline from that approval's snapshot (a first baseline moves to trash/) and its a11y baseline, logged as an undo; 409 when the baseline changed since. |
 | `POST /__pxsig/check {ids? \| story? \| stories? \| all?}` | Queues renders and engine checks; answers 202 with the queued ids. Results merge into `check.json`. Without a project, the check is split across the projects that own the ids. |
 | `POST /__pxsig/repair {apply?, only?}` | The safe repairs: the plan, or with `apply: true` the result. Never prunes. |
 

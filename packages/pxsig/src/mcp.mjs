@@ -537,7 +537,7 @@ const tools = [
   {
     name: 'pxsig_review',
     description:
-      "Approve (the latest render becomes the baseline), reject, or clear the decision on entries. Approving changes what future checks compare against: pass confirm: true ONLY when the user explicitly asked to approve/reject these exact entries in this conversation — never on your own judgement that a change looks intended. Needs the pxsig server.",
+      "Approve (the latest render becomes the baseline), reject, or clear the decision on entries (clearing an approval restores the baseline it replaced). Approving changes what future checks compare against: pass confirm: true ONLY when the user explicitly asked to approve/reject these exact entries in this conversation — never on your own judgement that a change looks intended. Needs the pxsig server.",
     inputSchema: {
       type: 'object',
       properties: {

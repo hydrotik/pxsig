@@ -1,6 +1,6 @@
 import type React from 'react';
 import { Button, Card, CardContent, CardHeader, CardTitle, DataGrid, StatPanel } from '@hydrotik/design-system';
-import { type Data, fmt, rowsWithPending, statusOf } from '../data';
+import { type Data, type Queue, fmt, rowsWithPending, served, statusOf } from '../data';
 import { Cmd, t, tx, type CopyKey } from '../copy';
 import * as s from '../dashboard.css';
 
@@ -21,7 +21,9 @@ const byMode = (modes: string[]) => {
 };
 
 /** The landing tab: what needs doing, then the last check in numbers. */
-export function Overview({ data, go }: { data: Data; go(tab: string, filter?: string): void }) {
+export function Overview({ data, go, startReview }: { data: Data; go(tab: string, filter?: string): void; startReview(kind: Queue): void }) {
+  // With the server, a queue opens straight into the inspector; a static report lists it instead.
+  const review = (kind: Queue) => (served ? startReview(kind) : go('stories', kind));
   const sm = data.check?.summary;
   const L = data.integrity;
   const rows = rowsWithPending(data);
@@ -32,8 +34,8 @@ export function Overview({ data, go }: { data: Data; go(tab: string, filter?: st
   const errors = having('error').filter((r) => !r.skipped);
   const flaky = having('flaky');
   const items: Item[] = [
-    { id: 'changed', label: t('overview.items.changed'), count: changed.length, detail: byMode(changed.map((r) => r.mode)), action: 'overview.actions.review', open: () => go('stories', 'changed') },
-    { id: 'new', label: t('overview.items.new'), count: fresh.length, detail: byMode(fresh.map((r) => r.mode)), action: 'overview.actions.review', open: () => go('stories', 'new') },
+    { id: 'changed', label: t('overview.items.changed'), count: changed.length, detail: byMode(changed.map((r) => r.mode)), action: served ? 'overview.actions.start' : 'overview.actions.review', open: () => review('changed') },
+    { id: 'new', label: t('overview.items.new'), count: fresh.length, detail: byMode(fresh.map((r) => r.mode)), action: served ? 'overview.actions.start' : 'overview.actions.review', open: () => review('new') },
     { id: 'rejected', label: t('overview.items.rejected'), count: rejected.length, detail: '', action: 'overview.actions.view', open: () => go('stories', 'rejected') },
     { id: 'error', label: t('overview.items.error'), count: errors.length, detail: '', action: 'overview.actions.view', open: () => go('stories', 'error') },
     {
@@ -56,7 +58,7 @@ export function Overview({ data, go }: { data: Data; go(tab: string, filter?: st
           cards={[
             { label: t('overview.cards.checked'), value: sm.checked, unit: sm.skipped ? t('overview.cards.notRun', { count: sm.skipped }) : sm.modes.join(' · ') },
             { label: t('overview.cards.passed'), value: sm.passed, accent: 'success' },
-            { label: t('overview.cards.changed'), value: sm.failed, accent: sm.failed ? 'error' : undefined, type: 'filter', onSelect: () => go('stories', 'changed') },
+            { label: t('overview.cards.changed'), value: sm.failed, accent: sm.failed ? 'error' : undefined, type: 'filter', onSelect: () => review('changed') },
             { label: t('overview.cards.flaky'), value: sm.flaky, accent: sm.flaky ? 'warning' : undefined, type: 'filter', onSelect: () => go('stories', 'flaky') },
             { label: t('overview.cards.a11y'), value: sm.a11yNew, unit: t('overview.cards.ofTotal', { total: sm.a11yViolations }), accent: sm.a11yNew ? 'error' : undefined, type: 'filter', onSelect: () => go('a11y') },
             // Wall clock for the whole check; rendering in the browser is nearly all of it.

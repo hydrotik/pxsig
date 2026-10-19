@@ -425,6 +425,24 @@ export const fmt = {
   x: (v: number) => `${v >= 10 ? Math.round(v) : v.toFixed(1)}×`,
 };
 
+export type Queue = 'changed' | 'new';
+
+/**
+ * The entries a review session walks: every changed (or new, rendered) entry of the last check,
+ * decided or not, largest change first. Progress is how many of them have a decision.
+ */
+export function reviewQueue(d: Data, kind: Queue): Row[] {
+  const size = (r: Row) => (r.metrics?.ssim ?? 2) - (r.detail ? (r.detail.changedTiles + r.detail.newEdgeTiles) / 1000 : 0);
+  return rowsWithPending(d)
+    .filter((r) => statusOf(r, {}) === kind && !r.pending)
+    .sort((a, b) => size(a) - size(b) || a.id.localeCompare(b.id));
+}
+
+/** The component an entry belongs to: the integrity ledger's, else the story title's first part. */
+export function componentOf(d: Data, r: Row): string {
+  return integrityOf(d, r.id)?.component ?? (r.story ?? r.id).split('--')[0];
+}
+
 /** A review decision (made on this run's results; a new check clears them) wins over the verdict. */
 export function statusOf(r: Row, review: Record<string, ReviewEntry>): 'approved' | 'rejected' | 'changed' | 'new' | 'flaky' | 'skipped' | 'error' | 'pass' {
   const rv = review[r.id];

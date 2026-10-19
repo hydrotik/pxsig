@@ -49,7 +49,7 @@ Every tool takes an optional `project`. With several projects in the workspace i
 | `pxsig_affected` | `project`, `files` or `since` | The entries those edits can change |
 | `pxsig_stale` | `project`, `limit` (200), `max_files` (400) | Verdicts older than an edit that can change them, and verdicts made on a render of a different size |
 | `pxsig_check` | `project`, `ids`, `stories`, `changed_files`, `since`, `all`, `timeout_s` (900) | Re-renders and re-checks the selection, waits, and returns the states and problems. Never writes baselines. |
-| `pxsig_review` | `project`, `action` (`approve`, `reject`, `unreview`), `ids`, `confirm` (all three required) | Approves (the latest render becomes the baseline), rejects, or clears the decision. Needs the server. |
+| `pxsig_review` | `project`, `action` (`approve`, `reject`, `unreview`), `ids`, `confirm` (all three required) | Approves (the latest render becomes the baseline), rejects, or clears the decision; clearing an approval restores the baseline it replaced. Needs the server. |
 | `pxsig_doctor` | `project`, `component`, `status`, `limit` (40), `repair` (`none`, `plan`, `apply`), `only`, `offline` | The integrity ledger, filtered; with `repair`, the plan or the applied repairs. Never prunes. |
 | `pxsig_history` | `project`, `limit` (10) | The last runs |
 

@@ -8,6 +8,7 @@ import {
   DialogTitle,
   Kbd,
   Link,
+  Progress,
   Slider,
   StaticList,
   StaticListItem,
@@ -20,7 +21,7 @@ import {
   ToolbarRight,
   Badge,
 } from '@hydrotik/design-system';
-import { type Data, type Row, fmt, pathsFor, reviewAction, served, statusOf } from '../data';
+import { type Data, type Queue, type Row, fmt, pathsFor, reviewAction, served, statusOf } from '../data';
 import { analyse, cellsLayer, hex, loadImg, readPixels, type Analysis } from './analyse';
 import { Stage, type Hover, type Mode, type StageApi } from './Stage';
 import { StatusOf } from '../parts/StatusOf';
@@ -33,6 +34,8 @@ export interface InspectTarget {
   scenario: { tag: string; name: string } | null;
   /** The list being browsed (←/→). */
   list: Row[];
+  /** A review session over a queue: shows progress, then a summary when every entry is decided. */
+  session?: Queue;
 }
 
 const MODES: Mode[] = ['side', 'swipe', 'onion', 'diff', 'heat'];
@@ -60,12 +63,15 @@ export function Inspector({
   target,
   onNavigate,
   onClose,
+  onGo,
   embedded = false,
 }: {
   data: Data;
   target: InspectTarget | null;
   onNavigate(t: InspectTarget): void;
   onClose(): void;
+  /** Leave the inspector for a tab (and filter): the session summary's next steps. */
+  onGo?(tab: string, filter?: string): void;
   embedded?: boolean;
 }) {
   const prefs = React.useMemo(loadPrefs, []);
@@ -105,6 +111,8 @@ export function Inspector({
   // Embedded in Storybook's short panel the image gets the room; details open on demand.
   const [showSide, setShowSide] = React.useState<boolean>(!embedded);
   const [sizes, setSizes] = React.useState<Record<string, string>>({});
+  // Keep browsing after the session summary appears (to undo or look back).
+  const [stay, setStay] = React.useState(false);
   const stage = React.useRef<StageApi>(null);
 
   const row = target?.row ?? null;
@@ -207,10 +215,10 @@ export function Inspector({
     try {
       await reviewAction(action, row.id);
       if (action !== 'unreview') {
-        const next = list.findIndex(
-          (r, i) => i > index && !r.pass && !data.review[r.id] && r.id !== row.id
-        );
-        if (next >= 0) onNavigate({ ...target!, row: list[next] });
+        // The next undecided entry after this one, wrapping to the start of the list.
+        const open = (r: Row) => !r.pass && !data.review[r.id] && r.id !== row.id;
+        const next = [...list.slice(index + 1), ...list.slice(0, Math.max(index, 0))].find(open);
+        if (next) onNavigate({ ...target!, row: next });
       }
     } catch (e) {
       alert(t('inspector.review.failed', { action: t(`inspector.review.${action === 'unreview' ? 'undo' : action}`), error: (e as Error).message }));
@@ -225,8 +233,10 @@ export function Inspector({
       ? (data.check?.rows ?? []).filter((r) => r.story === row.story && !r.skipped)
       : [];
 
-  const onKey = (e: React.KeyboardEvent) => {
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
+  // The summary screen takes no shortcuts (A would re-approve the last entry).
+  const blockKeys = React.useRef(false);
+  const onKey = (e: Pick<KeyboardEvent, 'metaKey' | 'ctrlKey' | 'altKey' | 'key' | 'target' | 'preventDefault'>) => {
+    if (blockKeys.current || e.metaKey || e.ctrlKey || e.altKey) return;
     const t = e.target as HTMLElement;
     if (t.closest('[role="slider"]') && e.key.startsWith('Arrow')) return;
     const k = e.key;
@@ -243,6 +253,20 @@ export function Inspector({
     if ((k === 'a' || k === 'A') && canReview && !busy) return run(() => act('approve'));
     if ((k === 'r' || k === 'R') && canReview && !busy) return run(() => act('reject'));
   };
+  // In the dialog the shortcuts listen on the window: a button that disappears after a click
+  // (Undo, Approve) drops focus to the page, and a listener on the inspector would miss them.
+  const keyRef = React.useRef(onKey);
+  keyRef.current = onKey;
+  React.useEffect(() => {
+    if (embedded) return;
+    const h = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLElement && e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+      keyRef.current(e);
+    };
+    // Capture phase: controls inside the dialog stop some keys from bubbling.
+    window.addEventListener('keydown', h, true);
+    return () => window.removeEventListener('keydown', h, true);
+  }, [embedded]);
 
   if (!row || !p) return null;
   const m = row.metrics;
@@ -414,7 +438,7 @@ export function Inspector({
           {t('inspector.review.approve')}
         </Button>
         {review ? (
-          <Button size="sm" variant="ghost" disabled={busy} onClick={() => act('unreview')}>
+          <Button size="sm" variant="ghost" disabled={busy} onClick={() => act('unreview')} title={review.state === 'approved' ? t('inspector.review.undoTitle') : undefined}>
             {t('inspector.review.undo')}
           </Button>
         ) : null}
@@ -423,8 +447,69 @@ export function Inspector({
   // Embedded (Storybook panel) there is no Dialog around the body, so no Dialog parts.
   const Title = embedded ? 'h3' : DialogTitle;
   const Desc = embedded ? 'p' : DialogDescription;
+
+  // --- review session: progress while deciding, then a summary with the next steps ---------------
+  const session = embedded ? null : (target?.session ?? null);
+  const decided = session ? list.filter((r) => data.review[r.id]).length : 0;
+  const approvedRows = session ? list.filter((r) => data.review[r.id]?.state === 'approved') : [];
+  const rejectedRows = session ? list.filter((r) => data.review[r.id]?.state === 'rejected') : [];
+  const complete = !!session && list.length > 0 && decided === list.length && !stay;
+  blockKeys.current = complete;
+  const progress = session ? (
+    <div className={s.sessionBar}>
+      <strong>{t(`inspector.session.${session}`)}</strong>
+      <Progress className={s.grow} value={Math.round((decided / (list.length || 1)) * 100)} aria-label={t('inspector.session.label')} />
+      <span className={s.micro}>{t('inspector.session.progress', { done: decided, total: list.length, left: list.length - decided })}</span>
+    </div>
+  ) : null;
+  const rejectedNote =
+    review?.state === 'rejected' && !target?.scenario ? (
+      <div className={s.note}>
+        <span>{t('inspector.rejectedNote')}</span>
+        <CopyValue value={`pxsig check ${row.id}`} />
+      </div>
+    ) : null;
+  if (complete)
+    return (
+      <Dialog open onOpenChange={(o) => !o && onClose()}>
+        <DialogContent className={s.summaryDialog} showCloseButton={false} aria-describedby={undefined}>
+          {progress}
+          <div className={s.summary}>
+            <DialogTitle className={s.insTitle}>{t('inspector.session.complete')}</DialogTitle>
+            <StaticList labelWidth="30%">
+              <StaticListItem label={t('inspector.session.approved', { count: approvedRows.length })}>
+                {tx('inspector.session.approvedNext', { store: <Cmd>{data.store ?? '.pxsig'}</Cmd> })}
+              </StaticListItem>
+              {rejectedRows.length ? (
+                <StaticListItem label={t('inspector.session.rejected', { count: rejectedRows.length })}>
+                  <span className={s.stack}>
+                    <span>{t('inspector.session.rejectedNext')}</span>
+                    <CopyValue value={`pxsig check ${rejectedRows.map((r) => r.id).join(' ')}`} />
+                  </span>
+                </StaticListItem>
+              ) : null}
+            </StaticList>
+            <span className={s.row}>
+              <Button size="sm" onClick={() => (onGo ? onGo('overview') : onClose())}>
+                {t('inspector.session.back')}
+              </Button>
+              {rejectedRows.length && onGo ? (
+                <Button size="sm" variant="outline" onClick={() => onGo('stories', 'rejected')}>
+                  {t('inspector.session.viewRejected')}
+                </Button>
+              ) : null}
+              <Button size="sm" variant="ghost" onClick={() => setStay(true)}>
+                {t('inspector.session.backToEntries')}
+              </Button>
+            </span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+
   const body = (
-    <div onKeyDown={onKey} style={{ display: 'contents' }}>
+    <div onKeyDown={embedded ? (e) => onKey(e.nativeEvent) : undefined} style={{ display: 'contents' }}>
+      {progress}
       {embedded ? null : (
         <div className={s.insHead}>
           <div style={{ minInlineSize: 0 }}>
@@ -456,6 +541,7 @@ export function Inspector({
         </div>
       )}
 
+      {rejectedNote}
       <Toolbar className={s.insToolbar}>
         <ToolbarLeft>
           {embedded ? <StatusOf status={statusOf(row, data.review)} /> : null}

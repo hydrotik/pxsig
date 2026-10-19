@@ -1,14 +1,17 @@
 import React from 'react';
-import { SearchBar, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Toolbar, ToolbarFormField, ToolbarLeft, ToolbarRight } from '@hydrotik/design-system';
-import { type Data, type Row, rowsWithPending, statusOf } from '../data';
+import { Button, SearchBar, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, Toolbar, ToolbarFormField, ToolbarLeft, ToolbarRight } from '@hydrotik/design-system';
+import { type Data, type Queue, type Row, reviewQueue, rowsWithPending, served, statusOf } from '../data';
 import { StoryGrid } from '../parts/StoryGrid';
 import { Cmd, t, tx } from '../copy';
 import * as s from '../dashboard.css';
 
 const FILTERS = ['all', 'todo', 'changed', 'new', 'error', 'flaky', 'approved', 'rejected', 'skipped', 'drift'] as const;
 
-export function Stories({ data, filter, setFilter, onOpen }: { data: Data; filter: string; setFilter(f: string): void; onOpen(row: Row, list: Row[]): void }) {
+export function Stories({ data, filter, setFilter, onOpen, startReview }: { data: Data; filter: string; setFilter(f: string): void; onOpen(row: Row, list: Row[]): void; startReview(kind: Queue): void }) {
   const [q, setQ] = React.useState('');
+  const [grouped, setGrouped] = React.useState(true);
+  const left = (kind: Queue) => reviewQueue(data, kind).filter((r) => !data.review[r.id]).length;
+  const queues = (['changed', 'new'] as const).filter((k) => left(k) > 0);
   const [mode, setMode] = React.useState('all');
   const [sort, setSort] = React.useState('worst');
   const check = data.check;
@@ -30,6 +33,15 @@ export function Stories({ data, filter, setFilter, onOpen }: { data: Data; filte
   // behind one confirm(). Approve per entry in the inspector (A), where the images are on screen.
   return (
     <div className={s.stack}>
+      {served && queues.length ? (
+        <span className={s.row}>
+          {queues.map((k, i) => (
+            <Button key={k} size="sm" variant={i === 0 ? 'default' : 'outline'} onClick={() => startReview(k)}>
+              {t(`app.startReview.${k}`, { count: left(k) })}
+            </Button>
+          ))}
+        </span>
+      ) : null}
       <Toolbar>
         <ToolbarLeft>
           <ToolbarFormField label={t('review.fields.story')} minInlineSize="14rem" flexGrow={1}>
@@ -78,10 +90,13 @@ export function Stories({ data, filter, setFilter, onOpen }: { data: Data; filte
           </ToolbarFormField>
         </ToolbarLeft>
         <ToolbarRight>
+          <label className={s.ctl}>
+            <Switch checked={grouped} onCheckedChange={setGrouped} aria-label={t('review.group.label')} /> {t('review.group.label')}
+          </label>
           <span className={s.muted}>{t('review.count', { shown: rows.length, total: all.length })}</span>
         </ToolbarRight>
       </Toolbar>
-      <StoryGrid data={data} rows={rows} scenario={null} onOpen={onOpen} />
+      <StoryGrid data={data} rows={rows} scenario={null} onOpen={onOpen} grouped={grouped} />
     </div>
   );
 }

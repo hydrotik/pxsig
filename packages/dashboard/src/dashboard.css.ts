@@ -72,6 +72,22 @@ export const storyCard = style({
     },
   },
 });
+// A status edge on each card, so problems stand out while scrolling.
+const edge = (color: string) => ({ borderInlineStartColor: color, borderInlineStartWidth: vars.ring.width });
+globalStyle(`${storyCard}[data-status="changed"]`, edge(vars.color.warning));
+globalStyle(`${storyCard}[data-status="flaky"]`, edge(vars.color.warning));
+globalStyle(`${storyCard}[data-status="new"]`, edge(vars.color.primary));
+globalStyle(`${storyCard}[data-status="error"]`, edge(vars.color.destructive));
+globalStyle(`${storyCard}[data-status="rejected"]`, edge(vars.color.destructive));
+globalStyle(`${storyCard}[data-status="approved"]`, edge(vars.color.success));
+export const groupHead = style({
+  display: 'flex',
+  alignItems: 'baseline',
+  gap: vars.space['2'],
+  margin: 0,
+  fontSize: vars.font.size.sm,
+  fontWeight: vars.font.weight.semibold,
+});
 export const thumb = style({
   position: 'relative',
   blockSize: '9rem',
@@ -140,6 +156,29 @@ export const insHead = style({
   borderBlockEnd: `1px solid ${vars.color.border}`,
 });
 export const insTitle = style({ margin: 0, fontFamily: vars.font.family.mono, fontSize: vars.font.size.sm, wordBreak: 'break-all' });
+// Review session: progress above the inspector, a summary when every entry is decided.
+export const sessionBar = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: vars.space['3'],
+  paddingInline: vars.space['4'],
+  paddingBlock: vars.space['2'],
+  borderBlockEnd: `1px solid ${vars.color.border}`,
+  fontSize: vars.font.size.sm,
+});
+export const note = style({
+  display: 'flex',
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  gap: vars.space['2'],
+  paddingInline: vars.space['4'],
+  paddingBlock: vars.space['2'],
+  borderBlockEnd: `1px solid ${vars.color.border}`,
+  backgroundColor: `color-mix(in srgb, ${vars.color.destructive} 8%, transparent)`,
+  fontSize: vars.font.size.sm,
+});
+export const summaryDialog = style({ inlineSize: 'min(100%, 40rem)', padding: 0, gap: 0 });
+export const summary = style({ display: 'flex', flexDirection: 'column', gap: vars.space['4'], padding: vars.space['6'] });
 export const insToolbar = style({
   paddingBlock: vars.space['2'],
   paddingInline: vars.space['4'],

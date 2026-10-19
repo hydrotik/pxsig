@@ -1,7 +1,7 @@
 import React from 'react';
 import { AppHeader, AppHeaderTitle, AppHeaderToolbar, AppShell, AppShellContent, Badge, Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, TooltipProvider } from '@hydrotik/design-system';
 import { useTheme } from '@hydrotik/theme-provider';
-import { type Data, type Row, rowsWithPending, served, statusOf, switchProject, useData, useProjects } from './data';
+import { type Data, type Queue, type Row, reviewQueue, rowsWithPending, served, statusOf, switchProject, useData, useProjects } from './data';
 import { Inspector, type InspectTarget } from './inspector/Inspector';
 import { Overview } from './views/Overview';
 import { Stories } from './views/Stories';
@@ -122,6 +122,15 @@ export function App() {
     if (f) setFilter(f);
     setTab(t as Tab);
   };
+  // A review session: the inspector on the first undecided entry of a queue, with progress.
+  const queues = { changed: reviewQueue(data, 'changed'), new: reviewQueue(data, 'new') };
+  const startReview = (kind: Queue) => {
+    const list = queues[kind];
+    const first = list.find((r) => !data.review[r.id]) ?? list[0];
+    if (first) setTarget({ row: first, list, scenario: null, session: kind });
+  };
+  const nextQueue: Queue | null = queues.changed.some((r) => !data.review[r.id]) ? 'changed' : queues.new.some((r) => !data.review[r.id]) ? 'new' : null;
+  const undecided = (kind: Queue) => queues[kind].filter((r) => !data.review[r.id]).length;
   const sm = data.check?.summary;
   // Diagnostics appears only when a research run wrote its data.
   const diagnostics = diagnosticsOf(data).length > 0;
@@ -132,6 +141,11 @@ export function App() {
         <AppHeader status={!sm ? undefined : todo ? 'review-required' : 'approved'}>
           <AppHeaderTitle tag={sm ? sm.modes.join(' · ') : undefined}>{data.project ? t('app.title', { project: data.project }) : 'pxsig'}</AppHeaderTitle>
           <AppHeaderToolbar>
+            {served && nextQueue ? (
+              <Button size="sm" onClick={() => startReview(nextQueue)}>
+                {t(`app.startReview.${nextQueue}`, { count: undecided(nextQueue) })}
+              </Button>
+            ) : null}
             <ProjectPicker current={data.project} />
             {served ? (
               <Badge variant={live ? 'success' : 'secondary'} pulse={live}>
@@ -159,10 +173,10 @@ export function App() {
                   <TabsTrigger value="help">{t('tabs.help')}</TabsTrigger>
                 </TabsList>
                 <TabsContent value="overview">
-                  <Overview data={data} go={go} />
+                  <Overview data={data} go={go} startReview={startReview} />
                 </TabsContent>
                 <TabsContent value="stories">
-                  <Stories data={data} filter={filter} setFilter={setFilter} onOpen={(r, l) => open(r, l)} />
+                  <Stories data={data} filter={filter} setFilter={setFilter} onOpen={(r, l) => open(r, l)} startReview={startReview} />
                 </TabsContent>
                 <TabsContent value="integrity">
                   <Integrity data={data} onOpen={(r, l) => open(r, l)} />
@@ -184,7 +198,15 @@ export function App() {
           </main>
         </AppShellContent>
       </AppShell>
-      {target ? <Inspector data={data} target={target} onNavigate={setTarget} onClose={() => (setTarget(null), history.replaceState(null, '', `#${tab}`))} /> : null}
+      {target ? (
+        <Inspector
+          data={data}
+          target={target}
+          onNavigate={setTarget}
+          onClose={() => (setTarget(null), history.replaceState(null, '', `#${tab}`))}
+          onGo={(t, f) => (setTarget(null), go(t, f))}
+        />
+      ) : null}
     </TooltipProvider>
   );
 }
