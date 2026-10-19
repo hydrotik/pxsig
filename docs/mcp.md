@@ -45,11 +45,11 @@ Every tool takes an optional `project`. With several projects in the workspace i
 | `pxsig_status` | `project` | When the report was written, counts per state, accessibility totals, most changed components, server state, files edited since the report. Start here. |
 | `pxsig_list` | `project`, `state` (`problems` default, `changed`, `new`, `error`, `flaky`, `rejected`, `approved`, `drift`, `pass`, `skipped`, `a11y`, `all`), `component`, `mode`, `limit` (50) | Entries with metrics and gate reasons |
 | `pxsig_entry` | `project`, `id` (required), `images` (`baseline`, `current`, `diff`; default all three) | One entry in full, with the images inline. Images over about 1.5 MB are replaced by their path. |
-| `pxsig_a11y` | `project`, `only_new`, `component`, `limit` (50) | axe violations per entry |
+| `pxsig_a11y` | `project`, `only_new`, `component`, `limit` (50) | axe violations per entry, with each entry's accessibility decision (`accepted`, `rejected` or null) since its last check |
 | `pxsig_affected` | `project`, `files` or `since` | The entries those edits can change |
 | `pxsig_stale` | `project`, `limit` (200), `max_files` (400) | Verdicts older than an edit that can change them, and verdicts made on a render of a different size |
 | `pxsig_check` | `project`, `ids`, `stories`, `changed_files`, `since`, `all`, `timeout_s` (900) | Re-renders and re-checks the selection, waits, and returns the states and problems. Never writes baselines. |
-| `pxsig_review` | `project`, `action` (`approve`, `reject`, `unreview`), `ids`, `confirm` (all three required) | Approves (the latest render becomes the baseline), rejects, or clears the decision; clearing an approval restores the baseline it replaced. Needs the server. |
+| `pxsig_review` | `project`, `action` (`approve`, `reject`, `unreview`, `a11y-accept`, `a11y-reject`, `a11y-unreview`), `ids`, `confirm` (all three required) | Visual: approves (the latest render becomes the baseline, accepting its axe violations with it), rejects, or clears the decision; clearing an approval restores the baseline it replaced. Accessibility: puts the entry's current violations on its accepted list, marks them for a fix, or clears the decision (restoring the previous list). Needs the server. |
 | `pxsig_doctor` | `project`, `component`, `status`, `limit` (40), `repair` (`none`, `plan`, `apply`), `only`, `offline` | The integrity ledger, filtered; with `repair`, the plan or the applied repairs. Never prunes. |
 | `pxsig_history` | `project`, `limit` (10) | The last runs |
 

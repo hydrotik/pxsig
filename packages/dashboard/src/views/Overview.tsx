@@ -2,6 +2,7 @@ import type React from 'react';
 import { Button, Card, CardContent, CardHeader, CardTitle, DataGrid, StatPanel } from '@hydrotik/design-system';
 import { type Data, type Queue, fmt, rowsWithPending, served, statusOf } from '../data';
 import { Cmd, t, tx, type CopyKey } from '../copy';
+import { Affordance } from '../parts/Affordance';
 import * as s from '../dashboard.css';
 
 interface Item {
@@ -56,13 +57,14 @@ export function Overview({ data, go, startReview }: { data: Data; go(tab: string
     <div className={s.stack}>
       {sm ? (
         <StatPanel
+          className={s.statCards}
           aria-label={t('overview.cards.label')}
           cards={[
             { label: t('overview.cards.checked'), value: sm.checked, unit: sm.skipped ? t('overview.cards.notRun', { count: sm.skipped }) : sm.modes.join(' · ') },
             { label: t('overview.cards.passed'), value: sm.passed, accent: 'success' },
-            { label: t('overview.cards.changed'), value: sm.failed, accent: sm.failed ? 'error' : undefined, type: 'filter', onSelect: () => review('changed') },
-            { label: t('overview.cards.flaky'), value: sm.flaky, accent: sm.flaky ? 'warning' : undefined, type: 'filter', onSelect: () => go('stories', 'flaky') },
-            { label: t('overview.cards.a11y'), value: sm.a11yNew, unit: t('overview.cards.ofTotal', { total: sm.a11yViolations }), accent: sm.a11yNew ? 'error' : undefined, type: 'filter', onSelect: () => go('a11y') },
+            { label: t('overview.cards.changed'), value: sm.failed, accent: sm.failed ? 'error' : undefined, type: 'filter', onSelect: () => review('changed'), icon: <Affordance kind={served ? 'open' : 'navigate'} /> },
+            { label: t('overview.cards.flaky'), value: sm.flaky, accent: sm.flaky ? 'warning' : undefined, type: 'filter', onSelect: () => go('stories', 'flaky'), icon: <Affordance kind="navigate" /> },
+            { label: t('overview.cards.a11y'), value: sm.a11yNew, unit: t('overview.cards.a11yOf', { count: sm.a11yViolations }), accent: sm.a11yNew ? 'error' : undefined, type: 'filter', onSelect: () => (served ? startReview('a11y') : go('a11y')), icon: <Affordance kind={served ? 'open' : 'navigate'} /> },
             // Wall clock for the whole check; rendering in the browser is nearly all of it.
             { label: t('overview.cards.duration'), value: fmt.ms(sm.totalMs), unit: t('overview.cards.rendering', { time: fmt.ms(sm.renderWallMs) }) },
           ]}

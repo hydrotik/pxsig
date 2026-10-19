@@ -55,6 +55,7 @@ export const cards = style({
 });
 export const storyCard = style({
   all: 'unset',
+  position: 'relative',
   boxSizing: 'border-box',
   display: 'flex',
   flexDirection: 'column',
@@ -80,6 +81,45 @@ globalStyle(`${storyCard}[data-status="new"]`, edge(vars.color.primary));
 globalStyle(`${storyCard}[data-status="error"]`, edge(vars.color.destructive));
 globalStyle(`${storyCard}[data-status="rejected"]`, edge(vars.color.destructive));
 globalStyle(`${storyCard}[data-status="approved"]`, edge(vars.color.success));
+// --- affordance: what a clickable card does, top-right ---------------------------------------
+export const affordance = style({
+  position: 'absolute',
+  insetBlockStart: vars.space['2'],
+  insetInlineEnd: vars.space['2'],
+  display: 'flex',
+  padding: vars.space['1'],
+  borderRadius: vars.radii.md,
+  // A backing so the icon reads over a thumbnail as well as on a plain card.
+  backgroundColor: `color-mix(in srgb, ${vars.color.surface} 85%, transparent)`,
+  color: vars.color.textMuted,
+  pointerEvents: 'none',
+  zIndex: 1,
+  transition: 'color 120ms',
+});
+globalStyle(`${affordance} svg`, { inlineSize: '0.875rem', blockSize: '0.875rem' });
+globalStyle(`button:hover ${affordance}, a:hover ${affordance}, button:focus-visible ${affordance}`, { color: vars.color.primary });
+// StatPanel's clickable cards are not a positioning context yet (until the pattern moves into the
+// design system); its filter and link cards render as button and a.
+export const statCards = style({});
+globalStyle(`${statCards} button, ${statCards} a`, { position: 'relative' });
+// The icon slot beside the label would take room the label needs; the affordance sits in the corner.
+globalStyle(`${statCards} span:has(> ${affordance})`, { display: 'contents' });
+globalStyle(`${statCards} :is(button, a) > span:has(${affordance})`, { paddingInlineEnd: vars.space['5'] });
+
+export const inlineIcon = style({ inlineSize: '0.875rem', blockSize: '0.875rem', flexShrink: 0 });
+
+// Grouped grid: each component's cards sit on a band, alternating, so a group reads as one row.
+export const groups = style({ display: 'flex', flexDirection: 'column' });
+export const groupBand = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: vars.space['3'],
+  padding: vars.space['3'],
+  borderRadius: vars.radii.lg,
+  selectors: {
+    '&:nth-of-type(odd)': { backgroundColor: `color-mix(in srgb, ${vars.color.text} 4%, transparent)` },
+  },
+});
 export const groupHead = style({
   display: 'flex',
   alignItems: 'baseline',

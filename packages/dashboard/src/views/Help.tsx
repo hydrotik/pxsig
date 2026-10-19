@@ -2,11 +2,12 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@hydrotik/design-system';
 import type { Data } from '../data';
 import { Schematic, type Layout } from '../parts/Schematic';
+import { Icons } from '@hydrotik/design-system';
 import { t, codeCopy, type CopyKey } from '../copy';
 import * as s from '../dashboard.css';
 
 interface Item {
-  term: string;
+  term: React.ReactNode;
   meaning: string;
   /** Regions of the drawing this row is about. */
   at: string[];
@@ -32,7 +33,7 @@ function Section({ title, description, layout, items, wide = '35%' }: { title: s
           <dl className={s.helpRows} style={{ gridTemplateColumns: `minmax(0, ${wide}) minmax(0, 1fr)` }} onMouseLeave={() => setActive(null)}>
             {items.map((x, i) => (
               <div
-                key={x.term}
+                key={i}
                 className={s.helpRow}
                 data-active={active === i || undefined}
                 tabIndex={layout ? 0 : undefined}
@@ -112,6 +113,16 @@ export function Help({ data }: { data: Data }) {
         description={t('help.tabs.description')}
         layout="dashboard"
         items={TABS.map((k) => ({ term: t(`tabs.${k}`), meaning: t(`help.tabs.rows.${k}.meaning`), at: [`tab-${k}`] }))}
+      />
+      <Section
+        title={t('help.affordance.title')}
+        description={t('help.affordance.description')}
+        layout="dashboard"
+        items={[
+          { term: <span className={s.row}><Icons.ListFilter className={s.inlineIcon} aria-hidden="true" /> {t('help.affordance.filter.term')}</span>, meaning: t('help.affordance.filter.meaning'), at: ['cards'] },
+          { term: <span className={s.row}><Icons.ArrowUpRight className={s.inlineIcon} aria-hidden="true" /> {t('help.affordance.navigate.term')}</span>, meaning: t('help.affordance.navigate.meaning'), at: ['cards'] },
+          { term: <span className={s.row}><Icons.Maximize2 className={s.inlineIcon} aria-hidden="true" /> {t('help.affordance.open.term')}</span>, meaning: t('help.affordance.open.meaning'), at: ['cards', 'card-thumb'] },
+        ]}
       />
       <Section
         title={t('help.statuses.title')}

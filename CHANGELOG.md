@@ -29,6 +29,11 @@ semantic versioning.
   `reports/a11y-review.json` until the entry's next check (`POST /__pxsig/a11y-accept`,
   `a11y-reject`, `a11y-unreview`). Approving a visual change still accepts the render's violations,
   and its button now says how many ("Approve · accepts 1 new a11y violation").
+- **`pxsig_review` takes `a11y-accept`, `a11y-reject` and `a11y-unreview`** under the same
+  explicit-confirm rule, and `pxsig_a11y` reports each entry's accessibility decision.
+- **Clickable cards say what they do**: an icon in the top-right corner for filter, go to another
+  view, or open details (Overview cards, Review cards; explained on Help). The grouped Review grid
+  sits each component's cards on an alternating band.
 - **Help** explains how the page is organised, and each section sits beside a drawing of the
   dashboard or the inspector: pointing at a row highlights where it appears. New sections cover the
   inspector and accessibility checks. The Review tab is "Review stories".

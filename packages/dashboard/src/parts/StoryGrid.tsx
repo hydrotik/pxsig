@@ -2,6 +2,7 @@ import React from 'react';
 import { Badge, Button } from '@hydrotik/design-system';
 import { type Data, type Row, componentOf, integrityOf, pathsFor, statusOf } from '../data';
 import { StatusOf } from './StatusOf';
+import { Affordance } from './Affordance';
 import { codeCopy, t } from '../copy';
 import * as s from '../dashboard.css';
 
@@ -16,6 +17,7 @@ export function StoryCard({ data, row, scenario, onOpen }: { data: Data; row: Ro
   const status = scenario ? (row.pass ? 'pass' : 'changed') : statusOf(row, data.review);
   return (
     <button type="button" className={s.storyCard} data-status={status} onClick={onOpen} disabled={!m && !(row.new && !row.pending)} aria-label={`${row.id}: ${t(`status.${statusOf(row, data.review)}`)}`}>
+      {m || (row.new && !row.pending) ? <Affordance kind="open" /> : null}
       <div className={s.thumb}>
         <img src={p.after} alt="" loading="lazy" decoding="async" onError={(e) => ((e.target as HTMLImageElement).style.visibility = 'hidden')} />
       </div>
@@ -71,10 +73,11 @@ export function StoryGrid({ data, rows, scenario, onOpen, page = 96, grouped = f
   return (
     <div className={s.stack}>
       {grouped ? (
-        [...groups].map(([component, rs]) => {
+        <div className={s.groups}>
+        {[...groups].map(([component, rs]) => {
           const counts = ORDER.map((st) => [st, rs.filter((r) => statusOf(r, data.review) === st).length] as const).filter(([, n]) => n);
           return (
-            <section key={component} className={s.stack} aria-label={component}>
+            <section key={component} className={s.groupBand} aria-label={component}>
               <h3 className={s.groupHead}>
                 <span>{component}</span>
                 <span className={s.muted}>{counts.map(([st, n]) => t('review.group.count', { status: t(`status.${st}`), count: n })).join(' · ')}</span>
@@ -82,7 +85,8 @@ export function StoryGrid({ data, rows, scenario, onOpen, page = 96, grouped = f
               <div className={s.cards}>{rs.map(card)}</div>
             </section>
           );
-        })
+        })}
+        </div>
       ) : (
         <div className={s.cards}>{visible.map(card)}</div>
       )}

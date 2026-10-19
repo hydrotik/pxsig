@@ -81,7 +81,6 @@
       "one": "{count} component",
       "other": "{count} components"
     },
-    "ofTotal": "of {total}",
     "actions": {
       "review": "Review",
       "open": "Open",
@@ -95,10 +94,13 @@
       "passed": "Passed",
       "changed": "Changed",
       "flaky": "Flaky",
-      "a11y": "New a11y violations",
-      "ofTotal": "of {total}",
+      "a11y": "New a11y",
       "duration": "Duration",
-      "rendering": "{time} rendering"
+      "rendering": "{time} rendering",
+      "a11yOf": {
+        "one": "of {count} violation",
+        "other": "of {count} violations"
+      }
     },
     "violations": {
       "one": "{count} violation",
@@ -646,6 +648,22 @@
       "stage": "Baseline and latest render",
       "keys": "Shortcuts",
       "sigs": "Signatures"
+    },
+    "affordance": {
+      "title": "Card icons",
+      "description": "A clickable card shows what it does in its top-right corner.",
+      "filter": {
+        "term": "Filter",
+        "meaning": "Narrows what the current view shows."
+      },
+      "navigate": {
+        "term": "Go to",
+        "meaning": "Opens another tab, filtered to what the card counts."
+      },
+      "open": {
+        "term": "Open",
+        "meaning": "Opens details over the page: the inspector, or a review session."
+      }
     }
   },
   "inspector": {
