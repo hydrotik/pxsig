@@ -32,9 +32,8 @@ semantic versioning.
 - **`pxsig_review` takes `a11y-accept`, `a11y-reject` and `a11y-unreview`** under the same
   explicit-confirm rule, and `pxsig_a11y` reports each entry's accessibility decision.
 - **Clickable cards say what they do**: a small icon in the top-right corner. A down-left arrow
-  filters the current view (the Coverage count cards filter the component table), an up-right
-  arrow goes to another view, and an expand icon opens details (Overview and Review cards;
-  explained on Help). The grouped Review grid
+  filters the current view (the Coverage count cards filter the component table); an up-right
+  arrow goes somewhere else: another tab, the inspector or a review session (explained on Help). The grouped Review grid
   sits each component's cards on an alternating band.
 - **Help** explains how the page is organised, and each section sits beside a drawing of the
   dashboard or the inspector: pointing at a row highlights where it appears. New sections cover the

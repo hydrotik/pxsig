@@ -651,18 +651,14 @@
     },
     "affordance": {
       "title": "Card icons",
-      "description": "A clickable card shows what it does in its top-right corner.",
+      "description": "A clickable card shows what it does with one arrow in its top-right corner.",
       "filter": {
         "term": "Filter",
-        "meaning": "Narrows what the current view shows."
+        "meaning": "Filters the current view to what the card counts."
       },
       "navigate": {
         "term": "Go to",
-        "meaning": "Opens another tab, filtered to what the card counts."
-      },
-      "open": {
-        "term": "Open",
-        "meaning": "Opens details over the page: the inspector, or a review session."
+        "meaning": "Goes somewhere else: another tab, the inspector, or a review session."
       }
     }
   },
