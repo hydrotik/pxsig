@@ -4,8 +4,6 @@ pxsig inside Storybook: a "PXSIG: Visual regression" panel with the inspector fo
 story, and a status dot on every story in the sidebar. It is a client of the pxsig server; start
 it with `npx pxsig serve --watch`.
 
-> Not published to npm yet.
-
 ```bash
 npm install -D @pxsig/storybook-addon
 ```

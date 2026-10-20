@@ -32,9 +32,10 @@ change.
 
 ## Status
 
-Version 0.2 is in development. The npm packages are not published yet. The commands below show
-`npx pxsig`, which is how they will run once `pxsig` is on npm. Until then, run from a clone (see
-[Running from a clone](#running-from-a-clone)).
+Version 0.2 is on npm in two packages: [`pxsig`](https://www.npmjs.com/package/pxsig) (CLI,
+engine, server, dashboard and MCP server) and
+[`@pxsig/storybook-addon`](https://www.npmjs.com/package/@pxsig/storybook-addon). Releases are
+published from GitHub Actions with npm provenance and listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## Requirements
 
@@ -96,6 +97,8 @@ against a project the server is serving goes through the server's queue. See
 [docs/monorepo.md](docs/monorepo.md).
 
 ## Running from a clone
+
+To work on pxsig itself, or to try an unreleased change:
 
 ```bash
 git clone https://github.com/hydrotik/pxsig
