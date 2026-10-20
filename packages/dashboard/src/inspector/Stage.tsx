@@ -28,7 +28,8 @@ export interface Hover {
 
 interface Props {
   mode: Mode;
-  a: HTMLImageElement;
+  /** The baseline render. Null for a new entry: the stage shows `b` alone. */
+  a: HTMLImageElement | null;
   b: HTMLImageElement;
   analysis: Analysis | null;
   cells: HTMLCanvasElement | null;
@@ -65,8 +66,8 @@ function Paint({ draw, W, H, style }: { draw: (ctx: CanvasRenderingContext2D) =>
 }
 
 export const Stage = React.forwardRef<StageApi, Props>(function Stage(p, ref) {
-  const W = Math.max(p.a.naturalWidth, p.b.naturalWidth);
-  const H = Math.max(p.a.naturalHeight, p.b.naturalHeight);
+  const W = Math.max(p.a?.naturalWidth ?? 0, p.b.naturalWidth);
+  const H = Math.max(p.a?.naturalHeight ?? 0, p.b.naturalHeight);
   const stage = React.useRef<HTMLDivElement>(null);
   const view = React.useRef({ z: 1, tx: 0, ty: 0 });
   const drag = React.useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
@@ -217,7 +218,10 @@ export const Stage = React.forwardRef<StageApi, Props>(function Stage(p, ref) {
 
   let views: React.ReactNode;
   const [bl, al] = p.labels;
-  if (p.mode === 'side') {
+  if (!p.a) {
+    // Nothing to compare against: every mode shows the one render.
+    views = viewport(al, img(p.b));
+  } else if (p.mode === 'side') {
     views = (
       <>
         {viewport(bl, <>{img(p.a)}{boxes()}</>)}
