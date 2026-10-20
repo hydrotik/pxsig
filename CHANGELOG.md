@@ -12,6 +12,10 @@ semantic versioning.
   the latest render alone, labelled "Latest render (no baseline yet)", so a first render can be
   seen before it is approved. The Pixel panel says there is no baseline to compare against instead
   of asking for the local server.
+- **A running server checks entries added after it started.** `pxsig manifest` while `pxsig serve`
+  was up added the new stories to the manifest, but the server matched check requests against the
+  manifest it had loaded, so a check of the new entries ran nothing ("checked 0"). The server now
+  rereads the manifest when a check is requested.
 
 ## 0.2.2 - 2026-10-19
 

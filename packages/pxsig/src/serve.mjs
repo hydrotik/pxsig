@@ -437,6 +437,9 @@ function a11yReview(S, action, id, meta = {}) {
 
 function enqueue(S, body) {
   needLock(S);
+  // Select against the manifest on disk: entries added since the server started (or since the
+  // last check) would otherwise be dropped as unknown. A running check keeps the one it started with.
+  if (!S.running) S.reload();
   const ids = new Set(body.ids ?? []);
   const stories = new Set([...(body.stories ?? []), ...(body.story ? [body.story] : [])]);
   for (const e of S.manifest.stories) if (body.all || stories.has(e.story ?? e.id)) ids.add(e.id);
