@@ -3,7 +3,10 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
-## Unreleased
+## 0.2.3 - 2026-10-20
+
+Two fixes for reviewing new stories: the inspector shows a new entry's render, and a running
+server checks entries added after it started.
 
 ### Fixed
 

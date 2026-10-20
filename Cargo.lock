@@ -344,7 +344,7 @@ dependencies = [
 
 [[package]]
 name = "pxsig-cli"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "clap",
@@ -358,7 +358,7 @@ dependencies = [
 
 [[package]]
 name = "pxsig-core"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "base64",
  "serde",
