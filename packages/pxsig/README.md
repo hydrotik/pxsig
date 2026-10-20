@@ -4,8 +4,6 @@ Visual regression for Storybook: compact pixel signatures with their baseline im
 `.psig` file per story state, a Rust engine, a local dashboard, a Storybook addon and an MCP
 server. Runs offline, on your machine and in your CI.
 
-> Not published to npm yet. See the repository README for running from a clone.
-
 ```bash
 npm install -D pxsig playwright
 npx playwright install chromium
