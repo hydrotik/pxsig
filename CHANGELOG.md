@@ -3,6 +3,16 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
+## Unreleased
+
+### Fixed
+
+- **New entries show their render in the inspector.** An entry with no baseline yet opened to an
+  empty stage, because the inspector needed both the baseline and the latest render. It now shows
+  the latest render alone, labelled "Latest render (no baseline yet)", so a first render can be
+  seen before it is approved. The Pixel panel says there is no baseline to compare against instead
+  of asking for the local server.
+
 ## 0.2.2 - 2026-10-19
 
 A dashboard pass (plainer copy in one translatable file, review sessions, accessibility decisions,

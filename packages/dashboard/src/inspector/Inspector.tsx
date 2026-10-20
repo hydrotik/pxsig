@@ -50,7 +50,8 @@ const loadPrefs = () => {
 };
 
 interface Loaded {
-  a: HTMLImageElement;
+  /** Null for a new entry, which has no baseline yet. */
+  a: HTMLImageElement | null;
   b: HTMLImageElement;
   heat: HTMLImageElement | null;
   pa: ImageData | null;
@@ -144,12 +145,13 @@ export function Inspector({
     setRegion(-1);
     Promise.all([loadImg(p.before), loadImg(p.after), loadImg(p.heat)]).then(([a, b, h]) => {
       if (!alive) return;
-      if (!a || !b) return setLoaded('missing');
+      // A new entry has only its latest render; anything else needs both.
+      if (!b || (!a && !row?.new)) return setLoaded('missing');
       setLoaded({
         a,
         b,
         heat: h,
-        pa: readPixels(a),
+        pa: a ? readPixels(a) : null,
         pb: readPixels(b),
         cells: h ? cellsLayer(h) : null,
       });
@@ -311,12 +313,13 @@ export function Inspector({
   const hasArtifacts = sizes[p.heat] ? sizes[p.heat] !== 'missing' : !!target?.scenario || !row.pass;
   const detail = row.detail;
   const W =
-    loaded && loaded !== 'missing' ? Math.max(loaded.a.naturalWidth, loaded.b.naturalWidth) : 0;
+    loaded && loaded !== 'missing' ? Math.max(loaded.a?.naturalWidth ?? 0, loaded.b.naturalWidth) : 0;
   const H =
-    loaded && loaded !== 'missing' ? Math.max(loaded.a.naturalHeight, loaded.b.naturalHeight) : 0;
+    loaded && loaded !== 'missing' ? Math.max(loaded.a?.naturalHeight ?? 0, loaded.b.naturalHeight) : 0;
   const sizeNote =
     loaded &&
     loaded !== 'missing' &&
+    loaded.a &&
     (loaded.a.naturalWidth !== loaded.b.naturalWidth ||
       loaded.a.naturalHeight !== loaded.b.naturalHeight)
       ? `${loaded.a.naturalWidth}×${loaded.a.naturalHeight} → ${loaded.b.naturalWidth}×${loaded.b.naturalHeight}`
@@ -714,7 +717,7 @@ export function Inspector({
               cells={loaded.cells}
               heatImg={loaded.heat}
               tiles={detail?.tripped?.length ? { indices: detail.tripped, tile: 16 } : null}
-              labels={[p.beforeLabel, p.afterLabel]}
+              labels={[p.beforeLabel, loaded.a ? p.afterLabel : t('inspector.renders.firstRender')]}
               split={split}
               onion={onion}
               heat={heat}
@@ -793,7 +796,9 @@ export function Inspector({
             <section className={s.sideSection}>
               <h4 className={s.sectionTitle}>{t('inspector.sections.pixel')}</h4>
               <div className={s.readout}>
-                {!pixels ? (
+                {loaded && loaded !== 'missing' && !loaded.a ? (
+                  <span className={s.muted}>{t('inspector.pixel.noBaseline')}</span>
+                ) : !pixels ? (
                   <span className={s.muted}>{tx('inspector.pixel.needsServer', { command: <Cmd>pxsig serve</Cmd> })}</span>
                 ) : (
                   // The same rows with or without a pointer, so the panel never changes height.

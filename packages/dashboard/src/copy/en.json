@@ -769,6 +769,7 @@
     },
     "pixel": {
       "needsServer": "Pixel values require the local server ({command}).",
+      "noBaseline": "No baseline to compare against yet.",
       "hover": "Hover over the image to read pixel values.",
       "coords": "x {x} y {y}",
       "cellTile": "cell {cx},{cy} · tile {tx},{ty}",
@@ -829,6 +830,7 @@
     "renders": {
       "baseline": "Baseline render",
       "latest": "Latest render",
+      "firstRender": "Latest render (no baseline yet)",
       "control": "Control render",
       "scenario": "{name} render"
     },
