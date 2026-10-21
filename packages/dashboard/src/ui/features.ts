@@ -1,0 +1,240 @@
+/**
+ * Every dashboard feature, as data: where it lives, what it is for, the states it shows, how it is
+ * used, its copy, the contract components it renders and the files that implement it.
+ * docs/ui/features.md is generated from this file (`pnpm ui:docs`), and `pnpm ui:check` fails when
+ * an entry names a component, file or copy key that does not exist, when a listed component is not
+ * imported by one of the feature's files, or when a view or contract component belongs to no
+ * feature.
+ *
+ * Plain data with type-only imports, so Node reads it without a build (type stripping).
+ */
+import type { ComponentName } from './contract';
+
+export type Section = 'shell' | 'overview' | 'review' | 'coverage' | 'a11y' | 'runs' | 'diagnostics' | 'help' | 'inspector' | 'embed';
+export type State = 'loading' | 'empty' | 'error' | 'offline' | 'static';
+
+export interface Feature {
+  id: string;
+  section: Section;
+  title: string;
+  purpose: string;
+  /** What the feature shows in each state it handles. */
+  states: Partial<Record<State, string>>;
+  /** What a person does with it; `keys` are keyboard shortcuts. */
+  interactions: { action: string; keys?: string }[];
+  /** Copy keys (or key prefixes) in src/copy/en.json. */
+  copy: string[];
+  components: ComponentName[];
+  /** Source files under src/, without the extension. */
+  files: string[];
+}
+
+export const FEATURES: Feature[] = [
+  {
+    id: 'shell.top-bar',
+    section: 'shell',
+    title: 'Top bar',
+    purpose: "The report's name and modes, the section links with their counts, and the controls pinned at the end: start review, project, connection, last check, theme, review status.",
+    states: {
+      loading: 'The page shows a loading line until the first data arrives.',
+      error: 'The page shows the load error instead of the dashboard.',
+      offline: 'The connection badge reads Offline; the review button is hidden.',
+      static: 'The connection badge reads Static report; nothing that writes is shown.',
+    },
+    interactions: [
+      { action: 'Open a section (a plain #<id> link; Back and Forward move between sections)' },
+      { action: 'Start a review session on the next queue with undecided entries' },
+      { action: 'Switch project (when the server holds more than one)' },
+    ],
+    copy: ['app', 'tabs'],
+    components: ['AppShell', 'AppMain', 'TopNav', 'NavList', 'NavLink', 'NavEnd', 'Badge', 'StatusBadge', 'Button', 'Select'],
+    files: ['App'],
+  },
+  {
+    id: 'shell.theme',
+    section: 'shell',
+    title: 'Theme toggle',
+    purpose: 'Switches between the light and dark theme; the choice is remembered per viewer.',
+    states: {},
+    interactions: [{ action: 'Toggle light / dark' }],
+    copy: ['app.theme'],
+    components: ['UiProvider', 'IconButton', 'Icon'],
+    files: ['App', 'main'],
+  },
+  {
+    id: 'shell.coverage-banner',
+    section: 'shell',
+    title: 'Coverage banner',
+    purpose: 'Shown on every section while the coverage ledger has errors: the headline, setup problems, a link to Coverage and the safe repair.',
+    states: { static: 'No repair button: a static report cannot write.' },
+    interactions: [{ action: 'View the components with problems' }, { action: 'Run the safe repair (never approves, never writes a signature)' }],
+    copy: ['coverage.banner', 'coverage.headline'],
+    components: ['Alert', 'AlertTitle', 'AlertDescription', 'Button'],
+    files: ['views/Integrity'],
+  },
+  {
+    id: 'overview.counts',
+    section: 'overview',
+    title: 'Latest check in numbers',
+    purpose: 'Checked, passed, changed, flaky, new accessibility violations and duration of the last check; the changed, flaky and accessibility figures open what they count.',
+    states: { empty: 'Without a check: the command that runs one.' },
+    interactions: [{ action: 'Open a review session, or the filtered list (static)' }],
+    copy: ['overview.cards', 'empty.noCheck'],
+    components: ['StatGroup'],
+    files: ['views/Overview', 'parts/Affordance'],
+  },
+  {
+    id: 'overview.open-items',
+    section: 'overview',
+    title: 'Open items',
+    purpose: 'What needs a decision, one row per kind (changed, new, rejected, render errors, coverage errors, accessibility, flaky), each with its action.',
+    states: { empty: 'A line saying nothing is open; the rows stay, at zero.' },
+    interactions: [{ action: 'Start a review, or view the entries, from a row' }],
+    copy: ['overview'],
+    components: ['Card', 'CardHeader', 'CardTitle', 'CardContent', 'DataTable', 'Button'],
+    files: ['views/Overview'],
+  },
+  {
+    id: 'review.filters',
+    section: 'review',
+    title: 'Review filters',
+    purpose: 'Search by entry id, filter by result and mode, sort, and group by component; the count of shown entries sits on the same line.',
+    states: { empty: 'Without a check: the command that runs one.' },
+    interactions: [{ action: 'Search, filter, sort, group' }],
+    copy: ['review.fields', 'review.filters', 'review.sort', 'review.group', 'review.count', 'review.search'],
+    components: ['Toolbar', 'ToolbarStart', 'ToolbarEnd', 'ToolbarField', 'ToolbarSummary', 'SearchField', 'Select'],
+    files: ['views/Stories'],
+  },
+  {
+    id: 'review.cards',
+    section: 'review',
+    title: 'Story cards',
+    purpose: 'One card per entry: thumbnail, verdict, mode and state tags, accessibility and coverage flags, metrics; a coloured edge per verdict. Grouped by component, paged.',
+    states: { empty: 'A line saying no entry matches.' },
+    interactions: [{ action: 'Open the inspector on an entry' }, { action: 'Show more' }],
+    copy: ['review.card', 'review.none', 'review.showMore', 'status'],
+    components: ['Badge', 'StatusBadge', 'Button'],
+    files: ['parts/StoryGrid', 'parts/StatusOf'],
+  },
+  {
+    id: 'coverage.ledger',
+    section: 'coverage',
+    title: 'Coverage ledger',
+    purpose: 'Whether every story is registered, rendered, checked and current, per component, with counts that filter the table and the entries of a chosen component.',
+    states: { empty: 'Without integrity data: the commands that produce it.' },
+    interactions: [{ action: 'Filter by an issue count' }, { action: 'Show components with issues, or all' }, { action: 'Open a component, then an entry in the inspector' }],
+    copy: ['coverage'],
+    components: ['StatGroup', 'Card', 'CardHeader', 'CardTitle', 'CardDescription', 'CardContent', 'Toolbar', 'ToolbarStart', 'Button', 'DataTable', 'Badge', 'StatusBadge'],
+    files: ['views/Integrity'],
+  },
+  {
+    id: 'a11y.rules',
+    section: 'a11y',
+    title: 'Accessibility rules',
+    purpose: 'axe violations grouped by rule, new ones first, with impact, entries, nodes and how many are accepted; a review session for the new ones.',
+    states: { empty: 'Without a check, or with accessibility scans off: what to run.', static: 'No review button.' },
+    interactions: [{ action: 'Open the entries of a rule in the inspector' }, { action: 'Start an accessibility review session' }],
+    copy: ['a11y'],
+    components: ['StatGroup', 'Button', 'Card', 'CardHeader', 'CardTitle', 'CardDescription', 'CardContent', 'DataTable', 'StatusBadge', 'Badge'],
+    files: ['views/Accessibility'],
+  },
+  {
+    id: 'runs.history',
+    section: 'runs',
+    title: 'Runs',
+    purpose: "The last check's timing, then changed entries and engine time per run as lines, and every recorded run as a table.",
+    states: { empty: 'Without a history file: where it is written.' },
+    interactions: [{ action: 'Read a value from the chart tooltip' }],
+    copy: ['runs'],
+    components: ['Card', 'CardHeader', 'CardTitle', 'CardDescription', 'CardContent', 'StatGroup', 'Chart', 'DataTable'],
+    files: ['views/History', 'parts/Charts'],
+  },
+  {
+    id: 'diagnostics.research',
+    section: 'diagnostics',
+    title: 'Diagnostics',
+    purpose: 'Research data, when a run wrote it: detection rate per scenario suite, scenario results with their renders, gate calibration and engine performance.',
+    states: { empty: 'Each part says which tool writes its data; the section is hidden when there is none.' },
+    interactions: [{ action: 'Choose a part, a suite or a scenario' }, { action: 'Filter scenario renders and open one in the inspector' }],
+    copy: ['diagnostics'],
+    components: ['Toolbar', 'ToolbarStart', 'ToolbarField', 'ToolbarSummary', 'SegmentedChoice', 'Card', 'CardHeader', 'CardTitle', 'CardDescription', 'CardContent', 'KeyValueList', 'KeyValueItem', 'StatusBadge', 'Chart', 'DataTable', 'Badge', 'Progress', 'Select', 'StatGroup'],
+    files: ['views/Diagnostics', 'views/Scenarios', 'views/Calibration', 'views/Performance', 'parts/Charts'],
+  },
+  {
+    id: 'help.reference',
+    section: 'help',
+    title: 'Help',
+    purpose: 'What each section, card icon, status, coverage code, inspector region and key means, beside a drawing of where it appears.',
+    states: {},
+    interactions: [{ action: 'Point at or focus a row to highlight its place in the drawing' }],
+    copy: ['help'],
+    components: ['Card', 'CardHeader', 'CardTitle', 'CardDescription', 'CardContent', 'Icon'],
+    files: ['views/Help', 'parts/Schematic'],
+  },
+  {
+    id: 'inspector.header',
+    section: 'inspector',
+    title: 'Inspector header',
+    purpose: 'The entry id, its context and reasons, its verdict, its other modes and states, the position in the list, the review buttons and Close.',
+    states: { static: 'No review buttons.' },
+    interactions: [
+      { action: 'Approve or reject (accept, in an accessibility session)', keys: 'A / R' },
+      { action: 'Previous or next entry', keys: '← → (J / K)' },
+      { action: 'Switch mode or state of the same story' },
+      { action: 'Close', keys: 'Esc' },
+    ],
+    copy: ['inspector.review', 'inspector.nav', 'inspector.variant', 'inspector.contextLatest', 'inspector.contextScenario', 'inspector.withinGate', 'inspector.close', 'inspector.rejectedNote'],
+    components: ['Dialog', 'DialogTitle', 'DialogDescription', 'StatusBadge', 'SegmentedChoice', 'IconButton', 'Button', 'CopyValue'],
+    files: ['inspector/Inspector', 'parts/StatusOf'],
+  },
+  {
+    id: 'inspector.stage',
+    section: 'inspector',
+    title: 'Image stage',
+    purpose: 'Baseline and latest render side by side, as a swipe, onion skin, pixel difference or signature cells; pan, zoom, change regions and detail tiles; built on the diff-viewer primitives.',
+    states: { loading: 'A loading line until both images decode.', error: 'Which image is missing.' },
+    interactions: [
+      { action: 'Choose the view', keys: '1–5' },
+      { action: 'Fit, actual size, zoom', keys: 'F, 0, + −' },
+      { action: 'Next or previous change', keys: 'N / ⇧N' },
+      { action: 'Drag to pan, wheel to zoom, drag the swipe handle (or arrow keys on it)' },
+      { action: 'Tolerance, swipe, opacity and cell sliders; highlight, regions and tiles switches' },
+    ],
+    copy: ['inspector.modes', 'inspector.sliders', 'inspector.toggles', 'inspector.stage', 'inspector.keys', 'inspector.fit', 'inspector.actual', 'inspector.zoomIn', 'inspector.zoomOut', 'inspector.loading', 'inspector.missing'],
+    components: ['Toolbar', 'ToolbarStart', 'ToolbarEnd', 'SegmentedChoice', 'IconButton', 'Button', 'Slider', 'Switch', 'Kbd'],
+    files: ['inspector/Inspector', 'inspector/Stage'],
+  },
+  {
+    id: 'inspector.details',
+    section: 'inspector',
+    title: 'Inspector details',
+    purpose: 'The pixel under the pointer, pixel changes and regions, signature metrics and images, accessibility violations and the files of the entry, with the Storybook link.',
+    states: { static: 'Pixel values need the server (a static report cannot read the images’ pixels).' },
+    interactions: [{ action: 'Read a pixel; focus a region' }, { action: 'Take one rule off the accepted list' }, { action: 'Copy a file path; open a file or the story in Storybook' }],
+    copy: ['inspector.sections', 'inspector.pixel', 'inspector.changes', 'inspector.metrics', 'inspector.a11y', 'inspector.files', 'inspector.storybook', 'inspector.artifacts'],
+    components: ['KeyValueList', 'KeyValueItem', 'Badge', 'StatusBadge', 'Button', 'Link', 'Icon'],
+    files: ['inspector/Inspector'],
+  },
+  {
+    id: 'inspector.session',
+    section: 'inspector',
+    title: 'Review session',
+    purpose: 'A queue (changed, new or accessibility) opened in the inspector with progress, then a summary of what was decided and what to run next.',
+    states: { empty: 'The summary when every entry is decided.' },
+    interactions: [{ action: 'Decide each entry; the next undecided one opens' }, { action: 'Back to the overview, view the rejected, or keep browsing' }],
+    copy: ['inspector.session'],
+    components: ['Progress', 'Dialog', 'DialogTitle', 'KeyValueList', 'KeyValueItem', 'CopyValue', 'Button'],
+    files: ['inspector/Inspector'],
+  },
+  {
+    id: 'embed.panel',
+    section: 'embed',
+    title: 'Storybook panel',
+    purpose: 'The inspector for one story inside the Storybook addon panel, without the page chrome; details open on demand.',
+    states: { empty: 'A line when the story has no checked entry.' },
+    interactions: [{ action: 'The inspector keys, on the focused panel' }, { action: 'Show or hide details' }],
+    copy: ['app.embedEmpty', 'inspector.toggles.details'],
+    components: ['Switch', 'IconButton', 'SegmentedChoice'],
+    files: ['App', 'inspector/Inspector'],
+  },
+];
