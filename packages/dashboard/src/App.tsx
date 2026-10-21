@@ -163,15 +163,18 @@ export function App() {
             <div className={s.page}>
               <IntegrityBanner data={data} go={go} />
               <Tabs value={shown} onValueChange={(v) => setTab(v as Tab)}>
-                <TabsList aria-label={t('app.sections')}>
-                  <TabsTrigger value="overview">{t('tabs.overview')}</TabsTrigger>
-                  <TabsTrigger value="stories">{todo ? t('tabs.reviewCount', { count: todo }) : t('tabs.review')}</TabsTrigger>
-                  <TabsTrigger value="integrity">{integrityErrors ? t('tabs.coverageCount', { count: integrityErrors }) : t('tabs.coverage')}</TabsTrigger>
-                  <TabsTrigger value="a11y">{t('tabs.a11y')}</TabsTrigger>
-                  <TabsTrigger value="history">{t('tabs.runs')}</TabsTrigger>
-                  {diagnostics ? <TabsTrigger value="diagnostics">{t('tabs.diagnostics')}</TabsTrigger> : null}
-                  <TabsTrigger value="help">{t('tabs.help')}</TabsTrigger>
-                </TabsList>
+                {/* Pinned under the header: <main> scrolls, the sections stay in reach. */}
+                <div className={s.tabsBar}>
+                  <TabsList aria-label={t('app.sections')}>
+                    <TabsTrigger value="overview">{t('tabs.overview')}</TabsTrigger>
+                    <TabsTrigger value="stories">{todo ? t('tabs.reviewCount', { count: todo }) : t('tabs.review')}</TabsTrigger>
+                    <TabsTrigger value="integrity">{integrityErrors ? t('tabs.coverageCount', { count: integrityErrors }) : t('tabs.coverage')}</TabsTrigger>
+                    <TabsTrigger value="a11y">{t('tabs.a11y')}</TabsTrigger>
+                    <TabsTrigger value="history">{t('tabs.runs')}</TabsTrigger>
+                    {diagnostics ? <TabsTrigger value="diagnostics">{t('tabs.diagnostics')}</TabsTrigger> : null}
+                    <TabsTrigger value="help">{t('tabs.help')}</TabsTrigger>
+                  </TabsList>
+                </div>
                 <TabsContent value="overview">
                   <Overview data={data} go={go} startReview={startReview} />
                 </TabsContent>
