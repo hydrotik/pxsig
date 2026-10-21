@@ -196,6 +196,8 @@ let rc = entries.length
 const rustRes = JSON.parse(rc.out);
 const rows = new Map(rustRes.results.map((r) => [r.id, r]));
 console.log(`[check] Rust check: ${rustRes.results.length} entries, ${rustRes.summary.failed ?? 0} failed, ${rustRes.summary.cached ?? 0} cached · ${rustRes.summary.elapsedMs.toFixed(0)} ms engine (${rc.ms.toFixed(0)} ms process)`);
+for (const g of rustRes.summary.identicalRenders ?? [])
+  console.error(`[check] ${g.count} failing entries rendered the same image (${g.ids.slice(0, 3).join(', ')}…): the environment, not a design change. Marked as errors; nothing to approve.`);
 
 // --- 4. retry failures: a pass on a fresh render is flaky, not a regression -------------------
 let retryMs = 0;

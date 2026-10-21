@@ -284,10 +284,12 @@ test('pxsig doctor CLI contract: --json document, filters, usage errors, prune r
   assert.equal(prune.status, 3, 'prune is refused when piped');
 });
 
-test('the render sentinel recognises Storybook error pages and wrong stories', () => {
-  const page = (classes, { msg = '', current = 'a--b' } = {}) => {
-    globalThis.document = { body: { classList: { contains: (c) => classes.includes(c) } }, querySelector: () => ({ textContent: msg }) };
-    globalThis.window = { __STORYBOOK_PREVIEW__: { currentRender: { id: current } } };
+test('the render sentinel recognises Storybook error pages, the Vite overlay and wrong stories', () => {
+  const page = (classes, { msg = '', current = 'a--b', overlay = null, preview = true } = {}) => {
+    const overlayEl = overlay === null ? null : { shadowRoot: { querySelector: (q) => (q === '.message-body' ? { textContent: overlay } : null) } };
+    const query = (q) => (q === 'vite-error-overlay' ? overlayEl : q === '#error-message' ? { textContent: msg } : null);
+    globalThis.document = { body: { classList: { contains: (c) => classes.includes(c) } }, querySelector: query };
+    globalThis.window = preview ? { __STORYBOOK_PREVIEW__: { currentRender: { id: current } } } : {};
   };
   try {
     page(['sb-show-main']);
@@ -298,6 +300,11 @@ test('the render sentinel recognises Storybook error pages and wrong stories', (
     assert.match(storybookSentinel('a--b'), /no preview/);
     page(['sb-show-main'], { current: 'c--d' });
     assert.match(storybookSentinel('a--b'), /rendered c--d, not a--b/);
+    // A module that failed to load: Vite's overlay over an empty root, and no preview at all.
+    page(['sb-show-main'], { overlay: 'Failed to resolve import "./X.stories.tsx"\n  at …', preview: false });
+    assert.equal(storybookSentinel('a--b'), 'Vite error overlay: Failed to resolve import "./X.stories.tsx"');
+    page(['sb-show-main'], { preview: false });
+    assert.match(storybookSentinel('a--b'), /preview did not start/);
   } finally {
     delete globalThis.document;
     delete globalThis.window;

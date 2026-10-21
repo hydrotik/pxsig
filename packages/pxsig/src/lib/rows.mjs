@@ -15,14 +15,17 @@ export function buildRow(e, rust, render, a11yBase, manifest, js) {
   // with. Not an error — a NEW entry waiting for a person to approve its first render.
   const isNew = !rr.error && /^no baseline sig/.test(String(r.error ?? ''));
   return {
-    ...r,
+    // A render that failed leaves the previous image on disk; its comparison describes a story
+    // that did not render this time, so a render error carries no metrics and is not "changed".
+    ...(rr.error ? {} : r),
     id: e.id,
     story: e.story ?? e.id,
     mode: e.mode ?? manifest.defaultMode,
     state: e.state ?? null,
     browser: e.browser ?? 'chromium',
     pass: rr.error ? false : r.pass === true || r.flaky === true,
-    changed: r.pass !== true && !r.flaky,
+    // An error (the render's, or the engine's: an identical render across many entries) is not a change.
+    changed: !rr.error && (isNew || !r.error) && r.pass !== true && !r.flaky,
     error: rr.error ?? (isNew ? null : r.error ?? null),
     ...(isNew ? { new: true, reasons: ['new: no baseline yet — approve its first render'], note: 'new' } : {}),
     renderMs: Math.round(rr.ms ?? 0),
