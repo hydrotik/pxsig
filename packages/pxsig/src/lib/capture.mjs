@@ -29,14 +29,23 @@ export const STORYBOOK_ERROR = 'storybook-error:';
  * threw, or "Unable to index files"), its no-preview screen, or a different story than the one
  * asked for.
  */
-export const storybookSentinel = (id) => {
+export const storybookSentinel = (arg) => {
+  const { id, root = '#storybook-root' } = typeof arg === 'string' ? { id: arg } : arg;
   const b = document.body;
   const pv = window.__STORYBOOK_PREVIEW__;
   const overlay = document.querySelector('vite-error-overlay');
   if (overlay) {
-    const box = overlay.shadowRoot?.querySelector('.message-body') ?? overlay.shadowRoot?.querySelector('.message');
-    const msg = (box?.textContent ?? '').trim().split('\n')[0].slice(0, 200);
-    return `Vite error overlay${msg ? `: ${msg}` : ''}`;
+    // Vite sends a transform error to every page on the dev server, so a story that rendered
+    // can carry another file's overlay: drop it from this page. Only a story that did not render
+    // is the error.
+    const cur = pv?.currentRender;
+    const rendered = cur?.id === id && ['finished', 'completed'].includes(cur.phase) && (document.querySelector(root)?.childElementCount ?? 0) > 0;
+    if (rendered) overlay.remove();
+    else {
+      const box = overlay.shadowRoot?.querySelector('.message-body') ?? overlay.shadowRoot?.querySelector('.message');
+      const msg = (box?.textContent ?? '').trim().split('\n')[0].slice(0, 200);
+      return `Vite error overlay${msg ? `: ${msg}` : ''}`;
+    }
   }
   if (!pv) return 'the Storybook preview did not start';
   if (b?.classList.contains('sb-show-errordisplay')) {
@@ -111,7 +120,10 @@ export async function waitMarkupStable(page, sel) {
 
 export const FREEZE_CSS =
   '*,*::before,*::after{animation:none!important;transition:none!important;' +
-  'animation-play-state:paused!important;caret-color:transparent!important;scroll-behavior:auto!important}';
+  'animation-play-state:paused!important;caret-color:transparent!important;scroll-behavior:auto!important}' +
+  // An overlay arriving after the render check (another page's error, over Vite's socket) never
+  // reaches a screenshot.
+  'vite-error-overlay{display:none!important}';
 
 /** Playwright, resolved the way the project would resolve it (see lib/workspace.mjs). */
 async function playwright(project) {
@@ -349,7 +361,7 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             .catch(() => {});
           // Never record Storybook's own error page as a render (a broken index, an unknown story,
           // a story that threw): that would turn "Unable to index files" into a baseline or a diff.
-          const sentinel = await page.evaluate(storybookSentinel, storyId).catch(() => null);
+          const sentinel = await page.evaluate(storybookSentinel, { id: storyId, root: target }).catch(() => null);
           if (sentinel) throw new Error(`${STORYBOOK_ERROR} ${sentinel}`);
           if (!switched) {
             await page.addStyleTag({ content: FREEZE_CSS + css });
