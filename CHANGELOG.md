@@ -3,6 +3,16 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
+## Unreleased
+
+### Changed
+
+- **The dashboard has one top bar.** The design system's `Navbar` replaces the header and the
+  section tabs: the report's name, the sections as links (`#overview`, `#stories`, …, the same
+  hashes as before, and Back and Forward now move between them), and the review button, project
+  picker, connection, last check, theme and review status at the end. Sections that do not fit a
+  narrow window move into the bar's More menu.
+
 ## 0.2.5 - 2026-10-20
 
 A fix for the render-error guard found by testing it against a real broken Storybook, and section

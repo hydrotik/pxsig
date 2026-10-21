@@ -13,7 +13,7 @@ Approving a baseline or re-checking a story then costs one render.
 | `--port <n>` | First port to try (default: `server.port` in the workspace file, else 6070). If it is taken, the next ten are tried. |
 | `--watch` | When a file under a project's `srcRoot` changes, re-check only the entries it affects. |
 | `--no-open` | Do not open a browser tab. |
-| `--tab <name>` | Open the dashboard on this tab. |
+| `--tab <name>` | Open the dashboard on this section. |
 | `--project <a,b>` | Serve only these projects. |
 | `--workspace <dir>` | The workspace root, instead of walking up from the current folder. |
 
@@ -44,7 +44,7 @@ port and renders against it (its origin is allowed like a Storybook's).
 
 `http://127.0.0.1:6070/report/` (the root redirects there).
 
-| Tab | Content |
+| Section | Content |
 | --- | --- |
 | Overview | The latest check's counts and duration, then open items (changed, new, rejected, render errors, coverage errors, new a11y violations, flaky), each linking to its list or starting a review |
 | Review Stories | Every entry, filterable and grouped by component, with the inspector: baseline, current render and diff side by side or overlaid, metrics, gate reasons, change regions. `A` approves, `R` rejects. "Review N changes" starts a session over the changed (or new) entries with progress and a closing summary. |
@@ -54,10 +54,11 @@ port and renders against it (its origin is allowed like a Storybook's).
 | Diagnostics | Scenarios, calibration and benchmark results. Shown only when a report for them exists in the store; pxsig 0.2 does not produce those reports. |
 | Help | The gate as configured, what each status means, keyboard shortcuts, commands |
 
-The tab ids in the URL hash are `overview`, `stories`, `integrity`, `a11y`, `history`,
-`diagnostics` and `help`; the older `#scenarios`, `#calibration` and `#performance` open Diagnostics.
+The top bar links each section by its id in the URL hash: `overview`, `stories`, `integrity`,
+`a11y`, `history`, `diagnostics` and `help`; the older `#scenarios`, `#calibration` and
+`#performance` open Diagnostics.
 
-With several projects, a switcher in the header picks one. URL parameters:
+With several projects, a switcher in the top bar picks one. URL parameters:
 
 | Parameter | Meaning |
 | --- | --- |

@@ -509,7 +509,7 @@
     },
     "coverage": {
       "title": "Coverage statuses",
-      "description": "Shown on the Coverage tab, and as extra badges on a card when an entry has a coverage issue."
+      "description": "Shown in the Coverage section, and as extra badges on a card when an entry has a coverage issue."
     },
     "keys": {
       "title": "Keyboard shortcuts",
@@ -535,8 +535,8 @@
     },
     "intro": "Reference for this dashboard. Each section covers one part of the screen. Point at a row, or move to it with Tab, to see where it appears in the drawing beside it.",
     "tabs": {
-      "title": "Tabs",
-      "description": "What each tab is for.",
+      "title": "Sections",
+      "description": "What each section in the top bar is for. Sections that do not fit the bar's width are under its More menu.",
       "rows": {
         "overview": {
           "meaning": "Counts from the latest check, then open items, each with a link or a review session."
@@ -626,7 +626,7 @@
         },
         "new": {
           "term": "New violation",
-          "meaning": "A rule that is not on the entry's accepted list. Counted on the Overview and the Accessibility tab, and marked on the entry's card."
+          "meaning": "A rule that is not on the entry's accepted list. Counted on the Overview and in the Accessibility section, and marked on the entry's card."
         },
         "effect": {
           "term": "Effect on the check",
@@ -669,7 +669,7 @@
       },
       "navigate": {
         "term": "Go to",
-        "meaning": "Goes somewhere else: another tab, the inspector, or a review session."
+        "meaning": "Goes somewhere else: another section, the inspector, or a review session."
       }
     }
   },

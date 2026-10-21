@@ -78,7 +78,7 @@ const INSPECTOR: [string, string[]][] = [
 const A11Y: [string, Layout, string[]][] = [
   ['scan', 'inspector', ['ins-a11y']],
   ['accepted', 'inspector', ['ins-a11y']],
-  ['new', 'dashboard', ['open-items', 'card-flags', 'tab-a11y']],
+  ['new', 'dashboard', ['open-items', 'card-flags', 'nav-a11y']],
   ['effect', 'dashboard', ['cards', 'header-status']],
   ['accepting', 'inspector', ['ins-review']],
 ];
@@ -112,7 +112,7 @@ export function Help({ data }: { data: Data }) {
         title={t('help.tabs.title')}
         description={t('help.tabs.description')}
         layout="dashboard"
-        items={TABS.map((k) => ({ term: t(`tabs.${k}`), meaning: t(`help.tabs.rows.${k}.meaning`), at: [`tab-${k}`] }))}
+        items={TABS.map((k) => ({ term: t(`tabs.${k}`), meaning: t(`help.tabs.rows.${k}.meaning`), at: [`nav-${k}`] }))}
       />
       <Section
         title={t('help.affordance.title')}
@@ -133,7 +133,7 @@ export function Help({ data }: { data: Data }) {
         title={t('help.coverage.title')}
         description={t('help.coverage.description')}
         layout="dashboard"
-        items={CODES.map((code) => ({ term: codeCopy(code).title, meaning: codeCopy(code).help, at: ['tab-coverage', 'card-flags'] }))}
+        items={CODES.map((code) => ({ term: codeCopy(code).title, meaning: codeCopy(code).help, at: ['nav-coverage', 'card-flags'] }))}
       />
       <Section
         title={t('help.inspector.title')}

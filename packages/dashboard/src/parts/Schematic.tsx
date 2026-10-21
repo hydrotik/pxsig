@@ -1,5 +1,5 @@
 /**
- * A simplified drawing of the dashboard or the inspector, for the Help tab: each region the help
+ * A simplified drawing of the dashboard or the inspector, for the Help section: each region the help
  * text names is a box, and the regions in `active` are highlighted.
  */
 import { vars } from '@hydrotik/tokens';
@@ -12,26 +12,28 @@ type Box = [x: number, y: number, w: number, h: number];
 /** Regions per layout. A region with a label draws its name inside it. */
 const REGIONS: Record<Layout, Record<string, { box: Box; label?: CopyKey }>> = {
   dashboard: {
+    // The top bar: the mark, the section links, then the pinned controls.
     header: { box: [0, 0, 320, 18] },
-    'review-button': { box: [196, 4, 54, 10], label: 'help.schematic.reviewButton' },
-    'header-status': { box: [256, 4, 58, 10], label: 'help.schematic.status' },
-    'tab-overview': { box: [6, 24, 34, 11], label: 'tabs.overview' },
-    'tab-review': { box: [42, 24, 56, 11], label: 'tabs.review' },
-    'tab-coverage': { box: [100, 24, 38, 11], label: 'tabs.coverage' },
-    'tab-a11y': { box: [140, 24, 48, 11], label: 'tabs.a11y' },
-    'tab-runs': { box: [190, 24, 26, 11], label: 'tabs.runs' },
-    'tab-help': { box: [218, 24, 26, 11], label: 'tabs.help' },
-    cards: { box: [6, 41, 308, 22], label: 'help.schematic.cards' },
-    'open-items': { box: [6, 68, 308, 40], label: 'help.schematic.openItems' },
+    logo: { box: [4, 4, 24, 10] },
+    'nav-overview': { box: [32, 4, 30, 10], label: 'tabs.overview' },
+    'nav-review': { box: [64, 4, 45, 10], label: 'tabs.review' },
+    'nav-coverage': { box: [111, 4, 30, 10], label: 'tabs.coverage' },
+    'nav-a11y': { box: [143, 4, 38, 10], label: 'tabs.a11y' },
+    'nav-runs': { box: [183, 4, 19, 10], label: 'tabs.runs' },
+    'nav-help': { box: [204, 4, 18, 10], label: 'tabs.help' },
+    'review-button': { box: [238, 4, 34, 10], label: 'help.schematic.reviewButton' },
+    'header-status': { box: [276, 4, 40, 10], label: 'help.schematic.status' },
+    cards: { box: [6, 24, 308, 22], label: 'help.schematic.cards' },
+    'open-items': { box: [6, 51, 308, 40], label: 'help.schematic.openItems' },
     // A story card: its outline first, then its parts inside it (drawn in this order).
-    card1: { box: [6, 114, 95, 80] },
-    'card-edge': { box: [6, 114, 3, 80] },
-    'card-thumb': { box: [9, 115, 91, 49] },
+    card1: { box: [6, 97, 95, 97] },
+    'card-edge': { box: [6, 97, 3, 97] },
+    'card-thumb': { box: [9, 98, 91, 66] },
     'card-status': { box: [12, 170, 40, 9], label: 'help.schematic.badge' },
     'card-flags': { box: [55, 170, 42, 9], label: 'help.schematic.flags' },
     'card-stats': { box: [12, 183, 85, 7] },
-    card2: { box: [110, 114, 95, 80] },
-    card3: { box: [214, 114, 100, 80] },
+    card2: { box: [110, 97, 95, 97] },
+    card3: { box: [214, 97, 100, 97] },
   },
   inspector: {
     session: { box: [0, 0, 320, 10], label: 'help.schematic.progress' },

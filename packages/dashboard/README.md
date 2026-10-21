@@ -36,7 +36,7 @@ a placeholder holds a React node, such as a command in `<code>`; both are in `sr
   as itself.
 
 Style: sentence case, the state first and then the action, no questions, no second person, no
-evaluative adjectives. Explanations belong on the Help tab, not on working screens.
+evaluative adjectives. Explanations belong in the Help section, not on working screens.
 
 A translation is a sibling file with the same keys (`fr.json`) added to `LOCALES` in
 `src/copy/index.tsx`; the browser's language picks it, and a missing key falls back to English.
