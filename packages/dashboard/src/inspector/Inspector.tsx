@@ -510,6 +510,9 @@ export function Inspector({
     ) : null;
   // Embedded (Storybook panel) there is no Dialog around the body, so no Dialog parts.
   const Title = embedded ? 'h3' : DialogTitle;
+  // The dialog opens on its title, not on the first control: a control focused by script before any
+  // pointer input shows the keyboard focus ring (a reload with #inspect=… did, on the first mode).
+  const titleRef = React.useRef<HTMLHeadingElement>(null);
   const Desc = embedded ? 'p' : DialogDescription;
 
   // --- review session: progress while deciding, then a summary with the next steps ---------------
@@ -584,7 +587,9 @@ export function Inspector({
                 ? t('inspector.contextScenario', { name: target!.scenario.name })
                 : `${t('inspector.contextLatest', { mode: row.mode })}${row.state ? ` · ${row.state}` : ''}${row.browser && row.browser !== 'chromium' ? ` · ${row.browser}` : ''}`}
             </div>
-            <Title className={s.insTitle}>{row.id}</Title>
+            <Title ref={titleRef} tabIndex={-1} className={s.insTitle}>
+              {row.id}
+            </Title>
             <div className={s.insLinks}>
               <Link href={sb} external title={sbLink.globals ? t('inspector.storybook.title', { globals: sbLink.globals }) : t('inspector.storybook.titlePlain')}>
                 {t('inspector.storybook.open')}
@@ -1072,7 +1077,15 @@ export function Inspector({
   if (embedded) return <div className={s.embed}>{body}</div>;
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className={s.inspector} showCloseButton={false} aria-describedby={undefined}>
+      <DialogContent
+        className={s.inspector}
+        showCloseButton={false}
+        aria-describedby={undefined}
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          requestAnimationFrame(() => titleRef.current?.focus({ preventScroll: true }));
+        }}
+      >
         {body}
       </DialogContent>
     </Dialog>
