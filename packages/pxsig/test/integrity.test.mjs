@@ -285,11 +285,13 @@ test('pxsig doctor CLI contract: --json document, filters, usage errors, prune r
 });
 
 test('the render sentinel recognises Storybook error pages, the Vite overlay and wrong stories', () => {
-  const page = (classes, { msg = '', current = 'a--b', overlay = null, preview = true } = {}) => {
-    const overlayEl = overlay === null ? null : { shadowRoot: { querySelector: (q) => (q === '.message-body' ? { textContent: overlay } : null) } };
-    const query = (q) => (q === 'vite-error-overlay' ? overlayEl : q === '#error-message' ? { textContent: msg } : null);
+  let removed = false;
+  const page = (classes, { msg = '', current = 'a--b', overlay = null, preview = true, phase = 'loading', children = 0 } = {}) => {
+    removed = false;
+    const overlayEl = overlay === null ? null : { remove: () => (removed = true), shadowRoot: { querySelector: (q) => (q === '.message-body' ? { textContent: overlay } : null) } };
+    const query = (q) => (q === 'vite-error-overlay' && !removed ? overlayEl : q === '#error-message' ? { textContent: msg } : q === '#storybook-root' ? { childElementCount: children } : null);
     globalThis.document = { body: { classList: { contains: (c) => classes.includes(c) } }, querySelector: query };
-    globalThis.window = preview ? { __STORYBOOK_PREVIEW__: { currentRender: { id: current } } } : {};
+    globalThis.window = preview ? { __STORYBOOK_PREVIEW__: { currentRender: { id: current, phase } } } : {};
   };
   try {
     page(['sb-show-main']);
@@ -305,6 +307,13 @@ test('the render sentinel recognises Storybook error pages, the Vite overlay and
     assert.equal(storybookSentinel('a--b'), 'Vite error overlay: Failed to resolve import "./X.stories.tsx"');
     page(['sb-show-main'], { preview: false });
     assert.match(storybookSentinel('a--b'), /preview did not start/);
+    // Another page's error, broadcast over Vite's socket, over a story that rendered: not this
+    // story's error, and the overlay is taken off the page.
+    page(['sb-show-main'], { overlay: 'Failed to resolve import "./Other.stories.tsx"', phase: 'finished', children: 1 });
+    assert.equal(storybookSentinel({ id: 'a--b', root: '#storybook-root' }), null);
+    assert.equal(removed, true);
+    page(['sb-show-main'], { overlay: 'Failed to resolve import "./X.stories.tsx"', phase: 'finished', children: 0 });
+    assert.match(storybookSentinel('a--b'), /Vite error overlay/, 'an empty root under an overlay did not render');
   } finally {
     delete globalThis.document;
     delete globalThis.window;
