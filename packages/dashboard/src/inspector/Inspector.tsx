@@ -20,6 +20,7 @@ import {
   ToolbarLeft,
   ToolbarRight,
   Badge,
+  Icons,
 } from '@hydrotik/design-system';
 import { type Data, type Queue, type Row, a11yAction, decisionOf, fmt, pathsFor, reviewAction, served, statusOf } from '../data';
 import { analyse, cellsLayer, hex, loadImg, readPixels, type Analysis } from './analyse';
@@ -590,12 +591,7 @@ export function Inspector({
             <Title ref={titleRef} tabIndex={-1} className={s.insTitle}>
               {row.id}
             </Title>
-            <div className={s.insLinks}>
-              <Link href={sb} external title={sbLink.globals ? t('inspector.storybook.title', { globals: sbLink.globals }) : t('inspector.storybook.titlePlain')}>
-                {t('inspector.storybook.open')}
-              </Link>
-              {sbLink.state ? <span className={s.muted}>{t('inspector.storybook.state', { state: sbLink.state })}</span> : null}
-            </div>
+            {sbLink.state ? <div className={`${s.micro} ${s.muted}`}>{t('inspector.storybook.state', { state: sbLink.state })}</div> : null}
             <Desc className={s.micro} style={{ margin: 0 }}>
               {row.reasons?.length
                 ? row.reasons.join(' · ')
@@ -807,7 +803,22 @@ export function Inspector({
               </section>
             ) : null}
             <section className={s.sideSection}>
-              <h4 className={s.sectionTitle}>{t('inspector.sections.pixel')}</h4>
+              <div className={s.sectionHead}>
+                <h4 className={s.sectionTitle}>{t('inspector.sections.pixel')}</h4>
+                {embedded ? null : (
+                  <Button asChild size="sm" variant="outline">
+                    <a
+                      href={sb}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={sbLink.globals ? t('inspector.storybook.title', { globals: sbLink.globals }) : t('inspector.storybook.titlePlain')}
+                    >
+                      {t('inspector.storybook.open')}
+                      <Icons.ExternalLink aria-hidden size="1em" />
+                    </a>
+                  </Button>
+                )}
+              </div>
               <div className={s.readout}>
                 {loaded && loaded !== 'missing' && !loaded.a ? (
                   <span className={s.muted}>{t('inspector.pixel.noBaseline')}</span>

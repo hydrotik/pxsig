@@ -20,9 +20,10 @@ semantic versioning.
   share a height and their labels a line, and "1,024 of 1,024" sits on the controls' line as a
   summary that is announced as the filters change. The inspector's toolbar and the Coverage,
   Diagnostics and scenario rows follow the same rule.
-- **Open in Storybook from the inspector.** The inspector's header links the entry's story in
-  Storybook with the entry's globals (theme, colorway, preset), so an `@light` entry opens in the
-  light theme. An interaction state, which only a check can set, is noted beside the link. Check
+- **Open in Storybook from the inspector.** A Storybook button beside the Pixel heading opens the
+  entry's story in Storybook with the entry's globals (theme, colorway, preset), so an `@light`
+  entry opens in the light theme. An interaction state, which only a check can set, is noted under
+  the entry's id. Check
   rows now carry the entry's `globals`.
 
 ### Fixed

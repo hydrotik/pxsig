@@ -218,8 +218,6 @@ export const insHead = style({
 });
 // Focused (tabIndex -1) only as the dialog's starting point; it is not a control, so no focus ring.
 export const insTitle = style({ margin: 0, fontFamily: vars.font.family.mono, fontSize: vars.font.size.sm, wordBreak: 'break-all', outline: 'none' });
-// The entry's Storybook link under its id, with the interaction-state note beside it.
-export const insLinks = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: `${vars.space['1']} ${vars.space['3']}`, fontSize: vars.font.size.xs });
 // Review session: progress above the inspector, a summary when every entry is decided.
 export const sessionBar = style({
   display: 'flex',
@@ -369,6 +367,8 @@ export const insSide = style({
   boxSizing: 'border-box',
 });
 export const sideSection = style({ display: 'flex', flexDirection: 'column', gap: vars.space['2'] });
+// A side section's title, with its action (the Storybook link on Pixel) at the end of the row.
+export const sectionHead = style({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: vars.space['2'] });
 export const sectionTitle = style({ margin: 0, fontSize: vars.font.size.sm, fontWeight: vars.font.weight.semibold });
 export const readout = style({ display: 'flex', flexDirection: 'column', gap: vars.space['1_5'], minBlockSize: '6.5rem' });
 // Every row is as tall as its tallest content (the Δ badge), with or without a value.

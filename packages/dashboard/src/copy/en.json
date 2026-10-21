@@ -679,7 +679,7 @@
   },
   "inspector": {
     "storybook": {
-      "open": "Open in Storybook",
+      "open": "Storybook",
       "title": "Opens the story in Storybook with this entry's globals: {globals}",
       "titlePlain": "Opens the story in Storybook",
       "state": "State {state}: set by the check, not by the link"
