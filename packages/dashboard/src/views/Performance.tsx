@@ -1,4 +1,4 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, DataGrid, StatPanel } from '@hydrotik/design-system';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, DataTable, StatGroup } from '@ui';
 import { type Data, fmt } from '../data';
 import { HBars } from '../parts/Charts';
 import { Cmd, t, tx } from '../copy';
@@ -59,7 +59,7 @@ export function Performance({ data }: { data: Data }) {
       <span className={s.muted}>
         {[t('diagnostics.performance.entries', { count: b.stories }), `${t('diagnostics.performance.cpus', { count: b.cpus })}${b.cpu ? ` (${b.cpu})` : ''}`, t('diagnostics.performance.median', { count: b.runs }), ...(b.generatedAt ? [new Date(b.generatedAt).toLocaleString()] : [])].join(' · ')}
       </span>
-      {cards.length ? <StatPanel aria-label={t('diagnostics.performance.engine')} cards={cards} /> : null}
+      {cards.length ? <StatGroup label={t('diagnostics.performance.engine')} items={cards} /> : null}
       <div className={s.twoCol}>
         <Card>
           <CardHeader>
@@ -70,8 +70,8 @@ export function Performance({ data }: { data: Data }) {
             {renders.length ? (
               <>
                 <HBars data={renders} category="pages" series={[{ key: 'ms', label: t('diagnostics.performance.renderSeries') }]} format={(v) => `${v} ms`} height={10} />
-                <DataGrid
-                  data={pools.map((p) => ({
+                <DataTable
+                  rows={pools.map((p) => ({
                     id: String(p),
                     pages: p,
                     wall: ok(byConc[p].wallMs) ? fmt.ms(byConc[p].wallMs) : '—',
@@ -80,16 +80,14 @@ export function Performance({ data }: { data: Data }) {
                     errors: byConc[p].errors ?? 0,
                     reloads: byConc[p].reloads ?? 0,
                   }))}
-                  getRowId={(r: { id: string }) => r.id}
-                  density="compact"
-                  showToolbar={false}
+                  rowId={(r) => r.id}
                   columns={[
-                    { id: 'pages', accessorKey: 'pages', header: t('diagnostics.performance.pagesColumn') },
-                    { id: 'wall', accessorKey: 'wall', header: t('diagnostics.performance.wall') },
-                    { id: 'ms', accessorKey: 'ms', header: t('diagnostics.performance.msPerStory') },
-                    { id: 'speedup', accessorKey: 'speedup', header: t('diagnostics.performance.vsOnePage') },
-                    { id: 'errors', accessorKey: 'errors', header: t('diagnostics.performance.errors') },
-                    { id: 'reloads', accessorKey: 'reloads', header: t('diagnostics.performance.reloads') },
+                    { id: 'pages', field: 'pages', header: t('diagnostics.performance.pagesColumn') },
+                    { id: 'wall', field: 'wall', header: t('diagnostics.performance.wall') },
+                    { id: 'ms', field: 'ms', header: t('diagnostics.performance.msPerStory') },
+                    { id: 'speedup', field: 'speedup', header: t('diagnostics.performance.vsOnePage') },
+                    { id: 'errors', field: 'errors', header: t('diagnostics.performance.errors') },
+                    { id: 'reloads', field: 'reloads', header: t('diagnostics.performance.reloads') },
                   ]}
                 />
               </>
@@ -105,16 +103,14 @@ export function Performance({ data }: { data: Data }) {
           </CardHeader>
           <CardContent>
             {threads.length ? (
-              <DataGrid
-                data={threads.map((t) => ({ id: String(t), threads: t, wall: Math.round(wall(t)), internal: ok(rust[t].internalMs) ? Math.round(rust[t].internalMs) : '—', speedup: one ? fmt.x(one / wall(t)) : '—' }))}
-                getRowId={(r: { id: string }) => r.id}
-                density="compact"
-                showToolbar={false}
+              <DataTable
+                rows={threads.map((t) => ({ id: String(t), threads: t, wall: Math.round(wall(t)), internal: ok(rust[t].internalMs) ? Math.round(rust[t].internalMs) : '—', speedup: one ? fmt.x(one / wall(t)) : '—' }))}
+                rowId={(r) => r.id}
                 columns={[
-                  { id: 'threads', accessorKey: 'threads', header: t('diagnostics.performance.threads') },
-                  { id: 'wall', accessorKey: 'wall', header: t('diagnostics.performance.wallMs') },
-                  { id: 'internal', accessorKey: 'internal', header: t('diagnostics.performance.engineMs') },
-                  { id: 'speedup', accessorKey: 'speedup', header: t('diagnostics.performance.vsOneThread') },
+                  { id: 'threads', field: 'threads', header: t('diagnostics.performance.threads') },
+                  { id: 'wall', field: 'wall', header: t('diagnostics.performance.wallMs') },
+                  { id: 'internal', field: 'internal', header: t('diagnostics.performance.engineMs') },
+                  { id: 'speedup', field: 'speedup', header: t('diagnostics.performance.vsOneThread') },
                 ]}
               />
             ) : (

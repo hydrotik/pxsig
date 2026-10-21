@@ -1,18 +1,18 @@
 import React from 'react';
-import { Alert, AlertDescription, AlertTitle, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DataGrid, StatPanel, StatusBadge, Toolbar, ToolbarLeft } from '@hydrotik/design-system';
-import { type Data, type IntegrityComponent, type IntegrityEntry, type Row, repairSafe, rowsWithPending, served } from '../data';
+import { Alert, AlertDescription, AlertTitle, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DataTable, StatGroup, StatusBadge, Toolbar, ToolbarStart, type Tone } from '@ui';
+import { type Data, type Row, repairSafe, rowsWithPending, served } from '../data';
 import { Cmd, codeCopy, t, tx } from '../copy';
 import { Affordance } from '../parts/Affordance';
 import * as s from '../dashboard.css';
 
 type Severity = 'error' | 'warn' | 'info';
-const TONE: Record<Severity, 'error' | 'warning' | 'success'> = { error: 'error', warn: 'warning', info: 'success' };
+const TONE: Record<Severity, Tone> = { error: 'danger', warn: 'warning', info: 'success' };
 const order: Record<Severity, number> = { error: 0, warn: 1, info: 2 };
 
 /** One integrity status → one badge, coloured by severity. */
 export function IntegrityStatus({ code, severity }: { code: string; severity: Severity }) {
   const c = codeCopy(code);
-  return <StatusBadge label={c.title} title={c.help || undefined} tone={code === 'ok' || code === 'drift' ? 'success' : code === 'excluded' ? 'neutral' : TONE[severity]} />;
+  return <StatusBadge icon="dot" label={c.title} title={c.help || undefined} tone={code === 'ok' || code === 'drift' ? 'success' : code === 'excluded' ? 'neutral' : TONE[severity]} />;
 }
 
 /** The ledger's headline, from its counts (the server's own headline is English-only). */
@@ -50,7 +50,7 @@ export function IntegrityBanner({ data, go }: { data: Data; go(tab: string): voi
     }
   };
   return (
-    <Alert variant={L.summary.status === 'attention' || L.setup.some((x) => x.severity === 'error') ? 'destructive' : 'default'} aria-label={t('coverage.banner.label')} style={{ boxSizing: 'border-box' }}>
+    <Alert tone={L.summary.status === 'attention' || L.setup.some((x) => x.severity === 'error') ? 'danger' : 'neutral'} label={t('coverage.banner.label')}>
       <AlertTitle>{coverageHeadline(L)}</AlertTitle>
       <AlertDescription>
         <div className={s.stack}>
@@ -60,7 +60,7 @@ export function IntegrityBanner({ data, go }: { data: Data; go(tab: string): voi
             </span>
           ))}
           <span className={s.row}>
-            <Button size="sm" variant="outline" onClick={() => go('integrity')}>
+            <Button size="sm" emphasis="outline" onClick={() => go('integrity')}>
               {t('coverage.banner.viewComponents')}
             </Button>
             {served ? (
@@ -92,16 +92,16 @@ export function Integrity({ data, onOpen }: { data: Data; onOpen(row: Row, list:
   const ix = L.sources.storyIndex;
   return (
     <div className={s.stack}>
-      <StatPanel
+      <StatGroup
         className={s.statCards}
-        aria-label={t('tabs.coverage')}
-        cards={[
+        label={t('tabs.coverage')}
+        items={[
           { label: t('coverage.stats.components'), value: sm.components, unit: t('coverage.stats.withErrors', { count: sm.componentsBySeverity.error }) },
-          { label: t('coverage.stats.errors'), value: sm.bySeverity.error, accent: sm.bySeverity.error ? 'error' : 'success' },
-          { label: t('coverage.stats.warnings'), value: sm.bySeverity.warn, accent: sm.bySeverity.warn ? 'warning' : undefined },
+          { label: t('coverage.stats.errors'), value: sm.bySeverity.error, tone: sm.bySeverity.error ? 'danger' : 'success' },
+          { label: t('coverage.stats.warnings'), value: sm.bySeverity.warn, tone: sm.bySeverity.warn ? 'warning' : undefined },
           ...(['unregistered', 'never-checked', 'missing-baseline-image'] as const).map((c) =>
             sm.byCode[c]
-              ? { label: codeCopy(c).title, value: sm.byCode[c], accent: 'error' as const, type: 'filter' as const, active: code === c, onSelect: () => setCode(code === c ? null : c), icon: <Affordance kind="filter" /> }
+              ? { label: codeCopy(c).title, value: sm.byCode[c], tone: 'danger' as const, active: code === c, onSelect: () => setCode(code === c ? null : c), icon: <Affordance kind="filter" /> }
               : { label: codeCopy(c).title, value: 0 }
           ),
         ]}
@@ -114,35 +114,34 @@ export function Integrity({ data, onOpen }: { data: Data; onOpen(row: Row, list:
         <CardContent>
           <div className={s.stack}>
             <Toolbar size="sm">
-              <ToolbarLeft>
-                <Button variant={!code && !all ? 'default' : 'outline'} onClick={() => (setAll(false), setCode(null))}>
+              <ToolbarStart>
+                <Button emphasis={!code && !all ? 'solid' : 'outline'} onClick={() => (setAll(false), setCode(null))}>
                   {t('coverage.table.withIssues', { count: L.components.filter((c) => c.severity !== 'info').length })}
                 </Button>
-                <Button variant={!code && all ? 'default' : 'outline'} onClick={() => (setAll(true), setCode(null))}>
+                <Button emphasis={!code && all ? 'solid' : 'outline'} onClick={() => (setAll(true), setCode(null))}>
                   {t('coverage.table.all', { count: L.components.length })}
                 </Button>
-              </ToolbarLeft>
+              </ToolbarStart>
             </Toolbar>
             {comps.length ? (
-              <DataGrid
-                data={comps}
-                getRowId={(r: IntegrityComponent) => r.component}
-                density="compact"
-                showToolbar
-                enablePagination={false}
-                onRowClick={(row: { original: IntegrityComponent }) => setSelected(row.original.component)}
+              <DataTable
+                rows={comps}
+                rowId={(r) => r.component}
+                search
+                paginate={false}
+                onRowClick={(r) => setSelected(r.component)}
                 columns={[
-                  { id: 'status', accessorKey: 'status', header: t('coverage.table.status'), cell: ({ row }: { row: { original: IntegrityComponent } }) => <IntegrityStatus code={row.original.status} severity={row.original.severity} /> },
-                  { id: 'component', accessorKey: 'component', header: t('coverage.table.component'), cell: ({ row }: { row: { original: IntegrityComponent } }) => <strong>{row.original.component}</strong> },
-                  { id: 'entries', accessorKey: 'entries', header: t('coverage.table.entries'), align: 'right' },
+                  { id: 'status', field: 'status', header: t('coverage.table.status'), cell: (r) => <IntegrityStatus code={r.status} severity={r.severity} /> },
+                  { id: 'component', field: 'component', header: t('coverage.table.component'), cell: (r) => <strong>{r.component}</strong> },
+                  { id: 'entries', field: 'entries', header: t('coverage.table.entries'), align: 'end' },
                   {
                     id: 'issues',
-                    accessorKey: 'counts',
+                    field: 'counts',
                     header: t('coverage.table.issues'),
-                    cell: ({ row }: { row: { original: IntegrityComponent } }) => (
+                    cell: (r) => (
                       <span className={s.row}>
-                        {Object.entries(row.original.counts).map(([code, n]) => (
-                          <Badge key={code} variant={['unregistered', 'never-checked', 'missing-baseline-image', 'render-error'].includes(code) ? 'destructive' : 'secondary'} title={codeCopy(code).help || undefined}>
+                        {Object.entries(r.counts).map(([code, n]) => (
+                          <Badge key={code} tone={['unregistered', 'never-checked', 'missing-baseline-image', 'render-error'].includes(code) ? 'danger' : 'neutral'} title={codeCopy(code).help || undefined}>
                             {t('coverage.headline.code', { title: codeCopy(code).title, count: n })}
                           </Badge>
                         ))}
@@ -164,24 +163,22 @@ export function Integrity({ data, onOpen }: { data: Data; onOpen(row: Row, list:
             <CardDescription>{t('coverage.entries.description', { count: entries.length })}</CardDescription>
           </CardHeader>
           <CardContent>
-            <DataGrid
-              data={entries}
-              getRowId={(r: IntegrityEntry) => r.id}
-              density="compact"
-              showToolbar={false}
-              enablePagination={false}
-              onRowClick={(row: { original: IntegrityEntry }) => {
-                const r = byId.get(row.original.id);
+            <DataTable
+              rows={entries}
+              rowId={(r) => r.id}
+              paginate={false}
+              onRowClick={(e) => {
+                const r = byId.get(e.id);
                 if (r && (r.metrics || (r.new && !r.pending))) onOpen(r, rows.filter((x) => entries.some((e) => e.id === x.id)));
               }}
               columns={[
-                { id: 'status', accessorKey: 'status', header: t('coverage.entries.status'), cell: ({ row }: { row: { original: IntegrityEntry } }) => <IntegrityStatus code={row.original.status} severity={row.original.severity} /> },
-                { id: 'id', accessorKey: 'id', header: t('coverage.entries.entry'), cell: ({ row }: { row: { original: IntegrityEntry } }) => <span className={s.mono}>{row.original.id}</span> },
+                { id: 'status', field: 'status', header: t('coverage.entries.status'), cell: (e) => <IntegrityStatus code={e.status} severity={e.severity} /> },
+                { id: 'id', field: 'id', header: t('coverage.entries.entry'), cell: (e) => <span className={s.mono}>{e.id}</span> },
                 {
                   id: 'why',
-                  accessorKey: 'issues',
+                  field: 'issues',
                   header: t('coverage.entries.detail'),
-                  cell: ({ row }: { row: { original: IntegrityEntry } }) => <span className={s.muted}>{row.original.issues.map((i) => `${codeCopy(i.code).title}: ${i.reason}`).join(' · ') || t('coverage.entries.noIssues')}</span>,
+                  cell: (e) => <span className={s.muted}>{e.issues.map((i) => `${codeCopy(i.code).title}: ${i.reason}`).join(' · ') || t('coverage.entries.noIssues')}</span>,
                 },
               ]}
             />

@@ -33,6 +33,10 @@
         "one": "Review {count} accessibility entry",
         "other": "Review {count} accessibility entries"
       }
+    },
+    "status": {
+      "reviewRequired": "Review required",
+      "approved": "Approved"
     }
   },
   "tabs": {
@@ -871,5 +875,15 @@
       "notWritten": "Signature images and the diff page are written only for entries that fail the gate."
     },
     "a11yRejectedNote": "Violations rejected. Fix them, then re-run the check:"
+  },
+  "ui": {
+    "fallback": {
+      "copy": "Copy",
+      "copied": "Copied",
+      "search": "Search",
+      "previousPage": "Previous page",
+      "nextPage": "Next page",
+      "page": "Page {page} of {pages}"
+    }
   }
 }

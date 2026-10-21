@@ -5,18 +5,20 @@ package is private. Its build goes into the `pxsig` package, so users get the da
 
 ## Building
 
-The dashboard is built on the author's design system, `@hydrotik/design-system`, which is not
+The dashboard renders through a UI contract (`src/ui/`, see [its README](src/ui/README.md)): views
+import components from `@ui`, and a UI adapter chosen at build time supplies them. The default, the
+reference adapter, is built on the author's design system, `@hydrotik/design-system`, which is not
 published to npm. The build compiles it, its tokens and its theme provider from a local checkout of
 the monorepo that contains them:
 
 ```bash
 PXSIG_DS_SOURCE=<path to the design-system monorepo> pnpm --filter @pxsig/dashboard build
+PXSIG_UI_ADAPTER=<name or path> pnpm --filter @pxsig/dashboard build   # another adapter
 ```
 
-The build looks up each package by name under that checkout's `packages/` and `apps/` folders,
-compiles their vanilla-extract styles from source, and writes a single classic script plus
-`index.html` to `packages/pxsig/dist/dashboard/`, so a static report also opens from disk. That
-folder is git-ignored and ships only in the published `pxsig` package.
+The build writes a single classic script plus `index.html` to `packages/pxsig/dist/dashboard/` (or
+`PXSIG_DASHBOARD_OUT`), so a static report also opens from disk. That folder is git-ignored and
+ships only in the published `pxsig` package.
 
 Without a build, `pxsig serve` still answers its API, and `/report/` answers 404 with "the
 dashboard is not built". Changes to the data the dashboard reads (`packages/pxsig/src/report.mjs`)

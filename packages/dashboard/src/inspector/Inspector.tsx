@@ -1,27 +1,26 @@
 import React from 'react';
 import {
+  Badge,
   Button,
   CopyValue,
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogTitle,
+  Icon,
+  IconButton,
   Kbd,
+  KeyValueItem,
+  KeyValueList,
   Link,
   Progress,
+  SegmentedChoice,
   Slider,
-  StaticList,
-  StaticListItem,
   StatusBadge,
   Switch,
-  ToggleGroup,
-  ToggleGroupItem,
   Toolbar,
-  ToolbarLeft,
-  ToolbarRight,
-  Badge,
-  Icons,
-} from '@hydrotik/design-system';
+  ToolbarEnd,
+  ToolbarStart,
+} from '@ui';
 import { type Data, type Queue, type Row, a11yAction, decisionOf, fmt, pathsFor, reviewAction, served, statusOf } from '../data';
 import { analyse, cellsLayer, hex, loadImg, readPixels, type Analysis } from './analyse';
 import { Stage, type Hover, type Mode, type StageApi } from './Stage';
@@ -74,7 +73,7 @@ function CopyPath({ value, label }: { value: string; label: string }) {
     }
   };
   return (
-    <Button size="sm" variant="ghost" title={value} aria-label={t('inspector.files.path', { label })} onClick={copy}>
+    <Button size="sm" emphasis="ghost" title={value} aria-label={t('inspector.files.path', { label })} onClick={copy}>
       {done ? t('inspector.files.copied') : t('inspector.files.copyPath')}
     </Button>
   );
@@ -343,43 +342,39 @@ export function Inspector({
         <Slider
           className={s.sliderCtl}
           label={t('inspector.sliders.swipe')}
-          showValue
-          formatValue={([v]) => `${v}%`}
-          value={[split]}
+          formatValue={(v) => `${v}%`}
+          value={split}
           max={100}
-          onValueChange={([v]) => setSplit(v)}
+          onValueChange={setSplit}
         />
       ) : null}
       {mode === 'onion' ? (
         <Slider
           className={s.sliderCtl}
           label={t('inspector.sliders.opacity')}
-          showValue
-          formatValue={([v]) => `${v}%`}
-          value={[onion]}
+          formatValue={(v) => `${v}%`}
+          value={onion}
           max={100}
-          onValueChange={([v]) => setOnion(v)}
+          onValueChange={setOnion}
         />
       ) : null}
       {mode === 'heat' ? (
         <Slider
           className={s.sliderCtl}
           label={t('inspector.sliders.cells')}
-          showValue
-          formatValue={([v]) => `${v}%`}
-          value={[heat]}
+          formatValue={(v) => `${v}%`}
+          value={heat}
           max={100}
-          onValueChange={([v]) => setHeat(v)}
+          onValueChange={setHeat}
         />
       ) : null}
       {pixels ? (
         <Slider
           className={s.sliderCtl}
           label={t('inspector.sliders.tolerance')}
-          showValue
-          value={[tol]}
+          value={tol}
           max={96}
-          onValueChange={([v]) => setTol(v)}
+          onValueChange={setTol}
         />
       ) : null}
       {pixels && mode === 'side' ? (
@@ -387,7 +382,7 @@ export function Inspector({
           <Switch
             checked={showHighlight}
             onCheckedChange={setShowHighlight}
-            aria-label={t('inspector.toggles.highlightLabel')}
+            label={t('inspector.toggles.highlightLabel')}
           />{' '}
           {t('inspector.toggles.highlight')}
         </label>
@@ -397,7 +392,7 @@ export function Inspector({
           <Switch
             checked={showBoxes}
             onCheckedChange={setShowBoxes}
-            aria-label={t('inspector.toggles.regionsLabel')}
+            label={t('inspector.toggles.regionsLabel')}
           />{' '}
           {t('inspector.toggles.regions')}
         </label>
@@ -407,7 +402,7 @@ export function Inspector({
           <Switch
             checked={showTiles}
             onCheckedChange={setShowTiles}
-            aria-label={t('inspector.toggles.tilesLabel')}
+            label={t('inspector.toggles.tilesLabel')}
           />{' '}
           {t('inspector.toggles.tiles')}
         </label>
@@ -416,50 +411,25 @@ export function Inspector({
   );
   const siblingToggle =
     siblings.length > 1 ? (
-      <ToggleGroup
-        type="single"
+      <SegmentedChoice
         value={row.id}
-        onValueChange={(v) =>
-          v && onNavigate({ ...target!, row: siblings.find((r) => r.id === v)! })
-        }
-        aria-label={t('inspector.variant')}
-      >
-        {siblings.map((r) => (
-          <ToggleGroupItem
-            key={r.id}
-            value={r.id}
-            aria-label={`${r.mode}${r.state ? ` ${r.state}` : ''}`}
-          >
-            {r.mode}
-            {r.state ? `·${r.state}` : ''}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
+        onValueChange={(v) => onNavigate({ ...target!, row: siblings.find((r) => r.id === v)! })}
+        label={t('inspector.variant')}
+        options={siblings.map((r) => ({ value: r.id, accessibleLabel: `${r.mode}${r.state ? ` ${r.state}` : ''}`, label: `${r.mode}${r.state ? `·${r.state}` : ''}` }))}
+      />
     ) : null;
   const storyNav =
     list.length > 1 ? (
       <span className={s.row}>
-        <Button
-          size="icon-sm"
-          variant="outline"
-          aria-label={t('inspector.nav.prevStory')}
-          title={t('inspector.nav.prevStory')}
-          onClick={() => step(-1)}
-        >
+        <IconButton size="sm" emphasis="outline" label={t('inspector.nav.prevStory')} title={t('inspector.nav.prevStory')} onClick={() => step(-1)}>
           ‹
-        </Button>
+        </IconButton>
         <span className={s.micro}>
           {t('inspector.nav.position', { index: index + 1, total: list.length })}
         </span>
-        <Button
-          size="icon-sm"
-          variant="outline"
-          aria-label={t('inspector.nav.nextStory')}
-          title={t('inspector.nav.nextStory')}
-          onClick={() => step(1)}
-        >
+        <IconButton size="sm" emphasis="outline" label={t('inspector.nav.nextStory')} title={t('inspector.nav.nextStory')} onClick={() => step(1)}>
           ›
-        </Button>
+        </IconButton>
       </span>
     ) : null;
   const newA11y = row.a11y?.new ?? 0;
@@ -470,14 +440,14 @@ export function Inspector({
   const reviewButtons = !canReview ? null : a11yMode ? (
     newA11y || review ? (
       <>
-        <Button size="sm" variant="outline" disabled={busy || review?.state === 'rejected'} onClick={() => act('reject')} title={t('inspector.review.rejectA11yTitle')}>
+        <Button size="sm" emphasis="outline" disabled={busy || review?.state === 'rejected'} onClick={() => act('reject')} title={t('inspector.review.rejectA11yTitle')}>
           {t('inspector.review.reject')}
         </Button>
         <Button size="sm" disabled={busy || review?.state === 'accepted'} onClick={() => act('approve')} title={t('inspector.review.acceptTitle')}>
           {newA11y ? t('inspector.review.acceptCount', { count: newA11y }) : t('inspector.review.accept')}
         </Button>
         {review ? (
-          <Button size="sm" variant="ghost" disabled={busy} onClick={() => act('unreview')}>
+          <Button size="sm" emphasis="ghost" disabled={busy} onClick={() => act('unreview')}>
             {t('inspector.review.undo')}
           </Button>
         ) : null}
@@ -487,7 +457,7 @@ export function Inspector({
       <>
         <Button
           size="sm"
-          variant="outline"
+          emphasis="outline"
           disabled={busy || review?.state === 'rejected'}
           onClick={() => act('reject')}
           title={t('inspector.review.rejectTitle')}
@@ -503,7 +473,7 @@ export function Inspector({
           {newA11y && !a11yDecision && !review ? t('inspector.review.approveA11y', { count: newA11y }) : t('inspector.review.approve')}
         </Button>
         {review ? (
-          <Button size="sm" variant="ghost" disabled={busy} onClick={() => act('unreview')} title={review.state === 'approved' ? t('inspector.review.undoTitle') : undefined}>
+          <Button size="sm" emphasis="ghost" disabled={busy} onClick={() => act('unreview')} title={review.state === 'approved' ? t('inspector.review.undoTitle') : undefined}>
             {t('inspector.review.undo')}
           </Button>
         ) : null}
@@ -526,7 +496,7 @@ export function Inspector({
   const progress = session ? (
     <div className={s.sessionBar}>
       <strong>{t(`inspector.session.${session}`)}</strong>
-      <Progress className={s.grow} value={Math.round((decided / (list.length || 1)) * 100)} aria-label={t('inspector.session.label')} />
+      <Progress className={s.grow} value={Math.round((decided / (list.length || 1)) * 100)} label={t('inspector.session.label')} />
       <span className={s.micro}>{t('inspector.session.progress', { done: decided, total: list.length, left: list.length - decided })}</span>
     </div>
   ) : null;
@@ -539,41 +509,39 @@ export function Inspector({
     ) : null;
   if (complete)
     return (
-      <Dialog open onOpenChange={(o) => !o && onClose()}>
-        <DialogContent className={s.summaryDialog} showCloseButton={false} aria-describedby={undefined}>
+      <Dialog open onOpenChange={(o) => !o && onClose()} className={s.summaryDialog}>
           {progress}
           <div className={s.summary}>
             <DialogTitle className={s.insTitle}>{t('inspector.session.complete')}</DialogTitle>
-            <StaticList labelWidth="30%">
-              <StaticListItem label={t(a11yMode ? 'inspector.session.accepted' : 'inspector.session.approved', { count: approvedRows.length })}>
+            <KeyValueList labelWidth="30%">
+              <KeyValueItem label={t(a11yMode ? 'inspector.session.accepted' : 'inspector.session.approved', { count: approvedRows.length })}>
                 {a11yMode
                   ? tx('inspector.session.acceptedNext', { file: <Cmd>{`${data.store ?? '.pxsig'}/a11y.json`}</Cmd> })
                   : tx('inspector.session.approvedNext', { store: <Cmd>{data.store ?? '.pxsig'}</Cmd> })}
-              </StaticListItem>
+              </KeyValueItem>
               {rejectedRows.length ? (
-                <StaticListItem label={t('inspector.session.rejected', { count: rejectedRows.length })}>
+                <KeyValueItem label={t('inspector.session.rejected', { count: rejectedRows.length })}>
                   <span className={s.stack}>
                     <span>{t(a11yMode ? 'inspector.session.a11yRejectedNext' : 'inspector.session.rejectedNext')}</span>
                     <CopyValue value={`pxsig check ${rejectedRows.map((r) => r.id).join(' ')}`} />
                   </span>
-                </StaticListItem>
+                </KeyValueItem>
               ) : null}
-            </StaticList>
+            </KeyValueList>
             <span className={s.row}>
               <Button size="sm" onClick={() => (onGo ? onGo('overview') : onClose())}>
                 {t('inspector.session.back')}
               </Button>
               {rejectedRows.length && onGo ? (
-                <Button size="sm" variant="outline" onClick={() => (a11yMode ? onGo('a11y') : onGo('stories', 'rejected'))}>
+                <Button size="sm" emphasis="outline" onClick={() => (a11yMode ? onGo('a11y') : onGo('stories', 'rejected'))}>
                   {t('inspector.session.viewRejected')}
                 </Button>
               ) : null}
-              <Button size="sm" variant="ghost" onClick={() => setStay(true)}>
+              <Button size="sm" emphasis="ghost" onClick={() => setStay(true)}>
                 {t('inspector.session.backToEntries')}
               </Button>
             </span>
           </div>
-        </DialogContent>
       </Dialog>
     );
 
@@ -606,7 +574,7 @@ export function Inspector({
             {storyNav}
             {reviewButtons}
             {embedded ? null : (
-              <Button size="sm" variant="outline" onClick={onClose}>
+              <Button size="sm" emphasis="outline" onClick={onClose}>
                 {t('inspector.close')}
               </Button>
             )}
@@ -616,29 +584,23 @@ export function Inspector({
 
       {rejectedNote}
       <Toolbar size="sm" className={s.insToolbar}>
-        <ToolbarLeft>
+        <ToolbarStart>
           {embedded ? <StatusOf status={statusOf(row, data.review)} /> : null}
-          <ToggleGroup
-            type="single"
+          <SegmentedChoice
             value={mode}
-            onValueChange={(v) => v && setMode(v as Mode)}
-            aria-label={t('inspector.modes.label')}
-          >
-            {MODES.map((k, i) => (
-              <ToggleGroupItem key={k} value={k} title={`${t(`inspector.modes.${k}`)} (${i + 1})`} aria-label={t(`inspector.modes.${k}`)}>
-                {embedded ? t(`inspector.modes.${k}Short`) : t(`inspector.modes.${k}`)}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+            onValueChange={(v) => setMode(v as Mode)}
+            label={t('inspector.modes.label')}
+            options={MODES.map((k, i) => ({
+              value: k,
+              title: `${t(`inspector.modes.${k}`)} (${i + 1})`,
+              accessibleLabel: t(`inspector.modes.${k}`),
+              label: embedded ? t(`inspector.modes.${k}Short`) : t(`inspector.modes.${k}`),
+            }))}
+          />
           <span className={s.row}>
-            <Button
-              size="icon"
-              variant="outline"
-              aria-label={t('inspector.zoomOut')}
-              onClick={() => stage.current?.zoomBy(1 / 1.5)}
-            >
+            <IconButton emphasis="outline" label={t('inspector.zoomOut')} onClick={() => stage.current?.zoomBy(1 / 1.5)}>
               −
-            </Button>
+            </IconButton>
             <span
               className={s.mono}
               style={{ minInlineSize: '3.5rem', textAlign: 'center', fontSize: '0.75rem' }}
@@ -646,23 +608,18 @@ export function Inspector({
             >
               {Math.round(zoom * 100)}%
             </span>
-            <Button
-              size="icon"
-              variant="outline"
-              aria-label={t('inspector.zoomIn')}
-              onClick={() => stage.current?.zoomBy(1.5)}
-            >
+            <IconButton emphasis="outline" label={t('inspector.zoomIn')} onClick={() => stage.current?.zoomBy(1.5)}>
               +
-            </Button>
+            </IconButton>
             <Button
-              variant="outline"
+              emphasis="outline"
               title={t('inspector.fitTitle')}
               onClick={() => stage.current?.fit()}
             >
               {t('inspector.fit')}
             </Button>
             <Button
-              variant="outline"
+              emphasis="outline"
               title={t('inspector.actualTitle')}
               onClick={() => stage.current?.zoomTo(1)}
             >
@@ -670,44 +627,32 @@ export function Inspector({
             </Button>
           </span>
           {embedded ? null : viewControls}
-        </ToolbarLeft>
-        <ToolbarRight>
+        </ToolbarStart>
+        <ToolbarEnd>
           {embedded ? siblingToggle : null}
           {embedded ? reviewButtons : null}
           {embedded ? (
             <label className={s.ctl}>
-              <Switch checked={showSide} onCheckedChange={setShowSide} aria-label={t('inspector.toggles.detailsLabel')} />{' '}
+              <Switch checked={showSide} onCheckedChange={setShowSide} label={t('inspector.toggles.detailsLabel')} />{' '}
               {t('inspector.toggles.details')}
             </label>
           ) : null}
           {pixels && !embedded ? (
             <span className={s.row}>
-              <Button
-                size="icon"
-                variant="outline"
-                disabled={!regions.length}
-                aria-label={t('inspector.nav.prevChange')}
-                onClick={() => stepRegion(-1)}
-              >
+              <IconButton emphasis="outline" disabled={!regions.length} label={t('inspector.nav.prevChange')} onClick={() => stepRegion(-1)}>
                 ‹
-              </Button>
+              </IconButton>
               <span className={s.micro}>
                 {regions.length
                   ? t('inspector.nav.change', { index: region < 0 ? '–' : region + 1, total: regions.length })
                   : t('inspector.nav.noChanges')}
               </span>
-              <Button
-                size="icon"
-                variant="outline"
-                disabled={!regions.length}
-                aria-label={t('inspector.nav.nextChange')}
-                onClick={() => stepRegion(1)}
-              >
+              <IconButton emphasis="outline" disabled={!regions.length} label={t('inspector.nav.nextChange')} onClick={() => stepRegion(1)}>
                 ›
-              </Button>
+              </IconButton>
             </span>
           ) : null}
-        </ToolbarRight>
+        </ToolbarEnd>
       </Toolbar>
 
       <div className={s.insMain}>
@@ -760,7 +705,7 @@ export function Inspector({
                 ...(embedded ? [] : [['Esc', t('inspector.keys.close')]]),
               ].map(([k, v]) => (
                 <span key={k}>
-                  <Kbd size="sm">{k}</Kbd> {v}
+                  <Kbd>{k}</Kbd> {v}
                 </span>
               ))}
             </div>
@@ -775,29 +720,17 @@ export function Inspector({
                 <div className={s.stack}>{viewControls}</div>
                 {pixels ? (
                   <span className={s.row}>
-                    <Button
-                      size="icon-sm"
-                      variant="outline"
-                      disabled={!regions.length}
-                      aria-label={t('inspector.nav.prevChange')}
-                      onClick={() => stepRegion(-1)}
-                    >
+                    <IconButton size="sm" emphasis="outline" disabled={!regions.length} label={t('inspector.nav.prevChange')} onClick={() => stepRegion(-1)}>
                       ‹
-                    </Button>
+                    </IconButton>
                     <span className={s.micro}>
                       {regions.length
                         ? t('inspector.nav.change', { index: region < 0 ? '–' : region + 1, total: regions.length })
                         : t('inspector.nav.noChanges')}
                     </span>
-                    <Button
-                      size="icon-sm"
-                      variant="outline"
-                      disabled={!regions.length}
-                      aria-label={t('inspector.nav.nextChange')}
-                      onClick={() => stepRegion(1)}
-                    >
+                    <IconButton size="sm" emphasis="outline" disabled={!regions.length} label={t('inspector.nav.nextChange')} onClick={() => stepRegion(1)}>
                       ›
-                    </Button>
+                    </IconButton>
                   </span>
                 ) : null}
               </section>
@@ -806,16 +739,15 @@ export function Inspector({
               <div className={s.sectionHead}>
                 <h4 className={s.sectionTitle}>{t('inspector.sections.pixel')}</h4>
                 {embedded ? null : (
-                  <Button asChild size="sm" variant="outline">
-                    <a
-                      href={sb}
-                      target="_blank"
-                      rel="noreferrer"
-                      title={sbLink.globals ? t('inspector.storybook.title', { globals: sbLink.globals }) : t('inspector.storybook.titlePlain')}
-                    >
-                      {t('inspector.storybook.open')}
-                      <Icons.ExternalLink aria-hidden size="1em" />
-                    </a>
+                  <Button
+                    href={sb}
+                    external
+                    size="sm"
+                    emphasis="outline"
+                    title={sbLink.globals ? t('inspector.storybook.title', { globals: sbLink.globals }) : t('inspector.storybook.titlePlain')}
+                  >
+                    {t('inspector.storybook.open')}
+                    <Icon name="external" size="1em" />
                   </Button>
                 )}
               </div>
@@ -867,7 +799,7 @@ export function Inspector({
                       {!hover ? (
                         <span className={s.mono}>—</span>
                       ) : dmax > tol ? (
-                        <Badge variant="destructive">{dmax}</Badge>
+                        <Badge tone="danger">{dmax}</Badge>
                       ) : (
                         <span className={s.mono}>{dmax}</span>
                       )}
@@ -880,8 +812,8 @@ export function Inspector({
             {pixels && analysis ? (
               <section className={s.sideSection}>
                 <h4 className={s.sectionTitle}>{t('inspector.sections.changes')}</h4>
-                <StaticList labelWidth="45%">
-                  <StaticListItem label={t('inspector.changes.pixels')}>
+                <KeyValueList labelWidth="45%">
+                  <KeyValueItem label={t('inspector.changes.pixels')}>
                     <span className={s.mono}>
                       {fmt.num(analysis.changed)} (
                       {((analysis.changed / (W * H || 1)) * 100).toFixed(
@@ -889,17 +821,17 @@ export function Inspector({
                       )}
                       %)
                     </span>
-                  </StaticListItem>
-                  <StaticListItem label={t('inspector.changes.regions')}>
+                  </KeyValueItem>
+                  <KeyValueItem label={t('inspector.changes.regions')}>
                     <span className={s.mono}>{regions.length}</span>
-                  </StaticListItem>
-                  <StaticListItem label={t('inspector.changes.maxDelta')}>
+                  </KeyValueItem>
+                  <KeyValueItem label={t('inspector.changes.maxDelta')}>
                     <span className={s.mono}>{analysis.maxD}</span>
-                  </StaticListItem>
-                  <StaticListItem label={t('inspector.changes.size')}>
+                  </KeyValueItem>
+                  <KeyValueItem label={t('inspector.changes.size')}>
                     <span className={s.mono}>{sizeNote}</span>
-                  </StaticListItem>
-                </StaticList>
+                  </KeyValueItem>
+                </KeyValueList>
                 <ol className={s.regions}>
                   {regions.length ? (
                     regions.slice(0, 50).map((r, i) => (
@@ -929,39 +861,39 @@ export function Inspector({
             {m ? (
               <section className={s.sideSection}>
                 <h4 className={s.sectionTitle}>{t('inspector.sections.metrics')}</h4>
-                <StaticList labelWidth="45%">
-                  <StaticListItem label={t('inspector.metrics.ssim')}>
+                <KeyValueList labelWidth="45%">
+                  <KeyValueItem label={t('inspector.metrics.ssim')}>
                     <span className={s.mono}>{m.ssim}</span>{' '}
-                    {m.ssim < 0.99 ? <Badge variant="destructive">&lt; 0.99</Badge> : null}
-                  </StaticListItem>
-                  <StaticListItem label={t('inspector.metrics.cellsOver', { threshold: m.threshold })}>
+                    {m.ssim < 0.99 ? <Badge tone="danger">&lt; 0.99</Badge> : null}
+                  </KeyValueItem>
+                  <KeyValueItem label={t('inspector.metrics.cellsOver', { threshold: m.threshold })}>
                     <span className={s.mono}>
                       {m.changedCells} ({m.changedCellsPct}%)
                     </span>
-                  </StaticListItem>
-                  <StaticListItem label={t('inspector.metrics.maxCell')}>
+                  </KeyValueItem>
+                  <KeyValueItem label={t('inspector.metrics.maxCell')}>
                     <span className={s.mono}>{m.maxCellDiff}</span>
-                  </StaticListItem>
-                  <StaticListItem label={t('inspector.metrics.edge')}>
+                  </KeyValueItem>
+                  <KeyValueItem label={t('inspector.metrics.edge')}>
                     <span className={s.mono}>{m.edgeDiffPct}%</span>
-                  </StaticListItem>
+                  </KeyValueItem>
                   {detail ? (
                     <>
-                      <StaticListItem label={t('inspector.metrics.tilesChanged')}>
+                      <KeyValueItem label={t('inspector.metrics.tilesChanged')}>
                         <span className={s.mono}>{detail.changedTiles}</span>{' '}
                         {detail.changedTiles + detail.newEdgeTiles >= 3 ? (
-                          <Badge variant="destructive">≥ 3</Badge>
+                          <Badge tone="danger">≥ 3</Badge>
                         ) : null}
-                      </StaticListItem>
-                      <StaticListItem label={t('inspector.metrics.newEdges')}>
+                      </KeyValueItem>
+                      <KeyValueItem label={t('inspector.metrics.newEdges')}>
                         <span className={s.mono}>{detail.newEdgeTiles}</span>
-                      </StaticListItem>
-                      <StaticListItem label={t('inspector.metrics.maxBlock')}>
+                      </KeyValueItem>
+                      <KeyValueItem label={t('inspector.metrics.maxBlock')}>
                         <span className={s.mono}>{detail.maxBlockDelta}</span>
-                      </StaticListItem>
+                      </KeyValueItem>
                     </>
                   ) : null}
-                </StaticList>
+                </KeyValueList>
                 {hasArtifacts ? (
                 <div className={s.sigs}>
                   <figure>
@@ -996,22 +928,17 @@ export function Inspector({
                 <ul className={s.resources}>
                   {row.a11y.violations.map((v) => (
                     <li key={v.id} className={s.a11yItem}>
-                      <StatusBadge
-                        label={v.impact ?? 'n/a'}
-                        tone={
-                          v.impact === 'critical' || v.impact === 'serious' ? 'error' : 'warning'
-                        }
-                      />
+                      <StatusBadge icon="dot" label={v.impact ?? 'n/a'} tone={v.impact === 'critical' || v.impact === 'serious' ? 'danger' : 'warning'} />
                       <span className={s.a11yRule} title={v.help}>
                         {v.id} · {t('inspector.a11y.nodes', { count: v.nodes })}
                       </span>
                       {(row.a11y?.baseline ? !row.a11y.baseline.includes(v.id) : newA11y > 0) ? (
-                        <Badge variant="destructive">{t('inspector.a11y.new')}</Badge>
+                        <Badge tone="danger">{t('inspector.a11y.new')}</Badge>
                       ) : (
                         <>
-                          <Badge variant="secondary">{t('inspector.a11y.accepted')}</Badge>
+                          <Badge>{t('inspector.a11y.accepted')}</Badge>
                           {canReview ? (
-                            <Button size="sm" variant="ghost" disabled={busy} onClick={() => unaccept(v.id)} title={t('inspector.a11y.unacceptTitle')}>
+                            <Button size="sm" emphasis="ghost" disabled={busy} onClick={() => unaccept(v.id)} title={t('inspector.a11y.unacceptTitle')}>
                               {t('inspector.a11y.unaccept')}
                             </Button>
                           ) : null}
@@ -1024,19 +951,19 @@ export function Inspector({
                   <span className={s.row}>
                     {a11yDecision ? (
                       <>
-                        <Badge variant={a11yDecision.state === 'accepted' ? 'secondary' : 'destructive'}>
+                        <Badge tone={a11yDecision.state === 'accepted' ? 'neutral' : 'danger'}>
                           {t(a11yDecision.state === 'accepted' ? 'inspector.review.a11yAccepted' : 'inspector.review.a11yRejected')}
                         </Badge>
-                        <Button size="sm" variant="ghost" disabled={busy} onClick={() => act('unreview', true)}>
+                        <Button size="sm" emphasis="ghost" disabled={busy} onClick={() => act('unreview', true)}>
                           {t('inspector.review.undo')}
                         </Button>
                       </>
                     ) : (
                       <>
-                        <Button size="sm" variant="outline" disabled={busy} onClick={() => act('reject', true)} title={t('inspector.review.rejectA11yTitle')}>
+                        <Button size="sm" emphasis="outline" disabled={busy} onClick={() => act('reject', true)} title={t('inspector.review.rejectA11yTitle')}>
                           {t('inspector.review.reject')}
                         </Button>
-                        <Button size="sm" variant="outline" disabled={busy} onClick={() => act('approve', true)} title={t('inspector.review.acceptTitle')}>
+                        <Button size="sm" emphasis="outline" disabled={busy} onClick={() => act('approve', true)} title={t('inspector.review.acceptTitle')}>
                           {newA11y ? t('inspector.review.acceptCount', { count: newA11y }) : t('inspector.review.accept')}
                         </Button>
                       </>
@@ -1087,18 +1014,8 @@ export function Inspector({
 
   if (embedded) return <div className={s.embed}>{body}</div>;
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent
-        className={s.inspector}
-        showCloseButton={false}
-        aria-describedby={undefined}
-        onOpenAutoFocus={(e) => {
-          e.preventDefault();
-          requestAnimationFrame(() => titleRef.current?.focus({ preventScroll: true }));
-        }}
-      >
-        {body}
-      </DialogContent>
+    <Dialog open onOpenChange={(o) => !o && onClose()} className={s.inspector} initialFocus={titleRef}>
+      {body}
     </Dialog>
   );
 }

@@ -1,14 +1,13 @@
 import React from 'react';
-import '@hydrotik/design-system/fonts';
 import { createRoot } from 'react-dom/client';
-import { ThemeProvider } from '@hydrotik/theme-provider';
+import { UiRoot } from '@ui';
 import { App } from './App';
 
-// The dashboard defaults to the light theme (the design system's default is dark).
+// The theme mode is the contract runtime's (light by default); the adapter's provider applies it.
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ThemeProvider defaultTheme="light" storageKey="pxsig-dashboard-theme">
+    <UiRoot>
       <App />
-    </ThemeProvider>
+    </UiRoot>
   </React.StrictMode>
 );

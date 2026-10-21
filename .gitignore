@@ -30,7 +30,8 @@ report/
 *.woff2
 *.wasm
 
-# Local
+# Local (.local/: private notes and reference material, never committed; check-clean enforces it)
+.local/
 .DS_Store
 .idea/
 .vscode/

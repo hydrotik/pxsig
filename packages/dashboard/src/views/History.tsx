@@ -1,4 +1,4 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, DataGrid, StatPanel } from '@hydrotik/design-system';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, DataTable, StatGroup } from '@ui';
 import { type Data, fmt } from '../data';
 import { Lines } from '../parts/Charts';
 import { Cmd, t, tx } from '../copy';
@@ -14,10 +14,10 @@ export function History({ data }: { data: Data }) {
         <CardTitle>{t('runs.latest.title')}</CardTitle>
       </CardHeader>
       <CardContent>
-        <StatPanel
-          variant="strip"
-          aria-label={t('runs.latest.title')}
-          cards={[
+        <StatGroup
+          layout="strip"
+          label={t('runs.latest.title')}
+          items={[
             { label: t('runs.latest.render'), value: fmt.ms(sm.renderWallMs), unit: t('runs.latest.pages', { count: sm.concurrency }) },
             { label: t('runs.latest.engine'), value: fmt.ms(sm.rustEngineMs), unit: t('runs.latest.cached', { count: sm.cached }) },
             { label: t('runs.latest.retries'), value: fmt.ms(sm.retryMs) },
@@ -63,18 +63,16 @@ export function History({ data }: { data: Data }) {
           <CardTitle>{t('runs.table.title')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <DataGrid
-            data={[...runs].reverse().map((r, i) => ({ id: String(i), at: new Date(r.at).toLocaleString(), entries: r.summary.stories, failed: r.summary.failed, cached: r.summary.cached, engine: fmt.ms(r.summary.elapsedMs), ids: r.failedIds.slice(0, 4).join(', ') + (r.failedIds.length > 4 ? '…' : '') }))}
-            getRowId={(r: { id: string }) => r.id}
-            density="compact"
-            showToolbar={false}
+          <DataTable
+            rows={[...runs].reverse().map((r, i) => ({ id: String(i), at: new Date(r.at).toLocaleString(), entries: r.summary.stories, failed: r.summary.failed, cached: r.summary.cached, engine: fmt.ms(r.summary.elapsedMs), ids: r.failedIds.slice(0, 4).join(', ') + (r.failedIds.length > 4 ? '…' : '') }))}
+            rowId={(r) => r.id}
             columns={[
-              { id: 'at', accessorKey: 'at', header: t('runs.table.when') },
-              { id: 'entries', accessorKey: 'entries', header: t('runs.table.entries') },
-              { id: 'failed', accessorKey: 'failed', header: t('runs.table.changed') },
-              { id: 'cached', accessorKey: 'cached', header: t('runs.table.cached') },
-              { id: 'engine', accessorKey: 'engine', header: t('runs.table.engine') },
-              { id: 'ids', accessorKey: 'ids', header: t('runs.table.ids') },
+              { id: 'at', field: 'at', header: t('runs.table.when') },
+              { id: 'entries', field: 'entries', header: t('runs.table.entries') },
+              { id: 'failed', field: 'failed', header: t('runs.table.changed') },
+              { id: 'cached', field: 'cached', header: t('runs.table.cached') },
+              { id: 'engine', field: 'engine', header: t('runs.table.engine') },
+              { id: 'ids', field: 'ids', header: t('runs.table.ids') },
             ]}
           />
         </CardContent>

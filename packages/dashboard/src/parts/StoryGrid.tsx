@@ -1,5 +1,5 @@
 import React from 'react';
-import { Badge, Button } from '@hydrotik/design-system';
+import { Badge, Button } from '@ui';
 import { type Data, type Row, componentOf, integrityOf, pathsFor, statusOf } from '../data';
 import { StatusOf } from './StatusOf';
 import { Affordance } from './Affordance';
@@ -27,17 +27,17 @@ export function StoryCard({ data, row, scenario, onOpen }: { data: Data; row: Ro
         </span>
         <span className={s.row}>
           <StatusOf status={status} />
-          {row.mode ? <Badge variant="outline">{row.mode}</Badge> : null}
-          {row.state ? <Badge variant="secondary">{row.state}</Badge> : null}
-          {row.browser && row.browser !== 'chromium' ? <Badge variant="secondary">{row.browser}</Badge> : null}
-          {scenario && row.changed === false ? <Badge variant="secondary">{t('review.card.unchanged')}</Badge> : null}
+          {row.mode ? <Badge emphasis="outline">{row.mode}</Badge> : null}
+          {row.state ? <Badge>{row.state}</Badge> : null}
+          {row.browser && row.browser !== 'chromium' ? <Badge>{row.browser}</Badge> : null}
+          {scenario && row.changed === false ? <Badge>{t('review.card.unchanged')}</Badge> : null}
           {data.a11yReview?.[row.id] ? (
-            <Badge variant={data.a11yReview[row.id].state === 'accepted' ? 'secondary' : 'destructive'}>{t(data.a11yReview[row.id].state === 'accepted' ? 'review.card.a11yAccepted' : 'review.card.a11yRejected')}</Badge>
+            <Badge tone={data.a11yReview[row.id].state === 'accepted' ? 'neutral' : 'danger'}>{t(data.a11yReview[row.id].state === 'accepted' ? 'review.card.a11yAccepted' : 'review.card.a11yRejected')}</Badge>
           ) : row.a11y?.new ? (
-            <Badge variant="destructive">{t('review.card.newA11y', { count: row.a11y.new })}</Badge>
+            <Badge tone="danger">{t('review.card.newA11y', { count: row.a11y.new })}</Badge>
           ) : null}
           {flags.map((i) => (
-            <Badge key={i.code} variant={i.severity === 'error' ? 'destructive' : 'secondary'} title={i.reason}>
+            <Badge key={i.code} tone={i.severity === 'error' ? 'danger' : 'neutral'} title={i.reason}>
               {codeCopy(i.code).title}
             </Badge>
           ))}
@@ -92,7 +92,7 @@ export function StoryGrid({ data, rows, scenario, onOpen, page = 96, grouped = f
       )}
       {shown < rows.length ? (
         <div>
-          <Button variant="outline" onClick={() => setShown((n) => n + page)}>
+          <Button emphasis="outline" onClick={() => setShown((n) => n + page)}>
             {t('review.showMore', { count: rows.length - shown })}
           </Button>
         </div>

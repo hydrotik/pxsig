@@ -1,6 +1,5 @@
 import React from 'react';
-import { AppShell, AppShellContent, Badge, Button, Icons, NavItemLink, NavItems, Navbar, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusBadge, TooltipProvider } from '@hydrotik/design-system';
-import { useTheme } from '@hydrotik/theme-provider';
+import { AppMain, AppShell, Badge, Button, Icon, IconButton, NavEnd, NavLink, NavList, Select, StatusBadge, TopNav, useThemeMode } from '@ui';
 import { type Data, type Queue, type Row, decisionOf, reviewQueue, rowsWithPending, served, statusOf, switchProject, useData, useProjects } from './data';
 import { Inspector, type InspectTarget } from './inspector/Inspector';
 import { Overview } from './views/Overview';
@@ -23,12 +22,12 @@ const asTab = (v: string | null): Tab | null => (v && TABS.includes(v as Tab) ? 
 const readHash = () => new URLSearchParams(location.hash.slice(1).includes('=') ? location.hash.slice(1) : `tab=${location.hash.slice(1)}`);
 
 function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
-  const label = theme === 'dark' ? t('app.theme.toLight') : t('app.theme.toDark');
+  const { mode, setMode } = useThemeMode();
+  const label = mode === 'dark' ? t('app.theme.toLight') : t('app.theme.toDark');
   return (
-    <Button size="icon-sm" variant="ghost" aria-label={label} title={label} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-      {theme === 'dark' ? <Icons.Sun aria-hidden /> : <Icons.Moon aria-hidden />}
-    </Button>
+    <IconButton size="sm" emphasis="ghost" label={label} title={label} onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}>
+      <Icon name={mode === 'dark' ? 'sun' : 'moon'} />
+    </IconButton>
   );
 }
 
@@ -47,18 +46,7 @@ function ProjectPicker({ current }: { current?: string }) {
   const projects = useProjects();
   if (projects.length < 2 || !current) return null;
   return (
-    <Select value={current} onValueChange={switchProject}>
-      <SelectTrigger size="sm" aria-label={t('app.project')} style={{ inlineSize: '14rem' }}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {projects.map((p) => (
-          <SelectItem key={p.name} value={p.name}>
-            {t('app.projectOption', { name: p.name, count: p.entries })}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <Select value={current} onValueChange={switchProject} size="sm" label={t('app.project')} inlineSize="14rem" options={projects.map((p) => ({ value: p.name, label: t('app.projectOption', { name: p.name, count: p.entries }) }))} />
   );
 }
 
@@ -132,7 +120,7 @@ export function App() {
 
   if (error && !data) return <div className={s.page}><div className={s.empty}>{t('app.loadError', { error })}</div></div>;
   if (!data) return <div className={s.page}><div className={s.empty}>{t('app.loading')}</div></div>;
-  if (params.get('embed')) return <TooltipProvider><Embed data={data} story={params.get('story') ?? ''} /></TooltipProvider>;
+  if (params.get('embed')) return <Embed data={data} story={params.get('story') ?? ''} />;
 
   const rows = data.check?.rows ?? [];
   const todo = rowsWithPending(data).filter((r) => ['changed', 'new'].includes(statusOf(r, data.review))).length;
@@ -155,39 +143,39 @@ export function App() {
   // Diagnostics appears only when a research run wrote its data.
   const diagnostics = diagnosticsOf(data).length > 0;
   const shown = tab === 'diagnostics' && !diagnostics ? 'overview' : tab;
-  const status = !sm ? undefined : todo ? 'review-required' : 'approved';
+  const status = !sm ? undefined : todo ? ({ tone: 'warning', icon: 'alert', label: t('app.status.reviewRequired') } as const) : ({ tone: 'success', icon: 'check', label: t('app.status.approved') } as const);
   // A count after a section's label (COUNTS.md): attention when it asks for action, neutral for a plain total.
-  type Count = { count: number; tone: 'attention' | 'neutral'; label: string };
+  type Count = { count: number; tone: 'info' | 'neutral'; label: string };
   const counted = (count: number, tone: Count['tone'], key: 'review' | 'coverage' | 'a11y' | 'runs'): Count => ({ count, tone, label: t(`tabs.counts.${key}`, { count }) });
   const link = (id: Tab, label: string, c?: Count) => (
-    <NavItemLink key={id} href={`#${id}`} active={shown === id} count={c?.count} countTone={c?.tone} countLabel={c?.label}>
+    <NavLink key={id} href={`#${id}`} active={shown === id} count={c?.count} countTone={c?.tone} countLabel={c?.label}>
       {label}
-    </NavItemLink>
+    </NavLink>
   );
   return (
-    <TooltipProvider>
+    <>
       <AppShell>
-        <Navbar
-          aria-label={t('app.sections')}
+        <TopNav
+          label={t('app.sections')}
           className={s.navbar}
-          logo={
+          brand={
             <>
               <h1 className={s.brand}>{data.project ? t('app.title', { project: data.project }) : 'pxsig'}</h1>
-              {sm ? <Badge variant="secondary" className={s.brandTag}>{sm.modes.join(' · ')}</Badge> : null}
+              {sm ? <Badge className={s.brandTag}>{sm.modes.join(' · ')}</Badge> : null}
             </>
           }
         >
-          <NavItems>
+          <NavList>
             {link('overview', t('tabs.overview'))}
-            {link('stories', t('tabs.review'), counted(todo, 'attention', 'review'))}
-            {link('integrity', t('tabs.coverage'), counted(integrityErrors, 'attention', 'coverage'))}
-            {link('a11y', t('tabs.a11y'), counted(undecided('a11y'), 'attention', 'a11y'))}
+            {link('stories', t('tabs.review'), counted(todo, 'info', 'review'))}
+            {link('integrity', t('tabs.coverage'), counted(integrityErrors, 'info', 'coverage'))}
+            {link('a11y', t('tabs.a11y'), counted(undecided('a11y'), 'info', 'a11y'))}
             {link('history', t('tabs.runs'), counted(data.history?.length ?? 0, 'neutral', 'runs'))}
             {diagnostics ? link('diagnostics', t('tabs.diagnostics')) : null}
             {link('help', t('tabs.help'))}
-          </NavItems>
+          </NavList>
           {/* Pinned controls sit beside the list, so the list's own resize tracking sees them change width. */}
-          <div className={s.navEnd}>
+          <NavEnd className={s.navEnd}>
             {served && nextQueue ? (
               <Button size="sm" onClick={() => startReview(nextQueue)}>
                 {t(`app.startReview.${nextQueue}`, { count: undecided(nextQueue) })}
@@ -195,19 +183,18 @@ export function App() {
             ) : null}
             <ProjectPicker current={data.project} />
             {served ? (
-              <Badge variant={live ? 'success' : 'secondary'} pulse={live}>
+              <Badge tone={live ? 'success' : 'neutral'} pulse={live}>
                 {live ? t('app.connection.live') : t('app.connection.offline')}
               </Badge>
             ) : (
-              <Badge variant="outline">{t('app.connection.static')}</Badge>
+              <Badge emphasis="outline">{t('app.connection.static')}</Badge>
             )}
             {data.check ? <span className={[s.micro, s.lastCheck].join(' ')}>{t('app.lastCheck', { date: new Date(data.check.generatedAt).toLocaleString() })}</span> : null}
             <ThemeToggle />
-            {status ? <StatusBadge status={status} className={served && nextQueue ? s.statusBeside : undefined} /> : null}
-          </div>
-        </Navbar>
-        <AppShellContent asChild>
-          <main ref={mainRef}>
+            {status ? <StatusBadge {...status} className={served && nextQueue ? s.statusBeside : undefined} /> : null}
+          </NavEnd>
+        </TopNav>
+        <AppMain ref={mainRef}>
             <div className={s.page}>
               <IntegrityBanner data={data} go={go} />
               {shown === 'overview' ? <Overview data={data} go={go} startReview={startReview} /> : null}
@@ -218,8 +205,7 @@ export function App() {
               {shown === 'diagnostics' ? <Diagnostics data={data} onOpen={open} /> : null}
               {shown === 'help' ? <Help data={data} /> : null}
             </div>
-          </main>
-        </AppShellContent>
+        </AppMain>
       </AppShell>
       {target ? (
         <Inspector
@@ -230,6 +216,6 @@ export function App() {
           onGo={(t, f) => (setTarget(null), go(t, f))}
         />
       ) : null}
-    </TooltipProvider>
+    </>
   );
 }

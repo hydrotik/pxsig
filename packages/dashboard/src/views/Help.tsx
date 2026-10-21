@@ -1,8 +1,7 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@hydrotik/design-system';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Icon } from '@ui';
 import type { Data } from '../data';
 import { Schematic, type Layout } from '../parts/Schematic';
-import { Icons } from '@hydrotik/design-system';
 import { t, codeCopy, type CopyKey } from '../copy';
 import * as s from '../dashboard.css';
 
@@ -119,8 +118,8 @@ export function Help({ data }: { data: Data }) {
         description={t('help.affordance.description')}
         layout="dashboard"
         items={[
-          { term: <span className={s.row}><Icons.ArrowDownLeft className={s.inlineIcon} aria-hidden="true" /> {t('help.affordance.filter.term')}</span>, meaning: t('help.affordance.filter.meaning'), at: ['cards'] },
-          { term: <span className={s.row}><Icons.ArrowUpRight className={s.inlineIcon} aria-hidden="true" /> {t('help.affordance.navigate.term')}</span>, meaning: t('help.affordance.navigate.meaning'), at: ['cards', 'card-thumb'] },
+          { term: <span className={s.row}><Icon name="arrow-down-left" className={s.inlineIcon} /> {t('help.affordance.filter.term')}</span>, meaning: t('help.affordance.filter.meaning'), at: ['cards'] },
+          { term: <span className={s.row}><Icon name="arrow-up-right" className={s.inlineIcon} /> {t('help.affordance.navigate.term')}</span>, meaning: t('help.affordance.navigate.meaning'), at: ['cards', 'card-thumb'] },
         ]}
       />
       <Section
