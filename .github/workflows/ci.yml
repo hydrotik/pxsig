@@ -54,6 +54,9 @@ jobs:
           path: target/release
       - run: chmod +x target/release/pxsig
       - run: pnpm --filter pxsig test
+      # The diff-viewer primitives in a browser (keyboard, ARIA, controlled state).
+      - run: pnpm --filter pxsig exec playwright install --with-deps chromium
+      - run: pnpm --filter @pxsig/dashboard test
 
   examples:
     name: Examples (end to end)

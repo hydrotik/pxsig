@@ -298,19 +298,19 @@ export const layer = style({
 globalStyle(`${layer} > *`, { position: 'absolute', inset: 0, display: 'block' });
 globalStyle(`${insStage}[data-pixelated] canvas, ${insStage}[data-pixelated] img`, { imageRendering: 'pixelated' });
 export const boxes = style({ overflow: 'visible', pointerEvents: 'none' });
-// The layer is scaled with a CSS transform, which non-scaling-stroke ignores: divide by --z.
+// The frame is scaled with a CSS transform, which non-scaling-stroke ignores: divide by the zoom.
 globalStyle(`${boxes} rect`, {
   fill: 'none',
   stroke: v.color.warning,
-  strokeWidth: 'calc(1.5px / var(--z, 1))',
-  strokeDasharray: 'calc(4px / var(--z, 1)) calc(3px / var(--z, 1))',
+  strokeWidth: 'calc(1.5px / var(--dv-zoom, 1))',
+  strokeDasharray: 'calc(4px / var(--dv-zoom, 1)) calc(3px / var(--dv-zoom, 1))',
 });
-globalStyle(`${boxes} rect[data-on]`, { stroke: v.color.accent, strokeWidth: 'calc(2.5px / var(--z, 1))', strokeDasharray: 'none' });
+globalStyle(`${boxes} rect[data-active]`, { stroke: v.color.accent, strokeWidth: 'calc(2.5px / var(--dv-zoom, 1))', strokeDasharray: 'none' });
 globalStyle(`${boxes} rect[data-tile]`, {
   stroke: v.color.danger,
   fill: `color-mix(in srgb, ${v.color.danger} 18%, transparent)`,
   strokeDasharray: 'none',
-  strokeWidth: 'calc(1px / var(--z, 1))',
+  strokeWidth: 'calc(1px / var(--dv-zoom, 1))',
 });
 export const vpLabel = style({
   position: 'absolute',

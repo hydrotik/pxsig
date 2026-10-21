@@ -23,7 +23,8 @@ import {
 } from '@ui';
 import { type Data, type Queue, type Row, a11yAction, decisionOf, fmt, pathsFor, reviewAction, served, statusOf } from '../data';
 import { analyse, cellsLayer, hex, loadImg, readPixels, type Analysis } from './analyse';
-import { Stage, type Hover, type Mode, type StageApi } from './Stage';
+import { Stage, type Mode, type Probe } from './Stage';
+import { DiffViewer, type DiffViewerActions } from '../diff-viewer';
 import { StatusOf } from '../parts/StatusOf';
 import { storybookLink } from '../storybook-link.mjs';
 import { Cmd, t, tx } from '../copy';
@@ -125,8 +126,6 @@ export function Inspector({
   }, [mode, split, onion, heat, tol, showBoxes, showHighlight, showTiles]);
 
   const [loaded, setLoaded] = React.useState<Loaded | null | 'missing'>(null);
-  const [zoom, setZoom] = React.useState(1);
-  const [hover, setHover] = React.useState<Hover | null>(null);
   const [region, setRegion] = React.useState(-1);
   const [busy, setBusy] = React.useState(false);
   // Embedded in Storybook's short panel the image gets the room; details open on demand.
@@ -134,7 +133,7 @@ export function Inspector({
   const [sizes, setSizes] = React.useState<Record<string, string>>({});
   // Keep browsing after the session summary appears (to undo or look back).
   const [stay, setStay] = React.useState(false);
-  const stage = React.useRef<StageApi>(null);
+  const stage = React.useRef<DiffViewerActions>(null);
 
   const row = target?.row ?? null;
   const p = row ? pathsFor(data, row.id, target!.scenario) : null;
@@ -331,10 +330,7 @@ export function Inspector({
   const sb = sbLink.url;
   const cw = W / (m?.grid ?? 64);
   const chh = H / (m?.grid ?? 64);
-  const dmax =
-    hover?.before && hover.after
-      ? Math.max(...hover.before.map((v, i) => Math.abs(v - hover.after![i])))
-      : 255;
+  const dmaxOf = (hover: Probe | null) => (hover?.baseline && hover.latest ? Math.max(...hover.baseline.map((v, i) => Math.abs(v - hover.latest![i]))) : 255);
 
   const viewControls = (
     <>
@@ -545,8 +541,23 @@ export function Inspector({
       </Dialog>
     );
 
+  const stageImages = loaded && loaded !== 'missing' ? loaded : null;
   const body = (
     <div onKeyDown={embedded ? (e) => onKey(e.nativeEvent) : undefined} style={{ display: 'contents' }}>
+      <DiffViewer.Root
+        baseline={stageImages?.a ?? null}
+        latest={stageImages?.b ?? null}
+        baselineData={stageImages?.pa ?? null}
+        latestData={stageImages?.pb ?? null}
+        modes={MODES}
+        mode={mode}
+        onModeChange={setMode}
+        split={split}
+        onSplitChange={setSplit}
+        activeRegion={region}
+        onActiveRegionChange={setRegion}
+        actionsRef={stage}
+      >
       {progress}
       {embedded ? null : (
         <div className={s.insHead}>
@@ -586,46 +597,44 @@ export function Inspector({
       <Toolbar size="sm" className={s.insToolbar}>
         <ToolbarStart>
           {embedded ? <StatusOf status={statusOf(row, data.review)} /> : null}
-          <SegmentedChoice
-            value={mode}
-            onValueChange={(v) => setMode(v as Mode)}
+          {/* The diff viewer's mode group and zoom controls, rendered with the contract's components. */}
+          <DiffViewer.ModeGroup
             label={t('inspector.modes.label')}
-            options={MODES.map((k, i) => ({
-              value: k,
-              title: `${t(`inspector.modes.${k}`)} (${i + 1})`,
-              accessibleLabel: t(`inspector.modes.${k}`),
-              label: embedded ? t(`inspector.modes.${k}Short`) : t(`inspector.modes.${k}`),
-            }))}
+            render={(_, g) => (
+              <SegmentedChoice
+                value={g.mode}
+                onValueChange={(v) => g.setMode(v as Mode)}
+                label={t('inspector.modes.label')}
+                options={MODES.map((k, i) => ({
+                  value: k,
+                  title: `${t(`inspector.modes.${k}`)} (${i + 1})`,
+                  accessibleLabel: t(`inspector.modes.${k}`),
+                  label: embedded ? t(`inspector.modes.${k}Short`) : t(`inspector.modes.${k}`),
+                }))}
+              />
+            )}
           />
-          <span className={s.row}>
-            <IconButton emphasis="outline" label={t('inspector.zoomOut')} onClick={() => stage.current?.zoomBy(1 / 1.5)}>
-              −
-            </IconButton>
-            <span
-              className={s.mono}
-              style={{ minInlineSize: '3.5rem', textAlign: 'center', fontSize: '0.75rem' }}
-              aria-live="polite"
-            >
-              {Math.round(zoom * 100)}%
-            </span>
-            <IconButton emphasis="outline" label={t('inspector.zoomIn')} onClick={() => stage.current?.zoomBy(1.5)}>
-              +
-            </IconButton>
-            <Button
-              emphasis="outline"
-              title={t('inspector.fitTitle')}
-              onClick={() => stage.current?.fit()}
-            >
-              {t('inspector.fit')}
-            </Button>
-            <Button
-              emphasis="outline"
-              title={t('inspector.actualTitle')}
-              onClick={() => stage.current?.zoomTo(1)}
-            >
-              {t('inspector.actual')}
-            </Button>
-          </span>
+          <DiffViewer.ZoomControls
+            render={(_, z) => (
+              <span className={s.row}>
+                <IconButton emphasis="outline" label={t('inspector.zoomOut')} onClick={z.zoomOut}>
+                  −
+                </IconButton>
+                <span className={s.mono} style={{ minInlineSize: '3.5rem', textAlign: 'center', fontSize: '0.75rem' }} aria-live="polite">
+                  {Math.round(z.zoom * 100)}%
+                </span>
+                <IconButton emphasis="outline" label={t('inspector.zoomIn')} onClick={z.zoomIn}>
+                  +
+                </IconButton>
+                <Button emphasis="outline" title={t('inspector.fitTitle')} onClick={z.fit}>
+                  {t('inspector.fit')}
+                </Button>
+                <Button emphasis="outline" title={t('inspector.actualTitle')} onClick={z.actual}>
+                  {t('inspector.actual')}
+                </Button>
+              </span>
+            )}
+          />
           {embedded ? null : viewControls}
         </ToolbarStart>
         <ToolbarEnd>
@@ -661,28 +670,17 @@ export function Inspector({
             <div className={s.empty}>{t('inspector.missing', { before: p.before, after: p.after })}</div>
           ) : loaded ? (
             <Stage
-              ref={stage}
-              mode={mode}
-              a={loaded.a}
-              b={loaded.b}
-              pa={loaded.pa}
-              pb={loaded.pb}
               analysis={analysis}
               cells={loaded.cells}
               heatImg={loaded.heat}
               tiles={detail?.tripped?.length ? { indices: detail.tripped, tile: 16 } : null}
               labels={[p.beforeLabel, loaded.a ? p.afterLabel : t('inspector.renders.firstRender')]}
-              split={split}
               onion={onion}
               heat={heat}
               tol={tol}
               showBoxes={showBoxes}
               showHighlight={showHighlight}
               showTiles={showTiles}
-              activeRegion={region}
-              onSplit={setSplit}
-              onZoom={setZoom}
-              onHover={setHover}
             />
           ) : (
             <div className={s.empty}>{t('inspector.loading')}</div>
@@ -758,6 +756,11 @@ export function Inspector({
                   <span className={s.muted}>{tx('inspector.pixel.needsServer', { command: <Cmd>pxsig serve</Cmd> })}</span>
                 ) : (
                   // The same rows with or without a pointer, so the panel never changes height.
+                  <DiffViewer.Probe>
+                    {(probe) => {
+                      const hover = probe && { ix: probe.x, iy: probe.y, before: probe.baseline, after: probe.latest };
+                      const dmax = dmaxOf(probe);
+                      return (
                   <>
                     <div className={s.pxRow}>
                       {hover ? (
@@ -805,6 +808,9 @@ export function Inspector({
                       )}
                     </div>
                   </>
+                      );
+                    }}
+                  </DiffViewer.Probe>
                 )}
               </div>
             </section>
@@ -1009,6 +1015,7 @@ export function Inspector({
           </aside>
         ) : null}
       </div>
+      </DiffViewer.Root>
     </div>
   );
 
