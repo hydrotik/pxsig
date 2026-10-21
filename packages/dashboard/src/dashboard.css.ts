@@ -350,6 +350,8 @@ export const sectionTitle = style({ margin: 0, fontSize: vars.font.size.sm, font
 export const readout = style({ display: 'flex', flexDirection: 'column', gap: vars.space['1_5'], minBlockSize: '6.5rem' });
 // Every row is as tall as its tallest content (the Δ badge), with or without a value.
 export const pxRow = style({ display: 'flex', alignItems: 'center', gap: vars.space['2'], minBlockSize: '1.5rem', minInlineSize: 0 });
+// The coordinates keep their width; the cell / tile text beside them truncates instead of wrapping the row.
+export const pxCoords = style({ whiteSpace: 'nowrap', flexShrink: 0 });
 export const oneLine = style({ minInlineSize: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: vars.font.size.sm });
 export const swatch = style({
   inlineSize: vars.space['4'],

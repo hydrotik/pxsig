@@ -806,7 +806,7 @@ export function Inspector({
                     <div className={s.pxRow}>
                       {hover ? (
                         <>
-                          <span className={s.mono}>{t('inspector.pixel.coords', { x: hover.ix, y: hover.iy })}</span>
+                          <span className={`${s.mono} ${s.pxCoords}`}>{t('inspector.pixel.coords', { x: hover.ix, y: hover.iy })}</span>
                           <span className={`${s.mono} ${s.muted} ${s.oneLine}`}>
                             {t('inspector.pixel.cellTile', { cx: Math.floor(hover.ix / cw), cy: Math.floor(hover.iy / chh), tx: Math.floor(hover.ix / 16), ty: Math.floor(hover.iy / 16) })}
                           </span>
