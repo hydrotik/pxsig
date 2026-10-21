@@ -24,6 +24,19 @@ export const page = style({
   inlineSize: '100%',
 });
 
+// The section tabs stay at the top of the scrolling <main>. The bar spans the page's inline padding
+// on the page background, so content scrolling under it never shows beside the tabs.
+export const tabsBar = style({
+  position: 'sticky',
+  insetBlockStart: 0,
+  zIndex: 2,
+  marginInline: `calc(-1 * ${vars.space['4']})`,
+  paddingInline: vars.space['4'],
+  paddingBlock: vars.space['2'],
+  marginBlock: `calc(-1 * ${vars.space['2']})`,
+  backgroundColor: vars.color.background,
+});
+
 export const stack = style({ display: 'flex', flexDirection: 'column', gap: vars.space['4'], minInlineSize: 0 });
 export const row = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: vars.space['2'] });
 export const spacer = style({ flex: 1 });
