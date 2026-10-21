@@ -16,7 +16,7 @@ export function StoryCard({ data, row, scenario, onOpen }: { data: Data; row: Ro
   const flags = integrity?.issues.filter((i) => !shown.has(i.code)) ?? [];
   const status = scenario ? (row.pass ? 'pass' : 'changed') : statusOf(row, data.review);
   return (
-    <button type="button" className={s.storyCard} data-status={status} onClick={onOpen} disabled={!m && !(row.new && !row.pending)} aria-label={`${row.id}: ${t(`status.${statusOf(row, data.review)}`)}`}>
+    <button type="button" className={s.storyCard} data-status={status} onClick={onOpen} disabled={!m && !(row.new && !row.pending)}>
       {m || (row.new && !row.pending) ? <Affordance kind="navigate" /> : null}
       <div className={s.thumb}>
         <img src={p.after} alt="" loading="lazy" decoding="async" onError={(e) => ((e.target as HTMLImageElement).style.visibility = 'hidden')} />

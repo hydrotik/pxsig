@@ -96,10 +96,18 @@ const navItemProps = ({ href, active, count, countTone, countLabel }: C.NavLinkP
   active,
   count,
   countTone: countTone === undefined ? undefined : countTone === 'info' ? ('attention' as const) : ('neutral' as const),
-  countLabel,
+  // A count over 99 shows as "99+": the name says so too, so it contains what is on screen.
+  countLabel: count !== undefined && count > 99 ? `99+, ${countLabel ?? count}` : countLabel,
 });
 
-export const NavLink = (p: C.NavLinkProps) => <DS.NavItemLink {...navItemProps(p)}>{p.children}</DS.NavItemLink>;
+/**
+ * With a count, the label ends in a space: the link's visible text then reads "Review Stories 8",
+ * which its accessible name ("Review Stories , 8 to review") contains (WCAG 2.5.3). The space
+ * collapses at the end of the inline-flex label, so nothing moves.
+ */
+const navLabel = ({ count, children }: C.NavLinkProps) => (count && typeof children === 'string' ? `${children} ` : children);
+
+export const NavLink = (p: C.NavLinkProps) => <DS.NavItemLink {...navItemProps(p)}>{navLabel(p)}</DS.NavItemLink>;
 
 /**
  * The design system's NavItems finds its links by element type (to measure them and move the ones
@@ -110,7 +118,7 @@ export const NavList = ({ children }: C.NavListProps) => (
     {React.Children.map(children, (c) =>
       React.isValidElement<C.NavLinkProps>(c) && c.type === NavLink ? (
         <DS.NavItemLink key={c.key ?? undefined} {...navItemProps(c.props)}>
-          {c.props.children}
+          {navLabel(c.props)}
         </DS.NavItemLink>
       ) : (
         c
@@ -172,7 +180,34 @@ export const StatGroup = ({ label, items, layout, className }: C.StatGroupProps)
   />
 );
 
-export function DataTable<T>({ rows, rowId, columns, onRowClick, search, paginate }: C.DataTableProps<T>) {
+/**
+ * The grid's column chooser is named "Toggle column visibility" while it reads "Columns", which fails
+ * WCAG 2.5.3 (label in name). Until the design system names it by its text, the adapter drops the
+ * override so the visible text is the name. A layout-neutral wrapper (display: contents) holds the ref.
+ */
+function NameColumnChooser({ children }: { children: React.ReactNode }) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useLayoutEffect(() => {
+    ref.current?.querySelectorAll('button[aria-label="Toggle column visibility"]').forEach((b) => b.removeAttribute('aria-label'));
+  });
+  return (
+    <div ref={ref} style={{ display: 'contents' }}>
+      {children}
+    </div>
+  );
+}
+
+export function DataTable<T>(props: C.DataTableProps<T>) {
+  return props.search ? (
+    <NameColumnChooser>
+      <Grid {...props} />
+    </NameColumnChooser>
+  ) : (
+    <Grid {...props} />
+  );
+}
+
+function Grid<T>({ rows, rowId, columns, onRowClick, search, paginate }: C.DataTableProps<T>) {
   return (
     <DS.DataGrid
       data={rows}
@@ -325,10 +360,10 @@ export const Alert = ({ tone, label, children }: C.AlertProps) => (
 export const AlertTitle = ({ children }: C.AlertTitleProps) => <DS.AlertTitle>{children}</DS.AlertTitle>;
 export const AlertDescription = ({ children }: C.AlertDescriptionProps) => <DS.AlertDescription>{children}</DS.AlertDescription>;
 
-export const SearchField = ({ value, onValueChange, placeholder }: C.SearchFieldProps) => <DS.SearchBar value={value} onValueChange={onValueChange} placeholder={placeholder} />;
+export const SearchField = ({ id, value, onValueChange, placeholder }: C.SearchFieldProps) => <DS.SearchBar id={id} value={value} onValueChange={onValueChange} placeholder={placeholder} />;
 
-export const Select = ({ value, onValueChange, options, label, size, inlineSize }: C.SelectProps) => (
-  <DS.Select value={value} onValueChange={onValueChange}>
+export const Select = ({ id, value, onValueChange, options, label, size, inlineSize }: C.SelectProps) => (
+  <DS.Select id={id} value={value} onValueChange={onValueChange}>
     <DS.SelectTrigger {...(size ? { size } : {})} {...(label ? { 'aria-label': label } : {})} {...(inlineSize ? { style: { inlineSize } } : {})}>
       <DS.SelectValue />
     </DS.SelectTrigger>

@@ -74,7 +74,7 @@ function CopyPath({ value, label }: { value: string; label: string }) {
     }
   };
   return (
-    <Button size="sm" emphasis="ghost" title={value} aria-label={t('inspector.files.path', { label })} onClick={copy}>
+    <Button size="sm" emphasis="ghost" title={value} aria-label={t(done ? 'inspector.files.pathCopied' : 'inspector.files.path', { label })} onClick={copy}>
       {done ? t('inspector.files.copied') : t('inspector.files.copyPath')}
     </Button>
   );
@@ -714,7 +714,7 @@ export function Inspector({
           <aside className={s.insSide}>
             {embedded ? (
               <section className={s.sideSection}>
-                <h4 className={s.sectionTitle}>{t('inspector.sections.view')}</h4>
+                <h3 className={s.sectionTitle}>{t('inspector.sections.view')}</h3>
                 <div className={s.stack}>{viewControls}</div>
                 {pixels ? (
                   <span className={s.row}>
@@ -735,7 +735,7 @@ export function Inspector({
             ) : null}
             <section className={s.sideSection}>
               <div className={s.sectionHead}>
-                <h4 className={s.sectionTitle}>{t('inspector.sections.pixel')}</h4>
+                <h3 className={s.sectionTitle}>{t('inspector.sections.pixel')}</h3>
                 {embedded ? null : (
                   <Button
                     href={sb}
@@ -817,7 +817,7 @@ export function Inspector({
 
             {pixels && analysis ? (
               <section className={s.sideSection}>
-                <h4 className={s.sectionTitle}>{t('inspector.sections.changes')}</h4>
+                <h3 className={s.sectionTitle}>{t('inspector.sections.changes')}</h3>
                 <KeyValueList labelWidth="45%">
                   <KeyValueItem label={t('inspector.changes.pixels')}>
                     <span className={s.mono}>
@@ -866,7 +866,7 @@ export function Inspector({
 
             {m ? (
               <section className={s.sideSection}>
-                <h4 className={s.sectionTitle}>{t('inspector.sections.metrics')}</h4>
+                <h3 className={s.sectionTitle}>{t('inspector.sections.metrics')}</h3>
                 <KeyValueList labelWidth="45%">
                   <KeyValueItem label={t('inspector.metrics.ssim')}>
                     <span className={s.mono}>{m.ssim}</span>{' '}
@@ -923,7 +923,7 @@ export function Inspector({
 
             {row.a11y?.violations?.length ? (
               <section className={s.sideSection}>
-                <h4 className={s.sectionTitle}>{t('inspector.sections.a11y', { count: row.a11y.violations.length })}</h4>
+                <h3 className={s.sectionTitle}>{t('inspector.sections.a11y', { count: row.a11y.violations.length })}</h3>
                 <span className={s.muted}>
                   {newA11y
                     ? served && !target?.scenario
@@ -980,7 +980,7 @@ export function Inspector({
             ) : null}
 
             <section className={s.sideSection}>
-              <h4 className={s.sectionTitle}>{t('inspector.sections.files')}</h4>
+              <h3 className={s.sectionTitle}>{t('inspector.sections.files')}</h3>
               <ul className={s.resources}>
                 {(
                   [

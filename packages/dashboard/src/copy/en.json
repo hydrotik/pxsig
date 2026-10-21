@@ -836,7 +836,8 @@
       "heat": "Cell heatmap (PNG)",
       "page": "Diff page (HTML)",
       "record": "Baseline record (JSON)",
-      "path": "{label} path",
+      "path": "Copy path: {label}",
+      "pathCopied": "Copied: {label}",
       "storybook": "Open in Storybook",
       "copyPath": "Copy path",
       "copied": "Copied"

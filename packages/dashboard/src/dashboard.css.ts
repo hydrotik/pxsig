@@ -47,6 +47,18 @@ export const lastCheck = style({ whiteSpace: 'nowrap', '@container': { '(inline-
 export const stack = style({ display: 'flex', flexDirection: 'column', gap: v.space['4'], minInlineSize: 0 });
 export const row = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: v.space['2'] });
 export const spacer = style({ flex: 1 });
+/** Read by assistive technology, not drawn. */
+export const srOnly = style({
+  position: 'absolute',
+  inlineSize: '1px',
+  blockSize: '1px',
+  padding: 0,
+  margin: '-1px',
+  overflow: 'hidden',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'nowrap',
+  border: 0,
+});
 
 export const twoCol = style({
   display: 'grid',

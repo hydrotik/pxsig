@@ -9,7 +9,7 @@ import { Diagnostics, diagnosticsOf } from './views/Diagnostics';
 import { Help } from './views/Help';
 import { History } from './views/History';
 import { Integrity, IntegrityBanner } from './views/Integrity';
-import { t } from './copy';
+import { t, type CopyKey } from './copy';
 import * as s from './dashboard.css';
 
 // Section ids are stable (deep links and the remembered section use them); the labels come from the copy.
@@ -143,6 +143,7 @@ export function App() {
   // Diagnostics appears only when a research run wrote its data.
   const diagnostics = diagnosticsOf(data).length > 0;
   const shown = tab === 'diagnostics' && !diagnostics ? 'overview' : tab;
+  const sectionTitle = t(`tabs.${({ stories: 'review', integrity: 'coverage', history: 'runs' } as Record<string, string>)[shown] ?? shown}` as CopyKey);
   const status = !sm ? undefined : todo ? ({ tone: 'warning', icon: 'alert', label: t('app.status.reviewRequired') } as const) : ({ tone: 'success', icon: 'check', label: t('app.status.approved') } as const);
   // A count after a section's label (COUNTS.md): attention when it asks for action, neutral for a plain total.
   type Count = { count: number; tone: 'info' | 'neutral'; label: string };
@@ -196,6 +197,8 @@ export function App() {
         </TopNav>
         <AppMain ref={mainRef}>
             <div className={s.page}>
+              {/* The section's heading, for the outline (the bar's link says it visibly). */}
+              <h2 className={s.srOnly}>{sectionTitle}</h2>
               <IntegrityBanner data={data} go={go} />
               {shown === 'overview' ? <Overview data={data} go={go} startReview={startReview} /> : null}
               {shown === 'stories' ? <Stories data={data} filter={filter} setFilter={setFilter} onOpen={(r, l) => open(r, l)} /> : null}

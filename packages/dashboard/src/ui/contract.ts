@@ -289,7 +289,10 @@ export interface ToolbarStartProps {
 export interface ToolbarEndProps {
   children: React.ReactNode;
 }
-/** A labelled control in a toolbar: labels share a top edge, controls a bottom edge. */
+/**
+ * A labelled control in a toolbar: labels share a top edge, controls a bottom edge. The label names
+ * its one child: an adapter may pass the child an `id` (Select and SearchField accept one).
+ */
 export interface ToolbarFieldProps {
   label: string;
   minInlineSize?: string;
@@ -352,6 +355,8 @@ export interface AlertDescriptionProps {
 }
 /** A controlled search input. */
 export interface SearchFieldProps {
+  /** Set by a ToolbarField that labels the input. */
+  id?: string;
   value: string;
   onValueChange: (value: string) => void;
   placeholder?: string;
@@ -363,6 +368,8 @@ export interface SelectOption {
 }
 /** One value from a list that does not fit as a segmented choice. */
 export interface SelectProps {
+  /** Set by a ToolbarField that labels the control: put it on the focusable trigger. */
+  id?: string;
   value: string;
   onValueChange: (value: string) => void;
   options: SelectOption[];
