@@ -3,6 +3,29 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
+## 0.2.4 - 2026-10-20
+
+Render errors can no longer become baselines, and the inspector's Pixel panel holds still.
+
+### Fixed
+
+- **A Vite error overlay is a render error, not a design change.** When a module failed to load
+  (a story file removed under a running Storybook, for example), every story showed Vite's
+  import-error overlay. pxsig captured it as the story, reported each entry as changed, and let it
+  be approved. The render check now recognises the overlay, with its message, and a preview that
+  never started, so a run where most renders hit them is refused and nothing is recorded.
+- **Nothing approves a failed render.** A render error used to keep the previous image and its
+  comparison, so it showed as changed with an Approve button. It now carries only the error, the
+  dashboard turns Approve off for it (button and `A`), and the server refuses the approval.
+- **No approvals mid-check.** The server refuses to approve an entry that is queued or being
+  re-checked, because its render on disk is not yet trimmed or compared.
+- **Identical renders across many entries are the environment.** The engine records each render's
+  hash. When five or more failing entries, and at least a tenth of the run, rendered the same
+  image, they become errors ("identical render to N other failing entries"), the check and the
+  server say so, and the run summary lists the groups.
+- **The Pixel panel keeps its height under the pointer.** Three-digit coordinates wrapped the first
+  row, pushing every section below it down; the cell and tile text now truncates instead.
+
 ## 0.2.3 - 2026-10-20
 
 Two fixes for reviewing new stories: the inspector shows a new entry's render, and a running
