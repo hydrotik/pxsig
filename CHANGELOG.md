@@ -3,6 +3,24 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
+## 0.2.5 - 2026-10-20
+
+A fix for the render-error guard found by testing it against a real broken Storybook, and section
+tabs that stay in reach.
+
+### Fixed
+
+- **Another page's Vite overlay no longer fails a story that rendered.** Vite sends a transform
+  error to every page on the dev server, so while one story file failed to load, healthy stories
+  rendering on other pages carried the same overlay and the whole run was refused as a setup
+  error. The overlay now counts only when the story did not render; otherwise it is removed from
+  the page, and any that arrives later is hidden from screenshots.
+
+### Changed
+
+- **The dashboard's section tabs stay pinned under the header** instead of scrolling away with
+  the page.
+
 ## 0.2.4 - 2026-10-20
 
 Render errors can no longer become baselines, and the inspector's Pixel panel holds still.
