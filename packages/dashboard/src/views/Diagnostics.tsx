@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, StaticList, StaticListItem, StatusBadge, ToggleGroup, ToggleGroupItem } from '@hydrotik/design-system';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, StaticList, StaticListItem, StatusBadge, ToggleGroup, ToggleGroupItem, Toolbar, ToolbarLeft } from '@hydrotik/design-system';
 import { type Data, type Row, type ScenarioReport, suiteKeys, suiteTitle } from '../data';
 import { HBars } from '../parts/Charts';
 import { t } from '../copy';
@@ -76,18 +76,20 @@ export function Diagnostics({ data, onOpen }: { data: Data; onOpen(row: Row, lis
   if (!section) return null;
   return (
     <div className={s.stack}>
-      <span className={s.row}>
-        {sections.length > 1 ? (
-          <ToggleGroup type="single" value={section} onValueChange={(v) => v && setPicked(v as Section)} aria-label={t('diagnostics.sections')}>
-            {sections.map((k) => (
-              <ToggleGroupItem key={k} value={k}>
-                {t(`diagnostics.tabs.${k}`)}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        ) : null}
-        <span className={s.muted}>{t('diagnostics.description')}</span>
-      </span>
+      {sections.length > 1 ? (
+        <Toolbar size="sm">
+          <ToolbarLeft>
+            <ToggleGroup type="single" value={section} onValueChange={(v) => v && setPicked(v as Section)} aria-label={t('diagnostics.sections')}>
+              {sections.map((k) => (
+                <ToggleGroupItem key={k} value={k}>
+                  {t(`diagnostics.tabs.${k}`)}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </ToolbarLeft>
+        </Toolbar>
+      ) : null}
+      <span className={s.muted}>{t('diagnostics.description')}</span>
       {section === 'scenarios' ? (
         <>
           <DetectionRate data={data} />

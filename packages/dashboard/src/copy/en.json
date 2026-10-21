@@ -38,13 +38,17 @@
   "tabs": {
     "overview": "Overview",
     "review": "Review Stories",
-    "reviewCount": "Review Stories · {count}",
     "coverage": "Coverage",
-    "coverageCount": "Coverage · {count}",
     "a11y": "Accessibility",
     "runs": "Runs",
     "diagnostics": "Diagnostics",
-    "help": "Help"
+    "help": "Help",
+    "counts": {
+      "review": "{count} to review",
+      "coverage": { "one": "{count} component with errors", "other": "{count} components with errors" },
+      "a11y": { "one": "{count} new entry", "other": "{count} new entries" },
+      "runs": { "one": "{count} run", "other": "{count} runs" }
+    }
   },
   "status": {
     "pass": "Pass",

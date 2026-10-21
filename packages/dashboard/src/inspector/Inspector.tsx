@@ -606,7 +606,7 @@ export function Inspector({
       )}
 
       {rejectedNote}
-      <Toolbar className={s.insToolbar}>
+      <Toolbar size="sm" className={s.insToolbar}>
         <ToolbarLeft>
           {embedded ? <StatusOf status={statusOf(row, data.review)} /> : null}
           <ToggleGroup
@@ -623,7 +623,7 @@ export function Inspector({
           </ToggleGroup>
           <span className={s.row}>
             <Button
-              size="icon-sm"
+              size="icon"
               variant="outline"
               aria-label={t('inspector.zoomOut')}
               onClick={() => stage.current?.zoomBy(1 / 1.5)}
@@ -638,7 +638,7 @@ export function Inspector({
               {Math.round(zoom * 100)}%
             </span>
             <Button
-              size="icon-sm"
+              size="icon"
               variant="outline"
               aria-label={t('inspector.zoomIn')}
               onClick={() => stage.current?.zoomBy(1.5)}
@@ -646,7 +646,6 @@ export function Inspector({
               +
             </Button>
             <Button
-              size="sm"
               variant="outline"
               title={t('inspector.fitTitle')}
               onClick={() => stage.current?.fit()}
@@ -654,7 +653,6 @@ export function Inspector({
               {t('inspector.fit')}
             </Button>
             <Button
-              size="sm"
               variant="outline"
               title={t('inspector.actualTitle')}
               onClick={() => stage.current?.zoomTo(1)}
@@ -676,7 +674,7 @@ export function Inspector({
           {pixels && !embedded ? (
             <span className={s.row}>
               <Button
-                size="icon-sm"
+                size="icon"
                 variant="outline"
                 disabled={!regions.length}
                 aria-label={t('inspector.nav.prevChange')}
@@ -690,7 +688,7 @@ export function Inspector({
                   : t('inspector.nav.noChanges')}
               </span>
               <Button
-                size="icon-sm"
+                size="icon"
                 variant="outline"
                 disabled={!regions.length}
                 aria-label={t('inspector.nav.nextChange')}

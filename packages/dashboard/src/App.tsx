@@ -156,8 +156,11 @@ export function App() {
   const diagnostics = diagnosticsOf(data).length > 0;
   const shown = tab === 'diagnostics' && !diagnostics ? 'overview' : tab;
   const status = !sm ? undefined : todo ? 'review-required' : 'approved';
-  const link = (id: Tab, label: string) => (
-    <NavItemLink key={id} href={`#${id}`} active={shown === id}>
+  // A count after a section's label (COUNTS.md): attention when it asks for action, neutral for a plain total.
+  type Count = { count: number; tone: 'attention' | 'neutral'; label: string };
+  const counted = (count: number, tone: Count['tone'], key: 'review' | 'coverage' | 'a11y' | 'runs'): Count => ({ count, tone, label: t(`tabs.counts.${key}`, { count }) });
+  const link = (id: Tab, label: string, c?: Count) => (
+    <NavItemLink key={id} href={`#${id}`} active={shown === id} count={c?.count} countTone={c?.tone} countLabel={c?.label}>
       {label}
     </NavItemLink>
   );
@@ -176,10 +179,10 @@ export function App() {
         >
           <NavItems>
             {link('overview', t('tabs.overview'))}
-            {link('stories', todo ? t('tabs.reviewCount', { count: todo }) : t('tabs.review'))}
-            {link('integrity', integrityErrors ? t('tabs.coverageCount', { count: integrityErrors }) : t('tabs.coverage'))}
-            {link('a11y', t('tabs.a11y'))}
-            {link('history', t('tabs.runs'))}
+            {link('stories', t('tabs.review'), counted(todo, 'attention', 'review'))}
+            {link('integrity', t('tabs.coverage'), counted(integrityErrors, 'attention', 'coverage'))}
+            {link('a11y', t('tabs.a11y'), counted(undecided('a11y'), 'attention', 'a11y'))}
+            {link('history', t('tabs.runs'), counted(data.history?.length ?? 0, 'neutral', 'runs'))}
             {diagnostics ? link('diagnostics', t('tabs.diagnostics')) : null}
             {link('help', t('tabs.help'))}
           </NavItems>

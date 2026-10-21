@@ -11,6 +11,9 @@ const checker = `repeating-conic-gradient(${vars.color.surfaceElevated} 0 25%, $
 
 globalStyle('html, body, #root', { blockSize: '100%', margin: 0 });
 globalStyle('body', { backgroundColor: vars.color.background, color: vars.color.text, fontFamily: vars.font.family.sans });
+// A control's height includes its border (CONTROLS.md); ToggleGroup's root relies on a page-wide
+// border-box reset this page does not have, and grows by its 2px border without one.
+globalStyle('[data-control]', { boxSizing: 'border-box' });
 
 export const page = style({
   display: 'flex',

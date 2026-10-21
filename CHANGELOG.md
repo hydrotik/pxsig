@@ -12,6 +12,20 @@ semantic versioning.
   hashes as before, and Back and Forward now move between them), and the review button, project
   picker, connection, last check, theme and review status at the end. Sections that do not fit a
   narrow window move into the bar's More menu.
+- **Section counts are badges.** Review Stories, Coverage and Accessibility show how many entries
+  need a decision as an accent count after the label, and Runs shows its total in a neutral one.
+  Each count is part of the link's accessible name ("Review Stories, 6 to review"), and nothing
+  shows at zero. The start-review button keeps its count in its wording.
+- **Toolbars line up.** Each toolbar sets one control size, so the Stories search and its selects
+  share a height and their labels a line, and "1,024 of 1,024" sits on the controls' line as a
+  summary that is announced as the filters change. The inspector's toolbar and the Coverage,
+  Diagnostics and scenario rows follow the same rule.
+
+### Fixed
+
+- **Removed stories no longer linger.** `pxsig serve` drops `check.json` rows whose entry is no
+  longer in the manifest, on start, whenever the manifest is reloaded and after every check, so a
+  story deleted on another branch stops showing as a stale new or failing entry.
 
 ## 0.2.5 - 2026-10-20
 
