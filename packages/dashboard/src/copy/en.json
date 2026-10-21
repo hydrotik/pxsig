@@ -678,6 +678,12 @@
     }
   },
   "inspector": {
+    "storybook": {
+      "open": "Open in Storybook",
+      "title": "Opens the story in Storybook with this entry's globals: {globals}",
+      "titlePlain": "Opens the story in Storybook",
+      "state": "State {state}: set by the check, not by the link"
+    },
     "contextScenario": "Scenario · {name}",
     "contextLatest": "Latest check · {mode}",
     "withinGate": "Within the gate",

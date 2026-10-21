@@ -23,6 +23,8 @@ export function buildRow(e, rust, render, a11yBase, manifest, js) {
     mode: e.mode ?? manifest.defaultMode,
     state: e.state ?? null,
     browser: e.browser ?? 'chromium',
+    // The mode's Storybook globals, so the dashboard can open the story as it was rendered.
+    ...(e.globals ? { globals: e.globals } : {}),
     pass: rr.error ? false : r.pass === true || r.flaky === true,
     // An error (the render's, or the engine's: an identical render across many entries) is not a change.
     changed: !rr.error && (isNew || !r.error) && r.pass !== true && !r.flaky,

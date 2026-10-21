@@ -25,6 +25,7 @@ import { type Data, type Queue, type Row, a11yAction, decisionOf, fmt, pathsFor,
 import { analyse, cellsLayer, hex, loadImg, readPixels, type Analysis } from './analyse';
 import { Stage, type Hover, type Mode, type StageApi } from './Stage';
 import { StatusOf } from '../parts/StatusOf';
+import { storybookLink } from '../storybook-link.mjs';
 import { Cmd, t, tx } from '../copy';
 import * as s from '../dashboard.css';
 
@@ -326,7 +327,8 @@ export function Inspector({
       : `${W}×${H}`;
   // A served URL (/p/<project>/renders/…) or a static one (./renders/…) → the file in the store.
   const repoPath = (u: string) => `${data.store ?? '.pxsig'}/${u.replace(/^\/p\/[^/]+\//, '').replace(/^\.\//, '')}`;
-  const sb = `${data.storybook.baseUrl}/?path=/story/${row.story ?? row.id}`;
+  const sbLink = storybookLink(data.storybook.baseUrl, row, data.check?.manifest?.modes);
+  const sb = sbLink.url;
   const cw = W / (m?.grid ?? 64);
   const chh = H / (m?.grid ?? 64);
   const dmax =
@@ -583,6 +585,12 @@ export function Inspector({
                 : `${t('inspector.contextLatest', { mode: row.mode })}${row.state ? ` · ${row.state}` : ''}${row.browser && row.browser !== 'chromium' ? ` · ${row.browser}` : ''}`}
             </div>
             <Title className={s.insTitle}>{row.id}</Title>
+            <div className={s.insLinks}>
+              <Link href={sb} external title={sbLink.globals ? t('inspector.storybook.title', { globals: sbLink.globals }) : t('inspector.storybook.titlePlain')}>
+                {t('inspector.storybook.open')}
+              </Link>
+              {sbLink.state ? <span className={s.muted}>{t('inspector.storybook.state', { state: sbLink.state })}</span> : null}
+            </div>
             <Desc className={s.micro} style={{ margin: 0 }}>
               {row.reasons?.length
                 ? row.reasons.join(' · ')

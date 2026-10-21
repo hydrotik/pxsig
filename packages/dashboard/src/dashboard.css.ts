@@ -217,6 +217,8 @@ export const insHead = style({
   borderBlockEnd: `1px solid ${vars.color.border}`,
 });
 export const insTitle = style({ margin: 0, fontFamily: vars.font.family.mono, fontSize: vars.font.size.sm, wordBreak: 'break-all' });
+// The entry's Storybook link under its id, with the interaction-state note beside it.
+export const insLinks = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: `${vars.space['1']} ${vars.space['3']}`, fontSize: vars.font.size.xs });
 // Review session: progress above the inspector, a summary when every entry is decided.
 export const sessionBar = style({
   display: 'flex',
