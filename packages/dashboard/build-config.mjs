@@ -12,8 +12,7 @@
  * Vite aliases `@ui-adapter` to the module. An adapter folder may carry a `vite.mjs` whose default
  * export returns build settings (aliases, folders to allow) for its design system.
  */
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { createRequire } from 'node:module';
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -59,13 +58,17 @@ export function resolveAdapter(opts = {}) {
   return { name: path.basename(statSync(p, { throwIfNoEntry: false })?.isDirectory() ? p : path.dirname(file)), file, dir: path.dirname(file), from };
 }
 
-/** A package's folder, resolved from the first of `fromDirs` that has it. */
+/**
+ * A package's folder, from the first of `fromDirs` that reaches it: node_modules/<name> in the
+ * folder or a parent (what Node's resolution walks; works when a package's exports hide its
+ * package.json).
+ */
 export function packageDir(name, fromDirs) {
-  for (const dir of fromDirs) {
-    try {
-      return path.dirname(createRequire(path.join(dir, 'noop.js')).resolve(`${name}/package.json`));
-    } catch {
-      // try the next
+  for (const start of fromDirs) {
+    for (let dir = path.resolve(start); ; dir = path.dirname(dir)) {
+      const pj = path.join(dir, 'node_modules', name, 'package.json');
+      if (existsSync(pj)) return realpathSync(path.dirname(pj));
+      if (path.dirname(dir) === dir) break;
     }
   }
   return null;

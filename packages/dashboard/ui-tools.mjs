@@ -113,7 +113,7 @@ export function gapsOf({ adapterFile, manifest = buildManifest() }) {
       notes.push(`declared ${status} but not exported`);
       status = 'missing';
     }
-    if (status === 'missing') notes.push(c.required ? 'required: the build fails without it' : 'renders the plain fallback (src/ui/fallbacks.tsx)');
+    if (status === 'missing') notes.push(c.required ? 'the build fails without it' : 'renders the plain fallback (src/ui/fallbacks.tsx)');
     rows.push({ name, group: c.group, required: c.required, status, note: notes.join('; '), usedBy: c.usedBy });
   }
   const problems = [];

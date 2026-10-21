@@ -14,6 +14,10 @@
  *   serve [--watch] [--port n]  the server and dashboard, for every project
  *   mcp                         the MCP server (stdio)
  *   report [--out dir]          a static dashboard for one project
+ *   dashboard build [--ui path] [--out dir]
+ *                               rebuild the dashboard on this project's design system through a UI adapter
+ *                               (--ui, else dashboard.ui in pxsig.config.json; docs/ui/build-adapter.md)
+ *   dashboard gaps [--ui path]  what that adapter covers of the UI contract, and what it does not
  *   cat <file.psig> [--image out.png]
  *                               a baseline's header (git's textconv for *.psig), or its image
  *   migrate --from <dir> [--apply] [--no-verify]
@@ -839,6 +843,11 @@ const commands = {
     const { pack, manifests, ...json } = plan;
     emit(format, blocks, { ...json, manifests: manifests.map(({ manifest, ...m }) => m) });
     if (plan.problems.length || plan.verify?.some((v) => v.differ)) process.exit(1);
+  },
+
+  async dashboard() {
+    const { dashboardCommand } = await import('./dashboard.mjs');
+    process.exitCode = await dashboardCommand(rest[0], { ...flags, json: format === 'json' });
   },
 
   help() {
