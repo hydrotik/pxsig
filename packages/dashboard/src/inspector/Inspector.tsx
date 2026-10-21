@@ -288,7 +288,7 @@ export function Inspector({
     if (k === 'N') return run(() => stepRegion(-1));
     if (k === 'ArrowRight' || k === 'j') return run(() => step(1));
     if (k === 'ArrowLeft' || k === 'k') return run(() => step(-1));
-    if ((k === 'a' || k === 'A') && canReview && !busy) return run(() => act('approve'));
+    if ((k === 'a' || k === 'A') && canReview && !busy && !row?.error) return run(() => act('approve'));
     if ((k === 'r' || k === 'R') && canReview && !busy) return run(() => act('reject'));
   };
   // In the dialog the shortcuts listen on the window: a button that disappears after a click
@@ -461,7 +461,9 @@ export function Inspector({
     ) : null;
   const newA11y = row.a11y?.new ?? 0;
   // Rows from older reports may lack `changed`: a failed verdict is a change.
-  const changed = row.changed ?? !row.pass;
+  // A render error has no image of the story: nothing to approve (older reports still
+  // mark these changed).
+  const changed = !row.error && (row.changed ?? !row.pass);
   const reviewButtons = !canReview ? null : a11yMode ? (
     newA11y || review ? (
       <>
@@ -491,7 +493,7 @@ export function Inspector({
         </Button>
         <Button
           size="sm"
-          disabled={busy || review?.state === 'approved' || (row.pass && !changed)}
+          disabled={busy || review?.state === 'approved' || !!row.error || (row.pass && !changed)}
           onClick={() => act('approve')}
           title={t('inspector.review.approveTitle')}
         >

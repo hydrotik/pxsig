@@ -256,6 +256,11 @@ async function approve(S, id, meta = {}) {
   if (!e) throw httpError(404, `unknown entry ${id}`);
   const latest = join(P.store.latest, `${id}.png`);
   if (!existsSync(latest)) throw httpError(409, `no latest render for ${id}; run a check`);
+  // Mid-check, latest/ holds renders not yet trimmed or verified: approving one bakes in that.
+  if (S.checking?.has(id) || S.queued.has(id)) throw httpError(409, `${id} is being re-checked; approve it once the check finishes`);
+  // A render that failed (an error page, a timeout) left the previous image behind, not this story.
+  const current = readJson(S.checkPath, { rows: [] }).rows.find((r) => r.id === id);
+  if (current?.error) throw httpError(409, `${id} did not render (${current.error}); fix it and re-check before approving`);
   const batch = meta.batch ?? newBatch(meta.via ?? 'dashboard');
   // No baseline yet (a NEW entry): nothing to snapshot, `before` is null and undo removes the file.
   const { before } = snapshot(P, e, batch);
@@ -325,6 +330,7 @@ async function runChecks(S) {
   if (S.running || !S.queued.size) return S.running;
   const ids = [...S.queued];
   S.queued = new Set();
+  S.checking = new Set(ids);
   const { P } = S;
   S.running = (async () => {
     const t0 = performance.now();
@@ -352,6 +358,8 @@ async function runChecks(S) {
         // Re-checks are runs too: the History tab and pxsig_history read this.
         history: join(P.store.reports, 'history.ndjson'),
       });
+      for (const g of res.summary.identicalRenders ?? [])
+        console.error(`[serve] ${S.name}: ${g.count} failing entries rendered the same image (${g.ids.slice(0, 3).join(', ')}…): marked as errors, nothing to approve`);
       const byId = new Map(res.results.map((r) => [r.id, r]));
       const renders = new Map(results.map((r) => [r.id, r]));
       const a11yBase = readJson(P.store.a11y, null);
@@ -372,6 +380,7 @@ async function runChecks(S) {
       broadcast('check', { project: S.name, state: 'error', ids, error: e.message, setup: !!e.setup });
     } finally {
       S.running = null;
+      S.checking = null;
       if (S.queued.size) runChecks(S);
       else scheduleIntegrity(S, 'check', 0);
     }

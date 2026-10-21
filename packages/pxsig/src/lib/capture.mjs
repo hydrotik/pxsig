@@ -24,12 +24,21 @@ export const STORYBOOK_ERROR = 'storybook-error:';
 
 /**
  * In-page check after a story renders: null when the preview shows the story, else why not —
- * Storybook's error display (`sb-show-errordisplay`: a story that threw, or "Unable to index
- * files"), its no-preview screen, or a different story than the one asked for.
+ * Vite's error overlay (a module that failed to load or transform: the story never ran), a
+ * preview that never started, Storybook's error display (`sb-show-errordisplay`: a story that
+ * threw, or "Unable to index files"), its no-preview screen, or a different story than the one
+ * asked for.
  */
 export const storybookSentinel = (id) => {
   const b = document.body;
   const pv = window.__STORYBOOK_PREVIEW__;
+  const overlay = document.querySelector('vite-error-overlay');
+  if (overlay) {
+    const box = overlay.shadowRoot?.querySelector('.message-body') ?? overlay.shadowRoot?.querySelector('.message');
+    const msg = (box?.textContent ?? '').trim().split('\n')[0].slice(0, 200);
+    return `Vite error overlay${msg ? `: ${msg}` : ''}`;
+  }
+  if (!pv) return 'the Storybook preview did not start';
   if (b?.classList.contains('sb-show-errordisplay')) {
     const msg = (document.querySelector('#error-message')?.textContent ?? '').trim().split('\n')[0].slice(0, 200);
     return `Storybook error page${msg ? `: ${msg}` : ''}`;

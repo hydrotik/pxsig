@@ -278,6 +278,7 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
             let run = || -> Result<Value> {
                 let png_bytes = fs::read(&png).with_context(|| format!("PNG not found: {}", png.display()))?;
                 let sig_bytes = fs::read(&sig)?;
+                let render = hex(&Sha256::digest(&png_bytes));
                 let key = o.cache.as_ref().map(|_| cache_key(&png_bytes, &sig_bytes, &gate_json));
                 let stem = io::stem_of(&sig);
                 if let (Some(c), Some(k)) = (&o.cache, &key) {
@@ -288,6 +289,7 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
                         if let Ok(v) = fs::read_to_string(&hit).map_err(anyhow::Error::from).and_then(|t| Ok(serde_json::from_str::<Value>(&t)?)) {
                             let mut v = v;
                             v["cached"] = json!(true);
+                            v["render"] = json!(render);
                             return Ok(v);
                         }
                     }
@@ -317,11 +319,14 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
                     let _ = fs::write(c.join(format!("{k}.json")), v.to_string());
                 }
                 v["cached"] = json!(false);
+                v["render"] = json!(render);
                 Ok(v)
             };
             run().unwrap_or_else(|e| fail(format!("{e:#}")))
         })
         .collect();
+    let mut rows = rows;
+    let identical = flag_identical_renders(&mut rows);
 
     let elapsed = t0.elapsed().as_secs_f64() * 1000.0;
     let failed = rows.iter().filter(|r| r["pass"] != json!(true)).count();
@@ -346,11 +351,49 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
         "cached": cached,
         "threads": rayon::current_num_threads(),
         "elapsedMs": elapsed,
+        "identicalRenders": identical,
     });
     if let Some(h) = &o.history {
         append_history(h, &summary, &rows)?;
     }
     Ok(json!({ "summary": summary, "results": rows }))
+}
+
+/// Fewest failing entries sharing one render before it counts as the environment.
+const IDENTICAL_MIN: usize = 5;
+
+/// Failing entries whose renders are byte-identical: one image standing in for many stories is the
+/// environment (an error overlay, a blank or half-loaded preview), not that many design changes.
+/// Each such row becomes an error, which nothing approves. A group needs `IDENTICAL_MIN` entries
+/// and a tenth of the rows checked. Returns the groups, largest first, for the summary.
+pub fn flag_identical_renders(rows: &mut [Value]) -> Vec<Value> {
+    let mut groups: std::collections::HashMap<String, Vec<usize>> = std::collections::HashMap::new();
+    for (i, r) in rows.iter().enumerate() {
+        if r["pass"] != json!(true) && r["error"].is_null() {
+            if let Some(h) = r["render"].as_str() {
+                groups.entry(h.to_string()).or_default().push(i);
+            }
+        }
+    }
+    let floor = IDENTICAL_MIN.max(rows.len().div_ceil(10));
+    let mut out: Vec<(usize, Value)> = Vec::new();
+    for (render, idx) in groups {
+        if idx.len() < floor {
+            continue;
+        }
+        let note = format!(
+            "identical render to {} other failing entries: the environment (an error overlay, a blank preview), not a design change",
+            idx.len() - 1
+        );
+        for &i in &idx {
+            rows[i]["error"] = json!(note);
+            rows[i]["note"] = json!(note);
+        }
+        let ids: Vec<Value> = idx.iter().take(10).map(|&i| rows[i]["id"].clone()).collect();
+        out.push((idx.len(), json!({ "render": render, "count": idx.len(), "ids": ids })));
+    }
+    out.sort_by(|a, b| b.0.cmp(&a.0));
+    out.into_iter().map(|(_, v)| v).collect()
 }
 
 fn append_history(path: &Path, summary: &Value, rows: &[Value]) -> Result<()> {
@@ -479,4 +522,49 @@ pub fn trim(o: &TrimOpts) -> Result<Value> {
         "pixelsAfter": after,
         "elapsedMs": t0.elapsed().as_secs_f64() * 1000.0,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn row(id: &str, pass: bool, render: &str) -> Value {
+        json!({ "id": id, "pass": pass, "render": render, "error": null })
+    }
+
+    #[test]
+    fn identical_failing_renders_become_errors() {
+        let mut rows: Vec<Value> = (0..6).map(|i| row(&format!("a--{i}"), false, "same")).collect();
+        rows.push(row("b--x", false, "other"));
+        rows.push(row("c--y", true, "same"));
+        let groups = flag_identical_renders(&mut rows);
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0]["count"], json!(6));
+        assert!(rows[0]["error"].as_str().unwrap().contains("5 other failing entries"));
+        assert!(rows[6]["error"].is_null(), "a failure with its own render stays a change");
+        assert!(rows[7]["error"].is_null(), "a passing row is never flagged");
+    }
+
+    #[test]
+    fn a_few_identical_renders_are_not_the_environment() {
+        let mut rows: Vec<Value> = (0..4).map(|i| row(&format!("a--{i}"), false, "same")).collect();
+        assert!(flag_identical_renders(&mut rows).is_empty());
+        assert!(rows.iter().all(|r| r["error"].is_null()));
+    }
+
+    #[test]
+    fn the_floor_scales_with_the_run() {
+        // 100 rows: a group needs 10, so 6 identical failures are left as changes.
+        let mut rows: Vec<Value> = (0..100).map(|i| row(&format!("p--{i}"), true, &format!("r{i}"))).collect();
+        for r in rows.iter_mut().take(6) {
+            r["pass"] = json!(false);
+            r["render"] = json!("same");
+        }
+        assert!(flag_identical_renders(&mut rows).is_empty());
+        for r in rows.iter_mut().take(10) {
+            r["pass"] = json!(false);
+            r["render"] = json!("same");
+        }
+        assert_eq!(flag_identical_renders(&mut rows)[0]["count"], json!(10));
+    }
 }

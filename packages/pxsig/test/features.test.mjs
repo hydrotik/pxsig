@@ -385,6 +385,39 @@ test('the server: undoing an approval restores the baseline it replaced, and log
   }
 });
 
+test('the server refuses to approve an entry whose render failed, and leaves its baseline alone', { skip: !hasRust && 'Rust binary not built' }, async () => {
+  const f = fixture();
+  const id = f.ids.unrecoverable;
+  const file = join(f.repo, f.manifest.stories.find((e) => e.id === id).sig);
+  const original = readFileSync(file);
+  const checkFile = join(f.px, 'reports', 'check.json');
+  const report = JSON.parse(readFileSync(checkFile, 'utf8'));
+  report.rows = report.rows.map((r) => (r.id === id ? { ...r, pass: false, changed: false, error: 'storybook-error: Vite error overlay: Failed to resolve import' } : r));
+  writeFileSync(checkFile, JSON.stringify(report));
+  const port = await new Promise((ok) => {
+    const s = createServer().listen(0, '127.0.0.1', () => {
+      const p = s.address().port;
+      s.close(() => ok(p));
+    });
+  });
+  const proc = spawn(process.execPath, [join(src, 'serve.mjs'), '--port', String(port), '--no-open'], { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } });
+  try {
+    await new Promise((ok, fail) => {
+      let log = '';
+      const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+      proc.stdout.on('data', (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok())));
+      proc.stderr.on('data', (d) => (log += d));
+    });
+    const r = await fetch(`http://127.0.0.1:${port}/__pxsig/approve`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) });
+    const body = await r.json();
+    assert.equal(r.status, 409, JSON.stringify(body));
+    assert.match(body.error, /did not render/);
+    assert.deepEqual(readFileSync(file), original, 'the baseline is untouched');
+  } finally {
+    proc.kill();
+  }
+});
+
 test('the server: accepting a11y violations updates the accepted list; undo restores it; both are logged', { skip: !hasRust && 'Rust binary not built' }, async () => {
   const f = fixture();
   const id = f.ids.a11y;
