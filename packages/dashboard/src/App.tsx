@@ -208,7 +208,7 @@ export function App() {
             <div className={s.page}>
               <IntegrityBanner data={data} go={go} />
               {shown === 'overview' ? <Overview data={data} go={go} startReview={startReview} /> : null}
-              {shown === 'stories' ? <Stories data={data} filter={filter} setFilter={setFilter} onOpen={(r, l) => open(r, l)} startReview={startReview} /> : null}
+              {shown === 'stories' ? <Stories data={data} filter={filter} setFilter={setFilter} onOpen={(r, l) => open(r, l)} /> : null}
               {shown === 'integrity' ? <Integrity data={data} onOpen={(r, l) => open(r, l)} /> : null}
               {shown === 'a11y' ? <Accessibility data={data} onOpen={(r, l) => open(r, l)} startReview={startReview} /> : null}
               {shown === 'history' ? <History data={data} /> : null}
