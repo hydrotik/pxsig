@@ -55,3 +55,20 @@ export function summarize(rows, extra = {}) {
     ...extra,
   };
 }
+
+/**
+ * Drops the rows whose entry is no longer in the manifest: a story removed (or renamed) on another
+ * branch would otherwise linger in check.json as a stale "new" or failing row that nothing can
+ * re-check or approve. An empty manifest drops nothing (it means "not loaded", not "no stories").
+ * Returns the ids dropped; `check.rows` and `check.summary` are updated in place.
+ */
+export function dropStaleRows(check, manifest) {
+  const known = new Set((manifest?.stories ?? []).map((e) => e.id));
+  if (!known.size || !Array.isArray(check?.rows)) return [];
+  const dropped = check.rows.filter((r) => !known.has(r.id)).map((r) => r.id);
+  if (dropped.length) {
+    check.rows = check.rows.filter((r) => known.has(r.id));
+    check.summary = { ...check.summary, ...summarize(check.rows) };
+  }
+  return dropped;
+}

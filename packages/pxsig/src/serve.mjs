@@ -55,7 +55,7 @@ import { readHeader, readImage } from './lib/psig.mjs';
 import { parseArgs, strFlag } from './lib/args.mjs';
 import { acquireLock, describeLock, LockError } from './lib/lock.mjs';
 import { applyRepairs, defaultHooks, planRepairs } from './lib/repair.mjs';
-import { buildRow, summarize } from './lib/rows.mjs';
+import { buildRow, dropStaleRows, summarize } from './lib/rows.mjs';
 import { ensureStorybook } from './lib/static.mjs';
 import { findWorkspace, flagLayer, loadProject, rustBinary, serverFile, writeRunManifest } from './lib/workspace.mjs';
 import { buildData, dashboardDir } from './report.mjs';
@@ -221,9 +221,27 @@ function updateCheckRows(S, mut, fresh = new Map()) {
     const order = new Map(S.manifest.stories.map((e, i) => [e.id, i]));
     check.rows = [...check.rows, ...add].sort((a, b) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9));
   }
+  const dropped = S.runPath ? dropStaleRows(check, S.manifest) : [];
+  if (dropped.length) console.log(`[serve] ${S.name}: dropped ${dropped.length} rows no longer in the manifest`);
   check.summary = { ...check.summary, ...summarize(check.rows) };
   S.quietUntil = Date.now() + 800;
   writeFileSync(S.checkPath, `${JSON.stringify(check)}\n`);
+}
+
+/**
+ * Drops check rows for entries no longer in the manifest (a story removed on another branch), on
+ * start and whenever the manifest is reloaded. Only with the store lock and a manifest that loaded.
+ */
+function pruneStaleRows(S) {
+  if (!S.lock || !S.runPath) return;
+  const check = readJson(S.checkPath, null);
+  if (!check) return;
+  const dropped = dropStaleRows(check, S.manifest);
+  if (!dropped.length) return;
+  S.quietUntil = Date.now() + 800;
+  writeFileSync(S.checkPath, `${JSON.stringify(check)}\n`);
+  console.log(`[serve] ${S.name}: dropped ${dropped.length} rows no longer in the manifest (${dropped.slice(0, 3).join(', ')}${dropped.length > 3 ? ', …' : ''})`);
+  broadcast('data', { project: S.name });
 }
 
 /** Writes for a project need its store lock (held for the server's life once taken). */
@@ -496,6 +514,7 @@ async function runIntegrity(S, why) {
   S.integrityRunning = true;
   try {
     S.reload();
+    pruneStaleRows(S);
     const idx = await loadStoryIndex(S.ctx);
     const ledger = await reconcile(S.ctx, { index: idx, affected: S.affected });
     const before = S.integrity?.summary?.headline;

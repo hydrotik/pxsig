@@ -1,7 +1,7 @@
 // buildRow: what a render error and an engine error leave in a check row. No Rust, no server.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildRow } from '../src/lib/rows.mjs';
+import { buildRow, dropStaleRows } from '../src/lib/rows.mjs';
 
 const entry = { id: 'a-b--c', story: 'a-b--c', mode: 'dark' };
 const manifest = { defaultMode: 'dark' };
@@ -31,4 +31,20 @@ test('a new entry and a real change are still reviewable', () => {
   assert.equal(changed.changed, true);
   assert.equal(changed.error, null);
   assert.deepEqual(changed.metrics, { ssim: 0.1 });
+});
+
+test('rows for entries no longer in the manifest are dropped, and the summary follows', () => {
+  const kept = buildRow(entry, { id: entry.id, pass: true }, { ms: 5 }, null, manifest);
+  const gone = buildRow({ id: 'gone--story', mode: 'dark' }, { id: 'gone--story', pass: false, error: 'no baseline sig (run baseline first): x.psig' }, { ms: 5 }, null, manifest);
+  const check = { rows: [kept, gone], summary: { entries: 2, generatedBy: 'check' } };
+  assert.deepEqual(dropStaleRows(check, { stories: [entry] }), ['gone--story']);
+  assert.deepEqual(check.rows.map((r) => r.id), [entry.id]);
+  assert.equal(check.summary.entries, 1);
+  assert.equal(check.summary.generatedBy, 'check', 'other summary fields are kept');
+});
+
+test('an empty (unloaded) manifest drops nothing', () => {
+  const check = { rows: [buildRow(entry, { id: entry.id, pass: true }, { ms: 5 }, null, manifest)], summary: {} };
+  assert.deepEqual(dropStaleRows(check, { stories: [] }), []);
+  assert.equal(check.rows.length, 1);
 });
