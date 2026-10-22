@@ -33,6 +33,10 @@
         "one": "Review {count} accessibility entry",
         "other": "Review {count} accessibility entries"
       }
+    },
+    "status": {
+      "reviewRequired": "Review required",
+      "approved": "Approved"
     }
   },
   "tabs": {
@@ -832,7 +836,8 @@
       "heat": "Cell heatmap (PNG)",
       "page": "Diff page (HTML)",
       "record": "Baseline record (JSON)",
-      "path": "{label} path",
+      "path": "Copy path: {label}",
+      "pathCopied": "Copied: {label}",
       "storybook": "Open in Storybook",
       "copyPath": "Copy path",
       "copied": "Copied"
@@ -871,5 +876,15 @@
       "notWritten": "Signature images and the diff page are written only for entries that fail the gate."
     },
     "a11yRejectedNote": "Violations rejected. Fix them, then re-run the check:"
+  },
+  "ui": {
+    "fallback": {
+      "copy": "Copy",
+      "copied": "Copied",
+      "search": "Search",
+      "previousPage": "Previous page",
+      "nextPage": "Next page",
+      "page": "Page {page} of {pages}"
+    }
   }
 }

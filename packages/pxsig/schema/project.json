@@ -174,6 +174,14 @@
         "manifests": { "type": "array", "items": { "type": "string" }, "description": "Other manifests (relative to the store) whose baselines are not orphans. Default: every manifest.<suite>.json." }
       }
     },
-    "importPathPattern": { "type": "string", "description": "Advanced: a regular expression selecting the project's story files, with the component folder as group 1. Default: files under srcRoot." }
+    "importPathPattern": { "type": "string", "description": "Advanced: a regular expression selecting the project's story files, with the component folder as group 1. Default: files under srcRoot." },
+    "dashboard": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The dashboard rebuilt on this project's design system (`pxsig dashboard build`).",
+      "properties": {
+        "ui": { "type": "string", "description": "The UI adapter: a path to its module (a file, or a folder with an index file), relative to this folder, or a built-in adapter's name. See docs/ui/build-adapter.md." }
+      }
+    }
   }
 }

@@ -7,6 +7,7 @@
  * Fails (exit 1) on:
  *   - images, fonts and binaries, and anything a run produces (baselines, stores, renders, reports):
  *     those belong to the project under test, never to the tool
+ *   - anything under `.local/`: the maintainer's private notes and reference material (git-ignored)
  *   - absolute home-directory paths
  *   - paths from a consuming repository's package layout (configured below: `forbiddenPaths`)
  *   - a denylist of names that must not appear, matched case-sensitively on word boundaries. The
@@ -30,6 +31,8 @@ const FORBIDDEN_FILES = [
   /(^|\/)\.DS_Store$/,
   /(^|\/)\.env/,
 ];
+/** Private notes and reference maps (docs/ui-headless.md): never tracked, whatever their type. */
+const PRIVATE = /(^|\/)\.local\//;
 const forbiddenPaths = [/\bpackages\/hy-[a-z]/, /\bapps\/hy-[a-z]/];
 const HOME = /(?:^|[\s"'`(=])\/(?:Users|home)\/[A-Za-z0-9._-]+\//;
 const SKIP_TEXT = /(^|\/)(pnpm-lock\.yaml|Cargo\.lock)$|\.(png|jpe?g|gif|webp|ico|woff2?|ttf|otf|wasm)$/i;
@@ -41,7 +44,7 @@ function files() {
     const out = [];
     const walk = (d) => {
       for (const e of readdirSync(d, { withFileTypes: true })) {
-        if (['node_modules', '.git', 'target'].includes(e.name)) continue;
+        if (['node_modules', '.git', 'target', '.local'].includes(e.name)) continue;
         const p = join(d, e.name);
         if (e.isDirectory()) walk(p);
         else out.push(relative(root, p).split('\\').join('/'));
@@ -68,6 +71,10 @@ if (process.argv.includes('--require-terms') && !terms().length) {
 const problems = [];
 const denylist = terms().map((t) => ({ t, re: new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`) }));
 for (const f of files()) {
+  if (PRIVATE.test(f)) {
+    problems.push(`${f}: .local/ holds private notes and stays out of the repository`);
+    continue;
+  }
   if (FORBIDDEN_FILES.some((re) => re.test(f))) {
     problems.push(`${f}: this kind of file stays out of the repository`);
     continue;

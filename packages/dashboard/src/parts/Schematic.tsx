@@ -2,7 +2,7 @@
  * A simplified drawing of the dashboard or the inspector, for the Help section: each region the help
  * text names is a box, and the regions in `active` are highlighted.
  */
-import { vars } from '@hydrotik/tokens';
+import { tokens as v } from '../ui/tokens';
 import { t, type CopyKey } from '../copy';
 import * as s from '../dashboard.css';
 
@@ -62,7 +62,7 @@ export function Schematic({ layout, active }: { layout: Layout; active: string[]
   const on = new Set(active);
   return (
     <svg className={s.schematic} viewBox="0 0 320 200" role="img" aria-label={t(`help.schematic.${layout}`)}>
-      <rect x={0.5} y={0.5} width={319} height={199} rx={4} style={{ fill: vars.color.background, stroke: vars.color.border }} />
+      <rect x={0.5} y={0.5} width={319} height={199} rx={4} style={{ fill: v.color.background, stroke: v.color.border }} />
       {Object.entries(REGIONS[layout]).map(([id, r]) => {
         const [x, y, w, h] = r.box;
         const hot = on.has(id);
@@ -75,14 +75,14 @@ export function Schematic({ layout, active }: { layout: Layout; active: string[]
               height={h}
               rx={2}
               style={{
-                fill: hot ? `color-mix(in srgb, ${vars.color.primary} 22%, transparent)` : vars.color.surface,
-                stroke: hot ? vars.color.primary : vars.color.border,
+                fill: hot ? `color-mix(in srgb, ${v.color.accent} 22%, transparent)` : v.color.surface,
+                stroke: hot ? v.color.accent : v.color.border,
                 strokeWidth: hot ? 1.5 : 0.75,
-                transition: 'fill 120ms, stroke 120ms',
+                transition: `fill ${v.motion.fast}, stroke ${v.motion.fast}`,
               }}
             />
             {r.label && h >= 8 ? (
-              <text x={x + 3} y={y + Math.min(h - 2.5, 7)} style={{ fill: hot ? vars.color.text : vars.color.textMuted, fontSize: 5.5, fontFamily: vars.font.family.sans }}>
+              <text x={x + 3} y={y + Math.min(h - 2.5, 7)} style={{ fill: hot ? v.color.text : v.color.textMuted, fontSize: 5.5, fontFamily: v.font.sans }}>
                 {t(r.label)}
               </text>
             ) : null}

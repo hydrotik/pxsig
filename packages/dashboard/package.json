@@ -6,7 +6,8 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "vite build --config vite.config.mjs && node postbuild.mjs"
+    "build": "vite build --config vite.config.mjs && node postbuild.mjs",
+    "test": "node --test test/*.test.mjs"
   },
   "devDependencies": {
     "@vanilla-extract/vite-plugin": "^5.2.6",

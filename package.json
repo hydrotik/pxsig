@@ -12,7 +12,11 @@
     "build:dashboard": "pnpm --filter @pxsig/dashboard build",
     "test": "cargo test --workspace && pnpm --filter pxsig test",
     "test:examples": "node scripts/examples-test.mjs",
-    "check:clean": "node scripts/check-clean.mjs"
+    "check:clean": "node scripts/check-clean.mjs",
+    "ui:manifest": "node scripts/ui.mjs manifest",
+    "ui:gaps": "node scripts/ui.mjs gaps",
+    "ui:docs": "node scripts/ui.mjs docs",
+    "ui:check": "node scripts/ui.mjs check"
   },
   "pnpm": {
     "overrides": {
