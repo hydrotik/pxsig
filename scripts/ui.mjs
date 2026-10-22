@@ -16,6 +16,13 @@ import { buildManifest, checkAll, docsDir, featuresMarkdown, featuresMdFile, gap
 import { resolveAdapter } from '../packages/dashboard/build-config.mjs';
 
 const [cmd, ...args] = process.argv.slice(2);
+
+// docs and check read src/ui/features.ts with Node's type stripping, on by default from 22.18.
+const [major, minor] = process.versions.node.split('.').map(Number);
+if ((cmd === 'docs' || cmd === 'check') && (major < 22 || (major === 22 && minor < 18))) {
+  console.error(`[ui] ${cmd} needs Node 22.18 or later (it reads src/ui/features.ts with type stripping); this is Node ${process.versions.node}`);
+  process.exit(2);
+}
 const flag = (n) => {
   const i = args.indexOf(`--${n}`);
   return i >= 0 ? args[i + 1] : undefined;

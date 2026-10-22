@@ -39,7 +39,7 @@ published from GitHub Actions with npm provenance and listed in [CHANGELOG.md](C
 
 ## Requirements
 
-- Node.js 20 or later
+- Node.js 20 or later (22.18 or later to work in a clone of this repository)
 - A Storybook (8 or later; the addon needs 9 or later) that pxsig can reach over HTTP with its
   `index.json`, or a static build of one (`storybook.staticDir`), which pxsig serves itself when
   nothing answers at `storybook.url`
@@ -98,7 +98,8 @@ against a project the server is serving goes through the server's queue. See
 
 ## Running from a clone
 
-To work on pxsig itself, or to try an unreleased change:
+To work on pxsig itself, or to try an unreleased change (Node.js 22.18 or later in a clone; the
+published package needs 20):
 
 ```bash
 git clone https://github.com/hydrotik/pxsig

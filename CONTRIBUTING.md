@@ -6,7 +6,8 @@ Thank you for helping. This file covers setting up, testing and what a pull requ
 
 You need:
 
-- Node.js 20 or later
+- Node.js 22.18 or later to work on the repository (`pnpm ui:check` and `pnpm ui:docs` read TypeScript
+  with Node's type stripping). The published `pxsig` package still runs on Node 20.
 - pnpm 10 (the version is pinned in `package.json`; `corepack enable` picks it up)
 - Rust stable, with cargo
 
