@@ -44,6 +44,8 @@ export interface Row {
   story: string;
   mode: string;
   state: string | null;
+  /** The entry's Storybook globals (`theme:light;colorway:default`), from the manifest entry. */
+  globals?: string;
   browser?: string;
   pass: boolean;
   changed?: boolean;

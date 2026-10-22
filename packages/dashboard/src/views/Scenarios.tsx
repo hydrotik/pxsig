@@ -1,5 +1,5 @@
 import React from 'react';
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Progress, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatPanel, ToggleGroup, ToggleGroupItem } from '@hydrotik/design-system';
+import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Progress, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatPanel, ToggleGroup, ToggleGroupItem, Toolbar, ToolbarFormField, ToolbarLeft, ToolbarSummary } from '@hydrotik/design-system';
 import { type Data, type Row, type Scenario, fmt, suiteKeys, suiteTitle } from '../data';
 import { StoryGrid } from '../parts/StoryGrid';
 import { Cmd, t, tx } from '../copy';
@@ -32,13 +32,17 @@ export function Scenarios({ data, onOpen }: { data: Data; onOpen(row: Row, list:
     <div className={s.stack}>
       <div className={s.row}>
         {suites.length > 1 ? (
-          <ToggleGroup type="single" value={suite} onValueChange={(v) => v && (setSuite(v), setName(null))} aria-label={t('diagnostics.scenario.suite')}>
-            {suites.map((k) => (
-              <ToggleGroupItem key={k} value={k}>
-                {suiteTitle(k, all[k])}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+          <Toolbar size="sm">
+            <ToolbarLeft>
+              <ToggleGroup type="single" value={suite} onValueChange={(v) => v && (setSuite(v), setName(null))} aria-label={t('diagnostics.scenario.suite')}>
+                {suites.map((k) => (
+                  <ToggleGroupItem key={k} value={k}>
+                    {suiteTitle(k, all[k])}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            </ToolbarLeft>
+          </Toolbar>
         ) : (
           <strong style={{ fontSize: '0.8125rem' }}>{suiteTitle(suite!, rep)}</strong>
         )}
@@ -99,21 +103,25 @@ export function Scenarios({ data, onOpen }: { data: Data; onOpen(row: Row, list:
               />
             </CardContent>
           </Card>
-          <div className={s.row}>
-            <Select value={filter} onValueChange={setFilter}>
-              <SelectTrigger size="sm" aria-label={t('diagnostics.scenario.filter')} style={{ inlineSize: '15rem' }}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(['changed', 'missed', 'detail', 'fail', 'all'] as const).map((v) => (
-                  <SelectItem key={v} value={v}>
-                    {t(`diagnostics.scenario.filters.${v}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <span className={s.muted}>{t('diagnostics.scenario.sorted')}</span>
-          </div>
+          <Toolbar size="sm">
+            <ToolbarLeft>
+              <ToolbarFormField label={t('diagnostics.scenario.filter')} minInlineSize="15rem">
+                <Select value={filter} onValueChange={setFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(['changed', 'missed', 'detail', 'fail', 'all'] as const).map((v) => (
+                      <SelectItem key={v} value={v}>
+                        {t(`diagnostics.scenario.filters.${v}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </ToolbarFormField>
+              <ToolbarSummary>{t('diagnostics.scenario.sorted')}</ToolbarSummary>
+            </ToolbarLeft>
+          </Toolbar>
           <StoryGrid data={data} rows={rows} scenario={{ tag, name: sc.name }} onOpen={(r, list) => onOpen(r, list, { tag, name: sc.name })} />
         </div>
       </div>

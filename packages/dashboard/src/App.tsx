@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppHeader, AppHeaderTitle, AppHeaderToolbar, AppShell, AppShellContent, Badge, Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, TooltipProvider } from '@hydrotik/design-system';
+import { AppShell, AppShellContent, Badge, Button, Icons, NavItemLink, NavItems, Navbar, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusBadge, TooltipProvider } from '@hydrotik/design-system';
 import { useTheme } from '@hydrotik/theme-provider';
 import { type Data, type Queue, type Row, decisionOf, reviewQueue, rowsWithPending, served, statusOf, switchProject, useData, useProjects } from './data';
 import { Inspector, type InspectTarget } from './inspector/Inspector';
@@ -13,10 +13,10 @@ import { Integrity, IntegrityBanner } from './views/Integrity';
 import { t } from './copy';
 import * as s from './dashboard.css';
 
-// Tab ids are stable (deep links and the remembered tab use them); the labels come from the copy.
+// Section ids are stable (deep links and the remembered section use them); the labels come from the copy.
 const TABS = ['overview', 'stories', 'integrity', 'a11y', 'history', 'diagnostics', 'help'] as const;
 type Tab = (typeof TABS)[number];
-/** Tabs folded into Diagnostics: old links still land there. */
+/** Sections folded into Diagnostics: old links still land there. */
 const MOVED: Record<string, Tab> = { scenarios: 'diagnostics', calibration: 'diagnostics', performance: 'diagnostics' };
 const asTab = (v: string | null): Tab | null => (v && TABS.includes(v as Tab) ? (v as Tab) : v && MOVED[v] ? MOVED[v] : null);
 
@@ -24,9 +24,10 @@ const readHash = () => new URLSearchParams(location.hash.slice(1).includes('=') 
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
+  const label = theme === 'dark' ? t('app.theme.toLight') : t('app.theme.toDark');
   return (
-    <Button size="sm" variant="outline" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-      {theme === 'dark' ? t('app.theme.toLight') : t('app.theme.toDark')}
+    <Button size="icon-sm" variant="ghost" aria-label={label} title={label} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+      {theme === 'dark' ? <Icons.Sun aria-hidden /> : <Icons.Moon aria-hidden />}
     </Button>
   );
 }
@@ -90,6 +91,25 @@ export function App() {
     }
     if (!target) history.replaceState(null, '', `${location.pathname}${location.search}#${tab}`);
   }, [tab, target]);
+  // The section links are plain `#<id>` links: follow them (and Back/Forward) through the hash.
+  React.useEffect(() => {
+    const onHash = () => {
+      const next = asTab(readHash().get('tab'));
+      if (next) setTab(next);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  // A new section starts at its top: <main> is the scroll container.
+  const mainRef = React.useRef<HTMLElement>(null);
+  const firstTab = React.useRef(true);
+  React.useEffect(() => {
+    if (firstTab.current) {
+      firstTab.current = false;
+      return;
+    }
+    mainRef.current?.scrollTo({ top: 0 });
+  }, [tab]);
 
   // #inspect=<id> deep link (PR comments link here)
   const deepLinked = React.useRef(false);
@@ -135,12 +155,39 @@ export function App() {
   // Diagnostics appears only when a research run wrote its data.
   const diagnostics = diagnosticsOf(data).length > 0;
   const shown = tab === 'diagnostics' && !diagnostics ? 'overview' : tab;
+  const status = !sm ? undefined : todo ? 'review-required' : 'approved';
+  // A count after a section's label (COUNTS.md): attention when it asks for action, neutral for a plain total.
+  type Count = { count: number; tone: 'attention' | 'neutral'; label: string };
+  const counted = (count: number, tone: Count['tone'], key: 'review' | 'coverage' | 'a11y' | 'runs'): Count => ({ count, tone, label: t(`tabs.counts.${key}`, { count }) });
+  const link = (id: Tab, label: string, c?: Count) => (
+    <NavItemLink key={id} href={`#${id}`} active={shown === id} count={c?.count} countTone={c?.tone} countLabel={c?.label}>
+      {label}
+    </NavItemLink>
+  );
   return (
     <TooltipProvider>
       <AppShell>
-        <AppHeader status={!sm ? undefined : todo ? 'review-required' : 'approved'}>
-          <AppHeaderTitle tag={sm ? sm.modes.join(' · ') : undefined}>{data.project ? t('app.title', { project: data.project }) : 'pxsig'}</AppHeaderTitle>
-          <AppHeaderToolbar>
+        <Navbar
+          aria-label={t('app.sections')}
+          className={s.navbar}
+          logo={
+            <>
+              <h1 className={s.brand}>{data.project ? t('app.title', { project: data.project }) : 'pxsig'}</h1>
+              {sm ? <Badge variant="secondary" className={s.brandTag}>{sm.modes.join(' · ')}</Badge> : null}
+            </>
+          }
+        >
+          <NavItems>
+            {link('overview', t('tabs.overview'))}
+            {link('stories', t('tabs.review'), counted(todo, 'attention', 'review'))}
+            {link('integrity', t('tabs.coverage'), counted(integrityErrors, 'attention', 'coverage'))}
+            {link('a11y', t('tabs.a11y'), counted(undecided('a11y'), 'attention', 'a11y'))}
+            {link('history', t('tabs.runs'), counted(data.history?.length ?? 0, 'neutral', 'runs'))}
+            {diagnostics ? link('diagnostics', t('tabs.diagnostics')) : null}
+            {link('help', t('tabs.help'))}
+          </NavItems>
+          {/* Pinned controls sit beside the list, so the list's own resize tracking sees them change width. */}
+          <div className={s.navEnd}>
             {served && nextQueue ? (
               <Button size="sm" onClick={() => startReview(nextQueue)}>
                 {t(`app.startReview.${nextQueue}`, { count: undecided(nextQueue) })}
@@ -154,49 +201,22 @@ export function App() {
             ) : (
               <Badge variant="outline">{t('app.connection.static')}</Badge>
             )}
-            <span className={s.micro}>{data.check ? t('app.lastCheck', { date: new Date(data.check.generatedAt).toLocaleString() }) : ''}</span>
+            {data.check ? <span className={[s.micro, s.lastCheck].join(' ')}>{t('app.lastCheck', { date: new Date(data.check.generatedAt).toLocaleString() })}</span> : null}
             <ThemeToggle />
-          </AppHeaderToolbar>
-        </AppHeader>
+            {status ? <StatusBadge status={status} className={served && nextQueue ? s.statusBeside : undefined} /> : null}
+          </div>
+        </Navbar>
         <AppShellContent asChild>
-          <main>
+          <main ref={mainRef}>
             <div className={s.page}>
               <IntegrityBanner data={data} go={go} />
-              <Tabs value={shown} onValueChange={(v) => setTab(v as Tab)}>
-                {/* Pinned under the header: <main> scrolls, the sections stay in reach. */}
-                <div className={s.tabsBar}>
-                  <TabsList aria-label={t('app.sections')}>
-                    <TabsTrigger value="overview">{t('tabs.overview')}</TabsTrigger>
-                    <TabsTrigger value="stories">{todo ? t('tabs.reviewCount', { count: todo }) : t('tabs.review')}</TabsTrigger>
-                    <TabsTrigger value="integrity">{integrityErrors ? t('tabs.coverageCount', { count: integrityErrors }) : t('tabs.coverage')}</TabsTrigger>
-                    <TabsTrigger value="a11y">{t('tabs.a11y')}</TabsTrigger>
-                    <TabsTrigger value="history">{t('tabs.runs')}</TabsTrigger>
-                    {diagnostics ? <TabsTrigger value="diagnostics">{t('tabs.diagnostics')}</TabsTrigger> : null}
-                    <TabsTrigger value="help">{t('tabs.help')}</TabsTrigger>
-                  </TabsList>
-                </div>
-                <TabsContent value="overview">
-                  <Overview data={data} go={go} startReview={startReview} />
-                </TabsContent>
-                <TabsContent value="stories">
-                  <Stories data={data} filter={filter} setFilter={setFilter} onOpen={(r, l) => open(r, l)} startReview={startReview} />
-                </TabsContent>
-                <TabsContent value="integrity">
-                  <Integrity data={data} onOpen={(r, l) => open(r, l)} />
-                </TabsContent>
-                <TabsContent value="a11y">
-                  <Accessibility data={data} onOpen={(r, l) => open(r, l)} startReview={startReview} />
-                </TabsContent>
-                <TabsContent value="history">
-                  <History data={data} />
-                </TabsContent>
-                <TabsContent value="diagnostics">
-                  <Diagnostics data={data} onOpen={open} />
-                </TabsContent>
-                <TabsContent value="help">
-                  <Help data={data} />
-                </TabsContent>
-              </Tabs>
+              {shown === 'overview' ? <Overview data={data} go={go} startReview={startReview} /> : null}
+              {shown === 'stories' ? <Stories data={data} filter={filter} setFilter={setFilter} onOpen={(r, l) => open(r, l)} /> : null}
+              {shown === 'integrity' ? <Integrity data={data} onOpen={(r, l) => open(r, l)} /> : null}
+              {shown === 'a11y' ? <Accessibility data={data} onOpen={(r, l) => open(r, l)} startReview={startReview} /> : null}
+              {shown === 'history' ? <History data={data} /> : null}
+              {shown === 'diagnostics' ? <Diagnostics data={data} onOpen={open} /> : null}
+              {shown === 'help' ? <Help data={data} /> : null}
             </div>
           </main>
         </AppShellContent>

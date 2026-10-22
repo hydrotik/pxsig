@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, AlertDescription, AlertTitle, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DataGrid, StatPanel, StatusBadge } from '@hydrotik/design-system';
+import { Alert, AlertDescription, AlertTitle, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DataGrid, StatPanel, StatusBadge, Toolbar, ToolbarLeft } from '@hydrotik/design-system';
 import { type Data, type IntegrityComponent, type IntegrityEntry, type Row, repairSafe, rowsWithPending, served } from '../data';
 import { Cmd, codeCopy, t, tx } from '../copy';
 import { Affordance } from '../parts/Affordance';
@@ -113,14 +113,16 @@ export function Integrity({ data, onOpen }: { data: Data; onOpen(row: Row, list:
         </CardHeader>
         <CardContent>
           <div className={s.stack}>
-            <span className={s.row}>
-              <Button size="sm" variant={!code && !all ? 'default' : 'outline'} onClick={() => (setAll(false), setCode(null))}>
-                {t('coverage.table.withIssues', { count: L.components.filter((c) => c.severity !== 'info').length })}
-              </Button>
-              <Button size="sm" variant={!code && all ? 'default' : 'outline'} onClick={() => (setAll(true), setCode(null))}>
-                {t('coverage.table.all', { count: L.components.length })}
-              </Button>
-            </span>
+            <Toolbar size="sm">
+              <ToolbarLeft>
+                <Button variant={!code && !all ? 'default' : 'outline'} onClick={() => (setAll(false), setCode(null))}>
+                  {t('coverage.table.withIssues', { count: L.components.filter((c) => c.severity !== 'info').length })}
+                </Button>
+                <Button variant={!code && all ? 'default' : 'outline'} onClick={() => (setAll(true), setCode(null))}>
+                  {t('coverage.table.all', { count: L.components.length })}
+                </Button>
+              </ToolbarLeft>
+            </Toolbar>
             {comps.length ? (
               <DataGrid
                 data={comps}

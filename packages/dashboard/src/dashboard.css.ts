@@ -11,6 +11,9 @@ const checker = `repeating-conic-gradient(${vars.color.surfaceElevated} 0 25%, $
 
 globalStyle('html, body, #root', { blockSize: '100%', margin: 0 });
 globalStyle('body', { backgroundColor: vars.color.background, color: vars.color.text, fontFamily: vars.font.family.sans });
+// A control's height includes its border (CONTROLS.md); ToggleGroup's root relies on a page-wide
+// border-box reset this page does not have, and grows by its 2px border without one.
+globalStyle('[data-control]', { boxSizing: 'border-box' });
 
 export const page = style({
   display: 'flex',
@@ -22,20 +25,24 @@ export const page = style({
   paddingInline: vars.space['4'],
   boxSizing: 'border-box',
   inlineSize: '100%',
+  // The page's own layers (card affordances) stay under menus and popovers, which portal to <body>.
+  isolation: 'isolate',
 });
 
-// The section tabs stay at the top of the scrolling <main>. The bar spans the page's inline padding
-// on the page background, so content scrolling under it never shows beside the tabs.
-export const tabsBar = style({
-  position: 'sticky',
-  insetBlockStart: 0,
-  zIndex: 2,
-  marginInline: `calc(-1 * ${vars.space['4']})`,
-  paddingInline: vars.space['4'],
-  paddingBlock: vars.space['2'],
-  marginBlock: `calc(-1 * ${vars.space['2']})`,
-  backgroundColor: vars.color.background,
-});
+// The top bar: the report's mark, the section links, then the controls pinned at the end. It sits
+// above the scrolling <main>, so it needs no sticky positioning. The bar is a size container: at
+// narrow widths the modes tag, the last-check time and a repeated review status give their room to
+// the section links, and the links that still do not fit move into the bar's More menu.
+export const navbar = style({ flexShrink: 0, containerType: 'inline-size' });
+export const brand = style({ margin: 0, fontSize: vars.font.size.sm, fontWeight: vars.font.weight.semibold, whiteSpace: 'nowrap' });
+export const brandTag = style({ '@container': { '(inline-size < 64rem)': { display: 'none' } } });
+// The overflow menu holds the section links as menu items; they read as items, not underlined links.
+globalStyle('[role="menuitem"]:is(a)', { textDecoration: 'none', color: 'inherit' });
+globalStyle('[role="menuitem"]:is(a)[aria-current="page"]', { fontWeight: vars.font.weight.semibold, color: vars.color.primary });
+export const navEnd = style({ display: 'flex', flexShrink: 0, alignItems: 'center', gap: vars.space['2'] });
+/** The review status, when the review button beside it already says what is waiting. */
+export const statusBeside = style({ '@container': { '(inline-size < 48rem)': { display: 'none' } } });
+export const lastCheck = style({ whiteSpace: 'nowrap', '@container': { '(inline-size < 80rem)': { display: 'none' } } });
 
 export const stack = style({ display: 'flex', flexDirection: 'column', gap: vars.space['4'], minInlineSize: 0 });
 export const row = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: vars.space['2'] });
@@ -209,7 +216,8 @@ export const insHead = style({
   paddingInline: vars.space['4'],
   borderBlockEnd: `1px solid ${vars.color.border}`,
 });
-export const insTitle = style({ margin: 0, fontFamily: vars.font.family.mono, fontSize: vars.font.size.sm, wordBreak: 'break-all' });
+// Focused (tabIndex -1) only as the dialog's starting point; it is not a control, so no focus ring.
+export const insTitle = style({ margin: 0, fontFamily: vars.font.family.mono, fontSize: vars.font.size.sm, wordBreak: 'break-all', outline: 'none' });
 // Review session: progress above the inspector, a summary when every entry is decided.
 export const sessionBar = style({
   display: 'flex',
@@ -359,6 +367,8 @@ export const insSide = style({
   boxSizing: 'border-box',
 });
 export const sideSection = style({ display: 'flex', flexDirection: 'column', gap: vars.space['2'] });
+// A side section's title, with its action (the Storybook link on Pixel) at the end of the row.
+export const sectionHead = style({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: vars.space['2'] });
 export const sectionTitle = style({ margin: 0, fontSize: vars.font.size.sm, fontWeight: vars.font.weight.semibold });
 export const readout = style({ display: 'flex', flexDirection: 'column', gap: vars.space['1_5'], minBlockSize: '6.5rem' });
 // Every row is as tall as its tallest content (the Δ badge), with or without a value.

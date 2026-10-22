@@ -20,11 +20,13 @@ import {
   ToolbarLeft,
   ToolbarRight,
   Badge,
+  Icons,
 } from '@hydrotik/design-system';
 import { type Data, type Queue, type Row, a11yAction, decisionOf, fmt, pathsFor, reviewAction, served, statusOf } from '../data';
 import { analyse, cellsLayer, hex, loadImg, readPixels, type Analysis } from './analyse';
 import { Stage, type Hover, type Mode, type StageApi } from './Stage';
 import { StatusOf } from '../parts/StatusOf';
+import { storybookLink } from '../storybook-link.mjs';
 import { Cmd, t, tx } from '../copy';
 import * as s from '../dashboard.css';
 
@@ -326,7 +328,8 @@ export function Inspector({
       : `${W}×${H}`;
   // A served URL (/p/<project>/renders/…) or a static one (./renders/…) → the file in the store.
   const repoPath = (u: string) => `${data.store ?? '.pxsig'}/${u.replace(/^\/p\/[^/]+\//, '').replace(/^\.\//, '')}`;
-  const sb = `${data.storybook.baseUrl}/?path=/story/${row.story ?? row.id}`;
+  const sbLink = storybookLink(data.storybook.baseUrl, row, data.check?.manifest?.modes);
+  const sb = sbLink.url;
   const cw = W / (m?.grid ?? 64);
   const chh = H / (m?.grid ?? 64);
   const dmax =
@@ -508,6 +511,9 @@ export function Inspector({
     ) : null;
   // Embedded (Storybook panel) there is no Dialog around the body, so no Dialog parts.
   const Title = embedded ? 'h3' : DialogTitle;
+  // The dialog opens on its title, not on the first control: a control focused by script before any
+  // pointer input shows the keyboard focus ring (a reload with #inspect=… did, on the first mode).
+  const titleRef = React.useRef<HTMLHeadingElement>(null);
   const Desc = embedded ? 'p' : DialogDescription;
 
   // --- review session: progress while deciding, then a summary with the next steps ---------------
@@ -582,7 +588,10 @@ export function Inspector({
                 ? t('inspector.contextScenario', { name: target!.scenario.name })
                 : `${t('inspector.contextLatest', { mode: row.mode })}${row.state ? ` · ${row.state}` : ''}${row.browser && row.browser !== 'chromium' ? ` · ${row.browser}` : ''}`}
             </div>
-            <Title className={s.insTitle}>{row.id}</Title>
+            <Title ref={titleRef} tabIndex={-1} className={s.insTitle}>
+              {row.id}
+            </Title>
+            {sbLink.state ? <div className={`${s.micro} ${s.muted}`}>{t('inspector.storybook.state', { state: sbLink.state })}</div> : null}
             <Desc className={s.micro} style={{ margin: 0 }}>
               {row.reasons?.length
                 ? row.reasons.join(' · ')
@@ -606,7 +615,7 @@ export function Inspector({
       )}
 
       {rejectedNote}
-      <Toolbar className={s.insToolbar}>
+      <Toolbar size="sm" className={s.insToolbar}>
         <ToolbarLeft>
           {embedded ? <StatusOf status={statusOf(row, data.review)} /> : null}
           <ToggleGroup
@@ -623,7 +632,7 @@ export function Inspector({
           </ToggleGroup>
           <span className={s.row}>
             <Button
-              size="icon-sm"
+              size="icon"
               variant="outline"
               aria-label={t('inspector.zoomOut')}
               onClick={() => stage.current?.zoomBy(1 / 1.5)}
@@ -638,7 +647,7 @@ export function Inspector({
               {Math.round(zoom * 100)}%
             </span>
             <Button
-              size="icon-sm"
+              size="icon"
               variant="outline"
               aria-label={t('inspector.zoomIn')}
               onClick={() => stage.current?.zoomBy(1.5)}
@@ -646,7 +655,6 @@ export function Inspector({
               +
             </Button>
             <Button
-              size="sm"
               variant="outline"
               title={t('inspector.fitTitle')}
               onClick={() => stage.current?.fit()}
@@ -654,7 +662,6 @@ export function Inspector({
               {t('inspector.fit')}
             </Button>
             <Button
-              size="sm"
               variant="outline"
               title={t('inspector.actualTitle')}
               onClick={() => stage.current?.zoomTo(1)}
@@ -676,7 +683,7 @@ export function Inspector({
           {pixels && !embedded ? (
             <span className={s.row}>
               <Button
-                size="icon-sm"
+                size="icon"
                 variant="outline"
                 disabled={!regions.length}
                 aria-label={t('inspector.nav.prevChange')}
@@ -690,7 +697,7 @@ export function Inspector({
                   : t('inspector.nav.noChanges')}
               </span>
               <Button
-                size="icon-sm"
+                size="icon"
                 variant="outline"
                 disabled={!regions.length}
                 aria-label={t('inspector.nav.nextChange')}
@@ -796,7 +803,22 @@ export function Inspector({
               </section>
             ) : null}
             <section className={s.sideSection}>
-              <h4 className={s.sectionTitle}>{t('inspector.sections.pixel')}</h4>
+              <div className={s.sectionHead}>
+                <h4 className={s.sectionTitle}>{t('inspector.sections.pixel')}</h4>
+                {embedded ? null : (
+                  <Button asChild size="sm" variant="outline">
+                    <a
+                      href={sb}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={sbLink.globals ? t('inspector.storybook.title', { globals: sbLink.globals }) : t('inspector.storybook.titlePlain')}
+                    >
+                      {t('inspector.storybook.open')}
+                      <Icons.ExternalLink aria-hidden size="1em" />
+                    </a>
+                  </Button>
+                )}
+              </div>
               <div className={s.readout}>
                 {loaded && loaded !== 'missing' && !loaded.a ? (
                   <span className={s.muted}>{t('inspector.pixel.noBaseline')}</span>
@@ -1066,7 +1088,15 @@ export function Inspector({
   if (embedded) return <div className={s.embed}>{body}</div>;
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className={s.inspector} showCloseButton={false} aria-describedby={undefined}>
+      <DialogContent
+        className={s.inspector}
+        showCloseButton={false}
+        aria-describedby={undefined}
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          requestAnimationFrame(() => titleRef.current?.focus({ preventScroll: true }));
+        }}
+      >
         {body}
       </DialogContent>
     </Dialog>

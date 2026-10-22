@@ -3,6 +3,35 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
+## Unreleased
+
+### Changed
+
+- **The dashboard has one top bar.** The design system's `Navbar` replaces the header and the
+  section tabs: the report's name, the sections as links (`#overview`, `#stories`, …, the same
+  hashes as before, and Back and Forward now move between them), and the review button, project
+  picker, connection, last check, theme and review status at the end. Sections that do not fit a
+  narrow window move into the bar's More menu.
+- **Section counts are badges.** Review Stories, Coverage and Accessibility show how many entries
+  need a decision as an accent count after the label, and Runs shows its total in a neutral one.
+  Each count is part of the link's accessible name ("Review Stories, 6 to review"), and nothing
+  shows at zero. The start-review button keeps its count in its wording.
+- **Toolbars line up.** Each toolbar sets one control size, so the Stories search and its selects
+  share a height and their labels a line, and "1,024 of 1,024" sits on the controls' line as a
+  summary that is announced as the filters change. The inspector's toolbar and the Coverage,
+  Diagnostics and scenario rows follow the same rule.
+- **Open in Storybook from the inspector.** A Storybook button beside the Pixel heading opens the
+  entry's story in Storybook with the entry's globals (theme, colorway, preset), so an `@light`
+  entry opens in the light theme. An interaction state, which only a check can set, is noted under
+  the entry's id. Check
+  rows now carry the entry's `globals`.
+
+### Fixed
+
+- **Removed stories no longer linger.** `pxsig serve` drops `check.json` rows whose entry is no
+  longer in the manifest, on start, whenever the manifest is reloaded and after every check, so a
+  story deleted on another branch stops showing as a stale new or failing entry.
+
 ## 0.2.5 - 2026-10-20
 
 A fix for the render-error guard found by testing it against a real broken Storybook, and section
