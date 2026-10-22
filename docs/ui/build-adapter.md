@@ -23,6 +23,29 @@ Read, in `node_modules/pxsig/` (or `packages/dashboard/` in a clone of pxsig):
 
 The types are importable: `import type * as C from 'pxsig/dashboard'`.
 
+## The shortest path
+
+In the project that holds `pxsig.config.json`:
+
+```bash
+pnpm add -D pxsig vite @vitejs/plugin-react @vanilla-extract/vite-plugin react react-dom
+mkdir pxsig-ui      # the adapter: index.tsx (+ conformance.json), as below
+```
+
+```json
+{ "dashboard": { "ui": "./pxsig-ui" } }
+```
+
+```bash
+pxsig dashboard gaps    # what the adapter covers so far
+pxsig dashboard build   # writes node_modules/.cache/pxsig/dashboard
+pxsig serve             # serves that build
+```
+
+`pxsig serve` uses the build while it is newer than every file in the adapter's folder and was made
+by the same pxsig version. Otherwise it serves the prebuilt dashboard and prints one line with the
+command to run; it never builds by itself. `PXSIG_DASHBOARD_DIR` overrides both.
+
 ## Set up
 
 1. Create a folder in your project, for example `pxsig-ui/`, with an `index.tsx`.
@@ -577,7 +600,7 @@ draw them with your own segmented control and buttons.
 1. `pxsig dashboard gaps`: no problems, every required component present; each `partial` and
    `bespoke` has a note.
 2. `pxsig dashboard build`: the build succeeds.
-3. Serve it with your project's data (`PXSIG_DASHBOARD_DIR=<out> pxsig serve`) and walk
+3. Serve it with your project's data (`pxsig serve`; its first line names the dashboard it serves) and walk
    [features.md](features.md) section by section in both themes: every state, interaction and key.
 4. Side by side with the reference: open the same project in the prebuilt dashboard (`pxsig serve`
    without `PXSIG_DASHBOARD_DIR`) and compare each section and the inspector on one entry with

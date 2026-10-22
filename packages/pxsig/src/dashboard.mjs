@@ -8,10 +8,13 @@
  * --ui defaults to `dashboard.ui` in the current folder's pxsig.config.json. The dashboard's source
  * ships in this package (`dashboard/`, or `../dashboard` in a source checkout); the build runs Vite
  * from the current project, which needs vite, @vitejs/plugin-react, @vanilla-extract/vite-plugin,
- * react and react-dom installed. The prebuilt dashboard in dist/ is untouched: serve the new one with
- * PXSIG_DASHBOARD_DIR=<out>.
+ * react and react-dom installed. The default output (node_modules/.cache/pxsig/dashboard, with a
+ * pxsig-build.json stamp) is what `pxsig serve` serves while it is current (lib/dashboard-dir.mjs);
+ * the prebuilt dashboard in dist/ is untouched.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { buildDirFor, STAMP } from './lib/dashboard-dir.mjs';
+import { PXSIG_VERSION } from './lib/workspace.mjs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -60,12 +63,15 @@ export async function build(flags, cwd = process.cwd(), log = (m) => process.std
   const react = (await imp('@vitejs/plugin-react')).default;
   const { vanillaExtractPlugin } = await imp('@vanilla-extract/vite-plugin');
   const { classicScript } = await load(src, 'postbuild.mjs');
-  const outDir = resolve(cwd, typeof flags.out === 'string' ? flags.out : 'node_modules/.cache/pxsig/dashboard');
+  // The default folder is where `pxsig serve` looks for this project's build.
+  const outDir = typeof flags.out === 'string' ? resolve(cwd, flags.out) : buildDirFor(cwd);
   log(`[dashboard] building with the "${ui.name}" adapter (${relative(cwd, ui.file) || ui.file}) into ${relative(cwd, outDir) || outDir}`);
   const config = await dashboardConfig({ adapter: ui.file, cwd, outDir, resolveFrom: [cwd], react, vanillaExtractPlugin, root: src });
   await vite.build({ ...config, configFile: false });
   classicScript(outDir);
-  return { outDir, adapter: ui.name };
+  // What serve compares: this pxsig's version and when the build ran (against the adapter's edits).
+  writeFileSync(join(outDir, STAMP), `${JSON.stringify({ adapter: ui.file, pxsig: PXSIG_VERSION, builtAt: Date.now() }, null, 2)}\n`);
+  return { outDir, adapter: ui.name, fromConfig: ui.from === 'pxsig.config.json dashboard.ui' };
 }
 
 /** The CLI entry: `pxsig dashboard <build | gaps>`. Returns an exit code. */
@@ -76,8 +82,9 @@ export async function dashboardCommand(sub, flags, { emit = (s) => process.stdou
     return report.problems.length ? 1 : 0;
   }
   if (sub === 'build') {
-    const { outDir } = await build(flags);
-    emit(flags.json ? JSON.stringify({ outDir }) : `built ${outDir}\nserve it: PXSIG_DASHBOARD_DIR=${outDir} pxsig serve`);
+    const { outDir, fromConfig } = await build(flags);
+    const usual = !flags.out && fromConfig;
+    emit(flags.json ? JSON.stringify({ outDir }) : `built ${outDir}\n${usual ? 'pxsig serve serves it from now on, while it is newer than the adapter' : `serve it: PXSIG_DASHBOARD_DIR=${outDir} pxsig serve`}`);
     return 0;
   }
   throw new Error('usage: pxsig dashboard build [--ui <path>] [--out <dir>] | pxsig dashboard gaps [--ui <path>] [--json]');

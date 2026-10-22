@@ -190,6 +190,7 @@ function runCustomUi() {
   r = pxsig(['dashboard', 'build', '--out', 'dashboard-build'], dir);
   expect(r.status === 0 && existsSync(join(dir, 'dashboard-build', 'index.html')) && existsSync(join(dir, 'dashboard-build', 'assets', 'app.js')), `build: index.html and assets/app.js${r.status ? `\n${r.stdout}${r.stderr}` : ''}`);
   expect(!/type="module"/.test(readFileSync(join(dir, 'dashboard-build', 'index.html'), 'utf8')), 'build: a classic script, so a static report opens from disk');
+  expect(JSON.parse(readFileSync(join(dir, 'dashboard-build', 'pxsig-build.json'), 'utf8')).pxsig, 'build: stamped with the pxsig version, for serve');
   log(`${name}: done (${dir})`);
 }
 

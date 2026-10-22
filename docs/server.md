@@ -69,6 +69,11 @@ With several projects, a switcher in the top bar picks one. URL parameters:
 The dashboard ships prebuilt in the `pxsig` npm package. In a clone without a build, the API works
 and `/report/` answers 404 with "the dashboard is not built".
 
+A project can rebuild the dashboard on its own design system (`dashboard.ui`, `pxsig dashboard
+build`: [ui/build-adapter.md](ui/build-adapter.md)). The server then serves that build while it is
+current (newer than the adapter's files, same pxsig version); otherwise it serves the prebuilt one
+and prints the command that rebuilds it. `PXSIG_DASHBOARD_DIR` names a dashboard folder outright.
+
 ## HTTP API
 
 GET requests take `?project=<name>`; POST requests take a `project` field in the JSON body. Either

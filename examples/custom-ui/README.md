@@ -7,8 +7,8 @@ required contract component and a few optional ones; the rest render the dashboa
 ```bash
 pnpm install
 pnpm dashboard:gaps     # pxsig dashboard gaps: what the adapter covers, and what it leaves to fallbacks
-pnpm dashboard:build    # pxsig dashboard build --out dashboard-build
-PXSIG_DASHBOARD_DIR=dashboard-build pxsig serve
+pnpm dashboard:build    # pxsig dashboard build: node_modules/.cache/pxsig/dashboard
+pxsig serve             # serves that build while it is newer than pxsig-ui/
 ```
 
 `pxsig.config.json` names the adapter (`"dashboard": { "ui": "./pxsig-ui" }`). The adapter's types

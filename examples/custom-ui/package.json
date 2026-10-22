@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dashboard:gaps": "pxsig dashboard gaps",
-    "dashboard:build": "pxsig dashboard build --out dashboard-build"
+    "dashboard:build": "pxsig dashboard build"
   },
   "devDependencies": {
     "@vanilla-extract/vite-plugin": "^5.2.6",

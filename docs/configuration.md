@@ -145,7 +145,7 @@ The smallest config is `{}`: every key has a default. `pxsig init` writes
 | `nonVisual` | `[]` | Top-level folders under `srcRoot` with no visual stories. Their stories are not entries and are reported as `excluded`. |
 | `a11y` | `true` | Run axe on every render. |
 | `integrity` | `{}` | Integrity options (below). |
-| `dashboard.ui` | none | A UI adapter for `pxsig dashboard build` and `gaps`: a path to its module, relative to this folder (see [ui/build-adapter.md](ui/build-adapter.md)). The prebuilt dashboard does not read it. |
+| `dashboard.ui` | none | A UI adapter for `pxsig dashboard build` and `gaps`: a path to its module, relative to this folder, or a built-in adapter's name (see [ui/build-adapter.md](ui/build-adapter.md)). `pxsig serve` then serves this project's build while it is current. |
 
 ### `gate`
 
@@ -220,7 +220,7 @@ names must exist in `modes`. `addModes` is accepted as another name for `modes`.
 | `PXSIG_GRID` | CLI, MCP, server, binary | Overrides `grid`. |
 | `PXSIG_SOURCES` | CLI, MCP, server | Comma-separated workspace-relative paths whose change selects every entry. Replaces `affects` (workspace dependencies are not added), and replaces the staleness source roots. |
 | `PXSIG_FORMAT` | CLI | Output format: `pretty`, `plain` or `json`. |
-| `PXSIG_DASHBOARD_DIR` | server, `report` | A dashboard built by `pxsig dashboard build`, served instead of the prebuilt one. |
+| `PXSIG_DASHBOARD_DIR` | server, `report` | A dashboard folder to serve or write instead of the prebuilt one, above `dashboard.ui`'s build. |
 | `PXSIG_UI_ADAPTER` | dashboard build | The UI adapter, by built-in name or path; above `dashboard.ui`. |
 | `PXSIG_AGENT` | CLI | Set to mark the shell as an agent: plain output, and commands that need a person are refused. |
 | `PXSIG_NO_DELEGATE` | CLI | Do not hand over to the workspace root's install (see [monorepo.md](monorepo.md#installs)). |
