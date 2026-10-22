@@ -297,7 +297,8 @@ export interface ToolbarFieldProps {
   label: string;
   minInlineSize?: string;
   grow?: boolean;
-  children: React.ReactNode;
+  /** The one control the label names (it may receive an `id`). */
+  children: React.ReactElement<{ id?: string }>;
 }
 /** A count or note on the toolbar's control line ("1,024 of 1,024"). */
 export interface ToolbarSummaryProps {

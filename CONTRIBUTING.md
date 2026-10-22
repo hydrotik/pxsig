@@ -82,6 +82,7 @@ needs its entry in `features.ts`. Then:
 pnpm ui:docs     # regenerate src/ui/manifest.json and docs/ui/features.md
 pnpm ui:check    # what CI runs: no design-system import outside the adapters; code and docs agree
 pnpm ui:gaps     # the reference adapter's conformance
+pnpm typecheck   # tsc over the dashboard and the plain example; with PXSIG_DS_SOURCE, the reference adapter too
 ```
 
 ## Pull requests

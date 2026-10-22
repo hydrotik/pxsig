@@ -1,0 +1,26 @@
+{
+  "//": "pnpm typecheck: the dashboard (contract, views, diff viewer, fallbacks), its test harness and the plain example adapter. The reference adapter compiles against a design-system checkout: scripts/typecheck.mjs adds it when PXSIG_DS_SOURCE is set.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowJs": false,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "allowImportingTsExtensions": true,
+    "types": [],
+    "baseUrl": ".",
+    "paths": {
+      "@ui": ["packages/dashboard/src/ui/index.ts"],
+      "pxsig/dashboard": ["packages/dashboard/src/ui/contract.ts"],
+      "pxsig/diff-viewer": ["packages/dashboard/src/diff-viewer/index.ts"]
+    }
+  },
+  "include": ["packages/dashboard/src", "packages/dashboard/test/harness", "examples/custom-ui/pxsig-ui", "types"],
+  "exclude": ["packages/dashboard/src/ui/adapters/hydrotik"]
+}

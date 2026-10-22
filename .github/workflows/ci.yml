@@ -57,6 +57,8 @@ jobs:
           path: target/release
       - run: chmod +x target/release/pxsig
       - run: pnpm --filter pxsig test
+      # tsc --noEmit: the dashboard, its test harness and the plain example adapter.
+      - run: pnpm typecheck
       # The diff-viewer primitives in a browser (keyboard, ARIA, controlled state).
       - run: pnpm --filter pxsig exec playwright install --with-deps chromium
       - run: pnpm --filter @pxsig/dashboard test

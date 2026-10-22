@@ -221,7 +221,8 @@ function Grid<T>({ rows, rowId, columns, onRowClick, search, paginate }: C.DataT
         ...(c.field ? { accessorKey: c.field } : {}),
         header: c.header,
         ...(c.align === 'end' ? { align: 'right' as const } : {}),
-        ...(c.width ? { size: c.width } : {}),
+        // The grid sizes columns in pixels: a px width maps; any other CSS width is left to the grid.
+        ...(c.width?.endsWith('px') ? { size: parseFloat(c.width) } : {}),
         ...(c.cell ? { cell: ({ row }: { row: { original: T } }) => c.cell!(row.original) } : {}),
       }))}
     />
@@ -275,7 +276,7 @@ export function Dialog({ open, onOpenChange, initialFocus, className, children }
         aria-describedby={undefined}
         {...(initialFocus
           ? {
-              onOpenAutoFocus: (e: Event) => {
+              onOpenAutoFocus: (e: { preventDefault(): void }) => {
                 e.preventDefault();
                 requestAnimationFrame(() => initialFocus.current?.focus({ preventScroll: true }));
               },
@@ -363,7 +364,8 @@ export const AlertDescription = ({ children }: C.AlertDescriptionProps) => <DS.A
 export const SearchField = ({ id, value, onValueChange, placeholder }: C.SearchFieldProps) => <DS.SearchBar id={id} value={value} onValueChange={onValueChange} placeholder={placeholder} />;
 
 export const Select = ({ id, value, onValueChange, options, label, size, inlineSize }: C.SelectProps) => (
-  <DS.Select id={id} value={value} onValueChange={onValueChange}>
+  // The root passes `id` on to its trigger (untyped), so a toolbar field's label names it.
+  <DS.Select {...((id ? { id } : {}) as object)} value={value} onValueChange={onValueChange}>
     <DS.SelectTrigger {...(size ? { size } : {})} {...(label ? { 'aria-label': label } : {})} {...(inlineSize ? { style: { inlineSize } } : {})}>
       <DS.SelectValue />
     </DS.SelectTrigger>

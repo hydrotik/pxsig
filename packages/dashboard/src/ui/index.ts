@@ -30,7 +30,7 @@ export const adapterName: string = adapter.name;
 const Provider = pick('UiProvider');
 /** The app's root: owns theme mode and hands it to the adapter's provider. */
 export function UiRoot({ children }: { children: React.ReactNode }) {
-  return React.createElement(ThemeModeProvider, null, (mode: 'light' | 'dark') => React.createElement(Provider, { mode }, children));
+  return React.createElement(ThemeModeProvider, { children: (mode: 'light' | 'dark') => React.createElement(Provider, { mode, children }) });
 }
 
 export const AppShell = pick('AppShell');

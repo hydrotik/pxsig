@@ -10,7 +10,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 /** Package name → folder, for every package.json one level under the checkout's package folders. */
-function packagesIn(root) {
+export function packagesIn(root) {
   const out = {};
   for (const group of ['packages', 'apps']) {
     const dir = path.join(root, group);

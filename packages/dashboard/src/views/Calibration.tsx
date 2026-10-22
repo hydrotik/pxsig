@@ -5,6 +5,16 @@ import { Lines } from '../parts/Charts';
 import { Cmd, t, tx } from '../copy';
 import * as s from '../dashboard.css';
 
+/** One admissible detail-channel build, as a table row. */
+interface DetailRow {
+  id: string;
+  build: string;
+  rule: string;
+  caught: string;
+  detailOnly: number;
+  kb: string;
+}
+
 function GridSweep({ cal, title }: { cal: CalibrationReport; title: string }) {
   const grids = cal.grids ?? [];
   if (!grids.length) return <div className={s.empty}>{t('diagnostics.calibration.noGrids', { suite: title })}</div>;
@@ -67,7 +77,7 @@ export function Calibration({ data }: { data: Data }) {
           </CardHeader>
           <CardContent>
             <DataTable
-              rows={d.topAdmissible.map((c: any, i: number) => ({ id: String(i), build: `${c.build.tile}px / ${c.build.block}px / sel ${c.build.selEnergy}`, rule: `≥${c.k} tiles, Δ>${c.T}, rise>${c.E ?? '∞'}`, caught: `${c.caught}/${c.changed}`, detailOnly: c.detailOnly, kb: (c.avgRecordBytes / 1024).toFixed(1) }))}
+              rows={(d.topAdmissible as any[]).map((c: any, i: number): DetailRow => ({ id: String(i), build: `${c.build.tile}px / ${c.build.block}px / sel ${c.build.selEnergy}`, rule: `≥${c.k} tiles, Δ>${c.T}, rise>${c.E ?? '∞'}`, caught: `${c.caught}/${c.changed}`, detailOnly: c.detailOnly, kb: (c.avgRecordBytes / 1024).toFixed(1) }))}
               rowId={(r) => r.id}
               columns={[
                 { id: 'build', field: 'build', header: t('diagnostics.calibration.build') },
