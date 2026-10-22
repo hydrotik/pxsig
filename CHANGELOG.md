@@ -3,6 +3,15 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
+## Unreleased
+
+### Fixed
+- The Overview's Duration card read `NaN` after a check run from the server (`pxsig serve`: the
+  dashboard's or the Storybook panel's Check all). The server's check wrote the counts but no
+  timings, so a store whose last report came from the server had no `totalMs`. A full re-check now
+  records `totalMs`, `renderWallMs`, `concurrency`, `pageLoads` and `rustEngineMs`; a partial one
+  keeps the last full run's. A report without timings shows a dash.
+
 ## 0.3.0 - 2026-10-22
 
 The dashboard can be built on any design system: a UI contract, a build-time adapter switch,
