@@ -3,7 +3,11 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
-## Unreleased
+## 0.3.0 - 2026-10-22
+
+The dashboard can be built on any design system: a UI contract, a build-time adapter switch,
+unstyled diff-viewer primitives, and the instructions an agent needs to write an adapter, shipped in
+the package. The dashboard moves onto the design system's Navbar and passes axe.
 
 ### Added
 
