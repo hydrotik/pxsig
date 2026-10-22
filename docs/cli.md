@@ -246,9 +246,11 @@ Integrity per component, and the safe repairs. See [integrity.md](integrity.md#p
 
 | Command | Meaning |
 | --- | --- |
-| `pxsig serve [--port 6070] [--watch] [--no-open] [--tab name] [--project a,b]` | The server and dashboard for the workspace. See [server.md](server.md). |
+| `pxsig serve [--port 6070] [--watch] [--no-open] [--tab name] [--project a,b]` | The server and dashboard for the workspace. See [server.md](server.md). The dashboard is `PXSIG_DASHBOARD_DIR` if set; else, when a served project sets `dashboard.ui`, its `pxsig dashboard build` output if that is newer than the adapter's files and from this pxsig version; else the prebuilt one, with a line saying which command builds the missing or stale one. Serve never builds. |
 | `pxsig mcp` | The MCP server on stdio. See [mcp.md](mcp.md). |
 | `pxsig report [--out dir]` | A static dashboard for one project, which opens from disk. Default `<store>/reports/site/`. Exits 2 on any error. |
+| `pxsig dashboard build [--ui path] [--out dir]` | Rebuild the dashboard on this project's design system through a UI adapter (`--ui`, else `dashboard.ui`), with the project's own Vite (`vite`, `@vitejs/plugin-react`, `@vanilla-extract/vite-plugin`, `react`, `react-dom` installed). Run it in the folder of that `pxsig.config.json`. Default output `node_modules/.cache/pxsig/dashboard`, which `pxsig serve` then uses (below); `--out` writes elsewhere (serve it with `PXSIG_DASHBOARD_DIR`). See [ui/build-adapter.md](ui/build-adapter.md). |
+| `pxsig dashboard gaps [--ui path] [--json]` | What the adapter covers of the UI contract: missing, partial and bespoke components and the dashboard files each affects. Exit 1 when a required component is missing or its `conformance.json` is malformed. |
 | `pxsig cat <file> [--image out.png]` | Print a baseline's header as JSON (git's textconv for `*.psig`). `--image` writes a `.psig`'s baseline image. |
 
 ## The engine binary

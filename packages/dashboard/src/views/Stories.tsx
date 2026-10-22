@@ -1,5 +1,5 @@
 import React from 'react';
-import { SearchBar, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Toolbar, ToolbarFormField, ToolbarLeft, ToolbarRight, ToolbarSummary } from '@hydrotik/design-system';
+import { SearchField, Select, Toolbar, ToolbarEnd, ToolbarField, ToolbarStart, ToolbarSummary } from '@ui';
 import { type Data, type Row, rowsWithPending, statusOf } from '../data';
 import { StoryGrid } from '../parts/StoryGrid';
 import { Cmd, t, tx } from '../copy';
@@ -32,66 +32,41 @@ export function Stories({ data, filter, setFilter, onOpen }: { data: Data; filte
   return (
     <div className={s.stack}>
       <Toolbar size="sm">
-        <ToolbarLeft>
-          <ToolbarFormField label={t('review.fields.story')} minInlineSize="14rem" flexGrow={1}>
-            <SearchBar value={q} onValueChange={setQ} placeholder={t('review.search')} />
-          </ToolbarFormField>
-          <ToolbarFormField label={t('review.fields.result')} minInlineSize="11rem">
-            <Select value={filter} onValueChange={setFilter}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FILTERS.map((v) => (
-                  <SelectItem key={v} value={v}>
-                    {t(`review.filters.${v}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </ToolbarFormField>
-          <ToolbarFormField label={t('review.fields.mode')} minInlineSize="8rem">
-            <Select value={mode} onValueChange={setMode}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('review.allModes')}</SelectItem>
-                {modes.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {m}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </ToolbarFormField>
-          <ToolbarFormField label={t('review.fields.sort')} minInlineSize="10rem">
-            <Select value={sort} onValueChange={setSort}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="worst">{t('review.sort.worst')}</SelectItem>
-                <SelectItem value="id">{t('review.sort.id')}</SelectItem>
-                <SelectItem value="render">{t('review.sort.render')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </ToolbarFormField>
-          <ToolbarFormField label={t('review.group.label')} minInlineSize="10rem">
-            <Select value={grouped ? 'component' : 'none'} onValueChange={(v) => setGrouped(v === 'component')}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="component">{t('review.group.component')}</SelectItem>
-                <SelectItem value="none">{t('review.group.none')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </ToolbarFormField>
-        </ToolbarLeft>
-        <ToolbarRight>
+        <ToolbarStart>
+          <ToolbarField label={t('review.fields.story')} minInlineSize="14rem" grow>
+            <SearchField value={q} onValueChange={setQ} placeholder={t('review.search')} />
+          </ToolbarField>
+          <ToolbarField label={t('review.fields.result')} minInlineSize="11rem">
+            <Select value={filter} onValueChange={setFilter} options={FILTERS.map((v) => ({ value: v, label: t(`review.filters.${v}`) }))} />
+          </ToolbarField>
+          <ToolbarField label={t('review.fields.mode')} minInlineSize="8rem">
+            <Select value={mode} onValueChange={setMode} options={[{ value: 'all', label: t('review.allModes') }, ...modes.map((m) => ({ value: m, label: m }))]} />
+          </ToolbarField>
+          <ToolbarField label={t('review.fields.sort')} minInlineSize="10rem">
+            <Select
+              value={sort}
+              onValueChange={setSort}
+              options={[
+                { value: 'worst', label: t('review.sort.worst') },
+                { value: 'id', label: t('review.sort.id') },
+                { value: 'render', label: t('review.sort.render') },
+              ]}
+            />
+          </ToolbarField>
+          <ToolbarField label={t('review.group.label')} minInlineSize="10rem">
+            <Select
+              value={grouped ? 'component' : 'none'}
+              onValueChange={(v) => setGrouped(v === 'component')}
+              options={[
+                { value: 'component', label: t('review.group.component') },
+                { value: 'none', label: t('review.group.none') },
+              ]}
+            />
+          </ToolbarField>
+        </ToolbarStart>
+        <ToolbarEnd>
           <ToolbarSummary live>{t('review.count', { shown: rows.length, total: all.length })}</ToolbarSummary>
-        </ToolbarRight>
+        </ToolbarEnd>
       </Toolbar>
       <StoryGrid data={data} rows={rows} scenario={null} onOpen={onOpen} grouped={grouped} />
     </div>

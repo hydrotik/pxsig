@@ -1,8 +1,9 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, StaticList, StaticListItem, StatusBadge, ToggleGroup, ToggleGroupItem, Toolbar, ToolbarLeft } from '@hydrotik/design-system';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, KeyValueItem, KeyValueList, SegmentedChoice, StatusBadge, Toolbar, ToolbarStart } from '@ui';
 import { type Data, type Row, type ScenarioReport, suiteKeys, suiteTitle } from '../data';
 import { HBars } from '../parts/Charts';
 import { t } from '../copy';
+import { VERDICT } from '../parts/StatusOf';
 import { Scenarios } from './Scenarios';
 import { Calibration } from './Calibration';
 import { Performance } from './Performance';
@@ -54,16 +55,16 @@ function DetectionRate({ data }: { data: Data }) {
           data={suites.map((x) => ({ suite: x.title, whole: pct(x.r.whole, x.r.changed), shipped: pct(x.r.shipped, x.r.changed) }))}
           height={10}
         />
-        <StaticList orientation="horizontal">
+        <KeyValueList orientation="horizontal">
           {suites.map((x) => (
-            <StaticListItem key={x.key} label={x.title}>
+            <KeyValueItem key={x.key} label={x.title}>
               {t('diagnostics.detection.detected', { detected: x.r.shipped, changed: x.r.changed })}
-            </StaticListItem>
+            </KeyValueItem>
           ))}
-          <StaticListItem label={t('diagnostics.detection.falsePositives')}>
-            <StatusBadge status={fp ? 'failed' : 'complete'} label={String(fp)} />
-          </StaticListItem>
-        </StaticList>
+          <KeyValueItem label={t('diagnostics.detection.falsePositives')}>
+            <StatusBadge {...(fp ? VERDICT.error : VERDICT.pass)} label={String(fp)} />
+          </KeyValueItem>
+        </KeyValueList>
       </CardContent>
     </Card>
   );
@@ -78,15 +79,9 @@ export function Diagnostics({ data, onOpen }: { data: Data; onOpen(row: Row, lis
     <div className={s.stack}>
       {sections.length > 1 ? (
         <Toolbar size="sm">
-          <ToolbarLeft>
-            <ToggleGroup type="single" value={section} onValueChange={(v) => v && setPicked(v as Section)} aria-label={t('diagnostics.sections')}>
-              {sections.map((k) => (
-                <ToggleGroupItem key={k} value={k}>
-                  {t(`diagnostics.tabs.${k}`)}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-          </ToolbarLeft>
+          <ToolbarStart>
+            <SegmentedChoice value={section} onValueChange={(v) => setPicked(v as Section)} label={t('diagnostics.sections')} options={sections.map((k) => ({ value: k, label: t(`diagnostics.tabs.${k}`) }))} />
+          </ToolbarStart>
         </Toolbar>
       ) : null}
       <span className={s.muted}>{t('diagnostics.description')}</span>

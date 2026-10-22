@@ -24,8 +24,16 @@ import { readImage } from './lib/psig.mjs';
 import { openProject } from './lib/workspace.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-/** The prebuilt dashboard (index.html + assets/). */
-export const dashboardDir = resolve(here, '..', 'dist', 'dashboard');
+/**
+ * The dashboard (index.html + assets/): the prebuilt one, or PXSIG_DASHBOARD_DIR (a dashboard
+ * rebuilt on a project's own design system by `pxsig dashboard build`).
+ */
+export const prebuiltDashboardDir = resolve(here, '..', 'dist', 'dashboard');
+export let dashboardDir = process.env.PXSIG_DASHBOARD_DIR ? resolve(process.env.PXSIG_DASHBOARD_DIR) : prebuiltDashboardDir;
+/** Serve or write another dashboard folder (`pxsig serve` picks one: lib/dashboard-dir.mjs). */
+export function useDashboard(dir) {
+  dashboardDir = dir;
+}
 
 const readJsonFile = (p) => {
   try {

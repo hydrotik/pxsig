@@ -6,7 +6,8 @@ Thank you for helping. This file covers setting up, testing and what a pull requ
 
 You need:
 
-- Node.js 20 or later
+- Node.js 22.18 or later to work on the repository (`pnpm ui:check` and `pnpm ui:docs` read TypeScript
+  with Node's type stripping). The published `pxsig` package still runs on Node 20.
 - pnpm 10 (the version is pinned in `package.json`; `corepack enable` picks it up)
 - Rust stable, with cargo
 
@@ -72,6 +73,18 @@ The dashboard is built from `packages/dashboard` into `packages/pxsig/dist/dashb
 committed. Building it needs a local checkout of its design system; see
 [packages/dashboard/README.md](packages/dashboard/README.md). Changes to the server, the data it
 serves (`packages/pxsig/src/report.mjs`) and the API are testable without a build.
+
+Views import components only from `@ui`, the UI contract (`packages/dashboard/src/ui/`). A new
+contract component needs its section in `docs/ui/build-adapter.md`, an entry in the reference
+adapter's `conformance.json` and a feature in `src/ui/features.ts` that renders it; a new feature
+needs its entry in `features.ts`. Then:
+
+```bash
+pnpm ui:docs     # regenerate src/ui/manifest.json and docs/ui/features.md
+pnpm ui:check    # what CI runs: no design-system import outside the adapters; code and docs agree
+pnpm ui:gaps     # the reference adapter's conformance
+pnpm typecheck   # tsc over the dashboard and the plain example; with PXSIG_DS_SOURCE, the reference adapter too
+```
 
 ## Pull requests
 

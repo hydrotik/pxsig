@@ -39,7 +39,7 @@ published from GitHub Actions with npm provenance and listed in [CHANGELOG.md](C
 
 ## Requirements
 
-- Node.js 20 or later
+- Node.js 20 or later (22.18 or later to work in a clone of this repository)
 - A Storybook (8 or later; the addon needs 9 or later) that pxsig can reach over HTTP with its
   `index.json`, or a static build of one (`storybook.staticDir`), which pxsig serves itself when
   nothing answers at `storybook.url`
@@ -98,7 +98,8 @@ against a project the server is serving goes through the server's queue. See
 
 ## Running from a clone
 
-To work on pxsig itself, or to try an unreleased change:
+To work on pxsig itself, or to try an unreleased change (Node.js 22.18 or later in a clone; the
+published package needs 20):
 
 ```bash
 git clone https://github.com/hydrotik/pxsig
@@ -123,6 +124,7 @@ include it (see [packages/dashboard/README.md](packages/dashboard/README.md)).
 | Every command and flag | [docs/cli.md](docs/cli.md) |
 | Integrity codes, repairs and guarantees | [docs/integrity.md](docs/integrity.md) |
 | Server, HTTP API and dashboard | [docs/server.md](docs/server.md) |
+| The dashboard on your own design system: the UI contract and how to build an adapter | [docs/ui/build-adapter.md](docs/ui/build-adapter.md), [docs/ui/features.md](docs/ui/features.md) |
 | MCP server | [docs/mcp.md](docs/mcp.md) |
 | Storybook addon | [docs/storybook.md](docs/storybook.md) |
 | Continuous integration | [docs/ci.md](docs/ci.md) |
@@ -140,10 +142,10 @@ include it (see [packages/dashboard/README.md](packages/dashboard/README.md)).
 | `crates/pxsig-cli` | The `pxsig` binary: capture, compare, batch check and baseline, affected, report, pack, cat, attach, and a stdio engine for the server |
 | `packages/pxsig` | The npm package `pxsig`: CLI, workspace resolver, renderer, full check, server, MCP server, integrity, approvals, JSON schemas |
 | `packages/storybook-addon` | `@pxsig/storybook-addon`: Storybook panel and sidebar statuses |
-| `packages/dashboard` | Dashboard source (React); built into the `pxsig` package at release |
+| `packages/dashboard` | Dashboard source (React) on a UI contract (`src/ui/`), its diff-viewer primitives and the reference adapter; built into the `pxsig` package at release, and shipped as source for `pxsig dashboard build` |
 | `docs` | The documentation above |
 | `tools` | Research tools (not in the npm package): simulated regressions, gate and detail calibration, benchmarks; their reports feed the dashboard's Scenarios, Calibration and Performance tabs |
-| `examples` | A single-package and a monorepo example, run end to end by `scripts/examples-test.mjs` |
+| `examples` | A single-package and a monorepo example, and a plain UI adapter (`custom-ui`), run end to end by `scripts/examples-test.mjs` |
 | `scripts/check-clean.mjs` | Fails the build if images, baselines, run output or private paths are committed |
 | `scripts/make-platform-packages.mjs` | Builds the `@pxsig/cli-<platform>-<arch>` packages at release time |
 | `.github/workflows` | CI (`ci.yml`) and the tag-driven release (`release.yml`) |

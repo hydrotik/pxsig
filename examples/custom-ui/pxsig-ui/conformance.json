@@ -1,0 +1,25 @@
+{
+  "adapter": "plain",
+  "designSystem": "none: semantic HTML and theme.css",
+  "components": {
+    "UiProvider": { "status": "bespoke", "note": "sets data-theme on <html>; no density" },
+    "TopNav": { "status": "partial", "note": "no overflow menu: links wrap on a narrow window" },
+    "NavList": { "status": "full", "note": "a list of links" },
+    "NavLink": { "status": "full", "note": "count as a plain badge" },
+    "Button": { "status": "full", "note": "native button, or a link styled as one" },
+    "IconButton": { "status": "full" },
+    "Card": { "status": "full" },
+    "CardHeader": { "status": "full" },
+    "CardTitle": { "status": "full" },
+    "CardDescription": { "status": "full" },
+    "CardContent": { "status": "full" },
+    "StatusBadge": { "status": "full", "note": "text glyphs" },
+    "Badge": { "status": "full" },
+    "Icon": { "status": "bespoke", "note": "Unicode glyphs instead of an icon set" },
+    "Dialog": { "status": "full", "note": "native <dialog> with showModal" },
+    "DialogTitle": { "status": "full" },
+    "DialogDescription": { "status": "full" },
+    "Select": { "status": "full", "note": "native <select>" },
+    "Kbd": { "status": "full", "note": "native <kbd>" }
+  }
+}

@@ -19,6 +19,14 @@
   "exports": {
     "./workspace": "./src/lib/workspace.mjs",
     "./psig": "./src/lib/psig.mjs",
+    "./dashboard": {
+      "types": "./dashboard/src/ui/contract.ts",
+      "default": "./dashboard/src/ui/contract.ts"
+    },
+    "./diff-viewer": {
+      "types": "./dashboard/src/diff-viewer/index.ts",
+      "default": "./dashboard/src/diff-viewer/index.ts"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -26,9 +34,12 @@
     "src",
     "schema",
     "dist",
+    "dashboard",
+    "docs",
     "README.md"
   ],
   "scripts": {
+    "prepack": "node ../../scripts/sync-dashboard-source.mjs",
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {

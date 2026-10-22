@@ -5,8 +5,40 @@ semantic versioning.
 
 ## Unreleased
 
+### Added
+
+- **The dashboard on any design system.** The dashboard renders through a UI contract of 42
+  neutral components (`packages/dashboard/src/ui/contract.ts`); a UI adapter, chosen once at build
+  time, implements them. The reference adapter renders exactly what the dashboard rendered before.
+  `pxsig dashboard build` rebuilds the dashboard on a project's own adapter (`dashboard.ui` in
+  `pxsig.config.json`), `pxsig dashboard gaps` reports what the adapter covers, and
+  `PXSIG_DASHBOARD_DIR` serves the result. Optional components an adapter leaves out render plain
+  fallbacks. The dashboard's source, its docs (`docs/ui/`) and two subpath exports ship in the
+  `pxsig` package: `pxsig/dashboard` (the contract's types) and `pxsig/diff-viewer`.
+- **Diff-viewer primitives.** The inspector's image stage is built on unstyled, accessible compound
+  parts (`pxsig/diff-viewer`): state as `data-*` attributes, geometry as CSS custom properties,
+  `className` and `render` props, controlled or uncontrolled.
+- **Adapter documentation that CI keeps current.** `docs/ui/build-adapter.md` takes an adapter author
+  (or an agent) through every contract component; `docs/ui/features.md` is generated from the
+  feature registry. `pnpm ui:check` fails CI on a design-system import outside the adapters, or on
+  a feature or component without its documentation.
+- `examples/custom-ui`: a deliberately plain adapter, built end to end by `scripts/examples-test.mjs`.
+
+- **`pxsig serve` finds a rebuilt dashboard.** When a project sets `dashboard.ui`, serve uses its
+  `pxsig dashboard build` output (`node_modules/.cache/pxsig/dashboard`) while that is newer than
+  the adapter's files and from the same pxsig version; otherwise it serves the prebuilt dashboard and
+  prints the one command that rebuilds it. It never builds by itself. `PXSIG_DASHBOARD_DIR` still
+  wins; without `dashboard.ui` nothing changes.
+- **`pnpm typecheck`** (in CI): `tsc --noEmit` over the dashboard, the diff viewer, its test harness
+  and the plain example adapter; with `PXSIG_DS_SOURCE`, the reference adapter too.
+
 ### Changed
 
+- **Working in a clone needs Node.js 22.18 or later** (the repository's `engines`):
+  `pnpm ui:check` and `pnpm ui:docs` read TypeScript with Node's type stripping and stop with a
+  clear line on older versions. The published `pxsig` package still runs on Node 20.
+- `pxsig dashboard build` writes to the project's `node_modules/.cache/pxsig/dashboard` by default
+  (where serve looks) and stamps the folder with `pxsig-build.json`.
 - **The dashboard has one top bar.** The design system's `Navbar` replaces the header and the
   section tabs: the report's name, the sections as links (`#overview`, `#stories`, …, the same
   hashes as before, and Back and Forward now move between them), and the review button, project
@@ -27,6 +59,10 @@ semantic versioning.
   rows now carry the entry's `globals`.
 
 ### Fixed
+
+- **The dashboard passes axe** in every section and the open inspector, in both themes: section
+  headings in order, accessible names that contain the visible text (story cards, copy-path buttons,
+  counted section links), and labelled toolbar selects.
 
 - **Removed stories no longer linger.** `pxsig serve` drops `check.json` rows whose entry is no
   longer in the manifest, on start, whenever the manifest is reloaded and after every check, so a

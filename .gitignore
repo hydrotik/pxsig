@@ -3,6 +3,9 @@
 node_modules/
 dist/
 packages/cli-*/
+# Copied into the pxsig package at pack time (scripts/sync-dashboard-source.mjs)
+packages/pxsig/dashboard/
+packages/pxsig/docs/
 
 # Anything a run produces: stores, baselines, renders, diffs, reports (they belong to the project
 # under test, never to this repository; scripts/check-clean.mjs enforces it)
@@ -30,7 +33,8 @@ report/
 *.woff2
 *.wasm
 
-# Local
+# Local (.local/: private notes and reference material, never committed; check-clean enforces it)
+.local/
 .DS_Store
 .idea/
 .vscode/

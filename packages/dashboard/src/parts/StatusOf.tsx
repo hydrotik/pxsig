@@ -1,27 +1,26 @@
-import { StatusBadge } from '@hydrotik/design-system';
+import { StatusBadge, type IconName, type Tone } from '@ui';
 import type { statusOf } from '../data';
-import { t } from '../copy';
+import { t, type CopyKey } from '../copy';
 
-type S = ReturnType<typeof statusOf>;
+export type Verdict = ReturnType<typeof statusOf>;
 
-/** One verdict → one StatusBadge preset, so every view says it the same way. */
-export function StatusOf({ status }: { status: S }) {
-  switch (status) {
-    case 'pass':
-      return <StatusBadge status="complete" label={t('status.pass')} />;
-    case 'changed':
-      return <StatusBadge status="review-required" label={t('status.changed')} />;
-    case 'new':
-      return <StatusBadge status="new" label={t('status.new')} />;
-    case 'approved':
-      return <StatusBadge status="approved" label={t('status.approved')} />;
-    case 'rejected':
-      return <StatusBadge status="rejected" label={t('status.rejected')} />;
-    case 'flaky':
-      return <StatusBadge status="paused" label={t('status.flaky')} tone="warning" />;
-    case 'skipped':
-      return <StatusBadge status="not-started" label={t('status.skipped')} />;
-    default:
-      return <StatusBadge status="failed" label={t('status.error')} />;
-  }
+/**
+ * The dashboard's verdict vocabulary (contract rule 2): each verdict → one tone, icon and label.
+ * Adapters render only those three, so every design system says a verdict the same way.
+ */
+export const VERDICT: Record<Verdict, { tone: Tone; icon: IconName; label: CopyKey }> = {
+  pass: { tone: 'success', icon: 'check', label: 'status.pass' },
+  changed: { tone: 'warning', icon: 'alert', label: 'status.changed' },
+  new: { tone: 'info', icon: 'dot', label: 'status.new' },
+  approved: { tone: 'success', icon: 'check', label: 'status.approved' },
+  rejected: { tone: 'danger', icon: 'ban', label: 'status.rejected' },
+  flaky: { tone: 'warning', icon: 'pause', label: 'status.flaky' },
+  skipped: { tone: 'neutral', icon: 'dashed', label: 'status.skipped' },
+  error: { tone: 'danger', icon: 'cross', label: 'status.error' },
+};
+
+/** One verdict → one status badge, so every view says it the same way. */
+export function StatusOf({ status }: { status: Verdict }) {
+  const v = VERDICT[status] ?? VERDICT.error;
+  return <StatusBadge tone={v.tone} icon={v.icon} label={t(v.label)} />;
 }

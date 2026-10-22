@@ -1,9 +1,19 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, DataGrid, ToggleGroup, ToggleGroupItem } from '@hydrotik/design-system';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, DataTable, SegmentedChoice } from '@ui';
 import { type CalibrationReport, type Data, suiteKeys, suiteTitle } from '../data';
 import { Lines } from '../parts/Charts';
 import { Cmd, t, tx } from '../copy';
 import * as s from '../dashboard.css';
+
+/** One admissible detail-channel build, as a table row. */
+interface DetailRow {
+  id: string;
+  build: string;
+  rule: string;
+  caught: string;
+  detailOnly: number;
+  kb: string;
+}
 
 function GridSweep({ cal, title }: { cal: CalibrationReport; title: string }) {
   const grids = cal.grids ?? [];
@@ -32,20 +42,18 @@ function GridSweep({ cal, title }: { cal: CalibrationReport; title: string }) {
             { key: 'best', label: t('diagnostics.calibration.seriesBest') },
           ]}
         />
-        <DataGrid
-          data={grids.map((g) => {
+        <DataTable
+          rows={grids.map((g) => {
             const r = pick(g, 'cells>=2@32');
             return { id: String(g.grid), grid: g.grid, kb: (g.signatureBytes / 1024).toFixed(1), calibrated: r ? `${r.caught}/${r.changed}` : '—', fp: r ? r.falsePositives : '—', best: g.best ?? '—' };
           })}
-          getRowId={(r: { id: string }) => r.id}
-          density="compact"
-          showToolbar={false}
+          rowId={(r) => r.id}
           columns={[
-            { id: 'grid', accessorKey: 'grid', header: t('diagnostics.calibration.grid') },
-            { id: 'kb', accessorKey: 'kb', header: t('diagnostics.calibration.recordKb') },
-            { id: 'calibrated', accessorKey: 'calibrated', header: t('diagnostics.calibration.calibrated') },
-            { id: 'fp', accessorKey: 'fp', header: t('diagnostics.calibration.falsePositives') },
-            { id: 'best', accessorKey: 'best', header: t('diagnostics.calibration.best') },
+            { id: 'grid', field: 'grid', header: t('diagnostics.calibration.grid') },
+            { id: 'kb', field: 'kb', header: t('diagnostics.calibration.recordKb') },
+            { id: 'calibrated', field: 'calibrated', header: t('diagnostics.calibration.calibrated') },
+            { id: 'fp', field: 'fp', header: t('diagnostics.calibration.falsePositives') },
+            { id: 'best', field: 'best', header: t('diagnostics.calibration.best') },
           ]}
         />
       </CardContent>
@@ -68,17 +76,15 @@ export function Calibration({ data }: { data: Data }) {
             <CardDescription>{t('diagnostics.calibration.detailDescription', { sig: `${d.sigOnly.caught}/${d.sigOnly.changed}`, best: d.best ? `${d.best.caught}/${d.best.changed}` : '—', ms: Math.round(d.sweepMs) })}</CardDescription>
           </CardHeader>
           <CardContent>
-            <DataGrid
-              data={d.topAdmissible.map((c: any, i: number) => ({ id: String(i), build: `${c.build.tile}px / ${c.build.block}px / sel ${c.build.selEnergy}`, rule: `≥${c.k} tiles, Δ>${c.T}, rise>${c.E ?? '∞'}`, caught: `${c.caught}/${c.changed}`, detailOnly: c.detailOnly, kb: (c.avgRecordBytes / 1024).toFixed(1) }))}
-              getRowId={(r: { id: string }) => r.id}
-              density="compact"
-              showToolbar={false}
+            <DataTable
+              rows={(d.topAdmissible as any[]).map((c: any, i: number): DetailRow => ({ id: String(i), build: `${c.build.tile}px / ${c.build.block}px / sel ${c.build.selEnergy}`, rule: `≥${c.k} tiles, Δ>${c.T}, rise>${c.E ?? '∞'}`, caught: `${c.caught}/${c.changed}`, detailOnly: c.detailOnly, kb: (c.avgRecordBytes / 1024).toFixed(1) }))}
+              rowId={(r) => r.id}
               columns={[
-                { id: 'build', accessorKey: 'build', header: t('diagnostics.calibration.build') },
-                { id: 'rule', accessorKey: 'rule', header: t('diagnostics.calibration.rule') },
-                { id: 'caught', accessorKey: 'caught', header: t('diagnostics.calibration.detected') },
-                { id: 'detailOnly', accessorKey: 'detailOnly', header: t('diagnostics.calibration.detailOnly') },
-                { id: 'kb', accessorKey: 'kb', header: t('diagnostics.calibration.detailKb') },
+                { id: 'build', field: 'build', header: t('diagnostics.calibration.build') },
+                { id: 'rule', field: 'rule', header: t('diagnostics.calibration.rule') },
+                { id: 'caught', field: 'caught', header: t('diagnostics.calibration.detected') },
+                { id: 'detailOnly', field: 'detailOnly', header: t('diagnostics.calibration.detailOnly') },
+                { id: 'kb', field: 'kb', header: t('diagnostics.calibration.detailKb') },
               ]}
             />
           </CardContent>
@@ -87,13 +93,7 @@ export function Calibration({ data }: { data: Data }) {
       {suite ? (
         <>
           {suites.length > 1 ? (
-            <ToggleGroup type="single" value={suite} onValueChange={(v) => v && setSuite(v)} aria-label={t('diagnostics.calibration.suite')}>
-              {suites.map((k) => (
-                <ToggleGroupItem key={k} value={k}>
-                  {suiteTitle(k, all[k])}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
+            <SegmentedChoice value={suite} onValueChange={setSuite} label={t('diagnostics.calibration.suite')} options={suites.map((k) => ({ value: k, label: suiteTitle(k, all[k]) }))} />
           ) : null}
           <GridSweep key={suite} cal={all[suite]} title={suiteTitle(suite, all[suite])} />
         </>

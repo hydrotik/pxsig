@@ -2,7 +2,7 @@
 /**
  * examples-test.mjs — pxsig end to end on the example projects, from a clean copy.
  *
- *   node scripts/examples-test.mjs [single-package|monorepo]   (default: both)
+ *   node scripts/examples-test.mjs [single-package|monorepo|custom-ui]   (default: all)
  *
  * For each example: copy it to a temp folder (pointing its `link:` dependencies at this checkout),
  * install, build and serve its Storybook, then:
@@ -13,6 +13,8 @@
  *                    --storybook-static: the check serves the build itself
  *   5. change        a component's colour changes; the check fails on exactly its entries
  *   6. doctor --ci   no error-severity integrity codes
+ * And custom-ui (no Storybook): `pxsig dashboard gaps` reports the plain adapter's gaps, and
+ * `pxsig dashboard build` rebuilds the dashboard on it from the installed pxsig.
  * Needs pnpm, network access for the installs, Playwright's Chromium, and the Rust binary
  * (`cargo build --release`, or PXSIG_BIN).
  */
@@ -174,6 +176,25 @@ const examples = {
   },
 };
 
+/** The dashboard rebuilt on a plain UI adapter, from the installed pxsig. */
+function runCustomUi() {
+  const name = 'custom-ui';
+  log(`${name}: staging`);
+  const dir = stage(name);
+  sh('pnpm', ['install', '--ignore-workspace', '--no-frozen-lockfile', '--config.confirmModulesPurge=false'], dir, { stdio: 'inherit' });
+  let r = pxsig(['dashboard', 'gaps', '--json'], dir);
+  const g = JSON.parse(r.stdout || '{}');
+  const missing = (g.rows ?? []).filter((x) => x.status === 'missing');
+  expect(r.status === 0 && !g.problems?.length, `gaps: no problems (exit ${r.status}${r.stderr ? `, ${r.stderr.trim()}` : ''})`);
+  expect(missing.length > 0 && missing.every((x) => !x.required), `gaps: ${missing.length} optional components left to fallbacks, every required one present`);
+  r = pxsig(['dashboard', 'build', '--out', 'dashboard-build'], dir);
+  expect(r.status === 0 && existsSync(join(dir, 'dashboard-build', 'index.html')) && existsSync(join(dir, 'dashboard-build', 'assets', 'app.js')), `build: index.html and assets/app.js${r.status ? `\n${r.stdout}${r.stderr}` : ''}`);
+  expect(!/type="module"/.test(readFileSync(join(dir, 'dashboard-build', 'index.html'), 'utf8')), 'build: a classic script, so a static report opens from disk');
+  expect(JSON.parse(readFileSync(join(dir, 'dashboard-build', 'pxsig-build.json'), 'utf8')).pxsig, 'build: stamped with the pxsig version, for serve');
+  log(`${name}: done (${dir})`);
+}
+
 for (const [name, cfg] of Object.entries(examples)) if (!which || which === name) await run(name, cfg);
+if (!which || which === 'custom-ui') runCustomUi();
 console.log(failures ? `[examples] ${failures} failed` : '[examples] all passed');
 process.exit(failures ? 1 : 0);

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Progress, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatPanel, ToggleGroup, ToggleGroupItem, Toolbar, ToolbarFormField, ToolbarLeft, ToolbarSummary } from '@hydrotik/design-system';
+import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Progress, SegmentedChoice, Select, StatGroup, Toolbar, ToolbarField, ToolbarStart, ToolbarSummary } from '@ui';
 import { type Data, type Row, type Scenario, fmt, suiteKeys, suiteTitle } from '../data';
 import { StoryGrid } from '../parts/StoryGrid';
 import { Cmd, t, tx } from '../copy';
@@ -33,15 +33,9 @@ export function Scenarios({ data, onOpen }: { data: Data; onOpen(row: Row, list:
       <div className={s.row}>
         {suites.length > 1 ? (
           <Toolbar size="sm">
-            <ToolbarLeft>
-              <ToggleGroup type="single" value={suite} onValueChange={(v) => v && (setSuite(v), setName(null))} aria-label={t('diagnostics.scenario.suite')}>
-                {suites.map((k) => (
-                  <ToggleGroupItem key={k} value={k}>
-                    {suiteTitle(k, all[k])}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
-            </ToolbarLeft>
+            <ToolbarStart>
+              <SegmentedChoice value={suite!} onValueChange={(v) => (setSuite(v), setName(null))} label={t('diagnostics.scenario.suite')} options={suites.map((k) => ({ value: k, label: suiteTitle(k, all[k]) }))} />
+            </ToolbarStart>
           </Toolbar>
         ) : (
           <strong style={{ fontSize: '0.8125rem' }}>{suiteTitle(suite!, rep)}</strong>
@@ -65,11 +59,11 @@ export function Scenarios({ data, onOpen }: { data: Data; onOpen(row: Row, list:
                 <span className={s.row}>
                   <strong style={{ fontSize: '0.8125rem' }}>{x.title}</strong>
                   <span className={s.spacer} />
-                  <Badge variant={x.kind === 'regression' ? 'outline' : 'secondary'}>{t(x.kind === 'regression' ? 'diagnostics.scenario.regression' : 'diagnostics.scenario.noise')}</Badge>
+                  <Badge emphasis={x.kind === 'regression' ? 'outline' : 'subtle'}>{t(x.kind === 'regression' ? 'diagnostics.scenario.regression' : 'diagnostics.scenario.noise')}</Badge>
                 </span>
                 <Progress
                   value={Math.round(ratio * 100)}
-                  showValue
+                  showLabel
                   label={
                     x.kind === 'regression'
                       ? t('diagnostics.scenario.progressRegression', { detected: x.summary.detected, changed: x.summary.changed, whole: x.summary.detectedWholeImage })
@@ -87,16 +81,16 @@ export function Scenarios({ data, onOpen }: { data: Data; onOpen(row: Row, list:
               <CardDescription className={s.mono}>{sc.change}</CardDescription>
             </CardHeader>
             <CardContent>
-              <StatPanel
-                variant="strip"
-                aria-label={t('diagnostics.scenario.result')}
-                cards={[
+              <StatGroup
+                layout="strip"
+                label={t('diagnostics.scenario.result')}
+                items={[
                   { label: t('diagnostics.scenario.changed'), value: `${sm.changed}/${sm.stories}` },
                   sc.kind === 'regression'
-                    ? { label: t('diagnostics.scenario.detected'), value: `${sm.detected}/${sm.changed}`, accent: sm.detected === sm.changed ? 'success' : undefined }
-                    : { label: t('diagnostics.scenario.falsePositives'), value: `${sm.falsePositives}/${sm.stories}`, accent: sm.falsePositives ? 'error' : 'success' },
+                    ? { label: t('diagnostics.scenario.detected'), value: `${sm.detected}/${sm.changed}`, tone: sm.detected === sm.changed ? 'success' : undefined }
+                    : { label: t('diagnostics.scenario.falsePositives'), value: `${sm.falsePositives}/${sm.stories}`, tone: sm.falsePositives ? 'danger' : 'success' },
                   ...(sc.kind === 'regression' ? [{ label: t('diagnostics.scenario.wholeOnly'), value: `${sm.detectedWholeImage}/${sm.changed}` }] : []),
-                  ...(sm.errors ? [{ label: t('diagnostics.scenario.errors'), value: sm.errors, accent: 'error' as const }] : []),
+                  ...(sm.errors ? [{ label: t('diagnostics.scenario.errors'), value: sm.errors, tone: 'danger' as const }] : []),
                   { label: t('diagnostics.scenario.render'), value: fmt.ms(sm.renderWallMs) },
                   { label: t('diagnostics.scenario.engine'), value: fmt.ms(sm.rustEngineMs) },
                 ]}
@@ -104,23 +98,12 @@ export function Scenarios({ data, onOpen }: { data: Data; onOpen(row: Row, list:
             </CardContent>
           </Card>
           <Toolbar size="sm">
-            <ToolbarLeft>
-              <ToolbarFormField label={t('diagnostics.scenario.filter')} minInlineSize="15rem">
-                <Select value={filter} onValueChange={setFilter}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(['changed', 'missed', 'detail', 'fail', 'all'] as const).map((v) => (
-                      <SelectItem key={v} value={v}>
-                        {t(`diagnostics.scenario.filters.${v}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </ToolbarFormField>
+            <ToolbarStart>
+              <ToolbarField label={t('diagnostics.scenario.filter')} minInlineSize="15rem">
+                <Select value={filter} onValueChange={setFilter} options={(['changed', 'missed', 'detail', 'fail', 'all'] as const).map((v) => ({ value: v, label: t(`diagnostics.scenario.filters.${v}`) }))} />
+              </ToolbarField>
               <ToolbarSummary>{t('diagnostics.scenario.sorted')}</ToolbarSummary>
-            </ToolbarLeft>
+            </ToolbarStart>
           </Toolbar>
           <StoryGrid data={data} rows={rows} scenario={{ tag, name: sc.name }} onOpen={(r, list) => onOpen(r, list, { tag, name: sc.name })} />
         </div>

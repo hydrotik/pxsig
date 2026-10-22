@@ -1,0 +1,17 @@
+{
+  "name": "pxsig-example-custom-ui",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dashboard:gaps": "pxsig dashboard gaps",
+    "dashboard:build": "pxsig dashboard build"
+  },
+  "devDependencies": {
+    "@vanilla-extract/vite-plugin": "^5.2.6",
+    "@vitejs/plugin-react": "^4.5.2",
+    "pxsig": "link:../../packages/pxsig",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "vite": "^6.3.5"
+  }
+}

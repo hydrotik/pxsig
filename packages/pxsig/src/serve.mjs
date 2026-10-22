@@ -57,8 +57,12 @@ import { acquireLock, describeLock, LockError } from './lib/lock.mjs';
 import { applyRepairs, defaultHooks, planRepairs } from './lib/repair.mjs';
 import { buildRow, dropStaleRows, summarize } from './lib/rows.mjs';
 import { ensureStorybook } from './lib/static.mjs';
-import { findWorkspace, flagLayer, loadProject, rustBinary, serverFile, writeRunManifest } from './lib/workspace.mjs';
-import { buildData, dashboardDir } from './report.mjs';
+import { findWorkspace, flagLayer, loadProject, PXSIG_VERSION, rustBinary, serverFile, writeRunManifest } from './lib/workspace.mjs';
+import { buildData, dashboardDir, prebuiltDashboardDir, useDashboard } from './report.mjs';
+import { chooseDashboard } from './lib/dashboard-dir.mjs';
+import { fileURLToPath } from 'node:url';
+
+const here = dirname(fileURLToPath(import.meta.url));
 
 const { flags } = parseArgs(process.argv.slice(2));
 const str = (k) => strFlag(flags, k);
@@ -71,6 +75,18 @@ try {
 }
 const wantPort = Number(flags.port) || ws.server?.port || 6070;
 const only = str('project')?.split(',');
+
+// The dashboard: PXSIG_DASHBOARD_DIR, else a project's own build for its UI adapter (dashboard.ui)
+// when it is current, else the prebuilt one. Serve never builds: it says which command does.
+{
+  const builtinDir = (name) => {
+    for (const d of [join(here, '..', 'dashboard'), join(here, '..', '..', 'dashboard')]) if (existsSync(join(d, 'src', 'ui', 'adapters', name))) return join(d, 'src', 'ui', 'adapters', name);
+    return null;
+  };
+  const dash = chooseDashboard({ projects: ws.projects.filter((p) => !only || only.includes(p.name)), prebuilt: prebuiltDashboardDir, version: PXSIG_VERSION, root: ws.root, builtinDir });
+  useDashboard(dash.dir);
+  if (dash.note) console.log(`[serve] ${dash.note}`);
+}
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',

@@ -1,5 +1,5 @@
 import type React from 'react';
-import { Button, Card, CardContent, CardHeader, CardTitle, DataGrid, StatPanel } from '@hydrotik/design-system';
+import { Button, Card, CardContent, CardHeader, CardTitle, DataTable, StatGroup } from '@ui';
 import { type Data, type Queue, fmt, rowsWithPending, served, statusOf } from '../data';
 import { Cmd, t, tx, type CopyKey } from '../copy';
 import { Affordance } from '../parts/Affordance';
@@ -56,15 +56,15 @@ export function Overview({ data, go, startReview }: { data: Data; go(tab: string
   return (
     <div className={s.stack}>
       {sm ? (
-        <StatPanel
+        <StatGroup
           className={s.statCards}
-          aria-label={t('overview.cards.label')}
-          cards={[
+          label={t('overview.cards.label')}
+          items={[
             { label: t('overview.cards.checked'), value: sm.checked, unit: sm.skipped ? t('overview.cards.notRun', { count: sm.skipped }) : sm.modes.join(' · ') },
-            { label: t('overview.cards.passed'), value: sm.passed, accent: 'success' },
-            { label: t('overview.cards.changed'), value: sm.failed, accent: sm.failed ? 'error' : undefined, type: 'filter', onSelect: () => review('changed'), icon: <Affordance kind="navigate" /> },
-            { label: t('overview.cards.flaky'), value: sm.flaky, accent: sm.flaky ? 'warning' : undefined, type: 'filter', onSelect: () => go('stories', 'flaky'), icon: <Affordance kind="navigate" /> },
-            { label: t('overview.cards.a11y'), value: sm.a11yNew, unit: t('overview.cards.a11yOf', { count: sm.a11yViolations }), accent: sm.a11yNew ? 'error' : undefined, type: 'filter', onSelect: () => (served ? startReview('a11y') : go('a11y')), icon: <Affordance kind="navigate" /> },
+            { label: t('overview.cards.passed'), value: sm.passed, tone: 'success' },
+            { label: t('overview.cards.changed'), value: sm.failed, tone: sm.failed ? 'danger' : undefined, onSelect: () => review('changed'), icon: <Affordance kind="navigate" /> },
+            { label: t('overview.cards.flaky'), value: sm.flaky, tone: sm.flaky ? 'warning' : undefined, onSelect: () => go('stories', 'flaky'), icon: <Affordance kind="navigate" /> },
+            { label: t('overview.cards.a11y'), value: sm.a11yNew, unit: t('overview.cards.a11yOf', { count: sm.a11yViolations }), tone: sm.a11yNew ? 'danger' : undefined, onSelect: () => (served ? startReview('a11y') : go('a11y')), icon: <Affordance kind="navigate" /> },
             // Wall clock for the whole check; rendering in the browser is nearly all of it.
             { label: t('overview.cards.duration'), value: fmt.ms(sm.totalMs), unit: t('overview.cards.rendering', { time: fmt.ms(sm.renderWallMs) }) },
           ]}
@@ -79,25 +79,23 @@ export function Overview({ data, go, startReview }: { data: Data; go(tab: string
         <CardContent>
           <div className={s.stack}>
             {open ? null : <span className={s.muted}>{t('overview.noOpenItems')}</span>}
-            <DataGrid
-              data={items}
-              getRowId={(r: Item) => r.id}
-              density="compact"
-              showToolbar={false}
-              enablePagination={false}
-              onRowClick={(row: { original: Item }) => row.original.count && row.original.open()}
+            <DataTable
+              rows={items}
+              rowId={(r) => r.id}
+              paginate={false}
+              onRowClick={(r) => r.count && r.open()}
               columns={[
-                { id: 'label', accessorKey: 'label', header: t('overview.columns.item'), cell: ({ row }: { row: { original: Item } }) => <span className={row.original.count ? undefined : s.muted}>{row.original.label}</span> },
-                { id: 'count', accessorKey: 'count', header: t('overview.columns.count'), align: 'right', cell: ({ row }: { row: { original: Item } }) => <span className={row.original.count ? s.mono : `${s.mono} ${s.muted}`}>{row.original.count}</span> },
-                { id: 'detail', accessorKey: 'detail', header: t('overview.columns.detail'), cell: ({ row }: { row: { original: Item } }) => <span className={s.muted}>{row.original.detail}</span> },
+                { id: 'label', field: 'label', header: t('overview.columns.item'), cell: (r) => <span className={r.count ? undefined : s.muted}>{r.label}</span> },
+                { id: 'count', field: 'count', header: t('overview.columns.count'), align: 'end', cell: (r) => <span className={r.count ? s.mono : `${s.mono} ${s.muted}`}>{r.count}</span> },
+                { id: 'detail', field: 'detail', header: t('overview.columns.detail'), cell: (r) => <span className={s.muted}>{r.detail}</span> },
                 {
                   id: 'action',
                   header: t('overview.columns.action'),
-                  align: 'right',
-                  cell: ({ row }: { row: { original: Item } }) =>
-                    row.original.count ? (
-                      <Button size="sm" variant="outline" onClick={(e: React.MouseEvent) => (e.stopPropagation(), row.original.open())}>
-                        {t(row.original.action)}
+                  align: 'end',
+                  cell: (r) =>
+                    r.count ? (
+                      <Button size="sm" emphasis="outline" onClick={(e: React.MouseEvent) => (e.stopPropagation(), r.open())}>
+                        {t(r.action)}
                       </Button>
                     ) : null,
                 },
