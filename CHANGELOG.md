@@ -3,6 +3,17 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
+## Unreleased
+
+### Fixed
+
+- Inspector: the header bar keeps one height and its actions one place from entry to entry. Approve
+  moves on to the next entry, and the bar used to reflow with that entry's id, reasons, status badge,
+  mode toggle and counter, so the button moved out from under the pointer. The id and reasons now sit
+  on one line each (cut with an ellipsis, in full on hover), the badge and mode toggle sit beside the
+  title, the counter has a fixed width, and Undo keeps its slot while hidden. On an entry with nothing
+  to decide, Reject and Approve stay in place, disabled.
+
 ## 0.3.0 - 2026-10-22
 
 The dashboard can be built on any design system: a UI contract, a build-time adapter switch,
