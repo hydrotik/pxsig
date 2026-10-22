@@ -24,8 +24,21 @@ semantic versioning.
   a feature or component without its documentation.
 - `examples/custom-ui`: a deliberately plain adapter, built end to end by `scripts/examples-test.mjs`.
 
+- **`pxsig serve` finds a rebuilt dashboard.** When a project sets `dashboard.ui`, serve uses its
+  `pxsig dashboard build` output (`node_modules/.cache/pxsig/dashboard`) while that is newer than
+  the adapter's files and from the same pxsig version; otherwise it serves the prebuilt dashboard and
+  prints the one command that rebuilds it. It never builds by itself. `PXSIG_DASHBOARD_DIR` still
+  wins; without `dashboard.ui` nothing changes.
+- **`pnpm typecheck`** (in CI): `tsc --noEmit` over the dashboard, the diff viewer, its test harness
+  and the plain example adapter; with `PXSIG_DS_SOURCE`, the reference adapter too.
+
 ### Changed
 
+- **Working in a clone needs Node.js 22.18 or later** (the repository's `engines`):
+  `pnpm ui:check` and `pnpm ui:docs` read TypeScript with Node's type stripping and stop with a
+  clear line on older versions. The published `pxsig` package still runs on Node 20.
+- `pxsig dashboard build` writes to the project's `node_modules/.cache/pxsig/dashboard` by default
+  (where serve looks) and stamps the folder with `pxsig-build.json`.
 - **The dashboard has one top bar.** The design system's `Navbar` replaces the header and the
   section tabs: the report's name, the sections as links (`#overview`, `#stories`, …, the same
   hashes as before, and Back and Forward now move between them), and the review button, project
