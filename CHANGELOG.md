@@ -60,6 +60,9 @@ semantic versioning.
 
 ### Fixed
 
+- **The hydrotik adapter drops two workarounds** now that the design system fixes them at the
+  source: the Columns button is named by its text, and an inline count is separated from its label
+  by a word break. The reference dashboard renders identically.
 - **The dashboard passes axe** in every section and the open inspector, in both themes: section
   headings in order, accessible names that contain the visible text (story cards, copy-path buttons,
   counted section links), and labelled toolbar selects.
