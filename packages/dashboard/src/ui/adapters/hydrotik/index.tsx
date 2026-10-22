@@ -100,14 +100,7 @@ const navItemProps = ({ href, active, count, countTone, countLabel }: C.NavLinkP
   countLabel: count !== undefined && count > 99 ? `99+, ${countLabel ?? count}` : countLabel,
 });
 
-/**
- * With a count, the label ends in a space: the link's visible text then reads "Review Stories 8",
- * which its accessible name ("Review Stories , 8 to review") contains (WCAG 2.5.3). The space
- * collapses at the end of the inline-flex label, so nothing moves.
- */
-const navLabel = ({ count, children }: C.NavLinkProps) => (count && typeof children === 'string' ? `${children} ` : children);
-
-export const NavLink = (p: C.NavLinkProps) => <DS.NavItemLink {...navItemProps(p)}>{navLabel(p)}</DS.NavItemLink>;
+export const NavLink = (p: C.NavLinkProps) => <DS.NavItemLink {...navItemProps(p)}>{p.children}</DS.NavItemLink>;
 
 /**
  * The design system's NavItems finds its links by element type (to measure them and move the ones
@@ -118,7 +111,7 @@ export const NavList = ({ children }: C.NavListProps) => (
     {React.Children.map(children, (c) =>
       React.isValidElement<C.NavLinkProps>(c) && c.type === NavLink ? (
         <DS.NavItemLink key={c.key ?? undefined} {...navItemProps(c.props)}>
-          {navLabel(c.props)}
+          {c.props.children}
         </DS.NavItemLink>
       ) : (
         c
@@ -180,31 +173,8 @@ export const StatGroup = ({ label, items, layout, className }: C.StatGroupProps)
   />
 );
 
-/**
- * The grid's column chooser is named "Toggle column visibility" while it reads "Columns", which fails
- * WCAG 2.5.3 (label in name). Until the design system names it by its text, the adapter drops the
- * override so the visible text is the name. A layout-neutral wrapper (display: contents) holds the ref.
- */
-function NameColumnChooser({ children }: { children: React.ReactNode }) {
-  const ref = React.useRef<HTMLDivElement>(null);
-  React.useLayoutEffect(() => {
-    ref.current?.querySelectorAll('button[aria-label="Toggle column visibility"]').forEach((b) => b.removeAttribute('aria-label'));
-  });
-  return (
-    <div ref={ref} style={{ display: 'contents' }}>
-      {children}
-    </div>
-  );
-}
-
 export function DataTable<T>(props: C.DataTableProps<T>) {
-  return props.search ? (
-    <NameColumnChooser>
-      <Grid {...props} />
-    </NameColumnChooser>
-  ) : (
-    <Grid {...props} />
-  );
+  return <Grid {...props} />;
 }
 
 function Grid<T>({ rows, rowId, columns, onRowClick, search, paginate }: C.DataTableProps<T>) {
