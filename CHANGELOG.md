@@ -7,6 +7,12 @@ semantic versioning.
 
 ### Fixed
 
+- Inspector: the header bar keeps one height and its actions one place from entry to entry. Approve
+  moves on to the next entry, and the bar used to reflow with that entry's id, reasons, status badge,
+  mode toggle and counter, so the button moved out from under the pointer. The id and reasons now sit
+  on one line each (cut with an ellipsis, in full on hover), the badge and mode toggle sit beside the
+  title, the counter has a fixed width, and Undo keeps its slot while hidden. On an entry with nothing
+  to decide, Reject and Approve stay in place, disabled.
 - Dashboard (hydrotik adapter): icons default to the design system's 14px instead of lucide's 24px.
   The theme toggle's sun and moon nearly filled their 28px button and read as different weights;
   they now match the other control icons. Icons sized by CSS (card affordances, Help) are
