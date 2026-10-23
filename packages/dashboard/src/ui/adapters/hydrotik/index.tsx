@@ -230,9 +230,14 @@ export function Badge({ tone = 'neutral', emphasis = 'subtle', pulse, title, cla
   );
 }
 
-export function Icon({ name, size, className }: C.IconProps) {
+// The design system's size for an icon in a control: 14px in a 28px icon button, at lucide's
+// stroke. Without it lucide draws 24px, which nearly fills the button and makes the sun and the
+// moon look like different weights. CSS that sizes the svg (affordances, help rows) still wins.
+const ICON_SIZE = '0.875rem';
+
+export function Icon({ name, size = ICON_SIZE, className }: C.IconProps) {
   const G = GLYPH[name];
-  return <G aria-hidden className={className} {...(size ? { size } : {})} />;
+  return <G aria-hidden className={className} size={size} />;
 }
 
 // --- controls ------------------------------------------------------------------------------------
