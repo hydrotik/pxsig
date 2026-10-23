@@ -13,6 +13,10 @@ semantic versioning.
   on one line each (cut with an ellipsis, in full on hover), the badge and mode toggle sit beside the
   title, the counter has a fixed width, and Undo keeps its slot while hidden. On an entry with nothing
   to decide, Reject and Approve stay in place, disabled.
+- Dashboard (hydrotik adapter): icons default to the design system's 14px instead of lucide's 24px.
+  The theme toggle's sun and moon nearly filled their 28px button and read as different weights;
+  they now match the other control icons. Icons sized by CSS (card affordances, Help) are
+  unchanged.
 
 ## 0.3.0 - 2026-10-22
 
