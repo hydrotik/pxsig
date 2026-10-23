@@ -3,6 +3,15 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
+## Unreleased
+
+### Fixed
+
+- Dashboard (hydrotik adapter): icons default to the design system's 14px instead of lucide's 24px.
+  The theme toggle's sun and moon nearly filled their 28px button and read as different weights;
+  they now match the other control icons. Icons sized by CSS (card affordances, Help) are
+  unchanged.
+
 ## 0.3.0 - 2026-10-22
 
 The dashboard can be built on any design system: a UI contract, a build-time adapter switch,
