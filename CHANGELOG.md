@@ -17,6 +17,9 @@ semantic versioning.
   The theme toggle's sun and moon nearly filled their 28px button and read as different weights;
   they now match the other control icons. Icons sized by CSS (card affordances, Help) are
   unchanged.
+- Coverage banner: closes on its own once a safe repair leaves nothing to repair. The repair's
+  result message held it open until the page was reloaded, although the server had already pushed
+  the clean ledger. The message now goes whenever the ledger turns clean or turns bad again.
 
 ## 0.3.0 - 2026-10-22
 

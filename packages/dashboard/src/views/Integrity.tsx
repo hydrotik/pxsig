@@ -36,7 +36,12 @@ export function IntegrityBanner({ data, go }: { data: Data; go(tab: string): voi
   const L = data.integrity;
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
-  if (!L || (L.summary.status !== 'attention' && !L.setup.length && !msg)) return null;
+  const clean = !L || (L.summary.status !== 'attention' && !L.setup.length);
+  // The server pushes the repaired ledger, so the banner closes on its own once nothing is left
+  // to repair (the result used to hold it open until a reload). The result belongs to the ledger
+  // it was shown with, so it goes when the ledger turns clean or turns bad again.
+  React.useEffect(() => setMsg(null), [clean]);
+  if (!L || (clean && !busy)) return null;
   const run = async () => {
     setBusy(true);
     setMsg(null);
