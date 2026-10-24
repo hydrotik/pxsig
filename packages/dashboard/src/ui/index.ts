@@ -74,3 +74,4 @@ export const AlertDescription = pick('AlertDescription');
 export const SearchField = pick('SearchField');
 export const Select = pick('Select');
 export const Chart = pick('Chart');
+export const Heatmap = pick('Heatmap');

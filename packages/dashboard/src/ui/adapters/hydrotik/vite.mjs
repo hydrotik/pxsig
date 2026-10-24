@@ -40,6 +40,7 @@ export default function hydrotik() {
     alias: {
       '@hydrotik/design-system/chart': path.join(ds, 'src/chart.ts'),
       '@hydrotik/design-system/fonts': path.join(ds, 'src/fonts.ts'),
+      '@hydrotik/design-system/styles': path.join(ds, 'src/styles.ts'),
       '@hydrotik/design-system': path.join(ds, 'src'),
       '@hydrotik/tokens': path.join(need('@hydrotik/tokens'), 'src'),
       '@hydrotik/theme-provider': path.join(need('@hydrotik/theme-provider'), 'src'),

@@ -19,8 +19,8 @@
  *  7. Theme mode belongs to the contract runtime (`useThemeMode()`); the adapter's provider
  *     receives it and never owns the setter.
  *  8. Icons are a closed union of names (`IconName`); each adapter supplies the glyphs.
- *  9. Charts are one high-level component (`Chart`); an adapter whose design system has no charts
- *     brings its own or leaves it to the fallback.
+ *  9. Charts are high-level components (`Chart`, `Heatmap`); an adapter whose design system has no
+ *     charts brings its own or leaves them to the fallback.
  * 10. Every token group is required in the token map (`TokenMap`, ./tokens.ts); a design system
  *     without one maps it to literal values.
  * 11. Links take a `render` prop for router integration.
@@ -406,6 +406,36 @@ export interface ChartProps extends WithClass {
   height: string;
 }
 
+/** One tile of a `Heatmap`. */
+export interface HeatmapCell {
+  id: string;
+  /** What the tile stands for (a component name). Visible on the tile. */
+  label: string;
+  /** The share the tile's colour encodes, 0–1. */
+  value: number;
+  /** The figure behind the share, visible on the tile ("3 stale of 10"), so colour is never the only cue. */
+  text: string;
+  /** The tile's accessible name. Unset: the label and the text. */
+  accessibleLabel?: string;
+}
+/**
+ * A grid of tiles, each coloured by its share on one sequential scale (one hue, light to dark) in
+ * five equal steps: (0, 0.2], (0.2, 0.4], … (0.8, 1]; a share of 0 is the plain surface. Tiles keep
+ * the order given. A legend shows the steps; the text on a tile meets contrast on every step.
+ */
+export interface HeatmapProps extends WithClass {
+  /** Accessible name of the grid. */
+  label: string;
+  cells: HeatmapCell[];
+  /** The legend: what the scale measures, and the labels of its first and last step. */
+  legend: { label: string; low: string; high: string };
+  /** Makes each tile a button. */
+  onSelect?: (cell: HeatmapCell) => void;
+}
+
+/** The step (0–5) a share falls in on a `Heatmap`'s scale: 0 only for a share of 0. */
+export const heatStep = (value: number): 0 | 1 | 2 | 3 | 4 | 5 => (value <= 0 ? 0 : (Math.min(5, Math.max(1, Math.ceil(value * 5))) as 1 | 2 | 3 | 4 | 5));
+
 // --- the contract as data ------------------------------------------------------------------------
 
 export type Group = 'shell' | 'core' | 'controls' | 'charts';
@@ -454,6 +484,7 @@ export const CONTRACT = {
   SearchField: { group: 'controls', required: false, role: 'a controlled search input' },
   Select: { group: 'controls', required: true, role: 'one value from a list' },
   Chart: { group: 'charts', required: false, role: 'bar or line chart' },
+  Heatmap: { group: 'charts', required: false, role: 'tiles coloured by a share on one sequential scale' },
 } as const satisfies Record<string, { group: Group; required: boolean; role: string }>;
 
 export type ComponentName = keyof typeof CONTRACT;
@@ -503,6 +534,7 @@ export interface ComponentProps {
   SearchField: SearchFieldProps;
   Select: SelectProps;
   Chart: ChartProps;
+  Heatmap: HeatmapProps;
 }
 
 type Required_ = { [K in ComponentName]: (typeof CONTRACT)[K]['required'] extends true ? K : never }[ComponentName];

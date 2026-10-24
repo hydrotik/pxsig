@@ -1,8 +1,11 @@
 import type React from 'react';
-import { Button, Card, CardContent, CardHeader, CardTitle, DataTable, StatGroup } from '@ui';
-import { type Data, type Queue, fmt, rowsWithPending, served, statusOf } from '../data';
-import { Cmd, t, tx, type CopyKey } from '../copy';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DataTable, StatGroup } from '@ui';
+import { type Data, type Queue, type Row, fmt, rowsWithPending, served, statusOf } from '../data';
+import { Cmd, codeCopy, t, tx, type CopyKey } from '../copy';
 import { Affordance } from '../parts/Affordance';
+import { ChangedPerRun } from '../parts/RunCharts';
+import { StaleHeatmap } from '../parts/StaleHeatmap';
+import { CoverageDetails, coverageHasErrors, coverageHeadline } from './Integrity';
 import * as s from '../dashboard.css';
 
 interface Item {
@@ -21,7 +24,91 @@ const byMode = (modes: string[]) => {
   return n.size > 1 ? [...n].map(([m, c]) => `${m} ${c}`).join(' · ') : '';
 };
 
-/** The landing tab: what needs doing, then the last check in numbers. */
+/** How many error rows the errors card lists before it points to the lists themselves. */
+const ERROR_ROWS = 8;
+/** How many heatmap tiles the Overview shows; Coverage shows them all. */
+const STALE_TILES = 12;
+
+interface ErrorRow {
+  id: string;
+  kind: string;
+  name: string;
+  detail: string;
+  open(): void;
+}
+
+/**
+ * The errors card, at the top of the right column only while there are errors: render errors of
+ * the last check and coverage errors (components and setup), each row opening where it is fixed,
+ * then the coverage banner's own details and actions (the banner stays off this page meanwhile).
+ */
+function ErrorsCard({ data, renderErrors, go, startReview }: { data: Data; renderErrors: Row[]; go(tab: string, filter?: string): void; startReview(kind: Queue): void }) {
+  const L = data.integrity;
+  const coverage = coverageHasErrors(L);
+  if (!renderErrors.length && !coverage) return null;
+  const rows: ErrorRow[] = [
+    ...renderErrors.map((r) => ({ id: `render:${r.id}`, kind: t('overview.errors.render'), name: r.id, detail: (r.error ?? '').split('\n')[0], open: () => go('stories', 'error') })),
+    ...(L?.components ?? [])
+      .filter((c) => c.severity === 'error')
+      .map((c) => ({
+        id: `coverage:${c.component}`,
+        kind: t('overview.errors.coverage'),
+        name: c.component,
+        detail: Object.entries(c.counts)
+          .filter(([code]) => L!.entries.some((x) => x.component === c.component && x.issues.some((i) => i.code === code && i.severity === 'error')))
+          .map(([code, n]) => t('coverage.headline.code', { title: codeCopy(code).title, count: n }))
+          .join(' · '),
+        open: () => go('integrity', c.component),
+      })),
+  ];
+  const shown = rows.slice(0, ERROR_ROWS);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('overview.errors.title')}</CardTitle>
+        <CardDescription>
+          {[renderErrors.length ? t('overview.errors.renderCount', { count: renderErrors.length }) : '', coverage && L ? coverageHeadline(L) : ''].filter(Boolean).join(' · ')}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className={s.stack}>
+          {shown.length ? (
+            <DataTable
+              rows={shown}
+              rowId={(r) => r.id}
+              paginate={false}
+              onRowClick={(r) => r.open()}
+              columns={[
+                { id: 'kind', field: 'kind', header: t('overview.errors.columns.kind'), cell: (r) => <span className={s.muted}>{r.kind}</span> },
+                { id: 'name', field: 'name', header: t('overview.errors.columns.name'), cell: (r) => <span className={s.mono}>{r.name}</span> },
+                { id: 'detail', field: 'detail', header: t('overview.errors.columns.detail'), cell: (r) => <span className={s.muted}>{r.detail}</span> },
+              ]}
+            />
+          ) : null}
+          {rows.length > shown.length ? <span className={s.muted}>{t('overview.errors.more', { count: rows.length - shown.length })}</span> : null}
+          {renderErrors.length ? (
+            <span className={s.row}>
+              <Button size="sm" emphasis="outline" onClick={() => go('stories', 'error')}>
+                {t('overview.errors.viewRender', { count: renderErrors.length })}
+              </Button>
+            </span>
+          ) : null}
+          {coverage ? (
+            <div className={s.small}>
+              <CoverageDetails data={data} go={go} startReview={startReview} />
+            </div>
+          ) : null}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * The landing tab: the last check in numbers across the top; below, open items and stale entries
+ * by component on the left, errors (only while there are any) and changed entries per run on the
+ * right.
+ */
 export function Overview({ data, go, startReview }: { data: Data; go(tab: string, filter?: string): void; startReview(kind: Queue): void }) {
   // With the server, a queue opens straight into the inspector; a static report lists it instead.
   const review = (kind: Queue) => (served ? startReview(kind) : go('stories', kind));
@@ -75,6 +162,9 @@ export function Overview({ data, go, startReview }: { data: Data; go(tab: string
       ) : (
         <div className={s.empty}>{tx('empty.noCheck', { command: <Cmd>pxsig check --full</Cmd> })}</div>
       )}
+      <div className={s.overviewCols}>
+        <div className={s.overviewGrid}>
+          <div className={s.stack} data-column="start">
       <Card>
         <CardHeader>
           <CardTitle>{t('overview.openItems')}</CardTitle>
@@ -88,13 +178,26 @@ export function Overview({ data, go, startReview }: { data: Data; go(tab: string
               paginate={false}
               onRowClick={(r) => r.count && r.open()}
               columns={[
-                { id: 'label', field: 'label', header: t('overview.columns.item'), cell: (r) => <span className={r.count ? undefined : s.muted}>{r.label}</span> },
-                { id: 'count', field: 'count', header: t('overview.columns.count'), align: 'end', cell: (r) => <span className={r.count ? s.mono : `${s.mono} ${s.muted}`}>{r.count}</span> },
-                { id: 'detail', field: 'detail', header: t('overview.columns.detail'), cell: (r) => <span className={s.muted}>{r.detail}</span> },
+                // Half a page wide: the item's label gets the room, its detail on a second line;
+                // count and action are narrow. The grid adds each cell's padding to these widths.
+                {
+                  id: 'label',
+                  field: 'label',
+                  header: t('overview.columns.item'),
+                  width: '232px',
+                  cell: (r) => (
+                    <span className={s.cellLines}>
+                      <span className={r.count ? undefined : s.muted}>{r.label}</span>
+                      {r.detail ? <span className={`${s.muted} ${s.micro}`}>{r.detail}</span> : null}
+                    </span>
+                  ),
+                },
+                { id: 'count', field: 'count', header: t('overview.columns.count'), align: 'end', width: '56px', cell: (r) => <span className={r.count ? s.mono : `${s.mono} ${s.muted}`}>{r.count}</span> },
                 {
                   id: 'action',
                   header: t('overview.columns.action'),
                   align: 'end',
+                  width: '84px',
                   cell: (r) =>
                     r.count ? (
                       <Button size="sm" emphasis="outline" onClick={(e: React.MouseEvent) => (e.stopPropagation(), r.open())}>
@@ -107,6 +210,14 @@ export function Overview({ data, go, startReview }: { data: Data; go(tab: string
           </div>
         </CardContent>
       </Card>
+            <StaleHeatmap data={data} limit={STALE_TILES} onSelect={(component) => go('integrity', component)} onViewAll={() => go('integrity')} />
+          </div>
+          <div className={s.stack} data-column="end">
+            <ErrorsCard data={data} renderErrors={errors} go={go} startReview={startReview} />
+            <ChangedPerRun runs={data.history ?? []} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

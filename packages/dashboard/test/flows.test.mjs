@@ -210,3 +210,111 @@ test('a link that names the theme opens in it, over the remembered one (the Stor
     }
   }
 });
+
+// --- the Overview's columns, its errors card and the stale heatmap ---------------------------------
+
+const stale = { code: 'stale', severity: 'warn', reason: 'src/x.tsx edited after the verdict' };
+/** Entries spread over components (`Name:index`), the ledger's components counted from them. */
+function spread(d) {
+  const L = d.integrity;
+  const names = [...new Set(L.entries.map((x) => x.component))];
+  L.components = names.map((component) => {
+    const es = L.entries.filter((x) => x.component === component);
+    const counts = {};
+    for (const x of es) for (const i of x.issues) counts[i.code] = (counts[i.code] ?? 0) + 1;
+    const severity = es.some((x) => x.severity === 'error') ? 'error' : es.some((x) => x.severity === 'warn') ? 'warn' : 'info';
+    return { component, status: es.find((x) => x.severity === severity)?.status ?? 'ok', severity, entries: es.length, stories: 1, counts };
+  });
+  const by = { error: 0, warn: 0, info: 0 };
+  for (const c of L.components) by[c.severity]++;
+  L.summary.components = L.components.length;
+  L.summary.componentsBySeverity = by;
+  L.summary.status = by.error ? 'attention' : by.warn ? 'warnings' : 'clean';
+  return d;
+}
+const inComponent = (component, id, issues) => ({ ...entry(id, issues), component });
+const history = (n) => Array.from({ length: n }, (_, i) => ({ at: `2026-10-2${i}T10:00:00.000Z`, summary: { stories: 4, failed: i % 3, cached: 0, elapsedMs: 40 }, failedIds: [] }));
+
+test('the Overview: open items and stale entries on the left, errors (only with errors) and changed entries per run on the right', async (t) => {
+  if (skip) return t.skip(skip);
+  const broken = 'ui-card--broken';
+  const d = spread(
+    data({
+      rows: [row('ui-button--ok'), row(broken, { pass: false, metrics: null, error: 'locator.click: Timeout 5000ms exceeded' })],
+      entries: [entry('ui-button--ok', [stale]), inComponent('Card', broken, [{ code: 'never-checked', severity: 'error', reason: 'no verdict' }])],
+    })
+  );
+  d.history = history(3);
+  const { page, errors } = await open(d);
+  try {
+    const box = async (name) => page.getByRole('heading', { name, exact: true }).boundingBox();
+    await page.getByRole('heading', { name: 'Errors', exact: true }).waitFor();
+    const [items, heat, errs, runs] = [await box('Open items'), await box('Stale entries by component'), await box('Errors'), await box('Changed entries per run')];
+    assert.ok(items.x < errs.x && Math.abs(items.y - errs.y) < 4, 'open items and errors start one row, side by side');
+    assert.ok(Math.abs(items.x - heat.x) < 1 && heat.y > items.y, 'stale entries sit under open items');
+    assert.ok(Math.abs(errs.x - runs.x) < 1 && runs.y > errs.y, 'changed entries per run sit under errors');
+    const card = page.getByRole('table').filter({ hasText: 'Entry or component' });
+    assert.match(await card.innerText(), /Render error[\s\S]*ui-card--broken[\s\S]*Coverage error[\s\S]*Card/);
+    // The coverage errors are in the card, not also in the banner above it; other tabs keep the banner.
+    assert.equal(await page.getByRole('region', { name: 'Coverage' }).count(), 0);
+    await page.getByRole('link', { name: /^Help/ }).click();
+    await page.getByRole('region', { name: 'Coverage' }).waitFor();
+    assert.deepEqual(errors, []);
+  } finally {
+    await page.close();
+  }
+});
+
+test('the Overview shows no errors card without errors; one column on a narrow page', async (t) => {
+  if (skip) return t.skip(skip);
+  const d = spread(data({ rows: [row('ui-button--ok')], entries: [entry('ui-button--ok')] }));
+  d.history = history(2);
+  const { page } = await open(d);
+  try {
+    await page.getByRole('heading', { name: 'Changed entries per run' }).waitFor();
+    assert.equal(await page.getByRole('heading', { name: 'Errors', exact: true }).count(), 0);
+    await page.getByText('No stale entries').waitFor();
+    await page.setViewportSize({ width: 640, height: 900 });
+    const items = await page.getByRole('heading', { name: 'Open items' }).boundingBox();
+    const runs = await page.getByRole('heading', { name: 'Changed entries per run' }).boundingBox();
+    assert.ok(Math.abs(items.x - runs.x) < 1 && runs.y > items.y, 'one column: the right column follows the left');
+  } finally {
+    await page.close();
+  }
+});
+
+test('stale heatmap tiles name their component and count, worst share first, and open Coverage filtered to it', async (t) => {
+  if (skip) return t.skip(skip);
+  const d = spread(
+    data({
+      rows: [],
+      entries: [
+        inComponent('Button', 'ui-button--a', [stale]),
+        inComponent('Button', 'ui-button--b'),
+        inComponent('Button', 'ui-button--c'),
+        inComponent('Card', 'ui-card--a', [stale]),
+        inComponent('Card', 'ui-card--b', [stale]),
+        inComponent('Dialog', 'ui-dialog--a'),
+      ],
+    })
+  );
+  const { page, errors } = await open(d);
+  try {
+    const grid = page.getByRole('list', { name: 'Stale entries by component' });
+    await grid.waitFor();
+    const names = await grid.getByRole('button').evaluateAll((bs) => bs.map((b) => b.getAttribute('aria-label')));
+    assert.deepEqual(names, ['Card: 2 stale of 2 entries', 'Button: 1 stale of 3 entries'], 'no tile for a component with nothing stale');
+    assert.match(await grid.innerText(), /2 stale of 2/, 'the count is on the tile, not only its colour');
+    await grid.getByRole('button', { name: 'Button: 1 stale of 3 entries' }).click();
+    await page.getByRole('button', { name: 'Only Button' }).waitFor();
+    await page.getByRole('heading', { name: 'Button', exact: true }).waitFor();
+    const table = page.getByRole('table').filter({ hasText: 'Component' }).first();
+    assert.doesNotMatch(await table.innerText(), /Card/, 'the components table shows only that component');
+    // The button that names the filter clears it.
+    await page.getByRole('button', { name: 'Only Button' }).click();
+    await page.getByRole('cell', { name: 'Card' }).waitFor();
+    assert.deepEqual(errors, []);
+  } finally {
+    await page.close();
+  }
+});

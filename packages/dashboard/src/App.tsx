@@ -8,7 +8,7 @@ import { Accessibility } from './views/Accessibility';
 import { Diagnostics, diagnosticsOf } from './views/Diagnostics';
 import { Help } from './views/Help';
 import { History } from './views/History';
-import { Integrity, IntegrityBanner } from './views/Integrity';
+import { type CoverageFocus, Integrity, IntegrityBanner } from './views/Integrity';
 import { t, type CopyKey } from './copy';
 import * as s from './dashboard.css';
 
@@ -92,6 +92,12 @@ export function App() {
     }
   });
   const [filter, setFilter] = React.useState('all');
+  // Coverage opened on one component (a heatmap tile, an error row).
+  const [coverageFocus, setCoverageFocus] = React.useState<CoverageFocus | null>(null);
+  // It holds for that one visit: Coverage opened later from the bar starts unfiltered.
+  React.useEffect(() => {
+    if (tab !== 'integrity') setCoverageFocus(null);
+  }, [tab]);
   // A link to Diagnostics on a project without research data lands on the overview.
   React.useEffect(() => {
     if (data && tab === 'diagnostics' && !diagnosticsOf(data).length) setTab('overview');
@@ -153,8 +159,10 @@ export function App() {
   const todo = rowsWithPending(data).filter((r) => ['changed', 'new'].includes(statusOf(r, data.review))).length;
   const integrityErrors = data.integrity?.summary.componentsBySeverity.error ?? 0;
   const open = (row: Row, list: Row[], scenario: InspectTarget['scenario'] = null) => setTarget({ row, list, scenario });
+  // `f`: the Review filter, or for Coverage the component to open.
   const go = (t: string, f?: string) => {
-    if (f) setFilter(f);
+    if (t === 'integrity') setCoverageFocus(f ? { component: f, at: Date.now() } : null);
+    else if (f) setFilter(f);
     setTab(t as Tab);
   };
   // A review session: the inspector on the first undecided entry of a queue, with progress.
@@ -227,10 +235,11 @@ export function App() {
               {/* The section's heading, for the outline (the bar's link says it visibly). */}
               <h2 className={s.srOnly}>{sectionTitle}</h2>
               <CheckBanner />
-              <IntegrityBanner data={data} go={go} startReview={startReview} />
+              {/* The Overview shows coverage errors in its own errors card, so the banner leaves them to it. */}
+              <IntegrityBanner data={data} go={go} startReview={startReview} errorsShownElsewhere={shown === 'overview'} />
               {shown === 'overview' ? <Overview data={data} go={go} startReview={startReview} /> : null}
               {shown === 'stories' ? <Stories data={data} filter={filter} setFilter={setFilter} onOpen={(r, l) => open(r, l)} /> : null}
-              {shown === 'integrity' ? <Integrity data={data} onOpen={(r, l) => open(r, l)} /> : null}
+              {shown === 'integrity' ? <Integrity data={data} focus={coverageFocus} onOpen={(r, l) => open(r, l)} /> : null}
               {shown === 'a11y' ? <Accessibility data={data} onOpen={(r, l) => open(r, l)} startReview={startReview} /> : null}
               {shown === 'history' ? <History data={data} /> : null}
               {shown === 'diagnostics' ? <Diagnostics data={data} onOpen={open} /> : null}

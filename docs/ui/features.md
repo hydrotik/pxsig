@@ -47,7 +47,7 @@ Files: `src/App`, `src/main`
 
 ### Coverage banner
 
-`shell.coverage-banner` · Shown on every section while the coverage ledger has errors: the headline, setup problems, a link to Coverage and the safe repair.
+`shell.coverage-banner` · Shown on every section while the coverage ledger has errors, or entries wait for a first approval: the headline, setup problems, a link to Coverage and the safe repair. On the Overview the errors card carries the errors instead, so they are not shown twice.
 
 States:
 
@@ -102,6 +102,72 @@ Copy: `overview`
 
 Files: `src/views/Overview`
 
+### Overview columns
+
+`overview.layout` · Below the counts, two equal columns: open items, then stale entries by component, on the left; errors (only while there are any), then changed entries per run, on the right. One column, left then right, when the page is narrow.
+
+Components: `Card`
+
+Copy: `overview`
+
+Files: `src/views/Overview`
+
+### Errors
+
+`overview.errors` · Render errors of the last check and coverage errors (components, setup), one row each, opening the render errors list or Coverage on that component; then the coverage banner's details and the safe repair. Shown only while there are errors.
+
+States:
+
+- **static**: No repair button: a static report cannot write.
+
+Interactions:
+
+- Open the render errors, or Coverage on a component, from a row
+- Run the safe repair
+
+Components: `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `DataTable`, `Button`
+
+Copy: `overview.errors`, `coverage.banner`, `coverage.headline`
+
+Files: `src/views/Overview`, `src/views/Integrity`
+
+### Changed entries per run
+
+`overview.changed-runs` · The Runs chart of changed entries per recorded run, as a line, in the right column.
+
+States:
+
+- **empty**: Without recorded runs the chart is not shown.
+
+Interactions:
+
+- Read a value from the chart tooltip
+
+Components: `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `Chart`
+
+Copy: `runs.changed`
+
+Files: `src/parts/RunCharts`, `src/parts/Charts`
+
+### Stale entries by component
+
+`overview.stale` · A heatmap of the components with stale verdicts: one tile per component, coloured by its share of stale entries in five steps, with the count on the tile, highest share first. The Overview shows the first 12, Coverage all of them.
+
+States:
+
+- **empty**: No stale entries: a line saying so.
+
+Interactions:
+
+- Open Coverage on a component from its tile
+- View all on Coverage
+
+Components: `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `Heatmap`, `Button`
+
+Copy: `coverage.stale`
+
+Files: `src/parts/StaleHeatmap`
+
 ## Review Stories
 
 ### Review filters
@@ -145,7 +211,7 @@ Files: `src/parts/StoryGrid`, `src/parts/StatusOf`
 
 ### Coverage ledger
 
-`coverage.ledger` · Whether every story is registered, rendered, checked and current, per component, with counts that filter the table and the entries of a chosen component.
+`coverage.ledger` · Whether every story is registered, rendered, checked and current, per component, with counts that filter the table, stale entries by component as a heatmap, and the entries of a chosen component.
 
 States:
 
@@ -155,7 +221,7 @@ Interactions:
 
 - Filter by an issue count
 - Show components with issues, or all
-- Open a component, then an entry in the inspector
+- Open a component from the table or a heatmap tile (a tile filters the table to it), then an entry in the inspector
 
 Components: `StatGroup`, `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `Toolbar`, `ToolbarStart`, `Button`, `DataTable`, `Badge`, `StatusBadge`
 
@@ -203,7 +269,7 @@ Components: `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`,
 
 Copy: `runs`
 
-Files: `src/views/History`, `src/parts/Charts`
+Files: `src/views/History`, `src/parts/Charts`, `src/parts/RunCharts`
 
 ## Diagnostics
 
