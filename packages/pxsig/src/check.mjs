@@ -277,7 +277,10 @@ const summary = summarize(out, {
   affected: affected ? `${affected.ids.length} affected of ${manifest.stories.length} (${affected.reason})` : null,
   totalMs: performance.now() - t0,
 });
-const report = { generatedAt: new Date().toISOString(), project: P.name, suite, manifest: { grid: manifest.grid, gate: manifest.gate, modes: manifest.modes, defaultMode: manifest.defaultMode }, summary, affected, rows: out };
+const now = new Date().toISOString();
+// When every entry was last checked together (integrity's "last full check"); a partial run keeps the last one.
+const fullCheckAt = checked.length === out.length ? now : (previous?.fullCheckAt ?? previous?.generatedAt ?? null);
+const report = { generatedAt: now, fullCheckAt, project: P.name, suite, manifest: { grid: manifest.grid, gate: manifest.gate, modes: manifest.modes, defaultMode: manifest.defaultMode }, summary, affected, rows: out };
 writeFileSync(join(reports, `${outName}.json`), JSON.stringify(report) + '\n');
 // Review decisions belong to the run they were made on: a new run starts clean.
 if (outName === 'check') for (const f of ['review.json', 'a11y-review.json']) rmSync(join(reports, f), { force: true });

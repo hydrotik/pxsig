@@ -143,6 +143,9 @@ test('a story checked alone whose render throws is recorded as a render error, n
     const row = rowsOf(f).find((x) => x.id === f.ids.error);
     assert.notEqual(row.checkedAt, before.checkedAt, `recorded:\n${S.log()}`);
     assert.match(row.error, /^storybook-error: Storybook error page: Story threw/);
+    const report = JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8'));
+    assert.ok(Date.parse(report.generatedAt) >= Date.parse(row.checkedAt) - 5000, 'a re-check moves the report time');
+    assert.ok(report.fullCheckAt && Date.parse(report.fullCheckAt) < Date.parse(report.generatedAt), 'and keeps when the last full check ran');
   } finally {
     S.stop();
     sb.close();

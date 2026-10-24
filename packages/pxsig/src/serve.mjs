@@ -247,6 +247,13 @@ function updateCheckRows(S, mut, fresh = new Map(), timing = null) {
   // Timings describe one run: a full re-check replaces them; a partial one leaves the last full
   // run's (the Duration card and Diagnostics read them against `checked`).
   check.summary = { ...check.summary, ...summarize(check.rows), ...(timing ?? {}) };
+  // New verdicts move the report's time ("Last check"); `fullCheckAt` keeps when every entry was
+  // last checked together, which is what integrity's "absent from the last full check" means.
+  if (fresh.size) {
+    const now = new Date().toISOString();
+    check.fullCheckAt = timing ? now : (check.fullCheckAt ?? check.generatedAt);
+    check.generatedAt = now;
+  }
   S.quietUntil = Date.now() + 800;
   writeFileSync(S.checkPath, `${JSON.stringify(check)}\n`);
 }
