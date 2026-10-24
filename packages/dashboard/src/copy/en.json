@@ -95,7 +95,7 @@
       "new": "New, no baseline",
       "rejected": "Rejected, awaiting a fix",
       "error": "Render errors",
-      "coverage": "Coverage errors",
+      "coverage": "Components with coverage errors",
       "a11y": "Entries with new a11y violations",
       "flaky": "Flaky"
     },
@@ -127,6 +127,10 @@
     "violations": {
       "one": "{count} violation",
       "other": "{count} violations"
+    },
+    "entries": {
+      "one": "{count} entry",
+      "other": "{count} entries"
     }
   },
   "review": {
