@@ -52,15 +52,21 @@ request:
 - **No absolute home-directory paths.**
 - **No names from other repositories or organisations.** The script also checks a denylist of
   names. The list is never committed or uploaded anywhere, because that would publish the names:
-  it lives in a git-ignored `.clean-terms` file at the repository root (one name per line, `#`
-  for comments) on the maintainer's machine. CI does not check names.
+  it lives on the maintainer's machine, in `~/.config/pxsig/clean-terms` or a git-ignored
+  `.clean-terms` at the root of the main checkout (one name per line, `#` for comments); worktrees
+  find either. CI does not check names.
 
-Enable the pre-push hook once per clone; it runs the check, denylist included, before every push
-and refuses the push on any problem (or when `.clean-terms` is missing):
+Names only come in from reading another repository, so the name check runs after that work, not on
+every push. Read other repositories through the `peer-reader` agent (`.claude/agents/`), which
+reports in neutral terms, and before pushing that branch or opening its pull request run `/scrub`
+(`.claude/commands/`), or by hand:
 
 ```bash
-git config core.hooksPath .githooks
+node scripts/check-clean.mjs --require-terms --since origin/main --text pr-body.md
 ```
+
+`--since` adds the branch's commit messages and `--text` a draft such as the PR body. A hit prints
+where it is, never the name.
 
 Run `node scripts/check-clean.mjs` by hand any time. With `--all` it checks every file on disk,
 not only tracked ones.
