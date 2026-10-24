@@ -47,6 +47,8 @@ the build when a tracked file breaks one of these rules, and CI runs it on every
 request:
 
 - **No images, fonts or binaries.** No `.png`, `.jpg`, `.woff2`, `.wasm` and the like.
+  One exemption: product screenshots in [`docs/product-shots/`](docs/product-shots/README.md),
+  shot from the examples' demo data (no names, no paths), compressed, at most 1.5 MB each.
 - **No baselines or run output.** No `.psig`, `.pxsig.json`, stores (`.pxsig/`, `__pxsig__/`),
   renders, diffs, reports, `target/` or `dist/`. Those belong to the projects under test.
 - **No absolute home-directory paths.**
