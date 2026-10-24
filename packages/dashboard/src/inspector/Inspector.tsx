@@ -420,7 +420,7 @@ export function Inspector({
         <IconButton size="sm" emphasis="outline" label={t('inspector.nav.prevStory')} title={t('inspector.nav.prevStory')} onClick={() => step(-1)}>
           ‹
         </IconButton>
-        <span className={s.micro}>
+        <span className={`${s.micro} ${s.counter}`} style={{ minInlineSize: `${String(list.length).length * 2 + 3}ch` }}>
           {t('inspector.nav.position', { index: index + 1, total: list.length })}
         </span>
         <IconButton size="sm" emphasis="outline" label={t('inspector.nav.nextStory')} title={t('inspector.nav.nextStory')} onClick={() => step(1)}>
@@ -433,28 +433,40 @@ export function Inspector({
   // A render error has no image of the story: nothing to approve (older reports still
   // mark these changed).
   const changed = !row.error && (row.changed ?? !row.pass);
-  const reviewButtons = !canReview ? null : a11yMode ? (
-    newA11y || review ? (
+  // Undo is always rendered, hidden while there is nothing to undo, so the buttons left of it keep
+  // their place when a decision is made or undone.
+  const undo = (
+    <span className={review ? s.slot : s.reserved} aria-hidden={review ? undefined : true}>
+      <Button
+        size="sm"
+        emphasis="ghost"
+        disabled={busy || !review}
+        onClick={() => act('unreview')}
+        title={review?.state === 'approved' ? t('inspector.review.undoTitle') : undefined}
+      >
+        {t('inspector.review.undo')}
+      </Button>
+    </span>
+  );
+  // In the dialog the group stays (disabled) on an entry with nothing to decide, so the story
+  // arrows beside it do not move between a changed entry and a passing one.
+  const idle = a11yMode ? !(newA11y || review) : !(changed || review);
+  const reviewButtons = !canReview || (idle && embedded) ? null : a11yMode ? (
       <>
-        <Button size="sm" emphasis="outline" disabled={busy || review?.state === 'rejected'} onClick={() => act('reject')} title={t('inspector.review.rejectA11yTitle')}>
+        <Button size="sm" emphasis="outline" disabled={busy || idle || review?.state === 'rejected'} onClick={() => act('reject')} title={t('inspector.review.rejectA11yTitle')}>
           {t('inspector.review.reject')}
         </Button>
-        <Button size="sm" disabled={busy || review?.state === 'accepted'} onClick={() => act('approve')} title={t('inspector.review.acceptTitle')}>
+        <Button size="sm" disabled={busy || idle || review?.state === 'accepted'} onClick={() => act('approve')} title={t('inspector.review.acceptTitle')}>
           {newA11y ? t('inspector.review.acceptCount', { count: newA11y }) : t('inspector.review.accept')}
         </Button>
-        {review ? (
-          <Button size="sm" emphasis="ghost" disabled={busy} onClick={() => act('unreview')}>
-            {t('inspector.review.undo')}
-          </Button>
-        ) : null}
+        {undo}
       </>
-    ) : null
-  ) : changed || review ? (
+  ) : (
       <>
         <Button
           size="sm"
           emphasis="outline"
-          disabled={busy || review?.state === 'rejected'}
+          disabled={busy || idle || review?.state === 'rejected'}
           onClick={() => act('reject')}
           title={t('inspector.review.rejectTitle')}
         >
@@ -468,13 +480,10 @@ export function Inspector({
         >
           {newA11y && !a11yDecision && !review ? t('inspector.review.approveA11y', { count: newA11y }) : t('inspector.review.approve')}
         </Button>
-        {review ? (
-          <Button size="sm" emphasis="ghost" disabled={busy} onClick={() => act('unreview')} title={review.state === 'approved' ? t('inspector.review.undoTitle') : undefined}>
-            {t('inspector.review.undo')}
-          </Button>
-        ) : null}
+        {undo}
       </>
-    ) : null;
+  );
+  const desc = row.reasons?.length ? row.reasons.join(' · ') : row.pass ? t('inspector.withinGate') : (row.error ?? '');
   // Embedded (Storybook panel) there is no Dialog around the body, so no Dialog parts.
   const Title = embedded ? 'h3' : DialogTitle;
   // The dialog opens on its title, not on the first control: a control focused by script before any
@@ -561,27 +570,25 @@ export function Inspector({
       {progress}
       {embedded ? null : (
         <div className={s.insHead}>
-          <div style={{ minInlineSize: 0 }}>
-            <div className={s.micro}>
-              {target!.scenario
-                ? t('inspector.contextScenario', { name: target!.scenario.name })
-                : `${t('inspector.contextLatest', { mode: row.mode })}${row.state ? ` · ${row.state}` : ''}${row.browser && row.browser !== 'chromium' ? ` · ${row.browser}` : ''}`}
+          <div className={s.insInfo}>
+            <div className={s.insContext}>
+              <StatusOf status={statusOf(row, data.review)} />
+              {siblingToggle}
+              <span className={`${s.micro} ${s.clip}`}>
+                {target!.scenario
+                  ? t('inspector.contextScenario', { name: target!.scenario.name })
+                  : `${t('inspector.contextLatest', { mode: row.mode })}${row.state ? ` · ${row.state}` : ''}${row.browser && row.browser !== 'chromium' ? ` · ${row.browser}` : ''}`}
+                {sbLink.state ? <span className={s.muted}> · {t('inspector.storybook.state', { state: sbLink.state })}</span> : null}
+              </span>
             </div>
-            <Title ref={titleRef} tabIndex={-1} className={s.insTitle}>
+            <Title ref={titleRef} tabIndex={-1} className={s.insTitle} title={row.id}>
               {row.id}
             </Title>
-            {sbLink.state ? <div className={`${s.micro} ${s.muted}`}>{t('inspector.storybook.state', { state: sbLink.state })}</div> : null}
-            <Desc className={s.micro} style={{ margin: 0 }}>
-              {row.reasons?.length
-                ? row.reasons.join(' · ')
-                : row.pass
-                  ? t('inspector.withinGate')
-                  : (row.error ?? '')}
+            <Desc className={`${s.micro} ${s.clip}`} style={{ margin: 0 }} title={desc || undefined}>
+              {desc || '\u00a0'}
             </Desc>
           </div>
-          <div className={s.row}>
-            <StatusOf status={statusOf(row, data.review)} />
-            {siblingToggle}
+          <div className={s.insActions}>
             {storyNav}
             {reviewButtons}
             {embedded ? null : (

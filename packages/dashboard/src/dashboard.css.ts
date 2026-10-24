@@ -218,18 +218,39 @@ export const inspector = style({
   gap: '0 !important',
   overflow: 'hidden',
 });
+// One height and one place for the actions from entry to entry: Approve moves on to the next
+// entry, so a bar that reflowed with each entry's id, badge or counter moved the button out from
+// under the pointer. Whatever varies sits in the first column, one line each, cut with an
+// ellipsis; the actions column holds only controls whose width does not change.
 export const insHead = style({
-  display: 'flex',
-  flexWrap: 'wrap',
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) auto',
   alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: `${v.space['2']} ${v.space['4']}`,
+  columnGap: v.space['4'],
   paddingBlock: v.space['3'],
   paddingInline: v.space['4'],
   borderBlockEnd: `1px solid ${v.color.border}`,
 });
 // Focused (tabIndex -1) only as the dialog's starting point; it is not a control, so no focus ring.
-export const insTitle = style({ margin: 0, fontFamily: v.font.mono, fontSize: v.fontSize.sm, wordBreak: 'break-all', outline: 'none' });
+export const insTitle = style({
+  margin: 0,
+  fontFamily: v.font.mono,
+  fontSize: v.fontSize.sm,
+  outline: 'none',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+});
+export const insInfo = style({ display: 'flex', flexDirection: 'column', gap: v.space['0_5'], minInlineSize: 0 });
+export const insContext = style({ display: 'flex', alignItems: 'center', gap: v.space['2'], minInlineSize: 0 });
+export const insActions = style({ display: 'flex', alignItems: 'center', gap: v.space['2'] });
+// "9 / 16" and "10 / 16" take the same room, so the arrows either side stay put.
+export const counter = style({ fontVariantNumeric: 'tabular-nums', textAlign: 'center' });
+// Undo keeps its slot while there is nothing to undo, so Approve does not move when it appears.
+export const slot = style({ display: 'inline-flex' });
+export const reserved = style({ display: 'inline-flex', visibility: 'hidden' });
+// One line, cut with an ellipsis, at the size of whatever it is combined with.
+export const clip = style({ minInlineSize: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' });
 // Review session: progress above the inspector, a summary when every entry is decided.
 export const sessionBar = style({
   display: 'flex',
