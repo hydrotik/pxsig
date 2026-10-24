@@ -1,16 +1,17 @@
 /**
  * The reference adapter's heatmap: tiles on the design system's tokens. One sequential scale, the
- * warning hue mixed into the surface in five steps; the ink switches to the surface colour on the
- * steps where the text colour would fall under 4.5:1 (which steps depends on the theme: see
- * `INK_FROM` in index.tsx).
+ * first categorical chart colour (the blue of the run charts) mixed into the surface in five steps,
+ * so the Overview's two charts read as one family; stale is a nudge, not an alarm, so not the
+ * warning hue. The text colour holds 4.5:1 on every step in both themes (worst: 4.6:1 on the
+ * light theme's darkest step), so the ink never switches (`INK_FROM` in index.tsx).
  */
 import { globalStyle, style, styleVariants } from '@vanilla-extract/css';
 import { focusOutline } from '@hydrotik/design-system/styles';
 import { vars } from '@hydrotik/tokens';
 
-/** Percent of the warning hue in each step's fill (step 0 is the plain surface). */
+/** Percent of the chart colour in each step's fill (step 0 is the plain surface). */
 export const HEAT_MIX = [0, 14, 29, 44, 66, 86] as const;
-const fill = (step: number) => (step ? `color-mix(in srgb, ${vars.color.warning} ${HEAT_MIX[step]}%, ${vars.color.surface})` : vars.color.surface);
+const fill = (step: number) => (step ? `color-mix(in srgb, ${vars.color.chart1} ${HEAT_MIX[step]}%, ${vars.color.surface})` : vars.color.surface);
 
 export const root = style({ display: 'flex', flexDirection: 'column', gap: vars.space['3'], minInlineSize: 0 });
 

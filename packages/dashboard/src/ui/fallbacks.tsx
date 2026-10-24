@@ -291,9 +291,9 @@ const Chart: F<'Chart'> = ({ data, series, x, format = String, className }) => (
   </div>
 );
 
-/** The warning hue over the surface, one mix per step of the scale (step 0 is the plain surface). */
+/** The accent over the surface (the charts' blue in the reference adapter), one mix per step of the scale (step 0 is the plain surface). */
 const HEAT_MIX = [0, 14, 29, 44, 66, 86];
-const heat = (step: number) => (step ? `color-mix(in srgb, ${v.color.warning} ${HEAT_MIX[step]}%, ${v.color.surface})` : v.color.surface);
+const heat = (step: number) => (step ? `color-mix(in srgb, ${v.color.accent} ${HEAT_MIX[step]}%, ${v.color.surface})` : v.color.surface);
 const swatch = (step: number): React.CSSProperties => ({ flexShrink: 0, inlineSize: '0.75rem', blockSize: '0.75rem', borderRadius: v.radius.sm, background: heat(step), border });
 
 /**

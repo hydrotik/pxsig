@@ -400,7 +400,7 @@ export function Chart({ kind, data, series, x, format = (v: number) => String(v)
  * From which step the ink is the surface colour, per theme: the text colour holds 4.5:1 on the
  * fills below it, the surface colour on the fills from it (checked on both themes' values).
  */
-const INK_FROM = { light: 5, dark: 4 } as const;
+const INK_FROM = { light: 6, dark: 6 } as const; // no step needs it on the chart1 scale
 
 export function Heatmap({ label, cells, legend, onSelect, className }: C.HeatmapProps) {
   const { theme } = useTheme();

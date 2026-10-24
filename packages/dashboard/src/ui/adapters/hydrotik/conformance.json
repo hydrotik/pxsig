@@ -44,6 +44,6 @@
     "SearchField": { "status": "full", "note": "SearchBar" },
     "Select": { "status": "full", "note": "Select with trigger, value and items built from options" },
     "Chart": { "status": "full", "note": "the design system's Chart on recharts, chart tokens 1–4; solid points with no outline" },
-    "Heatmap": { "status": "bespoke", "note": "tiles on the design system's tokens: the warning hue over the surface in five steps, ink switched per theme for contrast" }
+    "Heatmap": { "status": "bespoke", "note": "tiles on the design system's tokens: the first chart colour over the surface in five steps, text at 4.5:1 or better on every step in both themes" }
   }
 }
