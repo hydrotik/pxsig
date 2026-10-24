@@ -3,6 +3,27 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
+## Unreleased
+
+### Security
+
+- **The server's decision routes need a person.** `pxsig approve apply` refuses to run when output
+  is piped, in CI or under an agent, but `POST /__pxsig/approve` (and `approve-story`, `reject`,
+  `unreview` and the `a11y-*` decisions) accepted any local request, so an agent could approve
+  baselines with `curl`. These routes now need one of two random tokens the server makes when
+  it starts, sent as `x-pxsig-token`: one in the dashboard page when a browser loads it, one in
+  `node_modules/.cache/pxsig/serve-<port>.token` (mode 0600) for `pxsig approve apply`. Without one
+  the answer is 403, "approving needs a person: use the dashboard or `pxsig
+  approve` in a terminal". The MCP's `pxsig_review` now reports that refusal instead of writing.
+  This is a guard, not authentication: a process running as you can still read the token file.
+- **`via` in the approval log is the server's.** It was taken from the request body, so any caller
+  could log `via: "dashboard"`. It is now the token the decision carried (`dashboard` or `cli`).
+- **Cross-site requests and foreign hosts are refused.** A write whose `Sec-Fetch-Site` is not
+  `same-origin` is refused like a foreign `Origin` (a project's Storybook may still ask for checks
+  and repairs, never decisions), every request whose `Host` is not loopback is refused (DNS
+  rebinding), and the dashboard page may be framed only by the server and the projects'
+  Storybooks.
+
 ## 0.3.2 - 2026-10-24
 
 A new story takes one check (or one safe repair) to render and one click to approve every mode and

@@ -15,9 +15,13 @@
  *
  * API. GET takes `?project=`, POST a `project` field; either may be left out when the workspace
  * has one project, or when the id / story names its project unambiguously (the Storybook addon
- * sends only ids). Same-origin, or a project's Storybook origin.
+ * sends only ids). Writes are same-origin, or (checks and repairs only) a project's Storybook.
+ * Decisions (approve, approve-story, reject, unreview, a11y-*) also need the server's token
+ * (`x-pxsig-token`), which only the dashboard page and `pxsig approve apply` have: an agent or a
+ * script posting to the server is refused with 403 (lib/guard.mjs). A decision's `via` in the log
+ * is the token it carried (`dashboard` or `cli`); a `via` in the body is ignored.
  *   GET  /__pxsig/projects · /__pxsig/status · /__pxsig/data · /__pxsig/events · /__pxsig/integrity
- *   POST /__pxsig/approve {id, batch?, via?, reason?, kind?}   latest render → baseline (`.psig`
+ *   POST /__pxsig/approve {id, batch?, reason?, kind?}   latest render → baseline (`.psig`
  *        with the render as its image); the old baseline is snapshotted and the write logged
  *   POST /__pxsig/approve-story {story}   approve every entry of a story that waits for a decision, one batch
  *   POST /__pxsig/reject {id} · /__pxsig/unreview {id}   unreview of an approval restores the old baseline
@@ -63,6 +67,7 @@ import { ensureStorybook } from './lib/static.mjs';
 import { findWorkspace, flagLayer, loadProject, PXSIG_VERSION, rustBinary, serverFile, writeRunManifest } from './lib/workspace.mjs';
 import { buildData, dashboardDir, prebuiltDashboardDir, useDashboard } from './report.mjs';
 import { chooseDashboard } from './lib/dashboard-dir.mjs';
+import { authorize, loopbackHost, newToken, pageLoad, removeToken, withToken, writeToken } from './lib/guard.mjs';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -112,6 +117,8 @@ const readJson = (p, fallback) => {
   }
 };
 const httpError = (status, message) => Object.assign(new Error(message), { status });
+/** Decisions need one of these (lib/guard.mjs): the dashboard page's, or the CLI's (a file only the owner reads). */
+const TOKENS = { dashboard: newToken(), cli: newToken() };
 
 // --- the Rust engine, kept running --------------------------------------------------
 const rustBin = rustBinary();
@@ -732,6 +739,7 @@ const cors = (req, res) => {
   if (o && allowedOrigins.has(o)) {
     res.setHeader('access-control-allow-origin', o);
     res.setHeader('access-control-allow-methods', 'GET, POST, OPTIONS');
+    // Never x-pxsig-token: another origin cannot send a decision.
     res.setHeader('access-control-allow-headers', 'content-type');
     res.setHeader('vary', 'origin');
   }
@@ -799,9 +807,13 @@ async function api(req, res, action, q) {
     return json(res, 405, { error: 'POST only' });
   }
   if (req.method !== 'POST') return json(res, 405, { error: 'POST only' });
-  // Same-origin, or a project's Storybook (the addon): a page on any other site must not write baselines.
-  const origin = req.headers.origin;
-  if (origin && origin !== `http://${req.headers.host}` && !allowedOrigins.has(origin)) return json(res, 403, { error: 'cross-origin' });
+  // Same-origin, or a project's Storybook (the addon, checks only): a page on any other site must
+  // not write. Decisions also need the token: a person in the dashboard, or `pxsig approve apply`.
+  const auth = authorize({ action, headers: req.headers, tokens: TOKENS, ownOrigin: `http://${req.headers.host}`, allowedOrigins });
+  if (!auth.ok) {
+    console.error(`[serve] refused POST /__pxsig/${action}: ${auth.error}`);
+    return json(res, auth.status, { error: auth.error });
+  }
   const body = await readBody(req);
   if (action === 'check') {
     // Without a project, a check is split across the projects that own the ids / stories.
@@ -820,12 +832,13 @@ async function api(req, res, action, q) {
     const { story } = body;
     if (typeof story !== 'string' || !/^[a-z0-9-]+--[a-z0-9-]+$/.test(story)) return json(res, 400, { error: 'bad story' });
     const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : undefined);
-    return json(res, 200, { ok: true, project: S.name, ...(await approveStory(S, story, { via: s(body.via, 20)?.replace(/[^\w-]/g, ''), reason: s(body.reason, 500) })) });
+    // `via` is how the decision reached the server (the token it carried), never the body's word.
+    return json(res, 200, { ok: true, project: S.name, ...(await approveStory(S, story, { via: auth.via, reason: s(body.reason, 500) })) });
   }
   const { id } = body;
   if (typeof id !== 'string' || !/^[a-z0-9-]+--[a-z0-9-]+(__[a-z0-9-]+)?(@[a-z0-9-]+)?$/.test(id)) return json(res, 400, { error: 'bad id' });
   const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : undefined);
-  const meta = { batch: s(body.batch, 80)?.replace(/[^\w.-]/g, ''), via: s(body.via, 20)?.replace(/[^\w-]/g, ''), reason: s(body.reason, 500), kind: s(body.kind, 10), rule: s(body.rule, 80)?.replace(/[^\w-]/g, '') };
+  const meta = { batch: s(body.batch, 80)?.replace(/[^\w.-]/g, ''), via: auth.via, reason: s(body.reason, 500), kind: s(body.kind, 10), rule: s(body.rule, 80)?.replace(/[^\w-]/g, '') };
   if (action.startsWith('a11y-')) return json(res, 200, { ok: true, project: S.name, id, entry: a11yReview(S, action, id, meta) });
   json(res, 200, { ok: true, project: S.name, id, entry: await review(S, action, id, meta) });
 }
@@ -870,6 +883,8 @@ function projectFile(req, res, name, rest) {
 
 const server = createServer(async (req, res) => {
   try {
+    // A Host that is not loopback is a DNS-rebinding page posing as same-origin.
+    if (!loopbackHost(req.headers.host, server.address().port)) return json(res, 403, { error: 'unknown host' });
     cors(req, res);
     if (req.method === 'OPTIONS') return res.writeHead(204).end();
     const u = new URL(req.url, 'http://localhost');
@@ -887,8 +902,14 @@ const server = createServer(async (req, res) => {
       if (file === join(dashboardDir, 'index.html')) {
         // Served pages fetch live data: drop whatever a static build inlined.
         const html = readFileSync(file, 'utf8').replace(/<script id="pxsig-data">[\s\S]*?<\/script>/, '');
-        res.writeHead(200, { 'content-type': TYPES['.html'], 'cache-control': 'no-store' });
-        return res.end(html);
+        // The token goes only into a page a browser loads (a tab, the Storybook panel), which only
+        // this server's origin and the projects' Storybooks may frame.
+        res.writeHead(200, {
+          'content-type': TYPES['.html'],
+          'cache-control': 'no-store',
+          'content-security-policy': `frame-ancestors 'self' ${[...allowedOrigins].join(' ')}`,
+        });
+        return res.end(pageLoad(req.headers) ? withToken(html, TOKENS.dashboard) : html);
       }
       return sendFile(req, res, file);
     }
@@ -951,6 +972,8 @@ function listen(port, tries = 10) {
       writeFileSync(info, `${JSON.stringify({ url, pid: process.pid, startedAt: new Date().toISOString(), projects: [...states.keys()] }, null, 2)}\n`);
     }
     for (const S of states.values()) S.lock?.update({ url });
+    mkdirSync(dirname(info), { recursive: true });
+    writeToken(ws.root, url, TOKENS.cli);
     const page = `${url}/report/${flags.tab ? `#${flags.tab}` : ''}`;
     console.log(`[serve] pxsig dashboard → ${page}  (${[...states.keys()].join(', ')}; Ctrl+C to stop)`);
     if (!flags['no-open']) openBrowser(page);
@@ -965,6 +988,7 @@ const shutdown = async () => {
   engine?.kill();
   await pool?.close();
   rmSync(join(tmpdir(), `pxsig-serve-${process.pid}`), { recursive: true, force: true });
+  if (url) removeToken(ws.root, url, TOKENS.cli);
   try {
     if (readJson(info, {}).pid === process.pid) rmSync(info);
   } catch {

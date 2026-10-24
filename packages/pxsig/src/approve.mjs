@@ -34,6 +34,7 @@ import {
   verify,
   who,
 } from './lib/approvals.mjs';
+import { readToken, TOKEN_HEADER } from './lib/guard.mjs';
 import { acquireLock } from './lib/lock.mjs';
 import { readImage } from './lib/psig.mjs';
 import { classify } from './lib/shape.mjs';
@@ -239,6 +240,11 @@ export async function approveCommand({
         `the pxsig server is not running (${serverUrl}): start it with \`${CMD} serve\``
       );
     if (status.running || status.queued) fail('a check is running: wait for it, then plan again');
+    // The server refuses decisions without its token (lib/guard.mjs); this path read it only after
+    // the person-at-a-terminal check above.
+    const token = readToken(P.workspaceRoot, serverUrl);
+    if (!token)
+      fail(`no token from the pxsig server at ${serverUrl} (it writes one when it starts): restart \`${CMD} serve\` with this version`);
     const shape = ok.filter((e) => e.kind === 'shape' && !e.first);
     const first = ok.filter((e) => e.first);
     process.stdout.write(
@@ -255,7 +261,7 @@ export async function approveCommand({
     for (const e of ok) {
       const r = await fetch(`${serverUrl}/__pxsig/approve`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', [TOKEN_HEADER]: token },
         body: JSON.stringify({ project: P.name, id: e.id, batch, via: 'cli', reason: plan.reason, kind: e.kind }),
       });
       if (!r.ok) {

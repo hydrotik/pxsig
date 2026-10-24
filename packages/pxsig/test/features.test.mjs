@@ -11,6 +11,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { readLog, record, snapshot, undo } from '../src/lib/approvals.mjs';
+import { readToken } from '../src/lib/guard.mjs';
 import { editedFilesSince, reconcile, resolveContext } from '../src/lib/integrity.mjs';
 import { acquireLock, lockPath, readLock } from '../src/lib/lock.mjs';
 import { ensureGitattributes, initProject } from '../src/lib/setup.mjs';
@@ -369,7 +370,7 @@ test('the server: undoing an approval restores the baseline it replaced, and log
       proc.stderr.on('data', (d) => (log += d));
     });
     const post = async (action) => {
-      const r = await fetch(`http://127.0.0.1:${port}/__pxsig/${action}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) });
+      const r = await fetch(`http://127.0.0.1:${port}/__pxsig/${action}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`) }, body: JSON.stringify({ id }) });
       return { status: r.status, body: await r.json() };
     };
     assert.equal((await post('approve')).status, 200);
@@ -408,7 +409,7 @@ test('the server refuses to approve an entry whose render failed, and leaves its
       proc.stdout.on('data', (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok())));
       proc.stderr.on('data', (d) => (log += d));
     });
-    const r = await fetch(`http://127.0.0.1:${port}/__pxsig/approve`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) });
+    const r = await fetch(`http://127.0.0.1:${port}/__pxsig/approve`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`) }, body: JSON.stringify({ id }) });
     const body = await r.json();
     assert.equal(r.status, 409, JSON.stringify(body));
     assert.match(body.error, /did not render/);
@@ -443,7 +444,7 @@ test('the server: accepting a11y violations updates the accepted list; undo rest
       proc.stderr.on('data', (d) => (log += d));
     });
     const post = async (action) => {
-      const r = await fetch(`http://127.0.0.1:${port}/__pxsig/${action}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) });
+      const r = await fetch(`http://127.0.0.1:${port}/__pxsig/${action}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`) }, body: JSON.stringify({ id }) });
       return { status: r.status, body: await r.json() };
     };
     const accepted = await post('a11y-accept');
@@ -457,12 +458,12 @@ test('the server: accepting a11y violations updates the accepted list; undo rest
     assert.equal((await post('a11y-reject')).status, 200);
     assert.deepEqual(JSON.parse(readFileSync(a11yPath, 'utf8'))[id], ['aria-hidden-focus'], 'reject leaves the accepted list alone');
     // Unaccept takes a rule off the list, and the report shows it as new straight away.
-    const r = await fetch(`http://127.0.0.1:${port}/__pxsig/a11y-unaccept`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, rule: 'aria-hidden-focus' }) });
+    const r = await fetch(`http://127.0.0.1:${port}/__pxsig/a11y-unaccept`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`) }, body: JSON.stringify({ id, rule: 'aria-hidden-focus' }) });
     assert.equal(r.status, 200);
     assert.deepEqual(JSON.parse(readFileSync(a11yPath, 'utf8'))[id], []);
     const row2 = JSON.parse(readFileSync(checkPath, 'utf8')).rows.find((x) => x.id === id);
     assert.equal(row2.a11y.new, 2);
-    const again = await fetch(`http://127.0.0.1:${port}/__pxsig/a11y-unaccept`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, rule: 'aria-hidden-focus' }) });
+    const again = await fetch(`http://127.0.0.1:${port}/__pxsig/a11y-unaccept`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`) }, body: JSON.stringify({ id, rule: 'aria-hidden-focus' }) });
     assert.equal(again.status, 409, 'a rule that is not on the list is refused');
     assert.equal(readFileSync(join(f.px, 'a11y-decisions.ndjson'), 'utf8').trim().split('\n').map((l) => JSON.parse(l).action).at(-1), 'unaccept');
   } finally {

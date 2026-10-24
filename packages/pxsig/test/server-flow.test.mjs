@@ -18,6 +18,7 @@ import { createServer } from 'node:http';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { readToken } from '../src/lib/guard.mjs';
 import { CHECKER, fixture, hasRust, rustBin } from './fixture.mjs';
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
@@ -88,8 +89,9 @@ async function serve(f, { storybook } = {}) {
     proc.stdout.on('data', on);
   });
   const base = `http://127.0.0.1:${port}`;
-  const post = async (action, body) => {
-    const r = await fetch(`${base}/__pxsig/${action}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  // As the dashboard posts: with the server's token (`headers` adds or overrides, e.g. no token).
+  const post = async (action, body, headers = {}) => {
+    const r = await fetch(`${base}/__pxsig/${action}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-pxsig-token': readToken(f.repo, base), ...headers }, body: JSON.stringify(body) });
     return { status: r.status, body: await r.json() };
   };
   const idle = async () => {
@@ -100,7 +102,7 @@ async function serve(f, { storybook } = {}) {
     }
     throw new Error(`the queue did not drain:\n${log}`);
   };
-  return { base, post, idle, log: () => log, stop: () => proc.kill() };
+  return { base, port, post, idle, log: () => log, stop: () => proc.kill() };
 }
 
 const rowsOf = (f) => JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8')).rows;
