@@ -216,7 +216,8 @@ export function Overview({ data, go, startReview }: { data: Data; go(tab: string
           </div>
           <div className={s.stack} data-column="end">
             <ErrorsCard data={data} renderErrors={errors} go={go} startReview={startReview} />
-            <ChangedPerRun runs={data.history ?? []} />
+            {/* A third of the Runs page's height: on the Overview it is a trend, not the detail view. */}
+            <ChangedPerRun runs={data.history ?? []} height={16 / 3} />
           </div>
         </div>
       </div>
