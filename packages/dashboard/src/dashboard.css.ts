@@ -105,6 +105,8 @@ export const storyCard = style({
     },
   },
 });
+// A card that is not itself a control (it holds one: the re-check of a render error).
+export const storyCardStatic = style({ cursor: 'default', selectors: { '&:hover': { borderColor: v.color.border } } });
 // A status edge on each card, so problems stand out while scrolling.
 const edge = (color: string) => ({ borderInlineStartColor: color, borderInlineStartWidth: v.line.emphasis });
 globalStyle(`${storyCard}[data-status="changed"]`, edge(v.color.warning));

@@ -37,6 +37,20 @@
     "status": {
       "reviewRequired": "Review required",
       "approved": "Approved"
+    },
+    "check": {
+      "running": {
+        "one": "Checking {count} entry…",
+        "other": "Checking {count} entries…"
+      },
+      "failedTitle": "Check failed",
+      "setupTitle": "Check not run: setup error",
+      "dismiss": "Dismiss",
+      "queued": {
+        "one": "Queued {count} entry",
+        "other": "Queued {count} entries"
+      },
+      "skipped": "Not checked: {list}"
     }
   },
   "tabs": {
@@ -153,14 +167,17 @@
       "cells": "Cells {value}",
       "tiles": "Tiles {value}",
       "a11yAccepted": "A11y accepted",
-      "a11yRejected": "A11y rejected"
+      "a11yRejected": "A11y rejected",
+      "recheck": "Re-check",
+      "recheckTitle": "Render and check this entry again"
     },
     "group": {
       "label": "Group",
       "component": "By component",
       "none": "None",
       "count": "{status} {count}"
-    }
+    },
+    "pendingReason": "New: not rendered yet. Re-check it, then approve its first render."
   },
   "coverage": {
     "headline": {
@@ -770,7 +787,19 @@
       "acceptCount": {
         "one": "Accept 1 new",
         "other": "Accept {count} new"
-      }
+      },
+      "recheck": "Re-check",
+      "recheckTitle": "Render and check this entry again. Never writes a baseline.",
+      "approveStory": {
+        "one": "Approve story · {count} entry",
+        "other": "Approve story · {count} entries"
+      },
+      "approveStoryTitle": "Approve every entry of this story that waits for a decision: each mode and state, in one batch",
+      "approveStoryDone": {
+        "one": "Approved {count} entry of {story}.",
+        "other": "Approved {count} entries of {story}."
+      },
+      "approveStoryLeft": "Left out: {list}"
     },
     "missing": "Render not found: {before} or {after}. Run the check again.",
     "loading": "Loading renders…",

@@ -336,6 +336,15 @@ export function useData(): { data: Data | null; error: string | null; live: bool
       es.addEventListener('data', mine);
       es.addEventListener('review', mine);
       es.addEventListener('integrity', mine);
+      // Check runs: shown while they run, and their errors (Storybook down) reach the page.
+      es.addEventListener('check', (e: MessageEvent) => {
+        try {
+          const d = JSON.parse(e.data);
+          if (!d?.project || !currentProject || d.project === currentProject) noteCheck(d);
+        } catch {
+          /* not ours */
+        }
+      });
       es.addEventListener('reload', () => location.reload());
       es.onerror = () => setLive(false);
     } catch {
@@ -362,10 +371,50 @@ export async function a11yAction(action: 'accept' | 'reject' | 'unreview' | 'una
   if (!r.ok) throw new Error(body.error || r.statusText);
 }
 
-export async function recheck(ids: string[]): Promise<void> {
+/** Queue entries (or stories) for a re-check on the server. Never writes a baseline. */
+export async function recheck(ids: string[]): Promise<{ queued: string[]; registered?: string[]; skipped?: { name: string; why: string }[] }> {
   const r = await fetch('/__pxsig/check', { method: 'POST', headers: { 'content-type': 'application/json' }, body: withProject({ ids }) });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body.error || r.statusText);
+  return { queued: body.queued ?? [], registered: body.registered, skipped: body.skipped };
+}
+
+/**
+ * Approve every entry of a story that waits for a decision, in one batch (a person's click; the
+ * server leaves out entries that pass, did not render, or were rejected, and says why).
+ */
+export async function approveStory(story: string): Promise<{ approved: string[]; skipped: { id: string; why: string }[]; batch: string }> {
+  const r = await fetch('/__pxsig/approve-story', { method: 'POST', headers: { 'content-type': 'application/json' }, body: withProject({ story }) });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.error || r.statusText);
+  return body;
+}
+
+/** The server's check runs, as its `check` events report them. */
+export interface CheckActivity {
+  /** Entries in the run going on now, or null. */
+  running: string[] | null;
+  /** The last run's error (Storybook down, a broken index), until dismissed or a run succeeds. */
+  error: { message: string; setup: boolean } | null;
+}
+let activity: CheckActivity = { running: null, error: null };
+const listeners = new Set<() => void>();
+const setActivity = (next: CheckActivity) => {
+  activity = next;
+  for (const l of listeners) l();
+};
+function noteCheck(d: { state?: string; ids?: string[]; error?: string; setup?: boolean }) {
+  if (d.state === 'running') setActivity({ ...activity, running: d.ids ?? [] });
+  else if (d.state === 'done') setActivity({ running: null, error: null });
+  else if (d.state === 'error') setActivity({ running: null, error: { message: d.error ?? '', setup: !!d.setup } });
+}
+export const dismissCheckError = () => setActivity({ ...activity, error: null });
+export function useCheckActivity(): CheckActivity {
+  return React.useSyncExternalStore(
+    (l) => (listeners.add(l), () => listeners.delete(l)),
+    () => activity,
+    () => activity
+  );
 }
 
 /** Run the safe repairs on the server (never writes signatures, never approves, never prunes). */
@@ -396,7 +445,7 @@ export function rowsWithPending(d: Data): Row[] {
   const have = new Set(rows.map((r) => r.id));
   const pending = d.integrity.entries
     .filter((x) => x.files && !have.has(x.id) && x.issues.some((i) => i.code === 'unbaselined'))
-    .map((x): Row => ({ id: x.id, story: x.story, mode: x.mode ?? '', state: x.state, pass: false, new: true, pending: true, metrics: null, reasons: ['new: not rendered yet — run Check, then approve its first render'] }));
+    .map((x): Row => ({ id: x.id, story: x.story, mode: x.mode ?? '', state: x.state, pass: false, new: true, pending: true, metrics: null, reasons: [t('review.pendingReason')] }));
   return pending.length ? [...rows, ...pending] : rows;
 }
 
