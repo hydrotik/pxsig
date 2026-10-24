@@ -20,7 +20,8 @@ Approving a baseline or re-checking a story then costs one render.
 The server binds to `127.0.0.1` only. On start it writes
 `<workspace>/node_modules/.cache/pxsig/server.json` (`url`, `pid`, `startedAt`, `projects`), so the
 CLI, the MCP server and the Storybook addon find it on whatever port it got. It removes the file
-on exit.
+on exit. A second server started beside a running one (another port) leaves the file naming the
+running server.
 
 Each project needs a manifest. A project whose manifest is missing or unreadable is still listed,
 with the error, and has no entries.
@@ -34,7 +35,9 @@ write for that project (approve, reject, re-check, repair) runs in the server's 
 `check --full` against a served project hands its selection to that queue; `doctor --repair --apply`
 asks for `POST /__pxsig/repair`. When another process (a full check, a migration) holds a
 project's lock at start, the server logs who, keeps trying every 2 s, and answers that project's
-writes with 409 until it has the lock. `GET /__pxsig/projects` shows each project's `locked` state.
+writes with 409 until it has the lock. Until then it writes nothing into that store: its
+integrity ledger stays in memory (served by `GET /__pxsig/integrity`) and its run manifest goes to
+a temp folder. `GET /__pxsig/projects` shows each project's `locked` state.
 
 **Built Storybook.** When a project's `storybook.url` does not answer and its
 `storybook.staticDir` holds a Storybook build, the server serves that folder on a free 127.0.0.1
@@ -46,9 +49,14 @@ port and renders against it (its origin is allowed like a Storybook's).
 
 | Section | Content |
 | --- | --- |
-| Overview | The latest check's counts and duration, then open items (changed, new, rejected, render errors, coverage errors, new a11y violations, flaky), each linking to its list or starting a review |
-| Review Stories | Every entry, filterable and grouped by component, with the inspector: baseline, current render and diff side by side or overlaid, metrics, gate reasons, change regions. `A` approves, `R` rejects. "Review N changes" starts a session over the changed (or new) entries with progress and a closing summary. |
+| Overview | The latest check's counts and duration, then open items (changed, new, rejected, render errors, components with coverage errors, new a11y violations, flaky), each linking to its list or starting a review. "Changed" counts changes still waiting for a decision. |
+| Review Stories | Every entry, filterable and grouped by component, with the inspector: baseline, current render and diff side by side or overlaid, metrics, gate reasons, change regions. `A` approves, `R` rejects; **Approve story** approves every mode and state of the story that waits for a decision, in one batch; **Re-check** queues the entry again. A card with a render error, or a NEW entry not rendered yet, has its own **Re-check**. "Review N changes" starts a session over the changed (or new) entries with progress and a closing summary. |
 | Coverage | The integrity ledger: components and entries by status, with the safe repairs |
+
+A banner above every section shows coverage errors, entries that need a first approval (counted
+on their own, with the queue that approves them), orphaned baselines (with the command that moves
+them aside), and **Run safe repairs** while there is something to repair. A check that is running
+is shown, and one that failed (Storybook down, a broken index) shows its error until dismissed.
 | Accessibility | axe violations per entry and per rule, new ones first |
 | Runs | The last check's timing, past runs, and which entries changed in each |
 | Diagnostics | Scenarios, calibration and benchmark results. Shown only when a report for them exists in the store; pxsig 0.2 does not produce those reports. |
@@ -104,16 +112,19 @@ exactly one project.
 | Request | Effect |
 | --- | --- |
 | `POST /__pxsig/approve {id, batch?, via?, reason?, kind?}` | The latest render becomes the baseline: a `.psig` with the render as its image. The old baseline is snapshotted to `<store>/history/<batch>/`, the write logged in `approvals.ndjson`, and the a11y baseline follows the render. A NEW entry (no baseline yet) gets its first baseline, logged with `before: null`. 409 when there is no latest render, or when the server does not hold the project's store lock. |
+| `POST /__pxsig/approve-story {story, via?, reason?}` | Approves every entry of the story that waits for a decision (each mode and state), as one batch: the dashboard's **Approve story**, a person's click. Entries that pass, did not render, were rejected or are already approved are left out; the answer lists `approved`, `skipped` (with why) and the `batch`. Each approval is logged and undone like a single one. |
 | `POST /__pxsig/reject {id}` | Records a rejection for the current result. |
 | `POST /__pxsig/a11y-accept {id}` | Puts the entry's current axe violations on its accepted list (`<store>/a11y.json`), logged in `<store>/a11y-decisions.ndjson`. 409 when the last check has no axe results for it. |
 | `POST /__pxsig/a11y-reject {id}` | Marks the entry's violations for a fix; the accepted list is unchanged. |
 | `POST /__pxsig/a11y-unaccept {id, rule?}` | Takes `rule` (or every rule) off the entry's accepted list and marks its row's violations new in `check.json` at once; logged. 409 when the rule is not on the list. |
 | `POST /__pxsig/a11y-unreview {id}` | Clears the accessibility decision; after an accept it restores the previous accepted list (logged). Accessibility decisions live in `reports/a11y-review.json` and, like visual ones, end at the entry's next check. |
 | `POST /__pxsig/unreview {id}` | Clears the decision. For an approval it also restores the previous baseline from that approval's snapshot (a first baseline moves to trash/) and its a11y baseline, logged as an undo; 409 when the baseline changed since. |
-| `POST /__pxsig/check {ids? \| story? \| stories? \| all?}` | Queues renders and engine checks; answers 202 with the queued ids. Results merge into `check.json`. Without a project, the check is split across the projects that own the ids. |
-| `POST /__pxsig/repair {apply?, only?}` | The safe repairs: the plan, or with `apply: true` the result. Never prunes. |
+| `POST /__pxsig/check {ids? \| story? \| stories? \| all?}` | Queues renders and engine checks; answers 202 with the queued ids. Results merge into `check.json`, and its `generatedAt` moves (`fullCheckAt` keeps when every entry was last checked together). A name the manifest does not have is registered first when Storybook is healthy (no signature: NEW, logged in `repairs.ndjson`); the answer lists those entries in `registered`, and each name that could not be registered in `skipped` with why. Without a project, the check is split across the projects that own the ids. |
+| `POST /__pxsig/repair {apply?, only?, stale?}` | The safe repairs: the plan, or with `apply: true` the result. Never prunes. `stale: true` also re-checks stale verdicts. |
 
-A new verdict for an entry clears its review decision. Ids must match the entry id pattern in
+A new verdict for an entry clears its review decision. An approval marks the entry's row in
+`check.json` (`approved: { at, batch }`) until then, so `summary.failed` leaves it out; an undo
+clears the mark. `summary.changed` counts only real changes waiting for a decision. Ids must match the entry id pattern in
 [spec.md](spec.md#entry-id); others get 400.
 
 ### Guards
@@ -122,8 +133,10 @@ A new verdict for an entry clears its review decision. Ids must match the entry 
   or the origin of a served project's Storybook (with `localhost` and `127.0.0.1` both accepted).
   CORS headers are sent only to those Storybook origins.
 - **Storybook health.** Before rendering, a check fetches Storybook's index. When it is unreachable
-  or broken, nothing is rendered or recorded, and the `check` event carries a setup error. When
-  most renders hit Storybook's error page, the run is dropped the same way.
+  or broken, nothing is rendered or recorded, and the `check` event carries a setup error (the
+  dashboard shows it). When three or more renders, and at least half, hit Storybook's error page,
+  the run is dropped the same way; one or two such renders (a story checked alone that throws)
+  are recorded as render errors.
 
 ## Static report
 

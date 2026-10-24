@@ -44,8 +44,9 @@ export function Overview({ data, go, startReview }: { data: Data; go(tab: string
     {
       id: 'coverage',
       label: t('overview.items.coverage'),
-      count: L?.summary.bySeverity.error ?? 0,
-      detail: L?.summary.componentsBySeverity.error ? t('overview.components', { count: L.summary.componentsBySeverity.error }) : '',
+      // Components, as the Coverage tab's count and the banner say; the entries are the detail.
+      count: L?.summary.componentsBySeverity.error ?? 0,
+      detail: L?.summary.bySeverity.error ? t('overview.entries', { count: L.summary.bySeverity.error }) : '',
       action: 'overview.actions.open',
       open: () => go('integrity'),
     },
@@ -62,7 +63,9 @@ export function Overview({ data, go, startReview }: { data: Data; go(tab: string
           items={[
             { label: t('overview.cards.checked'), value: sm.checked, unit: sm.skipped ? t('overview.cards.notRun', { count: sm.skipped }) : sm.modes.join(' · ') },
             { label: t('overview.cards.passed'), value: sm.passed, tone: 'success' },
-            { label: t('overview.cards.changed'), value: sm.failed, tone: sm.failed ? 'danger' : undefined, onSelect: () => review('changed'), icon: <Affordance kind="navigate" /> },
+            // Changes still waiting for a decision: not new entries, render errors or approved ones
+            // (`summary.failed` counts all of those), so it matches "Changed, awaiting review".
+            { label: t('overview.cards.changed'), value: changed.length, tone: changed.length ? 'danger' : undefined, onSelect: () => review('changed'), icon: <Affordance kind="navigate" /> },
             { label: t('overview.cards.flaky'), value: sm.flaky, tone: sm.flaky ? 'warning' : undefined, onSelect: () => go('stories', 'flaky'), icon: <Affordance kind="navigate" /> },
             { label: t('overview.cards.a11y'), value: sm.a11yNew, unit: t('overview.cards.a11yOf', { count: sm.a11yViolations }), tone: sm.a11yNew ? 'danger' : undefined, onSelect: () => (served ? startReview('a11y') : go('a11y')), icon: <Affordance kind="navigate" /> },
             // Wall clock for the whole check; rendering in the browser is nearly all of it.

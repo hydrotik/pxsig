@@ -1,6 +1,6 @@
 import React from 'react';
 import { Badge, Button } from '@ui';
-import { type Data, type Row, componentOf, integrityOf, pathsFor, statusOf } from '../data';
+import { type Data, type Row, componentOf, integrityOf, pathsFor, recheck, served, statusOf, useCheckActivity } from '../data';
 import { StatusOf } from './StatusOf';
 import { Affordance } from './Affordance';
 import { codeCopy, t } from '../copy';
@@ -15,8 +15,17 @@ export function StoryCard({ data, row, scenario, onOpen }: { data: Data; row: Ro
   const integrity = scenario ? null : integrityOf(data, row.id);
   const flags = integrity?.issues.filter((i) => !shown.has(i.code)) ?? [];
   const status = scenario ? (row.pass ? 'pass' : 'changed') : statusOf(row, data.review);
+  const openable = !!m || (!!row.new && !row.pending);
+  // A render error or a NEW entry not rendered yet has nothing to inspect: the card offers a
+  // re-check instead (a button in the card, so the card itself is not one).
+  const offerRecheck = served && !scenario && !openable && (!!row.error || !!row.pending);
+  const activity = useCheckActivity();
+  const [queued, setQueued] = React.useState(false);
+  React.useEffect(() => setQueued(false), [row]);
+  const checking = queued || !!activity.running?.includes(row.id);
+  const Card = offerRecheck ? 'div' : 'button';
   return (
-    <button type="button" className={s.storyCard} data-status={status} onClick={onOpen} disabled={!m && !(row.new && !row.pending)}>
+    <Card {...(offerRecheck ? { role: 'group', 'aria-label': row.id } : { type: 'button' as const, onClick: onOpen, disabled: !openable })} className={offerRecheck ? `${s.storyCard} ${s.storyCardStatic}` : s.storyCard} data-status={status}>
       {m || (row.new && !row.pending) ? <Affordance kind="navigate" /> : null}
       <div className={s.thumb}>
         <img src={p.after} alt="" loading="lazy" decoding="async" onError={(e) => ((e.target as HTMLImageElement).style.visibility = 'hidden')} />
@@ -53,8 +62,25 @@ export function StoryCard({ data, row, scenario, onOpen }: { data: Data; row: Ro
         ) : row.new ? (
           <span className={s.cardStats}>{row.pending ? t('review.card.notRendered') : t('review.card.noBaseline')}</span>
         ) : null}
+        {offerRecheck ? (
+          <span className={s.row}>
+            <Button
+              size="sm"
+              emphasis="outline"
+              disabled={checking}
+              title={t('review.card.recheckTitle')}
+              onClick={() =>
+                recheck([row.id])
+                  .then(() => setQueued(true))
+                  .catch((e) => alert(t('inspector.review.failed', { action: t('review.card.recheck'), error: (e as Error).message })))
+              }
+            >
+              {checking ? t('app.check.running', { count: 1 }) : t('review.card.recheck')}
+            </Button>
+          </span>
+        ) : null}
       </div>
-    </button>
+    </Card>
   );
 }
 

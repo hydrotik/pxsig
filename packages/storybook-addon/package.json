@@ -17,9 +17,13 @@
   "files": [
     "preset.cjs",
     "manager.mjs",
+    "panel-style.mjs",
     "README.md"
   ],
   "peerDependencies": {
     "storybook": ">=9"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
   }
 }

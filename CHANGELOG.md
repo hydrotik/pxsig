@@ -3,6 +3,78 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
+## Unreleased
+
+A new story takes one action and one decision: checking it (or one safe repair) registers and
+renders it, it stays visible as "needs a first approval", and the inspector approves all its modes
+and states in one click. Errors from checks and repairs reach the dashboard, and the counts agree.
+
+### Added
+
+- **Checking a story that is not registered registers it.** `pxsig check <id>`, `pxsig check
+  --full --only`, the MCP's `pxsig_check` and `POST /__pxsig/check` used to select from the manifest
+  only, so a story just written was dropped (the MCP said `checked: 0` with no note). A name the
+  manifest lacks is now registered first when Storybook is healthy, then rendered in the same run;
+  the entries arrive NEW, with no signature, and the registration is logged in `repairs.ndjson`.
+  A name that cannot be registered comes back in `skipped` with the reason.
+- **Approve a story's entries together.** The inspector's **Approve story · N entries** approves
+  every mode and state of a story that waits for a decision in one batch (`POST
+  /__pxsig/approve-story`). It is a person's click in the dashboard; entries that pass, did not
+  render or were rejected are left out with the reason, and each approval is logged and undone like
+  a single one. The MCP has no such tool.
+- **Re-check from the dashboard.** A **Re-check** button in the inspector, and on cards with
+  nothing to inspect (a render error, a NEW entry not rendered yet), queues the entry on the server.
+- `pxsig doctor --repair --stale`, `stale` on `pxsig_doctor` and `POST /__pxsig/repair`: re-check
+  stale verdicts too (see Fixed).
+- The dashboard opens in a theme a link names (`?theme=dark|light`), over the remembered one.
+
+### Fixed
+
+- **One repair run for a new story.** "Run safe repairs" registered a new story's entries but
+  planned the re-check before registering, so nothing rendered until a second click. The entries
+  register adds are now rendered by the same run.
+- Repairs: a story whose parameters cannot be read no longer aborts the register step (and every
+  later step); it is reported and left out. An existing signature adopted at a new entry's path is
+  logged.
+- Repairs re-check only what needs it: entries with no usable verdict or render, and those a later
+  step gates on. Stale verdicts (a warning) are listed for a person instead of re-checked: four
+  render errors used to start a re-check of a thousand stale entries. Orphaned entries are never
+  re-rendered.
+- The repair's re-check reports what was recorded (`N of M entries re-checked`), and a check that
+  could not run as `not re-checked: <why>`, logged as failed; it used to report "N re-checked"
+  either way.
+- A story checked alone whose render hit Storybook's error page (1 of 1) was taken for a broken
+  Storybook and never recorded. Storybook now counts as broken only when three or more renders, and
+  at least half, hit its error page; fewer are render errors like any other (server and `pxsig
+  check`).
+- Check errors reach the dashboard. A failed server check (Storybook down, a broken index) was
+  broadcast as an event nothing listened to; the dashboard now shows a running check, and a failed
+  one with its error until dismissed.
+- Coverage banner: entries that wait for their first approval keep it open, counted on their own,
+  with the review queue that approves them. They are warnings, so the banner used to close once the
+  errors were repaired. The banner also names the command that moves orphaned baselines aside, and
+  the Coverage tab has a "No baseline" count.
+- Counts agree. Overview's "Changed" card counted every row not passing (new entries, render
+  errors, approved ones); it now counts changes waiting for a decision. "Coverage errors" counted
+  entries while the tab badge counted components; it now counts components. An approval marks its
+  row in `check.json` (`approved`), so `summary.failed` leaves it out; `summary.changed` and
+  `summary.approved` are new.
+- `pxsig_doctor` with `repair: 'apply'` wrote the store without its lock. It now goes through the
+  server that holds the store, or takes the lock, and refuses while another process holds it.
+- A server re-check moves `check.json`'s `generatedAt` (the dashboard's "Last check"); `fullCheckAt`
+  keeps when every entry was last checked together, which integrity's "last full check" now reads.
+- A second server, started beside one that holds the store, wrote the integrity ledger and its run
+  manifest into the store and replaced `server.json`, so clients looked for it instead of the
+  running server. It now writes nothing into a store it does not hold and leaves a live server's
+  `server.json` alone. `GET /__pxsig/integrity` waits for a reconcile already running instead of
+  answering 503.
+- `pxsig serve` passes SIGTERM and SIGHUP on to the server it starts; stopping the wrapper used to
+  leave the server running with its port, locks and `server.json`.
+- Storybook addon: the panel's buttons, "Open dashboard" among them, take their colours from
+  Storybook's theme, and the inspector and the dashboard open in Storybook's light or dark mode.
+- The placeholder reason of a NEW entry not rendered yet ("run Check, then approve") was hard-coded;
+  it is in the copy file.
+
 ## 0.3.1 - 2026-10-23
 
 Dashboard fixes: the inspector's Approve button stays in one place from entry to entry, the coverage

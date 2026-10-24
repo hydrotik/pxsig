@@ -422,7 +422,8 @@ export async function reconcile(ctx, opts = {}) {
   const lastApproval = new Map();
   for (const a of approvals) lastApproval.set(a.id, a);
   const rows = new Map((report?.rows ?? []).map((r) => [r.id, r]));
-  const reportAt = report?.generatedAt ? Date.parse(report.generatedAt) : null;
+  // When every entry was last checked together; a server re-check moves `generatedAt` only.
+  const reportAt = report?.fullCheckAt ? Date.parse(report.fullCheckAt) : report?.generatedAt ? Date.parse(report.generatedAt) : null;
   const manifestMtime = mtime(ctx.manifestPath);
   const nonVisual = new Set(ctx.config.nonVisual ?? []);
   const isNonVisual = (component) => component != null && nonVisual.has(component.split('/')[0]);

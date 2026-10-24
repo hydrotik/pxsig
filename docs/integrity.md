@@ -50,7 +50,7 @@ status among its entries.
 | `orphaned` | warn | A baseline with no manifest entry, or an entry whose story left the index (renamed or deleted). | none; `--prune` moves the files aside |
 | `changed` | warn | The gate failed and nobody approved the change. | none |
 | `flaky` | warn | Failed, then passed on a fresh render. | none |
-| `stale` | warn | A source the entry depends on changed after its verdict, or its render was rewritten after it. | `recheck` |
+| `stale` | warn | A source the entry depends on changed after its verdict, or its render was rewritten after it. | `recheck` with `--stale` (or where a later step needs a fresh render) |
 | `a11y-new` | warn | axe reports violations not in the a11y baseline. | none |
 | `skipped-unaffected` | info | A partial run (`check --since` / `--changed`) left it out because no edit it traced can change it, and there was no earlier verdict to carry forward. It has a baseline: ok, but not verified by a run of its own. | none (a full check verifies it) |
 | `drift` | info | Passes the gate, but SSIM is below 1. | none |
@@ -101,14 +101,34 @@ Problems with the setup sit outside the entries, in `setup`:
 
 | Action | For | What it does |
 | --- | --- | --- |
-| `register` | `unregistered` | Adds the stories to the manifest, with modes and states from `parameters.pxsig`, and **no signature**. They show as new and wait for a person to approve their first render. Needs a running, healthy Storybook. The previous manifest is kept in `<store>/reports/manifest-history/`. |
-| `recheck` | `never-checked`, `missing-render`, `stale`, `render-error` | Re-renders and re-checks the entries, through the server when it is running. Never writes a baseline. |
+| `register` | `unregistered` | Adds the stories to the manifest, with modes and states from `parameters.pxsig`, and **no signature**. They show as new and wait for a person to approve their first render. The entries it adds are rendered by the `recheck` step of the same run, so a new story takes one run. A story whose parameters cannot be read is reported and left out; the rest go on. An existing signature at a new entry's path (a story renamed back) is adopted as it is, and logged. Needs a running, healthy Storybook. The previous manifest is kept in `<store>/reports/manifest-history/`. |
+| `recheck` | `never-checked`, `missing-render`, `render-error`, the entries `register` added; `stale` only with `--stale`, or where `restore-baseline-image` or `convert-legacy` needs a fresh render | Re-renders and re-checks the entries, through the server when it is running. Never writes a baseline, and never re-renders an orphaned entry. The result counts what the check recorded (`N of M entries re-checked`); a check that could not run reports `not re-checked: <why>`. |
 | `restore-baseline-image` | `missing-baseline-image` | Takes the entry's latest render, checks it against the signature with a fresh engine check (no cache), and only if it passes the gate, adds it to the `.psig` with `pxsig attach`. Otherwise the entry stays flagged. |
 | `convert-legacy` | `legacy-format` | Gates the latest render against the `.pxsig.json` the same way; only if it passes, packs the record (unchanged, read back and compared by `pxsig pack`) with the render as its image into a `.psig` beside it, points the manifest entry at it (the previous manifest is kept in `manifest-history/`) and moves the `.pxsig.json` to `<store>/trash/`. |
 | `prune` | `orphaned` | Only with `--prune --apply`, by a person at a terminal, after typing a confirmation phrase. Moves the orphaned files to `<store>/trash/<timestamp>/` and drops manifest entries whose story is gone. Nothing is deleted. |
 
-Codes with no safe repair (`changed`, `flaky`, `unbaselined`, `a11y-new`, and `orphaned` without
-`--prune`) are listed under "Needs a person", with what to do.
+Codes with no safe repair (`changed`, `flaky`, `unbaselined`, `a11y-new`, `stale` without
+`--stale`, and `orphaned` without `--prune`) are listed under "Needs a person", with what to do.
+
+Stale verdicts are warnings, and re-checking them can take a long time in a large store (every
+entry a widely shared file feeds), so a repair of the errors leaves them alone. `pxsig check
+--since <ref>` or `pxsig doctor --repair --stale --apply` re-checks them.
+
+### New stories
+
+A story just written is `unregistered` until it is registered. Any of these registers it and
+renders it in one step:
+
+- **Run safe repairs** in the dashboard, or `pxsig doctor --repair --apply`;
+- `pxsig check <story-id>` or `pxsig check --full --only <story-id>`, the MCP's
+  `pxsig_check { stories }`, the Storybook panel's **Check story**, or `POST /__pxsig/check`: a
+  name the manifest does not have is registered first when Storybook is healthy. A name that
+  cannot be registered (Storybook down, not in the index, outside `srcRoot`, excluded, a mode or
+  state the story does not have) is skipped with the reason.
+
+Either way the entries arrive without a signature (`unbaselined`, "Needs a first approval" in the
+dashboard's banner) until a person approves their first render; the inspector's **Approve story**
+approves every mode and state of a story in one click.
 
 ### Guarantees
 
@@ -130,7 +150,7 @@ These hold for every repair, and are covered by tests:
 ```
 pxsig doctor [--project x] [--component name] [--status code,code] [--limit 40]
              [--offline] [--ci] [--fail-on error|warn|info]
-             [--repair [--only register,recheck,restore-baseline-image,convert-legacy] [--apply] [--prune]]
+             [--repair [--only register,recheck,restore-baseline-image,convert-legacy] [--apply] [--prune] [--stale]]
 ```
 
 | Flag | Meaning |
@@ -145,6 +165,7 @@ pxsig doctor [--project x] [--component name] [--status code,code] [--limit 40]
 | `--apply` | With `--repair`: run them. |
 | `--only` | With `--repair`: these actions only. |
 | `--prune` | With `--repair --apply`: also move orphans to `trash/`. A person at a terminal only. |
+| `--stale` | With `--repair`: also re-check entries whose verdict is stale. |
 
 | Exit | Meaning |
 | --- | --- |
@@ -154,7 +175,9 @@ pxsig doctor [--project x] [--component name] [--status code,code] [--limit 40]
 | 3 | `--prune` was used where no person is at a terminal |
 
 The MCP tool `pxsig_doctor` and the server's `POST /__pxsig/repair` run the same repairs. Neither
-can prune. `--repair --apply` needs one project and the store lock: when the server holds the
+can prune. `pxsig_doctor` with `repair: 'apply'` takes the store lock like the CLI (through the
+server when the server holds the store) and refuses, changing nothing, while another process holds
+it. `--repair --apply` needs one project and the store lock: when the server holds the
 store, the CLI asks the server to run the repairs (`POST /__pxsig/repair`) and reports the result;
 `--prune` then refuses, since it cannot run beside the server. Over several projects (`--all`, or
 no project chosen in a multi-project workspace) the report covers each one; `--apply` refuses.
