@@ -429,7 +429,8 @@ export function pathsFor(d: Data, id: string, scenario?: { tag: string; name: st
 }
 
 export const fmt = {
-  ms: (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)} s` : `${Math.round(v)} ms`),
+  // A report without a timing (written by an older server) shows a dash, not NaN.
+  ms: (v: number | null | undefined) => (typeof v !== 'number' || !Number.isFinite(v) ? '—' : v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)} s` : `${Math.round(v)} ms`),
   pct: (v: number, d = 0) => `${(v * 100).toFixed(d)}%`,
   num: (v: number) => (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(1)}K` : String(v)),
   kb: (b: number) => `${(b / 1024).toFixed(1)} KB`,

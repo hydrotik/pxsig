@@ -66,7 +66,7 @@ export function Overview({ data, go, startReview }: { data: Data; go(tab: string
             { label: t('overview.cards.flaky'), value: sm.flaky, tone: sm.flaky ? 'warning' : undefined, onSelect: () => go('stories', 'flaky'), icon: <Affordance kind="navigate" /> },
             { label: t('overview.cards.a11y'), value: sm.a11yNew, unit: t('overview.cards.a11yOf', { count: sm.a11yViolations }), tone: sm.a11yNew ? 'danger' : undefined, onSelect: () => (served ? startReview('a11y') : go('a11y')), icon: <Affordance kind="navigate" /> },
             // Wall clock for the whole check; rendering in the browser is nearly all of it.
-            { label: t('overview.cards.duration'), value: fmt.ms(sm.totalMs), unit: t('overview.cards.rendering', { time: fmt.ms(sm.renderWallMs) }) },
+            { label: t('overview.cards.duration'), value: fmt.ms(sm.totalMs), unit: sm.renderWallMs == null ? undefined : t('overview.cards.rendering', { time: fmt.ms(sm.renderWallMs) }) },
           ]}
         />
       ) : (

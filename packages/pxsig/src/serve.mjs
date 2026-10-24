@@ -226,7 +226,7 @@ function stateFor({ project, id, story } = {}) {
 }
 
 // --- review --------------------------------------------------------------------------------
-function updateCheckRows(S, mut, fresh = new Map()) {
+function updateCheckRows(S, mut, fresh = new Map(), timing = null) {
   const check = readJson(S.checkPath, null) ?? { generatedAt: new Date().toISOString(), project: S.name, summary: {}, rows: [] };
   const seen = new Set(check.rows.map((r) => r.id));
   check.rows = check.rows.map((r) => mut(r) ?? r);
@@ -239,7 +239,9 @@ function updateCheckRows(S, mut, fresh = new Map()) {
   }
   const dropped = S.runPath ? dropStaleRows(check, S.manifest) : [];
   if (dropped.length) console.log(`[serve] ${S.name}: dropped ${dropped.length} rows no longer in the manifest`);
-  check.summary = { ...check.summary, ...summarize(check.rows) };
+  // Timings describe one run: a full re-check replaces them; a partial one leaves the last full
+  // run's (the Duration card and Diagnostics read them against `checked`).
+  check.summary = { ...check.summary, ...summarize(check.rows), ...(timing ?? {}) };
   S.quietUntil = Date.now() + 800;
   writeFileSync(S.checkPath, `${JSON.stringify(check)}\n`);
 }
@@ -377,7 +379,8 @@ async function runChecks(S) {
       const idx = await fetchStoryIndex(manifest.baseUrl);
       if (!idx.healthy) throw Object.assign(new Error(`setup error: ${idx.reachable ? "Storybook's story index is broken" : 'Storybook is not reachable'} — ${idx.error}. Nothing was rendered.`), { setup: true });
       pool ??= browserPool(P);
-      const { results } = await renderStories(pool, entries, P.store.latest, { ...manifest, concurrency: Math.min(8, entries.length), project: P, a11y: true });
+      const concurrency = Math.min(8, entries.length);
+      const { results, wallMs, reloads = 0 } = await renderStories(pool, entries, P.store.latest, { ...manifest, concurrency, project: P, a11y: true });
       const sbErrors = results.filter((r) => r.error?.startsWith(STORYBOOK_ERROR));
       if (sbErrors.length && (sbErrors.length === results.length || sbErrors.length >= Math.max(3, results.length / 2)))
         throw Object.assign(new Error(`setup error: ${sbErrors.length} of ${results.length} renders hit Storybook's error page (${sbErrors[0].error.slice(STORYBOOK_ERROR.length).trim()}). Nothing was recorded.`), { setup: true });
@@ -404,7 +407,9 @@ async function runChecks(S) {
       for (const id of ids) delete av[id];
       writeFileSync(S.a11yReviewPath, `${JSON.stringify(av, null, 2)}\n`);
       const fresh = new Map(entries.map((e) => [e.id, buildRow(e, byId.get(e.id), renders.get(e.id), a11yBase, manifest)]));
-      updateCheckRows(S, (r) => fresh.get(r.id), fresh);
+      const full = entries.length === manifest.stories.length;
+      const timing = full ? { concurrency, renderWallMs: wallMs, pageLoads: reloads, rustEngineMs: res.summary.elapsedMs, totalMs: performance.now() - t0 } : null;
+      updateCheckRows(S, (r) => fresh.get(r.id), fresh, timing);
       const failed = [...fresh.values()].filter((r) => !r.pass).length;
       console.log(`[serve] ${S.name}: re-checked ${ids.length} entries · ${failed} changed · ${((performance.now() - t0) / 1000).toFixed(1)} s (Rust ${res.summary.elapsedMs.toFixed(0)} ms)`);
       broadcast('check', { project: S.name, state: 'done', ids, failed, ms: performance.now() - t0 });
