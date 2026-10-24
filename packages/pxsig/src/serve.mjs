@@ -22,7 +22,8 @@
  *   POST /__pxsig/reject {id} · /__pxsig/unreview {id}   unreview of an approval restores the old baseline
  *   POST /__pxsig/a11y-accept {id} · a11y-reject · a11y-unreview   the entry's axe violations
  *   POST /__pxsig/a11y-unaccept {id, rule?}   take a rule (or all) off the entry's accepted list
- *   POST /__pxsig/check {ids?|story?|stories?|all?}   render + Rust check, merged into check.json
+ *   POST /__pxsig/check {ids?|story?|stories?|all?}   render + Rust check, merged into check.json; names
+ *        not in the manifest are registered first (healthy Storybook; NEW, no signature) or `skipped`
  *   POST /__pxsig/repair {apply?, only?}   the safe repairs: plan, or apply (never prunes)
  *   GET  /p/<project>/renders/latest/<id>.png · /p/<project>/renders/base/<id>.png (from the .psig)
  *        /p/<project>/diffs/latest/<file> · /p/<project>/sig/<id> (the .psig header, JSON)
@@ -488,18 +489,37 @@ function a11yReview(S, action, id, meta = {}) {
   return av[id] ?? null;
 }
 
-function enqueue(S, body) {
+/**
+ * Queue a check. Names (ids or stories) the manifest does not have are registered first when
+ * Storybook is healthy (NEW entries, no signature), so checking a new story is one request;
+ * anything that cannot be registered comes back in `skipped`, with why.
+ */
+async function enqueue(S, body) {
   needLock(S);
   // Select against the manifest on disk: entries added since the server started (or since the
   // last check) would otherwise be dropped as unknown. A running check keeps the one it started with.
   if (!S.running) S.reload();
-  const ids = new Set(body.ids ?? []);
-  const stories = new Set([...(body.stories ?? []), ...(body.story ? [body.story] : [])]);
+  const asked = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []);
+  const ids = new Set(asked(body.ids));
+  const stories = new Set([...asked(body.stories), ...(typeof body.story === 'string' ? [body.story] : [])]);
+  const known = (name) => S.manifest.stories.some((e) => e.id === name || (e.story ?? e.id) === name);
+  const unknown = [...new Set([...ids, ...stories])].filter((n) => !known(n));
+  let registered = { added: [], stories: [], skipped: [] };
+  if (unknown.length && !body.all) {
+    const index = await loadStoryIndex(S.ctx);
+    registered = await registerNamed(S.ctx, unknown, { index, harvest: defaultHooks(S.ctx).harvest, via: typeof body.via === 'string' ? body.via.replace(/[^\w-]/g, '').slice(0, 20) || 'server' : 'server' });
+    if (registered.added.length) {
+      S.reload();
+      console.log(`[serve] ${S.name}: registered ${registered.stories.join(', ')} (${registered.added.length} NEW entries) to check them`);
+    }
+    for (const story of registered.stories) stories.add(story);
+  }
   for (const e of S.manifest.stories) if (body.all || stories.has(e.story ?? e.id)) ids.add(e.id);
-  const known = [...ids].filter((id) => S.manifest.stories.some((e) => e.id === id));
-  known.forEach((id) => S.queued.add(id));
+  const queued = [...ids].filter((id) => S.manifest.stories.some((e) => e.id === id));
+  queued.forEach((id) => S.queued.add(id));
   runChecks(S);
-  return known;
+  if (registered.added.length) scheduleIntegrity(S, 'registered', 0);
+  return { queued, registered: registered.added, skipped: registered.skipped };
 }
 
 /** Per-story status for the addon's sidebar, across every project (story ids are per Storybook). */
@@ -636,7 +656,7 @@ if (flags.watch) {
           const a = await rust('affected', { manifest: S.runPath, root: ws.root, files });
           console.log(`[serve] ${S.name}: watch: ${files.join(', ')} → ${a.ids.length} entries (${a.reason})`);
           broadcast('watch', { project: S.name, files, ids: a.ids.length });
-          if (a.ids.length) enqueue(S, { ids: a.ids });
+          if (a.ids.length) await enqueue(S, { ids: a.ids });
         } catch (e) {
           console.error(`[serve] ${S.name}: watch: ${e.message}`);
         }
@@ -722,8 +742,13 @@ async function api(req, res, action, q) {
   if (action === 'check') {
     // Without a project, a check is split across the projects that own the ids / stories.
     const targets = body.project || states.size === 1 ? [stateFor(body)] : [...states.values()];
-    const queued = targets.flatMap((S) => enqueue(S, body));
-    return json(res, 202, { ok: true, queued });
+    const results = [];
+    for (const S of targets) results.push(await enqueue(S, body));
+    const queued = results.flatMap((r) => r.queued);
+    const skipped = results.flatMap((r) => r.skipped);
+    // Split across projects, a name only one project knows is not skipped by the others.
+    const named = new Set(queued.flatMap((id) => [id, id.replace(/(__[^@]+)?(@.+)?$/, '')]));
+    return json(res, 202, { ok: true, queued, registered: results.flatMap((r) => r.registered), skipped: targets.length > 1 ? skipped.filter((x) => !named.has(x.name)) : skipped });
   }
   const S = stateFor(body);
   if (action === 'repair') return json(res, 200, await repair(S, { apply: body.apply === true, only: body.only }));

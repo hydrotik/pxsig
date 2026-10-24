@@ -613,6 +613,8 @@ const commands = {
       });
     if (problems.length)
       blocks.push(entryTable(problems.slice(0, 40), { more: Math.max(0, problems.length - 40) }));
+    if (r.registered?.length) blocks.push({ note: `registered ${r.registered.length} NEW entries (no signature: approve their first render in the dashboard)`, tone: 'warn' });
+    for (const x of r.skipped ?? []) blocks.push({ note: `not checked: ${x.name}: ${x.why}`, tone: 'bad' });
     // Integrity: what this run could not cover, in one line.
     let ledger = null;
     try {
@@ -624,7 +626,8 @@ const commands = {
     if (ledger?.summary.status === 'attention') next.push([`${CMD} doctor`, 'per-component integrity']);
     blocks.push({ next });
     emit(format, blocks, { ...r, integrity: ledger?.summary ?? null });
-    process.exit(problems.length ? 1 : 0);
+    // Nothing checked because every name was skipped: a selection error, like an empty one.
+    process.exit(!r.checked && r.skipped?.length ? 2 : problems.length ? 1 : 0);
   },
 
   async affected() {

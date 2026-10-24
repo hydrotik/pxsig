@@ -106,14 +106,17 @@ if (str('since') || str('changed')) {
   entries = entries.filter((e) => ids.has(e.id));
 }
 const selected = new Set(entries.map((e) => e.id));
-if (!entries.length && !affected) die('no entries selected');
+// --only names the manifest does not have (a story just written): registered below, once the
+// store lock is held and Storybook answers, so checking a new story is one command.
+const unregistered = only && !suite ? only.filter((n) => !manifest.stories.some((e) => e.id === n || e.story === n)) : [];
+if (!entries.length && !affected && !unregistered.length) die('no entries selected');
 
 // --- one writer per store: take the lock, or hand the run to the server that holds it ----------------
 const held = readLock(P);
 if (held && !held.stale && held.holder === 'serve' && !held.foreign) {
   if (flags.update || suite || flags['no-server'])
     die(`${describeLock(P, held)}: ${flags.update ? '--update' : suite ? '--suite' : 'this check'} cannot run beside it. Approve in the dashboard, or stop the server and run again.`);
-  await viaServer(held.url ?? P.serverUrl(), [...selected]);
+  await viaServer(held.url ?? P.serverUrl(), [...selected], unregistered);
 }
 let lock;
 try {
@@ -125,14 +128,29 @@ try {
 // --- guard: never render against a broken Storybook ------------------------------------------
 // A failing index (e.g. "Unable to index files") makes every iframe show Storybook's error page;
 // recording those as renders turns a setup problem into hundreds of bogus diffs or baselines.
-if (entries.length) {
+if (entries.length || unregistered.length) {
   const sb = await ensureStorybook(P, { log: (m) => console.log(`[check] ${m}`) });
   manifest.baseUrl = P.storybook.url;
   if (sb.served) process.once('exit', () => sb.close());
 }
-const sbIndex = entries.length ? await fetchStoryIndex(manifest.baseUrl) : null;
+const sbIndex = entries.length || unregistered.length ? await fetchStoryIndex(manifest.baseUrl) : null;
 if (sbIndex && !sbIndex.reachable) die(`setup error: Storybook is not reachable at ${manifest.baseUrl} (${sbIndex.error}); start it, point storybook.url at a running build, or set storybook.staticDir to a built Storybook. Nothing was rendered.`);
 if (sbIndex && !sbIndex.healthy) die(`setup error: Storybook's story index is broken — ${sbIndex.error}. Nothing was rendered or recorded; fix the index (see the Storybook terminal) and re-run.`);
+if (unregistered.length) {
+  const ctx = resolveContext(P, { manifestPath });
+  const reg = await registerNamed(ctx, unregistered, { index: await loadStoryIndex(ctx, { live: sbIndex }), harvest: (ids) => harvestParameters(P, manifest.baseUrl, ids), via: 'check' });
+  for (const x of reg.skipped) console.log(`[check] not checked: ${x.name}: ${x.why}`);
+  if (reg.added.length) {
+    console.log(`[check] registered ${reg.stories.join(', ')}: ${reg.added.length} NEW entries (no signature: a person approves their first render)`);
+    Object.assign(manifest, writeRunManifest(P, manifestPath).manifest);
+    for (const e of manifest.stories)
+      if (reg.added.includes(e.id) && (!modes || modes.includes(e.mode ?? manifest.defaultMode)) && (only.includes(e.id) || only.includes(e.story))) {
+        entries.push(e);
+        selected.add(e.id);
+      }
+  }
+  if (!entries.length) die(`no entries selected (${reg.skipped.map((x) => `${x.name}: ${x.why}`).join('; ')})`);
+}
 
 // --- 2. render ---------------------------------------------------------------------------
 const pool = browserPool(P);
@@ -292,10 +310,15 @@ process.exit(summary.failed ? 1 : 0);
  * The server holds this store: queue the selection there, wait for its queue to drain, and report
  * the rows it wrote. Exits with the check's code.
  */
-async function viaServer(url, ids) {
-  console.log(`[check] the pxsig server at ${url} holds this store: queueing ${ids.length} entries there`);
-  const post = await fetch(`${url}/__pxsig/check`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ project: P.name, ids }) }).catch((e) => ({ ok: false, statusText: e.message }));
+async function viaServer(url, ids, stories = []) {
+  console.log(`[check] the pxsig server at ${url} holds this store: queueing ${ids.length} entries there${stories.length ? ` (and registering ${stories.length} new)` : ''}`);
+  const post = await fetch(`${url}/__pxsig/check`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ project: P.name, ids, stories, via: 'check' }) }).catch((e) => ({ ok: false, statusText: e.message }));
   if (!post.ok) die(`the server holding the store did not take the check (${post.status ?? ''} ${post.statusText ?? ''}); stop it or try again`);
+  const answer = await post.json().catch(() => ({}));
+  for (const x of answer.skipped ?? []) console.log(`[check] not checked: ${x.name}: ${x.why}`);
+  if (answer.registered?.length) console.log(`[check] the server registered ${answer.registered.length} NEW entries (no signature: a person approves their first render)`);
+  if (Array.isArray(answer.queued)) ids = answer.queued;
+  if (!ids.length) die('no entries selected');
   const t0 = Date.now();
   for (;;) {
     await new Promise((r) => setTimeout(r, 1000));

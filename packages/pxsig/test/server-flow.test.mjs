@@ -104,6 +104,33 @@ async function serve(f, { storybook } = {}) {
 
 const rowsOf = (f) => JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8')).rows;
 
+test('checking a story that is not registered registers it and renders it in the same request; no signature is written', { skip: needs }, async () => {
+  const f = fixture();
+  const sb = await fakeStorybook(f.index.stories);
+  const S = await serve(f, { storybook: sb.url });
+  try {
+    const r = await S.post('check', { stories: [f.ids.unregistered, 'components-nope--missing'] });
+    assert.equal(r.status, 202, JSON.stringify(r.body));
+    assert.deepEqual(r.body.registered, [f.ids.unregistered]);
+    assert.deepEqual(r.body.queued, [f.ids.unregistered]);
+    assert.deepEqual(r.body.skipped.map((x) => x.name), ['components-nope--missing']);
+    assert.match(r.body.skipped[0].why, /not in the manifest or the Storybook story index/);
+    await S.idle();
+    const manifest = JSON.parse(readFileSync(join(f.px, 'manifest.json'), 'utf8'));
+    const e = manifest.stories.find((x) => x.id === f.ids.unregistered);
+    assert.ok(e, 'registered in the manifest');
+    assert.ok(!existsSync(join(f.repo, e.sig)), 'registering never writes a signature');
+    const row = rowsOf(f).find((x) => x.id === f.ids.unregistered);
+    assert.ok(row, `rendered and recorded:\n${S.log()}`);
+    assert.equal(row.new, true, 'NEW: waiting for a person to approve its first render');
+    const log = readFileSync(join(f.px, 'reports', 'repairs.ndjson'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+    assert.ok(log.some((l) => l.action === 'register' && l.id === f.ids.unregistered && l.via === 'server'));
+  } finally {
+    S.stop();
+    sb.close();
+  }
+});
+
 test('a story checked alone whose render throws is recorded as a render error, not dropped as a setup error', { skip: needs }, async () => {
   const f = fixture();
   const sb = await fakeStorybook(f.index.stories);
@@ -141,5 +168,30 @@ test('a repair whose re-check could not run says so, and the dashboard hears why
   } finally {
     ctl.abort();
     S.stop();
+  }
+});
+
+test('check --only with a story that is not registered registers it and checks it, without the server', { skip: needs }, async () => {
+  const f = fixture();
+  const sb = await fakeStorybook(f.index.stories);
+  try {
+    const cfgPath = join(f.repo, 'pxsig.config.json');
+    writeFileSync(cfgPath, JSON.stringify({ ...JSON.parse(readFileSync(cfgPath, 'utf8')), storybook: { url: sb.url } }, null, 2));
+    const out = await new Promise((ok) => {
+      const p = spawn(process.execPath, [join(src, 'check.mjs'), '--only', `${f.ids.unregistered},components-nope--missing`, '--retries', '0'], { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } });
+      let log = '';
+      p.stdout.on('data', (d) => (log += d));
+      p.stderr.on('data', (d) => (log += d));
+      p.on('exit', (code) => ok({ code, log }));
+    });
+    assert.match(out.log, /registered components-gamma--new-one: 1 NEW entries/, out.log);
+    assert.match(out.log, /not checked: components-nope--missing: not in the manifest or the Storybook story index/);
+    assert.equal(out.code, 1, 'a NEW entry fails the check until it is approved');
+    const row = rowsOf(f).find((x) => x.id === f.ids.unregistered);
+    assert.equal(row?.new, true);
+    const e = JSON.parse(readFileSync(join(f.px, 'manifest.json'), 'utf8')).stories.find((x) => x.id === f.ids.unregistered);
+    assert.ok(!existsSync(join(f.repo, e.sig)), 'no signature');
+  } finally {
+    sb.close();
   }
 });
