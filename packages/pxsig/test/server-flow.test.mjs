@@ -171,6 +171,45 @@ test('a repair whose re-check could not run says so, and the dashboard hears why
   }
 });
 
+test("approving a story approves each of its entries waiting for a decision, in one batch, and the report agrees", { skip: !hasRust && 'Rust binary not built' }, async () => {
+  const f = fixture();
+  const story = f.ids.changed;
+  // A second mode of the same story, also changed; and a third that passes.
+  const manifestPath = join(f.px, 'manifest.json');
+  const m = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  const base = m.stories.find((e) => e.id === story);
+  m.stories.push({ ...base, id: `${story}@light`, mode: 'light', sig: base.sig.replace('.psig', '@light.psig') }, { ...base, id: `${story}__hover`, state: 'hover', sig: base.sig.replace('.psig', '__hover.psig') });
+  writeFileSync(manifestPath, JSON.stringify(m, null, 2));
+  writeFileSync(join(f.px, 'renders', 'latest', `${story}@light.png`), CHECKER);
+  writeFileSync(join(f.px, 'renders', 'latest', `${story}__hover.png`), CHECKER);
+  const checkPath = join(f.px, 'reports', 'check.json');
+  const check = JSON.parse(readFileSync(checkPath, 'utf8'));
+  const row = check.rows.find((r) => r.id === story);
+  check.rows.push({ ...row, id: `${story}@light`, mode: 'light', pass: false, new: true, reasons: ['new'] }, { ...row, id: `${story}__hover`, state: 'hover', pass: true, metrics: { ssim: 1 }, reasons: [] });
+  writeFileSync(checkPath, JSON.stringify(check));
+  const S = await serve(f);
+  try {
+    const r = await S.post('approve-story', { story });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.deepEqual(r.body.approved.sort(), [story, `${story}@light`].sort());
+    assert.deepEqual(r.body.skipped, [{ id: `${story}__hover`, why: 'passes: nothing to approve' }]);
+    const review = JSON.parse(readFileSync(join(f.px, 'reports', 'review.json'), 'utf8'));
+    assert.equal(review[story].batch, review[`${story}@light`].batch, 'one batch');
+    assert.ok(existsSync(join(f.repo, base.sig.replace('.psig', '@light.psig'))), 'the first baseline of the new mode');
+    const after = JSON.parse(readFileSync(checkPath, 'utf8'));
+    assert.ok(after.rows.find((x) => x.id === story).approved, 'the row says it was approved');
+    assert.equal(after.summary.approved, 2);
+    assert.equal(after.summary.failed, check.rows.filter((y) => !y.skipped && !y.pass).length - 2, 'approved rows no longer count as failed');
+    // Undo one: its row is back to waiting.
+    assert.equal((await S.post('unreview', { id: story })).status, 200);
+    assert.equal(JSON.parse(readFileSync(checkPath, 'utf8')).rows.find((x) => x.id === story).approved, undefined);
+    assert.equal((await S.post('approve-story', { story: 'Bad Story' })).status, 400);
+    assert.equal((await S.post('approve-story', { story: 'components-nope--x' })).status, 404);
+  } finally {
+    S.stop();
+  }
+});
+
 test('check --only with a story that is not registered registers it and checks it, without the server', { skip: needs }, async () => {
   const f = fixture();
   const sb = await fakeStorybook(f.index.stories);

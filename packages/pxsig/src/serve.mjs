@@ -19,6 +19,7 @@
  *   GET  /__pxsig/projects · /__pxsig/status · /__pxsig/data · /__pxsig/events · /__pxsig/integrity
  *   POST /__pxsig/approve {id, batch?, via?, reason?, kind?}   latest render → baseline (`.psig`
  *        with the render as its image); the old baseline is snapshotted and the write logged
+ *   POST /__pxsig/approve-story {story}   approve every entry of a story that waits for a decision, one batch
  *   POST /__pxsig/reject {id} · /__pxsig/unreview {id}   unreview of an approval restores the old baseline
  *   POST /__pxsig/a11y-accept {id} · a11y-reject · a11y-unreview   the entry's axe violations
  *   POST /__pxsig/a11y-unaccept {id, rule?}   take a rule (or all) off the entry's accepted list
@@ -351,11 +352,15 @@ function unapprove(S, id, entry) {
 async function review(S, action, id, meta = {}) {
   needLock(S);
   const rv = readJson(S.reviewPath, {});
-  if (action === 'approve') rv[id] = { state: 'approved', at: new Date().toISOString(), ...(await approve(S, id, meta)) };
-  else if (action === 'reject') rv[id] = { state: 'rejected', at: new Date().toISOString() };
+  if (action === 'approve') {
+    rv[id] = { state: 'approved', at: new Date().toISOString(), ...(await approve(S, id, meta)) };
+    // The report says so too, so its counts (failed, changed) agree with the review.
+    updateCheckRows(S, (r) => (r.id === id ? { ...r, approved: { at: rv[id].at, batch: rv[id].batch } } : null));
+  } else if (action === 'reject') rv[id] = { state: 'rejected', at: new Date().toISOString() };
   else if (action === 'unreview') {
     if (rv[id]?.state === 'approved' && rv[id].batch) unapprove(S, id, rv[id]);
     delete rv[id];
+    updateCheckRows(S, (r) => (r.id === id && r.approved ? (({ approved, ...rest }) => rest)(r) : null));
   }
   else throw httpError(404, 'unknown action');
   S.quietUntil = Date.now() + 800;
@@ -363,6 +368,39 @@ async function review(S, action, id, meta = {}) {
   console.log(`[serve] ${S.name}: ${action} ${id}`);
   broadcast('review', { project: S.name, id, entry: rv[id] ?? null });
   return rv[id] ?? null;
+}
+
+/**
+ * Approve every entry of one story that waits for a decision (each mode and state), in one batch:
+ * a person's single click in the dashboard. Entries that passed, did not render, were rejected or
+ * are already approved are left out, with why. Each approval is logged and undone like any other.
+ */
+async function approveStory(S, story, meta = {}) {
+  needLock(S);
+  if (!S.running) S.reload();
+  const entries = S.manifest.stories.filter((e) => (e.story ?? e.id) === story);
+  if (!entries.length) throw httpError(404, `unknown story ${story}`);
+  const rows = new Map(readJson(S.checkPath, { rows: [] }).rows.map((r) => [r.id, r]));
+  const rv = readJson(S.reviewPath, {});
+  const batch = meta.batch ?? newBatch(meta.via ?? 'dashboard');
+  const approved = [];
+  const skipped = [];
+  for (const e of entries) {
+    const r = rows.get(e.id);
+    const why = rv[e.id]?.state === 'approved' ? 'already approved' : rv[e.id]?.state === 'rejected' ? 'rejected: decide on it alone' : !r || r.skipped ? 'not checked yet' : r.error ? `did not render (${String(r.error).split('\n')[0]})` : r.pass && !r.new ? 'passes: nothing to approve' : null;
+    if (why) {
+      skipped.push({ id: e.id, why });
+      continue;
+    }
+    try {
+      await review(S, 'approve', e.id, { ...meta, batch });
+      approved.push(e.id);
+    } catch (err) {
+      skipped.push({ id: e.id, why: err.message });
+    }
+  }
+  console.log(`[serve] ${S.name}: approve story ${story}: ${approved.length} approved, ${skipped.length} left (batch ${batch})`);
+  return { story, batch, approved, skipped };
 }
 
 // --- on-demand checks (dashboard, addon, watch) ----------------------------------------------
@@ -606,9 +644,9 @@ for (const S of states.values()) {
 }
 
 /** Safe repairs, as the dashboard's button asks: plan, or apply (never prune, never approve). */
-async function repair(S, { apply = false, only: onlySteps } = {}) {
+async function repair(S, { apply = false, only: onlySteps, stale = false } = {}) {
   const ledger = await reconcile(S.ctx, { affected: S.affected });
-  const plan = planRepairs(ledger, { only: Array.isArray(onlySteps) ? onlySteps.filter((a) => a !== 'prune') : undefined, prune: false, server: { up: true } });
+  const plan = planRepairs(ledger, { only: Array.isArray(onlySteps) ? onlySteps.filter((a) => a !== 'prune') : undefined, prune: false, server: { up: true }, stale });
   if (!apply) return { plan };
   needLock(S);
   if (S.repairing) throw httpError(409, 'a repair is already running');
@@ -751,7 +789,13 @@ async function api(req, res, action, q) {
     return json(res, 202, { ok: true, queued, registered: results.flatMap((r) => r.registered), skipped: targets.length > 1 ? skipped.filter((x) => !named.has(x.name)) : skipped });
   }
   const S = stateFor(body);
-  if (action === 'repair') return json(res, 200, await repair(S, { apply: body.apply === true, only: body.only }));
+  if (action === 'repair') return json(res, 200, await repair(S, { apply: body.apply === true, only: body.only, stale: body.stale === true }));
+  if (action === 'approve-story') {
+    const { story } = body;
+    if (typeof story !== 'string' || !/^[a-z0-9-]+--[a-z0-9-]+$/.test(story)) return json(res, 400, { error: 'bad story' });
+    const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : undefined);
+    return json(res, 200, { ok: true, project: S.name, ...(await approveStory(S, story, { via: s(body.via, 20)?.replace(/[^\w-]/g, ''), reason: s(body.reason, 500) })) });
+  }
   const { id } = body;
   if (typeof id !== 'string' || !/^[a-z0-9-]+--[a-z0-9-]+(__[a-z0-9-]+)?(@[a-z0-9-]+)?$/.test(id)) return json(res, 400, { error: 'bad id' });
   const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : undefined);
