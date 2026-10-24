@@ -11,7 +11,8 @@ import { t } from '../copy';
 export const runSeries = (runs: HistoryRun[]) => runs.map((r, i) => ({ run: i + 1, failed: r.summary.failed, engine: Math.round(r.summary.elapsedMs), cached: r.summary.cached }));
 
 /** Changed entries per run, as a line. Nothing without recorded runs. */
-export function ChangedPerRun({ runs }: { runs: HistoryRun[] }) {
+/** `height` in rem (the chart default when unset); the Overview passes a short one. */
+export function ChangedPerRun({ runs, height }: { runs: HistoryRun[]; height?: number }) {
   if (!runs.length) return null;
   return (
     <Card>
@@ -20,7 +21,7 @@ export function ChangedPerRun({ runs }: { runs: HistoryRun[] }) {
         <CardDescription>{t('runs.changed.description', { count: runs.length })}</CardDescription>
       </CardHeader>
       <CardContent>
-        <Lines data={runSeries(runs)} x="run" series={[{ key: 'failed', label: t('runs.changed.series') }]} />
+        <Lines data={runSeries(runs)} x="run" series={[{ key: 'failed', label: t('runs.changed.series') }]} height={height} />
       </CardContent>
     </Card>
   );

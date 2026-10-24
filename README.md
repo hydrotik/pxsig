@@ -2,6 +2,10 @@
 
 Visual regression for Storybook that runs on your own machine and in your own CI.
 
+<img src="docs/product-shots/overview.png" width="900" alt="The pxsig dashboard's Overview in the middle of a review: status cards (42 checked, 6 changed, 1 new accessibility violation), open items with review actions, a stale-entries heatmap by component, an errors card with the safe-repair actions, and the changed entries across 14 runs.">
+
+<img src="docs/product-shots/inspector.png" width="900" alt="The inspector reviewing a changed card: the baseline render and the latest render side by side, the changed pixels and detail tiles highlighted, three changed regions listed, and the metrics that failed the gate (SSIM 0.64 below 0.99, 50 detail tiles changed) with Approve, Reject and Approve story.">
+
 pxsig renders every story state with Playwright, reduces each render to a compact pixel
 signature, and compares it with an approved baseline. Each baseline is one `.psig` file per story
 state: the signature and the full baseline image, packed together. The files live with the
@@ -10,8 +14,9 @@ change.
 
 - **Engine.** The Rust crate `pxsig-core` builds signatures (spec v1), computes the metrics and
   applies the gate. The `pxsig` binary runs it in parallel over a whole manifest.
-- **Dashboard.** `pxsig serve` opens a local dashboard: what changed, side by side and as a heat
-  map, with approve and reject on each entry.
+- **Dashboard.** `pxsig serve` opens a local dashboard: what changed, side by side, as a swipe,
+  an onion skin, a pixel diff or a heat map of the signature cells, with approve and reject on
+  each entry.
 - **Storybook addon.** `@pxsig/storybook-addon` adds a panel and sidebar status dots.
 - **MCP server.** `pxsig mcp` gives an agent the same status, images and re-checks. It cannot
   approve a baseline unless the user asked for it.
@@ -32,10 +37,11 @@ change.
 
 ## Status
 
-Version 0.2 is on npm in two packages: [`pxsig`](https://www.npmjs.com/package/pxsig) (CLI,
-engine, server, dashboard and MCP server) and
-[`@pxsig/storybook-addon`](https://www.npmjs.com/package/@pxsig/storybook-addon). Releases are
-published from GitHub Actions with npm provenance and listed in [CHANGELOG.md](CHANGELOG.md).
+pxsig is on npm in two packages: [`pxsig`](https://www.npmjs.com/package/pxsig) (CLI, engine,
+server, dashboard and MCP server) and
+[`@pxsig/storybook-addon`](https://www.npmjs.com/package/@pxsig/storybook-addon); npm shows the
+current version. Releases are published from GitHub Actions with npm provenance and listed in
+[CHANGELOG.md](CHANGELOG.md).
 
 ## Requirements
 

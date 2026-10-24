@@ -32,6 +32,13 @@ report/
 *.woff
 *.woff2
 *.wasm
+# …except product screenshots for the README and docs (check-clean allows images there, nowhere else)
+!docs/product-shots/*.png
+!docs/product-shots/*.jpg
+!docs/product-shots/*.jpeg
+!docs/product-shots/*.gif
+!docs/product-shots/*.webp
+!docs/product-shots/*.avif
 
 # Local (.local/: private notes and reference material, never committed; check-clean enforces it)
 .local/

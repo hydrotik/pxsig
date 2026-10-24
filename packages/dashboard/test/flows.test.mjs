@@ -249,7 +249,7 @@ test('the Overview: open items and stale entries on the left, errors (only with 
   try {
     const box = async (name) => page.getByRole('heading', { name, exact: true }).boundingBox();
     await page.getByRole('heading', { name: 'Errors', exact: true }).waitFor();
-    const [items, heat, errs, runs] = [await box('Open items'), await box('Stale entries by component'), await box('Errors'), await box('Changed entries per run')];
+    const [items, heat, errs, runs] = [await box('Open Items'), await box('Stale Entries by Component'), await box('Errors'), await box('Changed Entries per Run')];
     assert.ok(items.x < errs.x && Math.abs(items.y - errs.y) < 4, 'open items and errors start one row, side by side');
     assert.ok(Math.abs(items.x - heat.x) < 1 && heat.y > items.y, 'stale entries sit under open items');
     assert.ok(Math.abs(errs.x - runs.x) < 1 && runs.y > errs.y, 'changed entries per run sit under errors');
@@ -271,12 +271,12 @@ test('the Overview shows no errors card without errors; one column on a narrow p
   d.history = history(2);
   const { page } = await open(d);
   try {
-    await page.getByRole('heading', { name: 'Changed entries per run' }).waitFor();
+    await page.getByRole('heading', { name: 'Changed Entries per Run' }).waitFor();
     assert.equal(await page.getByRole('heading', { name: 'Errors', exact: true }).count(), 0);
     await page.getByText('No stale entries').waitFor();
     await page.setViewportSize({ width: 640, height: 900 });
-    const items = await page.getByRole('heading', { name: 'Open items' }).boundingBox();
-    const runs = await page.getByRole('heading', { name: 'Changed entries per run' }).boundingBox();
+    const items = await page.getByRole('heading', { name: 'Open Items' }).boundingBox();
+    const runs = await page.getByRole('heading', { name: 'Changed Entries per Run' }).boundingBox();
     assert.ok(Math.abs(items.x - runs.x) < 1 && runs.y > items.y, 'one column: the right column follows the left');
   } finally {
     await page.close();
@@ -300,7 +300,7 @@ test('stale heatmap tiles name their component and count, worst share first, and
   );
   const { page, errors } = await open(d);
   try {
-    const grid = page.getByRole('list', { name: 'Stale entries by component' });
+    const grid = page.getByRole('list', { name: 'Stale Entries by Component' });
     await grid.waitFor();
     const names = await grid.getByRole('button').evaluateAll((bs) => bs.map((b) => b.getAttribute('aria-label')));
     assert.deepEqual(names, ['Card: 2 stale of 2 entries', 'Button: 1 stale of 3 entries'], 'no tile for a component with nothing stale');
