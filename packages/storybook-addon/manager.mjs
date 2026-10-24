@@ -21,6 +21,8 @@
 import React from 'react';
 import { addons, experimental_getStatusStore, types, useStorybookState } from 'storybook/manager-api';
 import { AddonPanel } from 'storybook/internal/components';
+import { useTheme } from 'storybook/theming';
+import { buttonStyle, dashboardUrl, panelColors, themeMode } from './panel-style.mjs';
 
 const ADDON = 'pxsig';
 const PANEL = `${ADDON}/panel`;
@@ -121,20 +123,14 @@ addons.register(ADDON, () => {
 });
 
 const h = React.createElement;
-const btn = (label, onClick, disabled) =>
-  h(
-    'button',
-    {
-      type: 'button',
-      onClick,
-      disabled,
-      style: { font: 'inherit', fontSize: 12, padding: '4px 10px', borderRadius: 4, border: '1px solid rgba(128,128,128,.4)', background: 'transparent', color: 'inherit', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1 },
-    },
-    label
-  );
 
 function Panel() {
   const { storyId } = useStorybookState();
+  // Storybook's theme: the buttons follow it, and the inspector and dashboard open in its mode.
+  const theme = useTheme();
+  const mode = themeMode(theme);
+  const colors = panelColors(theme);
+  const btn = (label, onClick, disabled) => h('button', { type: 'button', onClick, disabled, style: buttonStyle(theme, disabled) }, label);
   const [, force] = React.useReducer((n) => n + 1, 0);
   React.useEffect(() => {
     bus.addEventListener('change', force);
@@ -146,17 +142,17 @@ function Panel() {
   if (!state.up)
     return h(
       'div',
-      { style: { padding: 16, fontSize: 13, lineHeight: 1.6 } },
+      { style: { padding: 16, fontSize: 13, lineHeight: 1.6, color: colors.text } },
       h('strong', null, 'The pxsig server is not running.'),
       h('div', null, 'Start it from the repo root, then this panel connects on its own:'),
       h('code', { style: { display: 'block', marginTop: 8 } }, 'npx pxsig serve --watch')
     );
   return h(
     'div',
-    { style: { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 } },
+    { style: { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, color: colors.text } },
     h(
       'div',
-      { style: { display: 'flex', gap: 8, alignItems: 'center', padding: '6px 10px', borderBottom: '1px solid rgba(128,128,128,.2)', fontSize: 12 } },
+      { style: { display: 'flex', gap: 8, alignItems: 'center', padding: '6px 10px', borderBottom: `1px solid ${colors.border}`, fontSize: 12 } },
       h('strong', null, st ? `pxsig: ${st.status}` : 'pxsig: no result yet'),
       st ? h('span', { style: { opacity: 0.7 } }, st.entries.map((e) => `${e.mode} ${e.state}`).join(' · ')) : null,
       ig && ig.status !== 'ok'
@@ -173,12 +169,12 @@ function Panel() {
       state.running ? h('span', { style: { opacity: 0.7 } }, 'Checking…') : null,
       btn('Check story', () => post({ story: storyId }), state.running),
       btn('Check all', () => post({ all: true }), state.running),
-      btn('Open dashboard', () => window.open(`${SERVER}/report/?${st?.project ? `project=${encodeURIComponent(st.project)}&` : ''}story=${encodeURIComponent(storyId)}#inspect=${encodeURIComponent(st?.entries[0]?.id ?? storyId)}`, '_blank'))
+      btn('Open dashboard', () => window.open(dashboardUrl(SERVER, { project: st?.project ?? null, story: storyId, hash: `inspect=${encodeURIComponent(st?.entries[0]?.id ?? storyId)}` }, mode), '_blank'))
     ),
     h('iframe', {
-      key: `${storyId}`,
+      key: `${storyId}:${mode}`,
       title: 'pxsig inspector',
-      src: `${SERVER}/report/?embed=1&story=${encodeURIComponent(storyId)}`,
+      src: dashboardUrl(SERVER, { embed: 1, story: storyId }, mode),
       style: { flex: 1, minHeight: 0, border: 0, width: '100%' },
     })
   );

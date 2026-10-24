@@ -98,8 +98,9 @@ function data({ rows, entries, summary = {} }) {
 }
 
 /** A page on the mocked server. `events` is the SSE stream body; `posts` collects every POST. */
-async function open(d, { hash = '', events = 'event: hello\ndata: {}\n\n', answers = {} } = {}) {
+async function open(d, { hash = '', events = 'event: hello\ndata: {}\n\n', answers = {}, init = null } = {}) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  if (init) await page.addInitScript(init);
   const posts = [];
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -194,5 +195,18 @@ test("the inspector approves a story's entries together, and re-checks one entry
     assert.equal(posts.filter((p) => p.name === 'approve').length, 0, 'no single approvals were sent');
   } finally {
     await page.close();
+  }
+});
+
+test('a link that names the theme opens in it, over the remembered one (the Storybook addon passes its own)', async (t) => {
+  if (skip) return t.skip(skip);
+  const d = data({ rows: [row('ui-button--ok')], entries: [entry('ui-button--ok')] });
+  for (const [mode, stored, toggle] of [['dark', 'light', 'Light theme'], ['light', 'dark', 'Dark theme']]) {
+    const { page } = await open(d, { hash: `?theme=${mode}`, init: `localStorage.setItem('pxsig-dashboard-theme', '${stored}')` });
+    try {
+      await page.getByRole('button', { name: toggle }).waitFor();
+    } finally {
+      await page.close();
+    }
   }
 });
