@@ -112,8 +112,8 @@ exactly one project.
 
 | Request | Effect |
 | --- | --- |
-| `POST /__pxsig/approve {id, batch?, via?, reason?, kind?}` | The latest render becomes the baseline: a `.psig` with the render as its image. The old baseline is snapshotted to `<store>/history/<batch>/`, the write logged in `approvals.ndjson`, and the a11y baseline follows the render. A NEW entry (no baseline yet) gets its first baseline, logged with `before: null`. 409 when there is no latest render, or when the server does not hold the project's store lock. |
-| `POST /__pxsig/approve-story {story, via?, reason?}` | Approves every entry of the story that waits for a decision (each mode and state), as one batch: the dashboard's **Approve story**, a person's click. Entries that pass, did not render, were rejected or are already approved are left out; the answer lists `approved`, `skipped` (with why) and the `batch`. Each approval is logged and undone like a single one. |
+| `POST /__pxsig/approve {id, batch?, reason?, kind?}` | The latest render becomes the baseline: a `.psig` with the render as its image. The old baseline is snapshotted to `<store>/history/<batch>/`, the write logged in `approvals.ndjson`, and the a11y baseline follows the render. A NEW entry (no baseline yet) gets its first baseline, logged with `before: null`. 409 when there is no latest render, or when the server does not hold the project's store lock. |
+| `POST /__pxsig/approve-story {story, reason?}` | Approves every entry of the story that waits for a decision (each mode and state), as one batch: the dashboard's **Approve story**, a person's click. Entries that pass, did not render, were rejected or are already approved are left out; the answer lists `approved`, `skipped` (with why) and the `batch`. Each approval is logged and undone like a single one. |
 | `POST /__pxsig/reject {id}` | Records a rejection for the current result. |
 | `POST /__pxsig/a11y-accept {id}` | Puts the entry's current axe violations on its accepted list (`<store>/a11y.json`), logged in `<store>/a11y-decisions.ndjson`. 409 when the last check has no axe results for it. |
 | `POST /__pxsig/a11y-reject {id}` | Marks the entry's violations for a fix; the accepted list is unchanged. |
@@ -130,9 +130,29 @@ clears the mark. `summary.changed` counts only real changes waiting for a decisi
 
 ### Guards
 
+- **Decisions need a person.** `approve`, `approve-story`, `reject`, `unreview` and the `a11y-*`
+  routes need one of the server's two tokens in an `x-pxsig-token` header, or they are refused
+  (403, "approving needs a person: use the dashboard or `pxsig approve` in a terminal"). The server
+  makes both at random each time it starts. The dashboard's goes into the dashboard page
+  (`<meta name="pxsig-token">`) only when a browser loads that page (`Sec-Fetch-Dest: document`, or
+  `iframe` for the Storybook panel). The CLI's goes into `node_modules/.cache/pxsig/serve-<port>.token`
+  (mode 0600, removed on exit), which `pxsig approve apply` reads after its person-at-a-terminal
+  check; a request carrying it with browser headers (`Origin`, `Sec-Fetch-Site`) is refused. An
+  agent posting to the server with `curl` or `fetch` has neither. The token decides `via` in
+  `approvals.ndjson` and `a11y-decisions.ndjson` (`dashboard` or `cli`); a `via` in the body is
+  ignored. `check` and `repair` need no token: the CLI,
+  the MCP and the Storybook addon use them, and neither one approves.
 - **Origin.** A POST with an `Origin` header is refused (403) unless it is the server's own origin
-  or the origin of a served project's Storybook (with `localhost` and `127.0.0.1` both accepted).
-  CORS headers are sent only to those Storybook origins.
+  or, for `check` and `repair` only, the origin of a served project's Storybook (with `localhost`
+  and `127.0.0.1` both accepted). A POST whose `Sec-Fetch-Site` is not `same-origin` is refused on
+  the same terms. CORS headers are sent only to those Storybook origins, and never allow
+  `x-pxsig-token`. The dashboard page may be framed only by the server and those Storybooks
+  (`Content-Security-Policy: frame-ancestors`).
+- **Host.** Any request whose `Host` is not `127.0.0.1`, `localhost` or `[::1]` on the server's
+  port is refused (403), so a page that rebinds its own name to 127.0.0.1 gets nothing.
+- **What this is not.** The token is a guard, not authentication: any process running as you can
+  read the token file, or send the headers a browser sends. It stops an agent or a script from
+  approving by posting to the server, and a web page from posting to it at all.
 - **Storybook health.** Before rendering, a check fetches Storybook's index. When it is unreachable
   or broken, nothing is rendered or recorded, and the `check` event carries a setup error (the
   dashboard shows it). When three or more renders, and at least half, hit Storybook's error page,

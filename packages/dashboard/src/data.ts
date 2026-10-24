@@ -358,15 +358,25 @@ export function useData(): { data: Data | null; error: string | null; live: bool
   return { data, error, live };
 }
 
+/**
+ * Headers for a decision: the server's token, which it puts in the page it serves
+ * (`<meta name="pxsig-token">`). Without it the server refuses the decision (an agent or a script
+ * posting to the server must not approve).
+ */
+function decisionHeaders(): Record<string, string> {
+  const token = typeof document === 'undefined' ? null : document.querySelector<HTMLMetaElement>('meta[name="pxsig-token"]')?.content;
+  return { 'content-type': 'application/json', ...(token ? { 'x-pxsig-token': token } : {}) };
+}
+
 export async function reviewAction(action: 'approve' | 'reject' | 'unreview', id: string): Promise<void> {
-  const r = await fetch(`/__pxsig/${action}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: withProject({ id }) });
+  const r = await fetch(`/__pxsig/${action}`, { method: 'POST', headers: decisionHeaders(), body: withProject({ id }) });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body.error || r.statusText);
 }
 
 /** `unaccept` takes `rule` (or every rule) off the entry's accepted list. */
 export async function a11yAction(action: 'accept' | 'reject' | 'unreview' | 'unaccept', id: string, rule?: string): Promise<void> {
-  const r = await fetch(`/__pxsig/a11y-${action}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: withProject(rule ? { id, rule } : { id }) });
+  const r = await fetch(`/__pxsig/a11y-${action}`, { method: 'POST', headers: decisionHeaders(), body: withProject(rule ? { id, rule } : { id }) });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body.error || r.statusText);
 }
@@ -384,7 +394,7 @@ export async function recheck(ids: string[]): Promise<{ queued: string[]; regist
  * server leaves out entries that pass, did not render, or were rejected, and says why).
  */
 export async function approveStory(story: string): Promise<{ approved: string[]; skipped: { id: string; why: string }[]; batch: string }> {
-  const r = await fetch('/__pxsig/approve-story', { method: 'POST', headers: { 'content-type': 'application/json' }, body: withProject({ story }) });
+  const r = await fetch('/__pxsig/approve-story', { method: 'POST', headers: decisionHeaders(), body: withProject({ story }) });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body.error || r.statusText);
   return body;
