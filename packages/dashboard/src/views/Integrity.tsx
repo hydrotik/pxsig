@@ -1,6 +1,6 @@
 import React from 'react';
 import { Alert, AlertDescription, AlertTitle, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DataTable, StatGroup, StatusBadge, Toolbar, ToolbarStart, type Tone } from '@ui';
-import { type Data, type Row, repairSafe, rowsWithPending, served } from '../data';
+import { type Data, type Queue, type Row, repairSafe, reviewQueue, rowsWithPending, served } from '../data';
 import { Cmd, codeCopy, t, tx } from '../copy';
 import { Affordance } from '../parts/Affordance';
 import * as s from '../dashboard.css';
@@ -28,20 +28,28 @@ export function coverageHeadline(L: NonNullable<Data['integrity']>): string {
 }
 
 /**
- * The banner at the top of every tab while anything is error-severity, with the one-click safe
- * repair (register new stories without signatures, re-check, restore baseline images that pass
- * the gate). It never approves, never writes a signature and never prunes.
+ * The banner at the top of every tab while anything is error-severity, or while registered entries
+ * wait for their first approval (a warning, counted on its own so it does not vanish once the
+ * errors are repaired). It carries the one-click safe repair (register new stories and render
+ * them, re-check, restore baseline images that pass the gate) and, for the new entries, the
+ * review queue that approves them. It never approves, never writes a signature and never prunes.
  */
-export function IntegrityBanner({ data, go }: { data: Data; go(tab: string): void }) {
+export function IntegrityBanner({ data, go, startReview }: { data: Data; go(tab: string): void; startReview?(kind: Queue): void }) {
   const L = data.integrity;
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
-  const clean = !L || (L.summary.status !== 'attention' && !L.setup.length);
+  const firsts = L?.summary.byCode.unbaselined ?? 0;
+  const orphans = L?.summary.byCode.orphaned ?? 0;
+  const errors = !!L && (L.summary.status === 'attention' || L.setup.length > 0);
+  const clean = !L || (!errors && !firsts);
   // The server pushes the repaired ledger, so the banner closes on its own once nothing is left
   // to repair (the result used to hold it open until a reload). The result belongs to the ledger
   // it was shown with, so it goes when the ledger turns clean or turns bad again.
   React.useEffect(() => setMsg(null), [clean]);
   if (!L || (clean && !busy)) return null;
+  // New entries already rendered can be approved now; the rest need a render first (the repair).
+  const toApprove = reviewQueue(data, 'new').filter((r) => !data.review[r.id]).length;
+  const repairable = errors || L.entries.some((x) => x.files && x.issues.some((i) => i.code === 'missing-render'));
   const run = async () => {
     setBusy(true);
     setMsg(null);
@@ -55,8 +63,8 @@ export function IntegrityBanner({ data, go }: { data: Data; go(tab: string): voi
     }
   };
   return (
-    <Alert tone={L.summary.status === 'attention' || L.setup.some((x) => x.severity === 'error') ? 'danger' : 'neutral'} label={t('coverage.banner.label')}>
-      <AlertTitle>{coverageHeadline(L)}</AlertTitle>
+    <Alert tone={errors && (L.summary.status === 'attention' || L.setup.some((x) => x.severity === 'error')) ? 'danger' : 'neutral'} label={t('coverage.banner.label')}>
+      <AlertTitle>{errors ? coverageHeadline(L) : t('coverage.banner.firstApproval', { count: firsts })}</AlertTitle>
       <AlertDescription>
         <div className={s.stack}>
           {L.setup.map((x) => (
@@ -64,16 +72,28 @@ export function IntegrityBanner({ data, go }: { data: Data; go(tab: string): voi
               <strong>{codeCopy(x.code).title}</strong> · {x.reason}
             </span>
           ))}
+          {firsts ? (
+            <span className={s.row}>
+              {errors ? <Badge tone="warning">{t('coverage.banner.firstApproval', { count: firsts })}</Badge> : null}
+              <span className={s.muted}>{t('coverage.banner.firstApprovalNote')}</span>
+            </span>
+          ) : null}
+          {orphans ? <span className={s.muted}>{tx('coverage.banner.orphans', { count: orphans, command: <Cmd>pxsig doctor --repair --prune --apply</Cmd> })}</span> : null}
           <span className={s.row}>
             <Button size="sm" emphasis="outline" onClick={() => go('integrity')}>
               {t('coverage.banner.viewComponents')}
             </Button>
-            {served ? (
+            {served && toApprove && startReview ? (
+              <Button size="sm" emphasis={repairable ? 'outline' : 'solid'} onClick={() => startReview('new')}>
+                {t('coverage.banner.approveNew', { count: toApprove })}
+              </Button>
+            ) : null}
+            {served && (repairable || busy) ? (
               <Button size="sm" onClick={run} disabled={busy}>
                 {busy ? t('coverage.banner.repairing') : t('coverage.banner.repair')}
               </Button>
             ) : null}
-            <span className={s.muted}>{t('coverage.banner.repairNote')}</span>
+            {repairable ? <span className={s.muted}>{t('coverage.banner.repairNote')}</span> : null}
           </span>
           {msg ? <span className={s.mono}>{msg}</span> : null}
         </div>
@@ -104,9 +124,9 @@ export function Integrity({ data, onOpen }: { data: Data; onOpen(row: Row, list:
           { label: t('coverage.stats.components'), value: sm.components, unit: t('coverage.stats.withErrors', { count: sm.componentsBySeverity.error }) },
           { label: t('coverage.stats.errors'), value: sm.bySeverity.error, tone: sm.bySeverity.error ? 'danger' : 'success' },
           { label: t('coverage.stats.warnings'), value: sm.bySeverity.warn, tone: sm.bySeverity.warn ? 'warning' : undefined },
-          ...(['unregistered', 'never-checked', 'missing-baseline-image'] as const).map((c) =>
+          ...(['unregistered', 'never-checked', 'missing-baseline-image', 'unbaselined'] as const).map((c) =>
             sm.byCode[c]
-              ? { label: codeCopy(c).title, value: sm.byCode[c], tone: 'danger' as const, active: code === c, onSelect: () => setCode(code === c ? null : c), icon: <Affordance kind="filter" /> }
+              ? { label: codeCopy(c).title, value: sm.byCode[c], tone: c === 'unbaselined' ? ('warning' as const) : ('danger' as const), active: code === c, onSelect: () => setCode(code === c ? null : c), icon: <Affordance kind="filter" /> }
               : { label: codeCopy(c).title, value: 0 }
           ),
         ]}

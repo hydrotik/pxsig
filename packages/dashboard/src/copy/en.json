@@ -180,9 +180,22 @@
       "viewComponents": "View components",
       "repair": "Run safe repairs",
       "repairing": "Repairing…",
-      "repairNote": "Safe repairs register new stories, re-check entries and restore baseline images that pass the gate. They do not approve changes or write signatures.",
+      "repairNote": "Safe repairs register new stories and render them, re-check entries without a usable verdict, and restore baseline images that pass the gate. They do not approve changes or write signatures.",
       "nothing": "No issues can be repaired automatically.",
-      "failed": "Repair failed: {error}"
+      "failed": "Repair failed: {error}",
+      "firstApproval": {
+        "one": "Needs a first approval: {count} entry",
+        "other": "Needs a first approval: {count} entries"
+      },
+      "firstApprovalNote": "Registered entries without a baseline. Nothing is approved automatically.",
+      "approveNew": {
+        "one": "Approve {count} new entry",
+        "other": "Approve {count} new entries"
+      },
+      "orphans": {
+        "one": "{count} orphaned baseline. To move it to the store's trash/ folder, run {command} in a terminal.",
+        "other": "{count} orphaned baselines. To move them to the store's trash/ folder, run {command} in a terminal."
+      }
     },
     "stats": {
       "components": "Components",

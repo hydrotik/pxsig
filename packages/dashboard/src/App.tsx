@@ -199,7 +199,7 @@ export function App() {
             <div className={s.page}>
               {/* The section's heading, for the outline (the bar's link says it visibly). */}
               <h2 className={s.srOnly}>{sectionTitle}</h2>
-              <IntegrityBanner data={data} go={go} />
+              <IntegrityBanner data={data} go={go} startReview={startReview} />
               {shown === 'overview' ? <Overview data={data} go={go} startReview={startReview} /> : null}
               {shown === 'stories' ? <Stories data={data} filter={filter} setFilter={setFilter} onOpen={(r, l) => open(r, l)} /> : null}
               {shown === 'integrity' ? <Integrity data={data} onOpen={(r, l) => open(r, l)} /> : null}
