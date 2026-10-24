@@ -12,7 +12,8 @@
  */
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { hostname } from 'node:os';
 import { createServer } from 'node:http';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -235,5 +236,27 @@ test('check --only with a story that is not registered registers it and checks i
     assert.ok(!existsSync(join(f.repo, e.sig)), 'no signature');
   } finally {
     sb.close();
+  }
+});
+
+test('a second server beside the lock holder writes nothing into the store, and leaves the running server on record', { skip: !hasRust && 'Rust binary not built' }, async () => {
+  const f = fixture();
+  const reports = join(f.px, 'reports');
+  writeFileSync(join(reports, '.lock'), `${JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), host: hostname(), holder: 'serve', command: 'pxsig serve', url: 'http://127.0.0.1:1' })}\n`);
+  const info = join(f.repo, 'node_modules', '.cache', 'pxsig', 'server.json');
+  mkdirSync(dirname(info), { recursive: true });
+  const record = `${JSON.stringify({ url: 'http://127.0.0.1:1', pid: process.pid, startedAt: new Date().toISOString(), projects: ['fixture'] })}\n`;
+  writeFileSync(info, record);
+  const before = readdirSync(reports).sort();
+  const S = await serve(f);
+  try {
+    const r = await fetch(`${S.base}/__pxsig/integrity?fresh=1`);
+    assert.equal(r.status, 200, 'the ledger is computed and served from memory');
+    assert.ok((await r.json()).entries.length);
+    assert.deepEqual(readdirSync(reports).sort(), before, `nothing new in the store's reports (no integrity.json, no .run/):\n${S.log()}`);
+    assert.equal(readFileSync(info, 'utf8'), record, 'server.json still names the running server');
+    assert.equal((await S.post('check', { ids: [f.ids.ok] })).status, 409, 'writes are refused');
+  } finally {
+    S.stop();
   }
 });

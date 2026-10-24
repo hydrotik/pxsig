@@ -48,6 +48,7 @@
 import { execFile, spawn } from 'node:child_process';
 import { appendFileSync, createReadStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { tmpdir } from 'node:os';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
 import { newBatch, paths, record, sha256, snapshot, undo, who } from './lib/approvals.mjs';
@@ -55,7 +56,7 @@ import { browserPool, renderStories, STORYBOOK_ERROR } from './lib/capture.mjs';
 import { fetchStoryIndex, filterLedger, loadStoryIndex, oneLine, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
 import { readHeader, readImage } from './lib/psig.mjs';
 import { parseArgs, strFlag } from './lib/args.mjs';
-import { acquireLock, describeLock, LockError } from './lib/lock.mjs';
+import { acquireLock, alive, describeLock, LockError } from './lib/lock.mjs';
 import { applyRepairs, defaultHooks, planRepairs, registerNamed } from './lib/repair.mjs';
 import { buildRow, dropStaleRows, storybookBroken, summarize } from './lib/rows.mjs';
 import { ensureStorybook } from './lib/static.mjs';
@@ -181,7 +182,8 @@ function openState(ref) {
   };
   S.reload = () => {
     try {
-      const r = writeRunManifest(P);
+      // Without the store lock (another process holds it) the run manifest goes to a temp folder.
+      const r = writeRunManifest(P, undefined, S.lock ? {} : { dir: join(tmpdir(), `pxsig-serve-${process.pid}`, S.name) });
       S.runPath = r.path;
       S.manifest = r.manifest;
     } catch (e) {
@@ -284,8 +286,14 @@ function needLock(S) {
 function takeLock(S) {
   try {
     S.lock = acquireLock(S.P, { holder: 'serve', command: 'pxsig serve' });
+    const waited = !!S.lockWait;
     S.lockWait = null;
     if (url) S.lock.update({ url });
+    // Waited for the lock: the run manifest moves into the store, and the ledger is written.
+    if (waited) {
+      S.reload();
+      scheduleIntegrity(S, 'store lock taken', 0);
+    }
     return true;
   } catch (e) {
     if (!(e instanceof LockError)) throw e;
@@ -603,6 +611,8 @@ function storyIntegrity() {
 async function runIntegrity(S, why) {
   if (S.integrityRunning || S.running) return scheduleIntegrity(S, why, 1500);
   S.integrityRunning = true;
+  let done;
+  S.integrityDone = new Promise((r) => (done = r));
   try {
     S.reload();
     pruneStaleRows(S);
@@ -610,14 +620,19 @@ async function runIntegrity(S, why) {
     const ledger = await reconcile(S.ctx, { index: idx, affected: S.affected });
     const before = S.integrity?.summary?.headline;
     S.integrity = ledger;
-    S.quietUntil = Date.now() + 800;
-    writeLedger(S.ctx, ledger);
+    // The ledger is the store's file: only the lock holder writes it (a second, read-only server
+    // beside another process's keeps its ledger in memory).
+    if (S.lock) {
+      S.quietUntil = Date.now() + 800;
+      writeLedger(S.ctx, ledger);
+    }
     if (before !== ledger.summary.headline) console.log(`[serve] ${S.name}: ${oneLine(ledger)} (${why}, ${ledger.elapsedMs} ms)`);
     broadcast('integrity', { project: S.name, summary: ledger.summary, setup: ledger.setup });
   } catch (e) {
     console.error(`[serve] ${S.name}: integrity failed: ${e.message}`);
   } finally {
     S.integrityRunning = false;
+    done();
   }
 }
 function scheduleIntegrity(S, why, ms = 1500) {
@@ -770,7 +785,11 @@ async function api(req, res, action, q) {
     const S = stateFor({ project: q.get('project'), story: q.get('story') });
     if (action === 'data') return json(res, 200, buildData(S.P));
     if (action === 'integrity') {
-      if (!S.integrity || q.get('fresh')) await runIntegrity(S, 'request');
+      if (!S.integrity || q.get('fresh')) {
+      // A run already going (startup, a file change) answers this request too: wait for it.
+      if (S.integrityRunning) await S.integrityDone;
+      else await runIntegrity(S, 'request');
+    }
       if (!S.integrity) return json(res, 503, { error: 'integrity not computed yet' });
       const story = q.get('story');
       if (story) return json(res, 200, { project: S.name, story, ...(storyIntegrity()[story] ?? { status: 'unknown' }), entries: S.integrity.entries.filter((x) => x.story === story) });
@@ -923,8 +942,14 @@ function listen(port, tries = 10) {
   const onListening = () => {
     server.off('error', onError);
     url = `http://127.0.0.1:${server.address().port}`;
-    mkdirSync(dirname(info), { recursive: true });
-    writeFileSync(info, `${JSON.stringify({ url, pid: process.pid, startedAt: new Date().toISOString(), projects: [...states.keys()] }, null, 2)}\n`);
+    // The CLI, the MCP and the addon find the server through this file: a second server (on
+    // another port, read-only beside the one holding the stores) leaves a live server's record.
+    const recorded = readJson(info, null);
+    if (recorded?.pid && recorded.pid !== process.pid && alive(recorded.pid)) console.log(`[serve] ${relative(ws.root, info)} names the running server at ${recorded.url} (pid ${recorded.pid}): left as it is`);
+    else {
+      mkdirSync(dirname(info), { recursive: true });
+      writeFileSync(info, `${JSON.stringify({ url, pid: process.pid, startedAt: new Date().toISOString(), projects: [...states.keys()] }, null, 2)}\n`);
+    }
     for (const S of states.values()) S.lock?.update({ url });
     const page = `${url}/report/${flags.tab ? `#${flags.tab}` : ''}`;
     console.log(`[serve] pxsig dashboard → ${page}  (${[...states.keys()].join(', ')}; Ctrl+C to stop)`);
@@ -939,6 +964,7 @@ const shutdown = async () => {
   for (const S of states.values()) S.lock?.release();
   engine?.kill();
   await pool?.close();
+  rmSync(join(tmpdir(), `pxsig-serve-${process.pid}`), { recursive: true, force: true });
   try {
     if (readJson(info, {}).pid === process.pid) rmSync(info);
   } catch {
