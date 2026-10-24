@@ -49,12 +49,13 @@ port and renders against it (its origin is allowed like a Storybook's).
 
 | Section | Content |
 | --- | --- |
-| Overview | The latest check's counts and duration, then open items (changed, new, rejected, render errors, components with coverage errors, new a11y violations, flaky), each linking to its list or starting a review. "Changed" counts changes still waiting for a decision. |
+| Overview | The latest check's counts and duration across the top. Below, on the left: open items (changed, new, rejected, render errors, components with coverage errors, new a11y violations, flaky), each linking to its list or starting a review, then stale entries by component as a heatmap (the 12 highest shares; a tile opens Coverage on that component). On the right: an errors card while there are render or coverage errors (each row opens where it is fixed, with the safe repair), then changed entries per run. One column on a narrow page. "Changed" counts changes still waiting for a decision. |
 | Review Stories | Every entry, filterable and grouped by component, with the inspector: baseline, current render and diff side by side or overlaid, metrics, gate reasons, change regions. `A` approves, `R` rejects; **Approve story** approves every mode and state of the story that waits for a decision, in one batch; **Re-check** queues the entry again. A card with a render error, or a NEW entry not rendered yet, has its own **Re-check**. "Review N changes" starts a session over the changed (or new) entries with progress and a closing summary. |
-| Coverage | The integrity ledger: components and entries by status, with the safe repairs |
+| Coverage | The integrity ledger: components and entries by status, with the safe repairs, and stale entries by component as a heatmap (a tile filters the table to that component and opens its entries) |
 
-A banner above every section shows coverage errors, entries that need a first approval (counted
-on their own, with the queue that approves them), orphaned baselines (with the command that moves
+A banner above every section (on the Overview, the errors card instead, while there are errors)
+shows coverage errors, entries that need a first approval (counted on their own, with the queue
+that approves them), orphaned baselines (with the command that moves
 them aside), and **Run safe repairs** while there is something to repair. A check that is running
 is shown, and one that failed (Storybook down, a broken index) shows its error until dismissed.
 | Accessibility | axe violations per entry and per rule, new ones first |

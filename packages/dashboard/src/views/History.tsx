@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, DataTable, StatGroup } from '@ui';
 import { type Data, fmt } from '../data';
 import { Lines } from '../parts/Charts';
+import { ChangedPerRun, runSeries } from '../parts/RunCharts';
 import { Cmd, t, tx } from '../copy';
 import * as s from '../dashboard.css';
 
@@ -34,20 +35,12 @@ export function History({ data }: { data: Data }) {
         <div className={s.empty}>{tx('runs.empty', { file: <Cmd>reports/history.ndjson</Cmd> })}</div>
       </div>
     );
-  const series = runs.map((r, i) => ({ run: i + 1, failed: r.summary.failed, engine: Math.round(r.summary.elapsedMs), cached: r.summary.cached }));
+  const series = runSeries(runs);
   return (
     <div className={s.stack}>
       {latest}
       <div className={s.twoCol}>
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('runs.changed.title')}</CardTitle>
-            <CardDescription>{t('runs.changed.description', { count: runs.length })}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Lines data={series} x="run" series={[{ key: 'failed', label: t('runs.changed.series') }]} />
-          </CardContent>
-        </Card>
+        <ChangedPerRun runs={runs} />
         <Card>
           <CardHeader>
             <CardTitle>{t('runs.engine.title')}</CardTitle>

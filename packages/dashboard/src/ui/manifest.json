@@ -64,6 +64,7 @@
       "usedBy": [
         "App",
         "inspector/Inspector",
+        "parts/StaleHeatmap",
         "parts/StoryGrid",
         "views/Accessibility",
         "views/Integrity",
@@ -84,6 +85,8 @@
       "required": true,
       "role": "a titled region",
       "usedBy": [
+        "parts/RunCharts",
+        "parts/StaleHeatmap",
         "views/Accessibility",
         "views/Calibration",
         "views/Diagnostics",
@@ -100,6 +103,8 @@
       "required": true,
       "role": "a card's header",
       "usedBy": [
+        "parts/RunCharts",
+        "parts/StaleHeatmap",
         "views/Accessibility",
         "views/Calibration",
         "views/Diagnostics",
@@ -116,6 +121,8 @@
       "required": true,
       "role": "a card's heading",
       "usedBy": [
+        "parts/RunCharts",
+        "parts/StaleHeatmap",
         "views/Accessibility",
         "views/Calibration",
         "views/Diagnostics",
@@ -132,12 +139,15 @@
       "required": true,
       "role": "a card's description",
       "usedBy": [
+        "parts/RunCharts",
+        "parts/StaleHeatmap",
         "views/Accessibility",
         "views/Calibration",
         "views/Diagnostics",
         "views/Help",
         "views/History",
         "views/Integrity",
+        "views/Overview",
         "views/Performance",
         "views/Scenarios"
       ]
@@ -147,6 +157,8 @@
       "required": true,
       "role": "a card's body",
       "usedBy": [
+        "parts/RunCharts",
+        "parts/StaleHeatmap",
         "views/Accessibility",
         "views/Calibration",
         "views/Diagnostics",
@@ -425,6 +437,14 @@
       "role": "bar or line chart",
       "usedBy": [
         "parts/Charts"
+      ]
+    },
+    "Heatmap": {
+      "group": "charts",
+      "required": false,
+      "role": "tiles coloured by a share on one sequential scale",
+      "usedBy": [
+        "parts/StaleHeatmap"
       ]
     }
   }

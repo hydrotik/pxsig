@@ -131,6 +131,19 @@
     "entries": {
       "one": "{count} entry",
       "other": "{count} entries"
+    },
+    "errors": {
+      "title": "Errors",
+      "render": "Render error",
+      "coverage": "Coverage error",
+      "renderCount": { "one": "{count} render error", "other": "{count} render errors" },
+      "viewRender": { "one": "View {count} render error", "other": "View {count} render errors" },
+      "more": { "one": "{count} more", "other": "{count} more" },
+      "columns": {
+        "kind": "Kind",
+        "name": "Entry or component",
+        "detail": "Detail"
+      }
     }
   },
   "review": {
@@ -234,7 +247,24 @@
       "component": "Component",
       "entries": "Entries",
       "issues": "Issues",
-      "none": "No components with issues."
+      "none": "No components with issues.",
+      "only": "Only {component}",
+      "clearOnly": "Show the components with issues"
+    },
+    "stale": {
+      "title": "Stale entries by component",
+      "description": {
+        "one": "{count} of {total} components has stale entries. Highest share first.",
+        "other": "{count} of {total} components have stale entries. Highest share first."
+      },
+      "label": "Stale entries by component",
+      "tile": "{count} stale of {total}",
+      "tileLabel": "{component}: {count} stale of {total} entries",
+      "legend": "Share stale",
+      "low": "1–20%",
+      "high": "81–100%",
+      "none": "No stale entries",
+      "viewAll": { "one": "View {count} component on Coverage", "other": "View all {count} components on Coverage" }
     },
     "entries": {
       "description": {

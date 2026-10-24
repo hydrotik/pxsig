@@ -67,6 +67,23 @@ export const twoCol = style({
   alignItems: 'start',
 });
 
+// The Overview below its counts: two equal columns when its own box is wide enough, else one
+// column in source order (left, then right). A size container, so it follows its box, not the window.
+export const overviewCols = style({ containerType: 'inline-size' });
+export const overviewGrid = style({
+  display: 'grid',
+  gap: v.space['4'],
+  gridTemplateColumns: 'minmax(0, 1fr)',
+  alignItems: 'start',
+  '@container': { '(inline-size >= 56rem)': { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' } },
+});
+
+/** A table cell's main text with a quieter line under it. */
+export const cellLines = style({ display: 'flex', flexDirection: 'column', gap: v.space['0_5'], minInlineSize: 0 });
+
+/** Running text inside a card at the size of a banner's body (the Overview's errors card). */
+export const small = style({ fontSize: v.fontSize.sm });
+
 export const muted = style({ color: v.color.textMuted });
 export const mono = style({ fontFamily: v.font.mono, fontVariantNumeric: 'tabular-nums' });
 export const micro = style({

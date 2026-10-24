@@ -11,6 +11,8 @@ import { ThemeProvider, useTheme } from '@hydrotik/theme-provider';
 import { vars } from '@hydrotik/tokens';
 import { Bar, BarChart as RBarChart, CartesianGrid, Line, LineChart as RLineChart, XAxis, YAxis } from 'recharts';
 import type * as C from '../../contract';
+import { heatStep } from '../../contract';
+import * as hm from './heatmap.css';
 
 export const name = 'hydrotik';
 
@@ -382,10 +384,65 @@ export function Chart({ kind, data, series, x, format = (v: number) => String(v)
           <ChartTooltip content={<ChartTooltipContent />} />
           {series.length > 1 ? <ChartLegend content={<ChartLegendContent />} /> : null}
           {series.map((sd) => (
-            <Line key={sd.key} dataKey={sd.key} stroke={`var(--color-${sd.key})`} strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
+            // Points are solid in the series colour, no outline, smaller than the line's weight
+            // suggests, so the line reads first; the one under the pointer grows a little.
+            <Line key={sd.key} dataKey={sd.key} stroke={`var(--color-${sd.key})`} strokeWidth={2} dot={{ r: 2.5, fill: `var(--color-${sd.key})`, stroke: 'none', strokeWidth: 0 }} activeDot={{ r: 3.5, fill: `var(--color-${sd.key})`, stroke: 'none', strokeWidth: 0 }} isAnimationActive={false} />
           ))}
         </RLineChart>
       )}
     </ChartContainer>
+  );
+}
+
+// --- heatmap: tiles on the design system's tokens (heatmap.css.ts) -------------------------------
+
+/**
+ * From which step the ink is the surface colour, per theme: the text colour holds 4.5:1 on the
+ * fills below it, the surface colour on the fills from it (checked on both themes' values).
+ */
+const INK_FROM = { light: 5, dark: 4 } as const;
+
+export function Heatmap({ label, cells, legend, onSelect, className }: C.HeatmapProps) {
+  const { theme } = useTheme();
+  const from = INK_FROM[theme === 'light' ? 'light' : 'dark'];
+  const cls = (n: number) => [hm.tile, hm.step[n as 0], n >= from ? hm.inverse : ''].filter(Boolean).join(' ');
+  return (
+    <div className={[hm.root, className].filter(Boolean).join(' ')}>
+      <ul className={hm.grid} aria-label={label}>
+        {cells.map((c) => {
+          const n = heatStep(c.value);
+          const name = c.accessibleLabel ?? `${c.label}, ${c.text}`;
+          const body = (
+            <>
+              <span className={hm.name}>{c.label}</span>
+              <span className={hm.figure}>{c.text}</span>
+            </>
+          );
+          return (
+            <li key={c.id}>
+              {onSelect ? (
+                <button type="button" className={cls(n)} aria-label={name} title={name} data-step={n} onClick={() => onSelect(c)}>
+                  {body}
+                </button>
+              ) : (
+                <div className={cls(n)} role="group" aria-label={name} title={name} data-step={n}>
+                  {body}
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <div className={hm.legend}>
+        <span className={hm.legendLabel}>{legend.label}</span>
+        <span>{legend.low}</span>
+        <span className={hm.ramp} aria-hidden="true">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <span key={n} className={[hm.swatch, hm.step[n as 1]].join(' ')} />
+          ))}
+        </span>
+        <span>{legend.high}</span>
+      </div>
+    </div>
   );
 }

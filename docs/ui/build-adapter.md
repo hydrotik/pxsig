@@ -5,7 +5,7 @@ followed step by step, by a person or by a coding agent. Follow them in order, a
 questions for each component from your design system's documentation, and check each acceptance
 criterion before moving on.
 
-The dashboard renders through a contract of 42 neutral components. An adapter is one module that
+The dashboard renders through a contract of 43 neutral components. An adapter is one module that
 implements them on your design system. Nothing in the dashboard's views changes; the adapter is
 chosen once, at build time.
 
@@ -88,8 +88,9 @@ dashboard files each one affects.
 7. **Theme mode is the runtime's.** Your `UiProvider` receives `mode` and applies it; it never
    stores or changes it.
 8. **Icons are a closed set of names.** Map each to a glyph of your icon set.
-9. **One chart component.** `Chart` with `kind="bar" | "line"`. Without a chart library, leave it out:
-   the fallback shows the numbers as a table.
+9. **High-level charts.** `Chart` with `kind="bar" | "line"`, and `Heatmap` for shares on one
+   sequential scale. Without a chart library, leave them out: the fallbacks show the numbers as a
+   table and as plain tiles.
 10. **Every token is required.** A design system without a group (motion, letter-spacing) maps it to
     a literal value.
 11. **Links take `render`** for router integration.
@@ -108,7 +109,7 @@ those components with its own classes.
 4. Controls: `Dialog` and its parts first (the inspector), then `Select`, `SegmentedChoice`,
    `Toolbar` and its parts, `Slider`, `Switch`, `SearchField`, `Progress`, `KeyValueList`,
    `KeyValueItem`, `Alert` and its parts, `Link`, `CopyValue`, `Kbd`.
-5. `Chart`.
+5. `Chart`, `Heatmap`.
 6. The diff viewer's colours: [Styling the diff viewer](#styling-the-diff-viewer).
 7. [Verify](#verify).
 
@@ -575,8 +576,27 @@ accessibility, the questions to answer when mapping, and the acceptance check.
   enough. Give the chart an accessible summary, or a data table on demand.
 - **Mapping questions**: Do you have a chart component, and on which library? Which tokens are your
   categorical colours?
-- **Acceptance**: Runs shows changed entries per run as a line. Optional (fallback: a table of the
-  numbers).
+- **Points**: mark each point solid, in the series colour with no outline, small enough that the
+  line reads first (the reference draws a 2.5px radius, 3.5px under the pointer).
+- **Acceptance**: Runs and the Overview show changed entries per run as a line. Optional (fallback:
+  a table of the numbers).
+
+### `Heatmap`
+
+- **Purpose**: tiles coloured by a share (Overview and Coverage: stale entries by component).
+- **Props**: `label` (the grid's accessible name), `cells` (`id`, `label`, `value` 0–1, `text`,
+  `accessibleLabel`), `legend` (`label`, `low`, `high`), `onSelect`, `className`.
+- **Behaviour**: one sequential scale, one hue from light to dark, in five equal steps of `value`
+  (`heatStep()` from the contract gives the step; a value of 0 is the plain surface). Tiles keep
+  the order given (the dashboard puts the worst first). Each tile shows its `label` and `text`. With
+  `onSelect`, each tile is a button. A legend shows the five steps with `low` and `high` at the ends.
+- **Accessibility**: tiles are buttons named by `accessibleLabel`; the text on a tile meets 4.5:1 on
+  every step in both themes (switch the ink to the surface colour on the dark steps); colour is
+  never the only cue, since the count is on the tile.
+- **Mapping questions**: Which hue is your sequential (or warning) scale, and which steps of it pass
+  against your surface in each theme? Do you have a tile or cell component with a focus style?
+- **Acceptance**: Coverage shows its stale entries by component, worst first; a tile opens that
+  component. Optional (fallback: plain tiles with a swatch beside the text).
 
 ## Styling the diff viewer
 

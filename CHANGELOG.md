@@ -27,6 +27,19 @@ and states in one click. Errors from checks and repairs reach the dashboard, and
 - `pxsig doctor --repair --stale`, `stale` on `pxsig_doctor` and `POST /__pxsig/repair`: re-check
   stale verdicts too (see Fixed).
 - The dashboard opens in a theme a link names (`?theme=dark|light`), over the remembered one.
+- **Stale entries by component.** A heatmap on Coverage and on the Overview: one tile per component
+  with stale verdicts, coloured by its share of stale entries in five steps, with the count on the
+  tile ("3 stale of 10"), highest share first. A tile opens Coverage filtered to that component.
+  The UI contract gains an optional `Heatmap` (fallback: plain tiles with a swatch).
+
+### Changed
+
+- **Overview in two columns.** The counts stay across the top; below, open items and stale entries
+  by component on the left, and on the right an errors card (render errors and coverage errors,
+  each opening where it is fixed, with the safe repair; shown only while there are errors) above
+  changed entries per run. One column on a narrow page. On the Overview the coverage banner leaves
+  its errors to that card.
+- Line charts mark their points solid in the series colour, smaller and with no outline.
 
 ### Fixed
 

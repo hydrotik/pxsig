@@ -173,6 +173,8 @@ Starts after the Navbar dashboard (in review) is merged, since it reshapes the s
   `AlertDescription`, `DialogTitle` / `DialogDescription`, and one `Chart`. `PageHeader`,
   `SidePanel`, `Menu` and `Tooltip` are not in the contract: nothing in the dashboard renders them
   (the tooltip provider lives in the adapter's `UiProvider`). 42 components, 17 required.
+- **`Heatmap`** (added after phase 4): an optional chart, tiles coloured by a share on one
+  sequential scale in five steps, for stale entries by component. 43 components, 17 required.
 - **Diff viewer:** besides the parts the plan names, `Pane` (one view; side by side has two),
   `Frame` (the moved and scaled image box) and `SwipeHandle`.
 - **Tokens:** the reference adapter maps `motion.fast` to a literal 120ms (the design system's
