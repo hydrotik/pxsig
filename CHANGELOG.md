@@ -17,6 +17,11 @@ semantic versioning.
   The theme toggle's sun and moon nearly filled their 28px button and read as different weights;
   they now match the other control icons. Icons sized by CSS (card affordances, Help) are
   unchanged.
+- The Overview's Duration card read `NaN` after a check run from the server (`pxsig serve`: the
+  dashboard's or the Storybook panel's Check all). The server's check wrote the counts but no
+  timings, so a store whose last report came from the server had no `totalMs`. A full re-check now
+  records `totalMs`, `renderWallMs`, `concurrency`, `pageLoads` and `rustEngineMs`; a partial one
+  keeps the last full run's. A report without timings shows a dash.
 
 ## 0.3.0 - 2026-10-22
 
