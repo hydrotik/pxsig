@@ -3,11 +3,11 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
-## Unreleased
+## 0.3.2 - 2026-10-24
 
-A new story takes one action and one decision: checking it (or one safe repair) registers and
-renders it, it stays visible as "needs a first approval", and the inspector approves all its modes
-and states in one click. Errors from checks and repairs reach the dashboard, and the counts agree.
+A new story takes one check (or one safe repair) to render and one click to approve every mode and
+state, and check and repair errors reach the dashboard. The Overview is in two columns with a
+heatmap of stale entries, section headers are in title case, and the README has product shots.
 
 ### Added
 
