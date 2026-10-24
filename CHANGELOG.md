@@ -3,7 +3,11 @@
 All notable changes are listed here. The format follows Keep a Changelog, and versions follow
 semantic versioning.
 
-## Unreleased
+## 0.3.1 - 2026-10-23
+
+Dashboard fixes: the inspector's Approve button stays in one place from entry to entry, the coverage
+banner closes after a repair, icons match the design system's size, and the Overview's Duration
+no longer reads NaN after a server check.
 
 ### Fixed
 
