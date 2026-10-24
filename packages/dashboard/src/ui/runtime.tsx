@@ -10,6 +10,13 @@ const STORAGE_KEY = 'pxsig-dashboard-theme';
 const DEFAULT_MODE: ThemeMode = 'light';
 
 function readMode(): ThemeMode {
+  // A link may name the mode (the Storybook addon passes Storybook's own): it wins, unstored.
+  try {
+    const q = new URLSearchParams(location.search).get('theme');
+    if (q === 'dark' || q === 'light') return q;
+  } catch {
+    /* no location: not a page */
+  }
   try {
     const v = localStorage.getItem(STORAGE_KEY);
     return v === 'dark' || v === 'light' ? v : DEFAULT_MODE;

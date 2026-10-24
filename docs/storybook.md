@@ -77,11 +77,16 @@ a red dot too, so a gap shows without opening the panel.
 
 - A header with the story's status per mode, an integrity badge when the story has an issue, and
   three buttons:
-  - **Check story** queues a render and check of every entry of this story;
+  - **Check story** queues a render and check of every entry of this story (a story that is not
+    in the manifest yet is registered first, its entries NEW and unapproved);
   - **Check all** queues every entry, in every project the server holds;
   - **Open dashboard** opens the dashboard on this story.
 - Below it, the dashboard's inspector for the story: baseline, current render and diff, with
   approve and reject.
+
+The header and its buttons take their colours from Storybook's theme, and the inspector and the
+dashboard open in Storybook's light or dark mode (`?theme=` on the dashboard URL, which wins over
+the mode the dashboard remembers).
 
 When the server is not running, the panel says so and shows the command to start it.
 

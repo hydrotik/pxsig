@@ -41,9 +41,10 @@
  *   doctor [--component x] [--status code,…] [--ci] [--fail-on error|warn|info] [--offline] [--limit 40]
  *                               integrity per component: unregistered stories, never-checked entries, missing
  *                               baseline images / renders, render errors, stale verdicts, orphans (docs/integrity.md)
- *   doctor --repair [--only register,recheck,restore-baseline-image,convert-legacy] [--apply] [--prune]
+ *   doctor --repair [--only register,recheck,restore-baseline-image,convert-legacy] [--apply] [--prune] [--stale]
  *                               the safe repairs: a dry-run plan, or with --apply run them. Never changes a
- *                               signature or approves; --prune (a person at a terminal) moves orphans to trash/
+ *                               signature or approves; --prune (a person at a terminal) moves orphans to trash/;
+ *                               --stale also re-checks stale verdicts (left out by default)
  *   approve plan|apply|log|undo|verify
  *                               the guarded bulk approval (src/approve.mjs): plan classifies colour vs shape
  *                               changes and pins render hashes (--new: first baselines); apply is for a
@@ -225,7 +226,7 @@ async function doctorOne({ repair, only, failOn }) {
     try {
       if (viaServer) {
         // The server holds the store: its queue runs the repairs; then reconcile here to report.
-        const res = await fetch(`${viaServer}/__pxsig/repair`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ project: current, apply: true, only: only.length ? only : undefined }) });
+        const res = await fetch(`${viaServer}/__pxsig/repair`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ project: current, apply: true, only: only.length ? only : undefined, stale: !!flags.stale }) });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error ?? `the server refused the repair (HTTP ${res.status})`);
         r = { ...(await doctor({ project: current, component: typeof flags.component === 'string' ? flags.component : undefined, status: typeof flags.status === 'string' ? flags.status : undefined, limit: Number(flags.limit) || 40, offline: !!flags.offline })), plan: body.plan, applied: body.applied };
@@ -238,6 +239,7 @@ async function doctorOne({ repair, only, failOn }) {
         repair,
         only: only.length ? only : undefined,
         offline: !!flags.offline,
+        stale: !!flags.stale,
         via: 'cli',
         prune: !!flags.prune,
         confirmPrune: flags.prune
@@ -611,6 +613,8 @@ const commands = {
       });
     if (problems.length)
       blocks.push(entryTable(problems.slice(0, 40), { more: Math.max(0, problems.length - 40) }));
+    if (r.registered?.length) blocks.push({ note: `registered ${r.registered.length} NEW entries (no signature: approve their first render in the dashboard)`, tone: 'warn' });
+    for (const x of r.skipped ?? []) blocks.push({ note: `not checked: ${x.name}: ${x.why}`, tone: 'bad' });
     // Integrity: what this run could not cover, in one line.
     let ledger = null;
     try {
@@ -622,7 +626,8 @@ const commands = {
     if (ledger?.summary.status === 'attention') next.push([`${CMD} doctor`, 'per-component integrity']);
     blocks.push({ next });
     emit(format, blocks, { ...r, integrity: ledger?.summary ?? null });
-    process.exit(problems.length ? 1 : 0);
+    // Nothing checked because every name was skipped: a selection error, like an empty one.
+    process.exit(!r.checked && r.skipped?.length ? 2 : problems.length ? 1 : 0);
   },
 
   async affected() {
@@ -800,7 +805,12 @@ const commands = {
 
   serve() {
     const pass = process.argv.slice(3);
-    spawn(process.execPath, [join(here, 'serve.mjs'), ...pass], { stdio: 'inherit' }).on('exit', (c) => process.exit(c ?? 0));
+    const child = spawn(process.execPath, [join(here, 'serve.mjs'), ...pass], { stdio: 'inherit' });
+    child.on('exit', (c) => process.exit(c ?? 0));
+    // `kill <pid>` (a process manager, a script) stops the server too, not only this wrapper: an
+    // orphaned server kept its port, its store lock and its record in server.json. Ctrl+C reaches
+    // the whole process group by itself.
+    for (const sig of ['SIGTERM', 'SIGHUP']) process.on(sig, () => child.kill(sig));
   },
 
   mcp() {

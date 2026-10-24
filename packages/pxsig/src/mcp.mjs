@@ -33,6 +33,7 @@ import { fileURLToPath } from 'node:url';
 import { CODES, filterLedger, ledgerPath, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
 import { readImage } from './lib/psig.mjs';
 import { applyRepairs, defaultHooks, planRepairs, serverStatus } from './lib/repair.mjs';
+import { acquireLock, describeLock, readLock } from './lib/lock.mjs';
 import { findWorkspace, openProject, writeRunManifest } from './lib/workspace.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -483,7 +484,7 @@ const tools = [
   {
     name: 'pxsig_check',
     description:
-      'Re-render and re-check entries, then report their results. Select by `ids`, `stories`, `changed_files` (import graph), `since` (git ref), or `all`. Uses the running pxsig server (fast, warm browsers); without it, runs the check itself (needs the project Storybook). Never writes baselines.',
+      'Re-render and re-check entries, then report their results. Select by `ids`, `stories`, `changed_files` (import graph), `since` (git ref), or `all`. A story (or entry) not in the manifest yet is registered first when Storybook is healthy: its entries arrive NEW, with no signature, for a person to approve; anything that cannot be registered is listed in `skipped` with the reason. Uses the running pxsig server (fast, warm browsers); without it, runs the check itself (needs the project Storybook). Never writes baselines.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -505,8 +506,11 @@ const tools = [
       const srv = await server(C);
       const t0 = Date.now();
       if (srv.up) {
-        const res = await http(C, '/__pxsig/check', { method: 'POST', body: { project: C.P.name, ids: [...sel], stories, all }, timeout: 10_000 });
+        // Registering a new story reads its parameters in a browser first: allow for that.
+        const res = await http(C, '/__pxsig/check', { method: 'POST', body: { project: C.P.name, ids: [...sel], stories, all, via: 'mcp' }, timeout: 120_000 });
         const queued = new Set(res.queued ?? []);
+        const extra = { ...(res.registered?.length ? { registered: res.registered } : {}), ...(res.skipped?.length ? { skipped: res.skipped } : {}) };
+        if (!queued.size) return { checked: 0, ...extra, note: res.skipped?.length ? 'nothing queued: every name was skipped (see skipped)' : 'nothing queued: no entry matches the selection' };
         // Wait for the queue to drain.
         for (;;) {
           await new Promise((r) => setTimeout(r, 1500));
@@ -514,11 +518,11 @@ const tools = [
           if (s && !s.running && !s.queued) break;
           if (Date.now() - t0 > timeout_s * 1000) return { timedOut: true, queued: queued.size, note: 'still running; call pxsig_status later' };
         }
-        return summarizeIds(C, queued, 'server', t0);
+        return { ...summarizeIds(C, queued, 'server', t0), ...extra };
       }
       const args = [join(here, 'check.mjs'), '--project', C.P.name, '--retries', '1'];
-      if (sel.size) args.push('--only', [...sel].join(','));
-      else if (stories.length) args.push('--only', stories.join(','));
+      // Ids and stories together (both name entries to --only; new ones are registered there).
+      if (sel.size || stories.length) args.push('--only', [...sel, ...stories].join(','));
       const out = await new Promise((ok) => {
         const p = spawn(process.execPath, args, { cwd: C.root, stdio: ['ignore', 'pipe', 'pipe'] });
         let log = '';
@@ -531,8 +535,9 @@ const tools = [
         });
       });
       if (out.code === 2) throw new Error(`check setup error:\n${out.log}`);
-      const want = sel.size ? sel : new Set(load(C).check.rows.filter((r) => all || stories.includes(r.story)).map((r) => r.id));
-      return { ...summarizeIds(C, want, 'check', t0), log: out.log };
+      const want = new Set(load(C).check.rows.filter((r) => all || sel.has(r.id) || stories.includes(r.story) || sel.has(r.story)).map((r) => r.id));
+      const skipped = [...out.log.matchAll(/^\[check\] not checked: (\S+): (.+)$/gm)].map((m) => ({ name: m[1], why: m[2] }));
+      return { ...summarizeIds(C, want, 'check', t0), ...(skipped.length ? { skipped } : {}), log: out.log };
     },
   },
   {
@@ -580,11 +585,30 @@ const tools = [
         repair: { type: 'string', enum: ['none', 'plan', 'apply'], default: 'none' },
         only: { type: 'array', items: { type: 'string', enum: ['register', 'recheck', 'restore-baseline-image', 'convert-legacy'] }, description: 'Limit repairs to these actions.' },
         offline: { type: 'boolean', description: 'Do not fetch the Storybook index (static scan of the story files).' },
+        stale: { type: 'boolean', description: 'Also re-check entries whose verdict is stale (a warning; left out of the repairs by default).' },
       },
       additionalProperties: false,
     },
-    async run({ project, component, status, limit = 40, repair = 'none', only, offline = false }) {
-      return doctor({ project, component, status, limit, repair, only, offline, via: 'mcp' });
+    async run({ project, component, status, limit = 40, repair = 'none', only, offline = false, stale = false }) {
+      if (repair !== 'apply') return doctor({ project, component, status, limit, repair, only, offline, stale, via: 'mcp' });
+      // Repairs write the store: through the server that holds its lock, or under the lock here.
+      const C = ctxOf(project);
+      const held = readLock(C.P);
+      if (held && !held.stale && held.holder === 'serve' && !held.foreign) {
+        const body = await http({ ...C, serverUrl: held.url ?? C.serverUrl }, '/__pxsig/repair', { method: 'POST', body: { project: C.P.name, apply: true, only, stale }, timeout: 30 * 60_000 });
+        return { ...(await doctor({ project, component, status, limit, offline, via: 'mcp' })), plan: body.plan, applied: body.applied, via: 'server' };
+      }
+      let lock;
+      try {
+        lock = acquireLock(C.P, { holder: 'pxsig_doctor repair', command: 'pxsig mcp: pxsig_doctor repair apply' });
+      } catch (e) {
+        throw new Error(`${e.lock ? describeLock(C.P, e.lock) : e.message}: the repair did not run`);
+      }
+      try {
+        return await doctor({ project, component, status, limit, repair, only, offline, stale, via: 'mcp' });
+      } finally {
+        lock.release();
+      }
     },
   },
   {
@@ -610,7 +634,7 @@ const tools = [
  * The doctor: reconcile, write the ledger, and (optionally) plan or apply the safe repairs.
  * Shared by `pxsig_doctor` and `pxsig doctor`; the CLI adds the TTY-only prune itself.
  */
-async function doctor({ project, component, status, limit = 40, repair = 'none', only, offline = false, via = 'mcp', confirmPrune = null, prune = false } = {}) {
+async function doctor({ project, component, status, limit = 40, repair = 'none', only, offline = false, via = 'mcp', confirmPrune = null, prune = false, stale = false } = {}) {
   const C = ctxOf(project);
   const ctx = resolveContext(C.P);
   const serverUrl = C.serverUrl;
@@ -619,7 +643,7 @@ async function doctor({ project, component, status, limit = 40, repair = 'none',
   const out = { project: C.P.name, ledgerPath: relative(C.root, ledgerPath(ctx)) };
   if (repair !== 'none') {
     const server = await serverStatus(serverUrl);
-    const plan = planRepairs(ledger, { only, prune: prune && !!confirmPrune, server });
+    const plan = planRepairs(ledger, { only, prune: prune && !!confirmPrune, server, stale });
     out.plan = plan;
     if (repair === 'apply') {
       const hooks = { ...defaultHooks(ctx, { serverUrl }), confirmPrune };

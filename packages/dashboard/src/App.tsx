@@ -1,6 +1,6 @@
 import React from 'react';
-import { AppMain, AppShell, Badge, Button, Icon, IconButton, NavEnd, NavLink, NavList, Select, StatusBadge, TopNav, useThemeMode } from '@ui';
-import { type Data, type Queue, type Row, decisionOf, reviewQueue, rowsWithPending, served, statusOf, switchProject, useData, useProjects } from './data';
+import { Alert, AlertDescription, AlertTitle, AppMain, AppShell, Badge, Button, Icon, IconButton, NavEnd, NavLink, NavList, Select, StatusBadge, TopNav, useThemeMode } from '@ui';
+import { type Data, type Queue, type Row, decisionOf, dismissCheckError, reviewQueue, rowsWithPending, served, statusOf, switchProject, useCheckActivity, useData, useProjects } from './data';
 import { Inspector, type InspectTarget } from './inspector/Inspector';
 import { Overview } from './views/Overview';
 import { Stories } from './views/Stories';
@@ -29,6 +29,33 @@ function ThemeToggle() {
       <Icon name={mode === 'dark' ? 'sun' : 'moon'} />
     </IconButton>
   );
+}
+
+/**
+ * A check the server is running, and the error of one that failed (Storybook down, a broken
+ * index): the server broadcasts both, and a failed run recorded nothing, so the page says so.
+ */
+function CheckBanner() {
+  const { running, error } = useCheckActivity();
+  if (error)
+    return (
+      <Alert tone="danger" label={t('app.check.failedTitle')}>
+        <AlertTitle>{t(error.setup ? 'app.check.setupTitle' : 'app.check.failedTitle')}</AlertTitle>
+        <AlertDescription>
+          <span className={s.row}>
+            <span className={s.mono}>{error.message}</span>
+            <Button size="sm" emphasis="outline" onClick={dismissCheckError}>
+              {t('app.check.dismiss')}
+            </Button>
+          </span>
+        </AlertDescription>
+      </Alert>
+    );
+  return running?.length ? (
+    <span className={s.muted} role="status">
+      {t('app.check.running', { count: running.length })}
+    </span>
+  ) : null;
 }
 
 /** Storybook panel: the inspector for one story (all its modes), no chrome. */
@@ -199,7 +226,8 @@ export function App() {
             <div className={s.page}>
               {/* The section's heading, for the outline (the bar's link says it visibly). */}
               <h2 className={s.srOnly}>{sectionTitle}</h2>
-              <IntegrityBanner data={data} go={go} />
+              <CheckBanner />
+              <IntegrityBanner data={data} go={go} startReview={startReview} />
               {shown === 'overview' ? <Overview data={data} go={go} startReview={startReview} /> : null}
               {shown === 'stories' ? <Stories data={data} filter={filter} setFilter={setFilter} onOpen={(r, l) => open(r, l)} /> : null}
               {shown === 'integrity' ? <Integrity data={data} onOpen={(r, l) => open(r, l)} /> : null}

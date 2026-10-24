@@ -46,7 +46,12 @@ export function summarize(rows, extra = {}) {
     checked: checked.length,
     skipped: rows.length - checked.length,
     passed: checked.filter((r) => r.pass && !r.flaky).length,
-    failed: checked.filter((r) => !r.pass).length,
+    // Not passing and not yet approved: new entries and render errors included (the exit code).
+    failed: checked.filter((r) => !r.pass && !r.approved).length,
+    // Real changes only: a render that differs from its baseline, waiting for a decision.
+    changed: checked.filter((r) => !r.pass && !r.error && !r.new && !r.approved).length,
+    /** Approved in review since this verdict (the server marks the row; the next check clears it). */
+    approved: checked.filter((r) => r.approved).length,
     flaky: checked.filter((r) => r.flaky).length,
     new: checked.filter((r) => r.new).length,
     errors: checked.filter((r) => r.error).length,
@@ -74,3 +79,11 @@ export function dropStaleRows(check, manifest) {
   }
   return dropped;
 }
+
+/**
+ * Whether renders that hit Storybook's error page mean Storybook itself is broken (a setup error:
+ * nothing is recorded) rather than a few stories failing (recorded as render errors). Three or
+ * more, and at least half the renders: one or two failing stories are their own errors, so a
+ * story checked alone that throws is recorded, not dropped as a setup error.
+ */
+export const storybookBroken = (errors, total) => errors >= Math.max(3, total / 2);

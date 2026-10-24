@@ -19,10 +19,12 @@
  *   GET  /__pxsig/projects · /__pxsig/status · /__pxsig/data · /__pxsig/events · /__pxsig/integrity
  *   POST /__pxsig/approve {id, batch?, via?, reason?, kind?}   latest render → baseline (`.psig`
  *        with the render as its image); the old baseline is snapshotted and the write logged
+ *   POST /__pxsig/approve-story {story}   approve every entry of a story that waits for a decision, one batch
  *   POST /__pxsig/reject {id} · /__pxsig/unreview {id}   unreview of an approval restores the old baseline
  *   POST /__pxsig/a11y-accept {id} · a11y-reject · a11y-unreview   the entry's axe violations
  *   POST /__pxsig/a11y-unaccept {id, rule?}   take a rule (or all) off the entry's accepted list
- *   POST /__pxsig/check {ids?|story?|stories?|all?}   render + Rust check, merged into check.json
+ *   POST /__pxsig/check {ids?|story?|stories?|all?}   render + Rust check, merged into check.json; names
+ *        not in the manifest are registered first (healthy Storybook; NEW, no signature) or `skipped`
  *   POST /__pxsig/repair {apply?, only?}   the safe repairs: plan, or apply (never prunes)
  *   GET  /p/<project>/renders/latest/<id>.png · /p/<project>/renders/base/<id>.png (from the .psig)
  *        /p/<project>/diffs/latest/<file> · /p/<project>/sig/<id> (the .psig header, JSON)
@@ -46,6 +48,7 @@
 import { execFile, spawn } from 'node:child_process';
 import { appendFileSync, createReadStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { tmpdir } from 'node:os';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
 import { newBatch, paths, record, sha256, snapshot, undo, who } from './lib/approvals.mjs';
@@ -53,9 +56,9 @@ import { browserPool, renderStories, STORYBOOK_ERROR } from './lib/capture.mjs';
 import { fetchStoryIndex, filterLedger, loadStoryIndex, oneLine, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
 import { readHeader, readImage } from './lib/psig.mjs';
 import { parseArgs, strFlag } from './lib/args.mjs';
-import { acquireLock, describeLock, LockError } from './lib/lock.mjs';
-import { applyRepairs, defaultHooks, planRepairs } from './lib/repair.mjs';
-import { buildRow, dropStaleRows, summarize } from './lib/rows.mjs';
+import { acquireLock, alive, describeLock, LockError } from './lib/lock.mjs';
+import { applyRepairs, defaultHooks, planRepairs, registerNamed } from './lib/repair.mjs';
+import { buildRow, dropStaleRows, storybookBroken, summarize } from './lib/rows.mjs';
 import { ensureStorybook } from './lib/static.mjs';
 import { findWorkspace, flagLayer, loadProject, PXSIG_VERSION, rustBinary, serverFile, writeRunManifest } from './lib/workspace.mjs';
 import { buildData, dashboardDir, prebuiltDashboardDir, useDashboard } from './report.mjs';
@@ -170,13 +173,17 @@ function openState(ref) {
     queued: new Set(),
     running: null,
     repairing: null,
+    /** Check runs started, and the last one that failed (a repair waits on the queue and asks). */
+    runs: 0,
+    lastFailure: null,
     quietUntil: 0,
     lock: null,
     lockWait: null,
   };
   S.reload = () => {
     try {
-      const r = writeRunManifest(P);
+      // Without the store lock (another process holds it) the run manifest goes to a temp folder.
+      const r = writeRunManifest(P, undefined, S.lock ? {} : { dir: join(tmpdir(), `pxsig-serve-${process.pid}`, S.name) });
       S.runPath = r.path;
       S.manifest = r.manifest;
     } catch (e) {
@@ -242,6 +249,13 @@ function updateCheckRows(S, mut, fresh = new Map(), timing = null) {
   // Timings describe one run: a full re-check replaces them; a partial one leaves the last full
   // run's (the Duration card and Diagnostics read them against `checked`).
   check.summary = { ...check.summary, ...summarize(check.rows), ...(timing ?? {}) };
+  // New verdicts move the report's time ("Last check"); `fullCheckAt` keeps when every entry was
+  // last checked together, which is what integrity's "absent from the last full check" means.
+  if (fresh.size) {
+    const now = new Date().toISOString();
+    check.fullCheckAt = timing ? now : (check.fullCheckAt ?? check.generatedAt);
+    check.generatedAt = now;
+  }
   S.quietUntil = Date.now() + 800;
   writeFileSync(S.checkPath, `${JSON.stringify(check)}\n`);
 }
@@ -272,8 +286,14 @@ function needLock(S) {
 function takeLock(S) {
   try {
     S.lock = acquireLock(S.P, { holder: 'serve', command: 'pxsig serve' });
+    const waited = !!S.lockWait;
     S.lockWait = null;
     if (url) S.lock.update({ url });
+    // Waited for the lock: the run manifest moves into the store, and the ledger is written.
+    if (waited) {
+      S.reload();
+      scheduleIntegrity(S, 'store lock taken', 0);
+    }
     return true;
   } catch (e) {
     if (!(e instanceof LockError)) throw e;
@@ -347,11 +367,15 @@ function unapprove(S, id, entry) {
 async function review(S, action, id, meta = {}) {
   needLock(S);
   const rv = readJson(S.reviewPath, {});
-  if (action === 'approve') rv[id] = { state: 'approved', at: new Date().toISOString(), ...(await approve(S, id, meta)) };
-  else if (action === 'reject') rv[id] = { state: 'rejected', at: new Date().toISOString() };
+  if (action === 'approve') {
+    rv[id] = { state: 'approved', at: new Date().toISOString(), ...(await approve(S, id, meta)) };
+    // The report says so too, so its counts (failed, changed) agree with the review.
+    updateCheckRows(S, (r) => (r.id === id ? { ...r, approved: { at: rv[id].at, batch: rv[id].batch } } : null));
+  } else if (action === 'reject') rv[id] = { state: 'rejected', at: new Date().toISOString() };
   else if (action === 'unreview') {
     if (rv[id]?.state === 'approved' && rv[id].batch) unapprove(S, id, rv[id]);
     delete rv[id];
+    updateCheckRows(S, (r) => (r.id === id && r.approved ? (({ approved, ...rest }) => rest)(r) : null));
   }
   else throw httpError(404, 'unknown action');
   S.quietUntil = Date.now() + 800;
@@ -361,6 +385,39 @@ async function review(S, action, id, meta = {}) {
   return rv[id] ?? null;
 }
 
+/**
+ * Approve every entry of one story that waits for a decision (each mode and state), in one batch:
+ * a person's single click in the dashboard. Entries that passed, did not render, were rejected or
+ * are already approved are left out, with why. Each approval is logged and undone like any other.
+ */
+async function approveStory(S, story, meta = {}) {
+  needLock(S);
+  if (!S.running) S.reload();
+  const entries = S.manifest.stories.filter((e) => (e.story ?? e.id) === story);
+  if (!entries.length) throw httpError(404, `unknown story ${story}`);
+  const rows = new Map(readJson(S.checkPath, { rows: [] }).rows.map((r) => [r.id, r]));
+  const rv = readJson(S.reviewPath, {});
+  const batch = meta.batch ?? newBatch(meta.via ?? 'dashboard');
+  const approved = [];
+  const skipped = [];
+  for (const e of entries) {
+    const r = rows.get(e.id);
+    const why = rv[e.id]?.state === 'approved' ? 'already approved' : rv[e.id]?.state === 'rejected' ? 'rejected: decide on it alone' : !r || r.skipped ? 'not checked yet' : r.error ? `did not render (${String(r.error).split('\n')[0]})` : r.pass && !r.new ? 'passes: nothing to approve' : null;
+    if (why) {
+      skipped.push({ id: e.id, why });
+      continue;
+    }
+    try {
+      await review(S, 'approve', e.id, { ...meta, batch });
+      approved.push(e.id);
+    } catch (err) {
+      skipped.push({ id: e.id, why: err.message });
+    }
+  }
+  console.log(`[serve] ${S.name}: approve story ${story}: ${approved.length} approved, ${skipped.length} left (batch ${batch})`);
+  return { story, batch, approved, skipped };
+}
+
 // --- on-demand checks (dashboard, addon, watch) ----------------------------------------------
 async function runChecks(S) {
   if (S.running || !S.queued.size) return S.running;
@@ -368,6 +425,7 @@ async function runChecks(S) {
   S.queued = new Set();
   S.checking = new Set(ids);
   const { P } = S;
+  const seq = ++S.runs;
   S.running = (async () => {
     const t0 = performance.now();
     broadcast('check', { project: S.name, state: 'running', ids });
@@ -382,7 +440,7 @@ async function runChecks(S) {
       const concurrency = Math.min(8, entries.length);
       const { results, wallMs, reloads = 0 } = await renderStories(pool, entries, P.store.latest, { ...manifest, concurrency, project: P, a11y: true });
       const sbErrors = results.filter((r) => r.error?.startsWith(STORYBOOK_ERROR));
-      if (sbErrors.length && (sbErrors.length === results.length || sbErrors.length >= Math.max(3, results.length / 2)))
+      if (storybookBroken(sbErrors.length, results.length))
         throw Object.assign(new Error(`setup error: ${sbErrors.length} of ${results.length} renders hit Storybook's error page (${sbErrors[0].error.slice(STORYBOOK_ERROR.length).trim()}). Nothing was recorded.`), { setup: true });
       if (manifest.trim) await rust('trim', { dir: P.store.latest, only: ids, pad: manifest.trim.pad ?? 16, tolerance: manifest.trim.tolerance ?? 8 });
       const res = await rust('check', {
@@ -416,6 +474,7 @@ async function runChecks(S) {
       broadcast('data', { project: S.name });
     } catch (e) {
       console.error(`[serve] ${S.name}: check failed: ${e.message}`);
+      S.lastFailure = { seq, error: e.message, setup: !!e.setup, ids: ids.length, at: new Date().toISOString() };
       broadcast('check', { project: S.name, state: 'error', ids, error: e.message, setup: !!e.setup });
     } finally {
       S.running = null;
@@ -483,18 +542,37 @@ function a11yReview(S, action, id, meta = {}) {
   return av[id] ?? null;
 }
 
-function enqueue(S, body) {
+/**
+ * Queue a check. Names (ids or stories) the manifest does not have are registered first when
+ * Storybook is healthy (NEW entries, no signature), so checking a new story is one request;
+ * anything that cannot be registered comes back in `skipped`, with why.
+ */
+async function enqueue(S, body) {
   needLock(S);
   // Select against the manifest on disk: entries added since the server started (or since the
   // last check) would otherwise be dropped as unknown. A running check keeps the one it started with.
   if (!S.running) S.reload();
-  const ids = new Set(body.ids ?? []);
-  const stories = new Set([...(body.stories ?? []), ...(body.story ? [body.story] : [])]);
+  const asked = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []);
+  const ids = new Set(asked(body.ids));
+  const stories = new Set([...asked(body.stories), ...(typeof body.story === 'string' ? [body.story] : [])]);
+  const known = (name) => S.manifest.stories.some((e) => e.id === name || (e.story ?? e.id) === name);
+  const unknown = [...new Set([...ids, ...stories])].filter((n) => !known(n));
+  let registered = { added: [], stories: [], skipped: [] };
+  if (unknown.length && !body.all) {
+    const index = await loadStoryIndex(S.ctx);
+    registered = await registerNamed(S.ctx, unknown, { index, harvest: defaultHooks(S.ctx).harvest, via: typeof body.via === 'string' ? body.via.replace(/[^\w-]/g, '').slice(0, 20) || 'server' : 'server' });
+    if (registered.added.length) {
+      S.reload();
+      console.log(`[serve] ${S.name}: registered ${registered.stories.join(', ')} (${registered.added.length} NEW entries) to check them`);
+    }
+    for (const story of registered.stories) stories.add(story);
+  }
   for (const e of S.manifest.stories) if (body.all || stories.has(e.story ?? e.id)) ids.add(e.id);
-  const known = [...ids].filter((id) => S.manifest.stories.some((e) => e.id === id));
-  known.forEach((id) => S.queued.add(id));
+  const queued = [...ids].filter((id) => S.manifest.stories.some((e) => e.id === id));
+  queued.forEach((id) => S.queued.add(id));
   runChecks(S);
-  return known;
+  if (registered.added.length) scheduleIntegrity(S, 'registered', 0);
+  return { queued, registered: registered.added, skipped: registered.skipped };
 }
 
 /** Per-story status for the addon's sidebar, across every project (story ids are per Storybook). */
@@ -533,6 +611,8 @@ function storyIntegrity() {
 async function runIntegrity(S, why) {
   if (S.integrityRunning || S.running) return scheduleIntegrity(S, why, 1500);
   S.integrityRunning = true;
+  let done;
+  S.integrityDone = new Promise((r) => (done = r));
   try {
     S.reload();
     pruneStaleRows(S);
@@ -540,14 +620,19 @@ async function runIntegrity(S, why) {
     const ledger = await reconcile(S.ctx, { index: idx, affected: S.affected });
     const before = S.integrity?.summary?.headline;
     S.integrity = ledger;
-    S.quietUntil = Date.now() + 800;
-    writeLedger(S.ctx, ledger);
+    // The ledger is the store's file: only the lock holder writes it (a second, read-only server
+    // beside another process's keeps its ledger in memory).
+    if (S.lock) {
+      S.quietUntil = Date.now() + 800;
+      writeLedger(S.ctx, ledger);
+    }
     if (before !== ledger.summary.headline) console.log(`[serve] ${S.name}: ${oneLine(ledger)} (${why}, ${ledger.elapsedMs} ms)`);
     broadcast('integrity', { project: S.name, summary: ledger.summary, setup: ledger.setup });
   } catch (e) {
     console.error(`[serve] ${S.name}: integrity failed: ${e.message}`);
   } finally {
     S.integrityRunning = false;
+    done();
   }
 }
 function scheduleIntegrity(S, why, ms = 1500) {
@@ -581,9 +666,9 @@ for (const S of states.values()) {
 }
 
 /** Safe repairs, as the dashboard's button asks: plan, or apply (never prune, never approve). */
-async function repair(S, { apply = false, only: onlySteps } = {}) {
+async function repair(S, { apply = false, only: onlySteps, stale = false } = {}) {
   const ledger = await reconcile(S.ctx, { affected: S.affected });
-  const plan = planRepairs(ledger, { only: Array.isArray(onlySteps) ? onlySteps.filter((a) => a !== 'prune') : undefined, prune: false, server: { up: true } });
+  const plan = planRepairs(ledger, { only: Array.isArray(onlySteps) ? onlySteps.filter((a) => a !== 'prune') : undefined, prune: false, server: { up: true }, stale });
   if (!apply) return { plan };
   needLock(S);
   if (S.repairing) throw httpError(409, 'a repair is already running');
@@ -591,8 +676,11 @@ async function repair(S, { apply = false, only: onlySteps } = {}) {
     ...defaultHooks(S.ctx, { serverUrl: url }),
     // Re-checks go through this server's own queue (warm browsers), then wait for it to drain.
     async recheck(ids) {
-      enqueue(S, { ids });
+      const from = S.runs;
+      await enqueue(S, { ids });
       while (S.running || S.queued.size) await (S.running ?? new Promise((r) => setTimeout(r, 200)));
+      // A run that failed (Storybook down, a broken index) recorded nothing: say so.
+      if (S.lastFailure && S.lastFailure.seq > from) throw new Error(S.lastFailure.error);
       return { via: 'server' };
     },
   };
@@ -628,7 +716,7 @@ if (flags.watch) {
           const a = await rust('affected', { manifest: S.runPath, root: ws.root, files });
           console.log(`[serve] ${S.name}: watch: ${files.join(', ')} → ${a.ids.length} entries (${a.reason})`);
           broadcast('watch', { project: S.name, files, ids: a.ids.length });
-          if (a.ids.length) enqueue(S, { ids: a.ids });
+          if (a.ids.length) await enqueue(S, { ids: a.ids });
         } catch (e) {
           console.error(`[serve] ${S.name}: watch: ${e.message}`);
         }
@@ -697,7 +785,11 @@ async function api(req, res, action, q) {
     const S = stateFor({ project: q.get('project'), story: q.get('story') });
     if (action === 'data') return json(res, 200, buildData(S.P));
     if (action === 'integrity') {
-      if (!S.integrity || q.get('fresh')) await runIntegrity(S, 'request');
+      if (!S.integrity || q.get('fresh')) {
+      // A run already going (startup, a file change) answers this request too: wait for it.
+      if (S.integrityRunning) await S.integrityDone;
+      else await runIntegrity(S, 'request');
+    }
       if (!S.integrity) return json(res, 503, { error: 'integrity not computed yet' });
       const story = q.get('story');
       if (story) return json(res, 200, { project: S.name, story, ...(storyIntegrity()[story] ?? { status: 'unknown' }), entries: S.integrity.entries.filter((x) => x.story === story) });
@@ -714,11 +806,22 @@ async function api(req, res, action, q) {
   if (action === 'check') {
     // Without a project, a check is split across the projects that own the ids / stories.
     const targets = body.project || states.size === 1 ? [stateFor(body)] : [...states.values()];
-    const queued = targets.flatMap((S) => enqueue(S, body));
-    return json(res, 202, { ok: true, queued });
+    const results = [];
+    for (const S of targets) results.push(await enqueue(S, body));
+    const queued = results.flatMap((r) => r.queued);
+    const skipped = results.flatMap((r) => r.skipped);
+    // Split across projects, a name only one project knows is not skipped by the others.
+    const named = new Set(queued.flatMap((id) => [id, id.replace(/(__[^@]+)?(@.+)?$/, '')]));
+    return json(res, 202, { ok: true, queued, registered: results.flatMap((r) => r.registered), skipped: targets.length > 1 ? skipped.filter((x) => !named.has(x.name)) : skipped });
   }
   const S = stateFor(body);
-  if (action === 'repair') return json(res, 200, await repair(S, { apply: body.apply === true, only: body.only }));
+  if (action === 'repair') return json(res, 200, await repair(S, { apply: body.apply === true, only: body.only, stale: body.stale === true }));
+  if (action === 'approve-story') {
+    const { story } = body;
+    if (typeof story !== 'string' || !/^[a-z0-9-]+--[a-z0-9-]+$/.test(story)) return json(res, 400, { error: 'bad story' });
+    const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : undefined);
+    return json(res, 200, { ok: true, project: S.name, ...(await approveStory(S, story, { via: s(body.via, 20)?.replace(/[^\w-]/g, ''), reason: s(body.reason, 500) })) });
+  }
   const { id } = body;
   if (typeof id !== 'string' || !/^[a-z0-9-]+--[a-z0-9-]+(__[a-z0-9-]+)?(@[a-z0-9-]+)?$/.test(id)) return json(res, 400, { error: 'bad id' });
   const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : undefined);
@@ -839,8 +942,14 @@ function listen(port, tries = 10) {
   const onListening = () => {
     server.off('error', onError);
     url = `http://127.0.0.1:${server.address().port}`;
-    mkdirSync(dirname(info), { recursive: true });
-    writeFileSync(info, `${JSON.stringify({ url, pid: process.pid, startedAt: new Date().toISOString(), projects: [...states.keys()] }, null, 2)}\n`);
+    // The CLI, the MCP and the addon find the server through this file: a second server (on
+    // another port, read-only beside the one holding the stores) leaves a live server's record.
+    const recorded = readJson(info, null);
+    if (recorded?.pid && recorded.pid !== process.pid && alive(recorded.pid)) console.log(`[serve] ${relative(ws.root, info)} names the running server at ${recorded.url} (pid ${recorded.pid}): left as it is`);
+    else {
+      mkdirSync(dirname(info), { recursive: true });
+      writeFileSync(info, `${JSON.stringify({ url, pid: process.pid, startedAt: new Date().toISOString(), projects: [...states.keys()] }, null, 2)}\n`);
+    }
     for (const S of states.values()) S.lock?.update({ url });
     const page = `${url}/report/${flags.tab ? `#${flags.tab}` : ''}`;
     console.log(`[serve] pxsig dashboard → ${page}  (${[...states.keys()].join(', ')}; Ctrl+C to stop)`);
@@ -855,6 +964,7 @@ const shutdown = async () => {
   for (const S of states.values()) S.lock?.release();
   engine?.kill();
   await pool?.close();
+  rmSync(join(tmpdir(), `pxsig-serve-${process.pid}`), { recursive: true, force: true });
   try {
     if (readJson(info, {}).pid === process.pid) rmSync(info);
   } catch {

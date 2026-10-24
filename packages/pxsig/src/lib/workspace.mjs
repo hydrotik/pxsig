@@ -473,7 +473,7 @@ export function runManifest(P, manifest) {
  * Write the run manifest Rust reads (entries + resolved settings) to `<store>/reports/.run/` and
  * return its path. The committed manifest holds entries only, so it can't disagree with config.
  */
-export function writeRunManifest(P, manifestPath = P.manifestPath()) {
+export function writeRunManifest(P, manifestPath = P.manifestPath(), { dir: runDir } = {}) {
   let m;
   try {
     m = JSON.parse(readFileSync(manifestPath, 'utf8'));
@@ -481,7 +481,8 @@ export function writeRunManifest(P, manifestPath = P.manifestPath()) {
     throw new SetupError(`no readable manifest at ${manifestPath} (${e.code ?? e.message}): run \`pxsig manifest\` first`);
   }
   const run = runManifest(P, m);
-  const dir = join(P.store.reports, '.run');
+  // `dir`: elsewhere than the store (a server without the store lock writes nothing in it).
+  const dir = runDir ?? join(P.store.reports, '.run');
   mkdirSync(dir, { recursive: true });
   const out = join(dir, basename(manifestPath));
   writeFileSync(`${out}.tmp`, JSON.stringify(run));

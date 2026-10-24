@@ -26,10 +26,13 @@ import { constants, copyFileSync, existsSync, mkdirSync, readFileSync, renameSyn
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeRunManifest } from './workspace.mjs';
-import { reconcile, readJson, repairLogPath, sha256File, writeJsonAtomic, SCHEMA_VERSION } from './integrity.mjs';
+import { componentOf, reconcile, readJson, repairLogPath, sha256File, writeJsonAtomic, SCHEMA_VERSION } from './integrity.mjs';
 
 export const ACTIONS = ['register', 'recheck', 'restore-baseline-image', 'convert-legacy', 'prune'];
-const RECHECK_CODES = ['never-checked', 'missing-render', 'stale', 'render-error'];
+/** What a repair re-checks: entries with no usable verdict or render. */
+const RECHECK_CODES = ['never-checked', 'missing-render', 'render-error'];
+/** Stale verdicts are re-checked only where a later step needs a fresh render, or when asked. */
+const NEEDS_FRESH_RENDER = ['missing-baseline-image', 'legacy-format'];
 
 // --- the write guard ------------------------------------------------------------------------------------
 
@@ -64,7 +67,7 @@ const idsWith = (ledger, codes) => ledger.entries.filter((x) => x.issues.some((i
  * The repair plan for a ledger: ordered steps, each with the entries it covers, why, and — when
  * it cannot run here — why it is blocked. `only` limits to some actions; `prune` adds the prune step.
  */
-export function planRepairs(ledger, { only, prune = false, server = null } = {}) {
+export function planRepairs(ledger, { only, prune = false, server = null, stale = false } = {}) {
   const want = (a) => (!only || only.includes(a)) && (a !== 'prune' || prune);
   const sb = ledger.sources.storyIndex;
   const steps = [];
@@ -73,17 +76,25 @@ export function planRepairs(ledger, { only, prune = false, server = null } = {})
     steps.push({
       action: 'register',
       ids: unregistered.map((x) => x.id),
-      why: 'stories in the index with no manifest entry: add them (modes and states from parameters.pxsig); they arrive without a signature, as NEW, for a person to approve',
+      why: 'stories in the index with no manifest entry: add them (modes and states from parameters.pxsig) and render them in the re-check step; they arrive without a signature, as NEW, for a person to approve',
       blocked: sb.source === 'storybook' ? null : `needs a running, healthy Storybook to read parameters.pxsig (${sb.error ?? 'index not loaded'})`,
+      // The entries register adds are rendered in this same run (the re-check step takes them).
+      recheckAfter: want('recheck'),
     });
-  const recheck = idsWith(ledger, RECHECK_CODES).filter((x) => x.files);
-  if (recheck.length && want('recheck')) {
+  // A stale verdict is a warning: re-checking hundreds of them is not a repair of the errors.
+  // They are re-checked here only when a later step gates on a fresh render, or when asked.
+  const needsRender = (x) => x.issues.some((i) => RECHECK_CODES.includes(i.code)) || (x.issues.some((i) => i.code === 'stale') && (stale || x.issues.some((i) => NEEDS_FRESH_RENDER.includes(i.code))));
+  // An orphaned entry's story is gone: rendering it can only fail.
+  const recheck = ledger.entries.filter((x) => x.files && needsRender(x) && !x.issues.some((i) => i.code === 'orphaned'));
+  if ((recheck.length || (unregistered.length && want('register'))) && want('recheck')) {
     const why = {};
-    for (const x of recheck) for (const i of x.issues) if (RECHECK_CODES.includes(i.code)) why[i.code] = (why[i.code] ?? 0) + 1;
+    for (const x of recheck) for (const i of x.issues) if (RECHECK_CODES.includes(i.code) || i.code === 'stale') why[i.code] = (why[i.code] ?? 0) + 1;
+    const reasons = Object.entries(why).map(([k, n]) => `${n} ${k}`);
+    if (unregistered.length && want('register')) reasons.push('the entries the register step adds');
     steps.push({
       action: 'recheck',
       ids: recheck.map((x) => x.id),
-      why: `re-render and re-check (${Object.entries(why).map(([k, n]) => `${n} ${k}`).join(', ')}); never writes baselines`,
+      why: `re-render and re-check (${reasons.join(', ')}); never writes baselines`,
       blocked: server?.up || sb.source === 'storybook' ? null : `needs the pxsig server or a healthy Storybook (${sb.error ?? 'index not loaded'})`,
     });
   }
@@ -115,6 +126,7 @@ export function planRepairs(ledger, { only, prune = false, server = null } = {})
   const manual = [];
   for (const [code, what] of [
     ['changed', 'review in the dashboard (A approves, R rejects)'],
+    ...(stale ? [] : [['stale', 're-check them: `pxsig check --since <ref>`, or `pxsig doctor --repair --stale`']]),
     ['flaky', 're-check, then review if it keeps failing'],
     ['unbaselined', 'NEW: approve its first render in the dashboard'],
     ['a11y-new', 'fix the violation or accept it into the a11y baseline'],
@@ -139,11 +151,13 @@ export async function registerStories(ctx, stories, { harvest }) {
   const { entryConfig } = await import('./workspace.mjs');
   const manifest = readJson(ctx.manifestPath, null);
   const have = new Set(manifest.stories.map((e) => e.story ?? e.id));
-  const todo = stories.filter((s) => !have.has(s.id));
-  if (!todo.length) return { added: [], skipped: [], adoptedSignatures: [] };
-  const params = await harvest(todo.map((s) => s.id));
-  const errors = Object.entries(params).filter(([, p]) => p?.error);
-  if (errors.length) throw new Error(`could not read parameters for ${errors.map(([id, p]) => `${id} (${p.error})`).join(', ')}`);
+  const asked = stories.filter((s) => !have.has(s.id));
+  if (!asked.length) return { added: [], skipped: [], failed: [], adoptedSignatures: [] };
+  const params = await harvest(asked.map((s) => s.id));
+  // A story whose parameters cannot be read is left out (and reported), not the whole step.
+  const failed = asked.filter((s) => params[s.id]?.error).map((s) => ({ id: s.id, why: `could not read parameters: ${params[s.id].error}` }));
+  const todo = asked.filter((s) => !params[s.id]?.error);
+  if (!todo.length) return { added: [], skipped: [], failed, adoptedSignatures: [] };
   const list = todo.map((s) => ({ id: s.id, importPath: s.importPath, sigFor: (key) => ctx.project.sigFor(key, s.importPath) }));
   const { entries, skipped } = expandEntries(entryConfig(ctx.project), list, params);
   const ids = new Set(manifest.stories.map((e) => e.id));
@@ -157,13 +171,84 @@ export async function registerStories(ctx, stories, { harvest }) {
     if (at === -1) stories2.push(e);
     else stories2.splice(at + 1, 0, e);
   }
+  const newSkips = skipped.filter((s) => !(manifest.skipped ?? []).some((x) => x.id === s.id));
+  if (!fresh.length && !newSkips.length) return { added: [], skipped, failed, adoptedSignatures };
   const backupDir = guardWrite(ctx, join(ctx.dirs.reports, 'manifest-history'));
   mkdirSync(backupDir, { recursive: true });
   const backup = join(backupDir, `manifest.${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
   copyFileSync(ctx.manifestPath, guardWrite(ctx, backup));
-  const next = { ...manifest, skipped: [...(manifest.skipped ?? []), ...skipped.filter((s) => !(manifest.skipped ?? []).some((x) => x.id === s.id))], stories: stories2 };
+  const next = { ...manifest, skipped: [...(manifest.skipped ?? []), ...newSkips], stories: stories2 };
   writeJsonAtomic(guardWrite(ctx, ctx.manifestPath), next, { pretty: true });
-  return { added: fresh.map((e) => e.id), skipped, adoptedSignatures, backup: relative(ctx.repoRoot, backup) };
+  return { added: fresh.map((e) => e.id), skipped, failed, adoptedSignatures, backup: relative(ctx.repoRoot, backup) };
+}
+
+/** The entry ids of `story` among `ids` (`<story>`, `<story>__<state>`, `<story>@<mode>`). */
+export const entriesOfStory = (ids, story) => ids.filter((e) => e === story || e.startsWith(`${story}__`) || e.startsWith(`${story}@`));
+
+/** The story id an entry id belongs to: `<story>[__<state>][@<mode>]` → `<story>`. */
+export const storyOfEntry = (id) => String(id).replace(/(__[^@]+)?(@.+)?$/, '');
+
+/** Log a register run: one line per story, plus one per adopted signature and per failure. */
+function logRegister(ctx, r, storyIds, { by, via, why = 'unregistered: in the story index, not in the manifest' }) {
+  const failed = new Map(r.failed.map((f) => [f.id, f.why]));
+  const skipped = new Map(r.skipped.map((s) => [s.id, s.reason]));
+  for (const id of storyIds) {
+    if (failed.has(id)) logRepair(ctx, { by, via, action: 'register', id, why, result: 'failed', error: failed.get(id) });
+    else if (skipped.has(id)) logRepair(ctx, { by, via, action: 'register', id, why, result: `skipped: ${skipped.get(id)}` });
+    else logRepair(ctx, { by, via, action: 'register', id, why, result: 'added to the manifest without a signature (NEW, needs approval)', entries: entriesOfStory(r.added, id) });
+  }
+  // An existing file at a new entry's signature path becomes its baseline as it is: say so.
+  for (const id of r.adoptedSignatures)
+    logRepair(ctx, { by, via, action: 'register', id, why: 'a signature already existed at the new entry\'s path (a story renamed back?)', result: 'adopted the existing signature unchanged: review it like any baseline' });
+}
+
+/**
+ * Register the stories a selection names but the manifest does not have (`pxsig check --only`,
+ * the server queue, the MCP), so checking a new story is one step. `names` are story ids or entry
+ * ids; `index` is a loadStoryIndex() result. Needs a healthy Storybook (parameters are read from
+ * it). Never writes a signature: the entries arrive NEW, for a person to approve.
+ * Returns { added: entry ids, stories: story ids registered, skipped: [{ name, why }] }.
+ */
+export async function registerNamed(ctx, names, { index, harvest, by = who(ctx), via = 'check' }) {
+  const manifest = readJson(ctx.manifestPath, null);
+  const entryIds = new Set(manifest.stories.map((e) => e.id));
+  const storyIds = new Set(manifest.stories.map((e) => e.story ?? e.id));
+  const skipped = [];
+  const want = new Map(); // story id → names asking for it
+  const nonVisual = new Set(ctx.config.nonVisual ?? []);
+  const excludedBy = new Map((manifest.skipped ?? []).map((s) => [s.id, s.reason]));
+  const live = index?.source === 'storybook';
+  const byId = new Map((index?.stories ?? []).map((s) => [s.id, s]));
+  for (const name of new Set(names)) {
+    if (entryIds.has(name) || storyIds.has(name)) continue;
+    const story = byId.has(name) ? name : storyOfEntry(name);
+    if (storyIds.has(story)) {
+      skipped.push({ name, why: `no such entry: story ${story} is registered with ${entriesOfStory([...entryIds], story).join(', ') || 'no entries'}` });
+      continue;
+    }
+    if (!live) {
+      skipped.push({ name, why: `not in the manifest, and registering it needs a running, healthy Storybook (${index?.storybook?.error ?? 'index not loaded'})` });
+      continue;
+    }
+    const s = byId.get(story);
+    const component = s ? componentOf(ctx, s.importPath) : null;
+    if (!s) skipped.push({ name, why: 'not in the manifest or the Storybook story index' });
+    else if (component == null) skipped.push({ name, why: `outside the project's srcRoot (${s.importPath})` });
+    else if (nonVisual.has(component.split('/')[0])) skipped.push({ name, why: `excluded: folder "${component.split('/')[0]}" is listed in config.nonVisual` });
+    else if (excludedBy.has(story)) skipped.push({ name, why: `excluded: ${excludedBy.get(story)}` });
+    else if ((s.tags ?? []).includes('no-pxsig')) skipped.push({ name, why: "excluded: tag 'no-pxsig'" });
+    else want.set(story, [...(want.get(story) ?? []), name]);
+  }
+  if (!want.size) return { added: [], stories: [], skipped };
+  const r = await registerStories(ctx, [...want.keys()].map((id) => ({ id, importPath: byId.get(id).importPath })), { harvest });
+  logRegister(ctx, r, [...want.keys()], { by, via, why: `named by ${via} but not in the manifest` });
+  for (const f of r.failed) for (const name of want.get(f.id) ?? []) skipped.push({ name, why: f.why });
+  for (const x of r.skipped) for (const name of want.get(x.id) ?? []) skipped.push({ name, why: `excluded: ${x.reason}` });
+  // An entry id that names a mode or state the story does not have.
+  for (const [story, asked] of want)
+    for (const name of asked) if (name !== story && !r.added.includes(name) && entriesOfStory(r.added, story).length) skipped.push({ name, why: `no such entry: story ${story} was registered with ${entriesOfStory(r.added, story).join(', ')}` });
+  const added = r.added;
+  return { added, stories: [...want.keys()].filter((id) => entriesOfStory(added, id).length), skipped, adoptedSignatures: r.adoptedSignatures };
 }
 
 // --- restore: the signature gate decides --------------------------------------------------------------
@@ -387,7 +472,10 @@ export async function applyRepairs(ctx, plan, { hooks, via = 'cli', by = who(ctx
   const done = [];
   let ledger = null;
   const fresh = async () => (ledger = await reconcile(ctx, reconcileOpts));
-  for (const step of plan.steps) {
+  // A copy: register appends the entries it adds to the re-check step (or adds one).
+  const steps = plan.steps.map((s) => ({ ...s, ids: [...s.ids] }));
+  for (let k = 0; k < steps.length; k++) {
+    const step = steps[k];
     if (step.blocked) {
       done.push({ action: step.action, result: 'blocked', why: step.blocked });
       logRepair(ctx, { by, via, action: step.action, ids: step.ids, why: step.why, result: 'blocked', blocked: step.blocked });
@@ -396,12 +484,34 @@ export async function applyRepairs(ctx, plan, { hooks, via = 'cli', by = who(ctx
     if (step.action === 'register') {
       const idx = (await fresh()).entries.filter((x) => step.ids.includes(x.id) && x.status === 'unregistered');
       const r = await registerStories(ctx, idx.map((x) => ({ id: x.id, importPath: x.importPath })), { harvest: hooks.harvest });
-      for (const id of step.ids) logRepair(ctx, { by, via, action: 'register', id, why: 'unregistered: in the story index, not in the manifest', result: 'added to the manifest without a signature (NEW, needs approval)', entries: r.added.filter((e) => e === id || e.startsWith(`${id}__`) || e.startsWith(`${id}@`)) });
-      done.push({ action: 'register', result: `${r.added.length} entries added from ${step.ids.length} stories`, ...r });
+      logRegister(ctx, r, step.ids, { by, via });
+      const notes = [r.failed.length ? `${r.failed.length} failed` : null, r.adoptedSignatures.length ? `${r.adoptedSignatures.length} existing signatures adopted` : null].filter(Boolean);
+      done.push({ action: 'register', result: `${r.added.length} entries added from ${step.ids.length - r.failed.length} stories${notes.length ? ` (${notes.join(', ')})` : ''}`, ...r });
+      // Render what was just registered in this same run, so a new story takes one click.
+      if (step.recheckAfter && r.added.length) {
+        const rc = steps.slice(k + 1).find((s) => s.action === 'recheck');
+        if (rc) rc.ids = [...new Set([...rc.ids, ...r.added])];
+        else steps.splice(k + 1, 0, { action: 'recheck', ids: r.added, why: 'render the entries just registered; never writes baselines', blocked: null });
+      }
     } else if (step.action === 'recheck') {
-      const r = await hooks.recheck(step.ids);
-      logRepair(ctx, { by, via, action: 'recheck', ids: step.ids, why: step.why, result: `re-checked via ${r.via}` });
-      done.push({ action: 'recheck', result: `${step.ids.length} entries re-checked via ${r.via}` });
+      if (!step.ids.length) continue;
+      const readRows = () => new Map((readJson(join(ctx.dirs.reports, 'check.json'), null)?.rows ?? []).map((x) => [x.id, x]));
+      const before = readRows();
+      let r;
+      try {
+        r = await hooks.recheck(step.ids);
+      } catch (e) {
+        r = { via: 'server', error: e.message };
+      }
+      // Count what the re-check actually recorded, not what it was asked to do.
+      const rows = readRows();
+      const recorded = step.ids.filter((id) => rows.get(id)?.checkedAt && rows.get(id).checkedAt !== before.get(id)?.checkedAt);
+      const errors = recorded.filter((id) => rows.get(id)?.error).length;
+      const result = r.error
+        ? `not re-checked: ${r.error}`
+        : `${recorded.length} of ${step.ids.length} entries re-checked via ${r.via}${errors ? ` (${errors} with render errors)` : ''}`;
+      logRepair(ctx, { by, via, action: 'recheck', ids: step.ids, why: step.why, result: r.error ? 'failed' : `re-checked via ${r.via}`, recorded: recorded.length, ...(r.error ? { error: r.error } : {}) });
+      done.push({ action: 'recheck', result, recorded: recorded.length, ...(r.error ? { error: r.error } : {}) });
     } else if (step.action === 'restore-baseline-image') {
       const res = restoreBaselineImages(ctx, await fresh(), step.ids, { by, via });
       const n = (k) => res.filter((r) => r.result === k).length;

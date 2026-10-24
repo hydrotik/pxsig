@@ -21,7 +21,7 @@ import {
   ToolbarEnd,
   ToolbarStart,
 } from '@ui';
-import { type Data, type Queue, type Row, a11yAction, decisionOf, fmt, pathsFor, reviewAction, served, statusOf } from '../data';
+import { type Data, type Queue, type Row, a11yAction, approveStory, decisionOf, fmt, pathsFor, recheck, reviewAction, served, statusOf, useCheckActivity } from '../data';
 import { analyse, cellsLayer, hex, loadImg, readPixels, type Analysis } from './analyse';
 import { Stage, type Mode, type Probe } from './Stage';
 import { DiffViewer, type DiffViewerActions } from '../diff-viewer';
@@ -271,6 +271,43 @@ export function Inspector({
       ? (data.check?.rows ?? []).filter((r) => r.story === row.story && !r.skipped)
       : [];
 
+  // Entries of this story waiting for a decision (every mode and state): one click approves them.
+  const storyOpen = siblings.filter((r) => ['changed', 'new'].includes(statusOf(r, data.review)) && !r.error);
+  // What the last re-check or story approval did, shown under the header until the entry changes.
+  const [note, setNote] = React.useState<string | null>(null);
+  React.useEffect(() => setNote(null), [row?.id]);
+  const activity = useCheckActivity();
+  const checking = !!row && !!activity.running?.includes(row.id);
+  const recheckOne = async () => {
+    if (!row) return;
+    setBusy(true);
+    try {
+      const r = await recheck([row.id]);
+      setNote([t('app.check.queued', { count: r.queued.length }), r.skipped?.length ? t('app.check.skipped', { list: r.skipped.map((x) => `${x.name}: ${x.why}`).join('; ') }) : null].filter(Boolean).join(' · '));
+    } catch (e) {
+      alert(t('inspector.review.failed', { action: t('inspector.review.recheck'), error: (e as Error).message }));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const approveAll = async () => {
+    if (!row) return;
+    setBusy(true);
+    try {
+      const r = await approveStory(row.story);
+      const left = r.skipped.filter((x) => storyOpen.some((o) => o.id === x.id));
+      setNote([t('inspector.review.approveStoryDone', { count: r.approved.length, story: row.story }), left.length ? t('inspector.review.approveStoryLeft', { list: left.map((x) => `${x.id}: ${x.why}`).join('; ') }) : null].filter(Boolean).join(' · '));
+      // On to the next undecided entry of another story.
+      const open = (x: Row) => !x.pass && !data.review[x.id] && x.story !== row.story;
+      const next = [...list.slice(index + 1), ...list.slice(0, Math.max(index, 0))].find(open);
+      if (next && target) onNavigate({ ...target, row: next });
+    } catch (e) {
+      alert(t('inspector.review.failed', { action: t('inspector.review.approveStory', { count: storyOpen.length }), error: (e as Error).message }));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // The summary screen takes no shortcuts (A would re-approve the last entry).
   const blockKeys = React.useRef(false);
   const onKey = (e: Pick<KeyboardEvent, 'metaKey' | 'ctrlKey' | 'altKey' | 'key' | 'target' | 'preventDefault'>) => {
@@ -481,8 +518,25 @@ export function Inspector({
           {newA11y && !a11yDecision && !review ? t('inspector.review.approveA11y', { count: newA11y }) : t('inspector.review.approve')}
         </Button>
         {undo}
+        {storyOpen.length > 1 && !target?.scenario ? (
+          <Button size="sm" emphasis="outline" disabled={busy} onClick={approveAll} title={t('inspector.review.approveStoryTitle')}>
+            {t('inspector.review.approveStory', { count: storyOpen.length })}
+          </Button>
+        ) : null}
       </>
   );
+  // Render and check this entry again (the server queue; never writes a baseline).
+  const recheckButton =
+    canReview && !target?.scenario ? (
+      <Button size="sm" emphasis="ghost" disabled={busy || checking} onClick={recheckOne} title={t('inspector.review.recheckTitle')}>
+        {checking ? t('app.check.running', { count: 1 }) : t('inspector.review.recheck')}
+      </Button>
+    ) : null;
+  const actionNote = note ? (
+    <div className={s.note} role="status">
+      <span>{note}</span>
+    </div>
+  ) : null;
   const desc = row.reasons?.length ? row.reasons.join(' · ') : row.pass ? t('inspector.withinGate') : (row.error ?? '');
   // Embedded (Storybook panel) there is no Dialog around the body, so no Dialog parts.
   const Title = embedded ? 'h3' : DialogTitle;
@@ -591,6 +645,7 @@ export function Inspector({
           <div className={s.insActions}>
             {storyNav}
             {reviewButtons}
+            {recheckButton}
             {embedded ? null : (
               <Button size="sm" emphasis="outline" onClick={onClose}>
                 {t('inspector.close')}
@@ -601,6 +656,7 @@ export function Inspector({
       )}
 
       {rejectedNote}
+      {actionNote}
       <Toolbar size="sm" className={s.insToolbar}>
         <ToolbarStart>
           {embedded ? <StatusOf status={statusOf(row, data.review)} /> : null}

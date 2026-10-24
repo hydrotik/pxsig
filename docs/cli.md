@@ -154,11 +154,15 @@ pxsig check [ids…] [--changed a.tsx,b.ts] [--since <ref>] [--all]
 
 Re-render and re-check some entries. Uses the running server (warm browsers) when there is one;
 otherwise runs the full check for just those entries. Never writes baselines. Exit 1 when any
-re-checked entry has a problem.
+re-checked entry has a problem; exit 2 when every name was skipped.
+
+A story (or entry) id the manifest does not have yet is registered first when Storybook is
+healthy, then checked: its entries arrive NEW, with no signature, for a person to approve. A name
+that cannot be registered is printed as `not checked: <name>: <why>`.
 
 | Flag | Meaning |
 | --- | --- |
-| `ids…` | Entry ids. |
+| `ids…` | Entry ids or story ids. |
 | `--changed <files>` | The entries these comma-separated files affect. |
 | `--since <ref>` | The entries the changes since `<ref>` affect. |
 | `--all` | Every entry. |
@@ -179,7 +183,7 @@ pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] 
 | `--since <ref>` | none | Only the entries affected by changes since `<ref>`. Others carry their previous result forward. |
 | `--changed <files>` | none | Only the entries these files affect. |
 | `--modes <a,b>` | all | Only these modes. |
-| `--only <ids>` | all | Only these entry ids or story ids. |
+| `--only <ids>` | all | Only these entry ids or story ids. A story not in the manifest yet is registered first (healthy Storybook; NEW entries, no signature), or reported as `not checked` with why. |
 | `--concurrency <n>` | 8 | Browser pages rendering in parallel. |
 | `--retries <n>` | 2 | Re-render failures up to n times; a pass on retry is `flaky`. |
 | `--no-a11y` | off | Skip axe. |

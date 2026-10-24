@@ -379,6 +379,7 @@
       "required": false,
       "role": "a message about the whole page",
       "usedBy": [
+        "App",
         "views/Integrity"
       ]
     },
@@ -387,6 +388,7 @@
       "required": false,
       "role": "an alert's heading",
       "usedBy": [
+        "App",
         "views/Integrity"
       ]
     },
@@ -395,6 +397,7 @@
       "required": false,
       "role": "an alert's body",
       "usedBy": [
+        "App",
         "views/Integrity"
       ]
     },
