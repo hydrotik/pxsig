@@ -22,6 +22,9 @@ semantic versioning.
   timings, so a store whose last report came from the server had no `totalMs`. A full re-check now
   records `totalMs`, `renderWallMs`, `concurrency`, `pageLoads` and `rustEngineMs`; a partial one
   keeps the last full run's. A report without timings shows a dash.
+- Coverage banner: closes on its own once a safe repair leaves nothing to repair. The repair's
+  result message held it open until the page was reloaded, although the server had already pushed
+  the clean ledger. The message now goes whenever the ledger turns clean or turns bad again.
 
 ## 0.3.0 - 2026-10-22
 
