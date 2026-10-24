@@ -90,8 +90,8 @@ coverage must not be able to hide a regression.
 
 **Decision.** Every approval, from any surface, snapshots the old baseline and logs who, when, how,
 why, and the hashes before and after. Bulk approval classifies colour versus shape changes, pins
-render hashes, and needs a person at a terminal. Agents cannot approve without an explicit
-instruction.
+render hashes, and needs a person at a terminal. Agents cannot approve: the server takes
+approvals only from the dashboard and `pxsig approve apply`, and the MCP server can only reject.
 
 **Why.** A baseline change is the one thing pxsig must never do silently. A log with hashes makes
 an unlogged change detectable (`approve verify`), and a snapshot makes a mistaken approval cheap

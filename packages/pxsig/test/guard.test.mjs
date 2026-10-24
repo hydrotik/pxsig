@@ -16,7 +16,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { authorize, DECISIONS, loopbackHost, NEEDS_PERSON, pageLoad, readToken, tokenFile, withToken } from '../src/lib/guard.mjs';
+import { AGENT_DECISIONS, authorize, DECISIONS, loopbackHost, NEEDS_PERSON, pageLoad, readToken, tokenFile, withToken } from '../src/lib/guard.mjs';
 import { fixture, hasRust, rustBin } from './fixture.mjs';
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
@@ -25,7 +25,7 @@ const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 
 const own = 'http://127.0.0.1:6070';
 const storybook = new Set(['http://localhost:6006']);
-const tokens = { dashboard: 'abc', cli: 'xyz' };
+const tokens = { dashboard: 'abc', cli: 'xyz', mcp: 'mmm' };
 /** null when allowed, else the refusal; `via` of an allowed decision through `viaOf`. */
 const refuse = (action, headers) => {
   const a = authorize({ action, headers, tokens, ownOrigin: own, allowedOrigins: storybook });
@@ -48,6 +48,13 @@ test("a decision's `via` is the token it carried, never the request's word", () 
   assert.equal(refuse('approve', { 'x-pxsig-token': 'xyz', origin: own, 'sec-fetch-site': 'same-origin' })?.status, 403, "a browser never has the CLI's token");
   assert.equal(viaOf('check', {}), null);
   assert.equal(refuse('approve', { 'x-pxsig-token': '' })?.status, 403, 'an empty token');
+});
+
+test("the MCP's token rejects and clears rejections, nothing that approves or accepts", () => {
+  assert.deepEqual([...AGENT_DECISIONS], ['reject', 'unreview', 'a11y-reject', 'a11y-unreview']);
+  for (const action of AGENT_DECISIONS) assert.equal(viaOf(action, { 'x-pxsig-token': 'mmm' }), 'mcp', action);
+  for (const action of ['approve', 'approve-story', 'a11y-accept', 'a11y-unaccept']) assert.deepEqual(refuse(action, { 'x-pxsig-token': 'mmm' }), { status: 403, error: NEEDS_PERSON }, action);
+  assert.equal(refuse('reject', { 'x-pxsig-token': 'mmm', origin: own, 'sec-fetch-site': 'same-origin' })?.status, 403, "a browser never has the MCP's token");
 });
 
 test('a decision from another origin is refused even with the token; a Storybook may only ask for checks', () => {
@@ -99,9 +106,16 @@ const raw = (port, { method = 'GET', path, headers = {}, body }) =>
     req.end(data);
   });
 
+/** A stand-in dashboard build (the real one may not be built where the tests run). */
+const dashboardDir = () => {
+  const dash = mkdtempSync(join(tmpdir(), 'pxsig-dash-'));
+  writeFileSync(join(dash, 'index.html'), '<!doctype html><html><head><title>pxsig</title></head><body></body></html>');
+  return dash;
+};
+
 async function serve(f, env = {}) {
   const port = await freePort();
-  const proc = spawn(process.execPath, [join(src, 'serve.mjs'), '--port', String(port), '--no-open'], { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '', ...env } });
+  const proc = spawn(process.execPath, [join(src, 'serve.mjs'), '--port', String(port), '--no-open'], { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '', PXSIG_DASHBOARD_DIR: dashboardDir(), ...env } });
   let log = '';
   proc.stdout.on('data', (d) => (log += d));
   proc.stderr.on('data', (d) => (log += d));
@@ -118,9 +132,7 @@ test('the server refuses decisions an agent posts (no token), from another site,
   const id = f.ids.changed;
   const sig = join(f.repo, f.manifest.stories.find((e) => e.id === id).sig);
   const original = readFileSync(sig);
-  const dash = mkdtempSync(join(tmpdir(), 'pxsig-dash-'));
-  writeFileSync(join(dash, 'index.html'), '<!doctype html><html><head><title>pxsig</title></head><body></body></html>');
-  const S = await serve(f, { PXSIG_DASHBOARD_DIR: dash });
+  const S = await serve(f);
   try {
     const token = readToken(f.repo, S.url);
     assert.match(token, /^[0-9a-f]{64}$/);
@@ -175,8 +187,74 @@ test('the server refuses decisions an agent posts (no token), from another site,
     const cli = await raw(S.port, { method: 'POST', path: '/__pxsig/approve', headers: { 'x-pxsig-token': token }, body: { id, via: 'dashboard', batch: 'b-cli' } });
     assert.equal(cli.status, 200, cli.text);
     assert.equal(log().at(-1).via, 'cli');
+
+    // The MCP's token: no approving; it may reject and clear a rejection, never a person's approval.
+    const mcpToken = readToken(f.repo, S.url, 'mcp');
+    assert.match(mcpToken, /^[0-9a-f]{64}$/);
+    assert.ok(mcpToken !== token && mcpToken !== pageToken);
+    if (process.platform !== 'win32') assert.equal(statSync(tokenFile(f.repo, S.url, 'mcp')).mode & 0o777, 0o600);
+    const mcp = (action, body) => raw(S.port, { method: 'POST', path: `/__pxsig/${action}`, headers: { 'x-pxsig-token': mcpToken }, body });
+    const review = () => JSON.parse(readFileSync(join(f.px, 'reports', 'review.json'), 'utf8'));
+    const cleared = await mcp('unreview', { id });
+    assert.equal(cleared.status, 403, 'the CLI approved it: clearing that is a person\'s');
+    assert.match(cleared.json().error, /^clearing an approval needs a person/);
+    assert.equal(review()[id].state, 'approved');
+    const other = f.ids.ok;
+    assert.equal((await mcp('approve', { id: other })).status, 403);
+    assert.equal((await mcp('approve-story', { story: other })).status, 403);
+    const rejected = await mcp('reject', { id: other, via: 'dashboard' });
+    assert.equal(rejected.status, 200, rejected.text);
+    assert.deepEqual([review()[other].state, review()[other].via], ['rejected', 'mcp']);
+    assert.equal((await mcp('unreview', { id: other })).status, 200, 'its own kind of decision');
+    assert.equal(review()[other], undefined);
   } finally {
     await S.stop();
   }
   assert.ok(!existsSync(tokenFile(f.repo, S.url)), 'the token file goes with the server');
+  assert.ok(!existsSync(tokenFile(f.repo, S.url, 'mcp')), "and the MCP's");
+});
+
+test("the MCP server's pxsig_review rejects through the server, logged as via: mcp; it cannot clear a person's accept", { skip: !hasRust && 'Rust binary not built' }, async () => {
+  const f = fixture();
+  const id = f.ids.a11y;
+  const checkPath = join(f.px, 'reports', 'check.json');
+  const check = JSON.parse(readFileSync(checkPath, 'utf8'));
+  check.rows.find((r) => r.id === id).a11y = { violations: [{ id: 'color-contrast', impact: 'serious', help: 'x', nodes: 1, targets: [] }], new: 1, baseline: [] };
+  writeFileSync(checkPath, JSON.stringify(check));
+  const S = await serve(f);
+  const mcp = spawn(process.execPath, [join(src, 'mcp.mjs')], { cwd: f.repo, stdio: ['pipe', 'pipe', 'ignore'], env: { ...process.env, PXSIG_URL: S.url, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } });
+  const replies = new Map();
+  let buf = '';
+  mcp.stdout.on('data', (d) => {
+    buf += d;
+    for (let i; (i = buf.indexOf('\n')) >= 0; buf = buf.slice(i + 1)) {
+      const m = JSON.parse(buf.slice(0, i));
+      replies.get(m.id)?.(m);
+    }
+  });
+  let seq = 0;
+  const call = (name, args) =>
+    new Promise((ok) => {
+      const n = ++seq;
+      replies.set(n, (m) => ok(m.result));
+      mcp.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id: n, method: 'tools/call', params: { name, arguments: args } })}\n`);
+    });
+  try {
+    const r = await call('pxsig_review', { action: 'a11y-reject', ids: [id], confirm: true });
+    assert.ok(!r.isError, r.content[0].text);
+    const av = () => JSON.parse(readFileSync(join(f.px, 'reports', 'a11y-review.json'), 'utf8'));
+    assert.deepEqual([av()[id].state, av()[id].via], ['rejected', 'mcp']);
+    // A person accepts in the dashboard; the MCP may not clear that.
+    const page = await raw(S.port, { path: '/report/', headers: { 'sec-fetch-dest': 'document', 'sec-fetch-mode': 'navigate' } });
+    const pageToken = page.text.match(/content="([0-9a-f]{64})"/)[1];
+    assert.equal((await raw(S.port, { method: 'POST', path: '/__pxsig/a11y-accept', headers: { 'x-pxsig-token': pageToken }, body: { id } })).status, 200);
+    const undo = await call('pxsig_review', { action: 'a11y-unreview', ids: [id], confirm: true });
+    assert.equal(undo.isError, true);
+    assert.match(undo.content[0].text, /clearing an accept needs a person/);
+    assert.equal(av()[id].state, 'accepted');
+    assert.deepEqual(JSON.parse(readFileSync(join(f.px, 'a11y.json'), 'utf8'))[id], ['color-contrast'], 'the accepted list stands');
+  } finally {
+    mcp.kill();
+    await S.stop();
+  }
 });

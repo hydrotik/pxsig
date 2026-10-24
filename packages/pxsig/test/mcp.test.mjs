@@ -77,22 +77,27 @@ test('unknown tool and unknown method are errors', async () => {
 });
 
 test('review refuses without confirm: true, before touching the server', async () => {
-  const r = await call('pxsig_review', { action: 'approve', ids: ['components-button--default'], confirm: false });
+  const r = await call('pxsig_review', { action: 'reject', ids: ['components-button--default'], confirm: false });
   assert.equal(r.isError, true);
   assert.match(r.content[0].text, /confirm: true/);
 });
 
-test('review offers the accessibility actions, under the same confirm rule', async () => {
+test('review offers rejections only: approving and accepting are a person\'s, even with confirm', async () => {
   const list = await rpc('tools/list', {});
   const tool = list.result.tools.find((x) => x.name === 'pxsig_review');
-  assert.deepEqual(tool.inputSchema.properties.action.enum, ['approve', 'reject', 'unreview', 'a11y-accept', 'a11y-reject', 'a11y-unreview', 'a11y-unaccept']);
-  const r = await call('pxsig_review', { action: 'a11y-accept', ids: ['components-button--default'], confirm: false });
+  assert.deepEqual(tool.inputSchema.properties.action.enum, ['reject', 'unreview', 'a11y-reject', 'a11y-unreview']);
+  for (const action of ['approve', 'a11y-accept', 'a11y-unaccept']) {
+    const r = await call('pxsig_review', { action, ids: ['components-button--default'], confirm: true });
+    assert.equal(r.isError, true, action);
+    assert.match(r.content[0].text, /not an agent's decision.*needs a person/, action);
+  }
+  const r = await call('pxsig_review', { action: 'a11y-reject', ids: ['components-button--default'], confirm: false });
   assert.equal(r.isError, true);
   assert.match(r.content[0].text, /confirm: true/);
 });
 
 test('review with confirm still needs the server', async () => {
-  const r = await call('pxsig_review', { action: 'approve', ids: ['components-button--default'], confirm: true });
+  const r = await call('pxsig_review', { action: 'reject', ids: ['components-button--default'], confirm: true });
   assert.equal(r.isError, true);
   assert.match(r.content[0].text, /not running/);
 });
