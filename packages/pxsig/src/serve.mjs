@@ -67,7 +67,7 @@ import { ensureStorybook } from './lib/static.mjs';
 import { findWorkspace, flagLayer, loadProject, PXSIG_VERSION, rustBinary, serverFile, writeRunManifest } from './lib/workspace.mjs';
 import { buildData, dashboardDir, prebuiltDashboardDir, useDashboard } from './report.mjs';
 import { chooseDashboard } from './lib/dashboard-dir.mjs';
-import { authorize, loopbackHost, newToken, pageLoad, removeToken, withToken, writeToken } from './lib/guard.mjs';
+import { authorize, loopbackHost, NEEDS_PERSON, newToken, pageLoad, removeToken, withToken, writeToken } from './lib/guard.mjs';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -117,8 +117,15 @@ const readJson = (p, fallback) => {
   }
 };
 const httpError = (status, message) => Object.assign(new Error(message), { status });
-/** Decisions need one of these (lib/guard.mjs): the dashboard page's, or the CLI's (a file only the owner reads). */
-const TOKENS = { dashboard: newToken(), cli: newToken() };
+/**
+ * Decisions need one of these (lib/guard.mjs): the dashboard page's, the CLI's, or the MCP's
+ * (files only the owner reads; the MCP's only rejects and clears rejections).
+ */
+const TOKENS = { dashboard: newToken(), cli: newToken(), mcp: newToken() };
+/** An agent clears its own kind of decision only: never a person's approval or accept. */
+const agentMayClear = (meta, state) => {
+  if (meta.via === 'mcp' && (state === 'approved' || state === 'accepted')) throw httpError(403, `clearing an ${state === 'approved' ? 'approval' : 'accept'} ${NEEDS_PERSON.slice('approving '.length)}`);
+};
 
 // --- the Rust engine, kept running --------------------------------------------------
 const rustBin = rustBinary();
@@ -378,8 +385,9 @@ async function review(S, action, id, meta = {}) {
     rv[id] = { state: 'approved', at: new Date().toISOString(), ...(await approve(S, id, meta)) };
     // The report says so too, so its counts (failed, changed) agree with the review.
     updateCheckRows(S, (r) => (r.id === id ? { ...r, approved: { at: rv[id].at, batch: rv[id].batch } } : null));
-  } else if (action === 'reject') rv[id] = { state: 'rejected', at: new Date().toISOString() };
+  } else if (action === 'reject') rv[id] = { state: 'rejected', at: new Date().toISOString(), via: meta.via ?? 'dashboard' };
   else if (action === 'unreview') {
+    agentMayClear(meta, rv[id]?.state);
     if (rv[id]?.state === 'approved' && rv[id].batch) unapprove(S, id, rv[id]);
     delete rv[id];
     updateCheckRows(S, (r) => (r.id === id && r.approved ? (({ approved, ...rest }) => rest)(r) : null));
@@ -387,7 +395,7 @@ async function review(S, action, id, meta = {}) {
   else throw httpError(404, 'unknown action');
   S.quietUntil = Date.now() + 800;
   writeFileSync(S.reviewPath, `${JSON.stringify(rv, null, 2)}\n`);
-  console.log(`[serve] ${S.name}: ${action} ${id}`);
+  console.log(`[serve] ${S.name}: ${action} ${id} (via ${meta.via ?? 'dashboard'})`);
   broadcast('review', { project: S.name, id, entry: rv[id] ?? null });
   return rv[id] ?? null;
 }
@@ -519,7 +527,7 @@ function a11yReview(S, action, id, meta = {}) {
     writeA11y(P, base);
     a11yLog(P, { at, by, via, action: 'accept', id, before, after, reason: meta.reason ?? null });
     av[id] = { state: 'accepted', at, before };
-  } else if (action === 'a11y-reject') av[id] = { state: 'rejected', at };
+  } else if (action === 'a11y-reject') av[id] = { state: 'rejected', at, via };
   else if (action === 'a11y-unaccept') {
     // Take a rule (or every rule) off the accepted list: the report shows it as new at once.
     const current = base[id] ?? [];
@@ -533,6 +541,7 @@ function a11yReview(S, action, id, meta = {}) {
   }
   else if (action === 'a11y-unreview') {
     const prev = av[id];
+    agentMayClear(meta, prev?.state);
     if (prev?.state === 'accepted') {
       const current = base[id] ?? null;
       if (prev.before == null) delete base[id];
@@ -544,7 +553,7 @@ function a11yReview(S, action, id, meta = {}) {
   } else throw httpError(404, 'unknown action');
   S.quietUntil = Date.now() + 800;
   writeFileSync(S.a11yReviewPath, `${JSON.stringify(av, null, 2)}\n`);
-  console.log(`[serve] ${S.name}: ${action} ${id}`);
+  console.log(`[serve] ${S.name}: ${action} ${id} (via ${via})`);
   broadcast('review', { project: S.name, id, a11y: av[id] ?? null });
   return av[id] ?? null;
 }
@@ -974,6 +983,7 @@ function listen(port, tries = 10) {
     for (const S of states.values()) S.lock?.update({ url });
     mkdirSync(dirname(info), { recursive: true });
     writeToken(ws.root, url, TOKENS.cli);
+    writeToken(ws.root, url, TOKENS.mcp, 'mcp');
     const page = `${url}/report/${flags.tab ? `#${flags.tab}` : ''}`;
     console.log(`[serve] pxsig dashboard → ${page}  (${[...states.keys()].join(', ')}; Ctrl+C to stop)`);
     if (!flags['no-open']) openBrowser(page);
@@ -988,7 +998,10 @@ const shutdown = async () => {
   engine?.kill();
   await pool?.close();
   rmSync(join(tmpdir(), `pxsig-serve-${process.pid}`), { recursive: true, force: true });
-  if (url) removeToken(ws.root, url, TOKENS.cli);
+  if (url) {
+    removeToken(ws.root, url, TOKENS.cli);
+    removeToken(ws.root, url, TOKENS.mcp, 'mcp');
+  }
   try {
     if (readJson(info, {}).pid === process.pid) rmSync(info);
   } catch {

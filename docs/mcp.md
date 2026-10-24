@@ -30,7 +30,7 @@ or set `PXSIG_WORKSPACE` in its environment.
 1. Each project's `<store>/reports/check.json`, `review.json` and `history.ndjson`. Every producer
    writes them, so reading never needs the server.
 2. The pxsig server, when it is running: whether a check is running, and the actions that need its
-   warm browsers and engine (re-check, approve, reject).
+   warm browsers and engine (re-check, reject).
 3. Without the server, `pxsig_check` runs the full check itself for the selected entries (slower),
    and review actions are refused.
 
@@ -49,27 +49,29 @@ Every tool takes an optional `project`. With several projects in the workspace i
 | `pxsig_affected` | `project`, `files` or `since` | The entries those edits can change |
 | `pxsig_stale` | `project`, `limit` (200), `max_files` (400) | Verdicts older than an edit that can change them, and verdicts made on a render of a different size |
 | `pxsig_check` | `project`, `ids`, `stories`, `changed_files`, `since`, `all`, `timeout_s` (900) | Re-renders and re-checks the selection, waits, and returns the states and problems. A story (or entry) not in the manifest yet is registered first when Storybook is healthy: its entries come back in `registered`, NEW, with no signature, for a person to approve. A name that cannot be registered comes back in `skipped` with the reason, and `checked: 0` carries a `note`. Never writes baselines. |
-| `pxsig_review` | `project`, `action` (`approve`, `reject`, `unreview`, `a11y-accept`, `a11y-reject`, `a11y-unreview`, `a11y-unaccept`), `ids`, `confirm` (all three required), `rule` (a11y-unaccept) | Visual: approves (the latest render becomes the baseline, accepting its axe violations with it), rejects, or clears the decision; clearing an approval restores the baseline it replaced. Accessibility: puts the entry's current violations on its accepted list, marks them for a fix, clears the decision (restoring the previous list), or takes a rule (default: all) off the accepted list. Needs the server, which refuses decisions that do not come from a person: the tool reports that refusal. |
+| `pxsig_review` | `project`, `action` (`reject`, `unreview`, `a11y-reject`, `a11y-unreview`), `ids`, `confirm` (all three required) | Marks entries for attention: `reject` marks the visual change rejected, `a11y-reject` marks the axe violations for a fix, and `unreview` / `a11y-unreview` clear a rejection. Logged as `via: "mcp"`. There is no approve, accept or unaccept: those are a person's. Needs the server. |
 | `pxsig_doctor` | `project`, `component`, `status`, `limit` (40), `repair` (`none`, `plan`, `apply`), `only`, `offline`, `stale` | The integrity ledger, filtered; with `repair`, the plan or the applied repairs (`stale: true` also re-checks stale verdicts). `apply` takes the store lock, or goes through the server that holds it; it refuses while another process holds it. Never prunes, never approves. |
 | `pxsig_history` | `project`, `limit` (10) | The last runs |
 
 ## The approval guard
 
-Approving writes a baseline. That is the owner's decision, not the agent's.
+Approving writes a baseline. That is the owner's decision, not the agent's, so the MCP server
+cannot approve at all.
 
-- `pxsig_review` refuses unless `confirm: true`.
-- Its description tells the model to pass `confirm: true` only when the user explicitly asked, in
-  the conversation, to approve or reject those exact entries, and never on its own judgement that
-  a change looks intended.
-- The server's instructions to the client say the same: never approve baselines unless the user
-  asked.
-- Every approval through MCP is logged in `approvals.ndjson` with `via: "mcp"`, and can be undone
-  with `pxsig approve undo <batch>` by a person at a terminal.
+- `pxsig_review` has no `approve`, `a11y-accept` or `a11y-unaccept`. It can mark entries rejected
+  and clear a rejection: a rejection only asks for attention, and never writes a baseline or an
+  accepted list.
+- The server enforces this, not only the tool. The MCP server sends the server's MCP token
+  (`node_modules/.cache/pxsig/serve-<port>.mcp.token`, see [server.md](server.md#guards)), which the
+  server accepts on `reject`, `unreview`, `a11y-reject` and `a11y-unreview` only, logged as
+  `via: "mcp"`. An `unreview` or `a11y-unreview` of a person's approval or accept is refused
+  (403, "clearing an approval needs a person: …"): clearing one would restore the old baseline or
+  accepted list, overriding the person.
+- `a11y-unaccept` is a person's too, although it makes the report stricter: it edits the accepted
+  list a person set.
+- `pxsig_review` refuses unless `confirm: true`, and its description tells the model to pass it
+  only when the user explicitly asked for this action on these exact entries.
 - Bulk approval (`pxsig approve apply`) and `check --full --update` are refused under an agent.
-- The server refuses decisions that do not carry its token (see [server.md](server.md#guards)),
-  and the MCP server does not have it: `pxsig_review` reaches the server and reports its refusal
-  ("approving needs a person: use the dashboard or `pxsig approve` in a terminal"), writing
-  nothing. A person decides in the dashboard or with `pxsig approve` in a terminal.
 
 A typical session: `pxsig_status`, then `pxsig_list`, then `pxsig_entry` on what changed, then
 `pxsig_check` after a fix.

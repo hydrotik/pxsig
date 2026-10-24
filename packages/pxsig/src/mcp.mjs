@@ -17,7 +17,7 @@
  *   producer (check, the server) writes them, so reads never need a server.
  * - the pxsig server when it is up (its address from node_modules/.cache/pxsig/server.json):
  *   whether a check is running, and the actions that need its warm browser pool
- *   and Rust engine (re-check, approve, reject).
+ *   and Rust engine (re-check, reject). Approving is never the MCP's: the server refuses it.
  * - Without the server, `pxsig_check` runs check.mjs itself (slower: a cold
  *   browser) and review actions are refused.
  *
@@ -31,6 +31,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { CODES, filterLedger, ledgerPath, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
+import { AGENT_DECISIONS, NEEDS_PERSON, readToken, TOKEN_HEADER } from './lib/guard.mjs';
 import { readImage } from './lib/psig.mjs';
 import { applyRepairs, defaultHooks, planRepairs, serverStatus } from './lib/repair.mjs';
 import { acquireLock, describeLock, readLock } from './lib/lock.mjs';
@@ -112,14 +113,14 @@ function brief(row, review) {
 
 // --- the server (serve.mjs), when it is up ------------------------------------------------------
 
-async function http(C, path, { method = 'GET', body, timeout = 2000 } = {}) {
+async function http(C, path, { method = 'GET', body, headers, timeout = 2000 } = {}) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeout);
   try {
     const res = await fetch(`${C.serverUrl}${path}`, {
       method,
       signal: ctl.signal,
-      headers: body ? { 'content-type': 'application/json' } : undefined,
+      headers: body || headers ? { ...(body ? { 'content-type': 'application/json' } : {}), ...headers } : undefined,
       body: body ? JSON.stringify(body) : undefined,
     });
     const json = await res.json().catch(() => ({}));
@@ -543,29 +544,32 @@ const tools = [
   {
     name: 'pxsig_review',
     description:
-      "Decide on entries. Visual: approve (the latest render becomes the baseline; its axe violations are accepted with it), reject, or unreview (clearing an approval restores the baseline it replaced). Accessibility: a11y-accept (the entry's current axe violations go on its accepted list), a11y-reject (marked for a fix), a11y-unreview (clearing an accept restores the previous list), a11y-unaccept (takes a rule, or every rule, off the accepted list, so it is reported as new). Every action changes what future checks report: pass confirm: true ONLY when the user explicitly asked for this action on these exact entries in this conversation — never on your own judgement that a change looks intended or a violation acceptable. Needs the pxsig server, which refuses decisions that do not come from a person (the dashboard, or `pxsig approve` in a terminal): this tool reports that refusal and writes nothing.",
+      "Mark entries for attention. reject: the entry's visual change is marked rejected (to be fixed); a11y-reject: its axe violations are marked for a fix; unreview / a11y-unreview: clear a rejection. Approving and accepting are not here: they need a person (the dashboard, or `pxsig approve` in a terminal), and the server refuses an agent's unreview of a person's approval or accept. A decision lasts until the entry's next check and is logged as via: mcp. Pass confirm: true ONLY when the user explicitly asked for this action on these exact entries in this conversation. Needs the pxsig server.",
     inputSchema: {
       type: 'object',
       properties: {
         project: PROJECT,
-        action: { type: 'string', enum: ['approve', 'reject', 'unreview', 'a11y-accept', 'a11y-reject', 'a11y-unreview', 'a11y-unaccept'] },
-        rule: { type: 'string', description: 'a11y-unaccept only: the axe rule to take off the accepted list (default: every rule on it).' },
+        action: { type: 'string', enum: [...AGENT_DECISIONS] },
         ids: { type: 'array', items: { type: 'string' }, minItems: 1 },
         confirm: { type: 'boolean', description: 'true only on an explicit user instruction for these ids.' },
       },
       required: ['action', 'ids', 'confirm'],
       additionalProperties: false,
     },
-    async run({ project, action, ids, confirm, rule }) {
+    async run({ project, action, ids, confirm }) {
+      if (!AGENT_DECISIONS.has(action)) throw new Error(`refused: ${action} is not an agent's decision (${[...AGENT_DECISIONS].join(', ')}); ${NEEDS_PERSON}`);
       if (confirm !== true) throw new Error('refused: review actions need confirm: true, given only on an explicit user instruction for these ids');
       const bad = ids.filter((id) => !ID_RE.test(id));
       if (bad.length) throw new Error(`bad ids: ${bad.join(', ')}`);
       const C = ctxOf(project);
       const srv = await server(C);
       if (!srv.up) throw new Error(`the pxsig server is not running (${C.serverUrl}); ${srv.hint}`);
+      // The server's MCP token (lib/guard.mjs): it lets this tool reject and clear rejections, nothing more.
+      const token = readToken(C.P.workspaceRoot, C.serverUrl, 'mcp');
+      if (!token) throw new Error(`no MCP token from the pxsig server at ${C.serverUrl} (it writes one when it starts): restart pxsig serve with this version`);
       const done = [];
       for (const id of ids) {
-        const r = await http(C, `/__pxsig/${action}`, { method: 'POST', body: { project: C.P.name, id, via: 'mcp', ...(rule ? { rule } : {}) }, timeout: 120_000 });
+        const r = await http(C, `/__pxsig/${action}`, { method: 'POST', body: { project: C.P.name, id }, headers: { [TOKEN_HEADER]: token }, timeout: 120_000 });
         done.push({ id, entry: r.entry ?? null });
       }
       return { action, done };
@@ -704,7 +708,7 @@ async function handle(msg) {
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: 'pxsig', version: VERSION },
           instructions:
-            'pxsig is the visual-regression harness for this repo. Start with pxsig_projects (when there are several) and pxsig_status; pxsig_list then pxsig_entry show what changed, with images. Never approve baselines unless the user asked.',
+            'pxsig is the visual-regression harness for this repo. Start with pxsig_projects (when there are several) and pxsig_status; pxsig_list then pxsig_entry show what changed, with images. Approving baselines is a person\'s: the dashboard, or `pxsig approve` in a terminal.',
         },
       });
     }

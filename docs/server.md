@@ -131,16 +131,19 @@ clears the mark. `summary.changed` counts only real changes waiting for a decisi
 ### Guards
 
 - **Decisions need a person.** `approve`, `approve-story`, `reject`, `unreview` and the `a11y-*`
-  routes need one of the server's two tokens in an `x-pxsig-token` header, or they are refused
+  routes need one of the server's tokens in an `x-pxsig-token` header, or they are refused
   (403, "approving needs a person: use the dashboard or `pxsig approve` in a terminal"). The server
-  makes both at random each time it starts. The dashboard's goes into the dashboard page
+  makes three at random each time it starts. The dashboard's goes into the dashboard page
   (`<meta name="pxsig-token">`) only when a browser loads that page (`Sec-Fetch-Dest: document`, or
   `iframe` for the Storybook panel). The CLI's goes into `node_modules/.cache/pxsig/serve-<port>.token`
   (mode 0600, removed on exit), which `pxsig approve apply` reads after its person-at-a-terminal
-  check; a request carrying it with browser headers (`Origin`, `Sec-Fetch-Site`) is refused. An
-  agent posting to the server with `curl` or `fetch` has neither. The token decides `via` in
-  `approvals.ndjson` and `a11y-decisions.ndjson` (`dashboard` or `cli`); a `via` in the body is
-  ignored. `check` and `repair` need no token: the CLI,
+  check. The MCP's goes into `serve-<port>.mcp.token` (also 0600) and is accepted only on `reject`,
+  `unreview`, `a11y-reject` and `a11y-unreview`, and its unreview of an approval or an accept is
+  refused (403): an agent may ask for attention, never accept or undo a person's acceptance. A
+  request carrying a file token with browser headers (`Origin`, `Sec-Fetch-Site`) is refused. An
+  agent posting to the server with `curl` or `fetch` has none of them. The token decides `via` in
+  `approvals.ndjson`, `a11y-decisions.ndjson` and on rejections in `review.json` /
+  `a11y-review.json` (`dashboard`, `cli` or `mcp`); a `via` in the body is ignored. `check` and `repair` need no token: the CLI,
   the MCP and the Storybook addon use them, and neither one approves.
 - **Origin.** A POST with an `Origin` header is refused (403) unless it is the server's own origin
   or, for `check` and `repair` only, the origin of a served project's Storybook (with `localhost`

@@ -10,14 +10,21 @@ semantic versioning.
 - **The server's decision routes need a person.** `pxsig approve apply` refuses to run when output
   is piped, in CI or under an agent, but `POST /__pxsig/approve` (and `approve-story`, `reject`,
   `unreview` and the `a11y-*` decisions) accepted any local request, so an agent could approve
-  baselines with `curl`. These routes now need one of two random tokens the server makes when
+  baselines with `curl`. These routes now need one of the random tokens the server makes when
   it starts, sent as `x-pxsig-token`: one in the dashboard page when a browser loads it, one in
   `node_modules/.cache/pxsig/serve-<port>.token` (mode 0600) for `pxsig approve apply`. Without one
   the answer is 403, "approving needs a person: use the dashboard or `pxsig
-  approve` in a terminal". The MCP's `pxsig_review` now reports that refusal instead of writing.
+  approve` in a terminal". A dashboard tab opened before the upgrade needs a reload once `pxsig
+  serve` is restarted, and `pxsig approve apply` against an older server asks for a restart.
   This is a guard, not authentication: a process running as you can still read the token file.
+- **The MCP can no longer approve.** `pxsig_review` loses `approve`, `a11y-accept` and
+  `a11y-unaccept`; it keeps `reject`, `a11y-reject` and `unreview` / `a11y-unreview` of a
+  rejection. It sends the server's MCP token (`serve-<port>.mcp.token`, 0600), which the server
+  accepts on those four routes only, logged as `via: "mcp"`; its unreview of a person's approval or
+  accept is refused.
 - **`via` in the approval log is the server's.** It was taken from the request body, so any caller
-  could log `via: "dashboard"`. It is now the token the decision carried (`dashboard` or `cli`).
+  could log `via: "dashboard"`. It is now the token the decision carried (`dashboard`, `cli` or `mcp`), and
+  rejections record it too.
 - **Cross-site requests and foreign hosts are refused.** A write whose `Sec-Fetch-Site` is not
   `same-origin` is refused like a foreign `Origin` (a project's Storybook may still ask for checks
   and repairs, never decisions), every request whose `Host` is not loopback is refused (DNS
