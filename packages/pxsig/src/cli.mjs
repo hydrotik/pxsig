@@ -805,7 +805,12 @@ const commands = {
 
   serve() {
     const pass = process.argv.slice(3);
-    spawn(process.execPath, [join(here, 'serve.mjs'), ...pass], { stdio: 'inherit' }).on('exit', (c) => process.exit(c ?? 0));
+    const child = spawn(process.execPath, [join(here, 'serve.mjs'), ...pass], { stdio: 'inherit' });
+    child.on('exit', (c) => process.exit(c ?? 0));
+    // `kill <pid>` (a process manager, a script) stops the server too, not only this wrapper: an
+    // orphaned server kept its port, its store lock and its record in server.json. Ctrl+C reaches
+    // the whole process group by itself.
+    for (const sig of ['SIGTERM', 'SIGHUP']) process.on(sig, () => child.kill(sig));
   },
 
   mcp() {

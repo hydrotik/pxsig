@@ -260,3 +260,26 @@ test('a second server beside the lock holder writes nothing into the store, and 
     S.stop();
   }
 });
+
+test('stopping `pxsig serve` with SIGTERM stops the server it started, not only the wrapper', { skip: !hasRust && 'Rust binary not built' }, async () => {
+  const f = fixture();
+  const port = await freePort();
+  const proc = spawn(process.execPath, [join(src, '..', 'bin', 'pxsig.mjs'), 'serve', '--port', String(port), '--no-open'], { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } });
+  let log = '';
+  proc.stdout.on('data', (d) => (log += d));
+  await new Promise((ok, fail) => {
+    const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+    proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
+  });
+  assert.equal((await fetch(`http://127.0.0.1:${port}/__pxsig/status`)).status, 200);
+  const exited = new Promise((ok) => proc.on('exit', ok));
+  proc.kill('SIGTERM');
+  await exited;
+  let up = true;
+  for (let i = 0; i < 50 && up; i++) {
+    up = await fetch(`http://127.0.0.1:${port}/__pxsig/status`).then(() => true, () => false);
+    if (up) await new Promise((r) => setTimeout(r, 100));
+  }
+  assert.equal(up, false, 'the server stopped with its wrapper');
+  assert.ok(!existsSync(join(f.px, 'reports', '.lock')), 'and released the store lock');
+});
