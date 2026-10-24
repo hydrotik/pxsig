@@ -54,8 +54,8 @@ import { fetchStoryIndex, filterLedger, loadStoryIndex, oneLine, reconcile, reso
 import { readHeader, readImage } from './lib/psig.mjs';
 import { parseArgs, strFlag } from './lib/args.mjs';
 import { acquireLock, describeLock, LockError } from './lib/lock.mjs';
-import { applyRepairs, defaultHooks, planRepairs } from './lib/repair.mjs';
-import { buildRow, dropStaleRows, summarize } from './lib/rows.mjs';
+import { applyRepairs, defaultHooks, planRepairs, registerNamed } from './lib/repair.mjs';
+import { buildRow, dropStaleRows, storybookBroken, summarize } from './lib/rows.mjs';
 import { ensureStorybook } from './lib/static.mjs';
 import { findWorkspace, flagLayer, loadProject, PXSIG_VERSION, rustBinary, serverFile, writeRunManifest } from './lib/workspace.mjs';
 import { buildData, dashboardDir, prebuiltDashboardDir, useDashboard } from './report.mjs';
@@ -170,6 +170,9 @@ function openState(ref) {
     queued: new Set(),
     running: null,
     repairing: null,
+    /** Check runs started, and the last one that failed (a repair waits on the queue and asks). */
+    runs: 0,
+    lastFailure: null,
     quietUntil: 0,
     lock: null,
     lockWait: null,
@@ -368,6 +371,7 @@ async function runChecks(S) {
   S.queued = new Set();
   S.checking = new Set(ids);
   const { P } = S;
+  const seq = ++S.runs;
   S.running = (async () => {
     const t0 = performance.now();
     broadcast('check', { project: S.name, state: 'running', ids });
@@ -382,7 +386,7 @@ async function runChecks(S) {
       const concurrency = Math.min(8, entries.length);
       const { results, wallMs, reloads = 0 } = await renderStories(pool, entries, P.store.latest, { ...manifest, concurrency, project: P, a11y: true });
       const sbErrors = results.filter((r) => r.error?.startsWith(STORYBOOK_ERROR));
-      if (sbErrors.length && (sbErrors.length === results.length || sbErrors.length >= Math.max(3, results.length / 2)))
+      if (storybookBroken(sbErrors.length, results.length))
         throw Object.assign(new Error(`setup error: ${sbErrors.length} of ${results.length} renders hit Storybook's error page (${sbErrors[0].error.slice(STORYBOOK_ERROR.length).trim()}). Nothing was recorded.`), { setup: true });
       if (manifest.trim) await rust('trim', { dir: P.store.latest, only: ids, pad: manifest.trim.pad ?? 16, tolerance: manifest.trim.tolerance ?? 8 });
       const res = await rust('check', {
@@ -416,6 +420,7 @@ async function runChecks(S) {
       broadcast('data', { project: S.name });
     } catch (e) {
       console.error(`[serve] ${S.name}: check failed: ${e.message}`);
+      S.lastFailure = { seq, error: e.message, setup: !!e.setup, ids: ids.length, at: new Date().toISOString() };
       broadcast('check', { project: S.name, state: 'error', ids, error: e.message, setup: !!e.setup });
     } finally {
       S.running = null;
@@ -591,8 +596,11 @@ async function repair(S, { apply = false, only: onlySteps } = {}) {
     ...defaultHooks(S.ctx, { serverUrl: url }),
     // Re-checks go through this server's own queue (warm browsers), then wait for it to drain.
     async recheck(ids) {
-      enqueue(S, { ids });
+      const from = S.runs;
+      await enqueue(S, { ids });
       while (S.running || S.queued.size) await (S.running ?? new Promise((r) => setTimeout(r, 200)));
+      // A run that failed (Storybook down, a broken index) recorded nothing: say so.
+      if (S.lastFailure && S.lastFailure.seq > from) throw new Error(S.lastFailure.error);
       return { via: 'server' };
     },
   };

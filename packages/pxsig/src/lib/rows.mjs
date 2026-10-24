@@ -74,3 +74,11 @@ export function dropStaleRows(check, manifest) {
   }
   return dropped;
 }
+
+/**
+ * Whether renders that hit Storybook's error page mean Storybook itself is broken (a setup error:
+ * nothing is recorded) rather than a few stories failing (recorded as render errors). Three or
+ * more, and at least half the renders: one or two failing stories are their own errors, so a
+ * story checked alone that throws is recorded, not dropped as a setup error.
+ */
+export const storybookBroken = (errors, total) => errors >= Math.max(3, total / 2);

@@ -1,7 +1,7 @@
 // buildRow: what a render error and an engine error leave in a check row. No Rust, no server.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildRow, dropStaleRows } from '../src/lib/rows.mjs';
+import { buildRow, dropStaleRows, storybookBroken, summarize } from '../src/lib/rows.mjs';
 
 const entry = { id: 'a-b--c', story: 'a-b--c', mode: 'dark' };
 const manifest = { defaultMode: 'dark' };
@@ -47,4 +47,12 @@ test('an empty (unloaded) manifest drops nothing', () => {
   const check = { rows: [buildRow(entry, { id: entry.id, pass: true }, { ms: 5 }, null, manifest)], summary: {} };
   assert.deepEqual(dropStaleRows(check, { stories: [] }), []);
   assert.equal(check.rows.length, 1);
+});
+
+test('Storybook is broken only when many renders hit its error page, not when one story throws', () => {
+  assert.equal(storybookBroken(1, 1), false, 'a story checked alone that throws is its own error');
+  assert.equal(storybookBroken(2, 2), false);
+  assert.equal(storybookBroken(3, 3), true);
+  assert.equal(storybookBroken(3, 10), false);
+  assert.equal(storybookBroken(6, 10), true);
 });

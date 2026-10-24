@@ -37,7 +37,9 @@ import { fetchStoryIndex, loadStoryIndex, oneLine, reconcile, resolveContext, wr
 import { newBatch, record, snapshot } from './lib/approvals.mjs';
 import { parseArgs, strFlag } from './lib/args.mjs';
 import { acquireLock, describeLock, readLock } from './lib/lock.mjs';
-import { buildRow, summarize } from './lib/rows.mjs';
+import { buildRow, storybookBroken, summarize } from './lib/rows.mjs';
+import { harvestParameters } from './lib/manifest.mjs';
+import { registerNamed } from './lib/repair.mjs';
 import { ensureStorybook } from './lib/static.mjs';
 import { ask, humanAtTerminal } from './lib/term.mjs';
 import { flagLayer, openProject, writeRunManifest } from './lib/workspace.mjs';
@@ -140,7 +142,7 @@ const renderErrors = results.filter((r) => r.error).length;
 console.log(`[check] rendered ${results.length} entries in ${(wallMs / 1000).toFixed(1)} s on ${concurrency} pages · ${reloads} page loads${renderErrors ? ` · ${renderErrors} errors` : ''}`);
 // Sentinel: renders that hit Storybook's error page. Most of the run → a setup problem, not results.
 const sbErrors = results.filter((r) => r.error?.startsWith(STORYBOOK_ERROR));
-if (sbErrors.length && (sbErrors.length === results.length || sbErrors.length >= Math.max(3, results.length / 2))) {
+if (storybookBroken(sbErrors.length, results.length)) {
   await pool.close();
   die(`setup error: ${sbErrors.length} of ${results.length} renders hit Storybook's error page (${sbErrors[0].error.slice(STORYBOOK_ERROR.length).trim()}). Nothing was recorded.`);
 }
