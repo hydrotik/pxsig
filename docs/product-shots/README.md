@@ -32,10 +32,12 @@ without the setup or the compression, which is the quick way to try a different 
 
 ## Files
 
-Named `<view>-<theme>.png`; the README picks the theme with `<picture>` and
-`prefers-color-scheme`.
+Named `<view>.png`. The current two were captured by hand from the kitchen-sink demo (the example
+project with a run history, changes awaiting review, a new story, a render error, stale entries and
+an accessibility violation — all from real checks), light theme, at 2x. `scripts/product-shots.mjs`
+reproduces a simpler version of both from the example.
 
 | File | What it shows |
 | --- | --- |
-| `inspector-dark.png`, `inspector-light.png` | The inspector on a changed entry (the Button, wider padding): baseline and latest render side by side, with the changed pixels highlighted and the changed region boxed, and the metrics that failed the gate |
-| `overview-dark.png`, `overview-light.png` | The Overview after that check: the run's counts, the open items and the changed entries per run |
+| `overview.png` | The README hero: the Overview mid-review — status cards, Open Items, the stale-entries heatmap, the Errors card with the safe repairs, and Changed Entries per Run |
+| `inspector.png` | The inspector on a changed card: baseline and latest render side by side, changed pixels and detail tiles highlighted, the changed regions, and the metrics that failed the gate |

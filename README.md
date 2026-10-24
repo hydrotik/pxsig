@@ -2,10 +2,9 @@
 
 Visual regression for Storybook that runs on your own machine and in your own CI.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/product-shots/inspector-dark.png">
-  <img src="docs/product-shots/inspector-light.png" width="800" alt="The pxsig dashboard's inspector on a changed entry: a Button's baseline render and its latest render side by side, with the pixels that changed highlighted and the changed region boxed, and beside them the metrics that failed the gate (SSIM below its minimum, detail tiles changed) with Approve and Reject buttons.">
-</picture>
+<img src="docs/product-shots/overview.png" width="900" alt="The pxsig dashboard's Overview in the middle of a review: status cards (42 checked, 6 changed, 1 new accessibility violation), open items with review actions, a stale-entries heatmap by component, an errors card with the safe-repair actions, and the changed entries across 14 runs.">
+
+<img src="docs/product-shots/inspector.png" width="900" alt="The inspector reviewing a changed card: the baseline render and the latest render side by side, the changed pixels and detail tiles highlighted, three changed regions listed, and the metrics that failed the gate (SSIM 0.64 below 0.99, 50 detail tiles changed) with Approve, Reject and Approve story.">
 
 pxsig renders every story state with Playwright, reduces each render to a compact pixel
 signature, and compares it with an approved baseline. Each baseline is one `.psig` file per story
