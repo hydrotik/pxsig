@@ -8,6 +8,8 @@
  */
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { hostname } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { after, before, test } from 'node:test';
@@ -130,4 +132,22 @@ test('projects lists the workspace; an unknown project is an error naming the pr
   const r = await call('pxsig_status', { project: 'nope' });
   assert.equal(r.isError, true);
   assert.match(r.content[0].text, /projects: fixture/);
+});
+
+test('doctor repair apply takes the store lock: a store another process holds is refused, unchanged', async () => {
+  const lock = join(repo, '.pxsig', 'reports', '.lock');
+  const manifest = join(repo, '.pxsig', 'manifest.json');
+  const before = readFileSync(manifest, 'utf8');
+  writeFileSync(lock, `${JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), host: hostname(), holder: 'check', command: 'pxsig check --full' })}\n`);
+  try {
+    const r = await call('pxsig_doctor', { repair: 'apply', offline: true });
+    assert.equal(r.isError, true);
+    assert.match(r.content[0].text, /`pxsig check --full` \(pid \d+, since .+\) holds the store .+: the repair did not run/);
+    assert.equal(readFileSync(manifest, 'utf8'), before);
+  } finally {
+    rmSync(lock, { force: true });
+  }
+  // Free again: the plan still runs without the lock (it writes only the ledger).
+  const plan = json(await call('pxsig_doctor', { repair: 'plan', offline: true }));
+  assert.ok(Array.isArray(plan.plan.steps));
 });

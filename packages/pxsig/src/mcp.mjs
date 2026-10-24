@@ -33,6 +33,7 @@ import { fileURLToPath } from 'node:url';
 import { CODES, filterLedger, ledgerPath, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
 import { readImage } from './lib/psig.mjs';
 import { applyRepairs, defaultHooks, planRepairs, serverStatus } from './lib/repair.mjs';
+import { acquireLock, describeLock, readLock } from './lib/lock.mjs';
 import { findWorkspace, openProject, writeRunManifest } from './lib/workspace.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -584,11 +585,30 @@ const tools = [
         repair: { type: 'string', enum: ['none', 'plan', 'apply'], default: 'none' },
         only: { type: 'array', items: { type: 'string', enum: ['register', 'recheck', 'restore-baseline-image', 'convert-legacy'] }, description: 'Limit repairs to these actions.' },
         offline: { type: 'boolean', description: 'Do not fetch the Storybook index (static scan of the story files).' },
+        stale: { type: 'boolean', description: 'Also re-check entries whose verdict is stale (a warning; left out of the repairs by default).' },
       },
       additionalProperties: false,
     },
-    async run({ project, component, status, limit = 40, repair = 'none', only, offline = false }) {
-      return doctor({ project, component, status, limit, repair, only, offline, via: 'mcp' });
+    async run({ project, component, status, limit = 40, repair = 'none', only, offline = false, stale = false }) {
+      if (repair !== 'apply') return doctor({ project, component, status, limit, repair, only, offline, stale, via: 'mcp' });
+      // Repairs write the store: through the server that holds its lock, or under the lock here.
+      const C = ctxOf(project);
+      const held = readLock(C.P);
+      if (held && !held.stale && held.holder === 'serve' && !held.foreign) {
+        const body = await http({ ...C, serverUrl: held.url ?? C.serverUrl }, '/__pxsig/repair', { method: 'POST', body: { project: C.P.name, apply: true, only, stale }, timeout: 30 * 60_000 });
+        return { ...(await doctor({ project, component, status, limit, offline, via: 'mcp' })), plan: body.plan, applied: body.applied, via: 'server' };
+      }
+      let lock;
+      try {
+        lock = acquireLock(C.P, { holder: 'pxsig_doctor repair', command: 'pxsig mcp: pxsig_doctor repair apply' });
+      } catch (e) {
+        throw new Error(`${e.lock ? describeLock(C.P, e.lock) : e.message}: the repair did not run`);
+      }
+      try {
+        return await doctor({ project, component, status, limit, repair, only, offline, stale, via: 'mcp' });
+      } finally {
+        lock.release();
+      }
     },
   },
   {
