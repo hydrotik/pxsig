@@ -17,8 +17,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22 # latest 22.x; ui:check needs 22.18+ and says so below that
-      # Files and paths only. The denylist of names never leaves the maintainer's machine: the
-      # pre-push hook (.githooks/pre-push) checks it before anything is pushed.
+      # Files and paths only. The denylist of names never leaves the maintainer's machine: /scrub
+      # checks it there after any work that read another repository (CONTRIBUTING.md).
       - run: node scripts/check-clean.mjs
       # The dashboard's UI contract: no design-system import outside the adapters; the manifest,
       # the feature catalogue, the build prompt and the reference adapter agree with the code.

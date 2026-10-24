@@ -139,7 +139,7 @@ A real design system pxsig will run on informs the contract (which components su
 typical gaps, naming conventions). It is read only to write neutral capability notes; nothing from
 it (names, code, mappings) is committed here. Notes and any reference map live in `.local/`
 (git-ignored; `check-clean` fails if anything under it is ever tracked); the maintainer's
-`.clean-terms` denylist covers that library's names. That design system's adapter is written by the
+denylist (`/scrub`) covers that library's names. That design system's adapter is written by the
 maintainer in their own environment.
 
 ## Phases
