@@ -258,7 +258,7 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Behaviour**: a surface with a border or elevation, full width of its column.
 - **Accessibility**: no landmark; the title is a heading.
 - **Mapping questions**: Card, panel or tile: which one holds tables and charts?
-- **Acceptance**: Overview's "Open items" sits on a card. Required.
+- **Acceptance**: Overview's "Open Items" sits on a card. Required.
 
 ### `CardHeader`
 

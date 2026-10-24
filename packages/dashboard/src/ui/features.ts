@@ -86,7 +86,7 @@ export const FEATURES: Feature[] = [
   {
     id: 'overview.open-items',
     section: 'overview',
-    title: 'Open items',
+    title: 'Open Items',
     purpose: 'What needs a decision, one row per kind (changed, new, rejected, render errors, coverage errors, accessibility, flaky), each with its action.',
     states: { empty: 'A line saying nothing is open; the rows stay, at zero.' },
     interactions: [{ action: 'Start a review, or view the entries, from a row' }],
@@ -109,7 +109,7 @@ export const FEATURES: Feature[] = [
     id: 'overview.errors',
     section: 'overview',
     title: 'Errors',
-    purpose: "Render errors of the last check and coverage errors (components, setup), one row each, opening the render errors list or Coverage on that component; then the coverage banner's details and the safe repair. Shown only while there are errors.",
+    purpose: "The coverage banner's details and the safe repair first (only while there is something to repair or approve), then the render errors of the last check and coverage errors (components, setup), one row each, opening the render errors list or Coverage on that component. Shown only while there are errors.",
     states: { static: 'No repair button: a static report cannot write.' },
     interactions: [{ action: 'Open the render errors, or Coverage on a component, from a row' }, { action: 'Run the safe repair' }],
     copy: ['overview.errors', 'coverage.banner', 'coverage.headline'],
@@ -119,7 +119,7 @@ export const FEATURES: Feature[] = [
   {
     id: 'overview.changed-runs',
     section: 'overview',
-    title: 'Changed entries per run',
+    title: 'Changed Entries per Run',
     purpose: 'The Runs chart of changed entries per recorded run, as a line, in the right column.',
     states: { empty: 'Without recorded runs the chart is not shown.' },
     interactions: [{ action: 'Read a value from the chart tooltip' }],
@@ -130,7 +130,7 @@ export const FEATURES: Feature[] = [
   {
     id: 'overview.stale',
     section: 'overview',
-    title: 'Stale entries by component',
+    title: 'Stale Entries by Component',
     purpose: 'A heatmap of the components with stale verdicts: one tile per component, coloured by its share of stale entries in five steps, with the count on the tile, highest share first. The Overview shows the first 12, Coverage all of them.',
     states: { empty: 'No stale entries: a line saying so.' },
     interactions: [{ action: 'Open Coverage on a component from its tile' }, { action: 'View all on Coverage' }],

@@ -84,7 +84,7 @@ Copy: `overview.cards`, `empty.noCheck`
 
 Files: `src/views/Overview`, `src/parts/Affordance`
 
-### Open items
+### Open Items
 
 `overview.open-items` · What needs a decision, one row per kind (changed, new, rejected, render errors, coverage errors, accessibility, flaky), each with its action.
 
@@ -114,7 +114,7 @@ Files: `src/views/Overview`
 
 ### Errors
 
-`overview.errors` · Render errors of the last check and coverage errors (components, setup), one row each, opening the render errors list or Coverage on that component; then the coverage banner's details and the safe repair. Shown only while there are errors.
+`overview.errors` · The coverage banner's details and the safe repair first (only while there is something to repair or approve), then the render errors of the last check and coverage errors (components, setup), one row each, opening the render errors list or Coverage on that component. Shown only while there are errors.
 
 States:
 
@@ -131,7 +131,7 @@ Copy: `overview.errors`, `coverage.banner`, `coverage.headline`
 
 Files: `src/views/Overview`, `src/views/Integrity`
 
-### Changed entries per run
+### Changed Entries per Run
 
 `overview.changed-runs` · The Runs chart of changed entries per recorded run, as a line, in the right column.
 
@@ -149,7 +149,7 @@ Copy: `runs.changed`
 
 Files: `src/parts/RunCharts`, `src/parts/Charts`
 
-### Stale entries by component
+### Stale Entries by Component
 
 `overview.stale` · A heatmap of the components with stale verdicts: one tile per component, coloured by its share of stale entries in five steps, with the count on the tile, highest share first. The Overview shows the first 12, Coverage all of them.
 

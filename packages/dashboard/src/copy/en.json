@@ -82,7 +82,7 @@
     "noCheck": "No check results. Run {command}."
   },
   "overview": {
-    "openItems": "Open items",
+    "openItems": "Open Items",
     "noOpenItems": "No open items.",
     "columns": {
       "item": "Item",
@@ -238,7 +238,7 @@
       "warnings": "Warnings"
     },
     "table": {
-      "title": "Coverage by component",
+      "title": "Coverage by Component",
       "sourceStorybook": "Source: Storybook index, {count} stories in scope. Updated {date}.",
       "sourceStatic": "Source: static scan of story files, {count} stories in scope. Updated {date}.",
       "withIssues": "With issues ({count})",
@@ -252,7 +252,7 @@
       "clearOnly": "Show the components with issues"
     },
     "stale": {
-      "title": "Stale entries by component",
+      "title": "Stale Entries by Component",
       "description": {
         "one": "{count} of {total} components has stale entries. Highest share first.",
         "other": "{count} of {total} components have stale entries. Highest share first."
@@ -396,7 +396,7 @@
   },
   "runs": {
     "latest": {
-      "title": "Last check timing",
+      "title": "Last Check Timing",
       "render": "Render",
       "pages": {
         "one": "{count} page",
@@ -409,7 +409,7 @@
       "allEntries": "All entries"
     },
     "changed": {
-      "title": "Changed entries per run",
+      "title": "Changed Entries per Run",
       "description": {
         "one": "{count} run.",
         "other": "{count} runs."
@@ -417,7 +417,7 @@
       "series": "Changed"
     },
     "engine": {
-      "title": "Engine time per run",
+      "title": "Engine Time per Run",
       "description": "Milliseconds.",
       "series": "Engine (ms)"
     },
@@ -441,7 +441,7 @@
       "performance": "Performance"
     },
     "detection": {
-      "title": "Detection rate by suite",
+      "title": "Detection Rate by Suite",
       "description": "Share of changed renders that failed the gate, per suite. Noise scenarios report false positives.",
       "whole": "Whole-image signature",
       "shipped": "Signature and detail channel",
@@ -486,7 +486,7 @@
       "empty": "No grid calibration. Run {command}.",
       "suite": "Calibration suite",
       "noGrids": "The {suite} calibration has no grids.",
-      "gridTitle": "{suite}: detection rate by signature grid",
+      "gridTitle": "{suite}: Detection Rate by Signature Grid",
       "gridDescription": "{renders} saved renders, {cells}. Whole-image signature only. Rules with a false positive on any noise scenario are excluded.",
       "minCell": "minimum cell {px} px",
       "fixedGrids": "fixed grids",
@@ -498,7 +498,7 @@
       "calibrated": "≥ 2 cells over 32",
       "falsePositives": "False positives",
       "best": "Best rule without false positives",
-      "detailTitle": "Detail channel: {count} saved renders",
+      "detailTitle": "Detail Channel: {count} Saved Renders",
       "detailDescription": "Signature gate: {sig} detected. With the detail rule: {best} detected, no false positives. Sweep time {ms} ms.",
       "build": "Tile / block / selection",
       "rule": "Rule",
@@ -525,7 +525,7 @@
       "memory": "Peak memory, batch check",
       "binary": "Binary size",
       "fullCheck": "Last full check",
-      "renderTitle": "Render time per story by page count",
+      "renderTitle": "Render Time per Story by Page Count",
       "renderDescription": "{count} stories per run.",
       "renderSeries": "ms per story",
       "pages": {
@@ -539,14 +539,14 @@
       "errors": "Errors",
       "reloads": "Reloads",
       "noRender": "No render timings. Benchmarks run with {flag} skip them.",
-      "threadsTitle": "Batch check by thread count",
+      "threadsTitle": "Batch Check by Thread Count",
       "threadsDescription": "Same renders and verdicts at each thread count. Wall: the whole process. Engine: time reported by the engine.",
       "threads": "Threads",
       "wallMs": "Wall (ms)",
       "engineMs": "Engine (ms)",
       "vsOneThread": "vs 1 thread",
       "noThreads": "No batch-check timings.",
-      "perCallTitle": "Single compare: CLI process vs server",
+      "perCallTitle": "Single Compare: CLI Process vs Server",
       "perCallDescription": "Median over {count} entries. The CLI starts a process per compare; {command} keeps one engine running.",
       "perCallSeries": "ms per compare",
       "cli": "CLI process",
@@ -568,7 +568,7 @@
       "formatValue": ".psig, signature spec v1"
     },
     "statuses": {
-      "title": "Result statuses",
+      "title": "Result Statuses",
       "pass": "Within the gate.",
       "changed": "Differs from the baseline beyond the gate. Approve or reject.",
       "new": "No baseline. Approving the first render creates one.",
@@ -580,11 +580,11 @@
       "description": "The badge on each card and in the inspector header. The card's left edge uses the same colour."
     },
     "coverage": {
-      "title": "Coverage statuses",
+      "title": "Coverage Statuses",
       "description": "Shown in the Coverage section, and as extra badges on a card when an entry has a coverage issue."
     },
     "keys": {
-      "title": "Keyboard shortcuts",
+      "title": "Keyboard Shortcuts",
       "description": "In the inspector.",
       "mode": "Compare mode",
       "fit": "Fit to view",
@@ -685,7 +685,7 @@
       }
     },
     "a11y": {
-      "title": "Accessibility checks",
+      "title": "Accessibility Checks",
       "description": "How axe results are collected, compared and accepted.",
       "rows": {
         "scan": {
@@ -716,7 +716,7 @@
       "reviewButton": "Review",
       "status": "Status",
       "cards": "Latest check",
-      "openItems": "Open items",
+      "openItems": "Open Items",
       "badge": "Status",
       "flags": "Coverage",
       "progress": "Review progress",
@@ -733,7 +733,7 @@
       "sigs": "Signatures"
     },
     "affordance": {
-      "title": "Card icons",
+      "title": "Card Icons",
       "description": "A clickable card shows what it does with one arrow in its top-right corner.",
       "filter": {
         "term": "Filter",
@@ -852,7 +852,7 @@
     "sections": {
       "view": "View",
       "pixel": "Pixel",
-      "changes": "Pixel changes",
+      "changes": "Pixel Changes",
       "metrics": "Metrics",
       "a11y": "Accessibility ({count})",
       "files": "Files"

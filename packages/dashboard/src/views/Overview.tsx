@@ -38,9 +38,10 @@ interface ErrorRow {
 }
 
 /**
- * The errors card, at the top of the right column only while there are errors: render errors of
- * the last check and coverage errors (components and setup), each row opening where it is fixed,
- * then the coverage banner's own details and actions (the banner stays off this page meanwhile).
+ * The errors card, at the top of the right column only while there are errors: first the coverage
+ * banner's own details and actions (the banner stays off this page meanwhile), so a repair is in
+ * view; then the render errors of the last check and coverage errors (components and setup), each
+ * row opening where it is fixed.
  */
 function ErrorsCard({ data, renderErrors, go, startReview }: { data: Data; renderErrors: Row[]; go(tab: string, filter?: string): void; startReview(kind: Queue): void }) {
   const L = data.integrity;
@@ -72,6 +73,19 @@ function ErrorsCard({ data, renderErrors, go, startReview }: { data: Data; rende
       </CardHeader>
       <CardContent>
         <div className={s.stack}>
+          {/* What to do first (repair, approve, open the render errors), the rows to read last. */}
+          {renderErrors.length ? (
+            <span className={s.row}>
+              <Button size="sm" emphasis="outline" onClick={() => go('stories', 'error')}>
+                {t('overview.errors.viewRender', { count: renderErrors.length })}
+              </Button>
+            </span>
+          ) : null}
+          {coverage ? (
+            <div className={s.small}>
+              <CoverageDetails data={data} go={go} startReview={startReview} />
+            </div>
+          ) : null}
           {shown.length ? (
             <DataTable
               rows={shown}
@@ -86,18 +100,6 @@ function ErrorsCard({ data, renderErrors, go, startReview }: { data: Data; rende
             />
           ) : null}
           {rows.length > shown.length ? <span className={s.muted}>{t('overview.errors.more', { count: rows.length - shown.length })}</span> : null}
-          {renderErrors.length ? (
-            <span className={s.row}>
-              <Button size="sm" emphasis="outline" onClick={() => go('stories', 'error')}>
-                {t('overview.errors.viewRender', { count: renderErrors.length })}
-              </Button>
-            </span>
-          ) : null}
-          {coverage ? (
-            <div className={s.small}>
-              <CoverageDetails data={data} go={go} startReview={startReview} />
-            </div>
-          ) : null}
         </div>
       </CardContent>
     </Card>
