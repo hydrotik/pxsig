@@ -9,7 +9,7 @@ resolver = "2"
 members = ["crates/pxsig-core", "crates/pxsig-cli"]
 
 [workspace.package]
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 license = "MIT"
 authors = ["Donovan Adams (Hydrotik LLC)"]
