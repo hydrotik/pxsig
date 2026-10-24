@@ -610,7 +610,7 @@ const tools = [
  * The doctor: reconcile, write the ledger, and (optionally) plan or apply the safe repairs.
  * Shared by `pxsig_doctor` and `pxsig doctor`; the CLI adds the TTY-only prune itself.
  */
-async function doctor({ project, component, status, limit = 40, repair = 'none', only, offline = false, via = 'mcp', confirmPrune = null, prune = false } = {}) {
+async function doctor({ project, component, status, limit = 40, repair = 'none', only, offline = false, via = 'mcp', confirmPrune = null, prune = false, stale = false } = {}) {
   const C = ctxOf(project);
   const ctx = resolveContext(C.P);
   const serverUrl = C.serverUrl;
@@ -619,7 +619,7 @@ async function doctor({ project, component, status, limit = 40, repair = 'none',
   const out = { project: C.P.name, ledgerPath: relative(C.root, ledgerPath(ctx)) };
   if (repair !== 'none') {
     const server = await serverStatus(serverUrl);
-    const plan = planRepairs(ledger, { only, prune: prune && !!confirmPrune, server });
+    const plan = planRepairs(ledger, { only, prune: prune && !!confirmPrune, server, stale });
     out.plan = plan;
     if (repair === 'apply') {
       const hooks = { ...defaultHooks(ctx, { serverUrl }), confirmPrune };

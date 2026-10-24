@@ -41,9 +41,10 @@
  *   doctor [--component x] [--status code,…] [--ci] [--fail-on error|warn|info] [--offline] [--limit 40]
  *                               integrity per component: unregistered stories, never-checked entries, missing
  *                               baseline images / renders, render errors, stale verdicts, orphans (docs/integrity.md)
- *   doctor --repair [--only register,recheck,restore-baseline-image,convert-legacy] [--apply] [--prune]
+ *   doctor --repair [--only register,recheck,restore-baseline-image,convert-legacy] [--apply] [--prune] [--stale]
  *                               the safe repairs: a dry-run plan, or with --apply run them. Never changes a
- *                               signature or approves; --prune (a person at a terminal) moves orphans to trash/
+ *                               signature or approves; --prune (a person at a terminal) moves orphans to trash/;
+ *                               --stale also re-checks stale verdicts (left out by default)
  *   approve plan|apply|log|undo|verify
  *                               the guarded bulk approval (src/approve.mjs): plan classifies colour vs shape
  *                               changes and pins render hashes (--new: first baselines); apply is for a
@@ -225,7 +226,7 @@ async function doctorOne({ repair, only, failOn }) {
     try {
       if (viaServer) {
         // The server holds the store: its queue runs the repairs; then reconcile here to report.
-        const res = await fetch(`${viaServer}/__pxsig/repair`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ project: current, apply: true, only: only.length ? only : undefined }) });
+        const res = await fetch(`${viaServer}/__pxsig/repair`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ project: current, apply: true, only: only.length ? only : undefined, stale: !!flags.stale }) });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error ?? `the server refused the repair (HTTP ${res.status})`);
         r = { ...(await doctor({ project: current, component: typeof flags.component === 'string' ? flags.component : undefined, status: typeof flags.status === 'string' ? flags.status : undefined, limit: Number(flags.limit) || 40, offline: !!flags.offline })), plan: body.plan, applied: body.applied };
@@ -238,6 +239,7 @@ async function doctorOne({ repair, only, failOn }) {
         repair,
         only: only.length ? only : undefined,
         offline: !!flags.offline,
+        stale: !!flags.stale,
         via: 'cli',
         prune: !!flags.prune,
         confirmPrune: flags.prune

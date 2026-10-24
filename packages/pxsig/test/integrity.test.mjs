@@ -29,7 +29,8 @@ import {
 } from '../src/lib/integrity.mjs';
 import { storybookSentinel } from '../src/lib/capture.mjs';
 import { readSection } from '../src/lib/psig.mjs';
-import { applyRepairs, guardWrite, planRepairs, pruneOrphans, registerStories, restoreBaselineImages } from '../src/lib/repair.mjs';
+import { applyRepairs, guardWrite, planRepairs, pruneOrphans, registerNamed, registerStories, restoreBaselineImages } from '../src/lib/repair.mjs';
+import { writeFileSync } from 'node:fs';
 import { fixture, hashSignatures, hashTree, hasRust, rustBin } from './fixture.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -157,7 +158,13 @@ test('the plan orders register → recheck → restore, lists what needs a perso
   assert.deepEqual(plan.steps.map((s) => s.action), ['register', 'recheck', 'restore-baseline-image', 'convert-legacy']);
   assert.deepEqual(plan.steps[0].ids, [f.ids.unregistered]);
   assert.deepEqual(plan.steps[3].ids, [f.ids.legacy]);
-  assert.ok(plan.steps[1].ids.includes(f.ids.never) && plan.steps[1].ids.includes(f.ids.stale) && plan.steps[1].ids.includes(f.ids.noRender));
+  assert.ok(plan.steps[1].ids.includes(f.ids.never) && plan.steps[1].ids.includes(f.ids.noRender));
+  assert.equal(plan.steps[0].recheckAfter, true, 'register hands what it adds to the re-check step');
+  // A stale verdict is a warning: re-checked only when asked (or when a later step gates on it).
+  assert.ok(!plan.steps[1].ids.includes(f.ids.stale), 'stale verdicts are not re-checked by default');
+  assert.ok(plan.manual.some((m) => m.code === 'stale'), 'stale is listed for a person instead');
+  assert.ok(planRepairs(led, { server: { up: true }, stale: true }).steps[1].ids.includes(f.ids.stale), 'stale: true re-checks them');
+  assert.ok(!plan.steps[1].ids.includes(f.ids.gone), 'an orphaned entry is never re-rendered');
   assert.ok(plan.manual.some((m) => m.code === 'changed') && plan.manual.some((m) => m.code === 'orphaned'));
   assert.deepEqual(planRepairs(led, { only: ['register'] }).steps.map((s) => s.action), ['register']);
   // Without a healthy Storybook, register is blocked (parameters are read from it).
@@ -183,6 +190,90 @@ test('register adds new stories without signatures, keeps existing entries, back
   assert.equal(hashTree(join(f.px, 'baselines')), baselines);
   const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
   assert.equal(statusOf(led, f.ids.unregistered), 'unbaselined', 'now NEW, waiting for a person');
+});
+
+test('one repair run registers a new story and renders its entries; the count is what was recorded', async () => {
+  const f = fixture({ withSigs: false });
+  const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
+  const plan = planRepairs(led, { server: { up: true }, only: ['register', 'recheck'] });
+  const checkPath = join(f.px, 'reports', 'check.json');
+  const asked = [];
+  const res = await applyRepairs(f.ctx, plan, {
+    by: 't',
+    via: 't',
+    reconcileOpts: { index: f.index, affected: f.affected },
+    hooks: {
+      harvest: async (ids) => Object.fromEntries(ids.map((id) => [id, { pxsig: { states: [{ name: 'open', action: 'click', target: 'button' }] }, tags: [] }])),
+      // A stand-in for the server queue: records a fresh row for all but the first id.
+      recheck: async (ids) => {
+        asked.push(...ids);
+        const check = JSON.parse(readFileSync(checkPath, 'utf8'));
+        const now = new Date().toISOString();
+        for (const id of ids.slice(1)) check.rows = [...check.rows.filter((r) => r.id !== id), { id, story: id, pass: false, new: true, checkedAt: now }];
+        writeFileSync(checkPath, JSON.stringify(check));
+        return { via: 'stub' };
+      },
+    },
+  });
+  assert.ok(asked.includes(f.ids.unregistered) && asked.includes(`${f.ids.unregistered}__open`), 'the registered entries are rendered in the same run');
+  const rc = res.steps.find((s) => s.action === 'recheck');
+  assert.equal(rc.recorded, asked.length - 1);
+  assert.match(rc.result, new RegExp(`^${asked.length - 1} of ${asked.length} entries re-checked`));
+});
+
+test('a failed re-check is reported as failed, not as re-checked', async () => {
+  const f = fixture({ withSigs: false });
+  const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
+  const plan = planRepairs(led, { server: { up: true }, only: ['recheck'] });
+  const res = await applyRepairs(f.ctx, plan, { by: 't', via: 't', reconcileOpts: { index: f.index, affected: f.affected }, hooks: { recheck: async () => { throw new Error('setup error: Storybook is not reachable'); } } });
+  assert.match(res.steps[0].result, /^not re-checked: setup error/);
+  const log = readFileSync(join(f.px, 'reports', 'repairs.ndjson'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  assert.equal(log.at(-1).result, 'failed');
+});
+
+test('register survives a story whose parameters cannot be read, and logs an adopted signature', async () => {
+  const f = fixture({ withSigs: false });
+  // A second new story, whose entry path already holds a signature (a story renamed back).
+  writeFileSync(join(f.repo, 'src/components/Gamma/Gamma.stories.tsx'), readFileSync(join(f.repo, 'src/components/Gamma/Gamma.stories.tsx'), 'utf8').replace('export const NewOne', 'export const Back: Story = {};\nexport const NewOne'));
+  const back = 'components-gamma--back';
+  writeFileSync(join(f.px, 'baselines', 'components', 'Gamma', `${back}.psig`), 'old');
+  const index = { ...f.index, stories: scanStories(f.ctx) };
+  const led = await reconcile(f.ctx, { index, affected: f.affected });
+  const plan = planRepairs(led, { server: { up: true }, only: ['register'] });
+  assert.deepEqual(plan.steps[0].ids.sort(), [back, f.ids.unregistered].sort());
+  const res = await applyRepairs(f.ctx, plan, {
+    by: 't',
+    via: 't',
+    reconcileOpts: { index, affected: f.affected },
+    hooks: { harvest: async (ids) => Object.fromEntries(ids.map((id) => [id, id === f.ids.unregistered ? { error: 'loadStory threw' } : { pxsig: {}, tags: [] }])) },
+  });
+  assert.deepEqual(res.steps[0].added, [back], 'the readable story is registered');
+  assert.deepEqual(res.steps[0].failed.map((x) => x.id), [f.ids.unregistered]);
+  assert.match(res.steps[0].result, /1 failed, 1 existing signatures adopted/);
+  const log = readFileSync(join(f.px, 'reports', 'repairs.ndjson'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  assert.ok(log.some((l) => l.id === f.ids.unregistered && l.result === 'failed' && /loadStory threw/.test(l.error)));
+  assert.ok(log.some((l) => l.id === back && /adopted the existing signature/.test(l.result)));
+  assert.equal(statusOf(res.ledger, f.ids.unregistered), 'unregistered', 'still reported, for the next run');
+});
+
+test('registerNamed registers a named story that is not in the manifest, or says why not', async () => {
+  const f = fixture({ withSigs: false });
+  const harvest = async (ids) => Object.fromEntries(ids.map((id) => [id, { pxsig: {}, tags: [] }]));
+  const r = await registerNamed(f.ctx, [f.ids.unregistered, f.ids.ok, 'components-alpha--default@light', 'nope--missing', 'internal-helpers--default'], { index: f.index, harvest, by: 't', via: 'test' });
+  assert.deepEqual(r.added, [f.ids.unregistered]);
+  assert.deepEqual(r.stories, [f.ids.unregistered]);
+  const why = Object.fromEntries(r.skipped.map((x) => [x.name, x.why]));
+  assert.equal(why[f.ids.ok], undefined, 'a registered story is not skipped: it is simply selected');
+  assert.match(why['components-alpha--default@light'], /no such entry: story components-alpha--default is registered with/);
+  assert.match(why['nope--missing'], /not in the manifest or the Storybook story index/);
+  assert.match(why['internal-helpers--default'], /config\.nonVisual/);
+  const log = readFileSync(join(f.px, 'reports', 'repairs.ndjson'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  assert.ok(log.some((l) => l.action === 'register' && l.id === f.ids.unregistered && l.via === 'test'));
+  // Without a live index nothing is registered, and the reason says what is needed.
+  const f2 = fixture({ withSigs: false });
+  const off = await registerNamed(f2.ctx, [f2.ids.unregistered], { index: { source: 'static', storybook: { error: 'unreachable: ECONNREFUSED' }, stories: f2.index.stories }, harvest });
+  assert.deepEqual(off.added, []);
+  assert.match(off.skipped[0].why, /healthy Storybook \(unreachable: ECONNREFUSED\)/);
 });
 
 test('restore: only when the latest render passes the signature gate; otherwise flagged with the reconstruction', { skip: !hasRust && 'Rust binary not built' }, async () => {
