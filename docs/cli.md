@@ -221,6 +221,10 @@ The guarded way to accept many changes at once. Every approval, from any surface
 `<store>/approvals.ndjson` with who, when, how, why, the batch, the git HEAD, and the sha256 of the
 baseline before and after. The replaced baseline is kept in `<store>/history/<batch>/`.
 
+Approvals are a person's: in the dashboard, or with `pxsig approve` in a terminal. The server
+refuses an agent or a script posting to it (see [server.md](server.md#guards)). Who must review a
+baseline change in a pull request is set by the code host: see [codeowners.md](codeowners.md).
+
 | Subcommand | Meaning |
 | --- | --- |
 | `plan <ids…> --reason "…"` | Classify each changed entry as a `colour` change (content in place) or a `shape` change (moved, added, removed, resized). Shape changes are blocked unless named in `--allow-shape id,id`. Stale verdicts and entries not in state `changed` or `new` are blocked. Pins the sha256 of every render and baseline. Writes `<store>/reports/approval-plan.json`. Safe for anyone. |

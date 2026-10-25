@@ -19,3 +19,6 @@ npx pxsig manifest --project ui && npx pxsig manifest --project forms
 npx pxsig check --full --project ui
 npx pxsig serve                      # one dashboard for both projects
 ```
+
+`.github/CODEOWNERS` routes baseline changes to two teams: the design team owns the stores and
+`Button`, the forms team owns `TextField`. See [docs/codeowners.md](../../docs/codeowners.md).

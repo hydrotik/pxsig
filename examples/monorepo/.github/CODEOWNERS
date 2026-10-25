@@ -1,0 +1,26 @@
+# Baseline owners for this example workspace (docs/codeowners.md).
+# GitHub reads CODEOWNERS only at a repository's root, docs/ or .github/: this file takes effect
+# when the example is its own repository.
+# Later lines win: broad rules first, component rules after them.
+
+# Every pxsig file in a store: the design team by default.
+/packages/ui/.pxsig/                       @org/design-team
+/packages/forms/.pxsig/                    @org/design-team
+/packages/forms/src/**/__pxsig__/          @org/design-team
+
+# Files every approval touches: either team may review them.
+/packages/ui/.pxsig/approvals.ndjson       @org/design-team @org/forms-team
+/packages/ui/.pxsig/manifest*.json         @org/design-team @org/forms-team
+/packages/ui/.pxsig/a11y*                  @org/design-team @org/forms-team
+/packages/forms/.pxsig/approvals.ndjson    @org/design-team @org/forms-team
+/packages/forms/.pxsig/manifest*.json      @org/design-team @org/forms-team
+/packages/forms/.pxsig/a11y*               @org/design-team @org/forms-team
+
+# Component baselines: `ui` uses the package layout, `forms` the colocated one.
+/packages/ui/.pxsig/baselines/Button/      @org/design-team
+/packages/forms/src/TextField/__pxsig__/   @org/forms-team
+
+# The gate, the registry and this file.
+/packages/*/pxsig.config.json              @org/design-team
+/pxsig.workspace.json                      @org/design-team
+/.github/CODEOWNERS                        @org/design-team

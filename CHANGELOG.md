@@ -5,6 +5,15 @@ semantic versioning.
 
 ## Unreleased
 
+### Documentation
+
+- **Recipes for teams and CI.** [docs/codeowners.md](docs/codeowners.md) maps baseline folders to
+  `CODEOWNERS` so a baseline change needs its team's review, with an example in
+  `examples/monorepo`; [docs/required-checks.md](docs/required-checks.md) makes the check a
+  required status, with branch protection and a `merge_group` workflow that always runs and
+  selects inside the job; [docs/local-ci.md](docs/local-ci.md) runs the same steps on a machine
+  and posts commit statuses. `docs/ci.md` now gives `pxsig report`'s failure exit as 2.
+
 ### Security
 
 - **The server's decision routes need a person.** `pxsig approve apply` refuses to run when output

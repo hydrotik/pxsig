@@ -113,6 +113,11 @@ Notes on the example:
 - `pxsig doctor --ci` exits 1 on any error-severity code, 2 on a setup error such as a broken
   Storybook index.
 
+A pull request that changes only baselines selects no entries through `--since`: the import graph
+does not reach `.psig` files. [required-checks.md](required-checks.md) checks the whole project in
+that case, makes the job a required check, and runs it in a merge queue.
+[local-ci.md](local-ci.md) runs the same steps on a machine without hosted CI.
+
 ## Reports
 
 | File | Use |
@@ -141,4 +146,4 @@ the fonts a story uses are loaded by Storybook rather than taken from the system
 | --- | --- | --- | --- |
 | `pxsig check --full` | pass | changed, new or render error | setup error |
 | `pxsig doctor --ci` | no error-severity codes | error-severity codes | setup error |
-| `pxsig report` | written | dashboard not built, or no project | |
+| `pxsig report` | written | | dashboard not built, no project, or output not writable |

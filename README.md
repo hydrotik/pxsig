@@ -134,6 +134,9 @@ include it (see [packages/dashboard/README.md](packages/dashboard/README.md)).
 | MCP server | [docs/mcp.md](docs/mcp.md) |
 | Storybook addon | [docs/storybook.md](docs/storybook.md) |
 | Continuous integration | [docs/ci.md](docs/ci.md) |
+| Required checks, branch protection and the merge queue | [docs/required-checks.md](docs/required-checks.md) |
+| Checks on a machine without hosted CI, as commit statuses | [docs/local-ci.md](docs/local-ci.md) |
+| Baseline owners per component with CODEOWNERS | [docs/codeowners.md](docs/codeowners.md) |
 | Moving a pre-0.2 store | [docs/migrating.md](docs/migrating.md) |
 | Architecture | [docs/architecture.md](docs/architecture.md) |
 | Design decisions | [docs/decisions.md](docs/decisions.md) |
