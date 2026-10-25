@@ -98,9 +98,11 @@ pnpm typecheck   # tsc over the dashboard and the plain example; with PXSIG_DS_S
 
 - One change per pull request, with a description of what changed and why.
 - Tests for new behaviour and for bug fixes.
-- `cargo test`, `pnpm -r test` and `node scripts/check-clean.mjs` pass.
+- `cargo test`, `pnpm -r test`, `node scripts/check-clean.mjs` and `node scripts/changelog.mjs check
+  --since origin/main` pass.
 - Update the docs in `docs/` when a command, flag, config key, file format or default changes, and
-  add a line to `CHANGELOG.md` under "Unreleased".
+  add a fragment in `changelog.d/` ([changelog.d/README.md](changelog.d/README.md)); `CHANGELOG.md`
+  itself changes only in a release.
 - **Formats are contracts.** Spec v1 records, the `.psig` container, integrity status codes and
   exit codes change only with a version bump and a migration path. Status codes are only ever
   added, never renamed.

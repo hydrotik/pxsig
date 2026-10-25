@@ -26,6 +26,21 @@ git tag v0.2.0 && git push origin v0.2.0
 A tag with a prerelease suffix (`v0.2.0-dev.0`, `v0.2.0-rc.1`) publishes under the npm dist-tag
 `next`. Any other tag publishes under `latest`.
 
+## The changelog
+
+Pull requests add fragments to `changelog.d/` ([changelog.d/README.md](../changelog.d/README.md))
+and never edit `CHANGELOG.md`; CI fails a pull request that does, unless its branch is
+`release/…`. Before tagging, on a `release/X.Y.Z` branch:
+
+```bash
+node scripts/changelog.mjs preview              # what the release section will hold
+node scripts/changelog.mjs release X.Y.Z        # merge Unreleased and every fragment; delete them
+```
+
+Then write the release's summary paragraph under its new heading, set the versions (above), and
+merge the branch before pushing the tag. `release` keeps the headings in a fixed order (Behaviour
+changes first), with the entries already under Unreleased ahead of the fragments.
+
 ## What the workflow does
 
 1. **verify**: checks the versions as above.

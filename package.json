@@ -13,6 +13,8 @@
     "test": "cargo test --workspace && pnpm --filter pxsig test",
     "test:examples": "node scripts/examples-test.mjs",
     "check:clean": "node scripts/check-clean.mjs && node --test scripts/check-clean.test.mjs",
+    "changelog:check": "node scripts/changelog.mjs check --since origin/main && node --test scripts/changelog.test.mjs",
+    "changelog:preview": "node scripts/changelog.mjs preview",
     "ui:manifest": "node scripts/ui.mjs manifest",
     "ui:gaps": "node scripts/ui.mjs gaps",
     "ui:docs": "node scripts/ui.mjs docs",
