@@ -22,13 +22,15 @@
  * No LLM, no heuristics that guess: each step has a precondition it checks right before acting.
  */
 import { spawn, spawnSync } from './spawn.mjs';
-import { constants, copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync, appendFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeRunManifest } from './workspace.mjs';
 import { componentOf, reconcile, readJson, repairLogPath, sha256File, writeJsonAtomic, SCHEMA_VERSION } from './integrity.mjs';
+import { appendLine, dropTorn } from './files.mjs';
+import { relPath } from './paths.mjs';
 
-export const ACTIONS = ['register', 'recheck', 'restore-baseline-image', 'convert-legacy', 'prune'];
+export const ACTIONS = ['register', 'recheck', 'restore-baseline-image', 'convert-legacy', 'prune', 'log-torn'];
 /** What a repair re-checks: entries with no usable verdict or render. */
 const RECHECK_CODES = ['never-checked', 'missing-render', 'render-error'];
 /** Stale verdicts are re-checked only where a later step needs a fresh render, or when asked. */
@@ -55,7 +57,7 @@ export function logRepair(ctx, line) {
   const p = guardWrite(ctx, repairLogPath(ctx));
   mkdirSync(dirname(p), { recursive: true });
   const full = { schemaVersion: SCHEMA_VERSION, at: new Date().toISOString(), ...line };
-  appendFileSync(p, `${JSON.stringify(full)}\n`);
+  appendLine(p, full);
   return full;
 }
 
@@ -68,7 +70,8 @@ const idsWith = (ledger, codes) => ledger.entries.filter((x) => x.issues.some((i
  * it cannot run here — why it is blocked. `only` limits to some actions; `prune` adds the prune step.
  */
 export function planRepairs(ledger, { only, prune = false, server = null, stale = false } = {}) {
-  const want = (a) => (!only || only.includes(a)) && (a !== 'prune' || prune);
+  // prune and log-torn change the store's own records: planned only when asked for by name.
+  const want = (a) => (!only || only.includes(a)) && (a !== 'prune' || prune) && (a !== 'log-torn' || !!only?.includes('log-torn'));
   const sb = ledger.sources.storyIndex;
   const steps = [];
   const unregistered = idsWith(ledger, ['unregistered']);
@@ -123,7 +126,18 @@ export function planRepairs(ledger, { only, prune = false, server = null, stale 
       blocked: null,
       needsPerson: true,
     });
+  const torn = ledger.setup?.find((x) => x.code === 'log-torn');
+  if (torn && want('log-torn'))
+    steps.push({
+      action: 'log-torn',
+      ids: [],
+      count: torn.count,
+      why: 'remove the approval-log lines a crash cut short (every complete line keeps its bytes); they are already left out of every reading',
+      blocked: null,
+      needsPerson: true,
+    });
   const manual = [];
+  if (torn && !want('log-torn')) manual.push({ code: 'log-torn', count: torn.count, what: 'report only: `pxsig doctor --repair --only log-torn --apply` (a person at a terminal) removes them', sample: [] });
   for (const [code, what] of [
     ['changed', 'review in the dashboard (A approves, R rejects)'],
     ...(stale ? [] : [['stale', 're-check them: `pxsig check --since <ref>`, or `pxsig doctor --repair --stale`']]),
@@ -527,6 +541,14 @@ export async function applyRepairs(ctx, plan, { hooks, via = 'cli', by = who(ctx
       }
       const r = pruneOrphans(ctx, await fresh(), step.ids, { by, via });
       done.push({ action: 'prune', result: `${r.moved.length} files moved to ${r.trash}`, ...r });
+    } else if (step.action === 'log-torn') {
+      if (!hooks.confirmTorn || !(await hooks.confirmTorn(step.count))) {
+        done.push({ action: 'log-torn', result: 'not confirmed: nothing removed' });
+        continue;
+      }
+      const n = dropTorn(guardWrite(ctx, ctx.files.approvals));
+      logRepair(ctx, { by, via, action: 'log-torn', why: step.why, result: `${n} torn line(s) removed` });
+      done.push({ action: 'log-torn', result: `${n} torn line(s) removed from ${relPath(ctx.repoRoot, ctx.files.approvals)}` });
     }
   }
   return { steps: done, ledger: await fresh() };

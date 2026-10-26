@@ -69,7 +69,7 @@ import { approveCommand } from './approve.mjs';
 import { ctxOf, doctor, imageOf, tools } from './mcp.mjs';
 import { parseArgs } from './lib/args.mjs';
 import { CODES } from './lib/integrity.mjs';
-import { acquireLock, describeLock, readLock } from './lib/lock.mjs';
+import { describeLock, readLock, takeLock } from './lib/lock.mjs';
 import { buildManifest, describeConfig, initProject, migrateLegacy } from './lib/setup.mjs';
 import { findWorkspace, flagLayer, openProject, pickProject, rustBinary, setFlagLayer } from './lib/workspace.mjs';
 import { ask, emit, humanAtTerminal, pickFormat, progress, stateCell } from './lib/term.mjs';
@@ -215,13 +215,15 @@ async function doctorOne({ repair, only, failOn }) {
       const held = readLock(P);
       if (held && !held.stale && held.holder === 'serve' && !held.foreign) {
         if (flags.prune) fail(`${describeLock(P, held)}: --prune moves files, so it cannot run beside the server; stop it first`);
+        if (only.includes('log-torn')) fail(`${describeLock(P, held)}: the server appends to the approval log, so --only log-torn cannot run beside it; stop it first`);
         viaServer = held.url ?? ctx().serverUrl;
       } else
         try {
-          lock = acquireLock(P, { holder: 'doctor --repair' });
+          lock = await takeLock(P, { holder: 'doctor --repair' });
+          lock.check();
         } catch (e) {
           spin.done(e.message, false);
-          fail(e.message, 2);
+          fail(e.message, e.exit ?? 2);
         }
     }
     try {
@@ -247,6 +249,12 @@ async function doctorOne({ repair, only, failOn }) {
           ? async (n) => {
               const phrase = `PRUNE ${n} ORPHANS`;
               return (await ask(`Move ${n} orphaned entries' files to the store trash// (nothing is deleted). Type "${phrase}" to continue: `)) === phrase;
+            }
+          : null,
+        confirmTorn: only.includes('log-torn')
+          ? async (n) => {
+              const phrase = `REMOVE ${n} TORN LINES`;
+              return (await ask(`Remove ${n} approval-log line(s) a crash cut short (every complete line is kept). Type "${phrase}" to continue: `)) === phrase;
             }
           : null,
       });
@@ -715,7 +723,9 @@ const commands = {
     if (flags.prune && !humanAtTerminal())
       fail('--prune moves files: run it yourself in a terminal (refused when piped, in CI or under an agent)', 3);
     const only = list(flags.only);
-    const ACTIONS = ['register', 'recheck', 'restore-baseline-image', 'convert-legacy'];
+    const ACTIONS = ['register', 'recheck', 'restore-baseline-image', 'convert-legacy', 'log-torn'];
+    if (only.includes('log-torn') && repair === 'apply' && !humanAtTerminal())
+      fail('--only log-torn rewrites the approval log: run it yourself in a terminal (refused when piped, in CI or under an agent)', 3);
     const bad = only.filter((a) => !ACTIONS.includes(a));
     if (bad.length) fail(`unknown repair action(s): ${bad.join(', ')} (${ACTIONS.join(', ')})`);
     const failOn = flags['fail-on'] ?? (flags.ci ? 'error' : 'warn');
@@ -829,15 +839,16 @@ const commands = {
     process.exit(r.status ?? 2);
   },
 
-  migrate() {
+  async migrate() {
     const from = typeof flags.from === 'string' ? flags.from : fail('usage: migrate --from <legacy pxsig folder> [--apply]');
     const P = openProject({ project: oneProject() });
     let lock = null;
     if (flags.apply)
       try {
-        lock = acquireLock(P, { holder: 'migrate' });
+        lock = await takeLock(P, { holder: 'migrate' });
+        lock.check();
       } catch (e) {
-        fail(e.message, 2);
+        fail(e.message, e.exit ?? 2);
       }
     let plan;
     try {

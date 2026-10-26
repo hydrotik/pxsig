@@ -53,7 +53,7 @@
  * Binds to 127.0.0.1 only.
  */
 import { execFile, spawn } from './lib/spawn.mjs';
-import { appendFileSync, createReadStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
+import { createReadStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, extname, join, resolve, sep } from 'node:path';
@@ -73,6 +73,7 @@ import { chooseDashboard } from './lib/dashboard-dir.mjs';
 import { authorize, loopbackHost, NEEDS_PERSON, newToken, pageLoad, removeToken, withToken, writeToken } from './lib/guard.mjs';
 import { fileURLToPath } from 'node:url';
 import { relPath } from './lib/paths.mjs';
+import { appendLine, writeJson } from './lib/files.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -277,7 +278,7 @@ function updateCheckRows(S, mut, fresh = new Map(), timing = null) {
     check.generatedAt = now;
   }
   S.quietUntil = Date.now() + 800;
-  writeFileSync(S.checkPath, `${JSON.stringify(check)}\n`);
+  writeJson(S.checkPath, check);
 }
 
 /**
@@ -291,14 +292,25 @@ function pruneStaleRows(S) {
   const dropped = dropStaleRows(check, S.manifest);
   if (!dropped.length) return;
   S.quietUntil = Date.now() + 800;
-  writeFileSync(S.checkPath, `${JSON.stringify(check)}\n`);
+  writeJson(S.checkPath, check);
   console.log(`[serve] ${S.name}: dropped ${dropped.length} rows no longer in the manifest (${dropped.slice(0, 3).join(', ')}${dropped.length > 3 ? ', …' : ''})`);
   broadcast('data', { project: S.name });
 }
 
 /** Writes for a project need its store lock (held for the server's life once taken). */
 function needLock(S) {
-  if (S.lock) return;
+  if (S.lock) {
+    try {
+      return S.lock.check();
+    } catch (e) {
+      // Taken over (a person did, after this server went quiet): stop writing, wait to get it back.
+      if (!(e instanceof LockError)) throw e;
+      console.error(`[serve] ${S.name}: ${e.message}`);
+      S.lock = null;
+      S.lockWait = e.message;
+      setTimeout(() => takeLock(S), 2000).unref();
+    }
+  }
   throw httpError(409, `${S.lockWait ?? 'the store lock is not held'}: this project is read-only until it is free`);
 }
 
@@ -356,7 +368,7 @@ async function approve(S, id, meta = {}) {
     const base = readJson(P.store.a11y, {});
     a11yBefore = base[id] ?? null;
     base[id] = row.a11y.violations.map((v) => v.id).sort();
-    writeFileSync(P.store.a11y, `${JSON.stringify(base, null, 2)}\n`);
+    writeJson(P.store.a11y, base, { pretty: true });
   }
   const logged = record(P, e, { batch, via: meta.via ?? 'dashboard', reason: meta.reason ?? null, kind: meta.kind ?? null, before });
   return { ...res, batch, after: logged.after, ...(a11yBefore !== undefined ? { a11yBefore } : {}) };
@@ -380,7 +392,7 @@ function unapprove(S, id, entry) {
     const base = readJson(P.store.a11y, {});
     if (entry.a11yBefore == null) delete base[id];
     else base[id] = entry.a11yBefore;
-    writeFileSync(P.store.a11y, `${JSON.stringify(base, null, 2)}\n`);
+    writeJson(P.store.a11y, base, { pretty: true });
   }
 }
 
@@ -400,7 +412,7 @@ async function review(S, action, id, meta = {}) {
   }
   else throw httpError(404, 'unknown action');
   S.quietUntil = Date.now() + 800;
-  writeFileSync(S.reviewPath, `${JSON.stringify(rv, null, 2)}\n`);
+  writeJson(S.reviewPath, rv, { pretty: true });
   console.log(`[serve] ${S.name}: ${action} ${id} (via ${meta.via ?? 'dashboard'})`);
   broadcast('review', { project: S.name, id, entry: rv[id] ?? null });
   return rv[id] ?? null;
@@ -481,10 +493,10 @@ async function runChecks(S) {
       const a11yBase = readJson(P.store.a11y, null);
       const rv = readJson(S.reviewPath, {});
       for (const id of ids) delete rv[id]; // a fresh verdict replaces a decision on the old one
-      writeFileSync(S.reviewPath, `${JSON.stringify(rv, null, 2)}\n`);
+      writeJson(S.reviewPath, rv, { pretty: true });
       const av = readJson(S.a11yReviewPath, {});
       for (const id of ids) delete av[id];
-      writeFileSync(S.a11yReviewPath, `${JSON.stringify(av, null, 2)}\n`);
+      writeJson(S.a11yReviewPath, av, { pretty: true });
       const fresh = new Map(entries.map((e) => [e.id, buildRow(e, byId.get(e.id), renders.get(e.id), a11yBase, manifest)]));
       const full = entries.length === manifest.stories.length;
       const timing = full ? { concurrency, renderWallMs: wallMs, pageLoads: reloads, rustEngineMs: res.summary.elapsedMs, totalMs: performance.now() - t0 } : null;
@@ -512,8 +524,8 @@ async function runChecks(S) {
 // accepted list (<store>/a11y.json); rejecting marks them for a fix. Both last until the next
 // check of the entry, like review.json. Every accept and undo is logged beside a11y.json.
 
-const a11yLog = (P, line) => appendFileSync(join(dirname(P.store.a11y), 'a11y-decisions.ndjson'), `${JSON.stringify(line)}\n`);
-const writeA11y = (P, base) => writeFileSync(P.store.a11y, `${JSON.stringify(base, null, 2)}\n`);
+const a11yLog = (P, line) => appendLine(join(dirname(P.store.a11y), 'a11y-decisions.ndjson'), line);
+const writeA11y = (P, base) => writeJson(P.store.a11y, base, { pretty: true });
 
 function a11yReview(S, action, id, meta = {}) {
   needLock(S);
@@ -558,7 +570,7 @@ function a11yReview(S, action, id, meta = {}) {
     delete av[id];
   } else throw httpError(404, 'unknown action');
   S.quietUntil = Date.now() + 800;
-  writeFileSync(S.a11yReviewPath, `${JSON.stringify(av, null, 2)}\n`);
+  writeJson(S.a11yReviewPath, av, { pretty: true });
   console.log(`[serve] ${S.name}: ${action} ${id} (via ${via})`);
   broadcast('review', { project: S.name, id, a11y: av[id] ?? null });
   return av[id] ?? null;
@@ -983,7 +995,7 @@ function listen(port, tries = 10) {
     if (recorded?.pid && recorded.pid !== process.pid && alive(recorded.pid)) console.log(`[serve] ${relPath(ws.root, info)} names the running server at ${recorded.url} (pid ${recorded.pid}): left as it is`);
     else {
       mkdirSync(dirname(info), { recursive: true });
-      writeFileSync(info, `${JSON.stringify({ url, pid: process.pid, startedAt: new Date().toISOString(), projects: [...states.keys()] }, null, 2)}\n`);
+      writeJson(info, { url, pid: process.pid, startedAt: new Date().toISOString(), projects: [...states.keys()] }, { pretty: true });
     }
     for (const S of states.values()) S.lock?.update({ url });
     mkdirSync(dirname(info), { recursive: true });
