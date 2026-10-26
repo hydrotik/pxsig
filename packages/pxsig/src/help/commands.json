@@ -610,9 +610,9 @@
           ]
         },
         "log": {
-          "summary": "Approvals by batch.",
+          "summary": "Approvals by batch; --trace adds the commit and pull request each came in by.",
           "usage": [
-            "pxsig approve log [--limit 10]"
+            "pxsig approve log [--limit 10] [--trace]"
           ],
           "flags": [
             {
@@ -620,6 +620,10 @@
               "value": "n",
               "default": "10",
               "meaning": "Batches shown."
+            },
+            {
+              "name": "trace",
+              "meaning": "For each batch, the commit that added its log lines and the pull request that merged it (from git). Shows no names: the commit and the PR say who."
             }
           ],
           "effects": [
@@ -633,6 +637,10 @@
             {
               "cmd": "pxsig approve log",
               "shows": "Recent approval batches"
+            },
+            {
+              "cmd": "pxsig approve log --trace",
+              "shows": "Which commit and pull request brought in each approval"
             }
           ]
         },
@@ -659,14 +667,32 @@
           ]
         },
         "verify": {
-          "summary": "Baselines whose bytes differ from their last logged approval, baselines with none, and approvals a crash interrupted.",
+          "summary": "Baselines whose bytes differ from their last logged approval, baselines with no log line (strict, the default), approvals a crash interrupted, and with --since a rewritten log.",
           "usage": [
-            "pxsig approve verify [--adopt]"
+            "pxsig approve verify [--no-strict] [--since <ref>] [--suite <name> | --all-suites] [--adopt]"
           ],
           "flags": [
             {
+              "name": "no-strict",
+              "meaning": "Report baselines with no log line without failing (the default before 0.4.0)."
+            },
+            {
+              "name": "since",
+              "value": "ref",
+              "meaning": "Also fail when approvals.ndjson at the merge base with <ref> is not a byte prefix of today's (the log was rewritten), or when there is no merge base."
+            },
+            {
+              "name": "suite",
+              "value": "name",
+              "meaning": "Verify that suite's manifest instead of the main one."
+            },
+            {
+              "name": "all-suites",
+              "meaning": "Verify the main manifest and every suite; a suite whose manifest is not in this checkout is listed as not committed."
+            },
+            {
               "name": "adopt",
-              "meaning": "Log the current baselines as the starting point. A person at a terminal."
+              "meaning": "Log the current baselines (of the manifests named by --suite / --all-suites, else the main one) as the starting point. A person at a terminal."
             }
           ],
           "effects": [
@@ -676,14 +702,18 @@
           ],
           "exits": {
             "0": "Every baseline matches the log",
-            "1": "A mismatch or an interrupted approval, or --adopt not confirmed",
-            "2": "Usage or setup error",
+            "1": "A mismatch, an interrupted approval, a baseline with no log line (unless --no-strict), a rewritten log or no merge base (--since), or --adopt not confirmed",
+            "2": "Usage or setup error, or --since is not a commit",
             "3": "--adopt without a person at a terminal"
           },
           "examples": [
             {
               "cmd": "pxsig approve verify",
               "shows": "Whether every baseline went through an approval"
+            },
+            {
+              "cmd": "pxsig approve verify --all-suites --since origin/main",
+              "shows": "The CI step: every suite, and the log only appended to in this pull request"
             }
           ]
         }

@@ -82,6 +82,8 @@ Problems with the setup sit outside the entries, in `setup`:
 | `storybook-unreachable` | info | Storybook did not answer; the static scan was used. |
 | `line-endings` | warn | A store record (manifest, `approvals.ndjson`, `a11y.json`) is checked out with CRLF line endings, or git does not treat `.psig` files as binary. Both happen on Windows without the store's `.gitattributes` (`pxsig init` writes it for new stores). The reason names the fix. |
 | `log-torn` | warn | Lines of `approvals.ndjson` a crash cut short (a write that never got its newline). Every reading leaves them out; `pxsig doctor --repair --only log-torn --apply` (a person at a terminal) removes them. |
+| `verify-unlogged` | warn | Baselines with no line in `approvals.ndjson`. `pxsig approve verify` fails on them (strict by default since 0.4.0). For baselines from before pxsig kept a log, a person runs `pxsig approve verify --adopt` once ([migrating.md](migrating.md)). |
+| `store-conflict` | error | A merge or rebase left store files or baselines conflicted (`git ls-files -u`). `pxsig check` refuses to run until they are resolved: see [ci.md](ci.md#rebasing-with-baselines). |
 | `path-portability` | warn | A baseline path Windows cannot check out (a reserved name such as `CON` or `NUL`, a trailing dot or space, one of `<>:"\|?*`, over 240 characters), or two baseline paths that differ only in case. |
 
 The workspace-level codes (`project-unlisted`, `project-missing`, `version-skew`) are in

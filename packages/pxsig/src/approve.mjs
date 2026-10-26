@@ -13,11 +13,16 @@
  *         A person at a real terminal only (refused when piped, in CI or under an assistant). Re-hashes
  *         every render and refuses the whole plan if one changed since planning, then asks for the
  *         phrase "APPROVE <n> ENTRIES". Each write is snapshotted and logged by the server.
- *   log [--limit 10]      approvals by batch
+ *   log [--limit 10] [--trace]
+ *                         approvals by batch; --trace adds the commit that added each batch's lines
+ *                         and the pull request that merged it (from git; never a name)
  *   undo <batch>          restore a batch's previous baselines (terminal only, typed confirm); from
  *                         the local snapshot, else from git (only bytes matching the logged sha256)
- *   verify [--adopt]      baselines whose bytes differ from their last logged approval;
- *                         --adopt logs the current baselines as the starting point (terminal only)
+ *   verify [--no-strict] [--since <ref>] [--suite <name> | --all-suites] [--adopt]
+ *                         baselines whose bytes differ from their last logged approval, and (strict,
+ *                         the default) baselines with no log line at all; --since also fails when the
+ *                         log was rewritten rather than appended to; --adopt logs the current
+ *                         baselines as the starting point (terminal only)
  *
  * Per-entry approval in the dashboard / Storybook panel stays as it is (one entry, images on
  * screen) and is logged the same way.
@@ -25,11 +30,14 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
+  appendedSince,
+  mergeBase,
   newBatch,
   paths,
   readLog,
   record,
   sha256,
+  traceLog,
   undo as undoBatch,
   verify,
   who,
@@ -301,6 +309,17 @@ export async function approveCommand({
 
   if (sub === 'log') {
     const log = readLog(P);
+    // --trace (decision 82): the commit that added a batch's lines and the PR that merged it, from
+    // git. pxsig points at the trail; it shows no names (the commit and the PR say who).
+    const trace = flags.trace ? traceLog(P) : null;
+    if (flags.trace && !trace) fail('approve log --trace needs the approval log in a git repository', 2);
+    const where = new Map();
+    for (const t of trace ?? []) {
+      const w = where.get(t.batch) ?? { commits: new Set(), prs: new Set() };
+      w.commits.add(t.commit ?? 'not committed');
+      if (t.pr) w.prs.add(`#${t.pr}`);
+      where.set(t.batch, w);
+    }
     const batches = new Map();
     for (const l of log) {
       const b = batches.get(l.batch) ?? {
@@ -314,6 +333,13 @@ export async function approveCommand({
       b.n++;
       batches.set(l.batch, b);
     }
+    if (trace)
+      for (const b of batches.values()) {
+        const w = where.get(b.batch);
+        b.commit = w ? [...w.commits].join(', ') : 'not committed';
+        b.pr = w?.prs.size ? [...w.prs].join(', ') : '';
+        delete b.by;
+      }
     const rows = [...batches.values()].reverse().slice(0, Number(flags.limit) || 10);
     emit(
       format,
@@ -326,7 +352,12 @@ export async function approveCommand({
                   { key: 'at', label: 'When' },
                   { key: 'via', label: 'Via' },
                   { key: 'n', label: 'Entries', right: true },
-                  { key: 'by', label: 'By' },
+                  ...(trace
+                    ? [
+                        { key: 'commit', label: 'Commit' },
+                        { key: 'pr', label: 'PR' },
+                      ]
+                    : [{ key: 'by', label: 'By' }]),
                   { key: 'reason', label: 'Reason' },
                   { key: 'batch', label: 'Batch' },
                 ],
@@ -391,12 +422,23 @@ export async function approveCommand({
   }
 
   if (sub === 'verify') {
+    // Which manifests: the main one, one suite, or every suite (a suite whose manifest is not in
+    // this checkout, such as a git-ignored matrix suite, is listed as not committed, not failed).
+    const suiteNames = Object.keys(P.config.suites ?? {});
+    if (typeof flags.suite === 'string' && !suiteNames.includes(flags.suite)) fail(`unknown suite "${flags.suite}" (suites: ${suiteNames.join(', ') || 'none'})`, 2);
+    const suites = flags['all-suites'] ? ['', ...suiteNames] : typeof flags.suite === 'string' ? [flags.suite] : [''];
+    const suiteArg = (s) => (s ? ` --suite ${s}` : '');
+    const load = (s) => {
+      const path = P.manifestPath(s || null);
+      return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null;
+    };
+
     if (flags.adopt) {
       needHuman('approve verify --adopt');
-      const r = verify(P, manifest);
-      const typed = await ask(
-        `Log the ${manifest.stories.length} current baselines as the trusted starting point? Type "ADOPT" to continue: `
-      );
+      const sets = suites.map((s) => [s, load(s)]).filter(([, m]) => m);
+      const n = sets.reduce((k, [, m]) => k + m.stories.length, 0);
+      const drifted = sets.reduce((k, [, m]) => k + verify(P, m).mismatched.length, 0);
+      const typed = await ask(`Log the ${n} current baselines as the trusted starting point? Type "ADOPT" to continue: `);
       if (typed !== 'ADOPT') fail('not confirmed', 1);
       try {
         (await takeLock(P, { holder: 'approve verify --adopt' })).check();
@@ -404,50 +446,70 @@ export async function approveCommand({
         fail(e.message, e.exit ?? 2);
       }
       const batch = newBatch('adopt');
-      for (const e of manifest.stories)
-        record(P, e, {
-          batch,
-          via: 'adopt',
-          reason: 'adopt current baselines as the starting point',
-          before: null,
-        });
-      emit(
-        format,
-        [
-          {
-            h: 'Adopted',
-            sub: `${manifest.stories.length} baselines logged (${r.mismatched.length} had drifted from their log)`,
-          },
-        ],
-        { batch }
-      );
+      for (const [, m] of sets)
+        for (const e of m.stories)
+          record(P, e, {
+            batch,
+            via: 'adopt',
+            reason: 'adopt current baselines as the starting point',
+            before: null,
+          });
+      emit(format, [{ h: 'Adopted', sub: `${n} baselines logged (${drifted} had drifted from their log)` }], { batch });
       return;
     }
-    const r = verify(P, manifest);
-    const bad = r.mismatched.length;
-    const cut = [...new Set(r.interrupted.map((x) => x.batch))];
+
+    // Strict by default (decision 6.1h): a baseline with no log line fails. --no-strict reports it only.
+    const strict = !flags['no-strict'];
+    const results = [];
+    const notCommitted = [];
+    for (const s of suites) {
+      const m = load(s);
+      if (!m) notCommitted.push(s);
+      else results.push({ suite: s, ...verify(P, m) });
+    }
+    if (!results.length) fail(`no manifest to verify${notCommitted.length ? ` (not in this checkout: ${notCommitted.map((s) => s || 'main').join(', ')})` : ''}`, 2);
+    // --since: the log at the merge base must be a byte prefix of today's (append-only). With no
+    // merge base this gate cannot verify, and that is a failure here.
+    let range = null;
+    if (typeof flags.since === 'string') {
+      const mb = mergeBase(P.store.root, flags.since);
+      if (mb.error) fail(mb.error, 2);
+      if (!mb.base) range = { since: flags.since, base: null, why: mb.why };
+      else {
+        const a = appendedSince(P, mb.base);
+        range = { since: flags.since, base: mb.base, rewritten: a.rewritten, appended: a.lines.length };
+      }
+    }
+    const sum = (k) => results.reduce((n, r) => n + (Array.isArray(r[k]) ? r[k].length : r[k]), 0);
+    const bad = sum('mismatched');
+    const untracked = sum('untracked');
+    const interrupted = results.flatMap((r) => r.interrupted);
+    const cut = [...new Set(interrupted.map((x) => x.batch))];
+    const torn = Math.max(...results.map((r) => r.torn));
+    const logged = Math.max(...results.map((r) => r.logged));
+    const failUntracked = strict && untracked > 0;
+    const rangeBad = range && (!range.base || range.rewritten);
+    const adoptCmd = (r) => `${CMD} approve verify --adopt${suiteArg(r.suite)}`;
+    const missing = results.filter((r) => r.untracked);
     emit(
       format,
       [
-        { h: 'Baseline integrity', sub: `${r.logged} logged · ${r.untracked} without a log entry` },
-        r.torn ? { note: `${r.torn} line(s) of the approval log were cut short (a crash mid-write) and are left out: \`${CMD} doctor --repair --only log-torn\` removes them`, tone: 'warn' } : {},
-        r.interrupted.length
-          ? { note: `${r.interrupted.length} baselines were written by an approval that stopped before logging them (batch ${cut.join(', ')}): undo it, or approve those entries again`, tone: 'warn' }
+        { h: 'Baseline integrity', sub: `${logged} logged · ${untracked} baselines without a log entry${results.length > 1 || suites[0] ? ` · ${results.map((r) => r.suite || 'main').join(', ')}` : ''}` },
+        notCommitted.length ? { note: `Not in this checkout, not verified: ${notCommitted.map((s) => `suite ${s}`).join(', ')} (its manifest is not committed).` } : {},
+        range && !range.base ? { note: `Cannot verify the log since ${range.since}: ${range.why}.`, tone: 'bad' } : {},
+        range?.rewritten ? { note: `approvals.ndjson was rewritten since ${range.since}, not appended to: lines were removed or changed. The log is append-only; restore the lines from ${range.since} and add new ones after them.`, tone: 'bad' } : {},
+        range?.base && !range.rewritten ? { note: `${range.appended} log lines added since ${range.since}; the rest is unchanged.` } : {},
+        torn ? { note: `${torn} line(s) of the approval log were cut short (a crash mid-write) and are left out: \`${CMD} doctor --repair --only log-torn\` removes them`, tone: 'warn' } : {},
+        interrupted.length
+          ? { note: `${interrupted.length} baselines were written by an approval that stopped before logging them (batch ${cut.join(', ')}): undo it, or approve those entries again`, tone: 'warn' }
           : {},
-        r.interrupted.length ? { next: cut.map((batch) => [`${CMD} approve undo ${batch}`, 'put back the baselines it replaced']) } : {},
+        interrupted.length ? { next: cut.map((batch) => [`${CMD} approve undo ${batch}`, 'put back the baselines it replaced']) } : {},
         bad
           ? {
-              note: `${bad} baselines differ from their last logged approval: written outside the trail${r.mismatched.some((x) => x.older) ? `. ${r.mismatched.filter((x) => x.older).length} of them were last logged by an older pxsig (the Logged by column): if a teammate still runs it, they upgrade pxsig and approve those entries again` : ''}`,
+              note: `${bad} baselines differ from their last logged approval: written outside the trail${results.some((r) => r.mismatched.some((x) => x.older)) ? `. ${results.flatMap((r) => r.mismatched).filter((x) => x.older).length} of them were last logged by an older pxsig (the Logged by column): if a teammate still runs it, they upgrade pxsig and approve those entries again` : ''}`,
               tone: 'bad',
             }
-          : r.interrupted.length
-            ? {}
-            : {
-              note: r.logged
-                ? 'Every logged baseline matches its approval.'
-                : 'No approvals logged yet.',
-              tone: r.logged ? 'ok' : undefined,
-            },
+          : {},
         bad
           ? {
               table: {
@@ -457,25 +519,25 @@ export async function approveCommand({
                   { key: 'now', label: 'Now' },
                   { key: 'by', label: 'Logged by' },
                 ],
-                rows: r.mismatched.slice(0, 40).map((x) => ({ ...x, by: x.writtenBy ? `pxsig ${x.writtenBy}` : 'pxsig before 0.4' })),
+                rows: results.flatMap((r) => r.mismatched).slice(0, 40).map((x) => ({ ...x, by: x.writtenBy ? `pxsig ${x.writtenBy}` : 'pxsig before 0.4' })),
               },
             }
           : {},
-        r.untracked
+        untracked
           ? {
-              next: [
-                [
-                  `${CMD} approve verify --adopt`,
-                  'a person, in a terminal: log the current baselines as the starting point',
-                ],
-              ],
+              note: failUntracked
+                ? `${untracked} baselines have no approval log line, so nothing records that a person approved them: ${missing.flatMap((r) => r.untrackedIds).slice(0, 10).join(', ')}${untracked > 10 ? ` and ${untracked - 10} more` : ''}. Baselines from before pxsig kept a log are adopted once, by a person; any other is a baseline written outside the trail. (\`--no-strict\` reports these without failing.)`
+                : `${untracked} baselines have no approval log line (not a failure with --no-strict).`,
+              tone: failUntracked ? 'bad' : 'warn',
             }
           : {},
+        untracked ? { next: missing.map((r) => [adoptCmd(r), 'a person, in a terminal: log the current baselines as the starting point']) } : {},
+        !bad && !interrupted.length && !untracked && !rangeBad ? { note: logged ? 'Every baseline matches its approval.' : 'No baselines to verify.', tone: logged ? 'ok' : undefined } : {},
       ],
-      r
+      { strict, suites: results.map(({ untrackedIds, ...r }) => r), notCommitted, range, ...(results.length === 1 ? (({ untrackedIds, suite, ...r }) => r)(results[0]) : {}) }
     );
-    process.exit(bad || r.interrupted.length ? 1 : 0);
+    process.exit(bad || interrupted.length || failUntracked || rangeBad ? 1 : 0);
   }
 
-  fail(`usage: approve plan | apply | log | undo <batch> | verify [--adopt]`);
+  fail(`usage: approve plan | apply | log [--trace] | undo <batch> | verify [--no-strict] [--since <ref>] [--suite <name> | --all-suites] [--adopt]`);
 }

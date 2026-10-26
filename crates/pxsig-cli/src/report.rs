@@ -70,6 +70,33 @@ pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
             if more > 0 { format!("; {more} more reasons in check.json") } else { String::new() }
         ));
     }
+    // Baselines the pull request changed, by how each was approved (decision 80). Names no person.
+    if let Some(ap) = v["summary"].get("approvals").filter(|x| x.is_object()) {
+        if ap["rewritten"].as_bool() == Some(true) {
+            out.push_str("Baselines changed in this PR: the approval log was rewritten, not appended to (`pxsig approve verify --since` fails).\n\n");
+        } else {
+            let n = |k: &str| ap[k].as_u64().unwrap_or(0);
+            let other = if n("other") > 0 { format!(", {} other", n("other")) } else { String::new() };
+            let by_agent = ap["agents"].as_object().cloned().unwrap_or_default();
+            let agents: Vec<String> = by_agent
+                .iter()
+                .map(|(k, c)| if by_agent.len() == 1 { esc_md(k) } else { format!("{} ({})", esc_md(k), c.as_u64().unwrap_or(0)) })
+                .collect();
+            let marked = if agents.is_empty() {
+                String::new()
+            } else {
+                let total: u64 = ap["agents"].as_object().into_iter().flatten().filter_map(|(_, c)| c.as_u64()).sum();
+                format!("; {total} with an assistant marker: {}", agents.join(", "))
+            };
+            out.push_str(&format!(
+                "Baselines changed in this PR: {} ({} approved in the dashboard, {} in the terminal, {} via MCP{other}){marked}.\n\n",
+                n("total"),
+                n("dashboard"),
+                n("terminal"),
+                n("mcp"),
+            ));
+        }
+    }
     let failing: Vec<&&Value> = rs.iter().filter(|r| status(r) == "fail").collect();
     if !failing.is_empty() {
         out.push_str("| Story | Mode | ssim | Changed cells | Detail tiles | Why |\n|---|---|---:|---:|---:|---|\n");

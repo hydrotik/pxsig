@@ -35,7 +35,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { join, resolve } from 'node:path';
 import { browserPool, renderStories, STORYBOOK_ERROR } from './lib/capture.mjs';
 import { fetchStoryIndex, loadStoryIndex, oneLine, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
-import { newBatch, record, snapshot } from './lib/approvals.mjs';
+import { appendedSince, changedByRoute, conflictedStoreFiles, newBatch, record, snapshot } from './lib/approvals.mjs';
 import { parseArgs, strFlag } from './lib/args.mjs';
 import { describeLock, readLock, takeLock } from './lib/lock.mjs';
 import { buildRow, storybookBroken, summarize } from './lib/rows.mjs';
@@ -83,6 +83,11 @@ if (kind != null && !/^[a-z][a-z0-9-]{0,15}$/.test(kind)) die(`--kind takes a sh
 if ((kind != null || str('reason') != null) && !flags.update) die('--kind and --reason go with --update');
 if (flags.update && !humanAtTerminal())
   die(`--update writes baselines without review: run it yourself in a terminal (${whyNotPerson()})`, 3);
+// A merge or rebase that left store files conflicted (decision 97): checking against one side of
+// a half-merged baseline would mislead, so stop and say how to finish (docs/ci.md, "Rebasing with baselines").
+const conflicted = conflictedStoreFiles(P);
+if (conflicted.length)
+  die(`${conflicted.length} store files are conflicted (a merge or rebase is not finished): ${conflicted.slice(0, 5).join(', ')}${conflicted.length > 5 ? ', …' : ''}. Take main's version of each baseline (\`git checkout --ours <file>\` during a rebase, \`--theirs\` during a merge), keep both sides' lines of a log, then \`pxsig check --since main\` and approve what changed again (docs/ci.md, "Rebasing with baselines").`);
 if (!existsSync(rustBin)) die(`the pxsig binary is missing (${rustBin}): install the platform package, or build it with \`cargo build --release\``);
 mkdirSync(reports, { recursive: true });
 
@@ -291,6 +296,14 @@ const out = manifest.stories
     return buildRow(e, rows.get(e.id), render.get(e.id), a11yBase, manifest, null);
   });
 const checked = out.filter((r) => !r.skipped);
+// The approval log lines this range added (decision 80): `--since` only, where a merge base is known.
+const approvalsInRange = (() => {
+  if (!affected?.mergeBase) return null;
+  const a = appendedSince(P, affected.mergeBase);
+  if (a.rewritten) return { rewritten: true };
+  const c = changedByRoute(a.lines);
+  return c.total ? c : null;
+})();
 const summary = summarize(out, {
   concurrency,
   renderWallMs: wallMs,
@@ -299,6 +312,8 @@ const summary = summarize(out, {
   rustProcessMs: rc.ms,
   retryMs,
   affected: affected ? `${affected.ids.length} affected of ${manifest.stories.length} (${affected.reason})` : null,
+  // When baselines changed in the range: how each was approved, and any assistant marker (decision 80).
+  ...(approvalsInRange ? { approvals: approvalsInRange } : {}),
   // Only when the fail-safe fired: summary.md names the first path and its class (decision 6.1g).
   ...(affected?.failSafe?.length ? { selectAll: { entries: affected.ids.length, path: affected.failSafe[0].path, class: affected.failSafe[0].class, why: affected.failSafe[0].why, more: affected.failSafe.length - 1 } } : {}),
   totalMs: performance.now() - t0,
