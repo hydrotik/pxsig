@@ -10,9 +10,10 @@
  * settings file means setup has not run; nothing depends on it existing.
  */
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { writeJson } from './files.mjs';
 
 /** This machine's pxsig folder, for `platform` and `env` (the defaults: this process). */
 export function machineDir({ platform = process.platform, env = process.env, home = homedir() } = {}) {
@@ -36,22 +37,7 @@ export function readSettings(opts) {
 /** Write `settings.json` whole: a temp file beside it, then a rename, so a crash leaves the old one. */
 export function writeSettings(settings, opts) {
   const path = settingsPath(opts);
-  mkdirSync(machineDir(opts), { recursive: true });
-  const tmp = `${path}.${process.pid}.tmp`;
-  writeFileSync(tmp, `${JSON.stringify(settings, null, 2)}\n`);
-  for (let i = 0; ; i++) {
-    try {
-      renameSync(tmp, path);
-      return path;
-    } catch (e) {
-      // Windows refuses a rename while another process (a virus scanner, an editor) has the file open.
-      if (i >= 4 || !['EPERM', 'EBUSY', 'EACCES'].includes(e.code)) {
-        rmSync(tmp, { force: true });
-        throw e;
-      }
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50 * (i + 1));
-    }
-  }
+  return writeJson(path, settings, { pretty: true });
 }
 
 /** Where a workspace's server token files go on Windows: one folder per workspace, in the profile. */

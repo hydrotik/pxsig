@@ -199,7 +199,9 @@ verified) instead of looking never-checked.
 pxsig server holds it, because it serves this project, the selection is queued on the server
 (`POST /__pxsig/check`), the check waits for the queue to drain and reports the server's rows;
 `--update`, `--suite` and `--no-server` refuse instead. When another check holds it, the check
-exits 2 and names it. A lock whose process is gone is stale and taken over.
+exits 2 and names it. A lock whose process is gone is stale and taken over; a live holder whose
+heartbeat stopped 10 minutes ago can be taken over by a person typing `TAKE OVER`
+([monorepo.md](monorepo.md#store-layout)).
 
 **Storybook.** When `storybook.url` does not answer and `storybook.staticDir` holds a Storybook build
 (`index.json` and `iframe.html`), the check serves that folder itself on a free 127.0.0.1 port. A
@@ -233,7 +235,7 @@ baseline change in a pull request is set by the code host: see [codeowners.md](c
 | `apply [plan]` | A person at a terminal only. Needs the server, and no check running. Refuses the whole plan if any render changed since planning, or the plan is older than 24 hours. Asks for `APPROVE <n> ENTRIES`. |
 | `log [--limit 10]` | Approvals by batch. |
 | `undo <batch>` | Restore the baselines a batch replaced; move first baselines it created to `<store>/trash/`. A person at a terminal only; takes the store lock. Uses `<store>/history/<batch>/` when this machine has it, else git (below). Exits 1 when any entry was refused. |
-| `verify [--adopt]` | Baselines whose bytes differ from their last logged approval, and baselines with no approval logged. `--adopt` (a person at a terminal) logs the current baselines as the starting point. |
+| `verify [--adopt]` | Baselines whose bytes differ from their last logged approval, and baselines with no approval logged. A baseline written by an approval that stopped before its log line (a crash) is listed as `interrupted`, with `approve undo <batch>` as the next step, not as written outside the trail; approval-log lines a crash cut short are left out and counted (`torn`). Exits 1 on a mismatch or an interrupted approval. `--adopt` (a person at a terminal) logs the current baselines as the starting point. |
 
 `--reason` needs at least eight characters. `apply` sends each entry to the server, which writes
 it (a NEW entry gets its first baseline, logged with `before: null`).

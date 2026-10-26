@@ -21,6 +21,7 @@ import { componentOf, loadStoryIndex, resolveContext, writeJsonAtomic } from './
 import { expandEntries, harvestParameters } from './manifest.mjs';
 import { CONFIG_FILE, entryConfig, SetupError, WORKSPACE_FILE, runManifest } from './workspace.mjs';
 import { toPosix } from './paths.mjs';
+import { appendLine, writeJson } from './files.mjs';
 
 const readJson = (p, fallback = null) => {
   try {
@@ -77,7 +78,7 @@ export function initProject({ dir, name = null, srcRoot = 'src', storybookUrl = 
     const cfg = { version: 1, ...(name ? { name } : {}), srcRoot };
     if (storybookUrl || storybookConfigDir) cfg.storybook = { ...(storybookUrl ? { url: storybookUrl } : {}), ...(storybookConfigDir ? { configDir: storybookConfigDir } : {}) };
     if (layout) cfg.store = { layout };
-    writeFileSync(configPath, `${JSON.stringify(cfg, null, 2)}\n`);
+    writeJson(configPath, cfg, { pretty: true });
     wrote.push(configPath);
   }
   const cfg = readJson(configPath, {});
@@ -98,7 +99,7 @@ export function initProject({ dir, name = null, srcRoot = 'src', storybookUrl = 
       const key = cfg.name ?? name ?? basename(dir);
       if (ws.projects?.[key]) throw new SetupError(`${wsFile} already has a project named "${key}": pass --name`);
       ws.projects = { ...ws.projects, [key]: rel };
-      writeFileSync(wsFile, `${JSON.stringify(ws, null, 2)}\n`);
+      writeJson(wsFile, ws, { pretty: true });
       wrote.push(wsFile);
     }
   }
@@ -264,7 +265,7 @@ export function migrateLegacy(P, { from, apply = false, verify = true, log = () 
   if (existsSync(approvalsFrom)) copyFileSync(approvalsFrom, P.store.approvals);
   const at = new Date().toISOString();
   const lines = plan.pack.map((x) => JSON.stringify({ at, id: x.entry.id, by: 'pxsig migrate', via: 'migrate', batch: `migrate-${at.replace(/[:.]/g, '-')}`, reason: `moved from ${toPosix(relative(P.workspaceRoot, x.sig))}`, kind: null, gitHead: null, before: sha256(x.sig), after: sha256(x.out) }));
-  appendFileSync(P.store.approvals, `${lines.join('\n')}\n`);
+  for (const l of lines) appendLine(P.store.approvals, l);
   for (const [file, text] of [['.gitignore', STORE_GITIGNORE], ['.gitattributes', STORE_GITATTRIBUTES]]) if (!existsSync(join(P.store.root, file))) writeFileSync(join(P.store.root, file), text);
   if (P.store.layout === 'colocated') plan.gitattributes = ensureGitattributes(P.workspaceRoot);
   if (verify) plan.verify = verifyMigration(P, plan, from, log);

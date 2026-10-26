@@ -36,7 +36,7 @@ import { browserPool, renderStories, STORYBOOK_ERROR } from './lib/capture.mjs';
 import { fetchStoryIndex, loadStoryIndex, oneLine, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
 import { newBatch, record, snapshot } from './lib/approvals.mjs';
 import { parseArgs, strFlag } from './lib/args.mjs';
-import { acquireLock, describeLock, readLock } from './lib/lock.mjs';
+import { describeLock, readLock, takeLock } from './lib/lock.mjs';
 import { buildRow, storybookBroken, summarize } from './lib/rows.mjs';
 import { harvestParameters } from './lib/manifest.mjs';
 import { registerNamed } from './lib/repair.mjs';
@@ -44,6 +44,7 @@ import { ensureStorybook } from './lib/static.mjs';
 import { ask, humanAtTerminal } from './lib/term.mjs';
 import { flagLayer, openProject, writeRunManifest } from './lib/workspace.mjs';
 import { relPath } from './lib/paths.mjs';
+import { writeJson } from './lib/files.mjs';
 
 const { flags } = parseArgs(process.argv.slice(2));
 const str = (k) => strFlag(flags, k);
@@ -121,10 +122,19 @@ if (held && !held.stale && held.holder === 'serve' && !held.foreign) {
 }
 let lock;
 try {
-  lock = acquireLock(P, { holder: flags.update ? 'check --update' : 'check' });
+  lock = await takeLock(P, { holder: flags.update ? 'check --update' : 'check' });
 } catch (e) {
-  die(e.message);
+  console.error(`[check] ${e.message}`);
+  process.exit(e.exit ?? 2);
 }
+/** Before each batch of store writes: stop if the lock was taken over meanwhile. */
+const fence = () => {
+  try {
+    lock.check();
+  } catch (e) {
+    die(e.message);
+  }
+};
 
 // --- guard: never render against a broken Storybook ------------------------------------------
 // A failing index (e.g. "Unable to index files") makes every iframe show Storybook's error page;
@@ -191,6 +201,7 @@ if (flags.update) {
     await pool.close();
     die('not confirmed: nothing was written');
   }
+  fence();
   const batch = newBatch('check-update');
   const before = new Map(ok.map((id) => [id, snapshot(P, entries.find((e) => e.id === id), batch).before]));
   writeFileSync(onlyFile, JSON.stringify(ok));
@@ -199,7 +210,7 @@ if (flags.update) {
   for (const id of ok) record(P, entries.find((e) => e.id === id), { batch, via: 'check-update', reason: 'pxsig check --update', before: before.get(id) });
   const a11yBase = existsSync(a11yBaselinePath) ? JSON.parse(readFileSync(a11yBaselinePath, 'utf8')) : {};
   for (const r of results) if (r.a11y?.violations) a11yBase[r.id] = r.a11y.violations.map((v) => v.id).sort();
-  writeFileSync(a11yBaselinePath, JSON.stringify(a11yBase, null, 2) + '\n');
+  writeJson(a11yBaselinePath, a11yBase, { pretty: true });
   await pool.close();
   console.log(`[check] baselines: ${res.summary.stories - res.summary.failed} written in ${(res.summary.elapsedMs).toFixed(0)} ms (Rust) · ${res.summary.failed} failed · render errors ${renderErrors}`);
   for (const e of res.errors) console.error(`  ${e}`);
@@ -282,7 +293,8 @@ const now = new Date().toISOString();
 // When every entry was last checked together (integrity's "last full check"); a partial run keeps the last one.
 const fullCheckAt = checked.length === out.length ? now : (previous?.fullCheckAt ?? previous?.generatedAt ?? null);
 const report = { generatedAt: now, fullCheckAt, project: P.name, suite, manifest: { grid: manifest.grid, gate: manifest.gate, modes: manifest.modes, defaultMode: manifest.defaultMode }, summary, affected, rows: out };
-writeFileSync(join(reports, `${outName}.json`), JSON.stringify(report) + '\n');
+fence();
+writeJson(join(reports, `${outName}.json`), report);
 // Review decisions belong to the run they were made on: a new run starts clean.
 if (outName === 'check') for (const f of ['review.json', 'a11y-review.json']) rmSync(join(reports, f), { force: true });
 const link = str('link-base');

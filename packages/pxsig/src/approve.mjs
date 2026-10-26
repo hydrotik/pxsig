@@ -22,7 +22,7 @@
  * Per-entry approval in the dashboard / Storybook panel stays as it is (one entry, images on
  * screen) and is logged the same way.
  */
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   newBatch,
@@ -35,11 +35,12 @@ import {
   who,
 } from './lib/approvals.mjs';
 import { readToken, TOKEN_HEADER } from './lib/guard.mjs';
-import { acquireLock } from './lib/lock.mjs';
+import { takeLock } from './lib/lock.mjs';
 import { readImage } from './lib/psig.mjs';
 import { classify } from './lib/shape.mjs';
 import { ask, emit, humanAtTerminal, progress } from './lib/term.mjs';
 import { relPath } from './lib/paths.mjs';
+import { writeJson } from './lib/files.mjs';
 
 const PLAN_MAX_AGE_H = 24;
 
@@ -147,7 +148,7 @@ export async function approveCommand({
       reason,
       entries,
     };
-    writeFileSync(planPath, `${JSON.stringify(plan, null, 2)}\n`);
+    writeJson(planPath, plan, { pretty: true });
     const n = (k) => entries.filter((e) => e.kind === k).length;
     emit(
       format,
@@ -275,10 +276,7 @@ export async function approveCommand({
       spin.update(`approving ${++done}/${ok.length}`);
     }
     spin.done(`approved ${done} entries · batch ${batch}`);
-    writeFileSync(
-      file,
-      `${JSON.stringify({ ...plan, appliedAt: new Date().toISOString(), batch }, null, 2)}\n`
-    );
+    writeJson(file, { ...plan, appliedAt: new Date().toISOString(), batch }, { pretty: true });
     emit(
       format,
       [
@@ -355,9 +353,10 @@ export async function approveCommand({
     if (typed !== 'UNDO') fail('not confirmed: nothing was restored', 1);
     let lock;
     try {
-      lock = acquireLock(P, { holder: 'approve undo' });
+      lock = await takeLock(P, { holder: 'approve undo' });
+      lock.check();
     } catch (e) {
-      fail(`${e.message}. Undo writes baselines, so it needs the store to itself.`, 2);
+      fail(`${e.message}. Undo writes baselines, so it needs the store to itself.`, e.exit ?? 2);
     }
     const before = new Map(manifest.stories.map((e) => [e.id, sha256(paths(P, e).sig)]));
     let res;
@@ -400,9 +399,9 @@ export async function approveCommand({
       );
       if (typed !== 'ADOPT') fail('not confirmed', 1);
       try {
-        acquireLock(P, { holder: 'approve verify --adopt' });
+        (await takeLock(P, { holder: 'approve verify --adopt' })).check();
       } catch (e) {
-        fail(e.message, 2);
+        fail(e.message, e.exit ?? 2);
       }
       const batch = newBatch('adopt');
       for (const e of manifest.stories)
@@ -426,16 +425,24 @@ export async function approveCommand({
     }
     const r = verify(P, manifest);
     const bad = r.mismatched.length;
+    const cut = [...new Set(r.interrupted.map((x) => x.batch))];
     emit(
       format,
       [
         { h: 'Baseline integrity', sub: `${r.logged} logged · ${r.untracked} without a log entry` },
+        r.torn ? { note: `${r.torn} line(s) of the approval log were cut short (a crash mid-write) and are left out: \`${CMD} doctor --repair --only log-torn\` removes them`, tone: 'warn' } : {},
+        r.interrupted.length
+          ? { note: `${r.interrupted.length} baselines were written by an approval that stopped before logging them (batch ${cut.join(', ')}): undo it, or approve those entries again`, tone: 'warn' }
+          : {},
+        r.interrupted.length ? { next: cut.map((batch) => [`${CMD} approve undo ${batch}`, 'put back the baselines it replaced']) } : {},
         bad
           ? {
               note: `${bad} baselines differ from their last logged approval: written outside the trail`,
               tone: 'bad',
             }
-          : {
+          : r.interrupted.length
+            ? {}
+            : {
               note: r.logged
                 ? 'Every logged baseline matches its approval.'
                 : 'No approvals logged yet.',
@@ -466,7 +473,7 @@ export async function approveCommand({
       ],
       r
     );
-    process.exit(bad ? 1 : 0);
+    process.exit(bad || r.interrupted.length ? 1 : 0);
   }
 
   fail(`usage: approve plan | apply | log | undo <batch> | verify [--adopt]`);

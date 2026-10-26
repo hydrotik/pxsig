@@ -15,11 +15,12 @@
  * the workspace root; a CLI flag: the current folder); `$workspace/` makes one relative to the
  * workspace root anywhere. `pxsig config` shows which layer set each key.
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { toPosix } from './paths.mjs';
+import { writeAtomic } from './files.mjs';
 
 export const WORKSPACE_FILE = 'pxsig.workspace.json';
 export const CONFIG_FILE = 'pxsig.config.json';
@@ -485,8 +486,7 @@ export function writeRunManifest(P, manifestPath = P.manifestPath(), { dir: runD
   const dir = runDir ?? join(P.store.reports, '.run');
   mkdirSync(dir, { recursive: true });
   const out = join(dir, basename(manifestPath));
-  writeFileSync(`${out}.tmp`, JSON.stringify(run));
-  renameSync(`${out}.tmp`, out);
+  writeAtomic(out, JSON.stringify(run));
   return { path: out, manifest: run };
 }
 

@@ -13,11 +13,17 @@
  * line names the git HEAD at approval time and the sha256 of the baseline it replaced, and a file
  * is restored from a commit only when its bytes hash to exactly that `before`. A first baseline
  * (`before: null`) is undone by moving the file to the store trash/.
+ *
+ * Order of an approval: snapshot, then the new `.psig`, then the log line (appended in one write,
+ * lib/files.mjs). A crash between the last two leaves a baseline the log does not know yet:
+ * `verify` calls it `interrupted` (not `mismatch`) when the batch's snapshot still holds the logged
+ * bytes, and `approve undo <batch>` puts it back.
  */
 import { createHash } from 'node:crypto';
 import { spawnSync } from './spawn.mjs';
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
+import { appendLine, fault, readLines, writeAtomic } from './files.mjs';
 
 export const sha256 = (path) =>
   existsSync(path) ? createHash('sha256').update(readFileSync(path)).digest('hex') : null;
@@ -41,12 +47,13 @@ export function snapshot(P, entry, batch) {
   const dir = join(p.history, batch);
   mkdirSync(dir, { recursive: true });
   if (existsSync(p.sig)) copyFileSync(p.sig, join(dir, `${entry.id}.psig`));
+  fault('after-snapshot');
   return { before: sha256(p.sig) };
 }
 
 export function record(P, entry, { batch, via, reason = null, before, kind = null }) {
   const p = paths(P, entry);
-  mkdirSync(dirname(p.log), { recursive: true });
+  fault('after-psig');
   const line = {
     at: new Date().toISOString(),
     id: entry.id,
@@ -59,19 +66,15 @@ export function record(P, entry, { batch, via, reason = null, before, kind = nul
     before,
     after: sha256(p.sig),
   };
-  appendFileSync(p.log, `${JSON.stringify(line)}\n`);
+  appendLine(p.log, line);
   return line;
 }
 
-export function readLog(P) {
-  const p = P.store.approvals;
-  if (!existsSync(p)) return [];
-  return readFileSync(p, 'utf8')
-    .trim()
-    .split('\n')
-    .filter(Boolean)
-    .map((l) => JSON.parse(l));
-}
+/** The logged approvals; a torn line (a write cut short by a crash) is left out: see `tornLines`. */
+export const readLog = (P) => readLines(P.store.approvals).lines;
+
+/** Lines of the approval log a crash cut short, `{ line, text }` (integrity code `log-torn`). */
+export const tornLines = (P) => readLines(P.store.approvals).torn;
 
 const sha256Bytes = (b) => createHash('sha256').update(b).digest('hex');
 
@@ -123,7 +126,7 @@ export function undo(P, manifest, batch, { git = true, ids: only = null } = {}) 
     const file = paths(P, entry).sig;
     const l = first.get(id);
     if (snaps.has(id)) {
-      copyFileSync(join(dir, `${id}.psig`), file);
+      writeAtomic(file, readFileSync(join(dir, `${id}.psig`)));
       out.restored.push(id);
       continue;
     }
@@ -151,19 +154,51 @@ export function undo(P, manifest, batch, { git = true, ids: only = null } = {}) 
       out.refused.push({ id, why: `no commit holds the old baseline (sha256 ${l.before.slice(0, 12)}…): not restoring it` });
       continue;
     }
-    mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, bytes);
+    writeAtomic(file, bytes);
     out.restored.push(id);
   }
   return out;
 }
 
-/** Baselines whose bytes differ from the last approval logged for them: written outside the trail. */
+/** When a batch started, from its name (`newBatch`: an ISO time with `-` for `:` and `.`); else null. */
+function batchTime(batch) {
+  const m = /^(\d{4}-\d\d-\d\dT\d\d)-(\d\d)-(\d\d)-(\d{3})Z/.exec(batch);
+  return m ? Date.parse(`${m[1]}:${m[2]}:${m[3]}.${m[4]}Z`) : null;
+}
+
+/**
+ * The batch whose approval of `id` was cut short: it started after the entry's last log line, its
+ * snapshot holds the bytes that line logged, and it logged no line for the entry. Null when no
+ * snapshot on this machine says so.
+ */
+function interruptedBatch(P, id, last, batchesWithLine) {
+  const logged = last?.after;
+  if (!logged || !existsSync(P.store.history)) return null;
+  for (const batch of readdirSync(P.store.history).sort().reverse()) {
+    if (batchesWithLine.has(`${batch}\0${id}`)) continue;
+    const t = batchTime(batch);
+    if (t == null || !(t >= Date.parse(last.at))) continue;
+    const snap = join(P.store.history, batch, `${id}.psig`);
+    if (existsSync(snap) && sha256(snap) === logged) return batch;
+  }
+  return null;
+}
+
+/**
+ * Baselines whose bytes differ from the last approval logged for them: written outside the trail
+ * (`mismatched`), or by an approval a crash cut short before its log line (`interrupted`).
+ */
 export function verify(P, manifest) {
+  const { lines, torn } = readLines(P.store.approvals);
   const last = new Map();
-  for (const l of readLog(P)) last.set(l.id, l);
+  const batchesWithLine = new Set();
+  for (const l of lines) {
+    last.set(l.id, l);
+    batchesWithLine.add(`${l.batch}\0${l.id}`);
+  }
   const untracked = [];
   const mismatched = [];
+  const interrupted = [];
   for (const e of manifest.stories) {
     const l = last.get(e.id);
     if (!l) {
@@ -171,12 +206,17 @@ export function verify(P, manifest) {
       continue;
     }
     const now = sha256(paths(P, e).sig);
-    if (now !== l.after) mismatched.push({ id: e.id, logged: l.after?.slice(0, 12), now: now?.slice(0, 12) });
+    if (now === l.after) continue;
+    const batch = interruptedBatch(P, e.id, l, batchesWithLine);
+    if (batch) interrupted.push({ id: e.id, batch, logged: l.after?.slice(0, 12), now: now?.slice(0, 12) });
+    else mismatched.push({ id: e.id, logged: l.after?.slice(0, 12), now: now?.slice(0, 12) });
   }
   return {
     logged: last.size,
     untracked: untracked.length,
     untrackedSample: untracked.slice(0, 10),
     mismatched,
+    interrupted,
+    torn: torn.length,
   };
 }

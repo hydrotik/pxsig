@@ -63,4 +63,6 @@ Outside every repository, in one folder that belongs to the user, never the roam
 
 Ctrl+C (and Ctrl+Break in a Windows console) stops `pxsig serve` and releases the store lock. A
 forced stop (a closed terminal, Task Manager, `kill -9`) leaves the lock behind, naming a process
-that is gone; the next `pxsig serve` or check takes it over.
+that is gone; the next `pxsig serve` or check takes it over. Every record pxsig writes is written
+whole (a temporary file, then a rename) and every log line in one write, so a forced stop leaves
+the old file or the new one, never half of either; a log line cut short is reported as `log-torn`.
