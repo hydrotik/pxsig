@@ -36,6 +36,9 @@
  *   POST /__pxsig/check {ids?|story?|stories?|all?}   render + Rust check, merged into check.json; names
  *        not in the manifest are registered first (healthy Storybook; NEW, no signature) or `skipped`
  *   POST /__pxsig/repair {apply?, only?}   the safe repairs: plan, or apply (never prunes)
+ *   POST /__pxsig/a11y-prune {plan, batch, reason?}   remove the plan's prunable accepted axe rules
+ *                                       (`pxsig a11y --prune`; the CLI's token only, never the MCP's;
+ *                                       refused when a11y.json changed since the plan was made)
  *   GET  /p/<project>/renders/latest/<id>.png · /p/<project>/renders/base/<id>.png (from the .psig)
  *        /p/<project>/diffs/latest/<file> · /p/<project>/sig/<id> (the .psig header, JSON)
  *
@@ -78,6 +81,7 @@ import { humanAtTerminal } from './lib/term.mjs';
 import { fileURLToPath } from 'node:url';
 import { relPath } from './lib/paths.mjs';
 import { appendLine, writeJson } from './lib/files.mjs';
+import { applyPrune } from './lib/prune.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -595,6 +599,23 @@ function a11yReview(S, action, id, meta = {}) {
 }
 
 /**
+ * `pxsig a11y --prune` through the server that holds the store (lib/prune.mjs): the person
+ * confirmed the plan at the terminal; the plan is pinned to a11y.json, so a decision made since
+ * refuses it whole. The dashboard reloads its data.
+ */
+function a11yPrune(S, body, via) {
+  needLock(S);
+  const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : null);
+  const batch = s(body.batch, 80)?.replace(/[^\w.-]/g, '') || newBatch('prune');
+  // Errors carry their status (400 a bad plan, 409 a11y.json changed since it was made).
+  const r = applyPrune(S.P, body.plan, { batch, reason: s(body.reason, 500), via, lockCheck: () => needLock(S) });
+  S.quietUntil = Date.now() + 800;
+  console.log(`[serve] ${S.name}: pruned ${r.rules} accepted a11y rules from ${r.entries} entries (batch ${batch}, via ${via})`);
+  broadcast('data', { project: S.name });
+  return { batch, entries: r.entries, rules: r.rules };
+}
+
+/**
  * Queue a check. Names (ids or stories) the manifest does not have are registered first when
  * Storybook is healthy (NEW entries, no signature), so checking a new story is one request;
  * anything that cannot be registered comes back in `skipped`, with why.
@@ -890,6 +911,7 @@ async function api(req, res, action, q) {
   }
   const S = stateFor(body);
   if (action === 'repair') return json(res, 200, await repair(S, { apply: body.apply === true, only: body.only, stale: body.stale === true }));
+  if (action === 'a11y-prune') return json(res, 200, { ok: true, project: S.name, ...a11yPrune(S, body, auth.via) });
   if (action === 'approve-story') {
     const { story } = body;
     if (typeof story !== 'string' || !/^[a-z0-9-]+--[a-z0-9-]+$/.test(story)) return json(res, 400, { error: 'bad story' });

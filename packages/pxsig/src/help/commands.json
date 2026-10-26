@@ -376,9 +376,11 @@
       ]
     },
     "a11y": {
-      "summary": "axe violations per entry, grouped by rule.",
+      "summary": "axe violations per entry, grouped by rule; with --prune, the accepted rules that no longer fire.",
       "usage": [
-        "pxsig a11y [--component text] [--new] [--limit 50]"
+        "pxsig a11y [--component text] [--new] [--limit 50]",
+        "pxsig a11y --prune --dry-run [--component text] [--mode m] [--only id,…]",
+        "pxsig a11y --prune [--component text] [--mode m] [--only id,…] [--reason \"why\"]"
       ],
       "flags": [
         {
@@ -395,23 +397,60 @@
           "value": "n",
           "default": "50",
           "meaning": "Rows shown."
+        },
+        {
+          "name": "prune",
+          "meaning": "Accepted rules (a11y.json) that a fresh check shows no longer fire. Each accepted rule is prunable, still-fires, stale or not-covered. Removing them is a person's, at a terminal, after typing PRUNE <n> RULES; each entry's removal is logged in a11y-decisions.ndjson."
+        },
+        {
+          "name": "dry-run",
+          "meaning": "With --prune: list, write nothing. Anyone may run it, assistants included."
+        },
+        {
+          "name": "mode",
+          "value": "m",
+          "meaning": "With --prune: entries of this mode only."
+        },
+        {
+          "name": "only",
+          "value": "id,…",
+          "meaning": "With --prune: these entries only."
+        },
+        {
+          "name": "reason",
+          "value": "text",
+          "meaning": "With --prune: why, written on each log line."
         }
       ],
       "effects": [
-        "reads-only"
+        "reads-only",
+        "writes-store (--prune, after the typed phrase)",
+        "needs-a-person (--prune without --dry-run)"
       ],
       "exits": {
-        "0": "OK",
-        "2": "Usage or setup error"
+        "0": "OK (--prune --dry-run always)",
+        "1": "--prune: not confirmed, or a decision was made since the plan: nothing written",
+        "2": "Usage or setup error",
+        "3": "--prune without a person at a terminal"
       },
       "examples": [
         {
           "cmd": "pxsig a11y --new",
           "shows": "Accessibility problems a change introduced"
+        },
+        {
+          "cmd": "pxsig a11y --prune --dry-run",
+          "shows": "Accepted rules that no longer fire, and why the others cannot be pruned yet"
+        },
+        {
+          "cmd": "pxsig a11y --prune --reason \"contrast fixed in the tokens\"",
+          "shows": "A person removes them, after typing the phrase"
         }
       ],
       "seeAlso": [
-        "entry"
+        "entry",
+        "stale",
+        "approvals"
       ]
     },
     "history": {

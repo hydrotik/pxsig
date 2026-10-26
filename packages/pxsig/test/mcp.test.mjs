@@ -158,3 +158,18 @@ test('doctor repair apply takes the store lock: a store another process holds is
   const plan = json(await call('pxsig_doctor', { repair: 'plan', offline: true }));
   assert.ok(Array.isArray(plan.plan.steps));
 });
+
+test('pxsig_a11y prune_plan lists accepted rules by class and writes nothing', async () => {
+  const a11y = join(repo, '.pxsig', 'a11y.json');
+  const before = readFileSync(a11y, 'utf8');
+  writeFileSync(a11y, JSON.stringify({ 'components-alpha--default': ['region'], 'components-delta--a-11-y': ['color-contrast'] }));
+  try {
+    const r = json(await call('pxsig_a11y', { prune_plan: true }));
+    assert.deepEqual(r.counts, { prunable: 1, 'still-fires': 1, stale: 0, 'not-covered': 0 });
+    assert.deepEqual(r.prunable.map((p) => [p.id, p.rules]), [['components-alpha--default', ['region']]]);
+    assert.match(r.hint, /a person removes these with `pxsig a11y --prune` in a terminal/);
+    assert.equal(readFileSync(a11y, 'utf8'), JSON.stringify({ 'components-alpha--default': ['region'], 'components-delta--a-11-y': ['color-contrast'] }));
+  } finally {
+    writeFileSync(a11y, before);
+  }
+});

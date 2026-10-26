@@ -40,6 +40,11 @@
  *                               which entries those edits can change
  *   a11y [--component x] [--new]
  *                               axe violations per entry
+ *   a11y --prune --dry-run [--component x] [--mode m] [--only id,…]
+ *                               accepted axe rules a fresh check shows no longer fire (prunable), and why
+ *                               the others are not: still fires, stale, not covered
+ *   a11y --prune [same filters] [--reason "…"]
+ *                               remove the prunable ones (a person at a terminal; typed confirmation)
  *   history [--limit 10]        the last runs
  *   doctor [--component x] [--status code,…] [--ci] [--fail-on error|warn|info] [--offline] [--limit 40]
  *                               integrity per component: unregistered stories, never-checked entries, missing
@@ -70,7 +75,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { approveCommand } from './approve.mjs';
 import { helpBlocks, helpData, lookup, nearestNames } from './help.mjs';
-import { ctxOf, doctor, imageOf, tools } from './mcp.mjs';
+import { ctxOf, doctor, imageOf, prunePlan, tools } from './mcp.mjs';
 import { parseArgs } from './lib/args.mjs';
 import { CODES } from './lib/integrity.mjs';
 import { describeLock, readLock, takeLock } from './lib/lock.mjs';
@@ -79,6 +84,8 @@ import { findWorkspace, flagLayer, openProject, pickProject, rustBinary, serverU
 import { readToken, TOKEN_HEADER } from './lib/guard.mjs';
 import { ask, emit, humanAtTerminal, pickFormat, progress, stateCell, whyNotPerson } from './lib/term.mjs';
 import { relPath } from './lib/paths.mjs';
+import { applyPrune, confirmPrune } from './lib/prune.mjs';
+import { newBatch } from './lib/approvals.mjs';
 import { describeAgent } from './lib/agents.mjs';
 
 // --- args --------------------------------------------------------------------------------------
@@ -183,6 +190,101 @@ function oneProject() {
   const ref = pickProject(ws, { cwd: process.cwd() });
   if (!ref) fail(`this workspace has ${ws.projects.length} projects; "${command}" changes one: choose it with --project (${ws.projects.map((p) => p.name).join(', ')})`);
   return ref.name;
+}
+
+/**
+ * `pxsig a11y --prune [--dry-run]` (lib/prune.mjs, PHASE-1 §5): the dry run is for anyone, agents
+ * included, and always exits 0; removing rules is a person's, at a terminal, after typing the
+ * count. Through the server when it holds the store, so the dashboard updates; else under the lock.
+ */
+async function a11yPrune() {
+  current = oneProject();
+  const dry = !!flags['dry-run'];
+  if (!dry && !humanAtTerminal())
+    fail(`a11y --prune changes the accepted lists: run it yourself in a terminal (${whyNotPerson()}); \`${CMD} a11y --prune --dry-run\` lists what it would remove`, 3);
+  const spin = progress(format, 'classifying accepted rules');
+  let plan;
+  try {
+    plan = await prunePlan({ project: current, component: typeof flags.component === 'string' ? flags.component : undefined, mode: typeof flags.mode === 'string' ? flags.mode : undefined, only: list(flags.only), cmd: CMD });
+  } catch (e) {
+    spin.done(e.message, false);
+    fail(e.message, 2);
+  }
+  const c = plan.counts;
+  const n = c.prunable;
+  spin.done(`${n} prunable of ${plan.items.length} accepted rules`);
+  const blocks = [
+    { h: dry ? 'Accessibility prune (dry run)' : 'Accessibility prune', sub: `${plan.items.length} accepted rules on ${plan.entries} entries` },
+    {
+      kv: [
+        ['Prunable', { text: `${n} rules on ${plan.prune.length} entries`, color: n ? 'green' : 'gray' }],
+        ['Still fires', String(c['still-fires'])],
+        ['Stale', { text: String(c.stale), color: c.stale ? 'yellow' : 'gray' }],
+        ['Not covered', { text: String(c['not-covered']), color: c['not-covered'] ? 'yellow' : 'gray' }],
+        ['Reports', plan.reports.map((r) => `${r.file} (${r.rows} rows)`).join(', ') || 'none'],
+      ],
+    },
+  ];
+  if (plan.prune.length)
+    blocks.push({
+      table: {
+        cols: [
+          { key: 'id', label: 'Entry' },
+          { key: 'rules', label: 'Rules no longer firing' },
+          { key: 'at', label: 'Checked' },
+        ],
+        rows: plan.prune.slice(0, 60).map((p) => ({ id: p.id, rules: p.rules.join(', '), at: p.evidence.checkedAt?.replace('T', ' ').slice(0, 19) ?? '' })),
+        more: Math.max(0, plan.prune.length - 60),
+        moreHint: 'every rule, with why, in --json',
+      },
+    });
+  const next = plan.cover.map((x) => [x.command, `${x.entries} entries ${x.class === 'stale' ? 'checked before a later edit or decision' : 'with no row where axe ran'}: check them, then prune again`]);
+  if (dry || !n) {
+    if (!n) blocks.push({ note: 'Nothing to prune.', tone: 'ok' });
+    if (dry && n) next.unshift([`${CMD} a11y --prune`, `a person, in a terminal: remove the ${n} prunable rules`]);
+    blocks.push({ next });
+    emit(format, blocks, plan);
+    process.exit(0);
+  }
+  emit(format, blocks, plan);
+  if (!(await confirmPrune(plan, ask))) fail('not confirmed: nothing was written', 1);
+  const reason = typeof flags.reason === 'string' ? flags.reason.trim().slice(0, 500) || null : null;
+  const batch = newBatch('prune');
+  const P = ctx().P;
+  const held = readLock(P);
+  let r;
+  if (held && !held.stale && held.holder === 'serve' && !held.foreign) {
+    // The server holds the store: it writes, and the dashboard hears of it.
+    const url = held.url ?? ctx().serverUrl;
+    const token = readToken(P.workspaceRoot, url);
+    if (!token) fail(`no token from the pxsig server at ${url} (it writes one when it starts): restart \`${CMD} serve\` with this version`);
+    const res = await fetch(`${url}/__pxsig/a11y-prune`, { method: 'POST', headers: { 'content-type': 'application/json', [TOKEN_HEADER]: token }, body: JSON.stringify({ project: P.name, plan: { a11ySha: plan.a11ySha, prune: plan.prune }, batch, reason }) }).catch((e) => ({ ok: false, status: 0, json: async () => ({ error: e.message }) }));
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) fail(`the server refused the prune: ${body.error ?? `HTTP ${res.status}`}`, res.status === 409 ? 1 : 2);
+    r = body;
+  } else {
+    let lock;
+    let err = null;
+    try {
+      lock = await takeLock(P, { holder: 'a11y --prune' });
+      r = applyPrune(P, plan, { batch, reason, via: 'cli', lockCheck: () => lock.check() });
+    } catch (e) {
+      err = e;
+    } finally {
+      lock?.release();
+    }
+    // A plan made stale by a decision since is refused whole: plan again (exit 1, as a wrong phrase).
+    if (err) fail(err.message, err.exit ?? (err.status === 409 ? 1 : 2));
+  }
+  emit(
+    format,
+    [
+      { h: 'Pruned', sub: `${r.rules} rules from ${r.entries} entries` },
+      { kv: [['Batch', batch], ['Log', relPath(process.cwd(), join(dirname(P.store.a11y), 'a11y-decisions.ndjson'))]] },
+      { next: [[`${CMD} a11y`, 'the violations, against the shorter lists'], ...next] },
+    ],
+    { batch, entries: r.entries, rules: r.rules }
+  );
 }
 
 /** The entries table every listing shares. */
@@ -705,7 +807,7 @@ const commands = {
     emit(format, blocks, r);
   },
 
-  a11y: () => overProjects(async () => {
+  a11y: () => (flags.prune ? a11yPrune() : overProjects(async () => {
     const r = await run('a11y', {
       component: flags.component,
       only_new: !!flags.new,
@@ -731,7 +833,7 @@ const commands = {
       });
     }
     return { blocks, data: r };
-  }),
+  })),
 
   history: () => overProjects(async () => {
     const r = await run('history', { limit: Number(flags.limit) || 10 });

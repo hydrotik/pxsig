@@ -9,8 +9,8 @@ A baseline changes only when a person accepts it.
 - **First baselines:** `pxsig approve plan --new --first-baselines`, then `apply`.
 
 Commands that need a person (`approve apply`, `approve undo`, `approve verify --adopt`,
-`check --full --update`, `doctor --repair --apply --prune`, `doctor --repair --only log-torn
---apply`, `serve --link`) are refused (exit 3) when output is piped, in CI, or under an assistant's
+`check --full --update`, `a11y --prune`, `doctor --repair --apply --prune`, `doctor --repair --only
+log-torn --apply`, `serve --link`) are refused (exit 3) when output is piped, in CI, or under an assistant's
 marker; the message says which (`pxsig help agents`).
 
 The server refuses decisions an agent or a script posts: they need the dashboard link (a one-time
