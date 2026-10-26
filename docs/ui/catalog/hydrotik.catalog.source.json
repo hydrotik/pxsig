@@ -1,6 +1,6 @@
 {
   "repo": "hydrotik/hydrotik",
-  "commit": "e365303f0badf93fc5395ccfe67f849e21133fdf",
+  "commit": "53ee4e17849f60cf21b2d7dcc73b8ee6b82da255",
   "files": {
     "hydrotik.catalog.json": "docs/llm/catalog.json",
     "hydrotik.catalog.schema.json": "docs/llm/catalog.schema.json"
