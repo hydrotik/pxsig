@@ -129,7 +129,7 @@ async function main() {
     if (out) writeFileSync(out, JSON.stringify({ ...baseline, pxsig: version, measuredAt: new Date().toISOString(), node: process.version, runs, times: { ...baseline?.times, [os]: times } }, null, 2) + '\n');
     if (verdicts.some((v) => v.fail)) process.exitCode = 1;
   } finally {
-    if (!given && !args.includes('--keep')) rmSync(dir, { recursive: true, force: true });
+    if (!given && !args.includes('--keep')) rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
     else if (!given) console.log(`[bench] kept ${dir}`);
   }
 }
