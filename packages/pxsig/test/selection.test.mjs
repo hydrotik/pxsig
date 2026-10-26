@@ -113,3 +113,38 @@ test('the fail-safe is for the gates: staleness traces, `pxsig affected` explain
   assert.equal(j.all, false, 'an absolute path inside the workspace is made relative');
   assert.equal(j.entries, 2);
 });
+
+test('affects.aliases and affects.unresolved: anchored, validated, shown by `pxsig config`, carried to the engine', () => {
+  const root = tree({
+    'pxsig.workspace.json': { projects: { ds: 'packages/ds' } },
+    'packages/ds/pxsig.config.json': { srcRoot: 'src', affects: { aliases: { '@ds': 'src', '@tokens': '$workspace/packages/tokens/src' }, unresolved: ['.storybook/main.ts', '$workspace/apps/**'] } },
+  });
+  const ws = findWorkspace({ cwd: root, env: {} });
+  const P = loadProject(ws, ws.projects[0], { env: {} });
+  assert.deepEqual(P.affectsAliases, { '@ds': 'packages/ds/src', '@tokens': 'packages/tokens/src' });
+  assert.deepEqual(P.affectsUnresolved, ['packages/ds/.storybook/main.ts', 'apps/**']);
+  const c = JSON.parse(cli(['config', '--json', '--project', 'ds'], root).stdout);
+  assert.deepEqual(Object.keys(c.config.affects.aliases), ['@ds', '@tokens']);
+  assert.equal(c.sources['affects.unresolved'], 'project config');
+  writeFileSync(join(root, 'packages/ds/pxsig.config.json'), JSON.stringify({ affects: { aliases: ['src'] } }));
+  assert.throws(() => loadProject(ws, ws.projects[0], { env: {} }), /affects.aliases must map/);
+  writeFileSync(join(root, 'packages/ds/pxsig.config.json'), JSON.stringify({ affects: { unresolved: 'x' } }));
+  assert.throws(() => loadProject(ws, ws.projects[0], { env: {} }), /affects.unresolved must be an array/);
+});
+
+test('non-code imports are followed, and an unresolved import is listed and checked on every run', { skip: !hasRust && 'Rust binary not built' }, () => {
+  const f = fixture({ withSigs: false });
+  const alpha = 'src/components/Alpha/Alpha.stories.tsx';
+  writeFileSync(join(f.repo, alpha), `import data from './alpha.json';\nimport s from 'virtual:status';\n${readFileSync(join(f.repo, alpha), 'utf8')}`);
+  writeFileSync(join(f.repo, 'src/components/Alpha/alpha.json'), '{}');
+  const run = () => writeRunManifest(openProject({ cwd: f.repo, env: { PXSIG_BIN: rustBin } })).path;
+  let a = affected(f.repo, run(), ['src/components/Alpha/alpha.json']);
+  assert.deepEqual([classOf(a, 'src/components/Alpha/alpha.json'), a.all], ['graph', false]);
+  assert.deepEqual(a.unresolved.map((u) => [u.file, u.spec, u.accepted, u.selects]), [[alpha, 'virtual:status', false, 'entries']]);
+  const r = cli(['affected', 'src/components/Alpha/alpha.json'], f.repo);
+  assert.match(r.stdout, /Checked on every run: unresolved imports/);
+  assert.match(r.stdout, /virtual:status/);
+  writeFileSync(join(f.repo, 'pxsig.config.json'), JSON.stringify({ ...JSON.parse(readFileSync(join(f.repo, 'pxsig.config.json'), 'utf8')), affects: { unresolved: ['src/components/Alpha/**'] } }));
+  a = affected(f.repo, run(), ['README.md']);
+  assert.deepEqual([a.unresolved[0].accepted, a.unresolved[0].selects], [true, 'none']);
+});

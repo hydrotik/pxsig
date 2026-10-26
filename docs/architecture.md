@@ -67,8 +67,10 @@ flowchart TD
    precedence exist once, in JS.
 2. **Select.** All entries, or those named, or those the changed files affect. `pxsig affected`
    classifies each changed path ([ci.md](ci.md#how-selection-decides)): baselines and store
-   records select their entries, the reverse import graph of `srcRoot` is walked from changed
-   modules, and a path it cannot trace selects every entry.
+   records select their entries, the reverse import graph (`srcRoot`, the "affects every entry"
+   folders and the workspace packages imports reach; every file type,
+   [ci.md](ci.md#what-counts-as-an-import)) is walked from changed files, and a path it cannot
+   trace selects every entry. The resolver is `crates/pxsig-cli/src/resolve.rs`.
 3. **Guard.** Fetch Storybook's `index.json`. Unreachable or broken: stop with exit 2, render and
    record nothing.
 4. **Render.** Playwright renders each entry in its mode's browser, viewport and color scheme, with

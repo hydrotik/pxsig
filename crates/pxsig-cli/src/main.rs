@@ -20,6 +20,7 @@ mod batch;
 mod gate;
 mod io;
 mod report;
+mod resolve;
 mod serve;
 mod sweep;
 

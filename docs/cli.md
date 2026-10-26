@@ -181,8 +181,10 @@ Which entries a set of edited files can change. Files are relative to the curren
 `--since <ref>` uses the files changed since the merge base with that ref, plus staged, unstaged
 and untracked work. Each path gets a class ([ci.md](ci.md#how-selection-decides)); a path the
 selection cannot trace selects every entry, and the output lists each one (a candidate for
-`affects.ignore`). `--json` adds `files` (path, status, class, what it selects, why), `failSafe`,
-`ignored`, `baselines`, `records`, `otherSuites` and `warnings`.
+`affects.ignore`). It also lists the unresolved imports that add entries to every run (a
+candidate for `affects.aliases` or `affects.unresolved`). `--json` adds `files` (path, status,
+class, what it selects, why), `failSafe`, `ignored`, `baselines`, `records`, `otherSuites`,
+`warnings`, `unresolved` (file, spec, line, why, accepted, what it selects) and `remote`.
 
 ## Checking
 
@@ -346,7 +348,7 @@ error.
 | `check --manifest m --png-dir d [--root r] [--only ids\|@file] [--out-dir d] [--json\|--format human\|json\|junit\|markdown] [--artifacts all\|failed\|none] [--no-artifacts] [--cache dir] [--history file] [--base-png-dir d] [--tolerance 16] [gate flags]` | Batch check of every manifest entry's `<png-dir>/<id>.png`, in parallel. |
 | `baseline --manifest m --png-dir d [--root r] [--only …] [--no-detail] [--json]` | Write a baseline for every entry. |
 | `diff <a.png> <b.png> [--tolerance 16] [--mask out.png] [--json]` | Full-resolution pixel diff: changed pixels and change regions. |
-| `affected --manifest m [--root r] [--since main] [--files a,b] [--json]` | Entries a change can affect: each changed path is classified ([ci.md](ci.md#how-selection-decides)); baselines and store records select their entries, the import graph under `srcRoot` selects story files, and a path nothing traces selects all. JSON: `all`, `reason`, `changed`, `ids`, `traced` (without the fail-safe), `storyFiles`, `graphFiles`, `mergeBase`, `warnings`, `files`, `baselines`, `records`, `removed`, `failSafe`, `ignored`, `otherSuites`. |
+| `affected --manifest m [--root r] [--since main] [--files a,b] [--json]` | Entries a change can affect: each changed path is classified ([ci.md](ci.md#how-selection-decides)); baselines and store records select their entries, the import graph ([ci.md](ci.md#what-counts-as-an-import)) selects story files, and a path nothing traces selects all. JSON: `all`, `reason`, `changed`, `ids`, `traced` (without the fail-safe or unresolved imports), `storyFiles`, `graphFiles`, `mergeBase`, `warnings`, `files`, `baselines`, `records`, `removed`, `failSafe`, `ignored`, `otherSuites`, `unresolved`, `remote`. |
 | `report --input check.json [--format markdown\|junit] [--link-base url] [--out file]` | Markdown summary or JUnit from a check result. |
 | `trim <dir> [--only …] [--pad 16] [--tolerance 8] [--json]` | Crop renders to content (right and bottom), in place. |
 | `pack <record> --out x.psig [--image png] [--entry json]`, `pack --plan plan.json [--json]` | Pack spec v1 records and images into `.psig` files, reading each back to prove it. |

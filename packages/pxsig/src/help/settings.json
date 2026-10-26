@@ -199,7 +199,7 @@
     "affects": {
       "file": "pxsig.config.json",
       "meaning": "Changes that select every entry.",
-      "operation": "See affects.workspaceDeps, affects.extra and affects.ignore."
+      "operation": "See affects.workspaceDeps, affects.extra, affects.ignore, affects.aliases and affects.unresolved."
     },
     "affects.workspaceDeps": {
       "file": "pxsig.config.json",
@@ -220,6 +220,18 @@
       "meaning": "Globs for changed paths that select nothing when nothing traced claims them (docs, other apps, CI config). $workspace/ and $repo/ anchor a glob; otherwise it is relative to the project.",
       "default": "[]",
       "operation": "Without it, a change outside srcRoot makes `check --since` check every entry. Never hides a baseline, a store file or an imported module."
+    },
+    "affects.aliases": {
+      "file": "pxsig.config.json",
+      "meaning": "Import aliases only a bundler knows (Vite `resolve.alias`, webpack `resolve.alias`): specifier prefix → path. $workspace/ anchors a path; otherwise it is relative to the project. Longest prefix wins.",
+      "default": "{}",
+      "operation": "Imports through an alias are followed. Without it they are unresolved, and the entries that reach them are checked on every run."
+    },
+    "affects.unresolved": {
+      "file": "pxsig.config.json",
+      "meaning": "Globs of files whose unresolved imports are accepted (a `virtual:` module, a computed `import()`), anchored like affects.ignore.",
+      "default": "[]",
+      "operation": "Without it, an unresolved import adds the entries that reach its file to every `check --since` run (all of them when the file affects every entry). `pxsig affected` lists each one."
     },
     "nonVisual": {
       "file": "pxsig.config.json",

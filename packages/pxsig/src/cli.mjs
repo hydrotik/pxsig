@@ -683,6 +683,16 @@ const commands = {
     if (r.failSafe?.length) blocks.push({ h: 'Every entry selected because of', sub: `${r.failSafe.length} paths` }, { list: r.failSafe.slice(0, 10).map((f) => `${f.why} (${f.class})`) }, ...(r.failSafe.length > 10 ? [{ note: `…${r.failSafe.length - 10} more in --json` }] : []), { note: 'A path that never changes a render can go in affects.ignore.' });
     else blocks.push({ list: r.ids.slice(0, 40).map(idCell) }, ...(r.ids.length > 40 ? [{ note: `…${r.ids.length - 40} more` }] : []));
     for (const [s, n] of Object.entries(r.otherSuites ?? {})) blocks.push({ note: `${n} changed entries are in suite ${s}: pxsig check --suite ${s}` });
+    // Unresolved imports add the entries that reach them to every run (decision 6.1d).
+    const costly = (r.unresolved ?? []).filter((u) => !u.accepted && u.selects !== 'none');
+    if (costly.length)
+      blocks.push(
+        { h: 'Checked on every run: unresolved imports', sub: `${costly.length} imports` },
+        { list: costly.slice(0, 10).map((u) => `${u.file}:${u.line} \`${u.spec}\` (${u.why}) → ${u.selects === 'all' ? 'every entry' : `${u.n} entries`}`) },
+        ...(costly.length > 10 ? [{ note: `…${costly.length - 10} more in --json` }] : []),
+        { note: 'Map a bundler alias with affects.aliases, or accept the file with affects.unresolved.' },
+      );
+    if (r.remote?.length) blocks.push({ note: `${r.remote.length} remote URLs are not followed (a full check covers them).` });
     if (r.entries)
       blocks.push({
         next: [

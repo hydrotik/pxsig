@@ -136,10 +136,10 @@ Each changed path gets one class, by the first row that matches:
 | `baseline-other` | is another `.psig`: another suite's (run `--suite <name>`) or orphaned | nothing here |
 | `store-record` | is `a11y.json`, a manifest, `approvals.ndjson` or `a11y-decisions.ndjson` in the store | the entries whose records changed; all when a log was rewritten or a file does not parse |
 | `store-other` | is any other file in the store | all |
-| `graph` | is a module under `srcRoot` that a story file imports, directly or not | those entries |
-| `graph-no-entry` | is a module under `srcRoot` that no story reaches (a test, a script) | nothing |
+| `graph` | is a file a story file imports, directly or not (below) | those entries; all when an "affects every entry" file imports it |
+| `graph-no-entry` | is a module that no story reaches (a test, a script) | nothing |
 | `ignored` | matches `affects.ignore` | nothing |
-| `untraced` | is under `srcRoot` and not a module (an unimported `.json`, `.md`, image) | all |
+| `untraced` | is under `srcRoot` and nothing imports it (an unimported `.json`, `.md`, image) | all |
 | `outside` | is outside `srcRoot`, in the workspace | all |
 | `outside-workspace` | is elsewhere in the repository | all |
 
@@ -149,10 +149,52 @@ changes a render (docs, other apps, CI config) belongs in `affects.ignore`
 ([configuration.md](configuration.md)). An ignore entry never hides a path in the rows above it.
 
 After upgrading, run `pxsig affected --since origin/main` on a few recent pull requests: every
-`outside` line is a candidate for `affects.ignore`.
+`outside` line is a candidate for `affects.ignore`, and every unresolved import for
+`affects.aliases` or `affects.unresolved`.
+
+### What counts as an import
+
+The graph holds every file under `srcRoot`, every "affects every entry" folder (so an import in
+the Storybook config counts: `preview.tsx` importing `src/global.css.ts` makes that file select
+all), every `affects.aliases` target, and the source folder of each workspace package an import
+reaches. pxsig reads:
+
+- **Code** (`.ts .tsx .mts .cts .js .jsx .mjs .cjs .mdx`): `import … from`, `export … from`,
+  `import '…'`, `import('…')`, `require('…')`, `new URL('…', import.meta.url)`,
+  `import.meta.glob('…')` (every file the pattern matches), `require.context('dir')` (every file
+  under it), and `url(…)` in strings (a vanilla-extract `fontFace` source).
+- **Style sheets** (`.css .scss .sass .less .pcss`): `@import`, `@use`, `@forward`, `composes … from`
+  and `url(…)`.
+- Any file type can be imported: `.json`, `.svg`, `.md?raw`, fonts, images. `?query` and `#hash`
+  suffixes are ignored. A template literal (`` import(`./icons/${name}.svg`) ``) stands for every
+  file under its folder that ends the same way.
+
+A specifier resolves, in this order:
+
+1. A relative path: the file, `<path>.<ext>`, `<path>/index.<ext>`, and the TypeScript source for
+   a `.js` name (`./a.js` → `a.ts`).
+2. A Node built-in (`node:fs`, `path`): external.
+3. `affects.aliases`: aliases only a bundler knows (Vite `resolve.alias`).
+4. `compilerOptions.paths` and `baseUrl` of the nearest `tsconfig.json`, following `extends`.
+5. `#…` through the nearest `package.json` `imports`.
+6. A package: the project itself or a workspace package (linked in `node_modules`), through
+   `exports` (conditions `source`, `development`, `import`, `default`, `require`), else `main`.
+   A target in a build output (`dist/`) maps back to its source file
+   (`dist/a/index.mjs` → `src/a/index.ts`), or to the whole source folder when none matches.
+7. Any other installed package: external. A remote URL (`https://…`) is listed as `remote`: no
+   change here reflects it, and a full check covers it.
+
+Anything else is **unresolved**: a `virtual:` module, an alias pxsig does not know, a computed
+`import(x)`, a subpath `exports` does not list. An unresolved import adds the entries that reach
+its file to **every** run, and all of them when that file affects every entry (it is then a
+fail-safe line, class `unresolved`). `pxsig affected` lists each one with its file and line. Map
+a bundler alias in `affects.aliases`, or accept the file in `affects.unresolved`
+([configuration.md](configuration.md)): for example a Storybook `main.ts` whose computed import
+only loads a docs page script.
 
 `pxsig serve --watch` and staleness (`doctor`, `pxsig_stale`) are not gates: they use the traced
-selection (`traced` in `affected --json`) and print what they could not trace.
+selection (`traced` in `affected --json`: no fail-safe and no unresolved imports) and print what
+they could not trace.
 
 ## Reports
 

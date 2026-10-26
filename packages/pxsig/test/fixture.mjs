@@ -73,12 +73,15 @@ function fakePsig(id, { image }) {
  *   pxsig.config.json
  *   src/components/{Alpha,Beta,Gamma,Delta}/*.stories.tsx, src/internal/Helpers/Helpers.stories.tsx
  *   .pxsig/{manifest.json, baselines/, renders/latest, reports/, a11y.json}
+ *   node_modules/@storybook/react (a stub, so the stories' package import resolves)
  */
 export function fixture({ withSigs = hasRust } = {}) {
   const repo = mkdtempSync(join(tmpdir(), 'pxsig-integrity-'));
   mkdirSync(join(repo, '.git'));
   const px = join(repo, '.pxsig');
   const w = (p, data) => (mkdirSync(dirname(p), { recursive: true }), writeFileSync(p, data));
+  // Installed, as in a real project: the stories' one package import resolves (external).
+  w(join(repo, 'node_modules/@storybook/react/package.json'), '{"name":"@storybook/react"}');
   w(join(repo, 'src/components/Alpha/Alpha.stories.tsx'), STORY('Components/Alpha', ['Default', 'WithIcon']));
   w(join(repo, 'src/components/Beta/Beta.stories.tsx'), STORY('Components/Beta', ['Default', 'Flaky', 'Broken', 'Fresh']));
   w(join(repo, 'src/components/Gamma/Gamma.stories.tsx'), STORY('Components/Gamma', ['Restorable', 'Changed', 'NewOne', 'Never', 'NoRender']));
