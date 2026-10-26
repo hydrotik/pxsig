@@ -137,7 +137,7 @@ clears the mark. `summary.changed` counts only real changes waiting for a decisi
   `pxsig approve` in a terminal"; a browser without the link gets "approving here needs the
   dashboard link", `code: "needs-dashboard-link"`).
 - **The dashboard link.** `pxsig serve` prints `<url>/report/#ticket=<t>` when a person started it
-  at a terminal (not under an agent, not in the background), and on macOS opens it; `pxsig serve
+  at a terminal (no assistant's marker, not in the background; [agents.md](agents.md#markers)), and on macOS opens it; `pxsig serve
   --link`, run by a person at a terminal, prints a new one from the running server. The ticket is
   single use and good for two minutes; the page trades it at `POST /__pxsig/session` (its own
   origin only) for a cookie `pxsig_link_<port>` that scripts cannot read and other sites cannot send

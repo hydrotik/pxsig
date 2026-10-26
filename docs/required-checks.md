@@ -13,7 +13,7 @@ carry-forward, reports). This page covers making it required, and running it in 
 | `pxsig doctor --ci` | no error-severity integrity code | an error-severity code | setup error (no manifest, broken Storybook index, unknown project) |
 
 None of these commands needs a person. The ones that write baselines refuse to run in CI (`CI`
-set), when output is piped, or under an agent: `approve apply` and `check --full --update` exit
+set), when output is piped, or under a coding assistant's marker: `approve apply` and `check --full --update` exit
 3 (see [cli.md](cli.md#commands-that-need-a-person)). CI never writes baselines.
 
 `approve verify` does not fail on baselines with no log line at all (from before the log existed).

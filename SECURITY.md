@@ -41,7 +41,10 @@ Storybook.
 - **Requests without an `Origin` header can check and repair.** Any process on the same machine
   can start checks, as it could run them directly.
 - **Approvals need a person.** Bulk approval and `check --full --update` are refused when output is
-  piped, in CI, or under a known agent, and ask for a typed phrase. The MCP review tool cannot
+  piped, in CI, or under a coding assistant's marker ([docs/agents.md](docs/agents.md)), and ask
+  for a typed phrase. A marker is a hint, not proof: some assistants set none, and any process can
+  set or unset one. The guarantee is the reviewed pull request that commits the baselines; every
+  log line written under a marker names the assistant (`agent`). The MCP review tool cannot
   approve or accept at all, and refuses even a rejection without `confirm: true`. Every
   approval is logged with hashes and the pxsig version, and can be undone. The approval log is not
   signed, and holds no personal data unless a team turns on `approvals.identity: "git-email"`:

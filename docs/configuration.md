@@ -225,7 +225,7 @@ names must exist in `modes`. `addModes` is accepted as another name for `modes`.
 | `PXSIG_FORMAT` | CLI | Output format: `pretty`, `plain` or `json`. |
 | `PXSIG_DASHBOARD_DIR` | server, `report` | A dashboard folder to serve or write instead of the prebuilt one, above `dashboard.ui`'s build. |
 | `PXSIG_UI_ADAPTER` | dashboard build | The UI adapter, by built-in name or path; above `dashboard.ui`. |
-| `PXSIG_AGENT` | CLI | Set to mark the shell as an agent: plain output, and commands that need a person are refused. |
+| `PXSIG_AGENT` | CLI, MCP, server | Marks the shell as a coding assistant's, for one that sets no marker of its own: plain output, commands that need a person are refused, and log lines carry `agent` (the value, or `agent` for `1`). The other markers are in [agents.md](agents.md#markers). |
 | `PXSIG_NO_DELEGATE` | CLI | Do not hand over to the workspace root's install (see [monorepo.md](monorepo.md#installs)). |
 | `PXSIG_THREADS` | binary | Worker threads for batch commands. Default: logical CPUs. |
 | `PXSIG_THRESHOLD`, `PXSIG_MIN_SSIM`, `PXSIG_MAX_CHANGED_PCT`, `PXSIG_MAX_EDGE_PCT`, `PXSIG_MIN_CELLS` | binary | Gate values above the project's `gate` and below the gate flags and every story's own gate (see [spec.md](spec.md#gate-resolution)). |

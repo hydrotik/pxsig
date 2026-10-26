@@ -35,8 +35,8 @@ Every other command works on one project and exits 2 when none is chosen.
 ### Output formats
 
 Without a flag, the format is `PXSIG_FORMAT` if set, else `pretty` on a terminal and `plain`
-otherwise. A run in CI (`CI` set) or under a known agent environment (or `PXSIG_AGENT` set) gets
-`plain`.
+otherwise. A run in CI (`CI` set) or under a coding assistant's marker gets `plain`, even in a
+real terminal ([agents.md](agents.md#markers); `PXSIG_AGENT` marks any other shell).
 
 `plain` is written for logs and agents: GitHub-flavoured Markdown tables, no colour codes, no
 redraws, absolute image paths, and a "Next" section with the exact commands to run. `NO_COLOR` and
@@ -54,9 +54,12 @@ redraws, absolute image paths, and a "Next" section with the exact commands to r
 ### Commands that need a person
 
 Writing baselines without reviewing each one, undoing approvals and pruning files are refused
-unless stdin and stdout are both a terminal, `CI` is not set, and no agent environment is
-detected. They then ask for a typed confirmation phrase. These are: `check --full --update`,
-`approve apply`, `approve undo`, `approve verify --adopt`, and `doctor --repair --apply --prune`.
+unless stdin and stdout are both a terminal, `CI` is not set, and the environment carries no
+coding assistant's marker ([agents.md](agents.md#markers)). They then ask for a typed confirmation
+phrase. These are: `check --full --update`, `approve apply`, `approve undo`, `approve verify
+--adopt`, `doctor --repair --apply --prune`, `doctor --repair --only log-torn --apply` and `serve
+--link`. A refusal exits 3 and says why: "refused under copilot
+(AI_AGENT=github_copilot_vscode_agent)", "refused in CI (CI is set)" or "refused: output is piped".
 
 Per-entry approval stays in the dashboard and the Storybook panel, where a person sees the images.
 
@@ -69,7 +72,7 @@ Alone (or `pxsig --help`), the command list. With a name, one page:
 - **a command or subcommand** (`pxsig help check`, `pxsig help approve apply`): usage, flags with
   their defaults and the setting or variable each overrides, exit codes, what it changes (reads
   only, writes the store, writes baselines, needs a person), examples;
-- **a topic**: `approvals`, `exit-codes`, `platforms`, `dashboard`, `ci`;
+- **a topic**: `agents`, `approvals`, `exit-codes`, `platforms`, `dashboard`, `ci`;
 - **a setting** (`pxsig help gate.threshold`): its file, meaning, values, default, and what it
   changes day to day;
 - `global`: the options every command takes.
@@ -105,6 +108,22 @@ the binary in use, and every setting with the layer that set it: `defaults`, `wo
 `project config`, `env` or `flags`. `--json` prints the same as one document, with the merged
 `config` and a `sources` map (dotted key → layer). Config flags given to `config` show up as
 `flags`, so `pxsig config --grid 32` shows what a run with `--grid 32` would use.
+
+### `pxsig setup [assistant] [--assistant name] [--print]`
+
+The coding assistant's recipe ([agents.md](agents.md#recipes)). A person at a terminal is asked
+which assistant is used here (a numbered list); `--assistant` names it. It prints the MCP entry,
+which starts the server with the local install (`node node_modules/pxsig/bin/pxsig.mjs mcp`, no
+`npx`), the policy that can turn it off on a managed machine, and the instruction for the
+assistant not to approve. It then offers the repository's MCP file (for example
+`.vscode/mcp.json`) and the instruction file (for example `.github/copilot-instructions.md`),
+each created only on a typed yes and only when it does not exist. An existing file is never
+edited: the block to add is printed. Files in the home folder are printed, never written; no other
+tool's CLI is started.
+
+`--print` prints and writes nothing; so does every run in CI, piped or under an assistant, where
+`setup` asks nothing (without `--assistant` it lists the names). `--json` prints the recipe as
+data and writes nothing.
 
 ### `pxsig manifest [--suite name]`
 
@@ -301,8 +320,8 @@ Exit: 0 nothing at or above `--fail-on`, 1 findings at or above it, 2 a setup er
 | Command | Meaning |
 | --- | --- |
 | `pxsig serve [--port 6070] [--watch] [--no-open] [--tab name] [--project a,b] [--debug]` | The server and dashboard for the workspace. See [server.md](server.md). Started by a person at a terminal, it prints the dashboard link (approving from the dashboard needs it once per browser; [server.md](server.md#guards)). `--debug` prints every program it starts ([platforms.md](platforms.md#programs-pxsig-starts)). The dashboard is `PXSIG_DASHBOARD_DIR` if set; else, when a served project sets `dashboard.ui`, its `pxsig dashboard build` output if that is newer than the adapter's files and from this pxsig version; else the prebuilt one, with a line saying which command builds the missing or stale one. Serve never builds. |
-| `pxsig serve --link` | A fresh dashboard link from the running server, printed for a person at a terminal (exit 3 when piped, in CI or under an agent; exit 2 when no server runs). A browser that opens it once, within two minutes, can approve from the dashboard until the server stops. |
-| `pxsig mcp` | The MCP server on stdio. See [mcp.md](mcp.md). |
+| `pxsig serve --link` | A fresh dashboard link from the running server, printed for a person at a terminal (exit 3 when piped, in CI or under an assistant's marker; exit 2 when no server runs). A browser that opens it once, within two minutes, can approve from the dashboard until the server stops. |
+| `pxsig mcp` | The MCP server on stdio. See [mcp.md](mcp.md); `pxsig setup` prints each assistant's entry. |
 | `pxsig report [--out dir]` | A static dashboard for one project, which opens from disk. Default `<store>/reports/site/`. Exits 2 on any error. |
 | `pxsig dashboard build [--ui path] [--out dir]` | Rebuild the dashboard on this project's design system through a UI adapter (`--ui`, else `dashboard.ui`), with the project's own Vite (`vite`, `@vitejs/plugin-react`, `@vanilla-extract/vite-plugin`, `react`, `react-dom` installed). Run it in the folder of that `pxsig.config.json`. Default output `node_modules/.cache/pxsig/dashboard`, which `pxsig serve` then uses (below); `--out` writes elsewhere (serve it with `PXSIG_DASHBOARD_DIR`). Refused, with the migration notes, when the adapter's `conformance.json` records an older major UI contract version ([ui/contract-changes.md](ui/contract-changes.md)); an older minor builds and says what falls back. See [ui/build-adapter.md](ui/build-adapter.md). |
 | `pxsig dashboard gaps [--ui path] [--json]` | What the adapter covers of the UI contract: missing, partial and bespoke components and the dashboard files each affects. Also the UI contract version the adapter is written for against this pxsig's ([ui/contract-changes.md](ui/contract-changes.md)). Exit 1 when a required component is missing, its `conformance.json` is malformed, or it is written for an older major contract version. |

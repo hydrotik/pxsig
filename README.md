@@ -19,7 +19,8 @@ change.
   each entry.
 - **Storybook addon.** `@pxsig/storybook-addon` adds a panel and sidebar status dots.
 - **MCP server.** `pxsig mcp` gives an agent the same status, images and re-checks. It cannot
-  approve a baseline unless the user asked for it.
+  approve a baseline. `pxsig setup` prints the entry for each coding assistant
+  ([docs/agents.md](docs/agents.md)).
 - **Integrity doctor.** `pxsig doctor` reports what a passing check does not cover: stories with no
   entry, entries never checked, baselines without an image, stale verdicts, orphans. It never
   writes a signature and never approves.
@@ -132,6 +133,7 @@ include it (see [packages/dashboard/README.md](packages/dashboard/README.md)).
 | Server, HTTP API and dashboard | [docs/server.md](docs/server.md) |
 | The dashboard on your own design system: the UI contract and how to build an adapter | [docs/ui/build-adapter.md](docs/ui/build-adapter.md), [docs/ui/features.md](docs/ui/features.md) |
 | MCP server | [docs/mcp.md](docs/mcp.md) |
+| Coding assistants: markers, the instruction not to approve, MCP recipes, `pxsig setup` | [docs/agents.md](docs/agents.md) |
 | Storybook addon | [docs/storybook.md](docs/storybook.md) |
 | Continuous integration | [docs/ci.md](docs/ci.md) |
 | Required checks, branch protection and the merge queue | [docs/required-checks.md](docs/required-checks.md) |

@@ -6,24 +6,50 @@ starts in (or `PXSIG_WORKSPACE`).
 
 ## Registering
 
-From the repository root, with Claude Code:
+Start the server with the local install, from the repository root:
 
 ```bash
-claude mcp add pxsig -- npx pxsig mcp
+node node_modules/pxsig/bin/pxsig.mjs mcp
 ```
 
-Or in the repository's `.mcp.json`:
+No `npx` (it fetches from the registry when pxsig is not installed), no Windows `.cmd` shim (a
+client that starts programs without a shell cannot run one), no network. `npx pxsig mcp` keeps
+working.
+
+Each assistant keeps the entry in its own file. With Claude Code, in the repository's `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
-    "pxsig": { "command": "npx", "args": ["pxsig", "mcp"] }
+    "pxsig": { "command": "node", "args": ["node_modules/pxsig/bin/pxsig.mjs", "mcp"] }
   }
 }
 ```
 
+| Assistant | `pxsig setup --assistant` | Project file | Key |
+| --- | --- | --- | --- |
+| VS Code with GitHub Copilot | `vscode` | `.vscode/mcp.json` | `servers` |
+| GitHub Copilot CLI | `copilot-cli` | `.github/mcp.json` | `mcpServers` |
+| Claude Code | `claude-code` | `.mcp.json` | `mcpServers` |
+| Cursor | `cursor` | `.cursor/mcp.json` | `mcpServers` |
+| Windsurf (Devin Desktop) | `windsurf` | none: the home folder's `mcp_config.json` | `mcpServers` |
+| Gemini CLI | `gemini-cli` | `.gemini/settings.json` | `mcpServers` |
+| OpenAI Codex CLI | `codex` | `.codex/config.toml` | `[mcp_servers.pxsig]` |
+| Cline | `cline` | none: Cline's own settings file | `mcpServers` |
+| Roo Code | `roo-code` | `.roo/mcp.json` | `mcpServers` |
+| Continue | `continue` | `.continue/mcpServers/pxsig.yaml` | `mcpServers` |
+| Zed | `zed` | `.zed/settings.json` | `context_servers` |
+
+`pxsig setup --assistant <name> --print` prints the entry for this repository, the policy that can
+turn MCP off on a managed machine, and the instruction for the assistant not to approve.
+`pxsig setup` (a person at a terminal) creates the project file and the instruction file on a typed
+yes, each only when it does not exist. Every recipe is in [agents.md](agents.md#recipes).
+
 Any MCP client that launches a stdio server works the same way. Start it from the repository root,
 or set `PXSIG_WORKSPACE` in its environment.
+
+**When a policy turns MCP off,** pxsig is unaffected: the CLI gives the same answers, in plain
+Markdown when an assistant runs it (`pxsig status`, `pxsig list`, `pxsig entry <id>`).
 
 ## Where answers come from
 
@@ -42,7 +68,7 @@ Every tool takes an optional `project`. With several projects in the workspace i
 | Tool | Arguments | Returns |
 | --- | --- | --- |
 | `pxsig_projects` | none | The projects: name, folder, Storybook URL, entry count, integrity headline |
-| `pxsig_status` | `project` | When the report was written, counts per state, accessibility totals, most changed components, server state, files edited since the report. Start here. |
+| `pxsig_status` | `project` | When the report was written, counts per state, accessibility totals, most changed components, server state, files edited since the report, and `approvals.level`. Start here. |
 | `pxsig_list` | `project`, `state` (`problems` default, `changed`, `new`, `error`, `flaky`, `rejected`, `approved`, `drift`, `pass`, `skipped`, `a11y`, `all`), `component`, `mode`, `limit` (50) | Entries with metrics and gate reasons |
 | `pxsig_entry` | `project`, `id` (required), `images` (`baseline`, `current`, `diff`; default all three) | One entry in full, with the images inline. Images over about 1.5 MB are replaced by their path. |
 | `pxsig_a11y` | `project`, `only_new`, `component`, `limit` (50) | axe violations per entry, with each entry's accessibility decision (`accepted`, `rejected` or null) since its last check |
@@ -72,7 +98,12 @@ cannot approve at all.
   list a person set.
 - `pxsig_review` refuses unless `confirm: true`, and its description tells the model to pass it
   only when the user explicitly asked for this action on these exact entries.
-- Bulk approval (`pxsig approve apply`) and `check --full --update` are refused under an agent.
+- Bulk approval (`pxsig approve apply`) and `check --full --update` are refused under an
+  assistant's marker, with a message naming it ([agents.md](agents.md#markers)).
+- The server's instructions to the model say so: "Approving and accepting are the person's: never
+  approve, never accept, and never call `/__pxsig/approve`; ask the person to review in the
+  dashboard."
+- No MCP result carries the dashboard link, a ticket or a token.
 
 A typical session: `pxsig_status`, then `pxsig_list`, then `pxsig_entry` on what changed, then
 `pxsig_check` after a fix.
