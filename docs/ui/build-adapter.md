@@ -20,6 +20,7 @@ Read, in `node_modules/pxsig/` (or `packages/dashboard/` in a clone of pxsig):
 | `docs/ui/features.md` | Every dashboard feature and the components it renders: what your components will be used for. |
 | `dashboard/src/ui/adapters/hydrotik/` | The reference adapter: a worked mapping onto a real design system. |
 | `dashboard/src/ui/fallbacks.tsx` | What each optional component looks like when you leave it out. |
+| `docs/ui/catalog/` | The reference design system's components: what each does, which ones the reference adapter uses, and the equivalent in 11 other design systems. A starting point for the mapping questions below ([README](catalog/README.md)). |
 
 The types are importable: `import type * as C from 'pxsig/dashboard'`.
 

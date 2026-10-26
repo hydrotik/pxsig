@@ -27,6 +27,9 @@
       "types": "./dashboard/src/diff-viewer/index.ts",
       "default": "./dashboard/src/diff-viewer/index.ts"
     },
+    "./ui/catalog/hydrotik.json": "./docs/ui/catalog/hydrotik.catalog.json",
+    "./ui/catalog/hydrotik.schema.json": "./docs/ui/catalog/hydrotik.catalog.schema.json",
+    "./ui/catalog/hydrotik.source.json": "./docs/ui/catalog/hydrotik.catalog.source.json",
     "./package.json": "./package.json"
   },
   "files": [
