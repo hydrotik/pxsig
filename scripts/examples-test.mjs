@@ -22,7 +22,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const repo = fileURLToPath(new URL('..', import.meta.url));
 const cli = join(repo, 'packages', 'pxsig', 'bin', 'pxsig.mjs');
@@ -95,7 +95,7 @@ function serveStatic(root) {
 /** Write baselines from the latest renders: what approving every NEW entry does. */
 function baselineAll(dir, project) {
   const code = `
-    const { openProject, writeRunManifest } = await import(${JSON.stringify(join(repo, 'packages/pxsig/src/lib/workspace.mjs'))});
+    const { openProject, writeRunManifest } = await import(${JSON.stringify(pathToFileURL(join(repo, 'packages/pxsig/src/lib/workspace.mjs')).href)});
     const P = openProject({ project: ${JSON.stringify(project)} });
     const run = writeRunManifest(P).path;
     const { spawnSync } = await import('node:child_process');
