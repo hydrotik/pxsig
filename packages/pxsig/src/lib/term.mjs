@@ -1,7 +1,7 @@
 /**
  * term.mjs — one output layer for every pxsig CLI, readable by people and by agents.
  *
- * Commands build a document out of blocks (heading, kv, table, list, note, next) and hand it to
+ * Commands build a document out of blocks (heading, kv, table, list, note, next, text) and hand it to
  * `emit()`, which renders it for whoever is reading:
  *
  *   pretty  a terminal: colour, symbols, aligned tables, clickable ids (OSC 8), a spinner on stderr,
@@ -149,10 +149,11 @@ function renderPretty(blocks, p) {
     } else if (b.list) for (const t of b.list) out.push(`  ${p.gray('•')} ${cell(t)}`);
     else if (b.note) out.push(`  ${(tone[b.tone] ?? p.gray)(b.note)}`);
     else if (b.next?.length) {
-      out.push('', p.bold('Next'));
+      out.push('', p.bold(b.title ?? 'Next'));
       const w = Math.max(...b.next.map(([c]) => width(c)));
       for (const [c, why] of b.next) out.push(`  ${p.cyan(pad(c, w))}  ${p.gray(why)}`);
     } else if (b.images) for (const im of b.images) out.push(...inlineImage(im, p));
+    else if (b.text) out.push('', ...b.text.trimEnd().split('\n'));
   }
   return out.join('\n').replace(/^\n/, '') + '\n';
 }
@@ -186,7 +187,7 @@ function renderMarkdown(blocks) {
       out.push('');
     } else if (b.note) out.push(b.tone === 'bad' ? `**${b.note}**` : b.note, '');
     else if (b.next?.length) {
-      out.push('**Next**', '');
+      out.push(`**${b.title ?? 'Next'}**`, '');
       for (const [c, why] of b.next) out.push(`- \`${c}\` — ${why}`);
       out.push('');
     } else if (b.images) {
@@ -194,7 +195,7 @@ function renderMarkdown(blocks) {
       for (const im of b.images)
         out.push(`- ${im.label}: ${im.path}${im.missing ? ' (missing)' : ''}`);
       out.push('');
-    }
+    } else if (b.text) out.push(b.text.trimEnd(), '');
   }
   return out.join('\n').trimEnd() + '\n';
 }

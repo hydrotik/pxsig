@@ -17,7 +17,7 @@ pxsig has two command-line tools with the same name:
 | `--json` | Print the command's data as one JSON document on stdout. Logs go to stderr. |
 | `--plain` (or `--markdown`) | Markdown output. Both are switches: they never take the next word as a value. |
 | `--pretty` | Terminal output: colour, aligned tables, links, a spinner, inline images in terminals that support them. |
-| `--help` | The command list. |
+| `--help` | With a command, that command's page (`pxsig check --help`, `pxsig approve apply --help`); alone, the command list. |
 
 Config flags, accepted by every command, form the top configuration layer (see
 [configuration.md](configuration.md#layers)): `--storybook-url <url>`, `--storybook-static <dir>`,
@@ -59,6 +59,24 @@ detected. They then ask for a typed confirmation phrase. These are: `check --ful
 `approve apply`, `approve undo`, `approve verify --adopt`, and `doctor --repair --apply --prune`.
 
 Per-entry approval stays in the dashboard and the Storybook panel, where a person sees the images.
+
+## Help
+
+### `pxsig help [name]`
+
+Alone (or `pxsig --help`), the command list. With a name, one page:
+
+- **a command or subcommand** (`pxsig help check`, `pxsig help approve apply`): usage, flags with
+  their defaults and the setting or variable each overrides, exit codes, what it changes (reads
+  only, writes the store, writes baselines, needs a person), examples;
+- **a topic**: `approvals`, `exit-codes`, `platforms`, `dashboard`, `ci`;
+- **a setting** (`pxsig help gate.threshold`): its file, meaning, values, default, and what it
+  changes day to day;
+- `global`: the options every command takes.
+
+An unknown name exits 2 and names the nearest ones. `--json` prints the entry as data; the MCP's
+`pxsig_help` returns the same. The pages come from `src/help/` in the package; a test keeps them in
+step with this page, [configuration.md](configuration.md) and the code.
 
 ## Setup
 
@@ -174,7 +192,7 @@ The full check. `check` also takes this path when given `--update`, `--suite` or
 ```
 pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] [--only id,id]
                    [--concurrency 8] [--retries 2] [--no-a11y] [--link-base <url>] [--out <name>]
-                   [--update]
+                   [--no-server] [--timeout-s 1800] [--update]
 ```
 
 | Flag | Default | Meaning |
@@ -189,6 +207,8 @@ pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] 
 | `--no-a11y` | off | Skip axe. |
 | `--link-base <url>` | none | Dashboard URL; the Markdown summary links each entry to `<url>#inspect=<id>`. |
 | `--out <name>` | `check` | Report file name (`<store>/reports/<name>.json`). |
+| `--no-server` | off | Do not hand the check to the server: when the server holds the store, refuse instead of queueing on it. |
+| `--timeout-s <n>` | 1800 | Seconds to wait for the server's queue to drain when the check was handed to it. |
 | `--update` | off | Write baselines from the renders instead of checking. A person at a terminal only, after typing `UPDATE <n> BASELINES`. Every replaced baseline is snapshotted and logged. |
 
 Entries left out by `--since` / `--changed` keep their previous row. One with no previous row but
@@ -251,6 +271,28 @@ match is refused and left as it is.
 ### `pxsig doctor`
 
 Integrity per component, and the safe repairs. See [integrity.md](integrity.md#pxsig-doctor).
+
+```
+pxsig doctor [--component text] [--status code,…] [--ci] [--fail-on error|warn|info] [--offline] [--limit 40]
+pxsig doctor --repair [--only actions] [--apply] [--prune] [--stale]
+```
+
+| Flag | Meaning |
+| --- | --- |
+| `--component <text>` | Components whose name contains this text. |
+| `--status <code,…>` | Only these integrity codes. |
+| `--ci` | Fail only on error-severity codes (the same as `--fail-on error`). |
+| `--fail-on <error\|warn\|info>` | The lowest severity that makes the exit 1 (default `warn`). |
+| `--offline` | Do not fetch the Storybook index; scan the story files instead. |
+| `--limit <n>` | Components shown (default 40). |
+| `--repair` | Plan the safe repairs (a dry run). |
+| `--only <actions>` | Only these repairs: `register`, `recheck`, `restore-baseline-image`, `convert-legacy`, `log-torn` (which runs only when named). |
+| `--apply` | Run the planned repairs. Takes the store lock. |
+| `--prune` | With `--repair --apply`: move orphans to `<store>/trash/`. A person at a terminal, after a typed phrase. |
+| `--stale` | Also re-check stale verdicts (left out by default). |
+
+Exit: 0 nothing at or above `--fail-on`, 1 findings at or above it, 2 a setup error or usage, 3
+`--prune` or `log-torn` without a person at a terminal.
 
 ## Server, MCP, reports
 

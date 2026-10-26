@@ -1,0 +1,329 @@
+{
+  "$comment": "Every key pxsig.config.json and pxsig.workspace.json allow (packages/pxsig/schema), for `pxsig help <key>`. test/help.test.mjs fails when a schema key has no entry here.",
+  "settings": {
+    "version": {
+      "file": "pxsig.config.json, pxsig.workspace.json",
+      "meaning": "File format version.",
+      "default": "1",
+      "operation": "Read to know the file format; nothing else changes."
+    },
+    "name": {
+      "file": "pxsig.config.json",
+      "meaning": "Project name in a single-package repository: this key, else the package.json name without its scope, else `default`. In a monorepo the workspace key is the name.",
+      "default": "package name",
+      "operation": "The name --project takes, and the name in reports and the dashboard."
+    },
+    "srcRoot": {
+      "file": "pxsig.config.json",
+      "meaning": "The folder whose stories belong to this project. A story's component is its folder relative to srcRoot.",
+      "default": "\"src\"",
+      "operation": "Which stories become entries, how they group into components, and which edits can change them.",
+      "flag": "--src (init)"
+    },
+    "storybook": {
+      "file": "pxsig.config.json",
+      "meaning": "Where Storybook is and how its paths resolve.",
+      "operation": "See storybook.url, storybook.configDir, storybook.staticDir."
+    },
+    "storybook.url": {
+      "file": "pxsig.config.json",
+      "meaning": "Where Storybook serves index.json and iframe.html: a dev server or a static build.",
+      "default": "\"http://localhost:6006\"",
+      "operation": "Every render, manifest build and story-index read goes here.",
+      "flag": "--storybook-url",
+      "env": "PXSIG_STORYBOOK_URL"
+    },
+    "storybook.configDir": {
+      "file": "pxsig.config.json",
+      "meaning": "Storybook's config folder, used to resolve index.json's story paths when Storybook lives outside the project.",
+      "default": "null",
+      "operation": "How story files are matched to entries.",
+      "flag": "--storybook-config"
+    },
+    "storybook.staticDir": {
+      "file": "pxsig.config.json",
+      "meaning": "A built Storybook (index.json + iframe.html). When nothing answers at storybook.url, check, manifest and the server serve this folder themselves on a free 127.0.0.1 port.",
+      "default": "null",
+      "operation": "Checks keep working without a running Storybook.",
+      "flag": "--storybook-static"
+    },
+    "store": {
+      "file": "pxsig.config.json",
+      "meaning": "Where baselines and run output live.",
+      "operation": "See store.dir and store.layout."
+    },
+    "store.dir": {
+      "file": "pxsig.config.json",
+      "meaning": "The store folder.",
+      "default": "\".pxsig\"",
+      "operation": "Where baselines, the approval log, reports and renders are written."
+    },
+    "store.layout": {
+      "file": "pxsig.config.json",
+      "meaning": "Where baselines go: in the store, or beside each component.",
+      "values": [
+        "package",
+        "colocated"
+      ],
+      "default": "\"package\"",
+      "operation": "package: <store>/baselines/<component>/<id>.psig. colocated: <srcRoot>/<component>/__pxsig__/<id>.psig, so a component and its baselines move together in reviews.",
+      "flag": "--layout (init)"
+    },
+    "capture": {
+      "file": "pxsig.config.json",
+      "meaning": "How each story is rendered and captured.",
+      "operation": "See capture.viewport, capture.settleMs, capture.target, capture.waitFor."
+    },
+    "capture.viewport": {
+      "file": "pxsig.config.json",
+      "meaning": "Browser viewport, [width, height] in CSS pixels, at device scale 1.",
+      "default": "[900, 600]",
+      "operation": "The size every render is taken at, unless a mode or story sets its own."
+    },
+    "capture.settleMs": {
+      "file": "pxsig.config.json",
+      "meaning": "Minimum wait after fonts load, before the layout-stability wait.",
+      "default": "200",
+      "operation": "Longer is steadier and slower.",
+      "flag": "--settle-ms"
+    },
+    "capture.target": {
+      "file": "pxsig.config.json",
+      "meaning": "The element captured. A story can override it.",
+      "default": "\"#storybook-root\"",
+      "operation": "What part of the page each baseline shows."
+    },
+    "capture.waitFor": {
+      "file": "pxsig.config.json",
+      "meaning": "Extra waits for content that animates in script: { selector, minMs?, stableMarkup? }, each applied when its selector matches.",
+      "default": "[]",
+      "operation": "Fewer flaky entries for stories with animation."
+    },
+    "grid": {
+      "file": "pxsig.config.json",
+      "meaning": "Signature grid, cells per side (8..256).",
+      "default": "64",
+      "operation": "Finer grids catch smaller changes and cost more. Changing it changes every new baseline.",
+      "flag": "--grid",
+      "env": "PXSIG_GRID"
+    },
+    "minCellPx": {
+      "file": "pxsig.config.json",
+      "meaning": "Adaptive grid: cells at least this many pixels wide, capped by grid. 0 turns it off.",
+      "default": "8",
+      "operation": "Small components get fewer, larger cells, so noise does not trip the gate.",
+      "flag": "--min-cell-px"
+    },
+    "detail": {
+      "file": "pxsig.config.json",
+      "meaning": "Write the detail channel (full-resolution tiles where edges are) into new baselines.",
+      "default": "true",
+      "operation": "Catches thin changes (borders, icons) the grid averages away."
+    },
+    "trim": {
+      "file": "pxsig.config.json",
+      "meaning": "Crop renders to their content (right and bottom) before checking: { pad, tolerance }, or false.",
+      "default": "{ \"pad\": 16, \"tolerance\": 8 }",
+      "operation": "A story that grows or shrinks its empty space does not fail."
+    },
+    "gate": {
+      "file": "pxsig.config.json",
+      "meaning": "The gate for every entry: an entry fails when any rule trips. A story can set its own.",
+      "operation": "How big a change must be to fail a run. See gate.threshold and the keys beside it."
+    },
+    "gate.threshold": {
+      "file": "pxsig.config.json",
+      "meaning": "Per-cell mean RGB delta (0–255) that counts a cell as changed.",
+      "default": "24",
+      "operation": "Lower catches subtler colour changes and fails more often.",
+      "env": "PXSIG_THRESHOLD"
+    },
+    "gate.minCells": {
+      "file": "pxsig.config.json",
+      "meaning": "Fail when at least this many cells changed. 0 turns the rule off.",
+      "default": "3",
+      "operation": "Lower fails on smaller changes.",
+      "env": "PXSIG_MIN_CELLS"
+    },
+    "gate.minSsim": {
+      "file": "pxsig.config.json",
+      "meaning": "Fail when SSIM is below this.",
+      "default": "0.99",
+      "operation": "Higher fails on smaller structural changes.",
+      "env": "PXSIG_MIN_SSIM"
+    },
+    "gate.maxChangedPct": {
+      "file": "pxsig.config.json",
+      "meaning": "Fail when more than this percentage of cells changed.",
+      "default": "2",
+      "operation": "Lower fails on smaller changes.",
+      "env": "PXSIG_MAX_CHANGED_PCT"
+    },
+    "gate.maxEdgePct": {
+      "file": "pxsig.config.json",
+      "meaning": "Fail when the edge-map difference is above this percentage.",
+      "default": "off",
+      "operation": "Catches outline and layout shifts that keep colours similar.",
+      "env": "PXSIG_MAX_EDGE_PCT"
+    },
+    "gate.detail": {
+      "file": "pxsig.config.json",
+      "meaning": "The detail-channel rule: { blockDelta, energyDelta, minTiles }, or false.",
+      "default": "{ \"blockDelta\": 32, \"energyDelta\": 48, \"minTiles\": 3 }",
+      "operation": "How thin changes in the detail tiles fail an entry."
+    },
+    "modes": {
+      "file": "pxsig.config.json",
+      "meaning": "Named render settings: { globals, colorScheme, viewport, browser, extends }.",
+      "default": "{ \"default\": { \"globals\": \"\", \"colorScheme\": \"light\" } }",
+      "operation": "Each mode is one more entry per story: a theme, a density, a browser."
+    },
+    "defaultMode": {
+      "file": "pxsig.config.json",
+      "meaning": "The mode whose entries keep the bare story id.",
+      "default": "the first key of modes",
+      "operation": "Which entries have ids without an @mode suffix."
+    },
+    "modesByDefault": {
+      "file": "pxsig.config.json",
+      "meaning": "Modes every story is rendered in, unless the story says otherwise.",
+      "default": "[defaultMode]",
+      "operation": "How many entries each story makes."
+    },
+    "suites": {
+      "file": "pxsig.config.json",
+      "meaning": "Extra manifests (manifest.<suite>.json) for other mode sets.",
+      "default": "{}",
+      "operation": "A larger set checked separately, for example nightly."
+    },
+    "affects": {
+      "file": "pxsig.config.json",
+      "meaning": "Changes that select every entry.",
+      "operation": "See affects.workspaceDeps and affects.extra."
+    },
+    "affects.workspaceDeps": {
+      "file": "pxsig.config.json",
+      "meaning": "A change in the source of a workspace package this project depends on selects every entry.",
+      "default": "true",
+      "operation": "Safer selection in a monorepo, at the cost of full checks when a dependency changes.",
+      "env": "PXSIG_SOURCES (replaces affects)"
+    },
+    "affects.extra": {
+      "file": "pxsig.config.json",
+      "meaning": "More paths whose change selects every entry (the Storybook config folder, a lockfile).",
+      "default": "[]",
+      "operation": "Edits there make `check --since` check everything.",
+      "env": "PXSIG_SOURCES (replaces affects)"
+    },
+    "nonVisual": {
+      "file": "pxsig.config.json",
+      "meaning": "Top-level folders under srcRoot with no visual stories; their stories are reported as excluded.",
+      "default": "[]",
+      "operation": "Those stories are never rendered or checked."
+    },
+    "a11y": {
+      "file": "pxsig.config.json",
+      "meaning": "Run axe on every render.",
+      "default": "true",
+      "operation": "Accessibility violations are recorded per entry and compared with a11y.json.",
+      "flag": "--no-a11y (check --full)"
+    },
+    "integrity": {
+      "file": "pxsig.config.json",
+      "meaning": "Integrity options for doctor and the ledger.",
+      "operation": "See the integrity.* keys."
+    },
+    "integrity.requireBaselineImages": {
+      "file": "pxsig.config.json",
+      "meaning": "Report missing-baseline-image when a baseline has no image.",
+      "default": "true",
+      "operation": "Whether a baseline without an image is an error."
+    },
+    "integrity.staleAfterSourceChange": {
+      "file": "pxsig.config.json",
+      "meaning": "Report stale when a source changed after a verdict.",
+      "default": "true",
+      "operation": "Whether `stale` and doctor flag out-of-date verdicts."
+    },
+    "integrity.sourceRoots": {
+      "file": "pxsig.config.json",
+      "meaning": "Folders, relative to the workspace root, whose edits can make a verdict stale.",
+      "default": "srcRoot",
+      "operation": "Which edits count for staleness.",
+      "env": "PXSIG_SOURCES"
+    },
+    "integrity.maxTracedFiles": {
+      "file": "pxsig.config.json",
+      "meaning": "Above this many edited files, staleness falls back to \"same component folder\" instead of the import graph.",
+      "default": "400",
+      "operation": "Large edits are judged faster and less precisely."
+    },
+    "integrity.severity": {
+      "file": "pxsig.config.json",
+      "meaning": "Per-code severity override, for example { \"unbaselined\": \"error\" }.",
+      "default": "{}",
+      "operation": "Which codes fail doctor's exit."
+    },
+    "integrity.indexTimeoutMs": {
+      "file": "pxsig.config.json",
+      "meaning": "Timeout for fetching Storybook's index.json.",
+      "default": "4000",
+      "operation": "How long doctor waits before scanning the files instead."
+    },
+    "integrity.renderSkewMs": {
+      "file": "pxsig.config.json",
+      "meaning": "A render written this long after its verdict makes the verdict stale.",
+      "default": "5000",
+      "operation": "How a re-render without a re-check is noticed."
+    },
+    "integrity.manifests": {
+      "file": "pxsig.config.json",
+      "meaning": "Other manifests, relative to the store, whose baselines are not orphans.",
+      "default": "every manifest.<suite>.json",
+      "operation": "Which baselines doctor counts as in use."
+    },
+    "importPathPattern": {
+      "file": "pxsig.config.json",
+      "meaning": "Advanced: a regular expression selecting the story files, with the component folder as group 1.",
+      "default": "files under srcRoot",
+      "operation": "Which story files belong to the project, when the folder rule does not fit."
+    },
+    "dashboard": {
+      "file": "pxsig.config.json",
+      "meaning": "The dashboard rebuilt on this project's design system.",
+      "operation": "See dashboard.ui."
+    },
+    "dashboard.ui": {
+      "file": "pxsig.config.json",
+      "meaning": "A UI adapter for `pxsig dashboard build` and `gaps`: a path to its module, relative to this folder, or a built-in adapter's name.",
+      "default": "none",
+      "operation": "pxsig serve serves this project's build while it is current.",
+      "flag": "--ui (dashboard build, gaps)",
+      "env": "PXSIG_UI_ADAPTER"
+    },
+    "projects": {
+      "file": "pxsig.workspace.json",
+      "meaning": "Project name to project folder, relative to the workspace root. Each folder holds a pxsig.config.json.",
+      "default": "required",
+      "operation": "Which packages pxsig checks, and their names."
+    },
+    "defaults": {
+      "file": "pxsig.workspace.json",
+      "meaning": "Any project config key, applied under each project's own config. \"$workspace/\" paths resolve from the workspace root.",
+      "default": "{}",
+      "operation": "Shared settings for every project."
+    },
+    "server": {
+      "file": "pxsig.workspace.json",
+      "meaning": "The pxsig server.",
+      "operation": "See server.port."
+    },
+    "server.port": {
+      "file": "pxsig.workspace.json",
+      "meaning": "Port pxsig serve tries first; if it is taken, the next ten are tried.",
+      "default": "6070",
+      "operation": "Where the dashboard is.",
+      "flag": "--port (serve)"
+    }
+  }
+}

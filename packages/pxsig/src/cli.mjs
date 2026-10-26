@@ -66,6 +66,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { approveCommand } from './approve.mjs';
+import { helpBlocks, helpData, lookup, nearestNames } from './help.mjs';
 import { ctxOf, doctor, imageOf, tools } from './mcp.mjs';
 import { parseArgs } from './lib/args.mjs';
 import { CODES } from './lib/integrity.mjs';
@@ -874,6 +875,14 @@ const commands = {
   },
 
   help() {
+    // `pxsig help <name>` and `pxsig <command> [sub] --help`: one page. Alone: the header below.
+    const words = command === 'help' ? rest : flags.help ? positional : [];
+    if (words.length) {
+      // `pxsig list changed --help`: the word after a command is an argument, not a subcommand.
+      const found = lookup(words) ?? (command !== 'help' ? lookup(words.slice(0, 1)) : null);
+      if (!found) fail(`no command, topic or setting "${words.join(' ')}" — nearest: ${nearestNames(words.join(' ')).join(', ')}`);
+      return emit(format, helpBlocks(found, CMD), helpData(found));
+    }
     const doc = readFileSync(new URL(import.meta.url), 'utf8')
       .match(/\/\*\*([\s\S]*?)\*\//)[1]
       .replace(/^ \* ?/gm, '')

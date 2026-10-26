@@ -33,6 +33,7 @@ import { fileURLToPath } from 'node:url';
 import { CODES, filterLedger, ledgerPath, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
 import { AGENT_DECISIONS, NEEDS_PERSON, readToken, TOKEN_HEADER, tokenFile } from './lib/guard.mjs';
 import { readSettings } from './lib/machine.mjs';
+import { helpData, helpNames, lookup, nearestNames } from './help.mjs';
 import { readImage } from './lib/psig.mjs';
 import { applyRepairs, defaultHooks, planRepairs, serverStatus } from './lib/repair.mjs';
 import { acquireLock, describeLock, readLock } from './lib/lock.mjs';
@@ -615,6 +616,18 @@ const tools = [
       } finally {
         lock.release();
       }
+    },
+  },
+  {
+    name: 'pxsig_help',
+    description:
+      'pxsig\'s own help, read-only: a command (`check`, `approve apply`), a topic (`approvals`, `exit-codes`, `platforms`, `dashboard`, `ci`), a setting (`gate.threshold`) or `global` (options every command takes). The same text as `pxsig help <name>`. Without `name`, the list of names.',
+    inputSchema: { type: 'object', properties: { name: { type: 'string', description: 'A command, `command subcommand`, topic, setting key or `global`.' } }, additionalProperties: false },
+    async run({ name } = {}) {
+      if (!name) return { names: helpNames() };
+      const found = lookup(String(name).trim().split(/\s+/));
+      if (!found) throw new Error(`no command, topic or setting "${name}"; nearest: ${nearestNames(String(name)).join(', ')}`);
+      return helpData(found);
     },
   },
   {

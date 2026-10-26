@@ -52,6 +52,7 @@ Every tool takes an optional `project`. With several projects in the workspace i
 | `pxsig_review` | `project`, `action` (`reject`, `unreview`, `a11y-reject`, `a11y-unreview`), `ids`, `confirm` (all three required) | Marks entries for attention: `reject` marks the visual change rejected, `a11y-reject` marks the axe violations for a fix, and `unreview` / `a11y-unreview` clear a rejection. Logged as `via: "mcp"`. There is no approve, accept or unaccept: those are a person's. Needs the server. |
 | `pxsig_doctor` | `project`, `component`, `status`, `limit` (40), `repair` (`none`, `plan`, `apply`), `only`, `offline`, `stale` | The integrity ledger, filtered; with `repair`, the plan or the applied repairs (`stale: true` also re-checks stale verdicts). `apply` takes the store lock, or goes through the server that holds it; it refuses while another process holds it. Never prunes, never approves. |
 | `pxsig_history` | `project`, `limit` (10) | The last runs |
+| `pxsig_help` | `name` (a command, `command subcommand`, topic, setting key or `global`; none: the list of names) | pxsig's own help, the same as `pxsig help <name>`. Read-only. |
 
 ## The approval guard
 

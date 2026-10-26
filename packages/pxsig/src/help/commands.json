@@ -1,0 +1,1113 @@
+{
+  "$comment": "The CLI's help, one source for `pxsig help <command>`, `pxsig <command> --help` and the MCP's pxsig_help. test/help.test.mjs keeps it in step with the code, docs/cli.md and the dashboard's Help page. `readBy: engine` marks a flag the Rust binary reads, not the npm CLI.",
+  "global": {
+    "summary": "Options every command takes.",
+    "flags": [
+      {
+        "name": "project",
+        "value": "name or folder",
+        "meaning": "The project. Optional inside a project's folder, or when the workspace has one project.",
+        "env": "PXSIG_PROJECT"
+      },
+      {
+        "name": "all",
+        "meaning": "Read commands (status, list, stale, a11y, history, doctor): every project in the workspace. `check --all` keeps its own meaning: every entry."
+      },
+      {
+        "name": "workspace",
+        "value": "dir",
+        "meaning": "The workspace, for this command and everything it starts.",
+        "env": "PXSIG_WORKSPACE"
+      },
+      {
+        "name": "json",
+        "meaning": "The command's data as one JSON document on stdout; logs go to stderr."
+      },
+      {
+        "name": "plain",
+        "meaning": "Markdown output: tables, no colour, no redraws. Written for logs and agents.",
+        "env": "PXSIG_FORMAT"
+      },
+      {
+        "name": "markdown",
+        "meaning": "Same as --plain."
+      },
+      {
+        "name": "pretty",
+        "meaning": "Terminal output: colour, aligned tables, links, a spinner.",
+        "env": "PXSIG_FORMAT"
+      },
+      {
+        "name": "help",
+        "meaning": "With a command: that command's page. Alone: the command list."
+      },
+      {
+        "name": "storybook-url",
+        "value": "url",
+        "meaning": "Config flag: Storybook's URL for this run.",
+        "setting": "storybook.url",
+        "env": "PXSIG_STORYBOOK_URL"
+      },
+      {
+        "name": "storybook-static",
+        "value": "dir",
+        "meaning": "Config flag: a Storybook build to serve when nothing answers at the URL.",
+        "setting": "storybook.staticDir"
+      },
+      {
+        "name": "storybook-config",
+        "value": "dir",
+        "meaning": "Config flag: Storybook's config folder.",
+        "setting": "storybook.configDir"
+      },
+      {
+        "name": "grid",
+        "value": "n",
+        "meaning": "Config flag: the signature grid, cells per side.",
+        "setting": "grid",
+        "env": "PXSIG_GRID"
+      },
+      {
+        "name": "min-cell-px",
+        "value": "n",
+        "meaning": "Config flag: the adaptive grid's smallest cell.",
+        "setting": "minCellPx"
+      },
+      {
+        "name": "settle-ms",
+        "value": "n",
+        "meaning": "Config flag: the minimum wait after fonts load.",
+        "setting": "capture.settleMs"
+      }
+    ]
+  },
+  "commands": {
+    "status": {
+      "summary": "Overview: counts per state, accessibility totals, the most-changed components, the server, staleness. The default command.",
+      "usage": [
+        "pxsig status"
+      ],
+      "effects": [
+        "reads-only"
+      ],
+      "exits": {
+        "0": "OK",
+        "2": "Usage or setup error"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig status",
+          "shows": "Where the project stands, and what to run next"
+        }
+      ],
+      "seeAlso": [
+        "list",
+        "doctor"
+      ]
+    },
+    "stale": {
+      "summary": "Verdicts older than an edit that can change them, or made on a render of a different size.",
+      "usage": [
+        "pxsig stale [--limit 200]"
+      ],
+      "flags": [
+        {
+          "name": "limit",
+          "value": "n",
+          "default": "200",
+          "meaning": "Rows shown."
+        }
+      ],
+      "effects": [
+        "reads-only"
+      ],
+      "exits": {
+        "0": "No stale verdicts",
+        "1": "Stale verdicts found",
+        "2": "Usage or setup error"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig stale",
+          "shows": "The verdicts to re-check before trusting the report"
+        }
+      ],
+      "seeAlso": [
+        "check",
+        "doctor"
+      ]
+    },
+    "list": {
+      "summary": "Entries in one state, with SSIM, the share of changed cells and the first gate reason.",
+      "usage": [
+        "pxsig list [state] [--component text] [--mode name] [--limit 30]"
+      ],
+      "flags": [
+        {
+          "name": "state",
+          "value": "state",
+          "default": "problems",
+          "meaning": "problems (changed, error, flaky, rejected), changed, new, error, flaky, rejected, approved, drift, pass, skipped, a11y or all. Also the first word after `list`."
+        },
+        {
+          "name": "component",
+          "value": "text",
+          "meaning": "Entries whose id contains this text."
+        },
+        {
+          "name": "mode",
+          "value": "name",
+          "meaning": "One mode."
+        },
+        {
+          "name": "limit",
+          "value": "n",
+          "default": "30",
+          "meaning": "Rows shown."
+        }
+      ],
+      "effects": [
+        "reads-only"
+      ],
+      "exits": {
+        "0": "OK",
+        "2": "Usage or setup error"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig list changed",
+          "shows": "Every changed entry"
+        },
+        {
+          "cmd": "pxsig list --component button",
+          "shows": "Problems in one component"
+        }
+      ],
+      "seeAlso": [
+        "entry",
+        "status"
+      ]
+    },
+    "entry": {
+      "summary": "One entry: verdict, metrics, gate reasons, regions, accessibility, review decision, and where its images are.",
+      "usage": [
+        "pxsig entry <id> [--images baseline,current,diff]"
+      ],
+      "flags": [
+        {
+          "name": "images",
+          "value": "baseline,current,diff",
+          "default": "all three",
+          "meaning": "Which images to show."
+        }
+      ],
+      "effects": [
+        "reads-only"
+      ],
+      "exits": {
+        "0": "OK",
+        "2": "Unknown entry, usage or setup error"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig entry components-button--default",
+          "shows": "Why one entry changed"
+        }
+      ],
+      "seeAlso": [
+        "list"
+      ]
+    },
+    "check": {
+      "summary": "Re-render and re-check entries: some through the running server, or the full check. Never writes baselines unless --update is given by a person.",
+      "usage": [
+        "pxsig check [ids…] [--changed a.tsx,b.ts] [--since <ref>] [--all]",
+        "pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] [--only id,id] [--concurrency 8] [--retries 2] [--no-a11y] [--link-base <url>] [--out <name>] [--no-server] [--update]"
+      ],
+      "flags": [
+        {
+          "name": "changed",
+          "value": "files",
+          "meaning": "The entries these comma-separated files affect."
+        },
+        {
+          "name": "since",
+          "value": "ref",
+          "meaning": "The entries the changes since <ref> affect (committed, staged, unstaged and untracked)."
+        },
+        {
+          "name": "all",
+          "meaning": "Every entry."
+        },
+        {
+          "name": "full",
+          "meaning": "The full check: render every selected entry, write check.json, summary.md and junit.xml. `--update`, `--suite` and `--modes` take this path too."
+        },
+        {
+          "name": "suite",
+          "value": "name",
+          "meaning": "Check manifest.<suite>.json."
+        },
+        {
+          "name": "modes",
+          "value": "a,b",
+          "default": "all",
+          "meaning": "Only these modes."
+        },
+        {
+          "name": "only",
+          "value": "ids",
+          "meaning": "Only these entry or story ids. A story not in the manifest yet is registered first."
+        },
+        {
+          "name": "concurrency",
+          "value": "n",
+          "default": "8",
+          "meaning": "Browser pages rendering in parallel."
+        },
+        {
+          "name": "retries",
+          "value": "n",
+          "default": "2",
+          "meaning": "Re-render failures up to n times; a pass on retry is flaky."
+        },
+        {
+          "name": "no-a11y",
+          "meaning": "Skip axe."
+        },
+        {
+          "name": "link-base",
+          "value": "url",
+          "meaning": "Dashboard URL; summary.md links each entry to <url>#inspect=<id>."
+        },
+        {
+          "name": "out",
+          "value": "name",
+          "default": "check",
+          "meaning": "Report file name (<store>/reports/<name>.json)."
+        },
+        {
+          "name": "no-server",
+          "meaning": "Do not hand the check to the server: when the server holds the store, refuse instead of queueing on it."
+        },
+        {
+          "name": "timeout-s",
+          "value": "n",
+          "meaning": "Seconds to wait for the server's queue to drain when the check was handed to it.",
+          "default": "1800"
+        },
+        {
+          "name": "update",
+          "meaning": "Write baselines from the renders instead of checking. A person at a terminal only, after typing UPDATE <n> BASELINES."
+        }
+      ],
+      "effects": [
+        "writes-store",
+        "writes-baselines (--update only)",
+        "needs-a-person (--update only)"
+      ],
+      "exits": {
+        "0": "Every checked entry passed",
+        "1": "At least one entry changed, is new or failed to render",
+        "2": "Usage or setup error, Storybook unreachable, or the store locked",
+        "3": "--update without a person at a terminal"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig check --full",
+          "shows": "Render and check every entry"
+        },
+        {
+          "cmd": "pxsig check --since main",
+          "shows": "Re-check the entries affected by changes since main"
+        },
+        {
+          "cmd": "pxsig check components-button--default",
+          "shows": "Re-check one story's entries"
+        }
+      ],
+      "seeAlso": [
+        "affected",
+        "approve",
+        "exit-codes"
+      ]
+    },
+    "affected": {
+      "summary": "Which entries a set of edited files can change, from the import graph.",
+      "usage": [
+        "pxsig affected <files…> | --since <ref>"
+      ],
+      "flags": [
+        {
+          "name": "since",
+          "value": "ref",
+          "meaning": "The files changed since the merge base with <ref>, plus staged, unstaged and untracked work."
+        }
+      ],
+      "effects": [
+        "reads-only"
+      ],
+      "exits": {
+        "0": "OK",
+        "2": "Usage or setup error"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig affected src/components/Button/Button.tsx",
+          "shows": "The entries one edit can change"
+        }
+      ],
+      "seeAlso": [
+        "check"
+      ]
+    },
+    "a11y": {
+      "summary": "axe violations per entry, grouped by rule.",
+      "usage": [
+        "pxsig a11y [--component text] [--new] [--limit 50]"
+      ],
+      "flags": [
+        {
+          "name": "component",
+          "value": "text",
+          "meaning": "Entries whose id contains this text."
+        },
+        {
+          "name": "new",
+          "meaning": "Only violations not in the a11y baseline."
+        },
+        {
+          "name": "limit",
+          "value": "n",
+          "default": "50",
+          "meaning": "Rows shown."
+        }
+      ],
+      "effects": [
+        "reads-only"
+      ],
+      "exits": {
+        "0": "OK",
+        "2": "Usage or setup error"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig a11y --new",
+          "shows": "Accessibility problems a change introduced"
+        }
+      ],
+      "seeAlso": [
+        "entry"
+      ]
+    },
+    "history": {
+      "summary": "The last runs: when, how many entries, how many changed, which.",
+      "usage": [
+        "pxsig history [--limit 10]"
+      ],
+      "flags": [
+        {
+          "name": "limit",
+          "value": "n",
+          "default": "10",
+          "meaning": "Runs shown."
+        }
+      ],
+      "effects": [
+        "reads-only"
+      ],
+      "exits": {
+        "0": "OK",
+        "2": "Usage or setup error"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig history",
+          "shows": "Recent runs and what changed in each"
+        }
+      ],
+      "seeAlso": [
+        "status"
+      ]
+    },
+    "doctor": {
+      "summary": "Integrity per component, and the safe repairs (a dry-run plan, or with --apply, run).",
+      "usage": [
+        "pxsig doctor [--component x] [--status code,…] [--ci] [--fail-on error|warn|info] [--offline] [--limit 40]",
+        "pxsig doctor --repair [--only register,recheck,restore-baseline-image,convert-legacy,log-torn] [--apply] [--prune] [--stale]"
+      ],
+      "flags": [
+        {
+          "name": "component",
+          "value": "text",
+          "meaning": "Components whose name contains this text."
+        },
+        {
+          "name": "status",
+          "value": "code,…",
+          "meaning": "Only these integrity codes."
+        },
+        {
+          "name": "ci",
+          "meaning": "Fail only on error-severity codes (same as --fail-on error)."
+        },
+        {
+          "name": "fail-on",
+          "value": "error|warn|info",
+          "default": "warn",
+          "meaning": "The lowest severity that makes the exit 1."
+        },
+        {
+          "name": "offline",
+          "meaning": "Do not fetch the Storybook index; scan the story files instead."
+        },
+        {
+          "name": "limit",
+          "value": "n",
+          "default": "40",
+          "meaning": "Components shown."
+        },
+        {
+          "name": "repair",
+          "meaning": "Plan the safe repairs."
+        },
+        {
+          "name": "only",
+          "value": "actions",
+          "meaning": "Limit the repairs to these actions. log-torn runs only when named."
+        },
+        {
+          "name": "apply",
+          "meaning": "Run the planned repairs. Takes the store lock."
+        },
+        {
+          "name": "prune",
+          "meaning": "With --repair --apply: move orphans to <store>/trash/. A person at a terminal, after a typed phrase."
+        },
+        {
+          "name": "stale",
+          "meaning": "Also re-check stale verdicts (left out by default)."
+        }
+      ],
+      "effects": [
+        "reads-only",
+        "writes-store (--repair --apply)",
+        "needs-a-person (--prune, --only log-torn --apply)"
+      ],
+      "exits": {
+        "0": "Nothing at or above --fail-on",
+        "1": "Findings at or above --fail-on",
+        "2": "A setup error, or usage",
+        "3": "--prune or log-torn without a person at a terminal"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig doctor",
+          "shows": "List coverage issues per component"
+        },
+        {
+          "cmd": "pxsig doctor --repair",
+          "shows": "Plan the safe repairs; add --apply to run them"
+        },
+        {
+          "cmd": "pxsig doctor --ci",
+          "shows": "In CI: fail on error-severity codes only"
+        }
+      ],
+      "seeAlso": [
+        "stale",
+        "approvals"
+      ]
+    },
+    "approve": {
+      "summary": "The guarded way to accept many changes at once: plan, then a person applies. Every approval is logged.",
+      "usage": [
+        "pxsig approve plan|apply|log|undo|verify"
+      ],
+      "subcommands": {
+        "plan": {
+          "summary": "Classify each selected change as colour or shape, block shape changes and stale verdicts, pin every render's hash, write approval-plan.json. Safe for anyone.",
+          "usage": [
+            "pxsig approve plan <ids…> | --component text | --all-changed | --new  --reason \"why\" [--allow-shape id,id] [--first-baselines]"
+          ],
+          "flags": [
+            {
+              "name": "component",
+              "value": "text",
+              "meaning": "The changed entries whose id contains this text."
+            },
+            {
+              "name": "all-changed",
+              "meaning": "Every changed entry."
+            },
+            {
+              "name": "new",
+              "meaning": "The NEW entries (no baseline yet, with a latest render)."
+            },
+            {
+              "name": "reason",
+              "value": "text",
+              "meaning": "Why: at least eight characters, logged with every approval."
+            },
+            {
+              "name": "allow-shape",
+              "value": "id,id",
+              "meaning": "Shape changes allowed in this plan."
+            },
+            {
+              "name": "first-baselines",
+              "meaning": "With --new: allow every first baseline at once."
+            }
+          ],
+          "effects": [
+            "writes-store"
+          ],
+          "exits": {
+            "0": "A plan was written",
+            "2": "Nothing to plan, no --reason, usage or setup error"
+          },
+          "examples": [
+            {
+              "cmd": "pxsig approve plan --all-changed --reason \"new spacing scale\"",
+              "shows": "What a bulk approval would accept, and what it blocks"
+            }
+          ]
+        },
+        "apply": {
+          "summary": "A person at a terminal applies the plan through the server, after typing APPROVE <n> ENTRIES. Refused when any render changed since planning.",
+          "usage": [
+            "pxsig approve apply [plan]"
+          ],
+          "effects": [
+            "writes-baselines",
+            "needs-a-person"
+          ],
+          "exits": {
+            "0": "Applied",
+            "1": "Not confirmed, or only part applied (the undo command is printed)",
+            "2": "The plan is refused (a render changed, or it is over 24 h old), no server, usage or setup error",
+            "3": "Not a person at a terminal"
+          },
+          "examples": [
+            {
+              "cmd": "pxsig approve apply",
+              "shows": "Accept the planned entries, one logged batch"
+            }
+          ]
+        },
+        "log": {
+          "summary": "Approvals by batch.",
+          "usage": [
+            "pxsig approve log [--limit 10]"
+          ],
+          "flags": [
+            {
+              "name": "limit",
+              "value": "n",
+              "default": "10",
+              "meaning": "Batches shown."
+            }
+          ],
+          "effects": [
+            "reads-only"
+          ],
+          "exits": {
+            "0": "OK",
+            "2": "Usage or setup error"
+          },
+          "examples": [
+            {
+              "cmd": "pxsig approve log",
+              "shows": "Recent approval batches"
+            }
+          ]
+        },
+        "undo": {
+          "summary": "Restore the baselines a batch replaced, from the local snapshot or from git. A person at a terminal, after a typed phrase.",
+          "usage": [
+            "pxsig approve undo <batch>"
+          ],
+          "effects": [
+            "writes-baselines",
+            "needs-a-person"
+          ],
+          "exits": {
+            "0": "Restored",
+            "1": "An entry was refused, or not confirmed",
+            "2": "Usage or setup error",
+            "3": "Not a person at a terminal"
+          },
+          "examples": [
+            {
+              "cmd": "pxsig approve undo 2026-10-24T10-00-00-000Z-cli",
+              "shows": "Put one batch's previous baselines back"
+            }
+          ]
+        },
+        "verify": {
+          "summary": "Baselines whose bytes differ from their last logged approval, baselines with none, and approvals a crash interrupted.",
+          "usage": [
+            "pxsig approve verify [--adopt]"
+          ],
+          "flags": [
+            {
+              "name": "adopt",
+              "meaning": "Log the current baselines as the starting point. A person at a terminal."
+            }
+          ],
+          "effects": [
+            "reads-only",
+            "writes-store (--adopt)",
+            "needs-a-person (--adopt)"
+          ],
+          "exits": {
+            "0": "Every baseline matches the log",
+            "1": "A mismatch or an interrupted approval, or --adopt not confirmed",
+            "2": "Usage or setup error",
+            "3": "--adopt without a person at a terminal"
+          },
+          "examples": [
+            {
+              "cmd": "pxsig approve verify",
+              "shows": "Whether every baseline went through an approval"
+            }
+          ]
+        }
+      },
+      "effects": [
+        "see each subcommand"
+      ],
+      "exits": {
+        "0": "OK",
+        "1": "See each subcommand",
+        "2": "Usage or setup error",
+        "3": "Needs a person at a terminal"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig approve plan --new --first-baselines --reason \"first baselines\"",
+          "shows": "Plan the first baselines of new stories"
+        }
+      ],
+      "seeAlso": [
+        "approvals",
+        "check"
+      ]
+    },
+    "projects": {
+      "summary": "The projects in this workspace: name, folder, entry count, integrity headline.",
+      "usage": [
+        "pxsig projects"
+      ],
+      "effects": [
+        "reads-only"
+      ],
+      "exits": {
+        "0": "OK",
+        "2": "No workspace"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig projects",
+          "shows": "Every project and its state"
+        }
+      ],
+      "seeAlso": [
+        "config"
+      ]
+    },
+    "init": {
+      "summary": "Set a package up: pxsig.config.json, its store and, in a monorepo, the workspace entry.",
+      "usage": [
+        "pxsig init [dir] [--name x] [--src src] [--storybook-url url] [--storybook-config dir] [--layout package|colocated]"
+      ],
+      "flags": [
+        {
+          "name": "name",
+          "value": "name",
+          "default": "the folder name",
+          "meaning": "Project name."
+        },
+        {
+          "name": "src",
+          "value": "dir",
+          "default": "src",
+          "meaning": "srcRoot.",
+          "setting": "srcRoot"
+        },
+        {
+          "name": "storybook-url",
+          "value": "url",
+          "meaning": "storybook.url.",
+          "setting": "storybook.url"
+        },
+        {
+          "name": "storybook-config",
+          "value": "dir",
+          "meaning": "storybook.configDir.",
+          "setting": "storybook.configDir"
+        },
+        {
+          "name": "layout",
+          "value": "package|colocated",
+          "default": "package",
+          "meaning": "store.layout. colocated also adds `*.psig binary diff=psig` to the root .gitattributes.",
+          "setting": "store.layout"
+        }
+      ],
+      "effects": [
+        "writes-files"
+      ],
+      "exits": {
+        "0": "Set up (or already set up)",
+        "2": "Usage or setup error"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig init packages/ui --src src",
+          "shows": "A new project and its store"
+        }
+      ],
+      "seeAlso": [
+        "manifest",
+        "config"
+      ]
+    },
+    "config": {
+      "summary": "The resolved config of a project, and which layer set each key.",
+      "usage": [
+        "pxsig config"
+      ],
+      "effects": [
+        "reads-only"
+      ],
+      "exits": {
+        "0": "OK",
+        "2": "Usage or setup error"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig config --grid 32",
+          "shows": "What a run with --grid 32 would use"
+        }
+      ],
+      "seeAlso": [
+        "projects"
+      ]
+    },
+    "manifest": {
+      "summary": "Rebuild the project's entries from the running Storybook (or its static build).",
+      "usage": [
+        "pxsig manifest [--suite name]"
+      ],
+      "flags": [
+        {
+          "name": "suite",
+          "value": "name",
+          "meaning": "Write manifest.<suite>.json."
+        }
+      ],
+      "effects": [
+        "writes-store"
+      ],
+      "exits": {
+        "0": "Written",
+        "2": "Storybook unreachable, usage or setup error"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig manifest",
+          "shows": "The stories to check, with new and removed counts"
+        }
+      ],
+      "seeAlso": [
+        "check"
+      ]
+    },
+    "serve": {
+      "summary": "The server and dashboard for every project in the workspace.",
+      "usage": [
+        "pxsig serve [--port 6070] [--watch] [--no-open] [--tab name] [--project a,b] [--debug]"
+      ],
+      "flags": [
+        {
+          "name": "port",
+          "value": "n",
+          "default": "6070",
+          "meaning": "First port to try; the next ten are tried if it is taken.",
+          "setting": "server.port"
+        },
+        {
+          "name": "watch",
+          "meaning": "Re-check the affected entries when a source file changes."
+        },
+        {
+          "name": "no-open",
+          "meaning": "Do not open a browser tab. On Windows none is opened anyway: the link is printed."
+        },
+        {
+          "name": "tab",
+          "value": "name",
+          "meaning": "Open the dashboard on this section."
+        },
+        {
+          "name": "debug",
+          "meaning": "Print every program the server starts, with its arguments, on stderr.",
+          "env": "PXSIG_DEBUG"
+        }
+      ],
+      "effects": [
+        "starts-server",
+        "writes-store"
+      ],
+      "exits": {
+        "0": "Stopped",
+        "2": "Usage or setup error"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig serve --watch",
+          "shows": "Start the server and this dashboard; re-check on source edits"
+        }
+      ],
+      "seeAlso": [
+        "platforms",
+        "approvals"
+      ]
+    },
+    "mcp": {
+      "summary": "The MCP server on stdio, for coding assistants. It reads, checks and rejects; it never approves.",
+      "usage": [
+        "pxsig mcp"
+      ],
+      "effects": [
+        "starts-server"
+      ],
+      "exits": {
+        "0": "Stopped"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig mcp",
+          "shows": "The MCP server an assistant connects to"
+        }
+      ],
+      "seeAlso": [
+        "approvals"
+      ]
+    },
+    "report": {
+      "summary": "A static dashboard for one project, which opens from disk.",
+      "usage": [
+        "pxsig report [--out dir]"
+      ],
+      "flags": [
+        {
+          "name": "out",
+          "value": "dir",
+          "default": "<store>/reports/site/",
+          "meaning": "Where to write it."
+        }
+      ],
+      "effects": [
+        "writes-files"
+      ],
+      "exits": {
+        "0": "Written",
+        "2": "Any error"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig report --out site",
+          "shows": "A dashboard to publish as a CI artifact"
+        }
+      ],
+      "seeAlso": [
+        "ci"
+      ]
+    },
+    "dashboard": {
+      "summary": "The dashboard on this project's design system, through a UI adapter.",
+      "usage": [
+        "pxsig dashboard build|gaps"
+      ],
+      "subcommands": {
+        "build": {
+          "summary": "Rebuild the dashboard through a UI adapter with the project's own Vite. pxsig serve then serves it while it is current.",
+          "usage": [
+            "pxsig dashboard build [--ui path] [--out dir]"
+          ],
+          "flags": [
+            {
+              "name": "ui",
+              "value": "path",
+              "meaning": "The adapter: a path to its module, or a built-in name.",
+              "setting": "dashboard.ui",
+              "env": "PXSIG_UI_ADAPTER"
+            },
+            {
+              "name": "out",
+              "value": "dir",
+              "default": "node_modules/.cache/pxsig/dashboard",
+              "meaning": "Where to write the build."
+            }
+          ],
+          "effects": [
+            "writes-files"
+          ],
+          "exits": {
+            "0": "Built",
+            "2": "Usage or setup error"
+          },
+          "examples": [
+            {
+              "cmd": "pxsig dashboard build --ui ./pxsig-ui",
+              "shows": "The dashboard on an organisation's own components"
+            }
+          ]
+        },
+        "gaps": {
+          "summary": "What the adapter covers of the UI contract: missing, partial and bespoke components, and the dashboard files each affects.",
+          "usage": [
+            "pxsig dashboard gaps [--ui path] [--json]"
+          ],
+          "flags": [
+            {
+              "name": "ui",
+              "value": "path",
+              "meaning": "The adapter.",
+              "setting": "dashboard.ui",
+              "env": "PXSIG_UI_ADAPTER"
+            }
+          ],
+          "effects": [
+            "reads-only"
+          ],
+          "exits": {
+            "0": "Every required component present",
+            "1": "A required component missing, or a malformed conformance.json",
+            "2": "Usage or setup error"
+          },
+          "examples": [
+            {
+              "cmd": "pxsig dashboard gaps --ui ./pxsig-ui",
+              "shows": "What an adapter still lacks"
+            }
+          ]
+        }
+      },
+      "effects": [
+        "see each subcommand"
+      ],
+      "exits": {
+        "0": "OK",
+        "1": "See gaps",
+        "2": "Usage or setup error"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig dashboard gaps",
+          "shows": "How far an adapter gets"
+        }
+      ],
+      "seeAlso": [
+        "dashboard"
+      ]
+    },
+    "cat": {
+      "summary": "A baseline's header as JSON (git's textconv for *.psig), or its image.",
+      "usage": [
+        "pxsig cat <file.psig> [--image out.png]"
+      ],
+      "flags": [
+        {
+          "name": "image",
+          "value": "out.png",
+          "meaning": "Write the .psig's baseline image.",
+          "readBy": "engine"
+        }
+      ],
+      "effects": [
+        "reads-only"
+      ],
+      "exits": {
+        "0": "OK",
+        "2": "Not a baseline, or usage"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig cat .pxsig/baselines/components/Button/components-button--default.psig",
+          "shows": "What a baseline holds"
+        }
+      ],
+      "seeAlso": [
+        "entry"
+      ]
+    },
+    "migrate": {
+      "summary": "Move a pre-0.2 store (.baselines + .renders/base) into this project. A dry run unless --apply.",
+      "usage": [
+        "pxsig migrate --from <dir> [--apply] [--no-verify]"
+      ],
+      "flags": [
+        {
+          "name": "from",
+          "value": "dir",
+          "meaning": "The legacy folder (only read)."
+        },
+        {
+          "name": "apply",
+          "meaning": "Move it. Takes the store lock."
+        },
+        {
+          "name": "no-verify",
+          "meaning": "Skip re-checking the legacy renders against old and new baselines."
+        }
+      ],
+      "effects": [
+        "writes-store (--apply)"
+      ],
+      "exits": {
+        "0": "Planned or moved",
+        "1": "The migration differs",
+        "2": "Usage or setup error"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig migrate --from ../old-pxsig",
+          "shows": "The plan for moving an old store"
+        }
+      ],
+      "seeAlso": [
+        "config"
+      ]
+    },
+    "help": {
+      "summary": "A command's, topic's or setting's page. Alone: the command list.",
+      "usage": [
+        "pxsig help [command [subcommand] | topic | setting]"
+      ],
+      "effects": [
+        "reads-only"
+      ],
+      "exits": {
+        "0": "OK",
+        "2": "No such command, topic or setting"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig help check",
+          "shows": "One command's flags, exit codes and examples"
+        },
+        {
+          "cmd": "pxsig help gate.threshold",
+          "shows": "One setting and what it changes"
+        }
+      ],
+      "seeAlso": [
+        "approvals",
+        "exit-codes"
+      ]
+    }
+  }
+}
