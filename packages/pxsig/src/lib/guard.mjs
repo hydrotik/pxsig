@@ -5,9 +5,11 @@
  * dashboard (or the Storybook panel that embeds it), or `pxsig approve apply` at a terminal.
  * The server makes three random tokens when it starts: one it puts in the dashboard page when a
  * browser loads that page as a document, and two it writes to files only its owner can read
- * (`node_modules/.cache/pxsig/serve-<port>.token`, which `pxsig approve apply` reads after its own
- * person-at-a-terminal check, and `serve-<port>.mcp.token`, which the MCP server reads). A decision
- * without one of them is refused, and the token used says how the decision was made (`via:
+ * (`serve-<port>.token`, which `pxsig approve apply` reads after its own person-at-a-terminal
+ * check, and `serve-<port>.mcp.token`, which the MCP server reads). On macOS and Linux they sit in
+ * `node_modules/.cache/pxsig/` with mode 0600; on Windows, where a mode protects nothing, in the
+ * user's own `%LOCALAPPDATA%\pxsig\tokens\<workspace>\` (lib/machine.mjs), with no permission
+ * change and no tool run. A decision without one of them is refused, and the token used says how the decision was made (`via:
  * dashboard`, `cli` or `mcp` in the logs): what the request body says is ignored.
  *
  * The MCP's token is an agent's, so it decides less: it may mark entries rejected and clear a
@@ -24,8 +26,9 @@
  * posting to it at all.
  */
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { chmodSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { windowsTokenDir } from './machine.mjs';
 import { serverFile } from './workspace.mjs';
 
 export const TOKEN_HEADER = 'x-pxsig-token';
@@ -44,10 +47,12 @@ export const newToken = () => randomBytes(32).toString('hex');
  * The token file for the server at `url` (one per port: a second server on another port has its
  * own); `kind` is `cli` or `mcp`.
  */
-export const tokenFile = (root, url, kind = 'cli') => join(dirname(serverFile(root)), `serve-${new URL(url).port || '80'}${kind === 'cli' ? '' : `.${kind}`}.token`);
+export const tokenFile = (root, url, kind = 'cli', platform = process.platform) =>
+  join(platform === 'win32' ? windowsTokenDir(root) : dirname(serverFile(root)), `serve-${new URL(url).port || '80'}${kind === 'cli' ? '' : `.${kind}`}.token`);
 
 export function writeToken(root, url, token, kind = 'cli') {
   const file = tokenFile(root, url, kind);
+  mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, `${token}\n`, { mode: 0o600 });
   chmodSync(file, 0o600); // an existing file keeps its old mode otherwise
   return file;

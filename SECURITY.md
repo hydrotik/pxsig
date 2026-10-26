@@ -26,7 +26,8 @@ Storybook.
 - **Decisions through the server need its token.** Approve, reject, unreview and the
   accessibility decisions need one of the random tokens the server makes when it starts: one is in
   the dashboard page a browser loads, another in a file only your user can read
-  (`node_modules/.cache/pxsig/serve-<port>.token`), which `pxsig approve apply` reads after its
+  (`node_modules/.cache/pxsig/serve-<port>.token`; on Windows in the user's own
+  `%LOCALAPPDATA%\pxsig\`, with no permission change), which `pxsig approve apply` reads after its
   person-at-a-terminal check. An agent or a script posting to the server is refused. The token
   used, not the request, sets `via` in the approval log. A third file token lets the MCP server
   reject entries and clear rejections, nothing else. This is a

@@ -62,7 +62,7 @@ cannot approve at all.
   and clear a rejection: a rejection only asks for attention, and never writes a baseline or an
   accepted list.
 - The server enforces this, not only the tool. The MCP server sends the server's MCP token
-  (`node_modules/.cache/pxsig/serve-<port>.mcp.token`, see [server.md](server.md#guards)), which the
+  (`serve-<port>.mcp.token` beside the CLI's, see [server.md](server.md#guards)), which the
   server accepts on `reject`, `unreview`, `a11y-reject` and `a11y-unreview` only, logged as
   `via: "mcp"`. An `unreview` or `a11y-unreview` of a person's approval or accept is refused
   (403, "clearing an approval needs a person: …"): clearing one would restore the old baseline or
