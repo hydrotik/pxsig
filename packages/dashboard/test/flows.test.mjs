@@ -142,6 +142,22 @@ test('new entries waiting for a first approval keep the banner, counted on their
   }
 });
 
+test('a sparse report (a check.json whose summary is empty) renders every section, with zeros', async (t) => {
+  if (skip) return t.skip(skip);
+  const d = data({ rows: [row('ui-button--ok')], entries: [entry('ui-button--ok')] });
+  d.check.summary = {};
+  for (const tab of ['overview', 'stories', 'integrity', 'a11y', 'history', 'diagnostics']) {
+    const { page, errors } = await open(d, { hash: `#tab=${tab}` });
+    try {
+      await page.getByRole('main').waitFor();
+      await page.waitForTimeout(150);
+      assert.deepEqual(errors, [], `the ${tab} section`);
+    } finally {
+      await page.close();
+    }
+  }
+});
+
 test("a failed check's error reaches the page", async (t) => {
   if (skip) return t.skip(skip);
   const d = data({ rows: [row('ui-button--ok')], entries: [entry('ui-button--ok')] });

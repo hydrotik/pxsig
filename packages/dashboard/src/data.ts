@@ -272,12 +272,30 @@ let currentProject: string | null = query.get('project');
 const scope = () => (currentProject ? `?project=${encodeURIComponent(currentProject)}` : query.get('story') ? `?story=${encodeURIComponent(query.get('story')!)}` : '');
 const withProject = (body: object) => JSON.stringify(currentProject ? { project: currentProject, ...body } : body);
 
+/** Counts a report's summary carries; a report missing one (written by an older or partial run) reads it as 0. */
+const SUMMARY_COUNTS = ['entries', 'checked', 'skipped', 'passed', 'failed', 'flaky', 'errors', 'cached', 'a11yViolations', 'a11yNew', 'concurrency'] as const;
+
+/**
+ * The report as the views read it: a summary with every count and its modes, and a rows list, even
+ * when the file has less (a sparse or hand-written check.json). Timings stay as they are: `fmt.ms`
+ * shows a dash for a missing one.
+ */
+export function normalizeData(d: Data): Data {
+  if (!d?.check) return d;
+  const sm = (d.check.summary ?? {}) as Partial<CheckReport['summary']>;
+  const summary = { ...sm } as CheckReport['summary'];
+  for (const k of SUMMARY_COUNTS) if (typeof summary[k] !== 'number') summary[k] = 0;
+  if (!Array.isArray(summary.modes)) summary.modes = [];
+  if (summary.affected === undefined) summary.affected = null;
+  return { ...d, check: { ...d.check, summary, rows: Array.isArray(d.check.rows) ? d.check.rows : [] } };
+}
+
 async function fetchData(): Promise<Data> {
   const r = await fetch(`/__pxsig/data${scope()}`, { cache: 'no-store' });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body.error ?? `HTTP ${r.status}`);
   currentProject = body.project ?? currentProject;
-  return body;
+  return normalizeData(body);
 }
 
 export interface ProjectInfo {
@@ -310,7 +328,7 @@ export function switchProject(name: string) {
 
 /** The report data, refetched whenever the server says a producer wrote new results. */
 export function useData(): { data: Data | null; error: string | null; live: boolean } {
-  const [data, setData] = React.useState<Data | null>(window.PXSIG ?? null);
+  const [data, setData] = React.useState<Data | null>(window.PXSIG ? normalizeData(window.PXSIG) : null);
   const [error, setError] = React.useState<string | null>(null);
   const [live, setLive] = React.useState(false);
   React.useEffect(() => {
