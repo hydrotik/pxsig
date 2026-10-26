@@ -14,6 +14,14 @@ to be named.
 
 pxsig is at 0.x. Fixes go into the latest release only.
 
+## Verifying a download
+
+Every release from 0.4.0 on carries, on its GitHub release page, a `SHA256SUMS` file, a provenance
+attestation for each file, and CycloneDX SBOMs (`pxsig-npm.cdx.json` for what installing the npm
+package brings in, `pxsig-engine.cdx.json` for the Rust crates in the binary). The attestation is
+GitHub's signed record of the workflow run and commit that built the file. The binaries are not
+code-signed. The commands are in [docs/releasing.md](docs/releasing.md#verifying-a-release).
+
 ## How pxsig is meant to run
 
 pxsig is a developer and CI tool. It runs on your machine or your runner, against your own
