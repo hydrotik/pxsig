@@ -66,7 +66,9 @@ flowchart TD
    modes, the paths that affect every entry). The engine reads only that file, so discovery and
    precedence exist once, in JS.
 2. **Select.** All entries, or those named, or those the changed files affect. `pxsig affected`
-   builds the reverse import graph of `srcRoot` and walks it from the changed files.
+   classifies each changed path ([ci.md](ci.md#how-selection-decides)): baselines and store
+   records select their entries, the reverse import graph of `srcRoot` is walked from changed
+   modules, and a path it cannot trace selects every entry.
 3. **Guard.** Fetch Storybook's `index.json`. Unreachable or broken: stop with exit 2, render and
    record nothing.
 4. **Render.** Playwright renders each entry in its mode's browser, viewport and color scheme, with

@@ -97,8 +97,8 @@ Notes on the example:
 - `check --full` exits 1 when an entry changed, is new, or failed to render, which fails the job.
   The later steps use `if: always()` so the report is still uploaded.
 - `--since origin/<base>` selects the entries affected by the files changed since the merge base,
-  plus any uncommitted files. A change under an "affects every entry" path (a workspace dependency's
-  source, `affects.extra`, the project config) selects everything.
+  plus any uncommitted files ([How selection decides](#how-selection-decides)). A path the
+  selection cannot trace selects everything, and the job log and `summary.md` say which.
 - `--storybook-static` (or `storybook.staticDir` in the config) points at the build. When nothing
   answers at `storybook.url`, the check serves that folder itself on a free port, so the job needs
   no static server of its own and no fixed port.
@@ -113,10 +113,46 @@ Notes on the example:
 - `pxsig doctor --ci` exits 1 on any error-severity code, 2 on a setup error such as a broken
   Storybook index.
 
-A pull request that changes only baselines selects no entries through `--since`: the import graph
-does not reach `.psig` files. [required-checks.md](required-checks.md) checks the whole project in
-that case, makes the job a required check, and runs it in a merge queue.
-[local-ci.md](local-ci.md) runs the same steps on a machine without hosted CI.
+[required-checks.md](required-checks.md) makes the job a required check and runs it in a merge
+queue. [local-ci.md](local-ci.md) runs the same steps on a machine without hosted CI.
+
+## How selection decides
+
+`check --since <ref>`, `check --changed <files>`, `pxsig affected` and the MCP tools
+`pxsig_affected` and `pxsig_check` select entries from the changed files. The rule: **when the
+selection is unsure, it selects everything, and says why.**
+
+The changed files are the commits since the merge base of `<ref>` and `HEAD`, plus staged,
+unstaged and untracked files. A rename counts both its old and its new path. Paths are relative to
+the workspace root; a path elsewhere in the repository is `$repo/<path>`. When git finds no merge
+base (a shallow clone: fetch with `fetch-depth: 0`), every entry is selected, with a warning.
+
+Each changed path gets one class, by the first row that matches:
+
+| Class | The path | Selects |
+| --- | --- | --- |
+| `affects-all` | is under an "affects every entry" path: a workspace dependency's source, `affects.extra`, the project config, the workspace file, `storybook.configDir` | all |
+| `baseline` | is an entry's `.psig` | that entry |
+| `baseline-other` | is another `.psig`: another suite's (run `--suite <name>`) or orphaned | nothing here |
+| `store-record` | is `a11y.json`, a manifest, `approvals.ndjson` or `a11y-decisions.ndjson` in the store | the entries whose records changed; all when a log was rewritten or a file does not parse |
+| `store-other` | is any other file in the store | all |
+| `graph` | is a module under `srcRoot` that a story file imports, directly or not | those entries |
+| `graph-no-entry` | is a module under `srcRoot` that no story reaches (a test, a script) | nothing |
+| `ignored` | matches `affects.ignore` | nothing |
+| `untraced` | is under `srcRoot` and not a module (an unimported `.json`, `.md`, image) | all |
+| `outside` | is outside `srcRoot`, in the workspace | all |
+| `outside-workspace` | is elsewhere in the repository | all |
+
+The last three are the fail-safe. `pxsig affected` prints one line for each; the `check` line and
+`summary.md` name the first (`All N entries selected: <path> (<class>)`). A path that never
+changes a render (docs, other apps, CI config) belongs in `affects.ignore`
+([configuration.md](configuration.md)). An ignore entry never hides a path in the rows above it.
+
+After upgrading, run `pxsig affected --since origin/main` on a few recent pull requests: every
+`outside` line is a candidate for `affects.ignore`.
+
+`pxsig serve --watch` and staleness (`doctor`, `pxsig_stale`) are not gates: they use the traced
+selection (`traced` in `affected --json`) and print what they could not trace.
 
 ## Reports
 

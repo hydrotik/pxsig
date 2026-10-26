@@ -11,7 +11,7 @@ Approving a baseline or re-checking a story then costs one render.
 | Flag | Meaning |
 | --- | --- |
 | `--port <n>` | First port to try (default: `server.port` in the workspace file, else 6070). If it is taken, the next ten are tried. |
-| `--watch` | When a file under a project's `srcRoot` changes, re-check only the entries it affects. |
+| `--watch` | When a file under a project's `srcRoot` changes, re-check only the entries it traces to. A file it cannot trace (an unimported `.json`) is printed, not a reason to re-check everything ([ci.md](ci.md#how-selection-decides)). |
 | `--no-open` | Do not open a browser tab. On Windows none is opened anyway: the link is printed. |
 | `--tab <name>` | Open the dashboard on this section. |
 | `--project <a,b>` | Serve only these projects. |

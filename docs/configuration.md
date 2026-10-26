@@ -143,6 +143,7 @@ The smallest config is `{}`: every key has a default. `pxsig init` writes
 | `suites` | `{}` | Extra manifests for other mode sets (below). |
 | `affects.workspaceDeps` | `true` | A change in the source of a workspace package this project depends on (runtime and peer dependencies with a `workspace:` range) selects every entry. |
 | `affects.extra` | `[]` | More paths whose change selects every entry (for example the Storybook config folder, a lockfile). |
+| `affects.ignore` | `[]` | Globs for changed paths that select nothing when nothing traced claims them: docs, other apps, CI config ([ci.md](ci.md#how-selection-decides)). Anchored like `affects.extra` (the project folder; `$workspace/` for the workspace root), plus `$repo/` for paths outside the workspace. `*` within a folder, `**` any depth, `?`, `{a,b}`; a trailing `/` matches a folder's contents. Never hides a baseline, a store file, an "affects every entry" path or a module a story imports. Not replaced by `PXSIG_SOURCES`. |
 | `nonVisual` | `[]` | Top-level folders under `srcRoot` with no visual stories. Their stories are not entries and are reported as `excluded`. |
 | `a11y` | `true` | Run axe on every render. |
 | `integrity` | `{}` | Integrity options (below). |

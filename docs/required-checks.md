@@ -29,9 +29,9 @@ to be reported"). Run the workflow on every event, and decide inside the job how
 - `pxsig affected --since <ref> --json` prints `entries` (a count) and `ids`. Zero means no story
   imports a changed file: the Storybook build and the render can be skipped. Skipped steps leave
   the job green.
-- A pull request that changes only baselines (an approval commit) selects no entries through the
-  import graph. When any `.psig` file changed, check the whole project, so the new baselines are
-  compared with renders from the job.
+- A pull request that changes only baselines (an approval commit) selects the entries whose
+  `.psig` files changed, so the new baselines are compared with renders from the job
+  ([ci.md](ci.md#how-selection-decides)).
 - `approve verify` and `doctor --ci` need no Storybook build. Run them every time.
 
 ## GitHub Actions example
@@ -75,7 +75,7 @@ jobs:
             merge_group)  base="${{ github.event.merge_group.base_sha }}" ;;
             *)            base="" ;;
           esac
-          if [ -z "$base" ] || git diff --name-only "$base"...HEAD -- '*.psig' | grep -q .; then
+          if [ -z "$base" ]; then
             echo "since=" >> "$GITHUB_OUTPUT"
             echo "render=true" >> "$GITHUB_OUTPUT"
           else
