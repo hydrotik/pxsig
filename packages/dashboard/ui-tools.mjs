@@ -182,7 +182,7 @@ export function lockProblems({ lock, now, changes }) {
 export function contractStatus(adapterVersion = '1.0.0', { lock = readLock(), changes = readChanges() } = {}) {
   const current = lock?.version ?? readContractVersion();
   const cmp = compareVersions(adapterVersion, current);
-  if (cmp === 0) return { adapter: adapterVersion, current, status: 'same', line: `written for contract ${current}, this pxsig's` };
+  if (cmp === 0) return { adapter: adapterVersion, current, status: 'same', line: `written for contract ${current}, the same as this pxsig` };
   if (cmp > 0) return { adapter: adapterVersion, current, status: 'newer', line: `written for contract ${adapterVersion}; this pxsig has ${current}: parts newer than ${current} are unused` };
   const newer = (group) => Object.entries(lock?.[group] ?? {}).filter(([, v]) => compareVersions((v.since ?? v), adapterVersion) > 0).map(([n]) => n);
   if (major(adapterVersion) < major(current)) {
