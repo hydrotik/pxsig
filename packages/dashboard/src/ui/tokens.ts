@@ -5,8 +5,9 @@
  * reference to its design system's own variable, and the runtime declares them on `:root`.
  *
  * This module has no imports and no side effects: vanilla-extract evaluates it at build time.
- * Adding a name here is a contract change: every adapter's token map must gain it (the type
- * check and `pnpm ui:check` fail until it does).
+ * Adding a name here is a contract change. Give it a value in TOKEN_DEFAULTS and it is a minor one:
+ * an adapter whose map lacks it gets the default. Without a default every adapter must map it, a
+ * major change (`pnpm ui:check` holds both to src/ui/contract-lock.json).
  */
 
 export const TOKEN_NAMES = [
@@ -58,8 +59,14 @@ export const TOKEN_NAMES = [
 
 export type TokenName = (typeof TOKEN_NAMES)[number];
 
-/** What an adapter supplies: a CSS value for every token name, in every theme mode. */
-export type TokenMap = Record<TokenName, string>;
+/**
+ * Values for tokens added after 1.0.0, used when an adapter's map has none (a plain CSS value that
+ * reads well in both themes, or a reference to another token). Empty: every token is from 1.0.0.
+ */
+export const TOKEN_DEFAULTS = {} as const satisfies Partial<Record<TokenName, string>>;
+
+/** What an adapter supplies: a CSS value for every token name without a default, in every theme mode. */
+export type TokenMap = Record<Exclude<TokenName, keyof typeof TOKEN_DEFAULTS>, string> & Partial<Record<TokenName, string>>;
 
 /** `color.textMuted` → `--pxsig-color-textMuted`. */
 export const cssVarName = (name: TokenName) => `--pxsig-${name.replace('.', '-')}`;
@@ -107,7 +114,9 @@ export const tokens = {
 
 /** The `:root { … }` rule that declares every token from an adapter's map. */
 export function tokenCss(map: TokenMap): string {
-  const missing = TOKEN_NAMES.filter((n) => typeof map[n] !== 'string' || !map[n]);
+  const defaults: Partial<Record<TokenName, string>> = TOKEN_DEFAULTS;
+  const value = (n: TokenName) => (typeof map[n] === 'string' && map[n] ? map[n] : defaults[n]);
+  const missing = TOKEN_NAMES.filter((n) => !value(n));
   if (missing.length) throw new Error(`[pxsig ui] the adapter's token map lacks: ${missing.join(', ')}`);
-  return `:root{${TOKEN_NAMES.map((n) => `${cssVarName(n)}:${map[n]};`).join('')}}`;
+  return `:root{${TOKEN_NAMES.map((n) => `${cssVarName(n)}:${value(n)};`).join('')}}`;
 }

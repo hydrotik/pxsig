@@ -1,5 +1,6 @@
 {
   "adapter": "plain",
+  "contract": "1.0.0",
   "designSystem": "none: semantic HTML and theme.css",
   "components": {
     "UiProvider": { "status": "bespoke", "note": "sets data-theme on <html>; no density" },

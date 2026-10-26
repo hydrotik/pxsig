@@ -98,7 +98,16 @@ const only = str('project')?.split(',');
     for (const d of [join(here, '..', 'dashboard'), join(here, '..', '..', 'dashboard')]) if (existsSync(join(d, 'src', 'ui', 'adapters', name))) return join(d, 'src', 'ui', 'adapters', name);
     return null;
   };
-  const dash = chooseDashboard({ projects: ws.projects.filter((p) => !only || only.includes(p.name)), prebuilt: prebuiltDashboardDir, version: PXSIG_VERSION, root: ws.root, builtinDir });
+  // This pxsig's UI contract version, from the lock shipped with the dashboard source.
+  let contract = null;
+  for (const d of [join(here, '..', 'dashboard'), join(here, '..', '..', 'dashboard')])
+    try {
+      contract = JSON.parse(readFileSync(join(d, 'src', 'ui', 'contract-lock.json'), 'utf8')).version;
+      break;
+    } catch {
+      // not in this layout
+    }
+  const dash = chooseDashboard({ projects: ws.projects.filter((p) => !only || only.includes(p.name)), prebuilt: prebuiltDashboardDir, version: PXSIG_VERSION, contract, root: ws.root, builtinDir });
   useDashboard(dash.dir);
   if (dash.note) console.log(`[serve] ${dash.note}`);
 }

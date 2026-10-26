@@ -933,7 +933,7 @@
       ],
       "subcommands": {
         "build": {
-          "summary": "Rebuild the dashboard through a UI adapter with the project's own Vite. pxsig serve then serves it while it is current.",
+          "summary": "Rebuild the dashboard through a UI adapter with the project's own Vite. pxsig serve then serves it while it is current. Refused when the adapter is written for an older major version of the UI contract.",
           "usage": [
             "pxsig dashboard build [--ui path] [--out dir]"
           ],
@@ -957,7 +957,7 @@
           ],
           "exits": {
             "0": "Built",
-            "2": "Usage or setup error"
+            "2": "Usage or setup error, or an adapter written for an older major UI contract (the migration notes are printed)"
           },
           "examples": [
             {
@@ -967,7 +967,7 @@
           ]
         },
         "gaps": {
-          "summary": "What the adapter covers of the UI contract: missing, partial and bespoke components, and the dashboard files each affects.",
+          "summary": "What the adapter covers of the UI contract: missing, partial and bespoke components, the dashboard files each affects, and the contract version it is written for against this pxsig's.",
           "usage": [
             "pxsig dashboard gaps [--ui path] [--json]"
           ],
@@ -985,7 +985,7 @@
           ],
           "exits": {
             "0": "Every required component present",
-            "1": "A required component missing, or a malformed conformance.json",
+            "1": "A required component missing, a malformed conformance.json, or an adapter written for an older major UI contract",
             "2": "Usage or setup error"
           },
           "examples": [

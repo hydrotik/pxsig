@@ -33,6 +33,15 @@ import type { TokenMap } from './tokens';
 
 export type { TokenMap, TokenName } from './tokens';
 
+/**
+ * The contract's version, separate from pxsig's (docs/ui/contract-changes.md lists each one). Minor:
+ * a new optional component or prop with a fallback, a new token or icon with a default. Major: a
+ * component or prop removed or changed in meaning, a new required component, a token or icon without
+ * a default. An adapter records the version it was written for in its conformance.json
+ * (`"contract"`); `pnpm ui:check` holds this number to src/ui/contract-lock.json.
+ */
+export const CONTRACT_VERSION = '1.0.0';
+
 // --- shared vocabulary ---------------------------------------------------------------------------
 
 /** One tone vocabulary for every component that colours by state. */
@@ -60,6 +69,13 @@ export const ICON_NAMES = [
   'external', // a link that opens a new tab
 ] as const;
 export type IconName = (typeof ICON_NAMES)[number];
+
+/**
+ * Icons added after 1.0.0: the contract version that added each, and the icon an adapter written
+ * for an older version draws instead (the runtime substitutes it), so adding an icon is a minor
+ * change. Empty: every icon is from 1.0.0.
+ */
+export const ICON_DEFAULTS = {} as const satisfies Partial<Record<IconName, { since: string; draw: IconName }>>;
 
 interface WithClass {
   className?: string;

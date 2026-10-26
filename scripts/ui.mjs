@@ -8,11 +8,13 @@
  *                                         no design-system import sits outside src/ui/adapters/ (CI)
  *   node scripts/ui.mjs gaps [--ui x]     an adapter's gaps against the contract (default: the
  *                                         adapter the build would use: PXSIG_UI_ADAPTER, else hydrotik)
+ *   node scripts/ui.mjs lock              record the contract in src/ui/contract-lock.json, after a
+ *                                         change, its CONTRACT_VERSION bump and its changes entry
  *
  * Exit: 0 ok · 1 problems (a required component missing, a malformed conformance file).
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { buildManifest, checkAll, docsDir, featuresMarkdown, featuresMdFile, gapsOf, gapsText, manifestFile, manifestText, readFeatures } from '../packages/dashboard/ui-tools.mjs';
+import { buildManifest, checkAll, compareVersions, contractDiff, contractShape, docsDir, featuresMarkdown, featuresMdFile, gapsOf, gapsText, lockFile, lockFor, lockText, manifestFile, manifestText, readChanges, readFeatures, readLock } from '../packages/dashboard/ui-tools.mjs';
 import { resolveAdapter } from '../packages/dashboard/build-config.mjs';
 
 const [cmd, ...args] = process.argv.slice(2);
@@ -45,13 +47,35 @@ try {
       process.exit(1);
     }
     console.log('[ui] ok · imports, manifest, feature catalogue, build prompt and reference adapter agree');
+  } else if (cmd === 'lock') {
+    const now = contractShape();
+    const lock = readLock();
+    if (lock) {
+      const { major: big, minor: small } = contractDiff(lock, now);
+      const why = [...big, ...small];
+      if (!why.length && lock.version === now.version) {
+        console.log(`[ui] contract-lock.json already records contract ${now.version}`);
+        process.exit(0);
+      }
+      const bad = [];
+      if (compareVersions(now.version, lock.version) <= 0) bad.push(`CONTRACT_VERSION (${now.version}) must be above the locked ${lock.version}`);
+      if (big.length && Number(now.version.split('.')[0]) <= Number(lock.version.split('.')[0])) bad.push(`${big.join('; ')}: a major change needs a major version`);
+      if (!readChanges()[now.version]) bad.push(`docs/ui/contract-changes.md needs a "## ${now.version}" section`);
+      if (bad.length) {
+        console.error(`[ui] not locked:\n  ${bad.join('\n  ')}`);
+        process.exit(1);
+      }
+      if (why.length) console.log(`[ui] ${now.version}: ${why.join('; ')}`);
+    }
+    writeFileSync(lockFile, lockText(lockFor(now, lock)));
+    console.log(`[ui] wrote packages/dashboard/src/ui/contract-lock.json (contract ${now.version})`);
   } else if (cmd === 'gaps') {
     const ui = resolveAdapter({ adapter: flag('ui') });
     const report = gapsOf({ adapterFile: ui.file, manifest: buildManifest() });
     console.log(args.includes('--json') ? JSON.stringify(report, null, 2) : gapsText(report));
     process.exit(report.problems.length ? 1 : 0);
   } else {
-    console.error('usage: node scripts/ui.mjs docs | manifest | check | gaps [--ui <name or path>] [--json]');
+    console.error('usage: node scripts/ui.mjs docs | manifest | check | lock | gaps [--ui <name or path>] [--json]');
     process.exit(2);
   }
 } catch (e) {

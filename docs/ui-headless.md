@@ -182,3 +182,7 @@ Starts after the Navbar dashboard (in review) is merged, since it reshapes the s
 - **Serving a rebuilt dashboard:** `PXSIG_DASHBOARD_DIR`; `pxsig serve` and `pxsig report` are
   otherwise unchanged.
 
+- **Contract version** (added after phase 4): `CONTRACT_VERSION` (1.0.0) in `contract.ts`, held to
+  `src/ui/contract-lock.json` by `pnpm ui:check`; adapters record theirs in `conformance.json`;
+  new tokens and icons can carry defaults (`TOKEN_DEFAULTS`, `ICON_DEFAULTS`) so adding one is a
+  minor change. See [ui/contract-changes.md](ui/contract-changes.md).

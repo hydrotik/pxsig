@@ -11,6 +11,10 @@
  * react and react-dom installed. The default output (node_modules/.cache/pxsig/dashboard, with a
  * pxsig-build.json stamp) is what `pxsig serve` serves while it is current (lib/dashboard-dir.mjs);
  * the prebuilt dashboard in dist/ is untouched.
+ *
+ * Both compare the adapter's contract version (conformance.json `contract`) with this pxsig's
+ * (docs/ui/contract-changes.md): an older minor builds, naming what falls back; an older major is a
+ * `gaps` problem and `build` refuses, with the migration notes; a newer one is a note.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { buildDirFor, STAMP } from './lib/dashboard-dir.mjs';
@@ -49,6 +53,10 @@ export async function build(flags, cwd = process.cwd(), log = (m) => process.std
   const src = dashboardSource();
   const ui = await adapterOf(flags, cwd);
   const { dashboardConfig, packageDir } = await load(src, 'build-config.mjs');
+  const { contractStatus, readConformance } = await load(src, 'ui-tools.mjs');
+  const contract = contractStatus(readConformance(ui.dir)?.contract ?? '1.0.0');
+  if (contract.status === 'older-major') throw new Error([`the "${ui.name}" adapter is ${contract.line}.`, ...(contract.notes ?? [])].join('\n\n'));
+  if (contract.status !== 'same') log(`[dashboard] the "${ui.name}" adapter is ${contract.line}`);
   const missing = NEEDS.filter((n) => !packageDir(n, [cwd]));
   if (missing.length) throw new Error(`pxsig dashboard build runs Vite from this project and needs: ${missing.join(', ')}. Install them as devDependencies (e.g. pnpm add -D ${missing.join(' ')}).`);
   // The package's ESM entry (its `import` export), so Vite's CJS shim and its warning stay out.
@@ -70,7 +78,7 @@ export async function build(flags, cwd = process.cwd(), log = (m) => process.std
   await vite.build({ ...config, configFile: false });
   classicScript(outDir);
   // What serve compares: this pxsig's version and when the build ran (against the adapter's edits).
-  writeFileSync(join(outDir, STAMP), `${JSON.stringify({ adapter: ui.file, pxsig: PXSIG_VERSION, builtAt: Date.now() }, null, 2)}\n`);
+  writeFileSync(join(outDir, STAMP), `${JSON.stringify({ adapter: ui.file, pxsig: PXSIG_VERSION, contract: contract.current, adapterContract: contract.adapter, builtAt: Date.now() }, null, 2)}\n`);
   return { outDir, adapter: ui.name, fromConfig: ui.from === 'pxsig.config.json dashboard.ui' };
 }
 

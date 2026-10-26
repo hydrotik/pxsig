@@ -85,7 +85,13 @@ serves (`packages/pxsig/src/report.mjs`) and the API are testable without a buil
 Views import components only from `@ui`, the UI contract (`packages/dashboard/src/ui/`). A new
 contract component needs its section in `docs/ui/build-adapter.md`, an entry in the reference
 adapter's `conformance.json` and a feature in `src/ui/features.ts` that renders it; a new feature
-needs its entry in `features.ts`. Then:
+needs its entry in `features.ts`.
+
+Any change to the contract (a component, a prop, a token, an icon) also bumps `CONTRACT_VERSION`
+in `contract.ts`, minor or major ([docs/ui/contract-changes.md](docs/ui/contract-changes.md) says
+which), adds that version's section to `contract-changes.md`, keeps the reference adapter's
+`conformance.json` `contract` at the new version, and records it with `node scripts/ui.mjs lock`.
+`pnpm ui:check` fails until all four agree. Then:
 
 ```bash
 pnpm ui:docs     # regenerate src/ui/manifest.json and docs/ui/features.md
