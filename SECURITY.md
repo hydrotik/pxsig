@@ -40,7 +40,7 @@ Storybook.
   `Host` is not 127.0.0.1, localhost or [::1] is refused (DNS rebinding).
 - **Requests without an `Origin` header can check and repair.** Any process on the same machine
   can start checks, as it could run them directly.
-- **Approvals need a person.** Bulk approval and `check --full --update` are refused when output is
+- **Approvals need a person.** Bulk approval, `check --full --update` and `a11y --prune` are refused when output is
   piped, in CI, or under a coding assistant's marker ([docs/agents.md](docs/agents.md)), and ask
   for a typed phrase. A marker is a hint, not proof: some assistants set none, and any process can
   set or unset one. The guarantee is the reviewed pull request that commits the baselines; every
