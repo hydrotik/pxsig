@@ -209,7 +209,9 @@ pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] 
 | `--out <name>` | `check` | Report file name (`<store>/reports/<name>.json`). |
 | `--no-server` | off | Do not hand the check to the server: when the server holds the store, refuse instead of queueing on it. |
 | `--timeout-s <n>` | 1800 | Seconds to wait for the server's queue to drain when the check was handed to it. |
-| `--update` | off | Write baselines from the renders instead of checking. A person at a terminal only, after typing `UPDATE <n> BASELINES`. Every replaced baseline is snapshotted and logged. |
+| `--update` | off | Write baselines from the renders instead of checking. A person at a terminal only, after typing `UPDATE <n> BASELINES`. Every replaced baseline is snapshotted and logged. Refused without a person: exit 3; a wrong phrase: exit 1, nothing written. |
+| `--kind <word>` | none | With `--update`: the kind on each log line (lower case, up to 16 characters). `environment` re-takes baselines for a new render environment and leaves `a11y.json` as it is. |
+| `--reason <text>` | `pxsig check --update` | With `--update`: the reason on each log line. |
 
 Entries left out by `--since` / `--changed` keep their previous row. One with no previous row but
 a baseline is recorded as unaffected (`skipped-unaffected` in the integrity ledger: ok, not yet

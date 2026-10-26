@@ -19,7 +19,8 @@
  *             and junit.xml.
  *
  * `--update` renders the selection and writes baselines instead (`pxsig baseline`: each `.psig`
- * carries the render as its image) and the a11y baseline. Exit: 0 pass · 1 change found · 2 setup error.
+ * carries the render as its image) and the a11y baseline (not with `--kind environment`). Exit: 0 pass
+ * · 1 change found, or a wrong --update phrase · 2 setup error · 3 --update without a person.
  *
  * One writer per store (lib/lock.mjs): the check takes `<store>/reports/.lock`. When the pxsig server
  * holds it (it serves this project), the selection goes through the server's queue instead
@@ -48,7 +49,7 @@ import { writeJson } from './lib/files.mjs';
 
 const { flags } = parseArgs(process.argv.slice(2));
 const str = (k) => strFlag(flags, k);
-const die = (m) => (console.error(`[check] ${m}`), process.exit(2));
+const die = (m, code = 2) => (console.error(`[check] ${m}`), process.exit(code));
 let P;
 try {
   P = openProject({ workspace: str('workspace'), project: str('project'), flags: flagLayer(flags) });
@@ -75,8 +76,13 @@ const a11yBaselinePath = P.store.a11y;
 const rel = (p) => relPath(P.workspaceRoot, p);
 // A suite run keeps its own report, so the main report stays intact.
 const outName = str('out') ?? (suite ? `check-${suite}` : 'check');
+// --kind / --reason (with --update) are written on every log line: `--kind environment` re-takes
+// baselines for a new render environment and leaves the accepted a11y list as it is.
+const kind = str('kind');
+if (kind != null && !/^[a-z][a-z0-9-]{0,15}$/.test(kind)) die(`--kind takes a short lower-case word (up to 16 characters, e.g. environment); got "${kind}"`);
+if ((kind != null || str('reason') != null) && !flags.update) die('--kind and --reason go with --update');
 if (flags.update && !humanAtTerminal())
-  die('--update writes baselines without review: run it yourself in a terminal (refused when piped, in CI or under an agent)');
+  die('--update writes baselines without review: run it yourself in a terminal (refused when piped, in CI or under an agent)', 3);
 if (!existsSync(rustBin)) die(`the pxsig binary is missing (${rustBin}): install the platform package, or build it with \`cargo build --release\``);
 mkdirSync(reports, { recursive: true });
 
@@ -199,7 +205,7 @@ if (flags.update) {
   const phrase = `UPDATE ${ok.length} BASELINES`;
   if ((await ask(`--update replaces ${ok.length} baselines with renders nobody reviewed. Type "${phrase}" to continue: `)) !== phrase) {
     await pool.close();
-    die('not confirmed: nothing was written');
+    die('not confirmed: nothing was written', 1);
   }
   fence();
   const batch = newBatch('check-update');
@@ -207,10 +213,12 @@ if (flags.update) {
   writeFileSync(onlyFile, JSON.stringify(ok));
   const b = rust(['baseline', '--manifest', runPath, '--png-dir', pngDir, '--root', P.workspaceRoot, '--only', `@${onlyFile}`, '--json']);
   const res = JSON.parse(b.out);
-  for (const id of ok) record(P, entries.find((e) => e.id === id), { batch, via: 'check-update', reason: 'pxsig check --update', before: before.get(id) });
-  const a11yBase = existsSync(a11yBaselinePath) ? JSON.parse(readFileSync(a11yBaselinePath, 'utf8')) : {};
-  for (const r of results) if (r.a11y?.violations) a11yBase[r.id] = r.a11y.violations.map((v) => v.id).sort();
-  writeJson(a11yBaselinePath, a11yBase, { pretty: true });
+  for (const id of ok) record(P, entries.find((e) => e.id === id), { batch, via: 'check-update', reason: str('reason') ?? 'pxsig check --update', kind, before: before.get(id) });
+  if (kind !== 'environment') {
+    const a11yBase = existsSync(a11yBaselinePath) ? JSON.parse(readFileSync(a11yBaselinePath, 'utf8')) : {};
+    for (const r of results) if (r.a11y?.violations) a11yBase[r.id] = r.a11y.violations.map((v) => v.id).sort();
+    writeJson(a11yBaselinePath, a11yBase, { pretty: true });
+  }
   await pool.close();
   console.log(`[check] baselines: ${res.summary.stories - res.summary.failed} written in ${(res.summary.elapsedMs).toFixed(0)} ms (Rust) · ${res.summary.failed} failed · render errors ${renderErrors}`);
   for (const e of res.errors) console.error(`  ${e}`);
