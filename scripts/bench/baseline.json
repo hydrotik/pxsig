@@ -1,0 +1,10 @@
+{
+  "pxsig": "0.3.2",
+  "measuredAt": "2026-10-26T19:45:00.000Z",
+  "node": "v22.22.1",
+  "runs": 5,
+  "note": "Times in ms, per OS (os.platform()). darwin: the first measured run, on the maintainer's Mac. linux: added from the first nightly run. Refreshed at each release (docs/releasing.md).",
+  "times": {
+    "darwin": { "affected": 315, "list": 37, "doctor": 351, "plan": 429, "data": 69 }
+  }
+}

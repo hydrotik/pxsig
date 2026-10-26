@@ -1,0 +1,38 @@
+name: bench
+
+# The scale benchmark (scripts/bench/run.mjs): pxsig's read paths on a synthetic store of
+# hydrotik's size, against the budgets of decision 100 and the last release's times. Nightly and
+# by hand; never on pull requests, so it adds nothing to a PR's wait.
+on:
+  schedule:
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    name: Scale benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The table goes to this run's summary page; a step over budget fails the job.
+      - run: node scripts/bench/run.mjs --runs 5 --out bench-results.json
+      # In baseline.json's shape: a release commits it as scripts/bench/baseline.json (docs/releasing.md).
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: bench-results
+          path: bench-results.json
+          if-no-files-found: ignore
+          retention-days: 30
