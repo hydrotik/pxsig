@@ -50,8 +50,8 @@ the shell it uses.
 - **Output is plain Markdown**, even in a real terminal ([cli.md](cli.md#output-formats)).
 - **Log lines name the assistant.** Every approval, repair and accessibility-decision line pxsig
   writes under a marker carries `agent` (the name above: never a person's name, account or email).
-  A `pxsig serve` started under a marker records it on every decision it serves, the dashboard's
-  included.
+  A `pxsig serve` started under a marker records it on the decisions an assistant sends (`via:
+  mcp`), never on one a person made through the dashboard link or the CLI.
 - **`pxsig doctor`** shows `Running under: copilot (AI_AGENT=github_copilot_vscode_agent)`, or
   `no agent marker`.
 - **`pxsig serve`** does not print the dashboard link; a person runs `pxsig serve --link` in their

@@ -61,7 +61,7 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, extname, join, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
-import { newBatch, paths, record, sha256, snapshot, stamp, undo, who } from './lib/approvals.mjs';
+import { newBatch, PERSON_VIA, paths, record, sha256, snapshot, stamp, undo, who } from './lib/approvals.mjs';
 import { browserPool, renderStories, STORYBOOK_ERROR } from './lib/capture.mjs';
 import { fetchStoryIndex, filterLedger, loadStoryIndex, oneLine, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
 import { readHeader, readImage } from './lib/psig.mjs';
@@ -396,7 +396,7 @@ async function approve(S, id, meta = {}) {
  * batch snapshot (a first baseline goes to trash/), put its a11y baseline back, and log it like
  * `pxsig approve undo`. Refuses, changing nothing, when the baseline was rewritten since.
  */
-function unapprove(S, id, entry) {
+function unapprove(S, id, entry, via = 'dashboard') {
   const { P, manifest } = S;
   const e = manifest.stories.find((s) => s.id === id);
   if (!e) throw httpError(404, `unknown entry ${id}`);
@@ -404,7 +404,7 @@ function unapprove(S, id, entry) {
   const res = undo(P, manifest, entry.batch, { git: false, ids: [id] });
   if (res.refused.length) throw httpError(409, `cannot undo ${id}: ${res.refused[0].why}`);
   if (!res.restored.length && !res.removed.length) throw httpError(409, `cannot undo ${id}: nothing in batch ${entry.batch} to restore`);
-  record(P, e, { batch: `${entry.batch}-undo`, via: 'undo', reason: `undo ${entry.batch} (dashboard)`, before });
+  record(P, e, { batch: `${entry.batch}-undo`, via: 'undo', reason: `undo ${entry.batch} (dashboard)`, before, person: PERSON_VIA.has(via) });
   if ('a11yBefore' in entry) {
     const base = readJson(P.store.a11y, {});
     if (entry.a11yBefore == null) delete base[id];
@@ -423,7 +423,7 @@ async function review(S, action, id, meta = {}) {
   } else if (action === 'reject') rv[id] = { state: 'rejected', at: new Date().toISOString(), via: meta.via ?? 'dashboard' };
   else if (action === 'unreview') {
     agentMayClear(meta, rv[id]?.state);
-    if (rv[id]?.state === 'approved' && rv[id].batch) unapprove(S, id, rv[id]);
+    if (rv[id]?.state === 'approved' && rv[id].batch) unapprove(S, id, rv[id], meta.via ?? 'dashboard');
     delete rv[id];
     updateCheckRows(S, (r) => (r.id === id && r.approved ? (({ approved, ...rest }) => rest)(r) : null));
   }
