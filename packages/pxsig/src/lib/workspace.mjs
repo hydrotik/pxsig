@@ -40,7 +40,7 @@ export const DEFAULTS = Object.freeze({
   defaultMode: null,
   modesByDefault: null,
   suites: {},
-  affects: { workspaceDeps: true, extra: [], ignore: [] },
+  affects: { workspaceDeps: true, extra: [], ignore: [], aliases: {}, unresolved: [] },
   nonVisual: [],
   a11y: true,
   integrity: {},
@@ -237,7 +237,8 @@ function anchorPaths(ws, layer, base) {
     if (b ? isObj(out[a]) && out[a][b] != null : out[a] != null) b ? (out[a][b] = fix(out[a][b])) : (out[a] = fix(out[a]));
   }
   if (isObj(out.affects) && Array.isArray(out.affects.extra)) out.affects.extra = out.affects.extra.map(fix);
-  if (isObj(out.affects) && Array.isArray(out.affects.ignore)) out.affects.ignore = out.affects.ignore.map((g) => (typeof g === 'string' && g.startsWith('$repo/') ? g : fix(g)));
+  for (const k of ['ignore', 'unresolved']) if (isObj(out.affects) && Array.isArray(out.affects[k])) out.affects[k] = out.affects[k].map((g) => (typeof g === 'string' && g.startsWith('$repo/') ? g : fix(g)));
+  if (isObj(out.affects) && isObj(out.affects.aliases)) out.affects.aliases = Object.fromEntries(Object.entries(out.affects.aliases).map(([k, v]) => [k, fix(v)]));
   return out;
 }
 
@@ -422,7 +423,15 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
   // affects.ignore: globs anchored like affects.extra, plus `$repo/` for paths outside the workspace.
   const ignore = config.affects.ignore ?? [];
   if (!Array.isArray(ignore) || ignore.some((g) => typeof g !== 'string' || !g.trim())) throw new SetupError(`project "${ref.name}": affects.ignore must be an array of globs`);
-  const affectsIgnore = ignore.map((g) => (g.startsWith('$repo/') ? g : wsRel(expand(ws, root, g)).replace(/\/$/, '') + (g.endsWith('/') ? '/' : '')));
+  const anchorGlob = (g) => (g.startsWith('$repo/') ? g : wsRel(expand(ws, root, g)).replace(/\/$/, '') + (g.endsWith('/') ? '/' : ''));
+  const affectsIgnore = ignore.map(anchorGlob);
+  // affects.unresolved: anchored the same way; affects.aliases: prefix → workspace-relative path.
+  const unresolved = config.affects.unresolved ?? [];
+  if (!Array.isArray(unresolved) || unresolved.some((g) => typeof g !== 'string' || !g.trim())) throw new SetupError(`project "${ref.name}": affects.unresolved must be an array of globs`);
+  const aliases = config.affects.aliases ?? {};
+  if (!isObj(aliases) || Object.entries(aliases).some(([k, v]) => !k || typeof v !== 'string' || !v.trim())) throw new SetupError(`project "${ref.name}": affects.aliases must map a specifier prefix to a path`);
+  const affectsAliases = Object.fromEntries(Object.entries(aliases).map(([k, v]) => [k, wsRel(expand(ws, root, v))]));
+  const affectsUnresolved = unresolved.map(anchorGlob);
   const layout = config.store.layout;
   if (!['package', 'colocated'].includes(layout)) throw new SetupError(`project "${ref.name}": store.layout must be "package" or "colocated"`);
   const P = {
@@ -445,6 +454,8 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
     modesByDefault: config.modesByDefault ?? [defaultMode],
     affects: affects.map(wsRel),
     affectsIgnore,
+    affectsAliases,
+    affectsUnresolved,
     store: {
       root: store,
       layout,
@@ -524,9 +535,11 @@ export function runManifest(P, manifest, { suite = null } = {}) {
     defaultMode: P.defaultMode,
     srcRoot: toPosix(relative(P.workspaceRoot, P.srcRoot)),
     // Selection (docs/ci.md, "How selection decides"): the workspace file and the Storybook config
-    // also affect every entry; `affectsIgnore` and `store` are read by `pxsig affected`.
+    // also affect every entry; `affectsIgnore`, `affectsAliases`, `affectsUnresolved` and `store` are read by `pxsig affected`.
     affectsAll: [...new Set([...P.affects, ...(P.workspaceFile ? [wsRel(P.workspaceFile)] : []), ...(P.storybook.configDir ? [wsRel(P.storybook.configDir)] : [])])],
     affectsIgnore: P.affectsIgnore ?? [],
+    affectsAliases: P.affectsAliases ?? {},
+    affectsUnresolved: P.affectsUnresolved ?? [],
     store: {
       dir: wsRel(P.store.root),
       a11y: wsRel(P.store.a11y),

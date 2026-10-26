@@ -120,6 +120,8 @@ if (str('since') || str('changed')) {
   for (const f of (affected.failSafe ?? []).slice(0, 10)) console.log(`[check]   all: ${f.why} (${f.class})`);
   if ((affected.failSafe?.length ?? 0) > 10) console.log(`[check]   … ${affected.failSafe.length - 10} more in check.json`);
   for (const [s, n] of Object.entries(affected.otherSuites ?? {})) console.log(`[check]   ${n} changed entries are in suite ${s}: check them with --suite ${s}`);
+  const costly = (affected.unresolved ?? []).filter((u) => !u.accepted && u.selects === 'entries');
+  if (costly.length) console.log(`[check]   +${new Set(costly.map((u) => u.file)).size} files with unresolved imports add their entries to every run (pxsig affected lists them)`);
   entries = entries.filter((e) => ids.has(e.id));
 }
 const selected = new Set(entries.map((e) => e.id));

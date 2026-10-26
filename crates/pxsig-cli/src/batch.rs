@@ -50,6 +50,12 @@ pub struct Manifest {
     /// when nothing traced claims the path.
     #[serde(default)]
     pub affects_ignore: Vec<String>,
+    /// `affects.aliases`: specifier prefix → workspace-relative path, for aliases only a bundler knows.
+    #[serde(default)]
+    pub affects_aliases: std::collections::BTreeMap<String, String>,
+    /// `affects.unresolved`: globs of files whose unresolved imports the owner accepts.
+    #[serde(default)]
+    pub affects_unresolved: Vec<String>,
     /// Where the store's record files are, so `affected` can select by them (absent: older callers).
     #[serde(default)]
     pub store: Option<StoreInfo>,

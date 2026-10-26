@@ -151,7 +151,9 @@
       "properties": {
         "workspaceDeps": { "type": "boolean", "default": true, "description": "A change in a workspace dependency's source selects every entry." },
         "extra": { "type": "array", "items": { "$ref": "#/$defs/path" }, "default": [], "description": "More paths whose change selects every entry." },
-        "ignore": { "type": "array", "items": { "type": "string", "minLength": 1 }, "default": [], "description": "Globs for changed paths that select nothing when nothing traced claims them. Relative to the project; $workspace/ and $repo/ anchor a glob." }
+        "ignore": { "type": "array", "items": { "type": "string", "minLength": 1 }, "default": [], "description": "Globs for changed paths that select nothing when nothing traced claims them. Relative to the project; $workspace/ and $repo/ anchor a glob." },
+        "aliases": { "type": "object", "additionalProperties": { "$ref": "#/$defs/path" }, "default": {}, "description": "Import aliases only a bundler knows (Vite resolve.alias): specifier prefix → path. Longest prefix wins." },
+        "unresolved": { "type": "array", "items": { "type": "string", "minLength": 1 }, "default": [], "description": "Globs of files whose unresolved imports are accepted: they add no entries to every run. Anchored like affects.ignore." }
       }
     },
     "nonVisual": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Top-level folders under srcRoot with no visual stories." },

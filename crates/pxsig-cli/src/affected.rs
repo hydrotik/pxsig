@@ -30,9 +30,8 @@ use anyhow::{bail, Context, Result};
 use serde_json::{json, Value};
 
 use crate::batch::{Manifest, StoreInfo};
+use crate::resolve::{scan_code, scan_style, scanner, Resolver, Target};
 
-/// Resolved by `./x` → `./x.<ext>` and `./x/index.<ext>`.
-const EXTS: [&str; 5] = ["ts", "tsx", "js", "mjs", "jsx"];
 /// Modules: graph nodes, read for imports. A changed one that reaches no entry selects nothing.
 const MODULES: [&str; 9] = ["ts", "tsx", "mts", "cts", "js", "jsx", "mjs", "cjs", "mdx"];
 
@@ -211,75 +210,12 @@ fn norm_str(p: &str) -> String {
     s.trim_end_matches('/').to_string()
 }
 
-/// Relative specifiers in a module: `from '…'`, `import '…'`, `import('…')`, `require('…')`.
-pub fn specifiers(src: &str) -> Vec<String> {
-    // Byte-level scan: keywords and quotes are ASCII, so UTF-8 elsewhere is skipped safely.
-    let b = src.as_bytes();
-    let mut out = Vec::new();
-    let mut i = 0;
-    while i < b.len() {
-        let rest = &b[i..];
-        let skip = if rest.starts_with(b"from") {
-            4
-        } else if rest.starts_with(b"import") {
-            6
-        } else if rest.starts_with(b"require") {
-            7
-        } else {
-            i += 1;
-            continue;
-        };
-        // must be a whole word
-        if i > 0 && (b[i - 1].is_ascii_alphanumeric() || b[i - 1] == b'_' || b[i - 1] == b'$' || b[i - 1] == b'.') {
-            i += 1;
-            continue;
-        }
-        let mut j = i + skip;
-        while j < b.len() && matches!(b[j], b' ' | b'\t' | b'\n' | b'\r' | b'(') {
-            j += 1;
-        }
-        if j < b.len() && matches!(b[j], b'\'' | b'"' | b'`') {
-            let q = b[j];
-            if let Some(end) = b[j + 1..].iter().position(|&c| c == q || c == b'\n') {
-                if b[j + 1 + end] == q {
-                    let spec = String::from_utf8_lossy(&b[j + 1..j + 1 + end]);
-                    if spec.starts_with('.') {
-                        out.push(spec.into_owned());
-                    }
-                }
-                i = j + 1 + end;
-                continue;
-            }
-        }
-        i += skip;
-    }
-    out
-}
-
-fn resolve_spec(from_dir: &Path, spec: &str, files: &HashSet<PathBuf>) -> Option<PathBuf> {
-    let base = normalize(&from_dir.join(spec));
-    if files.contains(&base) {
-        return Some(base);
-    }
-    let s = base.to_string_lossy().into_owned();
-    for e in EXTS {
-        let p = PathBuf::from(format!("{s}.{e}"));
-        if files.contains(&p) {
-            return Some(p);
-        }
-    }
-    for e in EXTS {
-        let p = base.join(format!("index.{e}"));
-        if files.contains(&p) {
-            return Some(p);
-        }
-    }
-    None
-}
-
 fn is_module(p: &Path) -> bool {
     p.extension().and_then(|x| x.to_str()).is_some_and(|x| MODULES.contains(&x))
 }
+
+/// Folders never walked: dependencies, build output, pxsig's own files.
+const SKIP_DIRS: [&str; 6] = ["node_modules", "dist", ".turbo", "__pixels__", "__pxsig__", ".git"];
 
 fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(rd) = fs::read_dir(dir) else { return };
@@ -287,40 +223,120 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
         let p = e.path();
         let name = e.file_name().to_string_lossy().into_owned();
         if p.is_dir() {
-            if !matches!(name.as_str(), "node_modules" | "dist" | ".turbo" | "__pixels__" | "__pxsig__") {
+            if !SKIP_DIRS.contains(&name.as_str()) {
                 walk(&p, out);
             }
-        } else if is_module(&p) {
+        } else {
             out.push(p);
         }
     }
 }
 
-/// The import graph over `src_root`: every module (paths relative to `root`) and, for each, the
-/// modules that import it. `deleted` modules join the node set, so a file that still names one
+/// An import that names nothing pxsig can follow.
+pub struct Unresolved {
+    pub file: String,
+    pub spec: String,
+    pub line: usize,
+    pub why: String,
+}
+
+/// The import graph: every file under the graph roots (`srcRoot`, every `affectsAll` folder, alias
+/// targets, and the source root of each workspace package an import reaches), and for each file
+/// the files that import it. `deleted` files join the node set, so a file that still names one
 /// counts as its importer.
 pub struct Graph {
     pub nodes: HashSet<PathBuf>,
     pub rev: HashMap<PathBuf, Vec<PathBuf>>,
+    pub unresolved: Vec<Unresolved>,
+    /// `(file, url, line)`: remote URLs, which no repository change reflects.
+    pub remote: Vec<(String, String, usize)>,
 }
 
-pub fn graph(root: &Path, src_root: &str, deleted: &[PathBuf]) -> Graph {
-    let mut abs = Vec::new();
-    walk(&root.join(src_root), &mut abs);
-    let rel: Vec<PathBuf> = abs.iter().filter_map(|p| p.strip_prefix(root).ok().map(normalize)).collect();
-    let mut nodes: HashSet<PathBuf> = rel.iter().cloned().collect();
-    nodes.extend(deleted.iter().cloned());
-    let mut rev: HashMap<PathBuf, Vec<PathBuf>> = HashMap::new();
-    for (a, r) in abs.iter().zip(&rel) {
-        let Ok(text) = fs::read_to_string(a) else { continue };
-        let dir = r.parent().unwrap_or(Path::new(""));
-        for spec in specifiers(&text) {
-            if let Some(t) = resolve_spec(dir, &spec, &nodes) {
-                rev.entry(t).or_default().push(r.clone());
+pub fn graph(root: &Path, m: &Manifest, src_root: &str, top: Option<PathBuf>, deleted: &[String]) -> Graph {
+    let aliases: Vec<(String, String)> = m.affects_aliases.iter().map(|(k, v)| (k.clone(), norm_str(v))).collect();
+    let mut r = Resolver::new(root, top, &aliases, deleted.iter().cloned().collect());
+    let mut nodes: HashSet<String> = deleted.iter().cloned().collect();
+    let mut walked: HashSet<String> = HashSet::new();
+    let mut queue: VecDeque<String> = VecDeque::new();
+    let mut roots: Vec<String> = vec![src_root.to_string()];
+    roots.extend(m.affects_all.iter().map(|a| norm_str(a)));
+    roots.extend(aliases.iter().map(|(_, v)| v.clone()));
+    let mut edges: Vec<(String, String)> = Vec::new();
+    let mut patterns: Vec<(Target, String)> = Vec::new();
+    let (mut unresolved, mut remote) = (Vec::new(), Vec::new());
+    fn add(nodes: &mut HashSet<String>, queue: &mut VecDeque<String>, k: String) {
+        if scanner(&k).is_some() && !nodes.contains(&k) {
+            queue.push_back(k.clone());
+        }
+        nodes.insert(k);
+    }
+    loop {
+        while let Some(d) = roots.pop() {
+            if d.starts_with("$repo/") || !walked.insert(d.clone()) {
+                continue;
+            }
+            let abs = r.abs_of(&d);
+            if abs.is_file() {
+                add(&mut nodes, &mut queue, d);
+            } else {
+                let mut files = Vec::new();
+                walk(&abs, &mut files);
+                for f in files {
+                    if let Some(k) = r.key_of(&f) {
+                        add(&mut nodes, &mut queue, k);
+                    }
+                }
+            }
+        }
+        let Some(f) = queue.pop_front() else { break };
+        let Some(code) = scanner(&f) else { continue };
+        let Ok(text) = fs::read_to_string(r.abs_of(&f)) else { continue };
+        if text.len() > 4 << 20 {
+            continue;
+        }
+        for x in if code { scan_code(&text) } else { scan_style(&text) } {
+            match r.resolve(&f, &x, !code) {
+                Target::File(k) => {
+                    add(&mut nodes, &mut queue, k.clone());
+                    edges.push((k, f.clone()));
+                }
+                t @ (Target::Under { .. } | Target::Glob(_)) => {
+                    let dir = match &t {
+                        Target::Under { dir, .. } => dir.clone(),
+                        Target::Glob(g) => {
+                            let fixed = &g[..g.find(['*', '?', '{', '[']).unwrap_or(g.len())];
+                            fixed[..fixed.rfind('/').unwrap_or(0)].to_string()
+                        }
+                        _ => unreachable!(),
+                    };
+                    roots.push(dir);
+                    patterns.push((t, f.clone()));
+                }
+                Target::Remote(u) => remote.push((f.clone(), u, x.line)),
+                Target::Unresolved(why) => unresolved.push(Unresolved { file: f.clone(), spec: x.text(), line: x.line, why }),
+                Target::External | Target::Skip => {}
+            }
+        }
+        roots.append(&mut r.roots);
+    }
+    for (t, importer) in &patterns {
+        for n in &nodes {
+            let hit = match t {
+                Target::Under { dir, suffix } => under(n, dir) && n.ends_with(suffix.as_str()),
+                Target::Glob(g) => glob_match(g, n),
+                _ => false,
+            };
+            if hit && n != importer {
+                edges.push((n.clone(), importer.clone()));
             }
         }
     }
-    Graph { nodes, rev }
+    let key = |k: &str| normalize(Path::new(k));
+    let mut rev: HashMap<PathBuf, Vec<PathBuf>> = HashMap::new();
+    for (t, from) in edges {
+        rev.entry(key(&t)).or_default().push(key(&from));
+    }
+    Graph { nodes: nodes.iter().map(|n| key(n)).collect(), rev, unresolved, remote }
 }
 
 /// A changed file as `--files` may give it (repo-relative or absolute, either separator on Windows),
@@ -536,13 +552,8 @@ pub fn affected(root: &Path, m: &Manifest, ch: &Changes) -> Result<Value> {
     let story_file = |s: &crate::batch::Entry| s.import_path.as_deref().map(|p| normalize(Path::new(p)));
     let story_files: HashSet<PathBuf> = m.stories.iter().filter_map(story_file).collect();
 
-    let deleted: Vec<PathBuf> = ch
-        .files
-        .iter()
-        .filter(|c| c.status == 'D' && under(&c.path, &src_root) && is_module(Path::new(&c.path)))
-        .map(|c| normalize(Path::new(&c.path)))
-        .collect();
-    let g = graph(root, &src_root, &deleted);
+    let deleted: Vec<String> = ch.files.iter().filter(|c| c.status == 'D' && !c.path.starts_with("$repo/")).map(|c| norm_str(&c.path)).collect();
+    let g = graph(root, m, &src_root, ch.top.clone(), &deleted);
     let reach = |start: &Path| -> HashSet<PathBuf> {
         let mut seen = HashSet::new();
         let mut q = VecDeque::from([normalize(start)]);
@@ -630,7 +641,7 @@ pub fn affected(root: &Path, m: &Manifest, ch: &Changes) -> Result<Value> {
         } else if store.is_some_and(|s| under(p, &norm_str(&s.dir))) {
             traced_all.get_or_insert_with(|| format!("{p}: a store file pxsig does not trace"));
             ("store-other", "all", None, "a store file pxsig does not trace".into())
-        } else if g.nodes.contains(&np) || story_files.contains(&np) {
+        } else if story_files.contains(&np) || g.rev.contains_key(&np) || (g.nodes.contains(&np) && is_module(&np)) {
             let seen = reach(&np);
             if let Some(a) = seen.iter().map(|f| crate::io::to_slash(f)).find(|f| all_prefixes.iter().any(|a| under(f, a))) {
                 traced_all.get_or_insert_with(|| format!("{p} reaches {a} (affects every story)"));
@@ -670,9 +681,37 @@ pub fn affected(root: &Path, m: &Manifest, ch: &Changes) -> Result<Value> {
         files_out.push(f);
     }
 
+    // Unresolved imports (decision 6.1d): on every run, the entries that reach the file holding one;
+    // all when that file is, or reaches, an affects-all file. `affects.unresolved` accepts them.
+    let mut unresolved_out = Vec::new();
+    let mut unresolved_ids: HashSet<String> = HashSet::new();
+    for u in &g.unresolved {
+        let accepted = m.affects_unresolved.iter().any(|p| glob_match(p, &u.file));
+        let mut o = json!({ "file": u.file, "spec": u.spec, "line": u.line, "why": u.why, "accepted": accepted, "selects": "none" });
+        if !accepted {
+            let seen = reach(Path::new(&u.file));
+            let why = format!("{}:{}: `{}` does not resolve ({})", u.file, u.line, u.spec, u.why);
+            if seen.iter().map(|f| crate::io::to_slash(f)).any(|f| all_prefixes.iter().any(|a| under(&f, a))) {
+                o["selects"] = json!("all");
+                if !fail_safe.iter().any(|f| f["path"] == u.file && f["class"] == "unresolved") {
+                    fail_safe.push(json!({ "path": u.file, "class": "unresolved", "why": format!("{why}; it affects every entry") }));
+                }
+            } else {
+                let hit: Vec<&str> = m.stories.iter().filter(|s| story_file(s).is_some_and(|f| seen.contains(&f))).map(|s| s.id.as_str()).collect();
+                if !hit.is_empty() {
+                    o["selects"] = json!("entries");
+                    o["n"] = json!(hit.len());
+                    unresolved_ids.extend(hit.iter().map(|s| s.to_string()));
+                }
+            }
+        }
+        unresolved_out.push(o);
+    }
+    let remote: Vec<Value> = g.remote.iter().map(|(file, url, line)| json!({ "file": file, "url": url, "line": line })).collect();
+
     let traced: Vec<String> = if traced_all.is_some() { all_ids.clone() } else { all_ids.iter().filter(|id| ids.contains(*id)).cloned().collect() };
     let all = traced_all.is_some() || !fail_safe.is_empty();
-    let selected: Vec<String> = if all { all_ids.clone() } else { traced.clone() };
+    let selected: Vec<String> = if all { all_ids.clone() } else { all_ids.iter().filter(|id| ids.contains(*id) || unresolved_ids.contains(*id)).cloned().collect() };
     let mut files: Vec<String> = story_hits.iter().map(|p| crate::io::to_slash(p)).collect();
     files.sort();
     baselines.sort();
@@ -687,6 +726,8 @@ pub fn affected(root: &Path, m: &Manifest, ch: &Changes) -> Result<Value> {
         if fail_safe.len() > 1 { format!("{why} (+{} more)", fail_safe.len() - 1) } else { why }
     } else if let Some(r) = &traced_all {
         r.clone()
+    } else if files.is_empty() && extra.is_empty() && !unresolved_ids.is_empty() {
+        format!("{} entries reach an unresolved import", unresolved_ids.len())
     } else if files.is_empty() && !extra.is_empty() {
         extra.trim_start_matches("; ").to_string()
     } else if files.is_empty() {
@@ -712,25 +753,14 @@ pub fn affected(root: &Path, m: &Manifest, ch: &Changes) -> Result<Value> {
         "failSafe": fail_safe,
         "ignored": ignored,
         "otherSuites": other,
+        "unresolved": unresolved_out,
+        "remote": remote,
     }))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn finds_relative_specifiers_only() {
-        let src = r#"
-            import React from 'react';
-            import { Button } from '../Button';
-            export * from "./Card.css";
-            const L = React.lazy(() => import('./Lazy'));
-            const x = require('./legacy');
-            const imported = 'not an import'; // — utf-8 from './nope
-        "#;
-        assert_eq!(specifiers(src), vec!["../Button", "./Card.css", "./Lazy", "./legacy"]);
-    }
 
     #[test]
     fn globs() {
@@ -936,6 +966,124 @@ mod git_tests {
         assert_eq!(class_of(&v, ".pxsig/baselines/Button/b.psig"), "baseline");
         assert_eq!(class_of(&v, ".pxsig/.gitignore"), "store-other");
         assert_eq!(class_of(&v, "pxsig.config.json"), "affects-all");
+        let _ = fs::remove_dir_all(&ws);
+    }
+
+    /// A workspace for the resolver: one story per kind of import, each reaching one file.
+    fn resolver_workspace(ws: &Path) {
+        let story = |name: &str, body: &str| write(ws, &format!("src/{name}/{name}.stories.tsx"), body);
+        write(ws, "src/data/a.json", "{}");
+        story("Json", "import a from '../data/a.json';\n");
+        write(ws, "src/icons/x.svg", "<svg/>");
+        write(ws, "src/icons/y.svg", "<svg/>");
+        story("Raw", "import t from '../docs/a.md?raw';\n");
+        write(ws, "src/docs/a.md", "# a\n");
+        write(ws, "src/styles/base.css", "@import './tokens.css';\n.a { background: url(img/bg.png); }\n");
+        write(ws, "src/styles/tokens.css", ":root {}\n");
+        write(ws, "src/styles/img/bg.png", "png");
+        story("Css", "import '../styles/base.css';\n");
+        story("Worker", "const w = new URL('../work/w.js', import.meta.url);\n");
+        write(ws, "src/work/w.js", "x\n");
+        story("Glob", "const g = import.meta.glob('../icons/*.svg');\n");
+        story("Ctx", "const c = require.context('../locales', true, /json$/);\n");
+        write(ws, "src/locales/en/a.json", "{}");
+        story("Tpl", "const i = (n) => import(`../flags/${n}.svg`);\n");
+        write(ws, "src/flags/de.svg", "<svg/>");
+        story("Esm", "import { e } from '../esm/e.js';\n");
+        write(ws, "src/esm/e.ts", "export const e = 1;\n");
+        story("Font", "const face = { src: \"url('../fonts/a.woff2')\" };\n");
+        write(ws, "src/fonts/a.woff2", "font");
+        // Bare specifiers: tsconfig paths, `#` imports, an alias, a self-import through `exports`
+        // (dist mapped back to src), a workspace package, built-ins and an npm package.
+        write(ws, "tsconfig.json", "{ \"compilerOptions\": { \"paths\": { \"@lib/*\": [\"./src/lib/*\"] } }, // comment\n }");
+        write(ws, "src/lib/l.ts", "export const l = 1;\n");
+        story("Paths", "import { l } from '@lib/l';\n");
+        write(ws, "package.json", "{ \"name\": \"me\", \"imports\": { \"#h/*\": \"./src/h/*.ts\" }, \"exports\": { \"./widgets/*\": { \"types\": \"./dist/widgets/*.d.ts\", \"import\": \"./dist/widgets/*.mjs\" } } }");
+        write(ws, "src/h/h.ts", "export const h = 1;\n");
+        story("Hash", "import { h } from '#h/h';\n");
+        write(ws, "src/al/al.ts", "export const al = 1;\n");
+        story("Alias", "import { al } from '~al/al';\n");
+        write(ws, "src/widgets/w.tsx", "export const w = 1;\n");
+        story("Self", "import { w } from 'me/widgets/w';\nimport fs from 'node:fs';\nimport p from 'path';\nimport r from 'react';\n");
+        write(ws, "node_modules/react/package.json", "{ \"name\": \"react\" }");
+        write(ws, "packages/kit/package.json", "{ \"name\": \"kit\", \"main\": \"./dist/index.js\" }");
+        write(ws, "packages/kit/src/index.ts", "export const k = 1;\n");
+        story("Virtual", "import s from 'virtual:status';\n");
+        story("Accepted", "import s from 'virtual:other';\n");
+        write(ws, ".storybook/preview.tsx", "import '../src/global.css.ts';\n");
+        write(ws, "src/global.css.ts", "export {};\n");
+    }
+
+    fn resolver_manifest() -> Manifest {
+        let names = ["Json", "Raw", "Css", "Worker", "Glob", "Ctx", "Tpl", "Esm", "Font", "Paths", "Hash", "Alias", "Self", "Virtual", "Accepted", "Kit"];
+        let stories: Vec<Value> = names.iter().map(|n| json!({ "id": n.to_lowercase(), "sig": format!(".pxsig/baselines/{n}.psig"), "importPath": format!("src/{n}/{n}.stories.tsx") })).collect();
+        serde_json::from_value(json!({
+            "srcRoot": "src",
+            "affectsAll": [".storybook"],
+            "affectsAliases": { "~al": "src/al" },
+            "affectsUnresolved": ["src/Accepted/**"],
+            "stories": stories
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn the_resolver_follows_every_kind_of_import() {
+        let ws = tmp("resolver");
+        resolver_workspace(&ws);
+        #[cfg(unix)]
+        {
+            fs::create_dir_all(ws.join("node_modules")).unwrap();
+            std::os::unix::fs::symlink(ws.join("packages/kit"), ws.join("node_modules/kit")).unwrap();
+            write(&ws, "src/Kit/Kit.stories.tsx", "import { k } from 'kit';\n");
+        }
+        let m = resolver_manifest();
+        let run = |f: &str| affected(&ws, &m, &changes_from_files(&ws, &[f.to_string()])).unwrap();
+        for (file, id) in [
+            ("src/data/a.json", "json"),
+            ("src/docs/a.md", "raw"),
+            ("src/styles/tokens.css", "css"),
+            ("src/styles/img/bg.png", "css"),
+            ("src/work/w.js", "worker"),
+            ("src/icons/y.svg", "glob"),
+            ("src/locales/en/a.json", "ctx"),
+            ("src/flags/de.svg", "tpl"),
+            ("src/esm/e.ts", "esm"),
+            ("src/fonts/a.woff2", "font"),
+            ("src/lib/l.ts", "paths"),
+            ("src/h/h.ts", "hash"),
+            ("src/al/al.ts", "alias"),
+            ("src/widgets/w.tsx", "self"),
+        ] {
+            let v = run(file);
+            assert_eq!((class_of(&v, file), ids(&v, "traced")), ("graph".to_string(), vec![id.to_string()]), "{file}: {}", v["reason"]);
+            // The unresolved `virtual:status` adds its story to every run; the accepted one adds nothing.
+            assert_eq!(ids(&v, "ids"), { let mut x = vec![id.to_string(), "virtual".to_string()]; x.sort(); x }, "{file}");
+        }
+        #[cfg(unix)]
+        {
+            let v = run("packages/kit/src/index.ts");
+            assert_eq!(ids(&v, "traced"), vec!["kit"], "a workspace package's dist maps to its source: {}", v["reason"]);
+        }
+        let v = run("src/global.css.ts");
+        assert_eq!((v["all"].clone(), v["failSafe"].clone()), (json!(true), json!([])), "imported by an affects-all file: a traced all");
+        let v = run("src/Css/Css.stories.tsx");
+        let u: Vec<(String, bool, String)> = v["unresolved"].as_array().unwrap().iter().map(|u| (u["spec"].as_str().unwrap().to_string(), u["accepted"].as_bool().unwrap(), u["selects"].as_str().unwrap().to_string())).collect();
+        assert!(u.contains(&("virtual:status".into(), false, "entries".into())) && u.contains(&("virtual:other".into(), true, "none".into())), "{u:?}");
+        let _ = fs::remove_dir_all(&ws);
+    }
+
+    #[test]
+    fn an_unresolved_import_in_an_affects_all_file_selects_all() {
+        let ws = tmp("unresolved-all");
+        write(&ws, "src/A/A.stories.tsx", "export {};\n");
+        write(&ws, ".storybook/main.ts", "const s = import(`${dir}/status.mjs`);\n");
+        let mut m: Manifest = serde_json::from_value(json!({ "srcRoot": "src", "affectsAll": [".storybook"], "stories": [{ "id": "a", "sig": "a.psig", "importPath": "src/A/A.stories.tsx" }] })).unwrap();
+        let v = affected(&ws, &m, &changes_from_files(&ws, &[])).unwrap();
+        assert_eq!((v["all"].clone(), v["failSafe"][0]["class"].clone()), (json!(true), json!("unresolved")));
+        m.affects_unresolved = vec![".storybook/main.ts".into()];
+        let v = affected(&ws, &m, &changes_from_files(&ws, &[])).unwrap();
+        assert_eq!((v["all"].clone(), ids(&v, "ids")), (json!(false), Vec::<String>::new()));
         let _ = fs::remove_dir_all(&ws);
     }
 

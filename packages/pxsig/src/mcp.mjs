@@ -418,7 +418,7 @@ const tools = [
   },
   {
     name: 'pxsig_affected',
-    description: 'Which entries a set of edited files can change, given file paths relative to the workspace root, or a git ref to diff against. A path the import graph and the store records cannot trace selects every entry, and failSafe says which.',
+    description: 'Which entries a set of edited files can change, given file paths relative to the workspace root, or a git ref to diff against. A path the import graph and the store records cannot trace selects every entry, and failSafe says which; unresolved lists imports that add entries to every run.',
     inputSchema: {
       type: 'object',
       properties: { project: PROJECT, files: { type: 'array', items: { type: 'string' } }, since: { type: 'string', description: 'git ref, e.g. "main" or a commit' } },
@@ -427,7 +427,7 @@ const tools = [
     async run({ project, files, since }) {
       if (!files?.length && !since) throw new Error('give files or since');
       const a = affected(ctxOf(project), { files, since });
-      return { changedFiles: a.changed, reason: a.reason, entries: a.ids.length, ids: a.ids.slice(0, 200), all: a.all, failSafe: (a.failSafe ?? []).slice(0, 20), ignored: (a.ignored ?? []).slice(0, 50), baselines: a.baselines ?? [], records: a.records ?? {}, otherSuites: a.otherSuites ?? {}, warnings: a.warnings ?? [] };
+      return { changedFiles: a.changed, reason: a.reason, entries: a.ids.length, ids: a.ids.slice(0, 200), all: a.all, failSafe: (a.failSafe ?? []).slice(0, 20), ignored: (a.ignored ?? []).slice(0, 50), baselines: a.baselines ?? [], records: a.records ?? {}, otherSuites: a.otherSuites ?? {}, warnings: a.warnings ?? [], unresolved: (a.unresolved ?? []).filter((u) => !u.accepted && u.selects !== 'none').slice(0, 20), remote: (a.remote ?? []).length };
     },
   },
   {
