@@ -59,16 +59,32 @@ command to run; it never builds by itself. `PXSIG_DASHBOARD_DIR` overrides both.
 5. Beside it, `conformance.json` says how fully you cover each component:
 
    ```json
-   { "adapter": "acme", "components": { "Button": { "status": "full", "note": "Acme Button" } } }
+   { "adapter": "acme", "contract": "1.0.0", "components": { "Button": { "status": "full", "note": "Acme Button" } } }
    ```
 
    Status is `full` (your design system's component, all behaviour), `partial` (some behaviour
    missing: say which in the note), `bespoke` (built for the adapter from primitives) or `missing`.
+   `contract` is the UI contract version you wrote the adapter for (see
+   [The contract version](#the-contract-version)); without it, 1.0.0.
 6. Optional: a `vite.mjs` whose default export returns build settings your design system needs:
    `{ alias: { name: path }, allow: [folders], optimizeDepsExclude: [names] }`.
 
 Run `pxsig dashboard gaps` at any point: it lists what is missing, partial and bespoke, and the
 dashboard files each one affects.
+
+## The contract version
+
+The contract has its own version (`CONTRACT_VERSION` in `contract.ts`), separate from pxsig's, and
+[contract-changes.md](contract-changes.md) lists what each version changed. Record the one you wrote
+the adapter for in `conformance.json`. When pxsig moves on:
+
+- **A newer minor version** (1.0 → 1.1) only adds: an optional component or prop with a fallback, a
+  token or icon with a default. The adapter keeps building; `pxsig dashboard gaps` names what was
+  added, which renders its fallback or default until you map it. Map it, then raise `contract`.
+- **A newer major version** (1.x → 2.0) can remove or change something the adapter relies on.
+  `gaps` reports a problem and `build` refuses, printing that version's migration notes; `pxsig
+  serve` keeps the prebuilt dashboard. Follow the notes, then set `contract` to the new version.
+- **An adapter newer than pxsig** builds; parts newer than pxsig's contract are unused.
 
 ## Contract rules
 

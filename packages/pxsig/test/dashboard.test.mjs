@@ -53,3 +53,28 @@ test('gaps: dashboard.ui in pxsig.config.json; a missing required component is a
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("gaps and build compare the adapter's contract version with this pxsig's", () => {
+  const r = pxsig(['dashboard', 'gaps', '--ui', 'hydrotik', '--json']);
+  assert.equal(JSON.parse(r.stdout).contract.status, 'same');
+  const dir = mkdtempSync(join(tmpdir(), 'pxsig-ui-'));
+  try {
+    mkdirSync(join(dir, 'ui'));
+    writeFileSync(join(dir, 'ui', 'index.tsx'), "export const name = 'old';\nexport const tokens = {};\n");
+    const conformance = (contract) => writeFileSync(join(dir, 'ui', 'conformance.json'), JSON.stringify({ adapter: 'old', contract, components: {} }));
+    conformance('0.1.0');
+    const old = JSON.parse(pxsig(['dashboard', 'gaps', '--ui', './ui', '--json'], dir).stdout);
+    assert.equal(old.contract.status, 'older-major');
+    assert.ok(old.problems.some((p) => /^contract: written for contract 0\.1\.0; this pxsig has 1\.0\.0, a major change/.test(p)), old.problems.join('\n'));
+    const b = pxsig(['dashboard', 'build', '--ui', './ui'], dir);
+    assert.equal(b.status, 2);
+    assert.match(b.stderr, /the "ui" adapter is written for contract 0\.1\.0[\s\S]*1\.0\.0:/, 'refused before any build tool is needed, with the migration notes');
+    conformance('9.0.0');
+    const newer = JSON.parse(pxsig(['dashboard', 'gaps', '--ui', './ui', '--json'], dir).stdout);
+    assert.equal(newer.contract.status, 'newer');
+    assert.ok(!newer.problems.some((p) => p.startsWith('contract:')), 'a newer adapter is a note, not a problem');
+    assert.match(pxsig(['dashboard', 'gaps', '--ui', './ui'], dir).stdout, /\ncontract: written for contract 9\.0\.0; this pxsig has 1\.0\.0/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

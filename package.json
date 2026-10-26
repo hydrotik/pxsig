@@ -19,6 +19,7 @@
     "ui:gaps": "node scripts/ui.mjs gaps",
     "ui:docs": "node scripts/ui.mjs docs",
     "ui:check": "node scripts/ui.mjs check",
+    "ui:lock": "node scripts/ui.mjs lock",
     "typecheck": "node scripts/typecheck.mjs"
   },
   "pnpm": {

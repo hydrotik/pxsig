@@ -76,6 +76,22 @@ test('an adapter edited after its build: stale, so the prebuilt dashboard and th
   assert.match(r.note, /changed after its last build: run `pxsig dashboard build` in a/);
 });
 
+test('a build for another major UI contract is not served; the same major is', () => {
+  const p = project('a', './pxsig-ui');
+  touch(join(p.dir, 'pxsig-ui', 'index.tsx'), Date.now() - 60_000);
+  touch(join(p.dir, 'pxsig-ui'), Date.now() - 60_000);
+  const out = buildDirFor(p.dir);
+  mkdirSync(out, { recursive: true });
+  writeFileSync(join(out, 'index.html'), '<!doctype html>');
+  writeFileSync(join(out, STAMP), JSON.stringify({ pxsig: VERSION, contract: '1.2.0', builtAt: Date.now() }));
+  const at = (contract) => chooseDashboard({ projects: [p], prebuilt, version: VERSION, contract, root, env: {} });
+  assert.equal(at('1.4.0').dir, out);
+  const r = at('2.0.0');
+  assert.equal(r.dir, prebuilt);
+  assert.match(r.note, /is for UI contract 1\.2\.0 \(this pxsig has 2\.0\.0\): update the adapter/);
+  assert.equal(at(null).dir, out, 'no contract known: judged as before');
+});
+
 test('a build from another pxsig version is stale', () => {
   const p = project('a', './pxsig-ui');
   touch(join(p.dir, 'pxsig-ui', 'index.tsx'), Date.now() - 60_000);

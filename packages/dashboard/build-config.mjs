@@ -94,6 +94,13 @@ export async function dashboardConfig({ adapter, cwd, outDir, resolveFrom, react
   const integration = packageDir('@vanilla-extract/integration', [plugin]);
   const veCss = extra.alias?.['@vanilla-extract/css'] ?? packageDir('@vanilla-extract/css', [...resolveFrom, ...(integration ? [integration] : [])]) ?? need('@vanilla-extract/css');
   const allow = [root, ui.dir, ...(extra.allow ?? [])];
+  // The contract version the adapter was written for: icons added since are drawn as their defaults.
+  let contract = '1.0.0';
+  try {
+    contract = JSON.parse(readFileSync(path.join(ui.dir, 'conformance.json'), 'utf8')).contract ?? contract;
+  } catch {
+    // no conformance.json: `pxsig dashboard gaps` reports it; the build treats the adapter as 1.0.0
+  }
   return {
     root,
     base: './',
@@ -105,6 +112,7 @@ export async function dashboardConfig({ adapter, cwd, outDir, resolveFrom, react
       vanillaExtractPlugin({ unstable_pluginFilter: ({ name }) => name === 'pxsig-allow-design-system' || name === 'vite-tsconfig-paths' }),
     ],
     logLevel: 'warn',
+    define: { __PXSIG_ADAPTER_CONTRACT__: JSON.stringify(contract) },
     resolve: {
       alias: {
         '@ui-adapter': ui.file,

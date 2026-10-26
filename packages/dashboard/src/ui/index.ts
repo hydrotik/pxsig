@@ -6,7 +6,7 @@
  */
 import React from 'react';
 import * as selected from '@ui-adapter';
-import { CONTRACT, COMPONENT_NAMES, type ComponentName, type ComponentProps, type DataTableProps, type UiAdapter } from './contract';
+import { CONTRACT, CONTRACT_VERSION, COMPONENT_NAMES, ICON_DEFAULTS, type ComponentName, type ComponentProps, type DataTableProps, type IconName, type UiAdapter } from './contract';
 import { fallbacks } from './fallbacks';
 import { ThemeModeProvider, installTokens, useThemeMode } from './runtime';
 
@@ -50,7 +50,21 @@ export const StatGroup = pick('StatGroup');
 export const DataTable = pick('DataTable') as unknown as <T>(props: DataTableProps<T>) => React.ReactElement | null;
 export const StatusBadge = pick('StatusBadge');
 export const Badge = pick('Badge');
-export const Icon = pick('Icon');
+/** The contract version the adapter was written for (its conformance.json; the build defines it). */
+declare const __PXSIG_ADAPTER_CONTRACT__: string | undefined;
+const adapterContract = typeof __PXSIG_ADAPTER_CONTRACT__ === 'string' ? __PXSIG_ADAPTER_CONTRACT__ : CONTRACT_VERSION;
+const older = (a: string, b: string) => {
+  const [x, y] = [a, b].map((v) => v.split('.').map(Number));
+  for (let i = 0; i < 3; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) < (y[i] ?? 0);
+  return false;
+};
+const AdapterIcon = pick('Icon');
+const iconDefaults: Partial<Record<IconName, { since: string; draw: IconName }>> = ICON_DEFAULTS;
+/** The adapter's Icon; an icon newer than the adapter's contract is drawn as its default. */
+export const Icon = (props: ComponentProps['Icon']) => {
+  const d = iconDefaults[props.name];
+  return React.createElement(AdapterIcon, d && older(adapterContract, d.since) ? { ...props, name: d.draw } : props);
+};
 export const Dialog = pick('Dialog');
 export const DialogTitle = pick('DialogTitle');
 export const DialogDescription = pick('DialogDescription');

@@ -1,5 +1,6 @@
 {
   "adapter": "hydrotik",
+  "contract": "1.0.0",
   "designSystem": "@hydrotik/design-system (built from source: PXSIG_DS_SOURCE)",
   "components": {
     "UiProvider": { "status": "bespoke", "note": "ThemeProvider kept in step with the runtime's mode, plus TooltipProvider" },

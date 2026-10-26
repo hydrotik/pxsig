@@ -46,12 +46,13 @@ function uiOf(project) {
  * @param {{ name: string, dir: string, configPath: string }[]} o.projects  the projects served
  * @param {string} o.prebuilt     the prebuilt dashboard folder
  * @param {string} o.version      this pxsig's version
+ * @param {string | null} [o.contract]  this pxsig's UI contract version (a build for another major is not served)
  * @param {string} [o.root]       the workspace root, for relative paths in notes
  * @param {(name: string) => string | null} [o.builtinDir]  a built-in adapter's folder, for staleness
  * @param {Record<string, string | undefined>} [o.env]
  * @returns {{ dir: string, source: 'env' | 'adapter' | 'prebuilt', note: string | null }}
  */
-export function chooseDashboard({ projects, prebuilt, version, root = process.cwd(), builtinDir = () => null, env = process.env }) {
+export function chooseDashboard({ projects, prebuilt, version, contract = null, root = process.cwd(), builtinDir = () => null, env = process.env }) {
   if (env.PXSIG_DASHBOARD_DIR) return { dir: resolve(env.PXSIG_DASHBOARD_DIR), source: 'env', note: `dashboard: ${env.PXSIG_DASHBOARD_DIR} (PXSIG_DASHBOARD_DIR)` };
   const asking = projects.map((p) => ({ p, ui: uiOf(p) })).filter((x) => x.ui);
   if (!asking.length) return { dir: prebuilt, source: 'prebuilt', note: null };
@@ -78,6 +79,8 @@ export function chooseDashboard({ projects, prebuilt, version, root = process.cw
   const builtAt = stamp?.builtAt ?? statSync(join(out, 'index.html')).mtimeMs;
   if (stamp?.pxsig && stamp.pxsig !== version)
     return { dir: prebuilt, source: 'prebuilt', note: `dashboard: the build for ${where} is from pxsig ${stamp.pxsig} (this is ${version}): ${command}. Serving the prebuilt dashboard.` };
+  if (stamp?.contract && contract && stamp.contract.split('.')[0] !== contract.split('.')[0])
+    return { dir: prebuilt, source: 'prebuilt', note: `dashboard: the build for ${where} is for UI contract ${stamp.contract} (this pxsig has ${contract}): update the adapter (docs/ui/contract-changes.md), then ${command}. Serving the prebuilt dashboard.` };
   const adapterDir = BUILTIN.test(ui) ? builtinDir(ui) : resolve(p.dir, ui);
   const edited = adapterDir ? newestMtime(adapterDir) : 0;
   if (edited > builtAt) return { dir: prebuilt, source: 'prebuilt', note: `dashboard: the adapter for ${where} changed after its last build: ${command}. Serving the prebuilt dashboard.` };
