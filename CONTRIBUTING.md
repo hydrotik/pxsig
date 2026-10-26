@@ -35,6 +35,7 @@ cargo test                     # the engine and the binary
 pnpm -r test                   # every package (node --test)
 pnpm test                      # both
 node scripts/check-clean.mjs   # what must never be committed (below)
+node scripts/bench/run.mjs     # the scale benchmark (docs/benchmark.md); CI runs it nightly
 ```
 
 The Node tests build their fixtures (stories, manifests, PNGs) in temporary folders. Add tests the

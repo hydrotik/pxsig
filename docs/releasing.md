@@ -37,7 +37,8 @@ node scripts/changelog.mjs preview              # what the release section will 
 node scripts/changelog.mjs release X.Y.Z        # merge Unreleased and every fragment; delete them
 ```
 
-Then write the release's summary paragraph under its new heading, set the versions (above), and
+Then write the release's summary paragraph under its new heading, set the versions (above), commit
+the latest nightly `bench-results` as `scripts/bench/baseline.json` ([benchmark.md](benchmark.md#refreshing-the-baseline)), and
 merge the branch before pushing the tag. `release` keeps the headings in a fixed order (Behaviour
 changes first), with the entries already under Unreleased ahead of the fragments.
 
