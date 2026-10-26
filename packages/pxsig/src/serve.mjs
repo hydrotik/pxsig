@@ -1011,6 +1011,8 @@ const shutdown = async () => {
 };
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
+// Ctrl+Break in a Windows console (Ctrl+C arrives as SIGINT there too).
+process.on('SIGBREAK', shutdown);
 
 await rust('ping', {}).then((p) => console.log(`[serve] Rust engine up (pxsig ${p.version}, ${p.threads} threads)`));
 for (const S of states.values()) {

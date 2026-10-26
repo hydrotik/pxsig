@@ -1,0 +1,14 @@
+# Text is stored and checked out with LF on every OS (Git for Windows converts to CRLF by default),
+# so fixtures and records that are compared byte for byte read the same everywhere.
+* text=auto eol=lf
+# Never converted, never diffed as text.
+*.psig binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.woff binary
+*.woff2 binary
+*.wasm binary

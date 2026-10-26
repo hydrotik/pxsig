@@ -80,6 +80,11 @@ Problems with the setup sit outside the entries, in `setup`:
 | --- | --- | --- |
 | `storybook-index-broken` | error | Storybook answered, but not with a story index (for example "Unable to index files"). |
 | `storybook-unreachable` | info | Storybook did not answer; the static scan was used. |
+| `line-endings` | warn | A store record (manifest, `approvals.ndjson`, `a11y.json`) is checked out with CRLF line endings, or git does not treat `.psig` files as binary. Both happen on Windows without the store's `.gitattributes` (`pxsig init` writes it for new stores). The reason names the fix. |
+| `path-portability` | warn | A baseline path Windows cannot check out (a reserved name such as `CON` or `NUL`, a trailing dot or space, one of `<>:"\|?*`, over 240 characters), or two baseline paths that differ only in case. |
+
+The workspace-level codes (`project-unlisted`, `project-missing`, `version-skew`) are in
+[monorepo.md](monorepo.md). A `warn` setup problem never changes `doctor`'s exit code.
 
 ## The ledger
 

@@ -19,6 +19,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameS
 import { createRequire } from 'node:module';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { toPosix } from './paths.mjs';
 
 export const WORKSPACE_FILE = 'pxsig.workspace.json';
 export const CONFIG_FILE = 'pxsig.config.json';
@@ -44,7 +45,6 @@ export const DEFAULTS = Object.freeze({
   integrity: {},
 });
 
-const toPosix = (p) => p.split(sep).join('/');
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 
 /** Deep merge for config layers: objects merge, everything else (arrays included) replaces. */

@@ -12,6 +12,12 @@ use serde_json::Value;
 
 use pxsig_core::{CompareResult, PixelDiff, PxsigRecord};
 
+/// A path as pxsig prints it in JSON: `/`-separated on every OS (Windows gives `\`).
+pub fn to_slash(p: &Path) -> String {
+    let s = p.to_string_lossy();
+    if std::path::MAIN_SEPARATOR == '\\' { s.replace('\\', "/") } else { s.into_owned() }
+}
+
 /// Decode any PNG to 8-bit RGBA (palette/gray/RGB expanded, 16-bit stripped).
 pub fn decode_png(path: &Path) -> Result<(Vec<u8>, usize, usize)> {
     let bytes = fs::read(path).with_context(|| format!("PNG not found: {}", path.display()))?;
@@ -213,7 +219,7 @@ th{{background:#f4f5f6;text-align:left}}.v{{text-align:left}}</style>
         d = file_name(&diff_png),
     );
     fs::write(&diff_html, html)?;
-    Ok((diff_html.display().to_string(), diff_png.display().to_string()))
+    Ok((to_slash(&diff_html), to_slash(&diff_png)))
 }
 
 pub struct GalleryRow {
@@ -278,4 +284,17 @@ pub fn write_mask(path: &Path, d: &PixelDiff) -> Result<()> {
 /// Write RGBA as PNG (used by `trim`, which rewrites renders in place).
 pub fn encode_png_pub(path: &Path, w: usize, h: usize, rgba: &[u8]) -> Result<()> {
     encode_png(path, w, h, rgba)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::to_slash;
+    use std::path::Path;
+
+    #[test]
+    fn printed_paths_use_forward_slashes() {
+        assert_eq!(to_slash(Path::new("src/a/b.tsx")), "src/a/b.tsx");
+        #[cfg(windows)]
+        assert_eq!(to_slash(&Path::new("src").join("a").join("b.tsx")), "src/a/b.tsx");
+    }
 }
