@@ -1,8 +1,9 @@
 # Releasing
 
 For maintainers. A release is a pushed tag `vX.Y.Z`. The `release` workflow
-(`.github/workflows/release.yml`) builds the binary for every platform, collects the dashboard and
-publishes to npm.
+(`.github/workflows/release.yml`) builds the binary for every platform, collects the dashboard, packs
+every package, attests and checksums what it packed, attaches it to the GitHub release and publishes
+to npm.
 
 ## Versions
 
@@ -58,17 +59,31 @@ changes first), with the entries already under Unreleased ahead of the fragments
    | win32-x64      | `windows-latest`   | `x86_64-pc-windows-msvc`    |
 
 4. **dashboard**: produces `packages/pxsig/dist/dashboard/` (see below).
-5. **publish**: generates the platform packages with `scripts/make-platform-packages.mjs` into
-   `packages/cli-dist/` (git-ignored), publishes each one, adds them to `pxsig` as exact-version
-   `optionalDependencies` (in the job's checkout only; nothing is committed), and publishes `pxsig`
-   with the dashboard in `dist/`. Any package already published at that version is skipped, so a
-   failed run can be re-run, and a dry run of a released version checks the build without failing.
+5. **sbom-rust**: a CycloneDX SBOM of the engine's crates (`cargo-cyclonedx`, pinned, from
+   `Cargo.lock`): `pxsig-engine.cdx.json`.
+6. **pack**: generates the platform packages with `scripts/make-platform-packages.mjs` into
+   `packages/cli-dist/` (git-ignored), adds them to `pxsig` as exact-version `optionalDependencies`
+   (in the job's checkout only; nothing is committed), and runs `npm pack` on every package:
+   `pxsig` (with the dashboard in `dist/`), each `@pxsig/cli-<platform>-<arch>` and
+   `@pxsig/storybook-addon`. It also writes `pxsig-dashboard.tar.gz`, the npm SBOM
+   (`pxsig-npm.cdx.json`: the packed `pxsig` installed into an empty project and read by
+   `@cyclonedx/cyclonedx-npm`, pinned), the raw binaries `pxsig-<platform>-<arch>[.exe]`, and
+   `SHA256SUMS` over all of them (`scripts/release-files.mjs`).
+7. **attest**: a provenance attestation for every one of those files
+   (`actions/attest-build-provenance`), then attaches them all to the GitHub release for the tag,
+   creating the release if it does not exist yet. Skipped in a dry run.
+8. **publish**: publishes the packed tarballs, platform packages first, then `pxsig`, then the
+   addon, so npm serves exactly the files that were checksummed and attested. Any package already
+   published at that version is skipped, so a failed run can be re-run, and a dry run of a released
+   version checks the build without failing.
 
-   Then it publishes `@pxsig/storybook-addon` at its own `package.json` version, skipped when that
-   version is already on npm.
+Every action in the workflows is pinned to a full commit sha (the version is in a comment beside
+it), and the npm used to pack and publish is an exact version. Updating one is an ordinary pull
+request that changes the sha and the comment together.
 
 Running the workflow by hand (`workflow_dispatch`) on a tag ref does the same. The `dry_run` input
-runs every `npm publish` with `--dry-run`. A dry run may also run on a branch: with no tag to compare,
+runs every `npm publish` with `--dry-run` and skips the attestations and the GitHub release. A dry
+run may also run on a branch: with no tag to compare,
 verify only checks that `Cargo.toml` and `packages/pxsig/package.json` agree, and when no dashboard
 source is available the dashboard job packs a placeholder `index.html` (with a warning) instead of
 failing:
@@ -103,15 +118,20 @@ platforms without a binary; `--write-optional-deps <package.json>` sets the vers
 
 The dashboard compiles against a design system that is not public (see
 `packages/dashboard/README.md`), so CI cannot always build it. The dashboard job takes the first
-of these that is available, and fails with a message naming all three if none is:
+of these that is available, and fails with a message naming both if neither is:
 
 1. **The `PXSIG_DS_SOURCE` secret.** A git URL, credentials included, of the design-system
    monorepo. The job clones it (optionally at the branch or tag in the `PXSIG_DS_REF` variable),
    installs its dependencies and runs `pnpm --filter @pxsig/dashboard build`.
-2. **The `dashboard_artifact_url` input** of a manual run: a URL of a `pxsig-dashboard.tar.gz`.
-3. **A release asset** named `pxsig-dashboard.tar.gz` on the GitHub release for the tag.
+2. **A release asset** named `pxsig-dashboard.tar.gz` on the GitHub release for the tag.
 
-For 2 and 3, build the dashboard locally and pack it:
+There is no input that fetches a dashboard from any other URL. The job writes which source it used,
+and for a release asset its sha256, to the run's summary; the copy that ships is in the release's
+`SHA256SUMS` and has its own attestation. A dashboard built by the secret is attested as built by
+this workflow; a release asset was built on a maintainer's machine, and its attestation records only
+that this workflow packed it.
+
+For 2, build the dashboard locally and pack it:
 
 ```bash
 PXSIG_DS_SOURCE=<path to the design-system checkout> pnpm --filter @pxsig/dashboard build
@@ -152,3 +172,26 @@ exchanged for a short-lived token, so no npm token is stored. Every package gets
 - **Requirements.** npm 11.5.1 or later (the job installs it) and `id-token: write` (set on the job).
   npm checks that each package's `repository` matches the GitHub repository the workflow runs in;
   the platform packages take it from `Cargo.toml`.
+
+## Verifying a release
+
+Each GitHub release from 0.4.0 on holds the npm tarballs, the raw binaries, the dashboard, two
+CycloneDX SBOMs and `SHA256SUMS`, and every file has a provenance attestation: GitHub's signed record
+of the workflow run and commit that built it. The binaries are not code-signed.
+
+Checksums, for files downloaded from the release page (`sha256sum -c` on Linux):
+
+```bash
+gh release download v0.4.0 --repo hydrotik/pxsig --dir pxsig-v0.4.0
+cd pxsig-v0.4.0 && shasum -a 256 -c SHA256SUMS
+```
+
+Provenance, for any of those files, or for what npm installed (the binary inside
+`@pxsig/cli-<platform>-<arch>` is byte for byte the release's `pxsig-<platform>-<arch>`):
+
+```bash
+gh attestation verify pxsig-v0.4.0/pxsig-0.4.0.tgz --repo hydrotik/pxsig
+gh attestation verify node_modules/@pxsig/cli-darwin-arm64/bin/pxsig --repo hydrotik/pxsig
+npm audit signatures   # npm's own provenance for every installed package
+```
+
