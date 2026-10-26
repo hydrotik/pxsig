@@ -99,11 +99,18 @@ test('output is plain under every marker, even on a terminal', () => {
 });
 
 test('log lines carry `agent` under a marker, and nothing without one', () => {
-  const line = { at: 'now', id: 'x', by: null, via: 'cli' };
+  const line = { at: 'now', id: 'x', by: null, via: 'mcp' };
   assert.equal(stamp(line, {}).agent, undefined);
   assert.equal(stamp(line, { AI_AGENT: 'github_copilot_vscode_agent' }).agent, 'copilot');
   assert.equal(stamp(line, { CLINE_ACTIVE: 'true' }).agent, 'cline');
   assert.equal('by' in stamp(line, { CLINE_ACTIVE: 'true' }), false);
+});
+
+test("a person's decision carries no `agent`, even from a server started under a marker", () => {
+  const env = { CLAUDECODE: '1' };
+  for (const via of ['dashboard', 'cli']) assert.equal(stamp({ id: 'x', via }, env).agent, undefined, via);
+  assert.equal(stamp({ id: 'x', via: 'undo' }, env, { person: true }).agent, undefined, 'a dashboard undo');
+  assert.equal(stamp({ id: 'x', via: 'undo' }, env).agent, 'claude-code', 'a CLI-side undo under a marker');
 });
 
 test('commands that need a person exit 3 and name the assistant', () => {

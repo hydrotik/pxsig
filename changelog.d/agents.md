@@ -15,8 +15,8 @@
   copilot (AI_AGENT=github_copilot_vscode_agent)", "refused in CI (CI is set)" or "refused: output
   is piped".
 - **Log lines written under a marker carry `agent`** (the assistant's name, never a person's).
-  A `pxsig serve` started under a marker records it on every decision it serves, the dashboard's
-  included. Additive; `approve verify` reads lines with and without it.
+  A `pxsig serve` started under a marker records it on the decisions an assistant sends (`via:
+  mcp`), never on one a person made through the dashboard link or the CLI. Additive; `approve verify` reads lines with and without it.
 
 ### Added
 

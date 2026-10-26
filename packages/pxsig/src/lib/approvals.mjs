@@ -50,12 +50,14 @@ export const who = (root, config = null) => (config?.approvals?.identity === 'gi
 /**
  * A log line with `by` only when there is one, the pxsig version that wrote it (decision 92), and
  * `agent` when this process carries an assistant's marker (lib/agents.mjs; decision 80): the
- * assistant's name, never a person's. A server started under an assistant marks the decisions it
- * serves, the dashboard's included.
+ * assistant's name, never a person's. A decision a person made through the dashboard link or the CLI
+ * carries none: the CLI refuses under a marker, so a server started under an assistant would
+ * otherwise mark a person's decisions with the assistant that started it.
  */
-export const stamp = (line, env = process.env) => {
+export const PERSON_VIA = new Set(['dashboard', 'cli']);
+export const stamp = (line, env = process.env, { person = PERSON_VIA.has(line.via) } = {}) => {
   const { by, ...rest } = line;
-  const agent = agentName(env);
+  const agent = person ? null : agentName(env);
   return { ...rest, ...(by ? { by } : {}), ...(agent ? { agent } : {}), pxsig: PXSIG_VERSION };
 };
 export const newBatch = (via) => `${new Date().toISOString().replace(/[:.]/g, '-')}-${via}`;
@@ -70,7 +72,7 @@ export function snapshot(P, entry, batch) {
   return { before: sha256(p.sig) };
 }
 
-export function record(P, entry, { batch, via, reason = null, before, kind = null }) {
+export function record(P, entry, { batch, via, reason = null, before, kind = null, person }) {
   const p = paths(P, entry);
   fault('after-psig');
   const line = stamp({
@@ -84,7 +86,7 @@ export function record(P, entry, { batch, via, reason = null, before, kind = nul
     gitHead: git(P.workspaceRoot, 'rev-parse', '--short', 'HEAD'),
     before,
     after: sha256(p.sig),
-  });
+  }, process.env, { person: person ?? PERSON_VIA.has(via) });
   appendLine(p.log, line);
   return line;
 }
