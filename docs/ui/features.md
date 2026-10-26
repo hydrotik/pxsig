@@ -413,3 +413,22 @@ Components: `Switch`, `IconButton`, `SegmentedChoice`
 Copy: `app.embedEmpty`, `inspector.toggles.details`
 
 Files: `src/App`, `src/inspector/Inspector`
+
+### Decision window
+
+`embed.decide` · The small window the Storybook panel's Approve, Reject and Accept go through: the panel is a frame on another site, where the dashboard link is not sent, so the window (this server's own page) takes the decision from the panel, posts it and closes. Without the dashboard link it stays open and says to open the link first; a tab without it shows the same instruction under the inspector's header.
+
+States:
+
+- **error**: The decision was not recorded: the reason, or the instruction to open the dashboard link first.
+- **empty**: Opened on its own (no panel behind it): a line saying it has nothing to do.
+
+Interactions:
+
+- Approve, reject or accept in the Storybook panel opens it; it closes once the decision is recorded
+
+Components: 
+
+Copy: `app.decide`, `inspector.review.needsLink`
+
+Files: `src/views/Decide`, `src/link`, `src/main`

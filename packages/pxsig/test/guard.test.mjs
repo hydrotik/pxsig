@@ -1,8 +1,8 @@
 /**
  * guard.test.mjs — who may write through `pxsig serve` (lib/guard.mjs), and the server enforcing it:
- * decisions need the server's token, which the dashboard page and `pxsig approve apply` have and
- * an agent posting with curl does not; writes from another site are refused; so is a Host that is
- * not loopback.
+ * decisions need the dashboard link's cookie (a page opened from the link `pxsig serve` prints) or
+ * the CLI's token (`pxsig approve apply`), which an agent posting with curl, or reading the page,
+ * does not have; writes from another site are refused; so is a Host that is not loopback.
  *
  *   node --test packages/pxsig/test/guard.test.mjs
  *
@@ -16,7 +16,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { AGENT_DECISIONS, authorize, DECISIONS, loopbackHost, NEEDS_PERSON, pageLoad, readToken, tokenFile, withToken } from '../src/lib/guard.mjs';
+import { AGENT_DECISIONS, authorize, cookieValue, DECISIONS, linkCookie, linkSetCookie, Links, loopbackHost, NEEDS_LINK, NEEDS_LINK_CODE, NEEDS_PERSON, pageHeaders, readToken, TICKET_MS, tokenFile } from '../src/lib/guard.mjs';
 import { fixture, hasRust, rustBin } from './fixture.mjs';
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
@@ -25,27 +25,63 @@ const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 
 const own = 'http://127.0.0.1:6070';
 const storybook = new Set(['http://localhost:6006']);
-const tokens = { dashboard: 'abc', cli: 'xyz', mcp: 'mmm' };
+const tokens = { cli: 'xyz', mcp: 'mmm' };
+const links = new Links();
+const session = links.redeem(links.mint());
+/** The dashboard's own request, from a page opened with the dashboard link. */
+const dashboard = { origin: own, 'sec-fetch-site': 'same-origin', cookie: `other=1; ${linkCookie(6070)}=${session}` };
 /** null when allowed, else the refusal; `via` of an allowed decision through `viaOf`. */
 const refuse = (action, headers) => {
-  const a = authorize({ action, headers, tokens, ownOrigin: own, allowedOrigins: storybook });
-  return a.ok ? null : { status: a.status, error: a.error };
+  const a = authorize({ action, headers, tokens, links, port: 6070, ownOrigin: own, allowedOrigins: storybook });
+  return a.ok ? null : { status: a.status, error: a.error, ...(a.code ? { code: a.code } : {}) };
 };
-const viaOf = (action, headers) => authorize({ action, headers, tokens, ownOrigin: own, allowedOrigins: storybook }).via;
+const viaOf = (action, headers) => authorize({ action, headers, tokens, links, port: 6070, ownOrigin: own, allowedOrigins: storybook }).via;
 
-test('a decision without the token is refused, with the way a person does it', () => {
+test('a decision without the dashboard link or a token is refused, with the way a person does it', () => {
   for (const action of DECISIONS) {
     assert.deepEqual(refuse(action, {}), { status: 403, error: NEEDS_PERSON }, action);
     assert.equal(refuse(action, { 'x-pxsig-token': 'abd' })?.status, 403, `${action}: a wrong token`);
-    assert.equal(refuse(action, { 'x-pxsig-token': 'abc', origin: own, 'sec-fetch-site': 'same-origin' }), null, `${action}: the dashboard`);
+    assert.equal(refuse(action, dashboard), null, `${action}: the dashboard`);
+    assert.deepEqual(refuse(action, { origin: own, 'sec-fetch-site': 'same-origin' }), { status: 403, error: NEEDS_LINK, code: NEEDS_LINK_CODE }, `${action}: a tab without the link is told how to get it`);
+    assert.equal(refuse(action, { ...dashboard, cookie: `${linkCookie(6070)}=forged` })?.code, NEEDS_LINK_CODE, `${action}: a made-up cookie`);
+    assert.equal(refuse(action, { ...dashboard, cookie: `${linkCookie(6071)}=${session}` })?.code, NEEDS_LINK_CODE, `${action}: another server's cookie`);
   }
   assert.match(NEEDS_PERSON, /needs a person: use the dashboard or `pxsig approve` in a terminal/);
+  assert.match(NEEDS_LINK, /dashboard link/);
 });
 
-test("a decision's `via` is the token it carried, never the request's word", () => {
-  assert.equal(viaOf('approve', { 'x-pxsig-token': 'abc', origin: own, 'sec-fetch-site': 'same-origin' }), 'dashboard');
+test('the dashboard link: a ticket works once, within two minutes; the cookie cannot be read by scripts', () => {
+  const l = new Links();
+  const t0 = 1_000_000;
+  const t = l.mint(t0);
+  assert.match(t, /^[0-9a-f]{64}$/);
+  const s = l.redeem(t, t0 + 1000);
+  assert.ok(l.has(s));
+  assert.equal(l.redeem(t, t0 + 2000), null, 'used once');
+  const late = l.mint(t0);
+  assert.equal(l.redeem(late, t0 + TICKET_MS + 1), null, 'expired');
+  assert.equal(l.redeem(undefined), null);
+  assert.ok(!l.has('nope'));
+  assert.equal(linkSetCookie(6070, 'v'), 'pxsig_link_6070=v; HttpOnly; SameSite=Strict; Path=/');
+  assert.equal(cookieValue('a=1; pxsig_link_6070=v; b=2', 'pxsig_link_6070'), 'v');
+  assert.equal(cookieValue(undefined, 'x'), null);
+});
+
+test('the dashboard page names what it may load, and is not sniffed', () => {
+  const h = pageHeaders(storybook);
+  assert.match(h['content-security-policy'], /script-src 'self'(;|$)/);
+  assert.match(h['content-security-policy'], /connect-src 'self'/);
+  assert.match(h['content-security-policy'], /object-src 'none'/);
+  assert.match(h['content-security-policy'], /frame-ancestors 'self' http:\/\/localhost:6006/);
+  assert.equal(h['x-content-type-options'], 'nosniff');
+});
+
+test("a decision's `via` is what it carried, never the request's word", () => {
+  assert.equal(viaOf('approve', dashboard), 'dashboard');
   assert.equal(viaOf('approve', { 'x-pxsig-token': 'xyz' }), 'cli', 'pxsig approve apply: no Origin, no Sec-Fetch-Site');
   assert.equal(refuse('approve', { 'x-pxsig-token': 'xyz', origin: own, 'sec-fetch-site': 'same-origin' })?.status, 403, "a browser never has the CLI's token");
+  assert.equal(refuse('approve', { 'x-pxsig-token': 'xyz', cookie: dashboard.cookie })?.status, undefined, 'the CLI is the CLI, cookie or not');
+  assert.equal(viaOf('approve', { cookie: dashboard.cookie }), undefined, 'the cookie counts only on a browser request');
   assert.equal(viaOf('check', {}), null);
   assert.equal(refuse('approve', { 'x-pxsig-token': '' })?.status, 403, 'an empty token');
 });
@@ -58,10 +94,10 @@ test("the MCP's token rejects and clears rejections, nothing that approves or ac
 });
 
 test('a decision from another origin is refused even with the token; a Storybook may only ask for checks', () => {
-  assert.equal(refuse('approve', { 'x-pxsig-token': 'abc', origin: 'http://evil.example' }).status, 403);
-  assert.equal(refuse('approve', { 'x-pxsig-token': 'abc', origin: 'http://localhost:6006' }).status, 403, 'not from the Storybook either');
-  assert.equal(refuse('approve', { 'x-pxsig-token': 'abc', 'sec-fetch-site': 'cross-site' }).status, 403);
-  assert.equal(refuse('approve', { 'x-pxsig-token': 'abc', 'sec-fetch-site': 'same-site' }).status, 403);
+  assert.equal(refuse('approve', { ...dashboard, origin: 'http://evil.example' }).status, 403);
+  assert.equal(refuse('approve', { ...dashboard, origin: 'http://localhost:6006' }).status, 403, 'not from the Storybook either');
+  assert.equal(refuse('approve', { ...dashboard, 'sec-fetch-site': 'cross-site' }).status, 403);
+  assert.equal(refuse('approve', { ...dashboard, 'sec-fetch-site': 'same-site' }).status, 403);
   assert.equal(refuse('check', { origin: 'http://localhost:6006', 'sec-fetch-site': 'cross-site' }), null, 'the addon');
   assert.equal(refuse('check', {}), null, 'the CLI and the MCP');
   assert.equal(refuse('repair', {}), null);
@@ -73,14 +109,6 @@ test('a decision from another origin is refused even with the token; a Storybook
 test('loopback hosts only, on this port', () => {
   for (const h of ['127.0.0.1:6070', 'localhost:6070', 'LOCALHOST:6070', '[::1]:6070', undefined]) assert.ok(loopbackHost(h, 6070), String(h));
   for (const h of ['evil.example:6070', '127.0.0.1:6071', '127.0.0.1', '127.0.0.1.evil.example:6070', '10.0.0.2:6070']) assert.ok(!loopbackHost(h, 6070), h);
-});
-
-test('the token goes into the page only when a browser loads it', () => {
-  assert.equal(withToken('<html><head><title>x</title></head></html>', 't0'), '<html><head><meta name="pxsig-token" content="t0"><title>x</title></head></html>');
-  assert.ok(pageLoad({ 'sec-fetch-dest': 'document', 'sec-fetch-mode': 'navigate' }));
-  assert.ok(pageLoad({ 'sec-fetch-dest': 'iframe', 'sec-fetch-mode': 'navigate' }), 'the Storybook panel');
-  assert.ok(!pageLoad({}), 'curl');
-  assert.ok(!pageLoad({ 'sec-fetch-dest': 'empty', 'sec-fetch-mode': 'cors' }), 'a fetch');
 });
 
 // --- the server -----------------------------------------------------------------------------------
@@ -112,6 +140,14 @@ const dashboardDir = () => {
   writeFileSync(join(dash, 'index.html'), '<!doctype html><html><head><title>pxsig</title></head><body></body></html>');
   return dash;
 };
+
+/** The cookie a page opened with a fresh dashboard link gets (as `pxsig serve --link`, then the page). */
+async function dashboardCookie(S, cliToken) {
+  const link = (await raw(S.port, { method: 'POST', path: '/__pxsig/ticket', headers: { 'x-pxsig-token': cliToken } })).json().link;
+  const ticket = link.split('#ticket=')[1];
+  const r = await raw(S.port, { method: 'POST', path: '/__pxsig/session', headers: { origin: S.url, 'sec-fetch-site': 'same-origin' }, body: { ticket } });
+  return r.headers['set-cookie'][0].split(';')[0];
+}
 
 async function serve(f, env = {}) {
   const port = await freePort();
@@ -159,25 +195,50 @@ test('the server refuses decisions an agent posts (no token), from another site,
     const rebound = await raw(S.port, { path: '/__pxsig/status', headers: { host: `evil.example:${S.port}` } });
     assert.equal(rebound.status, 403);
     const reboundPage = await raw(S.port, { path: '/report/', headers: { host: `evil.example:${S.port}`, 'sec-fetch-dest': 'document', 'sec-fetch-mode': 'navigate' } });
-    assert.ok(!reboundPage.text.includes('pxsig-token'), 'and gets no page, so no token');
+    assert.equal(reboundPage.status, 403, 'and gets no page');
 
     // Reads and checks stay open to agents and the MCP.
     assert.equal((await raw(S.port, { path: '/__pxsig/status' })).status, 200);
     assert.equal((await raw(S.port, { method: 'POST', path: '/__pxsig/check', body: { ids: [] } })).status, 202);
 
-    // The page: the token only when a browser loads it as a document (or the Storybook panel's frame).
-    const scripted = await raw(S.port, { path: '/report/' });
-    assert.equal(scripted.status, 200);
-    assert.ok(!scripted.text.includes('pxsig-token'), 'a script fetching the page gets no token');
-    const page = await raw(S.port, { path: '/report/', headers: { 'sec-fetch-dest': 'document', 'sec-fetch-mode': 'navigate', 'sec-fetch-site': 'none' } });
-    assert.match(page.headers['content-security-policy'], /^frame-ancestors 'self' /);
+    // The page carries no token, whoever asks and however: a script posing as a browser tab or as
+    // the Storybook panel's frame gets the same page as curl.
+    for (const headers of [{}, { 'sec-fetch-dest': 'document', 'sec-fetch-mode': 'navigate', 'sec-fetch-site': 'none' }, { 'sec-fetch-dest': 'iframe', 'sec-fetch-mode': 'navigate', 'sec-fetch-site': 'cross-site' }]) {
+      const page = await raw(S.port, { path: '/report/', headers });
+      assert.equal(page.status, 200);
+      assert.ok(!/[0-9a-f]{64}/.test(page.text), `no token in the page (${JSON.stringify(headers)})`);
+      assert.ok(!page.text.includes(token), "never the CLI's");
+      assert.match(page.headers['content-security-policy'], /script-src 'self'/);
+      assert.match(page.headers['content-security-policy'], /frame-ancestors 'self' /);
+      assert.equal(page.headers['x-content-type-options'], 'nosniff');
+    }
+    // A tab without the dashboard link is told how to get it.
+    const tab = { origin: S.url, 'sec-fetch-site': 'same-origin' };
+    const noLink = await raw(S.port, { method: 'POST', path: '/__pxsig/approve', headers: tab, body: { id } });
+    assert.equal(noLink.status, 403);
+    assert.equal(noLink.json().code, NEEDS_LINK_CODE);
+    // The dashboard link: `pxsig serve --link` asks the server (the CLI's token, not a browser); a
+    // browser, or a request without the token, cannot mint one.
+    assert.equal((await raw(S.port, { method: 'POST', path: '/__pxsig/ticket' })).status, 403);
+    assert.equal((await raw(S.port, { method: 'POST', path: '/__pxsig/ticket', headers: { ...tab, 'x-pxsig-token': token } })).status, 403);
+    const minted = await raw(S.port, { method: 'POST', path: '/__pxsig/ticket', headers: { 'x-pxsig-token': token } });
+    assert.equal(minted.status, 200, minted.text);
+    const ticket = minted.json().link.match(/#ticket=([0-9a-f]{64})$/)[1];
+    assert.ok(minted.json().link.startsWith(`${S.url}/report/#ticket=`));
+    // Only the dashboard's own page trades it, once.
+    assert.equal((await raw(S.port, { method: 'POST', path: '/__pxsig/session', body: { ticket } })).status, 403, 'not curl');
+    assert.equal((await raw(S.port, { method: 'POST', path: '/__pxsig/session', headers: { origin: 'http://evil.example', 'sec-fetch-site': 'cross-site' }, body: { ticket } })).status, 403, 'not another site');
+    const traded = await raw(S.port, { method: 'POST', path: '/__pxsig/session', headers: tab, body: { ticket } });
+    assert.equal(traded.status, 200, traded.text);
+    const setCookie = traded.headers['set-cookie'][0];
+    assert.match(setCookie, new RegExp(`^pxsig_link_${S.port}=[0-9a-f]{64}; HttpOnly; SameSite=Strict; Path=/$`));
+    assert.equal((await raw(S.port, { method: 'POST', path: '/__pxsig/session', headers: tab, body: { ticket } })).status, 403, 'used once');
+    const cookie = setCookie.split(';')[0];
+    assert.ok(!S.log().includes(ticket) && !S.log().includes(cookie.split('=')[1]), 'neither the ticket nor the cookie is logged');
 
-    const pageToken = page.text.match(/<meta name="pxsig-token" content="([0-9a-f]{64})">/)[1];
-    assert.notEqual(pageToken, token, "the page's token is not the CLI's");
-
-    // The dashboard's own request: same-origin, with the token from the page. It claims to be the
-    // MCP; the log says what it was.
-    const ok = await raw(S.port, { method: 'POST', path: '/__pxsig/approve', headers: { origin: S.url, 'sec-fetch-site': 'same-origin', 'x-pxsig-token': pageToken }, body: { id, via: 'mcp' } });
+    // The dashboard's own request: same-origin, with the cookie. It claims to be the MCP; the log
+    // says what it was.
+    const ok = await raw(S.port, { method: 'POST', path: '/__pxsig/approve', headers: { ...tab, cookie }, body: { id, via: 'mcp' } });
     assert.equal(ok.status, 200, ok.text);
     assert.notDeepEqual(readFileSync(sig), original, 'the person approved: the baseline is the latest render');
     const log = () => readFileSync(join(f.px, 'approvals.ndjson'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
@@ -191,7 +252,7 @@ test('the server refuses decisions an agent posts (no token), from another site,
     // The MCP's token: no approving; it may reject and clear a rejection, never a person's approval.
     const mcpToken = readToken(f.repo, S.url, 'mcp');
     assert.match(mcpToken, /^[0-9a-f]{64}$/);
-    assert.ok(mcpToken !== token && mcpToken !== pageToken);
+    assert.ok(mcpToken !== token);
     if (process.platform !== 'win32') assert.equal(statSync(tokenFile(f.repo, S.url, 'mcp')).mode & 0o777, 0o600);
     const mcp = (action, body) => raw(S.port, { method: 'POST', path: `/__pxsig/${action}`, headers: { 'x-pxsig-token': mcpToken }, body });
     const review = () => JSON.parse(readFileSync(join(f.px, 'reports', 'review.json'), 'utf8'));
@@ -248,10 +309,9 @@ test("the MCP server's pxsig_review rejects through the server, logged as via: m
     assert.ok(!r.isError, r.content[0].text);
     const av = () => JSON.parse(readFileSync(join(f.px, 'reports', 'a11y-review.json'), 'utf8'));
     assert.deepEqual([av()[id].state, av()[id].via], ['rejected', 'mcp']);
-    // A person accepts in the dashboard; the MCP may not clear that.
-    const page = await raw(S.port, { path: '/report/', headers: { 'sec-fetch-dest': 'document', 'sec-fetch-mode': 'navigate' } });
-    const pageToken = page.text.match(/content="([0-9a-f]{64})"/)[1];
-    assert.equal((await raw(S.port, { method: 'POST', path: '/__pxsig/a11y-accept', headers: { 'x-pxsig-token': pageToken }, body: { id } })).status, 200);
+    // A person accepts in the dashboard (a page opened with the dashboard link); the MCP may not clear that.
+    const cookie = await dashboardCookie(S, readToken(f.repo, S.url));
+    assert.equal((await raw(S.port, { method: 'POST', path: '/__pxsig/a11y-accept', headers: { origin: S.url, 'sec-fetch-site': 'same-origin', cookie }, body: { id } })).status, 200);
     const undo = await call('pxsig_review', { action: 'a11y-unreview', ids: [id], confirm: true });
     assert.equal(undo.isError, true);
     assert.match(undo.content[0].text, /clearing an accept needs a person/);

@@ -82,7 +82,11 @@ a red dot too, so a gap shows without opening the panel.
   - **Check all** queues every entry, in every project the server holds;
   - **Open dashboard** opens the dashboard on this story.
 - Below it, the dashboard's inspector for the story: baseline, current render and diff, with
-  approve and reject.
+  approve and reject. The panel is a frame on another site, where the dashboard link is not sent,
+  so a decision opens a small window of the pxsig server for a moment: it records the decision and
+  closes. That needs the dashboard link in this browser (opened once since `pxsig serve` started);
+  without it the window says to open the link first. The browser may ask to allow pop-ups for
+  Storybook once.
 
 The header and its buttons take their colours from Storybook's theme, and the inspector and the
 dashboard open in Storybook's light or dark mode (`?theme=` on the dashboard URL, which wins over

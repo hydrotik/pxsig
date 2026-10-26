@@ -19,10 +19,13 @@
  * API. GET takes `?project=`, POST a `project` field; either may be left out when the workspace
  * has one project, or when the id / story names its project unambiguously (the Storybook addon
  * sends only ids). Writes are same-origin, or (checks and repairs only) a project's Storybook.
- * Decisions (approve, approve-story, reject, unreview, a11y-*) also need the server's token
- * (`x-pxsig-token`), which only the dashboard page and `pxsig approve apply` have: an agent or a
- * script posting to the server is refused with 403 (lib/guard.mjs). A decision's `via` in the log
- * is the token it carried (`dashboard` or `cli`); a `via` in the body is ignored.
+ * Decisions (approve, approve-story, reject, unreview, a11y-*) also need the dashboard link's
+ * cookie (a page opened with the link this server prints) or the CLI's token (`x-pxsig-token`,
+ * `pxsig approve apply`): an agent or a script posting to the server, or reading the page, is
+ * refused with 403 (lib/guard.mjs). A decision's `via` in the log is what it carried (`dashboard`
+ * or `cli`); a `via` in the body is ignored.
+ *   POST /__pxsig/session {ticket}   the dashboard page trades the link's ticket for the cookie
+ *   POST /__pxsig/ticket             `pxsig serve --link` (the CLI's token): a new dashboard link
  *   GET  /__pxsig/projects · /__pxsig/status · /__pxsig/data · /__pxsig/events · /__pxsig/integrity
  *   POST /__pxsig/approve {id, batch?, reason?, kind?}   latest render → baseline (`.psig`
  *        with the render as its image); the old baseline is snapshotted and the write logged
@@ -58,7 +61,7 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, extname, join, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
-import { newBatch, paths, record, sha256, snapshot, undo, who } from './lib/approvals.mjs';
+import { newBatch, paths, record, sha256, snapshot, stamp, undo, who } from './lib/approvals.mjs';
 import { browserPool, renderStories, STORYBOOK_ERROR } from './lib/capture.mjs';
 import { fetchStoryIndex, filterLedger, loadStoryIndex, oneLine, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
 import { readHeader, readImage } from './lib/psig.mjs';
@@ -70,7 +73,8 @@ import { ensureStorybook } from './lib/static.mjs';
 import { findWorkspace, flagLayer, loadProject, PXSIG_VERSION, rustBinary, serverFile, writeRunManifest } from './lib/workspace.mjs';
 import { buildData, dashboardDir, prebuiltDashboardDir, useDashboard } from './report.mjs';
 import { chooseDashboard } from './lib/dashboard-dir.mjs';
-import { authorize, loopbackHost, NEEDS_PERSON, newToken, pageLoad, removeToken, withToken, writeToken } from './lib/guard.mjs';
+import { authorize, Links, linkSetCookie, loopbackHost, mayMintTicket, NEEDS_PERSON, newToken, pageHeaders, removeToken, sameOriginPage, writeToken } from './lib/guard.mjs';
+import { humanAtTerminal } from './lib/term.mjs';
 import { fileURLToPath } from 'node:url';
 import { relPath } from './lib/paths.mjs';
 import { appendLine, writeJson } from './lib/files.mjs';
@@ -137,7 +141,11 @@ const httpError = (status, message) => Object.assign(new Error(message), { statu
  * Decisions need one of these (lib/guard.mjs): the dashboard page's, the CLI's, or the MCP's
  * (files only the owner reads; the MCP's only rejects and clears rejections).
  */
-const TOKENS = { dashboard: newToken(), cli: newToken(), mcp: newToken() };
+const TOKENS = { cli: newToken(), mcp: newToken() };
+// The dashboard link's tickets and cookies (lib/guard.mjs): in memory, so a restart ends them.
+const links = new Links();
+/** The dashboard link: the dashboard (on `tab`) with a fresh one-time ticket in its fragment. */
+const dashboardLink = (base, tab = null) => `${base}#${tab ? `tab=${encodeURIComponent(tab)}&` : ''}ticket=${links.mint()}`;
 /** An agent clears its own kind of decision only: never a person's approval or accept. */
 const agentMayClear = (meta, state) => {
   if (meta.via === 'mcp' && (state === 'approved' || state === 'accepted')) throw httpError(403, `clearing an ${state === 'approved' ? 'approval' : 'accept'} ${NEEDS_PERSON.slice('approving '.length)}`);
@@ -533,7 +541,7 @@ async function runChecks(S) {
 // accepted list (<store>/a11y.json); rejecting marks them for a fix. Both last until the next
 // check of the entry, like review.json. Every accept and undo is logged beside a11y.json.
 
-const a11yLog = (P, line) => appendLine(join(dirname(P.store.a11y), 'a11y-decisions.ndjson'), line);
+const a11yLog = (P, line) => appendLine(join(dirname(P.store.a11y), 'a11y-decisions.ndjson'), stamp(line));
 const writeA11y = (P, base) => writeJson(P.store.a11y, base, { pretty: true });
 
 function a11yReview(S, action, id, meta = {}) {
@@ -543,7 +551,7 @@ function a11yReview(S, action, id, meta = {}) {
   const av = readJson(S.a11yReviewPath, {});
   const base = readJson(P.store.a11y, {});
   const at = new Date().toISOString();
-  const by = who(P.workspaceRoot);
+  const by = who(P.workspaceRoot, P.config);
   const via = meta.via ?? 'dashboard';
   if (action === 'a11y-accept') {
     const row = readJson(S.checkPath, { rows: [] }).rows.find((r) => r.id === id);
@@ -781,7 +789,7 @@ const cors = (req, res) => {
   }
 };
 const json = (res, status, body) => {
-  res.writeHead(status, { 'content-type': TYPES['.json'], 'cache-control': 'no-store' });
+  res.writeHead(status, { 'content-type': TYPES['.json'], 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
   res.end(JSON.stringify(body));
 };
 const readBody = (req) =>
@@ -843,12 +851,25 @@ async function api(req, res, action, q) {
     return json(res, 405, { error: 'POST only' });
   }
   if (req.method !== 'POST') return json(res, 405, { error: 'POST only' });
+  // The dashboard link: the page trades its ticket once for the cookie decisions carry.
+  if (action === 'session') {
+    if (!sameOriginPage(req.headers, `http://${req.headers.host}`)) return json(res, 403, { error: 'the dashboard link is opened by the dashboard page only' });
+    const session = links.redeem((await readBody(req)).ticket);
+    if (!session) return json(res, 403, { error: 'this dashboard link was used or is older than two minutes: run `pxsig serve --link` in a terminal for a new one' });
+    res.setHeader('set-cookie', linkSetCookie(server.address().port, session));
+    return json(res, 200, { ok: true });
+  }
+  // `pxsig serve --link` (a person at a terminal, with the CLI's token) asks for a fresh link.
+  if (action === 'ticket') {
+    if (!mayMintTicket(req.headers, TOKENS)) return json(res, 403, { error: NEEDS_PERSON });
+    return json(res, 200, { link: dashboardLink(`${url}/report/`) });
+  }
   // Same-origin, or a project's Storybook (the addon, checks only): a page on any other site must
   // not write. Decisions also need the token: a person in the dashboard, or `pxsig approve apply`.
-  const auth = authorize({ action, headers: req.headers, tokens: TOKENS, ownOrigin: `http://${req.headers.host}`, allowedOrigins });
+  const auth = authorize({ action, headers: req.headers, tokens: TOKENS, links, port: server.address().port, ownOrigin: `http://${req.headers.host}`, allowedOrigins });
   if (!auth.ok) {
     console.error(`[serve] refused POST /__pxsig/${action}: ${auth.error}`);
-    return json(res, auth.status, { error: auth.error });
+    return json(res, auth.status, { error: auth.error, ...(auth.code ? { code: auth.code } : {}) });
   }
   const body = await readBody(req);
   if (action === 'check') {
@@ -881,7 +902,7 @@ async function api(req, res, action, q) {
 
 const sendFile = (req, res, file) => {
   const st = statSync(file);
-  res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream', 'content-length': st.size, 'cache-control': 'no-cache', 'last-modified': st.mtime.toUTCString() });
+  res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream', 'content-length': st.size, 'cache-control': 'no-cache', 'last-modified': st.mtime.toUTCString(), 'x-content-type-options': 'nosniff' });
   if (req.method === 'HEAD') return res.end();
   createReadStream(file).pipe(res);
 };
@@ -938,14 +959,9 @@ const server = createServer(async (req, res) => {
       if (file === join(dashboardDir, 'index.html')) {
         // Served pages fetch live data: drop whatever a static build inlined.
         const html = readFileSync(file, 'utf8').replace(/<script id="pxsig-data">[\s\S]*?<\/script>/, '');
-        // The token goes only into a page a browser loads (a tab, the Storybook panel), which only
-        // this server's origin and the projects' Storybooks may frame.
-        res.writeHead(200, {
-          'content-type': TYPES['.html'],
-          'cache-control': 'no-store',
-          'content-security-policy': `frame-ancestors 'self' ${[...allowedOrigins].join(' ')}`,
-        });
-        return res.end(pageLoad(req.headers) ? withToken(html, TOKENS.dashboard) : html);
+        // No token is ever in the page: decisions carry the dashboard link's cookie instead.
+        res.writeHead(200, { 'content-type': TYPES['.html'], 'cache-control': 'no-store', ...pageHeaders(allowedOrigins) });
+        return res.end(html);
       }
       return sendFile(req, res, file);
     }
@@ -1012,7 +1028,13 @@ function listen(port, tries = 10) {
     writeToken(ws.root, url, TOKENS.mcp, 'mcp');
     const page = `${url}/report/${flags.tab ? `#${flags.tab}` : ''}`;
     console.log(`[serve] pxsig dashboard → ${page}  (${[...states.keys()].join(', ')}; Ctrl+C to stop)`);
-    if (!flags['no-open']) openBrowser(page);
+    // The dashboard link goes only to a person at this terminal: an agent or a background start
+    // reads this output, and with the link it could approve from a browser it drives.
+    const person = humanAtTerminal();
+    const link = person ? dashboardLink(`${url}/report/`, flags.tab ?? null) : null;
+    if (link) console.log(`[serve] dashboard link (approve from the dashboard; once, within two minutes): ${link}`);
+    else console.log('[serve] to approve from the dashboard, run `pxsig serve --link` in a terminal and open the link it prints');
+    if (!flags['no-open']) openBrowser(link ?? page);
   };
   server.once('error', onError);
   server.once('listening', onListening);

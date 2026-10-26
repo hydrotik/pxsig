@@ -285,4 +285,16 @@ export const FEATURES: Feature[] = [
     components: ['Switch', 'IconButton', 'SegmentedChoice'],
     files: ['App', 'inspector/Inspector'],
   },
+  {
+    id: 'embed.decide',
+    section: 'embed',
+    title: 'Decision window',
+    purpose:
+      "The small window the Storybook panel's Approve, Reject and Accept go through: the panel is a frame on another site, where the dashboard link is not sent, so the window (this server's own page) takes the decision from the panel, posts it and closes. Without the dashboard link it stays open and says to open the link first; a tab without it shows the same instruction under the inspector's header.",
+    states: { error: 'The decision was not recorded: the reason, or the instruction to open the dashboard link first.', empty: 'Opened on its own (no panel behind it): a line saying it has nothing to do.' },
+    interactions: [{ action: 'Approve, reject or accept in the Storybook panel opens it; it closes once the decision is recorded' }],
+    copy: ['app.decide', 'inspector.review.needsLink'],
+    components: [],
+    files: ['views/Decide', 'link', 'main'],
+  },
 ];

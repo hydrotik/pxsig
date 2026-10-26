@@ -72,7 +72,8 @@ import { parseArgs } from './lib/args.mjs';
 import { CODES } from './lib/integrity.mjs';
 import { describeLock, readLock, takeLock } from './lib/lock.mjs';
 import { buildManifest, describeConfig, initProject, migrateLegacy } from './lib/setup.mjs';
-import { findWorkspace, flagLayer, openProject, pickProject, rustBinary, setFlagLayer } from './lib/workspace.mjs';
+import { findWorkspace, flagLayer, openProject, pickProject, rustBinary, serverUrlFor, setFlagLayer } from './lib/workspace.mjs';
+import { readToken, TOKEN_HEADER } from './lib/guard.mjs';
 import { ask, emit, humanAtTerminal, pickFormat, progress, stateCell } from './lib/term.mjs';
 import { relPath } from './lib/paths.mjs';
 
@@ -363,6 +364,28 @@ async function doctorOne({ repair, only, failOn }) {
 }
 
 // --- commands ------------------------------------------------------------------------------------
+/**
+ * `pxsig serve --link`: a fresh dashboard link from the running server, for a person at this
+ * terminal. The server answers only the CLI's token; the link is printed, never logged.
+ */
+async function serveLink() {
+  if (!humanAtTerminal()) fail('the dashboard link is for a person: run `pxsig serve --link` yourself in a terminal (refused when piped, in CI or under an agent)', 3);
+  const ws = findWorkspace({});
+  const url = serverUrlFor(ws.root);
+  const token = readToken(ws.root, url);
+  if (!token) fail(`no pxsig server is running for this workspace (${url}): start it with \`${CMD} serve\``);
+  let r;
+  try {
+    r = await fetch(`${url}/__pxsig/ticket`, { method: 'POST', headers: { [TOKEN_HEADER]: token } });
+  } catch {
+    fail(`the pxsig server at ${url} does not answer: start it with \`${CMD} serve\``);
+  }
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) fail(`the pxsig server at ${url} refused: ${body.error ?? r.status} (restart \`${CMD} serve\` with this version)`);
+  process.stdout.write(`${body.link}\n`);
+  process.stderr.write('Open it once, within two minutes: that browser can then approve from the dashboard until the server stops.\n');
+}
+
 const commands = {
   status: () => overProjects(async () => {
     const s = await run('status');
@@ -816,7 +839,8 @@ const commands = {
     emit(format, [{ h: 'Manifest', sub: relPath(process.cwd(), r.path) }, { kv: [['Entries', String(r.manifest.stories.length)], ['New (no baseline yet)', String(r.added.length)], ['Removed', String(r.removed.length)], ['Skipped', String(r.skipped.length)]] }], { path: r.path, added: r.added, removed: r.removed, skipped: r.skipped });
   },
 
-  serve() {
+  async serve() {
+    if (flags.link) return serveLink();
     const pass = process.argv.slice(3);
     const child = spawn(process.execPath, [join(here, 'serve.mjs'), ...pass], { stdio: 'inherit' });
     child.on('exit', (c) => process.exit(c ?? 0));

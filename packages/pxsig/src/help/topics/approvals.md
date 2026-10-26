@@ -12,8 +12,10 @@ Commands that need a person (`approve apply`, `approve undo`, `approve verify --
 `check --full --update`, `doctor --repair --apply --prune`, `doctor --repair --only log-torn
 --apply`) are refused (exit 3) when output is piped, in CI, or under a known agent.
 
-The server refuses decisions an agent or a script posts: they need a token that only the
-dashboard page and `pxsig approve apply` have. The MCP server can reject entries and clear
+The server refuses decisions an agent or a script posts: they need the dashboard link (a one-time
+link `pxsig serve` prints for a person at a terminal; `pxsig serve --link` prints a new one) or the
+token `pxsig approve apply` reads. No token is in any page. In the Storybook panel a decision opens
+a small window of the server for a moment. The MCP server can reject entries and clear
 rejections, never approve.
 
 Every approval is a line in `<store>/approvals.ndjson`: when, how (`via`: dashboard, cli, mcp),
@@ -24,5 +26,9 @@ in the repository went through an approval.
 
 This is a guard against approvals nobody meant, not authentication: the pull request that
 commits the baselines is where they are reviewed.
+
+Every log line records how the decision was made (`via`) and the pxsig that wrote it, and no
+personal data: the commit that adds a line and the pull request say who approved
+(`approvals.identity: "git-email"` adds the git email to each line).
 
 See also: `pxsig help approve`, docs/cli.md#approvals, docs/server.md#guards.

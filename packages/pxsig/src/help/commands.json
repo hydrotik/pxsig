@@ -856,6 +856,10 @@
           "meaning": "Do not open a browser tab. On Windows none is opened anyway: the link is printed."
         },
         {
+          "name": "link",
+          "meaning": "Print a fresh dashboard link from the running server and exit (a person at a terminal only). A browser that opens it once, within two minutes, can approve from the dashboard until the server stops."
+        },
+        {
           "name": "tab",
           "value": "name",
           "meaning": "Open the dashboard on this section."
