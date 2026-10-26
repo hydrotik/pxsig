@@ -81,6 +81,7 @@ Problems with the setup sit outside the entries, in `setup`:
 | `storybook-index-broken` | error | Storybook answered, but not with a story index (for example "Unable to index files"). |
 | `storybook-unreachable` | info | Storybook did not answer; the static scan was used. |
 | `line-endings` | warn | A store record (manifest, `approvals.ndjson`, `a11y.json`) is checked out with CRLF line endings, or git does not treat `.psig` files as binary. Both happen on Windows without the store's `.gitattributes` (`pxsig init` writes it for new stores). The reason names the fix. |
+| `log-torn` | warn | Lines of `approvals.ndjson` a crash cut short (a write that never got its newline). Every reading leaves them out; `pxsig doctor --repair --only log-torn --apply` (a person at a terminal) removes them. |
 | `path-portability` | warn | A baseline path Windows cannot check out (a reserved name such as `CON` or `NUL`, a trailing dot or space, one of `<>:"\|?*`, over 240 characters), or two baseline paths that differ only in case. |
 
 The workspace-level codes (`project-unlisted`, `project-missing`, `version-skew`) are in
@@ -155,7 +156,7 @@ These hold for every repair, and are covered by tests:
 ```
 pxsig doctor [--project x] [--component name] [--status code,code] [--limit 40]
              [--offline] [--ci] [--fail-on error|warn|info]
-             [--repair [--only register,recheck,restore-baseline-image,convert-legacy] [--apply] [--prune] [--stale]]
+             [--repair [--only register,recheck,restore-baseline-image,convert-legacy,log-torn] [--apply] [--prune] [--stale]]
 ```
 
 | Flag | Meaning |
@@ -168,7 +169,7 @@ pxsig doctor [--project x] [--component name] [--status code,code] [--limit 40]
 | `--fail-on` | Lowest severity that makes the exit code 1. Default `warn`. `info` also fails on info findings (`skipped-unaffected`), never on `ok`, `excluded` or `drift`. |
 | `--repair` | Plan the safe repairs. |
 | `--apply` | With `--repair`: run them. |
-| `--only` | With `--repair`: these actions only. |
+| `--only` | With `--repair`: these actions only. `log-torn` is planned only when named: with `--apply`, a person at a terminal types `REMOVE <n> TORN LINES` and the approval-log lines a crash cut short are removed (every complete line keeps its bytes). It cannot run beside the server, which appends to that log. |
 | `--prune` | With `--repair --apply`: also move orphans to `trash/`. A person at a terminal only. |
 | `--stale` | With `--repair`: also re-check entries whose verdict is stale. |
 
@@ -177,7 +178,7 @@ pxsig doctor [--project x] [--component name] [--status code,code] [--limit 40]
 | 0 | No entry at or above the `--fail-on` severity (for `info`: no info finding) |
 | 1 | At least one entry at or above it |
 | 2 | Setup error (no manifest, broken Storybook index, unknown project, bad flag) |
-| 3 | `--prune` was used where no person is at a terminal |
+| 3 | `--prune` or `--only log-torn --apply` was used where no person is at a terminal, or the store lock's holder went quiet and only a person may take it over |
 
 The MCP tool `pxsig_doctor` and the server's `POST /__pxsig/repair` run the same repairs. Neither
 can prune. `pxsig_doctor` with `repair: 'apply'` takes the store lock like the CLI (through the

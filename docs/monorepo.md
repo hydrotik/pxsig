@@ -144,7 +144,12 @@ time, host, command): `check --full`, `approve undo` and `verify --adopt`, `migr
 `doctor --repair --apply`, and the server for every project it serves. A second writer is refused
 with the holder's name, or, for a full check against a served project, queued on the server. A
 lock whose process has exited (or whose pid now belongs to a newer process) is stale and taken
-over; a lock from another host is never judged stale.
+over; a lock from another host is never judged stale. The holder stamps a heartbeat into the lock
+every 5 seconds and, before each batch of writes, checks the lock is still its own (a random
+`nonce`); if not, it stops with "lock taken over by …: nothing more was written". A quiet
+heartbeat alone never frees a lock whose process is alive (a laptop that slept, a long render):
+after 10 minutes without one, a person running a writing command at a terminal is offered the lock
+and types `TAKE OVER`; the old holder stops at its next write. Agents and CI get exit 3 instead.
 
 The running server writes its address to `<workspace>/node_modules/.cache/pxsig/server.json`.
 That file is never committed and never inside a package.
