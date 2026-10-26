@@ -62,7 +62,7 @@ test('notifications get no reply; ping does', async () => {
 test('tools/list exposes every tool with a JSON schema and no handler', async () => {
   const { result } = await rpc('tools/list', {});
   const names = result.tools.map((t) => t.name);
-  for (const n of ['pxsig_projects', 'pxsig_status', 'pxsig_list', 'pxsig_entry', 'pxsig_a11y', 'pxsig_affected', 'pxsig_check', 'pxsig_review', 'pxsig_history', 'pxsig_doctor']) assert.ok(names.includes(n), n);
+  for (const n of ['pxsig_projects', 'pxsig_status', 'pxsig_list', 'pxsig_entry', 'pxsig_a11y', 'pxsig_affected', 'pxsig_check', 'pxsig_review', 'pxsig_history', 'pxsig_doctor', 'pxsig_help']) assert.ok(names.includes(n), n);
   for (const t of result.tools) {
     assert.equal(t.inputSchema.type, 'object');
     assert.equal(t.run, undefined);
