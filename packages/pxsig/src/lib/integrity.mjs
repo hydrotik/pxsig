@@ -32,6 +32,7 @@ import { workspaceProblems } from './workspace.mjs';
 import { toPosix } from './paths.mjs';
 import { portabilityProblems } from './portability.mjs';
 import { readLines, writeJson } from './files.mjs';
+import { conflictedStoreFiles } from './approvals.mjs';
 
 export const SCHEMA_VERSION = 1;
 
@@ -457,11 +458,14 @@ export async function reconcile(ctx, opts = {}) {
   // --- per entry --------------------------------------------------------------------------------------
   const entries = [];
   const sigPaths = new Set();
+  // Baselines with no approval log line: `approve verify` fails on them (strict by default, 0.4.0).
+  const unlogged = [];
   for (const e of manifest.stories) {
     const story = e.story ?? e.id;
     const component = componentOf(ctx, e.importPath) ?? '(unscoped)';
     const sigAbs = resolve(ctx.repoRoot, e.sig);
     sigPaths.add(sigAbs);
+    if (!lastApproval.has(e.id) && existsSync(sigAbs)) unlogged.push(e.id);
     const has = {
       sig: existsSync(sigAbs),
       base: isPsig(sigAbs) && hasImage(sigAbs),
@@ -601,7 +605,7 @@ export async function reconcile(ctx, opts = {}) {
       a11yBaseline: { path: rel(ctx.files.a11y), entries: a11yBase ? Object.keys(a11yBase).length : null },
       staleness,
     },
-    setup: [...setupProblems(index), ...(ctx.project ? workspaceProblems(ctx.project) : []), ...portabilityProblems({ repoRoot: ctx.repoRoot, sigPaths, records: [ctx.manifestPath, ...siblings, ctx.files.approvals, ctx.files.a11y] }), ...tornProblems(rel(ctx.files.approvals), torn)],
+    setup: [...setupProblems(index), ...(ctx.project ? workspaceProblems(ctx.project) : []), ...portabilityProblems({ repoRoot: ctx.repoRoot, sigPaths, records: [ctx.manifestPath, ...siblings, ctx.files.approvals, ctx.files.a11y] }), ...tornProblems(rel(ctx.files.approvals), torn), ...unloggedProblems(unlogged, ctx), ...conflictProblems(ctx)],
     summary,
     components,
     entries,
@@ -628,6 +632,20 @@ function neverCheckedReason({ report, reportAt, manifestMtime, sigAt, latestAt, 
   else parts.push(`absent from the last full check (${iso(reportAt)}), which ran on a different manifest or a --modes / --manifest subset`);
   if (latestAt != null && reportAt != null && latestAt > reportAt) parts.push(`rendered ${iso(latestAt)} by a partial re-check that did not record it (re-checks only updated rows already in the report)`);
   return parts.join('; ');
+}
+
+/** Baselines no approval line covers: a warning before strict `approve verify` fails a pull request on them. */
+function unloggedProblems(ids, ctx) {
+  if (!ids.length) return [];
+  return [{ code: 'verify-unlogged', severity: 'warn', count: ids.length, reason: `${ids.length} baselines have no approval log line (${ids.slice(0, 3).join(', ')}${ids.length > 3 ? ', …' : ''}): \`pxsig approve verify\` fails on them (strict by default since 0.4.0). For baselines from before pxsig kept a log, a person runs \`pxsig approve verify --adopt\` once; \`--no-strict\` only reports them` }];
+}
+
+/** Store files a merge or rebase left conflicted (decision 97). */
+function conflictProblems(ctx) {
+  if (!ctx.project) return [];
+  const files = conflictedStoreFiles(ctx.project);
+  if (!files.length) return [];
+  return [{ code: 'store-conflict', severity: 'error', count: files.length, reason: `${files.length} store files are conflicted (a merge or rebase is not finished): ${files.slice(0, 5).join(', ')}${files.length > 5 ? ', …' : ''}. Take main's version of each baseline, keep both sides' lines of a log, then \`pxsig check --since main\` and approve again (docs/ci.md, "Rebasing with baselines")` }];
 }
 
 /** A log line a crash cut short: left out of every reading, removed only by a person. */

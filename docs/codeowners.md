@@ -37,6 +37,18 @@ covers them.
 `pxsig.config.json` is different: a looser gate passes changes that no baseline records. Give it
 the team that owns the gate, not every team.
 
+## Roles
+
+CODEOWNERS is the control for who may approve a baseline change: map each role to the paths it
+owns.
+
+| Role | Owns | Why |
+| --- | --- | --- |
+| A component's team | that component's baseline folder | approves its own visual changes |
+| Every team that approves in the store | `approvals.ndjson`, the manifests, `a11y.json`, `a11y-decisions.ndjson` | every approval touches them |
+| The gate's owner (a design system or platform team) | `pxsig.config.json`, `pxsig.workspace.json`, `CODEOWNERS` | a looser gate passes changes no baseline records |
+| The CI owner | the workflow that runs `pxsig check` and `pxsig approve verify` | removing a step removes the check |
+
 ## Example: two teams in one monorepo
 
 A workspace with two projects. `packages/ui` uses the `package` layout, `packages/forms` the
@@ -99,13 +111,16 @@ It guarantees:
 
 - A baseline file under an owned folder does not reach the protected branch without an approving
   review from one of its owners.
-- With `pxsig approve verify` as a required check, a baseline whose bytes differ from its last
-  logged approval fails the PR (exit 1). See [required-checks.md](required-checks.md).
+- With `pxsig approve verify --since <base>` as a required check, a PR fails (exit 1) when a
+  baseline's bytes differ from its last logged approval, when a baseline has no log line at all,
+  or when the log was rewritten rather than appended to. See [required-checks.md](required-checks.md).
 
 It does not guarantee:
 
-- **Who approved in pxsig.** The log's `by` is the approver's `git config user.email` or `$USER`.
-  It is self-asserted. The code host's review is the identity that counts.
+- **Who approved in pxsig.** The log names no person by default (`by` only with
+  `approvals.identity: "git-email"`, and then self-asserted). `pxsig approve log --trace` points
+  each approval at the commit that added it and the pull request that merged it; the code host's
+  review is the identity that counts.
 - **That the reviewer looked at the images.** The PR shows a binary file or, with the `psig` diff
   driver, its header. The images are in the dashboard (`pxsig serve`) or the static report from CI
   (`pxsig report`).

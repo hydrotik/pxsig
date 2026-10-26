@@ -6,7 +6,7 @@ exits 1 when something changed.
     pxsig check --full                 # every entry; exit 1 on a changed, new or failed entry
     pxsig check --full --since origin/main    # only the entries the branch can change
     pxsig doctor --ci                  # fail on error-severity integrity codes only
-    pxsig approve verify               # every baseline went through an approval
+    pxsig approve verify --all-suites --since origin/main   # every baseline went through an approval; the log only grew
 
 `--since` selects from what changed: the entries whose baselines or store records changed, and
 the story files the changed modules reach. When it is unsure (a path outside `srcRoot`, a file

@@ -55,7 +55,7 @@ step install  pnpm install --frozen-lockfile
 step storybook pnpm --dir apps/storybook exec storybook build --output-dir storybook-static
 
 code=0
-npx pxsig approve verify --project ui || code=$?
+npx pxsig approve verify --project ui --all-suites --since "origin/$base" || code=$?
 if [ "$code" -le 1 ]; then
   npx pxsig check --full --project ui \
     --storybook-static apps/storybook/storybook-static --since "origin/$base"
@@ -80,6 +80,49 @@ exit "$code"
 Then require the status on the protected branch: under required status checks, add
 `local/pxsig`. GitHub suggests the contexts reported in the last week, so run the script once
 first.
+
+## After every merge, and nightly
+
+A full check on main (no `--since`) closes what selection cannot see: remote assets, browser and
+OS updates, time-dependent stories, suites whose baselines are not committed. Run the same steps on
+`origin/main` without `--since`, never with `--update`, and report a failure for a person:
+
+```bash
+# full-local.sh: check everything on the newest main; post local/pxsig-full on that commit.
+git fetch origin main
+sha=$(git rev-parse origin/main)
+[ "$sha" = "$(cat ~/.cache/visual-local/last-full 2>/dev/null)" ] && [ "${1:-}" != --nightly ] && exit 0
+# … worktree, install and build as above, then:
+#   npx pxsig approve verify --project ui --all-suites
+#   npx pxsig check --full --project ui --storybook-static apps/storybook/storybook-static
+#   npx pxsig doctor --ci --project ui
+# post success or failure for "local/pxsig-full" on $sha, and record it:
+echo "$sha" > ~/.cache/visual-local/last-full
+```
+
+Run it every 15 minutes (it exits at once when main has not moved) and at 04:00 with `--nightly`.
+With cron:
+
+```cron
+*/15 * * * * cd ~/src/app && ./full-local.sh
+0 4 * * *    cd ~/src/app && ./full-local.sh --nightly
+```
+
+On macOS, a launchd agent (`~/Library/LaunchAgents/com.example.pxsig-full.plist`) does the same,
+and runs a missed calendar job on wake:
+
+```xml
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.example.pxsig-full</string>
+  <key>ProgramArguments</key><array><string>/bin/bash</string><string>-lc</string><string>cd ~/src/app &amp;&amp; ./full-local.sh</string></array>
+  <key>StartInterval</key><integer>900</integer>
+  <key>StandardOutPath</key><string>/tmp/pxsig-full.log</string>
+  <key>StandardErrorPath</key><string>/tmp/pxsig-full.log</string>
+</dict></plist>
+```
+
+(A second agent with `StartCalendarInterval` `Hour` 4 runs `./full-local.sh --nightly`.) Use one
+lock so two runs never overlap, and let a late run take the newest main: merges then coalesce.
 
 ## Notes
 

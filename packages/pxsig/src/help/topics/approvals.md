@@ -21,9 +21,11 @@ rejections, never approve.
 
 Every approval is a line in `<store>/approvals.ndjson`: when, how (`via`: dashboard, cli, mcp),
 why, the batch, the commit it was made on, and the sha256 of the baseline before and after. The
-replaced baseline is kept in `<store>/history/<batch>/`. `pxsig approve log` lists batches,
-`pxsig approve undo <batch>` restores one, and `pxsig approve verify` checks that every baseline
-in the repository went through an approval.
+replaced baseline is kept in `<store>/history/<batch>/`. `pxsig approve log` lists batches
+(`--trace` adds the commit and pull request each came in by, and no names), `pxsig approve undo
+<batch>` restores one, and `pxsig approve verify` checks that every baseline in the repository
+went through an approval: a baseline with no log line fails unless `--no-strict`, and `--since
+<ref>` also fails a log that was rewritten rather than appended to.
 
 This is a guard against approvals nobody meant, not authentication: the pull request that
 commits the baselines is where they are reviewed.

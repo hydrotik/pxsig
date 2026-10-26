@@ -9,16 +9,20 @@ carry-forward, reports). This page covers making it required, and running it in 
 | Step | Exit 0 | Exit 1 | Exit 2 |
 | --- | --- | --- | --- |
 | `pxsig check --full` | every selected entry passes (a pass on retry is `flaky`, and passes) | an entry changed, is new (no baseline), or failed to render | setup error: no manifest, Storybook unreachable or broken, missing binary, store locked by another writer |
-| `pxsig approve verify` | every baseline matches its last logged approval | a baseline's bytes differ from its last logged approval (written outside the log) | setup error |
+| `pxsig approve verify` | every baseline matches its last logged approval | a baseline's bytes differ from its last logged approval (written outside the log); a baseline has no log line at all (strict, the default); with `--since`, the log was rewritten rather than appended to, or there is no merge base | setup error, or `--since` is not a commit |
 | `pxsig doctor --ci` | no error-severity integrity code | an error-severity code | setup error (no manifest, broken Storybook index, unknown project) |
 
 None of these commands needs a person. The ones that write baselines refuse to run in CI (`CI`
 set), when output is piped, or under a coding assistant's marker: `approve apply` and `check --full --update` exit
 3 (see [cli.md](cli.md#commands-that-need-a-person)). CI never writes baselines.
 
-`approve verify` does not fail on baselines with no log line at all (from before the log existed).
-It lists them, and `pxsig approve verify --adopt` (a person, in a terminal) logs them as the
-starting point.
+`approve verify` is part of the required check, and strict by default: a baseline with no log
+line at all fails, whether it predates the log or was written outside it. The failure names the
+entries and prints the exact `pxsig approve verify --adopt` command, which a person runs once, in a
+terminal, for baselines from before the log existed (`--no-strict` only reports them). With
+`--since <base>` it also checks that the pull request only appended to `approvals.ndjson`.
+`--all-suites` covers every suite; a suite whose manifest is not committed (git-ignored) is listed
+and skipped.
 
 ## Always run, select inside the job
 
@@ -46,6 +50,8 @@ on:
   merge_group:
   push:
     branches: [main]
+  schedule:
+    - cron: '0 4 * * *'   # nightly: everything, against what changed outside the repository
 
 jobs:
   pxsig:
@@ -84,8 +90,11 @@ jobs:
             echo "render=$([ "$n" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           fi
 
+      # Part of the required check: every baseline has its approval, and the log was only appended to.
       - name: Approval log
-        run: npx pxsig approve verify --project ui
+        run: |
+          since="${{ steps.select.outputs.since }}"
+          npx pxsig approve verify --project ui --all-suites ${since:+--since "$since"}
 
       - if: steps.select.outputs.render == 'true'
         run: pnpm exec playwright install --with-deps chromium
@@ -126,6 +135,18 @@ jobs:
             ${{ env.STORE }}/reports/check.json
             ${{ env.STORE }}/diffs/latest
 
+      # On main and at night, a failure is drift nobody's pull request explains: one open issue
+      # tracks it (needs `permissions: issues: write`). Never an automatic approval or revert.
+      - name: Drift issue
+        if: failure() && github.event_name != 'pull_request' && github.event_name != 'merge_group'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          n=$(gh issue list --label pxsig-drift --state open --json number -q '.[0].number')
+          body="${{ env.STORE }}/reports/summary.md"
+          if [ -n "$n" ]; then gh issue comment "$n" --body-file "$body"
+          else gh issue create --label pxsig-drift --title "pxsig: main no longer matches its baselines" --body-file "$body"; fi
+
       - uses: actions/cache/save@v6
         if: github.event_name == 'push'
         with:
@@ -135,6 +156,10 @@ jobs:
 
 Notes:
 
+- **Every push to main, and every night, checks everything** (no `--since`): no selection, so no
+  selection gap. It also catches what no diff shows: remote assets, browser or OS updates outside
+  the lockfile, time-dependent stories, git-ignored baselines (run their suite where they live).
+  Nothing is written; a person decides what a failure means.
 - `--since` takes any git ref or commit. It diffs from the merge base with `HEAD`, so a base commit
   works the same as a branch name.
 - `doctor --offline` reads the static scan instead of fetching a Storybook index, so it also runs
@@ -153,6 +178,15 @@ Notes:
 
 `pxsig report` exits 2 when it cannot write the report (no project, no dashboard build). The report
 is for review; the check's exit code is the verdict.
+
+### Publishing the report
+
+Reviewers who do not run code can open the report from the pull request comment. Publish
+`pxsig report --out pxsig-report` where they can reach it (the artifact above, or a static site
+such as GitHub Pages under a folder per run), and pass that address to the check as
+`--link-base <url>`: each entry in `summary.md` then links to its page in the published report.
+The report holds the images of the stories, so publish it where the repository's readers, and
+only they, can open it.
 
 ## Branch protection
 
@@ -180,8 +214,9 @@ name, and the rule cannot tell them apart.
   queue, so the check covers them together.
 - **Baselines conflict, they do not merge.** The store's `.gitattributes` marks `*.psig` binary,
   so a baseline changed in two pull requests is a conflict for the second one. It updates its
-  branch, renders again and approves again.
+  branch, renders again and approves again ([ci.md](ci.md#rebasing-with-baselines)).
 - **The approval log conflicts at its end.** Two pull requests that each append to
-  `approvals.ndjson` conflict at the last line. Keep both sets of lines, the base's first.
+  `approvals.ndjson` conflict at the last line. Keep both sets of lines, the base's first: then
+  `approve verify --since` sees the base's log as a prefix.
 - **Renders come from the runner.** Baselines approved on a developer machine must render the same
   on the runner. See [ci.md](ci.md#render-environment).

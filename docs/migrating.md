@@ -1,4 +1,20 @@
-# Migrating a pre-0.2 store
+# Migrating
+
+## Upgrading to 0.4: strict `approve verify`
+
+From 0.4.0, `pxsig approve verify` fails (exit 1) when a baseline has no line in
+`approvals.ndjson`. Before, it listed those baselines and passed. A store whose baselines predate
+the log fails until a person adopts them once:
+
+```bash
+pxsig doctor                                  # warns: N baselines have no approval log line (verify-unlogged)
+pxsig approve verify                          # names them and prints the exact command below
+pxsig approve verify --adopt [--all-suites]   # a person, in a terminal: type ADOPT
+```
+
+Commit the log lines it adds. `--no-strict` keeps the old result where a team needs time.
+
+## Migrating a pre-0.2 store
 
 Before 0.2, pxsig kept everything in the folder it was installed in: signatures in `.baselines/`,
 baseline images in `.renders/base/`, manifests in `js/pxsig.manifest*.json`, reports in

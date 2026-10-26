@@ -44,11 +44,18 @@ Storybook.
   piped, in CI, or under a coding assistant's marker ([docs/agents.md](docs/agents.md)), and ask
   for a typed phrase. A marker is a hint, not proof: some assistants set none, and any process can
   set or unset one. The guarantee is the reviewed pull request that commits the baselines; every
-  log line written under a marker names the assistant (`agent`). The MCP review tool cannot
-  approve or accept at all, and refuses even a rejection without `confirm: true`. Every
+  log line written under a marker names the assistant (`agent`). No MCP tool can approve or
+  accept a baseline or an accessibility violation: `pxsig_status`, `pxsig_projects`, `pxsig_list`,
+  `pxsig_entry`, `pxsig_history`, `pxsig_a11y`, `pxsig_affected`, `pxsig_stale`, `pxsig_help`
+  read; `pxsig_check` re-renders; `pxsig_doctor` runs the safe repairs, which never change a
+  baseline's signature or the log (one adds a missing image to a `.psig` only when it passes that
+  signature's gate); `pxsig_review` marks rejections only, and refuses even those without `confirm: true`. Every
   approval is logged with hashes and the pxsig version, and can be undone. The approval log is not
   signed, and holds no personal data unless a team turns on `approvals.identity: "git-email"`:
-  the commit that adds a line and the pull request say who approved.
+  the commit that adds a line and the pull request say who approved (`pxsig approve log --trace`
+  points at both, and shows no names). In CI, `pxsig approve verify` fails a baseline with no log
+  line, or one whose bytes differ from it, and with `--since` a log that was rewritten rather than
+  appended to ([docs/required-checks.md](docs/required-checks.md)).
 - **The renderer loads your Storybook** in a real browser. Treat the stories you render like any
   code you run.
 

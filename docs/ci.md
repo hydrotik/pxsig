@@ -169,6 +169,33 @@ To post the summary on the pull request, for example:
 gh pr comment "$PR_NUMBER" --body-file packages/ui/.pxsig/reports/summary.md
 ```
 
+## Rebasing with baselines
+
+A `.psig` file is binary, so git does not merge two versions of it: a rebase or merge that meets a
+baseline changed on both sides stops with that file conflicted. `pxsig check` refuses to run, and
+`pxsig doctor` reports `store-conflict`, until it is resolved. Neither side's baseline is right for
+the merged code, so pxsig has no merge driver that would pick one without a person.
+
+1. **Take main's baseline** for each conflicted `.psig`: `git checkout --ours <file>` during a
+   rebase (there "ours" is the branch being rebased onto), `git checkout --theirs <file>` during a
+   merge of main into the branch. Then `git add` it.
+2. **The logs:** `approvals.ndjson` and `a11y-decisions.ndjson` conflict at their end. Keep both
+   sides' lines, main's first, and drop the conflict markers.
+3. **`a11y.json` and manifests** are JSON: keep both sides' keys and entries.
+4. Finish the rebase, then run `pxsig check --since main`: the merged code renders against main's
+   baselines.
+5. **Approve again** what changed, in the dashboard or with `pxsig approve`. The new log lines go
+   after main's, so `pxsig approve verify --since main` passes.
+
+## Repository size
+
+Baselines are committed with their images, typically a few to a few tens of kilobytes per entry,
+and every approval adds a new version to the history. A store of a thousand entries in two modes is
+tens of megabytes. That is fine for most repositories. Consider Git LFS for `*.psig` when clones
+become slow: many modes or suites, large viewports, or frequent re-baselining. LFS changes how CI
+fetches (`actions/checkout` with `lfs: true`), and a clone without LFS holds small pointer files
+instead of baselines. Keep a suite git-ignored and local instead when only one machine needs it.
+
 ## Render environment
 
 Fonts and font rendering differ between operating systems. The signature gate absorbs
@@ -181,5 +208,6 @@ the fonts a story uses are loaded by Storybook rather than taken from the system
 | Command | 0 | 1 | 2 |
 | --- | --- | --- | --- |
 | `pxsig check --full` | pass | changed, new or render error | setup error |
+| `pxsig approve verify` | every baseline matches its approval | a mismatch, an interrupted approval, a baseline with no log line (unless `--no-strict`), or with `--since` a rewritten log or no merge base | setup error |
 | `pxsig doctor --ci` | no error-severity codes | error-severity codes | setup error |
 | `pxsig report` | written | | dashboard not built, no project, or output not writable |
