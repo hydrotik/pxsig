@@ -93,11 +93,11 @@ fn dispatch(method: &str, p: &Value) -> Result<Value> {
         "affected" => {
             let root = PathBuf::from(p["root"].as_str().unwrap_or("."));
             let m = batch::load_manifest(&PathBuf::from(s(p, "manifest")?))?;
-            let changed: Vec<String> = match p["files"].as_array() {
-                Some(a) => a.iter().filter_map(|x| x.as_str().map(String::from)).collect(),
-                None => affected::git_changed(&root, p["since"].as_str().unwrap_or("main"))?,
+            let ch = match p["files"].as_array() {
+                Some(a) => affected::changes_from_files(&root, &a.iter().filter_map(|x| x.as_str().map(String::from)).collect::<Vec<_>>()),
+                None => affected::changes_since(&root, p["since"].as_str().unwrap_or("main"))?,
             };
-            affected::affected(&root, &m, &changed)
+            affected::affected(&root, &m, &ch)
         }
         other => Err(anyhow!("unknown method `{other}`")),
     }

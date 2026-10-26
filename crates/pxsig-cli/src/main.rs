@@ -130,7 +130,7 @@ enum Cmd {
         /// Git ref to diff against (merge-base with HEAD), plus uncommitted work.
         #[arg(long, default_value = "main")]
         since: String,
-        /// Explicit changed files (repo-relative, comma-separated) instead of git.
+        /// Explicit changed files (workspace-relative, absolute or `$repo/…`, comma-separated) instead of git.
         #[arg(long)]
         files: Option<String>,
         #[arg(long)]
@@ -517,21 +517,29 @@ fn cmd_diff(a: &Path, b: &Path, tolerance: u8, mask: Option<PathBuf>, as_json: b
 fn cmd_affected(manifest: &Path, root: Option<PathBuf>, since: &str, files: Option<String>, as_json: bool) -> Result<u8> {
     let root = root.unwrap_or_else(|| PathBuf::from("."));
     let m = batch::load_manifest(manifest)?;
-    let changed = match files {
-        Some(f) => f.split(',').map(str::trim).filter(|s| !s.is_empty()).map(|s| affected::repo_relative(&root, s)).collect(),
-        None => affected::git_changed(&root, since)?,
+    let ch = match files {
+        Some(f) => affected::changes_from_files(&root, &f.split(',').map(String::from).collect::<Vec<_>>()),
+        None => affected::changes_since(&root, since)?,
     };
-    let res = affected::affected(&root, &m, &changed)?;
+    let res = affected::affected(&root, &m, &ch)?;
     if as_json {
         println!("{}", serde_json::to_string_pretty(&res)?);
     } else {
         println!(
             "[pxsig] affected — {} changed files → {} of {} entries ({})",
-            changed.len(),
+            ch.files.len(),
             res["ids"].as_array().map_or(0, Vec::len),
             m.stories.len(),
             res["reason"].as_str().unwrap_or("")
         );
+        // Every fail-safe path: each one is a candidate for `affects.ignore` (or a gap to report).
+        let fs = res["failSafe"].as_array().cloned().unwrap_or_default();
+        for f in fs.iter().take(10) {
+            println!("  all: {} ({})", f["why"].as_str().unwrap_or(""), f["class"].as_str().unwrap_or(""));
+        }
+        if fs.len() > 10 {
+            println!("  … {} more in --json", fs.len() - 10);
+        }
     }
     Ok(0)
 }

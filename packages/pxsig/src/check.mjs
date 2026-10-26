@@ -111,6 +111,10 @@ if (str('since') || str('changed')) {
   const ids = new Set(affected.ids);
   affectedIds = ids;
   console.log(`[check] affected ${str('changed') ? 'by --changed' : `since ${str('since')}`}: ${affected.changed.length} changed files → ${ids.size} entries (${affected.reason}) in ${r.ms.toFixed(0)} ms`);
+  // The fail-safe: a path the selection cannot trace selects everything, and says which (docs/ci.md).
+  for (const f of (affected.failSafe ?? []).slice(0, 10)) console.log(`[check]   all: ${f.why} (${f.class})`);
+  if ((affected.failSafe?.length ?? 0) > 10) console.log(`[check]   … ${affected.failSafe.length - 10} more in check.json`);
+  for (const [s, n] of Object.entries(affected.otherSuites ?? {})) console.log(`[check]   ${n} changed entries are in suite ${s}: check them with --suite ${s}`);
   entries = entries.filter((e) => ids.has(e.id));
 }
 const selected = new Set(entries.map((e) => e.id));
@@ -295,6 +299,8 @@ const summary = summarize(out, {
   rustProcessMs: rc.ms,
   retryMs,
   affected: affected ? `${affected.ids.length} affected of ${manifest.stories.length} (${affected.reason})` : null,
+  // Only when the fail-safe fired: summary.md names the first path and its class (decision 6.1g).
+  ...(affected?.failSafe?.length ? { selectAll: { entries: affected.ids.length, path: affected.failSafe[0].path, class: affected.failSafe[0].class, why: affected.failSafe[0].why, more: affected.failSafe.length - 1 } } : {}),
   totalMs: performance.now() - t0,
 });
 const now = new Date().toISOString();

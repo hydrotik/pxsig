@@ -199,7 +199,7 @@
     "affects": {
       "file": "pxsig.config.json",
       "meaning": "Changes that select every entry.",
-      "operation": "See affects.workspaceDeps and affects.extra."
+      "operation": "See affects.workspaceDeps, affects.extra and affects.ignore."
     },
     "affects.workspaceDeps": {
       "file": "pxsig.config.json",
@@ -214,6 +214,12 @@
       "default": "[]",
       "operation": "Edits there make `check --since` check everything.",
       "env": "PXSIG_SOURCES (replaces affects)"
+    },
+    "affects.ignore": {
+      "file": "pxsig.config.json",
+      "meaning": "Globs for changed paths that select nothing when nothing traced claims them (docs, other apps, CI config). $workspace/ and $repo/ anchor a glob; otherwise it is relative to the project.",
+      "default": "[]",
+      "operation": "Without it, a change outside srcRoot makes `check --since` check every entry. Never hides a baseline, a store file or an imported module."
     },
     "nonVisual": {
       "file": "pxsig.config.json",

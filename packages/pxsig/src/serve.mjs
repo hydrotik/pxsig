@@ -232,7 +232,8 @@ function openState(ref) {
   };
   S.reload();
   S.integrity = readJson(join(P.store.reports, 'integrity.json'), null);
-  S.affected = (file) => (S.runPath ? rust('affected', { manifest: S.runPath, root: P.workspaceRoot, files: [file] }).then((r) => r.ids) : Promise.resolve([]));
+  // Staleness traces edits (never the gates' fail-safe: decision 6.1f).
+  S.affected = (file) => (S.runPath ? rust('affected', { manifest: S.runPath, root: P.workspaceRoot, files: [file] }).then((r) => r.traced ?? r.ids) : Promise.resolve([]));
   mkdirSync(P.store.reports, { recursive: true });
   return S;
 }
@@ -765,14 +766,18 @@ if (flags.watch) {
         try {
           if (!S.runPath) return;
           const a = await rust('affected', { manifest: S.runPath, root: ws.root, files });
-          console.log(`[serve] ${S.name}: watch: ${files.join(', ')} → ${a.ids.length} entries (${a.reason})`);
-          broadcast('watch', { project: S.name, files, ids: a.ids.length });
-          if (a.ids.length) await enqueue(S, { ids: a.ids });
+          // Watch is not a gate: it re-checks what the edits trace to, and names what it cannot trace
+          // (the gates would check everything for those; decision 6.1f).
+          const ids = a.traced ?? a.ids;
+          console.log(`[serve] ${S.name}: watch: ${files.join(', ')} → ${ids.length} entries (${a.failSafe?.length ? 'traced only' : a.reason})`);
+          for (const f of a.failSafe ?? []) console.log(`[serve] ${S.name}: watch: not traced: ${f.why} (a gate would check every entry)`);
+          broadcast('watch', { project: S.name, files, ids: ids.length });
+          if (ids.length) await enqueue(S, { ids });
         } catch (e) {
           console.error(`[serve] ${S.name}: watch: ${e.message}`);
         }
       }, 900);
-    }, (f) => !/(^|\/)(__pxsig__|node_modules)\//.test(f) && /\.(tsx?|css\.ts|mjs|jsx?)$/.test(f));
+    }, (f) => !/(^|\/)(__pxsig__|node_modules)\//.test(f));
     console.log(`[serve] ${S.name}: watching ${relPath(ws.root, src)} — edits re-check affected entries`);
   }
 }
