@@ -47,7 +47,7 @@ redraws, absolute image paths, and a "Next" section with the exact commands to r
 | Code | Meaning |
 | --- | --- |
 | 0 | OK |
-| 1 | Problems found: changed entries (`check`), stale verdicts (`stale`), integrity issues (`doctor`), a migration that differs (`migrate`) |
+| 1 | Problems found: changed entries (`check`), stale verdicts (`stale`), integrity issues (`doctor`), a migration that differs (`migrate`). Also a typed confirmation that did not match, or a plan a decision made stale: nothing written |
 | 2 | Usage or setup error: unknown command or project, no project chosen for a command that needs one, no manifest, Storybook unreachable or broken, missing binary, the store locked by another writer, a failed `report` |
 | 3 | Needs a person at a terminal (below) |
 
@@ -57,8 +57,8 @@ Writing baselines without reviewing each one, undoing approvals and pruning file
 unless stdin and stdout are both a terminal, `CI` is not set, and the environment carries no
 coding assistant's marker ([agents.md](agents.md#markers)). They then ask for a typed confirmation
 phrase. These are: `check --full --update`, `approve apply`, `approve undo`, `approve verify
---adopt`, `doctor --repair --apply --prune`, `doctor --repair --only log-torn --apply` and `serve
---link`. A refusal exits 3 and says why: "refused under copilot
+--adopt`, `a11y --prune`, `doctor --repair --apply --prune`, `doctor --repair --only log-torn
+--apply` and `serve --link`. A refusal exits 3 and says why: "refused under copilot
 (AI_AGENT=github_copilot_vscode_agent)", "refused in CI (CI is set)" or "refused: output is piped".
 
 Per-entry approval stays in the dashboard and the Storybook panel, where a person sees the images.
@@ -174,6 +174,30 @@ The last runs: when, how many entries, how many changed, which.
 ### `pxsig a11y [--component text] [--new] [--limit 50]`
 
 axe violations per entry, grouped by rule. `--new` shows only those not in the a11y baseline.
+
+### `pxsig a11y --prune [--dry-run] [--component text] [--mode m] [--only id,…] [--reason "…"]`
+
+Accepted axe rules (`<store>/a11y.json`) that a fresh check shows no longer fire. A fixed rule
+otherwise stays on the entry's accepted list and would hide the same violation if it came back.
+Every accepted rule gets one class:
+
+| Class | When |
+| --- | --- |
+| `prunable` | A row for the entry, in `check.json` or any `check-<suite>.json`, where axe ran and the render did not fail, checked after the entry's last accessibility decision and its last approval, not stale (the test `pxsig stale` uses), and the rule is not among its violations |
+| `still-fires` | That row lists the rule |
+| `stale` | The row is older than a decision, an approval or an edit that can change the entry |
+| `not-covered` | No row where axe ran: never checked, `--no-a11y`, a render or axe error, or left out of its run |
+
+`--dry-run` lists them and writes nothing; anyone may run it, assistants included, and it exits 0.
+It also prints the command that would decide the rest, for example `pxsig check --full --suite
+matrix`. Without `--dry-run` it is a person's, at a terminal ([below](#commands-that-need-a-person)):
+it lists the prunable rules, asks for `PRUNE <n> RULES`, removes only those, and writes one line
+per entry to `<store>/a11y-decisions.ndjson`:
+`{ at, via: "cli", action: "prune", id, before, after, rules, batch, reason, evidence: { report,
+checkedAt }, pxsig }` (no name unless `approvals.identity` is set). While `pxsig serve` holds the
+store it does the write, so the dashboard updates; otherwise the command takes the store lock. A
+decision made between the list and the confirmation changes `a11y.json`, and the whole prune is
+refused (exit 1): run it again.
 
 ### `pxsig affected <files…> | --since <ref>`
 

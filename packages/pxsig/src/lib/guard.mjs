@@ -1,8 +1,9 @@
 /**
  * guard.mjs — who may write through `pxsig serve`.
  *
- * Decisions (approve, approve a story, reject, unreview, the a11y decisions) need a person: the
- * dashboard (or the Storybook panel that embeds it), or `pxsig approve apply` at a terminal.
+ * Decisions (approve, approve a story, reject, unreview, the a11y decisions, pruning accepted a11y
+ * rules) need a person: the dashboard (or the Storybook panel that embeds it), or `pxsig approve
+ * apply` / `pxsig a11y --prune` at a terminal.
  * The dashboard decides through the dashboard link: `pxsig serve` prints `<url>/report/#ticket=<t>`
  * for a person at a terminal (`pxsig serve --link` prints a new one). The page trades the ticket
  * (single use, two minutes) once, at `POST /__pxsig/session`, for a cookie that scripts cannot read
@@ -39,7 +40,7 @@ import { serverFile } from './workspace.mjs';
 export const TOKEN_HEADER = 'x-pxsig-token';
 
 /** Routes that record a decision: refused without the token. */
-export const DECISIONS = new Set(['approve', 'approve-story', 'reject', 'unreview', 'a11y-accept', 'a11y-reject', 'a11y-unreview', 'a11y-unaccept']);
+export const DECISIONS = new Set(['approve', 'approve-story', 'reject', 'unreview', 'a11y-accept', 'a11y-reject', 'a11y-unreview', 'a11y-unaccept', 'a11y-prune']);
 
 /** What an agent's (the MCP's) token may decide: rejections, and clearing them. */
 export const AGENT_DECISIONS = new Set(['reject', 'unreview', 'a11y-reject', 'a11y-unreview']);

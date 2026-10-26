@@ -43,8 +43,9 @@ the shell it uses.
 
 - **Commands that need a person are refused** (exit 3), with the reason: `approve apply needs a
   person at a terminal: refused under copilot (AI_AGENT=github_copilot_vscode_agent)`. These are
-  `approve apply`, `approve undo`, `approve verify --adopt`, `check --full --update`, `doctor
-  --repair --apply --prune`, `doctor --repair --only log-torn --apply` and `serve --link`
+  `approve apply`, `approve undo`, `approve verify --adopt`, `check --full --update`, `a11y
+  --prune` (its `--dry-run` is anyone's), `doctor --repair --apply --prune`, `doctor --repair
+  --only log-torn --apply` and `serve --link`
   ([cli.md](cli.md#commands-that-need-a-person)). A real terminal does not change this: several
   assistants run commands in one.
 - **Output is plain Markdown**, even in a real terminal ([cli.md](cli.md#output-formats)).

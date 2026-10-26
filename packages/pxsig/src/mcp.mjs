@@ -40,6 +40,7 @@ import { applyRepairs, defaultHooks, planRepairs, serverStatus } from './lib/rep
 import { acquireLock, describeLock, readLock } from './lib/lock.mjs';
 import { findWorkspace, openProject, writeRunManifest } from './lib/workspace.mjs';
 import { relPath } from './lib/paths.mjs';
+import { buildPlan } from './lib/prune.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -145,10 +146,10 @@ async function server(C) {
 
 // --- the Rust engine: which entries can a set of files affect? ----------------------------------
 
-function affected(C, { files, since }) {
+function affected(C, { files, since, manifestPath }) {
   if (!existsSync(C.rustBin)) throw new Error(`the pxsig binary is missing: ${C.rustBin}`);
   const how = files?.length ? ['--files', files.join(',')] : ['--since', since];
-  const run = writeRunManifest(C.P).path;
+  const run = writeRunManifest(C.P, manifestPath).path;
   const r = spawnSync(C.rustBin, ['affected', '--manifest', run, '--root', C.root, ...how, '--json'], {
     cwd: C.root,
     encoding: 'utf8',
@@ -225,6 +226,77 @@ function verdictTimes(C, check) {
       return [r.id, { at: full, source: 'full check' }];
     })
   );
+}
+
+/**
+ * Which rows of a report cannot be trusted as current (what pxsig_stale reports): `stale` (a file
+ * that can change the entry was edited after its verdict, traced through the Rust import graph)
+ * and `inconsistent` (the row's pixel size differs from the render on disk). `manifestPath` traces
+ * a suite's report against its own manifest. Above `maxFiles` edited files, `tooMany` is set and
+ * nothing is traced.
+ */
+function staleness(C, check, { maxFiles = 400, manifestPath } = {}) {
+  const times = verdictTimes(C, check);
+  const sources = {};
+  for (const t of times.values()) sources[t.source] = (sources[t.source] ?? 0) + 1;
+  const oldest = new Date(Math.min(...[...times.values()].map((t) => t.at.getTime())));
+  const inconsistent = [];
+  for (const r of check.rows) {
+    if (!r.pixels?.width) continue;
+    const size = pngSize(imagePath(C, 'current', r.id));
+    if (size && (size[0] !== r.pixels.width || size[1] !== r.pixels.height)) inconsistent.push({ id: r.id, row: `${r.pixels.width}x${r.pixels.height}`, render: `${size[0]}x${size[1]}` });
+  }
+  const oldestIso = Number.isFinite(oldest.getTime()) ? oldest.toISOString() : null;
+  if (!oldestIso) return { stale: [], inconsistent, sources, oldest: null, filesTraced: 0, tooMany: 0 };
+  const edited = editedSince(C, oldest, { withTimes: true });
+  if (edited.length > maxFiles) return { stale: [], inconsistent, sources, oldest: oldestIso, filesTraced: 0, tooMany: edited.length };
+  // id → the latest edit among files that affect it.
+  const lastEdit = new Map();
+  const culprit = new Map();
+  for (const { file, mtime } of edited) {
+    let ids;
+    try {
+      const a = affected(C, { files: [file], manifestPath });
+      ids = a.traced ?? a.ids;
+    } catch {
+      continue;
+    }
+    for (const id of ids)
+      if (!lastEdit.has(id) || mtime > lastEdit.get(id)) {
+        lastEdit.set(id, mtime);
+        culprit.set(id, file);
+      }
+  }
+  const stale = check.rows.filter((r) => lastEdit.has(r.id) && times.get(r.id).at < lastEdit.get(r.id)).map((r) => ({ id: r.id, editedAfter: culprit.get(r.id) }));
+  return { stale, inconsistent, sources, oldest: oldestIso, filesTraced: edited.length, tooMany: 0 };
+}
+
+/**
+ * `pxsig a11y --prune` and `pxsig_a11y { prune_plan }`: every accepted axe rule classified
+ * (lib/prune.mjs), with staleness from the same test as pxsig_stale, per report.
+ */
+async function prunePlan({ project, component, mode, only, cmd = 'pxsig', maxFiles = 400 } = {}) {
+  const C = ctxOf(project);
+  const modes = new Map();
+  const suites = new Set(Object.keys(C.P.config?.suites ?? {}));
+  for (const f of existsSync(C.P.store.root) ? readdirSync(C.P.store.root) : []) if (/^manifest\.(.+)\.json$/.test(f)) suites.add(f.slice(9, -5));
+  for (const suite of [null, ...suites])
+    for (const e of readJson(C.P.manifestPath(suite), { stories: [] }).stories ?? []) if (!modes.has(e.id)) modes.set(e.id, e.mode ?? null);
+  const stale = (rep) => {
+    const mp = C.P.manifestPath(rep.suite);
+    if (!existsSync(mp)) return { ids: new Map(), unknown: `no manifest for ${rep.suite ? `suite ${rep.suite}` : 'the project'}: cannot tell whether it is stale` };
+    let st;
+    try {
+      st = staleness(C, rep.check, { maxFiles, manifestPath: mp });
+    } catch (e) {
+      return { ids: new Map(), unknown: `staleness could not be traced (${e.message})` };
+    }
+    if (st.tooMany) return { ids: new Map(), unknown: `${st.tooMany} source files edited since ${rep.file} was checked: too many to trace` };
+    const ids = new Map(st.stale.map((x) => [x.id, x.editedAfter]));
+    for (const x of st.inconsistent) if (!ids.has(x.id)) ids.set(x.id, `its render (${x.render}, the row says ${x.row})`);
+    return { ids, unknown: null };
+  };
+  return buildPlan(C.P, { stale, modeOf: (id) => modes.get(id) ?? null, only, component, mode, cmd });
 }
 
 // --- images --------------------------------------------------------------------------------------
@@ -402,13 +474,25 @@ const tools = [
   },
   {
     name: 'pxsig_a11y',
-    description: "Accessibility (axe) violations per entry: all of them, or only those not in the entry's accepted list (`only_new`). Filter by component substring. Each entry carries its accessibility decision (accepted / rejected) when one was made since its last check.",
+    description: "Accessibility (axe) violations per entry: all of them, or only those not in the entry's accepted list (`only_new`). Filter by component substring. Each entry carries its accessibility decision (accepted / rejected) when one was made since its last check. `prune_plan: true` instead lists every accepted rule as prunable (a fresh check shows it no longer fires), still-fires, stale or not-covered, read-only: what `pxsig a11y --prune --dry-run` prints. Removing accepted rules needs a person at a terminal (`pxsig a11y --prune`); no tool does it.",
     inputSchema: {
       type: 'object',
-      properties: { project: PROJECT, only_new: { type: 'boolean', default: false }, component: { type: 'string' }, limit: { type: 'number', default: 50 } },
+      properties: {
+        project: PROJECT,
+        only_new: { type: 'boolean', default: false },
+        component: { type: 'string' },
+        limit: { type: 'number', default: 50 },
+        prune_plan: { type: 'boolean', default: false, description: 'List accepted rules by whether they could be pruned (read-only).' },
+        mode: { type: 'string', description: 'With prune_plan: one mode only.' },
+        ids: { type: 'array', items: { type: 'string' }, description: 'With prune_plan: these entries only.' },
+      },
       additionalProperties: false,
     },
-    async run({ project, only_new = false, component, limit = 50 }) {
+    async run({ project, only_new = false, component, limit = 50, prune_plan = false, mode, ids }) {
+      if (prune_plan) {
+        const plan = await prunePlan({ project, component, mode, only: ids });
+        return { counts: plan.counts, entries: plan.entries, prunable: plan.prune.slice(0, limit), more: Math.max(0, plan.prune.length - limit), notPrunable: plan.items.filter((i) => i.class !== 'prunable').slice(0, limit), cover: plan.cover, reports: plan.reports, hint: plan.prune.length ? 'a person removes these with `pxsig a11y --prune` in a terminal' : 'nothing to prune' };
+      }
       const { check, a11yReview } = load(ctxOf(project));
       const byRule = {};
       const rows = check.rows.filter((r) => (only_new ? r.a11y?.new : r.a11y?.violations?.length) && (!component || r.id.includes(component.toLowerCase())));
@@ -438,39 +522,11 @@ const tools = [
     async run({ project, limit = 200, max_files = 400 }) {
       const C = ctxOf(project);
       const { check } = load(C);
-      const times = verdictTimes(C, check);
-      const sources = {};
-      for (const t of times.values()) sources[t.source] = (sources[t.source] ?? 0) + 1;
-      const oldest = new Date(Math.min(...[...times.values()].map((t) => t.at.getTime())));
-
-      const inconsistent = [];
-      for (const r of check.rows) {
-        if (!r.pixels?.width) continue;
-        const size = pngSize(imagePath(C, 'current', r.id));
-        if (size && (size[0] !== r.pixels.width || size[1] !== r.pixels.height)) inconsistent.push({ id: r.id, row: `${r.pixels.width}x${r.pixels.height}`, render: `${size[0]}x${size[1]}` });
-      }
-
-      const edited = editedSince(C, oldest, { withTimes: true });
-      if (edited.length > max_files)
-        return { tooMany: edited.length, oldestVerdict: oldest.toISOString(), verdictTimes: sources, inconsistent: inconsistent.length, hint: 'too many edits since the oldest verdict to trace one by one: run pxsig_check { all: true }' };
-      // id → the latest edit among files that affect it.
-      const lastEdit = new Map();
-      const culprit = new Map();
-      for (const { file, mtime } of edited) {
-        let ids;
-        try {
-          const a = affected(C, { files: [file] });
-          ids = a.traced ?? a.ids;
-        } catch {
-          continue;
-        }
-        for (const id of ids)
-          if (!lastEdit.has(id) || mtime > lastEdit.get(id)) {
-            lastEdit.set(id, mtime);
-            culprit.set(id, file);
-          }
-      }
-      const stale = check.rows.filter((r) => lastEdit.has(r.id) && times.get(r.id).at < lastEdit.get(r.id)).map((r) => ({ id: r.id, editedAfter: culprit.get(r.id) }));
+      const st = staleness(C, check, { maxFiles: max_files });
+      if (st.tooMany)
+        return { tooMany: st.tooMany, oldestVerdict: st.oldest, verdictTimes: st.sources, inconsistent: st.inconsistent.length, hint: 'too many edits since the oldest verdict to trace one by one: run pxsig_check { all: true }' };
+      const { stale, inconsistent, sources, filesTraced } = st;
+      const oldest = st.oldest;
       const byFile = {};
       for (const x of stale) byFile[x.editedAfter] = (byFile[x.editedAfter] ?? 0) + 1;
       const ids = [...new Set([...stale.map((x) => x.id), ...inconsistent.map((x) => x.id)])];
@@ -478,9 +534,9 @@ const tools = [
         stale: stale.length,
         inconsistent: inconsistent.length,
         of: check.rows.length,
-        oldestVerdict: oldest.toISOString(),
+        oldestVerdict: oldest,
         verdictTimes: sources,
-        filesTraced: edited.length,
+        filesTraced,
         byFile,
         inconsistentSample: inconsistent.slice(0, 10),
         ids: ids.slice(0, limit),
@@ -751,7 +807,7 @@ async function handle(msg) {
 }
 
 // Imported (the pxsig CLI reuses the tools): no stdio loop. Run directly: serve MCP.
-export { tools, ctxOf, PROBLEMS, doctor };
+export { tools, ctxOf, PROBLEMS, doctor, prunePlan };
 const isMain = process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   createInterface({ input: process.stdin }).on('line', (line) => {

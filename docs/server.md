@@ -119,6 +119,7 @@ exactly one project.
 | `POST /__pxsig/a11y-accept {id}` | Puts the entry's current axe violations on its accepted list (`<store>/a11y.json`), logged in `<store>/a11y-decisions.ndjson`. 409 when the last check has no axe results for it. |
 | `POST /__pxsig/a11y-reject {id}` | Marks the entry's violations for a fix; the accepted list is unchanged. |
 | `POST /__pxsig/a11y-unaccept {id, rule?}` | Takes `rule` (or every rule) off the entry's accepted list and marks its row's violations new in `check.json` at once; logged. 409 when the rule is not on the list. |
+| `POST /__pxsig/a11y-prune {plan, batch, reason?}` | `pxsig a11y --prune` after the person typed the phrase: takes the plan's rules off the accepted lists, logs one `action: "prune"` line per entry, updates the report rows, and tells the dashboard. The CLI's token only. 409 when `a11y.json` changed since the plan was made; 400 for a malformed plan. |
 | `POST /__pxsig/a11y-unreview {id}` | Clears the accessibility decision; after an accept it restores the previous accepted list (logged). Accessibility decisions live in `reports/a11y-review.json` and, like visual ones, end at the entry's next check. |
 | `POST /__pxsig/unreview {id}` | Clears the decision. For an approval it also restores the previous baseline from that approval's snapshot (a first baseline moves to trash/) and its a11y baseline, logged as an undo; 409 when the baseline changed since. |
 | `POST /__pxsig/check {ids? \| story? \| stories? \| all?}` | Queues renders and engine checks; answers 202 with the queued ids. Results merge into `check.json`, and its `generatedAt` moves (`fullCheckAt` keeps when every entry was last checked together). A name the manifest does not have is registered first when Storybook is healthy (no signature: NEW, logged in `repairs.ndjson`); the answer lists those entries in `registered`, and each name that could not be registered in `skipped` with why. Without a project, the check is split across the projects that own the ids. |
@@ -132,8 +133,8 @@ clears the mark. `summary.changed` counts only real changes waiting for a decisi
 ### Guards
 
 - **Decisions need a person.** `approve`, `approve-story`, `reject`, `unreview` and the `a11y-*`
-  routes need the dashboard link (in a browser) or one of the server's file tokens (`pxsig approve
-  apply`, the MCP), or they are refused (403, "approving needs a person: use the dashboard or
+  routes (`a11y-prune` included) need the dashboard link (in a browser) or one of the server's file
+  tokens (`pxsig approve apply` and `pxsig a11y --prune`, the MCP), or they are refused (403, "approving needs a person: use the dashboard or
   `pxsig approve` in a terminal"; a browser without the link gets "approving here needs the
   dashboard link", `code: "needs-dashboard-link"`).
 - **The dashboard link.** `pxsig serve` prints `<url>/report/#ticket=<t>` when a person started it
