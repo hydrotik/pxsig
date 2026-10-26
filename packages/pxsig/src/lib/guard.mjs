@@ -3,14 +3,19 @@
  *
  * Decisions (approve, approve a story, reject, unreview, the a11y decisions) need a person: the
  * dashboard (or the Storybook panel that embeds it), or `pxsig approve apply` at a terminal.
- * The server makes three random tokens when it starts: one it puts in the dashboard page when a
- * browser loads that page as a document, and two it writes to files only its owner can read
+ * The dashboard decides through the dashboard link: `pxsig serve` prints `<url>/report/#ticket=<t>`
+ * for a person at a terminal (`pxsig serve --link` prints a new one). The page trades the ticket
+ * (single use, two minutes) once, at `POST /__pxsig/session`, for a cookie that scripts cannot read
+ * and other sites cannot send (HttpOnly, SameSite=Strict), valid until the server stops. No token is
+ * ever put in a page, so a script fetching the page, with whatever headers, gets nothing to decide
+ * with. The server also makes two random tokens it writes to files only its owner can read
  * (`serve-<port>.token`, which `pxsig approve apply` reads after its own person-at-a-terminal
  * check, and `serve-<port>.mcp.token`, which the MCP server reads). On macOS and Linux they sit in
  * `node_modules/.cache/pxsig/` with mode 0600; on Windows, where a mode protects nothing, in the
  * user's own `%LOCALAPPDATA%\pxsig\tokens\<workspace>\` (lib/machine.mjs), with no permission
- * change and no tool run. A decision without one of them is refused, and the token used says how the decision was made (`via:
- * dashboard`, `cli` or `mcp` in the logs): what the request body says is ignored.
+ * change and no tool run. A decision with neither the link's cookie nor a file token is refused,
+ * and what it carried says how it was made (`via: dashboard`, `cli` or `mcp` in the logs): what
+ * the request body says is ignored.
  *
  * The MCP's token is an agent's, so it decides less: it may mark entries rejected and clear a
  * rejection (AGENT_DECISIONS), nothing that writes a baseline or an accepted list, and the server
@@ -21,9 +26,9 @@
  * `Sec-Fetch-Site` other than same-origin. Every request refuses a Host that is not loopback
  * (DNS rebinding).
  *
- * This is a guard, not authentication: a local process can read the token file or the page.
- * It stops an agent (or a script) from approving by posting to the server, and a web page from
- * posting to it at all.
+ * This is a guard, not authentication: a process running as the person can read the token file.
+ * It stops an agent (or a script) from approving by posting to the server or by reading the page,
+ * and a web page from posting to it at all.
  */
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -40,6 +45,9 @@ export const DECISIONS = new Set(['approve', 'approve-story', 'reject', 'unrevie
 export const AGENT_DECISIONS = new Set(['reject', 'unreview', 'a11y-reject', 'a11y-unreview']);
 
 export const NEEDS_PERSON = 'approving needs a person: use the dashboard or `pxsig approve` in a terminal';
+/** A browser decision without the dashboard link's cookie (a tab opened from a bookmark, say). */
+export const NEEDS_LINK = 'approving here needs the dashboard link: open the link `pxsig serve` printed, or run `pxsig serve --link` in a terminal';
+export const NEEDS_LINK_CODE = 'needs-dashboard-link';
 
 export const newToken = () => randomBytes(32).toString('hex');
 
@@ -86,24 +94,76 @@ const same = (a, b) => {
   return x.length === y.length && timingSafeEqual(x, y);
 };
 
+/** The dashboard link's cookie for the server on `port` (cookies are per host, not per port). */
+export const linkCookie = (port) => `pxsig_link_${port}`;
+
+/** One cookie's value from a Cookie header, or null. */
+export function cookieValue(header, name) {
+  for (const part of String(header ?? '').split(';')) {
+    const i = part.indexOf('=');
+    if (i > 0 && part.slice(0, i).trim() === name) return part.slice(i + 1).trim() || null;
+  }
+  return null;
+}
+
+/** The `Set-Cookie` value for a dashboard link `session` (no Max-Age: it ends with the browser too). */
+export const linkSetCookie = (port, session) => `${linkCookie(port)}=${session}; HttpOnly; SameSite=Strict; Path=/`;
+
+export const TICKET_MS = 2 * 60 * 1000;
+
 /**
- * Whether a write may go ahead: `{ ok: true, via }` (`via` set for a decision: which token it
- * carried), or `{ ok: false, status, error }`. `headers` are Node's (lower-case names); `tokens`
- * is `{ dashboard, cli, mcp }`; `ownOrigin` is `http://<host header>` (already checked to be loopback);
- * `allowedOrigins` the Storybook origins.
+ * The dashboard link's tickets and the cookies they were traded for, in this server's memory only:
+ * a restart ends them all. `mint` makes a ticket; `redeem` uses it once, within TICKET_MS.
  */
-export function authorize({ action, headers, tokens, ownOrigin, allowedOrigins }) {
+export class Links {
+  #tickets = new Map();
+  #sessions = new Set();
+  mint(now = Date.now()) {
+    for (const [t, until] of this.#tickets) if (until < now) this.#tickets.delete(t);
+    const t = newToken();
+    this.#tickets.set(t, now + TICKET_MS);
+    return t;
+  }
+  redeem(ticket, now = Date.now()) {
+    if (typeof ticket !== 'string') return null;
+    const until = this.#tickets.get(ticket);
+    this.#tickets.delete(ticket);
+    if (until == null || until < now) return null;
+    const s = newToken();
+    this.#sessions.add(s);
+    return s;
+  }
+  has(session) {
+    return typeof session === 'string' && this.#sessions.has(session);
+  }
+}
+
+/**
+ * Whether a write may go ahead: `{ ok: true, via }` (`via` set for a decision: what it carried), or
+ * `{ ok: false, status, error, code? }`. `headers` are Node's (lower-case names); `tokens` is
+ * `{ cli, mcp }`; `links` the server's Links and `port` its port (the dashboard link's cookie);
+ * `ownOrigin` is `http://<host header>` (already checked to be loopback); `allowedOrigins` the
+ * Storybook origins.
+ */
+export function authorize({ action, headers, tokens, links = null, port = null, ownOrigin, allowedOrigins }) {
   const refused = refuseWrite({ action, headers, ownOrigin, allowedOrigins });
   if (refused) return { ok: false, ...refused };
   if (!DECISIONS.has(action)) return { ok: true, via: null };
-  const sent = headers[TOKEN_HEADER];
-  if (same(sent, tokens.dashboard)) return { ok: true, via: 'dashboard' };
   // The file tokens never come from a browser: a browser request carrying one is refused.
   const browser = !!(headers.origin || headers['sec-fetch-site']);
+  if (browser && links?.has(cookieValue(headers.cookie, linkCookie(port)))) return { ok: true, via: 'dashboard' };
+  const sent = headers[TOKEN_HEADER];
   if (same(sent, tokens.cli) && !browser) return { ok: true, via: 'cli' };
   if (same(sent, tokens.mcp) && !browser && AGENT_DECISIONS.has(action)) return { ok: true, via: 'mcp' };
+  if (browser) return { ok: false, status: 403, error: NEEDS_LINK, code: NEEDS_LINK_CODE };
   return { ok: false, status: 403, error: NEEDS_PERSON };
 }
+
+/** `pxsig serve --link` asking the running server for a ticket: the CLI's token, never a browser. */
+export const mayMintTicket = (headers, tokens) => !(headers.origin || headers['sec-fetch-site']) && same(headers[TOKEN_HEADER], tokens.cli);
+
+/** A browser page trading a ticket (`POST /__pxsig/session`): from this server's own page only. */
+export const sameOriginPage = (headers, ownOrigin) => headers['sec-fetch-site'] === 'same-origin' && (!headers.origin || headers.origin === ownOrigin);
 
 /** Why a write is refused on its origin alone, or null (the token is `authorize`'s). */
 function refuseWrite({ action, headers, ownOrigin, allowedOrigins }) {
@@ -116,8 +176,22 @@ function refuseWrite({ action, headers, ownOrigin, allowedOrigins }) {
   return null;
 }
 
-/** The dashboard page with the token in it: `<meta name="pxsig-token">`, read by its fetches. */
-export const withToken = (html, token) => html.replace(/<head[^>]*>/i, (m) => `${m}<meta name="pxsig-token" content="${token}">`);
-
-/** A browser loading the page itself (a tab, or the Storybook panel's iframe), not a script. */
-export const pageLoad = (headers) => ['document', 'iframe'].includes(headers['sec-fetch-dest']) && headers['sec-fetch-mode'] === 'navigate';
+/**
+ * Headers on every dashboard page: what it may load (its own scripts and data, images it draws),
+ * who may frame it (this server and the projects' Storybooks), and no content sniffing.
+ */
+export const pageHeaders = (allowedOrigins) => ({
+  'content-security-policy': [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'self'",
+    `frame-ancestors 'self' ${[...allowedOrigins].join(' ')}`.trim(),
+  ].join('; '),
+  'x-content-type-options': 'nosniff',
+});

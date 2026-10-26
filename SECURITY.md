@@ -23,9 +23,11 @@ Storybook.
 - **It refuses cross-origin writes.** A POST that carries an `Origin` header is accepted only from
   the server's own origin or from a served project's Storybook origin. A page on any other site
   cannot approve, reject or start checks. CORS headers are sent only to those Storybook origins.
-- **Decisions through the server need its token.** Approve, reject, unreview and the
-  accessibility decisions need one of the random tokens the server makes when it starts: one is in
-  the dashboard page a browser loads, another in a file only your user can read
+- **Decisions through the server need the dashboard link or a token.** Approve, reject, unreview
+  and the accessibility decisions need either the dashboard link (a one-time link `pxsig serve`
+  prints for a person at a terminal, traded by the page for a cookie scripts cannot read; no token
+  is ever in a page) or one of the random tokens the server makes when it starts, in a file only
+  your user can read
   (`node_modules/.cache/pxsig/serve-<port>.token`; on Windows in the user's own
   `%LOCALAPPDATA%\pxsig\`, with no permission change), which `pxsig approve apply` reads after its
   person-at-a-terminal check. An agent or a script posting to the server is refused. The token
@@ -41,7 +43,9 @@ Storybook.
 - **Approvals need a person.** Bulk approval and `check --full --update` are refused when output is
   piped, in CI, or under a known agent, and ask for a typed phrase. The MCP review tool cannot
   approve or accept at all, and refuses even a rejection without `confirm: true`. Every
-  approval is logged with hashes and can be undone. The approval log is not signed.
+  approval is logged with hashes and the pxsig version, and can be undone. The approval log is not
+  signed, and holds no personal data unless a team turns on `approvals.identity: "git-email"`:
+  the commit that adds a line and the pull request say who approved.
 - **The renderer loads your Storybook** in a real browser. Treat the stories you render like any
   code you run.
 

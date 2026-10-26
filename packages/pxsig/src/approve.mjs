@@ -143,7 +143,7 @@ export async function approveCommand({
     const plan = {
       version: 1,
       createdAt: new Date().toISOString(),
-      by: who(P.workspaceRoot),
+      ...(who(P.workspaceRoot, P.config) ? { by: who(P.workspaceRoot, P.config) } : {}),
       project: P.name,
       reason,
       entries,
@@ -437,7 +437,7 @@ export async function approveCommand({
         r.interrupted.length ? { next: cut.map((batch) => [`${CMD} approve undo ${batch}`, 'put back the baselines it replaced']) } : {},
         bad
           ? {
-              note: `${bad} baselines differ from their last logged approval: written outside the trail`,
+              note: `${bad} baselines differ from their last logged approval: written outside the trail${r.mismatched.some((x) => x.older) ? `. ${r.mismatched.filter((x) => x.older).length} of them were last logged by an older pxsig (the Logged by column): if a teammate still runs it, they upgrade pxsig and approve those entries again` : ''}`,
               tone: 'bad',
             }
           : r.interrupted.length
@@ -455,8 +455,9 @@ export async function approveCommand({
                   { key: 'id', label: 'Entry' },
                   { key: 'logged', label: 'Logged' },
                   { key: 'now', label: 'Now' },
+                  { key: 'by', label: 'Logged by' },
                 ],
-                rows: r.mismatched.slice(0, 40),
+                rows: r.mismatched.slice(0, 40).map((x) => ({ ...x, by: x.writtenBy ? `pxsig ${x.writtenBy}` : 'pxsig before 0.4' })),
               },
             }
           : {},

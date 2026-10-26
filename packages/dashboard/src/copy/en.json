@@ -20,6 +20,14 @@
     },
     "sections": "Report sections",
     "embedEmpty": "No result for this story. Run a check from the toolbar.",
+    "decide": {
+      "title": "pxsig: recording a decision",
+      "waiting": "Waiting for the decision from the Storybook panel.",
+      "working": "Recording the decision.",
+      "needsLink": "Open the dashboard link from the terminal first: pxsig serve printed it, and pxsig serve --link prints a new one. Then decide in the panel again.",
+      "failed": "The decision was not recorded: {error}",
+      "noOpener": "This window records decisions from the Storybook panel and closes. Opened on its own, it has nothing to do."
+    },
     "startReview": {
       "changed": {
         "one": "Review {count} change",
@@ -808,6 +816,7 @@
       "approveTitle": "Use the latest render as the baseline (A)",
       "undo": "Undo",
       "failed": "{action} failed: {error}",
+      "needsLink": "Open the dashboard link from the terminal to approve here: pxsig serve printed it, and pxsig serve --link prints a new one.",
       "undoTitle": "Restore the previous baseline",
       "approveA11y": {
         "one": "Approve · accepts {count} new a11y violation",

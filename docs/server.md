@@ -132,11 +132,22 @@ clears the mark. `summary.changed` counts only real changes waiting for a decisi
 ### Guards
 
 - **Decisions need a person.** `approve`, `approve-story`, `reject`, `unreview` and the `a11y-*`
-  routes need one of the server's tokens in an `x-pxsig-token` header, or they are refused
-  (403, "approving needs a person: use the dashboard or `pxsig approve` in a terminal"). The server
-  makes three at random each time it starts. The dashboard's goes into the dashboard page
-  (`<meta name="pxsig-token">`) only when a browser loads that page (`Sec-Fetch-Dest: document`, or
-  `iframe` for the Storybook panel). The CLI's goes into `node_modules/.cache/pxsig/serve-<port>.token`
+  routes need the dashboard link (in a browser) or one of the server's file tokens (`pxsig approve
+  apply`, the MCP), or they are refused (403, "approving needs a person: use the dashboard or
+  `pxsig approve` in a terminal"; a browser without the link gets "approving here needs the
+  dashboard link", `code: "needs-dashboard-link"`).
+- **The dashboard link.** `pxsig serve` prints `<url>/report/#ticket=<t>` when a person started it
+  at a terminal (not under an agent, not in the background), and on macOS opens it; `pxsig serve
+  --link`, run by a person at a terminal, prints a new one from the running server. The ticket is
+  single use and good for two minutes; the page trades it at `POST /__pxsig/session` (its own
+  origin only) for a cookie `pxsig_link_<port>` that scripts cannot read and other sites cannot send
+  (`HttpOnly; SameSite=Strict`), valid until the server stops, and takes it out of the address bar.
+  No token is ever in a page: a script fetching the page, with any headers, gets nothing to decide
+  with. Reading, checks and repairs need no link, so bookmarks work as before; only the first
+  approve, reject or accept in a tab without the link shows how to get it. The Storybook panel is a
+  frame on another site, where the cookie is not sent: its decisions go through a small window of
+  the server's own (`/report/?decide=1`), which posts the decision with the cookie and closes.
+- **File tokens.** The server makes two at random each time it starts. The CLI's goes into `node_modules/.cache/pxsig/serve-<port>.token`
   (mode 0600, removed on exit; on Windows into the user's own
   `%LOCALAPPDATA%\pxsig\tokens\<workspace>\`, see [platforms.md](platforms.md#what-pxsig-keeps-on-this-machine)), which `pxsig approve apply` reads after its person-at-a-terminal
   check. The MCP's goes into `serve-<port>.mcp.token` (also 0600) and is accepted only on `reject`,
@@ -145,7 +156,7 @@ clears the mark. `summary.changed` counts only real changes waiting for a decisi
   request carrying a file token with browser headers (`Origin`, `Sec-Fetch-Site`) is refused. An
   agent posting to the server with `curl` or `fetch` has none of them. The token decides `via` in
   `approvals.ndjson`, `a11y-decisions.ndjson` and on rejections in `review.json` /
-  `a11y-review.json` (`dashboard`, `cli` or `mcp`); a `via` in the body is ignored. `check` and `repair` need no token: the CLI,
+  `a11y-review.json` (`dashboard` for the link, `cli` or `mcp`); a `via` in the body is ignored. `check` and `repair` need no token: the CLI,
   the MCP and the Storybook addon use them, and neither one approves.
 - **Origin.** A POST with an `Origin` header is refused (403) unless it is the server's own origin
   or, for `check` and `repair` only, the origin of a served project's Storybook (with `localhost`
@@ -155,9 +166,13 @@ clears the mark. `summary.changed` counts only real changes waiting for a decisi
   (`Content-Security-Policy: frame-ancestors`).
 - **Host.** Any request whose `Host` is not `127.0.0.1`, `localhost` or `[::1]` on the server's
   port is refused (403), so a page that rebinds its own name to 127.0.0.1 gets nothing.
-- **What this is not.** The token is a guard, not authentication: any process running as you can
-  read the token file, or send the headers a browser sends. It stops an agent or a script from
-  approving by posting to the server, and a web page from posting to it at all.
+- **Page headers.** Dashboard pages carry a `Content-Security-Policy` (scripts, data and fonts
+  from the server only, `object-src 'none'`, `frame-ancestors` as above) and every response
+  `X-Content-Type-Options: nosniff`.
+- **What this is not.** The link and the tokens are a guard, not authentication: a process running
+  as you can read the token file. They stop an agent or a script from approving by posting to the
+  server or reading the page, and a web page from posting to it at all; who approved what is in the
+  log and in the pull request that commits it.
 - **Storybook health.** Before rendering, a check fetches Storybook's index. When it is unreachable
   or broken, nothing is rendered or recorded, and the `check` event carries a setup error (the
   dashboard shows it). When three or more renders, and at least half, hit Storybook's error page,

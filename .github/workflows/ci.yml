@@ -108,3 +108,25 @@ jobs:
       # System libraries are a Linux concern; macOS and Windows runners need only the browser.
       - run: pnpm --filter pxsig exec playwright install ${{ runner.os == 'Linux' && '--with-deps' || '' }} chromium
       - run: node scripts/examples-test.mjs
+
+  compat:
+    name: Older pxsig on this store
+    runs-on: ubuntu-latest
+    needs: rust
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22 # latest 22.x; ui:check needs 22.18+ and says so below that
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          name: pxsig-ubuntu-latest
+          path: target/release
+      - run: chmod +x target/release/pxsig
+      # What a teammate still on 0.3.2 sees in a store this version wrote (decision 92).
+      - run: node scripts/compat-old.mjs 0.3.2
+        env:
+          PXSIG_BIN: target/release/pxsig

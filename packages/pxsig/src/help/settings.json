@@ -293,6 +293,25 @@
       "meaning": "The dashboard rebuilt on this project's design system.",
       "operation": "See dashboard.ui."
     },
+    "approvals": {
+      "file": "pxsig.config.json",
+      "meaning": "How approvals are recorded and guarded.",
+      "operation": "See approvals.identity and approvals.level."
+    },
+    "approvals.identity": {
+      "file": "pxsig.config.json",
+      "meaning": "What each approval and repair log line says about who made it: none (the default; the commit that adds the line and the pull request say who), or git-email (the git email, as before 0.4.0).",
+      "values": "none | git-email",
+      "default": "none",
+      "operation": "With none, pxsig writes no personal data into the store; with git-email every new log line carries a by field."
+    },
+    "approvals.level": {
+      "file": "pxsig.config.json",
+      "meaning": "How approvals are guarded: standard (a typed phrase at a terminal, or the dashboard with the dashboard link). strict is reserved for a later release and refused for now.",
+      "values": "standard",
+      "default": "standard",
+      "operation": "Only standard exists today; any other value stops every command with a setup error."
+    },
     "dashboard.ui": {
       "file": "pxsig.config.json",
       "meaning": "A UI adapter for `pxsig dashboard build` and `gaps`: a path to its module, relative to this folder, or a built-in adapter's name.",
@@ -317,6 +336,12 @@
       "file": "pxsig.workspace.json",
       "meaning": "The pxsig server.",
       "operation": "See server.port."
+    },
+    "requires": {
+      "file": "pxsig.workspace.json",
+      "meaning": "The pxsig versions this workspace needs, as a range: >=0.4.0, or >=0.4.0 <0.6.0, with || between alternatives.",
+      "default": "none",
+      "operation": "A pxsig outside the range refuses to run here (exit 2, naming the range), and doctor warns about installs outside it. pxsig 0.3.x does not read the key."
     },
     "server.port": {
       "file": "pxsig.workspace.json",

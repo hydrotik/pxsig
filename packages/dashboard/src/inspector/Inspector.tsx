@@ -29,6 +29,7 @@ import { StatusOf } from '../parts/StatusOf';
 import { storybookLink } from '../storybook-link.mjs';
 import { Cmd, t, tx } from '../copy';
 import * as s from '../dashboard.css';
+import { NeedsLinkError } from '../link';
 
 export interface InspectTarget {
   row: Row;
@@ -234,6 +235,9 @@ export function Inspector({
   const review = row ? (a11yMode ? data.a11yReview?.[row.id] : data.review[row.id]) : undefined;
   const a11yDecision = row ? data.a11yReview?.[row.id] : undefined;
   const label = (action: 'approve' | 'reject' | 'unreview', a11y: boolean) => t(`inspector.review.${action === 'unreview' ? 'undo' : a11y && action === 'approve' ? 'accept' : action}`);
+  // A decision the server refused: without the dashboard link, the line under the header says how
+  // to get it; anything else is an alert, as before.
+  const refused = (e: unknown, action: string) => (e instanceof NeedsLinkError ? setNote(t('inspector.review.needsLink')) : alert(t('inspector.review.failed', { action, error: (e as Error).message })));
   const act = async (action: 'approve' | 'reject' | 'unreview', a11y = a11yMode) => {
     if (!row) return;
     setBusy(true);
@@ -246,7 +250,7 @@ export function Inspector({
         if (next) onNavigate({ ...target!, row: next });
       }
     } catch (e) {
-      alert(t('inspector.review.failed', { action: label(action, a11y), error: (e as Error).message }));
+      refused(e, label(action, a11y));
     } finally {
       setBusy(false);
     }
@@ -259,7 +263,7 @@ export function Inspector({
     try {
       await a11yAction('unaccept', row.id, rule);
     } catch (e) {
-      alert(t('inspector.review.failed', { action: t('inspector.a11y.unaccept'), error: (e as Error).message }));
+      refused(e, t('inspector.a11y.unaccept'));
     } finally {
       setBusy(false);
     }
@@ -302,7 +306,7 @@ export function Inspector({
       const next = [...list.slice(index + 1), ...list.slice(0, Math.max(index, 0))].find(open);
       if (next && target) onNavigate({ ...target, row: next });
     } catch (e) {
-      alert(t('inspector.review.failed', { action: t('inspector.review.approveStory', { count: storyOpen.length }), error: (e as Error).message }));
+      refused(e, t('inspector.review.approveStory', { count: storyOpen.length }));
     } finally {
       setBusy(false);
     }
