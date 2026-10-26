@@ -175,6 +175,15 @@
       }
     },
     "importPathPattern": { "type": "string", "description": "Advanced: a regular expression selecting the project's story files, with the component folder as group 1. Default: files under srcRoot." },
+    "approvals": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How approvals are recorded.",
+      "properties": {
+        "identity": { "enum": ["none", "git-email"], "default": "none", "description": "What each log line says about who approved: nothing (the commit and the pull request say who), or the git email." },
+        "level": { "enum": ["standard", "strict"], "default": "standard", "description": "standard: a typed phrase at a terminal, or the dashboard with the dashboard link. strict is reserved for a later release and refused for now." }
+      }
+    },
     "dashboard": {
       "type": "object",
       "additionalProperties": false,

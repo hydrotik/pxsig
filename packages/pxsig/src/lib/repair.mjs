@@ -28,6 +28,7 @@ import { fileURLToPath } from 'node:url';
 import { writeRunManifest } from './workspace.mjs';
 import { componentOf, reconcile, readJson, repairLogPath, sha256File, writeJsonAtomic, SCHEMA_VERSION } from './integrity.mjs';
 import { appendLine, dropTorn } from './files.mjs';
+import { stamp } from './approvals.mjs';
 import { relPath } from './paths.mjs';
 
 export const ACTIONS = ['register', 'recheck', 'restore-baseline-image', 'convert-legacy', 'prune', 'log-torn'];
@@ -48,7 +49,9 @@ export function guardWrite(ctx, path) {
   return abs;
 }
 
+/** Who ran a repair, for its log: nobody unless `approvals.identity: "git-email"` (decision 81). */
 export function who(ctx) {
+  if (ctx.config?.approvals?.identity !== 'git-email') return null;
   const r = spawnSync('git', ['-C', ctx.repoRoot, 'config', 'user.email'], { encoding: 'utf8' });
   return r.stdout?.trim() || process.env.USER || process.env.USERNAME || 'unknown';
 }
@@ -56,7 +59,7 @@ export function who(ctx) {
 export function logRepair(ctx, line) {
   const p = guardWrite(ctx, repairLogPath(ctx));
   mkdirSync(dirname(p), { recursive: true });
-  const full = { schemaVersion: SCHEMA_VERSION, at: new Date().toISOString(), ...line };
+  const full = stamp({ schemaVersion: SCHEMA_VERSION, at: new Date().toISOString(), ...line });
   appendLine(p, full);
   return full;
 }

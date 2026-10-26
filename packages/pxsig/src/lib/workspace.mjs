@@ -115,6 +115,11 @@ export function findWorkspace({ cwd = process.cwd(), workspace = null, env = pro
   }
   const ws = readJsonFile(file);
   if (!isObj(ws.projects)) throw new SetupError(`${file}: "projects" must map a project name to its folder`);
+  if (ws.requires != null) {
+    const ok = satisfies(PXSIG_VERSION, ws.requires);
+    if (ok === null) throw new SetupError(`${file}: "requires" is not a version range pxsig reads ("${ws.requires}"; for example ">=0.4.0")`);
+    if (!ok) throw new SetupError(`${file} requires pxsig ${ws.requires}; this is pxsig ${PXSIG_VERSION}: install a version in that range`, { code: 'version-required' });
+  }
   const projects = Object.entries(ws.projects).map(([name, rel]) => {
     const dir = resolve(root, rel);
     return { name, dir, configPath: join(dir, CONFIG_FILE) };
@@ -195,6 +200,7 @@ export function workspaceProblems(P) {
   for (const f of unlistedConfigs(ws)) if (ws.file || f !== CONFIG_FILE) out.push({ code: 'project-unlisted', severity: 'warn', reason: `${f} is not listed in ${where}: nothing checks that package` });
   for (const n of missingProjects(ws)) out.push({ code: 'project-missing', severity: 'error', reason: `project "${n}" is listed in ${WORKSPACE_FILE} but its ${CONFIG_FILE} is gone` });
   const major = (v) => String(v).split('.')[0];
+  const requires = ws.file ? readJsonFile(ws.file).requires ?? null : null;
   const seen = new Set();
   for (const dir of [ws.root, ...ws.projects.map((p) => p.dir)]) {
     const pj = join(dir, 'node_modules', 'pxsig', 'package.json');
@@ -203,6 +209,7 @@ export function workspaceProblems(P) {
     try {
       const v = JSON.parse(readFileSync(pj, 'utf8')).version;
       if (major(v) !== major(PXSIG_VERSION)) out.push({ code: 'version-skew', severity: 'warn', reason: `${toPosix(relative(ws.root, pj))} is pxsig ${v}; this one is ${PXSIG_VERSION}` });
+      if (requires && satisfies(v, requires) === false) out.push({ code: 'version-required', severity: 'warn', reason: `${toPosix(relative(ws.root, pj))} is pxsig ${v}, outside the workspace's "requires" (${requires}): it refuses to run here once it reads that key (0.4.0 and later), and an older one ignores it` });
     } catch {
       // unreadable: not ours to judge
     }
@@ -347,6 +354,40 @@ function workspaceDepRoots(ws, projectDir) {
  * Resolve a project: its merged config, absolute paths and store layout.
  * `flags` is layer 2 (CLI); `env` layer 3.
  */
+/** `approvals`: only what this pxsig does (decision 78: Strict is a later release). */
+function checkApprovals(config, ref) {
+  const a = config.approvals ?? {};
+  if (a.level != null && a.level !== 'standard') throw new SetupError(a.level === 'strict' ? `project "${ref.name}": approvals.level "strict" is not available yet (decision 78); remove it or set "standard"` : `project "${ref.name}": approvals.level must be "standard"`);
+  if (a.identity != null && !['none', 'git-email'].includes(a.identity)) throw new SetupError(`project "${ref.name}": approvals.identity must be "none" or "git-email"`);
+}
+
+/**
+ * Whether `version` satisfies a `requires` range: comparators (>=, >, <=, <, =, or a bare version)
+ * joined by spaces (all must hold), alternatives joined by `||`. Null when the range cannot be read.
+ */
+export function satisfies(version, range) {
+  const num = (v) => {
+    const m = String(v).trim().match(/^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?$/);
+    return m ? [Number(m[1]), Number(m[2] ?? 0), Number(m[3] ?? 0)] : null;
+  };
+  const cmp = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+  const v = num(String(version).split('-')[0]);
+  if (!v) return null;
+  let read = true;
+  const ok = String(range)
+    .split('||')
+    .some((alt) =>
+      alt.trim().split(/\s+/).filter(Boolean).every((c) => {
+        const m = c.match(/^(>=|<=|>|<|=)?(.+)$/);
+        const w = m && num(m[2]);
+        if (!w) return (read = false);
+        const d = cmp(v, w);
+        return { '>=': d >= 0, '<=': d <= 0, '>': d > 0, '<': d < 0, '=': d === 0 }[m[1] ?? '='];
+      })
+    );
+  return read ? ok : null;
+}
+
 export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
   const raw = existsSync(ref.configPath) ? readJsonFile(ref.configPath) : null;
   if (!raw) throw new SetupError(`project "${ref.name}": no ${CONFIG_FILE} at ${ref.configPath}`, { code: 'project-missing' });
@@ -361,6 +402,7 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
   ];
   const config = merge(...layers.map((l) => l.value));
   const sources = provenance(layers);
+  checkApprovals(config, ref);
   const root = ref.dir;
   const store = expand(ws, root, config.store.dir);
   // Modes are a set, not settings: a project's modes replace the defaults instead of joining them.

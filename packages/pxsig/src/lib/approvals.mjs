@@ -24,6 +24,7 @@ import { spawnSync } from './spawn.mjs';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { appendLine, fault, readLines, writeAtomic } from './files.mjs';
+import { PXSIG_VERSION } from './workspace.mjs';
 
 export const sha256 = (path) =>
   existsSync(path) ? createHash('sha256').update(readFileSync(path)).digest('hex') : null;
@@ -38,7 +39,17 @@ export function paths(P, entry) {
 }
 
 const git = (root, ...args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' }).stdout?.trim() ?? '';
-export const who = (root) => git(root, 'config', 'user.email') || process.env.USER || 'unknown';
+/**
+ * Who approved, for the log: nobody by default (decision 81). The commit that adds a line, and the
+ * pull request that merges it, already say who; pxsig keeps no personal data. A team that wants the
+ * git email on every line sets `approvals.identity: "git-email"`.
+ */
+export const who = (root, config = null) => (config?.approvals?.identity === 'git-email' ? git(root, 'config', 'user.email') || process.env.USER || 'unknown' : null);
+/** A log line with `by` only when there is one, and the pxsig version that wrote it (decision 92). */
+export const stamp = (line) => {
+  const { by, ...rest } = line;
+  return { ...rest, ...(by ? { by } : {}), pxsig: PXSIG_VERSION };
+};
 export const newBatch = (via) => `${new Date().toISOString().replace(/[:.]/g, '-')}-${via}`;
 
 /** Copy the current baseline aside before it is overwritten. */
@@ -54,10 +65,10 @@ export function snapshot(P, entry, batch) {
 export function record(P, entry, { batch, via, reason = null, before, kind = null }) {
   const p = paths(P, entry);
   fault('after-psig');
-  const line = {
+  const line = stamp({
     at: new Date().toISOString(),
     id: entry.id,
-    by: who(P.workspaceRoot),
+    by: who(P.workspaceRoot, P.config),
     via,
     batch,
     reason,
@@ -65,7 +76,7 @@ export function record(P, entry, { batch, via, reason = null, before, kind = nul
     gitHead: git(P.workspaceRoot, 'rev-parse', '--short', 'HEAD'),
     before,
     after: sha256(p.sig),
-  };
+  });
   appendLine(p.log, line);
   return line;
 }
@@ -188,6 +199,14 @@ function interruptedBatch(P, id, last, batchesWithLine) {
  * Baselines whose bytes differ from the last approval logged for them: written outside the trail
  * (`mismatched`), or by an approval a crash cut short before its log line (`interrupted`).
  */
+/** A log line's pxsig older than this one (major.minor), or written before lines named theirs. */
+export const olderThanThis = (v) => {
+  if (!v) return true;
+  const [a, b] = String(v).split('.').map(Number);
+  const [x, y] = PXSIG_VERSION.split('.').map(Number);
+  return a < x || (a === x && b < y);
+};
+
 export function verify(P, manifest) {
   const { lines, torn } = readLines(P.store.approvals);
   const last = new Map();
@@ -208,8 +227,11 @@ export function verify(P, manifest) {
     const now = sha256(paths(P, e).sig);
     if (now === l.after) continue;
     const batch = interruptedBatch(P, e.id, l, batchesWithLine);
-    if (batch) interrupted.push({ id: e.id, batch, logged: l.after?.slice(0, 12), now: now?.slice(0, 12) });
-    else mismatched.push({ id: e.id, logged: l.after?.slice(0, 12), now: now?.slice(0, 12) });
+    // The pxsig that wrote the line (lines before 0.4.0 carry none): an older one beside this one
+    // (a teammate who has not upgraded) explains a difference better than "outside the trail".
+    const writtenBy = l.pxsig ?? null;
+    if (batch) interrupted.push({ id: e.id, batch, logged: l.after?.slice(0, 12), now: now?.slice(0, 12), writtenBy });
+    else mismatched.push({ id: e.id, logged: l.after?.slice(0, 12), now: now?.slice(0, 12), writtenBy, older: olderThanThis(writtenBy) });
   }
   return {
     logged: last.size,

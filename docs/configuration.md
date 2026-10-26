@@ -81,6 +81,7 @@ the binary's gate flags, which beat the `PXSIG_*` gate variables, which beat the
 | `projects` | object | required | Project name to project folder, relative to the workspace root. Each folder holds a `pxsig.config.json`. |
 | `defaults` | object | `{}` | Any project config key. Applied under each project's own config. |
 | `server.port` | integer | `6070` | Port `pxsig serve` tries first. If it is taken, the next ten ports are tried. |
+| `requires` | string | none | The pxsig versions this workspace needs, as a range: `">=0.4.0"`, `">=0.4.0 <0.6.0"`, alternatives joined by `\|\|`. A pxsig outside it refuses to run here (exit 2, naming the range), and `doctor` warns about installs outside it (`version-required`). pxsig 0.3.x does not read the key, so it cannot stop an older install. |
 
 In a monorepo the project's name is its key in `projects`. `pxsig init <dir>` adds the entry.
 
@@ -145,6 +146,8 @@ The smallest config is `{}`: every key has a default. `pxsig init` writes
 | `nonVisual` | `[]` | Top-level folders under `srcRoot` with no visual stories. Their stories are not entries and are reported as `excluded`. |
 | `a11y` | `true` | Run axe on every render. |
 | `integrity` | `{}` | Integrity options (below). |
+| `approvals.identity` | `none` | What each approval and repair log line says about who made it. `none`: nothing; the commit that adds the line and the pull request say who, and pxsig writes no personal data. `git-email`: the git email in a `by` field, as before 0.4.0. |
+| `approvals.level` | `standard` | `standard`: a typed phrase at a terminal, or the dashboard opened with the dashboard link. `strict` is reserved for a later release and refused for now (a setup error). |
 | `dashboard.ui` | none | A UI adapter for `pxsig dashboard build` and `gaps`: a path to its module, relative to this folder, or a built-in adapter's name (see [ui/build-adapter.md](ui/build-adapter.md)). `pxsig serve` then serves this project's build while it is current. |
 
 ### `gate`
