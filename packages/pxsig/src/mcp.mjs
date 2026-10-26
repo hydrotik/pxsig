@@ -27,7 +27,7 @@
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { CODES, filterLedger, ledgerPath, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
@@ -36,6 +36,7 @@ import { readImage } from './lib/psig.mjs';
 import { applyRepairs, defaultHooks, planRepairs, serverStatus } from './lib/repair.mjs';
 import { acquireLock, describeLock, readLock } from './lib/lock.mjs';
 import { findWorkspace, openProject, writeRunManifest } from './lib/workspace.mjs';
+import { relPath } from './lib/paths.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -87,7 +88,7 @@ const PROBLEMS = new Set(['changed', 'new', 'error', 'flaky', 'rejected']);
 
 function load(C) {
   const check = readJson(C.checkPath, null);
-  if (!check) throw new Error(`no report at ${relative(C.root, C.checkPath)}: run pxsig_check first`);
+  if (!check) throw new Error(`no report at ${relPath(C.root, C.checkPath)}: run pxsig_check first`);
   const review = readJson(C.reviewPath, {});
   const a11yReview = readJson(join(dirname(C.reviewPath), 'a11y-review.json'), {});
   const updated = statSync(C.checkPath).mtime;
@@ -170,7 +171,7 @@ function editedSince(C, when, { withTimes = false } = {}) {
       if (name.isDirectory()) walk(p);
       else if (/\.(tsx?|mjs|jsx?|json)$/.test(name.name) && !/\.test\./.test(name.name)) {
         const mtime = statSync(p).mtime;
-        if (mtime > when) out.push(withTimes ? { file: relative(C.root, p), mtime } : relative(C.root, p));
+        if (mtime > when) out.push(withTimes ? { file: relPath(C.root, p), mtime } : relPath(C.root, p));
       }
     }
   };
@@ -236,9 +237,9 @@ function imagePath(C, kind, id) {
 /** An image's bytes and where they came from, or null. */
 export function imageOf(C, kind, id) {
   const p = imagePath(C, kind, id);
-  if (!p || !existsSync(p)) return { bytes: null, where: p ? relative(C.root, p) : 'no manifest entry' };
+  if (!p || !existsSync(p)) return { bytes: null, where: p ? relPath(C.root, p) : 'no manifest entry' };
   const bytes = kind === 'baseline' ? readImage(p) : readFileSync(p);
-  return { bytes, where: kind === 'baseline' ? `${relative(C.root, p)} (image section)` : relative(C.root, p) };
+  return { bytes, where: kind === 'baseline' ? `${relPath(C.root, p)} (image section)` : relPath(C.root, p) };
 }
 
 // --- tools ---------------------------------------------------------------------------------------
@@ -260,7 +261,7 @@ const tools = [
             const C = ctxOf(ref.name);
             const m = readJson(C.P.manifestPath(), { stories: [] });
             const led = readJson(join(C.P.store.reports, 'integrity.json'), null);
-            return { name: ref.name, root: relative(ws.root, ref.dir) || '.', storybook: C.P.storybook.url, entries: m.stories?.length ?? 0, integrity: led?.summary?.headline ?? null };
+            return { name: ref.name, root: relPath(ws.root, ref.dir) || '.', storybook: C.P.storybook.url, entries: m.stories?.length ?? 0, integrity: led?.summary?.headline ?? null };
           } catch (e) {
             return { name: ref.name, error: e.message };
           }
@@ -376,7 +377,7 @@ const tools = [
           review: review[id] ?? null,
           checkedAt: verdictTimes(C, check).get(id)?.at.toISOString() ?? null,
           renderedAt: renderedAt(C, id)?.toISOString() ?? null,
-          diffPage: relative(C.root, join(C.P.store.diffLatest, `${id}.diff.html`)),
+          diffPage: relPath(C.root, join(C.P.store.diffLatest, `${id}.diff.html`)),
         }),
       ];
       for (const kind of images) {
@@ -644,7 +645,7 @@ async function doctor({ project, component, status, limit = 40, repair = 'none',
   const serverUrl = C.serverUrl;
   let ledger = await reconcile(ctx, { offline });
   writeLedger(ctx, ledger);
-  const out = { project: C.P.name, ledgerPath: relative(C.root, ledgerPath(ctx)) };
+  const out = { project: C.P.name, ledgerPath: relPath(C.root, ledgerPath(ctx)) };
   if (repair !== 'none') {
     const server = await serverStatus(serverUrl);
     const plan = planRepairs(ledger, { only, prune: prune && !!confirmPrune, server, stale });

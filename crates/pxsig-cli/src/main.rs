@@ -518,7 +518,7 @@ fn cmd_affected(manifest: &Path, root: Option<PathBuf>, since: &str, files: Opti
     let root = root.unwrap_or_else(|| PathBuf::from("."));
     let m = batch::load_manifest(manifest)?;
     let changed = match files {
-        Some(f) => f.split(',').map(str::trim).filter(|s| !s.is_empty()).map(String::from).collect(),
+        Some(f) => f.split(',').map(str::trim).filter(|s| !s.is_empty()).map(|s| affected::repo_relative(&root, s)).collect(),
         None => affected::git_changed(&root, since)?,
     };
     let res = affected::affected(&root, &m, &changed)?;

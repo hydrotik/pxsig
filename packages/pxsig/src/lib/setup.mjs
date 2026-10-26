@@ -20,8 +20,8 @@ import { sha256 } from './approvals.mjs';
 import { componentOf, loadStoryIndex, resolveContext, writeJsonAtomic } from './integrity.mjs';
 import { expandEntries, harvestParameters } from './manifest.mjs';
 import { CONFIG_FILE, entryConfig, SetupError, WORKSPACE_FILE, runManifest } from './workspace.mjs';
+import { toPosix } from './paths.mjs';
 
-const toPosix = (p) => p.split(sep).join('/');
 const readJson = (p, fallback = null) => {
   try {
     return JSON.parse(readFileSync(p, 'utf8'));
@@ -41,6 +41,9 @@ trash/
 `;
 export const STORE_GITATTRIBUTES = `# .psig baselines are binary; git diff shows their header via: git config diff.psig.textconv "npx pxsig cat"
 *.psig binary diff=psig
+# Records keep LF on every OS, so a Windows checkout reads them byte for byte as written
+*.json text eol=lf
+*.ndjson text eol=lf
 `;
 
 export const PSIG_ATTRIBUTE = '*.psig binary diff=psig';

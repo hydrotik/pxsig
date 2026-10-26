@@ -29,6 +29,8 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
 import { hasImage } from './psig.mjs';
 import { workspaceProblems } from './workspace.mjs';
+import { toPosix } from './paths.mjs';
+import { portabilityProblems } from './portability.mjs';
 
 export const SCHEMA_VERSION = 1;
 
@@ -90,7 +92,6 @@ const mtime = (p) => {
 };
 const iso = (ms) => (ms == null ? null : new Date(ms).toISOString());
 export const sha256File = (p) => (existsSync(p) ? createHash('sha256').update(readFileSync(p)).digest('hex') : null);
-const toPosix = (p) => p.split(sep).join('/');
 const isPsig = (p) => p.endsWith('.psig');
 
 /** Atomic JSON write (tmp + rename): a reader never sees half a file. */
@@ -617,7 +618,7 @@ export async function reconcile(ctx, opts = {}) {
       a11yBaseline: { path: rel(ctx.files.a11y), entries: a11yBase ? Object.keys(a11yBase).length : null },
       staleness,
     },
-    setup: [...setupProblems(index), ...(ctx.project ? workspaceProblems(ctx.project) : [])],
+    setup: [...setupProblems(index), ...(ctx.project ? workspaceProblems(ctx.project) : []), ...portabilityProblems({ repoRoot: ctx.repoRoot, sigPaths, records: [ctx.manifestPath, ...siblings, ctx.files.approvals, ctx.files.a11y] })],
     summary,
     components,
     entries,

@@ -104,6 +104,15 @@ jobs:
         with:
           key: ${{ matrix.target }}
       - run: cargo build --release --locked --target ${{ matrix.target }} -p pxsig-cli
+      # Smoke: the binary starts on the runner that built it (darwin-x64 is cross-compiled and
+      # runs under Rosetta when the runner has it; the step says so when it does not).
+      - name: Smoke
+        shell: bash
+        run: |
+          bin="target/${{ matrix.target }}/release/${{ matrix.exe }}"
+          if "$bin" --version; then exit 0; fi
+          if [ "${{ matrix.arch }}" = x64 ] && [ "${{ matrix.platform }}" = darwin ]; then echo "::notice::darwin-x64 not runnable here (no Rosetta)"; exit 0; fi
+          exit 1
       - uses: actions/upload-artifact@v7
         with:
           name: pxsig-${{ matrix.platform }}-${{ matrix.arch }}

@@ -22,7 +22,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const repo = fileURLToPath(new URL('..', import.meta.url));
 const cli = join(repo, 'packages', 'pxsig', 'bin', 'pxsig.mjs');
@@ -43,10 +43,15 @@ const sh = (cmd, args, cwd, opts = {}) => {
   return r;
 };
 const pxsig = (args, cwd) => sh(process.execPath, [cli, ...args], cwd, { must: false });
+// pnpm is a .cmd shim on Windows, which Node starts only through a shell. This is the test
+// harness on a CI runner; pxsig itself never starts a shell (docs/platforms.md).
+const pnpm = (args, cwd, opts = {}) => (process.platform === 'win32' ? sh('pnpm.cmd', args, cwd, { ...opts, shell: true }) : sh('pnpm', args, cwd, opts));
 
 /** Copy an example, rewriting `link:` dependencies to this checkout's packages. */
 function stage(name) {
-  const dir = mkdtempSync(join(tmpdir(), `pxsig-example-${name}-`));
+  // On the checkout's drive: Storybook names a cache folder after the path from the example to a
+  // linked package, which across Windows drives contains "D:" and cannot be created.
+  const dir = mkdtempSync(join(process.env.RUNNER_TEMP || tmpdir(), `pxsig-example-${name}-`));
   cpSync(join(repo, 'examples', name), dir, { recursive: true, filter: (p) => !/node_modules|storybook-static|\.pxsig|__pxsig__/.test(p) });
   const walk = (d) => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
@@ -90,7 +95,7 @@ function serveStatic(root) {
 /** Write baselines from the latest renders: what approving every NEW entry does. */
 function baselineAll(dir, project) {
   const code = `
-    const { openProject, writeRunManifest } = await import(${JSON.stringify(join(repo, 'packages/pxsig/src/lib/workspace.mjs'))});
+    const { openProject, writeRunManifest } = await import(${JSON.stringify(pathToFileURL(join(repo, 'packages/pxsig/src/lib/workspace.mjs')).href)});
     const P = openProject({ project: ${JSON.stringify(project)} });
     const run = writeRunManifest(P).path;
     const { spawnSync } = await import('node:child_process');
@@ -109,9 +114,9 @@ async function run(name, { projects, storybookDir, change }) {
   log(`${name}: staging`);
   const dir = stage(name);
   log(`${name}: pnpm install in ${dir}`);
-  sh('pnpm', ['install', '--ignore-workspace', '--no-frozen-lockfile', '--config.confirmModulesPurge=false'], dir, { stdio: 'inherit' });
-  if (existsSync(join(dir, 'pnpm-workspace.yaml'))) sh('pnpm', ['install', '--no-frozen-lockfile'], dir, { stdio: 'inherit' });
-  const build = () => sh('pnpm', ['build-storybook'], dir, { stdio: 'inherit' });
+  pnpm(['install', '--ignore-workspace', '--no-frozen-lockfile', '--config.confirmModulesPurge=false'], dir, { stdio: 'inherit' });
+  if (existsSync(join(dir, 'pnpm-workspace.yaml'))) pnpm(['install', '--no-frozen-lockfile'], dir, { stdio: 'inherit' });
+  const build = () => pnpm(['build-storybook'], dir, { stdio: 'inherit' });
   build();
   const server = await serveStatic(join(dir, storybookDir, 'storybook-static'));
   // The configured port may be in use on this machine: point every project at this server.
@@ -181,7 +186,7 @@ function runCustomUi() {
   const name = 'custom-ui';
   log(`${name}: staging`);
   const dir = stage(name);
-  sh('pnpm', ['install', '--ignore-workspace', '--no-frozen-lockfile', '--config.confirmModulesPurge=false'], dir, { stdio: 'inherit' });
+  pnpm(['install', '--ignore-workspace', '--no-frozen-lockfile', '--config.confirmModulesPurge=false'], dir, { stdio: 'inherit' });
   let r = pxsig(['dashboard', 'gaps', '--json'], dir);
   const g = JSON.parse(r.stdout || '{}');
   const missing = (g.rows ?? []).filter((x) => x.status === 'missing');

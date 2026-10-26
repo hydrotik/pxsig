@@ -158,6 +158,27 @@ pub fn reverse_graph(root: &Path, src_root: &str) -> HashMap<PathBuf, Vec<PathBu
     rev
 }
 
+/// A changed file as `--files` may give it (repo-relative or absolute, either separator on Windows),
+/// as the repo-relative `/` path the graph uses. An absolute path outside `root` stays absolute.
+/// Windows paths compare case-insensitively (`C:\Repo` and `c:\repo` are one folder).
+pub fn repo_relative(root: &Path, f: &str) -> String {
+    let windows = std::path::MAIN_SEPARATOR == '\\';
+    let f = if windows { f.replace('\\', "/") } else { f.to_string() };
+    if !Path::new(&f).is_absolute() {
+        return f.trim_start_matches("./").to_string();
+    }
+    let root = if root.is_absolute() { root.to_path_buf() } else { std::env::current_dir().map(|d| d.join(root)).unwrap_or_else(|_| root.to_path_buf()) };
+    let mut base = crate::io::to_slash(&normalize(&root));
+    if !base.ends_with('/') {
+        base.push('/');
+    }
+    let starts = if windows { f.to_lowercase().starts_with(&base.to_lowercase()) } else { f.starts_with(&base) };
+    match f.get(base.len()..) {
+        Some(rest) if starts => rest.to_string(),
+        _ => f,
+    }
+}
+
 /// Entries (ids) affected by `changed` (repo-relative paths).
 pub fn affected(root: &Path, m: &Manifest, changed: &[String]) -> Result<Value> {
     let all_hit: Vec<&String> =
@@ -191,7 +212,7 @@ pub fn affected(root: &Path, m: &Manifest, changed: &[String]) -> Result<Value> 
         .iter()
         .filter_map(story_file)
         .filter(|p| seen.contains(p))
-        .map(|p| p.to_string_lossy().into_owned())
+        .map(|p| crate::io::to_slash(&p))
         .collect();
     files.sort();
     files.dedup();
@@ -220,5 +241,28 @@ mod tests {
             const imported = 'not an import'; // — utf-8 from './nope
         "#;
         assert_eq!(specifiers(src), vec!["../Button", "./Card.css", "./Lazy", "./legacy"]);
+    }
+}
+
+#[cfg(test)]
+mod repo_relative_tests {
+    use super::repo_relative;
+    use std::path::Path;
+
+    #[test]
+    fn changed_files_become_repo_relative() {
+        assert_eq!(repo_relative(Path::new("/r/repo"), "src/a.tsx"), "src/a.tsx");
+        assert_eq!(repo_relative(Path::new("/r/repo"), "./src/a.tsx"), "src/a.tsx");
+        #[cfg(not(windows))]
+        {
+            assert_eq!(repo_relative(Path::new("/r/repo"), "/r/repo/src/a.tsx"), "src/a.tsx");
+            assert_eq!(repo_relative(Path::new("/r/repo/"), "/r/repo/src/a.tsx"), "src/a.tsx");
+            assert_eq!(repo_relative(Path::new("/r/repo"), "/elsewhere/a.tsx"), "/elsewhere/a.tsx");
+        }
+        #[cfg(windows)]
+        {
+            assert_eq!(repo_relative(Path::new("C:\\Repo"), "c:\\repo\\src\\a.tsx"), "src/a.tsx");
+            assert_eq!(repo_relative(Path::new("C:\\Repo"), "src\\a.tsx"), "src/a.tsx");
+        }
     }
 }

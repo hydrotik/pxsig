@@ -33,8 +33,12 @@ jobs:
       - run: node scripts/ui.mjs check
 
   rust:
-    name: Rust
-    runs-on: ubuntu-latest
+    name: Rust (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -43,13 +47,17 @@ jobs:
       - run: cargo build --release
       - uses: actions/upload-artifact@v7
         with:
-          name: pxsig-linux-x64
-          path: target/release/pxsig
+          name: pxsig-${{ matrix.os }}
+          path: target/release/pxsig${{ runner.os == 'Windows' && '.exe' || '' }}
           retention-days: 3
 
   node:
-    name: Node
-    runs-on: ubuntu-latest
+    name: Node (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14, windows-latest]
+    runs-on: ${{ matrix.os }}
     needs: rust
     steps:
       - uses: actions/checkout@v7
@@ -61,21 +69,27 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v8
         with:
-          name: pxsig-linux-x64
+          name: pxsig-${{ matrix.os }}
           path: target/release
-      - run: chmod +x target/release/pxsig
+      - if: runner.os != 'Windows'
+        run: chmod +x target/release/pxsig
       - run: pnpm --filter pxsig test
       - run: pnpm --filter @pxsig/storybook-addon test
       # tsc --noEmit: the dashboard, its test harness and the plain example adapter.
       - run: pnpm typecheck
       # The diff-viewer primitives in a browser (keyboard, ARIA, controlled state), and the
       # dashboard's review and repair flows against a mocked server.
-      - run: pnpm --filter pxsig exec playwright install --with-deps chromium
+      # System libraries are a Linux concern; macOS and Windows runners need only the browser.
+      - run: pnpm --filter pxsig exec playwright install ${{ runner.os == 'Linux' && '--with-deps' || '' }} chromium
       - run: pnpm --filter @pxsig/dashboard test
 
   examples:
-    name: Examples (end to end)
-    runs-on: ubuntu-latest
+    name: Examples (end to end) (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14, windows-latest]
+    runs-on: ${{ matrix.os }}
     needs: rust
     steps:
       - uses: actions/checkout@v7
@@ -87,8 +101,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v8
         with:
-          name: pxsig-linux-x64
+          name: pxsig-${{ matrix.os }}
           path: target/release
-      - run: chmod +x target/release/pxsig
-      - run: pnpm --filter pxsig exec playwright install --with-deps chromium
+      - if: runner.os != 'Windows'
+        run: chmod +x target/release/pxsig
+      # System libraries are a Linux concern; macOS and Windows runners need only the browser.
+      - run: pnpm --filter pxsig exec playwright install ${{ runner.os == 'Linux' && '--with-deps' || '' }} chromium
       - run: node scripts/examples-test.mjs

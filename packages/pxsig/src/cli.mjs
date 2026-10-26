@@ -63,7 +63,7 @@
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { approveCommand } from './approve.mjs';
 import { ctxOf, doctor, imageOf, tools } from './mcp.mjs';
@@ -73,6 +73,7 @@ import { acquireLock, describeLock, readLock } from './lib/lock.mjs';
 import { buildManifest, describeConfig, initProject, migrateLegacy } from './lib/setup.mjs';
 import { findWorkspace, flagLayer, openProject, pickProject, rustBinary, setFlagLayer } from './lib/workspace.mjs';
 import { ask, emit, humanAtTerminal, pickFormat, progress, stateCell } from './lib/term.mjs';
+import { relPath } from './lib/paths.mjs';
 
 // --- args --------------------------------------------------------------------------------------
 const { positional, flags } = parseArgs(process.argv.slice(2));
@@ -634,7 +635,7 @@ const commands = {
     current = oneProject();
     const since = typeof flags.since === 'string' ? flags.since : undefined;
     if (!rest.length && !since) fail('usage: affected <files…> | --since <ref>');
-    const files = rest.map((f) => relative(ctx().root, resolve(f)));
+    const files = rest.map((f) => relPath(ctx().root, resolve(f)));
     const r = await run('affected', since ? { since } : { files });
     const blocks = [
       { h: 'Affected', sub: `${r.entries} entries · ${r.reason}` },
@@ -761,7 +762,7 @@ const commands = {
     }
     const s = (k) => (typeof flags[k] === 'string' ? flags[k] : null);
     const wrote = initProject({ dir, name: s('name'), srcRoot: s('src') ?? 'src', storybookUrl: s('storybook-url'), storybookConfigDir: s('storybook-config'), workspaceRoot: wsRoot, layout: s('layout') });
-    emit(format, [{ h: 'pxsig init', sub: dir }, wrote.length ? { list: wrote.map((p) => relative(process.cwd(), p) || p) } : { note: 'already set up: nothing written' }, { next: [[`${CMD} manifest`, 'list the stories to check (Storybook must be running)'], [`${CMD} check --full`, 'render and check them']] }], { wrote });
+    emit(format, [{ h: 'pxsig init', sub: dir }, wrote.length ? { list: wrote.map((p) => relPath(process.cwd(), p) || p) } : { note: 'already set up: nothing written' }, { next: [[`${CMD} manifest`, 'list the stories to check (Storybook must be running)'], [`${CMD} check --full`, 'render and check them']] }], { wrote });
   },
 
   config() {
@@ -769,7 +770,7 @@ const commands = {
     if (format === 'json') return process.stdout.write(`${JSON.stringify(d, null, 2)}\n`);
     const get = (o, k) => k.split('.').reduce((v, x) => (v == null ? v : v[x]), o);
     const show = (v) => (v == null ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v));
-    const rel = (p) => (p ? relative(process.cwd(), p) || '.' : '—');
+    const rel = (p) => (p ? relPath(process.cwd(), p) || '.' : '—');
     const rows = Object.keys(d.sources)
       .sort()
       .map((k) => ({ k, v: k === 'modes' ? Object.keys(d.modes).join(', ') : show(get(d.config, k)), from: { text: d.sources[k], color: d.sources[k] === 'defaults' ? 'gray' : d.sources[k] === 'flags' || d.sources[k] === 'env' ? 'yellow' : undefined } }));
@@ -800,7 +801,7 @@ const commands = {
       if (sb.served) await sb.close();
     }
     spin.done(`${r.manifest.stories.length} entries · ${r.added.length} new · ${r.removed.length} removed`);
-    emit(format, [{ h: 'Manifest', sub: relative(process.cwd(), r.path) }, { kv: [['Entries', String(r.manifest.stories.length)], ['New (no baseline yet)', String(r.added.length)], ['Removed', String(r.removed.length)], ['Skipped', String(r.skipped.length)]] }], { path: r.path, added: r.added, removed: r.removed, skipped: r.skipped });
+    emit(format, [{ h: 'Manifest', sub: relPath(process.cwd(), r.path) }, { kv: [['Entries', String(r.manifest.stories.length)], ['New (no baseline yet)', String(r.added.length)], ['Removed', String(r.removed.length)], ['Skipped', String(r.skipped.length)]] }], { path: r.path, added: r.added, removed: r.removed, skipped: r.skipped });
   },
 
   serve() {
@@ -844,7 +845,7 @@ const commands = {
       lock?.release();
     }
     const blocks = [
-      { h: flags.apply ? 'Migrated' : 'Migration plan (dry run)', sub: `${relative(process.cwd(), plan.from)} → ${relative(process.cwd(), plan.to)}` },
+      { h: flags.apply ? 'Migrated' : 'Migration plan (dry run)', sub: `${relPath(process.cwd(), plan.from)} → ${relPath(process.cwd(), plan.to)}` },
       { kv: [['Baselines', `${plan.summary.baselines} (${plan.summary.withImage} with an image)`], ['Manifests', plan.summary.manifests.join(' · ')], ['Files copied', String(plan.summary.copies)], ['Approvals trail', plan.summary.approvals ? 'carried over' : 'none'], ['Problems', String(plan.summary.problems)]] },
     ];
     if (plan.problems.length) blocks.push({ h: 'Problems' }, { list: plan.problems.slice(0, 20) });
