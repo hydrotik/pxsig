@@ -59,10 +59,19 @@ test('approve plan needs a reason', () => {
   assert.match(r.stderr, /--reason/);
 });
 
-test('check --update refuses before rendering when piped', () => {
+test('check --update refuses before rendering when piped: exit 3, as every person-only command', () => {
   const r = node([join(src, 'check.mjs'), '--update', '--only', 'components-alpha--default']);
-  assert.equal(r.status, 2);
+  assert.equal(r.status, 3);
   assert.match(r.stderr, /without review/);
+});
+
+test('check --kind and --reason go with --update; a kind is one short word', () => {
+  let r = node([join(src, 'check.mjs'), '--kind', 'environment']);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /go with --update/);
+  r = node([join(src, 'check.mjs'), '--update', '--kind', 'Not A Kind']);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /--kind takes a short lower-case word/);
 });
 
 test('snapshot + record + undo round-trip, and verify catches an out-of-band write', { skip: !hasRust && 'Rust binary not built' }, () => {

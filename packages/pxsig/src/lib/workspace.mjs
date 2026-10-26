@@ -501,6 +501,10 @@ export function rustBinary(env = process.env) {
     // no platform package: fall back to a source checkout
   }
   const here = dirname(fileURLToPath(import.meta.url));
+  // Only pxsig's own clone has its build there; an installed pxsig would otherwise run a binary
+  // from the project that installed it (whatever a pull request put in its target/release).
+  // The path returned is where the platform package belongs, so the "binary is missing" error names it.
+  if (here.split(sep).includes('node_modules')) return resolve(here, '..', '..', '..', '@pxsig', `cli-${process.platform}-${process.arch}`, 'bin', exe);
   return resolve(here, '..', '..', '..', '..', 'target', 'release', exe);
 }
 

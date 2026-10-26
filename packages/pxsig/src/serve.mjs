@@ -874,7 +874,7 @@ async function api(req, res, action, q) {
   const { id } = body;
   if (typeof id !== 'string' || !/^[a-z0-9-]+--[a-z0-9-]+(__[a-z0-9-]+)?(@[a-z0-9-]+)?$/.test(id)) return json(res, 400, { error: 'bad id' });
   const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : undefined);
-  const meta = { batch: s(body.batch, 80)?.replace(/[^\w.-]/g, ''), via: auth.via, reason: s(body.reason, 500), kind: s(body.kind, 10), rule: s(body.rule, 80)?.replace(/[^\w-]/g, '') };
+  const meta = { batch: s(body.batch, 80)?.replace(/[^\w.-]/g, ''), via: auth.via, reason: s(body.reason, 500), kind: s(body.kind, 16), rule: s(body.rule, 80)?.replace(/[^\w-]/g, '') };
   if (action.startsWith('a11y-')) return json(res, 200, { ok: true, project: S.name, id, entry: a11yReview(S, action, id, meta) });
   json(res, 200, { ok: true, project: S.name, id, entry: await review(S, action, id, meta) });
 }

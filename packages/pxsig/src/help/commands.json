@@ -222,7 +222,7 @@
       "summary": "Re-render and re-check entries: some through the running server, or the full check. Never writes baselines unless --update is given by a person.",
       "usage": [
         "pxsig check [ids…] [--changed a.tsx,b.ts] [--since <ref>] [--all]",
-        "pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] [--only id,id] [--concurrency 8] [--retries 2] [--no-a11y] [--link-base <url>] [--out <name>] [--no-server] [--update]"
+        "pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] [--only id,id] [--concurrency 8] [--retries 2] [--no-a11y] [--link-base <url>] [--out <name>] [--no-server] [--update [--kind word] [--reason text]]"
       ],
       "flags": [
         {
@@ -299,6 +299,16 @@
         {
           "name": "update",
           "meaning": "Write baselines from the renders instead of checking. A person at a terminal only, after typing UPDATE <n> BASELINES."
+        },
+        {
+          "name": "kind",
+          "value": "word",
+          "meaning": "With --update: the kind written on each log line (lower case, up to 16 characters). environment re-takes baselines for a new render environment and leaves the accepted a11y list as it is."
+        },
+        {
+          "name": "reason",
+          "value": "text",
+          "meaning": "With --update: the reason written on each log line, instead of \"pxsig check --update\"."
         }
       ],
       "effects": [
