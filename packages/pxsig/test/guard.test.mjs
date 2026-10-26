@@ -210,8 +210,12 @@ test('the server refuses decisions an agent posts (no token), from another site,
   } finally {
     await S.stop();
   }
-  assert.ok(!existsSync(tokenFile(f.repo, S.url)), 'the token file goes with the server');
-  assert.ok(!existsSync(tokenFile(f.repo, S.url, 'mcp')), "and the MCP's");
+  // On Windows, kill() terminates the server without running its shutdown; the next serve
+  // replaces the token files (a forced stop on any OS does the same).
+  if (process.platform !== 'win32') {
+    assert.ok(!existsSync(tokenFile(f.repo, S.url)), 'the token file goes with the server');
+    assert.ok(!existsSync(tokenFile(f.repo, S.url, 'mcp')), "and the MCP's");
+  }
 });
 
 test("the MCP server's pxsig_review rejects through the server, logged as via: mcp; it cannot clear a person's accept", { skip: !hasRust && 'Rust binary not built' }, async () => {

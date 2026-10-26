@@ -43,6 +43,9 @@ const sh = (cmd, args, cwd, opts = {}) => {
   return r;
 };
 const pxsig = (args, cwd) => sh(process.execPath, [cli, ...args], cwd, { must: false });
+// pnpm is a .cmd shim on Windows, which Node starts only through a shell. This is the test
+// harness on a CI runner; pxsig itself never starts a shell (docs/platforms.md).
+const pnpm = (args, cwd, opts = {}) => (process.platform === 'win32' ? sh('pnpm.cmd', args, cwd, { ...opts, shell: true }) : sh('pnpm', args, cwd, opts));
 
 /** Copy an example, rewriting `link:` dependencies to this checkout's packages. */
 function stage(name) {
@@ -109,9 +112,9 @@ async function run(name, { projects, storybookDir, change }) {
   log(`${name}: staging`);
   const dir = stage(name);
   log(`${name}: pnpm install in ${dir}`);
-  sh('pnpm', ['install', '--ignore-workspace', '--no-frozen-lockfile', '--config.confirmModulesPurge=false'], dir, { stdio: 'inherit' });
-  if (existsSync(join(dir, 'pnpm-workspace.yaml'))) sh('pnpm', ['install', '--no-frozen-lockfile'], dir, { stdio: 'inherit' });
-  const build = () => sh('pnpm', ['build-storybook'], dir, { stdio: 'inherit' });
+  pnpm(['install', '--ignore-workspace', '--no-frozen-lockfile', '--config.confirmModulesPurge=false'], dir, { stdio: 'inherit' });
+  if (existsSync(join(dir, 'pnpm-workspace.yaml'))) pnpm(['install', '--no-frozen-lockfile'], dir, { stdio: 'inherit' });
+  const build = () => pnpm(['build-storybook'], dir, { stdio: 'inherit' });
   build();
   const server = await serveStatic(join(dir, storybookDir, 'storybook-static'));
   // The configured port may be in use on this machine: point every project at this server.
@@ -181,7 +184,7 @@ function runCustomUi() {
   const name = 'custom-ui';
   log(`${name}: staging`);
   const dir = stage(name);
-  sh('pnpm', ['install', '--ignore-workspace', '--no-frozen-lockfile', '--config.confirmModulesPurge=false'], dir, { stdio: 'inherit' });
+  pnpm(['install', '--ignore-workspace', '--no-frozen-lockfile', '--config.confirmModulesPurge=false'], dir, { stdio: 'inherit' });
   let r = pxsig(['dashboard', 'gaps', '--json'], dir);
   const g = JSON.parse(r.stdout || '{}');
   const missing = (g.rows ?? []).filter((x) => x.status === 'missing');

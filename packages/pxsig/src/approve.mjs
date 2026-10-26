@@ -23,7 +23,7 @@
  * screen) and is logged the same way.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join } from 'node:path';
 import {
   newBatch,
   paths,
@@ -39,6 +39,7 @@ import { acquireLock } from './lib/lock.mjs';
 import { readImage } from './lib/psig.mjs';
 import { classify } from './lib/shape.mjs';
 import { ask, emit, humanAtTerminal, progress } from './lib/term.mjs';
+import { relPath } from './lib/paths.mjs';
 
 const PLAN_MAX_AGE_H = 24;
 
@@ -57,7 +58,7 @@ export async function approveCommand({
   const manifest = JSON.parse(readFileSync(P.manifestPath(), 'utf8'));
   const byId = new Map(manifest.stories.map((e) => [e.id, e]));
   const planPath = join(P.store.reports, 'approval-plan.json');
-  const rel = (p) => relative(P.workspaceRoot, p);
+  const rel = (p) => relPath(P.workspaceRoot, p);
   const needHuman = (what) => {
     if (humanAtTerminal()) return;
     fail(

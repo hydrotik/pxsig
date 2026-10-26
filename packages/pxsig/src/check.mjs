@@ -31,7 +31,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { browserPool, renderStories, STORYBOOK_ERROR } from './lib/capture.mjs';
 import { fetchStoryIndex, loadStoryIndex, oneLine, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
 import { newBatch, record, snapshot } from './lib/approvals.mjs';
@@ -43,6 +43,7 @@ import { registerNamed } from './lib/repair.mjs';
 import { ensureStorybook } from './lib/static.mjs';
 import { ask, humanAtTerminal } from './lib/term.mjs';
 import { flagLayer, openProject, writeRunManifest } from './lib/workspace.mjs';
+import { relPath } from './lib/paths.mjs';
 
 const { flags } = parseArgs(process.argv.slice(2));
 const str = (k) => strFlag(flags, k);
@@ -70,7 +71,7 @@ const manifest = run.manifest;
 const pngDir = P.store.latest;
 const diffDir = P.store.diffLatest;
 const a11yBaselinePath = P.store.a11y;
-const rel = (p) => relative(P.workspaceRoot, p);
+const rel = (p) => relPath(P.workspaceRoot, p);
 // A suite run keeps its own report, so the main report stays intact.
 const outName = str('out') ?? (suite ? `check-${suite}` : 'check');
 if (flags.update && !humanAtTerminal())

@@ -283,5 +283,7 @@ test('stopping `pxsig serve` with SIGTERM stops the server it started, not only 
     if (up) await new Promise((r) => setTimeout(r, 100));
   }
   assert.equal(up, false, 'the server stopped with its wrapper');
-  assert.ok(!existsSync(join(f.px, 'reports', '.lock')), 'and released the store lock');
+  // On Windows, kill() terminates without the server's shutdown, so the lock stays behind with a
+  // pid that is gone; platform.test.mjs checks that the next serve takes it over.
+  if (process.platform !== 'win32') assert.ok(!existsSync(join(f.px, 'reports', '.lock')), 'and released the store lock');
 });

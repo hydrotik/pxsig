@@ -53,7 +53,7 @@ import { execFile, spawn } from 'node:child_process';
 import { appendFileSync, createReadStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
-import { dirname, extname, join, relative, resolve, sep } from 'node:path';
+import { dirname, extname, join, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
 import { newBatch, paths, record, sha256, snapshot, undo, who } from './lib/approvals.mjs';
 import { browserPool, renderStories, STORYBOOK_ERROR } from './lib/capture.mjs';
@@ -69,6 +69,7 @@ import { buildData, dashboardDir, prebuiltDashboardDir, useDashboard } from './r
 import { chooseDashboard } from './lib/dashboard-dir.mjs';
 import { authorize, loopbackHost, NEEDS_PERSON, newToken, pageLoad, removeToken, withToken, writeToken } from './lib/guard.mjs';
 import { fileURLToPath } from 'node:url';
+import { relPath } from './lib/paths.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -663,7 +664,7 @@ const watchFor = (dir, onChange, filter = () => true) => {
       onChange(file);
     });
   } catch (e) {
-    console.error(`[serve] cannot watch ${relative(ws.root, dir)}: ${e.message}`);
+    console.error(`[serve] cannot watch ${relPath(ws.root, dir)}: ${e.message}`);
   }
 };
 for (const S of states.values()) {
@@ -721,7 +722,7 @@ if (flags.watch) {
     const changed = new Set();
     let t = null;
     watchFor(src, (file) => {
-      changed.add(relative(ws.root, join(src, file)));
+      changed.add(relPath(ws.root, join(src, file)));
       clearTimeout(t);
       // Give Storybook's dev server a moment to rebuild before we render.
       t = setTimeout(async () => {
@@ -738,7 +739,7 @@ if (flags.watch) {
         }
       }, 900);
     }, (f) => !/(^|\/)(__pxsig__|node_modules)\//.test(f) && /\.(tsx?|css\.ts|mjs|jsx?)$/.test(f));
-    console.log(`[serve] ${S.name}: watching ${relative(ws.root, src)} — edits re-check affected entries`);
+    console.log(`[serve] ${S.name}: watching ${relPath(ws.root, src)} — edits re-check affected entries`);
   }
 }
 
@@ -774,7 +775,7 @@ const readBody = (req) =>
   });
 
 const projectsList = () =>
-  [...states.values()].map((S) => ({ name: S.name, root: relative(ws.root, S.P.root) || '.', storybook: S.P.storybook.url, entries: S.manifest.stories.length, integrity: S.integrity?.summary ?? null, error: S.error ?? null, locked: S.lock ? 'held' : S.lockWait }));
+  [...states.values()].map((S) => ({ name: S.name, root: relPath(ws.root, S.P.root) || '.', storybook: S.P.storybook.url, entries: S.manifest.stories.length, integrity: S.integrity?.summary ?? null, error: S.error ?? null, locked: S.lock ? 'held' : S.lockWait }));
 
 async function api(req, res, action, q) {
   if (action === 'events') {
@@ -975,7 +976,7 @@ function listen(port, tries = 10) {
     // The CLI, the MCP and the addon find the server through this file: a second server (on
     // another port, read-only beside the one holding the stores) leaves a live server's record.
     const recorded = readJson(info, null);
-    if (recorded?.pid && recorded.pid !== process.pid && alive(recorded.pid)) console.log(`[serve] ${relative(ws.root, info)} names the running server at ${recorded.url} (pid ${recorded.pid}): left as it is`);
+    if (recorded?.pid && recorded.pid !== process.pid && alive(recorded.pid)) console.log(`[serve] ${relPath(ws.root, info)} names the running server at ${recorded.url} (pid ${recorded.pid}): left as it is`);
     else {
       mkdirSync(dirname(info), { recursive: true });
       writeFileSync(info, `${JSON.stringify({ url, pid: process.pid, startedAt: new Date().toISOString(), projects: [...states.keys()] }, null, 2)}\n`);
