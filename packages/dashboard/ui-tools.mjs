@@ -142,9 +142,12 @@ export function lockFor(now, previous = null) {
 }
 export const lockText = (lock) => `${JSON.stringify(lock, null, 2)}\n`;
 
-/** docs/ui/contract-changes.md: version → its section's text. */
-export function readChanges(file = path.join(repoRoot, 'docs', 'ui', 'contract-changes.md')) {
-  if (!existsSync(file)) return {};
+/**
+ * docs/ui/contract-changes.md: version → its section's text. In the repository it is under docs/ui/;
+ * in the installed package, beside the dashboard source (sync-dashboard-source.mjs copies it there).
+ */
+export function readChanges(file = [path.join(repoRoot, 'docs', 'ui', 'contract-changes.md'), path.join(dashboardDir, '..', 'docs', 'ui', 'contract-changes.md')].find(existsSync)) {
+  if (!file || !existsSync(file)) return {};
   const text = readFileSync(file, 'utf8');
   const out = {};
   const heads = [...text.matchAll(/^## (\d+\.\d+\.\d+)\b.*$/gm)];
