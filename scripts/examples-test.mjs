@@ -49,7 +49,9 @@ const pnpm = (args, cwd, opts = {}) => (process.platform === 'win32' ? sh('pnpm.
 
 /** Copy an example, rewriting `link:` dependencies to this checkout's packages. */
 function stage(name) {
-  const dir = mkdtempSync(join(tmpdir(), `pxsig-example-${name}-`));
+  // On the checkout's drive: Storybook names a cache folder after the path from the example to a
+  // linked package, which across Windows drives contains "D:" and cannot be created.
+  const dir = mkdtempSync(join(process.env.RUNNER_TEMP || tmpdir(), `pxsig-example-${name}-`));
   cpSync(join(repo, 'examples', name), dir, { recursive: true, filter: (p) => !/node_modules|storybook-static|\.pxsig|__pxsig__/.test(p) });
   const walk = (d) => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
