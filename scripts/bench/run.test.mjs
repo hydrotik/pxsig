@@ -31,7 +31,7 @@ test('the synthetic store has hydrotik\'s size and is the same for the same seed
     for (const f of ['.pxsig/manifest.json', '.pxsig/manifest.matrix.json', '.pxsig/a11y.json', 'src/index.ts']) assert.equal(readFileSync(join(a, f), 'utf8'), readFileSync(join(b, f), 'utf8'), f);
     assert.equal(readFileSync(join(a, '.pxsig/approvals.ndjson'), 'utf8').trim().split('\n').length, 2742 + 293 + 1);
   } finally {
-    rmSync(a, { recursive: true, force: true });
-    rmSync(b, { recursive: true, force: true });
+    rmSync(a, { recursive: true, force: true, maxRetries: 5 });
+    rmSync(b, { recursive: true, force: true, maxRetries: 5 });
   }
 });

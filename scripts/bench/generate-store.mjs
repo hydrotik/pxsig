@@ -112,8 +112,10 @@ function psig(t, id, createdAt = t.header.record?.createdAt) {
   return Buffer.concat([pre, header, t.body]);
 }
 
+// No background gc or maintenance: a detached `git gc --auto` still writing .git made removing the
+// store fail with ENOTEMPTY on macOS.
 const git = (cwd, ...args) => {
-  const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 'bench', GIT_AUTHOR_EMAIL: 'bench@example.com', GIT_COMMITTER_NAME: 'bench', GIT_COMMITTER_EMAIL: 'bench@example.com', GIT_AUTHOR_DATE: '2026-10-25T00:00:00Z', GIT_COMMITTER_DATE: '2026-10-25T00:00:00Z' } });
+  const r = spawnSync('git', ['-c', 'gc.auto=0', '-c', 'maintenance.auto=false', ...args], { cwd, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 'bench', GIT_AUTHOR_EMAIL: 'bench@example.com', GIT_COMMITTER_NAME: 'bench', GIT_COMMITTER_EMAIL: 'bench@example.com', GIT_AUTHOR_DATE: '2026-10-25T00:00:00Z', GIT_COMMITTER_DATE: '2026-10-25T00:00:00Z' } });
   if (r.status !== 0) throw new Error(`git ${args.join(' ')}: ${r.stderr}`);
   return r.stdout.trim();
 };
@@ -134,7 +136,7 @@ export function generateStore(dir, { seed = 1, bin = process.env.PXSIG_BIN || ru
   };
   const scratch = mkdtempSync(join(tmpdir(), 'pxsig-bench-t-'));
   const t = template(bin, scratch);
-  rmSync(scratch, { recursive: true, force: true });
+  rmSync(scratch, { recursive: true, force: true, maxRetries: 5 });
 
   // --- source tree ------------------------------------------------------------------------------
   w('package.json', JSON.stringify({ name: 'bench-ds', private: true, type: 'module' }, null, 2));
