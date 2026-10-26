@@ -5,14 +5,302 @@ semantic versioning.
 
 ## Unreleased
 
-### Documentation
+## 0.4.0 - 2026-10-26
 
-- **Recipes for teams and CI.** [docs/codeowners.md](docs/codeowners.md) maps baseline folders to
-  `CODEOWNERS` so a baseline change needs its team's review, with an example in
-  `examples/monorepo`; [docs/required-checks.md](docs/required-checks.md) makes the check a
-  required status, with branch protection and a `merge_group` workflow that always runs and
-  selects inside the job; [docs/local-ci.md](docs/local-ci.md) runs the same steps on a machine
-  and posts commit statuses. `docs/ci.md` now gives `pxsig report`'s failure exit as 2.
+The trust release. Decisions that change a baseline need a person, and the log says how each one
+was made, never who: approvals come from the terminal or from the dashboard through a one-time
+link, assistants are recognised and refused, and `approve verify` is strict by default.
+Selection no longer misses a change: every changed path is classed, imports of every kind are
+followed, and an untraceable change checks everything and says why. pxsig now runs and is tested
+on macOS, Linux and Windows, survives interrupted writes, prunes accepted accessibility rules that
+no longer fire, ships help for every command, and publishes checksums, provenance attestations and
+SBOMs with each release. Read **Behaviour changes** before upgrading: `approve verify` fails
+baselines with no log line (`--adopt` covers them), and more pull requests check every entry until
+`affects.ignore` lists the paths that never change a render ([docs/migrating.md](docs/migrating.md)).
+
+### Behaviour changes
+
+- **More coding assistants are recognised, in a real terminal too.** pxsig read five variables
+  (Claude Code's and Codex's sandbox ones, and `PXSIG_AGENT`). It now reads the marker each
+  assistant sets in the shell it runs commands in: `AI_AGENT` (VS Code agent mode, Claude Code,
+  opencode), Copilot's, Claude Code's, Codex's, Gemini CLI's, Cursor's, Cline's, Roo Code's, Amp's
+  and opencode's (docs/agents.md#markers). Under any of them the commands that need a person
+  (`approve apply`, `approve undo`, `approve verify --adopt`, `check --full --update`, `doctor
+  --repair --apply --prune`, `doctor --repair --only log-torn --apply`, `serve --link`) exit 3,
+  and output is plain Markdown. Before, Copilot agent mode, Gemini CLI, Cursor, Cline and Roo
+  Code ran them when they had a terminal. A person whose terminal sets one of these (the Claude
+  Code IDE extensions' integrated terminal sets `CLAUDECODE`) runs those commands in another
+  terminal. Editor variables (`TERM_PROGRAM`, `VSCODE_*`, `CURSOR_TRACE_ID`) are not markers.
+- **Refusals say why.** Exit 3 is unchanged; the message now names the reason: "refused under
+  copilot (AI_AGENT=github_copilot_vscode_agent)", "refused in CI (CI is set)" or "refused: output
+  is piped".
+- **Log lines written under a marker carry `agent`** (the assistant's name, never a person's).
+  A `pxsig serve` started under a marker records it on the decisions an assistant sends (`via:
+  mcp`), never on one a person made through the dashboard link or the CLI. Additive; `approve verify` reads lines with and without it.
+- **An adapter written for an older major UI contract is refused.** `pxsig dashboard gaps` reports
+  it as a problem (exit 1) and `pxsig dashboard build` refuses (exit 2), printing the migration
+  notes; `pxsig serve` does not serve a build for another major contract and keeps the prebuilt
+  dashboard. With contract 1.0.0 this cannot happen yet: every existing adapter is a 1.0.0 adapter.
+  An adapter written for an older minor version builds as before, with a line naming what falls
+  back.
+- **An approval cut short by a crash is `interrupted`, not a mismatch.** When a baseline was
+  written but its log line was not (the process died in between), `pxsig approve verify` lists it
+  as interrupted, with `pxsig approve undo <batch>` as the next step, instead of "written outside
+  the trail". The exit code is still 1. Only a batch that started after the entry's last log line,
+  and whose snapshot holds the bytes that line logged, counts.
+- **A live lock holder is never taken over for a quiet heartbeat alone.** The store lock now
+  carries a heartbeat (every 5 s); a holder whose process is alive keeps the lock even when it has
+  gone quiet (a laptop that slept). After 10 minutes without a heartbeat, a person running a
+  writing command at a terminal may take it over by typing `TAKE OVER`; agents and CI get exit 3.
+  A lock whose process is gone is still taken over at once, as before.
+- **`approve verify` no longer fails on a torn approval-log line.** It used to stop with a JSON
+  error; it now leaves the line out and counts it (`torn`).
+- **The dashboard decides through the dashboard link, and no token is in any page.** The server
+  put a token into the dashboard page whenever a request looked like a browser loading it, so a
+  script sending two headers could read it and approve. Now `pxsig serve`, started by a person at a
+  terminal, prints a one-time link (`…/report/#ticket=…`, two minutes, single use; macOS opens it);
+  the page trades it for a cookie scripts cannot read, and approve, reject and accept carry that.
+  Reading, checks, repairs and bookmarks work as before; the first decision in a tab without the
+  link says how to get it. `pxsig serve --link` prints a new link. This supersedes the Unreleased
+  "Security" entry's "one in the dashboard page when a browser loads it": reconcile it at release.
+- **The Storybook panel decides through a small window.** Its frame is on another site, where the
+  cookie is not sent: approve, reject and accept open a small window of the pxsig server for a
+  moment, which records the decision and closes.
+- **No personal data in new log lines.** Approval, repair and accessibility-decision lines no longer
+  carry `by` (the git email, else the OS user name); the commit and the pull request say who.
+  `approvals.identity: "git-email"` keeps the old field. Old lines are unchanged and still read.
+- **`pxsig <command> --help` prints that command's page.** It printed the full command list; now
+  it shows the command's usage, flags (with defaults and the setting or variable each overrides),
+  exit codes, what it changes and examples (`pxsig check --help`, `pxsig approve apply --help`).
+  `pxsig --help` and `pxsig help` alone print the command list as before.
+- **`pxsig help <name>` prints one page** for a command, a subcommand, a topic (`approvals`,
+  `exit-codes`, `platforms`, `dashboard`, `ci`), a setting (`pxsig help gate.threshold`) or
+  `global`. Any name used to print the full list; an unknown one now exits 2 and names the
+  nearest.
+- **Selection follows every kind of import** (docs/ci.md, "What counts as an import"). The graph
+  used by `check --since/--changed`, `pxsig affected`, `pxsig_affected` and `pxsig_check` now
+  reads:
+  - any imported file type (`.json`, `.svg`, `.md?raw`, fonts, images), CSS `@import`, `@use`,
+    `@forward` and `url()`, `export … from`, `new URL('…', import.meta.url)`,
+    `import.meta.glob`, `require.context`, `url()` in strings, and template-literal imports;
+  - the TypeScript source behind a `.js` specifier, `tsconfig.json` `paths` and `baseUrl`,
+    `package.json` `imports`, and the project's own and workspace packages through `exports`, a
+    build output mapped back to its source;
+  - imports from the Storybook config and other "affects every entry" folders: a file only
+    `preview.tsx` imports (a global style sheet, the font faces) now selects every entry, where
+    it selected nothing.
+  More entries are selected than before, never fewer.
+- **Unresolved imports are checked on every run.** An import pxsig cannot follow (a `virtual:`
+  module, an unknown alias, a computed `import()`) adds the entries that reach its file to every
+  run, and every entry when that file affects every entry (a fail-safe line, class
+  `unresolved`). `pxsig affected` lists them. Watch and staleness leave them out.
+- **`check --since/--changed` no longer misses a change.** When the selection is unsure, it now
+  checks every entry and says why, where it used to select nothing silently. Each changed path
+  gets one class (docs/ci.md, "How selection decides"). This applies to `check --since/--changed`,
+  `pxsig affected`, and the MCP tools `pxsig_affected` and `pxsig_check`.
+  - A changed `.psig` selects its entry. An approval-only pull request is now checked against
+    renders from the job, where it checked nothing.
+  - A changed `a11y.json`, manifest, `approvals.ndjson` or `a11y-decisions.ndjson` selects the
+    entries whose records changed. A rewritten log, or a file that does not parse, selects every
+    entry.
+  - A path outside `srcRoot`, or a file under `srcRoot` that is not a module (an unimported
+    `.json` or `.md`), selects every entry, unless `affects.ignore` lists it. **With no ignore
+    list, most pull requests in a monorepo now check every entry.** After upgrading, run
+    `pxsig affected --since origin/main` on a few recent pull requests: every `outside` line is a
+    candidate for `affects.ignore`.
+  - With no merge base (a shallow clone), every entry is selected, with a warning, where it
+    diffed against the ref itself.
+  - The workspace file and `storybook.configDir` now select every entry, like the project config.
+- **Paths.** A rename counts both its old and its new path. Non-ASCII file names match. In a
+  workspace nested inside the repository, committed changes now match (they never did); a path
+  outside the workspace is `$repo/<path>`. A path through a symlinked folder is resolved.
+- **Output.** `affected --json` gains `files` (each path's status, class, what it selects and
+  why), `traced`, `mergeBase`, `warnings`, `baselines`, `records`, `removed`, `failSafe`,
+  `ignored` and `otherSuites`. Its `reason` names the first path that selected everything.
+  `pxsig affected` and the `check` line list those paths. `summary.md` gains one line, only then:
+  "All N entries selected: `<path>` (`<class>`)".
+- **Watch and staleness are not gates.** `serve --watch` now re-checks after any edit under
+  `srcRoot` (not only code files), using the traced selection, and prints what it could not
+  trace. Staleness also uses the traced selection, so it reports no more `stale` entries than
+  before.
+- A module under `srcRoot` that no story reaches (a test, a script, a docs-only `.mdx`) still
+  selects nothing; `.mts`, `.cts`, `.cjs` and `.mdx` files are now read as modules.
+- **`check --full --update` exits 3 when refused** (piped, in CI or under an agent), as every
+  other command that needs a person does; it exited 2. A wrong confirmation phrase exits 1
+  ("not confirmed: nothing was written"), as in `approve apply` and `approve undo`; it exited 2.
+- **An installed pxsig no longer falls back to the project's `target/release/pxsig`.** Without its
+  platform package it now says that package (`@pxsig/cli-<platform>-<arch>`) is missing. Only a
+  clone of pxsig itself uses its own `target/release/` build; `PXSIG_BIN` still overrides both.
+- **On Windows, `pxsig serve` no longer opens a browser.** It printed the dashboard link and also
+  ran `start` through `cmd.exe`; it now only prints the link (VS Code's terminal and Windows
+  Terminal make it clickable). macOS keeps reusing an open Chrome tab, else `open`; Linux keeps
+  `xdg-open`.
+- **`pxsig approve verify` is strict by default.** A baseline with no line in `approvals.ndjson`
+  now fails (exit 1), where it was listed and passed. The failure names the entries and prints the
+  exact `pxsig approve verify --adopt` command, which a person runs once for baselines from before
+  the log existed. `--no-strict` keeps the old result. `pxsig doctor` warns first
+  (`verify-unlogged`); see docs/migrating.md. An entry with no baseline yet is no longer counted
+  as one "without a log entry".
+- **`pxsig check` stops on a conflicted store.** A merge or rebase that left baselines or store
+  files conflicted makes `check` exit 2 with the files and the steps, and `doctor` reports
+  `store-conflict` (an error). docs/ci.md gains "Rebasing with baselines".
+- **`summary.md` gains one line when a `check --since` range changed baselines**: "Baselines
+  changed in this PR: N (… approved in the dashboard, … in the terminal, … via MCP)", naming any
+  assistant marker on those lines, never a person.
+
+### Added
+
+- **`pxsig a11y --prune`**: accepted axe rules that no longer fire, taken off `a11y.json`. Each
+  accepted rule is listed as `prunable` (a row checked after the entry's last accessibility
+  decision and last approval, not stale, where axe ran and the rule did not fire), `still-fires`,
+  `stale` or `not-covered`, with the command that would decide the rest. `--dry-run` writes
+  nothing, is anyone's (assistants included) and exits 0. Without it, a person at a terminal types
+  `PRUNE <n> RULES`; only the prunable rules are removed, each entry's removal is a line in
+  `a11y-decisions.ndjson` (`action: "prune"`, `via: "cli"`, the batch, the reason and the row it
+  relied on), and a decision made in between refuses the whole prune (exit 1). Through `pxsig
+  serve` when it holds the store (new route `POST /__pxsig/a11y-prune`, the CLI's token only), so
+  the dashboard updates; otherwise under the store lock. Refused (exit 3) when piped, in CI or
+  under an assistant's marker. Filters: `--component`, `--mode`, `--only`; `--reason`.
+- **`pxsig_a11y { prune_plan: true }`** (MCP): the same list, read-only. No tool removes rules.
+
+No behaviour change: a new flag, a new server route and a new log action. After a prune the
+Accessibility view's accepted counts are lower.
+- **`pxsig setup`**: the coding assistant's recipe. It prints the MCP entry, which starts the
+  server with the local install (`node node_modules/pxsig/bin/pxsig.mjs mcp`, no `npx`), the policy
+  that can turn MCP off on a managed machine, and the instruction for the assistant not to
+  approve. A person at a terminal is asked which assistant is used and may create the
+  repository's MCP file and instruction file, each on a typed yes and only when it does not exist;
+  an existing file is never edited. `--assistant <name>` and `--print` (writes nothing; always so
+  in CI, piped and under an assistant).
+- **`pxsig doctor` shows the assistant marker** this shell carries ("Running under"), and its JSON
+  has `agent`.
+- **`pxsig_status` has `approvals.level`**, and the MCP server's instructions tell the model
+  never to approve or accept and to ask the person to review in the dashboard.
+- **`pxsig help agents`**.
+- **The UI contract has a version.** `CONTRACT_VERSION` (1.0.0) in the dashboard's contract,
+  separate from pxsig's; `docs/ui/contract-changes.md` lists each version. A UI adapter records the
+  one it was written for in its `conformance.json` (`"contract": "1.0.0"`; without it, 1.0.0).
+  `pxsig dashboard gaps` shows it against this pxsig's, and the build stamps both.
+- **New tokens and icons can carry a default** (`TOKEN_DEFAULTS`, `ICON_DEFAULTS`), so adding one
+  no longer breaks every adapter: an adapter that does not map it gets the default.
+- **The contract is locked.** `src/ui/contract-lock.json` records it; `pnpm ui:check` fails when the
+  contract changes without a version bump of the right size (major for a removed component or prop,
+  a new required component, or a token or icon without a default) and a `contract-changes.md`
+  section. `node scripts/ui.mjs lock` records a change.
+- **`log-torn`** (setup problem, `warn`): approval-log lines a crash cut short. `pxsig doctor
+  --repair --only log-torn --apply` removes them after a typed `REMOVE <n> TORN LINES`, at a
+  terminal only (exit 3 otherwise), never beside the server; complete lines keep their bytes.
+- **Fencing.** Before each batch of store writes (the server's, `check --update`, `approve undo`,
+  `verify --adopt`, `doctor --repair --apply`, `migrate --apply`) the writer checks the lock is
+  still its own, and stops with "lock taken over by …: nothing more was written" if not.
+- **The lock's heartbeat age** in every message that names the holder.
+- **Every new log line names the pxsig that wrote it** (`pxsig: "<version>"`). `approve verify`
+  marks drifted baselines last logged by an older pxsig (a teammate who has not upgraded).
+- **`requires` in `pxsig.workspace.json`**: a version range; a pxsig outside it refuses to run there,
+  and `doctor` warns about installs outside it (`version-required`). pxsig 0.3.x does not read it.
+- **`approvals.level`**: `standard` (the default); `strict` is reserved and refused for now.
+- **Dashboard pages carry a Content-Security-Policy** (scripts and data from the server only) and
+  every response `X-Content-Type-Options: nosniff`.
+- **CI runs the published pxsig 0.3.2 against a store this version wrote** (`scripts/compat-old.mjs`):
+  it reads the new lines and the store, and ignores `requires`.
+- **One help source** in the package, `src/help/` (commands, every config key, topics), read by
+  `pxsig help`, `--help` and the MCP's new read-only `pxsig_help` tool. A test keeps it in step
+  with the code, `docs/cli.md`, `docs/configuration.md` and the dashboard's Help page.
+- **One folder per machine for pxsig's own files** (`docs/platforms.md`): macOS
+  `~/Library/Application Support/pxsig/`, Linux `$XDG_CONFIG_HOME/pxsig/`, Windows
+  `%LOCALAPPDATA%\pxsig\` (never the roaming profile). It holds `settings.json` for `pxsig setup`
+  (a later release) and, on Windows, the token files. `pxsig doctor` prints the settings path
+  (marked "not set up" until then) and the token folder.
+- **Tested on macOS, Linux and Windows.** CI runs the Rust tests, the package tests and the
+  examples on all three on every pull request; each release build checks that its binary starts.
+- **`doctor` warns about cross-platform store problems.** `line-endings`: a store record checked
+  out with CRLF, or `.psig` files git would convert. `path-portability`: a baseline path Windows
+  cannot hold (reserved names like `CON`, a trailing dot or space, `<>:"|?*`, over 240 characters)
+  or two paths that differ only in case. Both are warnings: `doctor`'s exit code is unchanged.
+- **Releases carry checksums, provenance and SBOMs.** From 0.4.0 each GitHub release has
+  `SHA256SUMS`, a provenance attestation for every file (the npm tarballs, the raw binaries and the
+  dashboard), and CycloneDX SBOMs for the npm package and the Rust engine. npm publishes the exact
+  tarballs that were checksummed. Verifying: `docs/releasing.md#verifying-a-release`. No change to
+  what pxsig does.
+- `affects.aliases` (specifier prefix → path) for aliases only a bundler knows, and
+  `affects.unresolved` (globs) to accept a file's unresolved imports.
+- `affected --json` gains `unresolved` and `remote`; `pxsig_affected` returns the unresolved
+  imports that add entries.
+- **A nightly scale benchmark.** `scripts/bench/run.mjs` generates a store the size of a large
+  design system (2,742 baselines, 537 stories) and times `affected --since`, `list`, `doctor`,
+  `approve plan` and the dashboard's data against fixed budgets and the last release's times
+  (docs/benchmark.md). For maintainers: nothing in pxsig's behaviour changes.
+- `affects.ignore` (default `[]`): globs for changed paths that select nothing when nothing
+  traced claims them. Anchored like `affects.extra`, plus `$repo/` for paths outside the
+  workspace; `*`, `**`, `?`, `{a,b}`. It never hides a baseline, a store file, an "affects every
+  entry" path or a module a story imports.
+- The run manifest carries `store` (the store's record files) and `affectsIgnore`; an older
+  engine ignores both.
+- **`check --full --update --kind <word> --reason <text>`** writes the kind and reason on every
+  log line. `--kind environment` re-takes baselines for a new render environment and leaves
+  `a11y.json` as it is. The server accepts kinds up to 16 characters (it cut them at 10).
+- **The programs pxsig starts are listed, and nothing else is started.** `docs/platforms.md`
+  lists each program, when and why: `node`, the engine, `git`, `ps` (macOS, Linux), `osascript`
+  and `open` (macOS), `xdg-open` (Linux), and Playwright's browser. One module starts them and
+  refuses anything else, including any shell; a test fails if code elsewhere starts a process.
+- **`pxsig serve --debug`** (or `PXSIG_DEBUG=spawn`) prints every program pxsig starts, with its
+  arguments. A start blocked by a policy (AppLocker, WDAC) names the program and points to the
+  list.
+- **A component catalog for mapping another design system onto the dashboard.**
+  `docs/ui/catalog/hydrotik.catalog.json`, exported as `pxsig/ui/catalog/hydrotik.json`, describes
+  every component family of the reference adapter's design system:
+  - what it is and when to use it;
+  - which ones the dashboard uses (`usedBy`, `pxsigParts`);
+  - the equivalent component in eleven other design systems, with a doc link and how closely it
+    matches;
+  - the names that mean different components in different systems (`collisions`).
+
+  The `systems` section marks Polaris as archived. The schema, the commit the copy came from and
+  a README with the mapping steps sit beside it. `pxsig help catalog` summarises it.
+  `scripts/sync-catalog.mjs --from <hydrotik checkout>` refreshes the copy, and a test fails when
+  the reference adapter's imports and the catalog's `pxsigParts` disagree. No behaviour change.
+- `pxsig approve verify --since <ref>`: fails when the approval log was rewritten rather than
+  appended to since the merge base, or when there is no merge base. `--suite <name>` and
+  `--all-suites` verify suite manifests; a suite whose manifest is not committed is listed, not
+  failed. `--adopt` takes `--suite` / `--all-suites` too.
+- `pxsig approve log --trace`: the commit that added each batch's lines and the pull request that
+  merged it, from git. It prints no names or emails.
+- Docs: the required-check recipe runs `approve verify --all-suites --since`, checks everything on
+  every push to main and nightly, and keeps one `pxsig-drift` issue for failures there;
+  `local-ci.md` has a cron and a launchd example; "Publishing the report", "Repository size", and
+  a roles table in `codeowners.md`. SECURITY.md lists every MCP tool and what it can change.
+
+### Changed
+
+- **A person's decision is not marked with the server's assistant.** A `pxsig serve` started under
+  an assistant marker no longer writes `agent` on decisions made through the dashboard link
+  (`via: dashboard`, and the undo an un-approve writes) or sent by the CLI (`via: cli`).
+  Decisions an assistant sends over MCP still carry it.
+- **On Windows, the server's token files live in the user's profile.** `serve-<port>.token` and
+  `serve-<port>.mcp.token` move from the workspace's `node_modules/.cache/pxsig/` to
+  `%LOCALAPPDATA%\pxsig\tokens\<workspace>\`, which only the user (and SYSTEM and administrators)
+  can read; a file mode set there protected nothing. pxsig changes no permission and runs no tool
+  for it. macOS and Linux keep the files where they were, with mode 0600.
+- **New stores keep their records LF.** `pxsig init` writes `*.json text eol=lf` and
+  `*.ndjson text eol=lf` into a new store's `.gitattributes`, beside `*.psig binary`. Existing
+  stores are not changed; `doctor` names the lines to add.
+
+### Fixed
+
+- **Records are written whole.** Every JSON record pxsig writes (reports, review, a11y baseline,
+  manifests, plans, `server.json`, settings, the lock) goes to a temporary file, is flushed, then
+  renamed over the old one, retried while Windows holds the file; a failed write (a full disk)
+  leaves the old file. Log lines are appended in one write, and a torn tail is closed off first so
+  it never swallows the next line. Baselines restored by `approve undo` are written the same way.
+- **Windows paths.** `pxsig affected --json` and the diff artifacts print `/` paths on Windows
+  (they printed `\`). Absolute `--changed` paths are made repository-relative (they selected
+  nothing), comparing a Windows path without regard to case.
+- **`pxsig serve` stops on Ctrl+Break** in a Windows console as it does on Ctrl+C, releasing the
+  store lock.
+- **The dashboard opens a report whose summary is incomplete.** A `check.json` with an empty or
+  partial `summary` (written by hand, by an older run, or cut short) stopped the page with
+  "Cannot read properties of undefined (reading 'join')". The dashboard now reads a missing count
+  as 0, missing modes as none, and a missing timing as a dash, in every section.
 
 ### Security
 
@@ -39,6 +327,24 @@ semantic versioning.
   and repairs, never decisions), every request whose `Host` is not loopback is refused (DNS
   rebinding), and the dashboard page may be framed only by the server and the projects'
   Storybooks.
+
+### Documentation
+
+- **Recipes for teams and CI.** [docs/codeowners.md](docs/codeowners.md) maps baseline folders to
+  `CODEOWNERS` so a baseline change needs its team's review, with an example in
+  `examples/monorepo`; [docs/required-checks.md](docs/required-checks.md) makes the check a
+  required status, with branch protection and a `merge_group` workflow that always runs and
+  selects inside the job; [docs/local-ci.md](docs/local-ci.md) runs the same steps on a machine
+  and posts commit statuses. `docs/ci.md` now gives `pxsig report`'s failure exit as 2.
+- **docs/agents.md**: the markers, what they change, the approval level, the instruction for the
+  assistant, and the MCP recipe for each assistant. **docs/mcp.md** registers the server with the
+  local `node` command (`npx pxsig mcp` keeps working). SECURITY.md: a marker is a hint, not
+  proof; the reviewed pull request is the guarantee.
+- **Changelog fragments.** A pull request adds a file to `changelog.d/` instead of editing
+  `CHANGELOG.md`, so open pull requests no longer collide on one file; a release merges them
+  (`node scripts/changelog.mjs release <version>`). See `changelog.d/README.md`.
+- `docs/cli.md` gains `pxsig help`, a `pxsig doctor` flag table, and `check --full`'s
+  `--no-server` and `--timeout-s`.
 
 ## 0.3.2 - 2026-10-24
 
