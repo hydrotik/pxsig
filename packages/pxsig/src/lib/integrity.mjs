@@ -325,7 +325,7 @@ export function rustAffected(ctx) {
       if (dead) return Promise.reject(dead);
       const id = ++seq;
       return new Promise((ok, fail) => {
-        pending.set(id, { resolve: (r) => ok(r.ids ?? []), reject: fail });
+        pending.set(id, { resolve: (r) => ok(r.traced ?? r.ids ?? []), reject: fail });
         proc.stdin.write(`${JSON.stringify({ id, method: 'affected', params: { manifest: ctx.manifestPath, root: ctx.repoRoot, files: [file] } })}\n`);
       });
     },

@@ -40,7 +40,7 @@ export const DEFAULTS = Object.freeze({
   defaultMode: null,
   modesByDefault: null,
   suites: {},
-  affects: { workspaceDeps: true, extra: [] },
+  affects: { workspaceDeps: true, extra: [], ignore: [] },
   nonVisual: [],
   a11y: true,
   integrity: {},
@@ -237,6 +237,7 @@ function anchorPaths(ws, layer, base) {
     if (b ? isObj(out[a]) && out[a][b] != null : out[a] != null) b ? (out[a][b] = fix(out[a][b])) : (out[a] = fix(out[a]));
   }
   if (isObj(out.affects) && Array.isArray(out.affects.extra)) out.affects.extra = out.affects.extra.map(fix);
+  if (isObj(out.affects) && Array.isArray(out.affects.ignore)) out.affects.ignore = out.affects.ignore.map((g) => (typeof g === 'string' && g.startsWith('$repo/') ? g : fix(g)));
   return out;
 }
 
@@ -418,6 +419,10 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
     ref.configPath,
   ];
   const wsRel = (abs) => toPosix(relative(ws.root, abs));
+  // affects.ignore: globs anchored like affects.extra, plus `$repo/` for paths outside the workspace.
+  const ignore = config.affects.ignore ?? [];
+  if (!Array.isArray(ignore) || ignore.some((g) => typeof g !== 'string' || !g.trim())) throw new SetupError(`project "${ref.name}": affects.ignore must be an array of globs`);
+  const affectsIgnore = ignore.map((g) => (g.startsWith('$repo/') ? g : wsRel(expand(ws, root, g)).replace(/\/$/, '') + (g.endsWith('/') ? '/' : '')));
   const layout = config.store.layout;
   if (!['package', 'colocated'].includes(layout)) throw new SetupError(`project "${ref.name}": store.layout must be "package" or "colocated"`);
   const P = {
@@ -439,6 +444,7 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
     defaultMode,
     modesByDefault: config.modesByDefault ?? [defaultMode],
     affects: affects.map(wsRel),
+    affectsIgnore,
     store: {
       root: store,
       layout,
@@ -486,8 +492,20 @@ export const entryConfig = (P) => ({
 });
 
 /** The settings Rust and the renderer need for a run, merged into the entries for one run. */
-export function runManifest(P, manifest) {
+export function runManifest(P, manifest, { suite = null } = {}) {
   const c = P.config;
+  const wsRel = (abs) => toPosix(relative(P.workspaceRoot, abs));
+  // Every manifest of the store, committed or not: their records and baselines are told apart by suite.
+  const manifests = { '': wsRel(P.manifestPath()) };
+  for (const name of Object.keys(c.suites ?? {})) manifests[name] = wsRel(P.manifestPath(name));
+  try {
+    for (const f of readdirSync(P.store.root)) {
+      const m = f.match(/^manifest\.(.+)\.json$/);
+      if (m) manifests[m[1]] = wsRel(join(P.store.root, f));
+    }
+  } catch {
+    // no store yet
+  }
   return {
     version: 2,
     baseUrl: P.storybook.url,
@@ -505,7 +523,18 @@ export function runManifest(P, manifest) {
     modes: P.modes,
     defaultMode: P.defaultMode,
     srcRoot: toPosix(relative(P.workspaceRoot, P.srcRoot)),
-    affectsAll: P.affects,
+    // Selection (docs/ci.md, "How selection decides"): the workspace file and the Storybook config
+    // also affect every entry; `affectsIgnore` and `store` are read by `pxsig affected`.
+    affectsAll: [...new Set([...P.affects, ...(P.workspaceFile ? [wsRel(P.workspaceFile)] : []), ...(P.storybook.configDir ? [wsRel(P.storybook.configDir)] : [])])],
+    affectsIgnore: P.affectsIgnore ?? [],
+    store: {
+      dir: wsRel(P.store.root),
+      a11y: wsRel(P.store.a11y),
+      approvals: wsRel(P.store.approvals),
+      a11yDecisions: wsRel(join(P.store.root, 'a11y-decisions.ndjson')),
+      manifests,
+      suite,
+    },
     a11y: c.a11y,
     stories: manifest.stories ?? [],
     skipped: manifest.skipped ?? [],
@@ -523,7 +552,7 @@ export function writeRunManifest(P, manifestPath = P.manifestPath(), { dir: runD
   } catch (e) {
     throw new SetupError(`no readable manifest at ${manifestPath} (${e.code ?? e.message}): run \`pxsig manifest\` first`);
   }
-  const run = runManifest(P, m);
+  const run = runManifest(P, m, { suite: basename(manifestPath).match(/^manifest\.(.+)\.json$/)?.[1] ?? null });
   // `dir`: elsewhere than the store (a server without the store lock writes nothing in it).
   const dir = runDir ?? join(P.store.reports, '.run');
   mkdirSync(dir, { recursive: true });

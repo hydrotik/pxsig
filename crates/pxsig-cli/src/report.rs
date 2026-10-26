@@ -56,6 +56,20 @@ pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
             out.push_str("</sub>\n\n");
         }
     }
+    // The selection's fail-safe fired (`check --since/--changed`): say which path, so a reviewer sees
+    // why every entry was checked and which `affects.ignore` entry would narrow it.
+    if let Some(sa) = v["summary"].get("selectAll").filter(|x| x.is_object()) {
+        let what = match sa["path"].as_str() {
+            Some(p) => format!("`{}` (`{}`)", esc_md(p), sa["class"].as_str().unwrap_or("")),
+            None => esc_md(sa["why"].as_str().unwrap_or("")),
+        };
+        let more = sa["more"].as_u64().unwrap_or(0);
+        out.push_str(&format!(
+            "All {} entries selected: {what}{}.\n\n",
+            sa["entries"].as_u64().unwrap_or(0),
+            if more > 0 { format!("; {more} more reasons in check.json") } else { String::new() }
+        ));
+    }
     let failing: Vec<&&Value> = rs.iter().filter(|r| status(r) == "fail").collect();
     if !failing.is_empty() {
         out.push_str("| Story | Mode | ssim | Changed cells | Detail tiles | Why |\n|---|---|---:|---:|---:|---|\n");

@@ -677,9 +677,12 @@ const commands = {
     const r = await run('affected', since ? { since } : { files });
     const blocks = [
       { h: 'Affected', sub: `${r.entries} entries · ${r.reason}` },
-      { list: r.ids.slice(0, 40).map(idCell) },
     ];
-    if (r.ids.length > 40) blocks.push({ note: `…${r.ids.length - 40} more` });
+    // The fail-safe: what the selection cannot trace selects every entry. Each `outside` path is a
+    // candidate for affects.ignore (docs/ci.md, "How selection decides").
+    if (r.failSafe?.length) blocks.push({ h: 'Every entry selected because of', sub: `${r.failSafe.length} paths` }, { list: r.failSafe.slice(0, 10).map((f) => `${f.why} (${f.class})`) }, ...(r.failSafe.length > 10 ? [{ note: `…${r.failSafe.length - 10} more in --json` }] : []), { note: 'A path that never changes a render can go in affects.ignore.' });
+    else blocks.push({ list: r.ids.slice(0, 40).map(idCell) }, ...(r.ids.length > 40 ? [{ note: `…${r.ids.length - 40} more` }] : []));
+    for (const [s, n] of Object.entries(r.otherSuites ?? {})) blocks.push({ note: `${n} changed entries are in suite ${s}: pxsig check --suite ${s}` });
     if (r.entries)
       blocks.push({
         next: [

@@ -8,6 +8,12 @@ exits 1 when something changed.
     pxsig doctor --ci                  # fail on error-severity integrity codes only
     pxsig approve verify               # every baseline went through an approval
 
+`--since` selects from what changed: the entries whose baselines or store records changed, and
+the story files the changed modules reach. When it is unsure (a path outside `srcRoot`, a file
+nothing imports, no merge base), it checks every entry and says which path made it; list paths
+that never change a render in `affects.ignore`. `pxsig affected --since origin/main` shows the
+classes before a run.
+
 `check --full` writes `<store>/reports/check.json`, `summary.md` (for a pull-request comment;
 `--link-base <url>` links each entry to a published dashboard) and `junit.xml`. `pxsig report
 --out <dir>` writes a static dashboard to publish as an artifact.

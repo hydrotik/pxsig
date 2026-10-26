@@ -296,7 +296,7 @@ const tools = [
       if (edited.length) {
         try {
           const a = affected(C, { files: edited });
-          stale = { editedFiles: edited.slice(0, 40), moreFiles: Math.max(0, edited.length - 40), affectedEntries: a.ids.length, hint: 'pxsig_check { changed_files } re-checks just these' };
+          stale = { editedFiles: edited.slice(0, 40), moreFiles: Math.max(0, edited.length - 40), affectedEntries: (a.traced ?? a.ids).length, hint: 'pxsig_check { changed_files } re-checks just these' };
         } catch (e) {
           stale = { editedFiles: edited.slice(0, 40), error: e.message };
         }
@@ -418,7 +418,7 @@ const tools = [
   },
   {
     name: 'pxsig_affected',
-    description: 'Which entries a set of edited files can change (Rust import graph), given file paths relative to the repo root, or a git ref to diff against.',
+    description: 'Which entries a set of edited files can change, given file paths relative to the workspace root, or a git ref to diff against. A path the import graph and the store records cannot trace selects every entry, and failSafe says which.',
     inputSchema: {
       type: 'object',
       properties: { project: PROJECT, files: { type: 'array', items: { type: 'string' } }, since: { type: 'string', description: 'git ref, e.g. "main" or a commit' } },
@@ -427,7 +427,7 @@ const tools = [
     async run({ project, files, since }) {
       if (!files?.length && !since) throw new Error('give files or since');
       const a = affected(ctxOf(project), { files, since });
-      return { changedFiles: a.changed, reason: a.reason, entries: a.ids.length, ids: a.ids.slice(0, 200) };
+      return { changedFiles: a.changed, reason: a.reason, entries: a.ids.length, ids: a.ids.slice(0, 200), all: a.all, failSafe: (a.failSafe ?? []).slice(0, 20), ignored: (a.ignored ?? []).slice(0, 50), baselines: a.baselines ?? [], records: a.records ?? {}, otherSuites: a.otherSuites ?? {}, warnings: a.warnings ?? [] };
     },
   },
   {
@@ -459,7 +459,8 @@ const tools = [
       for (const { file, mtime } of edited) {
         let ids;
         try {
-          ids = affected(C, { files: [file] }).ids;
+          const a = affected(C, { files: [file] });
+          ids = a.traced ?? a.ids;
         } catch {
           continue;
         }

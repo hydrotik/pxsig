@@ -179,7 +179,10 @@ axe violations per entry, grouped by rule. `--new` shows only those not in the a
 
 Which entries a set of edited files can change. Files are relative to the current folder.
 `--since <ref>` uses the files changed since the merge base with that ref, plus staged, unstaged
-and untracked work.
+and untracked work. Each path gets a class ([ci.md](ci.md#how-selection-decides)); a path the
+selection cannot trace selects every entry, and the output lists each one (a candidate for
+`affects.ignore`). `--json` adds `files` (path, status, class, what it selects, why), `failSafe`,
+`ignored`, `baselines`, `records`, `otherSuites` and `warnings`.
 
 ## Checking
 
@@ -232,6 +235,8 @@ pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] 
 | `--kind <word>` | none | With `--update`: the kind on each log line (lower case, up to 16 characters). `environment` re-takes baselines for a new render environment and leaves `a11y.json` as it is. |
 | `--reason <text>` | `pxsig check --update` | With `--update`: the reason on each log line. |
 
+With `--since` / `--changed`, a path the selection cannot trace selects every entry; the `check`
+line names each such path ([ci.md](ci.md#how-selection-decides)), and `summary.md` names the first.
 Entries left out by `--since` / `--changed` keep their previous row. One with no previous row but
 a baseline is recorded as unaffected (`skipped-unaffected` in the integrity ledger: ok, not yet
 verified) instead of looking never-checked.
@@ -341,7 +346,7 @@ error.
 | `check --manifest m --png-dir d [--root r] [--only ids\|@file] [--out-dir d] [--json\|--format human\|json\|junit\|markdown] [--artifacts all\|failed\|none] [--no-artifacts] [--cache dir] [--history file] [--base-png-dir d] [--tolerance 16] [gate flags]` | Batch check of every manifest entry's `<png-dir>/<id>.png`, in parallel. |
 | `baseline --manifest m --png-dir d [--root r] [--only …] [--no-detail] [--json]` | Write a baseline for every entry. |
 | `diff <a.png> <b.png> [--tolerance 16] [--mask out.png] [--json]` | Full-resolution pixel diff: changed pixels and change regions. |
-| `affected --manifest m [--root r] [--since main] [--files a,b] [--json]` | Entries a change can affect, from the import graph under `srcRoot`. A change under an "affects every entry" path selects all. |
+| `affected --manifest m [--root r] [--since main] [--files a,b] [--json]` | Entries a change can affect: each changed path is classified ([ci.md](ci.md#how-selection-decides)); baselines and store records select their entries, the import graph under `srcRoot` selects story files, and a path nothing traces selects all. JSON: `all`, `reason`, `changed`, `ids`, `traced` (without the fail-safe), `storyFiles`, `graphFiles`, `mergeBase`, `warnings`, `files`, `baselines`, `records`, `removed`, `failSafe`, `ignored`, `otherSuites`. |
 | `report --input check.json [--format markdown\|junit] [--link-base url] [--out file]` | Markdown summary or JUnit from a check result. |
 | `trim <dir> [--only …] [--pad 16] [--tolerance 8] [--json]` | Crop renders to content (right and bottom), in place. |
 | `pack <record> --out x.psig [--image png] [--entry json]`, `pack --plan plan.json [--json]` | Pack spec v1 records and images into `.psig` files, reading each back to prove it. |

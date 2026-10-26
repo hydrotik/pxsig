@@ -343,7 +343,7 @@
       ]
     },
     "affected": {
-      "summary": "Which entries a set of edited files can change, from the import graph.",
+      "summary": "Which entries a set of edited files can change: baselines, store records and the import graph; a path nothing traces selects all, and is listed.",
       "usage": [
         "pxsig affected <files…> | --since <ref>"
       ],
@@ -365,6 +365,10 @@
         {
           "cmd": "pxsig affected src/components/Button/Button.tsx",
           "shows": "The entries one edit can change"
+        },
+        {
+          "cmd": "pxsig affected --since origin/main",
+          "shows": "What a pull request selects, and each path that selects every entry (a candidate for affects.ignore)"
         }
       ],
       "seeAlso": [

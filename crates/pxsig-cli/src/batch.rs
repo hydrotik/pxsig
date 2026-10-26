@@ -46,7 +46,33 @@ pub struct Manifest {
     /// Path prefixes (repo-relative) whose change affects every story.
     #[serde(default)]
     pub affects_all: Vec<String>,
+    /// `affects.ignore`: globs (workspace-relative, or `$repo/…`) whose change selects nothing
+    /// when nothing traced claims the path.
+    #[serde(default)]
+    pub affects_ignore: Vec<String>,
+    /// Where the store's record files are, so `affected` can select by them (absent: older callers).
+    #[serde(default)]
+    pub store: Option<StoreInfo>,
     pub stories: Vec<Entry>,
+}
+
+/// The run manifest's `store` key: workspace-relative paths of the store and its record files.
+#[derive(Deserialize, Default, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct StoreInfo {
+    pub dir: String,
+    #[serde(default)]
+    pub a11y: Option<String>,
+    #[serde(default)]
+    pub approvals: Option<String>,
+    #[serde(default)]
+    pub a11y_decisions: Option<String>,
+    /// Suite name (`""` for the main manifest) → manifest path.
+    #[serde(default)]
+    pub manifests: std::collections::BTreeMap<String, String>,
+    /// The suite this run manifest is for (absent: the main manifest).
+    #[serde(default)]
+    pub suite: Option<String>,
 }
 
 #[derive(Deserialize, Clone)]
