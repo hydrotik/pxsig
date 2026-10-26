@@ -3,7 +3,7 @@
  * `.psig` files git would convert, and baseline paths Windows cannot hold. Setup-level, `warn`: they
  * never change an exit code (doctor exits 2 only on setup errors).
  */
-import { spawnSync } from 'node:child_process';
+import { spawnSync } from './spawn.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { relative } from 'node:path';
 import { toPosix } from './paths.mjs';

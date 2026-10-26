@@ -13,7 +13,7 @@
  *
  * Nothing here approves anything or changes a signature: migration packs the same signature bytes.
  */
-import { spawnSync } from 'node:child_process';
+import { spawnSync } from './spawn.mjs';
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { sha256 } from './approvals.mjs';

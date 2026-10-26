@@ -21,7 +21,7 @@
  *
  * No LLM, no heuristics that guess: each step has a precondition it checks right before acting.
  */
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from './spawn.mjs';
 import { constants, copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync, appendFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
