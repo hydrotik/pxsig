@@ -226,6 +226,7 @@ names must exist in `modes`. `addModes` is accepted as another name for `modes`.
 | `PXSIG_NO_DELEGATE` | CLI | Do not hand over to the workspace root's install (see [monorepo.md](monorepo.md#installs)). |
 | `PXSIG_THREADS` | binary | Worker threads for batch commands. Default: logical CPUs. |
 | `PXSIG_THRESHOLD`, `PXSIG_MIN_SSIM`, `PXSIG_MAX_CHANGED_PCT`, `PXSIG_MAX_EDGE_PCT`, `PXSIG_MIN_CELLS` | binary | Gate values above the project's `gate` and below the gate flags and every story's own gate (see [spec.md](spec.md#gate-resolution)). |
+| `PXSIG_DEBUG` | CLI, MCP, server | `spawn`: print every program pxsig starts, with its arguments, on stderr ([platforms.md](platforms.md#programs-pxsig-starts)). `pxsig serve --debug` sets it. |
 | `NO_COLOR`, `FORCE_COLOR` | CLI | Colour in terminal output. |
 
 ## Story parameters

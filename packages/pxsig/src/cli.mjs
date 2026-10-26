@@ -61,7 +61,7 @@
  * Over several projects, the worst exit wins.
  * Per-entry approve / reject stays in the dashboard and Storybook panel, where a person sees the images.
  */
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from './lib/spawn.mjs';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

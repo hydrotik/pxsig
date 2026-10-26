@@ -1,7 +1,7 @@
 # Server and dashboard
 
 ```bash
-pxsig serve [--port 6070] [--watch] [--no-open] [--tab stories] [--project a,b] [--workspace dir]
+pxsig serve [--port 6070] [--watch] [--no-open] [--tab stories] [--project a,b] [--workspace dir] [--debug]
 ```
 
 One server per workspace. It serves the dashboard and an HTTP API for every project, keeps one
@@ -12,10 +12,11 @@ Approving a baseline or re-checking a story then costs one render.
 | --- | --- |
 | `--port <n>` | First port to try (default: `server.port` in the workspace file, else 6070). If it is taken, the next ten are tried. |
 | `--watch` | When a file under a project's `srcRoot` changes, re-check only the entries it affects. |
-| `--no-open` | Do not open a browser tab. |
+| `--no-open` | Do not open a browser tab. On Windows none is opened anyway: the link is printed. |
 | `--tab <name>` | Open the dashboard on this section. |
 | `--project <a,b>` | Serve only these projects. |
 | `--workspace <dir>` | The workspace root, instead of walking up from the current folder. |
+| `--debug` | Print every program the server starts, with its arguments, on stderr (see [platforms.md](platforms.md#programs-pxsig-starts)). |
 
 The server binds to `127.0.0.1` only. On start it writes
 `<workspace>/node_modules/.cache/pxsig/server.json` (`url`, `pid`, `startedAt`, `projects`), so the

@@ -22,7 +22,7 @@
  * status per entry and per component. Reading is side-effect free; `writeLedger` is the only
  * write. Nothing here renders, checks, approves or touches a signature.
  */
-import { spawn } from 'node:child_process';
+import { spawn } from './spawn.mjs';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';

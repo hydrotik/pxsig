@@ -29,7 +29,7 @@
  * Storybook: when `storybook.url` does not answer and `storybook.staticDir` holds a build, the
  * check serves that build itself on a free port (lib/static.mjs).
  */
-import { spawnSync } from 'node:child_process';
+import { spawnSync } from './lib/spawn.mjs';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { browserPool, renderStories, STORYBOOK_ERROR } from './lib/capture.mjs';

@@ -13,7 +13,7 @@
  * pid was reused by a process that started after the lock was written. A lock written on another
  * host is never judged stale here: remove it by hand once that machine is done.
  */
-import { spawnSync } from 'node:child_process';
+import { spawnSync } from './spawn.mjs';
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writeFileSync, writeSync } from 'node:fs';
 import { hostname } from 'node:os';
 import { join, relative } from 'node:path';

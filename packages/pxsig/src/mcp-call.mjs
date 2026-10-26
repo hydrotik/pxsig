@@ -11,7 +11,7 @@
  * Prints text content; with --images-to <dir>, writes image content there as PNGs. Exit 1 when the
  * tool reports an error. For scripts, CI and agents without MCP support, and for testing the server.
  */
-import { spawn } from 'node:child_process';
+import { spawn } from './lib/spawn.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';

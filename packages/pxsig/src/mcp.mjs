@@ -25,7 +25,7 @@
  * refuses unless `confirm: true`, and its description tells the model to pass
  * that only when the user asked for these exact entries.
  */
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from './lib/spawn.mjs';
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';

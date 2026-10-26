@@ -3,7 +3,7 @@
  * serve.mjs — the pxsig server (`pxsig serve`): dashboard, live data, review, on-demand checks,
  * for every project in the workspace.
  *
- *   pxsig serve [--port 6070] [--no-open] [--tab stories] [--watch] [--project a,b]
+ *   pxsig serve [--port 6070] [--no-open] [--tab stories] [--watch] [--project a,b] [--debug]
  *
  * - One server per workspace. It writes `node_modules/.cache/pxsig/server.json` (url, pid,
  *   projects) so the CLI, the MCP server and the Storybook addon find it without a fixed port.
@@ -12,6 +12,9 @@
  * - Keeps one Rust engine (`pxsig serve`, stdio JSON-RPC) and a warm browser pool for every
  *   project, so approving a baseline or re-checking a story costs one render.
  * - `--watch`: edits under a project's srcRoot re-check only the affected entries.
+ * - `--debug`: every program the server starts is printed on stderr (lib/spawn.mjs).
+ * - Opening the dashboard: macOS reuses or opens a tab, Linux runs xdg-open, Windows starts
+ *   nothing (the link is printed; the terminal makes it clickable).
  *
  * API. GET takes `?project=`, POST a `project` field; either may be left out when the workspace
  * has one project, or when the id / story names its project unambiguously (the Storybook addon
@@ -49,7 +52,7 @@
  *
  * Binds to 127.0.0.1 only.
  */
-import { execFile, spawn } from 'node:child_process';
+import { execFile, spawn } from './lib/spawn.mjs';
 import { appendFileSync, createReadStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
@@ -74,6 +77,8 @@ import { relPath } from './lib/paths.mjs';
 const here = dirname(fileURLToPath(import.meta.url));
 
 const { flags } = parseArgs(process.argv.slice(2));
+// Children inherit it, so the engine and checks the server starts are printed too.
+if (flags.debug) process.env.PXSIG_DEBUG = [process.env.PXSIG_DEBUG, 'spawn'].filter(Boolean).join(',');
 const str = (k) => strFlag(flags, k);
 let ws;
 try {
@@ -931,10 +936,9 @@ const server = createServer(async (req, res) => {
 
 // --- open (or reuse) a browser tab ---------------------------------------------------------------
 function openBrowser(target) {
-  if (process.platform !== 'darwin') {
-    const cmd = process.platform === 'win32' ? 'start' : 'xdg-open';
-    return execFile(cmd, [target], { shell: process.platform === 'win32' }, () => {});
-  }
+  // Windows: no program is started to open a link (it would take a shell); the link is printed.
+  if (process.platform === 'win32') return console.log('[serve] open the link above in a browser');
+  if (process.platform !== 'darwin') return execFile('xdg-open', [target], () => {});
   const origin = new URL(target).origin;
   const script = `
     if application "Google Chrome" is running then
