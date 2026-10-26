@@ -137,7 +137,8 @@ clears the mark. `summary.changed` counts only real changes waiting for a decisi
   makes three at random each time it starts. The dashboard's goes into the dashboard page
   (`<meta name="pxsig-token">`) only when a browser loads that page (`Sec-Fetch-Dest: document`, or
   `iframe` for the Storybook panel). The CLI's goes into `node_modules/.cache/pxsig/serve-<port>.token`
-  (mode 0600, removed on exit), which `pxsig approve apply` reads after its person-at-a-terminal
+  (mode 0600, removed on exit; on Windows into the user's own
+  `%LOCALAPPDATA%\pxsig\tokens\<workspace>\`, see [platforms.md](platforms.md#what-pxsig-keeps-on-this-machine)), which `pxsig approve apply` reads after its person-at-a-terminal
   check. The MCP's goes into `serve-<port>.mcp.token` (also 0600) and is accepted only on `reject`,
   `unreview`, `a11y-reject` and `a11y-unreview`, and its unreview of an approval or an accept is
   refused (403): an agent may ask for attention, never accept or undo a person's acceptance. A

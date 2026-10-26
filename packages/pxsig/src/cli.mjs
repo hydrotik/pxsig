@@ -282,6 +282,7 @@ async function doctorOne({ repair, only, failOn }) {
           ['Report', r.sources.report.missing ? { text: 'missing', color: 'red' } : `${r.sources.report.rows} rows · full check ${r.sources.report.generatedAt}`],
           ['Freshness', `${r.sources.staleness.method} · ${r.sources.staleness.filesTraced} edited files traced`],
           ['Ledger', r.ledgerPath],
+          ...(r.machine ? [['Settings', r.machine.setUp ? r.machine.settings : { text: `${r.machine.settings} (not set up)`, color: 'gray' }], ['Token files', r.machine.tokens]] : []),
         ],
       },
     ];

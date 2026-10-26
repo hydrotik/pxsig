@@ -31,7 +31,8 @@ import { dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { CODES, filterLedger, ledgerPath, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
-import { AGENT_DECISIONS, NEEDS_PERSON, readToken, TOKEN_HEADER } from './lib/guard.mjs';
+import { AGENT_DECISIONS, NEEDS_PERSON, readToken, TOKEN_HEADER, tokenFile } from './lib/guard.mjs';
+import { readSettings } from './lib/machine.mjs';
 import { readImage } from './lib/psig.mjs';
 import { applyRepairs, defaultHooks, planRepairs, serverStatus } from './lib/repair.mjs';
 import { acquireLock, describeLock, readLock } from './lib/lock.mjs';
@@ -645,7 +646,8 @@ async function doctor({ project, component, status, limit = 40, repair = 'none',
   const serverUrl = C.serverUrl;
   let ledger = await reconcile(ctx, { offline });
   writeLedger(ctx, ledger);
-  const out = { project: C.P.name, ledgerPath: relPath(C.root, ledgerPath(ctx)) };
+  const settings = readSettings();
+  const out = { project: C.P.name, ledgerPath: relPath(C.root, ledgerPath(ctx)), machine: { settings: settings.path, setUp: settings.exists, tokens: dirname(tokenFile(C.P.workspaceRoot, serverUrl ?? 'http://127.0.0.1:6070')) } };
   if (repair !== 'none') {
     const server = await serverStatus(serverUrl);
     const plan = planRepairs(ledger, { only, prune: prune && !!confirmPrune, server, stale });

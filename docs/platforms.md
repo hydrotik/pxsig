@@ -28,6 +28,27 @@ clickable.
 - **When a policy blocks one** (AppLocker, WDAC, a sandbox), the error names the program and points
   here.
 
+## What pxsig keeps on this machine
+
+Outside every repository, in one folder that belongs to the user, never the roaming profile:
+
+| OS | Folder |
+| --- | --- |
+| macOS | `~/Library/Application Support/pxsig/` |
+| Linux | `$XDG_CONFIG_HOME/pxsig/` (default `~/.config/pxsig/`) |
+| Windows | `%LOCALAPPDATA%\pxsig\` |
+
+- `settings.json`: answers that describe this machine, written by `pxsig setup` in a later
+  release. Written whole (a temporary file, then a rename). When it is missing, setup has not
+  run and nothing else changes.
+- On Windows, `tokens\<workspace>\serve-<port>.token` and `.mcp.token`: the server's file tokens
+  ([server.md](server.md#guards)). On macOS and Linux they stay in the workspace's
+  `node_modules/.cache/pxsig/` with mode 0600. On Windows a file mode protects nothing, and the
+  user's profile folder is readable only by the user, SYSTEM and administrators, so pxsig changes
+  no permission and runs no tool.
+
+`pxsig doctor` prints both paths.
+
 ## Paths and line endings
 
 - Every path pxsig prints or writes into a record uses `/`, on Windows too.
