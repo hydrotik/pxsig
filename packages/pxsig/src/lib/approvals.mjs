@@ -1,8 +1,9 @@
 /**
  * approvals.mjs — every baseline write is backed up, logged and reversible.
  *
- *   <store>/approvals.ndjson          one line per approved entry: who, when, how, why, batch,
- *                                     the git HEAD, and the sha256 of the baseline before / after
+ *   <store>/approvals.ndjson          one line per approved entry: when, how, why, batch, the git
+ *                                     HEAD, the sha256 of the baseline before / after, and the
+ *                                     assistant marker when there is one
  *   <store>/history/<batch>/<id>.psig the previous baseline (signature + image), for `undo`
  *
  * The server calls `snapshot()` + `record()` around every approve, whichever client asked
@@ -24,6 +25,7 @@ import { spawnSync } from './spawn.mjs';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { appendLine, fault, readLines, writeAtomic } from './files.mjs';
+import { agentName } from './agents.mjs';
 import { PXSIG_VERSION } from './workspace.mjs';
 
 export const sha256 = (path) =>
@@ -45,10 +47,16 @@ const git = (root, ...args) => spawnSync('git', ['-C', root, ...args], { encodin
  * git email on every line sets `approvals.identity: "git-email"`.
  */
 export const who = (root, config = null) => (config?.approvals?.identity === 'git-email' ? git(root, 'config', 'user.email') || process.env.USER || 'unknown' : null);
-/** A log line with `by` only when there is one, and the pxsig version that wrote it (decision 92). */
-export const stamp = (line) => {
+/**
+ * A log line with `by` only when there is one, the pxsig version that wrote it (decision 92), and
+ * `agent` when this process carries an assistant's marker (lib/agents.mjs; decision 80): the
+ * assistant's name, never a person's. A server started under an assistant marks the decisions it
+ * serves, the dashboard's included.
+ */
+export const stamp = (line, env = process.env) => {
   const { by, ...rest } = line;
-  return { ...rest, ...(by ? { by } : {}), pxsig: PXSIG_VERSION };
+  const agent = agentName(env);
+  return { ...rest, ...(by ? { by } : {}), ...(agent ? { agent } : {}), pxsig: PXSIG_VERSION };
 };
 export const newBatch = (via) => `${new Date().toISOString().replace(/[:.]/g, '-')}-${via}`;
 

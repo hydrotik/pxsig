@@ -10,6 +10,9 @@
  *                               set a package up: pxsig.config.json, its store, the workspace entry
  *                               (colocated: also `*.psig binary diff=psig` in the root .gitattributes)
  *   config                      the resolved config of a project, and which layer set each key
+ *   setup [assistant] [--assistant name] [--print]
+ *                               the coding assistant's recipe: its MCP entry (the local install, no npx) and
+ *                               the instruction not to approve; creates those files only on a yes, only when absent
  *   manifest [--suite x]        rebuild the project's entries from the running Storybook
  *   serve [--watch] [--port n]  the server and dashboard, for every project
  *   mcp                         the MCP server (stdio)
@@ -74,8 +77,9 @@ import { describeLock, readLock, takeLock } from './lib/lock.mjs';
 import { buildManifest, describeConfig, initProject, migrateLegacy } from './lib/setup.mjs';
 import { findWorkspace, flagLayer, openProject, pickProject, rustBinary, serverUrlFor, setFlagLayer } from './lib/workspace.mjs';
 import { readToken, TOKEN_HEADER } from './lib/guard.mjs';
-import { ask, emit, humanAtTerminal, pickFormat, progress, stateCell } from './lib/term.mjs';
+import { ask, emit, humanAtTerminal, pickFormat, progress, stateCell, whyNotPerson } from './lib/term.mjs';
 import { relPath } from './lib/paths.mjs';
+import { describeAgent } from './lib/agents.mjs';
 
 // --- args --------------------------------------------------------------------------------------
 const { positional, flags } = parseArgs(process.argv.slice(2));
@@ -293,6 +297,7 @@ async function doctorOne({ repair, only, failOn }) {
           ['Freshness', `${r.sources.staleness.method} · ${r.sources.staleness.filesTraced} edited files traced`],
           ['Ledger', r.ledgerPath],
           ...(r.machine ? [['Settings', r.machine.setUp ? r.machine.settings : { text: `${r.machine.settings} (not set up)`, color: 'gray' }], ['Token files', r.machine.tokens]] : []),
+          ['Running under', r.agent ? describeAgent(r.agent) : { text: 'no agent marker', color: 'gray' }],
         ],
       },
     ];
@@ -369,7 +374,7 @@ async function doctorOne({ repair, only, failOn }) {
  * terminal. The server answers only the CLI's token; the link is printed, never logged.
  */
 async function serveLink() {
-  if (!humanAtTerminal()) fail('the dashboard link is for a person: run `pxsig serve --link` yourself in a terminal (refused when piped, in CI or under an agent)', 3);
+  if (!humanAtTerminal()) fail(`the dashboard link is for a person: run \`pxsig serve --link\` yourself in a terminal (${whyNotPerson()})`, 3);
   const ws = findWorkspace({});
   const url = serverUrlFor(ws.root);
   const token = readToken(ws.root, url);
@@ -745,11 +750,11 @@ const commands = {
     const repair = flags.repair ? (flags.apply ? 'apply' : 'plan') : 'none';
     if (flags.prune && repair !== 'apply') fail('--prune only acts with --repair --apply');
     if (flags.prune && !humanAtTerminal())
-      fail('--prune moves files: run it yourself in a terminal (refused when piped, in CI or under an agent)', 3);
+      fail(`--prune moves files: run it yourself in a terminal (${whyNotPerson()})`, 3);
     const only = list(flags.only);
     const ACTIONS = ['register', 'recheck', 'restore-baseline-image', 'convert-legacy', 'log-torn'];
     if (only.includes('log-torn') && repair === 'apply' && !humanAtTerminal())
-      fail('--only log-torn rewrites the approval log: run it yourself in a terminal (refused when piped, in CI or under an agent)', 3);
+      fail(`--only log-torn rewrites the approval log: run it yourself in a terminal (${whyNotPerson()})`, 3);
     const bad = only.filter((a) => !ACTIONS.includes(a));
     if (bad.length) fail(`unknown repair action(s): ${bad.join(', ')} (${ACTIONS.join(', ')})`);
     const failOn = flags['fail-on'] ?? (flags.ci ? 'error' : 'warn');
@@ -891,6 +896,25 @@ const commands = {
     const { pack, manifests, ...json } = plan;
     emit(format, blocks, { ...json, manifests: manifests.map(({ manifest, ...m }) => m) });
     if (plan.problems.length || plan.verify?.some((v) => v.differ)) process.exit(1);
+  },
+
+  async setup() {
+    const { setupCommand } = await import('./setup.mjs');
+    let r;
+    try {
+      r = await setupCommand({
+        step: rest[0] ?? null,
+        flags: { assistant: flags.assistant, print: flags.print || format === 'json' },
+        person: humanAtTerminal(),
+        ask,
+        show: (blocks) => emit(format, blocks, null),
+        CMD,
+      });
+    } catch (e) {
+      fail(e.message, e.exit ?? 2);
+    }
+    emit(format, r.blocks, r.data);
+    process.exit(r.exit);
   },
 
   async dashboard() {

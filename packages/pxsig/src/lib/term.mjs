@@ -6,31 +6,41 @@
  *
  *   pretty  a terminal: colour, symbols, aligned tables, clickable ids (OSC 8), a spinner on stderr,
  *           inline images in iTerm2 / WezTerm.
- *   plain   anything else — Claude Code, Codex and CI run commands with stdout piped: Markdown.
+ *   plain   anything else (CI, a pipe, an assistant even in a real terminal): Markdown.
  *           No ANSI, no carriage-return redraws, nothing that reads as noise in a transcript;
  *           tables are GFM, image paths are absolute so the agent can open them, and a "Next"
  *           section names the exact commands to run.
  *   json    the command's data as one JSON document on stdout (logs stay on stderr).
  *
  * Choice: --json / --plain / --pretty, else PXSIG_FORMAT, else pretty only on a TTY that is not
- * CI or a known agent. Colour follows NO_COLOR / FORCE_COLOR.
+ * CI or an assistant (lib/agents.mjs). Colour follows NO_COLOR / FORCE_COLOR.
  */
 import { pathToFileURL } from 'node:url';
+import { describeAgent, detectAgent } from './agents.mjs';
 
 const env = process.env;
-const AGENT = Boolean(
-  env.CLAUDECODE ||
-  env.CLAUDE_CODE_ENTRYPOINT ||
-  env.CODEX_SANDBOX ||
-  env.CODEX_SANDBOX_NETWORK_DISABLED ||
-  env.PXSIG_AGENT
-);
 
 /**
- * A person at a real terminal: stdin and stdout are TTYs and nothing says CI or an agent. Baseline
- * writes in bulk require this, so a model (whose commands run piped) cannot perform them.
+ * A person at a real terminal: stdin and stdout are TTYs and nothing says CI or an assistant
+ * (lib/agents.mjs). Baseline writes in bulk require this. A TTY alone says nothing about who types:
+ * several assistants run commands in a real terminal, so the markers are checked too.
  */
-export const humanAtTerminal = () => Boolean(process.stdin.isTTY && process.stdout.isTTY && !env.CI && !AGENT);
+export const humanAtTerminal = ({ e = env, stdin = process.stdin.isTTY, stdout = process.stdout.isTTY } = {}) =>
+  Boolean(stdin && stdout && !e.CI && !detectAgent(e));
+
+/**
+ * Why `humanAtTerminal()` is false, for a refusal: "refused under copilot (AI_AGENT=…)", "refused
+ * in CI (CI is set)", "refused: output is piped" or "refused: input is not a terminal". Null when it
+ * is true.
+ */
+export function whyNotPerson({ e = env, stdin = process.stdin.isTTY, stdout = process.stdout.isTTY } = {}) {
+  const a = detectAgent(e);
+  if (a) return `refused under ${describeAgent(a)}`;
+  if (e.CI) return 'refused in CI (CI is set)';
+  if (!stdout) return 'refused: output is piped';
+  if (!stdin) return 'refused: input is not a terminal';
+  return null;
+}
 
 /** Ask a question on the terminal; resolves with the typed line. */
 export async function ask(question) {
@@ -43,13 +53,13 @@ export async function ask(question) {
   }
 }
 
-export function pickFormat(flags = {}) {
+export function pickFormat(flags = {}, { e = env, tty = process.stdout.isTTY } = {}) {
   if (flags.json) return 'json';
   if (flags.plain || flags.markdown) return 'plain';
   if (flags.pretty) return 'pretty';
-  const f = env.PXSIG_FORMAT;
+  const f = e.PXSIG_FORMAT;
   if (f === 'json' || f === 'plain' || f === 'pretty') return f;
-  return process.stdout.isTTY && !env.CI && !AGENT ? 'pretty' : 'plain';
+  return tty && !e.CI && !detectAgent(e) ? 'pretty' : 'plain';
 }
 
 const colorOn = (format) => format === 'pretty' && !('NO_COLOR' in env) && env.FORCE_COLOR !== '0';
