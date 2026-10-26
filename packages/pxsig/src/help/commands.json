@@ -805,6 +805,40 @@
         "projects"
       ]
     },
+    "setup": {
+      "summary": "The coding assistant's recipe: the MCP entry that starts pxsig with the local install, and the instruction not to approve. Creates those files only on a yes, and only when they do not exist.",
+      "usage": [
+        "pxsig setup [assistant] [--assistant name] [--print]"
+      ],
+      "flags": [
+        {
+          "name": "assistant",
+          "value": "name",
+          "meaning": "Which assistant: vscode, copilot-cli, claude-code, cursor, windsurf, gemini-cli, codex, cline, roo-code, continue, zed, aider, other or none. Without it, a person at a terminal is asked; anyone else gets the list."
+        },
+        {
+          "name": "print",
+          "meaning": "Print the recipe and write nothing. Always the case in CI, when piped and under an assistant."
+        }
+      ],
+      "effects": [
+        "writes-files"
+      ],
+      "exits": {
+        "0": "Printed (and, on a yes, written)",
+        "2": "Usage error, or an answer that is not on the list"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig setup --assistant vscode --print",
+          "shows": "The VS Code recipe and the instruction, without writing"
+        }
+      ],
+      "seeAlso": [
+        "agents",
+        "mcp"
+      ]
+    },
     "manifest": {
       "summary": "Rebuild the project's entries from the running Storybook (or its static build).",
       "usage": [
@@ -907,6 +941,8 @@
         }
       ],
       "seeAlso": [
+        "agents",
+        "setup",
         "approvals"
       ]
     },

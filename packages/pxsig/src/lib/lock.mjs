@@ -27,7 +27,7 @@ import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { writeAtomic } from './files.mjs';
 import { relPath } from './paths.mjs';
-import { ask, humanAtTerminal } from './term.mjs';
+import { ask, humanAtTerminal, whyNotPerson } from './term.mjs';
 
 export const lockPath = (P) => join(P.store.reports, '.lock');
 
@@ -175,7 +175,7 @@ export async function takeLock(P, opts) {
     return acquireLock(P, opts);
   } catch (e) {
     if (!(e instanceof LockError) || !e.lock?.quiet || !e.lock.nonce) throw e;
-    if (!humanAtTerminal()) throw Object.assign(e, { exit: 3, message: `${e.message} (refused when piped, in CI or under an agent)` });
+    if (!humanAtTerminal()) throw Object.assign(e, { exit: 3, message: `${e.message} (${whyNotPerson()})` });
     const phrase = 'TAKE OVER';
     if ((await ask(`${e.message}. Type "${phrase}" to take the lock (the old holder stops before its next write): `)) !== phrase)
       throw Object.assign(new LockError('not confirmed: the lock was left as it is', e.lock), { exit: 1 });

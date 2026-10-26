@@ -10,7 +10,7 @@
  *         --allow-shape, or --first-baselines for all of them. Pins the sha256 of every latest
  *         render and baseline. Writes <store>/reports/approval-plan.json. Safe for anyone, agents included.
  *   apply [plan]
- *         A person at a real terminal only (refused when piped, in CI or under an agent). Re-hashes
+ *         A person at a real terminal only (refused when piped, in CI or under an assistant). Re-hashes
  *         every render and refuses the whole plan if one changed since planning, then asks for the
  *         phrase "APPROVE <n> ENTRIES". Each write is snapshotted and logged by the server.
  *   log [--limit 10]      approvals by batch
@@ -38,7 +38,7 @@ import { readToken, TOKEN_HEADER } from './lib/guard.mjs';
 import { takeLock } from './lib/lock.mjs';
 import { readImage } from './lib/psig.mjs';
 import { classify } from './lib/shape.mjs';
-import { ask, emit, humanAtTerminal, progress } from './lib/term.mjs';
+import { ask, emit, humanAtTerminal, progress, whyNotPerson } from './lib/term.mjs';
 import { relPath } from './lib/paths.mjs';
 import { writeJson } from './lib/files.mjs';
 
@@ -63,7 +63,7 @@ export async function approveCommand({
   const needHuman = (what) => {
     if (humanAtTerminal()) return;
     fail(
-      `${what} needs a person at a terminal: it is refused when output is piped, in CI, or under an agent (Claude Code, Codex). Run it yourself in a terminal.`,
+      `${what} needs a person at a terminal: ${whyNotPerson()}. Run it yourself in a terminal.`,
       3
     );
   };

@@ -42,7 +42,7 @@ import { buildRow, storybookBroken, summarize } from './lib/rows.mjs';
 import { harvestParameters } from './lib/manifest.mjs';
 import { registerNamed } from './lib/repair.mjs';
 import { ensureStorybook } from './lib/static.mjs';
-import { ask, humanAtTerminal } from './lib/term.mjs';
+import { ask, humanAtTerminal, whyNotPerson } from './lib/term.mjs';
 import { flagLayer, openProject, writeRunManifest } from './lib/workspace.mjs';
 import { relPath } from './lib/paths.mjs';
 import { writeJson } from './lib/files.mjs';
@@ -82,7 +82,7 @@ const kind = str('kind');
 if (kind != null && !/^[a-z][a-z0-9-]{0,15}$/.test(kind)) die(`--kind takes a short lower-case word (up to 16 characters, e.g. environment); got "${kind}"`);
 if ((kind != null || str('reason') != null) && !flags.update) die('--kind and --reason go with --update');
 if (flags.update && !humanAtTerminal())
-  die('--update writes baselines without review: run it yourself in a terminal (refused when piped, in CI or under an agent)', 3);
+  die(`--update writes baselines without review: run it yourself in a terminal (${whyNotPerson()})`, 3);
 if (!existsSync(rustBin)) die(`the pxsig binary is missing (${rustBin}): install the platform package, or build it with \`cargo build --release\``);
 mkdirSync(reports, { recursive: true });
 

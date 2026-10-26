@@ -51,6 +51,7 @@ test('initialize echoes the protocol version and declares tools', async () => {
   assert.equal(res.result.protocolVersion, '2025-06-18');
   assert.ok(res.result.capabilities.tools);
   assert.equal(res.result.serverInfo.name, 'pxsig');
+  assert.match(res.result.instructions, /never approve, never accept, and never call `\/__pxsig\/approve`; ask the person to review in the dashboard/);
 });
 
 test('notifications get no reply; ping does', async () => {
@@ -113,6 +114,7 @@ test('status reports the server as down and counts every entry', async () => {
   assert.equal(s.server.up, false);
   const total = Object.values(s.counts).reduce((a, b) => a + b, 0);
   assert.equal(total, s.entries);
+  assert.deepEqual(s.approvals, { level: 'standard' });
 });
 
 test('list filters by state and component', async () => {

@@ -10,7 +10,8 @@ A baseline changes only when a person accepts it.
 
 Commands that need a person (`approve apply`, `approve undo`, `approve verify --adopt`,
 `check --full --update`, `doctor --repair --apply --prune`, `doctor --repair --only log-torn
---apply`) are refused (exit 3) when output is piped, in CI, or under a known agent.
+--apply`, `serve --link`) are refused (exit 3) when output is piped, in CI, or under an assistant's
+marker; the message says which (`pxsig help agents`).
 
 The server refuses decisions an agent or a script posts: they need the dashboard link (a one-time
 link `pxsig serve` prints for a person at a terminal; `pxsig serve --link` prints a new one) or the

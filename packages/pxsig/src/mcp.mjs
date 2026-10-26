@@ -33,6 +33,7 @@ import { fileURLToPath } from 'node:url';
 import { CODES, filterLedger, ledgerPath, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
 import { AGENT_DECISIONS, NEEDS_PERSON, readToken, TOKEN_HEADER, tokenFile } from './lib/guard.mjs';
 import { readSettings } from './lib/machine.mjs';
+import { detectAgent } from './lib/agents.mjs';
 import { helpData, helpNames, lookup, nearestNames } from './help.mjs';
 import { readImage } from './lib/psig.mjs';
 import { applyRepairs, defaultHooks, planRepairs, serverStatus } from './lib/repair.mjs';
@@ -312,6 +313,7 @@ const tools = [
         mostChanged: Object.entries(byComponent).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([component, n]) => ({ component, n })),
         server: await server(C),
         stale,
+        approvals: { level: C.P.config?.approvals?.level ?? 'standard' },
       };
     },
   },
@@ -621,7 +623,7 @@ const tools = [
   {
     name: 'pxsig_help',
     description:
-      'pxsig\'s own help, read-only: a command (`check`, `approve apply`), a topic (`approvals`, `exit-codes`, `platforms`, `dashboard`, `ci`), a setting (`gate.threshold`) or `global` (options every command takes). The same text as `pxsig help <name>`. Without `name`, the list of names.',
+      'pxsig\'s own help, read-only: a command (`check`, `approve apply`), a topic (`agents`, `approvals`, `exit-codes`, `platforms`, `dashboard`, `ci`), a setting (`gate.threshold`) or `global` (options every command takes). The same text as `pxsig help <name>`. Without `name`, the list of names.',
     inputSchema: { type: 'object', properties: { name: { type: 'string', description: 'A command, `command subcommand`, topic, setting key or `global`.' } }, additionalProperties: false },
     async run({ name } = {}) {
       if (!name) return { names: helpNames() };
@@ -660,7 +662,7 @@ async function doctor({ project, component, status, limit = 40, repair = 'none',
   let ledger = await reconcile(ctx, { offline });
   writeLedger(ctx, ledger);
   const settings = readSettings();
-  const out = { project: C.P.name, ledgerPath: relPath(C.root, ledgerPath(ctx)), machine: { settings: settings.path, setUp: settings.exists, tokens: dirname(tokenFile(C.P.workspaceRoot, serverUrl ?? 'http://127.0.0.1:6070')) } };
+  const out = { project: C.P.name, ledgerPath: relPath(C.root, ledgerPath(ctx)), machine: { settings: settings.path, setUp: settings.exists, tokens: dirname(tokenFile(C.P.workspaceRoot, serverUrl ?? 'http://127.0.0.1:6070')) }, agent: detectAgent() };
   if (repair !== 'none') {
     const server = await serverStatus(serverUrl);
     const plan = planRepairs(ledger, { only, prune: prune && !!confirmPrune, server, stale });
@@ -724,7 +726,7 @@ async function handle(msg) {
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: 'pxsig', version: VERSION },
           instructions:
-            'pxsig is the visual-regression harness for this repo. Start with pxsig_projects (when there are several) and pxsig_status; pxsig_list then pxsig_entry show what changed, with images. Approving baselines is a person\'s: the dashboard, or `pxsig approve` in a terminal.',
+            'pxsig is the visual-regression harness for this repo. Start with pxsig_projects (when there are several) and pxsig_status; pxsig_list then pxsig_entry show what changed, with images. Approving and accepting are the person\'s: never approve, never accept, and never call `/__pxsig/approve`; ask the person to review in the dashboard.',
         },
       });
     }
