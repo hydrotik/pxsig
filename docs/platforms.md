@@ -29,6 +29,9 @@ prints the dashboard link, which the terminal makes clickable.
   program and its arguments on stderr, as it starts it.
 - **When a policy blocks one** (AppLocker, WDAC, a sandbox), the error names the program and points
   here.
+- **The Windows engine needs nothing installed besides Windows** (from 0.5.1): it links the C
+  runtime statically, so no Visual C++ Redistributable (`VCRUNTIME140.dll`). CI and the release
+  check every built `pxsig.exe` for it (`scripts/check-win-runtime.mjs`).
 
 ## The container image
 
