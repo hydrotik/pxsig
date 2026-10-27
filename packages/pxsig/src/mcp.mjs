@@ -347,7 +347,7 @@ const tools = [
   {
     name: 'pxsig_status',
     description:
-      'Overview of the visual-regression state: when the report was last written, counts per state (pass, drift, changed, error, flaky, approved, rejected), accessibility totals, the components with the most changed entries, whether the pxsig server is up or busy, and design-system files edited since the report (entries the report does not cover yet). Start here.',
+      'Overview of the visual-regression state: when the report was last written, counts per state (pass, drift, changed, error, flaky, approved, rejected), accessibility totals, the components with the most changed entries, whether the pxsig server is up or busy, design-system files edited since the report (entries the report does not cover yet), and the render environment (how many entries\' baselines came from a different one). Start here.',
     inputSchema: { type: 'object', properties: { project: PROJECT }, additionalProperties: false },
     async run({ project } = {}) {
       const C = ctxOf(project);
@@ -386,6 +386,8 @@ const tools = [
         server: await server(C),
         stale,
         approvals: { level: C.P.config?.approvals?.level ?? 'standard' },
+        // The environment of the last renders, and how many entries' baselines came from another one.
+        env: { current: [...new Set(check.rows.map((r) => r.env).filter(Boolean))].map((id) => check.envs?.[id] ?? { id }), mismatched: check.summary?.envMismatch ?? 0 },
       };
     },
   },
@@ -421,7 +423,7 @@ const tools = [
   {
     name: 'pxsig_entry',
     description:
-      "One entry in full: the gate's metrics and reasons, the changed pixel regions, accessibility violations, the review decision — and the images, inline: the baseline render, the latest render and the diff heat map. Use it to see what actually changed.",
+      "One entry in full: the gate's metrics and reasons, the changed pixel regions, accessibility violations, the review decision, the render environment against its baseline's (envMatch: same, compatible, mismatch or unknown) — and the images, inline: the baseline render, the latest render and the diff heat map. Use it to see what actually changed.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -451,6 +453,12 @@ const tools = [
           pixels: row.pixels,
           a11y: row.a11y,
           review: review[id] ?? null,
+          // lib/env.mjs: the render's environment id, its baseline's, and how they compare.
+          env: row.env ?? null,
+          baselineEnv: row.baselineEnv ?? null,
+          envMatch: row.envMatch ?? 'unknown',
+          envDiff: row.envDiff ?? null,
+          ...(row.envFonts ? { envFonts: row.envFonts } : {}),
           checkedAt: verdictTimes(C, check).get(id)?.at.toISOString() ?? null,
           renderedAt: renderedAt(C, id)?.toISOString() ?? null,
           diffPage: relPath(C.root, join(C.P.store.diffLatest, `${id}.diff.html`)),

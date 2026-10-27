@@ -16,6 +16,7 @@ import { dirname, join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { record, snapshot } from '../src/lib/approvals.mjs';
+import { collectEnv } from '../src/lib/env.mjs';
 import { readToken } from '../src/lib/guard.mjs';
 import { openProject, PXSIG_VERSION, satisfies } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin } from './fixture.mjs';
@@ -115,6 +116,16 @@ function committed(f) {
 
 test('nothing a repository commits names the person, the user or the machine', { skip: (!hasRust || !git) && 'needs the Rust binary and git' }, async () => {
   const f = gitFixture();
+  // The render environment as this machine produces it (real OS facts; a stand-in browser), on the
+  // row the server approves below: it goes into the committed baseline's header.
+  const probe = { setContent: async () => {}, evaluate: async (_fn, a) => (a?.families ? { widths: Object.fromEntries(a.families.map((x) => [x, [1, 2, 3]])), renderer: `ANGLE (${hostname()} GPU)`, colorGamut: 'srgb', timezone: 'UTC', locale: 'en-US' } : null) };
+  const browser = { version: () => '141.0.1', browserType: () => ({ name: () => 'chromium' }), newContext: async () => ({ newPage: async () => probe, close: async () => {} }) };
+  const renderEnv = await collectEnv(browser, { pxsig: PXSIG_VERSION });
+  const checkPath = join(f.px, 'reports', 'check.json');
+  const check = JSON.parse(readFileSync(checkPath, 'utf8'));
+  check.envs = { [renderEnv.id]: renderEnv };
+  check.rows = check.rows.map((r) => (r.id === f.ids.changed ? { ...r, env: renderEnv.id } : r));
+  writeFileSync(checkPath, JSON.stringify(check));
   const port = await freePort();
   const dash = mkdtempSync(join(tmpdir(), 'pxsig-dash-'));
   writeFileSync(join(dash, 'index.html'), '<!doctype html><html><head><title>pxsig</title></head><body></body></html>');
@@ -149,6 +160,8 @@ test('nothing a repository commits names the person, the user or the machine', {
   ];
   const files = committed(f);
   assert.ok(files.some((p) => p.endsWith('approvals.ndjson')), 'the approval log was written');
+  const { readHeader } = await import('../src/lib/psig.mjs');
+  assert.equal(readHeader(f.sig(f.ids.changed)).env?.id, renderEnv.id, 'the approved baseline records the render environment, scanned below');
   for (const file of files) {
     const text = readFileSync(file, 'latin1');
     for (const [what, value] of probes) {

@@ -133,6 +133,13 @@ pub struct Baseline {
     pub detail: Option<Detail>,
     /// The baseline image, when the baseline is a `.psig` that carries one.
     pub image: Option<Vec<u8>>,
+    /// The environment the baseline was rendered in (the header's `env`), when it records one.
+    pub env: Option<Value>,
+}
+
+/// The `id` of a header's `env`, when it has one.
+pub fn env_id(env: Option<&Value>) -> Option<String> {
+    env.and_then(|e| e["id"].as_str()).map(String::from)
 }
 
 pub fn load_baseline(sig: &Path) -> Result<Baseline> {
@@ -140,13 +147,14 @@ pub fn load_baseline(sig: &Path) -> Result<Baseline> {
         bail!("baseline signature not found: {}", sig.display());
     }
     let raw = fs::read(sig).with_context(|| format!("reading {}", sig.display()))?;
-    let (record, image) = if pxsig_core::psig::is_psig(&raw) {
+    let (record, image, env) = if pxsig_core::psig::is_psig(&raw) {
         let p = pxsig_core::psig::decode(&raw).map_err(|e| anyhow!("{}: {e}", sig.display()))?;
-        (p.record, p.image)
+        let env = p.header.get("env").filter(|e| e.is_object()).cloned();
+        (p.record, p.image, env)
     } else {
         let r: PxsigRecord =
             serde_json::from_slice(&raw).map_err(|e| anyhow!("baseline is not valid JSON ({}): {e}", sig.display()))?;
-        (r, None)
+        (r, None, None)
     };
     if record.version != SPEC_VERSION {
         bail!("spec version mismatch (baseline v{}, tool v{SPEC_VERSION})", record.version);
@@ -156,7 +164,7 @@ pub fn load_baseline(sig: &Path) -> Result<Baseline> {
         Some(d) => Some(d.decode().map_err(|e| anyhow!("{}: {e}", sig.display()))?),
         None => None,
     };
-    Ok(Baseline { record, grid, sig: base, detail, image })
+    Ok(Baseline { record, grid, sig: base, detail, image, env })
 }
 
 pub fn compare_png(png: &Path, b: &Baseline, gate: &GateThresholds) -> Result<CompareResult> {
@@ -249,7 +257,7 @@ fn hex(b: &[u8]) -> String {
 
 fn cache_key(png: &[u8], sig: &[u8], gate: &Value) -> String {
     let mut h = Sha256::new();
-    h.update(b"pxsig-check-v2\0");
+    h.update(b"pxsig-check-v3\0"); // v3: rows carry `baselineEnv`
     h.update(png);
     h.update(sig);
     h.update(gate.to_string().as_bytes());
@@ -334,6 +342,7 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
                 }
                 let mut v = base.clone();
                 v["pass"] = json!(r.pass);
+                v["baselineEnv"] = json!(env_id(b.env.as_ref()));
                 v["metrics"] = metrics;
                 v["reasons"] = json!(r.reasons);
                 v["detail"] = detail_json(&r);
@@ -359,6 +368,7 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
         .collect();
     let mut rows = rows;
     let identical = flag_identical_renders(&mut rows);
+    let baseline_envs = baseline_envs(&m, &o.root, &rows);
 
     let elapsed = t0.elapsed().as_secs_f64() * 1000.0;
     let failed = rows.iter().filter(|r| r["pass"] != json!(true)).count();
@@ -388,7 +398,27 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
     if let Some(h) = &o.history {
         append_history(h, &summary, &rows)?;
     }
-    Ok(json!({ "summary": summary, "results": rows }))
+    Ok(json!({ "summary": summary, "results": rows, "baselineEnvs": baseline_envs }))
+}
+
+/// Every distinct baseline environment the rows name (`baselineEnv` id → the header's `env`), so a
+/// caller can say which fields differ without reading every header itself. One header per id is
+/// read, from the first entry that names it.
+fn baseline_envs(m: &Manifest, root: &Path, rows: &[Value]) -> serde_json::Map<String, Value> {
+    let sigs: std::collections::HashMap<&str, &str> = m.stories.iter().map(|s| (s.id.as_str(), s.sig.as_str())).collect();
+    let mut out = serde_json::Map::new();
+    for r in rows {
+        let (Some(id), Some(entry)) = (r["baselineEnv"].as_str(), r["id"].as_str()) else { continue };
+        if out.contains_key(id) {
+            continue;
+        }
+        let Some(sig) = sigs.get(entry) else { continue };
+        let env = fs::read(root.join(sig)).ok().and_then(|b| pxsig_core::psig::header(&b).ok()).and_then(|h| h.get("env").cloned());
+        if let Some(e) = env.filter(|e| e["id"].as_str() == Some(id)) {
+            out.insert(id.to_string(), e);
+        }
+    }
+    out
 }
 
 /// Fewest failing entries sharing one render before it counts as the environment.
@@ -455,6 +485,38 @@ pub struct BaselineOpts {
     pub root: PathBuf,
     pub only: Option<HashSet<String>>,
     pub no_detail: bool,
+    /// The environment each render was made in: written into its baseline's header as `env`.
+    pub env: Option<EnvPlan>,
+}
+
+/// `pxsig baseline --env @file`: `{ envs: { <envId>: env }, byId: { <entryId>: <envId> } }`.
+#[derive(Deserialize, Default, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvPlan {
+    #[serde(default)]
+    pub envs: serde_json::Map<String, Value>,
+    #[serde(default)]
+    pub by_id: std::collections::HashMap<String, String>,
+}
+
+impl EnvPlan {
+    /// The header keys for one entry: `{ env }` when the plan names an environment for it.
+    pub fn extra_for(&self, entry: &str) -> Option<serde_json::Map<String, Value>> {
+        let env = self.by_id.get(entry).and_then(|id| self.envs.get(id))?;
+        let mut m = serde_json::Map::new();
+        m.insert("env".into(), env.clone());
+        Some(m)
+    }
+}
+
+/// Read `--env @file` (or inline JSON).
+pub fn parse_env_plan(spec: Option<&str>) -> Result<Option<EnvPlan>> {
+    let Some(spec) = spec else { return Ok(None) };
+    let text = match spec.strip_prefix('@') {
+        Some(file) => fs::read_to_string(file).with_context(|| format!("reading --env file {file}"))?,
+        None => spec.to_string(),
+    };
+    Ok(Some(serde_json::from_str(&text).context("--env is not an env plan ({ envs, byId })")?))
 }
 
 /// Write a baseline for every (selected) entry. Returns `{ summary, errors }`.
@@ -472,7 +534,8 @@ pub fn baseline(o: &BaselineOpts) -> Result<Value> {
             // An explicit story grid wins; otherwise the manifest's min-cell policy applies.
             let min_cell = if s.grid.is_some() { None } else { m.min_cell_px };
             let entry = json!({ "id": s.id, "story": s.story, "mode": s.mode, "state": s.state });
-            capture_png_policy(&png, &o.root.join(&s.sig), max_grid, min_cell, detail, Some(&entry)).err().map(|e| format!("{}: {e:#}", s.id))
+            let extra = o.env.as_ref().and_then(|p| p.extra_for(&s.id));
+            capture_png_policy(&png, &o.root.join(&s.sig), max_grid, min_cell, detail, Some(&entry), extra.as_ref()).err().map(|e| format!("{}: {e:#}", s.id))
         })
         .collect();
     Ok(json!({
@@ -494,14 +557,14 @@ pub fn grid_for(w: usize, h: usize, max_grid: usize, min_cell: Option<usize>) ->
     }
 }
 
-pub fn capture_png_policy(png: &Path, out: &Path, max_grid: usize, min_cell: Option<usize>, detail: bool, entry: Option<&Value>) -> Result<PxsigRecord> {
+pub fn capture_png_policy(png: &Path, out: &Path, max_grid: usize, min_cell: Option<usize>, detail: bool, entry: Option<&Value>, extra: Option<&serde_json::Map<String, Value>>) -> Result<PxsigRecord> {
     let (_, w, h) = io::png_size(png)?;
-    capture_png(png, out, grid_for(w, h, max_grid, min_cell), detail, entry)
+    capture_png(png, out, grid_for(w, h, max_grid, min_cell), detail, entry, extra)
 }
 
 /// Build and write one baseline (optionally with the detail channel). A `.psig` output also
 /// carries the render itself, byte for byte, as its baseline image.
-pub fn capture_png(png: &Path, out: &Path, grid: usize, detail: bool, entry: Option<&Value>) -> Result<PxsigRecord> {
+pub fn capture_png(png: &Path, out: &Path, grid: usize, detail: bool, entry: Option<&Value>, extra: Option<&serde_json::Map<String, Value>>) -> Result<PxsigRecord> {
     let bytes = fs::read(png).with_context(|| format!("PNG not found: {}", png.display()))?;
     let (data, w, h) = io::decode_png_bytes(&bytes, png)?;
     let s = signature_of(&data, w, h, grid);
@@ -511,7 +574,7 @@ pub fn capture_png(png: &Path, out: &Path, grid: usize, detail: bool, entry: Opt
         record.detail = Some(detail_of(&data, w, h, DetailParams::default()).to_record());
     }
     let image = io::is_psig_path(out).then_some(bytes.as_slice());
-    io::write_baseline(out, &record, image, entry)?;
+    io::write_baseline(out, &record, image, entry, extra)?;
     Ok(record)
 }
 
@@ -559,6 +622,48 @@ pub fn trim(o: &TrimOpts) -> Result<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn scratch(name: &str) -> PathBuf {
+        let d = std::env::temp_dir().join(format!("pxsig-batch-{}-{name}", std::process::id()));
+        let _ = fs::remove_dir_all(&d);
+        fs::create_dir_all(d.join("png")).unwrap();
+        d
+    }
+
+    fn write_png(path: &Path, shade: u8) {
+        let px: Vec<u8> = (0..32 * 32).flat_map(|i| [shade, (i % 251) as u8, 40, 255]).collect();
+        io::encode_png_pub(path, 32, 32, &px).unwrap();
+    }
+
+    #[test]
+    fn baseline_env_plan_writes_env_and_check_returns_its_id() {
+        let d = scratch("env");
+        write_png(&d.join("png/a.png"), 10);
+        write_png(&d.join("png/b.png"), 20);
+        let manifest = json!({ "stories": [
+            { "id": "a", "sig": "store/a.psig" },
+            { "id": "b", "sig": "store/b.psig" },
+        ] });
+        fs::write(d.join("m.json"), manifest.to_string()).unwrap();
+        let env = json!({ "v": 1, "id": "aaaabbbbccccdddd", "browser": { "name": "chromium" } });
+        let plan: EnvPlan = serde_json::from_value(json!({ "envs": { "aaaabbbbccccdddd": env }, "byId": { "a": "aaaabbbbccccdddd" } })).unwrap();
+        let o = BaselineOpts { manifest: d.join("m.json"), png_dir: d.join("png"), root: d.clone(), only: None, no_detail: true, env: Some(plan) };
+        assert_eq!(baseline(&o).unwrap()["summary"]["failed"], json!(0));
+        let ha = pxsig_core::psig::header(&fs::read(d.join("store/a.psig")).unwrap()).unwrap();
+        assert_eq!(ha["env"]["browser"]["name"], json!("chromium"));
+        let hb = pxsig_core::psig::header(&fs::read(d.join("store/b.psig")).unwrap()).unwrap();
+        assert!(hb.get("env").is_none(), "an entry the plan does not name gets no env");
+
+        let res = check(&CheckOpts {
+            manifest: d.join("m.json"), png_dir: d.join("png"), root: d.clone(), out_dir: None, artifacts: Artifacts::None,
+            only: None, cache: None, history: None, base_png_dir: None, tolerance: 16, cli_gate: GateSpec::default(), env_gate: GateSpec::default(),
+        }).unwrap();
+        let row = |id: &str| res["results"].as_array().unwrap().iter().find(|r| r["id"] == json!(id)).unwrap().clone();
+        assert_eq!(row("a")["baselineEnv"], json!("aaaabbbbccccdddd"));
+        assert_eq!(row("b")["baselineEnv"], Value::Null);
+        assert_eq!(res["baselineEnvs"]["aaaabbbbccccdddd"]["browser"]["name"], json!("chromium"));
+        let _ = fs::remove_dir_all(&d);
+    }
 
     fn row(id: &str, pass: bool, render: &str) -> Value {
         json!({ "id": id, "pass": pass, "render": render, "error": null })

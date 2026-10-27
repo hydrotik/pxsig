@@ -69,13 +69,14 @@ pub fn is_psig_path(p: &Path) -> bool {
     p.extension().is_some_and(|e| e.eq_ignore_ascii_case("psig"))
 }
 
-/// Write a baseline: a `.psig` container (record + image + entry) or a spec v1 `.pxsig.json`.
-pub fn write_baseline(out: &Path, record: &PxsigRecord, image: Option<&[u8]>, entry: Option<&Value>) -> Result<()> {
+/// Write a baseline: a `.psig` container (record + image + entry + extra header keys such as `env`)
+/// or a spec v1 `.pxsig.json` (which has no header, so `extra` is not written there).
+pub fn write_baseline(out: &Path, record: &PxsigRecord, image: Option<&[u8]>, entry: Option<&Value>, extra: Option<&serde_json::Map<String, Value>>) -> Result<()> {
     if let Some(dir) = out.parent() {
         fs::create_dir_all(dir)?;
     }
     let bytes = if is_psig_path(out) {
-        pxsig_core::psig::encode(record, image, entry).map_err(|e| anyhow::anyhow!(e))?
+        pxsig_core::psig::encode(record, image, entry, extra).map_err(|e| anyhow::anyhow!(e))?
     } else {
         (serde_json::to_string_pretty(record)? + "\n").into_bytes()
     };

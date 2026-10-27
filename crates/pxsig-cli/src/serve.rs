@@ -36,7 +36,9 @@ fn dispatch(method: &str, p: &Value) -> Result<Value> {
         "capture" => {
             let grid = (p["grid"].as_u64().unwrap_or(64) as usize).clamp(8, 256);
             let min_cell = p["minCellPx"].as_u64().map(|v| v as usize);
-            let r = batch::capture_png_policy(&PathBuf::from(s(p, "png")?), &PathBuf::from(s(p, "out")?), grid, min_cell, p["detail"].as_bool().unwrap_or(true), p.get("entry"))?;
+            // `env`: the environment the render was made in, written into the header as is.
+            let extra = p["env"].is_object().then(|| serde_json::Map::from_iter([("env".to_string(), p["env"].clone())]));
+            let r = batch::capture_png_policy(&PathBuf::from(s(p, "png")?), &PathBuf::from(s(p, "out")?), grid, min_cell, p["detail"].as_bool().unwrap_or(true), p.get("entry"), extra.as_ref())?;
             Ok(json!({ "sha256": r.sha256, "grid": r.config.grid, "detail": r.detail.is_some() }))
         }
         "compare" => {
@@ -74,6 +76,7 @@ fn dispatch(method: &str, p: &Value) -> Result<Value> {
             root: p["root"].as_str().unwrap_or(".").into(),
             only: only(p),
             no_detail: p["detail"] == json!(false),
+            env: if p["env"].is_object() { Some(serde_json::from_value(p["env"].clone())?) } else { None },
         }),
         "diff" => {
             let (a, aw, ah) = io::decode_png(&PathBuf::from(s(p, "a")?))?;

@@ -15,12 +15,13 @@
  * the workspace root; a CLI flag: the current folder); `$workspace/` makes one relative to the
  * workspace root anywhere. `pxsig config` shows which layer set each key.
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { toPosix } from './paths.mjs';
 import { writeAtomic } from './files.mjs';
+import { spawnSync } from './spawn.mjs';
 
 export const WORKSPACE_FILE = 'pxsig.workspace.json';
 export const CONFIG_FILE = 'pxsig.config.json';
@@ -214,7 +215,39 @@ export function workspaceProblems(P) {
       // unreadable: not ours to judge
     }
   }
+  out.push(...engineProblems(P.rustBin));
   return out;
+}
+
+const engineVersions = new Map();
+/** The engine binary's version (`pxsig --version`), once per binary and build; null when it does not run. */
+export function engineVersion(bin) {
+  let key;
+  try {
+    key = `${bin}|${statSync(bin).mtimeMs}`;
+  } catch {
+    return null;
+  }
+  if (!engineVersions.has(key)) {
+    const r = spawnSync(bin, ['--version'], { encoding: 'utf8', timeout: 5000 });
+    engineVersions.set(key, (String(r.stdout ?? '').match(/(\d+\.\d+\.\d+\S*)/) ?? [])[1] ?? null);
+  }
+  return engineVersions.get(key);
+}
+
+/**
+ * An engine binary older than this CLI (a stale `PXSIG_BIN`, a platform package left behind): it
+ * ignores the render environment the CLI sends, so the baselines it writes carry no `env`.
+ */
+export function engineProblems(bin) {
+  if (!bin || !existsSync(bin)) return [];
+  const v = engineVersion(bin);
+  if (!v) return [];
+  const mm = (x) => String(x).split('.').slice(0, 2).map(Number);
+  const [a, b] = mm(v);
+  const [c, d] = mm(PXSIG_VERSION);
+  if (a > c || (a === c && b >= d)) return [];
+  return [{ code: 'engine-old', severity: 'warn', reason: `the engine binary is pxsig ${v}, older than this pxsig ${PXSIG_VERSION}: baselines it writes carry no render environment (env), and other newer engine features are missing. Install the matching @pxsig/cli package (or unset PXSIG_BIN)` }];
 }
 
 /** `$workspace/x` → workspace-relative; anything else → relative to `base`. Returns absolute. */

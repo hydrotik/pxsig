@@ -11,6 +11,9 @@
  *   3. baseline      the first renders become baselines (what approving them does)
  *   4. check         everything passes: exit 0; again with a dead storybook.url and
  *                    --storybook-static: the check serves the build itself
+ *   4b. env          (single-package) baselines re-taken with their render environment; a
+ *                    forced font-probe difference warns (exit 0, one setup finding), and
+ *                    --strict-env refuses it (exit 2)
  *   5. change        a component's colour changes; the check fails on exactly its entries
  *   6. doctor --ci   no error-severity integrity codes
  * And custom-ui (no Storybook): `pxsig dashboard gaps` reports the plain adapter's gaps, and
@@ -92,14 +95,24 @@ function serveStatic(root) {
   return new Promise((ok) => child.stdout.once('data', (d) => ok({ port: Number(String(d).trim()), close: () => child.kill() })));
 }
 
-/** Write baselines from the latest renders: what approving every NEW entry does. */
-function baselineAll(dir, project) {
+/**
+ * Write baselines from the latest renders: what approving every NEW entry does. `withEnv`: each
+ * baseline records its row's render environment from check.json, as approving in the dashboard does.
+ */
+function baselineAll(dir, project, { withEnv = false } = {}) {
+  let envArg = '';
+  if (withEnv) {
+    const c = checkJson(dir, project);
+    const plan = join(dir, '.env-plan.json');
+    writeFileSync(plan, JSON.stringify({ envs: c.envs ?? {}, byId: Object.fromEntries(c.rows.filter((r) => r.env).map((r) => [r.id, r.env])) }));
+    envArg = `, '--env', ${JSON.stringify(`@${plan}`)}`;
+  }
   const code = `
     const { openProject, writeRunManifest } = await import(${JSON.stringify(pathToFileURL(join(repo, 'packages/pxsig/src/lib/workspace.mjs')).href)});
     const P = openProject({ project: ${JSON.stringify(project)} });
     const run = writeRunManifest(P).path;
     const { spawnSync } = await import('node:child_process');
-    const r = spawnSync(P.rustBin, ['baseline', '--manifest', run, '--png-dir', P.store.latest, '--root', P.workspaceRoot, '--json'], { encoding: 'utf8' });
+    const r = spawnSync(P.rustBin, ['baseline', '--manifest', run, '--png-dir', P.store.latest, '--root', P.workspaceRoot, '--json'${envArg}], { encoding: 'utf8' });
     process.stdout.write(r.stdout); process.exit(r.status);`;
   return JSON.parse(sh(process.execPath, ['--input-type=module', '-e', code], dir).stdout);
 }
@@ -137,6 +150,7 @@ async function run(name, { projects, storybookDir, change }) {
       r = pxsig(['check', '--full', '--project', p, '--retries', '1', '--storybook-url', 'http://127.0.0.1:1', '--storybook-static', join(dir, storybookDir, 'storybook-static')], dir);
       expect(r.status === 0 && /serving storybook\.staticDir/.test(r.stdout), `staticDir: the check serves the build itself and passes${r.status ? `\n${r.stdout}${r.stderr}` : ''}`);
       expect(!existsSync(join(dir, ...projectStore(dir, p), 'reports', '.lock')), 'the store lock is released');
+      if (name === 'single-package') envSteps(dir, p);
     }
     // A visual change: rebuild Storybook, every project re-checks, only the changed component fails.
     log(`${name}: changing ${change.file}`);
@@ -165,6 +179,29 @@ async function run(name, { projects, storybookDir, change }) {
     server.close();
   }
   log(`${name}: done (${dir})`);
+}
+
+/** The render environment end to end: same, then a forced font-probe difference, then strict. */
+function envSteps(dir, p) {
+  const b = baselineAll(dir, p, { withEnv: true });
+  expect(b.summary.failed === 0, `baselines re-taken with their render environment: ${b.summary.stories}`);
+  let r = pxsig(['check', '--full', '--project', p, '--retries', '1'], dir);
+  let c = checkJson(dir, p);
+  expect(r.status === 0 && c.rows.every((x) => x.envMatch === 'same') && !/\[check\] env:/.test(r.stdout), `env: every row is the same environment as its baseline (${[...new Set(c.rows.map((x) => x.envMatch))].join(', ')})`);
+  // An extra probed font family changes the font digest: a major field, so a mismatch.
+  const cfgPath = join(dir, 'pxsig.config.json');
+  const cfg = readFileSync(cfgPath, 'utf8');
+  writeFileSync(cfgPath, JSON.stringify({ ...JSON.parse(cfg), env: { fontProbe: ['Courier New'] } }, null, 2));
+  r = pxsig(['check', '--full', '--project', p, '--retries', '1'], dir);
+  c = checkJson(dir, p);
+  expect(r.status === 0 && /\[check\] env: \d+ of \d+ entries rendered in a different environment than their baseline \(fonts\.probe: Courier New\)/.test(r.stdout), `env: a font difference warns and the check still passes (exit ${r.status})`);
+  expect(c.summary.envMismatch === c.rows.length, `env: summary.envMismatch counts every entry (${c.summary.envMismatch})`);
+  const d = JSON.parse(pxsig(['doctor', '--project', p, '--json'], dir).stdout);
+  const finding = (d.setup ?? []).filter((x) => x.code === 'env-mismatch');
+  expect(finding.length === 1 && finding[0].severity === 'warn', 'env: one env-mismatch setup warning in doctor');
+  r = pxsig(['check', '--full', '--project', p, '--retries', '1', '--strict-env'], dir);
+  expect(r.status === 2 && /different environment/.test(r.stderr) && !/\[check\] rendered/.test(r.stdout), `env: --strict-env refuses before rendering (exit ${r.status})`);
+  writeFileSync(cfgPath, cfg);
 }
 
 const examples = {

@@ -605,7 +605,7 @@ export async function reconcile(ctx, opts = {}) {
       a11yBaseline: { path: rel(ctx.files.a11y), entries: a11yBase ? Object.keys(a11yBase).length : null },
       staleness,
     },
-    setup: [...setupProblems(index), ...(ctx.project ? workspaceProblems(ctx.project) : []), ...portabilityProblems({ repoRoot: ctx.repoRoot, sigPaths, records: [ctx.manifestPath, ...siblings, ctx.files.approvals, ctx.files.a11y] }), ...tornProblems(rel(ctx.files.approvals), torn), ...unloggedProblems(unlogged, ctx), ...conflictProblems(ctx)],
+    setup: [...setupProblems(index), ...(ctx.project ? workspaceProblems(ctx.project) : []), ...portabilityProblems({ repoRoot: ctx.repoRoot, sigPaths, records: [ctx.manifestPath, ...siblings, ctx.files.approvals, ctx.files.a11y] }), ...tornProblems(rel(ctx.files.approvals), torn), ...unloggedProblems(unlogged, ctx), ...conflictProblems(ctx), ...envProblems(report, ctx)],
     summary,
     components,
     entries,
@@ -638,6 +638,19 @@ function neverCheckedReason({ report, reportAt, manifestMtime, sigAt, latestAt, 
 function unloggedProblems(ids, ctx) {
   if (!ids.length) return [];
   return [{ code: 'verify-unlogged', severity: 'warn', count: ids.length, reason: `${ids.length} baselines have no approval log line (${ids.slice(0, 3).join(', ')}${ids.length > 3 ? ', …' : ''}): \`pxsig approve verify\` fails on them (strict by default since 0.4.0). For baselines from before pxsig kept a log, a person runs \`pxsig approve verify --adopt\` once; \`--no-strict\` only reports them` }];
+}
+
+/**
+ * Renders made in a different environment than their baseline (lib/env.mjs): one setup-level
+ * warning, never a per-entry code, so story cards and `doctor`'s exit stay as they are (decision 1.1).
+ * `integrity.severity['env-mismatch']` overrides the severity.
+ */
+function envProblems(report, ctx) {
+  const n = report?.summary?.envMismatch ?? 0;
+  if (!n) return [];
+  const fields = report.summary.envFields?.length ? ` (${report.summary.envFields.join(', ')})` : '';
+  const severity = ctx.integrity?.severity?.['env-mismatch'] ?? 'warn';
+  return [{ code: 'env-mismatch', severity, count: n, reason: `${n} entries were rendered in a different environment than their baseline${fields}: a change there can be the machine, not the code. Render where the baselines were made (the pinned container), or re-take them there (\`pxsig check --full --update --kind environment\`); \`--strict-env\` refuses such a run instead` }];
 }
 
 /** Store files a merge or rebase left conflicted (decision 97). */

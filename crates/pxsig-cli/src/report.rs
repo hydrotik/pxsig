@@ -70,6 +70,16 @@ pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
             if more > 0 { format!("; {more} more reasons in check.json") } else { String::new() }
         ));
     }
+    // Renders made in a different environment than their baseline (decision 1.4): only when any were.
+    let env_n = v["summary"]["envMismatch"].as_u64().unwrap_or(0);
+    if env_n > 0 {
+        let fields: Vec<String> = v["summary"]["envFields"].as_array().into_iter().flatten().filter_map(Value::as_str).map(esc_md).collect();
+        let what = if fields.is_empty() { String::new() } else { format!(" ({})", fields.join(", ")) };
+        out.push_str(&format!(
+            "Environment: {env_n} of {} entries were rendered in a different environment than their baseline{what}. A change there can be the machine, not the code (`pxsig doctor`).\n\n",
+            rs.len() - skipped
+        ));
+    }
     // Baselines the pull request changed, by how each was approved (decision 80). Names no person.
     if let Some(ap) = v["summary"].get("approvals").filter(|x| x.is_object()) {
         if ap["rewritten"].as_bool() == Some(true) {
@@ -132,6 +142,22 @@ pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
         out.push_str("\n</details>\n");
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn the_environment_line_only_when_entries_mismatch() {
+        let rows = json!([{ "id": "a", "pass": true }, { "id": "b", "pass": true }]);
+        let none = json!({ "rows": rows, "summary": { "envMismatch": 0 } });
+        assert!(!markdown(&none, None).contains("Environment:"));
+        let some = json!({ "rows": rows, "summary": { "envMismatch": 2, "envFields": ["browser.version", "fonts.probe: Inter"] } });
+        let md = markdown(&some, None);
+        assert!(md.contains("Environment: 2 of 2 entries were rendered in a different environment than their baseline (browser.version, fonts.probe: Inter)"), "{md}");
+    }
 }
 
 pub fn junit(v: &Value) -> String {

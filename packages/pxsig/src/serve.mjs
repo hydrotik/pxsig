@@ -72,6 +72,7 @@ import { parseArgs, strFlag } from './lib/args.mjs';
 import { acquireLock, alive, describeLock, LockError } from './lib/lock.mjs';
 import { applyRepairs, defaultHooks, planRepairs, registerNamed } from './lib/repair.mjs';
 import { buildRow, dropStaleRows, storybookBroken, summarize } from './lib/rows.mjs';
+import { annotateRow, byId, envConfig, envSummary } from './lib/env.mjs';
 import { ensureStorybook } from './lib/static.mjs';
 import { findWorkspace, flagLayer, loadProject, PXSIG_VERSION, rustBinary, serverFile, writeRunManifest } from './lib/workspace.mjs';
 import { buildData, dashboardDir, prebuiltDashboardDir, useDashboard } from './report.mjs';
@@ -276,8 +277,10 @@ function stateFor({ project, id, story } = {}) {
 }
 
 // --- review --------------------------------------------------------------------------------
-function updateCheckRows(S, mut, fresh = new Map(), timing = null) {
+function updateCheckRows(S, mut, fresh = new Map(), timing = null, envs = null) {
   const check = readJson(S.checkPath, null) ?? { generatedAt: new Date().toISOString(), project: S.name, summary: {}, rows: [] };
+  // Every environment a row names (lib/env.mjs), by id: the fresh rows' and their baselines'.
+  if (envs) check.envs = { ...(check.envs ?? {}), ...envs };
   const seen = new Set(check.rows.map((r) => r.id));
   check.rows = check.rows.map((r) => mut(r) ?? r);
   // Entries added after the last full check have no row yet: append them, or their verdicts are
@@ -291,7 +294,8 @@ function updateCheckRows(S, mut, fresh = new Map(), timing = null) {
   if (dropped.length) console.log(`[serve] ${S.name}: dropped ${dropped.length} rows no longer in the manifest`);
   // Timings describe one run: a full re-check replaces them; a partial one leaves the last full
   // run's (the Duration card and Diagnostics read them against `checked`).
-  check.summary = { ...check.summary, ...summarize(check.rows), ...(timing ?? {}) };
+  check.summary = { ...check.summary, ...summarize(check.rows), ...envSummary(check.rows, check.envs ?? {}), ...(timing ?? {}) };
+  if (!check.summary.envMismatch) delete check.summary.envFields;
   // New verdicts move the report's time ("Last check"); `fullCheckAt` keeps when every entry was
   // last checked together, which is what integrity's "absent from the last full check" means.
   if (fresh.size) {
@@ -374,7 +378,10 @@ async function approve(S, id, meta = {}) {
   const batch = meta.batch ?? newBatch(meta.via ?? 'dashboard');
   // No baseline yet (a NEW entry): nothing to snapshot, `before` is null and undo removes the file.
   const { before } = snapshot(P, e, batch);
-  // A .psig output carries the render itself as the baseline image.
+  // A .psig output carries the render itself as the baseline image, and the environment of that
+  // render (the row's, from the check that made it), never this server's or the approver's.
+  const report = readJson(S.checkPath, { rows: [] });
+  const renderEnv = current?.env ? report.envs?.[current.env] ?? null : null;
   const res = await rust('capture', {
     png: latest,
     out: resolve(P.workspaceRoot, e.sig),
@@ -382,6 +389,7 @@ async function approve(S, id, meta = {}) {
     minCellPx: e.grid ? undefined : manifest.minCellPx,
     detail: e.detail !== false && manifest.detail !== false,
     entry: { id: e.id, story: e.story ?? null, mode: e.mode ?? null, state: e.state ?? null },
+    ...(renderEnv ? { env: renderEnv } : {}),
   });
   // The a11y baseline follows the approved render; the old list is kept so an undo can put it back.
   const row = readJson(S.checkPath, { rows: [] }).rows.find((r) => r.id === id);
@@ -493,6 +501,9 @@ async function runChecks(S) {
       if (!idx.healthy) throw Object.assign(new Error(`setup error: ${idx.reachable ? "Storybook's story index is broken" : 'Storybook is not reachable'} — ${idx.error}. Nothing was rendered.`), { setup: true });
       pool ??= browserPool(P);
       const concurrency = Math.min(8, entries.length);
+      const envCfg = envConfig(P.config);
+      const engineVersion = await rust('ping', {}).then((p) => p.version ?? null).catch(() => null);
+      const current = await pool.envs(entries.map((e) => e.browser ?? 'chromium'), { fontProbe: envCfg.fontProbe, pxsig: PXSIG_VERSION, engine: engineVersion });
       const { results, wallMs, reloads = 0 } = await renderStories(pool, entries, P.store.latest, { ...manifest, concurrency, project: P, a11y: true });
       const sbErrors = results.filter((r) => r.error?.startsWith(STORYBOOK_ERROR));
       if (storybookBroken(sbErrors.length, results.length))
@@ -510,7 +521,7 @@ async function runChecks(S) {
       });
       for (const g of res.summary.identicalRenders ?? [])
         console.error(`[serve] ${S.name}: ${g.count} failing entries rendered the same image (${g.ids.slice(0, 3).join(', ')}…): marked as errors, nothing to approve`);
-      const byId = new Map(res.results.map((r) => [r.id, r]));
+      const rustRows = new Map(res.results.map((r) => [r.id, r]));
       const renders = new Map(results.map((r) => [r.id, r]));
       const a11yBase = readJson(P.store.a11y, null);
       const rv = readJson(S.reviewPath, {});
@@ -519,10 +530,11 @@ async function runChecks(S) {
       const av = readJson(S.a11yReviewPath, {});
       for (const id of ids) delete av[id];
       writeJson(S.a11yReviewPath, av, { pretty: true });
-      const fresh = new Map(entries.map((e) => [e.id, buildRow(e, byId.get(e.id), renders.get(e.id), a11yBase, manifest)]));
+      const envs = { ...(res.baselineEnvs ?? {}), ...byId(current) };
+      const fresh = new Map(entries.map((e) => [e.id, annotateRow(buildRow(e, rustRows.get(e.id), renders.get(e.id), a11yBase, manifest), { current, envs, ignore: envCfg.ignore })]));
       const full = entries.length === manifest.stories.length;
       const timing = full ? { concurrency, renderWallMs: wallMs, pageLoads: reloads, rustEngineMs: res.summary.elapsedMs, totalMs: performance.now() - t0 } : null;
-      updateCheckRows(S, (r) => fresh.get(r.id), fresh, timing);
+      updateCheckRows(S, (r) => fresh.get(r.id), fresh, timing, envs);
       const failed = [...fresh.values()].filter((r) => !r.pass).length;
       console.log(`[serve] ${S.name}: re-checked ${ids.length} entries · ${failed} changed · ${((performance.now() - t0) / 1000).toFixed(1)} s (Rust ${res.summary.elapsedMs.toFixed(0)} ms)`);
       broadcast('check', { project: S.name, state: 'done', ids, failed, ms: performance.now() - t0 });

@@ -156,6 +156,16 @@
         "unresolved": { "type": "array", "items": { "type": "string", "minLength": 1 }, "default": [], "description": "Globs of files whose unresolved imports are accepted: they add no entries to every run. Anchored like affects.ignore." }
       }
     },
+    "env": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The render environment each baseline records and each check compares (docs/configuration.md#env).",
+      "properties": {
+        "ignore": { "type": "array", "items": { "enum": ["browser.name", "browser.version", "browser.channel", "browser.launchArgs", "playwright", "os.platform", "os.arch", "os.release", "os.distro", "fonts.probe", "fonts.system", "render.dpr", "render.gpu", "render.colorGamut", "render.timezone", "render.locale", "render.reducedMotion", "capture.pipeline", "container.image", "container.revision", "container.digest", "pxsig", "engine", "node"] }, "default": [], "description": "Fields left out of the comparison, e.g. render.timezone when no story formats a date." },
+        "fontProbe": { "type": "array", "items": { "type": "string", "minLength": 1 }, "default": [], "description": "Font families measured besides serif, sans-serif, monospace and system-ui (the design system's own), so a mismatch names the family." },
+        "strict": { "type": "boolean", "default": false, "description": "Refuse a check (exit 2, nothing rendered) when a selected baseline was approved in a different environment. Same as --strict-env and PXSIG_STRICT_ENV=1." }
+      }
+    },
     "nonVisual": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Top-level folders under srcRoot with no visual stories." },
     "a11y": { "type": "boolean", "default": true, "description": "Run axe on every render." },
     "integrity": {

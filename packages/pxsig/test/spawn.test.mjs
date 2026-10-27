@@ -21,8 +21,9 @@ test('the list, per OS', () => {
     assert.equal(refused('C:\\x\\pxsig.exe', os), null, `the engine .exe on ${os}`);
   }
   for (const p of ['ps', 'osascript', 'open']) assert.equal(refused(p, 'darwin'), null, p);
-  for (const p of ['ps', 'xdg-open']) assert.equal(refused(p, 'linux'), null, p);
-  for (const p of ['ps', 'osascript', 'open', 'xdg-open']) assert.match(refused(p, 'win32'), /does not start/, `${p} on Windows`);
+  for (const p of ['ps', 'xdg-open', 'fc-list']) assert.equal(refused(p, 'linux'), null, p);
+  for (const p of ['ps', 'osascript', 'open', 'xdg-open', 'fc-list']) assert.match(refused(p, 'win32'), /does not start/, `${p} on Windows`);
+  assert.match(refused('fc-list', 'darwin'), /does not start/, 'fc-list is Linux only');
 });
 
 test('never a shell or a system tool', () => {

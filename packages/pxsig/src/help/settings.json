@@ -233,6 +233,30 @@
       "default": "[]",
       "operation": "Without it, an unresolved import adds the entries that reach its file to every `check --since` run (all of them when the file affects every entry). `pxsig affected` lists each one."
     },
+    "env": {
+      "file": "pxsig.config.json",
+      "meaning": "The render environment: which browser, OS, fonts and render settings produced each render. Every baseline records the one it was rendered in, and every check compares the two.",
+      "default": "{}",
+      "operation": "A difference in a major field (the browser's major version, the fonts, the GPU class, timezone, locale) is an `env-mismatch` warning in `check`, `summary.md` and `pxsig doctor`; baselines without a recorded environment (from before 0.5) never warn."
+    },
+    "env.ignore": {
+      "file": "pxsig.config.json",
+      "meaning": "Environment fields left out of the comparison, by name (`render.timezone`, `fonts.system`, …).",
+      "default": "[]",
+      "operation": "A difference in a listed field neither warns nor refuses; the field is still recorded."
+    },
+    "env.fontProbe": {
+      "file": "pxsig.config.json",
+      "meaning": "Font families measured besides serif, sans-serif, monospace and system-ui: fonts installed on the machine (the probe page loads no stylesheet, so a web font the stories load is not measured).",
+      "default": "[]",
+      "operation": "Each family's measured text widths become a digest, so a font difference names the family."
+    },
+    "env.strict": {
+      "file": "pxsig.config.json",
+      "meaning": "Refuse a check when a selected baseline was approved in a different environment.",
+      "default": "false",
+      "operation": "Same as `check --strict-env` and `PXSIG_STRICT_ENV=1`: exit 2 before rendering, nothing written. `--update` is never refused (it re-takes baselines in this environment)."
+    },
     "nonVisual": {
       "file": "pxsig.config.json",
       "meaning": "Top-level folders under srcRoot with no visual stories; their stories are reported as excluded.",
