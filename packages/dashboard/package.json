@@ -1,6 +1,6 @@
 {
   "name": "@pxsig/dashboard",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "description": "The pxsig dashboard (React). Built into packages/pxsig/dist/dashboard for release.",
   "license": "MIT",
