@@ -395,10 +395,15 @@ jobs:
             meta=$(tar -xzOf "$f" package/package.json)
             name=$(node -e 'const p=JSON.parse(process.argv[1]);console.log(p.name)' "$meta")
             v=$(node -e 'const p=JSON.parse(process.argv[1]);console.log(p.version)' "$meta")
-            # A dry run always runs `npm publish --dry-run`, which does not fail on a published
-            # version, so it exercises this line even when every package is already out.
-            if [ -z "$DRY_RUN" ] && npm view "${name}@${v}" version >/dev/null 2>&1; then
-              echo "${name}@${v} is already published; skipping"
+            if npm view "${name}@${v}" version >/dev/null 2>&1; then
+              if [ -n "$DRY_RUN" ]; then
+                # npm refuses even `publish --dry-run` over a published version; `pack --dry-run`
+                # reads the tarball path the same way, so the dry run still tests it.
+                echo "${name}@${v} is already published; checking the tarball path with npm pack"
+                npm pack "./$f" --dry-run >/dev/null
+              else
+                echo "${name}@${v} is already published; skipping"
+              fi
               return
             fi
             # `./`: npm reads a bare `dir/file.tgz` as a GitHub repository (`user/repo`).

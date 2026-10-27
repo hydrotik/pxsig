@@ -5,6 +5,127 @@ semantic versioning.
 
 ## Unreleased
 
+## 0.5.0 - 2026-10-27
+
+The environment release. Every render records the environment that produced it, every baseline
+keeps it, and a check says when a render and its baseline came from different machines
+(`--strict-env` refuses instead). A pinned Linux image, `ghcr.io/hydrotik/pxsig`, renders the same
+pixels everywhere, either for the whole check or only for the browser. Each gate can be set to
+`warn` while a team adopts pxsig, and only committed config or a person at a terminal can do it.
+`pxsig dashboard check` renders every dashboard screen on an organisation's own adapter beside the
+reference dashboard. Read **Behaviour changes** first: new axe violations now print an ADVISORY line
+(exit 0; `enforcement.gates.a11y: "off"` restores the old output).
+
+### Behaviour changes
+
+- None with the default settings. Baselines written before this version record no environment and
+  compare as `unknown`, which never warns or refuses; the new line, `summary.md` line and setup
+  warning appear only once baselines record an environment and a render's differs.
+- **New axe violations are a gate on `warn` by default.** With no `enforcement` key every exit
+  code and report is as before, except when a run finds a new violation (one not on an entry's
+  accepted list): `check` then prints one `[pxsig] ADVISORY: would have failed (exit 1): N entries
+  with new a11y violations. Not blocking.` line, `summary.md` opens with an advisory lead and
+  `check.json` carries `enforcement`. The exit stays 0 and no readiness line is written.
+  `enforcement.gates.a11y: "off"` removes it; `"enforce"` makes new violations fail the run
+  ([migrating.md](docs/migrating.md)).
+
+### Added
+
+- **The container image `ghcr.io/hydrotik/pxsig:<pxsig>-pw<playwright>`** (amd64 and arm64, amd64
+  canonical): pxsig and its engine, Playwright's three browsers and a fixed font set on Ubuntu
+  24.04, so renders are the same on every machine. Tags never move (`-rN` for a rebuild) and there
+  is no `latest`; each image has a provenance attestation. Built by `.github/workflows/image.yml`
+  after each release, by hand for a new Playwright, with a weekly check for one
+  ([docs/container.md](docs/container.md)).
+- **Two ways to use it.** The whole check in the container (`docker run … pxsig check --full`), or
+  only the browser: `pxsig browser start|stop|status` runs Playwright's browser server in the image
+  on `127.0.0.1`, and `--browser <ws>` (also `PXSIG_BROWSER_WS`, `capture.browserEndpoint`) makes a
+  check or `pxsig serve` render there while Storybook and the engine stay on the host. The render
+  environment then reports the container's browser and image.
+- **`PXSIG_PLAYWRIGHT`**: a Playwright package folder pxsig loads before the project's (the image
+  sets its own). `pxsig doctor` warns (`image-mismatch`) when, inside the image, the Playwright or
+  the pinned pxsig differs from the image's.
+- `docker` joins "Programs pxsig starts" (docs/platforms.md): only `pxsig browser` starts it.
+
+No behaviour change: without the image, `--browser`, `PXSIG_BROWSER_WS`, `capture.browserEndpoint`
+or `PXSIG_PLAYWRIGHT`, browsers launch and Playwright resolves exactly as before.
+- **`pxsig dashboard check`**: every dashboard feature's screens rendered on a project's adapter
+  build (`pxsig dashboard build`), from sample data that ships with pxsig, in both themes, with
+  Playwright's Chromium. It writes a gallery (`node_modules/.cache/pxsig/dashboard-check/index.html`)
+  that sets each screen beside the same screen on the prebuilt reference dashboard, plus
+  `report.json` and `summary.md`, and runs axe on each screen. Axe findings are advisory;
+  `--strict` makes any of them fail. Exit 1 when a screen does not render (its landmark never
+  appears, or the page throws); 2 with no build, no Chromium, or an adapter for an older major UI
+  contract. It reads no project data, answers the dashboard's requests itself (nothing is written)
+  and writes only its output folder. `--only <feature,…>` and `--themes` narrow it; `--reference
+  <dir>` names another dashboard to compare against. It replaces the hand walk-through in
+  docs/ui/build-adapter.md "Verify" (kept as the fallback without Chromium).
+- **Screens in the feature registry.** Each feature in the dashboard's `src/ui/features.ts` lists
+  the screens the check renders (a sample scenario, an address, clicks, and the landmark that shows
+  it rendered); `node scripts/ui.mjs check` fails a feature without one. The sample scenarios
+  (`fixtures/scenarios.mjs`) are shared with the dashboard's own browser tests.
+- `examples/custom-ui` gains `pnpm dashboard:check`, and the end-to-end examples run it on every
+  pull request, on macOS, Linux and Windows.
+
+No behaviour change: a new subcommand; nothing else reads the new files.
+- **Every render records its environment, and every baseline keeps it.** A check collects, once per
+  browser, which browser and version, Playwright, OS, a font-measurement digest, screen scale, GPU
+  class, colour gamut, timezone, locale, capture pipeline and pxsig versions produced the renders
+  (docs/configuration.md#env). A baseline written from a render keeps that render's environment in
+  its `.psig` header (`env`; an approval in the dashboard writes the environment of the render being
+  approved, never of the approving machine). Nothing in it names the machine or a person: no host
+  name, user name, GPU model or font list.
+- **Renders compared with their baseline's environment.** Each `check.json` row gets `env`,
+  `baselineEnv`, `envMatch` (`same`, `compatible`, `mismatch`, `unknown`) and `envDiff`; the report
+  gets `envs` and `summary.envMismatch`. A mismatch in a major field (the browser's major version,
+  the fonts, the GPU class, timezone, locale) adds one `[check] env:` line, a line in `summary.md`,
+  and an `env-mismatch` setup warning in `pxsig doctor` and the dashboard's coverage banner. MCP
+  `pxsig_status` gains `env`, `pxsig_entry` the row's env fields.
+- **`check --strict-env`** (config `env.strict`, `PXSIG_STRICT_ENV=1`) refuses before rendering,
+  exit 2, when a selected baseline was approved in a different environment. Off by default.
+- **Config `env.ignore` and `env.fontProbe`**: fields left out of the comparison, and font families
+  measured besides the generic ones.
+- **`pxsig baseline --env @file`** writes each entry's environment into its header; `pxsig attach`
+  keeps every header key it does not own.
+- **`engine-old`** setup warning: an engine binary older than the CLI writes baselines without `env`.
+- **Warn mode.** `enforcement` in `pxsig.config.json` (or the workspace file's `defaults`) sets
+  each gate to `enforce` (as before) or `warn`: `visual` (`check`), `a11y`, `verify` (`approve
+  verify`'s baselines with no log line), `env` (`--strict-env`'s refusal), `doctor`, `stale`. A
+  warned gate runs the same checks on the same selection and exits `advisoryExit` (0, or 10 to 125)
+  where only it would have failed. It says so everywhere: ADVISORY first and last lines on the
+  CLI, `enforcement` and `git.head` in `check.json` (with the gates each status context carries),
+  a lead block in `summary.md`, a `pxsig.enforcement` property in `junit.xml`, `enforcement` and
+  `wouldFail` in `history.ndjson`, the setup codes `enforcement-warn`, `enforcement-ending` and
+  `enforcement-expired` in `pxsig doctor` and the dashboard banner, an `Enforcement` row in
+  `doctor`, a `Warn mode` row in `status`, the gate table in `pxsig config`, and MCP fields
+  (`pxsig_status.enforcement`, `pxsig_check`'s `enforcement` and `wouldFail`, `pxsig_history`'s
+  `wouldFail`). Setup errors and person-only refusals are never warned; a mismatched baseline or a
+  rewritten log fails `approve verify` in every mode. Only committed config, or `--warn` from a
+  person at a terminal, lowers a gate; `--enforce` and `PXSIG_ENFORCEMENT=enforce` raise one for
+  anyone; `PXSIG_ENFORCEMENT=warn` is refused. `warnUntil` ends warn mode on a date, announced
+  from `noticeDays` before. Each warned run adds a line to a readiness tally in the repository's
+  state folder outside the repository (shared by every worktree; 90 days, 5,000 lines per project
+  and gate set).
+- **`--sarif <file>`** on `check --full` and `pxsig a11y`: new axe violations as SARIF 2.1.0, for
+  code-scanning viewers. Changes no exit code.
+
+### Changed
+
+- **The first check after upgrading reads no cached results.** Cached check results now carry the
+  baseline's environment id, so the cache key changed and the first run re-compares every entry
+  (the renders are the same; it only takes the engine's full time once).
+- **On Linux, pxsig starts `fc-list`** (when fontconfig is installed) once per browser launch, for
+  a digest of the installed fonts (`fonts.system`, informational). It is listed in
+  docs/platforms.md, "Programs pxsig starts". Never on macOS or Windows.
+
+### Fixed
+
+- **The release workflow publishes the packed tarballs.** `npm publish` was given
+  `release-files/<name>.tgz`, which npm reads as a GitHub repository, so the 0.4.0 run failed
+  before publishing anything. The path now starts with `./`, and a dry run tests that step: `npm
+  publish --dry-run` for a new version, `npm pack --dry-run` for one already on npm (npm refuses
+  even a dry-run publish over a published version).
+
 ## 0.4.0 - 2026-10-26
 
 The trust release. Decisions that change a baseline need a person, and the log says how each one
