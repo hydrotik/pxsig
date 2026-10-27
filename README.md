@@ -106,7 +106,7 @@ against a project the server is serving goes through the server's queue. See
 ## Running from a clone
 
 To work on pxsig itself, or to try an unreleased change (Node.js 22.18 or later in a clone; the
-published package needs 20):
+published package needs 22):
 
 ```bash
 git clone https://github.com/hydrotik/pxsig

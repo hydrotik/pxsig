@@ -113,7 +113,9 @@ const PROBLEMS = new Set(['changed', 'new', 'error', 'flaky', 'rejected']);
 function load(C) {
   const check = readJson(C.checkPath, null);
   if (!check)
-    throw new Error(`no report at ${relPath(C.root, C.checkPath)}: run pxsig_check first`);
+    throw new Error(
+      `no report at ${relPath(C.root, C.checkPath)}: run a check first (pxsig check, or the pxsig_check tool)`
+    );
   const review = readJson(C.reviewPath, {});
   const a11yReview = readJson(join(dirname(C.reviewPath), 'a11y-review.json'), {});
   const updated = statSync(C.checkPath).mtime;
