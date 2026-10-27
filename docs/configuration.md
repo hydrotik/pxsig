@@ -148,6 +148,10 @@ The smallest config is `{}`: every key has a default. `pxsig init` writes
 | `affects.unresolved` | `[]` | Globs of files whose unresolved imports are accepted (a `virtual:` module, a computed `import()`), anchored like `affects.ignore`. Without it, an unresolved import adds the entries that reach its file to every `check --since` run, and every entry when the file affects every entry. |
 | `nonVisual` | `[]` | Top-level folders under `srcRoot` with no visual stories. Their stories are not entries and are reported as `excluded`. |
 | `a11y` | `true` | Run axe on every render. |
+| `env` | `{}` | The render environment each baseline records and each check compares (below). |
+| `env.ignore` | `[]` | Environment fields left out of the comparison, by name, for example `["render.timezone"]` when no story formats a date. |
+| `env.fontProbe` | `[]` | Font families measured besides `serif`, `sans-serif`, `monospace` and `system-ui`, so a font difference names the family. The probe page loads no stylesheet, so this measures fonts installed on the machine (a family that is not installed measures as the fallback); a web font the stories load from the repository is part of the story, not the environment. |
+| `env.strict` | `false` | Refuse a check (exit 2, nothing rendered) when a selected baseline was approved in a different environment. Same as `check --strict-env` and `PXSIG_STRICT_ENV=1`. |
 | `integrity` | `{}` | Integrity options (below). |
 | `approvals.identity` | `none` | What each approval and repair log line says about who made it. `none`: nothing; the commit that adds the line and the pull request say who, and pxsig writes no personal data. `git-email`: the git email in a `by` field, as before 0.4.0. |
 | `approvals.level` | `standard` | `standard`: a typed phrase at a terminal, or the dashboard opened with the dashboard link. `strict` is reserved for a later release and refused for now (a setup error). |
@@ -194,6 +198,42 @@ those modes (a story's own `modes` list still narrows it). `pxsig check --suite 
 and writes `check-matrix.json`, `summary-matrix.md` and `junit-matrix.xml`. Every mode a suite
 names must exist in `modes`. `addModes` is accepted as another name for `modes`.
 
+### `env`
+
+Every render records the environment that produced it, and every baseline written from a render
+keeps that render's environment in its `.psig` header (`env`, [spec.md](spec.md#header)). A
+check compares each render's environment with its baseline's:
+
+| Result | When | Effect |
+| --- | --- | --- |
+| `same` | every field equal | none |
+| `compatible` | only minor fields differ | listed in `check.json` (`envDiff`); no warning |
+| `mismatch` | a major field differs | the `env-mismatch` warning: one line in `check`, a line in `summary.md`, a setup finding in `pxsig doctor` and the dashboard's coverage banner. With `env.strict`, `--strict-env` or `PXSIG_STRICT_ENV=1`, the check refuses before rendering (exit 2). |
+| `unknown` | the baseline records no environment (written before 0.5) | none, ever |
+
+| Field | Tier | What |
+| --- | --- | --- |
+| `browser.name`, `browser.channel`, `browser.launchArgs` | major | the Playwright browser, the channel it launched with (`chrome`, `msedge` when the bundled browser is missing), pxsig's launch arguments |
+| `browser.version` | major on the first number, minor on the rest | the full browser build |
+| `playwright` | minor | the Playwright version pxsig resolved |
+| `os.platform`, `os.arch` | major | `darwin`, `linux`, `win32`; `arm64`, `x64` |
+| `os.release`, `os.distro` | minor | the kernel release; the Linux distribution, else the OS version string (on macOS without the kernel build) |
+| `fonts.probe` | major | a digest of canvas text widths at three sizes for each probed family, with one 8-character digest per family so a difference names it |
+| `fonts.system` | minor | a digest of the installed font list where `fc-list` exists (Linux, the container), else `null` |
+| `render.dpr`, `render.reducedMotion` | major | the capture settings (1, `reduce`) |
+| `render.gpu` | major | a class (`swiftshader`, `angle-metal`, `angle-gl`, `angle-vulkan`, `masked`, `none`), never the renderer string |
+| `render.colorGamut`, `render.timezone`, `render.locale` | major | what the probe page reports |
+| `capture.pipeline` | major | a number pxsig bumps when its capture code changes how renders look |
+| `container.image`, `container.revision`, `container.digest` | minor | `PXSIG_IMAGE`, `PXSIG_IMAGE_REVISION`, `PXSIG_IMAGE_DIGEST` when set |
+| `pxsig`, `engine`, `node` | minor | the versions that rendered |
+
+`id` is the first 16 hex characters of a sha256 over the major fields. Nothing in `env` names the
+machine or a person: no host name, user name, GPU model or font list.
+
+The environment is collected once per browser in a check (one probe page that is not a story),
+and once per browser launch in `pxsig serve`. Approving in the dashboard writes the environment
+of the render being approved, from the check that made it.
+
 ### `integrity`
 
 | Key | Default | Meaning |
@@ -232,6 +272,8 @@ names must exist in `modes`. `addModes` is accepted as another name for `modes`.
 | `PXSIG_NO_DELEGATE` | CLI | Do not hand over to the workspace root's install (see [monorepo.md](monorepo.md#installs)). |
 | `PXSIG_THREADS` | binary | Worker threads for batch commands. Default: logical CPUs. |
 | `PXSIG_THRESHOLD`, `PXSIG_MIN_SSIM`, `PXSIG_MAX_CHANGED_PCT`, `PXSIG_MAX_EDGE_PCT`, `PXSIG_MIN_CELLS` | binary | Gate values above the project's `gate` and below the gate flags and every story's own gate (see [spec.md](spec.md#gate-resolution)). |
+| `PXSIG_STRICT_ENV` | CLI | `1`: `check --full` refuses when a selected baseline was approved in a different render environment, like `--strict-env` ([env](#env)). |
+| `PXSIG_IMAGE`, `PXSIG_IMAGE_REVISION`, `PXSIG_IMAGE_DIGEST` | CLI, server | Recorded in each render's environment (`container.*`); the pxsig container image sets the first two, a runner may set the digest. |
 | `PXSIG_DEBUG` | CLI, MCP, server | `spawn`: print every program pxsig starts, with its arguments, on stderr ([platforms.md](platforms.md#programs-pxsig-starts)). `pxsig serve --debug` sets it. |
 | `NO_COLOR`, `FORCE_COLOR` | CLI | Colour in terminal output. |
 

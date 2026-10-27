@@ -240,7 +240,7 @@ The full check. `check` also takes this path when given `--update`, `--suite` or
 ```
 pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] [--only id,id]
                    [--concurrency 8] [--retries 2] [--no-a11y] [--link-base <url>] [--out <name>]
-                   [--no-server] [--timeout-s 1800] [--update]
+                   [--no-server] [--timeout-s 1800] [--strict-env] [--update]
 ```
 
 | Flag | Default | Meaning |
@@ -257,9 +257,17 @@ pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] 
 | `--out <name>` | `check` | Report file name (`<store>/reports/<name>.json`). |
 | `--no-server` | off | Do not hand the check to the server: when the server holds the store, refuse instead of queueing on it. |
 | `--timeout-s <n>` | 1800 | Seconds to wait for the server's queue to drain when the check was handed to it. |
+| `--strict-env` | off | Refuse before rendering (exit 2, nothing written) when a selected baseline was approved in a different render environment ([configuration.md](configuration.md#env)). Also `env.strict` and `PXSIG_STRICT_ENV=1`. Baselines that record no environment never refuse. Not applied to `--update`. |
 | `--update` | off | Write baselines from the renders instead of checking. A person at a terminal only, after typing `UPDATE <n> BASELINES`. Every replaced baseline is snapshotted and logged. Refused without a person: exit 3; a wrong phrase: exit 1, nothing written. |
 | `--kind <word>` | none | With `--update`: the kind on each log line (lower case, up to 16 characters). `environment` re-takes baselines for a new render environment and leaves `a11y.json` as it is. |
 | `--reason <text>` | `pxsig check --update` | With `--update`: the reason on each log line. |
+
+**The render environment.** Each row records the environment of its render (`env`) and its
+baseline's (`baselineEnv`), compared as `envMatch` (`same`, `compatible`, `mismatch`, `unknown`).
+When any entry's baseline came from a different environment, one line follows the engine line,
+for example `[check] env: 12 of 1074 entries rendered in a different environment than their
+baseline (browser.version 141→142, fonts.probe: Inter) → pxsig doctor`, and `summary.md` gets a
+line too. It is a warning; the exit code is unchanged unless `--strict-env` is given.
 
 With `--since` / `--changed`, a path the selection cannot trace selects every entry; the `check`
 line names each such path ([ci.md](ci.md#how-selection-decides)), and `summary.md` names the first.

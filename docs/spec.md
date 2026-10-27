@@ -185,6 +185,7 @@ One file per baseline: the record, the raw signature bytes and, optionally, the 
   "format": "psig",
   "container": 1,
   "entry": { "id": "button--primary@dark", "story": "button--primary", "mode": "dark", "state": null },
+  "env": { "v": 1, "id": "3f9c0a1b2c3d4e5f", "browser": { "name": "chromium", "version": "141.0.7390.37", … }, … },
   "record": { "tool": "pxsig", "version": 1, "config": { … }, … },   // the spec v1 record without "sig"
   "encryption": "none",
   "sections": [
@@ -199,6 +200,7 @@ One file per baseline: the record, the raw signature bytes and, optionally, the 
 | `format` | Always `"psig"`. |
 | `container` | Container version, the same number as bytes 4..6. |
 | `entry` | Optional. The manifest entry the baseline belongs to: `id`, `story`, `mode`, `state`. |
+| `env` | Optional (0.5 and later). The environment the baseline's render was made in, `v` 1: browser, OS, font probe, render settings, versions, and `id` over the major fields ([configuration.md](configuration.md#env)). Always the render's, never the approving machine's. A baseline without it compares as `unknown`. |
 | `record` | The spec v1 record, without `sig`. |
 | `encryption` | `"none"`. Reserved: encryption is not implemented, and a reader refuses any other value. |
 | `sections` | One object per section: `name`, `length` in bytes, `sha256` hex of its bytes. The image section adds `type`, and `width` / `height` read from the PNG header. |
@@ -219,7 +221,8 @@ A reader must:
 1. check the magic and refuse any container version it does not know;
 2. refuse any `encryption` other than `"none"`;
 3. for each section in the table, check its length and sha256; a mismatch is an error;
-4. skip sections whose name it does not know, so later versions can add sections;
+4. skip sections whose name it does not know, so later versions can add sections, and ignore
+   top-level header keys it does not know (`env` to a reader older than 0.5);
 5. require a `sig` section, and check that it matches the record (`grid * grid * 3` bytes).
 
 Putting the `sig` bytes back into the record as base64 gives the exact spec v1 record the
@@ -229,7 +232,11 @@ container was packed from. `pxsig pack` checks that by reading every file back a
 
 - A `.psig` is written to a temporary file and renamed into place.
 - `pxsig attach` adds an image to a container that has none. It refuses a container that already
-  has one, and verifies that the record and signature bytes are unchanged afterwards.
+  has one, and verifies that the record and signature bytes are unchanged afterwards. It keeps
+  every top-level header key it does not write itself (`env`, and any key a later version adds).
+- `pxsig baseline --env @file` writes each entry's render environment as `env`. The file is
+  `{ "envs": { "<envId>": env }, "byId": { "<entryId>": "<envId>" } }`; an entry it does not name
+  gets no `env`.
 
 ## 6. Manifest, version 2
 
@@ -310,7 +317,7 @@ A full check writes, under `<store>/reports/`:
 
 | File | Content |
 | --- | --- |
-| `check.json` (`check-<suite>.json`) | `{ generatedAt, project, suite, manifest, summary, affected, rows }`, one row per entry |
+| `check.json` (`check-<suite>.json`) | `{ generatedAt, project, suite, manifest, summary, affected, envs, rows }`, one row per entry. `envs` maps every render environment a row names (its render's `env`, its baseline's `baselineEnv`) by id; each row adds `envMatch` (`same`, `compatible`, `mismatch`, `unknown`) and, when not `same`, `envDiff` (the differing field names); `summary.envMismatch` counts the mismatched rows |
 | `summary.md` (`summary-<suite>.md`) | Markdown summary, suitable for a pull request comment |
 | `junit.xml` (`junit-<suite>.xml`) | JUnit results, one test case per entry |
 | `history.ndjson` | One line per run (full checks and server re-checks) |
