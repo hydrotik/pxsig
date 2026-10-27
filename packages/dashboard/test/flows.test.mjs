@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { changed, data, entry, history, inComponent, row, spread, stale } from '../fixtures/scenarios.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dashboard = path.dirname(here);
@@ -57,45 +58,7 @@ after(async () => {
   if (out) rmSync(out, { recursive: true, force: true });
 });
 
-// --- data ---------------------------------------------------------------------------------------
-const row = (id, extra = {}) => ({ id, story: id.replace(/(__[^@]+)?(@.+)?$/, ''), mode: id.includes('@light') ? 'light' : 'dark', state: null, pass: true, metrics: { ssim: 1, changedCells: 0 }, reasons: [], checkedAt: '2026-10-24T10:00:00.000Z', ...extra });
-const changed = { pass: false, changed: true, metrics: { ssim: 0.8, changedCells: 12, changedCellsPct: 3, grid: 64 }, reasons: ['ssim 0.8 < min 0.99'] };
-const entry = (id, issues = []) => ({ id, story: id.replace(/(__[^@]+)?(@.+)?$/, ''), component: 'Button', mode: 'dark', state: null, status: issues[0]?.code ?? 'ok', severity: issues[0]?.severity ?? 'info', issues, files: { sig: `${id}.psig`, sigExists: !issues.some((i) => i.code === 'unbaselined'), baseImage: true, latestRender: true } });
-
-function data({ rows, entries, summary = {} }) {
-  const byCode = {};
-  for (const x of entries) for (const i of x.issues) byCode[i.code] = (byCode[i.code] ?? 0) + 1;
-  const err = entries.filter((x) => x.severity === 'error').length;
-  const warn = entries.filter((x) => x.severity === 'warn').length;
-  return {
-    generatedAt: '2026-10-24T10:00:00.000Z',
-    project: 'demo',
-    store: '.pxsig',
-    check: {
-      generatedAt: '2026-10-24T10:00:00.000Z',
-      manifest: { grid: 64, gate: null, modes: null, defaultMode: 'dark' },
-      summary: { entries: rows.length, checked: rows.length, skipped: 0, passed: rows.filter((r) => r.pass).length, failed: rows.filter((r) => !r.pass).length, flaky: 0, errors: rows.filter((r) => r.error).length, cached: 0, a11yViolations: 0, a11yNew: 0, modes: ['dark', 'light'], concurrency: 1, renderWallMs: 100, rustEngineMs: 1, rustProcessMs: 1, retryMs: 0, affected: null, totalMs: 200, ...summary },
-      rows,
-    },
-    detailCalibration: null,
-    bench: null,
-    history: [],
-    review: {},
-    a11yReview: {},
-    storybook: { baseUrl: 'http://127.0.0.1:1' },
-    paths: { diffRoot: '/p/demo/diffs/', renders: '/p/demo/renders/', baselines: '' },
-    sigs: {},
-    integrity: {
-      schemaVersion: 1,
-      generatedAt: '2026-10-24T10:00:00.000Z',
-      sources: { storyIndex: { source: 'storybook', inScope: entries.length }, report: { generatedAt: '2026-10-24T10:00:00.000Z' } },
-      setup: [],
-      summary: { status: err ? 'attention' : warn ? 'warnings' : 'clean', headline: '', entries: entries.length, components: 1, componentsBySeverity: { error: err ? 1 : 0, warn: !err && warn ? 1 : 0, info: 0 }, bySeverity: { error: err, warn, info: entries.length - err - warn }, byCode },
-      components: [{ component: 'Button', status: entries[0]?.status ?? 'ok', severity: err ? 'error' : warn ? 'warn' : 'info', entries: entries.length, stories: 1, counts: byCode }],
-      entries,
-    },
-  };
-}
+// --- data: the shared scenarios (fixtures/scenarios.mjs, also what `pxsig dashboard check` renders)
 
 /** A page on the mocked server. `events` is the SSE stream body; `posts` collects every POST. */
 async function open(d, { hash = '', events = 'event: hello\ndata: {}\n\n', answers = {}, init = null } = {}) {
@@ -229,28 +192,6 @@ test('a link that names the theme opens in it, over the remembered one (the Stor
 });
 
 // --- the Overview's columns, its errors card and the stale heatmap ---------------------------------
-
-const stale = { code: 'stale', severity: 'warn', reason: 'src/x.tsx edited after the verdict' };
-/** Entries spread over components (`Name:index`), the ledger's components counted from them. */
-function spread(d) {
-  const L = d.integrity;
-  const names = [...new Set(L.entries.map((x) => x.component))];
-  L.components = names.map((component) => {
-    const es = L.entries.filter((x) => x.component === component);
-    const counts = {};
-    for (const x of es) for (const i of x.issues) counts[i.code] = (counts[i.code] ?? 0) + 1;
-    const severity = es.some((x) => x.severity === 'error') ? 'error' : es.some((x) => x.severity === 'warn') ? 'warn' : 'info';
-    return { component, status: es.find((x) => x.severity === severity)?.status ?? 'ok', severity, entries: es.length, stories: 1, counts };
-  });
-  const by = { error: 0, warn: 0, info: 0 };
-  for (const c of L.components) by[c.severity]++;
-  L.summary.components = L.components.length;
-  L.summary.componentsBySeverity = by;
-  L.summary.status = by.error ? 'attention' : by.warn ? 'warnings' : 'clean';
-  return d;
-}
-const inComponent = (component, id, issues) => ({ ...entry(id, issues), component });
-const history = (n) => Array.from({ length: n }, (_, i) => ({ at: `2026-10-2${i}T10:00:00.000Z`, summary: { stories: 4, failed: i % 3, cached: 0, elapsedMs: 40 }, failedIds: [] }));
 
 test('the Overview: open items and stale entries on the left, errors (only with errors) and changed entries per run on the right', async (t) => {
   if (skip) return t.skip(skip);

@@ -2,7 +2,8 @@
 /**
  * ui.mjs — the dashboard's UI contract tooling (packages/dashboard/ui-tools.mjs does the work).
  *
- *   node scripts/ui.mjs docs              regenerate src/ui/manifest.json and docs/ui/features.md
+ *   node scripts/ui.mjs docs              regenerate src/ui/manifest.json, docs/ui/features.md and
+ *                                         fixtures/screens.json
  *   node scripts/ui.mjs manifest          regenerate src/ui/manifest.json only
  *   node scripts/ui.mjs check             the contract, its docs and the reference adapter agree, and
  *                                         no design-system import sits outside src/ui/adapters/ (CI)
@@ -14,7 +15,7 @@
  * Exit: 0 ok · 1 problems (a required component missing, a malformed conformance file).
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { buildManifest, checkAll, compareVersions, contractDiff, contractShape, docsDir, featuresMarkdown, featuresMdFile, gapsOf, gapsText, lockFile, lockFor, lockText, manifestFile, manifestText, readChanges, readFeatures, readLock } from '../packages/dashboard/ui-tools.mjs';
+import { buildManifest, checkAll, compareVersions, contractDiff, contractShape, docsDir, featuresMarkdown, featuresMdFile, gapsOf, gapsText, lockFile, lockFor, lockText, manifestFile, manifestText, readChanges, readFeatures, readLock, screensFile, screensText } from '../packages/dashboard/ui-tools.mjs';
 import { resolveAdapter } from '../packages/dashboard/build-config.mjs';
 
 const [cmd, ...args] = process.argv.slice(2);
@@ -36,8 +37,11 @@ try {
     console.log('[ui] wrote packages/dashboard/src/ui/manifest.json');
     if (cmd === 'docs') {
       mkdirSync(docsDir, { recursive: true });
-      writeFileSync(featuresMdFile, featuresMarkdown(await readFeatures()));
+      const features = await readFeatures();
+      writeFileSync(featuresMdFile, featuresMarkdown(features));
       console.log('[ui] wrote docs/ui/features.md');
+      writeFileSync(screensFile, screensText(features));
+      console.log('[ui] wrote packages/dashboard/fixtures/screens.json');
     }
   } else if (cmd === 'check') {
     const problems = await checkAll();

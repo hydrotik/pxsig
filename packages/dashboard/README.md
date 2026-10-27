@@ -24,6 +24,15 @@ Without a build, `pxsig serve` still answers its API, and `/report/` answers 404
 dashboard is not built". Changes to the data the dashboard reads (`packages/pxsig/src/report.mjs`)
 and to the server can be developed and tested without it.
 
+## Sample data and screens
+
+`fixtures/scenarios.mjs` holds the sample report data (named scenarios: `clean`, `changed`,
+`first-approval`, `errors`, `a11y`, `flaky`, `stale`, `empty`, `several-projects`, and the server
+states `loading`, `load-error`, `offline`, `static`). The browser tests (`test/flows.test.mjs`) and
+`pxsig dashboard check` both use it. Each feature in `src/ui/features.ts` lists the screens the
+check renders; `node scripts/ui.mjs docs` writes them to `fixtures/screens.json`, which ships in
+the `pxsig` package (Node cannot strip types from a `.ts` file under `node_modules`).
+
 ## Copy
 
 Every user-facing string is in `src/copy/en.json`, keyed by view (`overview.items.changed`,

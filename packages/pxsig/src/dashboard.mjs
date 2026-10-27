@@ -4,6 +4,8 @@
  *
  *   pxsig dashboard gaps  [--ui <path>] [--json]   the adapter's coverage of the UI contract
  *   pxsig dashboard build [--ui <path>] [--out <dir>]
+ *   pxsig dashboard check [--ui <path>] [--build <dir>] [--out <dir>] [--themes dark,light] [--strict]
+ *                                                  every feature's screens on that build (dashboard-check.mjs)
  *
  * --ui defaults to `dashboard.ui` in the current folder's pxsig.config.json. The dashboard's source
  * ships in this package (`dashboard/`, or `../dashboard` in a source checkout); the build runs Vite
@@ -95,5 +97,31 @@ export async function dashboardCommand(sub, flags, { emit = (s) => process.stdou
     emit(flags.json ? JSON.stringify({ outDir }) : `built ${outDir}\n${usual ? 'pxsig serve serves it from now on, while it is newer than the adapter' : `serve it: PXSIG_DASHBOARD_DIR=${outDir} pxsig serve`}`);
     return 0;
   }
-  throw new Error('usage: pxsig dashboard build [--ui <path>] [--out <dir>] | pxsig dashboard gaps [--ui <path>] [--json]');
+  if (sub === 'check') {
+    const { CheckSetupError, dashboardCheck } = await import('./dashboard-check.mjs');
+    try {
+      const { code, report, outDir } = await dashboardCheck(flags);
+      const s = report.summary;
+      emit(
+        flags.json
+          ? JSON.stringify(report, null, 2)
+          : [
+              `${s.rendered} of ${s.screens} screens rendered${s.failed ? `, ${s.failed} failed` : ''} · ${s.withAxe} with axe violations${report.strict ? '' : ' (advisory; --strict makes them fail)'}`,
+              ...report.screens.filter((x) => !x.rendered).map((x) => `  failed: ${x.feature} #${x.index + 1} (${x.theme}): ${x.reason}`),
+              report.reference.used ? null : `no reference column: ${report.reference.note}`,
+              `gallery: ${join(outDir, 'index.html')}`,
+            ]
+              .filter(Boolean)
+              .join('\n')
+      );
+      return code;
+    } catch (e) {
+      if (e instanceof CheckSetupError) {
+        process.stderr.write(`[dashboard] setup error: ${e.message}\n`);
+        return 2;
+      }
+      throw e;
+    }
+  }
+  throw new Error('usage: pxsig dashboard build [--ui <path>] [--out <dir>] | pxsig dashboard gaps [--ui <path>] [--json] | pxsig dashboard check [--build <dir>] [--out <dir>] [--themes dark,light] [--strict]');
 }

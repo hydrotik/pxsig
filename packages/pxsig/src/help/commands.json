@@ -1113,7 +1113,7 @@
     "dashboard": {
       "summary": "The dashboard on this project's design system, through a UI adapter.",
       "usage": [
-        "pxsig dashboard build|gaps"
+        "pxsig dashboard build|gaps|check"
       ],
       "subcommands": {
         "build": {
@@ -1178,6 +1178,72 @@
               "shows": "What an adapter still lacks"
             }
           ]
+        },
+        "check": {
+          "summary": "Every dashboard feature's screens on the adapter build, from sample data that ships with pxsig, in each theme, with Playwright's Chromium: a gallery beside the prebuilt reference dashboard, axe on each screen, page errors. Reads no project data, writes only --out.",
+          "usage": [
+            "pxsig dashboard check [--ui path] [--build dir] [--out dir] [--reference dir] [--themes dark,light] [--only feature,…] [--strict] [--json]"
+          ],
+          "flags": [
+            {
+              "name": "ui",
+              "value": "path",
+              "meaning": "The adapter, for the components each screen leaves to fallbacks and its contract version (default: the one the build records).",
+              "setting": "dashboard.ui",
+              "env": "PXSIG_UI_ADAPTER"
+            },
+            {
+              "name": "build",
+              "value": "dir",
+              "default": "node_modules/.cache/pxsig/dashboard",
+              "meaning": "The adapter build to check (pxsig dashboard build writes it)."
+            },
+            {
+              "name": "out",
+              "value": "dir",
+              "default": "node_modules/.cache/pxsig/dashboard-check",
+              "meaning": "Where the gallery (index.html), report.json, summary.md and screenshots go."
+            },
+            {
+              "name": "reference",
+              "value": "dir",
+              "default": "the prebuilt dashboard in the pxsig package",
+              "meaning": "The dashboard each screen is set beside. Without a built one there (a source checkout, a release dry run), the gallery has no reference column and says why."
+            },
+            {
+              "name": "themes",
+              "value": "list",
+              "default": "dark,light",
+              "meaning": "The themes to render each screen in."
+            },
+            {
+              "name": "only",
+              "value": "features",
+              "meaning": "Feature ids (comma-separated, from docs/ui/features.md): check only these."
+            },
+            {
+              "name": "strict",
+              "meaning": "Any axe violation fails the check (exit 1); without it they are listed and advisory."
+            }
+          ],
+          "effects": [
+            "writes-files"
+          ],
+          "exits": {
+            "0": "Every screen rendered with no page error",
+            "1": "A screen did not render, or (with --strict) an axe violation",
+            "2": "No build, no Chromium, an adapter for an older major UI contract, or a usage error"
+          },
+          "examples": [
+            {
+              "cmd": "pxsig dashboard check",
+              "shows": "A gallery of every screen on the project's own design system, beside the reference"
+            },
+            {
+              "cmd": "pxsig dashboard check --only inspector.stage --themes dark",
+              "shows": "One feature while working on it"
+            }
+          ]
         }
       },
       "effects": [
@@ -1185,7 +1251,7 @@
       ],
       "exits": {
         "0": "OK",
-        "1": "See gaps",
+        "1": "See gaps and check",
         "2": "Usage or setup error"
       },
       "examples": [
