@@ -12,5 +12,8 @@ one design system; a team can build the same dashboard on its own, chosen once a
    rendering. Exit 1 when a required component is missing.
 4. `pxsig dashboard build` builds it with the project's own Vite. `pxsig serve` then serves that
    build while it is current, else the prebuilt dashboard, with a line saying how to rebuild.
+5. `pxsig dashboard check` renders every feature's screens on that build from sample data, in
+   both themes, beside the prebuilt reference, with axe on each: a gallery to review in
+   `node_modules/.cache/pxsig/dashboard-check/index.html`. Exit 1 when a screen does not render.
 
 See `pxsig help dashboard`, docs/ui/build-adapter.md, docs/ui/features.md.

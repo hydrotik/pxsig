@@ -8,6 +8,7 @@ required contract component and a few optional ones; the rest render the dashboa
 pnpm install
 pnpm dashboard:gaps     # pxsig dashboard gaps: what the adapter covers, and what it leaves to fallbacks
 pnpm dashboard:build    # pxsig dashboard build: node_modules/.cache/pxsig/dashboard
+pnpm dashboard:check    # pxsig dashboard check: every screen on it, a gallery beside the reference
 pxsig serve             # serves that build while it is newer than pxsig-ui/
 ```
 

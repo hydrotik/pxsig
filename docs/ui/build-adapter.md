@@ -637,10 +637,23 @@ draw them with your own segmented control and buttons.
 1. `pxsig dashboard gaps`: no problems, every required component present; each `partial` and
    `bespoke` has a note.
 2. `pxsig dashboard build`: the build succeeds.
-3. Serve it with your project's data (`pxsig serve`; its first line names the dashboard it serves) and walk
-   [features.md](features.md) section by section in both themes: every state, interaction and key.
-4. Side by side with the reference: open the same project in the prebuilt dashboard (`pxsig serve`
-   without `PXSIG_DASHBOARD_DIR`) and compare each section and the inspector on one entry with
-   changes. Layout and behaviour should match; only the look differs.
-5. Run axe on each section and the open inspector: no violations.
+3. `pxsig dashboard check`: renders every feature's screens ([features.md](features.md)) on your
+   build from sample data that ships with pxsig, in both themes, and writes a gallery
+   (`node_modules/.cache/pxsig/dashboard-check/index.html`) that sets each screen beside the same
+   screen on the prebuilt reference dashboard. It reads none of your project's data and writes
+   nothing but that folder. Review the gallery: layout and behaviour should match the reference;
+   only the look differs.
+   - Exit 1: a screen did not render (its landmark never appeared, or the page threw); the report
+     names the screen and the reason. Exit 2: no build, no Chromium, or an adapter written for an
+     older major contract version.
+   - Each screen's axe violations are listed in the gallery, `summary.md` and `report.json`.
+     They are advisory; `--strict` makes any violation exit 1.
+   - `--only <feature,…>` checks part of it while you work on one feature; `--themes dark` one theme.
+   - The components each screen left to the dashboard's fallbacks are listed beside it.
+4. Without Chromium (`npx playwright install chromium` installs it), do it by hand instead: serve
+   your build with your project's data (`pxsig serve`; its first line names the dashboard it
+   serves), walk [features.md](features.md) section by section in both themes, compare each
+   section and the inspector on one entry with changes against the prebuilt dashboard (`pxsig
+   serve` without `PXSIG_DASHBOARD_DIR`), and run axe on each section and the open inspector.
+5. Run `tsc --noEmit` in your project: the contract's types catch prop-shape changes at compile time.
 6. Update `conformance.json` with what you found.
