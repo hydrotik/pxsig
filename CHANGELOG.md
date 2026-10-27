@@ -5,6 +5,114 @@ semantic versioning.
 
 ## Unreleased
 
+## 0.5.1 - 2026-10-27
+
+The Windows and review release. The Windows engine no longer needs the Visual C++ Redistributable,
+so it starts on a managed machine that has only Windows and Node. The dashboard title can carry a
+project label (`pxsig · Hydrotik`), the versions show on hover, and every dashboard screen passes
+axe. `pxsig setup vscode` names the assistant directly, `pxsig --version` prints the versions, and
+a misspelled flag is reported instead of silently ignored. The repository gains lint, format and
+pinned-toolchain gates. Read **Behaviour changes** first: the package needs Node 22, an unknown flag
+prints a warning on stderr (the exit code is unchanged), and `--version` no longer runs `status`.
+
+### Behaviour changes
+
+- **The report's modes moved in the dashboard's top bar.** The `dark · light` badge sits at the end
+  of the bar beside the connection badge (Live, Offline or Static report) instead of beside the
+  title. It still hides on a narrow window. Layout only: nothing else in the bar moves.
+- **`engines.node` is `>=22`** for `pxsig` and `@pxsig/storybook-addon` (was `>=20` for `pxsig`).
+  Node 20 reached end of life in April 2026 and was never tested; CI runs Node 22. npm prints an
+  `EBADENGINE` warning on Node 20, and refuses the install only with `engine-strict`.
+- **An unknown or misspelled flag prints a warning** on stderr, with the closest known flag and,
+  when it took the next word as its value, that word: `pxsig: unknown flag --nmae, ignored (did you
+  mean --name?); it took "foo" as its value`. The command runs as before and the exit code is
+  unchanged; 0.6.0 is planned to make it an error. `pxsig cat` passes its flags to the engine and
+  is not checked.
+- **`pxsig --version` prints the versions** (`pxsig 0.5.1 (engine 0.5.1, UI contract 1.1.0)`;
+  `--json` as data) and exits 0. It used to run `status`.
+
+### Added
+
+- **`label` in `pxsig.config.json`**: the dashboard title after "pxsig ·", for example
+  `"label": "Hydrotik"`. 1 to 60 characters; without it the title is the project name, as before.
+  `pxsig init --label <text>` writes it, and a person at a terminal setting up a new config is asked
+  once (Enter keeps the name; CI, an assistant or piped output is never asked). `pxsig config` shows
+  the title, and the project switcher lists projects by their label.
+- **The versions that drew the page.** Hovering "pxsig" in the top bar shows the pxsig, engine and
+  UI contract versions; the Help section ends with the same line as text. The dashboard data gains
+  `label` and `versions` (additive).
+- **UI contract 1.1.0: an optional `Tooltip`** (`content`, `children`). An adapter without it gets
+  the element's native `title` (docs/ui/contract-changes.md). The hydrotik reference adapter maps it
+  to its design system's Tooltip.
+- **`pxsig setup <assistant>`**, for example `pxsig setup vscode`, the same as `--assistant
+  vscode`. Before, the word after `setup` could only be the step name and `setup vscode` exited 2.
+  `pxsig version` is the same as `--version`.
+
+### Changed
+
+- **Contributors: one format for the repository.** oxfmt with the hydrotik monorepo's settings, and
+  `cargo fmt`, checked in `Clean repository` and the Linux `Rust` job and applied to staged files
+  by the pre-commit hook. The one-time reformat is listed in `.git-blame-ignore-revs`
+  (`git config blame.ignoreRevsFile .git-blame-ignore-revs`). Nothing in the published packages
+  behaves differently.
+- **Contributors: oxlint, sherif, clippy and commitlint run in CI** (`Clean repository` and the
+  Linux `Rust` job; no job names changed). oxlint errors fail; oxlint warnings may only go down
+  against `scripts/lint-warnings-baseline.json`. The release checks each packed tarball with
+  publint. `pnpm install` sets up git hooks that lint staged files and check commit subjects
+  (CONTRIBUTING.md). Apart from the inspector fix, nothing in the published packages changes.
+- **The Rust toolchain is pinned to 1.99.0** (`rust-toolchain.toml` and every workflow), so
+  clippy's lints and the release binaries change only when the pin is bumped on purpose. The
+  release binaries were already built with 1.99, the current stable.
+- **The dashboard bundle ships unminified.** `dist/dashboard/assets/app.js` in the npm package now
+  reads as code, so a reviewer can audit what runs. `PXSIG_DASHBOARD_MINIFY=1` at build time (also
+  for `pxsig dashboard build`) minifies it.
+- **The published `package.json` files carry no `scripts` or `devDependencies`.** `pxsig`'s
+  `prepack` pointed at a file outside the package; the release now runs that step itself, strips
+  both keys (`scripts/pack-manifest.mjs`) and fails if a packed manifest still has them.
+- **The research harness's token overrides are no longer code.** A scenario's `tokens` value is a
+  literal, `{ "scale": n }` or `{ "mix": colour, "amount": pct }`; the `"fn:<body>"` form is refused
+  with a message (`tools/`, not part of the npm package).
+
+### Fixed
+
+- **The dashboard passes axe on every screen `pxsig dashboard check` renders** (62, both themes), with
+  no visible change: each screen was compared pixel for pixel before and after.
+  - The loading and load-error pages, the Storybook panel and the decision window it opens have a
+    main region and a level-one heading (read by assistive technology, not drawn). The panel's
+    story title is a level-two heading, below it.
+  - A heatmap tile's text is read as "Card 2 stale of 2", so it is inside the tile's name (WCAG
+    2.5.3, label in name); it was read as "Card2 stale of 2".
+  - An alert's title is not a heading: the hydrotik reference adapter removes the heading role from
+    its design system's title, as the default dashboard draws it as bold text. The UI contract says
+    so; no props changed, so the contract version stays 1.1.0.
+- **The container image's smoke test installs the examples with the repository's pnpm.** The staged
+  example sits outside the checkout, so Corepack fetched the newest pnpm (12), which fails on
+  ignored build scripts; the 0.5.0 image build stopped there, before pushing anything.
+- **The inspector no longer breaks React's rules of hooks.** A hook ran after an early return, so a
+  render without an entry followed by one with an entry could fail with "Rendered more hooks than
+  during the previous render". Found by the new linter.
+- **The Windows engine runs without the Visual C++ Redistributable.** 0.5.0's `pxsig.exe` imported
+  `VCRUNTIME140.dll`, which is not part of Windows, so on a machine without it the engine did not
+  start. It is now built with the C runtime linked in (`crt-static`), and CI and the release fail
+  when a built `pxsig.exe` imports a Visual C++ runtime DLL.
+- **"run pxsig_check first"** (an MCP tool's name) in the CLI's messages now reads "run a check
+  first (pxsig check, or the pxsig_check tool)".
+- **`pxsig help platforms`** lists every program pxsig starts, `fc-list` and `docker` included.
+- The docs said the published package runs on Node 20; it needs 22 (`engines`, since 0.5.1's
+  scanner changes). `docs/cli.md` lists the `catalog` help topic.
+- **CI:** the browser is installed before the `pxsig` suite, so its 4 browser tests (render
+  environment, server flows) run on every OS instead of skipping. Cargo runs with `--locked`
+  everywhere.
+
+### Security
+
+- **pxsig evaluates no code at runtime.** axe-core is added to the rendered page with Playwright's
+  `addScriptTag` instead of `new Function`, in `check` and `dashboard check`.
+- **`SECURITY.md` lists what package scanners report** (programs started, network, URL strings,
+  environment, filesystem, dynamic import, native binaries, the bundled page) with where each is in
+  the code and what bounds it. The links in the coding-assistant marker table moved from the code
+  to `docs/agents.md#sources`.
+
 ## 0.5.0 - 2026-10-27
 
 The environment release. Every render records the environment that produced it, every baseline
