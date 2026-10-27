@@ -39,6 +39,7 @@ The CLI flags layer is the config flags every command accepts:
 | `--grid <n>` | `grid` |
 | `--min-cell-px <n>` | `minCellPx` |
 | `--settle-ms <n>` | `capture.settleMs` |
+| `--browser <ws://…>` | `capture.browserEndpoint` |
 
 Other flags (`--modes`, `--only`, `--concurrency`, …) are run options, not config. `pxsig config`
 names the layer behind every key: `defaults`, `workspace defaults`, `project config`, `env` or
@@ -132,6 +133,7 @@ The smallest config is `{}`: every key has a default. `pxsig init` writes
 | `capture.settleMs` | `200` | Minimum wait after fonts load, before the layout-stability wait. |
 | `capture.target` | `"#storybook-root"` | The element captured. A story can override it. |
 | `capture.waitFor` | `[]` | Extra waits for content that animates in script: `{ selector, minMs?, stableMarkup? }`. A rule applies when its `selector` matches. `minMs` raises the minimum wait; `stableMarkup` waits until the markup under that selector stops changing. |
+| `capture.browserEndpoint` | `null` | A Playwright browser server (`ws://…`) to render with instead of launching a browser on this machine: usually the container's, from `pxsig browser start` ([container.md](container.md)). Every engine (Chromium, Firefox, WebKit) connects to it; Storybook on this machine's localhost stays reachable. The project's Playwright must be the server's major.minor. Also `--browser` and `PXSIG_BROWSER_WS`. |
 | `grid` | `64` | Signature grid, cells per side (8..256). |
 | `minCellPx` | `8` | Adaptive grid: cells at least this many pixels wide, capped by `grid` (see [spec.md](spec.md#2-signature-construction)). |
 | `detail` | `true` | Write the detail channel into new baselines. |
@@ -274,6 +276,8 @@ of the render being approved, from the check that made it.
 | `PXSIG_THRESHOLD`, `PXSIG_MIN_SSIM`, `PXSIG_MAX_CHANGED_PCT`, `PXSIG_MAX_EDGE_PCT`, `PXSIG_MIN_CELLS` | binary | Gate values above the project's `gate` and below the gate flags and every story's own gate (see [spec.md](spec.md#gate-resolution)). |
 | `PXSIG_STRICT_ENV` | CLI | `1`: `check --full` refuses when a selected baseline was approved in a different render environment, like `--strict-env` ([env](#env)). |
 | `PXSIG_IMAGE`, `PXSIG_IMAGE_REVISION`, `PXSIG_IMAGE_DIGEST` | CLI, server | Recorded in each render's environment (`container.*`); the pxsig container image sets the first two, a runner may set the digest. |
+| `PXSIG_BROWSER_WS` | CLI, server | Overrides `capture.browserEndpoint`: render with that browser server ([container.md](container.md)). |
+| `PXSIG_PLAYWRIGHT` | CLI, server | A Playwright package folder to load before the project's. The container image sets it to its own (`/opt/pxsig/node_modules/playwright`), so the driver always matches the browsers installed beside it. Unset, Playwright resolves from the project as before. |
 | `PXSIG_DEBUG` | CLI, MCP, server | `spawn`: print every program pxsig starts, with its arguments, on stderr ([platforms.md](platforms.md#programs-pxsig-starts)). `pxsig serve --debug` sets it. |
 | `NO_COLOR`, `FORCE_COLOR` | CLI | Colour in terminal output. |
 

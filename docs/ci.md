@@ -242,8 +242,12 @@ instead of baselines. Keep a suite git-ignored and local instead when only one m
 
 Fonts and font rendering differ between operating systems. The signature gate absorbs
 anti-aliasing noise, but a different fallback font is a real visual change. Approve baselines from
-renders made in the same environment as CI (for example the same container image), or make sure
-the fonts a story uses are loaded by Storybook rather than taken from the system.
+renders made in the same environment as CI, or make sure the fonts a story uses are loaded by
+Storybook rather than taken from the system. The pxsig container image
+(`ghcr.io/hydrotik/pxsig:<pxsig>-pw<playwright>`) is that environment: CI runs the check in it, and
+a Mac renders with its browser through `pxsig browser start` ([container.md](container.md)). Each
+render records the environment it was made in, and a check warns when a baseline came from another
+one ([configuration.md](configuration.md#env)).
 
 ## Exit codes
 

@@ -136,6 +136,7 @@ include it (see [packages/dashboard/README.md](packages/dashboard/README.md)).
 | Coding assistants: markers, the instruction not to approve, MCP recipes, `pxsig setup` | [docs/agents.md](docs/agents.md) |
 | Storybook addon | [docs/storybook.md](docs/storybook.md) |
 | Continuous integration | [docs/ci.md](docs/ci.md) |
+| The container image: the same renders on every machine | [docs/container.md](docs/container.md) |
 | Required checks, branch protection and the merge queue | [docs/required-checks.md](docs/required-checks.md) |
 | Checks on a machine without hosted CI, as commit statuses | [docs/local-ci.md](docs/local-ci.md) |
 | Baseline owners per component with CODEOWNERS | [docs/codeowners.md](docs/codeowners.md) |
