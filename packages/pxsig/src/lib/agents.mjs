@@ -18,38 +18,36 @@ const set = (env, k) => env[k] != null && env[k] !== '';
 
 /**
  * In order; the first row that matches names the assistant. `name` is a string, or a function of
- * the matching value. Sources were read on 2026-10-25.
+ * the matching value. Each row's source, read on 2026-10-25, is listed in docs/agents.md#sources.
  */
 export const MARKERS = [
   // pxsig's own: set it in any shell an assistant uses.
   { vars: ['PXSIG_AGENT'], name: (v) => (v === '1' || v === 'true' ? 'agent' : clean(v)) },
   // The cross-vendor variable: VS Code Copilot agent mode (github_copilot_vscode_agent), Claude Code,
-  // opencode. https://github.com/microsoft/vscode/blob/main/src/vs/platform/chat/common/aiAgentEnv.ts
+  // opencode (VS Code's aiAgentEnv.ts).
   // Known values get the short name the other rows use; any other value is its own name.
   { vars: ['AI_AGENT'], name: (v) => (/^github_copilot/.test(v) ? 'copilot' : /^claude-code/.test(v) ? 'claude-code' : clean(v)) },
   // VS Code agent mode keeps COPILOT_AGENT for back-compat; Copilot CLI sets COPILOT_CLI and, on
   // shell-tool commands, COPILOT_AGENT_SESSION_ID (npm @github/copilot@1.0.60).
   { vars: ['COPILOT_AGENT', 'COPILOT_CLI', 'COPILOT_AGENT_SESSION_ID'], name: 'copilot' },
-  // https://code.claude.com/docs/en/env-vars (CLAUDECODE, CLAUDE_CODE_CHILD_SESSION); the entry
+  // Claude Code's environment-variable reference (CLAUDECODE, CLAUDE_CODE_CHILD_SESSION); the entry
   // point is observed. CLAUDECODE is also set in the IDE extensions' integrated terminals.
   { vars: ['CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_CODE_CHILD_SESSION'], name: 'claude-code' },
-  // https://github.com/openai/codex/blob/main/codex-rs/core/src/spawn.rs and exec_env.rs: the
+  // Codex (codex-rs/core spawn.rs and exec_env.rs): the
   // thread id and CODEX_CI always; the sandbox variables only under the macOS sandbox.
   { vars: ['CODEX_THREAD_ID', 'CODEX_CI', 'CODEX_SANDBOX', 'CODEX_SANDBOX_NETWORK_DISABLED'], name: 'codex' },
-  // https://github.com/google-gemini/gemini-cli/blob/main/packages/core/src/services/shellExecutionService.ts
+  // Gemini CLI's shell execution service.
   { vars: ['GEMINI_CLI'], name: 'gemini-cli' },
-  // https://cursor.com/docs/agent/tools/terminal, https://cursor.com/docs/agent/security/run-modes
+  // Cursor's terminal and run-mode documentation.
   { vars: ['CURSOR_AGENT', 'CURSOR_SANDBOX'], name: 'cursor' },
-  // Cline's VS Code terminal mode only (the default):
-  // https://github.com/cline/cline/blob/main/apps/vscode/src/hosts/vscode/terminal/VscodeTerminalRegistry.ts
+  // Cline's VS Code terminal mode only (the default; its VscodeTerminalRegistry.ts).
   { vars: ['CLINE_ACTIVE'], name: 'cline' },
-  // Roo Code's VS Code terminal mode only:
-  // https://github.com/RooCodeInc/Roo-Code/blob/main/src/integrations/terminal/Terminal.ts
+  // Roo Code's VS Code terminal mode only (its integrations/terminal/Terminal.ts).
   { vars: ['ROO_ACTIVE'], name: 'roo-code' },
   // npm @sourcegraph/amp (2026-06-09 build). AGENT counts only with the value amp.
   { vars: ['AGENT'], when: (v) => v === 'amp', name: 'amp' },
   { vars: ['AMP_CURRENT_THREAD_ID'], name: 'amp' },
-  // https://github.com/sst/opencode packages/core/src/tool/plugin/shell.ts
+  // opencode (packages/core/src/tool/plugin/shell.ts).
   { vars: ['OPENCODE'], name: 'opencode' },
 ];
 

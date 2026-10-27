@@ -7,7 +7,7 @@
  *
  * The output goes to packages/pxsig/dist/dashboard/ (or PXSIG_DASHBOARD_OUT), which ships in the
  * `pxsig` npm package and is never committed. It is a classic (IIFE) script so a static report also
- * opens from disk.
+ * opens from disk, and unminified unless PXSIG_DASHBOARD_MINIFY=1 is set.
  */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -83,8 +83,10 @@ export function packageDir(name, fromDirs) {
  * @param {Function} o.react         @vitejs/plugin-react's default export
  * @param {Function} o.vanillaExtractPlugin
  * @param {string} [o.root]          the dashboard source folder (default: this one)
+ * @param {boolean} [o.minify]       minify the bundle; default false (readable output that a reviewer
+ *                                   can audit), true when PXSIG_DASHBOARD_MINIFY=1
  */
-export async function dashboardConfig({ adapter, cwd, outDir, resolveFrom, react, vanillaExtractPlugin, root = here }) {
+export async function dashboardConfig({ adapter, cwd, outDir, resolveFrom, react, vanillaExtractPlugin, root = here, minify = process.env.PXSIG_DASHBOARD_MINIFY === '1' }) {
   const ui = resolveAdapter({ adapter, cwd });
   const extraFile = path.join(ui.dir, 'vite.mjs');
   const extra = existsSync(extraFile) ? await (await import(pathToFileURL(extraFile).href)).default() : {};
@@ -129,6 +131,8 @@ export async function dashboardConfig({ adapter, cwd, outDir, resolveFrom, react
     build: {
       outDir,
       emptyOutDir: true,
+      // Unminified by default, so the bundle that ships in the npm package reads as code.
+      minify: minify ? 'esbuild' : false,
       chunkSizeWarningLimit: 4000,
       modulePreload: false,
       rollupOptions: { output: { format: 'iife', inlineDynamicImports: true, entryFileNames: 'assets/app.js', assetFileNames: 'assets/[name][extname]' } },

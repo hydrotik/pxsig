@@ -22,6 +22,8 @@ jobs:
       - run: node scripts/check-clean.mjs
       # Its own rules, the product-shot exemption among them.
       - run: node --test scripts/check-clean.test.mjs
+      # The published package.json files drop scripts and devDependencies (release.yml, pack job).
+      - run: node --test scripts/pack-manifest.test.mjs
       # Changelog fragments (changelog.d/README.md): well formed, and a pull request adds one instead
       # of editing CHANGELOG.md, which only a release/ branch changes.
       - run: node scripts/changelog.mjs check
