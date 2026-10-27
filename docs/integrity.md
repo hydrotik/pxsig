@@ -86,6 +86,9 @@ Problems with the setup sit outside the entries, in `setup`:
 | `store-conflict` | error | A merge or rebase left store files or baselines conflicted (`git ls-files -u`). `pxsig check` refuses to run until they are resolved: see [ci.md](ci.md#rebasing-with-baselines). |
 | `env-mismatch` | warn | Entries rendered in a different environment than their baseline (a major field differs: the browser's major version, the fonts, the GPU class, timezone, locale; [configuration.md](configuration.md#env)). The reason names the count and the fields. One setup finding, never a per-entry code, so story cards and `doctor`'s exit are unchanged; `integrity.severity` can raise it. Baselines that record no environment never count. |
 | `engine-old` | warn | The engine binary is older than the CLI (a stale `PXSIG_BIN`, a platform package left behind): baselines it writes carry no render environment. |
+| `enforcement-warn` | info | The config sets gates to warn mode ([configuration.md](configuration.md#enforcement)): the reason names them, where they are set, `warnUntil`, and the would-fail runs so far. The quiet a11y default adds nothing. |
+| `enforcement-ending` | warn | A gate on warn is enforced from `warnUntil`, within `noticeDays`: the reason says when. Extend the date in a pull request to keep warn mode. |
+| `enforcement-expired` | info | `warnUntil` passed: the gates that were on warn have been enforced since. Shown for `noticeDays` after the date. |
 | `image-mismatch` | warn | Inside the container image (`PXSIG_IMAGE` set): the image is built for a different Playwright than the one that resolves, or runs a different pxsig than the project pins. Use the image tag for the project's versions ([container.md](container.md)). |
 | `path-portability` | warn | A baseline path Windows cannot check out (a reserved name such as `CON` or `NUL`, a trailing dot or space, one of `<>:"\|?*`, over 240 characters), or two baseline paths that differ only in case. |
 

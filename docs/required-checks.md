@@ -24,6 +24,12 @@ terminal, for baselines from before the log existed (`--no-strict` only reports 
 `--all-suites` covers every suite; a suite whose manifest is not committed (git-ignored) is listed
 and skipped.
 
+**Warn mode and a required check.** A gate the config sets to `warn`
+([configuration.md](configuration.md#enforcement)) exits 0 where only it would have failed, so a
+required status taken from the job's exit would read as a pass. Do not require a job whose gates
+are on warn; read `enforcement.wouldFail` in `check.json` when a script posts the status. Setup
+errors still exit 2, and a mismatched baseline or a rewritten log still fails `approve verify`.
+
 ## Always run, select inside the job
 
 A required check must report on every pull request and every merge group. A workflow skipped by a

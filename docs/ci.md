@@ -249,11 +249,40 @@ a Mac renders with its browser through `pxsig browser start` ([container.md](con
 render records the environment it was made in, and a check warns when a baseline came from another
 one ([configuration.md](configuration.md#env)).
 
+## Warn mode
+
+A team adopting pxsig can let it report without failing builds, one gate at a time, and switch to
+`enforce` when the runs show it is safe. Set it in the committed config, never in CI variables
+(`PXSIG_ENFORCEMENT=warn` is refused; CI can only make a run stricter):
+
+```json
+"enforcement": { "gates": { "visual": "warn" }, "warnUntil": "2026-12-31" }
+```
+
+- The check runs exactly as before, on the same selection. Where only the warned gate fails, it
+  exits `advisoryExit` (0), and the log, `summary.md` (a lead block above the head), `check.json`
+  (`enforcement`) and `junit.xml` (a `pxsig.enforcement` property) say what would have failed.
+  Drop any `|| true` or `continue-on-error` wrapper used to get a soft gate.
+- Setup errors (exit 2) still fail. A mismatched baseline or a rewritten log still fails `approve
+  verify`.
+- `junit.xml` keeps its failures: a reporter that fails the job on them (`dorny/test-reporter`'s
+  `fail-on-error`) needs `fail-on-error: false` while warn mode is on.
+- GitLab: `advisoryExit: 78` with `allow_failure: { exit_codes: [78] }` shows the orange warning
+  while the pipeline passes. Jenkins: `if (rc == 78) unstable('pxsig advisory')`.
+- `warnUntil` ends warn mode on its date, with no commit, announced from `noticeDays` before.
+- Each run with a gate on warn adds a line to a readiness tally on the machine
+  ([configuration.md](configuration.md#enforcement)); on an ephemeral runner it is lost with the
+  runner.
+
+The a11y gate (new axe violations) is on warn by default: it says nothing unless a new violation
+appears, then one ADVISORY line and a `summary.md` lead, exit 0. Set `enforcement.gates.a11y` to
+`enforce` to fail on them, or `off`.
+
 ## Exit codes
 
 | Command | 0 | 1 | 2 |
 | --- | --- | --- | --- |
-| `pxsig check --full` | pass | changed, new or render error | setup error |
+| `pxsig check --full` | pass (or only gates on warn would have failed: `advisoryExit`) | changed, new or render error (with `a11y: enforce`, new axe violations) | setup error |
 | `pxsig approve verify` | every baseline matches its approval | a mismatch, an interrupted approval, a baseline with no log line (unless `--no-strict`), or with `--since` a rewritten log or no merge base | setup error |
 | `pxsig doctor --ci` | no error-severity codes | error-severity codes | setup error |
 | `pxsig report` | written | | dashboard not built, no project, or output not writable |

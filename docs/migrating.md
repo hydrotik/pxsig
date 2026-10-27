@@ -14,6 +14,16 @@ pxsig approve verify --adopt [--all-suites]   # a person, in a terminal: type AD
 
 Commit the log lines it adds. `--no-strict` keeps the old result where a team needs time.
 
+## Upgrading to 0.5: the a11y gate
+
+0.5.0 adds warn mode (`enforcement`, [configuration.md](configuration.md#enforcement)). With no
+`enforcement` key, every gate is enforced as before, and every exit code and report is the same,
+with one addition: new axe violations (not on an entry's accepted list) are now a gate on `warn`
+by default. When a run finds one, it prints one line, `[pxsig] ADVISORY: would have failed (exit
+1): N entries with new a11y violations. Not blocking.`, `summary.md` opens with an advisory lead,
+and `check.json` carries `enforcement`. The exit stays 0. `enforcement.gates.a11y: "off"` removes
+the line; `"enforce"` makes new violations fail the run.
+
 ## Migrating a pre-0.2 store
 
 Before 0.2, pxsig kept everything in the folder it was installed in: signatures in `.baselines/`,
