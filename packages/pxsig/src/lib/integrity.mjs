@@ -33,6 +33,7 @@ import { toPosix } from './paths.mjs';
 import { portabilityProblems } from './portability.mjs';
 import { readLines, writeJson } from './files.mjs';
 import { conflictedStoreFiles } from './approvals.mjs';
+import { enforcementProblems, readinessTally, resolveEnforcement } from './enforcement.mjs';
 
 export const SCHEMA_VERSION = 1;
 
@@ -605,7 +606,7 @@ export async function reconcile(ctx, opts = {}) {
       a11yBaseline: { path: rel(ctx.files.a11y), entries: a11yBase ? Object.keys(a11yBase).length : null },
       staleness,
     },
-    setup: [...setupProblems(index), ...(ctx.project ? workspaceProblems(ctx.project) : []), ...portabilityProblems({ repoRoot: ctx.repoRoot, sigPaths, records: [ctx.manifestPath, ...siblings, ctx.files.approvals, ctx.files.a11y] }), ...tornProblems(rel(ctx.files.approvals), torn), ...unloggedProblems(unlogged, ctx), ...conflictProblems(ctx), ...envProblems(report, ctx)],
+    setup: [...setupProblems(index), ...(ctx.project ? workspaceProblems(ctx.project) : []), ...portabilityProblems({ repoRoot: ctx.repoRoot, sigPaths, records: [ctx.manifestPath, ...siblings, ctx.files.approvals, ctx.files.a11y] }), ...tornProblems(rel(ctx.files.approvals), torn), ...unloggedProblems(unlogged, ctx), ...conflictProblems(ctx), ...envProblems(report, ctx), ...warnModeProblems(ctx)],
     summary,
     components,
     entries,
@@ -651,6 +652,23 @@ function envProblems(report, ctx) {
   const fields = report.summary.envFields?.length ? ` (${report.summary.envFields.join(', ')})` : '';
   const severity = ctx.integrity?.severity?.['env-mismatch'] ?? 'warn';
   return [{ code: 'env-mismatch', severity, count: n, reason: `${n} entries were rendered in a different environment than their baseline${fields}: a change there can be the machine, not the code. Render where the baselines were made (the pinned container), or re-take them there (\`pxsig check --full --update --kind environment\`); \`--strict-env\` refuses such a run instead` }];
+}
+
+/**
+ * Warn mode (lib/enforcement.mjs): `enforcement-warn`, `enforcement-ending`, `enforcement-expired`
+ * when the committed config chose warn for a gate. The quiet built-in a11y default adds nothing
+ * (decision 88). A config this process cannot resolve (PXSIG_ENFORCEMENT=warn) adds nothing here:
+ * the gated commands refuse it themselves.
+ */
+function warnModeProblems(ctx) {
+  if (!ctx.project) return [];
+  let enf;
+  try {
+    enf = resolveEnforcement(ctx.project, { flags: {} });
+  } catch {
+    return [];
+  }
+  return enforcementProblems(enf, enf.configured.length ? readinessTally(ctx.project) : null).map((x) => ({ ...x, severity: ctx.integrity?.severity?.[x.code] ?? x.severity }));
 }
 
 /** Store files a merge or rebase left conflicted (decision 97). */

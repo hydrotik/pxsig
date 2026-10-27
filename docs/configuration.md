@@ -154,6 +154,7 @@ The smallest config is `{}`: every key has a default. `pxsig init` writes
 | `env.ignore` | `[]` | Environment fields left out of the comparison, by name, for example `["render.timezone"]` when no story formats a date. |
 | `env.fontProbe` | `[]` | Font families measured besides `serif`, `sans-serif`, `monospace` and `system-ui`, so a font difference names the family. The probe page loads no stylesheet, so this measures fonts installed on the machine (a family that is not installed measures as the fallback); a web font the stories load from the repository is part of the story, not the environment. |
 | `env.strict` | `false` | Refuse a check (exit 2, nothing rendered) when a selected baseline was approved in a different environment. Same as `check --strict-env` and `PXSIG_STRICT_ENV=1`. |
+| `enforcement` | `{}` | Warn mode: per gate, `enforce` or `warn` (below). |
 | `integrity` | `{}` | Integrity options (below). |
 | `approvals.identity` | `none` | What each approval and repair log line says about who made it. `none`: nothing; the commit that adds the line and the pull request say who, and pxsig writes no personal data. `git-email`: the git email in a `by` field, as before 0.4.0. |
 | `approvals.level` | `standard` | `standard`: a typed phrase at a terminal, or the dashboard opened with the dashboard link. `strict` is reserved for a later release and refused for now (a setup error). |
@@ -236,6 +237,76 @@ The environment is collected once per browser in a check (one probe page that is
 and once per browser launch in `pxsig serve`. Approving in the dashboard writes the environment
 of the render being approved, from the check that made it.
 
+### `enforcement`
+
+Warn mode. Each gate is `enforce` (a failure fails the run, as before) or `warn` (the same checks
+on the same selection; the failure is reported and the run exits `advisoryExit`). Warn is never a
+pass: every surface says which gates were warned and what would have failed.
+
+```json
+"enforcement": {
+  "default": "enforce",
+  "gates": { "visual": "warn", "doctor": "warn" },
+  "warnUntil": "2026-12-31",
+  "noticeDays": 14,
+  "advisoryExit": 0
+}
+```
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `default` | `enforce` | Every gate not named in `gates`, except `a11y`, which keeps its own default. |
+| `gates`: `visual` | `enforce` | `check`: rows not passing (changed, new, render errors). |
+| `gates`: `a11y` | `warn` | New axe violations against each entry's accepted list (`a11y.json`). On its default `warn` it is quiet: nothing is printed unless a new violation appears, then one ADVISORY line and a `summary.md` lead, exit 0. `enforce`: a new violation fails the run (exit 1). `off`: no a11y gate and no line. |
+| `gates`: `verify` | `enforce` | `approve verify`: baselines with no log line. A mismatch, an interrupted approval or a rewritten log fails in every mode. |
+| `gates`: `env` | `enforce` | `--strict-env`'s refusal: on `warn` the check renders anyway and lists the baselines it would have refused. |
+| `gates`: `doctor` | `enforce` | `pxsig doctor` findings at or above `--fail-on`. A setup error still exits 2. |
+| `gates`: `stale` | `enforce` | `pxsig stale`: stale or inconsistent verdicts. |
+| `warnUntil` | none | `YYYY-MM-DD`, the end of that day in UTC. After it the gates set to `warn` here are enforced, with no commit. Extending it is a one-line change in a pull request. |
+| `noticeDays` | `14` | From this many days before `warnUntil`, every run, `summary.md`, `pxsig status` and `pxsig doctor` (`enforcement-ending`) say when warn mode ends. |
+| `advisoryExit` | `0` | The exit code of a run that would have failed only in gates on warn: `0`, or `10` to `125` for a forge's own warning state (GitLab `allow_failure: exit_codes`, Jenkins `UNSTABLE`). `1`, `2` and `3` are refused. |
+
+An unknown gate name or value is a setup error when the project loads. The workspace file's
+`defaults` can set `enforcement` for every project; a project's own key wins.
+
+**Who can lower a gate.** Only this committed config (reviewed in a pull request), or `--warn` from
+a person at a terminal for one run (refused with exit 3 in CI, under an assistant, or piped).
+`--enforce[=gates]` and `PXSIG_ENFORCEMENT=enforce` raise gates, for anyone: CI variables and
+assistants can only make a run stricter; `PXSIG_ENFORCEMENT=warn` is refused (exit 2). No MCP tool
+changes a gate. `pxsig config` lists each gate with the layer that set it.
+
+**What a warn run shows.**
+- The first line of `check`, `approve verify`, `doctor` and `stale`: `[pxsig] ADVISORY: warn mode
+  for visual, doctor (pxsig.config.json; until 2026-12-31). Failures are reported; the exit stays 0.`
+- The last line: `[pxsig] ADVISORY: would have failed (exit 1): 3 changed, 1 new. Not blocking.
+  Would-fail runs: 4 of 31 (main 0 of 9).` or `ADVISORY: would have passed.`
+- `check.json`: `enforcement` (`gates`, `layers`, `warnUntil`, `wouldFail`, `wouldExit`, `exit`,
+  `reasons`, and `contexts: { enforce, advisory }`, the gates each status context carries) and
+  `git.head`. Rows are unchanged.
+- `summary.md`: a lead block above the head, for example `> **ADVISORY: warn mode** (visual). This
+  run would have failed: 3 changed. Nothing was blocked. Enforced from 2026-12-31.` The head and
+  table below stay as they are.
+- `junit.xml`: failures stay failures; with the visual gate on warn the suite carries `<property
+  name="pxsig.enforcement" value="warn"/>`. A JUnit consumer that fails on failures needs its own
+  switch (`dorny/test-reporter` `fail-on-error: false`; Jenkins `junit` reports `UNSTABLE`).
+- `history.ndjson`: the run's line gains `enforcement` and `wouldFail`.
+- `pxsig doctor` and the dashboard's coverage banner: `enforcement-warn` (info), `enforcement-ending`
+  (warn), `enforcement-expired` (info). None changes `doctor`'s exit.
+- MCP: `pxsig_status.enforcement` (gates, `warnUntil`, the readiness tally), `pxsig_check`'s
+  `enforcement` and `wouldFail`, `pxsig_history`'s `wouldFail`.
+
+The quiet a11y default writes none of these unless a new violation appears, and never a readiness
+line.
+
+**The readiness tally.** Every run with a gate on `warn` here appends one line to
+`readiness.ndjson` in the repository's state folder, outside the repository (macOS
+`~/Library/Application Support/pxsig/<repo-key>/`, Linux `$XDG_STATE_HOME/pxsig/<repo-key>/`,
+Windows `%LOCALAPPDATA%\pxsig\<repo-key>\`; every worktree of a clone shares one):
+`{ at, project, suite, sha, branch, gates, wouldFail, wouldExit, counts, source }`. It keeps 90 days
+and at most 5,000 lines per project and gate set. The count of would-fail runs, on `main` apart, is
+the evidence for switching a gate to `enforce`. A failed write is one warning on stderr and never
+changes the exit.
+
 ### `integrity`
 
 | Key | Default | Meaning |
@@ -274,6 +345,7 @@ of the render being approved, from the check that made it.
 | `PXSIG_NO_DELEGATE` | CLI | Do not hand over to the workspace root's install (see [monorepo.md](monorepo.md#installs)). |
 | `PXSIG_THREADS` | binary | Worker threads for batch commands. Default: logical CPUs. |
 | `PXSIG_THRESHOLD`, `PXSIG_MIN_SSIM`, `PXSIG_MAX_CHANGED_PCT`, `PXSIG_MAX_EDGE_PCT`, `PXSIG_MIN_CELLS` | binary | Gate values above the project's `gate` and below the gate flags and every story's own gate (see [spec.md](spec.md#gate-resolution)). |
+| `PXSIG_ENFORCEMENT` | CLI | `enforce`: every gate enforced for this run, whatever the config says ([enforcement](#enforcement)). `warn` is refused (exit 2): warn mode comes from the committed config or `--warn` at a terminal. |
 | `PXSIG_STRICT_ENV` | CLI | `1`: `check --full` refuses when a selected baseline was approved in a different render environment, like `--strict-env` ([env](#env)). |
 | `PXSIG_IMAGE`, `PXSIG_IMAGE_REVISION`, `PXSIG_IMAGE_DIGEST` | CLI, server | Recorded in each render's environment (`container.*`); the pxsig container image sets the first two, a runner may set the digest. |
 | `PXSIG_BROWSER_WS` | CLI, server | Overrides `capture.browserEndpoint`: render with that browser server ([container.md](container.md)). |

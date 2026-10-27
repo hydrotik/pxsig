@@ -41,6 +41,7 @@ import { acquireLock, describeLock, readLock } from './lib/lock.mjs';
 import { findWorkspace, openProject, writeRunManifest } from './lib/workspace.mjs';
 import { relPath } from './lib/paths.mjs';
 import { buildPlan } from './lib/prune.mjs';
+import { checkFindings, outcome, readinessTally, resolveEnforcement, speaks } from './lib/enforcement.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -347,7 +348,7 @@ const tools = [
   {
     name: 'pxsig_status',
     description:
-      'Overview of the visual-regression state: when the report was last written, counts per state (pass, drift, changed, error, flaky, approved, rejected), accessibility totals, the components with the most changed entries, whether the pxsig server is up or busy, design-system files edited since the report (entries the report does not cover yet), and the render environment (how many entries\' baselines came from a different one). Start here.',
+      'Overview of the visual-regression state: when the report was last written, counts per state (pass, drift, changed, error, flaky, approved, rejected), accessibility totals, the components with the most changed entries, whether the pxsig server is up or busy, design-system files edited since the report (entries the report does not cover yet), the render environment (how many entries\' baselines came from a different one), and warn mode (`enforcement`: each gate\'s setting from the committed config; no tool can change it). Start here.',
     inputSchema: { type: 'object', properties: { project: PROJECT }, additionalProperties: false },
     async run({ project } = {}) {
       const C = ctxOf(project);
@@ -388,6 +389,7 @@ const tools = [
         approvals: { level: C.P.config?.approvals?.level ?? 'standard' },
         // The environment of the last renders, and how many entries' baselines came from another one.
         env: { current: [...new Set(check.rows.map((r) => r.env).filter(Boolean))].map((id) => check.envs?.[id] ?? { id }), mismatched: check.summary?.envMismatch ?? 0 },
+        ...warnMode(C),
       };
     },
   },
@@ -709,7 +711,7 @@ const tools = [
         runs: lines.map((l) => {
           const h = JSON.parse(l);
           const rows = Object.entries(h.rows ?? {});
-          return { at: h.at, entries: h.summary?.stories ?? rows.length, failed: h.summary?.failed, failedIds: rows.filter(([, v]) => v[0] === 0).map(([id]) => id).slice(0, 20) };
+          return { at: h.at, entries: h.summary?.stories ?? rows.length, failed: h.summary?.failed, failedIds: rows.filter(([, v]) => v[0] === 0).map(([id]) => id).slice(0, 20), ...('wouldFail' in h ? { wouldFail: h.wouldFail, enforcement: h.enforcement } : {}) };
         }),
       };
     },
@@ -766,13 +768,37 @@ function summarizeIds(C, ids, via, t0) {
   const rows = check.rows.filter((r) => ids.has(r.id));
   const counts = {};
   for (const r of rows) counts[stateOf(r, review)] = (counts[stateOf(r, review)] ?? 0) + 1;
+  // Warn mode: the gates as the committed config sets them (no tool can lower one), and whether
+  // these rows would fail a run. Only when warn mode applies (configured, or the quiet a11y gate fired).
+  let warn = {};
+  try {
+    const enf = resolveEnforcement(C.P, { flags: {} });
+    const out = outcome(enf, checkFindings(rows));
+    if (speaks(enf, out)) warn = { enforcement: { gates: enf.gates, warned: enf.configured, wouldExit: out.wouldExit, exit: out.exit, reasons: out.reasons }, wouldFail: out.wouldFail };
+  } catch (e) {
+    warn = { enforcement: { error: e.message } };
+  }
+  const a11yNew = rows.filter((r) => (r.a11y?.new ?? 0) > 0).length;
   return {
     via,
     seconds: Math.round((Date.now() - t0) / 100) / 10,
     checked: rows.length,
     counts,
     problems: rows.filter((r) => PROBLEMS.has(stateOf(r, review))).map((r) => brief(r, review)).slice(0, 60),
+    ...(a11yNew ? { a11yNew } : {}),
+    ...warn,
   };
+}
+
+/** `pxsig_status.enforcement`, when the config sets warn mode: each gate, warnUntil, the readiness tally. */
+function warnMode(C) {
+  if (C.P.config?.enforcement == null) return {};
+  try {
+    const enf = resolveEnforcement(C.P, { flags: {} });
+    return { enforcement: { gates: enf.gates, warned: enf.configured, warnUntil: enf.warnUntil, ...(enf.ending ? { daysLeft: enf.daysLeft } : {}), readiness: enf.configured.length ? readinessTally(C.P) : null } };
+  } catch (e) {
+    return { enforcement: { error: e.message } };
+  }
 }
 
 // --- MCP over stdio ---------------------------------------------------------------------------------

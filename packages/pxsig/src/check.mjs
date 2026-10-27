@@ -4,7 +4,8 @@
  *
  *   pxsig check [--project name] [--suite matrix] [--since main | --changed a.tsx,b.css.ts]
  *               [--modes dark,light] [--only id,id] [--concurrency 8] [--retries 2] [--no-a11y]
- *               [--update] [--link-base http://127.0.0.1:6070/report/]
+ *               [--update] [--link-base http://127.0.0.1:6070/report/] [--sarif a11y.sarif]
+ *               [--warn[=gate,…]] [--enforce[=gate,…]]
  *
  * 1. select   manifest v2 entries; `--since <ref>` asks `pxsig affected` (Rust: import
  *             graph from git) and skips the rest, carrying their last result forward;
@@ -23,6 +24,11 @@
  * (not with `--kind environment`). Exit: 0 pass · 1 change found, or a wrong --update phrase
  * · 2 setup error (with `--strict-env`, baselines from a different environment) · 3 --update
  * without a person.
+ *
+ * Warn mode (lib/enforcement.mjs): a gate set to `warn` in the committed config (or by `--warn`, a
+ * person at a terminal) runs the same check and exits `advisoryExit` (0) where it alone would have
+ * failed, with ADVISORY lead and last lines, `enforcement` in check.json and a lead in summary.md.
+ * The a11y gate (new axe violations) is `warn` by default and says nothing unless one appears.
  *
  * Environment (lib/env.mjs): every row records the environment of its render and compares it with
  * its baseline's; a `mismatch` is a warning (`[check] env:`, `summary.md`, `pxsig doctor`), and
@@ -54,6 +60,8 @@ import { relPath } from './lib/paths.mjs';
 import { writeJson } from './lib/files.mjs';
 import { annotateRow, byId, envConfig, envLine, envSummary, strictEnvCheck, strictFromEnv } from './lib/env.mjs';
 import { PXSIG_VERSION } from './lib/workspace.mjs';
+import { appendReadiness, checkCounts, checkFindings, lastLine, leadLine, outcome, readinessTally, reportBlock, resolveOrExit } from './lib/enforcement.mjs';
+import { writeSarif } from './lib/sarif.mjs';
 
 const { flags } = parseArgs(process.argv.slice(2));
 const str = (k) => strFlag(flags, k);
@@ -96,6 +104,10 @@ if (flags.update && !humanAtTerminal())
 const conflicted = conflictedStoreFiles(P);
 if (conflicted.length)
   die(`${conflicted.length} store files are conflicted (a merge or rebase is not finished): ${conflicted.slice(0, 5).join(', ')}${conflicted.length > 5 ? ', …' : ''}. Take main's version of each baseline (\`git checkout --ours <file>\` during a rebase, \`--theirs\` during a merge), keep both sides' lines of a log, then \`pxsig check --since main\` and approve what changed again (docs/ci.md, "Rebasing with baselines").`);
+// Warn mode: which gates this run enforces (only committed config, or a person's --warn, lowers one).
+const enf = flags.update ? null : resolveOrExit(P, { flags }, (m) => console.error(`[check] ${m}`));
+const lead = enf && leadLine(enf);
+if (lead) console.log(`[pxsig] ${lead}`);
 if (!existsSync(rustBin)) die(`the pxsig binary is missing (${rustBin}): install the platform package, or build it with \`cargo build --release\``);
 mkdirSync(reports, { recursive: true });
 
@@ -194,9 +206,14 @@ const pool = browserPool(P);
 const engineVersion = (rust(['--version']).out.match(/(\d+\.\d+\.\d+\S*)/) ?? [])[1] ?? null;
 const current = entries.length ? await pool.envs(entries.map((e) => e.browser ?? 'chromium'), { fontProbe: envCfg.fontProbe, pxsig: PXSIG_VERSION, engine: engineVersion }) : {};
 const strictEnv = !flags.update && (flags['strict-env'] === true || envCfg.strict || strictFromEnv());
+// The env gate under warn: the run renders anyway and reports what --strict-env would have refused.
+let envRefused = null;
 if (strictEnv) {
   const bad = strictEnvCheck(entries, (e) => resolve(P.workspaceRoot, e.sig), current, envCfg.ignore);
-  if (bad.count) {
+  if (bad.count && enf?.gates.env === 'warn') {
+    envRefused = bad;
+    console.log(`[check] env (warn mode): ${bad.count} baselines were approved in a different environment (${bad.fields.join(', ')}); --strict-env would have refused this run. Rendering anyway.`);
+  } else if (bad.count) {
     await pool.close();
     die(`setup error: ${bad.count} baselines were approved in a different environment (${bad.fields.join(', ')}). Nothing was rendered. Render where the baselines were made (the pinned container), or re-take them there with \`pxsig check --full --update --kind environment\`; without --strict-env this is a warning (pxsig doctor).`);
   }
@@ -266,9 +283,19 @@ const checkArgs = (dir, out, extra = []) => [
   'check', '--manifest', runPath, '--png-dir', dir, '--root', P.workspaceRoot, '--out-dir', out,
   '--only', `@${onlyFile}`, '--json', ...extra,
 ];
+// Warn mode chosen in config: the history line records the gates and whether the run would fail.
+const enfFile = join(reports, '.enforcement.json');
+const historyEnf = [];
+if (enf?.configured.length) {
+  const base = existsSync(a11yBaselinePath) ? JSON.parse(readFileSync(a11yBaselinePath, 'utf8')) : {};
+  const a11yNew = results.filter((r) => r.a11y?.violations?.some((v) => !(base[r.id] ?? []).includes(v.id))).length;
+  writeFileSync(enfFile, JSON.stringify({ gates: enf.gates, a11yNew }));
+  historyEnf.push('--enforcement', `@${enfFile}`);
+}
 let rc = entries.length
-  ? rust(checkArgs(pngDir, diffDir, ['--cache', join(P.store.cache, 'check'), '--history', join(reports, 'history.ndjson')]))
+  ? rust(checkArgs(pngDir, diffDir, ['--cache', join(P.store.cache, 'check'), '--history', join(reports, 'history.ndjson'), ...historyEnf]))
   : { out: '{"summary":{"elapsedMs":0},"results":[]}', ms: 0 };
+rmSync(enfFile, { force: true });
 const rustRes = JSON.parse(rc.out);
 const rows = new Map(rustRes.results.map((r) => [r.id, r]));
 console.log(`[check] Rust check: ${rustRes.results.length} entries, ${rustRes.summary.failed ?? 0} failed, ${rustRes.summary.cached ?? 0} cached · ${rustRes.summary.elapsedMs.toFixed(0)} ms engine (${rc.ms.toFixed(0)} ms process)`);
@@ -352,7 +379,12 @@ const now = new Date().toISOString();
 // When every entry was last checked together (integrity's "last full check"); a partial run keeps the last one.
 const fullCheckAt = checked.length === out.length ? now : (previous?.fullCheckAt ?? previous?.generatedAt ?? null);
 const usedEnvs = new Set(out.flatMap((r) => [r.env, r.baselineEnv]).filter(Boolean));
-const report = { generatedAt: now, fullCheckAt, project: P.name, suite, manifest: { grid: manifest.grid, gate: manifest.gate, modes: manifest.modes, defaultMode: manifest.defaultMode }, summary, affected, envs: Object.fromEntries(Object.entries(envs).filter(([id]) => usedEnvs.has(id))), rows: out };
+// Warn mode: what each gate would fail on, and the exit this run takes.
+const found = checkFindings(out);
+if (envRefused) found.push({ gate: 'env', exit: 2, count: envRefused.count, what: 'baselines from a different environment (--strict-env)' });
+const gated = outcome(enf, found);
+const enforcement = reportBlock(enf, gated);
+const report = { generatedAt: now, fullCheckAt, project: P.name, suite, manifest: { grid: manifest.grid, gate: manifest.gate, modes: manifest.modes, defaultMode: manifest.defaultMode }, summary, affected, envs: Object.fromEntries(Object.entries(envs).filter(([id]) => usedEnvs.has(id))), ...(enforcement ? { enforcement, git: { head: gitHead() } } : {}), rows: out };
 fence();
 writeJson(join(reports, `${outName}.json`), report);
 // Review decisions belong to the run they were made on: a new run starts clean.
@@ -369,6 +401,8 @@ console.log(
     `a11y ${summary.a11yViolations} violations (${summary.a11yNew} new) · ${(summary.totalMs / 1000).toFixed(1)} s total`
 );
 for (const r of checked.filter((x) => !x.pass).slice(0, 20)) console.log(`  CHANGED ${r.id.padEnd(60)} ${r.error ?? (r.reasons ?? []).join('; ')}`);
+const sarif = str('sarif');
+if (sarif) console.log(`[check] wrote ${writeSarif(resolve(sarif), out, { entries: new Map(manifest.stories.map((e) => [e.id, e])), version: PXSIG_VERSION })} new a11y violations to ${sarif} (SARIF)`);
 console.log(`[check] wrote ${rel(reports)}/${outName}.json, summary${sfx}.md, junit${sfx}.xml`);
 // Integrity: what the run did not cover (unregistered stories, missing images, never-checked…).
 if (outName === 'check' && !suite) {
@@ -382,7 +416,16 @@ if (outName === 'check' && !suite) {
   }
 }
 lock.release();
-process.exit(summary.failed ? 1 : 0);
+appendReadiness(P, enf, gated, { source: 'check', suite, counts: checkCounts(out) });
+const last = lastLine(enf, gated, enf.configured.length ? readinessTally(P) : null);
+if (last) console.log(`[pxsig] ${last}`);
+process.exit(gated.exit);
+
+/** The commit this run checked (for `ci status --from-report`), or null outside git. */
+function gitHead() {
+  const r = spawnSync('git', ['-C', P.workspaceRoot, 'rev-parse', 'HEAD'], { encoding: 'utf8' });
+  return r.status === 0 ? r.stdout.trim() : null;
+}
 
 /**
  * The server holds this store: queue the selection there, wait for its queue to drain, and report
@@ -411,5 +454,9 @@ async function viaServer(url, ids, stories = []) {
   const failed = rows.filter((r) => !r.pass);
   console.log(`[check] ${rows.length} checked via the server · ${rows.length - failed.length} pass · ${failed.length} changed · ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   for (const r of failed.slice(0, 20)) console.log(`  CHANGED ${r.id.padEnd(60)} ${r.error ?? (r.reasons ?? []).join('; ')}`);
-  process.exit(failed.length ? 1 : 0);
+  const gated = outcome(enf, checkFindings(rows));
+  appendReadiness(P, enf, gated, { source: 'check', counts: checkCounts(rows) });
+  const last = lastLine(enf, gated, enf.configured.length ? readinessTally(P) : null);
+  if (last) console.log(`[pxsig] ${last}`);
+  process.exit(gated.exit);
 }

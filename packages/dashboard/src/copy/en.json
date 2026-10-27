@@ -381,6 +381,18 @@
       "image-mismatch": {
         "title": "Container image mismatch",
         "help": "The container image's pxsig or Playwright version is not the one this project pins."
+      },
+      "enforcement-warn": {
+        "title": "Warn mode",
+        "help": "The project config sets some gates to warn: their failures are reported, not blocking. Every report says which gates and what would have failed."
+      },
+      "enforcement-ending": {
+        "title": "Warn mode ending",
+        "help": "A gate on warn is enforced again from its warnUntil date. Extend the date in a pull request to keep warn mode."
+      },
+      "enforcement-expired": {
+        "title": "Warn mode ended",
+        "help": "The warnUntil date passed: the gates that were on warn are enforced again."
       }
     }
   },

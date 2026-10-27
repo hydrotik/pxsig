@@ -35,7 +35,7 @@ pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
     let count = |s: &str| rs.iter().filter(|r| status(r) == s).count();
     let (pass, fail, flaky, skipped) = (count("pass"), count("fail"), count("flaky"), count("skipped"));
     let a11y_new: u64 = rs.iter().map(|r| r["a11y"]["new"].as_u64().unwrap_or(0)).sum();
-    let mut out = String::new();
+    let mut out = advisory_lead(v);
     let head = if fail == 0 { "✅ pxsig: no visual changes" } else { "❌ pxsig: visual changes need review" };
     out.push_str(&format!("### {head}\n\n"));
     out.push_str("| Checked | Passed | Changed | Flaky | Skipped (unaffected) | New a11y violations |\n|---:|---:|---:|---:|---:|---:|\n");
@@ -144,6 +144,51 @@ pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
     out
 }
 
+/// Warn mode (`enforcement` in check.json): a lead block above the head, so a reader knows the run
+/// was not blocking. The head and table below stay as they are: a would-fail run still reads "❌".
+fn advisory_lead(v: &Value) -> String {
+    let Some(e) = v.get("enforcement").filter(|x| x.is_object()) else { return String::new() };
+    let names = |k: &str| -> Vec<String> { e[k].as_array().into_iter().flatten().filter_map(Value::as_str).map(esc_md).collect() };
+    let configured = names("configured");
+    let reasons: Vec<String> = e["reasons"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|r| format!("{} {}", r["count"].as_u64().unwrap_or(0), esc_md(r["what"].as_str().unwrap_or(""))))
+        .collect();
+    let expired = names("expired");
+    let mut out = String::new();
+    if !expired.is_empty() && configured.is_empty() {
+        out.push_str(&format!(
+            "> **Warn mode ended** on {}: {} {} enforced again.\n\n",
+            esc_md(e["warnUntil"].as_str().unwrap_or("")),
+            expired.join(", "),
+            if expired.len() == 1 { "is" } else { "are" }
+        ));
+        return out;
+    }
+    let would = e["wouldFail"].as_bool() == Some(true) && !reasons.is_empty();
+    if configured.is_empty() {
+        // The a11y gate on its built-in warn: only here because a new violation appeared (decision 88).
+        if would {
+            out.push_str(&format!("> **ADVISORY** (a11y, warn by default): {}. Nothing was blocked.\n\n", reasons.join(", ")));
+        }
+        return out;
+    }
+    let verdict = if would {
+        format!("This run would have failed: {}. Nothing was blocked.", reasons.join(", "))
+    } else {
+        "This run would have passed.".to_string()
+    };
+    let until = match (e["warnUntil"].as_str(), e["daysLeft"].as_u64()) {
+        (Some(d), Some(n)) => format!(" Enforced from {} (in {n} day{}).", esc_md(d), if n == 1 { "" } else { "s" }),
+        (Some(d), None) => format!(" Enforced from {}.", esc_md(d)),
+        _ => String::new(),
+    };
+    out.push_str(&format!("> **ADVISORY: warn mode** ({}). {verdict}{until}\n\n", configured.join(", ")));
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -158,6 +203,29 @@ mod tests {
         let md = markdown(&some, None);
         assert!(md.contains("Environment: 2 of 2 entries were rendered in a different environment than their baseline (browser.version, fonts.probe: Inter)"), "{md}");
     }
+
+    #[test]
+    fn the_advisory_lead_only_under_warn_mode() {
+        let rows = json!([{ "id": "a", "pass": false, "changed": true }]);
+        let enforce = json!({ "rows": rows });
+        assert!(markdown(&enforce, None).starts_with("### ❌"), "no enforcement key: the report is as before");
+        let warn = json!({ "rows": rows, "enforcement": { "configured": ["visual"], "wouldFail": true, "reasons": [{ "gate": "visual", "count": 1, "what": "changed" }], "warnUntil": "2026-12-31" } });
+        let md = markdown(&warn, None);
+        assert!(md.starts_with("> **ADVISORY: warn mode** (visual). This run would have failed: 1 changed. Nothing was blocked. Enforced from 2026-12-31.\n\n### ❌"), "{md}");
+        let pass = json!({ "rows": [{ "id": "a", "pass": true }], "enforcement": { "configured": ["visual"], "wouldFail": false, "reasons": [] } });
+        assert!(markdown(&pass, None).starts_with("> **ADVISORY: warn mode** (visual). This run would have passed.\n\n### ✅"));
+        let quiet = json!({ "rows": [{ "id": "a", "pass": true }], "enforcement": { "configured": [], "wouldFail": true, "reasons": [{ "gate": "a11y", "count": 1, "what": "entry with new a11y violations" }] } });
+        assert!(markdown(&quiet, None).starts_with("> **ADVISORY** (a11y, warn by default): 1 entry with new a11y violations. Nothing was blocked."));
+    }
+
+    #[test]
+    fn junit_keeps_failures_and_marks_a_warned_visual_gate() {
+        let rows = json!([{ "id": "a", "pass": false }]);
+        let plain = junit(&json!({ "rows": rows }));
+        assert!(!plain.contains("<properties>") && plain.contains("<failure"));
+        let warned = junit(&json!({ "rows": rows, "enforcement": { "gates": { "visual": "warn" } } }));
+        assert!(warned.contains("<properties><property name=\"pxsig.enforcement\" value=\"warn\"/></properties>") && warned.contains("<failure"), "{warned}");
+    }
 }
 
 pub fn junit(v: &Value) -> String {
@@ -169,6 +237,10 @@ pub fn junit(v: &Value) -> String {
         rs.len(),
         rs.len()
     );
+    // Warn mode on the visual gate (decision 10.10): failures stay failures; the suite says warn.
+    if v["enforcement"]["gates"]["visual"].as_str() == Some("warn") {
+        out.push_str("  <properties><property name=\"pxsig.enforcement\" value=\"warn\"/></properties>\n");
+    }
     for r in rs {
         let id = esc_xml(r["id"].as_str().unwrap_or(""));
         let class = esc_xml(r["mode"].as_str().unwrap_or("default"));

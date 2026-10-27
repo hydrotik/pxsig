@@ -30,7 +30,7 @@ const documentedFlags = () => new Set(entries().flatMap((e) => (e.flags ?? []).f
 
 /** The flags the npm CLI's entry points read, by the ways they read them. */
 function readFlags() {
-  const files = ['cli.mjs', 'check.mjs', 'approve.mjs', 'serve.mjs', 'report.mjs', 'dashboard.mjs', 'browser.mjs', 'lib/workspace.mjs', 'lib/term.mjs'];
+  const files = ['cli.mjs', 'check.mjs', 'approve.mjs', 'serve.mjs', 'report.mjs', 'dashboard.mjs', 'browser.mjs', 'lib/workspace.mjs', 'lib/term.mjs', 'lib/enforcement.mjs'];
   const pats = [/flags\.([a-zA-Z][\w]*)/g, /flags\[['"]([\w-]+)['"]\]/g, /\b(?:str|num)\(\s*['"]([\w-]+)['"]/g, /strFlag\(flags,\s*['"]([\w-]+)['"]/g, /\bs\(\s*'([\w-]+)'\)/g];
   const out = new Set();
   for (const f of files) {

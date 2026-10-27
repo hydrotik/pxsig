@@ -51,6 +51,23 @@ redraws, absolute image paths, and a "Next" section with the exact commands to r
 | 1 | Problems found: changed entries (`check`), stale verdicts (`stale`), integrity issues (`doctor`), a migration that differs (`migrate`). Also a typed confirmation that did not match, or a plan a decision made stale: nothing written |
 | 2 | Usage or setup error: unknown command or project, no project chosen for a command that needs one, no manifest, Storybook unreachable or broken, missing binary, the store locked by another writer, a failed `report` |
 | 3 | Needs a person at a terminal (below) |
+| `advisoryExit` | Warn mode: only gates on `warn` would have failed. `0` by default, or 10 to 125 when the config sets `enforcement.advisoryExit` ([configuration.md](configuration.md#enforcement)) |
+
+### Warn mode
+
+A gate the committed config sets to `warn` ([configuration.md](configuration.md#enforcement)) runs
+the same checks and exits `advisoryExit` where only it would have failed. `check`, `approve
+verify`, `doctor` and `stale` then print an ADVISORY first line (which gates, from where, until
+when) and last line (what would have failed). Setup errors (2) and refusals (3) are never warned,
+and a real failure in another project still wins over an advisory exit.
+
+| Flag | Who | Meaning |
+| --- | --- | --- |
+| `--warn[=gates]` | a person at a terminal | Warn mode for this run, for the named gates (comma-separated: `visual`, `a11y`, `verify`, `env`, `doctor`, `stale`; all without a value). Refused with exit 3 in CI, under an assistant or when piped. |
+| `--enforce[=gates]` | anyone | Enforce the named gates (all without a value) whatever the config says. `PXSIG_ENFORCEMENT=enforce` does the same. |
+
+The a11y gate (new axe violations) is on `warn` by default and says nothing unless a new
+violation appears; then one ADVISORY line, exit 0.
 
 ### Commands that need a person
 
@@ -166,15 +183,17 @@ the dashboard, and the paths of its images. `--images baseline,current,diff` cho
 
 Verdicts that cannot be trusted as current: older than an edit to a file that can change the entry
 (traced through the import graph), or made on a render of a different size than the one on disk.
-Exit 1 when there are any.
+Exit 1 when there are any (the stale gate: `advisoryExit` on [warn](#warn-mode)).
 
 ### `pxsig history [--limit 10]`
 
 The last runs: when, how many entries, how many changed, which.
 
-### `pxsig a11y [--component text] [--new] [--limit 50]`
+### `pxsig a11y [--component text] [--new] [--sarif file] [--limit 50]`
 
 axe violations per entry, grouped by rule. `--new` shows only those not in the a11y baseline.
+`--sarif <file>` also writes the last report's new violations as SARIF 2.1.0 (one result per entry
+and rule, at the entry's story file), for code-scanning viewers; it changes no exit code.
 
 ### `pxsig a11y --prune [--dry-run] [--component text] [--mode m] [--only id,…] [--reason "…"]`
 
@@ -241,7 +260,8 @@ The full check. `check` also takes this path when given `--update`, `--suite` or
 ```
 pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] [--only id,id]
                    [--concurrency 8] [--retries 2] [--no-a11y] [--link-base <url>] [--out <name>]
-                   [--no-server] [--timeout-s 1800] [--strict-env] [--update]
+                   [--no-server] [--timeout-s 1800] [--strict-env] [--sarif <file>]
+                   [--warn[=gates]] [--enforce[=gates]] [--update]
 ```
 
 | Flag | Default | Meaning |
@@ -259,6 +279,8 @@ pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] 
 | `--no-server` | off | Do not hand the check to the server: when the server holds the store, refuse instead of queueing on it. |
 | `--timeout-s <n>` | 1800 | Seconds to wait for the server's queue to drain when the check was handed to it. |
 | `--strict-env` | off | Refuse before rendering (exit 2, nothing written) when a selected baseline was approved in a different render environment ([configuration.md](configuration.md#env)). Also `env.strict` and `PXSIG_STRICT_ENV=1`. Baselines that record no environment never refuse. Not applied to `--update`. |
+| `--sarif <file>` | none | Also write the new axe violations as SARIF 2.1.0, for code-scanning viewers. Changes no exit code. |
+| `--warn[=gates]`, `--enforce[=gates]` | config | [Warn mode](#warn-mode) for this run. |
 | `--update` | off | Write baselines from the renders instead of checking. A person at a terminal only, after typing `UPDATE <n> BASELINES`. Every replaced baseline is snapshotted and logged. Refused without a person: exit 3; a wrong phrase: exit 1, nothing written. |
 | `--kind <word>` | none | With `--update`: the kind on each log line (lower case, up to 16 characters). `environment` re-takes baselines for a new render environment and leaves `a11y.json` as it is. |
 | `--reason <text>` | `pxsig check --update` | With `--update`: the reason on each log line. |
@@ -294,7 +316,10 @@ update the integrity ledger. Writes `check.json`, `summary.md` and `junit.xml` i
 `<store>/reports/`. Output is plain log lines; `--json` is not supported here (read
 `check.json`).
 
-Exit: 0 pass, 1 at least one entry changed, is new or failed to render, 2 setup error.
+Exit: 0 pass, 1 at least one entry changed, is new or failed to render (or, with `a11y:
+enforce`, has new axe violations), 2 setup error. Under [warn mode](#warn-mode), `advisoryExit`
+where only warned gates would have failed. With `--strict-env` and the env gate on warn, the check
+renders anyway and lists the baselines it would have refused.
 
 ## Approvals
 
@@ -316,7 +341,7 @@ baseline change in a pull request is set by the code host: see [codeowners.md](c
 | `apply [plan]` | A person at a terminal only. Needs the server, and no check running. Refuses the whole plan if any render changed since planning, or the plan is older than 24 hours. Asks for `APPROVE <n> ENTRIES`. |
 | `log [--limit 10] [--trace]` | Approvals by batch. `--trace` adds, from git, the commit that added each batch's log lines (`not committed` until then) and the pull request that merged that commit: the first merge after it on HEAD's first-parent line (`Merge pull request #12`, GitLab's `See merge request !12`), or the commit's own squash subject (`… (#12)`). It shows no names or emails: the commit and the PR say who. |
 | `undo <batch>` | Restore the baselines a batch replaced; move first baselines it created to `<store>/trash/`. A person at a terminal only; takes the store lock. Uses `<store>/history/<batch>/` when this machine has it, else git (below). Exits 1 when any entry was refused. |
-| `verify [--no-strict] [--since <ref>] [--suite <name> \| --all-suites]` | Baselines whose bytes differ from their last logged approval, and baselines with no approval logged. **Strict by default** (0.4.0): a baseline with no log line fails, with the entries named and the exact `--adopt` command; `--no-strict` reports it without failing. An entry with no baseline yet is not counted. A baseline written by an approval that stopped before its log line (a crash) is listed as `interrupted`, with `approve undo <batch>` as the next step, not as written outside the trail; approval-log lines a crash cut short are left out and counted (`torn`). `--since <ref>` also fails when the log at the merge base with `<ref>` is not a byte prefix of today's (lines removed or changed: the log is append-only), or when there is no merge base (exit 2 when `<ref>` is not a commit). `--suite` verifies one suite; `--all-suites` the main manifest and every suite, listing a suite whose manifest is not in the checkout (git-ignored) as not committed. Exits 1 on a mismatch, an interrupted approval, a baseline with no log line (strict) or a failed `--since`. Reads only; any caller. |
+| `verify [--no-strict] [--since <ref>] [--suite <name> \| --all-suites]` | Baselines whose bytes differ from their last logged approval, and baselines with no approval logged. **Strict by default** (0.4.0): a baseline with no log line fails, with the entries named and the exact `--adopt` command; `--no-strict` reports it without failing. An entry with no baseline yet is not counted. A baseline written by an approval that stopped before its log line (a crash) is listed as `interrupted`, with `approve undo <batch>` as the next step, not as written outside the trail; approval-log lines a crash cut short are left out and counted (`torn`). `--since <ref>` also fails when the log at the merge base with `<ref>` is not a byte prefix of today's (lines removed or changed: the log is append-only), or when there is no merge base (exit 2 when `<ref>` is not a commit). `--suite` verifies one suite; `--all-suites` the main manifest and every suite, listing a suite whose manifest is not in the checkout (git-ignored) as not committed. Exits 1 on a mismatch, an interrupted approval, a baseline with no log line (strict) or a failed `--since`. With the verify gate on [warn](#warn-mode), only the baselines with no log line are warned. Reads only; any caller. |
 | `verify --adopt [--suite <name> \| --all-suites]` | A person at a terminal: log the current baselines as the starting point, after typing `ADOPT`. For baselines from before pxsig kept a log. |
 
 `--reason` needs at least eight characters. `apply` sends each entry to the server, which writes
@@ -353,8 +378,9 @@ pxsig doctor --repair [--only actions] [--apply] [--prune] [--stale]
 | `--prune` | With `--repair --apply`: move orphans to `<store>/trash/`. A person at a terminal, after a typed phrase. |
 | `--stale` | Also re-check stale verdicts (left out by default). |
 
-Exit: 0 nothing at or above `--fail-on`, 1 findings at or above it, 2 a setup error or usage, 3
-`--prune` or `log-torn` without a person at a terminal.
+Exit: 0 nothing at or above `--fail-on`, 1 findings at or above it (`advisoryExit` with the doctor
+gate on [warn](#warn-mode)), 2 a setup error or usage, 3 `--prune` or `log-torn` without a person
+at a terminal. The details list has an `Enforcement` row: each gate not enforced, and until when.
 
 ## Server, MCP, reports
 

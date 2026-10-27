@@ -65,6 +65,7 @@ fn dispatch(method: &str, p: &Value) -> Result<Value> {
             only: only(p),
             cache: p["cache"].as_str().map(PathBuf::from),
             history: p["history"].as_str().map(PathBuf::from),
+            enforcement: p.get("enforcement").filter(|e| e.is_object()).cloned(),
             base_png_dir: p["basePngDir"].as_str().map(PathBuf::from),
             tolerance: p["tolerance"].as_u64().unwrap_or(16) as u8,
             cli_gate: gate_of(p)?,

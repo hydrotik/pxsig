@@ -41,8 +41,8 @@
  *                               the full check (src/check.mjs); --update writes baselines (a person only)
  *   affected <files…> | --since <ref>
  *                               which entries those edits can change
- *   a11y [--component x] [--new]
- *                               axe violations per entry
+ *   a11y [--component x] [--new] [--sarif out.sarif]
+ *                               axe violations per entry (--sarif: the new ones as SARIF 2.1.0)
  *   a11y --prune --dry-run [--component x] [--mode m] [--only id,…]
  *                               accepted axe rules a fresh check shows no longer fire (prunable), and why
  *                               the others are not: still fires, stale, not covered
@@ -70,6 +70,10 @@
  * a styled terminal view on a TTY, Markdown when piped (Claude Code, Codex, CI), JSON with --json.
  * Exit: 0 ok · 1 problems found (check / stale / doctor) · 2 usage or setup error · 3 needs a person at a terminal.
  * Over several projects, the worst exit wins.
+ * Warn mode (lib/enforcement.mjs): `check`, `doctor`, `stale` and `approve verify` take
+ * `--enforce[=gate,…]` (anyone) and `--warn[=gate,…]` (a person at a terminal); a gate the committed
+ * config sets to warn exits `advisoryExit` (0) where it alone would have failed, and says so. A real
+ * failure in another project still beats an advisory exit.
  * Per-entry approve / reject stays in the dashboard and Storybook panel, where a person sees the images.
  */
 import { spawn, spawnSync } from './lib/spawn.mjs';
@@ -90,6 +94,8 @@ import { relPath } from './lib/paths.mjs';
 import { applyPrune, confirmPrune } from './lib/prune.mjs';
 import { newBatch } from './lib/approvals.mjs';
 import { describeAgent } from './lib/agents.mjs';
+import { appendReadiness, combineExits, describeEnforcement, lastLine, leadLine, outcome, readinessTally, reportBlock, resolveEnforcement, resolveOrExit } from './lib/enforcement.mjs';
+import { writeSarif } from './lib/sarif.mjs';
 
 // --- args --------------------------------------------------------------------------------------
 const { positional, flags } = parseArgs(process.argv.slice(2));
@@ -168,22 +174,23 @@ async function overProjects(render, names = readTargets()) {
   }
   const blocks = [];
   const data = [];
-  let exit = 0;
+  const exits = [];
   for (const name of names) {
     current = name;
     try {
       const r = await render();
       blocks.push(...forProject(name, r.blocks));
       data.push({ project: name, ...r.data });
-      exit = Math.max(exit, r.exit ?? 0);
+      exits.push({ exit: r.exit ?? 0, advisory: !!r.advisory });
     } catch (e) {
       blocks.push({ h: name }, { note: e.message, tone: 'bad' });
       data.push({ project: name, error: e.message });
-      exit = 2;
+      exits.push({ exit: 2 });
     }
   }
   emit(format, blocks, { projects: data });
-  process.exit(exit);
+  // The worst code wins; an advisory exit (warn mode) never hides another project's failure.
+  process.exit(combineExits(exits));
 }
 
 /** Write commands need exactly one project. */
@@ -193,6 +200,28 @@ function oneProject() {
   const ref = pickProject(ws, { cwd: process.cwd() });
   if (!ref) fail(`this workspace has ${ws.projects.length} projects; "${command}" changes one: choose it with --project (${ws.projects.map((p) => p.name).join(', ')})`);
   return ref.name;
+}
+
+/**
+ * Warn mode for a gated command (lib/enforcement.mjs): `found` is what each gate would fail on.
+ * Returns the exit, the ADVISORY lead and last lines as blocks to put around the output, and the
+ * `enforcement` data, and appends the readiness line when a gate is on warn by config.
+ */
+function gate(found, source, counts = {}) {
+  const P = ctx().P;
+  const enf = resolveOrExit(P, { flags }, (m, code) => fail(m, code));
+  const out = outcome(enf, found);
+  appendReadiness(P, enf, out, { source, counts });
+  const lead = leadLine(enf);
+  const last = lastLine(enf, out, enf.configured.length ? readinessTally(P) : null);
+  const block = reportBlock(enf, out);
+  return {
+    exit: out.exit,
+    advisory: out.advisory,
+    lead: lead ? [{ note: lead, tone: 'warn' }] : [],
+    last: last ? [{ note: last, tone: out.advisory ? 'warn' : undefined }] : [],
+    data: block ? { enforcement: block } : {},
+  };
 }
 
 /**
@@ -403,6 +432,16 @@ async function doctorOne({ repair, only, failOn }) {
           ['Ledger', r.ledgerPath],
           ...(r.machine ? [['Settings', r.machine.setUp ? r.machine.settings : { text: `${r.machine.settings} (not set up)`, color: 'gray' }], ['Token files', r.machine.tokens]] : []),
           ['Running under', r.agent ? describeAgent(r.agent) : { text: 'no agent marker', color: 'gray' }],
+          // Warn mode, only when the config (or this run's --warn / --enforce) sets it.
+          ...(() => {
+            try {
+              const P = ctx().P;
+              const enf = resolveEnforcement(P, { flags });
+              return P.config.enforcement != null || enf.configured.length || flags.enforce ? [['Enforcement', describeEnforcement(enf)]] : [];
+            } catch (e) {
+              return [['Enforcement', { text: e.message, color: 'red' }]];
+            }
+          })(),
         ],
       },
     ];
@@ -469,8 +508,17 @@ async function doctorOne({ repair, only, failOn }) {
     // --fail-on: error → errors; warn → errors + warnings; info → also info findings, never ok / excluded / drift.
     const findings = { error: sm.bySeverity.error, warn: sm.bySeverity.warn, info: sm.infoFindings ?? 0 };
     const rank = { error: 0, warn: 1, info: 2 };
-    const exit = r.setup.some((x) => x.severity === 'error') ? 2 : Object.entries(findings).some(([k, n]) => n && rank[k] <= rank[failOn]) ? 1 : 0;
-    return { blocks, data: r, exit };
+    const over = Object.entries(findings).filter(([k]) => rank[k] <= rank[failOn]).reduce((n, [, c]) => n + c, 0);
+    // A setup error is never warned (exit 2 in every mode); findings at or above --fail-on are the doctor gate.
+    const g = gate(
+      [
+        ...(r.setup.some((x) => x.severity === 'error') ? [{ gate: null, exit: 2, count: r.setup.filter((x) => x.severity === 'error').length, what: 'setup errors' }] : []),
+        { gate: 'doctor', exit: over ? 1 : 0, count: over, what: `findings at or above --fail-on ${failOn}` },
+      ],
+      'doctor',
+      { doctor: over }
+    );
+    return { blocks: [...g.lead, ...blocks, ...g.last], data: { ...r, ...g.data }, exit: g.exit, advisory: g.advisory };
 }
 
 // --- commands ------------------------------------------------------------------------------------
@@ -541,6 +589,16 @@ const commands = {
               return { text: L.summary.headline, color: L.summary.status === 'attention' ? 'red' : L.summary.status === 'warnings' ? 'yellow' : 'green' };
             })(),
           ],
+          // Warn mode, only when the config chose it: the gates, the date, the readiness tally.
+          ...(s.enforcement?.warned?.length
+            ? [[
+                'Warn mode',
+                {
+                  text: `${s.enforcement.warned.join(', ')}${s.enforcement.warnUntil ? ` until ${s.enforcement.warnUntil}` : ''}${s.enforcement.readiness ? ` · would-fail runs ${s.enforcement.readiness.wouldFail} of ${s.enforcement.readiness.runs}${s.enforcement.readiness.main ? ` (${s.enforcement.readiness.main.branch} ${s.enforcement.readiness.main.wouldFail} of ${s.enforcement.readiness.main.runs})` : ''}` : ''}`,
+                  color: 'yellow',
+                },
+              ]]
+            : []),
           [
             'Fresh',
             s.stale
@@ -612,7 +670,8 @@ const commands = {
           ],
         ],
       });
-    return { blocks, data: s, exit: bad ? 1 : 0 };
+    const g = gate([{ gate: 'stale', exit: bad ? 1 : 0, count: bad, what: 'stale or inconsistent verdicts' }], 'stale', { stale: bad });
+    return { blocks: [...g.lead, ...blocks, ...g.last], data: { ...s, ...g.data }, exit: g.exit, advisory: g.advisory };
   }),
 
   list: () => overProjects(async () => {
@@ -769,9 +828,20 @@ const commands = {
     if (problems.length) next.push([`${CMD} entry ${problems[0].id}`, 'see what changed']);
     if (ledger?.summary.status === 'attention') next.push([`${CMD} doctor`, 'per-component integrity']);
     blocks.push({ next });
-    emit(format, blocks, { ...r, integrity: ledger?.summary ?? null });
+    // Warn mode: the visual gate on the problems, the a11y gate on the entries with new violations.
+    const a11yNew = r.a11yNew ?? 0;
+    const g = gate(
+      [
+        ...(!r.checked && r.skipped?.length ? [{ gate: null, exit: 2, count: r.skipped.length, what: 'names not checked' }] : []),
+        { gate: 'visual', exit: problems.length ? 1 : 0, count: problems.length, what: 'not passing' },
+        { gate: 'a11y', exit: a11yNew ? 1 : 0, count: a11yNew, what: a11yNew === 1 ? 'entry with new a11y violations' : 'entries with new a11y violations' },
+      ],
+      'check',
+      { changed: problems.length, a11yNew }
+    );
+    emit(format, [...g.lead, ...blocks, ...g.last], { ...r, integrity: ledger?.summary ?? null, ...g.data });
     // Nothing checked because every name was skipped: a selection error, like an empty one.
-    process.exit(!r.checked && r.skipped?.length ? 2 : problems.length ? 1 : 0);
+    process.exit(g.exit);
   },
 
   async affected() {
@@ -818,6 +888,14 @@ const commands = {
     });
     const rules = Object.entries(r.byRule ?? {}).sort((a, b) => b[1] - a[1]);
     const blocks = [{ h: flags.new ? 'New a11y violations' : 'a11y', sub: `${r.entries} entries` }];
+    // --sarif: the new violations of the last report, for SARIF viewers (decision 96).
+    if (typeof flags.sarif === 'string') {
+      const C = ctx();
+      const report = JSON.parse(readFileSync(join(C.P.store.reports, 'check.json'), 'utf8'));
+      const manifest = JSON.parse(readFileSync(C.P.manifestPath(), 'utf8'));
+      const n = writeSarif(resolve(flags.sarif), report.rows.filter((x) => !flags.component || x.id.includes(String(flags.component).toLowerCase())), { entries: new Map(manifest.stories.map((e) => [e.id, e])) });
+      blocks.push({ note: `${n} new violations written to ${flags.sarif} (SARIF 2.1.0)` });
+    }
     if (!r.entries) blocks.push({ note: 'No violations.', tone: 'ok' });
     else {
       blocks.push({
@@ -924,7 +1002,17 @@ const commands = {
   },
 
   config() {
-    const d = describeConfig(openProject({ project: oneProject() }));
+    const P = openProject({ project: oneProject() });
+    const d = describeConfig(P);
+    // Warn mode, when the config sets it: each gate's setting, the layer that set it, the days left.
+    let enf = null;
+    if (P.config.enforcement != null)
+      try {
+        enf = resolveEnforcement(P, { flags });
+      } catch (e) {
+        enf = { error: e.message };
+      }
+    if (enf) d.enforcement = enf.error ? enf : { gates: enf.gates, layers: enf.layers, warnUntil: enf.warnUntil, daysLeft: enf.daysLeft, advisoryExit: enf.advisoryExit };
     if (format === 'json') return process.stdout.write(`${JSON.stringify(d, null, 2)}\n`);
     const get = (o, k) => k.split('.').reduce((v, x) => (v == null ? v : v[x]), o);
     const show = (v) => (v == null ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v));
@@ -939,6 +1027,14 @@ const commands = {
         { kv: [['Workspace file', rel(d.workspaceFile)], ['Project config', rel(d.configFile)], ['Source root', rel(d.srcRoot)], ['Store', `${rel(d.store.root)} (${d.store.layout})`], ['Storybook', d.storybook.url], ['Binary', rel(d.rustBin)]] },
         { h: 'Settings', sub: 'later layers win: defaults < workspace defaults < project config < env < flags' },
         { table: { cols: [{ key: 'k', label: 'Key' }, { key: 'v', label: 'Value' }, { key: 'from', label: 'Set by' }], rows } },
+        ...(enf
+          ? enf.error
+            ? [{ h: 'Enforcement' }, { note: enf.error, tone: 'bad' }]
+            : [
+                { h: 'Enforcement', sub: `${enf.warnUntil ? `warn until ${enf.warnUntil}${enf.daysLeft != null ? ` (${enf.daysLeft} days left)` : ' (passed)'} · ` : ''}advisory exit ${enf.advisoryExit}` },
+                { table: { cols: [{ key: 'g', label: 'Gate' }, { key: 'v', label: 'Setting' }, { key: 'from', label: 'Set by' }], rows: Object.entries(enf.gates).map(([g, v]) => ({ g, v: { text: v, color: v === 'warn' ? 'yellow' : v === 'off' ? 'gray' : undefined }, from: enf.layers[g] })) } },
+              ]
+          : []),
       ],
       d
     );
