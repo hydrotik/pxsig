@@ -1,0 +1,155 @@
+{
+  "$description": "oxlint warnings per file and rule. A file may not gain a warning; lower with `node scripts/check-lint-warnings.mjs --update` after fixing some. See scripts/check-lint-warnings.mjs.",
+  "total": 87,
+  "files": {
+    "packages/dashboard/src/App.tsx": {
+      "eslint(no-unused-vars)": 1,
+      "jsx-a11y(prefer-tag-over-role)": 1,
+      "react(refs)": 1,
+      "react(set-state-in-effect)": 4
+    },
+    "packages/dashboard/src/data.ts": {
+      "typescript(no-explicit-any)": 2
+    },
+    "packages/dashboard/src/diff-viewer/DiffViewer.tsx": {
+      "jsx-a11y(prefer-tag-over-role)": 2,
+      "react-hooks(exhaustive-deps)": 1
+    },
+    "packages/dashboard/src/inspector/Inspector.tsx": {
+      "jsx-a11y(no-static-element-interactions)": 1,
+      "jsx-a11y(prefer-tag-over-role)": 1
+    },
+    "packages/dashboard/src/parts/Schematic.tsx": {
+      "jsx-a11y(prefer-tag-over-role)": 1
+    },
+    "packages/dashboard/src/parts/StoryGrid.tsx": {
+      "react(set-state-in-effect)": 2
+    },
+    "packages/dashboard/src/ui/adapters/hydrotik/index.tsx": {
+      "jsx-a11y(prefer-tag-over-role)": 1
+    },
+    "packages/dashboard/src/ui/fallbacks.tsx": {
+      "jsx-a11y(anchor-has-content)": 1,
+      "jsx-a11y(control-has-associated-label)": 1,
+      "jsx-a11y(prefer-tag-over-role)": 2,
+      "jsx-a11y(role-has-required-aria-props)": 1
+    },
+    "packages/dashboard/src/ui/index.ts": {
+      "react(no-children-prop)": 2
+    },
+    "packages/dashboard/src/views/Calibration.tsx": {
+      "typescript(no-explicit-any)": 2
+    },
+    "packages/dashboard/src/views/Decide.tsx": {
+      "jsx-a11y(prefer-tag-over-role)": 1
+    },
+    "packages/dashboard/src/views/Help.tsx": {
+      "jsx-a11y(no-noninteractive-element-interactions)": 1,
+      "jsx-a11y(no-noninteractive-tabindex)": 1
+    },
+    "packages/dashboard/src/views/Integrity.tsx": {
+      "react(set-state-in-effect)": 2
+    },
+    "packages/dashboard/src/views/Scenarios.tsx": {
+      "jsx-a11y(prefer-tag-over-role)": 1
+    },
+    "packages/dashboard/ui-tools.mjs": {
+      "unicorn(prefer-string-starts-ends-with)": 1
+    },
+    "packages/pxsig/src/approve.mjs": {
+      "eslint(no-unused-vars)": 3
+    },
+    "packages/pxsig/src/check.mjs": {
+      "unicorn(no-useless-fallback-in-spread)": 2
+    },
+    "packages/pxsig/src/cli.mjs": {
+      "eslint(no-unused-vars)": 2
+    },
+    "packages/pxsig/src/dashboard-check.mjs": {
+      "unicorn(no-new-array)": 1
+    },
+    "packages/pxsig/src/lib/agents.mjs": {
+      "unicorn(prefer-string-starts-ends-with)": 2
+    },
+    "packages/pxsig/src/lib/approvals.mjs": {
+      "unicorn(prefer-string-starts-ends-with)": 1
+    },
+    "packages/pxsig/src/lib/capture.mjs": {
+      "eslint(no-unused-expressions)": 1,
+      "unicorn(no-new-array)": 1
+    },
+    "packages/pxsig/src/lib/env.mjs": {
+      "eslint(no-unused-expressions)": 2
+    },
+    "packages/pxsig/src/lib/integrity.mjs": {
+      "eslint(no-unused-expressions)": 1,
+      "eslint(no-unused-vars)": 1,
+      "unicorn(no-useless-fallback-in-spread)": 2,
+      "unicorn(prefer-string-starts-ends-with)": 1
+    },
+    "packages/pxsig/src/lib/portability.mjs": {
+      "eslint(no-control-regex)": 1
+    },
+    "packages/pxsig/src/lib/repair.mjs": {
+      "eslint(no-unused-vars)": 1
+    },
+    "packages/pxsig/src/lib/rows.mjs": {
+      "unicorn(prefer-string-starts-ends-with)": 1
+    },
+    "packages/pxsig/src/lib/setup.mjs": {
+      "eslint(no-unused-vars)": 2
+    },
+    "packages/pxsig/src/lib/workspace.mjs": {
+      "eslint(no-unused-expressions)": 1
+    },
+    "packages/pxsig/src/mcp.mjs": {
+      "eslint(no-unused-vars)": 1,
+      "unicorn(no-invalid-fetch-options)": 1
+    },
+    "packages/pxsig/src/serve.mjs": {
+      "eslint(no-unused-expressions)": 1,
+      "eslint(no-unused-vars)": 1,
+      "unicorn(no-useless-fallback-in-spread)": 3
+    },
+    "packages/pxsig/test/cli.test.mjs": {
+      "eslint(no-control-regex)": 1
+    },
+    "packages/pxsig/test/dashboard.test.mjs": {
+      "unicorn(prefer-string-starts-ends-with)": 1
+    },
+    "packages/pxsig/test/help.test.mjs": {
+      "unicorn(prefer-string-starts-ends-with)": 1
+    },
+    "packages/pxsig/test/integrity.test.mjs": {
+      "eslint(no-unused-vars)": 1
+    },
+    "packages/pxsig/test/ui-catalog.test.mjs": {
+      "unicorn(no-thenable)": 1
+    },
+    "scripts/changelog.mjs": {
+      "unicorn(prefer-string-starts-ends-with)": 1
+    },
+    "scripts/make-platform-packages.mjs": {
+      "unicorn(no-useless-fallback-in-spread)": 1
+    },
+    "scripts/pack-manifest.mjs": {
+      "eslint(no-unused-expressions)": 1
+    },
+    "tools/calibrate-detail.mjs": {
+      "eslint(no-unused-expressions)": 3,
+      "eslint(no-unused-vars)": 3
+    },
+    "tools/calibrate-gate.mjs": {
+      "eslint(no-unused-vars)": 2
+    },
+    "tools/calibrate.mjs": {
+      "eslint(no-unused-vars)": 2
+    },
+    "tools/lib/research.mjs": {
+      "unicorn(no-new-array)": 1
+    },
+    "tools/scenarios.mjs": {
+      "eslint(no-unused-vars)": 1
+    }
+  }
+}

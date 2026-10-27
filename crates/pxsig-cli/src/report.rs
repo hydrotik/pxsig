@@ -189,6 +189,43 @@ fn advisory_lead(v: &Value) -> String {
     out
 }
 
+pub fn junit(v: &Value) -> String {
+    let rs = rows(v);
+    let failures = rs.iter().filter(|r| status(r) == "fail").count();
+    let skipped = rs.iter().filter(|r| status(r) == "skipped").count();
+    let mut out = format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites name=\"pxsig\" tests=\"{}\" failures=\"{failures}\" skipped=\"{skipped}\">\n<testsuite name=\"visual\" tests=\"{}\" failures=\"{failures}\" skipped=\"{skipped}\">\n",
+        rs.len(),
+        rs.len()
+    );
+    // Warn mode on the visual gate (decision 10.10): failures stay failures; the suite says warn.
+    if v["enforcement"]["gates"]["visual"].as_str() == Some("warn") {
+        out.push_str("  <properties><property name=\"pxsig.enforcement\" value=\"warn\"/></properties>\n");
+    }
+    for r in rs {
+        let id = esc_xml(r["id"].as_str().unwrap_or(""));
+        let class = esc_xml(r["mode"].as_str().unwrap_or("default"));
+        match status(r) {
+            "fail" => {
+                let why = r["reasons"].as_array().map(|a| a.iter().filter_map(Value::as_str).collect::<Vec<_>>().join("; ")).or_else(|| r["error"].as_str().map(String::from)).unwrap_or_default();
+                out.push_str(&format!(
+                    "  <testcase classname=\"{class}\" name=\"{id}\"><failure message=\"{}\">ssim {} · changed cells {}</failure></testcase>\n",
+                    esc_xml(&why),
+                    r["metrics"]["ssim"],
+                    r["metrics"]["changedCells"]
+                ));
+            }
+            "skipped" => out.push_str(&format!("  <testcase classname=\"{class}\" name=\"{id}\"><skipped message=\"unaffected by this change\"/></testcase>\n")),
+            other => out.push_str(&format!(
+                "  <testcase classname=\"{class}\" name=\"{id}\">{}</testcase>\n",
+                if other == "flaky" { "<system-out>flaky: passed on retry</system-out>" } else { "" }
+            )),
+        }
+    }
+    out.push_str("</testsuite>\n</testsuites>\n");
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -226,41 +263,4 @@ mod tests {
         let warned = junit(&json!({ "rows": rows, "enforcement": { "gates": { "visual": "warn" } } }));
         assert!(warned.contains("<properties><property name=\"pxsig.enforcement\" value=\"warn\"/></properties>") && warned.contains("<failure"), "{warned}");
     }
-}
-
-pub fn junit(v: &Value) -> String {
-    let rs = rows(v);
-    let failures = rs.iter().filter(|r| status(r) == "fail").count();
-    let skipped = rs.iter().filter(|r| status(r) == "skipped").count();
-    let mut out = format!(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites name=\"pxsig\" tests=\"{}\" failures=\"{failures}\" skipped=\"{skipped}\">\n<testsuite name=\"visual\" tests=\"{}\" failures=\"{failures}\" skipped=\"{skipped}\">\n",
-        rs.len(),
-        rs.len()
-    );
-    // Warn mode on the visual gate (decision 10.10): failures stay failures; the suite says warn.
-    if v["enforcement"]["gates"]["visual"].as_str() == Some("warn") {
-        out.push_str("  <properties><property name=\"pxsig.enforcement\" value=\"warn\"/></properties>\n");
-    }
-    for r in rs {
-        let id = esc_xml(r["id"].as_str().unwrap_or(""));
-        let class = esc_xml(r["mode"].as_str().unwrap_or("default"));
-        match status(r) {
-            "fail" => {
-                let why = r["reasons"].as_array().map(|a| a.iter().filter_map(Value::as_str).collect::<Vec<_>>().join("; ")).or_else(|| r["error"].as_str().map(String::from)).unwrap_or_default();
-                out.push_str(&format!(
-                    "  <testcase classname=\"{class}\" name=\"{id}\"><failure message=\"{}\">ssim {} · changed cells {}</failure></testcase>\n",
-                    esc_xml(&why),
-                    r["metrics"]["ssim"],
-                    r["metrics"]["changedCells"]
-                ));
-            }
-            "skipped" => out.push_str(&format!("  <testcase classname=\"{class}\" name=\"{id}\"><skipped message=\"unaffected by this change\"/></testcase>\n")),
-            other => out.push_str(&format!(
-                "  <testcase classname=\"{class}\" name=\"{id}\">{}</testcase>\n",
-                if other == "flaky" { "<system-out>flaky: passed on retry</system-out>" } else { "" }
-            )),
-        }
-    }
-    out.push_str("</testsuite>\n</testsuites>\n");
-    out
 }

@@ -110,6 +110,7 @@ const only = str('project')?.split(',');
   // This pxsig's UI contract version, from the lock shipped with the dashboard source.
   const contract = uiContractVersion();
   const dash = chooseDashboard({ projects: ws.projects.filter((p) => !only || only.includes(p.name)), prebuilt: prebuiltDashboardDir, version: PXSIG_VERSION, contract, root: ws.root, builtinDir });
+  // oxlint-disable-next-line react-hooks/rules-of-hooks -- not a React hook: it selects the dashboard folder to serve.
   useDashboard(dash.dir);
   if (dash.note) console.log(`[serve] ${dash.note}`);
 }

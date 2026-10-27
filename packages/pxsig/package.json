@@ -46,8 +46,8 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
-    "pngjs": "^7.0.0",
-    "axe-core": "^4.10.0"
+    "axe-core": "^4.10.0",
+    "pngjs": "^7.0.0"
   },
   "peerDependencies": {
     "playwright": ">=1.40"

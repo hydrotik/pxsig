@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxfmt/configuration_schema.json",
+  "singleQuote": true,
+  "trailingComma": "es5",
+  "tabWidth": 2,
+  "semi": true,
+  "printWidth": 100,
+  "bracketSpacing": true,
+  "arrowParens": "always",
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "/target",
+    "**/dist",
+    "**/node_modules",
+    "/packages/cli-*",
+    "/packages/pxsig/dashboard",
+    "/packages/pxsig/docs",
+    "**/pnpm-lock.yaml",
+    "**/tsconfig*.json",
+    "**/*.tsbuildinfo",
+    "**/.pxsig/**",
+    "**/pxsig.config.json",
+    "pxsig.workspace.json",
+    "CHANGELOG.md",
+    "packages/dashboard/src/ui/manifest.json",
+    "packages/dashboard/src/ui/contract-lock.json",
+    "packages/dashboard/fixtures/screens.json",
+    "docs/ui/features.md",
+    "docs/ui/catalog/**"
+  ]
+}

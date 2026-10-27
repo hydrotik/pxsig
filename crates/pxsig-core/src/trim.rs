@@ -78,6 +78,7 @@ mod tests {
         let d = img(4, 3, &[(1, 1)]);
         let c = crop(&d, 4, TrimBox { width: 2, height: 2 });
         assert_eq!(c.len(), 16);
-        assert_eq!(c[(1 * 2 + 1) * 4], 250);
+        // Pixel (1, 1) of the 2-wide crop: index (y * width + x) * 4.
+        assert_eq!(c[3 * 4], 250);
     }
 }

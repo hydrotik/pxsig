@@ -38,9 +38,9 @@ pub fn decode_png_bytes(bytes: &[u8], path: &Path) -> Result<(Vec<u8>, usize, us
     buf.truncate(info.buffer_size());
     let rgba = match info.color_type {
         png::ColorType::Rgba => buf,
-        png::ColorType::Rgb => buf.chunks_exact(3).flat_map(|p| [p[0], p[1], p[2], 255]).collect(),
+        png::ColorType::Rgb => buf.as_chunks::<3>().0.iter().flat_map(|p| [p[0], p[1], p[2], 255]).collect(),
         png::ColorType::GrayscaleAlpha => {
-            buf.chunks_exact(2).flat_map(|p| [p[0], p[0], p[0], p[1]]).collect()
+            buf.as_chunks::<2>().0.iter().flat_map(|p| [p[0], p[0], p[0], p[1]]).collect()
         }
         png::ColorType::Grayscale => buf.iter().flat_map(|&v| [v, v, v, 255]).collect(),
         png::ColorType::Indexed => bail!("unexpanded indexed PNG: {}", path.display()),
