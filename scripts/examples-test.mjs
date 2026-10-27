@@ -65,6 +65,8 @@ const tail = (r) => `\n${r.stdout.split('\n').slice(-15).join('\n')}\n${r.stderr
 // harness on a CI runner; pxsig itself never starts a shell (docs/platforms.md).
 const pnpm = (args, cwd, opts = {}) => (process.platform === 'win32' ? sh('pnpm.cmd', args, cwd, { ...opts, shell: true }) : sh('pnpm', args, cwd, opts));
 
+const rootPackageManager = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')).packageManager;
+
 /** Copy an example, rewriting `link:` dependencies to this checkout's packages. */
 function stage(name) {
   // On the checkout's drive: Storybook names a cache folder after the path from the example to a
@@ -80,6 +82,9 @@ function stage(name) {
         for (const k of ['dependencies', 'devDependencies'])
           for (const [dep, v] of Object.entries(pj[k] ?? {}))
             if (String(v).startsWith('link:')) pj[k][dep] = `link:${join(repo, 'packages', dep === 'pxsig' ? 'pxsig' : dep.replace('@pxsig/', ''))}`;
+        // The staged copy is outside the checkout, so Corepack would fetch the newest pnpm (12 fails
+        // on ignored build scripts): pin the repository's own.
+        if (d === dir && !pj.packageManager) pj.packageManager = rootPackageManager;
         writeFileSync(p, JSON.stringify(pj, null, 2));
       }
     }
