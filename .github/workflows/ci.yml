@@ -90,6 +90,8 @@ jobs:
       # System libraries are a Linux concern; macOS and Windows runners need only the browser.
       - run: pnpm --filter pxsig exec playwright install ${{ runner.os == 'Linux' && '--with-deps' || '' }} chromium
       - run: pnpm --filter @pxsig/dashboard test
+      # capture.mjs's in-page helpers need the browser; the pxsig suite above runs before it exists.
+      - run: node --test packages/pxsig/test/capture-page.test.mjs
 
   examples:
     name: Examples (end to end) (${{ matrix.os }})
