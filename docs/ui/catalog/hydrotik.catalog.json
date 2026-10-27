@@ -8815,7 +8815,10 @@
         "pxsig"
       ],
       "pxsigParts": [
-        "TooltipProvider"
+        "Tooltip",
+        "TooltipContent",
+        "TooltipProvider",
+        "TooltipTrigger"
       ]
     },
     {
