@@ -108,6 +108,10 @@ enum Cmd {
         /// Leave the detail channel out of the records.
         #[arg(long)]
         no_detail: bool,
+        /// The environment each render was made in, written into its `.psig` header as `env`:
+        /// `@file` (or inline JSON) holding `{ "envs": { <envId>: env }, "byId": { <entryId>: <envId> } }`.
+        #[arg(long)]
+        env: Option<String>,
         #[arg(long)]
         json: bool,
     },
@@ -233,7 +237,7 @@ fn main() -> ExitCode {
             artifacts.and_then(|a| cmd_check(batch, out_dir, &format, a, cache, history, base_png_dir, tolerance, &gate))
         }
         Cmd::Trim { dir, only, pad, tolerance, json } => cmd_trim(&dir, only.as_deref(), pad, tolerance, json),
-        Cmd::Baseline { batch, no_detail, json } => cmd_baseline(batch, no_detail, json),
+        Cmd::Baseline { batch, no_detail, env, json } => cmd_baseline(batch, no_detail, env, json),
         Cmd::Diff { a, b, tolerance, mask, json } => cmd_diff(&a, &b, tolerance, mask, json),
         Cmd::Affected { manifest, root, since, files, json } => cmd_affected(&manifest, root, &since, files, json),
         Cmd::Report { input, format, link_base, out } => cmd_report(&input, &format, link_base.as_deref(), out),
@@ -295,7 +299,7 @@ fn pack_one(it: &PackItem) -> Result<Value> {
         Some(p) => Some(std::fs::read(p).with_context(|| format!("reading {}", p.display()))?),
         None => None,
     };
-    io::write_baseline(&it.out, &record, image.as_deref(), it.entry.as_ref())?;
+    io::write_baseline(&it.out, &record, image.as_deref(), it.entry.as_ref(), None)?;
     // Read it back: the packed record and image must equal their sources exactly.
     let back = pxsig_core::psig::decode(&std::fs::read(&it.out)?).map_err(|e| anyhow::anyhow!(e))?;
     if serde_json::to_string(&back.record)? != serde_json::to_string(&record)? || back.image != image {
@@ -339,10 +343,15 @@ fn cmd_attach(psig: &Path, png: &Path, as_json: bool) -> Result<u8> {
     }
     let img = std::fs::read(png).with_context(|| format!("reading {}", png.display()))?;
     io::decode_png_bytes(&img, png)?; // must be a readable PNG
-    io::write_baseline(psig, &p.record, Some(&img), p.header.get("entry"))?;
+    // Every top-level key this version does not own (`env`, or one a later version added) is kept.
+    let extra = pxsig_core::psig::extras(&p.header);
+    io::write_baseline(psig, &p.record, Some(&img), p.header.get("entry"), Some(&extra))?;
     let back = pxsig_core::psig::decode(&std::fs::read(psig)?).map_err(|e| anyhow::anyhow!(e))?;
     if back.sig != p.sig || serde_json::to_string(&back.record)? != serde_json::to_string(&p.record)? {
         bail!("{}: signature changed on attach", psig.display());
+    }
+    if pxsig_core::psig::extras(&back.header) != extra {
+        bail!("{}: header keys changed on attach", psig.display());
     }
     if as_json {
         println!("{}", json!({ "attached": psig, "bytes": img.len() }));
@@ -357,7 +366,7 @@ fn cmd_attach(psig: &Path, png: &Path, as_json: bool) -> Result<u8> {
 fn cmd_capture(png: &Path, out: Option<PathBuf>, grid: usize, detail: bool) -> Result<u8> {
     let grid = grid.clamp(8, 256);
     let out = out.unwrap_or_else(|| io::default_sig_path(png));
-    let r = batch::capture_png(png, &out, grid, detail, None)?;
+    let r = batch::capture_png(png, &out, grid, detail, None, None)?;
     let bytes = std::fs::metadata(&out).map(|m| m.len()).unwrap_or(0);
     println!("[pxsig] wrote {}  ({grid}×{grid} RGB, {:.1} KB)", out.display(), bytes as f64 / 1024.0);
     println!("        ahash={} dhash={} sha256={}…", r.ahash, r.dhash, &r.sha256[..12]);
@@ -460,13 +469,14 @@ fn cmd_check(
     Ok(if failed > 0 { 1 } else { 0 })
 }
 
-fn cmd_baseline(b: BatchArgs, no_detail: bool, as_json: bool) -> Result<u8> {
+fn cmd_baseline(b: BatchArgs, no_detail: bool, env: Option<String>, as_json: bool) -> Result<u8> {
     let res = batch::baseline(&BaselineOpts {
         manifest: b.manifest,
         png_dir: b.png_dir,
         root: b.root.unwrap_or_else(|| PathBuf::from(".")),
         only: batch::parse_only(b.only.as_deref())?,
         no_detail,
+        env: batch::parse_env_plan(env.as_deref())?,
     })?;
     let failed = res["summary"]["failed"].as_u64().unwrap_or(0);
     if as_json {
@@ -577,4 +587,33 @@ fn cmd_sweep(input: &Path) -> Result<u8> {
     let inp: sweep::SweepInput = serde_json::from_str(&std::fs::read_to_string(input)?).context("sweep input")?;
     println!("{}", serde_json::to_string(&sweep::run(&inp)?)?);
     Ok(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn attach_keeps_every_header_key_it_does_not_own() {
+        let d = std::env::temp_dir().join(format!("pxsig-attach-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        let png = d.join("a.png");
+        let px: Vec<u8> = (0..16 * 16).flat_map(|i| [(i % 251) as u8, 30, 90, 255]).collect();
+        io::encode_png_pub(&png, 16, 16, &px).unwrap();
+        // A signature-only baseline that records an environment and a key from a later version.
+        let sig = d.join("a.psig");
+        let mut extra = serde_json::Map::new();
+        extra.insert("env".into(), json!({ "v": 1, "id": "1111222233334444" }));
+        extra.insert("later".into(), json!(true));
+        let rec = batch::capture_png(&png, &d.join("tmp.pxsig.json"), 16, false, None, None).unwrap();
+        io::write_baseline(&sig, &rec, None, Some(&json!({ "id": "a" })), Some(&extra)).unwrap();
+        cmd_attach(&sig, &png, true).unwrap();
+        let h = pxsig_core::psig::header(&std::fs::read(&sig).unwrap()).unwrap();
+        assert_eq!(h["env"]["id"], json!("1111222233334444"));
+        assert_eq!(h["later"], json!(true));
+        assert_eq!(h["entry"]["id"], json!("a"));
+        assert!(h["sections"].as_array().unwrap().iter().any(|s| s["name"] == json!("image")));
+        let _ = std::fs::remove_dir_all(&d);
+    }
 }

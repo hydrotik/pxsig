@@ -16,6 +16,7 @@ which refuses any program not listed here; a test fails if code anywhere else st
 | `ps` | macOS, Linux | taking over a store lock | the lock holder's start time, so a reused process id is not mistaken for the holder | — |
 | `osascript`, then `open` | macOS | `pxsig serve`, once at start | reuse an open Chrome tab on the dashboard, else open it in the default browser (macOS asks once whether Terminal may control Chrome) | `--no-open` |
 | `xdg-open` | Linux | `pxsig serve`, once at start | open the dashboard in the default browser | `--no-open` |
+| `fc-list : family style` | Linux, only when fontconfig is installed | once per browser launch in a check or `pxsig serve` | a sha256 of the installed font list for the render environment (`fonts.system`, informational); the list itself is not kept | — (absent: the field is `null`) |
 | Chromium, from Playwright | all | rendering stories | Playwright starts its own browser; pxsig asks it to | — |
 
 pxsig never starts a shell (`cmd.exe`, PowerShell, `sh`) or a system tool (`icacls`, `whoami`,

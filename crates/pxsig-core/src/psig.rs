@@ -46,8 +46,19 @@ pub fn png_dimensions(png: &[u8]) -> Option<(u32, u32)> {
     Some((be(16), be(20)))
 }
 
-/// Pack a record, its image and optional entry metadata (`id`, `story`, `mode`, `state`).
-pub fn encode(record: &PxsigRecord, image: Option<&[u8]>, entry: Option<&Value>) -> Result<Vec<u8>, String> {
+/// Header keys this module writes itself. Any other top-level key (`env`, the environment the
+/// baseline was rendered in) is the caller's: `encode` writes it through and `extras` hands it back,
+/// so re-encoding a file never drops a key a newer version added.
+pub const OWNED_KEYS: [&str; 6] = ["format", "container", "entry", "record", "encryption", "sections"];
+
+/// The header's top-level keys this module does not own (see [`OWNED_KEYS`]).
+pub fn extras(header: &Value) -> Map<String, Value> {
+    header.as_object().map(|o| o.iter().filter(|(k, _)| !OWNED_KEYS.contains(&k.as_str())).map(|(k, v)| (k.clone(), v.clone())).collect()).unwrap_or_default()
+}
+
+/// Pack a record, its image, optional entry metadata (`id`, `story`, `mode`, `state`) and extra
+/// top-level header keys (`env`). An extra key that this module owns is ignored.
+pub fn encode(record: &PxsigRecord, image: Option<&[u8]>, entry: Option<&Value>, extra: Option<&Map<String, Value>>) -> Result<Vec<u8>, String> {
     let (_, sig) = record.baseline()?;
     let mut rec = serde_json::to_value(record).map_err(|e| e.to_string())?;
     if let Value::Object(o) = &mut rec {
@@ -67,6 +78,11 @@ pub fn encode(record: &PxsigRecord, image: Option<&[u8]>, entry: Option<&Value>)
     header.insert("container".into(), json!(CONTAINER_VERSION));
     if let Some(e) = entry {
         header.insert("entry".into(), e.clone());
+    }
+    for (k, v) in extra.into_iter().flatten() {
+        if !OWNED_KEYS.contains(&k.as_str()) {
+            header.insert(k.clone(), v.clone());
+        }
     }
     header.insert("record".into(), rec);
     header.insert("encryption".into(), json!("none"));
@@ -156,7 +172,7 @@ mod tests {
         let r = record();
         let png = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x20\0\0\0\x10rest".to_vec();
         let entry = json!({ "id": "x--y", "mode": "dark" });
-        let bytes = encode(&r, Some(&png), Some(&entry)).unwrap();
+        let bytes = encode(&r, Some(&png), Some(&entry), None).unwrap();
         let p = decode(&bytes).unwrap();
         assert_eq!(serde_json::to_string(&p.record).unwrap(), serde_json::to_string(&r).unwrap());
         assert_eq!(p.image.as_deref(), Some(png.as_slice()));
@@ -167,7 +183,7 @@ mod tests {
     #[test]
     fn signature_only_and_tamper_detection() {
         let r = record();
-        let mut bytes = encode(&r, None, None).unwrap();
+        let mut bytes = encode(&r, None, None, None).unwrap();
         assert!(decode(&bytes).unwrap().image.is_none());
         let last = bytes.len() - 1;
         bytes[last] ^= 1;
@@ -176,10 +192,36 @@ mod tests {
     }
 
     #[test]
+    fn extra_header_keys_round_trip_and_owned_ones_are_ignored() {
+        let r = record();
+        let mut extra = Map::new();
+        extra.insert("env".into(), json!({ "v": 1, "id": "0123456789abcdef" }));
+        extra.insert("record".into(), json!("ignored"));
+        let bytes = encode(&r, None, None, Some(&extra)).unwrap();
+        let p = decode(&bytes).unwrap();
+        assert_eq!(p.header["env"]["id"], json!("0123456789abcdef"));
+        assert_eq!(serde_json::to_string(&p.record).unwrap(), serde_json::to_string(&r).unwrap());
+        let back = extras(&p.header);
+        assert_eq!(back.keys().collect::<Vec<_>>(), vec!["env"]);
+    }
+
+    #[test]
+    fn an_unknown_top_level_key_is_read_and_ignored() {
+        // A header written by a later version, with a key this one has never heard of.
+        let r = record();
+        let mut extra = Map::new();
+        extra.insert("futureKey".into(), json!({ "x": [1, 2, 3] }));
+        let bytes = encode(&r, None, None, Some(&extra)).unwrap();
+        let p = decode(&bytes).unwrap();
+        assert_eq!(p.sig, r.baseline().unwrap().1);
+        assert_eq!(extras(&p.header)["futureKey"]["x"][2], json!(3));
+    }
+
+    #[test]
     fn raw_sig_is_smaller_than_base64_at_grid_64() {
         let px: Vec<u8> = (0..128 * 128 * 4).map(|i| (i * 7 % 251) as u8).collect();
         let r = PxsigRecord::from_signature(&signature_of(&px, 128, 128, 64), "a.png", "2026-10-18T00:00:00.000Z");
-        let bytes = encode(&r, None, None).unwrap();
+        let bytes = encode(&r, None, None, None).unwrap();
         assert!(bytes.len() < serde_json::to_string_pretty(&r).unwrap().len());
     }
 }

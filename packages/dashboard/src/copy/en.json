@@ -369,6 +369,14 @@
       "version-skew": {
         "title": "Version mismatch",
         "help": "Packages in the workspace depend on different pxsig versions."
+      },
+      "env-mismatch": {
+        "title": "Different render environment",
+        "help": "Entries were rendered in a different environment than their baseline (browser, fonts, GPU, timezone or locale): a change can be the machine, not the code."
+      },
+      "engine-old": {
+        "title": "Engine older than the CLI",
+        "help": "The pxsig engine binary is an older version: baselines it writes carry no render environment."
       }
     }
   },

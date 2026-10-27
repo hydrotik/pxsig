@@ -19,8 +19,14 @@
  *             and junit.xml.
  *
  * `--update` renders the selection and writes baselines instead (`pxsig baseline`: each `.psig`
- * carries the render as its image) and the a11y baseline (not with `--kind environment`). Exit: 0 pass
- * · 1 change found, or a wrong --update phrase · 2 setup error · 3 --update without a person.
+ * carries the render as its image and the environment it was rendered in) and the a11y baseline
+ * (not with `--kind environment`). Exit: 0 pass · 1 change found, or a wrong --update phrase
+ * · 2 setup error (with `--strict-env`, baselines from a different environment) · 3 --update
+ * without a person.
+ *
+ * Environment (lib/env.mjs): every row records the environment of its render and compares it with
+ * its baseline's; a `mismatch` is a warning (`[check] env:`, `summary.md`, `pxsig doctor`), and
+ * with `--strict-env` (config `env.strict`, `PXSIG_STRICT_ENV=1`) a refusal before rendering.
  *
  * One writer per store (lib/lock.mjs): the check takes `<store>/reports/.lock`. When the pxsig server
  * holds it (it serves this project), the selection goes through the server's queue instead
@@ -46,6 +52,8 @@ import { ask, humanAtTerminal, whyNotPerson } from './lib/term.mjs';
 import { flagLayer, openProject, writeRunManifest } from './lib/workspace.mjs';
 import { relPath } from './lib/paths.mjs';
 import { writeJson } from './lib/files.mjs';
+import { annotateRow, byId, envConfig, envLine, envSummary, strictEnvCheck, strictFromEnv } from './lib/env.mjs';
+import { PXSIG_VERSION } from './lib/workspace.mjs';
 
 const { flags } = parseArgs(process.argv.slice(2));
 const str = (k) => strFlag(flags, k);
@@ -180,8 +188,21 @@ if (unregistered.length) {
   if (!entries.length) die(`no entries selected (${reg.skipped.map((x) => `${x.name}: ${x.why}`).join('; ')})`);
 }
 
-// --- 2. render ---------------------------------------------------------------------------
+// --- the render environment, and --strict-env ---------------------------------------------------
+const envCfg = envConfig(P.config);
 const pool = browserPool(P);
+const engineVersion = (rust(['--version']).out.match(/(\d+\.\d+\.\d+\S*)/) ?? [])[1] ?? null;
+const current = entries.length ? await pool.envs(entries.map((e) => e.browser ?? 'chromium'), { fontProbe: envCfg.fontProbe, pxsig: PXSIG_VERSION, engine: engineVersion }) : {};
+const strictEnv = !flags.update && (flags['strict-env'] === true || envCfg.strict || strictFromEnv());
+if (strictEnv) {
+  const bad = strictEnvCheck(entries, (e) => resolve(P.workspaceRoot, e.sig), current, envCfg.ignore);
+  if (bad.count) {
+    await pool.close();
+    die(`setup error: ${bad.count} baselines were approved in a different environment (${bad.fields.join(', ')}). Nothing was rendered. Render where the baselines were made (the pinned container), or re-take them there with \`pxsig check --full --update --kind environment\`; without --strict-env this is a warning (pxsig doctor).`);
+  }
+}
+
+// --- 2. render ---------------------------------------------------------------------------
 const renderOpts = { ...manifest, concurrency, project: P, a11y: !flags['no-a11y'] };
 const { results, wallMs, reloads = 0 } = entries.length ? await renderStories(pool, entries, pngDir, renderOpts) : { results: [], wallMs: 0 };
 const renderErrors = results.filter((r) => r.error).length;
@@ -222,7 +243,11 @@ if (flags.update) {
   const batch = newBatch('check-update');
   const before = new Map(ok.map((id) => [id, snapshot(P, entries.find((e) => e.id === id), batch).before]));
   writeFileSync(onlyFile, JSON.stringify(ok));
-  const b = rust(['baseline', '--manifest', runPath, '--png-dir', pngDir, '--root', P.workspaceRoot, '--only', `@${onlyFile}`, '--json']);
+  // Each baseline keeps the environment of its own render (its browser's), never of anything else.
+  const envFile = join(reports, '.env-plan.json');
+  writeFileSync(envFile, JSON.stringify({ envs: byId(current), byId: Object.fromEntries(entries.filter((e) => ok.includes(e.id)).map((e) => [e.id, current[e.browser ?? 'chromium']?.id]).filter(([, v]) => v)) }));
+  const b = rust(['baseline', '--manifest', runPath, '--png-dir', pngDir, '--root', P.workspaceRoot, '--only', `@${onlyFile}`, '--env', `@${envFile}`, '--json']);
+  rmSync(envFile, { force: true });
   const res = JSON.parse(b.out);
   for (const id of ok) record(P, entries.find((e) => e.id === id), { batch, via: 'check-update', reason: str('reason') ?? 'pxsig check --update', kind, before: before.get(id) });
   if (kind !== 'environment') {
@@ -280,6 +305,8 @@ const a11yBase = existsSync(a11yBaselinePath) ? JSON.parse(readFileSync(a11yBase
 // --- 6. report -------------------------------------------------------------------------------------------
 const previous = existsSync(join(reports, `${outName}.json`)) ? JSON.parse(readFileSync(join(reports, `${outName}.json`), 'utf8')) : null;
 const prevRows = new Map((previous?.rows ?? []).map((r) => [r.id, r]));
+// Every environment a row names (this run's, its baselines', carried rows'), by id.
+const envs = { ...(previous?.envs ?? {}), ...(rustRes.baselineEnvs ?? {}), ...byId(current) };
 const out = manifest.stories
   .filter((e) => (modes ? modes.includes(e.mode ?? manifest.defaultMode) : true))
   .map((e) => {
@@ -295,7 +322,7 @@ const out = manifest.stories
         return { id: e.id, story: e.story, mode: e.mode, state: e.state, skipped: true, pass: true, metrics: null, inherited: false, unaffected: true, note: 'skipped-unaffected' };
       return { id: e.id, story: e.story, mode: e.mode, state: e.state, skipped: true, pass: true, metrics: null, inherited: false };
     }
-    return buildRow(e, rows.get(e.id), render.get(e.id), a11yBase, manifest, null);
+    return annotateRow(buildRow(e, rows.get(e.id), render.get(e.id), a11yBase, manifest, null), { current, envs, ignore: envCfg.ignore });
   });
 const checked = out.filter((r) => !r.skipped);
 // The approval log lines this range added (decision 80): `--since` only, where a merge base is known.
@@ -318,12 +345,14 @@ const summary = summarize(out, {
   ...(approvalsInRange ? { approvals: approvalsInRange } : {}),
   // Only when the fail-safe fired: summary.md names the first path and its class (decision 6.1g).
   ...(affected?.failSafe?.length ? { selectAll: { entries: affected.ids.length, path: affected.failSafe[0].path, class: affected.failSafe[0].class, why: affected.failSafe[0].why, more: affected.failSafe.length - 1 } } : {}),
+  ...envSummary(out, envs),
   totalMs: performance.now() - t0,
 });
 const now = new Date().toISOString();
 // When every entry was last checked together (integrity's "last full check"); a partial run keeps the last one.
 const fullCheckAt = checked.length === out.length ? now : (previous?.fullCheckAt ?? previous?.generatedAt ?? null);
-const report = { generatedAt: now, fullCheckAt, project: P.name, suite, manifest: { grid: manifest.grid, gate: manifest.gate, modes: manifest.modes, defaultMode: manifest.defaultMode }, summary, affected, rows: out };
+const usedEnvs = new Set(out.flatMap((r) => [r.env, r.baselineEnv]).filter(Boolean));
+const report = { generatedAt: now, fullCheckAt, project: P.name, suite, manifest: { grid: manifest.grid, gate: manifest.gate, modes: manifest.modes, defaultMode: manifest.defaultMode }, summary, affected, envs: Object.fromEntries(Object.entries(envs).filter(([id]) => usedEnvs.has(id))), rows: out };
 fence();
 writeJson(join(reports, `${outName}.json`), report);
 // Review decisions belong to the run they were made on: a new run starts clean.
@@ -333,6 +362,8 @@ const sfx = outName === 'check' ? '' : `-${outName.replace(/^check-/, '')}`;
 rust(['report', '--input', join(reports, `${outName}.json`), '--format', 'markdown', '--out', join(reports, `summary${sfx}.md`), ...(link ? ['--link-base', link] : [])], { allowFail: false });
 rust(['report', '--input', join(reports, `${outName}.json`), '--format', 'junit', '--out', join(reports, `junit${sfx}.xml`)], { allowFail: false });
 
+const envMsg = envLine(summary, summary.checked);
+if (envMsg) console.log(`[check] ${envMsg}`);
 console.log(
   `[check] ${summary.checked} checked · ${summary.passed} pass · ${summary.failed} changed · ${summary.flaky} flaky · ${summary.skipped} skipped · ` +
     `a11y ${summary.a11yViolations} violations (${summary.a11yNew} new) · ${(summary.totalMs / 1000).toFixed(1)} s total`

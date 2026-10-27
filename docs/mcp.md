@@ -68,9 +68,9 @@ Every tool takes an optional `project`. With several projects in the workspace i
 | Tool | Arguments | Returns |
 | --- | --- | --- |
 | `pxsig_projects` | none | The projects: name, folder, Storybook URL, entry count, integrity headline |
-| `pxsig_status` | `project` | When the report was written, counts per state, accessibility totals, most changed components, server state, files edited since the report, and `approvals.level`. Start here. |
+| `pxsig_status` | `project` | When the report was written, counts per state, accessibility totals, most changed components, server state, files edited since the report, `approvals.level`, and `env` (`current`: the environments of the last renders; `mismatched`: entries whose baseline came from another one). Start here. |
 | `pxsig_list` | `project`, `state` (`problems` default, `changed`, `new`, `error`, `flaky`, `rejected`, `approved`, `drift`, `pass`, `skipped`, `a11y`, `all`), `component`, `mode`, `limit` (50) | Entries with metrics and gate reasons |
-| `pxsig_entry` | `project`, `id` (required), `images` (`baseline`, `current`, `diff`; default all three) | One entry in full, with the images inline. Images over about 1.5 MB are replaced by their path. |
+| `pxsig_entry` | `project`, `id` (required), `images` (`baseline`, `current`, `diff`; default all three) | One entry in full, with the images inline. Images over about 1.5 MB are replaced by their path. Includes `env`, `baselineEnv`, `envMatch` (`same`, `compatible`, `mismatch`, `unknown`) and `envDiff` ([configuration.md](configuration.md#env)). |
 | `pxsig_a11y` | `project`, `only_new`, `component`, `limit` (50), `prune_plan`, `mode`, `ids` | axe violations per entry, with each entry's accessibility decision (`accepted`, `rejected` or null) since its last check. With `prune_plan: true`: every accepted rule as `prunable`, `still-fires`, `stale` or `not-covered`, read-only (what `pxsig a11y --prune --dry-run` prints); removing them is a person's, in a terminal |
 | `pxsig_affected` | `project`, `files` or `since` | The entries those edits can change |
 | `pxsig_stale` | `project`, `limit` (200), `max_files` (400) | Verdicts older than an edit that can change them, and verdicts made on a render of a different size |

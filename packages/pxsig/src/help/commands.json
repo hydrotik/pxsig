@@ -222,7 +222,7 @@
       "summary": "Re-render and re-check entries: some through the running server, or the full check. Never writes baselines unless --update is given by a person.",
       "usage": [
         "pxsig check [ids…] [--changed a.tsx,b.ts] [--since <ref>] [--all]",
-        "pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] [--only id,id] [--concurrency 8] [--retries 2] [--no-a11y] [--link-base <url>] [--out <name>] [--no-server] [--update [--kind word] [--reason text]]"
+        "pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] [--only id,id] [--concurrency 8] [--retries 2] [--no-a11y] [--link-base <url>] [--out <name>] [--no-server] [--strict-env] [--update [--kind word] [--reason text]]"
       ],
       "flags": [
         {
@@ -297,6 +297,10 @@
           "default": "1800"
         },
         {
+          "name": "strict-env",
+          "meaning": "Refuse (exit 2, nothing rendered) when a selected baseline was approved in a different render environment. Also config env.strict and PXSIG_STRICT_ENV=1. Without it, a difference is a warning. Not applied to --update."
+        },
+        {
           "name": "update",
           "meaning": "Write baselines from the renders instead of checking. A person at a terminal only, after typing UPDATE <n> BASELINES."
         },
@@ -319,7 +323,7 @@
       "exits": {
         "0": "Every checked entry passed",
         "1": "At least one entry changed, is new or failed to render",
-        "2": "Usage or setup error, Storybook unreachable, or the store locked",
+        "2": "Usage or setup error, Storybook unreachable, the store locked, or (--strict-env) baselines from a different render environment",
         "3": "--update without a person at a terminal"
       },
       "examples": [

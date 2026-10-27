@@ -11,6 +11,9 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolvePeer } from './workspace.mjs';
+import { collectEnv, playwrightVersion } from './env.mjs';
+
+export { CAPTURE_PIPELINE } from './env.mjs';
 
 /** SMIL (<animate>, <animateMotion>) ignores the freeze CSS: pin every SVG's clock to 0. */
 export const PAUSE_SVG = () =>
@@ -136,7 +139,10 @@ export async function launchBrowser(project, channel) {
   let lastErr;
   for (const ch of channel ? [channel] : [undefined, 'chrome', 'msedge']) {
     try {
-      return await chromium.launch(ch ? { channel: ch } : {});
+      const b = await chromium.launch(ch ? { channel: ch } : {});
+      // The channel it launched with is part of the render environment (lib/env.mjs).
+      b.__pxsigChannel = ch ?? null;
+      return b;
     } catch (e) {
       lastErr = e;
     }
@@ -144,10 +150,35 @@ export async function launchBrowser(project, channel) {
   throw lastErr;
 }
 
-/** Lazily launch one browser per engine (`chromium` | `firefox` | `webkit`), shared by the pool. */
+/**
+ * Lazily launch one browser per engine (`chromium` | `firefox` | `webkit`), shared by the pool.
+ * `env(type)` is that browser's render environment (lib/env.mjs), collected once per launch.
+ */
 export function browserPool(project, given = {}) {
   const open = new Map(Object.entries(given).map(([k, b]) => [k, Promise.resolve(b)]));
+  const envs = new Map();
   return {
+    env(type = 'chromium', opts = {}) {
+      if (!envs.has(type))
+        envs.set(
+          type,
+          this.get(type).then((b) =>
+            collectEnv(b, {
+              type,
+              channel: b.__pxsigChannel ?? null,
+              playwright: project ? playwrightVersion(() => resolvePeer(project, 'playwright/package.json')) : null,
+              ...opts,
+            })
+          )
+        );
+      return envs.get(type);
+    },
+    /** The environments of every browser type in `types`: `{ chromium: env, … }`. */
+    async envs(types, opts = {}) {
+      const out = {};
+      for (const t of new Set(types)) out[t] = await this.env(t, opts);
+      return out;
+    },
     get(type = 'chromium') {
       if (!open.has(type))
         open.set(

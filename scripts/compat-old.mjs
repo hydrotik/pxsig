@@ -8,11 +8,12 @@
  *   node scripts/compat-old.mjs [version]
  *
  * Asserted, as observed for 0.3.2: both run, verify finds every baseline matching its line, status
- * reads the store; a workspace `requires: ">=0.4.0"` does not stop it (it predates the key). Needs
- * npm, network access to the registry, and this checkout's Rust binary.
+ * reads the store (whose report carries render environments), the old engine reads a baseline whose
+ * header records one (`env`, 0.5); a workspace `requires: ">=0.4.0"` does not stop it (it predates
+ * the key). Needs npm, network access to the registry, and this checkout's Rust binary.
  */
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -24,11 +25,25 @@ const ok = (m) => console.log(`  ok   ${m}`);
 
 const { fixture } = await import(pathToFileURL(join(repoRoot, 'packages/pxsig/test/fixture.mjs')).href);
 const { record } = await import(pathToFileURL(join(repoRoot, 'packages/pxsig/src/lib/approvals.mjs')).href);
-const { openProject, PXSIG_VERSION } = await import(pathToFileURL(join(repoRoot, 'packages/pxsig/src/lib/workspace.mjs')).href);
+const { openProject, PXSIG_VERSION, writeRunManifest } = await import(pathToFileURL(join(repoRoot, 'packages/pxsig/src/lib/workspace.mjs')).href);
+const { readHeader } = await import(pathToFileURL(join(repoRoot, 'packages/pxsig/src/lib/psig.mjs')).href);
 
-// A store as this pxsig writes it: every baseline logged by this version.
+// A store as this pxsig writes it: baselines that record their render environment, every baseline
+// logged by this version, and a report with `envs` and per-row env fields.
 const f = fixture();
 const P = openProject({ cwd: f.repo });
+const env = { v: 1, id: '0123456789abcdef', browser: { name: 'chromium', version: '141.0.7390.37', channel: null, launchArgs: [] }, os: { platform: 'linux', arch: 'x64' }, fonts: { probe: { digest: 'x', families: {} } }, render: { dpr: 1 }, capture: { pipeline: 1 } };
+const plan = join(f.repo, '.env-plan.json');
+const withEnv = [f.ids.ok, f.ids.drift];
+writeFileSync(plan, JSON.stringify({ envs: { [env.id]: env }, byId: Object.fromEntries(withEnv.map((id) => [id, env.id])) }));
+const b = spawnSync(P.rustBin, ['baseline', '--manifest', writeRunManifest(P).path, '--png-dir', P.store.latest, '--root', P.workspaceRoot, '--only', withEnv.join(','), '--env', `@${plan}`, '--json'], { encoding: 'utf8' });
+if (b.status !== 0 || readHeader(f.sig(f.ids.ok))?.env?.id !== env.id) fail(`baselines with env were not written: ${b.stderr}`);
+const report = JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8'));
+report.envs = { [env.id]: env };
+report.rows = report.rows.map((r) => (withEnv.includes(r.id) ? { ...r, env: env.id, baselineEnv: env.id, envMatch: 'same' } : r));
+report.summary = { ...report.summary, envMismatch: 0 };
+writeFileSync(join(f.px, 'reports', 'check.json'), JSON.stringify(report));
+ok(`${withEnv.length} baselines record a render environment (env), and the report carries envs`);
 for (const e of f.manifest.stories.filter((x) => !x.sig.endsWith('.pxsig.json'))) record(P, e, { batch: 'compat', via: 'cli', before: null });
 const lines = readFileSync(join(f.px, 'approvals.ndjson'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
 if (!lines.every((l) => l.pxsig === PXSIG_VERSION && !('by' in l))) fail('this pxsig wrote lines without its version, or with `by`');
@@ -58,6 +73,14 @@ try {
   fail(`pxsig ${version} status printed no JSON (exit ${r.status}):\n${r.stdout}${r.stderr}`);
 }
 ok(`pxsig ${version} status reads the store (exit ${r.status})`);
+
+// The old engine reads a header with `env` (an unknown top-level key) and its signature as before.
+const oldBin = join(old, 'node_modules', '@pxsig', `cli-${process.platform}-${process.arch}`, 'bin', process.platform === 'win32' ? 'pxsig.exe' : 'pxsig');
+if (existsSync(oldBin)) {
+  r = spawnSync(oldBin, ['cat', f.sig(f.ids.ok)], { encoding: 'utf8' });
+  if (r.status !== 0 || !r.stdout.includes('"record"')) fail(`pxsig ${version}'s engine could not read a baseline with env: exit ${r.status}\n${r.stderr}`);
+  ok(`pxsig ${version}'s engine reads a baseline whose header records env (cat: exit 0)`);
+} else ok(`pxsig ${version}'s engine for ${process.platform}-${process.arch} is not installed here: skipped the header read`);
 
 // `requires` cannot hold an older pxsig back: it predates the key.
 writeFileSync(join(f.repo, 'pxsig.workspace.json'), JSON.stringify({ version: 1, requires: `>=${PXSIG_VERSION}`, projects: { fixture: '.' } }, null, 2));
