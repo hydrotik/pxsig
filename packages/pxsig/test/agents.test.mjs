@@ -332,6 +332,20 @@ test('setup writes each project file only on a yes, only when absent, and only i
     '.vscode/mcp.json',
   ]);
 
+  // The assistant named after `setup`, as with --assistant; an unknown name or two names is usage.
+  const same = tmp();
+  const named = await setupCommand({ root: same, step: 'vscode', flags: { print: true } });
+  const flagged = await setupCommand({ root: same, flags: { assistant: 'vscode', print: true } });
+  assert.deepEqual(named.data, flagged.data);
+  await assert.rejects(
+    setupCommand({ root: tmp(), step: 'vscod', flags: { print: true } }),
+    /unknown assistant "vscod": one of vscode/
+  );
+  await assert.rejects(
+    setupCommand({ root: tmp(), step: 'vscode', flags: { assistant: 'cursor', print: true } }),
+    /two assistants named/
+  );
+
   // An answer that is not on the list writes nothing.
   await assert.rejects(
     setupCommand({ root: tmp(), person: true, ask: answers('99') }),

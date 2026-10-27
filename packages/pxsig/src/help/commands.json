@@ -42,6 +42,10 @@
         "meaning": "With a command: that command's page. Alone: the command list."
       },
       {
+        "name": "version",
+        "meaning": "The versions of this CLI, the engine it would run and the UI contract, then exit (`pxsig version` is the same). With --json, as data."
+      },
+      {
         "name": "storybook-url",
         "value": "url",
         "meaning": "Config flag: Storybook's URL for this run.",

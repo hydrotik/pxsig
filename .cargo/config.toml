@@ -1,0 +1,5 @@
+# The Windows engine links the C runtime statically, so it runs on a machine without the Visual C++
+# Redistributable (VCRUNTIME140.dll is not part of Windows). scripts/check-win-runtime.mjs fails
+# CI and the release when a built pxsig.exe imports it again.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

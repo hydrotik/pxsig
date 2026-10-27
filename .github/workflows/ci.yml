@@ -45,6 +45,8 @@ jobs:
       - run: node --test scripts/changelog.test.mjs
       # The release's raw binaries and SHA256SUMS (release.yml, pack job).
       - run: node --test scripts/release-files.test.mjs
+      # The Windows engine's runtime check (the check itself runs on the built .exe: rust job, release).
+      - run: node --test scripts/check-win-runtime.test.mjs
       - if: github.event_name == 'pull_request'
         run: git fetch --no-tags --depth=1 origin "$GITHUB_BASE_REF" && node scripts/changelog.mjs check --since FETCH_HEAD
       # The dashboard's UI contract: no design-system import outside the adapters; the manifest,
@@ -64,13 +66,16 @@ jobs:
         with:
           toolchain: 1.99.0 # rust-toolchain.toml
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - run: cargo test --workspace
+      - run: cargo test --workspace --locked
       # Lints and formatting are the same on every OS: once, on Linux.
       - if: runner.os == 'Linux'
         run: cargo fmt --all --check
       - if: runner.os == 'Linux'
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - run: cargo build --release
+      - run: cargo build --release --locked
+      # The engine runs on a Windows machine without the Visual C++ Redistributable (crt-static).
+      - if: runner.os == 'Windows'
+        run: node scripts/check-win-runtime.mjs target/release/pxsig.exe
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: pxsig-${{ matrix.os }}
@@ -99,6 +104,10 @@ jobs:
           path: target/release
       - if: runner.os != 'Windows'
         run: chmod +x target/release/pxsig
+      # Chromium before the pxsig suite: its browser tests (render environment, server flows,
+      # capture helpers) skip without one, and a skip is not a pass.
+      # System libraries are a Linux concern; macOS and Windows runners need only the browser.
+      - run: pnpm --filter pxsig exec playwright install ${{ runner.os == 'Linux' && '--with-deps' || '' }} chromium
       - run: pnpm --filter pxsig test
       - run: pnpm --filter @pxsig/storybook-addon test
       # The scale benchmark's generator and verdicts (the benchmark itself runs nightly: bench.yml).
@@ -107,11 +116,7 @@ jobs:
       - run: pnpm typecheck
       # The diff-viewer primitives in a browser (keyboard, ARIA, controlled state), and the
       # dashboard's review and repair flows against a mocked server.
-      # System libraries are a Linux concern; macOS and Windows runners need only the browser.
-      - run: pnpm --filter pxsig exec playwright install ${{ runner.os == 'Linux' && '--with-deps' || '' }} chromium
       - run: pnpm --filter @pxsig/dashboard test
-      # capture.mjs's in-page helpers need the browser; the pxsig suite above runs before it exists.
-      - run: node --test packages/pxsig/test/capture-page.test.mjs
 
   examples:
     name: Examples (end to end) (${{ matrix.os }})

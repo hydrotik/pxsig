@@ -83,21 +83,24 @@ import { fileURLToPath } from 'node:url';
 import { approveCommand } from './approve.mjs';
 import { helpBlocks, helpData, lookup, nearestNames } from './help.mjs';
 import { ctxOf, doctor, imageOf, prunePlan, tools } from './mcp.mjs';
-import { parseArgs } from './lib/args.mjs';
+import { parseArgs, unknownFlagLines, unknownFlags } from './lib/args.mjs';
 import { CODES } from './lib/integrity.mjs';
 import { describeLock, readLock, takeLock } from './lib/lock.mjs';
 import { buildManifest, describeConfig, initProject, migrateLegacy } from './lib/setup.mjs';
 import {
   CONFIG_FILE,
+  engineVersion,
   findWorkspace,
   flagLayer,
   openProject,
   pickProject,
+  PXSIG_VERSION,
   rustBinary,
   serverUrlFor,
   setFlagLayer,
 } from './lib/workspace.mjs';
 import { readToken, TOKEN_HEADER } from './lib/guard.mjs';
+import { uiContractVersion } from './report.mjs';
 import {
   ask,
   emit,
@@ -130,6 +133,27 @@ const { positional, flags } = parseArgs(process.argv.slice(2));
 const format = pickFormat(flags);
 const [command = 'status', ...rest] = positional;
 const CMD = process.env.PXSIG_CMD ?? 'pxsig';
+// A misspelled flag is ignored like any other unknown one, so say so on stderr. `cat` passes its
+// flags to the engine, which checks them itself.
+if (command !== 'cat')
+  for (const line of unknownFlagLines(unknownFlags(process.argv.slice(2))))
+    process.stderr.write(`${line}\n`);
+// `pxsig --version` / `pxsig version`: this CLI, the engine it would run and the UI contract.
+if (flags.version === true || command === 'version') {
+  let engine = null;
+  try {
+    engine = engineVersion(rustBinary());
+  } catch {
+    // no engine for this platform: reported as null / "not found"
+  }
+  const versions = { pxsig: PXSIG_VERSION, engine, contract: uiContractVersion() };
+  process.stdout.write(
+    pickFormat(flags) === 'json'
+      ? `${JSON.stringify(versions)}\n`
+      : `pxsig ${PXSIG_VERSION} (engine ${engine ?? 'not found'}, UI contract ${versions.contract ?? 'unknown'})\n`
+  );
+  process.exit(0);
+}
 const here = dirname(fileURLToPath(import.meta.url));
 // --workspace applies to everything: this process, the tools it calls and the commands it starts.
 if (typeof flags.workspace === 'string') process.env.PXSIG_WORKSPACE = resolve(flags.workspace);

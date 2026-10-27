@@ -78,7 +78,7 @@ jobs:
         with:
           toolchain: 1.99.0 # rust-toolchain.toml
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - run: cargo test --workspace
+      - run: cargo test --workspace --locked
 
   build:
     name: Build ${{ matrix.platform }}-${{ matrix.arch }}
@@ -128,6 +128,9 @@ jobs:
         with:
           key: ${{ matrix.target }}
       - run: cargo build --release --locked --target ${{ matrix.target }} -p pxsig-cli
+      # crt-static (.cargo/config.toml): the published engine needs no Visual C++ Redistributable.
+      - if: matrix.platform == 'win32'
+        run: node scripts/check-win-runtime.mjs target/${{ matrix.target }}/release/pxsig.exe
       # Smoke: the binary starts on the runner that built it (darwin-x64 is cross-compiled and
       # runs under Rosetta when the runner has it; the step says so when it does not).
       - name: Smoke
