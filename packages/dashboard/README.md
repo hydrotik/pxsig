@@ -20,6 +20,10 @@ The build writes a single classic script plus `index.html` to `packages/pxsig/di
 `PXSIG_DASHBOARD_OUT`), so a static report also opens from disk. That folder is git-ignored and
 ships only in the published `pxsig` package.
 
+The script is not minified, so the copy in the npm package can be read and audited as it ships.
+`PXSIG_DASHBOARD_MINIFY=1` at build time minifies it (smaller, harder to read); the same variable
+applies to `pxsig dashboard build`.
+
 Without a build, `pxsig serve` still answers its API, and `/report/` answers 404 with "the
 dashboard is not built". Changes to the data the dashboard reads (`packages/pxsig/src/report.mjs`)
 and to the server can be developed and tested without it.

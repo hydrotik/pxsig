@@ -7,7 +7,7 @@ developer's machine, in the dashboard.
 ## What a job needs
 
 - The repository with full history, when you use `--since` (it needs the merge base).
-- Node 20 or later, the workspace's dependencies, and Playwright's Chromium (plus Firefox or WebKit
+- Node 22 or later, the workspace's dependencies, and Playwright's Chromium (plus Firefox or WebKit
   if a mode uses them).
 - The `pxsig` engine binary. Once pxsig is published, the npm install brings the platform package.
   Until then, build it from a clone with `cargo build --release` and set `PXSIG_BIN` to

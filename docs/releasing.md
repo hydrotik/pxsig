@@ -63,9 +63,11 @@ changes first), with the entries already under Unreleased ahead of the fragments
    `Cargo.lock`): `pxsig-engine.cdx.json`.
 6. **pack**: generates the platform packages with `scripts/make-platform-packages.mjs` into
    `packages/cli-dist/` (git-ignored), adds them to `pxsig` as exact-version `optionalDependencies`
-   (in the job's checkout only; nothing is committed), and runs `npm pack` on every package:
-   `pxsig` (with the dashboard in `dist/`), each `@pxsig/cli-<platform>-<arch>` and
-   `@pxsig/storybook-addon`. It also writes `pxsig-dashboard.tar.gz`, the npm SBOM
+   (in the job's checkout only; nothing is committed), runs pxsig's prepack step
+   (`scripts/sync-dashboard-source.mjs`), removes `scripts` and `devDependencies` from the
+   published manifests (`scripts/pack-manifest.mjs`), and runs `npm pack --ignore-scripts` on every
+   package: `pxsig` (with the dashboard in `dist/`), each `@pxsig/cli-<platform>-<arch>` and
+   `@pxsig/storybook-addon`. A packed manifest that still has either key fails the job. It also writes `pxsig-dashboard.tar.gz`, the npm SBOM
    (`pxsig-npm.cdx.json`: the packed `pxsig` installed into an empty project and read by
    `@cyclonedx/cyclonedx-npm`, pinned), the raw binaries `pxsig-<platform>-<arch>[.exe]`, and
    `SHA256SUMS` over all of them (`scripts/release-files.mjs`).
@@ -137,6 +139,9 @@ For 2, build the dashboard locally and pack it:
 PXSIG_DS_SOURCE=<path to the design-system checkout> pnpm --filter @pxsig/dashboard build
 COPYFILE_DISABLE=1 tar czf pxsig-dashboard.tar.gz -C packages/pxsig/dist dashboard
 ```
+
+The build is unminified unless `PXSIG_DASHBOARD_MINIFY=1` is set; a release ships it unminified so
+reviewers can read what runs (packages/dashboard/README.md).
 
 The tarball must contain only a top-level `dashboard/` folder with `index.html` in it; the job
 rejects anything else. (`COPYFILE_DISABLE=1` keeps macOS `._*` files out.)
