@@ -46,7 +46,7 @@ current version. Releases are published from GitHub Actions with npm provenance 
 
 ## Requirements
 
-- Node.js 20 or later (22.18 or later to work in a clone of this repository)
+- Node.js 22 or later (22.18 or later to work in a clone of this repository)
 - A Storybook (8 or later; the addon needs 9 or later) that pxsig can reach over HTTP with its
   `index.json`, or a static build of one (`storybook.staticDir`), which pxsig serves itself when
   nothing answers at `storybook.url`

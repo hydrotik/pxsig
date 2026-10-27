@@ -22,6 +22,8 @@ jobs:
       - run: node scripts/check-clean.mjs
       # Its own rules, the product-shot exemption among them.
       - run: node --test scripts/check-clean.test.mjs
+      # The published package.json files drop scripts and devDependencies (release.yml, pack job).
+      - run: node --test scripts/pack-manifest.test.mjs
       # Changelog fragments (changelog.d/README.md): well formed, and a pull request adds one instead
       # of editing CHANGELOG.md, which only a release/ branch changes.
       - run: node scripts/changelog.mjs check
@@ -88,6 +90,8 @@ jobs:
       # System libraries are a Linux concern; macOS and Windows runners need only the browser.
       - run: pnpm --filter pxsig exec playwright install ${{ runner.os == 'Linux' && '--with-deps' || '' }} chromium
       - run: pnpm --filter @pxsig/dashboard test
+      # capture.mjs's in-page helpers need the browser; the pxsig suite above runs before it exists.
+      - run: node --test packages/pxsig/test/capture-page.test.mjs
 
   examples:
     name: Examples (end to end) (${{ matrix.os }})

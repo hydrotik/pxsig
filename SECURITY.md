@@ -67,6 +67,25 @@ Storybook.
 - **The renderer loads your Storybook** in a real browser. Treat the stories you render like any
   code you run.
 
+## What package scanners report
+
+Supply-chain scanners (Socket, npm audit signatures, OpenSSF Scorecard and others) list what a
+package can do. Each capability below is real; this is where it is in the code and what bounds it.
+
+| Capability | Where | Bounds |
+| --- | --- | --- |
+| Starts programs | `src/lib/spawn.mjs`, the only module that imports `node:child_process` | A fixed list per OS (node, the engine, git, ps, osascript/open, xdg-open, fc-list, docker for `pxsig browser` only), never through a shell; anything else is refused ([docs/platforms.md](docs/platforms.md#programs-pxsig-starts)) |
+| Network: a server | `src/serve.mjs`, `src/lib/static.mjs` | Binds `127.0.0.1`; refuses hosts that are not loopback and foreign origins (above) |
+| Network: requests | `fetch` in `src/approve.mjs`, `check.mjs`, `cli.mjs`, `mcp.mjs`, `lib/repair.mjs` | Only to the pxsig server: `http://127.0.0.1:<port>` by default (`serverUrlFor` in `src/lib/workspace.mjs`), or the address in `PXSIG_URL` when a person sets one. pxsig sends nothing anywhere else: no telemetry, no update check |
+| URL strings | the `127.0.0.1` defaults; SARIF output's rule links and schema (`src/lib/sarif.mjs`) | Written into reports, never fetched |
+| Environment variables | `PXSIG_*` settings, CI and the coding-assistant markers (`src/lib/agents.mjs`), the OS's folder variables | Read only. `USER`/`USERNAME` are read only when a team turns on `approvals.identity: "git-email"` and git has no email |
+| Filesystem | the store, `node_modules/.cache/pxsig/`, the per-machine folder (`src/lib/machine.mjs`) | Writes stay in the project, its store and that folder; repairs refuse to write a baseline (`src/lib/repair.mjs`) |
+| Dynamic import | `src/lib/capture.mjs` (the project's own Playwright), `src/dashboard.mjs` (a custom dashboard adapter the project names) | Paths resolved from the project's install or its config, never from the network |
+| Code evaluated at runtime | none in pxsig's code | axe-core's own bundle is added to the rendered page with Playwright's `addScriptTag`; token overrides in the research tools are fixed transforms, not code |
+| Native binaries | `@pxsig/cli-<platform>-<arch>`, the Rust engine | Built by the release workflow from this repository, with checksums and provenance attestations ([Verifying a download](#verifying-a-download)) |
+| Bundled web page | `dist/dashboard/assets/app.js`, the dashboard | Unminified, so it reads as code; built locally from the design system and attached to the release (docs/releasing.md) |
+| Install scripts | none | The published `package.json` files carry no `scripts` (`scripts/pack-manifest.mjs`) |
+
 ## Baselines
 
 `.psig` files are not encrypted. The header reserves an `encryption` field, but encryption is not

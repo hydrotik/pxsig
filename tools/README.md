@@ -64,7 +64,7 @@ Add or replace scenarios with `--scenarios <file.json>`:
 
 - `css` is injected after the page loads.
 - `globals` and `colorScheme` replace the entry's own.
-- `tokens` maps a CSS custom-property prefix to a value and sets every `--<prefix>__*` variable (the hashed names CSS-in-TS libraries emit). A value of `"fn:<body>"` is the body of a `(current) => next` function.
+- `tokens` maps a CSS custom-property prefix to a value and sets every `--<prefix>__*` variable (the hashed names CSS-in-TS libraries emit). A value is a literal, `{ "scale": 1.25 }` (multiplies the current value's leading number, unit kept) or `{ "mix": "#e11d48", "amount": 30 }` (mixes that share of the colour into the current value with `color-mix`). Nothing in a scenarios file is run as code; the former `"fn:<body>"` form is refused with a message.
 - A scenario with a built-in name replaces that built-in, and `"replace": true` drops all the built-ins except `control`.
 - `--suite <name>` renders every entry whose story id matches the suite's `stories` regex (no sampling), runs the base scenarios plus the suite's own, and writes `scenarios-<suite>.json`.
 

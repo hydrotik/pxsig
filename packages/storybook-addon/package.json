@@ -9,6 +9,9 @@
     "directory": "packages/storybook-addon"
   },
   "author": "Donovan Adams (Hydrotik LLC)",
+  "engines": {
+    "node": ">=22"
+  },
   "main": "preset.cjs",
   "exports": {
     ".": "./preset.cjs",

@@ -59,8 +59,8 @@ export const DEFAULT_SCENARIOS = [
  * A scenarios file: `{ scenarios?: [...], replace?: bool, suites?: { name: { title, stories, scenarios } } }`.
  * A scenario is `{ name, kind: 'regression'|'noise', title, change, css?, tokens?, globals?, colorScheme? }`;
  * `tokens` maps a CSS custom-property prefix to a value (every `--<prefix>__*` variable is set: the
- * hashed names vanilla-extract emits),
- * or to `fn:<body>` of `(current) => next`. A suite's `stories` is a regex over story ids; it renders
+ * hashed names vanilla-extract emits): a literal, `{ scale: n }` or `{ mix: colour, amount: pct }`
+ * (lib/capture.mjs `applyTokenOverrides`). A suite's `stories` is a regex over story ids; it renders
  * every matching entry (no sampling) with the base scenarios plus its own.
  */
 function loadScenarios(flags, P) {
@@ -77,6 +77,10 @@ function loadScenarios(flags, P) {
     if (!suite) throw new Error(`no suite "${suiteName}" in ${file ?? '(no --scenarios file)'}`);
     all = [...all, ...(suite.scenarios ?? [])];
   }
+  for (const s of all)
+    for (const [k, v] of Object.entries(s.tokens ?? {}))
+      if (typeof v === 'string' && v.startsWith('fn:'))
+        throw new Error(`scenario "${s.name}": token "${k}" uses "fn:", which is no longer run as code; use a literal, { "scale": n } or { "mix": colour, "amount": pct }`);
   if (Object.keys(P.modes).length < 2) all = all.filter((s) => !s.modeSwap);
   const target = P.config.capture.target ?? '#storybook-root';
   const fill = (s) => (s ? s.replaceAll('{target}', target) : s);

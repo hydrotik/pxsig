@@ -242,34 +242,52 @@ export function axeScript(project) {
 }
 
 /**
- * Build the in-page script that overrides design tokens. vanilla-extract names
- * every token `--<path>__<hash>`, so tokens are given by path prefix
- * (`color-primary`) and resolved against the page's stylesheets. A value can be
- * a literal or `(current) => next` serialised as a function body string.
+ * Override design tokens in the page (the research harness's `tokens`, tools/scenarios.mjs).
+ * vanilla-extract names every token `--<path>__<hash>`, so tokens are given by path prefix
+ * (`color-primary`) and resolved against the page's stylesheets. A value is a literal, or one of
+ * two fixed transforms of the current value: `{ scale: n }` multiplies its leading number (unit
+ * kept), `{ mix: colour, amount: pct }` mixes it with a colour. Nothing is evaluated as code.
+ * Runs in the page, through `page.evaluate`.
  */
-function tokenOverrideScript(tokens) {
-  return `(() => {
-    const want = ${JSON.stringify(tokens)};
-    const names = new Set();
-    for (const sheet of document.styleSheets) {
-      let rules; try { rules = sheet.cssRules; } catch { continue; }
-      for (const r of rules) if (r.style) for (const n of r.style) if (n.startsWith('--')) names.add(n);
+export function applyTokenOverrides(want) {
+  const names = new Set();
+  for (const sheet of document.styleSheets) {
+    let rules;
+    try {
+      rules = sheet.cssRules;
+    } catch {
+      continue;
     }
-    const probe = getComputedStyle(document.querySelector('[data-theme]') || document.documentElement);
-    const decls = [];
-    for (const [path, spec] of Object.entries(want)) {
-      for (const n of names) {
-        if (!n.startsWith('--' + path + '__')) continue;
-        let v = spec;
-        if (typeof spec === 'string' && spec.startsWith('fn:')) v = new Function('current', spec.slice(3))(probe.getPropertyValue(n).trim());
-        decls.push(n + ':' + v + ' !important');
+    for (const r of rules) if (r.style) for (const n of r.style) if (n.startsWith('--')) names.add(n);
+  }
+  const probe = getComputedStyle(document.querySelector('[data-theme]') || document.documentElement);
+  const next = (spec, current) => {
+    if (spec && typeof spec === 'object') {
+      if (typeof spec.scale === 'number') {
+        const m = /^(-?[\d.]+)(.*)$/.exec(current);
+        return m ? `${Number(m[1]) * spec.scale}${m[2]}` : current;
       }
+      if (typeof spec.mix === 'string') return `color-mix(in srgb, ${current} ${100 - (spec.amount ?? 50)}%, ${spec.mix})`;
+      return current;
     }
-    const el = document.createElement('style');
-    el.textContent = '*,:root{' + decls.join(';') + '}';
-    document.head.appendChild(el);
-    return decls.length;
-  })()`;
+    return String(spec);
+  };
+  const decls = [];
+  for (const [path, spec] of Object.entries(want)) {
+    for (const n of names) {
+      if (!n.startsWith('--' + path + '__')) continue;
+      decls.push(n + ':' + next(spec, probe.getPropertyValue(n).trim()) + ' !important');
+    }
+  }
+  const el = document.createElement('style');
+  el.textContent = '*,:root{' + decls.join(';') + '}';
+  document.head.appendChild(el);
+  return decls.length;
+}
+
+/** Load axe-core's bundle into the page once (a page is reused across stories). */
+export async function injectAxe(page, src) {
+  if (!(await page.evaluate(() => typeof window.axe !== 'undefined'))) await page.addScriptTag({ content: src });
 }
 
 /** Ask the loaded preview to render another story; resolves false if it does not within 10 s. */
@@ -430,7 +448,7 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
           if (sentinel) throw new Error(`${STORYBOOK_ERROR} ${sentinel}`);
           if (!switched) {
             await page.addStyleTag({ content: FREEZE_CSS + css });
-            if (tokens) await page.evaluate(tokenOverrideScript(tokens));
+            if (tokens) await page.evaluate(applyTokenOverrides, tokens);
           }
           await page.evaluate(() => (document.fonts ? document.fonts.ready : null));
           // Capture once the layout stops moving, not after a fixed delay: components that
@@ -475,10 +493,10 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
           writeFileSync(png, buf);
           let a11yRes = null;
           if (axe && e.a11y !== false) {
-            a11yRes = await page
-              .evaluate(
-                async ({ src, sel: root }) => {
-                  if (!window.axe) new Function(src)();
+            a11yRes = await injectAxe(page, axe)
+              .then(() =>
+                page.evaluate(
+                async ({ sel: root }) => {
                   const r = await window.axe.run(document.querySelector(root) ?? document, {
                     resultTypes: ['violations'],
                   });
@@ -490,7 +508,8 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
                     targets: v.nodes.slice(0, 3).map((n) => n.target.join(' ')),
                   }));
                 },
-                { src: axe, sel }
+                { sel }
+                )
               )
               .then((violations) => ({ violations }))
               .catch((err) => ({ error: String(err.message).split('\n')[0] }));

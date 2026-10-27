@@ -13,7 +13,8 @@ sign in. The pull request that commits the baselines is where they are reviewed.
 
 Most assistants set an environment variable in the shell they run commands in. pxsig reads the
 environment and nothing else: it starts no program and inspects nothing on the machine to find out
-(`src/lib/agents.mjs`, with each row's source). The first row that matches names the assistant.
+(`src/lib/agents.mjs`; each row's source is under [Sources](#sources)). The first row that matches
+names the assistant.
 
 | Variable | Name pxsig reports |
 | --- | --- |
@@ -59,6 +60,24 @@ the shell it uses.
   own terminal ([server.md](server.md#guards)).
 
 Everything else works as without a marker: reads, checks, repairs, `approve plan`, the MCP tools.
+
+### Sources
+
+Where each row of the table comes from, read on 2026-10-25. The code (`src/lib/agents.mjs`) names
+the source of each row; the links live here so the shipped package carries no external URLs.
+
+| Assistant | Source |
+| --- | --- |
+| `AI_AGENT` | [VS Code `aiAgentEnv.ts`](https://github.com/microsoft/vscode/blob/main/src/vs/platform/chat/common/aiAgentEnv.ts) |
+| Copilot CLI | the published `@github/copilot` package, version 1.0.60 |
+| Claude Code | [environment variables](https://code.claude.com/docs/en/env-vars); the entry point is observed |
+| Codex | [`spawn.rs`](https://github.com/openai/codex/blob/main/codex-rs/core/src/spawn.rs) and `exec_env.rs` in the same folder |
+| Gemini CLI | [`shellExecutionService.ts`](https://github.com/google-gemini/gemini-cli/blob/main/packages/core/src/services/shellExecutionService.ts) |
+| Cursor | [terminal](https://cursor.com/docs/agent/tools/terminal) and [run modes](https://cursor.com/docs/agent/security/run-modes) |
+| Cline | [`VscodeTerminalRegistry.ts`](https://github.com/cline/cline/blob/main/apps/vscode/src/hosts/vscode/terminal/VscodeTerminalRegistry.ts) |
+| Roo Code | [`Terminal.ts`](https://github.com/RooCodeInc/Roo-Code/blob/main/src/integrations/terminal/Terminal.ts) |
+| Amp | the published `@sourcegraph/amp` package, 2026-06-09 build |
+| opencode | [opencode](https://github.com/sst/opencode), `packages/core/src/tool/plugin/shell.ts` |
 
 ## Approval levels
 

@@ -282,11 +282,16 @@ jobs:
           set -euo pipefail
           out="$PWD/release-files"
           mkdir -p "$out"
+          # pxsig's prepack step (the dashboard sources and docs/ui) runs here, then the published
+          # manifests drop `scripts` and `devDependencies` (scripts/pack-manifest.mjs), so every
+          # package is packed with --ignore-scripts.
+          node scripts/sync-dashboard-source.mjs
+          node scripts/pack-manifest.mjs packages/pxsig packages/storybook-addon
           for dir in packages/cli-dist/cli-*/ packages/pxsig packages/storybook-addon; do
-            # pxsig's prepack copies the dashboard sources and docs/ui into the package.
-            (cd "$dir" && npm pack --pack-destination "$out")
+            (cd "$dir" && npm pack --ignore-scripts --pack-destination "$out")
           done
           test -f "$out/pxsig-${VERSION}.tgz"
+          node scripts/pack-manifest.mjs --check "$out"/*.tgz
           (cd packages/pxsig/dist && COPYFILE_DISABLE=1 tar czf "$out/pxsig-dashboard.tar.gz" dashboard)
       # The npm SBOM describes what installing the published pxsig package brings in: the tarball
       # is installed into an empty project and cyclonedx-npm reads that tree.

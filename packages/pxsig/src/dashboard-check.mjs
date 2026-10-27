@@ -26,7 +26,7 @@ import { dirname, extname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { PNG } from 'pngjs';
 import { dashboardSource } from './dashboard.mjs';
-import { axeScript, launchBrowser } from './lib/capture.mjs';
+import { axeScript, injectAxe, launchBrowser } from './lib/capture.mjs';
 import { buildDirFor, STAMP } from './lib/dashboard-dir.mjs';
 import { PXSIG_VERSION } from './lib/workspace.mjs';
 import { prebuiltDashboardDir } from './report.mjs';
@@ -217,11 +217,11 @@ async function capture(browser, { url, screen, shot, axe, initScript = null }) {
     await page.screenshot({ path: shot });
     let violations = [];
     if (axe) {
-      violations = await page.evaluate(async (src) => {
-        if (!window.axe) new Function(src)();
+      await injectAxe(page, axe);
+      violations = await page.evaluate(async () => {
         const r = await window.axe.run(document, { resultTypes: ['violations'] });
         return r.violations.map((v) => ({ id: v.id, impact: v.impact ?? null, count: v.nodes.length }));
-      }, axe);
+      });
     }
     if (errors.length) return { rendered: false, reason: `page error: ${errors[0]}`, errors, axe: violations, ms: Date.now() - started };
     return { rendered: true, reason: null, errors, axe: violations, ms: Date.now() - started };
