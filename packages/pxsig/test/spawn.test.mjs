@@ -19,6 +19,7 @@ test('the list, per OS', () => {
     assert.equal(refused('git', os), null, `git on ${os}`);
     assert.equal(refused('/x/target/release/pxsig', os), null, `the engine on ${os}`);
     assert.equal(refused('C:\\x\\pxsig.exe', os), null, `the engine .exe on ${os}`);
+    assert.equal(refused('docker', os), null, `docker on ${os} (pxsig browser only)`);
   }
   for (const p of ['ps', 'osascript', 'open']) assert.equal(refused(p, 'darwin'), null, p);
   for (const p of ['ps', 'xdg-open', 'fc-list']) assert.equal(refused(p, 'linux'), null, p);

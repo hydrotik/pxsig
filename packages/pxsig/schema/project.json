@@ -86,6 +86,7 @@
         "viewport": { "$ref": "#/$defs/size", "default": [900, 600], "description": "Browser viewport at device scale 1." },
         "settleMs": { "type": "integer", "minimum": 0, "default": 200, "description": "Minimum wait after fonts load." },
         "target": { "type": "string", "default": "#storybook-root", "description": "Selector of the element captured." },
+        "browserEndpoint": { "type": ["string", "null"], "default": null, "description": "A Playwright browser server (ws://…) to render with instead of launching a browser, e.g. the container's from `pxsig browser start`. Also --browser and PXSIG_BROWSER_WS." },
         "waitFor": {
           "type": "array",
           "default": [],

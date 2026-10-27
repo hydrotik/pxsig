@@ -129,8 +129,22 @@ export const PROBE_PAGE = ({ families, text, sizes }) => {
     colorGamut: matchMedia('(color-gamut: p3)').matches ? 'p3' : matchMedia('(color-gamut: srgb)').matches ? 'srgb' : 'unknown',
     timezone: opts.timeZone ?? null,
     locale: navigator.language ?? null,
+    // For a remote browser only (lib/capture.mjs connectBrowser): its OS, as the page sees it.
+    platform: navigator.platform ?? null,
   };
 };
+
+/**
+ * A remote browser's OS from its page (`navigator.platform`): `Linux x86_64`, `Linux aarch64`,
+ * `MacIntel`, `Win32`. Release and distro are not visible from a page, so they stay null.
+ */
+export function osFromProbe(platform) {
+  const p = String(platform ?? '');
+  if (/linux/i.test(p)) return { platform: 'linux', arch: /aarch64|arm64|armv8/i.test(p) ? 'arm64' : /x86_64|amd64/i.test(p) ? 'x64' : null, release: null, distro: null };
+  if (/^mac/i.test(p)) return { platform: 'darwin', arch: null, release: null, distro: null };
+  if (/^win/i.test(p)) return { platform: 'win32', arch: 'x64', release: null, distro: null };
+  return { platform: null, arch: null, release: null, distro: null };
+}
 
 /** `/etc/os-release` PRETTY_NAME on Linux, `os.version()` elsewhere. */
 function distro(platform) {
@@ -150,8 +164,11 @@ function distro(platform) {
   }
 }
 
-/** sha256 of sorted `fc-list : family style` where fontconfig exists (Linux, the container); else null. */
-function systemFonts(platform) {
+/**
+ * sha256 of sorted `fc-list : family style` where fontconfig exists (Linux, the container); else
+ * null. The image workflow writes the same digest to the image label `io.pxsig.fonts`.
+ */
+export function systemFonts(platform = os.platform()) {
   if (platform !== 'linux') return null;
   try {
     const r = spawnSync('fc-list', [':', 'family', 'style'], { encoding: 'utf8', timeout: 5000 });
@@ -177,7 +194,7 @@ export function playwrightVersion(resolvePkg) {
  * name; `channel` the channel it launched with. The probe page is a fresh context with the
  * capture settings (DPR 1, reduced motion), closed before returning.
  */
-export async function collectEnv(browser, { type = 'chromium', channel = null, launchArgs = [], fontProbe = [], playwright = null, pxsig = null, engine = null, env = process.env } = {}) {
+export async function collectEnv(browser, { type = 'chromium', channel = null, launchArgs = [], fontProbe = [], playwright = null, pxsig = null, engine = null, remote = null, env = process.env } = {}) {
   const families = [...new Set([...PROBE_FAMILIES, ...fontProbe])];
   const ctx = await browser.newContext({ viewport: { width: 400, height: 300 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
   let probe;
@@ -191,15 +208,23 @@ export async function collectEnv(browser, { type = 'chromium', channel = null, l
   }
   const perFamily = Object.fromEntries(families.map((f) => [f, sha(JSON.stringify(probe.widths[f] ?? null)).slice(0, 8)]));
   const platform = os.platform();
-  const container = env.PXSIG_IMAGE || env.PXSIG_IMAGE_REVISION || env.PXSIG_IMAGE_DIGEST
-    ? { image: env.PXSIG_IMAGE || null, revision: env.PXSIG_IMAGE_REVISION || null, digest: env.PXSIG_IMAGE_DIGEST || null }
-    : null;
+  // A remote browser (`remote`: a browser server this process connected to) renders on its own
+  // machine: its OS comes from the probe page, its image from what `pxsig browser start` recorded,
+  // and this machine's fonts are not its fonts.
+  const rec = remote?.record ?? null;
+  const container = remote
+    ? rec?.image || rec?.digest
+      ? { image: rec.image ?? null, revision: rec.revision ?? null, digest: rec.digest ?? null }
+      : null
+    : env.PXSIG_IMAGE || env.PXSIG_IMAGE_REVISION || env.PXSIG_IMAGE_DIGEST
+      ? { image: env.PXSIG_IMAGE || null, revision: env.PXSIG_IMAGE_REVISION || null, digest: env.PXSIG_IMAGE_DIGEST || null }
+      : null;
   const out = {
     v: ENV_VERSION,
     browser: { name: browser.browserType?.().name?.() ?? type, version: browser.version?.() ?? null, channel: channel ?? null, launchArgs },
     playwright,
-    os: { platform, arch: os.arch(), release: os.release(), distro: distro(platform) },
-    fonts: { probe: { digest: sha(canonical(perFamily)), families: perFamily }, system: systemFonts(platform) },
+    os: remote ? osFromProbe(probe.platform) : { platform, arch: os.arch(), release: os.release(), distro: distro(platform) },
+    fonts: { probe: { digest: sha(canonical(perFamily)), families: perFamily }, system: remote ? null : systemFonts(platform) },
     render: { dpr: 1, gpu: gpuClass(probe.renderer), colorGamut: probe.colorGamut, timezone: probe.timezone, locale: probe.locale, reducedMotion: 'reduce' },
     capture: { pipeline: CAPTURE_PIPELINE },
     container,

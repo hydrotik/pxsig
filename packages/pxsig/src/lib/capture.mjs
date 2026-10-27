@@ -7,10 +7,10 @@
  * can inject CSS / token overrides / Storybook globals to simulate a change without
  * editing source.
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { resolvePeer } from './workspace.mjs';
+import { browserFile, resolvePeer, SetupError } from './workspace.mjs';
 import { collectEnv, playwrightVersion } from './env.mjs';
 
 export { CAPTURE_PIPELINE } from './env.mjs';
@@ -151,13 +151,44 @@ export async function launchBrowser(project, channel) {
 }
 
 /**
+ * Connect to a Playwright browser server (`pxsig browser start`, `playwright run-server`) instead of
+ * launching. One endpoint serves every engine, picked by the `x-playwright-browser` header;
+ * `exposeNetwork: '<loopback>'` lets that browser reach this machine's localhost (Storybook).
+ */
+export async function connectBrowser(pw, endpoint, type = 'chromium') {
+  try {
+    const b = await pw[type].connect(endpoint, { exposeNetwork: '<loopback>', headers: { 'x-playwright-browser': type } });
+    b.__pxsigRemote = endpoint;
+    return b;
+  } catch (e) {
+    const why = String(e?.message ?? e).split('\n')[0];
+    throw new SetupError(`cannot use the browser server at ${endpoint} (${type}): ${why}. Is it running (pxsig browser status), and is this project's Playwright the server's major.minor?`);
+  }
+}
+
+/** What `pxsig browser start` recorded for `endpoint` (image, digest), or null. */
+export function browserRecord(project, endpoint) {
+  const f = project?.workspaceRoot ? browserFile(project.workspaceRoot) : null;
+  try {
+    const r = f && existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null;
+    return r && r.ws === endpoint ? r : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Lazily launch one browser per engine (`chromium` | `firefox` | `webkit`), shared by the pool.
  * `env(type)` is that browser's render environment (lib/env.mjs), collected once per launch.
+ * With `endpoint` (`capture.browserEndpoint`, `--browser`, `PXSIG_BROWSER_WS`) every engine is
+ * connected to that browser server instead; without it, launching is exactly as before.
  */
-export function browserPool(project, given = {}) {
+export function browserPool(project, given = {}, { endpoint = project?.config?.capture?.browserEndpoint ?? null, pw = null } = {}) {
   const open = new Map(Object.entries(given).map(([k, b]) => [k, Promise.resolve(b)]));
   const envs = new Map();
+  const lib = () => (pw ? Promise.resolve(pw) : playwright(project));
   return {
+    endpoint,
     env(type = 'chromium', opts = {}) {
       if (!envs.has(type))
         envs.set(
@@ -167,6 +198,7 @@ export function browserPool(project, given = {}) {
               type,
               channel: b.__pxsigChannel ?? null,
               playwright: project ? playwrightVersion(() => resolvePeer(project, 'playwright/package.json')) : null,
+              remote: b.__pxsigRemote ? { endpoint: b.__pxsigRemote, record: browserRecord(project, b.__pxsigRemote) } : null,
               ...opts,
             })
           )
@@ -183,9 +215,11 @@ export function browserPool(project, given = {}) {
       if (!open.has(type))
         open.set(
           type,
-          type === 'chromium'
-            ? launchBrowser(project)
-            : playwright(project).then((pw) => pw[type].launch())
+          endpoint
+            ? lib().then((p) => connectBrowser(p, endpoint, type))
+            : type === 'chromium'
+              ? launchBrowser(project)
+              : lib().then((p) => p[type].launch())
         );
       return open.get(type);
     },

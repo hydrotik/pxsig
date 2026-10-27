@@ -21,8 +21,9 @@ pxsig has two command-line tools with the same name:
 
 Config flags, accepted by every command, form the top configuration layer (see
 [configuration.md](configuration.md#layers)): `--storybook-url <url>`, `--storybook-static <dir>`,
-`--storybook-config <dir>`, `--grid <n>`, `--min-cell-px <n>`, `--settle-ms <n>`. Paths are relative
-to the current folder.
+`--storybook-config <dir>`, `--grid <n>`, `--min-cell-px <n>`, `--settle-ms <n>`, `--browser <ws://…>`
+(render with that Playwright browser server instead of launching one here; [container.md](container.md)).
+Paths are relative to the current folder.
 
 ### Several projects
 
@@ -366,6 +367,9 @@ Exit: 0 nothing at or above `--fail-on`, 1 findings at or above it, 2 a setup er
 | `pxsig dashboard build [--ui path] [--out dir]` | Rebuild the dashboard on this project's design system through a UI adapter (`--ui`, else `dashboard.ui`), with the project's own Vite (`vite`, `@vitejs/plugin-react`, `@vanilla-extract/vite-plugin`, `react`, `react-dom` installed). Run it in the folder of that `pxsig.config.json`. Default output `node_modules/.cache/pxsig/dashboard`, which `pxsig serve` then uses (below); `--out` writes elsewhere (serve it with `PXSIG_DASHBOARD_DIR`). Refused, with the migration notes, when the adapter's `conformance.json` records an older major UI contract version ([ui/contract-changes.md](ui/contract-changes.md)); an older minor builds and says what falls back. See [ui/build-adapter.md](ui/build-adapter.md). |
 | `pxsig dashboard gaps [--ui path] [--json]` | What the adapter covers of the UI contract: missing, partial and bespoke components and the dashboard files each affects. Also the UI contract version the adapter is written for against this pxsig's ([ui/contract-changes.md](ui/contract-changes.md)). Exit 1 when a required component is missing, its `conformance.json` is malformed, or it is written for an older major contract version. |
 | `pxsig cat <file> [--image out.png]` | Print a baseline's header as JSON (git's textconv for `*.psig`). `--image` writes a `.psig`'s baseline image. |
+| `pxsig browser start [--image tag] [--port 3000]` | Run Playwright's browser server in the pxsig container image, published on 127.0.0.1 only, and record its endpoint, image and digest in `node_modules/.cache/pxsig/browser.json`. Then `--browser ws://127.0.0.1:3000/` (or `PXSIG_BROWSER_WS`) renders there. The default image is `ghcr.io/hydrotik/pxsig:<this pxsig>-pw<the project's Playwright>`. Exit 2 without the docker CLI or its daemon. See [container.md](container.md#mode-ii-only-the-browser-in-the-container). |
+| `pxsig browser stop` | Stop the recorded browser container and remove its record. |
+| `pxsig browser status [--json]` | The recorded container: endpoint, image, digest, Playwright, running or not; warns when the project's Playwright is not the image's major.minor. Nothing recorded: exit 0 without starting docker. `browser start`, `stop` and `status` are the only commands that start `docker` ([platforms.md](platforms.md#programs-pxsig-starts)). |
 
 ## The engine binary
 

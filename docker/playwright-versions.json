@@ -1,0 +1,4 @@
+{
+  "$comment": "The Playwright versions .github/workflows/image.yml builds an image for after each pxsig release (decision 2.2: the latest pxsig, every Playwright minor from 1.58 on). The weekly check reports a newer Playwright on npm; add it here, or dispatch the workflow with it.",
+  "versions": ["1.58.2"]
+}

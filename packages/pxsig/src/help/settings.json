@@ -72,7 +72,7 @@
     "capture": {
       "file": "pxsig.config.json",
       "meaning": "How each story is rendered and captured.",
-      "operation": "See capture.viewport, capture.settleMs, capture.target, capture.waitFor."
+      "operation": "See capture.viewport, capture.settleMs, capture.target, capture.waitFor, capture.browserEndpoint."
     },
     "capture.viewport": {
       "file": "pxsig.config.json",
@@ -98,6 +98,14 @@
       "meaning": "Extra waits for content that animates in script: { selector, minMs?, stableMarkup? }, each applied when its selector matches.",
       "default": "[]",
       "operation": "Fewer flaky entries for stories with animation."
+    },
+    "capture.browserEndpoint": {
+      "file": "pxsig.config.json",
+      "meaning": "A Playwright browser server (ws://…) to render with instead of launching a browser on this machine, usually the container's from `pxsig browser start`.",
+      "default": "null",
+      "operation": "Screenshots come from that browser (its fonts, its build); Storybook and the engine stay on this machine. The project's Playwright must match the server's major.minor.",
+      "flag": "--browser",
+      "env": "PXSIG_BROWSER_WS"
     },
     "grid": {
       "file": "pxsig.config.json",

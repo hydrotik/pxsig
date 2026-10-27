@@ -17,17 +17,25 @@ which refuses any program not listed here; a test fails if code anywhere else st
 | `osascript`, then `open` | macOS | `pxsig serve`, once at start | reuse an open Chrome tab on the dashboard, else open it in the default browser (macOS asks once whether Terminal may control Chrome) | `--no-open` |
 | `xdg-open` | Linux | `pxsig serve`, once at start | open the dashboard in the default browser | `--no-open` |
 | `fc-list : family style` | Linux, only when fontconfig is installed | once per browser launch in a check or `pxsig serve` | a sha256 of the installed font list for the render environment (`fonts.system`, informational); the list itself is not kept | — (absent: the field is `null`) |
+| `docker` | all | only `pxsig browser start`, `stop` and `status` | run, stop and inspect the browser container ([container.md](container.md)) | do not run those commands; nothing else starts Docker |
 | Chromium, from Playwright | all | rendering stories | Playwright starts its own browser; pxsig asks it to | — |
 
 pxsig never starts a shell (`cmd.exe`, PowerShell, `sh`) or a system tool (`icacls`, `whoami`,
 `rundll32`, `reg`, `schtasks`), and on Windows it starts nothing besides `node`, the engine, `git`
-and Playwright's browser: `pxsig serve` prints the dashboard link, which the terminal makes
-clickable.
+and Playwright's browser (and `docker`, only when someone runs `pxsig browser`): `pxsig serve`
+prints the dashboard link, which the terminal makes clickable.
 
 - **See every start:** `pxsig serve --debug` (or `PXSIG_DEBUG=spawn` for any command) prints each
   program and its arguments on stderr, as it starts it.
 - **When a policy blocks one** (AppLocker, WDAC, a sandbox), the error names the program and points
   here.
+
+## The container image
+
+The same renders on every OS come from the pxsig container image: Docker Engine on Linux, Docker
+Desktop, Colima or OrbStack on macOS, Docker Desktop (WSL 2) on Windows. It is optional; on a
+machine without Docker, checks launch the local browser as before. See
+[container.md](container.md#on-each-os).
 
 ## What pxsig keeps on this machine
 
