@@ -41,6 +41,23 @@ node scripts/bench/run.mjs     # the scale benchmark (docs/benchmark.md); CI run
 The Node tests build their fixtures (stories, manifests, PNGs) in temporary folders. Add tests the
 same way: synthesise what you need in code.
 
+## Lint and format
+
+```bash
+pnpm lint                      # oxlint (.oxlintrc.json): an error fails CI
+pnpm lint:ratchet              # a file may not gain a warning (scripts/lint-warnings-baseline.json)
+pnpm lint:workspace            # sherif: the workspace's package.json files agree
+cargo clippy --workspace --all-targets -- -D warnings
+```
+
+The rules are the same as the hydrotik monorepo's. After fixing warnings, lower the baseline in
+its own commit: `node scripts/check-lint-warnings.mjs --update`. A warning that is right to keep
+gets an inline `oxlint-disable-next-line <rule> -- <reason>`, not a higher baseline.
+
+`pnpm install` sets up the git hooks (husky): the pre-commit hook lints the staged files, and the
+commit-msg hook checks the subject against `commitlint.config.cjs`: `<type>(<scope>): <subject>`,
+lower case after the scope, at most 100 characters. Never skip them with `--no-verify`.
+
 ## What never goes into this repository
 
 This repository holds source, schemas, tests and documentation. `scripts/check-clean.mjs` fails
@@ -105,8 +122,8 @@ pnpm typecheck   # tsc over the dashboard and the plain example; with PXSIG_DS_S
 
 - One change per pull request, with a description of what changed and why.
 - Tests for new behaviour and for bug fixes.
-- `cargo test`, `pnpm -r test`, `node scripts/check-clean.mjs` and `node scripts/changelog.mjs check
-  --since origin/main` pass.
+- `cargo test`, `pnpm -r test`, `pnpm lint`, `pnpm lint:ratchet`, `node scripts/check-clean.mjs` and
+  `node scripts/changelog.mjs check --since origin/main` pass.
 - Update the docs in `docs/` when a command, flag, config key, file format or default changes, and
   add a fragment in `changelog.d/` ([changelog.d/README.md](changelog.d/README.md)); `CHANGELOG.md`
   itself changes only in a release.

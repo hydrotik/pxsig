@@ -125,6 +125,7 @@ fn tile_energy(lum: &[f32], w: usize, h: usize, tx: usize, ty: usize, tile: usiz
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn tile_blocks(lum: &[f32], w: usize, h: usize, tx: usize, ty: usize, tile: usize, block: usize, out: &mut Vec<u8>) {
     let per = tile / block;
     for by in 0..per {

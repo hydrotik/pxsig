@@ -347,6 +347,11 @@ export function Inspector({
     return () => window.removeEventListener('keydown', h, true);
   }, [embedded]);
 
+  // The dialog opens on its title, not on the first control: a control focused by script before any
+  // pointer input shows the keyboard focus ring (a reload with #inspect=… did, on the first mode).
+  // Above the early return: a hook after it is skipped on a render without a row, and React fails
+  // on the next render that has one (rules of hooks).
+  const titleRef = React.useRef<HTMLHeadingElement>(null);
   if (!row || !p) return null;
   const m = row.metrics;
   // The engine writes signature images and the diff page only for entries that fail the gate.
@@ -545,9 +550,6 @@ export function Inspector({
   // Embedded (Storybook panel) there is no Dialog around the body, so no Dialog parts. The title is
   // the level below the page's hidden h1, so the outline skips no level.
   const Title = embedded ? 'h2' : DialogTitle;
-  // The dialog opens on its title, not on the first control: a control focused by script before any
-  // pointer input shows the keyboard focus ring (a reload with #inspect=… did, on the first mode).
-  const titleRef = React.useRef<HTMLHeadingElement>(null);
   const Desc = embedded ? 'p' : DialogDescription;
 
   // --- review session: progress while deciding, then a summary with the next steps ---------------

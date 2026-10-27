@@ -1,0 +1,65 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  // The same rule set as the hydrotik monorepo's oxlint base. Errors fail CI (`pnpm lint`);
+  // warnings may only go down (`pnpm lint:ratchet`, scripts/lint-warnings-baseline.json).
+  "plugins": ["typescript", "react", "import", "unicorn", "jsx-a11y", "promise", "node", "jest"],
+  "rules": {
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": ["error", { "checksVoidReturn": false }],
+    "typescript/await-thenable": "error",
+    "typescript/no-base-to-string": "error",
+    "typescript/no-redundant-type-constituents": "error",
+    "typescript/restrict-template-expressions": "error",
+    "typescript/unbound-method": "error",
+    "typescript/no-explicit-any": "warn",
+    "typescript/no-unnecessary-type-assertion": "warn",
+    "typescript/no-useless-default-assignment": "warn",
+    "typescript/require-await": "warn",
+    "typescript/no-unsafe-argument": "warn",
+    "typescript/no-unsafe-assignment": "warn",
+    "typescript/no-unsafe-call": "warn",
+    "typescript/no-unsafe-enum-comparison": "warn",
+    "typescript/no-unsafe-member-access": "warn",
+    "typescript/no-unsafe-return": "warn",
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "react/react-in-jsx-scope": "off",
+    "jsx-a11y/alt-text": "error",
+    "jsx-a11y/aria-props": "error",
+    // Warn rather than error: a fix changes rendered DOM, so it goes through a visual check first.
+    "jsx-a11y/role-has-required-aria-props": "warn"
+  },
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/target/**",
+    "**/storybook-static/**",
+    "**/*.d.ts",
+    "packages/cli-*/**",
+    "packages/pxsig/dashboard/**",
+    "packages/pxsig/docs/**"
+  ],
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/*.test.js", "**/*.test.mjs", "**/*.test.cjs", "**/test/**"],
+      "rules": {
+        "typescript/no-floating-promises": "off",
+        "typescript/unbound-method": "off",
+        "typescript/require-await": "off",
+        "typescript/no-unsafe-argument": "off",
+        "typescript/no-unsafe-assignment": "off",
+        "typescript/no-unsafe-call": "off",
+        "typescript/no-unsafe-member-access": "off",
+        "typescript/no-unsafe-return": "off",
+        "react/rules-of-hooks": "off"
+      }
+    },
+    {
+      "files": ["**/*.css.ts"],
+      "rules": {
+        "typescript/no-unsafe-assignment": "off",
+        "typescript/no-unsafe-member-access": "off"
+      }
+    }
+  ]
+}

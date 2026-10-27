@@ -292,6 +292,8 @@ jobs:
           done
           test -f "$out/pxsig-${VERSION}.tgz"
           node scripts/pack-manifest.mjs --check "$out"/*.tgz
+          # Each packed tarball as npm will serve it: exports, files and types resolve.
+          for f in "$out/pxsig-${VERSION}.tgz" "$out"/pxsig-storybook-addon-*.tgz; do npx --yes publint@0.3.25 run "$f" --level warning --strict; done
           (cd packages/pxsig/dist && COPYFILE_DISABLE=1 tar czf "$out/pxsig-dashboard.tar.gz" dashboard)
       # The npm SBOM describes what installing the published pxsig package brings in: the tarball
       # is installed into an empty project and cyclonedx-npm reads that tree.
