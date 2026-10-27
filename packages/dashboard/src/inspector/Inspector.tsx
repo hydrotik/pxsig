@@ -542,8 +542,9 @@ export function Inspector({
     </div>
   ) : null;
   const desc = row.reasons?.length ? row.reasons.join(' · ') : row.pass ? t('inspector.withinGate') : (row.error ?? '');
-  // Embedded (Storybook panel) there is no Dialog around the body, so no Dialog parts.
-  const Title = embedded ? 'h3' : DialogTitle;
+  // Embedded (Storybook panel) there is no Dialog around the body, so no Dialog parts. The title is
+  // the level below the page's hidden h1, so the outline skips no level.
+  const Title = embedded ? 'h2' : DialogTitle;
   // The dialog opens on its title, not on the first control: a control focused by script before any
   // pointer input shows the keyboard focus ring (a reload with #inspect=… did, on the first mode).
   const titleRef = React.useRef<HTMLHeadingElement>(null);

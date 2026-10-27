@@ -24,10 +24,11 @@ export function Decide() {
     'no-opener': t('app.decide.noOpener'),
   }[state.state];
   return (
-    <div className={s.page}>
+    <main className={s.page}>
+      <h1 className={s.srOnly}>{t('app.decide.title')}</h1>
       <div className={s.empty} role="status">
         {text}
       </div>
-    </div>
+    </main>
   );
 }
