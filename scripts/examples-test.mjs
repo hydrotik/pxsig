@@ -28,7 +28,7 @@
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -52,8 +52,13 @@ const sh = (cmd, args, cwd, opts = {}) => {
 };
 const pxsig = (args, cwd) => sh(process.execPath, [cli, ...args], cwd, { must: false });
 // Warn-mode runs write a readiness line in the machine's state folder: point it at a temp folder.
+// Playwright finds its browsers under the same folders, so its own path stays where they are.
 const stateHome = mkdtempSync(join(tmpdir(), 'pxsig-example-state-'));
-const pxsigIn = (args, cwd, extra = {}) => sh(process.execPath, [cli, ...args], cwd, { must: false, env: { ...env, HOME: stateHome, USERPROFILE: stateHome, XDG_STATE_HOME: stateHome, LOCALAPPDATA: stateHome, ...extra } });
+const browsers =
+  process.env.PLAYWRIGHT_BROWSERS_PATH ||
+  (process.platform === 'win32' ? join(process.env.LOCALAPPDATA ?? join(homedir(), 'AppData', 'Local'), 'ms-playwright') : process.platform === 'darwin' ? join(homedir(), 'Library', 'Caches', 'ms-playwright') : join(process.env.XDG_CACHE_HOME || join(homedir(), '.cache'), 'ms-playwright'));
+const pxsigIn = (args, cwd, extra = {}) => sh(process.execPath, [cli, ...args], cwd, { must: false, env: { ...env, HOME: stateHome, USERPROFILE: stateHome, XDG_STATE_HOME: stateHome, LOCALAPPDATA: stateHome, PLAYWRIGHT_BROWSERS_PATH: browsers, ...extra } });
+const tail = (r) => `\n${r.stdout.split('\n').slice(-15).join('\n')}\n${r.stderr.split('\n').slice(-15).join('\n')}`;
 // pnpm is a .cmd shim on Windows, which Node starts only through a shell. This is the test
 // harness on a CI runner; pxsig itself never starts a shell (docs/platforms.md).
 const pnpm = (args, cwd, opts = {}) => (process.platform === 'win32' ? sh('pnpm.cmd', args, cwd, { ...opts, shell: true }) : sh('pnpm', args, cwd, opts));
@@ -213,7 +218,7 @@ function envSteps(dir, p) {
   // The env gate on warn: --strict-env's refusal becomes a would-have-refused, and the check renders.
   writeFileSync(cfgPath, JSON.stringify({ ...JSON.parse(cfg), env: { fontProbe: ['Courier New'] }, enforcement: { gates: { env: 'warn' } } }, null, 2));
   r = pxsigIn(['check', '--full', '--project', p, '--retries', '1', '--strict-env'], dir);
-  expect(r.status === 0 && /--strict-env would have refused this run/.test(r.stdout) && /\[check\] rendered/.test(r.stdout) && /\[pxsig\] ADVISORY: would have failed \(exit 2\)/.test(r.stdout), `warn: the env gate on warn renders past --strict-env (exit ${r.status})`);
+  expect(r.status === 0 && /--strict-env would have refused this run/.test(r.stdout) && /\[check\] rendered/.test(r.stdout) && /\[pxsig\] ADVISORY: would have failed \(exit 2\)/.test(r.stdout), `warn: the env gate on warn renders past --strict-env (exit ${r.status})${r.status ? tail(r) : ''}`);
   writeFileSync(cfgPath, cfg);
 }
 
@@ -226,7 +231,7 @@ function warnSteps(dir, p, failing) {
   let r = pxsigIn(['check', '--full', '--project', p, '--retries', '1'], dir);
   const c = checkJson(dir, p);
   const now = c.rows.filter((x) => !x.pass).map((x) => x.id).sort();
-  expect(r.status === 0, `warn: the visual gate on warn exits 0 (exit ${r.status})`);
+  expect(r.status === 0, `warn: the visual gate on warn exits 0 (exit ${r.status})${r.status ? tail(r) : ''}`);
   expect(JSON.stringify(now) === JSON.stringify([...failing].sort()), `warn: the same ${failing.length} rows fail as under enforce (${now.length})`);
   expect(/^\[pxsig\] ADVISORY: warn mode for visual \(pxsig\.config\.json\)/m.test(r.stdout) && new RegExp(`\\[pxsig\\] ADVISORY: would have failed \\(exit 1\\): ${failing.length} changed\\. Not blocking\\.`).test(r.stdout), 'warn: the ADVISORY lead and last lines');
   expect(c.enforcement?.wouldFail === true && c.enforcement.contexts.advisory.includes('visual') && c.git && 'head' in c.git, 'warn: check.json carries enforcement and git.head (null here: the example is not a git repository)');

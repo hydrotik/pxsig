@@ -187,7 +187,7 @@ test('warnUntil: announced from noticeDays before, enforced after it, then said 
 
 test('the readiness tally: one line per configured-warn run, shared by every worktree, kept 90 days', () => {
   const home = mkdtempSync(join(tmpdir(), 'pxsig-home-'));
-  const opts = { platform: 'linux', env: { XDG_STATE_HOME: join(home, 'state') }, home };
+  const opts = { env: { XDG_STATE_HOME: join(home, 'state'), LOCALAPPDATA: join(home, 'state') }, home };
   const repo = mkdtempSync(join(tmpdir(), 'pxsig-ready-'));
   const g = (cwd, ...a) => spawnSync('git', a, { cwd, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.com', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.com' } });
   g(repo, 'init', '-q', '-b', 'main');
@@ -206,7 +206,7 @@ test('the readiness tally: one line per configured-warn run, shared by every wor
   assert.match(line.sha, /^[0-9a-f]{40}$/);
   appendReadiness(W, e, pass, { source: 'check', opts });
   assert.equal(readinessPath(P, opts), readinessPath(W, opts));
-  assert.ok(readinessPath(P, opts).startsWith(join(home, 'state', 'pxsig')));
+  assert.ok(readinessPath(P, opts).startsWith(process.platform === 'darwin' ? join(home, 'Library') : join(home, 'state', 'pxsig')));
   const t = readinessTally(P, { opts });
   assert.equal(t.runs, 2);
   assert.equal(t.wouldFail, 1);
@@ -270,7 +270,7 @@ function repoFixture({ log = true, enforcement } = {}) {
       cwd: f.repo,
       encoding: 'utf8',
       // Readiness lines land in this test's own home, never the machine's.
-      env: { ...process.env, HOME: home, XDG_STATE_HOME: join(home, 'state'), PXSIG_FORMAT: '', PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '', PXSIG_PROJECT: '', PXSIG_ENFORCEMENT: '', CI: '', ...env },
+      env: { ...process.env, HOME: home, USERPROFILE: home, XDG_STATE_HOME: join(home, 'state'), LOCALAPPDATA: join(home, 'state'), PXSIG_FORMAT: '', PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '', PXSIG_PROJECT: '', PXSIG_ENFORCEMENT: '', CI: '', ...env },
     });
   return { ...f, P, cli, home };
 }
@@ -298,7 +298,7 @@ test('approve verify under warn: only untracked baselines are warned; a mismatch
   r = f.cli(['approve', 'verify']);
   assert.equal(r.status, 1, r.stdout + r.stderr);
   // The tally: one line per configured-warn run, in this test's home.
-  const lines = readFileSync(readinessPath(f.P, { env: { XDG_STATE_HOME: join(f.home, 'state') }, home: f.home }), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  const lines = readFileSync(readinessPath(f.P, { env: { XDG_STATE_HOME: join(f.home, 'state'), LOCALAPPDATA: join(f.home, 'state') }, home: f.home }), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
   assert.ok(lines.length >= 2 && lines.every((l) => l.source === 'verify' && l.project === 'fixture'));
 });
 
@@ -317,7 +317,7 @@ test('no enforcement key: the gated commands print what they did before, byte fo
     const r = f.cli(args);
     assert.doesNotMatch(r.stdout + r.stderr, /ADVISORY|Enforcement|enforcement/, args.join(' '));
   }
-  assert.ok(!existsSync(join(f.home, 'state')), 'and writes no readiness line');
+  assert.ok(!existsSync(join(f.home, 'state')) && !existsSync(join(f.home, 'Library')), 'and writes no readiness line');
   const j = JSON.parse(f.cli(['approve', 'verify', '--json']).stdout);
   assert.equal('enforcement' in j, false);
 });

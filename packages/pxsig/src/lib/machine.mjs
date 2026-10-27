@@ -74,16 +74,17 @@ export function normaliseRemote(url) {
  * gets the same key. Outside git: the workspace's real path.
  */
 export function repoKey(workspaceRoot, { platform = process.platform, git = gitLine } = {}) {
+  // The OS's own real path (on Windows it expands 8.3 short names such as RUNNER~1), with `/`.
   const real = (p) => {
     try {
-      return realpathSync(p);
+      return realpathSync.native(p);
     } catch {
       return resolve(p);
     }
   };
-  let common = git(workspaceRoot, ['rev-parse', '--git-common-dir']);
+  let common = git(workspaceRoot, ['rev-parse', '--path-format=absolute', '--git-common-dir']) || git(workspaceRoot, ['rev-parse', '--git-common-dir']);
   if (common && !isAbsolute(common)) common = resolve(workspaceRoot, common);
-  let path = real(common || workspaceRoot);
+  let path = real(common || workspaceRoot).replace(/\\/g, '/');
   if (platform === 'win32' || platform === 'darwin') path = path.toLowerCase();
   const remote = common ? normaliseRemote(git(workspaceRoot, ['config', '--get', 'remote.origin.url'])) : '';
   return createHash('sha256').update(`${path}\n${remote}`).digest('hex').slice(0, 12);
