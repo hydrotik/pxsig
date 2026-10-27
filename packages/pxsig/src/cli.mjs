@@ -77,8 +77,8 @@
  * Per-entry approve / reject stays in the dashboard and Storybook panel, where a person sees the images.
  */
 import { spawn, spawnSync } from './lib/spawn.mjs';
-import { readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { approveCommand } from './approve.mjs';
 import { helpBlocks, helpData, lookup, nearestNames } from './help.mjs';
@@ -87,7 +87,7 @@ import { parseArgs } from './lib/args.mjs';
 import { CODES } from './lib/integrity.mjs';
 import { describeLock, readLock, takeLock } from './lib/lock.mjs';
 import { buildManifest, describeConfig, initProject, migrateLegacy } from './lib/setup.mjs';
-import { findWorkspace, flagLayer, openProject, pickProject, rustBinary, serverUrlFor, setFlagLayer } from './lib/workspace.mjs';
+import { CONFIG_FILE, findWorkspace, flagLayer, openProject, pickProject, rustBinary, serverUrlFor, setFlagLayer } from './lib/workspace.mjs';
 import { readToken, TOKEN_HEADER } from './lib/guard.mjs';
 import { ask, emit, humanAtTerminal, pickFormat, progress, stateCell, whyNotPerson } from './lib/term.mjs';
 import { relPath } from './lib/paths.mjs';
@@ -987,7 +987,7 @@ const commands = {
     );
   },
 
-  init() {
+  async init() {
     const dir = resolve(rest[0] ?? '.');
     let wsRoot = null;
     try {
@@ -997,7 +997,14 @@ const commands = {
       // no workspace above: a single-package project
     }
     const s = (k) => (typeof flags[k] === 'string' ? flags[k] : null);
-    const wrote = initProject({ dir, name: s('name'), srcRoot: s('src') ?? 'src', storybookUrl: s('storybook-url'), storybookConfigDir: s('storybook-config'), workspaceRoot: wsRoot, layout: s('layout') });
+    // The dashboard title: --label, else asked once of a person at a terminal setting up a new
+    // config (Enter keeps the name). An existing config is never edited: its label is changed there.
+    let label = s('label');
+    if (label == null && !existsSync(join(dir, CONFIG_FILE)) && humanAtTerminal() && format !== 'json') {
+      const name = s('name') ?? basename(dir);
+      label = (await ask(`Title in the dashboard (Enter for ${name}): `)) || null;
+    }
+    const wrote = initProject({ dir, name: s('name'), label, srcRoot: s('src') ?? 'src', storybookUrl: s('storybook-url'), storybookConfigDir: s('storybook-config'), workspaceRoot: wsRoot, layout: s('layout') });
     emit(format, [{ h: 'pxsig init', sub: dir }, wrote.length ? { list: wrote.map((p) => relPath(process.cwd(), p) || p) } : { note: 'already set up: nothing written' }, { next: [[`${CMD} manifest`, 'list the stories to check (Storybook must be running)'], [`${CMD} check --full`, 'render and check them']] }], { wrote });
   },
 
@@ -1024,7 +1031,7 @@ const commands = {
       format,
       [
         { h: 'pxsig config', sub: d.project },
-        { kv: [['Workspace file', rel(d.workspaceFile)], ['Project config', rel(d.configFile)], ['Source root', rel(d.srcRoot)], ['Store', `${rel(d.store.root)} (${d.store.layout})`], ['Storybook', d.storybook.url], ['Binary', rel(d.rustBin)]] },
+        { kv: [['Dashboard title', `pxsig · ${d.label ?? d.project}`], ['Workspace file', rel(d.workspaceFile)], ['Project config', rel(d.configFile)], ['Source root', rel(d.srcRoot)], ['Store', `${rel(d.store.root)} (${d.store.layout})`], ['Storybook', d.storybook.url], ['Binary', rel(d.rustBin)]] },
         { h: 'Settings', sub: 'later layers win: defaults < workspace defaults < project config < env < flags' },
         { table: { cols: [{ key: 'k', label: 'Key' }, { key: 'v', label: 'Value' }, { key: 'from', label: 'Set by' }], rows } },
         ...(enf

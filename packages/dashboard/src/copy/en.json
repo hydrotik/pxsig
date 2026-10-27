@@ -1,6 +1,13 @@
 {
   "app": {
     "title": "pxsig · {project}",
+    "mark": "pxsig",
+    "titleLabel": " · {label}",
+    "versions": {
+      "pxsig": "pxsig {version}",
+      "engine": "engine {version}",
+      "contract": "UI contract {version}"
+    },
     "loading": "Loading…",
     "loadError": "Report data failed to load: {error}",
     "connection": {
@@ -637,6 +644,7 @@
       "repair": "Plan the safe repairs; add --apply to run them",
       "description": "Run from the repository root."
     },
+    "versions": "This page: {versions}.",
     "intro": "Reference for this dashboard. Each section covers one part of the screen. Point at a row, or move to it with Tab, to see where it appears in the drawing beside it.",
     "tabs": {
       "title": "Sections",

@@ -863,7 +863,7 @@
     "init": {
       "summary": "Set a package up: pxsig.config.json, its store and, in a monorepo, the workspace entry.",
       "usage": [
-        "pxsig init [dir] [--name x] [--src src] [--storybook-url url] [--storybook-config dir] [--layout package|colocated]"
+        "pxsig init [dir] [--name x] [--label text] [--src src] [--storybook-url url] [--storybook-config dir] [--layout package|colocated]"
       ],
       "flags": [
         {
@@ -871,6 +871,13 @@
           "value": "name",
           "default": "the folder name",
           "meaning": "Project name."
+        },
+        {
+          "name": "label",
+          "value": "text",
+          "default": "the project name",
+          "meaning": "The dashboard title after \"pxsig ·\" (1 to 60 characters). A person at a terminal who leaves it out is asked once; CI, an assistant or piped output is never asked.",
+          "setting": "label"
         },
         {
           "name": "src",

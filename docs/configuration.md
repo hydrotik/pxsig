@@ -123,6 +123,7 @@ The smallest config is `{}`: every key has a default. `pxsig init` writes
 | --- | --- | --- |
 | `version` | `1` | File format version. |
 | `name` | package name | Project name in a single-package repository: this key, else the `name` in `package.json` without its scope, else `default`. In a monorepo the workspace key is the name. |
+| `label` | the project name | The dashboard title after "pxsig ·": what this project reviews, in your words (`"Hydrotik"`). 1 to 60 characters; anything else stops the project from loading with a setup error. `pxsig init` asks for it at a terminal or takes `--label`; afterwards, edit this file. `--project` and reports still use the name. |
 | `srcRoot` | `"src"` | The folder whose stories belong to this project. A story's component is its folder relative to `srcRoot`. |
 | `storybook.url` | `"http://localhost:6006"` | Where Storybook serves `index.json` and `iframe.html`. A dev server or a static build. |
 | `storybook.configDir` | `null` | Storybook's config folder. `index.json` gives story paths relative to the folder Storybook runs in (the parent of `configDir`); pxsig uses this to resolve them. Set it when Storybook lives outside the project. |

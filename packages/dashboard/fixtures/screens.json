@@ -5,7 +5,7 @@
       "id": "shell.top-bar",
       "section": "shell",
       "title": "Top bar",
-      "purpose": "The report's name and modes, the section links with their counts, and the controls pinned at the end: start review, project, connection, last check, theme, review status.",
+      "purpose": "The report's title (its label, else the project name) with the versions on hover, the section links with their counts, and the controls pinned at the end: start review, project, modes, connection, last check, theme, review status.",
       "states": {
         "loading": "The page shows a loading line until the first data arrives.",
         "error": "The page shows the load error instead of the dashboard.",
@@ -22,7 +22,8 @@
         "Badge",
         "StatusBadge",
         "Button",
-        "Select"
+        "Select",
+        "Tooltip"
       ],
       "screens": [
         {
@@ -501,7 +502,7 @@
       "id": "help.reference",
       "section": "help",
       "title": "Help",
-      "purpose": "What each section, card icon, status, coverage code, inspector region and key means, beside a drawing of where it appears.",
+      "purpose": "What each section, card icon, status, coverage code, inspector region and key means, beside a drawing of where it appears, and which pxsig, engine and UI contract versions drew the page.",
       "states": {},
       "components": [
         "Card",

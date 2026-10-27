@@ -21,7 +21,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFi
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readImage } from './lib/psig.mjs';
-import { openProject } from './lib/workspace.mjs';
+import { PXSIG_VERSION, engineVersion, openProject } from './lib/workspace.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 /**
@@ -80,6 +80,17 @@ function suites(P, prefix, exclude = []) {
   return out;
 }
 
+/** This pxsig's UI contract version, from the lock shipped with the dashboard source; null without it. */
+export function uiContractVersion() {
+  for (const d of [join(here, '..', 'dashboard'), join(here, '..', '..', 'dashboard')])
+    try {
+      return JSON.parse(readFileSync(join(d, 'src', 'ui', 'contract-lock.json'), 'utf8')).version;
+    } catch {
+      // not in this layout
+    }
+  return null;
+}
+
 /**
  * One project's dashboard data. `base` is the URL prefix of the project's files: `/p/<name>/`
  * when served, `./` for a static report.
@@ -90,6 +101,10 @@ export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/` } = {}
   return {
     generatedAt: new Date().toISOString(),
     project: P.name,
+    /** The title the dashboard shows after "pxsig ·": the project's `label`, else its name. */
+    label: P.label ?? P.name,
+    /** What drew the page, for the top bar's tooltip and the Help section. */
+    versions: { pxsig: PXSIG_VERSION, engine: engineVersion(P.rustBin), contract: uiContractVersion() },
     store: relative(P.workspaceRoot, P.store.root),
     check: read('check'),
     gateCalibration: read('calibration-gate'),

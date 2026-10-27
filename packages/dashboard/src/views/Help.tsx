@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Icon } from '@ui';
+import { versionsText } from '../versions';
 import type { Data } from '../data';
 import { Schematic, type Layout } from '../parts/Schematic';
 import { t, codeCopy, type CopyKey } from '../copy';
@@ -160,6 +161,7 @@ export function Help({ data }: { data: Data }) {
       />
       <Section title={t('help.keys.title')} description={t('help.keys.description')} layout="inspector" wide="20%" items={KEYS.map(([k, label, at]) => ({ term: k, meaning: t(label), at }))} />
       <Section title={t('help.commands.title')} description={t('help.commands.description')} wide="40%" items={COMMANDS.map(([c, label]) => ({ term: c, meaning: t(label), at: [] }))} />
+      <p className={s.lede}>{t('help.versions', { versions: versionsText(data) })}</p>
     </div>
   );
 }

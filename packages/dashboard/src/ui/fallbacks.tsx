@@ -216,6 +216,9 @@ const CopyValue: F<'CopyValue'> = ({ value }) => {
   );
 };
 
+// The native title: the browser shows it on hover after its own delay.
+const Tooltip: F<'Tooltip'> = ({ content, children }) => React.cloneElement(children as React.ReactElement<{ title?: string }>, { title: content });
+
 const Kbd: F<'Kbd'> = ({ children }) => <kbd style={{ fontFamily: v.font.mono, fontSize: v.fontSize['2xs'], border, borderRadius: v.radius.sm, paddingInline: v.space['1'] }}>{children}</kbd>;
 
 const Link: F<'Link'> = ({ href, external, title, className, render, children }) => {
@@ -359,6 +362,7 @@ export const fallbacks = {
   ToolbarSummary,
   CopyValue,
   Kbd,
+  Tooltip,
   Link,
   Progress,
   KeyValueList,

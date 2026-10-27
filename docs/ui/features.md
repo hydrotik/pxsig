@@ -10,7 +10,7 @@ well renders every feature; see [build-adapter.md](build-adapter.md).
 
 ### Top bar
 
-`shell.top-bar` · The report's name and modes, the section links with their counts, and the controls pinned at the end: start review, project, connection, last check, theme, review status.
+`shell.top-bar` · The report's title (its label, else the project name) with the versions on hover, the section links with their counts, and the controls pinned at the end: start review, project, modes, connection, last check, theme, review status.
 
 States:
 
@@ -25,7 +25,7 @@ Interactions:
 - Start a review session on the next queue with undecided entries
 - Switch project (when the server holds more than one)
 
-Components: `AppShell`, `AppMain`, `TopNav`, `NavList`, `NavLink`, `NavEnd`, `Badge`, `StatusBadge`, `Button`, `Select`
+Components: `AppShell`, `AppMain`, `TopNav`, `NavList`, `NavLink`, `NavEnd`, `Badge`, `StatusBadge`, `Button`, `Select`, `Tooltip`
 
 Copy: `app`, `tabs`
 
@@ -296,7 +296,7 @@ Files: `src/views/Diagnostics`, `src/views/Scenarios`, `src/views/Calibration`, 
 
 ### Help
 
-`help.reference` · What each section, card icon, status, coverage code, inspector region and key means, beside a drawing of where it appears.
+`help.reference` · What each section, card icon, status, coverage code, inspector region and key means, beside a drawing of where it appears, and which pxsig, engine and UI contract versions drew the page.
 
 Interactions:
 

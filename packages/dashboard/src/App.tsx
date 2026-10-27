@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, AlertDescription, AlertTitle, AppMain, AppShell, Badge, Button, Icon, IconButton, NavEnd, NavLink, NavList, Select, StatusBadge, TopNav, useThemeMode } from '@ui';
+import { Alert, AlertDescription, AlertTitle, AppMain, AppShell, Badge, Button, Icon, IconButton, NavEnd, NavLink, NavList, Select, StatusBadge, Tooltip, TopNav, useThemeMode } from '@ui';
 import { type Data, type Queue, type Row, decisionOf, dismissCheckError, reviewQueue, rowsWithPending, served, statusOf, switchProject, useCheckActivity, useData, useProjects } from './data';
 import { Inspector, type InspectTarget } from './inspector/Inspector';
 import { Overview } from './views/Overview';
@@ -10,6 +10,7 @@ import { Help } from './views/Help';
 import { History } from './views/History';
 import { type CoverageFocus, Integrity, IntegrityBanner } from './views/Integrity';
 import { t, type CopyKey } from './copy';
+import { versionsText } from './versions';
 import * as s from './dashboard.css';
 
 // Section ids are stable (deep links and the remembered section use them); the labels come from the copy.
@@ -73,7 +74,7 @@ function ProjectPicker({ current }: { current?: string }) {
   const projects = useProjects();
   if (projects.length < 2 || !current) return null;
   return (
-    <Select value={current} onValueChange={switchProject} size="sm" label={t('app.project')} inlineSize="14rem" options={projects.map((p) => ({ value: p.name, label: t('app.projectOption', { name: p.name, count: p.entries }) }))} />
+    <Select value={current} onValueChange={switchProject} size="sm" label={t('app.project')} inlineSize="14rem" options={projects.map((p) => ({ value: p.name, label: t('app.projectOption', { name: p.label ?? p.name, count: p.entries }) }))} />
   );
 }
 
@@ -195,10 +196,13 @@ export function App() {
           label={t('app.sections')}
           className={s.navbar}
           brand={
-            <>
-              <h1 className={s.brand}>{data.project ? t('app.title', { project: data.project }) : 'pxsig'}</h1>
-              {sm ? <Badge className={s.brandTag}>{sm.modes.join(' · ')}</Badge> : null}
-            </>
+            <h1 className={s.brand}>
+              {/* The versions on hover; the Help section shows them as text. */}
+              <Tooltip content={versionsText(data)}>
+                <span>{t('app.mark')}</span>
+              </Tooltip>
+              {data.project ? t('app.titleLabel', { label: data.label ?? data.project }) : null}
+            </h1>
           }
         >
           <NavList>
@@ -218,6 +222,8 @@ export function App() {
               </Button>
             ) : null}
             <ProjectPicker current={data.project} />
+            {/* The report's modes, beside the connection: what this data covers, and how fresh it is. */}
+            {sm ? <Badge className={s.modesTag}>{sm.modes.join(' · ')}</Badge> : null}
             {served ? (
               <Badge tone={live ? 'success' : 'neutral'} pulse={live}>
                 {live ? t('app.connection.live') : t('app.connection.offline')}

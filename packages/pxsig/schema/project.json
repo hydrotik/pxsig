@@ -61,6 +61,7 @@
     "$schema": { "type": "string" },
     "version": { "const": 1, "description": "File format version." },
     "name": { "type": "string", "description": "Project name in a single-package repository. In a monorepo the key in pxsig.workspace.json is the name." },
+    "label": { "type": "string", "minLength": 1, "maxLength": 60, "pattern": "\\S", "description": "The dashboard title after \"pxsig ·\": what this project reviews, in your words (\"Hydrotik\"). Default: the project name. 1 to 60 characters." },
     "srcRoot": { "$ref": "#/$defs/path", "default": "src", "description": "The folder whose stories belong to this project." },
     "storybook": {
       "type": "object",

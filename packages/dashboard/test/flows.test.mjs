@@ -105,6 +105,55 @@ test('new entries waiting for a first approval keep the banner, counted on their
   }
 });
 
+test('the top bar: the title is the label (else the project), the versions on hover of "pxsig", the modes beside the connection', async (t) => {
+  if (skip) return t.skip(skip);
+  // Beside the connection badge, not in the title.
+  const modesBeside = (page) =>
+    page.evaluate(() => {
+      const badge = [...document.querySelectorAll('nav *')].find((e) => e.children.length === 0 && e.textContent === 'dark · light');
+      return { inTitle: Boolean(badge?.closest('h1')), next: badge?.nextElementSibling?.textContent ?? null };
+    });
+  const plain = data({ rows: [row('ui-button--ok')], entries: [entry('ui-button--ok')] });
+  {
+    const { page, errors } = await open(plain);
+    try {
+      const h1 = page.getByRole('heading', { level: 1 });
+      await h1.waitFor();
+      assert.equal(await h1.innerText(), 'pxsig · demo', 'no label: the project name, as before');
+      const m = await modesBeside(page);
+      assert.equal(m.inTitle, false);
+      assert.match(m.next, /^(Live|Offline)$/, 'the connection badge comes right after');
+      // An older server sends no versions: the contract the page was built against still shows.
+      assert.match(await h1.locator('span[title]').getAttribute('title'), /^UI contract \d+\.\d+\.\d+$/);
+      assert.deepEqual(errors, []);
+    } finally {
+      await page.close();
+    }
+  }
+  const labelled = { ...plain, label: 'Hydrotik', versions: { pxsig: '9.8.7', engine: '9.8.6', contract: '1.1.0' } };
+  {
+    const { page, errors } = await open(labelled);
+    try {
+      const h1 = page.getByRole('heading', { level: 1 });
+      await h1.waitFor();
+      assert.equal(await h1.innerText(), 'pxsig · Hydrotik');
+      // The plain example adapter has no Tooltip: the fallback puts the text in the native title.
+      assert.equal(await h1.locator('span[title]').getAttribute('title'), 'pxsig 9.8.7 · engine 9.8.6 · UI contract 1.1.0');
+      assert.deepEqual(errors, []);
+    } finally {
+      await page.close();
+    }
+  }
+  {
+    const { page } = await open(labelled, { hash: '#help' });
+    try {
+      await page.getByText('This page: pxsig 9.8.7 · engine 9.8.6 · UI contract 1.1.0.').waitFor();
+    } finally {
+      await page.close();
+    }
+  }
+});
+
 test('a sparse report (a check.json whose summary is empty) renders every section, with zeros', async (t) => {
   if (skip) return t.skip(skip);
   const d = data({ rows: [row('ui-button--ok')], entries: [entry('ui-button--ok')] });

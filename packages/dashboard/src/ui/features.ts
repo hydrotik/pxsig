@@ -55,7 +55,7 @@ export const FEATURES: Feature[] = [
     id: 'shell.top-bar',
     section: 'shell',
     title: 'Top bar',
-    purpose: "The report's name and modes, the section links with their counts, and the controls pinned at the end: start review, project, connection, last check, theme, review status.",
+    purpose: "The report's title (its label, else the project name) with the versions on hover, the section links with their counts, and the controls pinned at the end: start review, project, modes, connection, last check, theme, review status.",
     states: {
       loading: 'The page shows a loading line until the first data arrives.',
       error: 'The page shows the load error instead of the dashboard.',
@@ -68,7 +68,7 @@ export const FEATURES: Feature[] = [
       { action: 'Switch project (when the server holds more than one)' },
     ],
     copy: ['app', 'tabs'],
-    components: ['AppShell', 'AppMain', 'TopNav', 'NavList', 'NavLink', 'NavEnd', 'Badge', 'StatusBadge', 'Button', 'Select'],
+    components: ['AppShell', 'AppMain', 'TopNav', 'NavList', 'NavLink', 'NavEnd', 'Badge', 'StatusBadge', 'Button', 'Select', 'Tooltip'],
     files: ['App'],
     screens: [
       { scenario: 'clean', hash: '#overview', wait: { role: 'navigation', name: 'Report sections' } },
@@ -287,7 +287,7 @@ export const FEATURES: Feature[] = [
     id: 'help.reference',
     section: 'help',
     title: 'Help',
-    purpose: 'What each section, card icon, status, coverage code, inspector region and key means, beside a drawing of where it appears.',
+    purpose: 'What each section, card icon, status, coverage code, inspector region and key means, beside a drawing of where it appears, and which pxsig, engine and UI contract versions drew the page.',
     states: {},
     interactions: [{ action: 'Point at or focus a row to highlight its place in the drawing' }],
     copy: ['help'],

@@ -227,6 +227,10 @@ export interface Data {
   generatedAt: string;
   /** The project this data belongs to (one server can serve several). */
   project?: string;
+  /** The title after "pxsig ·": the project's `label`, else its name. Older servers omit it. */
+  label?: string;
+  /** What drew the page: pxsig, its engine and the UI contract (null when unknown). Older servers omit it. */
+  versions?: { pxsig: string | null; engine: string | null; contract: string | null };
   /** The project's store, relative to the workspace root (for copyable paths). */
   store?: string;
   check: CheckReport | null;
@@ -300,6 +304,8 @@ async function fetchData(): Promise<Data> {
 
 export interface ProjectInfo {
   name: string;
+  /** The project's `label`, when it has one. */
+  label?: string | null;
   root: string;
   entries: number;
   integrity: { status: string; headline: string } | null;
