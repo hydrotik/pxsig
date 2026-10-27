@@ -27,6 +27,27 @@ export interface Feature {
   components: ComponentName[];
   /** Source files under src/, without the extension. */
   files: string[];
+  /**
+   * What `pxsig dashboard check` renders for this feature, each in every theme: a scenario from
+   * fixtures/scenarios.mjs, the address (`query`, `hash`), clicks or keys to get there, and the
+   * landmark that says the feature rendered. `pnpm ui:check` fails a feature without one.
+   */
+  screens: Screen[];
+}
+
+/** An element found by role and accessible name (a substring unless `exact`), or by its text. */
+export type Target = { role: string; name?: string; exact?: boolean } | { text: string; exact?: boolean };
+
+export interface Screen {
+  scenario: string;
+  /** The state of `states` this screen shows, when it shows one. */
+  state?: State;
+  /** The query string, without `?` (`embed=1&story=…`); the check adds `theme`. */
+  query?: string;
+  /** The hash, with `#` (`#overview`, `#inspect=<id>`). */
+  hash?: string;
+  actions?: ({ click: Target } | { press: string })[];
+  wait: Target;
 }
 
 export const FEATURES: Feature[] = [
@@ -49,6 +70,14 @@ export const FEATURES: Feature[] = [
     copy: ['app', 'tabs'],
     components: ['AppShell', 'AppMain', 'TopNav', 'NavList', 'NavLink', 'NavEnd', 'Badge', 'StatusBadge', 'Button', 'Select'],
     files: ['App'],
+    screens: [
+      { scenario: 'clean', hash: '#overview', wait: { role: 'navigation', name: 'Report sections' } },
+      { scenario: 'loading', state: 'loading', hash: '#overview', wait: { text: 'Loading' } },
+      { scenario: 'load-error', state: 'error', hash: '#overview', wait: { text: 'Report data failed to load' } },
+      { scenario: 'offline', state: 'offline', hash: '#overview', wait: { text: 'Offline', exact: true } },
+      { scenario: 'static', state: 'static', hash: '#overview', wait: { text: 'Static report', exact: true } },
+      { scenario: 'several-projects', hash: '#overview', wait: { role: 'combobox', name: 'Project' } },
+    ],
   },
   {
     id: 'shell.theme',
@@ -60,6 +89,9 @@ export const FEATURES: Feature[] = [
     copy: ['app.theme'],
     components: ['UiProvider', 'IconButton', 'Icon'],
     files: ['App', 'main'],
+    screens: [
+      { scenario: 'clean', hash: '#help', wait: { role: 'button', name: 'theme' } },
+    ],
   },
   {
     id: 'shell.coverage-banner',
@@ -71,6 +103,9 @@ export const FEATURES: Feature[] = [
     copy: ['coverage.banner', 'coverage.headline'],
     components: ['Alert', 'AlertTitle', 'AlertDescription', 'Button'],
     files: ['views/Integrity'],
+    screens: [
+      { scenario: 'first-approval', hash: '#stories', wait: { text: 'Needs a first approval' } },
+    ],
   },
   {
     id: 'overview.counts',
@@ -82,6 +117,10 @@ export const FEATURES: Feature[] = [
     copy: ['overview.cards', 'empty.noCheck'],
     components: ['StatGroup'],
     files: ['views/Overview', 'parts/Affordance'],
+    screens: [
+      { scenario: 'clean', hash: '#overview', wait: { role: 'button', name: 'Flaky' } },
+      { scenario: 'empty', state: 'empty', hash: '#overview', wait: { text: 'No check results' } },
+    ],
   },
   {
     id: 'overview.open-items',
@@ -93,6 +132,9 @@ export const FEATURES: Feature[] = [
     copy: ['overview'],
     components: ['Card', 'CardHeader', 'CardTitle', 'CardContent', 'DataTable', 'Button'],
     files: ['views/Overview'],
+    screens: [
+      { scenario: 'changed', hash: '#overview', wait: { role: 'heading', name: 'Open Items' } },
+    ],
   },
   {
     id: 'overview.layout',
@@ -104,6 +146,9 @@ export const FEATURES: Feature[] = [
     copy: ['overview'],
     components: ['Card'],
     files: ['views/Overview'],
+    screens: [
+      { scenario: 'errors', hash: '#overview', wait: { role: 'heading', name: 'Changed Entries per Run' } },
+    ],
   },
   {
     id: 'overview.errors',
@@ -115,6 +160,9 @@ export const FEATURES: Feature[] = [
     copy: ['overview.errors', 'coverage.banner', 'coverage.headline'],
     components: ['Card', 'CardHeader', 'CardTitle', 'CardDescription', 'CardContent', 'DataTable', 'Button'],
     files: ['views/Overview', 'views/Integrity'],
+    screens: [
+      { scenario: 'errors', hash: '#overview', wait: { role: 'heading', name: 'Errors', exact: true } },
+    ],
   },
   {
     id: 'overview.changed-runs',
@@ -126,6 +174,9 @@ export const FEATURES: Feature[] = [
     copy: ['runs.changed'],
     components: ['Card', 'CardHeader', 'CardTitle', 'CardDescription', 'CardContent', 'Chart'],
     files: ['parts/RunCharts', 'parts/Charts'],
+    screens: [
+      { scenario: 'clean', hash: '#history', wait: { role: 'heading', name: 'Changed Entries per Run' } },
+    ],
   },
   {
     id: 'overview.stale',
@@ -137,6 +188,10 @@ export const FEATURES: Feature[] = [
     copy: ['coverage.stale'],
     components: ['Card', 'CardHeader', 'CardTitle', 'CardDescription', 'CardContent', 'Heatmap', 'Button'],
     files: ['parts/StaleHeatmap'],
+    screens: [
+      { scenario: 'stale', hash: '#overview', wait: { role: 'list', name: 'Stale entries by component' } },
+      { scenario: 'clean', state: 'empty', hash: '#overview', wait: { text: 'No stale entries' } },
+    ],
   },
   {
     id: 'review.filters',
@@ -148,6 +203,9 @@ export const FEATURES: Feature[] = [
     copy: ['review.fields', 'review.filters', 'review.sort', 'review.group', 'review.count', 'review.search'],
     components: ['Toolbar', 'ToolbarStart', 'ToolbarEnd', 'ToolbarField', 'ToolbarSummary', 'SearchField', 'Select'],
     files: ['views/Stories'],
+    screens: [
+      { scenario: 'changed', hash: '#stories', wait: { role: 'heading', name: 'Review Stories' } },
+    ],
   },
   {
     id: 'review.cards',
@@ -159,6 +217,10 @@ export const FEATURES: Feature[] = [
     copy: ['review.card', 'review.none', 'review.showMore', 'status'],
     components: ['Badge', 'StatusBadge', 'Button'],
     files: ['parts/StoryGrid', 'parts/StatusOf'],
+    screens: [
+      { scenario: 'changed', hash: '#stories', wait: { role: 'region', name: 'Button' } },
+      { scenario: 'flaky', hash: '#stories', wait: { role: 'region', name: 'Button' } },
+    ],
   },
   {
     id: 'coverage.ledger',
@@ -174,6 +236,10 @@ export const FEATURES: Feature[] = [
     copy: ['coverage'],
     components: ['StatGroup', 'Card', 'CardHeader', 'CardTitle', 'CardDescription', 'CardContent', 'Toolbar', 'ToolbarStart', 'Button', 'DataTable', 'Badge', 'StatusBadge'],
     files: ['views/Integrity'],
+    screens: [
+      { scenario: 'errors', hash: '#integrity', wait: { role: 'heading', name: 'Coverage by Component' } },
+      { scenario: 'empty', state: 'empty', hash: '#integrity', wait: { role: 'heading', name: 'Coverage', exact: true } },
+    ],
   },
   {
     id: 'a11y.rules',
@@ -185,6 +251,9 @@ export const FEATURES: Feature[] = [
     copy: ['a11y'],
     components: ['StatGroup', 'Button', 'Card', 'CardHeader', 'CardTitle', 'CardDescription', 'CardContent', 'DataTable', 'StatusBadge', 'Badge'],
     files: ['views/Accessibility'],
+    screens: [
+      { scenario: 'a11y', hash: '#a11y', wait: { role: 'heading', name: 'Rules', exact: true } },
+    ],
   },
   {
     id: 'runs.history',
@@ -196,6 +265,9 @@ export const FEATURES: Feature[] = [
     copy: ['runs'],
     components: ['Card', 'CardHeader', 'CardTitle', 'CardDescription', 'CardContent', 'StatGroup', 'Chart', 'DataTable'],
     files: ['views/History', 'parts/Charts', 'parts/RunCharts'],
+    screens: [
+      { scenario: 'clean', hash: '#history', wait: { role: 'heading', name: 'Engine Time per Run' } },
+    ],
   },
   {
     id: 'diagnostics.research',
@@ -207,6 +279,9 @@ export const FEATURES: Feature[] = [
     copy: ['diagnostics'],
     components: ['Toolbar', 'ToolbarStart', 'ToolbarField', 'ToolbarSummary', 'SegmentedChoice', 'Card', 'CardHeader', 'CardTitle', 'CardDescription', 'CardContent', 'KeyValueList', 'KeyValueItem', 'StatusBadge', 'Chart', 'DataTable', 'Badge', 'Progress', 'Select', 'StatGroup'],
     files: ['views/Diagnostics', 'views/Scenarios', 'views/Calibration', 'views/Performance', 'parts/Charts'],
+    screens: [
+      { scenario: 'clean', hash: '#diagnostics', wait: { role: 'heading', name: 'Batch Check by Thread Count' } },
+    ],
   },
   {
     id: 'help.reference',
@@ -218,6 +293,9 @@ export const FEATURES: Feature[] = [
     copy: ['help'],
     components: ['Card', 'CardHeader', 'CardTitle', 'CardDescription', 'CardContent', 'Icon'],
     files: ['views/Help', 'parts/Schematic'],
+    screens: [
+      { scenario: 'clean', hash: '#help', wait: { role: 'heading', name: 'Keyboard Shortcuts' } },
+    ],
   },
   {
     id: 'inspector.header',
@@ -234,6 +312,9 @@ export const FEATURES: Feature[] = [
     copy: ['inspector.review', 'inspector.nav', 'inspector.variant', 'inspector.contextLatest', 'inspector.contextScenario', 'inspector.withinGate', 'inspector.close', 'inspector.rejectedNote'],
     components: ['Dialog', 'DialogTitle', 'DialogDescription', 'StatusBadge', 'SegmentedChoice', 'IconButton', 'Button', 'CopyValue'],
     files: ['inspector/Inspector', 'parts/StatusOf'],
+    screens: [
+      { scenario: 'changed', hash: '#inspect=ui-button--primary', wait: { role: 'dialog', name: 'ui-button--primary' } },
+    ],
   },
   {
     id: 'inspector.stage',
@@ -251,6 +332,9 @@ export const FEATURES: Feature[] = [
     copy: ['inspector.modes', 'inspector.sliders', 'inspector.toggles', 'inspector.stage', 'inspector.keys', 'inspector.fit', 'inspector.actual', 'inspector.zoomIn', 'inspector.zoomOut', 'inspector.loading', 'inspector.missing'],
     components: ['Toolbar', 'ToolbarStart', 'ToolbarEnd', 'SegmentedChoice', 'IconButton', 'Button', 'Slider', 'Switch', 'Kbd'],
     files: ['inspector/Inspector', 'inspector/Stage'],
+    screens: [
+      { scenario: 'changed', hash: '#inspect=ui-button--primary', wait: { role: 'group', name: 'Image comparison' } },
+    ],
   },
   {
     id: 'inspector.details',
@@ -262,6 +346,9 @@ export const FEATURES: Feature[] = [
     copy: ['inspector.sections', 'inspector.pixel', 'inspector.changes', 'inspector.metrics', 'inspector.a11y', 'inspector.files', 'inspector.storybook', 'inspector.artifacts'],
     components: ['KeyValueList', 'KeyValueItem', 'Badge', 'StatusBadge', 'Button', 'Link', 'Icon'],
     files: ['inspector/Inspector'],
+    screens: [
+      { scenario: 'changed', hash: '#inspect=ui-button--primary', wait: { role: 'heading', name: 'Metrics', exact: true } },
+    ],
   },
   {
     id: 'inspector.session',
@@ -273,6 +360,9 @@ export const FEATURES: Feature[] = [
     copy: ['inspector.session'],
     components: ['Progress', 'Dialog', 'DialogTitle', 'KeyValueList', 'KeyValueItem', 'CopyValue', 'Button'],
     files: ['inspector/Inspector'],
+    screens: [
+      { scenario: 'changed', hash: '#overview', actions: [{ click: { role: 'button', name: 'Review 2 changes' } }], wait: { role: 'progressbar', name: 'Review progress' } },
+    ],
   },
   {
     id: 'embed.panel',
@@ -284,6 +374,9 @@ export const FEATURES: Feature[] = [
     copy: ['app.embedEmpty', 'inspector.toggles.details'],
     components: ['Switch', 'IconButton', 'SegmentedChoice'],
     files: ['App', 'inspector/Inspector'],
+    screens: [
+      { scenario: 'changed', query: 'embed=1&story=ui-button--primary', wait: { role: 'group', name: 'Image comparison' } },
+    ],
   },
   {
     id: 'embed.decide',
@@ -296,5 +389,8 @@ export const FEATURES: Feature[] = [
     copy: ['app.decide', 'inspector.review.needsLink'],
     components: [],
     files: ['views/Decide', 'link', 'main'],
+    screens: [
+      { scenario: 'clean', state: 'empty', query: 'decide=1', wait: { role: 'status' } },
+    ],
   },
 ];

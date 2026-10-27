@@ -21,13 +21,15 @@
  *                    PXSIG_ENFORCEMENT=warn is refused; the env gate on warn renders past
  *                    --strict-env
  *   6. doctor --ci   no error-severity integrity codes
- * And custom-ui (no Storybook): `pxsig dashboard gaps` reports the plain adapter's gaps, and
- * `pxsig dashboard build` rebuilds the dashboard on it from the installed pxsig.
+ * And custom-ui (no Storybook): `pxsig dashboard gaps` reports the plain adapter's gaps,
+ * `pxsig dashboard build` rebuilds the dashboard on it from the installed pxsig, and `pxsig
+ * dashboard check` renders every feature's screens on that build in both themes (its summary goes
+ * to the job summary on GitHub Actions).
  * Needs pnpm, network access for the installs, Playwright's Chromium, and the Rust binary
  * (`cargo build --release`, or PXSIG_BIN).
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -282,6 +284,20 @@ function runCustomUi() {
   expect(stamp.contract && stamp.adapterContract === '1.0.0', `build: stamped with the UI contract (${stamp.contract}) and the adapter's (${stamp.adapterContract})`);
   r = pxsig(['dashboard', 'gaps', '--json'], dir);
   expect(JSON.parse(r.stdout).contract?.status === 'same', 'gaps: the adapter is written for this contract');
+  // Every feature on a design system other than the reference, from the shipped sample data.
+  r = pxsig(['dashboard', 'check', '--build', 'dashboard-build', '--json'], dir);
+  let c = {};
+  try {
+    c = JSON.parse(r.stdout || '{}');
+  } catch {
+    c = {};
+  }
+  const s = c.summary ?? {};
+  const failed = (c.screens ?? []).filter((x) => !x.rendered).map((x) => `${x.feature} #${x.index + 1} ${x.theme}: ${x.reason}`);
+  expect(r.status === 0 && s.screens > 0 && s.failed === 0, `check: ${s.rendered ?? 0} of ${s.screens ?? 0} screens rendered, both themes${r.status ? ` (exit ${r.status}${failed.length ? `: ${failed.join('; ')}` : ''}${r.stderr ? `, ${r.stderr.trim()}` : ''})` : ''}`);
+  const out = join(dir, 'node_modules', '.cache', 'pxsig', 'dashboard-check');
+  expect(existsSync(join(out, 'index.html')) && existsSync(join(out, 'summary.md')), 'check: the gallery and summary.md');
+  if (process.env.GITHUB_STEP_SUMMARY && existsSync(join(out, 'summary.md'))) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${readFileSync(join(out, 'summary.md'), 'utf8')}\n`);
   log(`${name}: done (${dir})`);
 }
 
