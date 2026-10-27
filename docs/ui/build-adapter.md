@@ -60,7 +60,7 @@ command to run; it never builds by itself. `PXSIG_DASHBOARD_DIR` overrides both.
 5. Beside it, `conformance.json` says how fully you cover each component:
 
    ```json
-   { "adapter": "acme", "contract": "1.0.0", "components": { "Button": { "status": "full", "note": "Acme Button" } } }
+   { "adapter": "acme", "contract": "1.1.0", "components": { "Button": { "status": "full", "note": "Acme Button" } } }
    ```
 
    Status is `full` (your design system's component, all behaviour), `partial` (some behaviour
@@ -498,6 +498,19 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Props**: `children`. **Behaviour**: small keycap. **Accessibility**: a `<kbd>` element.
 - **Mapping questions**: Do you have a Kbd component?
 - **Acceptance**: the key strip under the stage shows keycaps. Optional.
+
+### `Tooltip`
+
+- **Purpose**: the pxsig, engine and UI contract versions on the "pxsig" mark in the top bar
+  (since contract 1.1.0).
+- **Props**: `content` (plain text), `children` (one element that takes a ref and DOM props).
+  **Behaviour**: shows `content` on hover after the usual delay; it only repeats text the Help
+  section shows, so nothing is lost without it. **Accessibility**: the hint is tied to the element
+  (`aria-describedby`) while it shows.
+- **Mapping questions**: Do you have a Tooltip that wraps an existing element (an `asChild` or
+  `render` trigger)?
+- **Acceptance**: hovering "pxsig" in the top bar shows the versions. Optional: without it the
+  element's native `title` shows them.
 
 ### `Link`
 

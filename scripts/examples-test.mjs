@@ -286,7 +286,7 @@ function runCustomUi() {
   expect(!/type="module"/.test(readFileSync(join(dir, 'dashboard-build', 'index.html'), 'utf8')), 'build: a classic script, so a static report opens from disk');
   const stamp = JSON.parse(readFileSync(join(dir, 'dashboard-build', 'pxsig-build.json'), 'utf8'));
   expect(stamp.pxsig, 'build: stamped with the pxsig version, for serve');
-  expect(stamp.contract && stamp.adapterContract === '1.0.0', `build: stamped with the UI contract (${stamp.contract}) and the adapter's (${stamp.adapterContract})`);
+  expect(stamp.contract && stamp.adapterContract === stamp.contract, `build: stamped with the UI contract (${stamp.contract}) and the adapter's (${stamp.adapterContract})`);
   r = pxsig(['dashboard', 'gaps', '--json'], dir);
   expect(JSON.parse(r.stdout).contract?.status === 'same', 'gaps: the adapter is written for this contract');
   // Every feature on a design system other than the reference, from the shipped sample data.

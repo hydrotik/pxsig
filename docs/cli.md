@@ -110,6 +110,7 @@ the project's entry in it.
 | Flag | Meaning |
 | --- | --- |
 | `--name <name>` | Project name (default: the folder name). |
+| `--label <text>` | `label`: the dashboard title after "pxsig ·" (1 to 60 characters; default: the project name). A person at a terminal setting up a new config who leaves it out is asked once (Enter keeps the name); CI, an assistant or piped output is never asked. An existing config is not edited: change `label` there. |
 | `--src <dir>` | `srcRoot` (default `src`). |
 | `--storybook-url <url>` | `storybook.url`. |
 | `--storybook-config <dir>` | `storybook.configDir`. `$workspace/` paths are kept as written. |

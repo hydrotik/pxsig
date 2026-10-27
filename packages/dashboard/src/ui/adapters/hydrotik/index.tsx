@@ -310,6 +310,12 @@ export const ToolbarSummary = ({ live, children }: C.ToolbarSummaryProps) => <DS
 
 export const CopyValue = ({ value }: C.CopyValueProps) => <DS.CopyValue value={value} />;
 export const Kbd = ({ children }: C.KbdProps) => <DS.Kbd size="sm">{children}</DS.Kbd>;
+export const Tooltip = ({ content, children }: C.TooltipProps) => (
+  <DS.Tooltip>
+    <DS.TooltipTrigger asChild>{children}</DS.TooltipTrigger>
+    <DS.TooltipContent side="bottom">{content}</DS.TooltipContent>
+  </DS.Tooltip>
+);
 
 export function Link({ href, external, title, className, render, children }: C.LinkProps) {
   if (render) return render({ href, title, className, children, ...(external ? { target: '_blank', rel: 'noreferrer' } : {}) });

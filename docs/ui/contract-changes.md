@@ -20,6 +20,15 @@ icon without a default. A major version's section starts with its migration note
 a version bump of the right size, or without a section here, fails. After the bump and the
 section, `node scripts/ui.mjs lock` records the new contract.
 
+## 1.1.0
+
+Minor: one optional component.
+
+- **`Tooltip`** (`content`, `children`): a short hint on hover of one element. The dashboard puts
+  the pxsig, engine and UI contract versions on the "pxsig" mark in the top bar with it. Without it
+  the hint is the element's native `title`, which the fallback sets; the Help section shows the same
+  versions as text.
+
 ## 1.0.0
 
 The contract as it is today: 43 components (17 required), 38 tokens and 12 icons, with the 11 rules

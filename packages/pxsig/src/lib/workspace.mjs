@@ -481,6 +481,9 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
   } catch (e) {
     throw new SetupError(e.message);
   }
+  // The dashboard title's label: what the page reviews, in the team's words.
+  const label = config.label == null ? null : typeof config.label === 'string' ? config.label.trim() : '';
+  if (label === '' || (label && label.length > 60)) throw new SetupError(`project "${ref.name}": label must be text of 1 to 60 characters`);
   const root = ref.dir;
   const store = expand(ws, root, config.store.dir);
   // Modes are a set, not settings: a project's modes replace the defaults instead of joining them.
@@ -512,6 +515,8 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
   if (!['package', 'colocated'].includes(layout)) throw new SetupError(`project "${ref.name}": store.layout must be "package" or "colocated"`);
   const P = {
     name: ref.name,
+    /** The dashboard title after "pxsig ·" (config `label`); null: the name. */
+    label,
     root,
     workspaceRoot: ws.root,
     workspaceFile: ws.file,

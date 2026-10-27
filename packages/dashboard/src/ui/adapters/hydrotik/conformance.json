@@ -1,6 +1,6 @@
 {
   "adapter": "hydrotik",
-  "contract": "1.0.0",
+  "contract": "1.1.0",
   "designSystem": "@hydrotik/design-system (built from source: PXSIG_DS_SOURCE)",
   "components": {
     "UiProvider": { "status": "bespoke", "note": "ThemeProvider kept in step with the runtime's mode, plus TooltipProvider" },
@@ -35,6 +35,7 @@
     "ToolbarSummary": { "status": "full" },
     "CopyValue": { "status": "full" },
     "Kbd": { "status": "full" },
+    "Tooltip": { "status": "full", "note": "Tooltip, TooltipTrigger (asChild) and TooltipContent below the element" },
     "Link": { "status": "full" },
     "Progress": { "status": "full" },
     "KeyValueList": { "status": "full", "note": "StaticList" },

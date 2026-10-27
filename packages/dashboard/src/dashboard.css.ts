@@ -35,7 +35,7 @@ export const page = style({
 // the section links, and the links that still do not fit move into the bar's More menu.
 export const navbar = style({ flexShrink: 0, containerType: 'inline-size' });
 export const brand = style({ margin: 0, fontSize: v.fontSize.sm, fontWeight: v.fontWeight.semibold, whiteSpace: 'nowrap' });
-export const brandTag = style({ '@container': { '(inline-size < 64rem)': { display: 'none' } } });
+export const modesTag = style({ whiteSpace: 'nowrap', '@container': { '(inline-size < 64rem)': { display: 'none' } } });
 // The overflow menu holds the section links as menu items; they read as items, not underlined links.
 globalStyle('[role="menuitem"]:is(a)', { textDecoration: 'none', color: 'inherit' });
 globalStyle('[role="menuitem"]:is(a)[aria-current="page"]', { fontWeight: v.fontWeight.semibold, color: v.color.accent });

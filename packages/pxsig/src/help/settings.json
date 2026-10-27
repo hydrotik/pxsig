@@ -13,6 +13,12 @@
       "default": "package name",
       "operation": "The name --project takes, and the name in reports and the dashboard."
     },
+    "label": {
+      "file": "pxsig.config.json",
+      "meaning": "The dashboard title after \"pxsig ·\": what this project reviews, in your words, for example \"Hydrotik\". 1 to 60 characters. `pxsig init` asks for it at a terminal, or takes --label; afterwards, edit pxsig.config.json.",
+      "default": "the project name",
+      "operation": "Read when the dashboard data is built: the title, and the project switcher's options. Nothing else reads it; --project still takes the name."
+    },
     "srcRoot": {
       "file": "pxsig.config.json",
       "meaning": "The folder whose stories belong to this project. A story's component is its folder relative to srcRoot.",

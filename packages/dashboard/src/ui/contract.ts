@@ -40,7 +40,7 @@ export type { TokenMap, TokenName } from './tokens';
  * a default. An adapter records the version it was written for in its conformance.json
  * (`"contract"`); `pnpm ui:check` holds this number to src/ui/contract-lock.json.
  */
-export const CONTRACT_VERSION = '1.0.0';
+export const CONTRACT_VERSION = '1.1.0';
 
 // --- shared vocabulary ---------------------------------------------------------------------------
 
@@ -330,6 +330,17 @@ export interface CopyValueProps {
 export interface KbdProps {
   children: React.ReactNode;
 }
+/**
+ * A short hint on hover of the element it wraps (since 1.1.0). `content` is plain text that only
+ * repeats what the page shows elsewhere, so a hover-only hint loses nothing. The fallback puts it in
+ * the element's native `title`.
+ */
+export interface TooltipProps {
+  /** The hint's text. */
+  content: string;
+  /** The one element it describes; it must accept a ref and DOM props. */
+  children: React.ReactElement;
+}
 /** A link. `render` integrates a router: it receives the anchor props and returns the element. */
 export interface LinkProps extends WithClass {
   href: string;
@@ -490,6 +501,7 @@ export const CONTRACT = {
   ToolbarSummary: { group: 'controls', required: false, role: "a count on the toolbar's line" },
   CopyValue: { group: 'controls', required: false, role: 'a command with a copy button' },
   Kbd: { group: 'controls', required: false, role: 'a keyboard key' },
+  Tooltip: { group: 'controls', required: false, role: 'a short hint on hover of one element' },
   Link: { group: 'controls', required: false, role: 'a link, router-aware through render' },
   Progress: { group: 'controls', required: false, role: 'a completion bar' },
   KeyValueList: { group: 'controls', required: false, role: 'label → value pairs' },
@@ -540,6 +552,7 @@ export interface ComponentProps {
   ToolbarSummary: ToolbarSummaryProps;
   CopyValue: CopyValueProps;
   Kbd: KbdProps;
+  Tooltip: TooltipProps;
   Link: LinkProps;
   Progress: ProgressProps;
   KeyValueList: KeyValueListProps;

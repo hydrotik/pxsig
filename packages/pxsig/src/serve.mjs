@@ -75,7 +75,7 @@ import { buildRow, dropStaleRows, storybookBroken, summarize } from './lib/rows.
 import { annotateRow, byId, envConfig, envSummary } from './lib/env.mjs';
 import { ensureStorybook } from './lib/static.mjs';
 import { findWorkspace, flagLayer, loadProject, PXSIG_VERSION, rustBinary, serverFile, writeRunManifest } from './lib/workspace.mjs';
-import { buildData, dashboardDir, prebuiltDashboardDir, useDashboard } from './report.mjs';
+import { buildData, dashboardDir, prebuiltDashboardDir, uiContractVersion, useDashboard } from './report.mjs';
 import { chooseDashboard } from './lib/dashboard-dir.mjs';
 import { authorize, Links, linkSetCookie, loopbackHost, mayMintTicket, NEEDS_PERSON, newToken, pageHeaders, removeToken, sameOriginPage, writeToken } from './lib/guard.mjs';
 import { humanAtTerminal } from './lib/term.mjs';
@@ -108,14 +108,7 @@ const only = str('project')?.split(',');
     return null;
   };
   // This pxsig's UI contract version, from the lock shipped with the dashboard source.
-  let contract = null;
-  for (const d of [join(here, '..', 'dashboard'), join(here, '..', '..', 'dashboard')])
-    try {
-      contract = JSON.parse(readFileSync(join(d, 'src', 'ui', 'contract-lock.json'), 'utf8')).version;
-      break;
-    } catch {
-      // not in this layout
-    }
+  const contract = uiContractVersion();
   const dash = chooseDashboard({ projects: ws.projects.filter((p) => !only || only.includes(p.name)), prebuilt: prebuiltDashboardDir, version: PXSIG_VERSION, contract, root: ws.root, builtinDir });
   useDashboard(dash.dir);
   if (dash.note) console.log(`[serve] ${dash.note}`);
@@ -847,7 +840,7 @@ const readBody = (req) =>
   });
 
 const projectsList = () =>
-  [...states.values()].map((S) => ({ name: S.name, root: relPath(ws.root, S.P.root) || '.', storybook: S.P.storybook.url, entries: S.manifest.stories.length, integrity: S.integrity?.summary ?? null, error: S.error ?? null, locked: S.lock ? 'held' : S.lockWait }));
+  [...states.values()].map((S) => ({ name: S.name, label: S.P.label ?? null, root: relPath(ws.root, S.P.root) || '.', storybook: S.P.storybook.url, entries: S.manifest.stories.length, integrity: S.integrity?.summary ?? null, error: S.error ?? null, locked: S.lock ? 'held' : S.lockWait }));
 
 async function api(req, res, action, q) {
   if (action === 'events') {

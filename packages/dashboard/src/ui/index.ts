@@ -78,6 +78,7 @@ export const ToolbarField = pick('ToolbarField');
 export const ToolbarSummary = pick('ToolbarSummary');
 export const CopyValue = pick('CopyValue');
 export const Kbd = pick('Kbd');
+export const Tooltip = pick('Tooltip');
 export const Link = pick('Link');
 export const Progress = pick('Progress');
 export const KeyValueList = pick('KeyValueList');

@@ -70,12 +70,13 @@ const layoutOf = (cfg, workspaceRoot) => cfg.store?.layout ?? (workspaceRoot ? r
  * the workspace file. A colocated project also gets `*.psig binary diff=psig` in the root
  * `.gitattributes` (the workspace's, else its own). Returns what it wrote.
  */
-export function initProject({ dir, name = null, srcRoot = 'src', storybookUrl = null, storybookConfigDir = null, workspaceRoot = null, layout = null }) {
+export function initProject({ dir, name = null, label = null, srcRoot = 'src', storybookUrl = null, storybookConfigDir = null, workspaceRoot = null, layout = null }) {
   const wrote = [];
   const configPath = join(dir, CONFIG_FILE);
   if (layout && !['package', 'colocated'].includes(layout)) throw new SetupError('--layout must be "package" or "colocated"');
+  if (label != null && (!label.trim() || label.trim().length > 60)) throw new SetupError('--label must be text of 1 to 60 characters');
   if (!existsSync(configPath)) {
-    const cfg = { version: 1, ...(name ? { name } : {}), srcRoot };
+    const cfg = { version: 1, ...(name ? { name } : {}), ...(label?.trim() ? { label: label.trim() } : {}), srcRoot };
     if (storybookUrl || storybookConfigDir) cfg.storybook = { ...(storybookUrl ? { url: storybookUrl } : {}), ...(storybookConfigDir ? { configDir: storybookConfigDir } : {}) };
     if (layout) cfg.store = { layout };
     writeJson(configPath, cfg, { pretty: true });
@@ -157,6 +158,7 @@ export function describeConfig(P) {
   return {
     sources: P.configSources,
     project: P.name,
+    label: P.label,
     workspace: P.workspaceRoot,
     workspaceFile: P.workspaceFile,
     configFile: P.configPath,

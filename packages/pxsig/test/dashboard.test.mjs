@@ -65,7 +65,7 @@ test("gaps and build compare the adapter's contract version with this pxsig's", 
     conformance('0.1.0');
     const old = JSON.parse(pxsig(['dashboard', 'gaps', '--ui', './ui', '--json'], dir).stdout);
     assert.equal(old.contract.status, 'older-major');
-    assert.ok(old.problems.some((p) => /^contract: written for contract 0\.1\.0; this pxsig has 1\.0\.0, a major change/.test(p)), old.problems.join('\n'));
+    assert.ok(old.problems.some((p) => /^contract: written for contract 0\.1\.0; this pxsig has 1\.1\.0, a major change/.test(p)), old.problems.join('\n'));
     const b = pxsig(['dashboard', 'build', '--ui', './ui'], dir);
     assert.equal(b.status, 2);
     assert.match(b.stderr, /the "ui" adapter is written for contract 0\.1\.0[\s\S]*1\.0\.0:/, 'refused before any build tool is needed, with the migration notes');
@@ -73,7 +73,7 @@ test("gaps and build compare the adapter's contract version with this pxsig's", 
     const newer = JSON.parse(pxsig(['dashboard', 'gaps', '--ui', './ui', '--json'], dir).stdout);
     assert.equal(newer.contract.status, 'newer');
     assert.ok(!newer.problems.some((p) => p.startsWith('contract:')), 'a newer adapter is a note, not a problem');
-    assert.match(pxsig(['dashboard', 'gaps', '--ui', './ui'], dir).stdout, /\ncontract: written for contract 9\.0\.0; this pxsig has 1\.0\.0/);
+    assert.match(pxsig(['dashboard', 'gaps', '--ui', './ui'], dir).stdout, /\ncontract: written for contract 9\.0\.0; this pxsig has 1\.1\.0/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -351,6 +351,14 @@
         "inspector/Inspector"
       ]
     },
+    "Tooltip": {
+      "group": "controls",
+      "required": false,
+      "role": "a short hint on hover of one element",
+      "usedBy": [
+        "App"
+      ]
+    },
     "Link": {
       "group": "controls",
       "required": false,
