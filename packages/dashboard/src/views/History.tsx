@@ -1,4 +1,12 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, DataTable, StatGroup } from '@ui';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DataTable,
+  StatGroup,
+} from '@ui';
 import { type Data, fmt } from '../data';
 import { Lines } from '../parts/Charts';
 import { ChangedPerRun, runSeries } from '../parts/RunCharts';
@@ -19,8 +27,16 @@ export function History({ data }: { data: Data }) {
           layout="strip"
           label={t('runs.latest.title')}
           items={[
-            { label: t('runs.latest.render'), value: fmt.ms(sm.renderWallMs), unit: t('runs.latest.pages', { count: sm.concurrency }) },
-            { label: t('runs.latest.engine'), value: fmt.ms(sm.rustEngineMs), unit: t('runs.latest.cached', { count: sm.cached }) },
+            {
+              label: t('runs.latest.render'),
+              value: fmt.ms(sm.renderWallMs),
+              unit: t('runs.latest.pages', { count: sm.concurrency }),
+            },
+            {
+              label: t('runs.latest.engine'),
+              value: fmt.ms(sm.rustEngineMs),
+              unit: t('runs.latest.cached', { count: sm.cached }),
+            },
             { label: t('runs.latest.retries'), value: fmt.ms(sm.retryMs) },
             { label: t('runs.latest.scope'), value: sm.affected ?? t('runs.latest.allEntries') },
           ]}
@@ -32,7 +48,9 @@ export function History({ data }: { data: Data }) {
     return (
       <div className={s.stack}>
         {latest}
-        <div className={s.empty}>{tx('runs.empty', { file: <Cmd>reports/history.ndjson</Cmd> })}</div>
+        <div className={s.empty}>
+          {tx('runs.empty', { file: <Cmd>reports/history.ndjson</Cmd> })}
+        </div>
       </div>
     );
   const series = runSeries(runs);
@@ -47,7 +65,12 @@ export function History({ data }: { data: Data }) {
             <CardDescription>{t('runs.engine.description')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Lines data={series} x="run" format={(v) => `${v} ms`} series={[{ key: 'engine', label: t('runs.engine.series') }]} />
+            <Lines
+              data={series}
+              x="run"
+              format={(v) => `${v} ms`}
+              series={[{ key: 'engine', label: t('runs.engine.series') }]}
+            />
           </CardContent>
         </Card>
       </div>
@@ -57,7 +80,15 @@ export function History({ data }: { data: Data }) {
         </CardHeader>
         <CardContent>
           <DataTable
-            rows={[...runs].reverse().map((r, i) => ({ id: String(i), at: new Date(r.at).toLocaleString(), entries: r.summary.stories, failed: r.summary.failed, cached: r.summary.cached, engine: fmt.ms(r.summary.elapsedMs), ids: r.failedIds.slice(0, 4).join(', ') + (r.failedIds.length > 4 ? '…' : '') }))}
+            rows={[...runs].reverse().map((r, i) => ({
+              id: String(i),
+              at: new Date(r.at).toLocaleString(),
+              entries: r.summary.stories,
+              failed: r.summary.failed,
+              cached: r.summary.cached,
+              engine: fmt.ms(r.summary.elapsedMs),
+              ids: r.failedIds.slice(0, 4).join(', ') + (r.failedIds.length > 4 ? '…' : ''),
+            }))}
             rowId={(r) => r.id}
             columns={[
               { id: 'at', field: 'at', header: t('runs.table.when') },

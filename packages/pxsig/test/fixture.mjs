@@ -6,7 +6,17 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, utimesSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { deflateSync } from 'node:zlib';
@@ -50,17 +60,43 @@ export function png(w, h, px) {
   ihdr.writeUInt32BE(w, 0);
   ihdr.writeUInt32BE(h, 4);
   ihdr.set([8, 6, 0, 0, 0], 8);
-  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', deflateSync(raw)),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
 }
-export const CHECKER = png(128, 128, (x, y) => (((x >> 4) + (y >> 4)) % 2 ? [230, 230, 230] : [40, 60, 90]));
-export const BROKEN = png(128, 128, (x, y) => (x > 24 && x < 104 && y > 24 && y < 104 ? [220, 20, 20] : ((x >> 4) + (y >> 4)) % 2 ? [230, 230, 230] : [40, 60, 90]));
+export const CHECKER = png(128, 128, (x, y) =>
+  ((x >> 4) + (y >> 4)) % 2 ? [230, 230, 230] : [40, 60, 90]
+);
+export const BROKEN = png(128, 128, (x, y) =>
+  x > 24 && x < 104 && y > 24 && y < 104
+    ? [220, 20, 20]
+    : ((x >> 4) + (y >> 4)) % 2
+      ? [230, 230, 230]
+      : [40, 60, 90]
+);
 
 // --- fixture repo -----------------------------------------------------------------------------------------
-export const STORY = (title, exports) => `import type { Meta, StoryObj } from '@storybook/react';\nconst meta = { title: '${title}', component: () => null } satisfies Meta;\nexport default meta;\ntype Story = StoryObj<typeof meta>;\n${exports.map((e) => `export const ${e}: Story = {};`).join('\n')}\n// export const Commented: Story = {};\n`;
+export const STORY = (title, exports) =>
+  `import type { Meta, StoryObj } from '@storybook/react';\nconst meta = { title: '${title}', component: () => null } satisfies Meta;\nexport default meta;\ntype Story = StoryObj<typeof meta>;\n${exports.map((e) => `export const ${e}: Story = {};`).join('\n')}\n// export const Commented: Story = {};\n`;
 
 /** A `.psig` with a header only, for tests that don't run the Rust engine (`hasImage` reads headers). */
 function fakePsig(id, { image }) {
-  const header = Buffer.from(JSON.stringify({ format: 'psig', container: 1, entry: { id }, record: {}, encryption: 'none', sections: [{ name: 'sig', length: 0, sha256: '' }, ...(image ? [{ name: 'image', type: 'image/png', length: 0, sha256: '' }] : [])] }));
+  const header = Buffer.from(
+    JSON.stringify({
+      format: 'psig',
+      container: 1,
+      entry: { id },
+      record: {},
+      encryption: 'none',
+      sections: [
+        { name: 'sig', length: 0, sha256: '' },
+        ...(image ? [{ name: 'image', type: 'image/png', length: 0, sha256: '' }] : []),
+      ],
+    })
+  );
   const pre = Buffer.alloc(10);
   pre.write('PSIG', 0, 'latin1');
   pre.writeUInt16LE(1, 4);
@@ -82,10 +118,22 @@ export function fixture({ withSigs = hasRust } = {}) {
   const w = (p, data) => (mkdirSync(dirname(p), { recursive: true }), writeFileSync(p, data));
   // Installed, as in a real project: the stories' one package import resolves (external).
   w(join(repo, 'node_modules/@storybook/react/package.json'), '{"name":"@storybook/react"}');
-  w(join(repo, 'src/components/Alpha/Alpha.stories.tsx'), STORY('Components/Alpha', ['Default', 'WithIcon']));
-  w(join(repo, 'src/components/Beta/Beta.stories.tsx'), STORY('Components/Beta', ['Default', 'Flaky', 'Broken', 'Fresh']));
-  w(join(repo, 'src/components/Gamma/Gamma.stories.tsx'), STORY('Components/Gamma', ['Restorable', 'Changed', 'NewOne', 'Never', 'NoRender']));
-  w(join(repo, 'src/components/Delta/Delta.stories.tsx'), STORY('Components/Delta', ['Unbaselined', 'A11y', 'Legacy', 'Quiet']));
+  w(
+    join(repo, 'src/components/Alpha/Alpha.stories.tsx'),
+    STORY('Components/Alpha', ['Default', 'WithIcon'])
+  );
+  w(
+    join(repo, 'src/components/Beta/Beta.stories.tsx'),
+    STORY('Components/Beta', ['Default', 'Flaky', 'Broken', 'Fresh'])
+  );
+  w(
+    join(repo, 'src/components/Gamma/Gamma.stories.tsx'),
+    STORY('Components/Gamma', ['Restorable', 'Changed', 'NewOne', 'Never', 'NoRender'])
+  );
+  w(
+    join(repo, 'src/components/Delta/Delta.stories.tsx'),
+    STORY('Components/Delta', ['Unbaselined', 'A11y', 'Legacy', 'Quiet'])
+  );
   w(join(repo, 'src/internal/Helpers/Helpers.stories.tsx'), STORY('Internal/Helpers', ['Default']));
   const config = {
     name: 'fixture',
@@ -100,7 +148,19 @@ export function fixture({ withSigs = hasRust } = {}) {
     integrity: { renderSkewMs: 60_000 },
   };
   w(join(repo, 'pxsig.config.json'), JSON.stringify(config, null, 2));
-  const entry = (id, folder) => ({ id, story: id, mode: 'dark', state: null, sig: `.pxsig/baselines/components/${folder}/${id}${id === 'components-delta--legacy' ? '.pxsig.json' : '.psig'}`, importPath: `src/components/${folder}/${folder}.stories.tsx`, globals: 'theme:dark', colorScheme: 'dark', viewport: [900, 600], browser: 'chromium', a11y: true });
+  const entry = (id, folder) => ({
+    id,
+    story: id,
+    mode: 'dark',
+    state: null,
+    sig: `.pxsig/baselines/components/${folder}/${id}${id === 'components-delta--legacy' ? '.pxsig.json' : '.psig'}`,
+    importPath: `src/components/${folder}/${folder}.stories.tsx`,
+    globals: 'theme:dark',
+    colorScheme: 'dark',
+    viewport: [900, 600],
+    browser: 'chromium',
+    a11y: true,
+  });
   const ids = {
     ok: 'components-alpha--default',
     drift: 'components-alpha--with-icon',
@@ -119,9 +179,19 @@ export function fixture({ withSigs = hasRust } = {}) {
     gone: 'components-omega--renamed',
     unregistered: 'components-gamma--new-one',
   };
-  const folder = (id) => ({ alpha: 'Alpha', beta: 'Beta', gamma: 'Gamma', delta: 'Delta', omega: 'Omega' })[id.split('--')[0].split('-')[1]];
-  const manifestIds = Object.entries(ids).filter(([k]) => k !== 'unregistered').map(([, id]) => id);
-  const manifest = { version: 2, project: 'fixture', skipped: [], stories: manifestIds.map((id) => entry(id, folder(id))) };
+  const folder = (id) =>
+    ({ alpha: 'Alpha', beta: 'Beta', gamma: 'Gamma', delta: 'Delta', omega: 'Omega' })[
+      id.split('--')[0].split('-')[1]
+    ];
+  const manifestIds = Object.entries(ids)
+    .filter(([k]) => k !== 'unregistered')
+    .map(([, id]) => id);
+  const manifest = {
+    version: 2,
+    project: 'fixture',
+    skipped: [],
+    stories: manifestIds.map((id) => entry(id, folder(id))),
+  };
   w(join(px, 'manifest.json'), JSON.stringify(manifest, null, 2));
   const latest = (id) => join(px, 'renders', 'latest', `${id}.png`);
   const sig = (id) => join(repo, entry(id, folder(id)).sig);
@@ -131,7 +201,11 @@ export function fixture({ withSigs = hasRust } = {}) {
       if (withSigs) {
         w(join(repo, '.tmp', `${id}.png`), CHECKER);
         const json = join(repo, '.tmp', `${id}.pxsig.json`);
-        let r = spawnSync(rustBin, ['capture', join(repo, '.tmp', `${id}.png`), '--out', json, '--grid', '16'], { encoding: 'utf8' });
+        let r = spawnSync(
+          rustBin,
+          ['capture', join(repo, '.tmp', `${id}.png`), '--out', json, '--grid', '16'],
+          { encoding: 'utf8' }
+        );
         assert.equal(r.status, 0, r.stderr);
         mkdirSync(dirname(sig(id)), { recursive: true });
         if (id === ids.legacy) cpSync(json, sig(id));
@@ -148,13 +222,28 @@ export function fixture({ withSigs = hasRust } = {}) {
   }
   // Renders predate every verdict (so none reads as "rewritten after its verdict").
   const old = new Date(Date.now() - 3 * 3_600_000);
-  for (const n of readdirSync(join(px, 'renders', 'latest'))) utimesSync(join(px, 'renders', 'latest', n), old, old);
+  for (const n of readdirSync(join(px, 'renders', 'latest')))
+    utimesSync(join(px, 'renders', 'latest', n), old, old);
   // An orphan baseline (a story renamed long ago).
-  w(join(px, 'baselines', 'components', 'Old', 'components-old--x.psig'), fakePsig('components-old--x', { image: true }));
+  w(
+    join(px, 'baselines', 'components', 'Old', 'components-old--x.psig'),
+    fakePsig('components-old--x', { image: true })
+  );
   // The report: one row per checked entry; `never` and `unbaselined` are absent.
   const now = Date.now();
   const at = new Date(now).toISOString();
-  const row = (id, extra = {}) => ({ id, story: id, mode: 'dark', state: null, pass: true, metrics: { ssim: 1 }, reasons: [], checkedAt: at, a11y: { violations: [], new: 0 }, ...extra });
+  const row = (id, extra = {}) => ({
+    id,
+    story: id,
+    mode: 'dark',
+    state: null,
+    pass: true,
+    metrics: { ssim: 1 },
+    reasons: [],
+    checkedAt: at,
+    a11y: { violations: [], new: 0 },
+    ...extra,
+  });
   const rows = [
     row(ids.ok),
     row(ids.drift, { metrics: { ssim: 0.995 } }),
@@ -169,21 +258,41 @@ export function fixture({ withSigs = hasRust } = {}) {
     row(ids.gone),
     row(ids.legacy),
     // Left out of a --since run as unaffected, with no earlier verdict to carry forward.
-    { id: ids.quiet, story: ids.quiet, mode: 'dark', state: null, skipped: true, pass: true, metrics: null, inherited: false, unaffected: true },
+    {
+      id: ids.quiet,
+      story: ids.quiet,
+      mode: 'dark',
+      state: null,
+      skipped: true,
+      pass: true,
+      metrics: null,
+      inherited: false,
+      unaffected: true,
+    },
   ];
-  w(join(px, 'reports', 'check.json'), JSON.stringify({ generatedAt: new Date(now - 7_200_000).toISOString(), summary: {}, rows }));
+  w(
+    join(px, 'reports', 'check.json'),
+    JSON.stringify({ generatedAt: new Date(now - 7_200_000).toISOString(), summary: {}, rows })
+  );
   w(join(px, 'a11y.json'), JSON.stringify({ [ids.ok]: [] }));
   // Source freshness: Beta's story file was edited after `stale`'s verdict, before the others'.
   const t = new Date(now - 1_800_000);
-  for (const f of ['Alpha', 'Beta', 'Gamma', 'Delta']) utimesSync(join(repo, `src/components/${f}/${f}.stories.tsx`), t, t);
+  for (const f of ['Alpha', 'Beta', 'Gamma', 'Delta'])
+    utimesSync(join(repo, `src/components/${f}/${f}.stories.tsx`), t, t);
   utimesSync(join(repo, 'src/internal/Helpers/Helpers.stories.tsx'), t, t);
   const P = openProject({ cwd: repo, env: { PXSIG_BIN: rustBin } });
   const ctx = resolveContext(P);
   // The live index: every story on disk except the renamed one (static scan gives the same set).
-  const index = { source: 'storybook', storybook: { url: 'http://test/index.json', reachable: true, healthy: true }, stories: scanStories(ctx) };
+  const index = {
+    source: 'storybook',
+    storybook: { url: 'http://test/index.json', reachable: true, healthy: true },
+    stories: scanStories(ctx),
+  };
   // Import graph stand-in: a story file affects the entries of its own stories.
-  const affected = async (file) => manifest.stories.filter((e) => e.importPath === file).map((e) => e.id);
-  const hasBaseImage = (id) => readHeader(sig(id))?.sections?.some((x) => x.name === 'image') ?? false;
+  const affected = async (file) =>
+    manifest.stories.filter((e) => e.importPath === file).map((e) => e.id);
+  const hasBaseImage = (id) =>
+    readHeader(sig(id))?.sections?.some((x) => x.name === 'image') ?? false;
   return { repo, px, ctx, ids, index, affected, latest, sig, manifest, hasBaseImage };
 }
 
@@ -195,7 +304,10 @@ export const hashSignatures = (dir) => {
     for (const n of readdirSync(d).sort()) {
       const p = join(d, n);
       if (statSync(p).isDirectory()) walk(p);
-      else h.update(`${relative(dir, p)}\0`).update(n.endsWith('.psig') ? (readSection(p, 'sig') ?? readFileSync(p)) : readFileSync(p));
+      else
+        h.update(`${relative(dir, p)}\0`).update(
+          n.endsWith('.psig') ? (readSection(p, 'sig') ?? readFileSync(p)) : readFileSync(p)
+        );
     }
   };
   walk(dir);

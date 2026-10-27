@@ -12,7 +12,13 @@ const run = (args, env = {}) =>
   spawnSync(process.execPath, [cli, ...args], {
     cwd: repo,
     encoding: 'utf8',
-    env: { ...process.env, PXSIG_FORMAT: '', PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin, ...env },
+    env: {
+      ...process.env,
+      PXSIG_FORMAT: '',
+      PXSIG_URL: 'http://127.0.0.1:1',
+      PXSIG_BIN: rustBin,
+      ...env,
+    },
   });
 const ANSI = /\x1b[[\]]/;
 
@@ -52,7 +58,10 @@ test('entry names where each image lives; the baseline is inside its .psig', () 
 
 test('projects and config describe the workspace', () => {
   const p = JSON.parse(run(['projects', '--json']).stdout);
-  assert.deepEqual(p.projects.map((x) => x.name), ['fixture']);
+  assert.deepEqual(
+    p.projects.map((x) => x.name),
+    ['fixture']
+  );
   const c = JSON.parse(run(['config', '--json']).stdout);
   assert.equal(c.project, 'fixture');
   assert.match(c.store.root, /\.pxsig$/);

@@ -21,6 +21,7 @@ pxsig gives assistants everything that reads or checks, and keeps approving for 
   /__pxsig/approve. Ask the person to review changes in the pxsig dashboard. To build pxsig's
   dashboard on our design system, follow node_modules/pxsig/docs/ui/build-adapter.md.
   ```
+
 - **MCP.** Start the server with the local install, `node node_modules/pxsig/bin/pxsig.mjs mcp`
   (no `npx`, no network). `pxsig setup --assistant <name> --print` prints the entry for each
   assistant. When a policy turns MCP off, the CLI gives the same answers.

@@ -1,6 +1,6 @@
 ---
 description: Check the branch for names from other repositories (files, commit messages, a PR body) and reword any hits
-argument-hint: "[base ref, default origin/main] [PR body file]"
+argument-hint: '[base ref, default origin/main] [PR body file]'
 ---
 
 Names from other repositories only reach this one when someone has read another repository (a peer

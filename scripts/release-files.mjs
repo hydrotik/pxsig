@@ -16,7 +16,15 @@
  * Node >= 20, no dependencies. Exit 1 on a failure, 2 on a usage error.
  */
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -28,7 +36,8 @@ export function copyBinaries(artifacts, out) {
   mkdirSync(out, { recursive: true });
   const names = [];
   for (const dir of readdirSync(artifacts).sort()) {
-    if (!/^pxsig-[a-z0-9]+-[a-z0-9]+$/.test(dir) || !statSync(join(artifacts, dir)).isDirectory()) continue;
+    if (!/^pxsig-[a-z0-9]+-[a-z0-9]+$/.test(dir) || !statSync(join(artifacts, dir)).isDirectory())
+      continue;
     const exe = ['pxsig', 'pxsig.exe'].find((f) => existsSync(join(artifacts, dir, f)));
     if (!exe) throw new Error(`${dir}: no pxsig or pxsig.exe`);
     const name = exe.endsWith('.exe') ? `${dir}.exe` : dir;
@@ -41,7 +50,9 @@ export function copyBinaries(artifacts, out) {
 
 /** Write `<dir>/SHA256SUMS` over every other file in <dir>; returns its text. */
 export function writeSums(dir) {
-  const files = readdirSync(dir).filter((f) => f !== SUMS && statSync(join(dir, f)).isFile()).sort();
+  const files = readdirSync(dir)
+    .filter((f) => f !== SUMS && statSync(join(dir, f)).isFile())
+    .sort();
   if (!files.length) throw new Error(`nothing to checksum in ${dir}`);
   const text = files.map((f) => `${sha256(join(dir, f))}  ${f}\n`).join('');
   writeFileSync(join(dir, SUMS), text);

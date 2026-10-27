@@ -23,7 +23,17 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const root = fileURLToPath(new URL('..', import.meta.url));
 export const DIR = 'changelog.d';
 /** The section headings a fragment may use, in the order a release prints them. */
-export const HEADINGS = ['Behaviour changes', 'Added', 'Changed', 'Deprecated', 'Removed', 'Fixed', 'Security', 'Documentation', 'Not yet'];
+export const HEADINGS = [
+  'Behaviour changes',
+  'Added',
+  'Changed',
+  'Deprecated',
+  'Removed',
+  'Fixed',
+  'Security',
+  'Documentation',
+  'Not yet',
+];
 const NAME = /^[a-z0-9][a-z0-9.-]*\.md$/;
 
 /** `{ sections: Map<heading, text>, problems: string[] }` for one fragment's text. */
@@ -35,12 +45,17 @@ export function parseFragment(text, label = 'fragment') {
     const h = /^###\s+(.+?)\s*$/.exec(line);
     if (h) {
       heading = h[1];
-      if (!HEADINGS.includes(heading)) problems.push(`${label}:${i + 1}: unknown heading "${heading}" (use one of: ${HEADINGS.join(', ')})`);
-      else if (sections.has(heading)) problems.push(`${label}:${i + 1}: "${heading}" appears twice`);
+      if (!HEADINGS.includes(heading))
+        problems.push(
+          `${label}:${i + 1}: unknown heading "${heading}" (use one of: ${HEADINGS.join(', ')})`
+        );
+      else if (sections.has(heading))
+        problems.push(`${label}:${i + 1}: "${heading}" appears twice`);
       sections.set(heading, '');
       return;
     }
-    if (/^#{1,2}\s/.test(line) || /^#{4,}\s/.test(line)) return problems.push(`${label}:${i + 1}: only "### <Heading>" sections belong in a fragment`);
+    if (/^#{1,2}\s/.test(line) || /^#{4,}\s/.test(line))
+      return problems.push(`${label}:${i + 1}: only "### <Heading>" sections belong in a fragment`);
     if (!line.trim()) {
       if (heading) sections.set(heading, `${sections.get(heading)}\n`);
       return;
@@ -53,7 +68,8 @@ export function parseFragment(text, label = 'fragment') {
     if (!body.trim()) problems.push(`${label}: "${h}" has no entries`);
     else if (!/^[-*] /.test(body.trim())) problems.push(`${label}: "${h}" must be a list ("- …")`);
   }
-  if (!sections.size && !problems.length) problems.push(`${label}: empty (add at least one "### <Heading>" section)`);
+  if (!sections.size && !problems.length)
+    problems.push(`${label}: empty (add at least one "### <Heading>" section)`);
   return { sections, problems };
 }
 
@@ -64,7 +80,11 @@ export function splitChangelog(text) {
   const bodyStart = text.indexOf('\n', start + 1) + 1;
   const next = text.indexOf('\n## ', bodyStart - 1);
   const end = next < 0 ? text.length : next + 1;
-  return { head: text.slice(0, bodyStart), unreleased: parseFragment(text.slice(bodyStart, end), 'CHANGELOG.md Unreleased'), tail: text.slice(end) };
+  return {
+    head: text.slice(0, bodyStart),
+    unreleased: parseFragment(text.slice(bodyStart, end), 'CHANGELOG.md Unreleased'),
+    tail: text.slice(end),
+  };
 }
 
 /** An empty Unreleased is fine; anything else follows the fragment rules. */
@@ -166,7 +186,9 @@ function run(args) {
     const { fragments, problems } = readFragments();
     if (problems.length) fail(problems);
     const { unreleased } = splitChangelog(readFileSync(path, 'utf8'));
-    return process.stdout.write(`## Unreleased\n\n${merge([unreleased.sections, ...fragments.map((f) => f.sections)]) || '(nothing yet)\n'}`);
+    return process.stdout.write(
+      `## Unreleased\n\n${merge([unreleased.sections, ...fragments.map((f) => f.sections)]) || '(nothing yet)\n'}`
+    );
   }
   if (command === 'release') {
     const version = args[1];
@@ -185,11 +207,16 @@ function run(args) {
     }
     writeFileSync(path, next);
     for (const f of fragments) unlinkSync(join(root, DIR, f.name));
-    return console.log(`[changelog] ${version}: ${fragments.length} fragment(s) merged into CHANGELOG.md; add the release's summary paragraph under its heading`);
+    return console.log(
+      `[changelog] ${version}: ${fragments.length} fragment(s) merged into CHANGELOG.md; add the release's summary paragraph under its heading`
+    );
   }
-  console.error('usage: node scripts/changelog.mjs check [--since <ref>] | preview | release <x.y.z> [--date YYYY-MM-DD]');
+  console.error(
+    'usage: node scripts/changelog.mjs check [--since <ref>] | preview | release <x.y.z> [--date YYYY-MM-DD]'
+  );
   process.exit(2);
 }
 
 // Imported (by its test) for the pure functions: run nothing.
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) run(process.argv.slice(2));
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href)
+  run(process.argv.slice(2));

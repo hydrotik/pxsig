@@ -65,7 +65,9 @@ export function Stage(p: Props) {
           al,
           <>
             <DiffViewer.Layer kind="latest" />
-            {p.analysis && p.showHighlight ? <DiffViewer.Layer kind="highlight" source={p.analysis.highlight} /> : null}
+            {p.analysis && p.showHighlight ? (
+              <DiffViewer.Layer kind="highlight" source={p.analysis.highlight} />
+            ) : null}
             {boxes}
           </>
         )}
@@ -112,7 +114,15 @@ export function Stage(p: Props) {
       `${al} + signature cells`,
       <>
         <DiffViewer.Layer kind="latest" />
-        {overlay ? <DiffViewer.Layer kind="heat" source={overlay} stretch opacity={p.cells ? 1 : p.heat / 100} alpha={p.cells ? p.heat / 100 : 1} /> : null}
+        {overlay ? (
+          <DiffViewer.Layer
+            kind="heat"
+            source={overlay}
+            stretch
+            opacity={p.cells ? 1 : p.heat / 100}
+            alpha={p.cells ? p.heat / 100 : 1}
+          />
+        ) : null}
         {boxes}
       </>
     );

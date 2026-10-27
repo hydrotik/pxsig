@@ -9,7 +9,12 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const cli = fileURLToPath(new URL('../bin/pxsig.mjs', import.meta.url));
-const pxsig = (args, cwd) => spawnSync(process.execPath, [cli, ...args], { cwd, encoding: 'utf8', env: { ...process.env, PXSIG_FORMAT: 'plain', PXSIG_UI_ADAPTER: '' } });
+const pxsig = (args, cwd) =>
+  spawnSync(process.execPath, [cli, ...args], {
+    cwd,
+    encoding: 'utf8',
+    env: { ...process.env, PXSIG_FORMAT: 'plain', PXSIG_UI_ADAPTER: '' },
+  });
 
 test('gaps: the reference adapter covers every contract component', () => {
   const r = pxsig(['dashboard', 'gaps', '--ui', 'hydrotik', '--json']);
@@ -17,8 +22,14 @@ test('gaps: the reference adapter covers every contract component', () => {
   const g = JSON.parse(r.stdout);
   assert.deepEqual(g.problems, []);
   assert.ok(g.rows.length >= 40);
-  assert.deepEqual(g.rows.filter((x) => !['full', 'bespoke'].includes(x.status)), []);
-  assert.ok(g.rows.every((x) => x.usedBy.length), 'every contract component is used somewhere');
+  assert.deepEqual(
+    g.rows.filter((x) => !['full', 'bespoke'].includes(x.status)),
+    []
+  );
+  assert.ok(
+    g.rows.every((x) => x.usedBy.length),
+    'every contract component is used somewhere'
+  );
 });
 
 test('an unknown adapter name or path fails at once, naming what it looked for', () => {
@@ -35,8 +46,17 @@ test('gaps: dashboard.ui in pxsig.config.json; a missing required component is a
   try {
     mkdirSync(join(dir, 'ui'));
     writeFileSync(join(dir, 'pxsig.config.json'), JSON.stringify({ dashboard: { ui: './ui' } }));
-    writeFileSync(join(dir, 'ui', 'index.tsx'), "export const name = 'tiny';\nexport const tokens = {};\nexport function Button() { return null; }\nexport const Kbd = () => null;\n");
-    writeFileSync(join(dir, 'ui', 'conformance.json'), JSON.stringify({ adapter: 'tiny', components: { Button: { status: 'partial', note: 'no href' }, Chart: { status: 'full' } } }));
+    writeFileSync(
+      join(dir, 'ui', 'index.tsx'),
+      "export const name = 'tiny';\nexport const tokens = {};\nexport function Button() { return null; }\nexport const Kbd = () => null;\n"
+    );
+    writeFileSync(
+      join(dir, 'ui', 'conformance.json'),
+      JSON.stringify({
+        adapter: 'tiny',
+        components: { Button: { status: 'partial', note: 'no href' }, Chart: { status: 'full' } },
+      })
+    );
     const r = pxsig(['dashboard', 'gaps', '--json'], dir);
     assert.equal(r.status, 1);
     const g = JSON.parse(r.stdout);
@@ -60,20 +80,42 @@ test("gaps and build compare the adapter's contract version with this pxsig's", 
   const dir = mkdtempSync(join(tmpdir(), 'pxsig-ui-'));
   try {
     mkdirSync(join(dir, 'ui'));
-    writeFileSync(join(dir, 'ui', 'index.tsx'), "export const name = 'old';\nexport const tokens = {};\n");
-    const conformance = (contract) => writeFileSync(join(dir, 'ui', 'conformance.json'), JSON.stringify({ adapter: 'old', contract, components: {} }));
+    writeFileSync(
+      join(dir, 'ui', 'index.tsx'),
+      "export const name = 'old';\nexport const tokens = {};\n"
+    );
+    const conformance = (contract) =>
+      writeFileSync(
+        join(dir, 'ui', 'conformance.json'),
+        JSON.stringify({ adapter: 'old', contract, components: {} })
+      );
     conformance('0.1.0');
     const old = JSON.parse(pxsig(['dashboard', 'gaps', '--ui', './ui', '--json'], dir).stdout);
     assert.equal(old.contract.status, 'older-major');
-    assert.ok(old.problems.some((p) => /^contract: written for contract 0\.1\.0; this pxsig has 1\.1\.0, a major change/.test(p)), old.problems.join('\n'));
+    assert.ok(
+      old.problems.some((p) =>
+        /^contract: written for contract 0\.1\.0; this pxsig has 1\.1\.0, a major change/.test(p)
+      ),
+      old.problems.join('\n')
+    );
     const b = pxsig(['dashboard', 'build', '--ui', './ui'], dir);
     assert.equal(b.status, 2);
-    assert.match(b.stderr, /the "ui" adapter is written for contract 0\.1\.0[\s\S]*1\.0\.0:/, 'refused before any build tool is needed, with the migration notes');
+    assert.match(
+      b.stderr,
+      /the "ui" adapter is written for contract 0\.1\.0[\s\S]*1\.0\.0:/,
+      'refused before any build tool is needed, with the migration notes'
+    );
     conformance('9.0.0');
     const newer = JSON.parse(pxsig(['dashboard', 'gaps', '--ui', './ui', '--json'], dir).stdout);
     assert.equal(newer.contract.status, 'newer');
-    assert.ok(!newer.problems.some((p) => p.startsWith('contract:')), 'a newer adapter is a note, not a problem');
-    assert.match(pxsig(['dashboard', 'gaps', '--ui', './ui'], dir).stdout, /\ncontract: written for contract 9\.0\.0; this pxsig has 1\.1\.0/);
+    assert.ok(
+      !newer.problems.some((p) => p.startsWith('contract:')),
+      'a newer adapter is a note, not a problem'
+    );
+    assert.match(
+      pxsig(['dashboard', 'gaps', '--ui', './ui'], dir).stdout,
+      /\ncontract: written for contract 9\.0\.0; this pxsig has 1\.1\.0/
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

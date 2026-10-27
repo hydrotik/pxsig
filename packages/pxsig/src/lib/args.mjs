@@ -5,9 +5,33 @@
  * Everything not starting with `--` is positional.
  */
 export const BOOLEAN_FLAGS = new Set([
-  'json', 'plain', 'pretty', 'markdown', 'help', 'all', 'new', 'adopt', 'all-changed', 'first-baselines',
-  'ci', 'repair', 'apply', 'prune', 'offline', 'full', 'update', 'watch', 'no-open', 'no-verify', 'no-a11y',
-  'no-server', 'from-git', 'strict-env', 'warn', 'enforce', 'strict',
+  'json',
+  'plain',
+  'pretty',
+  'markdown',
+  'help',
+  'all',
+  'new',
+  'adopt',
+  'all-changed',
+  'first-baselines',
+  'ci',
+  'repair',
+  'apply',
+  'prune',
+  'offline',
+  'full',
+  'update',
+  'watch',
+  'no-open',
+  'no-verify',
+  'no-a11y',
+  'no-server',
+  'from-git',
+  'strict-env',
+  'warn',
+  'enforce',
+  'strict',
 ]);
 
 export function parseArgs(argv, { booleans = BOOLEAN_FLAGS } = {}) {
@@ -25,10 +49,14 @@ export function parseArgs(argv, { booleans = BOOLEAN_FLAGS } = {}) {
       continue;
     }
     const name = a.slice(2);
-    flags[name] = !booleans.has(name) && argv[i + 1] !== undefined && !argv[i + 1].startsWith('--') ? argv[++i] : true;
+    flags[name] =
+      !booleans.has(name) && argv[i + 1] !== undefined && !argv[i + 1].startsWith('--')
+        ? argv[++i]
+        : true;
   }
   return { positional, flags };
 }
 
 /** A flag's string value, or null (absent, or given without a value). */
-export const strFlag = (flags, k) => (typeof flags[k] === 'string' && flags[k] !== '' ? flags[k] : null);
+export const strFlag = (flags, k) =>
+  typeof flags[k] === 'string' && flags[k] !== '' ? flags[k] : null;

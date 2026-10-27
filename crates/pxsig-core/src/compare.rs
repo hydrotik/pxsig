@@ -75,7 +75,18 @@ pub fn compare(
     cur_h: usize,
     gate: &GateThresholds,
 ) -> CompareResult {
-    compare_with_detail(base_sig, base_ahash, base_dhash, base_sha256, grid, None, cur_data, cur_w, cur_h, gate)
+    compare_with_detail(
+        base_sig,
+        base_ahash,
+        base_dhash,
+        base_sha256,
+        grid,
+        None,
+        cur_data,
+        cur_w,
+        cur_h,
+        gate,
+    )
 }
 
 /// [`compare`] plus the detail channel when `base_detail` and `gate.detail` are both set.
@@ -133,7 +144,11 @@ pub fn compare_with_detail(
         max_cell_diff: max_cell.round() as u32,
         changed_cells: changed,
         changed_cells_pct: round((changed as f64 / cells as f64) * 100.0, 2),
-        psnr: if psnr.is_infinite() { psnr } else { round(psnr, 2) },
+        psnr: if psnr.is_infinite() {
+            psnr
+        } else {
+            round(psnr, 2)
+        },
         ahash_hamming: hamming(base_ahash, &cur.ahash),
         dhash_hamming: hamming(base_dhash, &cur.dhash),
         identical: cur.sha256 == base_sha256,

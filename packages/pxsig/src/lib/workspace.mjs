@@ -32,12 +32,24 @@ export const DEFAULTS = Object.freeze({
   srcRoot: 'src',
   storybook: { url: 'http://localhost:6006', configDir: null, staticDir: null },
   store: { dir: '.pxsig', layout: 'package' },
-  capture: { viewport: [900, 600], settleMs: 200, target: '#storybook-root', waitFor: [], browserEndpoint: null },
+  capture: {
+    viewport: [900, 600],
+    settleMs: 200,
+    target: '#storybook-root',
+    waitFor: [],
+    browserEndpoint: null,
+  },
   grid: 64,
   minCellPx: 8,
   detail: true,
   trim: { pad: 16, tolerance: 8 },
-  gate: { threshold: 24, minCells: 3, minSsim: 0.99, maxChangedPct: 2, detail: { blockDelta: 32, energyDelta: 48, minTiles: 3 } },
+  gate: {
+    threshold: 24,
+    minCells: 3,
+    minSsim: 0.99,
+    maxChangedPct: 2,
+    detail: { blockDelta: 32, energyDelta: 48, minTiles: 3 },
+  },
   modes: { default: { globals: '', colorScheme: 'light' } },
   defaultMode: null,
   modesByDefault: null,
@@ -55,7 +67,8 @@ export function merge(...layers) {
   const out = {};
   for (const l of layers) {
     if (!isObj(l)) continue;
-    for (const [k, v] of Object.entries(l)) out[k] = isObj(v) && isObj(out[k]) ? merge(out[k], v) : v;
+    for (const [k, v] of Object.entries(l))
+      out[k] = isObj(v) && isObj(out[k]) ? merge(out[k], v) : v;
   }
   return out;
 }
@@ -106,21 +119,38 @@ export function findWorkspace({ cwd = process.cwd(), workspace = null, env = pro
     if (file) root = dirname(file);
     else {
       const cfg = findUp(cwd, CONFIG_FILE);
-      if (!cfg) throw new SetupError(`no ${WORKSPACE_FILE} or ${CONFIG_FILE} here or above ${cwd}: run \`pxsig init\` in the package to test`);
+      if (!cfg)
+        throw new SetupError(
+          `no ${WORKSPACE_FILE} or ${CONFIG_FILE} here or above ${cwd}: run \`pxsig init\` in the package to test`
+        );
       root = dirname(cfg);
     }
   }
   if (!file) {
     const configPath = join(root, CONFIG_FILE);
     const cfg = readJsonFile(configPath);
-    return { root, file: null, defaults: {}, server: {}, projects: [{ name: cfg.name ?? packageName(root) ?? 'default', dir: root, configPath }] };
+    return {
+      root,
+      file: null,
+      defaults: {},
+      server: {},
+      projects: [{ name: cfg.name ?? packageName(root) ?? 'default', dir: root, configPath }],
+    };
   }
   const ws = readJsonFile(file);
-  if (!isObj(ws.projects)) throw new SetupError(`${file}: "projects" must map a project name to its folder`);
+  if (!isObj(ws.projects))
+    throw new SetupError(`${file}: "projects" must map a project name to its folder`);
   if (ws.requires != null) {
     const ok = satisfies(PXSIG_VERSION, ws.requires);
-    if (ok === null) throw new SetupError(`${file}: "requires" is not a version range pxsig reads ("${ws.requires}"; for example ">=0.4.0")`);
-    if (!ok) throw new SetupError(`${file} requires pxsig ${ws.requires}; this is pxsig ${PXSIG_VERSION}: install a version in that range`, { code: 'version-required' });
+    if (ok === null)
+      throw new SetupError(
+        `${file}: "requires" is not a version range pxsig reads ("${ws.requires}"; for example ">=0.4.0")`
+      );
+    if (!ok)
+      throw new SetupError(
+        `${file} requires pxsig ${ws.requires}; this is pxsig ${PXSIG_VERSION}: install a version in that range`,
+        { code: 'version-required' }
+      );
   }
   const projects = Object.entries(ws.projects).map(([name, rel]) => {
     const dir = resolve(root, rel);
@@ -131,7 +161,10 @@ export function findWorkspace({ cwd = process.cwd(), workspace = null, env = pro
 
 function packageName(dir) {
   try {
-    return JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).name?.replace(/^@[^/]+\//, '') ?? null;
+    return (
+      JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).name?.replace(/^@[^/]+\//, '') ??
+      null
+    );
   } catch {
     return null;
   }
@@ -148,10 +181,14 @@ export function pickProject(ws, { project = null, cwd = process.cwd() } = {}) {
     const abs = resolve(cwd, project);
     const byDir = ws.projects.find((p) => p.dir === abs);
     if (byDir) return byDir;
-    throw new SetupError(`no project "${project}" in ${ws.file ?? ws.root} (projects: ${ws.projects.map((p) => p.name).join(', ')})`);
+    throw new SetupError(
+      `no project "${project}" in ${ws.file ?? ws.root} (projects: ${ws.projects.map((p) => p.name).join(', ')})`
+    );
   }
   const here = resolve(cwd) + sep;
-  const inside = ws.projects.filter((p) => here.startsWith(p.dir + sep)).sort((a, b) => b.dir.length - a.dir.length);
+  const inside = ws.projects
+    .filter((p) => here.startsWith(p.dir + sep))
+    .sort((a, b) => b.dir.length - a.dir.length);
   if (inside.length) return inside[0];
   return ws.projects.length === 1 ? ws.projects[0] : null;
 }
@@ -172,7 +209,12 @@ export function unlistedConfigs(ws, { maxDepth = 4 } = {}) {
       if (d.isFile() && d.name === CONFIG_FILE) {
         const p = join(dir, d.name);
         if (!listed.has(p)) found.push(toPosix(relative(ws.root, p)));
-      } else if (d.isDirectory() && !d.name.startsWith('.') && !['node_modules', 'dist', 'build', 'target', 'coverage'].includes(d.name)) walk(join(dir, d.name), depth + 1);
+      } else if (
+        d.isDirectory() &&
+        !d.name.startsWith('.') &&
+        !['node_modules', 'dist', 'build', 'target', 'coverage'].includes(d.name)
+      )
+        walk(join(dir, d.name), depth + 1);
     }
   };
   walk(ws.root, 0);
@@ -180,10 +222,13 @@ export function unlistedConfigs(ws, { maxDepth = 4 } = {}) {
 }
 
 /** Projects whose folder or config is gone (doctor: project-missing). */
-export const missingProjects = (ws) => ws.projects.filter((p) => !existsSync(p.configPath)).map((p) => p.name);
+export const missingProjects = (ws) =>
+  ws.projects.filter((p) => !existsSync(p.configPath)).map((p) => p.name);
 
 /** The version of this pxsig install. */
-export const PXSIG_VERSION = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version;
+export const PXSIG_VERSION = JSON.parse(
+  readFileSync(new URL('../../package.json', import.meta.url), 'utf8')
+).version;
 
 /**
  * Workspace-level problems for the integrity ledger's `setup`: packages with a config that no
@@ -199,10 +244,21 @@ export function workspaceProblems(P) {
   }
   const out = [];
   const where = ws.file ? WORKSPACE_FILE : `a ${WORKSPACE_FILE} (this workspace has none)`;
-  for (const f of unlistedConfigs(ws)) if (ws.file || f !== CONFIG_FILE) out.push({ code: 'project-unlisted', severity: 'warn', reason: `${f} is not listed in ${where}: nothing checks that package` });
-  for (const n of missingProjects(ws)) out.push({ code: 'project-missing', severity: 'error', reason: `project "${n}" is listed in ${WORKSPACE_FILE} but its ${CONFIG_FILE} is gone` });
+  for (const f of unlistedConfigs(ws))
+    if (ws.file || f !== CONFIG_FILE)
+      out.push({
+        code: 'project-unlisted',
+        severity: 'warn',
+        reason: `${f} is not listed in ${where}: nothing checks that package`,
+      });
+  for (const n of missingProjects(ws))
+    out.push({
+      code: 'project-missing',
+      severity: 'error',
+      reason: `project "${n}" is listed in ${WORKSPACE_FILE} but its ${CONFIG_FILE} is gone`,
+    });
   const major = (v) => String(v).split('.')[0];
-  const requires = ws.file ? readJsonFile(ws.file).requires ?? null : null;
+  const requires = ws.file ? (readJsonFile(ws.file).requires ?? null) : null;
   const seen = new Set();
   for (const dir of [ws.root, ...ws.projects.map((p) => p.dir)]) {
     const pj = join(dir, 'node_modules', 'pxsig', 'package.json');
@@ -210,8 +266,18 @@ export function workspaceProblems(P) {
     seen.add(pj);
     try {
       const v = JSON.parse(readFileSync(pj, 'utf8')).version;
-      if (major(v) !== major(PXSIG_VERSION)) out.push({ code: 'version-skew', severity: 'warn', reason: `${toPosix(relative(ws.root, pj))} is pxsig ${v}; this one is ${PXSIG_VERSION}` });
-      if (requires && satisfies(v, requires) === false) out.push({ code: 'version-required', severity: 'warn', reason: `${toPosix(relative(ws.root, pj))} is pxsig ${v}, outside the workspace's "requires" (${requires}): it refuses to run here once it reads that key (0.4.0 and later), and an older one ignores it` });
+      if (major(v) !== major(PXSIG_VERSION))
+        out.push({
+          code: 'version-skew',
+          severity: 'warn',
+          reason: `${toPosix(relative(ws.root, pj))} is pxsig ${v}; this one is ${PXSIG_VERSION}`,
+        });
+      if (requires && satisfies(v, requires) === false)
+        out.push({
+          code: 'version-required',
+          severity: 'warn',
+          reason: `${toPosix(relative(ws.root, pj))} is pxsig ${v}, outside the workspace's "requires" (${requires}): it refuses to run here once it reads that key (0.4.0 and later), and an older one ignores it`,
+        });
     } catch {
       // unreadable: not ours to judge
     }
@@ -223,7 +289,9 @@ export function workspaceProblems(P) {
 
 /** `ghcr.io/hydrotik/pxsig:0.5.0-pw1.58.2[-r2][-amd64]` → { pxsig, playwright }, or null. */
 export function parseImageTag(image) {
-  const m = String(image ?? '').match(/:(\d+\.\d+\.\d+(?:-[\w.]+?)?)-pw(\d+\.\d+\.\d+)(?:-r\d+)?(?:-(?:amd64|arm64))?(?:@|$)/);
+  const m = String(image ?? '').match(
+    /:(\d+\.\d+\.\d+(?:-[\w.]+?)?)-pw(\d+\.\d+\.\d+)(?:-r\d+)?(?:-(?:amd64|arm64))?(?:@|$)/
+  );
   return m ? { pxsig: m[1], playwright: m[2] } : null;
 }
 
@@ -248,9 +316,19 @@ export function imageProblems(P, wsRoot, env = process.env) {
   } catch {
     // no Playwright resolves: the check itself says so
   }
-  if (pw && pw !== tag.playwright) out.push({ code: 'image-mismatch', severity: 'warn', reason: `the image ${env.PXSIG_IMAGE} is built for Playwright ${tag.playwright}, but Playwright ${pw} resolves here: renders use browsers that do not match the driver. Use the image tag for ${pw}, or set PXSIG_PLAYWRIGHT to the image's own` });
+  if (pw && pw !== tag.playwright)
+    out.push({
+      code: 'image-mismatch',
+      severity: 'warn',
+      reason: `the image ${env.PXSIG_IMAGE} is built for Playwright ${tag.playwright}, but Playwright ${pw} resolves here: renders use browsers that do not match the driver. Use the image tag for ${pw}, or set PXSIG_PLAYWRIGHT to the image's own`,
+    });
   const pinned = wsRoot ? version(join(wsRoot, 'node_modules', 'pxsig', 'package.json')) : null;
-  if (pinned && pinned !== tag.pxsig) out.push({ code: 'image-mismatch', severity: 'warn', reason: `the image ${env.PXSIG_IMAGE} runs pxsig ${tag.pxsig}, but this project pins pxsig ${pinned}: use the image tag for ${pinned}` });
+  if (pinned && pinned !== tag.pxsig)
+    out.push({
+      code: 'image-mismatch',
+      severity: 'warn',
+      reason: `the image ${env.PXSIG_IMAGE} runs pxsig ${tag.pxsig}, but this project pins pxsig ${pinned}: use the image tag for ${pinned}`,
+    });
   return out;
 }
 
@@ -282,7 +360,13 @@ export function engineProblems(bin) {
   const [a, b] = mm(v);
   const [c, d] = mm(PXSIG_VERSION);
   if (a > c || (a === c && b >= d)) return [];
-  return [{ code: 'engine-old', severity: 'warn', reason: `the engine binary is pxsig ${v}, older than this pxsig ${PXSIG_VERSION}: baselines it writes carry no render environment (env), and other newer engine features are missing. Install the matching @pxsig/cli package (or unset PXSIG_BIN)` }];
+  return [
+    {
+      code: 'engine-old',
+      severity: 'warn',
+      reason: `the engine binary is pxsig ${v}, older than this pxsig ${PXSIG_VERSION}: baselines it writes carry no render environment (env), and other newer engine features are missing. Install the matching @pxsig/cli package (or unset PXSIG_BIN)`,
+    },
+  ];
 }
 
 /** `$workspace/x` → workspace-relative; anything else → relative to `base`. Returns absolute. */
@@ -299,14 +383,24 @@ const PATH_KEYS = ['srcRoot', 'storybook.configDir', 'storybook.staticDir', 'sto
 function anchorPaths(ws, layer, base) {
   if (!isObj(layer)) return layer;
   const out = merge(layer);
-  const fix = (p) => (typeof p === 'string' && !p.startsWith('$workspace/') ? expand(ws, base, p) : p);
+  const fix = (p) =>
+    typeof p === 'string' && !p.startsWith('$workspace/') ? expand(ws, base, p) : p;
   for (const key of PATH_KEYS) {
     const [a, b] = key.split('.');
-    if (b ? isObj(out[a]) && out[a][b] != null : out[a] != null) b ? (out[a][b] = fix(out[a][b])) : (out[a] = fix(out[a]));
+    if (b ? isObj(out[a]) && out[a][b] != null : out[a] != null)
+      b ? (out[a][b] = fix(out[a][b])) : (out[a] = fix(out[a]));
   }
-  if (isObj(out.affects) && Array.isArray(out.affects.extra)) out.affects.extra = out.affects.extra.map(fix);
-  for (const k of ['ignore', 'unresolved']) if (isObj(out.affects) && Array.isArray(out.affects[k])) out.affects[k] = out.affects[k].map((g) => (typeof g === 'string' && g.startsWith('$repo/') ? g : fix(g)));
-  if (isObj(out.affects) && isObj(out.affects.aliases)) out.affects.aliases = Object.fromEntries(Object.entries(out.affects.aliases).map(([k, v]) => [k, fix(v)]));
+  if (isObj(out.affects) && Array.isArray(out.affects.extra))
+    out.affects.extra = out.affects.extra.map(fix);
+  for (const k of ['ignore', 'unresolved'])
+    if (isObj(out.affects) && Array.isArray(out.affects[k]))
+      out.affects[k] = out.affects[k].map((g) =>
+        typeof g === 'string' && g.startsWith('$repo/') ? g : fix(g)
+      );
+  if (isObj(out.affects) && isObj(out.affects.aliases))
+    out.affects.aliases = Object.fromEntries(
+      Object.entries(out.affects.aliases).map(([k, v]) => [k, fix(v)])
+    );
   return out;
 }
 
@@ -366,9 +460,15 @@ export function resolveModes(modes, where = 'modes') {
   const visit = (name, chain) => {
     if (done[name]) return done[name];
     const m = modes[name];
-    if (!isObj(m)) throw new SetupError(`${where}: mode "${chain.at(-2) ?? name}" extends "${name}", which is not defined`);
+    if (!isObj(m))
+      throw new SetupError(
+        `${where}: mode "${chain.at(-2) ?? name}" extends "${name}", which is not defined`
+      );
     if (!m.extends) return (done[name] = { ...m });
-    if (chain.includes(m.extends)) throw new SetupError(`${where}: modes extend each other in a cycle: ${[...chain, m.extends].join(' → ')}`);
+    if (chain.includes(m.extends))
+      throw new SetupError(
+        `${where}: modes extend each other in a cycle: ${[...chain, m.extends].join(' → ')}`
+      );
     const parent = visit(m.extends, [...chain, m.extends]);
     const { extends: _, ...own } = m;
     return (done[name] = { ...parent, ...own });
@@ -383,7 +483,11 @@ function envLayer(env) {
   if (env.PXSIG_STORYBOOK_URL) out.storybook = { url: env.PXSIG_STORYBOOK_URL };
   if (env.PXSIG_GRID) out.grid = Number(env.PXSIG_GRID);
   if (env.PXSIG_BROWSER_WS) out.capture = { browserEndpoint: env.PXSIG_BROWSER_WS };
-  if (env.PXSIG_SOURCES) out.affects = { extra: env.PXSIG_SOURCES.split(',').map((s) => `$workspace/${s.trim()}`), workspaceDeps: false };
+  if (env.PXSIG_SOURCES)
+    out.affects = {
+      extra: env.PXSIG_SOURCES.split(',').map((s) => `$workspace/${s.trim()}`),
+      workspaceDeps: false,
+    };
   return out;
 }
 
@@ -396,13 +500,19 @@ function workspaceDepRoots(ws, projectDir) {
     return [];
   }
   // Runtime dependencies only: a change to a dev-only workspace package (test or build config) can't change a render.
-  const deps = Object.entries({ ...pkg.dependencies, ...pkg.peerDependencies }).filter(([, v]) => String(v).startsWith('workspace:'));
+  const deps = Object.entries({ ...pkg.dependencies, ...pkg.peerDependencies }).filter(([, v]) =>
+    String(v).startsWith('workspace:')
+  );
   const req = createRequire(join(projectDir, 'package.json'));
   const out = [];
   for (const [name] of deps) {
     // The linked folder (pnpm, npm and yarn workspaces all link it), else Node's resolver.
     let dir = null;
-    for (const find of [() => join(projectDir, 'node_modules', name), () => join(ws.root, 'node_modules', name), () => dirname(req.resolve(`${name}/package.json`))]) {
+    for (const find of [
+      () => join(projectDir, 'node_modules', name),
+      () => join(ws.root, 'node_modules', name),
+      () => dirname(req.resolve(`${name}/package.json`)),
+    ]) {
       try {
         const d = realpathSync(find());
         if (existsSync(join(d, 'package.json'))) {
@@ -430,8 +540,14 @@ function workspaceDepRoots(ws, projectDir) {
 /** `approvals`: only what this pxsig does (decision 78: Strict is a later release). */
 function checkApprovals(config, ref) {
   const a = config.approvals ?? {};
-  if (a.level != null && a.level !== 'standard') throw new SetupError(a.level === 'strict' ? `project "${ref.name}": approvals.level "strict" is not available yet (decision 78); remove it or set "standard"` : `project "${ref.name}": approvals.level must be "standard"`);
-  if (a.identity != null && !['none', 'git-email'].includes(a.identity)) throw new SetupError(`project "${ref.name}": approvals.identity must be "none" or "git-email"`);
+  if (a.level != null && a.level !== 'standard')
+    throw new SetupError(
+      a.level === 'strict'
+        ? `project "${ref.name}": approvals.level "strict" is not available yet (decision 78); remove it or set "standard"`
+        : `project "${ref.name}": approvals.level must be "standard"`
+    );
+  if (a.identity != null && !['none', 'git-email'].includes(a.identity))
+    throw new SetupError(`project "${ref.name}": approvals.identity must be "none" or "git-email"`);
 }
 
 /**
@@ -440,7 +556,9 @@ function checkApprovals(config, ref) {
  */
 export function satisfies(version, range) {
   const num = (v) => {
-    const m = String(v).trim().match(/^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?$/);
+    const m = String(v)
+      .trim()
+      .match(/^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?$/);
     return m ? [Number(m[1]), Number(m[2] ?? 0), Number(m[3] ?? 0)] : null;
   };
   const cmp = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
@@ -450,20 +568,27 @@ export function satisfies(version, range) {
   const ok = String(range)
     .split('||')
     .some((alt) =>
-      alt.trim().split(/\s+/).filter(Boolean).every((c) => {
-        const m = c.match(/^(>=|<=|>|<|=)?(.+)$/);
-        const w = m && num(m[2]);
-        if (!w) return (read = false);
-        const d = cmp(v, w);
-        return { '>=': d >= 0, '<=': d <= 0, '>': d > 0, '<': d < 0, '=': d === 0 }[m[1] ?? '='];
-      })
+      alt
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .every((c) => {
+          const m = c.match(/^(>=|<=|>|<|=)?(.+)$/);
+          const w = m && num(m[2]);
+          if (!w) return (read = false);
+          const d = cmp(v, w);
+          return { '>=': d >= 0, '<=': d <= 0, '>': d > 0, '<': d < 0, '=': d === 0 }[m[1] ?? '='];
+        })
     );
   return read ? ok : null;
 }
 
 export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
   const raw = existsSync(ref.configPath) ? readJsonFile(ref.configPath) : null;
-  if (!raw) throw new SetupError(`project "${ref.name}": no ${CONFIG_FILE} at ${ref.configPath}`, { code: 'project-missing' });
+  if (!raw)
+    throw new SetupError(`project "${ref.name}": no ${CONFIG_FILE} at ${ref.configPath}`, {
+      code: 'project-missing',
+    });
   // The workspace file's paths are relative to the workspace root, not to the project.
   const wsDefaults = anchorPaths(ws, ws.defaults ?? {}, ws.root);
   const layers = [
@@ -482,15 +607,28 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
     throw new SetupError(e.message);
   }
   // The dashboard title's label: what the page reviews, in the team's words.
-  const label = config.label == null ? null : typeof config.label === 'string' ? config.label.trim() : '';
-  if (label === '' || (label && label.length > 60)) throw new SetupError(`project "${ref.name}": label must be text of 1 to 60 characters`);
+  const label =
+    config.label == null ? null : typeof config.label === 'string' ? config.label.trim() : '';
+  if (label === '' || (label && label.length > 60))
+    throw new SetupError(`project "${ref.name}": label must be text of 1 to 60 characters`);
   const root = ref.dir;
   const store = expand(ws, root, config.store.dir);
   // Modes are a set, not settings: a project's modes replace the defaults instead of joining them.
-  const modesFrom = raw.modes ? 'project config' : wsDefaults.modes ? 'workspace defaults' : 'defaults';
+  const modesFrom = raw.modes
+    ? 'project config'
+    : wsDefaults.modes
+      ? 'workspace defaults'
+      : 'defaults';
   sources.modes = modesFrom;
   for (const k of Object.keys(sources)) if (k.startsWith('modes.')) delete sources[k];
-  const modes = resolveModes(raw.modes ?? wsDefaults.modes ?? DEFAULTS.modes, modesFrom === 'project config' ? ref.configPath : modesFrom === 'workspace defaults' ? ws.file : 'built-in modes');
+  const modes = resolveModes(
+    raw.modes ?? wsDefaults.modes ?? DEFAULTS.modes,
+    modesFrom === 'project config'
+      ? ref.configPath
+      : modesFrom === 'workspace defaults'
+        ? ws.file
+        : 'built-in modes'
+  );
   const defaultMode = config.defaultMode ?? Object.keys(modes)[0];
   const srcRoot = expand(ws, root, config.srcRoot);
   const affects = [
@@ -501,18 +639,32 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
   const wsRel = (abs) => toPosix(relative(ws.root, abs));
   // affects.ignore: globs anchored like affects.extra, plus `$repo/` for paths outside the workspace.
   const ignore = config.affects.ignore ?? [];
-  if (!Array.isArray(ignore) || ignore.some((g) => typeof g !== 'string' || !g.trim())) throw new SetupError(`project "${ref.name}": affects.ignore must be an array of globs`);
-  const anchorGlob = (g) => (g.startsWith('$repo/') ? g : wsRel(expand(ws, root, g)).replace(/\/$/, '') + (g.endsWith('/') ? '/' : ''));
+  if (!Array.isArray(ignore) || ignore.some((g) => typeof g !== 'string' || !g.trim()))
+    throw new SetupError(`project "${ref.name}": affects.ignore must be an array of globs`);
+  const anchorGlob = (g) =>
+    g.startsWith('$repo/')
+      ? g
+      : wsRel(expand(ws, root, g)).replace(/\/$/, '') + (g.endsWith('/') ? '/' : '');
   const affectsIgnore = ignore.map(anchorGlob);
   // affects.unresolved: anchored the same way; affects.aliases: prefix → workspace-relative path.
   const unresolved = config.affects.unresolved ?? [];
-  if (!Array.isArray(unresolved) || unresolved.some((g) => typeof g !== 'string' || !g.trim())) throw new SetupError(`project "${ref.name}": affects.unresolved must be an array of globs`);
+  if (!Array.isArray(unresolved) || unresolved.some((g) => typeof g !== 'string' || !g.trim()))
+    throw new SetupError(`project "${ref.name}": affects.unresolved must be an array of globs`);
   const aliases = config.affects.aliases ?? {};
-  if (!isObj(aliases) || Object.entries(aliases).some(([k, v]) => !k || typeof v !== 'string' || !v.trim())) throw new SetupError(`project "${ref.name}": affects.aliases must map a specifier prefix to a path`);
-  const affectsAliases = Object.fromEntries(Object.entries(aliases).map(([k, v]) => [k, wsRel(expand(ws, root, v))]));
+  if (
+    !isObj(aliases) ||
+    Object.entries(aliases).some(([k, v]) => !k || typeof v !== 'string' || !v.trim())
+  )
+    throw new SetupError(
+      `project "${ref.name}": affects.aliases must map a specifier prefix to a path`
+    );
+  const affectsAliases = Object.fromEntries(
+    Object.entries(aliases).map(([k, v]) => [k, wsRel(expand(ws, root, v))])
+  );
   const affectsUnresolved = unresolved.map(anchorGlob);
   const layout = config.store.layout;
-  if (!['package', 'colocated'].includes(layout)) throw new SetupError(`project "${ref.name}": store.layout must be "package" or "colocated"`);
+  if (!['package', 'colocated'].includes(layout))
+    throw new SetupError(`project "${ref.name}": store.layout must be "package" or "colocated"`);
   const P = {
     name: ref.name,
     /** The dashboard title after "pxsig ·" (config `label`); null: the name. */
@@ -558,7 +710,9 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
     sigFor(id, importPath) {
       const comp = componentOfImport(P, importPath);
       const file = `${id}.psig`;
-      return layout === 'colocated' ? wsRel(join(srcRoot, comp, '__pxsig__', file)) : wsRel(join(store, 'baselines', comp, file));
+      return layout === 'colocated'
+        ? wsRel(join(srcRoot, comp, '__pxsig__', file))
+        : wsRel(join(store, 'baselines', comp, file));
     },
     rustBin: rustBinary(env),
     serverUrl: () => serverUrlFor(ws.root, { env, port: ws.server?.port }),
@@ -617,7 +771,13 @@ export function runManifest(P, manifest, { suite = null } = {}) {
     srcRoot: toPosix(relative(P.workspaceRoot, P.srcRoot)),
     // Selection (docs/ci.md, "How selection decides"): the workspace file and the Storybook config
     // also affect every entry; `affectsIgnore`, `affectsAliases`, `affectsUnresolved` and `store` are read by `pxsig affected`.
-    affectsAll: [...new Set([...P.affects, ...(P.workspaceFile ? [wsRel(P.workspaceFile)] : []), ...(P.storybook.configDir ? [wsRel(P.storybook.configDir)] : [])])],
+    affectsAll: [
+      ...new Set([
+        ...P.affects,
+        ...(P.workspaceFile ? [wsRel(P.workspaceFile)] : []),
+        ...(P.storybook.configDir ? [wsRel(P.storybook.configDir)] : []),
+      ]),
+    ],
     affectsIgnore: P.affectsIgnore ?? [],
     affectsAliases: P.affectsAliases ?? {},
     affectsUnresolved: P.affectsUnresolved ?? [],
@@ -644,9 +804,13 @@ export function writeRunManifest(P, manifestPath = P.manifestPath(), { dir: runD
   try {
     m = JSON.parse(readFileSync(manifestPath, 'utf8'));
   } catch (e) {
-    throw new SetupError(`no readable manifest at ${manifestPath} (${e.code ?? e.message}): run \`pxsig manifest\` first`);
+    throw new SetupError(
+      `no readable manifest at ${manifestPath} (${e.code ?? e.message}): run \`pxsig manifest\` first`
+    );
   }
-  const run = runManifest(P, m, { suite: basename(manifestPath).match(/^manifest\.(.+)\.json$/)?.[1] ?? null });
+  const run = runManifest(P, m, {
+    suite: basename(manifestPath).match(/^manifest\.(.+)\.json$/)?.[1] ?? null,
+  });
   // `dir`: elsewhere than the store (a server without the store lock writes nothing in it).
   const dir = runDir ?? join(P.store.reports, '.run');
   mkdirSync(dir, { recursive: true });
@@ -669,7 +833,17 @@ export function rustBinary(env = process.env) {
   // Only pxsig's own clone has its build there; an installed pxsig would otherwise run a binary
   // from the project that installed it (whatever a pull request put in its target/release).
   // The path returned is where the platform package belongs, so the "binary is missing" error names it.
-  if (here.split(sep).includes('node_modules')) return resolve(here, '..', '..', '..', '@pxsig', `cli-${process.platform}-${process.arch}`, 'bin', exe);
+  if (here.split(sep).includes('node_modules'))
+    return resolve(
+      here,
+      '..',
+      '..',
+      '..',
+      '@pxsig',
+      `cli-${process.platform}-${process.arch}`,
+      'bin',
+      exe
+    );
   return resolve(here, '..', '..', '..', '..', 'target', 'release', exe);
 }
 
@@ -686,12 +860,18 @@ export function resolvePeer(P, name, env = process.env) {
   // driver always matches the browsers installed beside it. Unset, nothing changes.
   if (env.PXSIG_PLAYWRIGHT && (name === 'playwright' || name.startsWith('playwright/'))) {
     const dir = resolve(env.PXSIG_PLAYWRIGHT);
-    tries.push(() => createRequire(join(dir, 'package.json')).resolve(dir + name.slice('playwright'.length)));
+    tries.push(() =>
+      createRequire(join(dir, 'package.json')).resolve(dir + name.slice('playwright'.length))
+    );
   }
   for (const base of bases) {
     tries.push(() => createRequire(join(base, 'package.json')).resolve(name));
     if (name === 'playwright' || name.startsWith('playwright/'))
-      tries.push(() => createRequire(createRequire(join(base, 'package.json')).resolve('@playwright/test/package.json')).resolve(name));
+      tries.push(() =>
+        createRequire(
+          createRequire(join(base, 'package.json')).resolve('@playwright/test/package.json')
+        ).resolve(name)
+      );
   }
   tries.push(() => createRequire(import.meta.url).resolve(name));
   for (const t of tries) {
@@ -729,10 +909,20 @@ let processFlags = {};
 export const setFlagLayer = (layer) => (processFlags = layer ?? {});
 
 /** One call for the common case: workspace + project from argv-style options. */
-export function openProject({ cwd = process.cwd(), workspace = null, project = null, flags = null, env = process.env } = {}) {
+export function openProject({
+  cwd = process.cwd(),
+  workspace = null,
+  project = null,
+  flags = null,
+  env = process.env,
+} = {}) {
   flags ??= processFlags;
   const ws = findWorkspace({ cwd, workspace, env });
   const ref = pickProject(ws, { project: project ?? env.PXSIG_PROJECT ?? null, cwd });
-  if (!ref) throw new SetupError(`this workspace has ${ws.projects.length} projects; choose one with --project (${ws.projects.map((p) => p.name).join(', ')})`, { choices: ws.projects.map((p) => p.name) });
+  if (!ref)
+    throw new SetupError(
+      `this workspace has ${ws.projects.length} projects; choose one with --project (${ws.projects.map((p) => p.name).join(', ')})`,
+      { choices: ws.projects.map((p) => p.name) }
+    );
   return loadProject(ws, ref, { flags, env });
 }

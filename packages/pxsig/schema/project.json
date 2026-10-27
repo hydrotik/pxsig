@@ -24,9 +24,21 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "blockDelta": { "type": "number", "minimum": 0, "description": "A kept tile changed when any of its blocks moved by more than this (0-255). Default 32." },
-            "energyDelta": { "type": "number", "minimum": 0, "description": "A new edge appeared when a tile's edge energy rose by more than this (0-255). Default 48." },
-            "minTiles": { "type": "integer", "minimum": 0, "description": "Fail when at least this many tiles trip either rule. Default 3." }
+            "blockDelta": {
+              "type": "number",
+              "minimum": 0,
+              "description": "A kept tile changed when any of its blocks moved by more than this (0-255). Default 32."
+            },
+            "energyDelta": {
+              "type": "number",
+              "minimum": 0,
+              "description": "A new edge appeared when a tile's edge energy rose by more than this (0-255). Default 48."
+            },
+            "minTiles": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Fail when at least this many tiles trip either rule. Default 3."
+            }
           }
         }
       ]
@@ -36,11 +48,33 @@
       "description": "Gate thresholds. An entry fails when any rule trips.",
       "additionalProperties": false,
       "properties": {
-        "threshold": { "type": "number", "minimum": 0, "description": "Per-cell mean RGB delta (0-255) that counts a cell as changed. Default 24." },
-        "minCells": { "type": "integer", "minimum": 0, "description": "Fail when at least this many cells changed. 0 turns the rule off. Default 3." },
-        "minSsim": { "type": "number", "minimum": 0, "maximum": 1, "description": "Fail when SSIM is below this. Default 0.99." },
-        "maxChangedPct": { "type": "number", "minimum": 0, "maximum": 100, "description": "Fail when more than this percentage of cells changed. Default 2." },
-        "maxEdgePct": { "type": "number", "minimum": 0, "description": "Fail when the Sobel edge-map difference is above this percentage. Off by default." },
+        "threshold": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Per-cell mean RGB delta (0-255) that counts a cell as changed. Default 24."
+        },
+        "minCells": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Fail when at least this many cells changed. 0 turns the rule off. Default 3."
+        },
+        "minSsim": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Fail when SSIM is below this. Default 0.99."
+        },
+        "maxChangedPct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Fail when more than this percentage of cells changed. Default 2."
+        },
+        "maxEdgePct": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Fail when the Sobel edge-map difference is above this percentage. Off by default."
+        },
         "detail": { "$ref": "#/$defs/detailGate" }
       }
     },
@@ -49,27 +83,64 @@
       "description": "Named render settings.",
       "additionalProperties": false,
       "properties": {
-        "globals": { "type": "string", "description": "Storybook globals in URL form, e.g. \"theme:dark;density:compact\"." },
-        "colorScheme": { "enum": ["light", "dark"], "description": "Emulated prefers-color-scheme." },
+        "globals": {
+          "type": "string",
+          "description": "Storybook globals in URL form, e.g. \"theme:dark;density:compact\"."
+        },
+        "colorScheme": {
+          "enum": ["light", "dark"],
+          "description": "Emulated prefers-color-scheme."
+        },
         "viewport": { "$ref": "#/$defs/size", "description": "Overrides capture.viewport." },
-        "browser": { "enum": ["chromium", "firefox", "webkit"], "description": "Playwright browser. Default chromium." },
-        "extends": { "type": "string", "description": "Another mode's name: its keys are copied first. One level only." }
+        "browser": {
+          "enum": ["chromium", "firefox", "webkit"],
+          "description": "Playwright browser. Default chromium."
+        },
+        "extends": {
+          "type": "string",
+          "description": "Another mode's name: its keys are copied first. One level only."
+        }
       }
     }
   },
   "properties": {
     "$schema": { "type": "string" },
     "version": { "const": 1, "description": "File format version." },
-    "name": { "type": "string", "description": "Project name in a single-package repository. In a monorepo the key in pxsig.workspace.json is the name." },
-    "label": { "type": "string", "minLength": 1, "maxLength": 60, "pattern": "\\S", "description": "The dashboard title after \"pxsig ·\": what this project reviews, in your words (\"Hydrotik\"). Default: the project name. 1 to 60 characters." },
-    "srcRoot": { "$ref": "#/$defs/path", "default": "src", "description": "The folder whose stories belong to this project." },
+    "name": {
+      "type": "string",
+      "description": "Project name in a single-package repository. In a monorepo the key in pxsig.workspace.json is the name."
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60,
+      "pattern": "\\S",
+      "description": "The dashboard title after \"pxsig ·\": what this project reviews, in your words (\"Hydrotik\"). Default: the project name. 1 to 60 characters."
+    },
+    "srcRoot": {
+      "$ref": "#/$defs/path",
+      "default": "src",
+      "description": "The folder whose stories belong to this project."
+    },
     "storybook": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "url": { "type": "string", "default": "http://localhost:6006", "description": "Where Storybook serves index.json and iframe.html." },
-        "configDir": { "oneOf": [{ "$ref": "#/$defs/path" }, { "type": "null" }], "default": null, "description": "Storybook's config folder; used to resolve story paths from index.json." },
-        "staticDir": { "oneOf": [{ "$ref": "#/$defs/path" }, { "type": "null" }], "default": null, "description": "Reserved. Not used yet." }
+        "url": {
+          "type": "string",
+          "default": "http://localhost:6006",
+          "description": "Where Storybook serves index.json and iframe.html."
+        },
+        "configDir": {
+          "oneOf": [{ "$ref": "#/$defs/path" }, { "type": "null" }],
+          "default": null,
+          "description": "Storybook's config folder; used to resolve story paths from index.json."
+        },
+        "staticDir": {
+          "oneOf": [{ "$ref": "#/$defs/path" }, { "type": "null" }],
+          "default": null,
+          "description": "Reserved. Not used yet."
+        }
       }
     },
     "store": {
@@ -77,17 +148,38 @@
       "additionalProperties": false,
       "properties": {
         "dir": { "$ref": "#/$defs/path", "default": ".pxsig", "description": "The store folder." },
-        "layout": { "enum": ["package", "colocated"], "default": "package", "description": "package: baselines in <store>/baselines/<component>/. colocated: baselines in <srcRoot>/<component>/__pxsig__/." }
+        "layout": {
+          "enum": ["package", "colocated"],
+          "default": "package",
+          "description": "package: baselines in <store>/baselines/<component>/. colocated: baselines in <srcRoot>/<component>/__pxsig__/."
+        }
       }
     },
     "capture": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "viewport": { "$ref": "#/$defs/size", "default": [900, 600], "description": "Browser viewport at device scale 1." },
-        "settleMs": { "type": "integer", "minimum": 0, "default": 200, "description": "Minimum wait after fonts load." },
-        "target": { "type": "string", "default": "#storybook-root", "description": "Selector of the element captured." },
-        "browserEndpoint": { "type": ["string", "null"], "default": null, "description": "A Playwright browser server (ws://…) to render with instead of launching a browser, e.g. the container's from `pxsig browser start`. Also --browser and PXSIG_BROWSER_WS." },
+        "viewport": {
+          "$ref": "#/$defs/size",
+          "default": [900, 600],
+          "description": "Browser viewport at device scale 1."
+        },
+        "settleMs": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 200,
+          "description": "Minimum wait after fonts load."
+        },
+        "target": {
+          "type": "string",
+          "default": "#storybook-root",
+          "description": "Selector of the element captured."
+        },
+        "browserEndpoint": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "A Playwright browser server (ws://…) to render with instead of launching a browser, e.g. the container's from `pxsig browser start`. Also --browser and PXSIG_BROWSER_WS."
+        },
         "waitFor": {
           "type": "array",
           "default": [],
@@ -98,16 +190,38 @@
             "additionalProperties": false,
             "properties": {
               "selector": { "type": "string" },
-              "minMs": { "type": "integer", "minimum": 0, "description": "Raise the minimum wait to this." },
-              "stableMarkup": { "type": "string", "description": "Wait until the markup under this selector stops changing." }
+              "minMs": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Raise the minimum wait to this."
+              },
+              "stableMarkup": {
+                "type": "string",
+                "description": "Wait until the markup under this selector stops changing."
+              }
             }
           }
         }
       }
     },
-    "grid": { "type": "integer", "minimum": 8, "maximum": 256, "default": 64, "description": "Signature grid, cells per side." },
-    "minCellPx": { "type": "integer", "minimum": 0, "default": 8, "description": "Adaptive grid: cells at least this many pixels, capped by grid. 0 turns it off." },
-    "detail": { "type": "boolean", "default": true, "description": "Write the detail channel into new baselines." },
+    "grid": {
+      "type": "integer",
+      "minimum": 8,
+      "maximum": 256,
+      "default": 64,
+      "description": "Signature grid, cells per side."
+    },
+    "minCellPx": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 8,
+      "description": "Adaptive grid: cells at least this many pixels, capped by grid. 0 turns it off."
+    },
+    "detail": {
+      "type": "boolean",
+      "default": true,
+      "description": "Write the detail channel into new baselines."
+    },
     "trim": {
       "default": { "pad": 16, "tolerance": 8 },
       "description": "Crop renders to their content (right and bottom). false turns it off.",
@@ -131,8 +245,17 @@
       "propertyNames": { "pattern": "^[a-z0-9-]+$" },
       "additionalProperties": { "$ref": "#/$defs/mode" }
     },
-    "defaultMode": { "type": ["string", "null"], "default": null, "description": "The mode whose entries keep the bare story id. Default: the first mode." },
-    "modesByDefault": { "type": ["array", "null"], "items": { "type": "string" }, "default": null, "description": "Modes every story renders in. Default: [defaultMode]." },
+    "defaultMode": {
+      "type": ["string", "null"],
+      "default": null,
+      "description": "The mode whose entries keep the bare story id. Default: the first mode."
+    },
+    "modesByDefault": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "default": null,
+      "description": "Modes every story renders in. Default: [defaultMode]."
+    },
     "suites": {
       "type": "object",
       "default": {},
@@ -142,8 +265,16 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "modes": { "type": "array", "items": { "type": "string" }, "description": "The suite's modes." },
-          "addModes": { "type": "array", "items": { "type": "string" }, "description": "Another name for modes." }
+          "modes": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "The suite's modes."
+          },
+          "addModes": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Another name for modes."
+          }
         }
       }
     },
@@ -151,11 +282,35 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "workspaceDeps": { "type": "boolean", "default": true, "description": "A change in a workspace dependency's source selects every entry." },
-        "extra": { "type": "array", "items": { "$ref": "#/$defs/path" }, "default": [], "description": "More paths whose change selects every entry." },
-        "ignore": { "type": "array", "items": { "type": "string", "minLength": 1 }, "default": [], "description": "Globs for changed paths that select nothing when nothing traced claims them. Relative to the project; $workspace/ and $repo/ anchor a glob." },
-        "aliases": { "type": "object", "additionalProperties": { "$ref": "#/$defs/path" }, "default": {}, "description": "Import aliases only a bundler knows (Vite resolve.alias): specifier prefix → path. Longest prefix wins." },
-        "unresolved": { "type": "array", "items": { "type": "string", "minLength": 1 }, "default": [], "description": "Globs of files whose unresolved imports are accepted: they add no entries to every run. Anchored like affects.ignore." }
+        "workspaceDeps": {
+          "type": "boolean",
+          "default": true,
+          "description": "A change in a workspace dependency's source selects every entry."
+        },
+        "extra": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/path" },
+          "default": [],
+          "description": "More paths whose change selects every entry."
+        },
+        "ignore": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "default": [],
+          "description": "Globs for changed paths that select nothing when nothing traced claims them. Relative to the project; $workspace/ and $repo/ anchor a glob."
+        },
+        "aliases": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/path" },
+          "default": {},
+          "description": "Import aliases only a bundler knows (Vite resolve.alias): specifier prefix → path. Longest prefix wins."
+        },
+        "unresolved": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "default": [],
+          "description": "Globs of files whose unresolved imports are accepted: they add no entries to every run. Anchored like affects.ignore."
+        }
       }
     },
     "env": {
@@ -163,9 +318,50 @@
       "additionalProperties": false,
       "description": "The render environment each baseline records and each check compares (docs/configuration.md#env).",
       "properties": {
-        "ignore": { "type": "array", "items": { "enum": ["browser.name", "browser.version", "browser.channel", "browser.launchArgs", "playwright", "os.platform", "os.arch", "os.release", "os.distro", "fonts.probe", "fonts.system", "render.dpr", "render.gpu", "render.colorGamut", "render.timezone", "render.locale", "render.reducedMotion", "capture.pipeline", "container.image", "container.revision", "container.digest", "pxsig", "engine", "node"] }, "default": [], "description": "Fields left out of the comparison, e.g. render.timezone when no story formats a date." },
-        "fontProbe": { "type": "array", "items": { "type": "string", "minLength": 1 }, "default": [], "description": "Font families measured besides serif, sans-serif, monospace and system-ui (the design system's own), so a mismatch names the family." },
-        "strict": { "type": "boolean", "default": false, "description": "Refuse a check (exit 2, nothing rendered) when a selected baseline was approved in a different environment. Same as --strict-env and PXSIG_STRICT_ENV=1." }
+        "ignore": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "browser.name",
+              "browser.version",
+              "browser.channel",
+              "browser.launchArgs",
+              "playwright",
+              "os.platform",
+              "os.arch",
+              "os.release",
+              "os.distro",
+              "fonts.probe",
+              "fonts.system",
+              "render.dpr",
+              "render.gpu",
+              "render.colorGamut",
+              "render.timezone",
+              "render.locale",
+              "render.reducedMotion",
+              "capture.pipeline",
+              "container.image",
+              "container.revision",
+              "container.digest",
+              "pxsig",
+              "engine",
+              "node"
+            ]
+          },
+          "default": [],
+          "description": "Fields left out of the comparison, e.g. render.timezone when no story formats a date."
+        },
+        "fontProbe": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "default": [],
+          "description": "Font families measured besides serif, sans-serif, monospace and system-ui (the design system's own), so a mismatch names the family."
+        },
+        "strict": {
+          "type": "boolean",
+          "default": false,
+          "description": "Refuse a check (exit 2, nothing rendered) when a selected baseline was approved in a different environment. Same as --strict-env and PXSIG_STRICT_ENV=1."
+        }
       }
     },
     "enforcement": {
@@ -173,54 +369,138 @@
       "additionalProperties": false,
       "description": "Warn mode: per gate, enforce (fail the run, as before) or warn (report, exit advisoryExit). Only this committed config, or --warn from a person at a terminal, lowers a gate (docs/configuration.md#enforcement).",
       "properties": {
-        "default": { "enum": ["enforce", "warn"], "default": "enforce", "description": "Every gate not named in gates." },
+        "default": {
+          "enum": ["enforce", "warn"],
+          "default": "enforce",
+          "description": "Every gate not named in gates."
+        },
         "gates": {
           "type": "object",
           "additionalProperties": false,
           "description": "One setting per gate.",
           "properties": {
-            "visual": { "enum": ["enforce", "warn"], "description": "Check rows not passing: changed, new, render errors." },
-            "a11y": { "enum": ["enforce", "warn", "off"], "description": "New axe violations against a11y.json. Default warn, quiet unless one appears; off: no a11y gate." },
-            "verify": { "enum": ["enforce", "warn"], "description": "approve verify: baselines with no log line (a mismatch or a rewritten log always fails)." },
-            "env": { "enum": ["enforce", "warn"], "description": "--strict-env's refusal: under warn the check renders and lists the mismatches." },
-            "doctor": { "enum": ["enforce", "warn"], "description": "pxsig doctor findings at or above --fail-on." },
-            "stale": { "enum": ["enforce", "warn"], "description": "pxsig stale: stale or inconsistent verdicts." }
+            "visual": {
+              "enum": ["enforce", "warn"],
+              "description": "Check rows not passing: changed, new, render errors."
+            },
+            "a11y": {
+              "enum": ["enforce", "warn", "off"],
+              "description": "New axe violations against a11y.json. Default warn, quiet unless one appears; off: no a11y gate."
+            },
+            "verify": {
+              "enum": ["enforce", "warn"],
+              "description": "approve verify: baselines with no log line (a mismatch or a rewritten log always fails)."
+            },
+            "env": {
+              "enum": ["enforce", "warn"],
+              "description": "--strict-env's refusal: under warn the check renders and lists the mismatches."
+            },
+            "doctor": {
+              "enum": ["enforce", "warn"],
+              "description": "pxsig doctor findings at or above --fail-on."
+            },
+            "stale": {
+              "enum": ["enforce", "warn"],
+              "description": "pxsig stale: stale or inconsistent verdicts."
+            }
           }
         },
-        "warnUntil": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "End of warn mode (the end of that day, UTC): the warned gates are enforced after it, with no commit." },
-        "noticeDays": { "type": "integer", "minimum": 0, "default": 14, "description": "Days before warnUntil when every run starts saying it ends." },
-        "advisoryExit": { "type": "integer", "default": 0, "anyOf": [{ "const": 0 }, { "minimum": 10, "maximum": 125 }], "description": "Exit code of a run that would have failed only in warned gates: 0, or 10-125 for a forge's native warning state (GitLab allow_failure exit_codes, Jenkins UNSTABLE)." }
+        "warnUntil": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "End of warn mode (the end of that day, UTC): the warned gates are enforced after it, with no commit."
+        },
+        "noticeDays": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 14,
+          "description": "Days before warnUntil when every run starts saying it ends."
+        },
+        "advisoryExit": {
+          "type": "integer",
+          "default": 0,
+          "anyOf": [{ "const": 0 }, { "minimum": 10, "maximum": 125 }],
+          "description": "Exit code of a run that would have failed only in warned gates: 0, or 10-125 for a forge's native warning state (GitLab allow_failure exit_codes, Jenkins UNSTABLE)."
+        }
       }
     },
-    "nonVisual": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Top-level folders under srcRoot with no visual stories." },
+    "nonVisual": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Top-level folders under srcRoot with no visual stories."
+    },
     "a11y": { "type": "boolean", "default": true, "description": "Run axe on every render." },
     "integrity": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "requireBaselineImages": { "type": "boolean", "default": true, "description": "Report missing-baseline-image." },
-        "staleAfterSourceChange": { "type": "boolean", "default": true, "description": "Report stale verdicts." },
-        "sourceRoots": { "type": ["array", "null"], "items": { "type": "string" }, "default": null, "description": "Workspace-relative folders whose edits can make a verdict stale. Default: srcRoot." },
-        "maxTracedFiles": { "type": "integer", "minimum": 0, "default": 400, "description": "Above this many edited files, staleness uses the same-folder rule." },
+        "requireBaselineImages": {
+          "type": "boolean",
+          "default": true,
+          "description": "Report missing-baseline-image."
+        },
+        "staleAfterSourceChange": {
+          "type": "boolean",
+          "default": true,
+          "description": "Report stale verdicts."
+        },
+        "sourceRoots": {
+          "type": ["array", "null"],
+          "items": { "type": "string" },
+          "default": null,
+          "description": "Workspace-relative folders whose edits can make a verdict stale. Default: srcRoot."
+        },
+        "maxTracedFiles": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 400,
+          "description": "Above this many edited files, staleness uses the same-folder rule."
+        },
         "severity": {
           "type": "object",
           "default": {},
           "description": "Per-code severity overrides.",
           "additionalProperties": { "enum": ["error", "warn", "info"] }
         },
-        "indexTimeoutMs": { "type": "integer", "minimum": 0, "default": 4000, "description": "Storybook index fetch timeout." },
-        "renderSkewMs": { "type": "integer", "minimum": 0, "default": 5000, "description": "A render written this long after its verdict makes the verdict stale." },
-        "manifests": { "type": "array", "items": { "type": "string" }, "description": "Other manifests (relative to the store) whose baselines are not orphans. Default: every manifest.<suite>.json." }
+        "indexTimeoutMs": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 4000,
+          "description": "Storybook index fetch timeout."
+        },
+        "renderSkewMs": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 5000,
+          "description": "A render written this long after its verdict makes the verdict stale."
+        },
+        "manifests": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Other manifests (relative to the store) whose baselines are not orphans. Default: every manifest.<suite>.json."
+        }
       }
     },
-    "importPathPattern": { "type": "string", "description": "Advanced: a regular expression selecting the project's story files, with the component folder as group 1. Default: files under srcRoot." },
+    "importPathPattern": {
+      "type": "string",
+      "description": "Advanced: a regular expression selecting the project's story files, with the component folder as group 1. Default: files under srcRoot."
+    },
     "approvals": {
       "type": "object",
       "additionalProperties": false,
       "description": "How approvals are recorded.",
       "properties": {
-        "identity": { "enum": ["none", "git-email"], "default": "none", "description": "What each log line says about who approved: nothing (the commit and the pull request say who), or the git email." },
-        "level": { "enum": ["standard", "strict"], "default": "standard", "description": "standard: a typed phrase at a terminal, or the dashboard with the dashboard link. strict is reserved for a later release and refused for now." }
+        "identity": {
+          "enum": ["none", "git-email"],
+          "default": "none",
+          "description": "What each log line says about who approved: nothing (the commit and the pull request say who), or the git email."
+        },
+        "level": {
+          "enum": ["standard", "strict"],
+          "default": "standard",
+          "description": "standard: a typed phrase at a terminal, or the dashboard with the dashboard link. strict is reserved for a later release and refused for now."
+        }
       }
     },
     "dashboard": {
@@ -228,7 +508,10 @@
       "additionalProperties": false,
       "description": "The dashboard rebuilt on this project's design system (`pxsig dashboard build`).",
       "properties": {
-        "ui": { "type": "string", "description": "The UI adapter: a path to its module (a file, or a folder with an index file), relative to this folder, or a built-in adapter's name. See docs/ui/build-adapter.md." }
+        "ui": {
+          "type": "string",
+          "description": "The UI adapter: a path to its module (a file, or a folder with an index file), relative to this folder, or a built-in adapter's name. See docs/ui/build-adapter.md."
+        }
       }
     }
   }

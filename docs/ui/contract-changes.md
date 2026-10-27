@@ -5,12 +5,12 @@ pxsig's. A UI adapter records the version it was written for in its `conformance
 (`"contract": "1.0.0"`; an adapter without the field counts as 1.0.0), and `pxsig dashboard gaps`,
 `pxsig dashboard build` and `pxsig serve` compare it with this pxsig's:
 
-| The adapter is written for | What happens |
-| --- | --- |
-| the same version | nothing to do |
-| an older minor version (1.0 against 1.2) | it builds and works; `gaps` names what was added since, which renders its fallback or default until the adapter maps it |
+| The adapter is written for               | What happens                                                                                                                             |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| the same version                         | nothing to do                                                                                                                            |
+| an older minor version (1.0 against 1.2) | it builds and works; `gaps` names what was added since, which renders its fallback or default until the adapter maps it                  |
 | an older major version (1.x against 2.0) | `gaps` reports a problem and `build` refuses, with the migration notes of each major version below; `serve` keeps the prebuilt dashboard |
-| a newer version | a note: parts newer than this pxsig's contract are unused |
+| a newer version                          | a note: parts newer than this pxsig's contract are unused                                                                                |
 
 **Minor:** a new optional component or prop with a fallback, a new token or icon with a default.
 **Major:** a component or prop removed or changed in meaning, a new required component, a token or

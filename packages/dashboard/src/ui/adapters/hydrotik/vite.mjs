@@ -30,9 +30,16 @@ export function packagesIn(root) {
 
 export default function hydrotik() {
   const source = process.env.PXSIG_DS_SOURCE;
-  if (!source || !existsSync(source)) throw new Error('[pxsig ui] the hydrotik adapter needs PXSIG_DS_SOURCE: a checkout of the design-system monorepo');
+  if (!source || !existsSync(source))
+    throw new Error(
+      '[pxsig ui] the hydrotik adapter needs PXSIG_DS_SOURCE: a checkout of the design-system monorepo'
+    );
   const pkgs = packagesIn(source);
-  const need = (name) => pkgs[name] ?? (() => { throw new Error(`[pxsig ui] ${name} not found in ${source}`); })();
+  const need = (name) =>
+    pkgs[name] ??
+    (() => {
+      throw new Error(`[pxsig ui] ${name} not found in ${source}`);
+    })();
   const ds = need('@hydrotik/design-system');
   const dsModules = path.join(ds, 'node_modules');
   return {
@@ -49,6 +56,10 @@ export default function hydrotik() {
       '@vanilla-extract/recipes': path.join(dsModules, '@vanilla-extract/recipes'),
       recharts: path.join(dsModules, 'recharts'),
     },
-    optimizeDepsExclude: ['@vanilla-extract/css', '@vanilla-extract/css/fileScope', '@vanilla-extract/recipes'],
+    optimizeDepsExclude: [
+      '@vanilla-extract/css',
+      '@vanilla-extract/css/fileScope',
+      '@vanilla-extract/recipes',
+    ],
   };
 }

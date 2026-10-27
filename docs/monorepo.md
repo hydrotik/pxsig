@@ -2,11 +2,11 @@
 
 ## Terms
 
-| Term | Meaning |
-| --- | --- |
-| **Workspace** | The repository root: the folder that holds `pxsig.workspace.json`. Without one, the folder of the nearest `pxsig.config.json`. |
-| **Project** | One package under test: one source root, one Storybook that renders it, one store. Its name is unique in the workspace. |
-| **Store** | The project's pxsig data: manifest, baselines, approvals, a11y baseline, and the output of runs. `<project>/.pxsig/` by default. |
+| Term          | Meaning                                                                                                                          |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Workspace** | The repository root: the folder that holds `pxsig.workspace.json`. Without one, the folder of the nearest `pxsig.config.json`.   |
+| **Project**   | One package under test: one source root, one Storybook that renders it, one store. Its name is unique in the workspace.          |
+| **Store**     | The project's pxsig data: manifest, baselines, approvals, a11y baseline, and the output of runs. `<project>/.pxsig/` by default. |
 
 In a single-package repository the workspace and the project are the same folder, and there is no
 workspace file.
@@ -180,12 +180,12 @@ when there is no workspace file, unless a line for `*.psig` is already there.
 
 ## How each surface picks a project
 
-| Surface | Workspace | Project |
-| --- | --- | --- |
-| CLI `pxsig` | the current folder, `--workspace`, `PXSIG_WORKSPACE` | `--project <name or folder>`, `PXSIG_PROJECT`, else the rule above. Read commands with no project chosen in a multi-project workspace (or with `--all`) cover every project. |
-| MCP server | the folder the client starts it in, or `PXSIG_WORKSPACE` | the `project` argument on every tool; `pxsig_projects` lists them. Required when there are several. |
-| Server and dashboard | the folder it starts in, or `--workspace` | serves every project (or those in `--project a,b`). Files are under `/p/<project>/…`; API calls take `project`, or infer it from the entry or story id. The dashboard has a project switcher. |
-| Storybook addon | the preset walks up from Storybook's `configDir` | the server works out which project owns each story |
+| Surface              | Workspace                                                | Project                                                                                                                                                                                       |
+| -------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CLI `pxsig`          | the current folder, `--workspace`, `PXSIG_WORKSPACE`     | `--project <name or folder>`, `PXSIG_PROJECT`, else the rule above. Read commands with no project chosen in a multi-project workspace (or with `--all`) cover every project.                  |
+| MCP server           | the folder the client starts it in, or `PXSIG_WORKSPACE` | the `project` argument on every tool; `pxsig_projects` lists them. Required when there are several.                                                                                           |
+| Server and dashboard | the folder it starts in, or `--workspace`                | serves every project (or those in `--project a,b`). Files are under `/p/<project>/…`; API calls take `project`, or infer it from the entry or story id. The dashboard has a project switcher. |
+| Storybook addon      | the preset walks up from Storybook's `configDir`         | the server works out which project owns each story                                                                                                                                            |
 
 The CLI and the MCP server find a running server through `PXSIG_URL`, else `server.json`, else
 `server.port` in the workspace file, else port 6070. The addon's order is in

@@ -20,7 +20,14 @@
  * at each release from the nightly run's `bench-results` artifact (docs/releasing.md).
  */
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { platform, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -41,7 +48,14 @@ const STEPS = {
   affected: ['affected', '--since', 'HEAD~1', '--json'],
   list: ['list', '--json'],
   doctor: ['doctor', '--offline', '--json'],
-  plan: ['approve', 'plan', '--all-changed', '--reason', 'The benchmark plans every changed entry at once.', '--json'],
+  plan: [
+    'approve',
+    'plan',
+    '--all-changed',
+    '--reason',
+    'The benchmark plans every changed entry at once.',
+    '--json',
+  ],
   data: null,
 };
 // Exit codes that are a result, not a failure: doctor 1 = findings (the synthetic edit makes some).
@@ -57,9 +71,17 @@ process.stdout.write(String(body.length));
 function once(step, dir, env) {
   const args = STEPS[step] ? [cli, ...STEPS[step]] : ['--input-type=module', '-e', dataScript];
   const t0 = process.hrtime.bigint();
-  const r = spawnSync(process.execPath, args, { cwd: dir, env, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+  const r = spawnSync(process.execPath, args, {
+    cwd: dir,
+    env,
+    encoding: 'utf8',
+    maxBuffer: 256 * 1024 * 1024,
+  });
   const ms = Number(process.hrtime.bigint() - t0) / 1e6;
-  if (!OK[step].includes(r.status)) throw new Error(`${step}: exit ${r.status}\n${(r.stderr || r.stdout || r.error?.message || '').slice(0, 2000)}`);
+  if (!OK[step].includes(r.status))
+    throw new Error(
+      `${step}: exit ${r.status}\n${(r.stderr || r.stdout || r.error?.message || '').slice(0, 2000)}`
+    );
   return ms;
 }
 
@@ -76,7 +98,8 @@ export function judge(times, base) {
     const limit = was == null ? null : Math.max(was * 1.5, was + SLACK_MS);
     const why = [];
     if (budget != null && ms > budget) why.push(`over the ${budget} ms budget`);
-    if (limit != null && ms > limit) why.push(`more than 50% over the last release (${Math.round(was)} ms)`);
+    if (limit != null && ms > limit)
+      why.push(`more than 50% over the last release (${Math.round(was)} ms)`);
     return { step, ms, budget, was, limit, fail: why.length > 0, why };
   });
 }
@@ -92,13 +115,17 @@ async function main() {
   const given = flag(args, '--dir');
   const dir = given ? resolve(given) : mkdtempSync(join(tmpdir(), 'pxsig-bench-'));
   const env = { ...process.env };
-  const version = JSON.parse(readFileSync(join(root, 'packages', 'pxsig', 'package.json'), 'utf8')).version;
+  const version = JSON.parse(
+    readFileSync(join(root, 'packages', 'pxsig', 'package.json'), 'utf8')
+  ).version;
   try {
     let store = null;
     if (!given) {
       const t0 = Date.now();
       store = generateStore(dir);
-      console.log(`[bench] store: ${store.entries} entries + ${store.matrix} matrix, ${store.renders} renders, ${store.storyFiles} story files (${Date.now() - t0} ms)`);
+      console.log(
+        `[bench] store: ${store.entries} entries + ${store.matrix} matrix, ${store.renders} renders, ${store.storyFiles} story files (${Date.now() - t0} ms)`
+      );
     }
     const times = {};
     for (const step of Object.keys(STEPS)) {
@@ -108,10 +135,15 @@ async function main() {
     }
     const os = platform();
     const baselinePath = join(here, 'baseline.json');
-    const baseline = existsSync(baselinePath) ? JSON.parse(readFileSync(baselinePath, 'utf8')) : null;
+    const baseline = existsSync(baselinePath)
+      ? JSON.parse(readFileSync(baselinePath, 'utf8'))
+      : null;
     const base = baseline?.times?.[os] ?? null;
     const verdicts = judge(times, base);
-    const rows = verdicts.map((v) => `| ${v.step} | ${v.ms} | ${v.budget ?? '—'} | ${v.was ?? '—'} | ${v.fail ? `**fail**: ${v.why.join('; ')}` : 'ok'} |`);
+    const rows = verdicts.map(
+      (v) =>
+        `| ${v.step} | ${v.ms} | ${v.budget ?? '—'} | ${v.was ?? '—'} | ${v.fail ? `**fail**: ${v.why.join('; ')}` : 'ok'} |`
+    );
     const table = [
       `### pxsig scale benchmark (${os}, node ${process.version}, pxsig ${version})`,
       '',
@@ -123,13 +155,30 @@ async function main() {
       '',
     ].join('\n');
     console.log(table);
-    if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, table + '\n');
+    if (process.env.GITHUB_STEP_SUMMARY)
+      appendFileSync(process.env.GITHUB_STEP_SUMMARY, table + '\n');
     const out = flag(args, '--out');
     // The whole baseline with this OS's times replaced: a release commits the file as it is.
-    if (out) writeFileSync(out, JSON.stringify({ ...baseline, pxsig: version, measuredAt: new Date().toISOString(), node: process.version, runs, times: { ...baseline?.times, [os]: times } }, null, 2) + '\n');
+    if (out)
+      writeFileSync(
+        out,
+        JSON.stringify(
+          {
+            ...baseline,
+            pxsig: version,
+            measuredAt: new Date().toISOString(),
+            node: process.version,
+            runs,
+            times: { ...baseline?.times, [os]: times },
+          },
+          null,
+          2
+        ) + '\n'
+      );
     if (verdicts.some((v) => v.fail)) process.exitCode = 1;
   } finally {
-    if (!given && !args.includes('--keep')) rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
+    if (!given && !args.includes('--keep'))
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
     else if (!given) console.log(`[bench] kept ${dir}`);
   }
 }

@@ -47,5 +47,6 @@ function servers(options) {
 
 module.exports = {
   managerEntries: (entry = []) => [...entry, path.join(__dirname, 'manager.mjs')],
-  managerHead: (head, options) => `${head ?? ''}<script>window.__PXSIG__=${JSON.stringify({ servers: servers(options) })}</script>`,
+  managerHead: (head, options) =>
+    `${head ?? ''}<script>window.__PXSIG__=${JSON.stringify({ servers: servers(options) })}</script>`,
 };

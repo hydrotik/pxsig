@@ -71,17 +71,31 @@ const major = (v) => String(v ?? '').split('.')[0];
 /** JSON with sorted keys at every level, so equal objects hash equal. */
 export function canonical(v) {
   if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
-  if (v && typeof v === 'object') return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canonical(v[k])}`).join(',')}}`;
+  if (v && typeof v === 'object')
+    return `{${Object.keys(v)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${canonical(v[k])}`)
+      .join(',')}}`;
   return JSON.stringify(v ?? null);
 }
 
 /** The major fields only: what `id` is computed over. */
 export function majorView(env) {
   return {
-    browser: { name: env.browser?.name ?? null, major: major(env.browser?.version), channel: env.browser?.channel ?? null, launchArgs: env.browser?.launchArgs ?? [] },
+    browser: {
+      name: env.browser?.name ?? null,
+      major: major(env.browser?.version),
+      channel: env.browser?.channel ?? null,
+      launchArgs: env.browser?.launchArgs ?? [],
+    },
     os: { platform: env.os?.platform ?? null, arch: env.os?.arch ?? null },
     fonts: { probe: env.fonts?.probe?.digest ?? null },
-    render: Object.fromEntries(['dpr', 'gpu', 'colorGamut', 'timezone', 'locale', 'reducedMotion'].map((k) => [k, env.render?.[k] ?? null])),
+    render: Object.fromEntries(
+      ['dpr', 'gpu', 'colorGamut', 'timezone', 'locale', 'reducedMotion'].map((k) => [
+        k,
+        env.render?.[k] ?? null,
+      ])
+    ),
     capture: { pipeline: env.capture?.pipeline ?? null },
   };
 }
@@ -117,7 +131,8 @@ export const PROBE_PAGE = ({ families, text, sizes }) => {
     const gl = document.createElement('canvas').getContext('webgl');
     if (gl) {
       const ext = gl.getExtension('WEBGL_debug_renderer_info');
-      renderer = (ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) ?? '';
+      renderer =
+        (ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) ?? '';
     }
   } catch {
     renderer = null;
@@ -126,7 +141,11 @@ export const PROBE_PAGE = ({ families, text, sizes }) => {
   return {
     widths,
     renderer,
-    colorGamut: matchMedia('(color-gamut: p3)').matches ? 'p3' : matchMedia('(color-gamut: srgb)').matches ? 'srgb' : 'unknown',
+    colorGamut: matchMedia('(color-gamut: p3)').matches
+      ? 'p3'
+      : matchMedia('(color-gamut: srgb)').matches
+        ? 'srgb'
+        : 'unknown',
     timezone: opts.timeZone ?? null,
     locale: navigator.language ?? null,
     // For a remote browser only (lib/capture.mjs connectBrowser): its OS, as the page sees it.
@@ -140,7 +159,13 @@ export const PROBE_PAGE = ({ families, text, sizes }) => {
  */
 export function osFromProbe(platform) {
   const p = String(platform ?? '');
-  if (/linux/i.test(p)) return { platform: 'linux', arch: /aarch64|arm64|armv8/i.test(p) ? 'arm64' : /x86_64|amd64/i.test(p) ? 'x64' : null, release: null, distro: null };
+  if (/linux/i.test(p))
+    return {
+      platform: 'linux',
+      arch: /aarch64|arm64|armv8/i.test(p) ? 'arm64' : /x86_64|amd64/i.test(p) ? 'x64' : null,
+      release: null,
+      distro: null,
+    };
   if (/^mac/i.test(p)) return { platform: 'darwin', arch: null, release: null, distro: null };
   if (/^win/i.test(p)) return { platform: 'win32', arch: 'x64', release: null, distro: null };
   return { platform: null, arch: null, release: null, distro: null };
@@ -173,7 +198,14 @@ export function systemFonts(platform = os.platform()) {
   try {
     const r = spawnSync('fc-list', [':', 'family', 'style'], { encoding: 'utf8', timeout: 5000 });
     if (r.status !== 0 || !r.stdout) return null;
-    return sha(r.stdout.split('\n').map((l) => l.trim()).filter(Boolean).sort().join('\n'));
+    return sha(
+      r.stdout
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .sort()
+        .join('\n')
+    );
   } catch {
     return null;
   }
@@ -183,7 +215,7 @@ export function systemFonts(platform = os.platform()) {
 export function playwrightVersion(resolvePkg) {
   try {
     const p = resolvePkg();
-    return p && existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')).version ?? null : null;
+    return p && existsSync(p) ? (JSON.parse(readFileSync(p, 'utf8')).version ?? null) : null;
   } catch {
     return null;
   }
@@ -194,19 +226,40 @@ export function playwrightVersion(resolvePkg) {
  * name; `channel` the channel it launched with. The probe page is a fresh context with the
  * capture settings (DPR 1, reduced motion), closed before returning.
  */
-export async function collectEnv(browser, { type = 'chromium', channel = null, launchArgs = [], fontProbe = [], playwright = null, pxsig = null, engine = null, remote = null, env = process.env } = {}) {
+export async function collectEnv(
+  browser,
+  {
+    type = 'chromium',
+    channel = null,
+    launchArgs = [],
+    fontProbe = [],
+    playwright = null,
+    pxsig = null,
+    engine = null,
+    remote = null,
+    env = process.env,
+  } = {}
+) {
   const families = [...new Set([...PROBE_FAMILIES, ...fontProbe])];
-  const ctx = await browser.newContext({ viewport: { width: 400, height: 300 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
+  const ctx = await browser.newContext({
+    viewport: { width: 400, height: 300 },
+    deviceScaleFactor: 1,
+    reducedMotion: 'reduce',
+  });
   let probe;
   try {
     const page = await ctx.newPage();
-    await page.setContent('<!doctype html><html><head><meta charset="utf-8"></head><body></body></html>');
+    await page.setContent(
+      '<!doctype html><html><head><meta charset="utf-8"></head><body></body></html>'
+    );
     await page.evaluate(() => (document.fonts ? document.fonts.ready : null)).catch(() => {});
     probe = await page.evaluate(PROBE_PAGE, { families, text: PROBE_TEXT, sizes: PROBE_SIZES });
   } finally {
     await ctx.close().catch(() => {});
   }
-  const perFamily = Object.fromEntries(families.map((f) => [f, sha(JSON.stringify(probe.widths[f] ?? null)).slice(0, 8)]));
+  const perFamily = Object.fromEntries(
+    families.map((f) => [f, sha(JSON.stringify(probe.widths[f] ?? null)).slice(0, 8)])
+  );
   const platform = os.platform();
   // A remote browser (`remote`: a browser server this process connected to) renders on its own
   // machine: its OS comes from the probe page, its image from what `pxsig browser start` recorded,
@@ -217,15 +270,36 @@ export async function collectEnv(browser, { type = 'chromium', channel = null, l
       ? { image: rec.image ?? null, revision: rec.revision ?? null, digest: rec.digest ?? null }
       : null
     : env.PXSIG_IMAGE || env.PXSIG_IMAGE_REVISION || env.PXSIG_IMAGE_DIGEST
-      ? { image: env.PXSIG_IMAGE || null, revision: env.PXSIG_IMAGE_REVISION || null, digest: env.PXSIG_IMAGE_DIGEST || null }
+      ? {
+          image: env.PXSIG_IMAGE || null,
+          revision: env.PXSIG_IMAGE_REVISION || null,
+          digest: env.PXSIG_IMAGE_DIGEST || null,
+        }
       : null;
   const out = {
     v: ENV_VERSION,
-    browser: { name: browser.browserType?.().name?.() ?? type, version: browser.version?.() ?? null, channel: channel ?? null, launchArgs },
+    browser: {
+      name: browser.browserType?.().name?.() ?? type,
+      version: browser.version?.() ?? null,
+      channel: channel ?? null,
+      launchArgs,
+    },
     playwright,
-    os: remote ? osFromProbe(probe.platform) : { platform, arch: os.arch(), release: os.release(), distro: distro(platform) },
-    fonts: { probe: { digest: sha(canonical(perFamily)), families: perFamily }, system: remote ? null : systemFonts(platform) },
-    render: { dpr: 1, gpu: gpuClass(probe.renderer), colorGamut: probe.colorGamut, timezone: probe.timezone, locale: probe.locale, reducedMotion: 'reduce' },
+    os: remote
+      ? osFromProbe(probe.platform)
+      : { platform, arch: os.arch(), release: os.release(), distro: distro(platform) },
+    fonts: {
+      probe: { digest: sha(canonical(perFamily)), families: perFamily },
+      system: remote ? null : systemFonts(platform),
+    },
+    render: {
+      dpr: 1,
+      gpu: gpuClass(probe.renderer),
+      colorGamut: probe.colorGamut,
+      timezone: probe.timezone,
+      locale: probe.locale,
+      reducedMotion: 'reduce',
+    },
     capture: { pipeline: CAPTURE_PIPELINE },
     container,
     pxsig,
@@ -240,7 +314,9 @@ export async function collectEnv(browser, { type = 'chromium', channel = null, l
 export function fontFamiliesDiffering(a, b) {
   const fa = a?.fonts?.probe?.families ?? {};
   const fb = b?.fonts?.probe?.families ?? {};
-  return [...new Set([...Object.keys(fa), ...Object.keys(fb)])].filter((f) => fa[f] !== fb[f]).sort();
+  return [...new Set([...Object.keys(fa), ...Object.keys(fb)])]
+    .filter((f) => fa[f] !== fb[f])
+    .sort();
 }
 
 /**
@@ -280,12 +356,22 @@ export function compareEnv(base, cur, ignore = []) {
 /** "browser.version 141→142", "fonts.probe: Inter", "render.gpu angle-metal→swiftshader". */
 export function describeDiff(base, cur, cmp, { majorOnly = true } = {}) {
   const tier = Object.fromEntries(FIELDS);
-  const show = (v) => (v == null ? 'none' : Array.isArray(v) ? (v.length ? v.join(' ') : 'none') : typeof v === 'object' ? 'set' : String(v));
+  const show = (v) =>
+    v == null
+      ? 'none'
+      : Array.isArray(v)
+        ? v.length
+          ? v.join(' ')
+          : 'none'
+        : typeof v === 'object'
+          ? 'set'
+          : String(v);
   return (cmp.diff ?? [])
     .filter((f) => !majorOnly || tier[f] === 'major')
     .map((f) => {
       if (f === 'fonts.probe') return `fonts.probe: ${(cmp.fonts ?? []).join(', ') || 'changed'}`;
-      if (f === 'browser.version') return `browser.version ${major(get(base, f)) || '?'}→${major(get(cur, f)) || '?'}`;
+      if (f === 'browser.version')
+        return `browser.version ${major(get(base, f)) || '?'}→${major(get(cur, f)) || '?'}`;
       return `${f} ${show(get(base, f))}→${show(get(cur, f))}`;
     });
 }
@@ -303,7 +389,12 @@ export function annotateRow(row, { current, envs, ignore = [] }) {
   delete out.envFonts;
   if (!cur || !baseId) return { ...out, envMatch: 'unknown' };
   const cmp = compareEnv(envs?.[baseId], cur, ignore);
-  return { ...out, envMatch: cmp.match, ...(cmp.diff ? { envDiff: cmp.diff } : {}), ...(cmp.fonts ? { envFonts: cmp.fonts } : {}) };
+  return {
+    ...out,
+    envMatch: cmp.match,
+    ...(cmp.diff ? { envDiff: cmp.diff } : {}),
+    ...(cmp.fonts ? { envFonts: cmp.fonts } : {}),
+  };
 }
 
 /**
@@ -315,7 +406,10 @@ export function envSummary(rows, envs = {}) {
   const fields = [];
   const seen = new Set();
   for (const r of mism) {
-    for (const d of describeDiff(envs[r.baselineEnv], envs[r.env], { diff: r.envDiff, fonts: r.envFonts })) {
+    for (const d of describeDiff(envs[r.baselineEnv], envs[r.env], {
+      diff: r.envDiff,
+      fonts: r.envFonts,
+    })) {
       const key = d.split(/[ :]/)[0] + (d.startsWith('fonts.probe') ? d : '');
       if (seen.has(key)) continue;
       seen.add(key);
@@ -347,10 +441,13 @@ export function strictEnvCheck(entries, sigPath, current, ignore = []) {
     const cmp = compareEnv(base, cur, ignore);
     if (cmp.match !== 'mismatch') continue;
     bad.push(e.id);
-    for (const d of describeDiff(base, cur, cmp)) fields.add(d.startsWith('fonts.probe') ? 'fonts.probe' : d);
+    for (const d of describeDiff(base, cur, cmp))
+      fields.add(d.startsWith('fonts.probe') ? 'fonts.probe' : d);
     for (const f of cmp.fonts ?? []) fonts.add(f);
   }
-  const list = [...fields].map((f) => (f === 'fonts.probe' ? `fonts.probe: ${[...fonts].join(', ')}` : f));
+  const list = [...fields].map((f) =>
+    f === 'fonts.probe' ? `fonts.probe: ${[...fonts].join(', ')}` : f
+  );
   return { count: bad.length, fields: list, ids: bad };
 }
 
@@ -362,7 +459,13 @@ export const envConfig = (config) => ({
 });
 
 /** `{ <envId>: env }` for the run's environments (`{ chromium: env, … }`). */
-export const byId = (current) => Object.fromEntries(Object.values(current ?? {}).filter(Boolean).map((e) => [e.id, e]));
+export const byId = (current) =>
+  Object.fromEntries(
+    Object.values(current ?? {})
+      .filter(Boolean)
+      .map((e) => [e.id, e])
+  );
 
 /** Whether `PXSIG_STRICT_ENV` asks for strict mode. */
-export const strictFromEnv = (env = process.env) => /^(1|true|yes)$/i.test(env.PXSIG_STRICT_ENV ?? '');
+export const strictFromEnv = (env = process.env) =>
+  /^(1|true|yes)$/i.test(env.PXSIG_STRICT_ENV ?? '');

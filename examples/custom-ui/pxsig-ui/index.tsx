@@ -66,40 +66,84 @@ export const TopNav = ({ label, brand, className, children }: C.TopNavProps) => 
   </nav>
 );
 export const NavList = ({ children }: C.NavListProps) => (
-  <ul>
-    {React.Children.map(children, (c) => (c ? <li>{c}</li> : null))}
-  </ul>
+  <ul>{React.Children.map(children, (c) => (c ? <li>{c}</li> : null))}</ul>
 );
 export const NavLink = ({ href, active, count, countLabel, children }: C.NavLinkProps) => (
-  <a href={href} aria-current={active ? 'page' : undefined} aria-label={count ? `${String(children)}, ${countLabel ?? count}` : undefined}>
+  <a
+    href={href}
+    aria-current={active ? 'page' : undefined}
+    aria-label={count ? `${String(children)}, ${countLabel ?? count}` : undefined}
+  >
     {children}
     {count ? <span className="plain-badge"> {count > 99 ? '99+' : count}</span> : null}
   </a>
 );
 
-export function Button({ emphasis = 'solid', size, href, external, children, ...rest }: C.ButtonProps) {
+export function Button({
+  emphasis = 'solid',
+  size,
+  href,
+  external,
+  children,
+  ...rest
+}: C.ButtonProps) {
   if (href)
     return (
-      <a className="plain-button" data-emphasis={emphasis} data-size={size} href={href} title={rest.title} aria-label={rest['aria-label']} {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}>
+      <a
+        className="plain-button"
+        data-emphasis={emphasis}
+        data-size={size}
+        href={href}
+        title={rest.title}
+        aria-label={rest['aria-label']}
+        {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}
+      >
         {children}
       </a>
     );
   return (
-    <button type="button" className="plain-button" data-emphasis={emphasis} data-size={size} {...rest}>
+    <button
+      type="button"
+      className="plain-button"
+      data-emphasis={emphasis}
+      data-size={size}
+      {...rest}
+    >
       {children}
     </button>
   );
 }
-export const IconButton = ({ label, title, emphasis = 'outline', size, disabled, onClick, children }: C.IconButtonProps) => (
-  <button type="button" className="plain-button" data-emphasis={emphasis} data-size={size} aria-label={label} title={title} disabled={disabled} onClick={onClick}>
+export const IconButton = ({
+  label,
+  title,
+  emphasis = 'outline',
+  size,
+  disabled,
+  onClick,
+  children,
+}: C.IconButtonProps) => (
+  <button
+    type="button"
+    className="plain-button"
+    data-emphasis={emphasis}
+    data-size={size}
+    aria-label={label}
+    title={title}
+    disabled={disabled}
+    onClick={onClick}
+  >
     {children}
   </button>
 );
 
-export const Card = ({ children }: C.CardProps) => <section className="plain-card">{children}</section>;
+export const Card = ({ children }: C.CardProps) => (
+  <section className="plain-card">{children}</section>
+);
 export const CardHeader = ({ children }: C.CardHeaderProps) => <header>{children}</header>;
 export const CardTitle = ({ children }: C.CardTitleProps) => <h3>{children}</h3>;
-export const CardDescription = ({ className, children }: C.CardDescriptionProps) => <p className={className}>{children}</p>;
+export const CardDescription = ({ className, children }: C.CardDescriptionProps) => (
+  <p className={className}>{children}</p>
+);
 export const CardContent = ({ children }: C.CardContentProps) => <div>{children}</div>;
 
 const GLYPH: Record<C.IconName, string> = {
@@ -122,13 +166,28 @@ export const Icon = ({ name, size, className }: C.IconProps) => (
   </span>
 );
 export const StatusBadge = ({ tone, icon, label, title, className }: C.StatusBadgeProps) => (
-  <span className={['plain-status', className].filter(Boolean).join(' ')} data-tone={tone} title={title}>
+  <span
+    className={['plain-status', className].filter(Boolean).join(' ')}
+    data-tone={tone}
+    title={title}
+  >
     <Icon name={icon} />
     <span>{label}</span>
   </span>
 );
-export const Badge = ({ tone = 'neutral', emphasis = 'subtle', title, className, children }: C.BadgeProps) => (
-  <span className={['plain-badge', className].filter(Boolean).join(' ')} data-tone={tone} data-emphasis={emphasis} title={title}>
+export const Badge = ({
+  tone = 'neutral',
+  emphasis = 'subtle',
+  title,
+  className,
+  children,
+}: C.BadgeProps) => (
+  <span
+    className={['plain-badge', className].filter(Boolean).join(' ')}
+    data-tone={tone}
+    data-emphasis={emphasis}
+    title={title}
+  >
     {children}
   </span>
 );
@@ -173,7 +232,13 @@ export const DialogDescription = ({ className, style, children }: C.DialogDescri
 );
 
 export const Select = ({ value, onValueChange, options, label, inlineSize }: C.SelectProps) => (
-  <select className="plain-select" value={value} aria-label={label} style={inlineSize ? { inlineSize } : undefined} onChange={(e) => onValueChange(e.target.value)}>
+  <select
+    className="plain-select"
+    value={value}
+    aria-label={label}
+    style={inlineSize ? { inlineSize } : undefined}
+    onChange={(e) => onValueChange(e.target.value)}
+  >
     {options.map((o) => (
       <option key={o.value} value={o.value}>
         {o.label}

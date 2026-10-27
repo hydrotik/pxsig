@@ -20,7 +20,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 export default () =>
   dashboardConfig({
     cwd: process.env.INIT_CWD ?? process.cwd(),
-    outDir: process.env.PXSIG_DASHBOARD_OUT ? path.resolve(process.env.PXSIG_DASHBOARD_OUT) : path.resolve(here, '../pxsig/dist/dashboard'),
+    outDir: process.env.PXSIG_DASHBOARD_OUT
+      ? path.resolve(process.env.PXSIG_DASHBOARD_OUT)
+      : path.resolve(here, '../pxsig/dist/dashboard'),
     resolveFrom: [here],
     react,
     vanillaExtractPlugin,

@@ -20,8 +20,8 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
 use pxsig_core::{
-    compare_with_detail, detail_of, pixel_diff, signature_of, CompareResult, Detail, DetailParams, GateThresholds,
-    PxsigRecord, SPEC_VERSION,
+    compare_with_detail, detail_of, pixel_diff, signature_of, CompareResult, Detail, DetailParams,
+    GateThresholds, PxsigRecord, SPEC_VERSION,
 };
 
 use crate::gate::{self, GateSpec};
@@ -103,7 +103,8 @@ pub struct Entry {
 }
 
 pub fn load_manifest(path: &Path) -> Result<Manifest> {
-    let raw = fs::read_to_string(path).with_context(|| format!("manifest not found: {}", path.display()))?;
+    let raw = fs::read_to_string(path)
+        .with_context(|| format!("manifest not found: {}", path.display()))?;
     let m: Manifest = serde_json::from_str(&raw).context("manifest is not valid JSON")?;
     if m.stories.is_empty() {
         bail!("manifest has no stories");
@@ -115,13 +116,21 @@ pub fn load_manifest(path: &Path) -> Result<Manifest> {
 pub fn parse_only(spec: Option<&str>) -> Result<Option<HashSet<String>>> {
     let Some(spec) = spec else { return Ok(None) };
     let text = match spec.strip_prefix('@') {
-        Some(file) => fs::read_to_string(file).with_context(|| format!("reading --only file {file}"))?,
+        Some(file) => {
+            fs::read_to_string(file).with_context(|| format!("reading --only file {file}"))?
+        }
         None => spec.replace(',', "\n"),
     };
     let ids: HashSet<String> = if text.trim_start().starts_with('[') {
-        serde_json::from_str::<Vec<String>>(&text)?.into_iter().collect()
+        serde_json::from_str::<Vec<String>>(&text)?
+            .into_iter()
+            .collect()
     } else {
-        text.lines().map(str::trim).filter(|s| !s.is_empty()).map(String::from).collect()
+        text.lines()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(String::from)
+            .collect()
     };
     Ok(Some(ids))
 }
@@ -152,19 +161,29 @@ pub fn load_baseline(sig: &Path) -> Result<Baseline> {
         let env = p.header.get("env").filter(|e| e.is_object()).cloned();
         (p.record, p.image, env)
     } else {
-        let r: PxsigRecord =
-            serde_json::from_slice(&raw).map_err(|e| anyhow!("baseline is not valid JSON ({}): {e}", sig.display()))?;
+        let r: PxsigRecord = serde_json::from_slice(&raw)
+            .map_err(|e| anyhow!("baseline is not valid JSON ({}): {e}", sig.display()))?;
         (r, None, None)
     };
     if record.version != SPEC_VERSION {
-        bail!("spec version mismatch (baseline v{}, tool v{SPEC_VERSION})", record.version);
+        bail!(
+            "spec version mismatch (baseline v{}, tool v{SPEC_VERSION})",
+            record.version
+        );
     }
     let (grid, base) = record.baseline().map_err(|e| anyhow!(e))?;
     let detail = match &record.detail {
         Some(d) => Some(d.decode().map_err(|e| anyhow!("{}: {e}", sig.display()))?),
         None => None,
     };
-    Ok(Baseline { record, grid, sig: base, detail, image, env })
+    Ok(Baseline {
+        record,
+        grid,
+        sig: base,
+        detail,
+        image,
+        env,
+    })
 }
 
 pub fn compare_png(png: &Path, b: &Baseline, gate: &GateThresholds) -> Result<CompareResult> {
@@ -172,9 +191,26 @@ pub fn compare_png(png: &Path, b: &Baseline, gate: &GateThresholds) -> Result<Co
     Ok(compare_rgba(&data, w, h, b, gate))
 }
 
-pub fn compare_rgba(data: &[u8], w: usize, h: usize, b: &Baseline, gate: &GateThresholds) -> CompareResult {
+pub fn compare_rgba(
+    data: &[u8],
+    w: usize,
+    h: usize,
+    b: &Baseline,
+    gate: &GateThresholds,
+) -> CompareResult {
     let r = &b.record;
-    compare_with_detail(&b.sig, &r.ahash, &r.dhash, &r.sha256, b.grid, b.detail.as_ref(), data, w, h, gate)
+    compare_with_detail(
+        &b.sig,
+        &r.ahash,
+        &r.dhash,
+        &r.sha256,
+        b.grid,
+        b.detail.as_ref(),
+        data,
+        w,
+        h,
+        gate,
+    )
 }
 
 /// The spec v1 `metrics` object, key for key (including `matchScore` / `threshold`).
@@ -289,7 +325,10 @@ fn pixels_json(base: &[u8], cur: &Path, tolerance: u8) -> Result<Value> {
 /// Check every (selected) manifest entry. Returns `{ summary, results }`.
 pub fn check(o: &CheckOpts) -> Result<Value> {
     let m = load_manifest(&o.manifest)?;
-    let out_dir = o.out_dir.clone().unwrap_or_else(|| PathBuf::from("pxsig-diff"));
+    let out_dir = o
+        .out_dir
+        .clone()
+        .unwrap_or_else(|| PathBuf::from("pxsig-diff"));
     if o.artifacts != Artifacts::None {
         fs::create_dir_all(&out_dir)?;
     }
@@ -297,8 +336,11 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
         fs::create_dir_all(c)?;
     }
     let t0 = Instant::now();
-    let entries: Vec<&Entry> =
-        m.stories.iter().filter(|s| o.only.as_ref().is_none_or(|only| only.contains(&s.id))).collect();
+    let entries: Vec<&Entry> = m
+        .stories
+        .iter()
+        .filter(|s| o.only.as_ref().is_none_or(|only| only.contains(&s.id)))
+        .collect();
 
     let rows: Vec<Value> = entries
         .par_iter()
@@ -408,15 +450,24 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
 /// caller can say which fields differ without reading every header itself. One header per id is
 /// read, from the first entry that names it.
 fn baseline_envs(m: &Manifest, root: &Path, rows: &[Value]) -> serde_json::Map<String, Value> {
-    let sigs: std::collections::HashMap<&str, &str> = m.stories.iter().map(|s| (s.id.as_str(), s.sig.as_str())).collect();
+    let sigs: std::collections::HashMap<&str, &str> = m
+        .stories
+        .iter()
+        .map(|s| (s.id.as_str(), s.sig.as_str()))
+        .collect();
     let mut out = serde_json::Map::new();
     for r in rows {
-        let (Some(id), Some(entry)) = (r["baselineEnv"].as_str(), r["id"].as_str()) else { continue };
+        let (Some(id), Some(entry)) = (r["baselineEnv"].as_str(), r["id"].as_str()) else {
+            continue;
+        };
         if out.contains_key(id) {
             continue;
         }
         let Some(sig) = sigs.get(entry) else { continue };
-        let env = fs::read(root.join(sig)).ok().and_then(|b| pxsig_core::psig::header(&b).ok()).and_then(|h| h.get("env").cloned());
+        let env = fs::read(root.join(sig))
+            .ok()
+            .and_then(|b| pxsig_core::psig::header(&b).ok())
+            .and_then(|h| h.get("env").cloned());
         if let Some(e) = env.filter(|e| e["id"].as_str() == Some(id)) {
             out.insert(id.to_string(), e);
         }
@@ -432,7 +483,8 @@ const IDENTICAL_MIN: usize = 5;
 /// Each such row becomes an error, which nothing approves. A group needs `IDENTICAL_MIN` entries
 /// and a tenth of the rows checked. Returns the groups, largest first, for the summary.
 pub fn flag_identical_renders(rows: &mut [Value]) -> Vec<Value> {
-    let mut groups: std::collections::HashMap<String, Vec<usize>> = std::collections::HashMap::new();
+    let mut groups: std::collections::HashMap<String, Vec<usize>> =
+        std::collections::HashMap::new();
     for (i, r) in rows.iter().enumerate() {
         if r["pass"] != json!(true) && r["error"].is_null() {
             if let Some(h) = r["render"].as_str() {
@@ -454,14 +506,26 @@ pub fn flag_identical_renders(rows: &mut [Value]) -> Vec<Value> {
             rows[i]["error"] = json!(note);
             rows[i]["note"] = json!(note);
         }
-        let ids: Vec<Value> = idx.iter().take(10).map(|&i| rows[i]["id"].clone()).collect();
-        out.push((idx.len(), json!({ "render": render, "count": idx.len(), "ids": ids })));
+        let ids: Vec<Value> = idx
+            .iter()
+            .take(10)
+            .map(|&i| rows[i]["id"].clone())
+            .collect();
+        out.push((
+            idx.len(),
+            json!({ "render": render, "count": idx.len(), "ids": ids }),
+        ));
     }
     out.sort_by_key(|a| std::cmp::Reverse(a.0));
     out.into_iter().map(|(_, v)| v).collect()
 }
 
-fn append_history(path: &Path, summary: &Value, rows: &[Value], enforcement: Option<&Value>) -> Result<()> {
+fn append_history(
+    path: &Path,
+    summary: &Value,
+    rows: &[Value],
+    enforcement: Option<&Value>,
+) -> Result<()> {
     if let Some(d) = path.parent() {
         fs::create_dir_all(d)?;
     }
@@ -469,16 +533,23 @@ fn append_history(path: &Path, summary: &Value, rows: &[Value], enforcement: Opt
     let per: serde_json::Map<String, Value> = rows
         .iter()
         .map(|r| {
-            let tiles = r["detail"]["changedTiles"].as_u64().unwrap_or(0) + r["detail"]["newEdgeTiles"].as_u64().unwrap_or(0);
+            let tiles = r["detail"]["changedTiles"].as_u64().unwrap_or(0)
+                + r["detail"]["newEdgeTiles"].as_u64().unwrap_or(0);
             (
                 r["id"].as_str().unwrap_or_default().to_string(),
-                json!([u8::from(r["pass"] == json!(true)), r["metrics"]["ssim"], r["metrics"]["changedCells"], tiles]),
+                json!([
+                    u8::from(r["pass"] == json!(true)),
+                    r["metrics"]["ssim"],
+                    r["metrics"]["changedCells"],
+                    tiles
+                ]),
             )
         })
         .collect();
     let mut line = json!({ "at": io::iso_now(), "summary": summary, "rows": per });
     if let Some(e) = enforcement {
-        let would = summary["failed"].as_u64().unwrap_or(0) > 0 || e["a11yNew"].as_u64().unwrap_or(0) > 0;
+        let would =
+            summary["failed"].as_u64().unwrap_or(0) > 0 || e["a11yNew"].as_u64().unwrap_or(0) > 0;
         line["enforcement"] = e["gates"].clone();
         line["wouldFail"] = json!(would);
     }
@@ -521,28 +592,38 @@ impl EnvPlan {
 pub fn parse_enforcement(spec: Option<&str>) -> Result<Option<Value>> {
     let Some(spec) = spec else { return Ok(None) };
     let text = match spec.strip_prefix('@') {
-        Some(file) => fs::read_to_string(file).with_context(|| format!("reading --enforcement file {file}"))?,
+        Some(file) => fs::read_to_string(file)
+            .with_context(|| format!("reading --enforcement file {file}"))?,
         None => spec.to_string(),
     };
-    Ok(Some(serde_json::from_str(&text).context("--enforcement is not JSON ({ gates, a11yNew })")?))
+    Ok(Some(serde_json::from_str(&text).context(
+        "--enforcement is not JSON ({ gates, a11yNew })",
+    )?))
 }
 
 /// Read `--env @file` (or inline JSON).
 pub fn parse_env_plan(spec: Option<&str>) -> Result<Option<EnvPlan>> {
     let Some(spec) = spec else { return Ok(None) };
     let text = match spec.strip_prefix('@') {
-        Some(file) => fs::read_to_string(file).with_context(|| format!("reading --env file {file}"))?,
+        Some(file) => {
+            fs::read_to_string(file).with_context(|| format!("reading --env file {file}"))?
+        }
         None => spec.to_string(),
     };
-    Ok(Some(serde_json::from_str(&text).context("--env is not an env plan ({ envs, byId })")?))
+    Ok(Some(
+        serde_json::from_str(&text).context("--env is not an env plan ({ envs, byId })")?,
+    ))
 }
 
 /// Write a baseline for every (selected) entry. Returns `{ summary, errors }`.
 pub fn baseline(o: &BaselineOpts) -> Result<Value> {
     let m = load_manifest(&o.manifest)?;
     let t0 = Instant::now();
-    let entries: Vec<&Entry> =
-        m.stories.iter().filter(|s| o.only.as_ref().is_none_or(|only| only.contains(&s.id))).collect();
+    let entries: Vec<&Entry> = m
+        .stories
+        .iter()
+        .filter(|s| o.only.as_ref().is_none_or(|only| only.contains(&s.id)))
+        .collect();
     let errors: Vec<String> = entries
         .par_iter()
         .filter_map(|s| {
@@ -550,10 +631,24 @@ pub fn baseline(o: &BaselineOpts) -> Result<Value> {
             let detail = !o.no_detail && s.detail.or(m.detail).unwrap_or(true);
             let png = o.png_dir.join(format!("{}.png", s.id));
             // An explicit story grid wins; otherwise the manifest's min-cell policy applies.
-            let min_cell = if s.grid.is_some() { None } else { m.min_cell_px };
+            let min_cell = if s.grid.is_some() {
+                None
+            } else {
+                m.min_cell_px
+            };
             let entry = json!({ "id": s.id, "story": s.story, "mode": s.mode, "state": s.state });
             let extra = o.env.as_ref().and_then(|p| p.extra_for(&s.id));
-            capture_png_policy(&png, &o.root.join(&s.sig), max_grid, min_cell, detail, Some(&entry), extra.as_ref()).err().map(|e| format!("{}: {e:#}", s.id))
+            capture_png_policy(
+                &png,
+                &o.root.join(&s.sig),
+                max_grid,
+                min_cell,
+                detail,
+                Some(&entry),
+                extra.as_ref(),
+            )
+            .err()
+            .map(|e| format!("{}: {e:#}", s.id))
         })
         .collect();
     Ok(json!({
@@ -575,18 +670,43 @@ pub fn grid_for(w: usize, h: usize, max_grid: usize, min_cell: Option<usize>) ->
     }
 }
 
-pub fn capture_png_policy(png: &Path, out: &Path, max_grid: usize, min_cell: Option<usize>, detail: bool, entry: Option<&Value>, extra: Option<&serde_json::Map<String, Value>>) -> Result<PxsigRecord> {
+pub fn capture_png_policy(
+    png: &Path,
+    out: &Path,
+    max_grid: usize,
+    min_cell: Option<usize>,
+    detail: bool,
+    entry: Option<&Value>,
+    extra: Option<&serde_json::Map<String, Value>>,
+) -> Result<PxsigRecord> {
     let (_, w, h) = io::png_size(png)?;
-    capture_png(png, out, grid_for(w, h, max_grid, min_cell), detail, entry, extra)
+    capture_png(
+        png,
+        out,
+        grid_for(w, h, max_grid, min_cell),
+        detail,
+        entry,
+        extra,
+    )
 }
 
 /// Build and write one baseline (optionally with the detail channel). A `.psig` output also
 /// carries the render itself, byte for byte, as its baseline image.
-pub fn capture_png(png: &Path, out: &Path, grid: usize, detail: bool, entry: Option<&Value>, extra: Option<&serde_json::Map<String, Value>>) -> Result<PxsigRecord> {
+pub fn capture_png(
+    png: &Path,
+    out: &Path,
+    grid: usize,
+    detail: bool,
+    entry: Option<&Value>,
+    extra: Option<&serde_json::Map<String, Value>>,
+) -> Result<PxsigRecord> {
     let bytes = fs::read(png).with_context(|| format!("PNG not found: {}", png.display()))?;
     let (data, w, h) = io::decode_png_bytes(&bytes, png)?;
     let s = signature_of(&data, w, h, grid);
-    let source = png.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    let source = png
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
     let mut record = PxsigRecord::from_signature(&s, &source, &io::iso_now());
     if detail {
         record.detail = Some(detail_of(&data, w, h, DetailParams::default()).to_record());
@@ -607,7 +727,11 @@ pub struct TrimOpts {
 pub fn trim(o: &TrimOpts) -> Result<Value> {
     let t0 = Instant::now();
     let files: Vec<PathBuf> = match &o.only {
-        Some(ids) => ids.iter().map(|id| o.dir.join(format!("{id}.png"))).filter(|p| p.is_file()).collect(),
+        Some(ids) => ids
+            .iter()
+            .map(|id| o.dir.join(format!("{id}.png")))
+            .filter(|p| p.is_file())
+            .collect(),
         None => fs::read_dir(&o.dir)?
             .flatten()
             .map(|e| e.path())
@@ -649,7 +773,9 @@ mod tests {
     }
 
     fn write_png(path: &Path, shade: u8) {
-        let px: Vec<u8> = (0..32 * 32).flat_map(|i| [shade, (i % 251) as u8, 40, 255]).collect();
+        let px: Vec<u8> = (0..32 * 32)
+            .flat_map(|i| [shade, (i % 251) as u8, 40, 255])
+            .collect();
         io::encode_png_pub(path, 32, 32, &px).unwrap();
     }
 
@@ -664,22 +790,58 @@ mod tests {
         ] });
         fs::write(d.join("m.json"), manifest.to_string()).unwrap();
         let env = json!({ "v": 1, "id": "aaaabbbbccccdddd", "browser": { "name": "chromium" } });
-        let plan: EnvPlan = serde_json::from_value(json!({ "envs": { "aaaabbbbccccdddd": env }, "byId": { "a": "aaaabbbbccccdddd" } })).unwrap();
-        let o = BaselineOpts { manifest: d.join("m.json"), png_dir: d.join("png"), root: d.clone(), only: None, no_detail: true, env: Some(plan) };
+        let plan: EnvPlan = serde_json::from_value(
+            json!({ "envs": { "aaaabbbbccccdddd": env }, "byId": { "a": "aaaabbbbccccdddd" } }),
+        )
+        .unwrap();
+        let o = BaselineOpts {
+            manifest: d.join("m.json"),
+            png_dir: d.join("png"),
+            root: d.clone(),
+            only: None,
+            no_detail: true,
+            env: Some(plan),
+        };
         assert_eq!(baseline(&o).unwrap()["summary"]["failed"], json!(0));
         let ha = pxsig_core::psig::header(&fs::read(d.join("store/a.psig")).unwrap()).unwrap();
         assert_eq!(ha["env"]["browser"]["name"], json!("chromium"));
         let hb = pxsig_core::psig::header(&fs::read(d.join("store/b.psig")).unwrap()).unwrap();
-        assert!(hb.get("env").is_none(), "an entry the plan does not name gets no env");
+        assert!(
+            hb.get("env").is_none(),
+            "an entry the plan does not name gets no env"
+        );
 
         let res = check(&CheckOpts {
-            manifest: d.join("m.json"), png_dir: d.join("png"), root: d.clone(), out_dir: None, artifacts: Artifacts::None,
-            only: None, cache: None, history: None, enforcement: None, base_png_dir: None, tolerance: 16, cli_gate: GateSpec::default(), env_gate: GateSpec::default(),
-        }).unwrap();
-        let row = |id: &str| res["results"].as_array().unwrap().iter().find(|r| r["id"] == json!(id)).unwrap().clone();
+            manifest: d.join("m.json"),
+            png_dir: d.join("png"),
+            root: d.clone(),
+            out_dir: None,
+            artifacts: Artifacts::None,
+            only: None,
+            cache: None,
+            history: None,
+            enforcement: None,
+            base_png_dir: None,
+            tolerance: 16,
+            cli_gate: GateSpec::default(),
+            env_gate: GateSpec::default(),
+        })
+        .unwrap();
+        let row = |id: &str| {
+            res["results"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|r| r["id"] == json!(id))
+                .unwrap()
+                .clone()
+        };
         assert_eq!(row("a")["baselineEnv"], json!("aaaabbbbccccdddd"));
         assert_eq!(row("b")["baselineEnv"], Value::Null);
-        assert_eq!(res["baselineEnvs"]["aaaabbbbccccdddd"]["browser"]["name"], json!("chromium"));
+        assert_eq!(
+            res["baselineEnvs"]["aaaabbbbccccdddd"]["browser"]["name"],
+            json!("chromium")
+        );
         let _ = fs::remove_dir_all(&d);
     }
 
@@ -689,20 +851,30 @@ mod tests {
 
     #[test]
     fn identical_failing_renders_become_errors() {
-        let mut rows: Vec<Value> = (0..6).map(|i| row(&format!("a--{i}"), false, "same")).collect();
+        let mut rows: Vec<Value> = (0..6)
+            .map(|i| row(&format!("a--{i}"), false, "same"))
+            .collect();
         rows.push(row("b--x", false, "other"));
         rows.push(row("c--y", true, "same"));
         let groups = flag_identical_renders(&mut rows);
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0]["count"], json!(6));
-        assert!(rows[0]["error"].as_str().unwrap().contains("5 other failing entries"));
-        assert!(rows[6]["error"].is_null(), "a failure with its own render stays a change");
+        assert!(rows[0]["error"]
+            .as_str()
+            .unwrap()
+            .contains("5 other failing entries"));
+        assert!(
+            rows[6]["error"].is_null(),
+            "a failure with its own render stays a change"
+        );
         assert!(rows[7]["error"].is_null(), "a passing row is never flagged");
     }
 
     #[test]
     fn a_few_identical_renders_are_not_the_environment() {
-        let mut rows: Vec<Value> = (0..4).map(|i| row(&format!("a--{i}"), false, "same")).collect();
+        let mut rows: Vec<Value> = (0..4)
+            .map(|i| row(&format!("a--{i}"), false, "same"))
+            .collect();
         assert!(flag_identical_renders(&mut rows).is_empty());
         assert!(rows.iter().all(|r| r["error"].is_null()));
     }
@@ -710,7 +882,9 @@ mod tests {
     #[test]
     fn the_floor_scales_with_the_run() {
         // 100 rows: a group needs 10, so 6 identical failures are left as changes.
-        let mut rows: Vec<Value> = (0..100).map(|i| row(&format!("p--{i}"), true, &format!("r{i}"))).collect();
+        let mut rows: Vec<Value> = (0..100)
+            .map(|i| row(&format!("p--{i}"), true, &format!("r{i}")))
+            .collect();
         for r in rows.iter_mut().take(6) {
             r["pass"] = json!(false);
             r["render"] = json!("same");

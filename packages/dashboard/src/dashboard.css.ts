@@ -10,7 +10,11 @@ import { tokens as v } from './ui/tokens';
 const checker = `repeating-conic-gradient(${v.color.surfaceRaised} 0 25%, ${v.color.background} 0 50%) 0 0 / 1rem 1rem`;
 
 globalStyle('html, body, #root', { blockSize: '100%', margin: 0 });
-globalStyle('body', { backgroundColor: v.color.background, color: v.color.text, fontFamily: v.font.sans });
+globalStyle('body', {
+  backgroundColor: v.color.background,
+  color: v.color.text,
+  fontFamily: v.font.sans,
+});
 // A control's height includes its border (CONTROLS.md); ToggleGroup's root relies on a page-wide
 // border-box reset this page does not have, and grows by its 2px border without one.
 globalStyle('[data-control]', { boxSizing: 'border-box' });
@@ -34,18 +38,49 @@ export const page = style({
 // narrow widths the modes tag, the last-check time and a repeated review status give their room to
 // the section links, and the links that still do not fit move into the bar's More menu.
 export const navbar = style({ flexShrink: 0, containerType: 'inline-size' });
-export const brand = style({ margin: 0, fontSize: v.fontSize.sm, fontWeight: v.fontWeight.semibold, whiteSpace: 'nowrap' });
-export const modesTag = style({ whiteSpace: 'nowrap', '@container': { '(inline-size < 64rem)': { display: 'none' } } });
+export const brand = style({
+  margin: 0,
+  fontSize: v.fontSize.sm,
+  fontWeight: v.fontWeight.semibold,
+  whiteSpace: 'nowrap',
+});
+export const modesTag = style({
+  whiteSpace: 'nowrap',
+  '@container': { '(inline-size < 64rem)': { display: 'none' } },
+});
 // The overflow menu holds the section links as menu items; they read as items, not underlined links.
 globalStyle('[role="menuitem"]:is(a)', { textDecoration: 'none', color: 'inherit' });
-globalStyle('[role="menuitem"]:is(a)[aria-current="page"]', { fontWeight: v.fontWeight.semibold, color: v.color.accent });
-export const navEnd = style({ display: 'flex', flexShrink: 0, alignItems: 'center', gap: v.space['2'] });
+globalStyle('[role="menuitem"]:is(a)[aria-current="page"]', {
+  fontWeight: v.fontWeight.semibold,
+  color: v.color.accent,
+});
+export const navEnd = style({
+  display: 'flex',
+  flexShrink: 0,
+  alignItems: 'center',
+  gap: v.space['2'],
+});
 /** The review status, when the review button beside it already says what is waiting. */
-export const statusBeside = style({ '@container': { '(inline-size < 48rem)': { display: 'none' } } });
-export const lastCheck = style({ whiteSpace: 'nowrap', '@container': { '(inline-size < 80rem)': { display: 'none' } } });
+export const statusBeside = style({
+  '@container': { '(inline-size < 48rem)': { display: 'none' } },
+});
+export const lastCheck = style({
+  whiteSpace: 'nowrap',
+  '@container': { '(inline-size < 80rem)': { display: 'none' } },
+});
 
-export const stack = style({ display: 'flex', flexDirection: 'column', gap: v.space['4'], minInlineSize: 0 });
-export const row = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: v.space['2'] });
+export const stack = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: v.space['4'],
+  minInlineSize: 0,
+});
+export const row = style({
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  gap: v.space['2'],
+});
 export const spacer = style({ flex: 1 });
 /** Read by assistive technology, not drawn. */
 export const srOnly = style({
@@ -79,7 +114,12 @@ export const overviewGrid = style({
 });
 
 /** A table cell's main text with a quieter line under it. */
-export const cellLines = style({ display: 'flex', flexDirection: 'column', gap: v.space['0_5'], minInlineSize: 0 });
+export const cellLines = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: v.space['0_5'],
+  minInlineSize: 0,
+});
 
 /** Running text inside a card at the size of a banner's body (the Overview's errors card). */
 export const small = style({ fontSize: v.fontSize.sm });
@@ -93,7 +133,13 @@ export const micro = style({
   textTransform: 'uppercase',
   color: v.color.textMuted,
 });
-export const lede = style({ margin: 0, maxInlineSize: '70ch', color: v.color.textMuted, fontSize: v.fontSize.sm, lineHeight: v.lineHeight.relaxed });
+export const lede = style({
+  margin: 0,
+  maxInlineSize: '70ch',
+  color: v.color.textMuted,
+  fontSize: v.fontSize.sm,
+  lineHeight: v.lineHeight.relaxed,
+});
 export const h2 = style({ margin: 0, fontSize: v.fontSize.lg, fontWeight: v.fontWeight.semibold });
 
 // --- story cards ------------------------------------------------------------
@@ -123,9 +169,15 @@ export const storyCard = style({
   },
 });
 // A card that is not itself a control (it holds one: the re-check of a render error).
-export const storyCardStatic = style({ cursor: 'default', selectors: { '&:hover': { borderColor: v.color.border } } });
+export const storyCardStatic = style({
+  cursor: 'default',
+  selectors: { '&:hover': { borderColor: v.color.border } },
+});
 // A status edge on each card, so problems stand out while scrolling.
-const edge = (color: string) => ({ borderInlineStartColor: color, borderInlineStartWidth: v.line.emphasis });
+const edge = (color: string) => ({
+  borderInlineStartColor: color,
+  borderInlineStartWidth: v.line.emphasis,
+});
 globalStyle(`${storyCard}[data-status="changed"]`, edge(v.color.warning));
 globalStyle(`${storyCard}[data-status="flaky"]`, edge(v.color.warning));
 globalStyle(`${storyCard}[data-status="new"]`, edge(v.color.accent));
@@ -149,14 +201,19 @@ export const affordance = style({
   transition: `color ${v.motion.fast}`,
 });
 globalStyle(`${affordance} svg`, { inlineSize: '0.75rem', blockSize: '0.75rem' });
-globalStyle(`button:hover ${affordance}, a:hover ${affordance}, button:focus-visible ${affordance}`, { color: v.color.accent });
+globalStyle(
+  `button:hover ${affordance}, a:hover ${affordance}, button:focus-visible ${affordance}`,
+  { color: v.color.accent }
+);
 // StatPanel's clickable cards are not a positioning context yet (until the pattern moves into the
 // design system); its filter and link cards render as button and a.
 export const statCards = style({});
 globalStyle(`${statCards} button, ${statCards} a`, { position: 'relative' });
 // The icon slot beside the label would take room the label needs; the affordance sits in the corner.
 globalStyle(`${statCards} span:has(> ${affordance})`, { display: 'contents' });
-globalStyle(`${statCards} :is(button, a) > span:has(${affordance})`, { paddingInlineEnd: v.space['5'] });
+globalStyle(`${statCards} :is(button, a) > span:has(${affordance})`, {
+  paddingInlineEnd: v.space['5'],
+});
 
 export const inlineIcon = style({ inlineSize: '0.75rem', blockSize: '0.75rem', flexShrink: 0 });
 
@@ -169,7 +226,9 @@ export const groupBand = style({
   padding: v.space['3'],
   borderRadius: v.radius.lg,
   selectors: {
-    '&:nth-of-type(odd)': { backgroundColor: `color-mix(in srgb, ${v.color.text} 4%, transparent)` },
+    '&:nth-of-type(odd)': {
+      backgroundColor: `color-mix(in srgb, ${v.color.text} 4%, transparent)`,
+    },
   },
 });
 export const groupHead = style({
@@ -187,9 +246,20 @@ export const thumb = style({
   borderBlockEnd: `1px solid ${v.color.border}`,
   overflow: 'hidden',
 });
-globalStyle(`${thumb} img`, { position: 'absolute', inset: 0, inlineSize: '100%', blockSize: '100%', objectFit: 'contain' });
+globalStyle(`${thumb} img`, {
+  position: 'absolute',
+  inset: 0,
+  inlineSize: '100%',
+  blockSize: '100%',
+  objectFit: 'contain',
+});
 export const thumbMask = style({ mixBlendMode: 'normal', opacity: 0.85 });
-export const cardBody = style({ display: 'flex', flexDirection: 'column', gap: v.space['1_5'], padding: v.space['2_5'] });
+export const cardBody = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: v.space['1_5'],
+  padding: v.space['2_5'],
+});
 export const cardId = style({
   fontFamily: v.font.mono,
   fontSize: v.fontSize.xs,
@@ -197,7 +267,13 @@ export const cardId = style({
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
 });
-export const cardStats = style({ display: 'flex', gap: v.space['3'], fontFamily: v.font.mono, fontSize: v.fontSize['2xs'], color: v.color.textMuted });
+export const cardStats = style({
+  display: 'flex',
+  gap: v.space['3'],
+  fontFamily: v.font.mono,
+  fontSize: v.fontSize['2xs'],
+  color: v.color.textMuted,
+});
 
 // --- scenario list ----------------------------------------------------------
 export const scenarioLayout = style({
@@ -206,7 +282,12 @@ export const scenarioLayout = style({
   gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 20rem), 1fr))',
   alignItems: 'start',
 });
-export const scenarioList = style({ display: 'flex', flexDirection: 'column', gap: v.space['1'], maxInlineSize: '24rem' });
+export const scenarioList = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: v.space['1'],
+  maxInlineSize: '24rem',
+});
 export const scenarioItem = style({
   all: 'unset',
   boxSizing: 'border-box',
@@ -219,8 +300,13 @@ export const scenarioItem = style({
   cursor: 'pointer',
   selectors: {
     '&:hover': { backgroundColor: v.color.hover },
-    '&[aria-pressed="true"]': { borderColor: v.color.accent, backgroundColor: `color-mix(in srgb, ${v.color.accent} 8%, transparent)` },
-    '&:focus-visible': { boxShadow: `0 0 0 3px color-mix(in srgb, ${v.color.focus} 50%, transparent)` },
+    '&[aria-pressed="true"]': {
+      borderColor: v.color.accent,
+      backgroundColor: `color-mix(in srgb, ${v.color.accent} 8%, transparent)`,
+    },
+    '&:focus-visible': {
+      boxShadow: `0 0 0 3px color-mix(in srgb, ${v.color.focus} 50%, transparent)`,
+    },
   },
 });
 
@@ -260,8 +346,18 @@ export const insTitle = style({
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
 });
-export const insInfo = style({ display: 'flex', flexDirection: 'column', gap: v.space['0_5'], minInlineSize: 0 });
-export const insContext = style({ display: 'flex', alignItems: 'center', gap: v.space['2'], minInlineSize: 0 });
+export const insInfo = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: v.space['0_5'],
+  minInlineSize: 0,
+});
+export const insContext = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: v.space['2'],
+  minInlineSize: 0,
+});
 export const insActions = style({ display: 'flex', alignItems: 'center', gap: v.space['2'] });
 // "9 / 16" and "10 / 16" take the same room, so the arrows either side stay put.
 export const counter = style({ fontVariantNumeric: 'tabular-nums', textAlign: 'center' });
@@ -269,7 +365,12 @@ export const counter = style({ fontVariantNumeric: 'tabular-nums', textAlign: 'c
 export const slot = style({ display: 'inline-flex' });
 export const reserved = style({ display: 'inline-flex', visibility: 'hidden' });
 // One line, cut with an ellipsis, at the size of whatever it is combined with.
-export const clip = style({ minInlineSize: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' });
+export const clip = style({
+  minInlineSize: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+});
 // Review session: progress above the inspector, a summary when every entry is decided.
 export const sessionBar = style({
   display: 'flex',
@@ -292,10 +393,26 @@ export const note = style({
   fontSize: v.fontSize.sm,
 });
 export const summaryDialog = style({ inlineSize: 'min(100%, 40rem)', padding: 0, gap: 0 });
-export const summary = style({ display: 'flex', flexDirection: 'column', gap: v.space['4'], padding: v.space['6'] });
+export const summary = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: v.space['4'],
+  padding: v.space['6'],
+});
 // --- help: term rows beside a drawing of the screen -----------------------------------------
-export const helpSection = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: v.space['5'] });
-export const helpRows = style({ display: 'grid', columnGap: v.space['4'], margin: 0, flex: '2 1 26rem', minInlineSize: 0 });
+export const helpSection = style({
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'flex-start',
+  gap: v.space['5'],
+});
+export const helpRows = style({
+  display: 'grid',
+  columnGap: v.space['4'],
+  margin: 0,
+  flex: '2 1 26rem',
+  minInlineSize: 0,
+});
 export const helpRow = style({
   display: 'grid',
   gridColumn: '1 / -1',
@@ -307,12 +424,19 @@ export const helpRow = style({
   outline: 'none',
   selectors: {
     '&[data-active]': { backgroundColor: `color-mix(in srgb, ${v.color.accent} 10%, transparent)` },
-    '&:focus-visible': { boxShadow: `0 0 0 ${v.line.emphasis} color-mix(in srgb, ${v.color.focus} 50%, transparent)` },
+    '&:focus-visible': {
+      boxShadow: `0 0 0 ${v.line.emphasis} color-mix(in srgb, ${v.color.focus} 50%, transparent)`,
+    },
   },
 });
 globalStyle(`${helpRow} dt`, { color: v.color.textMuted });
 globalStyle(`${helpRow} dd`, { margin: 0 });
-export const helpDrawing = style({ flex: '1 1 18rem', maxInlineSize: '28rem', position: 'sticky', insetBlockStart: v.space['4'] });
+export const helpDrawing = style({
+  flex: '1 1 18rem',
+  maxInlineSize: '28rem',
+  position: 'sticky',
+  insetBlockStart: v.space['4'],
+});
 export const schematic = style({ display: 'block', inlineSize: '100%', blockSize: 'auto' });
 export const insToolbar = style({
   paddingBlock: v.space['2'],
@@ -321,7 +445,13 @@ export const insToolbar = style({
   backgroundColor: v.color.background,
 });
 export const insMain = style({ flex: 1, minBlockSize: 0, display: 'flex', flexWrap: 'wrap' });
-export const insStageWrap = style({ flex: '999 1 30rem', minInlineSize: 0, minBlockSize: '20rem', display: 'flex', flexDirection: 'column' });
+export const insStageWrap = style({
+  flex: '999 1 30rem',
+  minInlineSize: 0,
+  minBlockSize: '20rem',
+  display: 'flex',
+  flexDirection: 'column',
+});
 export const insStage = style({
   flex: 1,
   minBlockSize: 0,
@@ -339,7 +469,12 @@ export const insStage = style({
     '&:focus-visible': { boxShadow: `inset 0 0 0 2px ${v.color.focus}` },
   },
 });
-export const vp = style({ position: 'relative', overflow: 'hidden', minBlockSize: 0, background: checker });
+export const vp = style({
+  position: 'relative',
+  overflow: 'hidden',
+  minBlockSize: 0,
+  background: checker,
+});
 export const layer = style({
   position: 'absolute',
   insetBlockStart: 0,
@@ -348,7 +483,9 @@ export const layer = style({
   boxShadow: `0 0 0 1px ${v.color.border}`,
 });
 globalStyle(`${layer} > *`, { position: 'absolute', inset: 0, display: 'block' });
-globalStyle(`${insStage}[data-pixelated] canvas, ${insStage}[data-pixelated] img`, { imageRendering: 'pixelated' });
+globalStyle(`${insStage}[data-pixelated] canvas, ${insStage}[data-pixelated] img`, {
+  imageRendering: 'pixelated',
+});
 export const boxes = style({ overflow: 'visible', pointerEvents: 'none' });
 // The frame is scaled with a CSS transform, which non-scaling-stroke ignores: divide by the zoom.
 globalStyle(`${boxes} rect`, {
@@ -357,7 +494,11 @@ globalStyle(`${boxes} rect`, {
   strokeWidth: 'calc(1.5px / var(--dv-zoom, 1))',
   strokeDasharray: 'calc(4px / var(--dv-zoom, 1)) calc(3px / var(--dv-zoom, 1))',
 });
-globalStyle(`${boxes} rect[data-active]`, { stroke: v.color.accent, strokeWidth: 'calc(2.5px / var(--dv-zoom, 1))', strokeDasharray: 'none' });
+globalStyle(`${boxes} rect[data-active]`, {
+  stroke: v.color.accent,
+  strokeWidth: 'calc(2.5px / var(--dv-zoom, 1))',
+  strokeDasharray: 'none',
+});
 globalStyle(`${boxes} rect[data-tile]`, {
   stroke: v.color.danger,
   fill: `color-mix(in srgb, ${v.color.danger} 18%, transparent)`,
@@ -420,14 +561,40 @@ export const insSide = style({
 });
 export const sideSection = style({ display: 'flex', flexDirection: 'column', gap: v.space['2'] });
 // A side section's title, with its action (the Storybook link on Pixel) at the end of the row.
-export const sectionHead = style({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: v.space['2'] });
-export const sectionTitle = style({ margin: 0, fontSize: v.fontSize.sm, fontWeight: v.fontWeight.semibold });
-export const readout = style({ display: 'flex', flexDirection: 'column', gap: v.space['1_5'], minBlockSize: '6.5rem' });
+export const sectionHead = style({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: v.space['2'],
+});
+export const sectionTitle = style({
+  margin: 0,
+  fontSize: v.fontSize.sm,
+  fontWeight: v.fontWeight.semibold,
+});
+export const readout = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: v.space['1_5'],
+  minBlockSize: '6.5rem',
+});
 // Every row is as tall as its tallest content (the Δ badge), with or without a value.
-export const pxRow = style({ display: 'flex', alignItems: 'center', gap: v.space['2'], minBlockSize: '1.5rem', minInlineSize: 0 });
+export const pxRow = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: v.space['2'],
+  minBlockSize: '1.5rem',
+  minInlineSize: 0,
+});
 // The coordinates keep their width; the cell / tile text beside them truncates instead of wrapping the row.
 export const pxCoords = style({ whiteSpace: 'nowrap', flexShrink: 0 });
-export const oneLine = style({ minInlineSize: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: v.fontSize.sm });
+export const oneLine = style({
+  minInlineSize: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  fontSize: v.fontSize.sm,
+});
 export const swatch = style({
   inlineSize: v.space['4'],
   blockSize: v.space['4'],
@@ -436,7 +603,14 @@ export const swatch = style({
   background: checker,
   flexShrink: 0,
 });
-export const regions = style({ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '2px' });
+export const regions = style({
+  margin: 0,
+  padding: 0,
+  listStyle: 'none',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '2px',
+});
 export const region = style({
   all: 'unset',
   boxSizing: 'border-box',
@@ -452,12 +626,26 @@ export const region = style({
   fontSize: v.fontSize.xs,
   selectors: {
     '&:hover': { backgroundColor: v.color.hover },
-    '&[aria-pressed="true"]': { borderColor: v.color.accent, backgroundColor: `color-mix(in srgb, ${v.color.accent} 10%, transparent)` },
-    '&:focus-visible': { boxShadow: `0 0 0 3px color-mix(in srgb, ${v.color.focus} 50%, transparent)` },
+    '&[aria-pressed="true"]': {
+      borderColor: v.color.accent,
+      backgroundColor: `color-mix(in srgb, ${v.color.accent} 10%, transparent)`,
+    },
+    '&:focus-visible': {
+      boxShadow: `0 0 0 3px color-mix(in srgb, ${v.color.focus} 50%, transparent)`,
+    },
   },
 });
-export const sigs = style({ display: 'grid', gap: v.space['2'], gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' });
-globalStyle(`${sigs} figure`, { margin: 0, display: 'flex', flexDirection: 'column', gap: v.space['1'] });
+export const sigs = style({
+  display: 'grid',
+  gap: v.space['2'],
+  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+});
+globalStyle(`${sigs} figure`, {
+  margin: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: v.space['1'],
+});
 globalStyle(`${sigs} img`, {
   inlineSize: '100%',
   aspectRatio: '1',
@@ -466,15 +654,42 @@ globalStyle(`${sigs} img`, {
   borderRadius: v.radius.sm,
   backgroundColor: v.color.surfaceRaised,
 });
-export const resources = style({ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: v.space['1'] });
-globalStyle(`${resources} li`, { display: 'flex', alignItems: 'center', gap: v.space['2'], fontSize: v.fontSize.xs, minInlineSize: 0 });
+export const resources = style({
+  margin: 0,
+  padding: 0,
+  listStyle: 'none',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: v.space['1'],
+});
+globalStyle(`${resources} li`, {
+  display: 'flex',
+  alignItems: 'center',
+  gap: v.space['2'],
+  fontSize: v.fontSize.xs,
+  minInlineSize: 0,
+});
 // A violation: impact and rule on the first line; its tag and action wrap below when narrow.
 export const a11yItem = style({ flexWrap: 'wrap', rowGap: v.space['1'] });
 export const a11yRule = style({ flex: '1 1 9rem', minInlineSize: 0, overflowWrap: 'anywhere' });
-export const grow = style({ flex: 1, minInlineSize: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' });
+export const grow = style({
+  flex: 1,
+  minInlineSize: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+});
 export const sliderCtl = style({ inlineSize: '9rem' });
 // Same height as the toolbar's sm buttons so a switch + label lines up with them.
-export const ctl = style({ display: 'inline-flex', alignItems: 'center', alignSelf: 'center', blockSize: '1.75rem', gap: v.space['2'], fontSize: v.fontSize.xs, lineHeight: 1 });
+export const ctl = style({
+  display: 'inline-flex',
+  alignItems: 'center',
+  alignSelf: 'center',
+  blockSize: '1.75rem',
+  gap: v.space['2'],
+  fontSize: v.fontSize.xs,
+  lineHeight: 1,
+});
 export const empty = style({
   padding: v.space['8'],
   textAlign: 'center',
@@ -484,7 +699,12 @@ export const empty = style({
 });
 export const chartBox = style({ inlineSize: '100%', blockSize: '16rem' });
 // Storybook panel: exactly the iframe's height, the stage takes whatever the toolbar leaves.
-export const embed = style({ blockSize: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' });
+export const embed = style({
+  blockSize: '100vh',
+  display: 'flex',
+  flexDirection: 'column',
+  overflow: 'hidden',
+});
 // Toolbar groups centre their items, so status badges, toggle groups, buttons and
 // switches share one midline.
 globalStyle(`${insToolbar} > *`, { alignItems: 'center' });

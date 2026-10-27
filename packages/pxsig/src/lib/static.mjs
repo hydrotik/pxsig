@@ -33,7 +33,8 @@ const TYPES = {
 };
 
 /** Does `dir` hold a Storybook build? */
-export const isStorybookBuild = (dir) => !!dir && existsSync(join(dir, 'index.json')) && existsSync(join(dir, 'iframe.html'));
+export const isStorybookBuild = (dir) =>
+  !!dir && existsSync(join(dir, 'index.json')) && existsSync(join(dir, 'iframe.html'));
 
 /** Serve `dir` read-only on 127.0.0.1 (port 0 = a free one). Resolves to { url, port, close }. */
 export function serveStaticDir(dir, { port = 0 } = {}) {
@@ -48,7 +49,10 @@ export function serveStaticDir(dir, { port = 0 } = {}) {
     if (file !== root && !file.startsWith(root + sep)) return res.writeHead(403).end();
     if (existsSync(file) && statSync(file).isDirectory()) file = join(file, 'index.html');
     if (!existsSync(file)) return res.writeHead(404).end();
-    res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-cache' });
+    res.writeHead(200, {
+      'content-type': TYPES[extname(file)] ?? 'application/octet-stream',
+      'cache-control': 'no-cache',
+    });
     if (req.method === 'HEAD') return res.end();
     createReadStream(file).pipe(res);
   });
@@ -57,7 +61,11 @@ export function serveStaticDir(dir, { port = 0 } = {}) {
     server.listen(port, '127.0.0.1', () => {
       const p = server.address().port;
       server.unref();
-      ok({ url: `http://127.0.0.1:${p}`, port: p, close: () => new Promise((r) => server.close(() => r())) });
+      ok({
+        url: `http://127.0.0.1:${p}`,
+        port: p,
+        close: () => new Promise((r) => server.close(() => r())),
+      });
     });
   });
 }
@@ -75,11 +83,18 @@ export async function ensureStorybook(P, { log = () => {}, fetchImpl } = {}) {
   const dir = P.storybook.staticDir;
   if (!dir) return { url: P.storybook.url, served: false, index: idx };
   if (!isStorybookBuild(dir)) {
-    log(`storybook.staticDir ${dir} holds no Storybook build (index.json + iframe.html): build it first`);
+    log(
+      `storybook.staticDir ${dir} holds no Storybook build (index.json + iframe.html): build it first`
+    );
     return { url: P.storybook.url, served: false, index: idx };
   }
   const s = await serveStaticDir(dir);
   log(`Storybook not reachable at ${P.storybook.url}: serving storybook.staticDir at ${s.url}`);
   P.storybook.url = s.url;
-  return { url: s.url, served: true, close: s.close, index: await fetchStoryIndex(s.url, { fetchImpl }) };
+  return {
+    url: s.url,
+    served: true,
+    close: s.close,
+    index: await fetchStoryIndex(s.url, { fetchImpl }),
+  };
 }

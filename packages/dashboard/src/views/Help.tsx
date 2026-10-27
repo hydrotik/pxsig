@@ -19,7 +19,19 @@ interface Item {
  * One reference section: its terms on the left, a drawing of the screen on the right. Pointing at
  * a row (or focusing it) highlights where that thing appears.
  */
-function Section({ title, description, layout, items, wide = '35%' }: { title: string; description: string; layout?: Layout; items: Item[]; wide?: string }) {
+function Section({
+  title,
+  description,
+  layout,
+  items,
+  wide = '35%',
+}: {
+  title: string;
+  description: string;
+  layout?: Layout;
+  items: Item[];
+  wide?: string;
+}) {
   const [active, setActive] = React.useState<number | null>(null);
   const shown = active == null ? null : items[active];
   return (
@@ -30,7 +42,11 @@ function Section({ title, description, layout, items, wide = '35%' }: { title: s
       </CardHeader>
       <CardContent>
         <div className={layout ? s.helpSection : undefined}>
-          <dl className={s.helpRows} style={{ gridTemplateColumns: `minmax(0, ${wide}) minmax(0, 1fr)` }} onMouseLeave={() => setActive(null)}>
+          <dl
+            className={s.helpRows}
+            style={{ gridTemplateColumns: `minmax(0, ${wide}) minmax(0, 1fr)` }}
+            onMouseLeave={() => setActive(null)}
+          >
             {items.map((x, i) => (
               <div
                 key={i}
@@ -57,9 +73,35 @@ function Section({ title, description, layout, items, wide = '35%' }: { title: s
   );
 }
 
-const STATUSES = ['pass', 'changed', 'new', 'approved', 'rejected', 'flaky', 'skipped', 'error'] as const;
+const STATUSES = [
+  'pass',
+  'changed',
+  'new',
+  'approved',
+  'rejected',
+  'flaky',
+  'skipped',
+  'error',
+] as const;
 /** Coverage codes in the order the ledger ranks them. */
-const CODES = ['unregistered', 'render-error', 'never-checked', 'missing-baseline-image', 'legacy-format', 'unbaselined', 'missing-render', 'orphaned', 'changed', 'flaky', 'stale', 'a11y-new', 'skipped-unaffected', 'drift', 'excluded', 'ok'];
+const CODES = [
+  'unregistered',
+  'render-error',
+  'never-checked',
+  'missing-baseline-image',
+  'legacy-format',
+  'unbaselined',
+  'missing-render',
+  'orphaned',
+  'changed',
+  'flaky',
+  'stale',
+  'a11y-new',
+  'skipped-unaffected',
+  'drift',
+  'excluded',
+  'ok',
+];
 const TABS = ['overview', 'review', 'coverage', 'a11y', 'runs', 'help'] as const;
 const INSPECTOR: [string, string[]][] = [
   ['progress', ['session']],
@@ -112,55 +154,120 @@ export function Help({ data }: { data: Data }) {
         title={t('help.tabs.title')}
         description={t('help.tabs.description')}
         layout="dashboard"
-        items={TABS.map((k) => ({ term: t(`tabs.${k}`), meaning: t(`help.tabs.rows.${k}.meaning`), at: [`nav-${k}`] }))}
+        items={TABS.map((k) => ({
+          term: t(`tabs.${k}`),
+          meaning: t(`help.tabs.rows.${k}.meaning`),
+          at: [`nav-${k}`],
+        }))}
       />
       <Section
         title={t('help.affordance.title')}
         description={t('help.affordance.description')}
         layout="dashboard"
         items={[
-          { term: <span className={s.row}><Icon name="arrow-down-left" className={s.inlineIcon} /> {t('help.affordance.filter.term')}</span>, meaning: t('help.affordance.filter.meaning'), at: ['cards'] },
-          { term: <span className={s.row}><Icon name="arrow-up-right" className={s.inlineIcon} /> {t('help.affordance.navigate.term')}</span>, meaning: t('help.affordance.navigate.meaning'), at: ['cards', 'card-thumb'] },
+          {
+            term: (
+              <span className={s.row}>
+                <Icon name="arrow-down-left" className={s.inlineIcon} />{' '}
+                {t('help.affordance.filter.term')}
+              </span>
+            ),
+            meaning: t('help.affordance.filter.meaning'),
+            at: ['cards'],
+          },
+          {
+            term: (
+              <span className={s.row}>
+                <Icon name="arrow-up-right" className={s.inlineIcon} />{' '}
+                {t('help.affordance.navigate.term')}
+              </span>
+            ),
+            meaning: t('help.affordance.navigate.meaning'),
+            at: ['cards', 'card-thumb'],
+          },
         ]}
       />
       <Section
         title={t('help.statuses.title')}
         description={t('help.statuses.description')}
         layout="dashboard"
-        items={STATUSES.map((x) => ({ term: t(`status.${x}`), meaning: t(`help.statuses.${x}`), at: ['card-status', 'card-edge'] }))}
+        items={STATUSES.map((x) => ({
+          term: t(`status.${x}`),
+          meaning: t(`help.statuses.${x}`),
+          at: ['card-status', 'card-edge'],
+        }))}
       />
       <Section
         title={t('help.coverage.title')}
         description={t('help.coverage.description')}
         layout="dashboard"
-        items={CODES.map((code) => ({ term: codeCopy(code).title, meaning: codeCopy(code).help, at: ['nav-coverage', 'card-flags'] }))}
+        items={CODES.map((code) => ({
+          term: codeCopy(code).title,
+          meaning: codeCopy(code).help,
+          at: ['nav-coverage', 'card-flags'],
+        }))}
       />
       <Section
         title={t('help.inspector.title')}
         description={t('help.inspector.description')}
         layout="inspector"
-        items={INSPECTOR.map(([k, at]) => ({ term: t(`help.inspector.rows.${k}.term` as CopyKey), meaning: t(`help.inspector.rows.${k}.meaning` as CopyKey), at }))}
+        items={INSPECTOR.map(([k, at]) => ({
+          term: t(`help.inspector.rows.${k}.term` as CopyKey),
+          meaning: t(`help.inspector.rows.${k}.meaning` as CopyKey),
+          at,
+        }))}
       />
       <Section
         title={t('help.a11y.title')}
         description={t('help.a11y.description')}
         layout="inspector"
-        items={A11Y.map(([k, layout, at]) => ({ term: t(`help.a11y.rows.${k}.term` as CopyKey), meaning: t(`help.a11y.rows.${k}.meaning` as CopyKey), at, layout }))}
+        items={A11Y.map(([k, layout, at]) => ({
+          term: t(`help.a11y.rows.${k}.term` as CopyKey),
+          meaning: t(`help.a11y.rows.${k}.meaning` as CopyKey),
+          at,
+          layout,
+        }))}
       />
       <Section
         title={t('help.gate.title')}
         description={t('help.gate.description')}
         layout="inspector"
         items={[
-          { term: t('help.gate.signature'), meaning: t('help.gate.signatureValue', { grid: m?.grid ?? 64 }), at: ['ins-metrics', 'ins-sigs'] },
-          { term: t('help.gate.wholeImage'), meaning: t('help.gate.wholeImageValue', { minCells: g.minCells ?? 2, threshold: g.threshold ?? 32 }), at: ['ins-metrics'] },
+          {
+            term: t('help.gate.signature'),
+            meaning: t('help.gate.signatureValue', { grid: m?.grid ?? 64 }),
+            at: ['ins-metrics', 'ins-sigs'],
+          },
+          {
+            term: t('help.gate.wholeImage'),
+            meaning: t('help.gate.wholeImageValue', {
+              minCells: g.minCells ?? 2,
+              threshold: g.threshold ?? 32,
+            }),
+            at: ['ins-metrics'],
+          },
           { term: t('help.gate.detail'), meaning: t('help.gate.detailValue'), at: ['ins-metrics'] },
-          { term: t('help.gate.modes'), meaning: m?.modes ? Object.keys(m.modes).join(', ') : '—', at: ['ins-title'] },
+          {
+            term: t('help.gate.modes'),
+            meaning: m?.modes ? Object.keys(m.modes).join(', ') : '—',
+            at: ['ins-title'],
+          },
           { term: t('help.gate.format'), meaning: t('help.gate.formatValue'), at: ['ins-files'] },
         ]}
       />
-      <Section title={t('help.keys.title')} description={t('help.keys.description')} layout="inspector" wide="20%" items={KEYS.map(([k, label, at]) => ({ term: k, meaning: t(label), at }))} />
-      <Section title={t('help.commands.title')} description={t('help.commands.description')} wide="40%" items={COMMANDS.map(([c, label]) => ({ term: c, meaning: t(label), at: [] }))} />
+      <Section
+        title={t('help.keys.title')}
+        description={t('help.keys.description')}
+        layout="inspector"
+        wide="20%"
+        items={KEYS.map(([k, label, at]) => ({ term: k, meaning: t(label), at }))}
+      />
+      <Section
+        title={t('help.commands.title')}
+        description={t('help.commands.description')}
+        wide="40%"
+        items={COMMANDS.map(([c, label]) => ({ term: c, meaning: t(label), at: [] }))}
+      />
       <p className={s.lede}>{t('help.versions', { versions: versionsText(data) })}</p>
     </div>
   );

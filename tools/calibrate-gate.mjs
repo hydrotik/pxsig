@@ -20,13 +20,33 @@
  */
 import { readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { baselineImages, engine, freshDir, log as logger, nums, parseFlags, pool, project, readReport, rust, scratchManifest, writeReport } from './lib/research.mjs';
+import {
+  baselineImages,
+  engine,
+  freshDir,
+  log as logger,
+  nums,
+  parseFlags,
+  pool,
+  project,
+  readReport,
+  rust,
+  scratchManifest,
+  writeReport,
+} from './lib/research.mjs';
 
 const log = logger('calibrate-gate');
 const flags = parseFlags();
 const { P, run } = project(flags);
 const GRID = Number(flags.grid) || run.grid || 64;
-const POLICIES = [{ name: `grid ${GRID}`, grid: GRID, minCellPx: null }, ...nums(flags['min-cells-px'], [4, 6, 8]).map((c) => ({ name: `cells ≥ ${c} px`, grid: GRID, minCellPx: c }))];
+const POLICIES = [
+  { name: `grid ${GRID}`, grid: GRID, minCellPx: null },
+  ...nums(flags['min-cells-px'], [4, 6, 8]).map((c) => ({
+    name: `cells ≥ ${c} px`,
+    grid: GRID,
+    minCellPx: c,
+  })),
+];
 const THRESHOLDS = nums(flags.thresholds, [16, 24, 32, 48, 64]);
 const SSIM = [0.995, 0.99, 0.985, 0.98, 0.97, 0];
 const PCT = [2, 4, 100];
@@ -38,8 +58,11 @@ const OPEN = { minSsim: 0, maxChangedPct: 100, minCells: 0, detail: false };
 const t0 = performance.now();
 
 // --- the saved renders --------------------------------------------------------------------------
-const tags = readdirSync(P.store.reports).filter((f) => /^scenarios(-[\w.-]+)?\.json$/.test(f)).map((f) => f.slice(0, -5));
-if (!tags.length) throw new Error(`no scenario reports in ${P.store.reports}: run tools/scenarios.mjs first`);
+const tags = readdirSync(P.store.reports)
+  .filter((f) => /^scenarios(-[\w.-]+)?\.json$/.test(f))
+  .map((f) => f.slice(0, -5));
+if (!tags.length)
+  throw new Error(`no scenario reports in ${P.store.reports}: run tools/scenarios.mjs first`);
 const scratch = freshDir(P, 'calibrate-gate');
 const baseDir = join(scratch, 'base');
 const items = []; // { key, suite, scenario, kind, changed, id }
@@ -50,7 +73,17 @@ for (const tag of tags) {
   const entries = run.stories.filter((e) => ids.has(e.id)).map(({ gate, grid, ...e }) => e);
   baselineImages(P, entries, baseDir);
   suites.push({ tag, rep, entries });
-  for (const sc of rep.scenarios) for (const r of sc.rows) if (!r.error) items.push({ key: `${tag}/${sc.name}/${r.id}`, suite: tag, scenario: sc.name, kind: sc.kind, changed: r.changed, id: r.id });
+  for (const sc of rep.scenarios)
+    for (const r of sc.rows)
+      if (!r.error)
+        items.push({
+          key: `${tag}/${sc.name}/${r.id}`,
+          suite: tag,
+          scenario: sc.name,
+          kind: sc.kind,
+          changed: r.changed,
+          id: r.id,
+        });
 }
 const renderOf = (x) => join(P.store.root, 'renders', x.suite, x.scenario, `${x.id}.png`);
 
@@ -62,15 +95,43 @@ try {
     metrics[pol.name] = {};
     const slug = pol.minCellPx ?? 'fixed';
     for (const s of suites) {
-      const manifest = scratchManifest(P, join(scratch, `${s.tag}-${slug}.json`), { grid: pol.grid, minCellPx: pol.minCellPx, detail: false }, s.entries, (e) => `sig-${slug}/${s.tag}/${e.id}.pxsig.json`);
-      rust(P, ['baseline', '--manifest', manifest, '--png-dir', baseDir, '--root', scratch, '--no-detail', '--json']);
+      const manifest = scratchManifest(
+        P,
+        join(scratch, `${s.tag}-${slug}.json`),
+        { grid: pol.grid, minCellPx: pol.minCellPx, detail: false },
+        s.entries,
+        (e) => `sig-${slug}/${s.tag}/${e.id}.pxsig.json`
+      );
+      rust(P, [
+        'baseline',
+        '--manifest',
+        manifest,
+        '--png-dir',
+        baseDir,
+        '--root',
+        scratch,
+        '--no-detail',
+        '--json',
+      ]);
       await pool(
         THRESHOLDS.flatMap((T) => s.rep.scenarios.map((sc) => ({ T, sc }))),
         8,
         async ({ T, sc }) => {
-          const out = await eng.call('check', { manifest, pngDir: join(P.store.root, 'renders', s.tag, sc.name), root: scratch, artifacts: 'none', gate: { ...OPEN, threshold: T } });
+          const out = await eng.call('check', {
+            manifest,
+            pngDir: join(P.store.root, 'renders', s.tag, sc.name),
+            root: scratch,
+            artifacts: 'none',
+            gate: { ...OPEN, threshold: T },
+          });
           metrics[pol.name][T] ??= {};
-          for (const r of out.results) if (r.metrics) metrics[pol.name][T][`${s.tag}/${sc.name}/${r.id}`] = { ssim: r.metrics.ssim, cells: r.metrics.changedCells, pct: r.metrics.changedCellsPct };
+          for (const r of out.results)
+            if (r.metrics)
+              metrics[pol.name][T][`${s.tag}/${sc.name}/${r.id}`] = {
+                ssim: r.metrics.ssim,
+                cells: r.metrics.changedCells,
+                pct: r.metrics.changedCellsPct,
+              };
         }
       );
     }
@@ -81,20 +142,50 @@ try {
 
 // --- detail tiles (Rust) -------------------------------------------------------------------------
 const detail = run.gate?.detail ?? {};
-const build = { tile: 16, block: 4, selEnergy: 10, ...(flags['detail-build'] ? JSON.parse(flags['detail-build']) : {}) };
+const build = {
+  tile: 16,
+  block: 4,
+  selEnergy: 10,
+  ...(flags['detail-build'] ? JSON.parse(flags['detail-build']) : {}),
+};
 const sweepIn = join(scratch, 'sweep.json');
-writeFileSync(sweepIn, JSON.stringify({ pairs: items.map((x) => ({ key: x.key, base: join(baseDir, `${x.id}.png`), cur: renderOf(x) })), builds: [build] }));
-const sweep = new Map(rust(P, ['detail-sweep', '--input', sweepIn]).out.rows.map((r) => [r.key, r.builds[0].moved]));
+writeFileSync(
+  sweepIn,
+  JSON.stringify({
+    pairs: items.map((x) => ({ key: x.key, base: join(baseDir, `${x.id}.png`), cur: renderOf(x) })),
+    builds: [build],
+  })
+);
+const sweep = new Map(
+  rust(P, ['detail-sweep', '--input', sweepIn]).out.rows.map((r) => [r.key, r.builds[0].moved])
+);
 const rustMs = performance.now() - t0;
 
 // --- search --------------------------------------------------------------------------------------
-const tiles = new Map(items.map((x) => [x.key, Object.fromEntries(DT.flatMap((bd) => DE.map((e) => [`${bd}|${e}`, (sweep.get(x.key) ?? []).filter(([b, r]) => b > bd || r > e).length])))]));
+const tiles = new Map(
+  items.map((x) => [
+    x.key,
+    Object.fromEntries(
+      DT.flatMap((bd) =>
+        DE.map((e) => [
+          `${bd}|${e}`,
+          (sweep.get(x.key) ?? []).filter(([b, r]) => b > bd || r > e).length,
+        ])
+      )
+    ),
+  ])
+);
 const noise = items.filter((x) => x.kind === 'noise');
 const regs = items.filter((x) => x.kind === 'regression' && x.changed);
 const failsWith = (c) => (x) => {
   const m = metrics[c.policy.name][c.T][x.key];
   if (!m) return false;
-  return m.ssim < c.S || m.pct > c.P || m.cells >= c.k || (c.dk !== Infinity && tiles.get(x.key)[`${c.bd}|${c.de}`] >= c.dk);
+  return (
+    m.ssim < c.S ||
+    m.pct > c.P ||
+    m.cells >= c.k ||
+    (c.dk !== Infinity && tiles.get(x.key)[`${c.bd}|${c.de}`] >= c.dk)
+  );
 };
 let best = null;
 let evaluated = 0;
@@ -115,8 +206,18 @@ for (const policy of POLICIES)
                 admissible++;
                 const caught = regs.filter(fails).length;
                 // Ties: coarser cells, larger thresholds, more cells/tiles needed, lower ssim floor: more margin against noise.
-                const margin = (policy.minCellPx ?? 0) + T / 8 + (k === Infinity ? 9 : k) + (dk === Infinity ? 9 : dk) - S * 10;
-                if (!best || caught > best.caught || (caught === best.caught && margin > best.margin)) best = { ...c, caught, margin };
+                const margin =
+                  (policy.minCellPx ?? 0) +
+                  T / 8 +
+                  (k === Infinity ? 9 : k) +
+                  (dk === Infinity ? 9 : dk) -
+                  S * 10;
+                if (
+                  !best ||
+                  caught > best.caught ||
+                  (caught === best.caught && margin > best.margin)
+                )
+                  best = { ...c, caught, margin };
               }
 
 const per = {};
@@ -136,8 +237,16 @@ if (best) {
 }
 const bySuite = Object.fromEntries(
   suites.map((s) => {
-    const rs = Object.entries(per).filter(([n, p]) => n.startsWith(`${s.tag}/`) && p.kind === 'regression');
-    return [s.tag, { caught: rs.reduce((a, [, p]) => a + p.caught, 0), of: rs.reduce((a, [, p]) => a + p.of, 0) }];
+    const rs = Object.entries(per).filter(
+      ([n, p]) => n.startsWith(`${s.tag}/`) && p.kind === 'regression'
+    );
+    return [
+      s.tag,
+      {
+        caught: rs.reduce((a, [, p]) => a + p.caught, 0),
+        of: rs.reduce((a, [, p]) => a + p.of, 0),
+      },
+    ];
   })
 );
 const gate = best && {
@@ -147,14 +256,44 @@ const gate = best && {
   minSsim: best.S,
   maxChangedPct: best.P,
   minCells: best.k === Infinity ? 0 : best.k,
-  detail: best.dk === Infinity ? false : { blockDelta: best.bd, energyDelta: best.de === Infinity ? 255 : best.de, minTiles: best.dk },
+  detail:
+    best.dk === Infinity
+      ? false
+      : {
+          blockDelta: best.bd,
+          energyDelta: best.de === Infinity ? 255 : best.de,
+          minTiles: best.dk,
+        },
 };
-const current = { grid: run.grid, minCellPx: run.minCellPx, ...run.gate, detail: run.detail ? detail : false };
-const result = { generatedAt: new Date().toISOString(), project: P.name, renders: items.length, evaluated, admissible, rustMs, totalMs: performance.now() - t0, detailBuild: build, current, gate, caught: best?.caught ?? 0, of: regs.length, bySuite, per };
-log(`${items.length} renders · ${evaluated} rules (${admissible} with zero false positives) · Rust ${(rustMs / 1000).toFixed(1)} s`);
+const current = {
+  grid: run.grid,
+  minCellPx: run.minCellPx,
+  ...run.gate,
+  detail: run.detail ? detail : false,
+};
+const result = {
+  generatedAt: new Date().toISOString(),
+  project: P.name,
+  renders: items.length,
+  evaluated,
+  admissible,
+  rustMs,
+  totalMs: performance.now() - t0,
+  detailBuild: build,
+  current,
+  gate,
+  caught: best?.caught ?? 0,
+  of: regs.length,
+  bySuite,
+  per,
+};
+log(
+  `${items.length} renders · ${evaluated} rules (${admissible} with zero false positives) · Rust ${(rustMs / 1000).toFixed(1)} s`
+);
 if (!gate) log('  no zero-false-positive gate');
 else {
   log(`  best: ${JSON.stringify(gate)} → ${best.caught}/${regs.length}`);
-  for (const [n, p] of Object.entries(per)) if (p.kind === 'regression') log(`    ${n.padEnd(36)} ${p.caught}/${p.of}`);
+  for (const [n, p] of Object.entries(per))
+    if (p.kind === 'regression') log(`    ${n.padEnd(36)} ${p.caught}/${p.of}`);
 }
 log(`wrote ${writeReport(P, 'calibration-gate', result)}`);

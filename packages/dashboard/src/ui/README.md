@@ -4,16 +4,16 @@ The dashboard renders through a small contract of neutral components, so it can 
 design system. Views, parts, the inspector and `App.tsx` import components from `@ui` only; `pnpm
 ui:check` fails on a design-system import anywhere outside `adapters/`.
 
-| File | What it is |
-| --- | --- |
-| `contract.ts` | Every contract component's props and semantics, the 11 contract rules, the `CONTRACT` table (group, required, role) and the `UiAdapter` type. |
-| `tokens.ts` | The neutral theme tokens (`--pxsig-*`) the dashboard's own stylesheets read, and the `TokenMap` every adapter fills. |
-| `index.ts` | `@ui`: the build-selected adapter under the contract's names, with the plain fallback for any optional component it lacks, plus `UiRoot` and `useThemeMode`. |
-| `runtime.tsx` | Theme mode (owned here, passed to the adapter's provider) and the token declarations. |
-| `fallbacks.tsx` | Plain, accessible renderings of the optional components. |
-| `features.ts` | Every dashboard feature as data (docs/ui/features.md is generated from it). |
-| `manifest.json` | Generated (`pnpm ui:manifest`): each contract component, its role, the files that render it. |
-| `adapters/hydrotik/` | The reference adapter: `index.tsx`, `conformance.json`, and `vite.mjs` (its build settings). |
+| File                 | What it is                                                                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `contract.ts`        | Every contract component's props and semantics, the 11 contract rules, the `CONTRACT` table (group, required, role) and the `UiAdapter` type.                |
+| `tokens.ts`          | The neutral theme tokens (`--pxsig-*`) the dashboard's own stylesheets read, and the `TokenMap` every adapter fills.                                         |
+| `index.ts`           | `@ui`: the build-selected adapter under the contract's names, with the plain fallback for any optional component it lacks, plus `UiRoot` and `useThemeMode`. |
+| `runtime.tsx`        | Theme mode (owned here, passed to the adapter's provider) and the token declarations.                                                                        |
+| `fallbacks.tsx`      | Plain, accessible renderings of the optional components.                                                                                                     |
+| `features.ts`        | Every dashboard feature as data (docs/ui/features.md is generated from it).                                                                                  |
+| `manifest.json`      | Generated (`pnpm ui:manifest`): each contract component, its role, the files that render it.                                                                 |
+| `adapters/hydrotik/` | The reference adapter: `index.tsx`, `conformance.json`, and `vite.mjs` (its build settings).                                                                 |
 
 ## An adapter
 

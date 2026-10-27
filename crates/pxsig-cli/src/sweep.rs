@@ -39,7 +39,15 @@ pub struct SweepInput {
     pub builds: Vec<Build>,
 }
 
-fn blocks(lum: &[f32], w: usize, h: usize, tx: usize, ty: usize, tile: usize, block: usize) -> Vec<f32> {
+fn blocks(
+    lum: &[f32],
+    w: usize,
+    h: usize,
+    tx: usize,
+    ty: usize,
+    tile: usize,
+    block: usize,
+) -> Vec<f32> {
     let per = tile / block;
     let mut out = Vec::with_capacity(per * per);
     for by in 0..per {
@@ -53,7 +61,11 @@ fn blocks(lum: &[f32], w: usize, h: usize, tx: usize, ty: usize, tile: usize, bl
                     n += 1.0;
                 }
             }
-            out.push(if n == 0.0 { 255.0 } else { (s / n).round().clamp(0.0, 255.0) });
+            out.push(if n == 0.0 {
+                255.0
+            } else {
+                (s / n).round().clamp(0.0, 255.0)
+            });
         }
     }
     out
@@ -71,9 +83,21 @@ pub fn run(input: &SweepInput) -> Result<Value> {
                 .builds
                 .iter()
                 .map(|bp| {
-                    let params = DetailParams { tile: bp.tile, block: bp.block, sel_energy: bp.sel_energy };
+                    let params = DetailParams {
+                        tile: bp.tile,
+                        block: bp.block,
+                        sel_energy: bp.sel_energy,
+                    };
                     let d = detail_of_lum(&la, aw, ah, params);
-                    let cur = detail_of_lum(&lb, bw, bh, DetailParams { sel_energy: 255, ..params });
+                    let cur = detail_of_lum(
+                        &lb,
+                        bw,
+                        bh,
+                        DetailParams {
+                            sel_energy: 255,
+                            ..params
+                        },
+                    );
                     let per = (bp.tile / bp.block).pow(2);
                     let mut kept = vec![-1i32; d.cols * d.rows];
                     for (k, &idx) in d.sel.iter().enumerate() {
@@ -85,7 +109,12 @@ pub fn run(input: &SweepInput) -> Result<Value> {
                         }
                         let now = blocks(&lb, bw, bh, tx, ty, bp.tile, bp.block);
                         let stored = &d.blocks[k * per..(k + 1) * per];
-                        kept[idx] = stored.iter().zip(&now).map(|(s, n)| (*s as f32 - n).abs() as i32).max().unwrap_or(0);
+                        kept[idx] = stored
+                            .iter()
+                            .zip(&now)
+                            .map(|(s, n)| (*s as f32 - n).abs() as i32)
+                            .max()
+                            .unwrap_or(0);
                     }
                     let mut tiles = Vec::new();
                     for ty in 0..d.rows {

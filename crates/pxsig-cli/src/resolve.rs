@@ -30,9 +30,50 @@ pub const STYLE: [&str; 5] = ["css", "scss", "sass", "less", "pcss"];
 const OUTPUT_DIRS: [&str; 4] = ["dist", "build", ".turbo", "__pixels__"];
 
 const BUILTINS: [&str; 44] = [
-    "assert", "async_hooks", "buffer", "child_process", "cluster", "console", "constants", "crypto", "dgram", "diagnostics_channel", "dns", "domain", "events", "fs",
-    "http", "http2", "https", "inspector", "module", "net", "os", "path", "perf_hooks", "process", "punycode", "querystring", "readline", "repl", "stream",
-    "string_decoder", "sys", "timers", "tls", "trace_events", "tty", "url", "util", "v8", "vm", "wasi", "worker_threads", "zlib", "test", "sqlite",
+    "assert",
+    "async_hooks",
+    "buffer",
+    "child_process",
+    "cluster",
+    "console",
+    "constants",
+    "crypto",
+    "dgram",
+    "diagnostics_channel",
+    "dns",
+    "domain",
+    "events",
+    "fs",
+    "http",
+    "http2",
+    "https",
+    "inspector",
+    "module",
+    "net",
+    "os",
+    "path",
+    "perf_hooks",
+    "process",
+    "punycode",
+    "querystring",
+    "readline",
+    "repl",
+    "stream",
+    "string_decoder",
+    "sys",
+    "timers",
+    "tls",
+    "trace_events",
+    "tty",
+    "url",
+    "util",
+    "v8",
+    "vm",
+    "wasi",
+    "worker_threads",
+    "zlib",
+    "test",
+    "sqlite",
 ];
 
 /// What a file names, as written.
@@ -73,7 +114,10 @@ pub enum Target {
     /// A file: workspace-relative with `/`, or `$repo/<path>` outside the workspace.
     File(String),
     /// Every file under a folder, optionally only those ending in `suffix`.
-    Under { dir: String, suffix: String },
+    Under {
+        dir: String,
+        suffix: String,
+    },
     /// Every file a workspace-relative glob matches.
     Glob(String),
     /// Outside what a change in this repository can reach (a package in `node_modules`, `node:fs`).
@@ -89,7 +133,8 @@ fn word_before(b: &[u8], i: usize) -> bool {
 }
 
 fn skip_ws(b: &[u8], mut j: usize, parens: bool) -> usize {
-    while j < b.len() && (matches!(b[j], b' ' | b'\t' | b'\n' | b'\r') || (parens && b[j] == b'(')) {
+    while j < b.len() && (matches!(b[j], b' ' | b'\t' | b'\n' | b'\r') || (parens && b[j] == b'('))
+    {
         j += 1;
     }
     j
@@ -105,7 +150,9 @@ fn read_str(b: &[u8], j: usize) -> Option<(String, usize, u8)> {
     while k < b.len() {
         match b[k] {
             b'\\' => k += 2,
-            c if c == q => return Some((String::from_utf8_lossy(&b[j + 1..k]).into_owned(), k + 1, q)),
+            c if c == q => {
+                return Some((String::from_utf8_lossy(&b[j + 1..k]).into_owned(), k + 1, q))
+            }
             b'\n' if q != b'`' => return None,
             _ => k += 1,
         }
@@ -116,15 +163,27 @@ fn read_str(b: &[u8], j: usize) -> Option<(String, usize, u8)> {
 /// A specifier-shaped string: not empty, no whitespace or code punctuation (`from 'the dashboard'`
 /// in prose, or `'Closed from')).toHaveAttribute('` across two string literals, is not one).
 fn spec_like(s: &str) -> bool {
-    let first = s.chars().next().is_some_and(|c| c.is_alphanumeric() || ".@#/~_$-".contains(c));
-    first && !s.chars().any(|c| c.is_whitespace() || "()[]{};,'\"<>|\\`".contains(c))
+    let first = s
+        .chars()
+        .next()
+        .is_some_and(|c| c.is_alphanumeric() || ".@#/~_$-".contains(c));
+    first
+        && !s
+            .chars()
+            .any(|c| c.is_whitespace() || "()[]{};,'\"<>|\\`".contains(c))
 }
 
 fn literal(text: String, quote: u8) -> Option<Ref> {
     if quote == b'`' {
         if let Some(open) = text.find("${") {
-            let suffix = text.rfind('}').map(|c| text[c + 1..].to_string()).unwrap_or_default();
-            return Some(Ref::Template { prefix: text[..open].to_string(), suffix });
+            let suffix = text
+                .rfind('}')
+                .map(|c| text[c + 1..].to_string())
+                .unwrap_or_default();
+            return Some(Ref::Template {
+                prefix: text[..open].to_string(),
+                suffix,
+            });
         }
     }
     spec_like(&text).then_some(Ref::Spec(text))
@@ -133,7 +192,16 @@ fn literal(text: String, quote: u8) -> Option<Ref> {
 struct Lines(Vec<usize>);
 impl Lines {
     fn new(b: &[u8]) -> Self {
-        Lines(std::iter::once(0).chain(b.iter().enumerate().filter(|(_, &c)| c == b'\n').map(|(i, _)| i + 1)).collect())
+        Lines(
+            std::iter::once(0)
+                .chain(
+                    b.iter()
+                        .enumerate()
+                        .filter(|(_, &c)| c == b'\n')
+                        .map(|(i, _)| i + 1),
+                )
+                .collect(),
+        )
     }
     fn at(&self, i: usize) -> usize {
         self.0.partition_point(|&s| s <= i)
@@ -160,7 +228,12 @@ pub fn scan_code(src: &str) -> Vec<Found> {
     let mut i = 0;
     while i < b.len() {
         let rest = &b[i..];
-        let push = |out: &mut Vec<Found>, r: Ref| out.push(Found { r, line: lines.at(i) });
+        let push = |out: &mut Vec<Found>, r: Ref| {
+            out.push(Found {
+                r,
+                line: lines.at(i),
+            })
+        };
         if word_before(b, i) {
             i += 1;
             continue;
@@ -181,7 +254,9 @@ pub fn scan_code(src: &str) -> Vec<Found> {
             }
             loop {
                 j = skip_ws(b, j, false);
-                let Some((s, end, _)) = read_str(b, j) else { break };
+                let Some((s, end, _)) = read_str(b, j) else {
+                    break;
+                };
                 if !s.starts_with('!') {
                     pats.push(s);
                 }
@@ -263,7 +338,9 @@ pub fn scan_style(src: &str) -> Vec<Found> {
     let mut i = 0;
     while i < b.len() {
         let rest = &b[i..];
-        let kw = [&b"@import"[..], b"@use", b"@forward", b"from"].into_iter().find(|k| rest.starts_with(k));
+        let kw = [&b"@import"[..], b"@use", b"@forward", b"from"]
+            .into_iter()
+            .find(|k| rest.starts_with(k));
         if let Some(k) = kw {
             if k == b"from" && word_before(b, i) {
                 i += 1;
@@ -272,7 +349,10 @@ pub fn scan_style(src: &str) -> Vec<Found> {
             let j = skip_ws(b, i + k.len(), false);
             if let Some((s, end, _)) = read_str(b, j) {
                 if spec_like(&s) {
-                    out.push(Found { r: Ref::Spec(s), line: lines.at(i) });
+                    out.push(Found {
+                        r: Ref::Spec(s),
+                        line: lines.at(i),
+                    });
                 }
                 i = end;
                 continue;
@@ -282,7 +362,10 @@ pub fn scan_style(src: &str) -> Vec<Found> {
         }
         if rest.starts_with(b"url(") && !word_before(b, i) {
             if let Some(u) = read_url(b, i + 4) {
-                out.push(Found { r: Ref::Url(u), line: lines.at(i) });
+                out.push(Found {
+                    r: Ref::Url(u),
+                    line: lines.at(i),
+                });
             }
             i += 4;
             continue;
@@ -293,7 +376,10 @@ pub fn scan_style(src: &str) -> Vec<Found> {
 }
 
 pub fn ext_of(p: &str) -> &str {
-    Path::new(p).extension().and_then(|x| x.to_str()).unwrap_or("")
+    Path::new(p)
+        .extension()
+        .and_then(|x| x.to_str())
+        .unwrap_or("")
 }
 
 /// The scanner for a file, by extension: `Some(true)` code, `Some(false)` style, `None` not read.
@@ -365,7 +451,14 @@ pub fn parse_jsonc(text: &str) -> Option<Value> {
                     }
                     i += 2;
                 }
-                b',' if !comments && matches!(b[i + 1..].iter().find(|c| !c.is_ascii_whitespace()), Some(b'}') | Some(b']')) => i += 1,
+                b',' if !comments
+                    && matches!(
+                        b[i + 1..].iter().find(|c| !c.is_ascii_whitespace()),
+                        Some(b'}') | Some(b']')
+                    ) =>
+                {
+                    i += 1
+                }
                 c => {
                     out.push(c);
                     i += 1;
@@ -394,8 +487,16 @@ fn match_key<'a, V>(map: impl Iterator<Item = (&'a String, V)>, want: &str) -> O
             return Some((v, String::new()));
         }
         if let Some((pre, post)) = k.split_once('*') {
-            if want.len() >= pre.len() + post.len() && want.starts_with(pre) && want.ends_with(post) && best.as_ref().is_none_or(|b| pre.len() > b.0) {
-                best = Some((pre.len(), v, want[pre.len()..want.len() - post.len()].to_string()));
+            if want.len() >= pre.len() + post.len()
+                && want.starts_with(pre)
+                && want.ends_with(post)
+                && best.as_ref().is_none_or(|b| pre.len() > b.0)
+            {
+                best = Some((
+                    pre.len(),
+                    v,
+                    want[pre.len()..want.len() - post.len()].to_string(),
+                ));
             }
         }
     }
@@ -411,13 +512,19 @@ fn conditions(v: &Value) -> Option<String> {
         Value::Object(o) => ["source", "development", "import", "default", "require"]
             .iter()
             .find_map(|k| o.get(*k).and_then(conditions))
-            .or_else(|| o.iter().filter(|(k, _)| k.as_str() != "types").find_map(|(_, v)| conditions(v))),
+            .or_else(|| {
+                o.iter()
+                    .filter(|(k, _)| k.as_str() != "types")
+                    .find_map(|(_, v)| conditions(v))
+            }),
         _ => None,
     }
 }
 
 fn exports_target(exports: &Value, sub: &str) -> Option<String> {
-    let subpaths = exports.as_object().filter(|o| o.keys().any(|k| k.starts_with('.')));
+    let subpaths = exports
+        .as_object()
+        .filter(|o| o.keys().any(|k| k.starts_with('.')));
     let (v, star) = match subpaths {
         Some(o) => match_key(o.iter(), sub)?,
         None if sub == "." => (exports, String::new()),
@@ -440,18 +547,42 @@ pub struct Resolver {
 }
 
 impl Resolver {
-    pub fn new(root: &Path, top: Option<PathBuf>, aliases: &[(String, String)], deleted: HashSet<String>) -> Self {
+    pub fn new(
+        root: &Path,
+        top: Option<PathBuf>,
+        aliases: &[(String, String)],
+        deleted: HashSet<String>,
+    ) -> Self {
         let mut aliases = aliases.to_vec();
         aliases.sort_by_key(|(k, _)| std::cmp::Reverse(k.len()));
-        let root = if root.is_absolute() { root.to_path_buf() } else { std::env::current_dir().map(|d| normalize(&d.join(root))).unwrap_or_else(|_| root.to_path_buf()) };
-        Resolver { root: root.clone(), real_root: fs::canonicalize(&root).ok(), top, aliases, deleted, ts: HashMap::new(), pkg: HashMap::new(), roots: Vec::new() }
+        let root = if root.is_absolute() {
+            root.to_path_buf()
+        } else {
+            std::env::current_dir()
+                .map(|d| normalize(&d.join(root)))
+                .unwrap_or_else(|_| root.to_path_buf())
+        };
+        Resolver {
+            root: root.clone(),
+            real_root: fs::canonicalize(&root).ok(),
+            top,
+            aliases,
+            deleted,
+            ts: HashMap::new(),
+            pkg: HashMap::new(),
+            roots: Vec::new(),
+        }
     }
 
     /// The graph key for an absolute path: workspace-relative, `$repo/…`, or `None` outside the
     /// repository or inside `node_modules`.
     pub fn key_of(&self, abs: &Path) -> Option<String> {
         let abs = normalize(abs);
-        let rel = abs.strip_prefix(normalize(&self.root)).ok().or_else(|| self.real_root.as_ref().and_then(|r| abs.strip_prefix(r).ok()));
+        let rel = abs.strip_prefix(normalize(&self.root)).ok().or_else(|| {
+            self.real_root
+                .as_ref()
+                .and_then(|r| abs.strip_prefix(r).ok())
+        });
         let key = match rel {
             Some(r) => crate::io::to_slash(r),
             None => {
@@ -460,7 +591,11 @@ impl Resolver {
                     .strip_prefix(normalize(top))
                     .ok()
                     .map(Path::to_path_buf)
-                    .or_else(|| fs::canonicalize(top).ok().and_then(|t| abs.strip_prefix(&t).ok().map(Path::to_path_buf)))?;
+                    .or_else(|| {
+                        fs::canonicalize(top)
+                            .ok()
+                            .and_then(|t| abs.strip_prefix(&t).ok().map(Path::to_path_buf))
+                    })?;
                 format!("$repo/{}", crate::io::to_slash(&r))
             }
         };
@@ -478,13 +613,20 @@ impl Resolver {
         if let Some(v) = self.pkg.get(dir) {
             return v.clone();
         }
-        let v = fs::read_to_string(dir.join("package.json")).ok().and_then(|t| serde_json::from_str(&t).ok()).map(Rc::new);
+        let v = fs::read_to_string(dir.join("package.json"))
+            .ok()
+            .and_then(|t| serde_json::from_str(&t).ok())
+            .map(Rc::new);
         self.pkg.insert(dir.to_path_buf(), v.clone());
         v
     }
 
     /// The nearest folder at or above `dir` with a package.json that satisfies `want`.
-    fn nearest_package(&mut self, dir: &Path, want: impl Fn(&Value) -> bool) -> Option<(PathBuf, Rc<Value>)> {
+    fn nearest_package(
+        &mut self,
+        dir: &Path,
+        want: impl Fn(&Value) -> bool,
+    ) -> Option<(PathBuf, Rc<Value>)> {
         let mut d = Some(dir);
         while let Some(x) = d {
             if x.file_name().is_some_and(|n| n == "node_modules") {
@@ -502,7 +644,10 @@ impl Resolver {
 
     /// The folder `node_modules/<name>` resolves to from `dir`, through links.
     fn installed(&self, dir: &Path, name: &str) -> Option<PathBuf> {
-        dir.ancestors().map(|d| d.join("node_modules").join(name)).find(|p| p.join("package.json").is_file()).and_then(|p| fs::canonicalize(p).ok())
+        dir.ancestors()
+            .map(|d| d.join("node_modules").join(name))
+            .find(|p| p.join("package.json").is_file())
+            .and_then(|p| fs::canonicalize(p).ok())
     }
 
     fn tsconfig(&mut self, file_dir: &Path) -> Option<Rc<Ts>> {
@@ -532,12 +677,17 @@ impl Resolver {
 
     /// Fold a tsconfig and what it extends into `ts` (the file's own values win).
     fn load_ts(&mut self, path: &Path, ts: &mut Ts, depth: usize) {
-        let Some(v) = fs::read_to_string(path).ok().and_then(|t| parse_jsonc(&t)) else { return };
+        let Some(v) = fs::read_to_string(path).ok().and_then(|t| parse_jsonc(&t)) else {
+            return;
+        };
         let dir = path.parent().unwrap_or(Path::new("")).to_path_buf();
         if depth < 10 {
             let ext = match &v["extends"] {
                 Value::String(s) => vec![s.clone()],
-                Value::Array(a) => a.iter().filter_map(|x| x.as_str().map(String::from)).collect(),
+                Value::Array(a) => a
+                    .iter()
+                    .filter_map(|x| x.as_str().map(String::from))
+                    .collect(),
                 _ => vec![],
             };
             for e in ext {
@@ -545,10 +695,20 @@ impl Resolver {
                     Some(dir.join(&e))
                 } else {
                     let (name, sub) = split_package(&e);
-                    self.installed(&dir, &name).map(|p| if sub == "." { p.join("tsconfig.json") } else { p.join(&sub[2..]) })
+                    self.installed(&dir, &name).map(|p| {
+                        if sub == "." {
+                            p.join("tsconfig.json")
+                        } else {
+                            p.join(&sub[2..])
+                        }
+                    })
                 };
                 if let Some(p) = p {
-                    let p = if p.is_file() { p } else { PathBuf::from(format!("{}.json", p.display())) };
+                    let p = if p.is_file() {
+                        p
+                    } else {
+                        PathBuf::from(format!("{}.json", p.display()))
+                    };
                     self.load_ts(&p, ts, depth + 1);
                 }
             }
@@ -558,7 +718,19 @@ impl Resolver {
             ts.base_url = Some(normalize(&dir.join(b)));
         }
         if let Some(o) = co["paths"].as_object() {
-            ts.paths = o.iter().map(|(k, v)| (k.clone(), v.as_array().into_iter().flatten().filter_map(|x| x.as_str().map(String::from)).collect())).collect();
+            ts.paths = o
+                .iter()
+                .map(|(k, v)| {
+                    (
+                        k.clone(),
+                        v.as_array()
+                            .into_iter()
+                            .flatten()
+                            .filter_map(|x| x.as_str().map(String::from))
+                            .collect(),
+                    )
+                })
+                .collect();
             ts.paths_base = dir;
         }
     }
@@ -573,23 +745,41 @@ impl Resolver {
                 if let Some(p) = pats.iter().find(|p| !p.starts_with('.')) {
                     return Target::Unresolved(format!("glob `{p}` is not relative"));
                 }
-                let keys: Vec<String> = pats.iter().filter_map(|p| self.key_of(&dir.join(p)).map(|k| k.trim_end_matches('/').to_string())).collect();
+                let keys: Vec<String> = pats
+                    .iter()
+                    .filter_map(|p| {
+                        self.key_of(&dir.join(p))
+                            .map(|k| k.trim_end_matches('/').to_string())
+                    })
+                    .collect();
                 match keys.len() {
                     0 => Target::External,
-                    _ => Target::Glob(if keys.len() == 1 { keys[0].clone() } else { format!("{{{}}}", keys.join(",")) }),
+                    _ => Target::Glob(if keys.len() == 1 {
+                        keys[0].clone()
+                    } else {
+                        format!("{{{}}}", keys.join(","))
+                    }),
                 }
             }
             Ref::Context(d) => match self.key_of(&dir.join(d)) {
-                Some(k) if d.starts_with('.') => Target::Under { dir: k, suffix: String::new() },
+                Some(k) if d.starts_with('.') => Target::Under {
+                    dir: k,
+                    suffix: String::new(),
+                },
                 _ => Target::Unresolved(format!("require.context(`{d}`) is not relative")),
             },
             Ref::Template { prefix, suffix } => {
                 if !prefix.starts_with("./") && !prefix.starts_with("../") {
-                    return Target::Unresolved("a template literal with no relative static prefix".into());
+                    return Target::Unresolved(
+                        "a template literal with no relative static prefix".into(),
+                    );
                 }
                 let folder = &prefix[..prefix.rfind('/').unwrap_or(0)];
                 match self.key_of(&dir.join(folder)) {
-                    Some(k) => Target::Under { dir: k, suffix: strip_suffix(suffix).to_string() },
+                    Some(k) => Target::Under {
+                        dir: k,
+                        suffix: strip_suffix(suffix).to_string(),
+                    },
                     None => Target::External,
                 }
             }
@@ -598,7 +788,8 @@ impl Resolver {
                 if remote(s) {
                     return Target::Remote(s.clone());
                 }
-                if s.starts_with("data:") || (url && s.starts_with('#')) || s.starts_with("about:") {
+                if s.starts_with("data:") || (url && s.starts_with('#')) || s.starts_with("about:")
+                {
                     return Target::Skip;
                 }
                 let s = strip_suffix(s);
@@ -610,7 +801,9 @@ impl Resolver {
                     return self.file(&dir.join(s), style);
                 }
                 if s.starts_with('/') {
-                    return Target::Unresolved("a root-relative path (served, not imported)".into());
+                    return Target::Unresolved(
+                        "a root-relative path (served, not imported)".into(),
+                    );
                 }
                 if style {
                     // CSS `@import 'x.css'` is relative first; Sass `~pkg` is a package.
@@ -618,7 +811,11 @@ impl Resolver {
                         return t;
                     }
                 }
-                self.bare(if style { s.trim_start_matches('~') } else { s }, &dir, style)
+                self.bare(
+                    if style { s.trim_start_matches('~') } else { s },
+                    &dir,
+                    style,
+                )
             }
         }
     }
@@ -628,11 +825,22 @@ impl Resolver {
         if s.starts_with("node:") || BUILTINS.contains(&builtin.split('/').next().unwrap_or("")) {
             return Target::External;
         }
-        if let Some((k, v)) = self.aliases.iter().find(|(k, _)| s == k || s.strip_prefix(k.as_str()).is_some_and(|r| r.starts_with('/') || k.ends_with('/'))).cloned() {
+        if let Some((k, v)) = self
+            .aliases
+            .iter()
+            .find(|(k, _)| {
+                s == k
+                    || s.strip_prefix(k.as_str())
+                        .is_some_and(|r| r.starts_with('/') || k.ends_with('/'))
+            })
+            .cloned()
+        {
             let rest = s[k.len()..].trim_start_matches('/');
             let abs = self.root.join(&v).join(rest);
             return match self.file(&abs, style) {
-                Target::Unresolved(_) => Target::Unresolved(format!("affects.aliases `{k}` → {v}: no such file")),
+                Target::Unresolved(_) => {
+                    Target::Unresolved(format!("affects.aliases `{k}` → {v}: no such file"))
+                }
                 t => t,
             };
         }
@@ -646,7 +854,9 @@ impl Resolver {
             let base = ts.base_url.clone().unwrap_or_else(|| ts.paths_base.clone());
             if let Some((targets, star)) = match_key(ts.paths.iter().map(|(k, v)| (k, v)), s) {
                 for t in targets.clone() {
-                    if let t @ (Target::File(_) | Target::Under { .. }) = self.file(&base.join(t.replace('*', &star)), style) {
+                    if let t @ (Target::File(_) | Target::Under { .. }) =
+                        self.file(&base.join(t.replace('*', &star)), style)
+                    {
                         return t;
                     }
                 }
@@ -664,7 +874,9 @@ impl Resolver {
         let Some((pkg, v)) = self.nearest_package(dir, |v| v["imports"].is_object()) else {
             return Target::Unresolved("no package.json `imports`".into());
         };
-        let Some(t) = match_key(v["imports"].as_object().unwrap().iter(), s).and_then(|(v, star)| conditions(v).map(|t| t.replace('*', &star))) else {
+        let Some(t) = match_key(v["imports"].as_object().unwrap().iter(), s)
+            .and_then(|(v, star)| conditions(v).map(|t| t.replace('*', &star)))
+        else {
             return Target::Unresolved("package.json `imports` does not list it".into());
         };
         if t.starts_with("./") {
@@ -676,14 +888,18 @@ impl Resolver {
 
     fn package(&mut self, s: &str, dir: &Path, style: bool) -> Target {
         let (name, sub) = split_package(s);
-        let me = self.nearest_package(dir, |v| v["name"].as_str() == Some(name.as_str())).map(|(d, _)| d);
+        let me = self
+            .nearest_package(dir, |v| v["name"].as_str() == Some(name.as_str()))
+            .map(|(d, _)| d);
         let Some(pkg) = me.or_else(|| self.installed(dir, &name)) else {
             return Target::Unresolved(format!("package `{name}` is not installed"));
         };
         if self.key_of(&pkg).is_none() {
             return Target::External;
         }
-        let Some(v) = self.package_json(&pkg) else { return Target::External };
+        let Some(v) = self.package_json(&pkg) else {
+            return Target::External;
+        };
         let src = src_root(&pkg);
         if let Some(k) = self.key_of(&src) {
             self.roots.push(k);
@@ -691,10 +907,18 @@ impl Resolver {
         let target = if !v["exports"].is_null() {
             match exports_target(&v["exports"], &sub) {
                 Some(t) => pkg.join(t),
-                None => return Target::Unresolved(format!("`exports` of {name} does not list {sub}")),
+                None => {
+                    return Target::Unresolved(format!("`exports` of {name} does not list {sub}"))
+                }
             }
         } else if sub == "." {
-            pkg.join(v["source"].as_str().or(v["module"].as_str()).or(v["main"].as_str()).unwrap_or("index"))
+            pkg.join(
+                v["source"]
+                    .as_str()
+                    .or(v["module"].as_str())
+                    .or(v["main"].as_str())
+                    .unwrap_or("index"),
+            )
         } else {
             pkg.join(&sub[2..])
         };
@@ -707,15 +931,27 @@ impl Resolver {
         let abs = normalize(abs);
         let s = abs.to_string_lossy().into_owned();
         let mut cands = vec![abs.clone()];
-        cands.extend(RESOLVE_EXTS.iter().map(|e| PathBuf::from(format!("{s}.{e}"))));
+        cands.extend(
+            RESOLVE_EXTS
+                .iter()
+                .map(|e| PathBuf::from(format!("{s}.{e}"))),
+        );
         cands.extend(RESOLVE_EXTS.iter().map(|e| abs.join(format!("index.{e}"))));
-        for (from, to) in [("js", &["ts", "tsx"][..]), ("mjs", &["mts"]), ("cjs", &["cts"]), ("jsx", &["tsx"])] {
+        for (from, to) in [
+            ("js", &["ts", "tsx"][..]),
+            ("mjs", &["mts"]),
+            ("cjs", &["cts"]),
+            ("jsx", &["tsx"]),
+        ] {
             if let Some(stem) = s.strip_suffix(&format!(".{from}")) {
                 cands.extend(to.iter().map(|t| PathBuf::from(format!("{stem}.{t}"))));
             }
         }
         if style {
-            let name = abs.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+            let name = abs
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
             let parent = abs.parent().unwrap_or(Path::new(""));
             for e in ["scss", "sass", "css", "less"] {
                 cands.push(PathBuf::from(format!("{s}.{e}")));
@@ -741,7 +977,9 @@ impl Resolver {
             }
         }
         match self.key_of(&abs) {
-            Some(k) => self.out_of_build(&abs, &k).unwrap_or_else(|| Target::Unresolved("no such file".into())),
+            Some(k) => self
+                .out_of_build(&abs, &k)
+                .unwrap_or_else(|| Target::Unresolved("no such file".into())),
             None => Target::External,
         }
     }
@@ -757,14 +995,29 @@ impl Resolver {
         let src_key = self.key_of(&src)?;
         self.roots.push(src_key.clone());
         let inner = segs[at + 1..].join("/");
-        let stem = inner.split_once('.').map_or(inner.as_str(), |(a, _)| a).to_string();
+        let stem = inner
+            .split_once('.')
+            .map_or(inner.as_str(), |(a, _)| a)
+            .to_string();
         let mut cands = vec![src.join(&inner)];
-        cands.extend(RESOLVE_EXTS.iter().chain(["css.ts", "mdx"].iter()).map(|e| src.join(format!("{stem}.{e}"))));
-        if let Some(k) = cands.iter().find(|c| c.is_file()).and_then(|c| self.key_of(c)) {
+        cands.extend(
+            RESOLVE_EXTS
+                .iter()
+                .chain(["css.ts", "mdx"].iter())
+                .map(|e| src.join(format!("{stem}.{e}"))),
+        );
+        if let Some(k) = cands
+            .iter()
+            .find(|c| c.is_file())
+            .and_then(|c| self.key_of(c))
+        {
             return Some(Target::File(k));
         }
         let _ = abs;
-        Some(Target::Under { dir: src_key, suffix: String::new() })
+        Some(Target::Under {
+            dir: src_key,
+            suffix: String::new(),
+        })
     }
 }
 
@@ -773,7 +1026,11 @@ fn split_package(s: &str) -> (String, String) {
     let n = if s.starts_with('@') { 2 } else { 1 };
     let parts: Vec<&str> = s.splitn(n + 1, '/').collect();
     let name = parts[..parts.len().min(n)].join("/");
-    let sub = if parts.len() > n { format!("./{}", parts[n]) } else { ".".into() };
+    let sub = if parts.len() > n {
+        format!("./{}", parts[n])
+    } else {
+        ".".into()
+    };
     (name, sub)
 }
 
@@ -823,11 +1080,17 @@ mod tests {
                 Ref::Spec("./worker.js".into()),
                 Ref::Glob(vec!["./icons/*.svg".into()]),
                 Ref::Context("./locales".into()),
-                Ref::Template { prefix: "./icons/".into(), suffix: ".svg".into() },
+                Ref::Template {
+                    prefix: "./icons/".into(),
+                    suffix: ".svg".into()
+                },
                 Ref::Url("./fonts/a.woff2".into()),
             ]
         );
-        assert_eq!(scan_code("a\nb\nimport './x';").first().map(|f| f.line), Some(3));
+        assert_eq!(
+            scan_code("a\nb\nimport './x';").first().map(|f| f.line),
+            Some(3)
+        );
     }
 
     #[test]
@@ -850,14 +1113,27 @@ mod tests {
 
     #[test]
     fn jsonc_and_patterns() {
-        let v = parse_jsonc("{ // c\n \"a\": [1, 2,], /* b */ \"s\": \"x // not a comment\", }").unwrap();
-        assert_eq!(v, serde_json::json!({ "a": [1, 2], "s": "x // not a comment" }));
+        let v = parse_jsonc("{ // c\n \"a\": [1, 2,], /* b */ \"s\": \"x // not a comment\", }")
+            .unwrap();
+        assert_eq!(
+            v,
+            serde_json::json!({ "a": [1, 2], "s": "x // not a comment" })
+        );
         let ex = serde_json::json!({ ".": { "types": "./d.ts", "import": "./dist/index.mjs" }, "./icons/*": "./dist/icons/*.js", "./x": null });
         assert_eq!(exports_target(&ex, "."), Some("./dist/index.mjs".into()));
-        assert_eq!(exports_target(&ex, "./icons/a"), Some("./dist/icons/a.js".into()));
+        assert_eq!(
+            exports_target(&ex, "./icons/a"),
+            Some("./dist/icons/a.js".into())
+        );
         assert_eq!(exports_target(&ex, "./x"), None);
         assert_eq!(exports_target(&ex, "./nope"), None);
-        assert_eq!(exports_target(&serde_json::json!({ "source": "./src/i.ts", "default": "./dist/i.js" }), "."), Some("./src/i.ts".into()));
+        assert_eq!(
+            exports_target(
+                &serde_json::json!({ "source": "./src/i.ts", "default": "./dist/i.js" }),
+                "."
+            ),
+            Some("./src/i.ts".into())
+        );
         assert_eq!(split_package("@a/b/c/d"), ("@a/b".into(), "./c/d".into()));
         assert_eq!(split_package("lodash"), ("lodash".into(), ".".into()));
         assert_eq!(strip_suffix("./a.svg?url#x"), "./a.svg");

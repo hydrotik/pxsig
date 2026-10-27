@@ -28,18 +28,30 @@ async function takeTicket(): Promise<void> {
   // Out of the address bar, history and any copy of the URL before anything else runs.
   const rest = hash.toString().replace(/=(&|$)/g, '$1');
   history.replaceState(null, '', `${location.pathname}${location.search}${rest ? `#${rest}` : ''}`);
-  await fetch('/__pxsig/session', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ticket }) }).catch(() => undefined);
+  await fetch('/__pxsig/session', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ ticket }),
+  }).catch(() => undefined);
 }
 
 let ready: Promise<void> = takeTicket();
 // The link pasted into a tab already on the dashboard changes only the fragment: no reload.
-if (typeof window !== 'undefined') window.addEventListener('hashchange', () => (ready = ready.then(takeTicket)));
+if (typeof window !== 'undefined')
+  window.addEventListener('hashchange', () => (ready = ready.then(takeTicket)));
 
 /** In a frame (the Storybook panel): the dashboard link's cookie is not sent there. */
 const framed = () => typeof window !== 'undefined' && window.top !== window.self;
 
-async function post(path: string, body: string): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
-  const r = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body });
+async function post(
+  path: string,
+  body: string
+): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
+  const r = await fetch(path, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body,
+  });
   return { ok: r.ok, status: r.status, body: await r.json().catch(() => ({})) };
 }
 
@@ -48,8 +60,17 @@ type Result = Awaited<ReturnType<typeof post>>;
 /** A decision through this server's own small window; resolves with what the server answered. */
 function throughWindow(path: string, body: string): Promise<Result> {
   return new Promise((resolve, reject) => {
-    const w = window.open(`${location.pathname}?decide=1`, 'pxsig-decide', 'popup,width=460,height=220');
-    if (!w) return reject(new Error('the browser blocked the small window this panel approves through: allow pop-ups for this page, or approve in the dashboard tab'));
+    const w = window.open(
+      `${location.pathname}?decide=1`,
+      'pxsig-decide',
+      'popup,width=460,height=220'
+    );
+    if (!w)
+      return reject(
+        new Error(
+          'the browser blocked the small window this panel approves through: allow pop-ups for this page, or approve in the dashboard tab'
+        )
+      );
     const id = Math.random().toString(36).slice(2);
     const done = (fn: () => void) => {
       window.removeEventListener('message', onMessage);
@@ -58,11 +79,16 @@ function throughWindow(path: string, body: string): Promise<Result> {
     };
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== location.origin || e.source !== w) return;
-      if (e.data?.type === 'pxsig-decide-ready') w.postMessage({ type: 'pxsig-decide', id, path, body }, location.origin);
-      else if (e.data?.type === 'pxsig-decide-result' && e.data.id === id) done(() => resolve(e.data.result));
+      if (e.data?.type === 'pxsig-decide-ready')
+        w.postMessage({ type: 'pxsig-decide', id, path, body }, location.origin);
+      else if (e.data?.type === 'pxsig-decide-result' && e.data.id === id)
+        done(() => resolve(e.data.result));
     };
     window.addEventListener('message', onMessage);
-    const timer = setTimeout(() => done(() => reject(new Error('the approval window did not answer'))), 120_000);
+    const timer = setTimeout(
+      () => done(() => reject(new Error('the approval window did not answer'))),
+      120_000
+    );
   });
 }
 
@@ -80,14 +106,20 @@ export async function decide(path: string, body: string): Promise<Record<string,
  * decision from it, post it here with this window's cookie, answer, and close unless the dashboard
  * link is missing (the window then says what to do). `onState` reports for the window's text.
  */
-export function runDecideWindow(onState: (state: 'waiting' | 'working' | 'needs-link' | 'failed' | 'no-opener', detail?: string) => void): () => void {
+export function runDecideWindow(
+  onState: (
+    state: 'waiting' | 'working' | 'needs-link' | 'failed' | 'no-opener',
+    detail?: string
+  ) => void
+): () => void {
   const opener = window.opener as Window | null;
   if (!opener) {
     onState('no-opener');
     return () => {};
   }
   const onMessage = async (e: MessageEvent) => {
-    if (e.origin !== location.origin || e.source !== opener || e.data?.type !== 'pxsig-decide') return;
+    if (e.origin !== location.origin || e.source !== opener || e.data?.type !== 'pxsig-decide')
+      return;
     window.removeEventListener('message', onMessage);
     onState('working');
     let result: Result;

@@ -37,10 +37,20 @@ export const ASSISTANTS = [
       file: '.vscode/mcp.json',
       scope: 'project',
       lang: 'json',
-      text: json({ servers: { pxsig: { type: 'stdio', command: 'node', args: ['${workspaceFolder}/' + SCRIPT, 'mcp'], cwd: '${workspaceFolder}' } } }),
+      text: json({
+        servers: {
+          pxsig: {
+            type: 'stdio',
+            command: 'node',
+            args: ['${workspaceFolder}/' + SCRIPT, 'mcp'],
+            cwd: '${workspaceFolder}',
+          },
+        },
+      }),
     }),
     instructions: instruction('.github/copilot-instructions.md'),
-    policy: 'VS Code policies ChatMCP (chat.mcp.access), ChatAgentMode, ChatAllowedMcpServers / ChatDeniedMcpServers; the GitHub "MCP servers in Copilot" policy and the MCP registry allowlist.',
+    policy:
+      'VS Code policies ChatMCP (chat.mcp.access), ChatAgentMode, ChatAllowedMcpServers / ChatDeniedMcpServers; the GitHub "MCP servers in Copilot" policy and the MCP registry allowlist.',
     notes: [
       'The server starts once the workspace is trusted.',
       'Optional, in VS Code settings (printed, never set): "workbench.browser.enableChatTools": false, and "chat.agent.deniedNetworkDomains" with "localhost" and "127.0.0.1", keep Copilot\'s browser tools off the dashboard.',
@@ -53,19 +63,30 @@ export const ASSISTANTS = [
       file: '.github/mcp.json',
       scope: 'project',
       lang: 'json',
-      text: json({ mcpServers: { pxsig: { type: 'local', command: 'node', args: [SCRIPT, 'mcp'], tools: ['*'] } } }),
+      text: json({
+        mcpServers: {
+          pxsig: { type: 'local', command: 'node', args: [SCRIPT, 'mcp'], tools: ['*'] },
+        },
+      }),
     }),
     instructions: instruction('.github/copilot-instructions.md'),
     policy: 'The MCP registry allowlist (Copilot CLI 1.0.11 and later).',
-    notes: ['Copilot CLI does not read .vscode/mcp.json. It loads the server after the folder is trusted.'],
+    notes: [
+      'Copilot CLI does not read .vscode/mcp.json. It loads the server after the folder is trusted.',
+    ],
   },
   {
     id: 'claude-code',
     label: 'Claude Code',
-    mcp: () => ({ file: '.mcp.json', scope: 'project', lang: 'json', text: json({ mcpServers: { pxsig: { command: 'node', args: [SCRIPT, 'mcp'] } } }) }),
+    mcp: () => ({
+      file: '.mcp.json',
+      scope: 'project',
+      lang: 'json',
+      text: json({ mcpServers: { pxsig: { command: 'node', args: [SCRIPT, 'mcp'] } } }),
+    }),
     instructions: instruction('CLAUDE.md'),
     policy: 'managed-mcp.json and allowedMcpServers.',
-    notes: ['Claude Code asks before it uses a project\'s servers.'],
+    notes: ["Claude Code asks before it uses a project's servers."],
   },
   {
     id: 'cursor',
@@ -74,7 +95,9 @@ export const ASSISTANTS = [
       file: '.cursor/mcp.json',
       scope: 'project',
       lang: 'json',
-      text: json({ mcpServers: { pxsig: { command: 'node', args: ['${workspaceFolder}/' + SCRIPT, 'mcp'] } } }),
+      text: json({
+        mcpServers: { pxsig: { command: 'node', args: ['${workspaceFolder}/' + SCRIPT, 'mcp'] } },
+      }),
     }),
     instructions: instruction('AGENTS.md'),
     policy: 'The Cursor enterprise MCP allowlist.',
@@ -96,7 +119,12 @@ export const ASSISTANTS = [
   {
     id: 'gemini-cli',
     label: 'Gemini CLI',
-    mcp: () => ({ file: '.gemini/settings.json', scope: 'project', lang: 'json', text: json({ mcpServers: { pxsig: { command: 'node', args: [SCRIPT, 'mcp'], cwd: '.' } } }) }),
+    mcp: () => ({
+      file: '.gemini/settings.json',
+      scope: 'project',
+      lang: 'json',
+      text: json({ mcpServers: { pxsig: { command: 'node', args: [SCRIPT, 'mcp'], cwd: '.' } } }),
+    }),
     instructions: instruction('GEMINI.md'),
     policy: 'The system settings file.',
     notes: ['Gemini CLI connects only in a trusted folder.'],
@@ -112,7 +140,9 @@ export const ASSISTANTS = [
     }),
     instructions: instruction('AGENTS.md'),
     policy: 'Codex enterprise requirements.',
-    notes: ['Codex reads a project\'s .codex/config.toml only in a trusted project. cwd is absolute.'],
+    notes: [
+      "Codex reads a project's .codex/config.toml only in a trusted project. cwd is absolute.",
+    ],
   },
   {
     id: 'cline',
@@ -130,7 +160,12 @@ export const ASSISTANTS = [
   {
     id: 'roo-code',
     label: 'Roo Code',
-    mcp: () => ({ file: '.roo/mcp.json', scope: 'project', lang: 'json', text: json({ mcpServers: { pxsig: { command: 'node', args: [SCRIPT, 'mcp'] } } }) }),
+    mcp: () => ({
+      file: '.roo/mcp.json',
+      scope: 'project',
+      lang: 'json',
+      text: json({ mcpServers: { pxsig: { command: 'node', args: [SCRIPT, 'mcp'] } } }),
+    }),
     instructions: instruction('.roo/rules/pxsig.md'),
     policy: null,
     notes: [],
@@ -151,10 +186,17 @@ export const ASSISTANTS = [
   {
     id: 'zed',
     label: 'Zed',
-    mcp: () => ({ file: '.zed/settings.json', scope: 'project', lang: 'json', text: json({ context_servers: { pxsig: { command: 'node', args: [SCRIPT, 'mcp'] } } }) }),
+    mcp: () => ({
+      file: '.zed/settings.json',
+      scope: 'project',
+      lang: 'json',
+      text: json({ context_servers: { pxsig: { command: 'node', args: [SCRIPT, 'mcp'] } } }),
+    }),
     instructions: instruction('AGENTS.md'),
     policy: null,
-    notes: ['Zed\'s agent sets no marker in the terminal it runs commands in: pxsig cannot tell it from a person there.'],
+    notes: [
+      "Zed's agent sets no marker in the terminal it runs commands in: pxsig cannot tell it from a person there.",
+    ],
   },
   {
     id: 'aider',
@@ -162,15 +204,25 @@ export const ASSISTANTS = [
     mcp: () => null,
     instructions: instruction('CONVENTIONS.md'),
     policy: null,
-    notes: ['Aider has no MCP: it can run `pxsig status --plain` and the other read commands. Load the conventions file with `aider --read CONVENTIONS.md`.', 'Aider sets no marker in the terminal it runs commands in: pxsig cannot tell it from a person there.'],
+    notes: [
+      'Aider has no MCP: it can run `pxsig status --plain` and the other read commands. Load the conventions file with `aider --read CONVENTIONS.md`.',
+      'Aider sets no marker in the terminal it runs commands in: pxsig cannot tell it from a person there.',
+    ],
   },
   {
     id: 'other',
     label: 'Another assistant',
-    mcp: () => ({ file: "the assistant's MCP settings", scope: 'user', lang: 'text', text: `node ${SCRIPT} mcp   (started in the repository root)\n` }),
+    mcp: () => ({
+      file: "the assistant's MCP settings",
+      scope: 'user',
+      lang: 'text',
+      text: `node ${SCRIPT} mcp   (started in the repository root)\n`,
+    }),
     instructions: instruction('AGENTS.md'),
     policy: null,
-    notes: ['Any MCP client that starts a stdio server works. Without a marker of its own, set PXSIG_AGENT=1 in the shell it runs commands in.'],
+    notes: [
+      'Any MCP client that starts a stdio server works. Without a marker of its own, set PXSIG_AGENT=1 in the shell it runs commands in.',
+    ],
   },
   { id: 'none', label: 'None', mcp: () => null, instructions: null, policy: null, notes: [] },
 ];

@@ -38,7 +38,10 @@ export async function harvestParameters(project, baseUrl, ids, { browser: given 
   const browser = given ?? (await launchBrowser(project));
   try {
     const page = await browser.newPage();
-    await page.goto(`${baseUrl}/iframe.html?id=${encodeURIComponent(ids[0])}&viewMode=story`, { waitUntil: 'networkidle', timeout: 60000 });
+    await page.goto(`${baseUrl}/iframe.html?id=${encodeURIComponent(ids[0])}&viewMode=story`, {
+      waitUntil: 'networkidle',
+      timeout: 60000,
+    });
     return await page.evaluate(async (list) => {
       const pv = window.__STORYBOOK_PREVIEW__;
       await pv.storeInitializationPromise;
@@ -50,7 +53,11 @@ export async function harvestParameters(project, baseUrl, ids, { browser: given 
             try {
               const s = await store.loadStory({ storyId: id });
               // JSON round-trip drops functions; pxsig parameters are plain data.
-              out[id] = { pxsig: JSON.parse(JSON.stringify(s.parameters?.pxsig ?? {})), tags: s.tags ?? [], play: !!s.playFunction };
+              out[id] = {
+                pxsig: JSON.parse(JSON.stringify(s.parameters?.pxsig ?? {})),
+                tags: s.tags ?? [],
+                play: !!s.playFunction,
+              };
             } catch (e) {
               out[id] = { pxsig: {}, tags: [], play: false, error: String(e?.message ?? e) };
             }
@@ -64,7 +71,8 @@ export async function harvestParameters(project, baseUrl, ids, { browser: given 
   }
 }
 
-const keyOf = (id, state, mode, defaultMode) => `${id}${state ? `__${state}` : ''}${mode && mode !== defaultMode ? `@${mode}` : ''}`;
+const keyOf = (id, state, mode, defaultMode) =>
+  `${id}${state ? `__${state}` : ''}${mode && mode !== defaultMode ? `@${mode}` : ''}`;
 
 /**
  * Expand stories into manifest entries.
@@ -73,7 +81,9 @@ const keyOf = (id, state, mode, defaultMode) => `${id}${state ? `__${state}` : '
  * (e.g. a cross-browser or mobile matrix run).
  */
 export function expandEntries(config, stories, params, opts = {}) {
-  const modes = config.modes ?? { dark: { globals: config.globals ?? '', colorScheme: config.colorScheme ?? 'dark' } };
+  const modes = config.modes ?? {
+    dark: { globals: config.globals ?? '', colorScheme: config.colorScheme ?? 'dark' },
+  };
   const defaultMode = config.defaultMode ?? Object.keys(modes)[0];
   const byDefault = config.modesByDefault ?? [defaultMode];
   const entries = [];
@@ -82,10 +92,15 @@ export function expandEntries(config, stories, params, opts = {}) {
     const p = params[s.id] ?? { pxsig: {}, tags: [] };
     const px = p.pxsig ?? {};
     if (px.disable || p.tags?.includes('no-pxsig')) {
-      skipped.push({ id: s.id, reason: px.disable ? 'parameters.pxsig.disable' : "tag 'no-pxsig'" });
+      skipped.push({
+        id: s.id,
+        reason: px.disable ? 'parameters.pxsig.disable' : "tag 'no-pxsig'",
+      });
       continue;
     }
-    let list = Array.isArray(px.modes) ? px.modes : [...byDefault, ...(px.addModes ?? []), ...(opts.addModes ?? [])];
+    let list = Array.isArray(px.modes)
+      ? px.modes
+      : [...byDefault, ...(px.addModes ?? []), ...(opts.addModes ?? [])];
     list = [...new Set(list)].filter((m) => modes[m]);
     if (opts.modes) list = list.filter((m) => opts.modes.includes(m));
     const states = [null, ...(Array.isArray(px.states) ? px.states : [])];

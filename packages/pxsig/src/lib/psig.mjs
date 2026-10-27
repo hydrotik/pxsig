@@ -15,7 +15,8 @@ export function readHeader(path) {
   try {
     fd = openSync(path, 'r');
     const pre = Buffer.alloc(PREFIX);
-    if (readSync(fd, pre, 0, PREFIX, 0) < PREFIX || pre.toString('latin1', 0, 4) !== 'PSIG') return null;
+    if (readSync(fd, pre, 0, PREFIX, 0) < PREFIX || pre.toString('latin1', 0, 4) !== 'PSIG')
+      return null;
     const len = pre.readUInt32LE(6);
     const head = Buffer.alloc(len);
     readSync(fd, head, 0, len, PREFIX);

@@ -24,7 +24,19 @@ const tree = (files) => {
   return root;
 };
 const config = (dir) => JSON.parse(readFileSync(join(dir, 'pxsig.config.json'), 'utf8'));
-const run = (args, cwd) => spawnSync(process.execPath, [cli, ...args], { cwd, encoding: 'utf8', timeout: 20_000, env: { ...process.env, PXSIG_FORMAT: 'plain', PXSIG_WORKSPACE: '', PXSIG_PROJECT: '', PXSIG_NO_DELEGATE: '1' } });
+const run = (args, cwd) =>
+  spawnSync(process.execPath, [cli, ...args], {
+    cwd,
+    encoding: 'utf8',
+    timeout: 20_000,
+    env: {
+      ...process.env,
+      PXSIG_FORMAT: 'plain',
+      PXSIG_WORKSPACE: '',
+      PXSIG_PROJECT: '',
+      PXSIG_NO_DELEGATE: '1',
+    },
+  });
 
 test('init --label writes the label, trimmed; an empty or over-long label is refused', () => {
   const root = tree({ 'package.json': { name: 'ui' } });
@@ -33,7 +45,11 @@ test('init --label writes the label, trimmed; an empty or over-long label is ref
   for (const label of ['   ', 'x'.repeat(61)]) {
     const dir = tree({});
     assert.throws(() => initProject({ dir, label }), /1 to 60 characters/);
-    assert.equal(existsSync(join(dir, 'pxsig.config.json')), false, 'a refused init writes nothing');
+    assert.equal(
+      existsSync(join(dir, 'pxsig.config.json')),
+      false,
+      'a refused init writes nothing'
+    );
   }
 });
 
@@ -51,7 +67,11 @@ test('init without a terminal never asks: no label is written, and the title sta
 test('a project with a bad label does not load; a good one reaches the dashboard data with the versions', () => {
   for (const label of ['', '  ', 'x'.repeat(61), 7]) {
     const root = tree({ 'pxsig.config.json': { version: 1, name: 'ui', label } });
-    assert.throws(() => openProject({ cwd: root }), /label must be text of 1 to 60 characters/, JSON.stringify(label));
+    assert.throws(
+      () => openProject({ cwd: root }),
+      /label must be text of 1 to 60 characters/,
+      JSON.stringify(label)
+    );
   }
   const root = tree({ 'pxsig.config.json': { version: 1, name: 'ui', label: ' Hydrotik ' } });
   const P = openProject({ cwd: root });
@@ -61,7 +81,11 @@ test('a project with a bad label does not load; a good one reaches the dashboard
   assert.equal(d.versions.pxsig, PXSIG_VERSION);
   assert.match(d.versions.contract, /^\d+\.\d+\.\d+$/);
   // Without a label the data carries the name, so the title reads as before.
-  assert.equal(buildData(openProject({ cwd: tree({ 'pxsig.config.json': { version: 1, name: 'ui' } }) })).label, 'ui');
+  assert.equal(
+    buildData(openProject({ cwd: tree({ 'pxsig.config.json': { version: 1, name: 'ui' } }) }))
+      .label,
+    'ui'
+  );
 });
 
 test('pxsig config names the dashboard title and the layer that set the label', () => {
@@ -74,8 +98,10 @@ test('pxsig config names the dashboard title and the layer that set the label', 
   assert.match(run(['config'], root).stdout, /Dashboard title.*pxsig · Hydrotik/);
 });
 
-test("the schema holds a label to 1–60 characters with something besides spaces", () => {
-  const schema = JSON.parse(readFileSync(fileURLToPath(new URL('../schema/project.json', import.meta.url)), 'utf8'));
+test('the schema holds a label to 1–60 characters with something besides spaces', () => {
+  const schema = JSON.parse(
+    readFileSync(fileURLToPath(new URL('../schema/project.json', import.meta.url)), 'utf8')
+  );
   const l = schema.properties.label;
   assert.deepEqual([l.type, l.minLength, l.maxLength], ['string', 1, 60]);
   assert.ok(new RegExp(l.pattern).test('Hydrotik') && !new RegExp(l.pattern).test('   '));

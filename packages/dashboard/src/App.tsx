@@ -1,6 +1,38 @@
 import React from 'react';
-import { Alert, AlertDescription, AlertTitle, AppMain, AppShell, Badge, Button, Icon, IconButton, NavEnd, NavLink, NavList, Select, StatusBadge, Tooltip, TopNav, useThemeMode } from '@ui';
-import { type Data, type Queue, type Row, decisionOf, dismissCheckError, reviewQueue, rowsWithPending, served, statusOf, switchProject, useCheckActivity, useData, useProjects } from './data';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  AppMain,
+  AppShell,
+  Badge,
+  Button,
+  Icon,
+  IconButton,
+  NavEnd,
+  NavLink,
+  NavList,
+  Select,
+  StatusBadge,
+  Tooltip,
+  TopNav,
+  useThemeMode,
+} from '@ui';
+import {
+  type Data,
+  type Queue,
+  type Row,
+  decisionOf,
+  dismissCheckError,
+  reviewQueue,
+  rowsWithPending,
+  served,
+  statusOf,
+  switchProject,
+  useCheckActivity,
+  useData,
+  useProjects,
+} from './data';
 import { Inspector, type InspectTarget } from './inspector/Inspector';
 import { Overview } from './views/Overview';
 import { Stories } from './views/Stories';
@@ -14,19 +46,41 @@ import { versionsText } from './versions';
 import * as s from './dashboard.css';
 
 // Section ids are stable (deep links and the remembered section use them); the labels come from the copy.
-const TABS = ['overview', 'stories', 'integrity', 'a11y', 'history', 'diagnostics', 'help'] as const;
+const TABS = [
+  'overview',
+  'stories',
+  'integrity',
+  'a11y',
+  'history',
+  'diagnostics',
+  'help',
+] as const;
 type Tab = (typeof TABS)[number];
 /** Sections folded into Diagnostics: old links still land there. */
-const MOVED: Record<string, Tab> = { scenarios: 'diagnostics', calibration: 'diagnostics', performance: 'diagnostics' };
-const asTab = (v: string | null): Tab | null => (v && TABS.includes(v as Tab) ? (v as Tab) : v && MOVED[v] ? MOVED[v] : null);
+const MOVED: Record<string, Tab> = {
+  scenarios: 'diagnostics',
+  calibration: 'diagnostics',
+  performance: 'diagnostics',
+};
+const asTab = (v: string | null): Tab | null =>
+  v && TABS.includes(v as Tab) ? (v as Tab) : v && MOVED[v] ? MOVED[v] : null;
 
-const readHash = () => new URLSearchParams(location.hash.slice(1).includes('=') ? location.hash.slice(1) : `tab=${location.hash.slice(1)}`);
+const readHash = () =>
+  new URLSearchParams(
+    location.hash.slice(1).includes('=') ? location.hash.slice(1) : `tab=${location.hash.slice(1)}`
+  );
 
 function ThemeToggle() {
   const { mode, setMode } = useThemeMode();
   const label = mode === 'dark' ? t('app.theme.toLight') : t('app.theme.toDark');
   return (
-    <IconButton size="sm" emphasis="ghost" label={label} title={label} onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}>
+    <IconButton
+      size="sm"
+      emphasis="ghost"
+      label={label}
+      title={label}
+      onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}
+    >
       <Icon name={mode === 'dark' ? 'sun' : 'moon'} />
     </IconButton>
   );
@@ -63,8 +117,15 @@ function CheckBanner() {
 function Embed({ data, story }: { data: Data; story: string }) {
   const rows = (data.check?.rows ?? []).filter((r) => r.story === story && !r.skipped);
   const pick = rows.find((r) => !r.pass) ?? rows[0];
-  const [target, setTarget] = React.useState<InspectTarget | null>(pick ? { row: pick, scenario: null, list: rows } : null);
-  React.useEffect(() => setTarget(pick ? { row: pick, scenario: null, list: rows } : null), [story, data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [target, setTarget] = React.useState<InspectTarget | null>(
+    pick ? { row: pick, scenario: null, list: rows } : null
+  );
+  React.useEffect(
+    () => setTarget(pick ? { row: pick, scenario: null, list: rows } : null),
+    // `rows` and `pick` derive from `story` and `data`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [story, data]
+  );
   // Its own page (an iframe in the panel): one main region and a level-one heading, read but not drawn.
   return (
     <main>
@@ -72,7 +133,11 @@ function Embed({ data, story }: { data: Data; story: string }) {
         {t('app.mark')}
         {story ? t('app.titleLabel', { label: story }) : null}
       </h1>
-      {target ? <Inspector data={data} target={target} onNavigate={setTarget} onClose={() => {}} embedded /> : <div className={s.empty}>{t('app.embedEmpty')}</div>}
+      {target ? (
+        <Inspector data={data} target={target} onNavigate={setTarget} onClose={() => {}} embedded />
+      ) : (
+        <div className={s.empty}>{t('app.embedEmpty')}</div>
+      )}
     </main>
   );
 }
@@ -92,7 +157,17 @@ function ProjectPicker({ current }: { current?: string }) {
   const projects = useProjects();
   if (projects.length < 2 || !current) return null;
   return (
-    <Select value={current} onValueChange={switchProject} size="sm" label={t('app.project')} inlineSize="14rem" options={projects.map((p) => ({ value: p.name, label: t('app.projectOption', { name: p.label ?? p.name, count: p.entries }) }))} />
+    <Select
+      value={current}
+      onValueChange={switchProject}
+      size="sm"
+      label={t('app.project')}
+      inlineSize="14rem"
+      options={projects.map((p) => ({
+        value: p.name,
+        label: t('app.projectOption', { name: p.label ?? p.name, count: p.entries }),
+      }))}
+    />
   );
 }
 
@@ -161,13 +236,26 @@ export function App() {
     if (row) setTarget({ row, scenario: null, list: data.check.rows.filter((r) => !r.skipped) });
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => {
-    if (target && !target.scenario) history.replaceState(null, '', `${location.pathname}${location.search}#inspect=${encodeURIComponent(target.row.id)}`);
+    if (target && !target.scenario)
+      history.replaceState(
+        null,
+        '',
+        `${location.pathname}${location.search}#inspect=${encodeURIComponent(target.row.id)}`
+      );
   }, [target]);
   // Keep an open inspector on the fresh row when live data arrives.
   React.useEffect(() => {
     if (!data?.check || !target || target.scenario) return;
     const fresh = data.check.rows.find((r) => r.id === target.row.id);
-    if (fresh && fresh !== target.row) setTarget((t) => t && { ...t, row: fresh, list: t.list.map((r) => data.check!.rows.find((x) => x.id === r.id) ?? r) });
+    if (fresh && fresh !== target.row)
+      setTarget(
+        (t) =>
+          t && {
+            ...t,
+            row: fresh,
+            list: t.list.map((r) => data.check!.rows.find((x) => x.id === r.id) ?? r),
+          }
+      );
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error && !data) return <Placeholder text={t('app.loadError', { error })} />;
@@ -175,9 +263,12 @@ export function App() {
   if (params.get('embed')) return <Embed data={data} story={params.get('story') ?? ''} />;
 
   const rows = data.check?.rows ?? [];
-  const todo = rowsWithPending(data).filter((r) => ['changed', 'new'].includes(statusOf(r, data.review))).length;
+  const todo = rowsWithPending(data).filter((r) =>
+    ['changed', 'new'].includes(statusOf(r, data.review))
+  ).length;
   const integrityErrors = data.integrity?.summary.componentsBySeverity.error ?? 0;
-  const open = (row: Row, list: Row[], scenario: InspectTarget['scenario'] = null) => setTarget({ row, list, scenario });
+  const open = (row: Row, list: Row[], scenario: InspectTarget['scenario'] = null) =>
+    setTarget({ row, list, scenario });
   // `f`: the Review filter, or for Coverage the component to open.
   const go = (t: string, f?: string) => {
     if (t === 'integrity') setCoverageFocus(f ? { component: f, at: Date.now() } : null);
@@ -185,8 +276,13 @@ export function App() {
     setTab(t as Tab);
   };
   // A review session: the inspector on the first undecided entry of a queue, with progress.
-  const queues = { changed: reviewQueue(data, 'changed'), new: reviewQueue(data, 'new'), a11y: reviewQueue(data, 'a11y') };
-  const undecided = (kind: Queue) => queues[kind].filter((r) => !decisionOf(data, kind, r.id)).length;
+  const queues = {
+    changed: reviewQueue(data, 'changed'),
+    new: reviewQueue(data, 'new'),
+    a11y: reviewQueue(data, 'a11y'),
+  };
+  const undecided = (kind: Queue) =>
+    queues[kind].filter((r) => !decisionOf(data, kind, r.id)).length;
   const startReview = (kind: Queue) => {
     const list = queues[kind];
     const first = list.find((r) => !decisionOf(data, kind, r.id)) ?? list[0];
@@ -197,13 +293,30 @@ export function App() {
   // Diagnostics appears only when a research run wrote its data.
   const diagnostics = diagnosticsOf(data).length > 0;
   const shown = tab === 'diagnostics' && !diagnostics ? 'overview' : tab;
-  const sectionTitle = t(`tabs.${({ stories: 'review', integrity: 'coverage', history: 'runs' } as Record<string, string>)[shown] ?? shown}` as CopyKey);
-  const status = !sm ? undefined : todo ? ({ tone: 'warning', icon: 'alert', label: t('app.status.reviewRequired') } as const) : ({ tone: 'success', icon: 'check', label: t('app.status.approved') } as const);
+  const sectionTitle = t(
+    `tabs.${({ stories: 'review', integrity: 'coverage', history: 'runs' } as Record<string, string>)[shown] ?? shown}` as CopyKey
+  );
+  const status = !sm
+    ? undefined
+    : todo
+      ? ({ tone: 'warning', icon: 'alert', label: t('app.status.reviewRequired') } as const)
+      : ({ tone: 'success', icon: 'check', label: t('app.status.approved') } as const);
   // A count after a section's label (COUNTS.md): attention when it asks for action, neutral for a plain total.
   type Count = { count: number; tone: 'info' | 'neutral'; label: string };
-  const counted = (count: number, tone: Count['tone'], key: 'review' | 'coverage' | 'a11y' | 'runs'): Count => ({ count, tone, label: t(`tabs.counts.${key}`, { count }) });
+  const counted = (
+    count: number,
+    tone: Count['tone'],
+    key: 'review' | 'coverage' | 'a11y' | 'runs'
+  ): Count => ({ count, tone, label: t(`tabs.counts.${key}`, { count }) });
   const link = (id: Tab, label: string, c?: Count) => (
-    <NavLink key={id} href={`#${id}`} active={shown === id} count={c?.count} countTone={c?.tone} countLabel={c?.label}>
+    <NavLink
+      key={id}
+      href={`#${id}`}
+      active={shown === id}
+      count={c?.count}
+      countTone={c?.tone}
+      countLabel={c?.label}
+    >
       {label}
     </NavLink>
   );
@@ -249,26 +362,53 @@ export function App() {
             ) : (
               <Badge emphasis="outline">{t('app.connection.static')}</Badge>
             )}
-            {data.check ? <span className={[s.micro, s.lastCheck].join(' ')}>{t('app.lastCheck', { date: new Date(data.check.generatedAt).toLocaleString() })}</span> : null}
+            {data.check ? (
+              <span className={[s.micro, s.lastCheck].join(' ')}>
+                {t('app.lastCheck', { date: new Date(data.check.generatedAt).toLocaleString() })}
+              </span>
+            ) : null}
             <ThemeToggle />
-            {status ? <StatusBadge {...status} className={served && nextQueue ? s.statusBeside : undefined} /> : null}
+            {status ? (
+              <StatusBadge
+                {...status}
+                className={served && nextQueue ? s.statusBeside : undefined}
+              />
+            ) : null}
           </NavEnd>
         </TopNav>
         <AppMain ref={mainRef}>
-            <div className={s.page}>
-              {/* The section's heading, for the outline (the bar's link says it visibly). */}
-              <h2 className={s.srOnly}>{sectionTitle}</h2>
-              <CheckBanner />
-              {/* The Overview shows coverage errors in its own errors card, so the banner leaves them to it. */}
-              <IntegrityBanner data={data} go={go} startReview={startReview} errorsShownElsewhere={shown === 'overview'} />
-              {shown === 'overview' ? <Overview data={data} go={go} startReview={startReview} /> : null}
-              {shown === 'stories' ? <Stories data={data} filter={filter} setFilter={setFilter} onOpen={(r, l) => open(r, l)} /> : null}
-              {shown === 'integrity' ? <Integrity data={data} focus={coverageFocus} onOpen={(r, l) => open(r, l)} /> : null}
-              {shown === 'a11y' ? <Accessibility data={data} onOpen={(r, l) => open(r, l)} startReview={startReview} /> : null}
-              {shown === 'history' ? <History data={data} /> : null}
-              {shown === 'diagnostics' ? <Diagnostics data={data} onOpen={open} /> : null}
-              {shown === 'help' ? <Help data={data} /> : null}
-            </div>
+          <div className={s.page}>
+            {/* The section's heading, for the outline (the bar's link says it visibly). */}
+            <h2 className={s.srOnly}>{sectionTitle}</h2>
+            <CheckBanner />
+            {/* The Overview shows coverage errors in its own errors card, so the banner leaves them to it. */}
+            <IntegrityBanner
+              data={data}
+              go={go}
+              startReview={startReview}
+              errorsShownElsewhere={shown === 'overview'}
+            />
+            {shown === 'overview' ? (
+              <Overview data={data} go={go} startReview={startReview} />
+            ) : null}
+            {shown === 'stories' ? (
+              <Stories
+                data={data}
+                filter={filter}
+                setFilter={setFilter}
+                onOpen={(r, l) => open(r, l)}
+              />
+            ) : null}
+            {shown === 'integrity' ? (
+              <Integrity data={data} focus={coverageFocus} onOpen={(r, l) => open(r, l)} />
+            ) : null}
+            {shown === 'a11y' ? (
+              <Accessibility data={data} onOpen={(r, l) => open(r, l)} startReview={startReview} />
+            ) : null}
+            {shown === 'history' ? <History data={data} /> : null}
+            {shown === 'diagnostics' ? <Diagnostics data={data} onOpen={open} /> : null}
+            {shown === 'help' ? <Help data={data} /> : null}
+          </div>
         </AppMain>
       </AppShell>
       {target ? (

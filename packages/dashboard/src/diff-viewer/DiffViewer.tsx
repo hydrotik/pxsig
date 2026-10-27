@@ -64,10 +64,18 @@ export interface DiffViewerActions {
 }
 
 type ClassName<S> = string | ((state: S) => string | undefined);
-type Render<S> = (props: React.HTMLAttributes<HTMLElement> & { ref?: React.Ref<HTMLElement> }, state: S) => React.ReactElement;
+type Render<S> = (
+  props: React.HTMLAttributes<HTMLElement> & { ref?: React.Ref<HTMLElement> },
+  state: S
+) => React.ReactElement;
 const cls = <S,>(c: ClassName<S> | undefined, state: S) => (typeof c === 'function' ? c(state) : c);
 
-const sizeOf = (s: Source | null) => (!s ? [0, 0] : s instanceof HTMLImageElement ? [s.naturalWidth, s.naturalHeight] : [s.width, s.height]);
+const sizeOf = (s: Source | null) =>
+  !s
+    ? [0, 0]
+    : s instanceof HTMLImageElement
+      ? [s.naturalWidth, s.naturalHeight]
+      : [s.width, s.height];
 
 function pixelsOf(s: Source | null): ImageData | null {
   if (!s) return null;
@@ -83,7 +91,11 @@ function pixelsOf(s: Source | null): ImageData | null {
 }
 
 /** A value that is controlled when `value` is defined, else held here. */
-function useControllable<T>(value: T | undefined, initial: T, onChange?: (v: T) => void): [T, (v: T) => void] {
+function useControllable<T>(
+  value: T | undefined,
+  initial: T,
+  onChange?: (v: T) => void
+): [T, (v: T) => void] {
   const [own, setOwn] = React.useState(initial);
   const controlled = value !== undefined;
   const current = controlled ? value : own;
@@ -184,9 +196,17 @@ function Root(p: RootProps) {
   const [lw, lh] = sizeOf(p.latest);
   const W = Math.max(bw, lw);
   const H = Math.max(bh, lh);
-  const [mode, setMode] = useControllable<DiffMode>(p.mode, p.defaultMode ?? 'side', p.onModeChange);
+  const [mode, setMode] = useControllable<DiffMode>(
+    p.mode,
+    p.defaultMode ?? 'side',
+    p.onModeChange
+  );
   const [split, setSplit] = useControllable<number>(p.split, p.defaultSplit ?? 50, p.onSplitChange);
-  const [activeRegion, setActiveRegion] = useControllable<number>(p.activeRegion, p.defaultActiveRegion ?? -1, p.onActiveRegionChange);
+  const [activeRegion, setActiveRegion] = useControllable<number>(
+    p.activeRegion,
+    p.defaultActiveRegion ?? -1,
+    p.onActiveRegionChange
+  );
   const store = React.useMemo(createStore, []);
   const viewportRef = React.useRef<HTMLElement | null>(null);
   const view = React.useRef({ z: 1, tx: 0, ty: 0 });
@@ -259,7 +279,10 @@ function Root(p: RootProps) {
   React.useImperativeHandle(p.actionsRef, () => actions, [actions]);
 
   const data = React.useMemo(
-    () => ({ baseline: p.baselineData !== undefined ? p.baselineData : pixelsOf(p.baseline), latest: p.latestData !== undefined ? p.latestData : pixelsOf(p.latest) }),
+    () => ({
+      baseline: p.baselineData !== undefined ? p.baselineData : pixelsOf(p.baseline),
+      latest: p.latestData !== undefined ? p.latestData : pixelsOf(p.latest),
+    }),
     [p.baseline, p.latest, p.baselineData, p.latestData]
   );
   const probeAt = React.useCallback(
@@ -292,13 +315,36 @@ function Root(p: RootProps) {
     [W, H, data, store]
   );
   const clearProbe = React.useCallback(() => {
-    viewportRef.current?.querySelectorAll<HTMLElement>('[data-marker]').forEach((m) => ((m.hidden = true), m.removeAttribute('data-visible')));
+    viewportRef.current
+      ?.querySelectorAll<HTMLElement>('[data-marker]')
+      .forEach((m) => ((m.hidden = true), m.removeAttribute('data-visible')));
     store.set({ probe: null });
     onProbe.current?.(null);
   }, [store]);
 
   const modes = p.modes ?? DIFF_MODES;
-  const value: Ctx = { W, H, baseline: p.baseline, latest: p.latest, mode, setMode, modes, split, setSplit, activeRegion, setActiveRegion, store, actions, viewportRef, view, place, zoomAround, probeAt, clearProbe, pending };
+  const value: Ctx = {
+    W,
+    H,
+    baseline: p.baseline,
+    latest: p.latest,
+    mode,
+    setMode,
+    modes,
+    split,
+    setSplit,
+    activeRegion,
+    setActiveRegion,
+    store,
+    actions,
+    viewportRef,
+    view,
+    place,
+    zoomAround,
+    probeAt,
+    clearProbe,
+    pending,
+  };
   return <DiffViewerContext.Provider value={value}>{p.children}</DiffViewerContext.Provider>;
 }
 
@@ -357,13 +403,21 @@ function Viewport({ label, className, style, keyboard = true, render, children }
       const v = (e.target as HTMLElement).closest('[data-pane]') ?? el.querySelector('[data-pane]');
       if (!v) return;
       const r = v.getBoundingClientRect();
-      c.zoomAround(c.view.current.z * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), e.clientX - r.left, e.clientY - r.top);
+      c.zoomAround(
+        c.view.current.z * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)),
+        e.clientX - r.left,
+        e.clientY - r.top
+      );
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
   });
   const state: ViewportState = { mode: c.mode, grabbing };
-  const props: React.HTMLAttributes<HTMLElement> & { ref: React.Ref<HTMLElement>; 'data-mode': string; 'data-grabbing'?: string } = {
+  const props: React.HTMLAttributes<HTMLElement> & {
+    ref: React.Ref<HTMLElement>;
+    'data-mode': string;
+    'data-grabbing'?: string;
+  } = {
     ref,
     className: cls(className, state),
     style,
@@ -385,7 +439,11 @@ function Viewport({ label, className, style, keyboard = true, render, children }
     },
     onPointerMove: (e) => {
       if (drag.current) {
-        c.view.current = { ...c.view.current, tx: drag.current.tx + e.clientX - drag.current.x, ty: drag.current.ty + e.clientY - drag.current.y };
+        c.view.current = {
+          ...c.view.current,
+          tx: drag.current.tx + e.clientX - drag.current.x,
+          ty: drag.current.ty + e.clientY - drag.current.y,
+        };
         c.place();
       }
       const pane = (e.target as HTMLElement).closest<HTMLElement>('[data-pane]');
@@ -393,8 +451,23 @@ function Viewport({ label, className, style, keyboard = true, render, children }
     },
     onPointerLeave: () => c.clearProbe(),
     onKeyDown: (e) => {
-      if (!keyboard || e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || e.target !== e.currentTarget) return;
-      const pan = (dx: number, dy: number) => ((c.view.current = { ...c.view.current, tx: c.view.current.tx + dx, ty: c.view.current.ty + dy }), c.place());
+      if (
+        !keyboard ||
+        e.defaultPrevented ||
+        e.metaKey ||
+        e.ctrlKey ||
+        e.altKey ||
+        e.target !== e.currentTarget
+      )
+        return;
+      const pan = (dx: number, dy: number) => (
+        (c.view.current = {
+          ...c.view.current,
+          tx: c.view.current.tx + dx,
+          ty: c.view.current.ty + dy,
+        }),
+        c.place()
+      );
       const k = e.key;
       const run = (f: () => void) => (e.preventDefault(), f());
       if (k === '+' || k === '=') return run(() => c.actions.zoomBy(1.5));
@@ -408,7 +481,11 @@ function Viewport({ label, className, style, keyboard = true, render, children }
     },
     children,
   };
-  return render ? render(props, state) : <div {...(props as React.HTMLAttributes<HTMLDivElement>)} />;
+  return render ? (
+    render(props, state)
+  ) : (
+    <div {...(props as React.HTMLAttributes<HTMLDivElement>)} />
+  );
 }
 
 // --- Pane, Frame, Layer --------------------------------------------------------------------------
@@ -426,12 +503,24 @@ function Pane({ className, render, children }: PaneProps) {
 }
 
 /** The image box, W × H, moved and scaled by the view (`--dv-tx`, `--dv-ty`, `--dv-zoom`). */
-function Frame({ className, render, children }: { className?: ClassName<{ zoom: number }>; render?: Render<{ width: number; height: number }>; children?: React.ReactNode }) {
+function Frame({
+  className,
+  render,
+  children,
+}: {
+  className?: ClassName<{ zoom: number }>;
+  render?: Render<{ width: number; height: number }>;
+  children?: React.ReactNode;
+}) {
   const { W, H } = useDiffViewer();
   const props = {
     className: cls(className, { zoom: 1 }),
     'data-frame': '',
-    style: { inlineSize: W, blockSize: H, transform: 'translate(var(--dv-tx, 0px), var(--dv-ty, 0px)) scale(var(--dv-zoom, 1))' },
+    style: {
+      inlineSize: W,
+      blockSize: H,
+      transform: 'translate(var(--dv-tx, 0px), var(--dv-ty, 0px)) scale(var(--dv-zoom, 1))',
+    },
     children,
   };
   return render ? render(props, { width: W, height: H }) : <div {...props} />;
@@ -455,7 +544,14 @@ export interface LayerProps {
 /** One image painted at its pixel size onto a canvas the size of the frame, without smoothing. */
 function Layer({ kind, source, clip, opacity, alpha, blend, stretch, className }: LayerProps) {
   const c = useDiffViewer();
-  const src = source !== undefined ? source : kind === 'baseline' ? c.baseline : kind === 'latest' ? c.latest : null;
+  const src =
+    source !== undefined
+      ? source
+      : kind === 'baseline'
+        ? c.baseline
+        : kind === 'latest'
+          ? c.latest
+          : null;
   const ref = React.useRef<HTMLCanvasElement>(null);
   React.useLayoutEffect(() => {
     const el = ref.current;
@@ -474,7 +570,16 @@ function Layer({ kind, source, clip, opacity, alpha, blend, stretch, className }
     ...(opacity !== undefined ? { opacity } : {}),
     ...(blend ? { mixBlendMode: blend } : {}),
   };
-  return <canvas ref={ref} width={c.W} height={c.H} className={className} data-kind={kind} style={Object.keys(style).length ? style : undefined} />;
+  return (
+    <canvas
+      ref={ref}
+      width={c.W}
+      height={c.H}
+      className={className}
+      data-kind={kind}
+      style={Object.keys(style).length ? style : undefined}
+    />
+  );
 }
 
 // --- Regions -------------------------------------------------------------------------------------
@@ -495,9 +600,22 @@ function Regions({ regions, tiles, className, children }: RegionsProps) {
   return (
     <svg className={className} viewBox={`0 0 ${W} ${H}`} width={W} height={H} aria-hidden="true">
       {tiles?.indices.map((i) => (
-        <rect key={`t${i}`} data-tile="" x={(i % cols) * tiles.size} y={Math.floor(i / cols) * tiles.size} width={tiles.size} height={tiles.size} />
+        <rect
+          key={`t${i}`}
+          data-tile=""
+          x={(i % cols) * tiles.size}
+          y={Math.floor(i / cols) * tiles.size}
+          width={tiles.size}
+          height={tiles.size}
+        />
       ))}
-      {regions.map((r, i) => (children ? <React.Fragment key={i}>{children(r, i)}</React.Fragment> : <Region key={i} region={r} index={i} />))}
+      {regions.map((r, i) =>
+        children ? (
+          <React.Fragment key={i}>{children(r, i)}</React.Fragment>
+        ) : (
+          <Region key={i} region={r} index={i} />
+        )
+      )}
     </svg>
   );
 }
@@ -505,7 +623,15 @@ function Regions({ regions, tiles, className, children }: RegionsProps) {
 /** One region's outline; `[data-active]` when it is the active region. */
 function Region({ region: r, index }: { region: DiffRegion; index: number }) {
   const { activeRegion } = useDiffViewer();
-  return <rect x={r.x - 0.5} y={r.y - 0.5} width={r.w + 1} height={r.h + 1} {...(index === activeRegion ? { 'data-active': '' } : {})} />;
+  return (
+    <rect
+      x={r.x - 0.5}
+      y={r.y - 0.5}
+      width={r.w + 1}
+      height={r.h + 1}
+      {...(index === activeRegion ? { 'data-active': '' } : {})}
+    />
+  );
 }
 
 // --- Marker, SwipeHandle -------------------------------------------------------------------------
@@ -516,7 +642,12 @@ function Marker({ className, render }: { className?: string; render?: Render<obj
     className,
     'data-marker': '',
     hidden: true,
-    style: { insetInlineStart: 'var(--dv-marker-x)', insetBlockStart: 'var(--dv-marker-y)', inlineSize: 'var(--dv-marker-size)', blockSize: 'var(--dv-marker-size)' },
+    style: {
+      insetInlineStart: 'var(--dv-marker-x)',
+      insetBlockStart: 'var(--dv-marker-y)',
+      inlineSize: 'var(--dv-marker-size)',
+      blockSize: 'var(--dv-marker-size)',
+    },
   };
   return render ? render(props, {}) : <div {...props} />;
 }
@@ -553,10 +684,14 @@ function SwipeHandle({ label, className, step = 2 }: SwipeHandleProps) {
         const pane = h.parentElement!;
         const move = (ev: PointerEvent) => {
           const r = pane.getBoundingClientRect();
-          set((((ev.clientX - r.left - c.view.current.tx) / c.view.current.z) / c.W) * 100);
+          set(((ev.clientX - r.left - c.view.current.tx) / c.view.current.z / c.W) * 100);
         };
         h.addEventListener('pointermove', move);
-        h.addEventListener('pointerup', () => (h.removeEventListener('pointermove', move), setDragging(false)), { once: true });
+        h.addEventListener(
+          'pointerup',
+          () => (h.removeEventListener('pointermove', move), setDragging(false)),
+          { once: true }
+        );
       }}
       onKeyDown={(e) => {
         const k = e.key;
@@ -663,8 +798,18 @@ export interface ZoomControlsProps {
 function ZoomControls({ labels = {}, step = 1.5, className, render }: ZoomControlsProps) {
   const c = useDiffViewer();
   const zoom = useStore((s) => s.zoom);
-  const state: ZoomState = { zoom, zoomIn: () => c.actions.zoomBy(step), zoomOut: () => c.actions.zoomBy(1 / step), fit: () => c.actions.fit(), actual: () => c.actions.zoomTo(1) };
-  const props = { role: 'group', 'aria-label': labels.group ?? 'Zoom', className: cls(className, state) };
+  const state: ZoomState = {
+    zoom,
+    zoomIn: () => c.actions.zoomBy(step),
+    zoomOut: () => c.actions.zoomBy(1 / step),
+    fit: () => c.actions.fit(),
+    actual: () => c.actions.zoomTo(1),
+  };
+  const props = {
+    role: 'group',
+    'aria-label': labels.group ?? 'Zoom',
+    className: cls(className, state),
+  };
   if (render) return render(props, state);
   return (
     <div {...props}>
@@ -685,4 +830,17 @@ function ZoomControls({ labels = {}, step = 1.5, className, render }: ZoomContro
   );
 }
 
-export { Root, Viewport, Pane, Frame, Layer, Regions, Region, Marker, SwipeHandle, ProbePart as Probe, ModeGroup, ZoomControls };
+export {
+  Root,
+  Viewport,
+  Pane,
+  Frame,
+  Layer,
+  Regions,
+  Region,
+  Marker,
+  SwipeHandle,
+  ProbePart as Probe,
+  ModeGroup,
+  ZoomControls,
+};

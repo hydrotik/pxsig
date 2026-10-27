@@ -33,7 +33,12 @@ export const GATES = ['visual', 'a11y', 'verify', 'env', 'doctor', 'stale'];
 const DAY = 86_400_000;
 /** The layers that count as "configured": reviewed config, or a person's `--warn` for this run. */
 const CONFIGURED = new Set(['project config', 'workspace defaults', '--warn']);
-const LAYER_LABEL = { 'project config': 'pxsig.config.json', 'workspace defaults': 'the workspace defaults', '--warn': '--warn at this terminal', 'built-in': 'built-in default' };
+const LAYER_LABEL = {
+  'project config': 'pxsig.config.json',
+  'workspace defaults': 'the workspace defaults',
+  '--warn': '--warn at this terminal',
+  'built-in': 'built-in default',
+};
 
 export class EnforcementError extends Error {
   constructor(message, exit = 2) {
@@ -49,27 +54,54 @@ export function checkEnforcementConfig(e, where = 'enforcement') {
     throw new EnforcementError(`${where}: ${m}`);
   };
   if (typeof e !== 'object' || Array.isArray(e)) bad('must be an object');
-  for (const k of Object.keys(e)) if (!['default', 'gates', 'warnUntil', 'noticeDays', 'advisoryExit'].includes(k)) bad(`unknown key "${k}" (default, gates, warnUntil, noticeDays, advisoryExit)`);
-  if (e.default != null && !['enforce', 'warn'].includes(e.default)) bad(`default must be "enforce" or "warn"`);
+  for (const k of Object.keys(e))
+    if (!['default', 'gates', 'warnUntil', 'noticeDays', 'advisoryExit'].includes(k))
+      bad(`unknown key "${k}" (default, gates, warnUntil, noticeDays, advisoryExit)`);
+  if (e.default != null && !['enforce', 'warn'].includes(e.default))
+    bad(`default must be "enforce" or "warn"`);
   if (e.gates != null) {
-    if (typeof e.gates !== 'object' || Array.isArray(e.gates)) bad('gates must map a gate to enforce or warn');
+    if (typeof e.gates !== 'object' || Array.isArray(e.gates))
+      bad('gates must map a gate to enforce or warn');
     for (const [g, v] of Object.entries(e.gates)) {
       if (!GATES.includes(g)) bad(`unknown gate "${g}" (gates: ${GATES.join(', ')})`);
       const ok = g === 'a11y' ? ['enforce', 'warn', 'off'] : ['enforce', 'warn'];
       if (!ok.includes(v)) bad(`gates.${g} must be ${ok.map((x) => `"${x}"`).join(' or ')}`);
     }
   }
-  if (e.warnUntil != null && (typeof e.warnUntil !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(e.warnUntil) || Number.isNaN(Date.parse(`${e.warnUntil}T00:00:00Z`)))) bad('warnUntil must be a date, YYYY-MM-DD');
-  if (e.noticeDays != null && !(Number.isInteger(e.noticeDays) && e.noticeDays >= 0)) bad('noticeDays must be a whole number of days, 0 or more');
-  if (e.advisoryExit != null && !(Number.isInteger(e.advisoryExit) && (e.advisoryExit === 0 || (e.advisoryExit >= 10 && e.advisoryExit <= 125))))
-    bad('advisoryExit must be 0, or 10 to 125 (1, 2 and 3 already mean something, and higher codes are signals)');
+  if (
+    e.warnUntil != null &&
+    (typeof e.warnUntil !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(e.warnUntil) ||
+      Number.isNaN(Date.parse(`${e.warnUntil}T00:00:00Z`)))
+  )
+    bad('warnUntil must be a date, YYYY-MM-DD');
+  if (e.noticeDays != null && !(Number.isInteger(e.noticeDays) && e.noticeDays >= 0))
+    bad('noticeDays must be a whole number of days, 0 or more');
+  if (
+    e.advisoryExit != null &&
+    !(
+      Number.isInteger(e.advisoryExit) &&
+      (e.advisoryExit === 0 || (e.advisoryExit >= 10 && e.advisoryExit <= 125))
+    )
+  )
+    bad(
+      'advisoryExit must be 0, or 10 to 125 (1, 2 and 3 already mean something, and higher codes are signals)'
+    );
 }
 
 /** `--warn` / `--enforce` → the gates they name: `true` (no value) is every gate. */
 function flagGates(v, name) {
   if (v == null || v === false) return null;
-  const list = v === true ? GATES : String(v).split(',').map((s) => s.trim()).filter(Boolean);
-  for (const g of list) if (!GATES.includes(g)) throw new EnforcementError(`--${name}: unknown gate "${g}" (gates: ${GATES.join(', ')})`);
+  const list =
+    v === true
+      ? GATES
+      : String(v)
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+  for (const g of list)
+    if (!GATES.includes(g))
+      throw new EnforcementError(`--${name}: unknown gate "${g}" (gates: ${GATES.join(', ')})`);
   return list;
 }
 
@@ -78,7 +110,16 @@ function flagGates(v, name) {
  * `P` is an opened project (`config.enforcement`, `configSources`). Throws an `EnforcementError`
  * (exit 3 for `--warn` without a person, 2 for anything else not allowed).
  */
-export function resolveEnforcement(P, { flags = {}, env = process.env, human = () => humanAtTerminal(), why = () => whyNotPerson(), now = new Date() } = {}) {
+export function resolveEnforcement(
+  P,
+  {
+    flags = {},
+    env = process.env,
+    human = () => humanAtTerminal(),
+    why = () => whyNotPerson(),
+    now = new Date(),
+  } = {}
+) {
   const e = P.config?.enforcement ?? {};
   const src = P.configSources ?? {};
   const present = P.config?.enforcement != null;
@@ -118,7 +159,11 @@ export function resolveEnforcement(P, { flags = {}, env = process.env, human = (
   // --warn: a person at a terminal may try warn for one local run (decision 10.3 (c)).
   const lower = flagGates(flags.warn, 'warn');
   if (lower) {
-    if (!human()) throw new EnforcementError(`warn mode for this run needs a person at a terminal (${why()}); set it in pxsig.config.json ("enforcement") instead`, 3);
+    if (!human())
+      throw new EnforcementError(
+        `warn mode for this run needs a person at a terminal (${why()}); set it in pxsig.config.json ("enforcement") instead`,
+        3
+      );
     for (const g of lower) {
       gates[g] = 'warn';
       layers[g] = '--warn';
@@ -127,8 +172,12 @@ export function resolveEnforcement(P, { flags = {}, env = process.env, human = (
   // Raising always wins: --enforce, PXSIG_ENFORCEMENT=enforce.
   const pe = env.PXSIG_ENFORCEMENT;
   if (pe != null && pe !== '') {
-    if (pe === 'warn') throw new EnforcementError('PXSIG_ENFORCEMENT=warn is refused: warn comes from committed config ("enforcement" in pxsig.config.json) or --warn at a terminal; the variable can only make a run stricter (PXSIG_ENFORCEMENT=enforce)');
-    if (pe !== 'enforce') throw new EnforcementError(`PXSIG_ENFORCEMENT takes "enforce"; got "${pe}"`);
+    if (pe === 'warn')
+      throw new EnforcementError(
+        'PXSIG_ENFORCEMENT=warn is refused: warn comes from committed config ("enforcement" in pxsig.config.json) or --warn at a terminal; the variable can only make a run stricter (PXSIG_ENFORCEMENT=enforce)'
+      );
+    if (pe !== 'enforce')
+      throw new EnforcementError(`PXSIG_ENFORCEMENT takes "enforce"; got "${pe}"`);
     for (const g of GATES)
       if (gates[g] !== 'enforce') {
         gates[g] = 'enforce';
@@ -174,7 +223,11 @@ export function outcome(enf, found) {
   const advisory = failing.filter((f) => f.gate && enf.gates[f.gate] === 'warn');
   // A quiet built-in gate (a11y) that would fail exits 0 (decision 88); advisoryExit is for the
   // gates a team chose to warn.
-  const exit = enforced.length ? Math.max(...enforced.map((f) => f.exit)) : advisory.some((f) => enf.configured.includes(f.gate)) ? enf.advisoryExit : 0;
+  const exit = enforced.length
+    ? Math.max(...enforced.map((f) => f.exit))
+    : advisory.some((f) => enf.configured.includes(f.gate))
+      ? enf.advisoryExit
+      : 0;
   const ran = [...new Set(found.map((f) => f.gate).filter(Boolean))];
   return {
     exit,
@@ -189,19 +242,32 @@ export function outcome(enf, found) {
 }
 
 /** Whether this run says anything about warn mode: configured warn, or a quiet gate that would fail. */
-export const speaks = (enf, out = null) => enf.configured.length > 0 || enf.expired.length > 0 || Boolean(out?.warnedFailing?.some((g) => enf.quiet.includes(g)));
+export const speaks = (enf, out = null) =>
+  enf.configured.length > 0 ||
+  enf.expired.length > 0 ||
+  Boolean(out?.warnedFailing?.some((g) => enf.quiet.includes(g)));
 
 /** The gates a lead line names, with where they came from. */
 function warnedText(enf, gates = enf.configured) {
-  const from = [...new Set(gates.map((g) => LAYER_LABEL[enf.layers[g]] ?? enf.layers[g]))].join(', ');
-  const until = enf.warnUntil && gates.some((g) => CONFIGURED.has(enf.layers[g]) && enf.layers[g] !== '--warn') ? `; until ${enf.warnUntil}${enf.ending ? `, enforced in ${enf.daysLeft} day${enf.daysLeft === 1 ? '' : 's'}` : ''}` : '';
+  const from = [...new Set(gates.map((g) => LAYER_LABEL[enf.layers[g]] ?? enf.layers[g]))].join(
+    ', '
+  );
+  const until =
+    enf.warnUntil && gates.some((g) => CONFIGURED.has(enf.layers[g]) && enf.layers[g] !== '--warn')
+      ? `; until ${enf.warnUntil}${enf.ending ? `, enforced in ${enf.daysLeft} day${enf.daysLeft === 1 ? '' : 's'}` : ''}`
+      : '';
   return `${gates.join(', ')} (${from}${until})`;
 }
 
 /** The first line of a gated command under configured warn, or null. */
 export function leadLine(enf) {
-  if (!enf.configured.length) return enf.expired.length ? `ADVISORY: warn mode ended on ${enf.warnUntil}; ${enf.expired.join(', ')} ${enf.expired.length === 1 ? 'is' : 'are'} enforced again.` : null;
-  const exit = enf.advisoryExit ? `a failure in ${enf.configured.length === 1 ? 'it' : 'them'} exits ${enf.advisoryExit}` : 'the exit stays 0';
+  if (!enf.configured.length)
+    return enf.expired.length
+      ? `ADVISORY: warn mode ended on ${enf.warnUntil}; ${enf.expired.join(', ')} ${enf.expired.length === 1 ? 'is' : 'are'} enforced again.`
+      : null;
+  const exit = enf.advisoryExit
+    ? `a failure in ${enf.configured.length === 1 ? 'it' : 'them'} exits ${enf.advisoryExit}`
+    : 'the exit stays 0';
   return `ADVISORY: warn mode for ${warnedText(enf)}. Failures are reported; ${exit}.`;
 }
 
@@ -209,8 +275,11 @@ export function leadLine(enf) {
 export function lastLine(enf, out, tally = null) {
   if (!speaks(enf, out)) return null;
   const counts = out.reasons.map((r) => `${r.count} ${r.what}`).join(', ');
-  const t = tally?.runs ? ` Would-fail runs: ${tally.wouldFail} of ${tally.runs}${tally.main ? ` (${tally.main.branch} ${tally.main.wouldFail} of ${tally.main.runs})` : ''}.` : '';
-  if (out.advisory) return `ADVISORY: would have failed (exit ${out.wouldExit}): ${counts}. Not blocking.${t}`;
+  const t = tally?.runs
+    ? ` Would-fail runs: ${tally.wouldFail} of ${tally.runs}${tally.main ? ` (${tally.main.branch} ${tally.main.wouldFail} of ${tally.main.runs})` : ''}.`
+    : '';
+  if (out.advisory)
+    return `ADVISORY: would have failed (exit ${out.wouldExit}): ${counts}. Not blocking.${t}`;
   if (out.reasons.length) return `ADVISORY: warned gates would also have failed: ${counts}.${t}`;
   return `ADVISORY: would have passed.${t}`;
 }
@@ -238,7 +307,10 @@ export function reportBlock(enf, out) {
 
 /** The enforcement row for `pxsig doctor` and `pxsig config`: "visual warn until … · others enforce". */
 export function describeEnforcement(enf) {
-  const parts = GATES.filter((g) => enf.gates[g] !== 'enforce').map((g) => `${g} ${enf.gates[g]}${enf.layers[g] === 'built-in' ? ' (default)' : enf.warnUntil && enf.configured.includes(g) && enf.layers[g] !== '--warn' ? ` until ${enf.warnUntil}` : ''}`);
+  const parts = GATES.filter((g) => enf.gates[g] !== 'enforce').map(
+    (g) =>
+      `${g} ${enf.gates[g]}${enf.layers[g] === 'built-in' ? ' (default)' : enf.warnUntil && enf.configured.includes(g) && enf.layers[g] !== '--warn' ? ` until ${enf.warnUntil}` : ''}`
+  );
   return parts.length ? `${parts.join(' · ')} · others enforce` : 'every gate enforced';
 }
 
@@ -250,9 +322,24 @@ export function describeEnforcement(enf) {
 export function enforcementProblems(enf, tally = null) {
   const out = [];
   const t = tally?.runs ? ` Would-fail runs: ${tally.wouldFail} of the last ${tally.runs}.` : '';
-  if (enf.configured.length) out.push({ code: 'enforcement-warn', severity: 'info', reason: `warn mode for ${warnedText(enf)}: failures in ${enf.configured.length === 1 ? 'this gate are' : 'these gates are'} reported, not blocking.${t}` });
-  if (enf.ending) out.push({ code: 'enforcement-ending', severity: 'warn', reason: `${enf.configured.join(', ')} ${enf.configured.length === 1 ? 'is' : 'are'} enforced from ${enf.warnUntil} (in ${enf.daysLeft} day${enf.daysLeft === 1 ? '' : 's'}).${t} Extend warnUntil in a pull request to keep warn mode` });
-  if (enf.expired.length && enf.daysSince != null && enf.daysSince <= enf.noticeDays) out.push({ code: 'enforcement-expired', severity: 'info', reason: `${enf.expired.join(', ')} ${enf.expired.length === 1 ? 'has' : 'have'} been enforced since ${enf.warnUntil} (warnUntil passed): failures exit as they did before warn mode` });
+  if (enf.configured.length)
+    out.push({
+      code: 'enforcement-warn',
+      severity: 'info',
+      reason: `warn mode for ${warnedText(enf)}: failures in ${enf.configured.length === 1 ? 'this gate are' : 'these gates are'} reported, not blocking.${t}`,
+    });
+  if (enf.ending)
+    out.push({
+      code: 'enforcement-ending',
+      severity: 'warn',
+      reason: `${enf.configured.join(', ')} ${enf.configured.length === 1 ? 'is' : 'are'} enforced from ${enf.warnUntil} (in ${enf.daysLeft} day${enf.daysLeft === 1 ? '' : 's'}).${t} Extend warnUntil in a pull request to keep warn mode`,
+    });
+  if (enf.expired.length && enf.daysSince != null && enf.daysSince <= enf.noticeDays)
+    out.push({
+      code: 'enforcement-expired',
+      severity: 'info',
+      reason: `${enf.expired.join(', ')} ${enf.expired.length === 1 ? 'has' : 'have'} been enforced since ${enf.warnUntil} (warnUntil passed): failures exit as they did before warn mode`,
+    });
   return out;
 }
 
@@ -262,7 +349,8 @@ const KEEP_LINES = 5000;
 const KEEP_DAYS = 90;
 
 /** `<stateDir>/readiness.ndjson` for this project's repository. */
-export const readinessPath = (P, opts) => join(repoStateDir(P.workspaceRoot, opts), 'readiness.ndjson');
+export const readinessPath = (P, opts) =>
+  join(repoStateDir(P.workspaceRoot, opts), 'readiness.ndjson');
 
 const gitOut = (cwd, args) => {
   const r = spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8' });
@@ -274,12 +362,28 @@ const gitOut = (cwd, args) => {
  * default, decision 88). Keeps the last 5,000 lines per project and gate set, and 90 days (R26).
  * A write failure is one warning on stderr and never changes the exit code.
  */
-export function appendReadiness(P, enf, out, { source, suite = null, counts = {}, now = new Date(), opts } = {}) {
+export function appendReadiness(
+  P,
+  enf,
+  out,
+  { source, suite = null, counts = {}, now = new Date(), opts } = {}
+) {
   if (!enf.configured.length) return null;
   const sha = gitOut(P.workspaceRoot, ['rev-parse', 'HEAD']);
   let branch = gitOut(P.workspaceRoot, ['rev-parse', '--abbrev-ref', 'HEAD']);
   if (branch === 'HEAD') branch = null;
-  const line = { at: now.toISOString(), project: P.name, suite, sha, branch, gates: enf.configured, wouldFail: out.wouldFail, wouldExit: out.wouldExit, counts, source };
+  const line = {
+    at: now.toISOString(),
+    project: P.name,
+    suite,
+    sha,
+    branch,
+    gates: enf.configured,
+    wouldFail: out.wouldFail,
+    wouldExit: out.wouldExit,
+    counts,
+    source,
+  };
   try {
     const path = readinessPath(P, opts);
     mkdirSync(join(path, '..'), { recursive: true });
@@ -287,7 +391,9 @@ export function appendReadiness(P, enf, out, { source, suite = null, counts = {}
     trimReadiness(path, now);
     return line;
   } catch (e) {
-    process.stderr.write(`[pxsig] warn mode: the readiness tally was not written (${e.message}); the run's result is unchanged\n`);
+    process.stderr.write(
+      `[pxsig] warn mode: the readiness tally was not written (${e.message}); the run's result is unchanged\n`
+    );
     return null;
   }
 }
@@ -323,7 +429,14 @@ function trimReadiness(path, now) {
     seen.set(k, n + 1);
     keep.push(fresh[i]);
   }
-  if (keep.length !== lines.length) writeFileSync(path, keep.reverse().map((l) => JSON.stringify(l)).join('\n') + (keep.length ? '\n' : ''));
+  if (keep.length !== lines.length)
+    writeFileSync(
+      path,
+      keep
+        .reverse()
+        .map((l) => JSON.stringify(l))
+        .join('\n') + (keep.length ? '\n' : '')
+    );
 }
 
 /**
@@ -334,8 +447,15 @@ export function readinessTally(P, { opts, branchNames = ['main', 'master'] } = {
   const lines = readReadiness(readinessPath(P, opts)).filter((l) => l.project === P.name);
   if (!lines.length) return null;
   const wf = (ls) => ls.filter((l) => l.wouldFail).length;
-  const main = branchNames.map((b) => [b, lines.filter((l) => l.branch === b)]).find(([, ls]) => ls.length);
-  return { runs: lines.length, wouldFail: wf(lines), ...(main ? { main: { branch: main[0], runs: main[1].length, wouldFail: wf(main[1]) } } : {}), last: lines.filter((l) => l.wouldFail).pop() ?? null };
+  const main = branchNames
+    .map((b) => [b, lines.filter((l) => l.branch === b)])
+    .find(([, ls]) => ls.length);
+  return {
+    runs: lines.length,
+    wouldFail: wf(lines),
+    ...(main ? { main: { branch: main[0], runs: main[1].length, wouldFail: wf(main[1]) } } : {}),
+    last: lines.filter((l) => l.wouldFail).pop() ?? null,
+  };
 }
 
 /** For the CLIs: resolve, or print the refusal and exit with its code. */
@@ -370,15 +490,34 @@ export function checkFindings(rows) {
   const found = [];
   if (changed) found.push({ gate: 'visual', exit: 1, count: changed, what: 'changed' });
   if (fresh) found.push({ gate: 'visual', exit: 1, count: fresh, what: 'new' });
-  if (errors) found.push({ gate: 'visual', exit: 1, count: errors, what: errors === 1 ? 'render error' : 'render errors' });
+  if (errors)
+    found.push({
+      gate: 'visual',
+      exit: 1,
+      count: errors,
+      what: errors === 1 ? 'render error' : 'render errors',
+    });
   if (!found.length) found.push({ gate: 'visual', exit: 0, count: 0, what: 'changed' });
   const a11y = checked.filter((r) => (r.a11y?.new ?? 0) > 0).length;
-  found.push({ gate: 'a11y', exit: a11y ? 1 : 0, count: a11y, what: a11y === 1 ? 'entry with new a11y violations' : 'entries with new a11y violations' });
+  found.push({
+    gate: 'a11y',
+    exit: a11y ? 1 : 0,
+    count: a11y,
+    what: a11y === 1 ? 'entry with new a11y violations' : 'entries with new a11y violations',
+  });
   return found;
 }
 
 /** The readiness counts of a check (decision 10.7's fields). */
 export function checkCounts(rows) {
-  const by = (what) => checkFindings(rows).filter((f) => f.what.startsWith(what)).reduce((n, f) => n + f.count, 0);
-  return { changed: by('changed'), new: by('new'), renderErrors: by('render error'), a11yNew: by('entr') };
+  const by = (what) =>
+    checkFindings(rows)
+      .filter((f) => f.what.startsWith(what))
+      .reduce((n, f) => n + f.count, 0);
+  return {
+    changed: by('changed'),
+    new: by('new'),
+    renderErrors: by('render error'),
+    a11yNew: by('entr'),
+  };
 }

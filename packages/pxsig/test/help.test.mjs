@@ -22,16 +22,46 @@ const read = (...p) => readFileSync(join(...p), 'utf8').replace(/\r\n/g, '\n');
 const src = (f) => read(pkg, 'src', f);
 const { global, commands, settings, topics } = helpSource();
 const cli = join(pkg, 'bin', 'pxsig.mjs');
-const pxsig = (args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', env: { ...process.env, PXSIG_FORMAT: 'plain', PXSIG_NO_DELEGATE: '1' } });
+const pxsig = (args) =>
+  spawnSync(process.execPath, [cli, ...args], {
+    encoding: 'utf8',
+    env: { ...process.env, PXSIG_FORMAT: 'plain', PXSIG_NO_DELEGATE: '1' },
+  });
 
 /** Every entry's flags: global, each command's and each subcommand's. */
-const entries = () => [global, ...Object.values(commands).flatMap((c) => [c, ...Object.values(c.subcommands ?? {})])];
-const documentedFlags = () => new Set(entries().flatMap((e) => (e.flags ?? []).filter((f) => f.readBy !== 'engine').map((f) => f.name)));
+const entries = () => [
+  global,
+  ...Object.values(commands).flatMap((c) => [c, ...Object.values(c.subcommands ?? {})]),
+];
+const documentedFlags = () =>
+  new Set(
+    entries().flatMap((e) =>
+      (e.flags ?? []).filter((f) => f.readBy !== 'engine').map((f) => f.name)
+    )
+  );
 
 /** The flags the npm CLI's entry points read, by the ways they read them. */
 function readFlags() {
-  const files = ['cli.mjs', 'check.mjs', 'approve.mjs', 'serve.mjs', 'report.mjs', 'dashboard.mjs', 'dashboard-check.mjs', 'browser.mjs', 'lib/workspace.mjs', 'lib/term.mjs', 'lib/enforcement.mjs'];
-  const pats = [/flags\.([a-zA-Z][\w]*)/g, /flags\[['"]([\w-]+)['"]\]/g, /\b(?:str|num)\(\s*['"]([\w-]+)['"]/g, /strFlag\(flags,\s*['"]([\w-]+)['"]/g, /\bs\(\s*'([\w-]+)'\)/g];
+  const files = [
+    'cli.mjs',
+    'check.mjs',
+    'approve.mjs',
+    'serve.mjs',
+    'report.mjs',
+    'dashboard.mjs',
+    'dashboard-check.mjs',
+    'browser.mjs',
+    'lib/workspace.mjs',
+    'lib/term.mjs',
+    'lib/enforcement.mjs',
+  ];
+  const pats = [
+    /flags\.([a-zA-Z][\w]*)/g,
+    /flags\[['"]([\w-]+)['"]\]/g,
+    /\b(?:str|num)\(\s*['"]([\w-]+)['"]/g,
+    /strFlag\(flags,\s*['"]([\w-]+)['"]/g,
+    /\bs\(\s*'([\w-]+)'\)/g,
+  ];
   const out = new Set();
   for (const f of files) {
     const s = src(f);
@@ -49,8 +79,16 @@ test('every command the CLI dispatches has an entry, and no other', () => {
 test('every flag the CLI reads has an entry, and every entry names a flag something reads', () => {
   const read = readFlags();
   const doc = documentedFlags();
-  assert.deepEqual([...read].filter((f) => !doc.has(f)).sort(), [], 'read but not in help/commands.json');
-  assert.deepEqual([...doc].filter((f) => !read.has(f)).sort(), [], 'in help/commands.json but read by nothing');
+  assert.deepEqual(
+    [...read].filter((f) => !doc.has(f)).sort(),
+    [],
+    'read but not in help/commands.json'
+  );
+  assert.deepEqual(
+    [...doc].filter((f) => !read.has(f)).sort(),
+    [],
+    'in help/commands.json but read by nothing'
+  );
 });
 
 test('every config key has a setting entry, and no other', () => {
@@ -77,14 +115,24 @@ test('every config key has a setting entry, and no other', () => {
 
 test('docs/cli.md names every command and flag; docs/configuration.md every setting', () => {
   const md = read(repo, 'docs', 'cli.md');
-  for (const c of Object.keys(commands)) if (c !== 'help') assert.ok(md.includes(`pxsig ${c}`), `docs/cli.md: pxsig ${c}`);
+  for (const c of Object.keys(commands))
+    if (c !== 'help') assert.ok(md.includes(`pxsig ${c}`), `docs/cli.md: pxsig ${c}`);
   assert.ok(md.includes('pxsig help'), 'docs/cli.md: pxsig help');
-  for (const e of entries()) for (const f of e.flags ?? []) assert.ok(md.includes(`--${f.name}`) || (f.name === 'state' && md.includes('`state`')), `docs/cli.md: --${f.name}`);
+  for (const e of entries())
+    for (const f of e.flags ?? [])
+      assert.ok(
+        md.includes(`--${f.name}`) || (f.name === 'state' && md.includes('`state`')),
+        `docs/cli.md: --${f.name}`
+      );
   const conf = read(repo, 'docs', 'configuration.md');
   const keys = Object.keys(settings);
   // A nested key may be written whole (`store.dir`) or by its last part in its section's table.
   const named = (k) => conf.includes(`\`${k}\``) || conf.includes(`\`${k.split('.').pop()}\``);
-  for (const k of keys) assert.ok(named(k) || keys.some((x) => x.startsWith(`${k}.`) && named(x)), `docs/configuration.md: ${k}`);
+  for (const k of keys)
+    assert.ok(
+      named(k) || keys.some((x) => x.startsWith(`${k}.`) && named(x)),
+      `docs/configuration.md: ${k}`
+    );
 });
 
 test('every example is a command with flags it takes', () => {
@@ -98,23 +146,38 @@ test('every example is a command with flags it takes', () => {
         const { positional, flags } = parseArgs(argv);
         assert.equal(positional[0], name, `${x.cmd}: under ${name}`);
         const own = c.subcommands?.[positional[1]] ?? e;
-        const known = new Set([...globals, ...(c.flags ?? []), ...(own.flags ?? [])].map((f) => (typeof f === 'string' ? f : f.name)));
+        const known = new Set(
+          [...globals, ...(c.flags ?? []), ...(own.flags ?? [])].map((f) =>
+            typeof f === 'string' ? f : f.name
+          )
+        );
         for (const f of Object.keys(flags)) assert.ok(known.has(f), `${x.cmd}: --${f}`);
       }
 });
 
 test("cli.mjs's header lists the same commands", () => {
   const header = src('cli.mjs').match(/\/\*\*([\s\S]*?)\*\//)[1];
-  const listed = new Set([...header.matchAll(/^ \* {3}([a-z0-9]+)\b/gm)].map((m) => m[1]).filter((c) => c !== 'pxsig'));
-  assert.deepEqual([...listed].sort(), Object.keys(commands).filter((c) => c !== 'help').sort());
+  const listed = new Set(
+    [...header.matchAll(/^ \* {3}([a-z0-9]+)\b/gm)].map((m) => m[1]).filter((c) => c !== 'pxsig')
+  );
+  assert.deepEqual(
+    [...listed].sort(),
+    Object.keys(commands)
+      .filter((c) => c !== 'help')
+      .sort()
+  );
 });
 
 test("the dashboard's Commands rows are examples here, word for word", () => {
   const tsx = read(repo, 'packages', 'dashboard', 'src', 'views', 'Help.tsx');
   const copy = JSON.parse(read(repo, 'packages', 'dashboard', 'src', 'copy', 'en.json'));
-  const rows = [...tsx.match(/const COMMANDS[^=]*= \[([\s\S]*?)\];/)[1].matchAll(/\['([^']+)', '([^']+)'\]/g)];
+  const rows = [
+    ...tsx.match(/const COMMANDS[^=]*= \[([\s\S]*?)\];/)[1].matchAll(/\['([^']+)', '([^']+)'\]/g),
+  ];
   assert.ok(rows.length >= 5);
-  const examples = new Map(entries().flatMap((e) => (e.examples ?? []).map((x) => [x.cmd, x.shows])));
+  const examples = new Map(
+    entries().flatMap((e) => (e.examples ?? []).map((x) => [x.cmd, x.shows]))
+  );
   for (const [, cmd, key] of rows) {
     const text = key.split('.').reduce((o, k) => o[k], copy);
     assert.equal(examples.get(cmd), text, `${cmd}: "${text}"`);
@@ -122,17 +185,32 @@ test("the dashboard's Commands rows are examples here, word for word", () => {
 });
 
 test('pxsig --help and pxsig help print the header, as before', () => {
-  const header = src('cli.mjs').match(/\/\*\*([\s\S]*?)\*\//)[1].replace(/^ \* ?/gm, '').trim() + '\n';
+  const header =
+    src('cli.mjs')
+      .match(/\/\*\*([\s\S]*?)\*\//)[1]
+      .replace(/^ \* ?/gm, '')
+      .trim() + '\n';
   assert.equal(pxsig(['--help']).stdout.replace(/\r\n/g, '\n'), header);
   assert.equal(pxsig(['help']).stdout.replace(/\r\n/g, '\n'), header);
 });
 
 test('a command, subcommand, topic or setting has its own page; an unknown name exits 2 with the nearest', () => {
   assert.match(pxsig(['check', '--help']).stdout, /^## pxsig check — /);
-  assert.match(pxsig(['help', 'approve', 'apply']).stdout, /^## pxsig approve apply — .*\n[\s\S]*\| 3 \| Not a person at a terminal \|/);
-  assert.match(pxsig(['list', 'changed', '--help']).stdout, /^## pxsig list — /, 'an argument is not a subcommand');
+  assert.match(
+    pxsig(['help', 'approve', 'apply']).stdout,
+    /^## pxsig approve apply — .*\n[\s\S]*\| 3 \| Not a person at a terminal \|/
+  );
+  assert.match(
+    pxsig(['list', 'changed', '--help']).stdout,
+    /^## pxsig list — /,
+    'an argument is not a subcommand'
+  );
   assert.match(pxsig(['help', 'exit-codes']).stdout, /^# Exit codes/);
-  assert.match(pxsig(['help', 'dashboard']).stdout, /## pxsig dashboard[\s\S]*# The dashboard on another design system/, 'command and topic together');
+  assert.match(
+    pxsig(['help', 'dashboard']).stdout,
+    /## pxsig dashboard[\s\S]*# The dashboard on another design system/,
+    'command and topic together'
+  );
   const s = JSON.parse(pxsig(['help', 'gate.threshold', '--json']).stdout);
   assert.deepEqual([s.kind, s.entry.default], ['setting', '24']);
   const bad = pxsig(['help', 'chek']);
@@ -149,6 +227,10 @@ test('every topic and every setting is reachable by name', () => {
 test("the MCP's pxsig_help gives the same data, read-only", async () => {
   const t = tools.find((x) => x.name === 'pxsig_help');
   assert.ok((await t.run({})).names.includes('check'));
-  assert.deepEqual(await t.run({ name: 'approve verify' }), { kind: 'command', name: 'approve verify', entry: commands.approve.subcommands.verify });
+  assert.deepEqual(await t.run({ name: 'approve verify' }), {
+    kind: 'command',
+    name: 'approve verify',
+    entry: commands.approve.subcommands.verify,
+  });
   await assert.rejects(t.run({ name: 'nope' }), /nearest/);
 });

@@ -8,15 +8,15 @@ One server per workspace. It serves the dashboard and an HTTP API for every proj
 engine process and one pool of warm browsers, and keeps each project's integrity ledger current.
 Approving a baseline or re-checking a story then costs one render.
 
-| Flag | Meaning |
-| --- | --- |
-| `--port <n>` | First port to try (default: `server.port` in the workspace file, else 6070). If it is taken, the next ten are tried. |
-| `--watch` | When a file under a project's `srcRoot` changes, re-check only the entries it traces to. A file it cannot trace (an unimported `.json`) is printed, not a reason to re-check everything ([ci.md](ci.md#how-selection-decides)). |
-| `--no-open` | Do not open a browser tab. On Windows none is opened anyway: the link is printed. |
-| `--tab <name>` | Open the dashboard on this section. |
-| `--project <a,b>` | Serve only these projects. |
-| `--workspace <dir>` | The workspace root, instead of walking up from the current folder. |
-| `--debug` | Print every program the server starts, with its arguments, on stderr (see [platforms.md](platforms.md#programs-pxsig-starts)). |
+| Flag                | Meaning                                                                                                                                                                                                                         |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--port <n>`        | First port to try (default: `server.port` in the workspace file, else 6070). If it is taken, the next ten are tried.                                                                                                            |
+| `--watch`           | When a file under a project's `srcRoot` changes, re-check only the entries it traces to. A file it cannot trace (an unimported `.json`) is printed, not a reason to re-check everything ([ci.md](ci.md#how-selection-decides)). |
+| `--no-open`         | Do not open a browser tab. On Windows none is opened anyway: the link is printed.                                                                                                                                               |
+| `--tab <name>`      | Open the dashboard on this section.                                                                                                                                                                                             |
+| `--project <a,b>`   | Serve only these projects.                                                                                                                                                                                                      |
+| `--workspace <dir>` | The workspace root, instead of walking up from the current folder.                                                                                                                                                              |
+| `--debug`           | Print every program the server starts, with its arguments, on stderr (see [platforms.md](platforms.md#programs-pxsig-starts)).                                                                                                  |
 
 The server binds to `127.0.0.1` only. On start it writes
 `<workspace>/node_modules/.cache/pxsig/server.json` (`url`, `pid`, `startedAt`, `projects`), so the
@@ -48,11 +48,11 @@ port and renders against it (its origin is allowed like a Storybook's).
 
 `http://127.0.0.1:6070/report/` (the root redirects there).
 
-| Section | Content |
-| --- | --- |
-| Overview | The latest check's counts and duration across the top. Below, on the left: open items (changed, new, rejected, render errors, components with coverage errors, new a11y violations, flaky), each linking to its list or starting a review, then stale entries by component as a heatmap (the 12 highest shares; a tile opens Coverage on that component). On the right: an errors card while there are render or coverage errors (each row opens where it is fixed, with the safe repair), then changed entries per run. One column on a narrow page. "Changed" counts changes still waiting for a decision. |
-| Review Stories | Every entry, filterable and grouped by component, with the inspector: baseline, current render and diff side by side or overlaid, metrics, gate reasons, change regions. `A` approves, `R` rejects; **Approve story** approves every mode and state of the story that waits for a decision, in one batch; **Re-check** queues the entry again. A card with a render error, or a NEW entry not rendered yet, has its own **Re-check**. "Review N changes" starts a session over the changed (or new) entries with progress and a closing summary. |
-| Coverage | The integrity ledger: components and entries by status, with the safe repairs, and stale entries by component as a heatmap (a tile filters the table to that component and opens its entries) |
+| Section        | Content                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Overview       | The latest check's counts and duration across the top. Below, on the left: open items (changed, new, rejected, render errors, components with coverage errors, new a11y violations, flaky), each linking to its list or starting a review, then stale entries by component as a heatmap (the 12 highest shares; a tile opens Coverage on that component). On the right: an errors card while there are render or coverage errors (each row opens where it is fixed, with the safe repair), then changed entries per run. One column on a narrow page. "Changed" counts changes still waiting for a decision. |
+| Review Stories | Every entry, filterable and grouped by component, with the inspector: baseline, current render and diff side by side or overlaid, metrics, gate reasons, change regions. `A` approves, `R` rejects; **Approve story** approves every mode and state of the story that waits for a decision, in one batch; **Re-check** queues the entry again. A card with a render error, or a NEW entry not rendered yet, has its own **Re-check**. "Review N changes" starts a session over the changed (or new) entries with progress and a closing summary.                                                             |
+| Coverage       | The integrity ledger: components and entries by status, with the safe repairs, and stale entries by component as a heatmap (a tile filters the table to that component and opens its entries)                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 A banner above every section (on the Overview, the errors card instead, while there are errors)
 shows coverage errors, entries that need a first approval (counted on their own, with the queue
@@ -70,10 +70,10 @@ The top bar links each section by its id in the URL hash: `overview`, `stories`,
 
 With several projects, a switcher in the top bar picks one. URL parameters:
 
-| Parameter | Meaning |
-| --- | --- |
-| `?project=<name>` | The project to show |
-| `#inspect=<id>` | Open the inspector on an entry |
+| Parameter             | Meaning                                                          |
+| --------------------- | ---------------------------------------------------------------- |
+| `?project=<name>`     | The project to show                                              |
+| `#inspect=<id>`       | Open the inspector on an entry                                   |
 | `?embed=1&story=<id>` | The inspector alone, for one story (used by the Storybook panel) |
 
 The dashboard ships prebuilt in the `pxsig` npm package. In a clone without a build, the API works
@@ -92,38 +92,38 @@ exactly one project.
 
 ### Reading
 
-| Request | Response |
-| --- | --- |
-| `GET /__pxsig/projects` | `{ workspace, projects: [{ name, root, storybook, entries, integrity, error }] }` |
-| `GET /__pxsig/status` | Whether a check or repair is running, queue length, review decisions, per-story status and per-story integrity across all projects, integrity summaries, the dashboard URL |
-| `GET /__pxsig/data?project=` | One project's dashboard data: the last check, history, review decisions, integrity, image paths |
-| `GET /__pxsig/integrity?project=` | The project's ledger. `&story=<id>` for one story, `&component=` / `&status=` to filter, `&fresh=1` to recompute first. `/api/integrity` is the same. |
-| `GET /__pxsig/events` | Server-sent events: `hello`, `data` (a report changed), `review`, `check` (`running`, `done`, `error`), `integrity`, `watch` |
+| Request                           | Response                                                                                                                                                                   |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /__pxsig/projects`           | `{ workspace, projects: [{ name, root, storybook, entries, integrity, error }] }`                                                                                          |
+| `GET /__pxsig/status`             | Whether a check or repair is running, queue length, review decisions, per-story status and per-story integrity across all projects, integrity summaries, the dashboard URL |
+| `GET /__pxsig/data?project=`      | One project's dashboard data: the last check, history, review decisions, integrity, image paths                                                                            |
+| `GET /__pxsig/integrity?project=` | The project's ledger. `&story=<id>` for one story, `&component=` / `&status=` to filter, `&fresh=1` to recompute first. `/api/integrity` is the same.                      |
+| `GET /__pxsig/events`             | Server-sent events: `hello`, `data` (a report changed), `review`, `check` (`running`, `done`, `error`), `integrity`, `watch`                                               |
 
 ### Files
 
-| Request | Response |
-| --- | --- |
-| `GET /p/<project>/renders/latest/<id>.png` | The latest render |
-| `GET /p/<project>/renders/base/<id>.png` | The baseline image, read out of the `.psig` |
-| `GET /p/<project>/diffs/latest/<file>` | Diff images |
-| `GET /p/<project>/sig/<id>` | The `.psig` header, as JSON |
+| Request                                    | Response                                    |
+| ------------------------------------------ | ------------------------------------------- |
+| `GET /p/<project>/renders/latest/<id>.png` | The latest render                           |
+| `GET /p/<project>/renders/base/<id>.png`   | The baseline image, read out of the `.psig` |
+| `GET /p/<project>/diffs/latest/<file>`     | Diff images                                 |
+| `GET /p/<project>/sig/<id>`                | The `.psig` header, as JSON                 |
 
 ### Writing
 
-| Request | Effect |
-| --- | --- |
-| `POST /__pxsig/approve {id, batch?, reason?, kind?}` | The latest render becomes the baseline: a `.psig` with the render as its image. The old baseline is snapshotted to `<store>/history/<batch>/`, the write logged in `approvals.ndjson`, and the a11y baseline follows the render. A NEW entry (no baseline yet) gets its first baseline, logged with `before: null`. 409 when there is no latest render, or when the server does not hold the project's store lock. |
-| `POST /__pxsig/approve-story {story, reason?}` | Approves every entry of the story that waits for a decision (each mode and state), as one batch: the dashboard's **Approve story**, a person's click. Entries that pass, did not render, were rejected or are already approved are left out; the answer lists `approved`, `skipped` (with why) and the `batch`. Each approval is logged and undone like a single one. |
-| `POST /__pxsig/reject {id}` | Records a rejection for the current result. |
-| `POST /__pxsig/a11y-accept {id}` | Puts the entry's current axe violations on its accepted list (`<store>/a11y.json`), logged in `<store>/a11y-decisions.ndjson`. 409 when the last check has no axe results for it. |
-| `POST /__pxsig/a11y-reject {id}` | Marks the entry's violations for a fix; the accepted list is unchanged. |
-| `POST /__pxsig/a11y-unaccept {id, rule?}` | Takes `rule` (or every rule) off the entry's accepted list and marks its row's violations new in `check.json` at once; logged. 409 when the rule is not on the list. |
-| `POST /__pxsig/a11y-prune {plan, batch, reason?}` | `pxsig a11y --prune` after the person typed the phrase: takes the plan's rules off the accepted lists, logs one `action: "prune"` line per entry, updates the report rows, and tells the dashboard. The CLI's token only. 409 when `a11y.json` changed since the plan was made; 400 for a malformed plan. |
-| `POST /__pxsig/a11y-unreview {id}` | Clears the accessibility decision; after an accept it restores the previous accepted list (logged). Accessibility decisions live in `reports/a11y-review.json` and, like visual ones, end at the entry's next check. |
-| `POST /__pxsig/unreview {id}` | Clears the decision. For an approval it also restores the previous baseline from that approval's snapshot (a first baseline moves to trash/) and its a11y baseline, logged as an undo; 409 when the baseline changed since. |
+| Request                                                    | Effect                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /__pxsig/approve {id, batch?, reason?, kind?}`       | The latest render becomes the baseline: a `.psig` with the render as its image. The old baseline is snapshotted to `<store>/history/<batch>/`, the write logged in `approvals.ndjson`, and the a11y baseline follows the render. A NEW entry (no baseline yet) gets its first baseline, logged with `before: null`. 409 when there is no latest render, or when the server does not hold the project's store lock.                                                                                                               |
+| `POST /__pxsig/approve-story {story, reason?}`             | Approves every entry of the story that waits for a decision (each mode and state), as one batch: the dashboard's **Approve story**, a person's click. Entries that pass, did not render, were rejected or are already approved are left out; the answer lists `approved`, `skipped` (with why) and the `batch`. Each approval is logged and undone like a single one.                                                                                                                                                            |
+| `POST /__pxsig/reject {id}`                                | Records a rejection for the current result.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `POST /__pxsig/a11y-accept {id}`                           | Puts the entry's current axe violations on its accepted list (`<store>/a11y.json`), logged in `<store>/a11y-decisions.ndjson`. 409 when the last check has no axe results for it.                                                                                                                                                                                                                                                                                                                                                |
+| `POST /__pxsig/a11y-reject {id}`                           | Marks the entry's violations for a fix; the accepted list is unchanged.                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `POST /__pxsig/a11y-unaccept {id, rule?}`                  | Takes `rule` (or every rule) off the entry's accepted list and marks its row's violations new in `check.json` at once; logged. 409 when the rule is not on the list.                                                                                                                                                                                                                                                                                                                                                             |
+| `POST /__pxsig/a11y-prune {plan, batch, reason?}`          | `pxsig a11y --prune` after the person typed the phrase: takes the plan's rules off the accepted lists, logs one `action: "prune"` line per entry, updates the report rows, and tells the dashboard. The CLI's token only. 409 when `a11y.json` changed since the plan was made; 400 for a malformed plan.                                                                                                                                                                                                                        |
+| `POST /__pxsig/a11y-unreview {id}`                         | Clears the accessibility decision; after an accept it restores the previous accepted list (logged). Accessibility decisions live in `reports/a11y-review.json` and, like visual ones, end at the entry's next check.                                                                                                                                                                                                                                                                                                             |
+| `POST /__pxsig/unreview {id}`                              | Clears the decision. For an approval it also restores the previous baseline from that approval's snapshot (a first baseline moves to trash/) and its a11y baseline, logged as an undo; 409 when the baseline changed since.                                                                                                                                                                                                                                                                                                      |
 | `POST /__pxsig/check {ids? \| story? \| stories? \| all?}` | Queues renders and engine checks; answers 202 with the queued ids. Results merge into `check.json`, and its `generatedAt` moves (`fullCheckAt` keeps when every entry was last checked together). A name the manifest does not have is registered first when Storybook is healthy (no signature: NEW, logged in `repairs.ndjson`); the answer lists those entries in `registered`, and each name that could not be registered in `skipped` with why. Without a project, the check is split across the projects that own the ids. |
-| `POST /__pxsig/repair {apply?, only?, stale?}` | The safe repairs: the plan, or with `apply: true` the result. Never prunes. `stale: true` also re-checks stale verdicts. |
+| `POST /__pxsig/repair {apply?, only?, stale?}`             | The safe repairs: the plan, or with `apply: true` the result. Never prunes. `stale: true` also re-checks stale verdicts.                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 A new verdict for an entry clears its review decision. An approval marks the entry's row in
 `check.json` (`approved: { at, batch }`) until then, so `summary.failed` leaves it out; an undo

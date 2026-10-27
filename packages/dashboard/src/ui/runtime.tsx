@@ -29,14 +29,21 @@ interface ThemeModeValue {
   mode: ThemeMode;
   setMode(mode: ThemeMode): void;
 }
-const ThemeModeContext = React.createContext<ThemeModeValue>({ mode: DEFAULT_MODE, setMode: () => {} });
+const ThemeModeContext = React.createContext<ThemeModeValue>({
+  mode: DEFAULT_MODE,
+  setMode: () => {},
+});
 
 /** The current theme mode and its setter (persisted per viewer). */
 export function useThemeMode(): ThemeModeValue {
   return React.useContext(ThemeModeContext);
 }
 
-export function ThemeModeProvider({ children }: { children: (mode: ThemeMode) => React.ReactNode }) {
+export function ThemeModeProvider({
+  children,
+}: {
+  children: (mode: ThemeMode) => React.ReactNode;
+}) {
   const [mode, setModeState] = React.useState<ThemeMode>(readMode);
   const setMode = React.useCallback((next: ThemeMode) => {
     setModeState(next);
@@ -54,6 +61,8 @@ export function ThemeModeProvider({ children }: { children: (mode: ThemeMode) =>
 export function installTokens(map: TokenMap) {
   if (typeof document === 'undefined') return;
   const id = 'pxsig-ui-tokens';
-  const el = document.getElementById(id) ?? document.head.appendChild(Object.assign(document.createElement('style'), { id }));
+  const el =
+    document.getElementById(id) ??
+    document.head.appendChild(Object.assign(document.createElement('style'), { id }));
   el.textContent = tokenCss(map);
 }

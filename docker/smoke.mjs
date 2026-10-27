@@ -43,12 +43,22 @@ const want = { arch: opt('arch'), fonts: opt('fonts'), image: opt('image') };
 try {
   for (const type of ['chromium', 'firefox', 'webkit']) {
     const e = await pool.env(type);
-    const got = { platform: e.os.platform, arch: e.os.arch, fonts: e.fonts.system, image: e.container?.image ?? null, playwright: e.playwright };
-    console.log(`${type}: ${e.browser.version} · ${got.platform}/${got.arch} · fonts ${String(got.fonts).slice(0, 12)} · ${got.image} · id ${e.id}`);
+    const got = {
+      platform: e.os.platform,
+      arch: e.os.arch,
+      fonts: e.fonts.system,
+      image: e.container?.image ?? null,
+      playwright: e.playwright,
+    };
+    console.log(
+      `${type}: ${e.browser.version} · ${got.platform}/${got.arch} · fonts ${String(got.fonts).slice(0, 12)} · ${got.image} · id ${e.id}`
+    );
     if (got.platform !== 'linux') fail(`${type}: platform ${got.platform}, not linux`);
     if (want.arch && got.arch !== want.arch) fail(`${type}: arch ${got.arch}, not ${want.arch}`);
-    if (want.fonts && got.fonts !== want.fonts) fail(`${type}: fonts.system ${got.fonts}, not the label's ${want.fonts}`);
-    if (want.image && got.image !== want.image) fail(`${type}: container.image ${got.image}, not ${want.image}`);
+    if (want.fonts && got.fonts !== want.fonts)
+      fail(`${type}: fonts.system ${got.fonts}, not the label's ${want.fonts}`);
+    if (want.image && got.image !== want.image)
+      fail(`${type}: container.image ${got.image}, not ${want.image}`);
   }
 } finally {
   await pool.close();

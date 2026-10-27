@@ -7,11 +7,11 @@ for anyone who does not use it: Docker is never required.
 
 ## Tags
 
-| Tag | Example | Moves? |
-| --- | --- | --- |
-| `<pxsig>-pw<playwright>` | `0.5.0-pw1.58.2` | never: a multi-arch manifest over the two below |
-| `<pxsig>-pw<playwright>-amd64`, `-arm64` | `0.5.0-pw1.58.2-amd64` | never |
-| `<pxsig>-pw<playwright>-r<N>` | `0.5.0-pw1.58.2-r2` | never: a rebuild of the same pair, for example a base-image security fix |
+| Tag                                      | Example                | Moves?                                                                   |
+| ---------------------------------------- | ---------------------- | ------------------------------------------------------------------------ |
+| `<pxsig>-pw<playwright>`                 | `0.5.0-pw1.58.2`       | never: a multi-arch manifest over the two below                          |
+| `<pxsig>-pw<playwright>-amd64`, `-arm64` | `0.5.0-pw1.58.2-amd64` | never                                                                    |
+| `<pxsig>-pw<playwright>-r<N>`            | `0.5.0-pw1.58.2-r2`    | never: a rebuild of the same pair, for example a base-image security fix |
 
 There is no `latest`. amd64 is the canonical architecture: approve baselines from amd64 renders.
 Pick the tag whose Playwright is the one in your lockfile, and pin it by digest:
@@ -32,15 +32,15 @@ pairs stay published, unmaintained.
 
 ## What is in it
 
-| Part | |
-| --- | --- |
-| Base | `mcr.microsoft.com/playwright:v<playwright>-noble`: the browsers and their system libraries |
-| pxsig | `pxsig@<version>` from npm under `/opt/pxsig`, with its Linux engine (`PXSIG_BIN=/opt/pxsig/engine/pxsig`) |
-| Playwright | the image's own `playwright@<version>` under `/opt/pxsig`; `PXSIG_PLAYWRIGHT` makes pxsig use it before the project's, so the driver always matches the browsers |
-| Fonts | the base image's set; the label `io.pxsig.fonts` is the same digest a render reports as `fonts.system` |
-| Environment | `PXSIG_NO_DELEGATE=1` (the image's pxsig runs, not the mounted project's), `PXSIG_IMAGE`, `PXSIG_IMAGE_REVISION`, `TZ=UTC`, `LANG=C.UTF-8` |
-| Labels | `org.opencontainers.image.*`, `io.pxsig.version`, `io.pxsig.playwright`, `io.pxsig.fonts` |
-| User | `pwuser`, from the base image |
+| Part        |                                                                                                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Base        | `mcr.microsoft.com/playwright:v<playwright>-noble`: the browsers and their system libraries                                                                      |
+| pxsig       | `pxsig@<version>` from npm under `/opt/pxsig`, with its Linux engine (`PXSIG_BIN=/opt/pxsig/engine/pxsig`)                                                       |
+| Playwright  | the image's own `playwright@<version>` under `/opt/pxsig`; `PXSIG_PLAYWRIGHT` makes pxsig use it before the project's, so the driver always matches the browsers |
+| Fonts       | the base image's set; the label `io.pxsig.fonts` is the same digest a render reports as `fonts.system`                                                           |
+| Environment | `PXSIG_NO_DELEGATE=1` (the image's pxsig runs, not the mounted project's), `PXSIG_IMAGE`, `PXSIG_IMAGE_REVISION`, `TZ=UTC`, `LANG=C.UTF-8`                       |
+| Labels      | `org.opencontainers.image.*`, `io.pxsig.version`, `io.pxsig.playwright`, `io.pxsig.fonts`                                                                        |
+| User        | `pwuser`, from the base image                                                                                                                                    |
 
 ## Mode (i): the whole check in the container
 
@@ -89,20 +89,20 @@ pxsig browser stop
   and digest from `browser.json`. `fonts.system` is `null` (the host cannot list the container's
   fonts; `fonts.probe` measures them).
 
-| | (i) whole check in the container | (ii) browser in the container |
-| --- | --- | --- |
-| Same pixels as CI | yes | yes (the engine is the same on every OS) |
-| Speed on Apple silicon | amd64 runs emulated; bind-mount IO | native Node and engine; screenshots cross a WebSocket |
-| `pxsig serve` re-checks | on the host, unless serve uses (ii) too | in the container |
-| Playwright versions | the image's, always matched | the project's must match the image's major.minor |
-| Storybook | the static build in the mount | the host's dev server or static build |
+|                         | (i) whole check in the container        | (ii) browser in the container                         |
+| ----------------------- | --------------------------------------- | ----------------------------------------------------- |
+| Same pixels as CI       | yes                                     | yes (the engine is the same on every OS)              |
+| Speed on Apple silicon  | amd64 runs emulated; bind-mount IO      | native Node and engine; screenshots cross a WebSocket |
+| `pxsig serve` re-checks | on the host, unless serve uses (ii) too | in the container                                      |
+| Playwright versions     | the image's, always matched             | the project's must match the image's major.minor      |
+| Storybook               | the static build in the mount           | the host's dev server or static build                 |
 
 ## On each OS
 
-| OS | |
-| --- | --- |
-| Linux | Docker Engine. Use `--user` for bind mounts (above). |
-| macOS | Docker Desktop, Colima or OrbStack. On Apple silicon the amd64 image runs under emulation (slower); mode (ii) keeps the review loop fast. |
+| OS      |                                                                                                                                                                   |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Linux   | Docker Engine. Use `--user` for bind mounts (above).                                                                                                              |
+| macOS   | Docker Desktop, Colima or OrbStack. On Apple silicon the amd64 image runs under emulation (slower); mode (ii) keeps the review loop fast.                         |
 | Windows | Docker Desktop with the WSL 2 backend. On a managed machine without Docker, nothing changes: checks launch the local browser, and the render environment says so. |
 
 `pxsig browser start`, `stop` and `status` are the only commands that start `docker`

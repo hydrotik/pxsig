@@ -10,7 +10,11 @@ import type { Data } from './data';
 export function versionsText(data: Data): string {
   const v = data.versions;
   const contract = v?.contract ?? CONTRACT_VERSION;
-  return [v?.pxsig ? t('app.versions.pxsig', { version: v.pxsig }) : null, v?.engine ? t('app.versions.engine', { version: v.engine }) : null, t('app.versions.contract', { version: contract })]
+  return [
+    v?.pxsig ? t('app.versions.pxsig', { version: v.pxsig }) : null,
+    v?.engine ? t('app.versions.engine', { version: v.engine }) : null,
+    t('app.versions.contract', { version: contract }),
+  ]
     .filter(Boolean)
     .join(' · ');
 }

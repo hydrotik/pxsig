@@ -66,7 +66,8 @@ function latestBy(lines, actions = null) {
 }
 
 /** The last accept, unaccept, undo or prune of each entry (a11y-decisions.ndjson). */
-export const decisionTimes = (P) => latestBy(readLines(decisionsPath(P)).lines, new Set(['accept', 'unaccept', 'undo', 'prune']));
+export const decisionTimes = (P) =>
+  latestBy(readLines(decisionsPath(P)).lines, new Set(['accept', 'unaccept', 'undo', 'prune']));
 /** The last approval-log line of each entry (approve, undo, adopt, check --update: each rewrites its accepted list). */
 export const approvalTimes = (P) => latestBy(readLog(P));
 
@@ -86,7 +87,17 @@ const iso = (t) => new Date(t).toISOString();
  * that report's rows (unknown: staleness could not be traced, so every row of it counts as stale).
  * Filters: `only` (ids), `component` (id substring), `mode`.
  */
-export function classify({ accepted, reports, decided, approved, stale, modeOf = () => null, only = null, component = null, mode = null }) {
+export function classify({
+  accepted,
+  reports,
+  decided,
+  approved,
+  stale,
+  modeOf = () => null,
+  only = null,
+  component = null,
+  mode = null,
+}) {
   const items = [];
   const rowsById = new Map();
   for (const rep of reports)
@@ -105,22 +116,33 @@ export function classify({ accepted, reports, decided, approved, stale, modeOf =
     const entryMode = modeOf(id) ?? candidates[0]?.row.mode ?? null;
     if (mode && entryMode !== mode) continue;
     const add = (cls, why, ev = {}) => {
-      for (const rule of [...rules].sort()) items.push({ id, rule, class: cls, why, mode: entryMode, ...ev });
+      for (const rule of [...rules].sort())
+        items.push({ id, rule, class: cls, why, mode: entryMode, ...ev });
     };
     const usable = candidates.filter((c) => !notCovered(c.row));
     if (!usable.length) {
-      add('not-covered', candidates.length ? notCovered(candidates[0].row) : 'no report has a row for it', { suite: candidates[0]?.rep.suite ?? null });
+      add(
+        'not-covered',
+        candidates.length ? notCovered(candidates[0].row) : 'no report has a row for it',
+        { suite: candidates[0]?.rep.suite ?? null }
+      );
       continue;
     }
     const at = (c) => Date.parse(c.row.checkedAt ?? c.rep.check.generatedAt) || 0;
     const best = usable.reduce((a, b) => (at(b) > at(a) ? b : a));
     const checkedAt = at(best);
-    const ev = { report: best.rep.file, checkedAt: checkedAt ? iso(checkedAt) : null, suite: best.rep.suite };
+    const ev = {
+      report: best.rep.file,
+      checkedAt: checkedAt ? iso(checkedAt) : null,
+      suite: best.rep.suite,
+    };
     const st = staleOf.get(best.rep);
     let why = null;
     if (!checkedAt) why = 'the row has no check time';
-    else if ((decided.get(id) ?? -Infinity) >= checkedAt) why = `accessibility decision at ${iso(decided.get(id))}, after this check`;
-    else if ((approved.get(id) ?? -Infinity) >= checkedAt) why = `approved at ${iso(approved.get(id))}, after this check`;
+    else if ((decided.get(id) ?? -Infinity) >= checkedAt)
+      why = `accessibility decision at ${iso(decided.get(id))}, after this check`;
+    else if ((approved.get(id) ?? -Infinity) >= checkedAt)
+      why = `approved at ${iso(approved.get(id))}, after this check`;
     else if (st.unknown) why = st.unknown;
     else if (st.ids.has(id)) why = `${st.ids.get(id)} changed after this check`;
     if (why) {
@@ -129,7 +151,18 @@ export function classify({ accepted, reports, decided, approved, stale, modeOf =
     }
     const firing = new Set(best.row.a11y.violations.map((v) => v?.id ?? v));
     for (const rule of [...rules].sort())
-      items.push(firing.has(rule) ? { id, rule, class: 'still-fires', why: 'still in its violations', mode: entryMode, ...ev } : { id, rule, class: 'prunable', why: 'not in its violations', mode: entryMode, ...ev });
+      items.push(
+        firing.has(rule)
+          ? {
+              id,
+              rule,
+              class: 'still-fires',
+              why: 'still in its violations',
+              mode: entryMode,
+              ...ev,
+            }
+          : { id, rule, class: 'prunable', why: 'not in its violations', mode: entryMode, ...ev }
+      );
   }
   return items;
 }
@@ -146,24 +179,61 @@ export function coverCommands(items, cmd = 'pxsig') {
     }
     return by;
   };
-  for (const [suite, ids] of group('not-covered')) out.push({ class: 'not-covered', entries: ids.size, command: `${cmd} check --full${suite ? ` --suite ${suite}` : ''}` });
+  for (const [suite, ids] of group('not-covered'))
+    out.push({
+      class: 'not-covered',
+      entries: ids.size,
+      command: `${cmd} check --full${suite ? ` --suite ${suite}` : ''}`,
+    });
   for (const [suite, ids] of group('stale'))
-    out.push({ class: 'stale', entries: ids.size, command: suite ? `${cmd} check --full --suite ${suite}` : ids.size <= 10 ? `${cmd} check ${[...ids].join(' ')}` : `${cmd} check --full` });
+    out.push({
+      class: 'stale',
+      entries: ids.size,
+      command: suite
+        ? `${cmd} check --full --suite ${suite}`
+        : ids.size <= 10
+          ? `${cmd} check ${[...ids].join(' ')}`
+          : `${cmd} check --full`,
+    });
   return out;
 }
 
 /** The plan: every rule classified, the prunable ones grouped per entry, pinned to a11y.json. */
-export function buildPlan(P, { stale, modeOf, only = null, component = null, mode = null, cmd = 'pxsig' }) {
+export function buildPlan(
+  P,
+  { stale, modeOf, only = null, component = null, mode = null, cmd = 'pxsig' }
+) {
   const accepted = readJson(P.store.a11y, {});
   const reports = readReports(P);
-  const items = classify({ accepted, reports, decided: decisionTimes(P), approved: approvalTimes(P), stale, modeOf, only, component, mode });
-  const counts = Object.fromEntries(CLASSES.map((c) => [c, items.filter((i) => i.class === c).length]));
+  const items = classify({
+    accepted,
+    reports,
+    decided: decisionTimes(P),
+    approved: approvalTimes(P),
+    stale,
+    modeOf,
+    only,
+    component,
+    mode,
+  });
+  const counts = Object.fromEntries(
+    CLASSES.map((c) => [c, items.filter((i) => i.class === c).length])
+  );
   const byId = new Map();
   for (const x of items.filter((i) => i.class === 'prunable')) {
-    if (!byId.has(x.id)) byId.set(x.id, { id: x.id, before: [...accepted[x.id]].sort(), rules: [], evidence: { report: x.report, checkedAt: x.checkedAt } });
+    if (!byId.has(x.id))
+      byId.set(x.id, {
+        id: x.id,
+        before: [...accepted[x.id]].sort(),
+        rules: [],
+        evidence: { report: x.report, checkedAt: x.checkedAt },
+      });
     byId.get(x.id).rules.push(x.rule);
   }
-  const prune = [...byId.values()].map((p) => ({ ...p, after: p.before.filter((r) => !p.rules.includes(r)) }));
+  const prune = [...byId.values()].map((p) => ({
+    ...p,
+    after: p.before.filter((r) => !p.rules.includes(r)),
+  }));
   return {
     version: 1,
     createdAt: new Date().toISOString(),
@@ -186,7 +256,11 @@ export const prunePhrase = (n) => `PRUNE ${n} RULES`;
 export async function confirmPrune(plan, ask) {
   const n = plan.prune.reduce((k, p) => k + p.rules.length, 0);
   const phrase = prunePhrase(n);
-  return (await ask(`Remove ${n} accepted rules from ${plan.prune.length} entries' lists (each logged in a11y-decisions.ndjson). Type "${phrase}" to continue: `)) === phrase;
+  return (
+    (await ask(
+      `Remove ${n} accepted rules from ${plan.prune.length} entries' lists (each logged in a11y-decisions.ndjson). Type "${phrase}" to continue: `
+    )) === phrase
+  );
 }
 
 /** Check a plan's shape before applying it (a plan the server receives is the CLI's). */
@@ -196,7 +270,12 @@ export function checkPlan(plan) {
   if (!Array.isArray(plan.prune) || !plan.prune.length) return 'nothing to prune';
   for (const p of plan.prune) {
     if (!PRUNE_ID.test(String(p?.id))) return `bad id ${String(p?.id).slice(0, 80)}`;
-    if (!Array.isArray(p.rules) || !p.rules.length || !p.rules.every((r) => PRUNE_RULE.test(String(r)))) return `bad rules for ${p.id}`;
+    if (
+      !Array.isArray(p.rules) ||
+      !p.rules.length ||
+      !p.rules.every((r) => PRUNE_RULE.test(String(r)))
+    )
+      return `bad rules for ${p.id}`;
   }
   return null;
 }
@@ -206,10 +285,20 @@ export function checkPlan(plan) {
  * it was made. `lockCheck` runs before the writes (fencing: a lock taken over writes nothing).
  * Returns `{ batch, entries, rules, lines }`.
  */
-export function applyPrune(P, plan, { batch, reason = null, via = 'cli', lockCheck = () => {} } = {}) {
+export function applyPrune(
+  P,
+  plan,
+  { batch, reason = null, via = 'cli', lockCheck = () => {} } = {}
+) {
   const bad = checkPlan(plan);
   if (bad) throw Object.assign(new Error(`a11y --prune: ${bad}`), { status: 400 });
-  if (sha256(P.store.a11y) !== plan.a11ySha) throw Object.assign(new Error(`${relPath(P.workspaceRoot, P.store.a11y)} changed since this plan (a decision was made): run the prune again`), { status: 409 });
+  if (sha256(P.store.a11y) !== plan.a11ySha)
+    throw Object.assign(
+      new Error(
+        `${relPath(P.workspaceRoot, P.store.a11y)} changed since this plan (a decision was made): run the prune again`
+      ),
+      { status: 409 }
+    );
   const base = readJson(P.store.a11y, {});
   const at = new Date().toISOString();
   const by = who(P.workspaceRoot, P.config);
@@ -220,7 +309,19 @@ export function applyPrune(P, plan, { batch, reason = null, via = 'cli', lockChe
     if (!rules.length) continue;
     const after = before.filter((r) => !rules.includes(r));
     base[p.id] = after;
-    lines.push({ at, by, via, action: 'prune', id: p.id, before, after, rules, batch, reason, evidence: { report: p.evidence?.report ?? null, checkedAt: p.evidence?.checkedAt ?? null } });
+    lines.push({
+      at,
+      by,
+      via,
+      action: 'prune',
+      id: p.id,
+      before,
+      after,
+      rules,
+      batch,
+      reason,
+      evidence: { report: p.evidence?.report ?? null, checkedAt: p.evidence?.checkedAt ?? null },
+    });
   }
   if (!lines.length) return { batch, entries: 0, rules: 0, lines };
   lockCheck();
@@ -234,9 +335,21 @@ export function applyPrune(P, plan, { batch, reason = null, via = 'cli', lockChe
       if (!now.has(r.id) || !Array.isArray(r.a11y?.violations)) return r;
       touched = true;
       const after = now.get(r.id);
-      return { ...r, a11y: { ...r.a11y, baseline: after, new: r.a11y.violations.filter((v) => !after.includes(v?.id ?? v)).length } };
+      return {
+        ...r,
+        a11y: {
+          ...r.a11y,
+          baseline: after,
+          new: r.a11y.violations.filter((v) => !after.includes(v?.id ?? v)).length,
+        },
+      };
     });
     if (touched) writeJson(rep.path, rep.check);
   }
-  return { batch, entries: lines.length, rules: lines.reduce((n, l) => n + l.rules.length, 0), lines };
+  return {
+    batch,
+    entries: lines.length,
+    rules: lines.reduce((n, l) => n + l.rules.length, 0),
+    lines,
+  };
 }

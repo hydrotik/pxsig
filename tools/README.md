@@ -14,13 +14,13 @@ Each tool takes `--project <name>` and `--workspace <dir>` and otherwise resolve
 
 ## The tools
 
-| Tool | What it measures | Writes |
-| --- | --- | --- |
-| `scenarios.mjs` | Re-renders the entries with one simulated change at a time (injected CSS, token overrides, another mode's globals) and checks each render against the committed baseline twice, with the shipped gate and with the whole-image signature alone. Regression scenarios report **recall** (failed / changed); noise scenarios report **false positives** (failed / entries). "Changed" means the pixels differ from the `control` render (Rust `diff`, tolerance 0). | `reports/scenarios[-<suite>].json` |
-| `calibrate.mjs` | Re-scores the saved scenario renders at several signature grids (32 to 128) under candidate whole-image rules (`default`, `cells>=k@t`). A rule counts only if it raises no false positives on any noise scenario. | `reports/calibration[-<suite>].json` |
-| `calibrate-gate.mjs` | Searches the whole gate (grid policy × cell threshold × ssim floor × changed % × min cells × detail rule) over every saved scenario render, all suites together, and reports the zero-false-positive gate that catches the most. | `reports/calibration-gate.json` |
-| `calibrate-detail.mjs` | Holds the project's whole-image gate fixed and searches the detail channel: build (tile, block, selection energy) × rule (≥ k tiles with block Δ > T or energy rise > E). | `reports/calibration-detail.json` |
-| `bench.mjs` | Batch `check` by thread count, batch `baseline` into scratch, one `compare` per process against one daemon request, peak RSS, render throughput at 1, 2, 4 and 8 pages, binary size. | `reports/bench.json` |
+| Tool                   | What it measures                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Writes                               |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `scenarios.mjs`        | Re-renders the entries with one simulated change at a time (injected CSS, token overrides, another mode's globals) and checks each render against the committed baseline twice, with the shipped gate and with the whole-image signature alone. Regression scenarios report **recall** (failed / changed); noise scenarios report **false positives** (failed / entries). "Changed" means the pixels differ from the `control` render (Rust `diff`, tolerance 0). | `reports/scenarios[-<suite>].json`   |
+| `calibrate.mjs`        | Re-scores the saved scenario renders at several signature grids (32 to 128) under candidate whole-image rules (`default`, `cells>=k@t`). A rule counts only if it raises no false positives on any noise scenario.                                                                                                                                                                                                                                                | `reports/calibration[-<suite>].json` |
+| `calibrate-gate.mjs`   | Searches the whole gate (grid policy × cell threshold × ssim floor × changed % × min cells × detail rule) over every saved scenario render, all suites together, and reports the zero-false-positive gate that catches the most.                                                                                                                                                                                                                                  | `reports/calibration-gate.json`      |
+| `calibrate-detail.mjs` | Holds the project's whole-image gate fixed and searches the detail channel: build (tile, block, selection energy) × rule (≥ k tiles with block Δ > T or energy rise > E).                                                                                                                                                                                                                                                                                         | `reports/calibration-detail.json`    |
+| `bench.mjs`            | Batch `check` by thread count, batch `baseline` into scratch, one `compare` per process against one daemon request, peak RSS, render throughput at 1, 2, 4 and 8 pages, binary size.                                                                                                                                                                                                                                                                              | `reports/bench.json`                 |
 
 Run `scenarios.mjs` before the calibration tools, since they re-score its saved renders. `bench.mjs` needs only the latest renders from a `pxsig check`.
 
@@ -48,15 +48,41 @@ Add or replace scenarios with `--scenarios <file.json>`:
 {
   "replace": false,
   "scenarios": [
-    { "name": "brand-color", "kind": "regression", "title": "Brand colour changed", "change": "primary → rose", "tokens": { "color-primary": "#e11d48" } },
-    { "name": "bold", "kind": "regression", "title": "Weight bumped", "change": "font-weight 800", "css": "*{font-weight:800!important}" },
-    { "name": "dense", "kind": "regression", "title": "Wrong density", "change": "density global", "globals": "density:compact" }
+    {
+      "name": "brand-color",
+      "kind": "regression",
+      "title": "Brand colour changed",
+      "change": "primary → rose",
+      "tokens": { "color-primary": "#e11d48" }
+    },
+    {
+      "name": "bold",
+      "kind": "regression",
+      "title": "Weight bumped",
+      "change": "font-weight 800",
+      "css": "*{font-weight:800!important}"
+    },
+    {
+      "name": "dense",
+      "kind": "regression",
+      "title": "Wrong density",
+      "change": "density global",
+      "globals": "density:compact"
+    }
   ],
   "suites": {
     "charts": {
       "title": "Charts",
       "stories": "^charts-",
-      "scenarios": [{ "name": "strokes-thin", "kind": "regression", "title": "Strokes thinned", "change": "stroke-width 0.5", "css": "svg path{stroke-width:.5px!important}" }]
+      "scenarios": [
+        {
+          "name": "strokes-thin",
+          "kind": "regression",
+          "title": "Strokes thinned",
+          "change": "stroke-width 0.5",
+          "css": "svg path{stroke-width:.5px!important}"
+        }
+      ]
     }
   }
 }
@@ -70,12 +96,12 @@ Add or replace scenarios with `--scenarios <file.json>`:
 
 ## Where output goes
 
-| Path (under the project's store) | Contents |
-| --- | --- |
-| `reports/*.json` | The reports above |
-| `renders/<tag>/<scenario>/<id>.png` | Scenario renders, which the dashboard inspector opens (`tag` is `scenarios` or `scenarios-<suite>`) |
-| `diffs/<tag>/<scenario>/` | Diff artifacts for every scenario render |
-| `cache/research/` | Scratch: baseline images taken out of the `.psig` files, throwaway signatures, manifests and benchmark renders. Safe to delete. |
+| Path (under the project's store)    | Contents                                                                                                                        |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `reports/*.json`                    | The reports above                                                                                                               |
+| `renders/<tag>/<scenario>/<id>.png` | Scenario renders, which the dashboard inspector opens (`tag` is `scenarios` or `scenarios-<suite>`)                             |
+| `diffs/<tag>/<scenario>/`           | Diff artifacts for every scenario render                                                                                        |
+| `cache/research/`                   | Scratch: baseline images taken out of the `.psig` files, throwaway signatures, manifests and benchmark renders. Safe to delete. |
 
 All of these folders are git-ignored by the store's `.gitignore`.
 

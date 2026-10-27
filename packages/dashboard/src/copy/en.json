@@ -78,7 +78,10 @@
     "help": "Help",
     "counts": {
       "review": "{count} to review",
-      "coverage": { "one": "{count} component with errors", "other": "{count} components with errors" },
+      "coverage": {
+        "one": "{count} component with errors",
+        "other": "{count} components with errors"
+      },
       "a11y": { "one": "{count} new entry", "other": "{count} new entries" },
       "runs": { "one": "{count} run", "other": "{count} runs" }
     }
@@ -279,7 +282,10 @@
       "low": "1–20%",
       "high": "81–100%",
       "none": "No stale entries",
-      "viewAll": { "one": "View {count} component on Coverage", "other": "View all {count} components on Coverage" }
+      "viewAll": {
+        "one": "View {count} component on Coverage",
+        "other": "View all {count} components on Coverage"
+      }
     },
     "entries": {
       "description": {

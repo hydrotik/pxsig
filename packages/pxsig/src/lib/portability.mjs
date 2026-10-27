@@ -50,7 +50,10 @@ export function crlfFiles(files) {
 
 /** Whether git treats `rel` (repository-relative) as binary: true, false, or null when git cannot say. */
 function gitBinary(repoRoot, rel) {
-  const r = spawnSync('git', ['-C', repoRoot, 'check-attr', 'binary', '--', rel], { encoding: 'utf8', timeout: 5000 });
+  const r = spawnSync('git', ['-C', repoRoot, 'check-attr', 'binary', '--', rel], {
+    encoding: 'utf8',
+    timeout: 5000,
+  });
   if (r.status !== 0 || !r.stdout) return null;
   return /: binary: set\s*$/.test(r.stdout.trim());
 }
@@ -63,12 +66,32 @@ export function portabilityProblems({ repoRoot, sigPaths, records }) {
   const out = [];
   const rel = (p) => toPosix(relative(repoRoot, p));
   const crlf = crlfFiles(records).map(rel);
-  if (crlf.length) out.push({ code: 'line-endings', severity: 'warn', reason: `${crlf.join(', ')} checked out with CRLF line endings: add \`*.json text eol=lf\` and \`*.ndjson text eol=lf\` to the store's .gitattributes, then \`git add --renormalize .\`` });
+  if (crlf.length)
+    out.push({
+      code: 'line-endings',
+      severity: 'warn',
+      reason: `${crlf.join(', ')} checked out with CRLF line endings: add \`*.json text eol=lf\` and \`*.ndjson text eol=lf\` to the store's .gitattributes, then \`git add --renormalize .\``,
+    });
   const sigs = [...sigPaths].map(rel);
-  if (sigs.length && gitBinary(repoRoot, sigs[0]) === false) out.push({ code: 'line-endings', severity: 'warn', reason: `git does not treat .psig files as binary (${sigs[0]}): add \`*.psig binary\` to the store's .gitattributes, or git may convert them on checkout` });
+  if (sigs.length && gitBinary(repoRoot, sigs[0]) === false)
+    out.push({
+      code: 'line-endings',
+      severity: 'warn',
+      reason: `git does not treat .psig files as binary (${sigs[0]}): add \`*.psig binary\` to the store's .gitattributes, or git may convert them on checkout`,
+    });
   const bad = sigs.map((r) => [r, windowsPathProblem(r)]).filter(([, why]) => why);
-  if (bad.length) out.push({ code: 'path-portability', severity: 'warn', reason: `${bad.length} baseline path(s) Windows cannot check out, e.g. ${bad[0][0]}: ${bad[0][1]}` });
+  if (bad.length)
+    out.push({
+      code: 'path-portability',
+      severity: 'warn',
+      reason: `${bad.length} baseline path(s) Windows cannot check out, e.g. ${bad[0][0]}: ${bad[0][1]}`,
+    });
   const pairs = caseCollisions(sigs);
-  if (pairs.length) out.push({ code: 'path-portability', severity: 'warn', reason: `${pairs.length} pair(s) of baseline paths differ only in case (one file on Windows and macOS), e.g. ${pairs[0][0]} and ${pairs[0][1]}` });
+  if (pairs.length)
+    out.push({
+      code: 'path-portability',
+      severity: 'warn',
+      reason: `${pairs.length} pair(s) of baseline paths differ only in case (one file on Windows and macOS), e.g. ${pairs[0][0]} and ${pairs[0][1]}`,
+    });
   return out;
 }

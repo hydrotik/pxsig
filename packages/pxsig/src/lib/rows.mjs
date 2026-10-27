@@ -10,7 +10,13 @@ export function buildRow(e, rust, render, a11yBase, manifest, js) {
   const rr = render ?? {};
   const violations = rr.a11y?.violations ?? null;
   const known = a11yBase?.[e.id] ?? (a11yBase ? [] : null);
-  const a11y = rr.a11y ? { ...rr.a11y, new: violations && known ? violations.filter((v) => !known.includes(v.id)).length : 0, baseline: known } : null;
+  const a11y = rr.a11y
+    ? {
+        ...rr.a11y,
+        new: violations && known ? violations.filter((v) => !known.includes(v.id)).length : 0,
+        baseline: known,
+      }
+    : null;
   // No signature yet (a story added since the last approval): rendered fine, nothing to compare
   // with. Not an error — a NEW entry waiting for a person to approve its first render.
   const isNew = !rr.error && /^no baseline sig/.test(String(r.error ?? ''));
@@ -28,8 +34,10 @@ export function buildRow(e, rust, render, a11yBase, manifest, js) {
     pass: rr.error ? false : r.pass === true || r.flaky === true,
     // An error (the render's, or the engine's: an identical render across many entries) is not a change.
     changed: !rr.error && (isNew || !r.error) && r.pass !== true && !r.flaky,
-    error: rr.error ?? (isNew ? null : r.error ?? null),
-    ...(isNew ? { new: true, reasons: ['new: no baseline yet — approve its first render'], note: 'new' } : {}),
+    error: rr.error ?? (isNew ? null : (r.error ?? null)),
+    ...(isNew
+      ? { new: true, reasons: ['new: no baseline yet — approve its first render'], note: 'new' }
+      : {}),
     renderMs: Math.round(rr.ms ?? 0),
     // When this verdict was made. Rows carried forward keep theirs, so a report can
     // mix ages: pxsig_stale compares it with source edits.

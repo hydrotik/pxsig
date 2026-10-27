@@ -5,11 +5,18 @@
 use serde_json::Value;
 
 fn rows(v: &Value) -> Vec<&Value> {
-    v.get("rows").or_else(|| v.get("results")).and_then(Value::as_array).map(|a| a.iter().collect()).unwrap_or_default()
+    v.get("rows")
+        .or_else(|| v.get("results"))
+        .and_then(Value::as_array)
+        .map(|a| a.iter().collect())
+        .unwrap_or_default()
 }
 
 fn esc_xml(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }
 
 fn esc_md(s: &str) -> String {
@@ -20,28 +27,53 @@ fn status(r: &Value) -> &'static str {
     if r["skipped"] == Value::Bool(true) {
         "skipped"
     } else if r["pass"] == Value::Bool(true) {
-        if r["flaky"] == Value::Bool(true) { "flaky" } else { "pass" }
+        if r["flaky"] == Value::Bool(true) {
+            "flaky"
+        } else {
+            "pass"
+        }
     } else {
         "fail"
     }
 }
 
 fn a11y_count(r: &Value) -> u64 {
-    r["a11y"]["violations"].as_array().map(|a| a.len() as u64).unwrap_or(0)
+    r["a11y"]["violations"]
+        .as_array()
+        .map(|a| a.len() as u64)
+        .unwrap_or(0)
 }
 
 pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
     let rs = rows(v);
     let count = |s: &str| rs.iter().filter(|r| status(r) == s).count();
-    let (pass, fail, flaky, skipped) = (count("pass"), count("fail"), count("flaky"), count("skipped"));
-    let a11y_new: u64 = rs.iter().map(|r| r["a11y"]["new"].as_u64().unwrap_or(0)).sum();
+    let (pass, fail, flaky, skipped) = (
+        count("pass"),
+        count("fail"),
+        count("flaky"),
+        count("skipped"),
+    );
+    let a11y_new: u64 = rs
+        .iter()
+        .map(|r| r["a11y"]["new"].as_u64().unwrap_or(0))
+        .sum();
     let mut out = advisory_lead(v);
-    let head = if fail == 0 { "✅ pxsig: no visual changes" } else { "❌ pxsig: visual changes need review" };
+    let head = if fail == 0 {
+        "✅ pxsig: no visual changes"
+    } else {
+        "❌ pxsig: visual changes need review"
+    };
     out.push_str(&format!("### {head}\n\n"));
     out.push_str("| Checked | Passed | Changed | Flaky | Skipped (unaffected) | New a11y violations |\n|---:|---:|---:|---:|---:|---:|\n");
-    out.push_str(&format!("| {} | {pass} | {fail} | {flaky} | {skipped} | {a11y_new} |\n\n", rs.len() - skipped));
+    out.push_str(&format!(
+        "| {} | {pass} | {fail} | {flaky} | {skipped} | {a11y_new} |\n\n",
+        rs.len() - skipped
+    ));
     if let Some(s) = v.get("summary") {
-        let ms = s["totalMs"].as_f64().or(s["elapsedMs"].as_f64()).unwrap_or(0.0);
+        let ms = s["totalMs"]
+            .as_f64()
+            .or(s["elapsedMs"].as_f64())
+            .unwrap_or(0.0);
         if ms > 0.0 {
             out.push_str(&format!("<sub>{:.1} s total", ms / 1000.0));
             if let Some(r) = s["renderWallMs"].as_f64() {
@@ -67,14 +99,28 @@ pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
         out.push_str(&format!(
             "All {} entries selected: {what}{}.\n\n",
             sa["entries"].as_u64().unwrap_or(0),
-            if more > 0 { format!("; {more} more reasons in check.json") } else { String::new() }
+            if more > 0 {
+                format!("; {more} more reasons in check.json")
+            } else {
+                String::new()
+            }
         ));
     }
     // Renders made in a different environment than their baseline (decision 1.4): only when any were.
     let env_n = v["summary"]["envMismatch"].as_u64().unwrap_or(0);
     if env_n > 0 {
-        let fields: Vec<String> = v["summary"]["envFields"].as_array().into_iter().flatten().filter_map(Value::as_str).map(esc_md).collect();
-        let what = if fields.is_empty() { String::new() } else { format!(" ({})", fields.join(", ")) };
+        let fields: Vec<String> = v["summary"]["envFields"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .map(esc_md)
+            .collect();
+        let what = if fields.is_empty() {
+            String::new()
+        } else {
+            format!(" ({})", fields.join(", "))
+        };
         out.push_str(&format!(
             "Environment: {env_n} of {} entries were rendered in a different environment than their baseline{what}. A change there can be the machine, not the code (`pxsig doctor`).\n\n",
             rs.len() - skipped
@@ -86,16 +132,31 @@ pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
             out.push_str("Baselines changed in this PR: the approval log was rewritten, not appended to (`pxsig approve verify --since` fails).\n\n");
         } else {
             let n = |k: &str| ap[k].as_u64().unwrap_or(0);
-            let other = if n("other") > 0 { format!(", {} other", n("other")) } else { String::new() };
+            let other = if n("other") > 0 {
+                format!(", {} other", n("other"))
+            } else {
+                String::new()
+            };
             let by_agent = ap["agents"].as_object().cloned().unwrap_or_default();
             let agents: Vec<String> = by_agent
                 .iter()
-                .map(|(k, c)| if by_agent.len() == 1 { esc_md(k) } else { format!("{} ({})", esc_md(k), c.as_u64().unwrap_or(0)) })
+                .map(|(k, c)| {
+                    if by_agent.len() == 1 {
+                        esc_md(k)
+                    } else {
+                        format!("{} ({})", esc_md(k), c.as_u64().unwrap_or(0))
+                    }
+                })
                 .collect();
             let marked = if agents.is_empty() {
                 String::new()
             } else {
-                let total: u64 = ap["agents"].as_object().into_iter().flatten().filter_map(|(_, c)| c.as_u64()).sum();
+                let total: u64 = ap["agents"]
+                    .as_object()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|(_, c)| c.as_u64())
+                    .sum();
                 format!("; {total} with an assistant marker: {}", agents.join(", "))
             };
             out.push_str(&format!(
@@ -117,8 +178,18 @@ pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
                 Some(b) => format!("[`{id}`]({b}#inspect={key})"),
                 None => format!("`{id}`"),
             };
-            let tiles = r["detail"]["changedTiles"].as_u64().unwrap_or(0) + r["detail"]["newEdgeTiles"].as_u64().unwrap_or(0);
-            let why = r["reasons"].as_array().map(|a| a.iter().filter_map(Value::as_str).collect::<Vec<_>>().join("; ")).or_else(|| r["error"].as_str().map(String::from)).unwrap_or_default();
+            let tiles = r["detail"]["changedTiles"].as_u64().unwrap_or(0)
+                + r["detail"]["newEdgeTiles"].as_u64().unwrap_or(0);
+            let why = r["reasons"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(Value::as_str)
+                        .collect::<Vec<_>>()
+                        .join("; ")
+                })
+                .or_else(|| r["error"].as_str().map(String::from))
+                .unwrap_or_default();
             out.push_str(&format!(
                 "| {name} | {} | {} | {} | {tiles} | {} |\n",
                 r["mode"].as_str().unwrap_or("default"),
@@ -132,12 +203,23 @@ pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
         }
         out.push('\n');
     }
-    let a11y: Vec<&&Value> = rs.iter().filter(|r| r["a11y"]["new"].as_u64().unwrap_or(0) > 0).collect();
+    let a11y: Vec<&&Value> = rs
+        .iter()
+        .filter(|r| r["a11y"]["new"].as_u64().unwrap_or(0) > 0)
+        .collect();
     if !a11y.is_empty() {
         out.push_str("<details><summary>New accessibility violations</summary>\n\n");
         for r in a11y.iter().take(30) {
-            let rules: Vec<&str> = r["a11y"]["violations"].as_array().map(|a| a.iter().filter_map(|x| x["id"].as_str()).collect()).unwrap_or_default();
-            out.push_str(&format!("- `{}`: {} ({})\n", r["id"].as_str().unwrap_or(""), a11y_count(r), rules.join(", ")));
+            let rules: Vec<&str> = r["a11y"]["violations"]
+                .as_array()
+                .map(|a| a.iter().filter_map(|x| x["id"].as_str()).collect())
+                .unwrap_or_default();
+            out.push_str(&format!(
+                "- `{}`: {} ({})\n",
+                r["id"].as_str().unwrap_or(""),
+                a11y_count(r),
+                rules.join(", ")
+            ));
         }
         out.push_str("\n</details>\n");
     }
@@ -147,14 +229,29 @@ pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
 /// Warn mode (`enforcement` in check.json): a lead block above the head, so a reader knows the run
 /// was not blocking. The head and table below stay as they are: a would-fail run still reads "❌".
 fn advisory_lead(v: &Value) -> String {
-    let Some(e) = v.get("enforcement").filter(|x| x.is_object()) else { return String::new() };
-    let names = |k: &str| -> Vec<String> { e[k].as_array().into_iter().flatten().filter_map(Value::as_str).map(esc_md).collect() };
+    let Some(e) = v.get("enforcement").filter(|x| x.is_object()) else {
+        return String::new();
+    };
+    let names = |k: &str| -> Vec<String> {
+        e[k].as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .map(esc_md)
+            .collect()
+    };
     let configured = names("configured");
     let reasons: Vec<String> = e["reasons"]
         .as_array()
         .into_iter()
         .flatten()
-        .map(|r| format!("{} {}", r["count"].as_u64().unwrap_or(0), esc_md(r["what"].as_str().unwrap_or(""))))
+        .map(|r| {
+            format!(
+                "{} {}",
+                r["count"].as_u64().unwrap_or(0),
+                esc_md(r["what"].as_str().unwrap_or(""))
+            )
+        })
         .collect();
     let expired = names("expired");
     let mut out = String::new();
@@ -171,21 +268,34 @@ fn advisory_lead(v: &Value) -> String {
     if configured.is_empty() {
         // The a11y gate on its built-in warn: only here because a new violation appeared (decision 88).
         if would {
-            out.push_str(&format!("> **ADVISORY** (a11y, warn by default): {}. Nothing was blocked.\n\n", reasons.join(", ")));
+            out.push_str(&format!(
+                "> **ADVISORY** (a11y, warn by default): {}. Nothing was blocked.\n\n",
+                reasons.join(", ")
+            ));
         }
         return out;
     }
     let verdict = if would {
-        format!("This run would have failed: {}. Nothing was blocked.", reasons.join(", "))
+        format!(
+            "This run would have failed: {}. Nothing was blocked.",
+            reasons.join(", ")
+        )
     } else {
         "This run would have passed.".to_string()
     };
     let until = match (e["warnUntil"].as_str(), e["daysLeft"].as_u64()) {
-        (Some(d), Some(n)) => format!(" Enforced from {} (in {n} day{}).", esc_md(d), if n == 1 { "" } else { "s" }),
+        (Some(d), Some(n)) => format!(
+            " Enforced from {} (in {n} day{}).",
+            esc_md(d),
+            if n == 1 { "" } else { "s" }
+        ),
         (Some(d), None) => format!(" Enforced from {}.", esc_md(d)),
         _ => String::new(),
     };
-    out.push_str(&format!("> **ADVISORY: warn mode** ({}). {verdict}{until}\n\n", configured.join(", ")));
+    out.push_str(&format!(
+        "> **ADVISORY: warn mode** ({}). {verdict}{until}\n\n",
+        configured.join(", ")
+    ));
     out
 }
 
@@ -200,7 +310,9 @@ pub fn junit(v: &Value) -> String {
     );
     // Warn mode on the visual gate (decision 10.10): failures stay failures; the suite says warn.
     if v["enforcement"]["gates"]["visual"].as_str() == Some("warn") {
-        out.push_str("  <properties><property name=\"pxsig.enforcement\" value=\"warn\"/></properties>\n");
+        out.push_str(
+            "  <properties><property name=\"pxsig.enforcement\" value=\"warn\"/></properties>\n",
+        );
     }
     for r in rs {
         let id = esc_xml(r["id"].as_str().unwrap_or(""));
@@ -245,12 +357,17 @@ mod tests {
     fn the_advisory_lead_only_under_warn_mode() {
         let rows = json!([{ "id": "a", "pass": false, "changed": true }]);
         let enforce = json!({ "rows": rows });
-        assert!(markdown(&enforce, None).starts_with("### ❌"), "no enforcement key: the report is as before");
+        assert!(
+            markdown(&enforce, None).starts_with("### ❌"),
+            "no enforcement key: the report is as before"
+        );
         let warn = json!({ "rows": rows, "enforcement": { "configured": ["visual"], "wouldFail": true, "reasons": [{ "gate": "visual", "count": 1, "what": "changed" }], "warnUntil": "2026-12-31" } });
         let md = markdown(&warn, None);
         assert!(md.starts_with("> **ADVISORY: warn mode** (visual). This run would have failed: 1 changed. Nothing was blocked. Enforced from 2026-12-31.\n\n### ❌"), "{md}");
         let pass = json!({ "rows": [{ "id": "a", "pass": true }], "enforcement": { "configured": ["visual"], "wouldFail": false, "reasons": [] } });
-        assert!(markdown(&pass, None).starts_with("> **ADVISORY: warn mode** (visual). This run would have passed.\n\n### ✅"));
+        assert!(markdown(&pass, None).starts_with(
+            "> **ADVISORY: warn mode** (visual). This run would have passed.\n\n### ✅"
+        ));
         let quiet = json!({ "rows": [{ "id": "a", "pass": true }], "enforcement": { "configured": [], "wouldFail": true, "reasons": [{ "gate": "a11y", "count": 1, "what": "entry with new a11y violations" }] } });
         assert!(markdown(&quiet, None).starts_with("> **ADVISORY** (a11y, warn by default): 1 entry with new a11y violations. Nothing was blocked."));
     }
@@ -260,7 +377,13 @@ mod tests {
         let rows = json!([{ "id": "a", "pass": false }]);
         let plain = junit(&json!({ "rows": rows }));
         assert!(!plain.contains("<properties>") && plain.contains("<failure"));
-        let warned = junit(&json!({ "rows": rows, "enforcement": { "gates": { "visual": "warn" } } }));
-        assert!(warned.contains("<properties><property name=\"pxsig.enforcement\" value=\"warn\"/></properties>") && warned.contains("<failure"), "{warned}");
+        let warned =
+            junit(&json!({ "rows": rows, "enforcement": { "gates": { "visual": "warn" } } }));
+        assert!(
+            warned.contains(
+                "<properties><property name=\"pxsig.enforcement\" value=\"warn\"/></properties>"
+            ) && warned.contains("<failure"),
+            "{warned}"
+        );
     }
 }

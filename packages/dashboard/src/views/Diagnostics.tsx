@@ -1,5 +1,17 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, KeyValueItem, KeyValueList, SegmentedChoice, StatusBadge, Toolbar, ToolbarStart } from '@ui';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  KeyValueItem,
+  KeyValueList,
+  SegmentedChoice,
+  StatusBadge,
+  Toolbar,
+  ToolbarStart,
+} from '@ui';
 import { type Data, type Row, type ScenarioReport, suiteKeys, suiteTitle } from '../data';
 import { HBars } from '../parts/Charts';
 import { t } from '../copy';
@@ -15,7 +27,9 @@ type Section = 'scenarios' | 'calibration' | 'performance';
 export function diagnosticsOf(data: Data): Section[] {
   return [
     ...(Object.keys(data.scenarioSuites ?? {}).length ? (['scenarios'] as const) : []),
-    ...(Object.keys(data.calibrationSuites ?? {}).length || data.detailCalibration ? (['calibration'] as const) : []),
+    ...(Object.keys(data.calibrationSuites ?? {}).length || data.detailCalibration
+      ? (['calibration'] as const)
+      : []),
     ...(data.bench ? (['performance'] as const) : []),
   ];
 }
@@ -33,7 +47,11 @@ function detection(rep: ScenarioReport) {
 
 /** Detection rate per scenario suite: whole-image signature alone, and with the detail channel. */
 function DetectionRate({ data }: { data: Data }) {
-  const suites = suiteKeys(data.scenarioSuites).map((k) => ({ key: k, title: suiteTitle(k, data.scenarioSuites![k]), r: detection(data.scenarioSuites![k]) }));
+  const suites = suiteKeys(data.scenarioSuites).map((k) => ({
+    key: k,
+    title: suiteTitle(k, data.scenarioSuites![k]),
+    r: detection(data.scenarioSuites![k]),
+  }));
   if (!suites.length) return null;
   const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
   const fp = suites.reduce((a, x) => a + x.r.fp, 0);
@@ -52,7 +70,11 @@ function DetectionRate({ data }: { data: Data }) {
             { key: 'whole', label: t('diagnostics.detection.whole') },
             { key: 'shipped', label: t('diagnostics.detection.shipped') },
           ]}
-          data={suites.map((x) => ({ suite: x.title, whole: pct(x.r.whole, x.r.changed), shipped: pct(x.r.shipped, x.r.changed) }))}
+          data={suites.map((x) => ({
+            suite: x.title,
+            whole: pct(x.r.whole, x.r.changed),
+            shipped: pct(x.r.shipped, x.r.changed),
+          }))}
           height={10}
         />
         <KeyValueList orientation="horizontal">
@@ -70,7 +92,13 @@ function DetectionRate({ data }: { data: Data }) {
   );
 }
 
-export function Diagnostics({ data, onOpen }: { data: Data; onOpen(row: Row, list: Row[], scenario: { tag: string; name: string }): void }) {
+export function Diagnostics({
+  data,
+  onOpen,
+}: {
+  data: Data;
+  onOpen(row: Row, list: Row[], scenario: { tag: string; name: string }): void;
+}) {
   const sections = diagnosticsOf(data);
   const [picked, setPicked] = React.useState<Section | null>(null);
   const section = picked && sections.includes(picked) ? picked : sections[0];
@@ -80,7 +108,12 @@ export function Diagnostics({ data, onOpen }: { data: Data; onOpen(row: Row, lis
       {sections.length > 1 ? (
         <Toolbar size="sm">
           <ToolbarStart>
-            <SegmentedChoice value={section} onValueChange={(v) => setPicked(v as Section)} label={t('diagnostics.sections')} options={sections.map((k) => ({ value: k, label: t(`diagnostics.tabs.${k}`) }))} />
+            <SegmentedChoice
+              value={section}
+              onValueChange={(v) => setPicked(v as Section)}
+              label={t('diagnostics.sections')}
+              options={sections.map((k) => ({ value: k, label: t(`diagnostics.tabs.${k}`) }))}
+            />
           </ToolbarStart>
         </Toolbar>
       ) : null}

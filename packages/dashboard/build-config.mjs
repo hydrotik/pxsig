@@ -20,12 +20,18 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const builtins = path.join(here, 'src/ui/adapters');
 const INDEX = ['index.tsx', 'index.ts', 'index.jsx', 'index.js'];
 
-export const builtinAdapters = () => (existsSync(builtins) ? readdirSync(builtins, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name) : []);
+export const builtinAdapters = () =>
+  existsSync(builtins)
+    ? readdirSync(builtins, { withFileTypes: true })
+        .filter((d) => d.isDirectory())
+        .map((d) => d.name)
+    : [];
 
 /** The adapter spec in force, and where it came from. */
 export function adapterSpec({ adapter, cwd = process.cwd() } = {}) {
   if (adapter) return { spec: adapter, base: cwd, from: '--ui' };
-  if (process.env.PXSIG_UI_ADAPTER) return { spec: process.env.PXSIG_UI_ADAPTER, base: cwd, from: 'PXSIG_UI_ADAPTER' };
+  if (process.env.PXSIG_UI_ADAPTER)
+    return { spec: process.env.PXSIG_UI_ADAPTER, base: cwd, from: 'PXSIG_UI_ADAPTER' };
   const cfg = path.join(cwd, 'pxsig.config.json');
   if (existsSync(cfg)) {
     try {
@@ -43,19 +49,34 @@ export function resolveAdapter(opts = {}) {
   const { spec, base, from } = adapterSpec(opts);
   const known = builtinAdapters();
   if (/^[a-z0-9][a-z0-9-]*$/.test(spec)) {
-    if (!known.includes(spec)) throw new Error(`[pxsig ui] unknown UI adapter "${spec}" (from ${from}). Built-in adapters: ${known.join(', ') || 'none'}; or pass a path to an adapter module.`);
+    if (!known.includes(spec))
+      throw new Error(
+        `[pxsig ui] unknown UI adapter "${spec}" (from ${from}). Built-in adapters: ${known.join(', ') || 'none'}; or pass a path to an adapter module.`
+      );
     const dir = path.join(builtins, spec);
     const file = INDEX.map((f) => path.join(dir, f)).find(existsSync);
-    if (!file) throw new Error(`[pxsig ui] the built-in adapter "${spec}" has no index file in ${dir}`);
+    if (!file)
+      throw new Error(`[pxsig ui] the built-in adapter "${spec}" has no index file in ${dir}`);
     return { name: spec, file, dir, from };
   }
   const p = path.resolve(base, spec);
   let file = null;
-  if (existsSync(p) && statSync(p).isDirectory()) file = INDEX.map((f) => path.join(p, f)).find(existsSync) ?? null;
+  if (existsSync(p) && statSync(p).isDirectory())
+    file = INDEX.map((f) => path.join(p, f)).find(existsSync) ?? null;
   else if (existsSync(p)) file = p;
   else file = ['.tsx', '.ts', '.jsx', '.js'].map((e) => p + e).find(existsSync) ?? null;
-  if (!file) throw new Error(`[pxsig ui] no UI adapter at "${spec}" (from ${from}; looked for ${p} and ${p}/index.{tsx,ts,jsx,js}). Built-in adapters: ${known.join(', ') || 'none'}.`);
-  return { name: path.basename(statSync(p, { throwIfNoEntry: false })?.isDirectory() ? p : path.dirname(file)), file, dir: path.dirname(file), from };
+  if (!file)
+    throw new Error(
+      `[pxsig ui] no UI adapter at "${spec}" (from ${from}; looked for ${p} and ${p}/index.{tsx,ts,jsx,js}). Built-in adapters: ${known.join(', ') || 'none'}.`
+    );
+  return {
+    name: path.basename(
+      statSync(p, { throwIfNoEntry: false })?.isDirectory() ? p : path.dirname(file)
+    ),
+    file,
+    dir: path.dirname(file),
+    from,
+  };
 }
 
 /**
@@ -86,20 +107,39 @@ export function packageDir(name, fromDirs) {
  * @param {boolean} [o.minify]       minify the bundle; default false (readable output that a reviewer
  *                                   can audit), true when PXSIG_DASHBOARD_MINIFY=1
  */
-export async function dashboardConfig({ adapter, cwd, outDir, resolveFrom, react, vanillaExtractPlugin, root = here, minify = process.env.PXSIG_DASHBOARD_MINIFY === '1' }) {
+export async function dashboardConfig({
+  adapter,
+  cwd,
+  outDir,
+  resolveFrom,
+  react,
+  vanillaExtractPlugin,
+  root = here,
+  minify = process.env.PXSIG_DASHBOARD_MINIFY === '1',
+}) {
   const ui = resolveAdapter({ adapter, cwd });
   const extraFile = path.join(ui.dir, 'vite.mjs');
-  const extra = existsSync(extraFile) ? await (await import(pathToFileURL(extraFile).href)).default() : {};
-  const need = (name, from = resolveFrom) => packageDir(name, from) ?? (() => { throw new Error(`[pxsig ui] cannot resolve ${name} from ${from.join(', ')}: install it`); })();
+  const extra = existsSync(extraFile)
+    ? await (await import(pathToFileURL(extraFile).href)).default()
+    : {};
+  const need = (name, from = resolveFrom) =>
+    packageDir(name, from) ??
+    (() => {
+      throw new Error(`[pxsig ui] cannot resolve ${name} from ${from.join(', ')}: install it`);
+    })();
   // @vanilla-extract/css: the adapter's copy if it pins one, else the one the plugin compiles with.
   const plugin = need('@vanilla-extract/vite-plugin');
   const integration = packageDir('@vanilla-extract/integration', [plugin]);
-  const veCss = extra.alias?.['@vanilla-extract/css'] ?? packageDir('@vanilla-extract/css', [...resolveFrom, ...(integration ? [integration] : [])]) ?? need('@vanilla-extract/css');
+  const veCss =
+    extra.alias?.['@vanilla-extract/css'] ??
+    packageDir('@vanilla-extract/css', [...resolveFrom, ...(integration ? [integration] : [])]) ??
+    need('@vanilla-extract/css');
   const allow = [root, ui.dir, ...(extra.allow ?? [])];
   // The contract version the adapter was written for: icons added since are drawn as their defaults.
   let contract = '1.0.0';
   try {
-    contract = JSON.parse(readFileSync(path.join(ui.dir, 'conformance.json'), 'utf8')).contract ?? contract;
+    contract =
+      JSON.parse(readFileSync(path.join(ui.dir, 'conformance.json'), 'utf8')).contract ?? contract;
   } catch {
     // no conformance.json: `pxsig dashboard gaps` reports it; the build treats the adapter as 1.0.0
   }
@@ -111,7 +151,10 @@ export async function dashboardConfig({ adapter, cwd, outDir, resolveFrom, react
       // our server options: this plugin lets that server, too, read the adapter's sources.
       { name: 'pxsig-allow-design-system', config: () => ({ server: { fs: { allow } } }) },
       react(),
-      vanillaExtractPlugin({ unstable_pluginFilter: ({ name }) => name === 'pxsig-allow-design-system' || name === 'vite-tsconfig-paths' }),
+      vanillaExtractPlugin({
+        unstable_pluginFilter: ({ name }) =>
+          name === 'pxsig-allow-design-system' || name === 'vite-tsconfig-paths',
+      }),
     ],
     logLevel: 'warn',
     define: { __PXSIG_ADAPTER_CONTRACT__: JSON.stringify(contract) },
@@ -127,7 +170,12 @@ export async function dashboardConfig({ adapter, cwd, outDir, resolveFrom, react
       },
       dedupe: ['react', 'react-dom'],
     },
-    optimizeDeps: { exclude: extra.optimizeDepsExclude ?? ['@vanilla-extract/css', '@vanilla-extract/css/fileScope'] },
+    optimizeDeps: {
+      exclude: extra.optimizeDepsExclude ?? [
+        '@vanilla-extract/css',
+        '@vanilla-extract/css/fileScope',
+      ],
+    },
     build: {
       outDir,
       emptyOutDir: true,
@@ -135,7 +183,14 @@ export async function dashboardConfig({ adapter, cwd, outDir, resolveFrom, react
       minify: minify ? 'esbuild' : false,
       chunkSizeWarningLimit: 4000,
       modulePreload: false,
-      rollupOptions: { output: { format: 'iife', inlineDynamicImports: true, entryFileNames: 'assets/app.js', assetFileNames: 'assets/[name][extname]' } },
+      rollupOptions: {
+        output: {
+          format: 'iife',
+          inlineDynamicImports: true,
+          entryFileNames: 'assets/app.js',
+          assetFileNames: 'assets/[name][extname]',
+        },
+      },
     },
   };
 }

@@ -13,7 +13,10 @@
  */
 
 /** The name a value may contribute: letters, digits, dot, dash and underscore, at most 64. */
-const clean = (v) => String(v).replace(/[^\w.-]/g, '_').slice(0, 64);
+const clean = (v) =>
+  String(v)
+    .replace(/[^\w.-]/g, '_')
+    .slice(0, 64);
 const set = (env, k) => env[k] != null && env[k] !== '';
 
 /**
@@ -26,16 +29,26 @@ export const MARKERS = [
   // The cross-vendor variable: VS Code Copilot agent mode (github_copilot_vscode_agent), Claude Code,
   // opencode (VS Code's aiAgentEnv.ts).
   // Known values get the short name the other rows use; any other value is its own name.
-  { vars: ['AI_AGENT'], name: (v) => (/^github_copilot/.test(v) ? 'copilot' : /^claude-code/.test(v) ? 'claude-code' : clean(v)) },
+  {
+    vars: ['AI_AGENT'],
+    name: (v) =>
+      /^github_copilot/.test(v) ? 'copilot' : /^claude-code/.test(v) ? 'claude-code' : clean(v),
+  },
   // VS Code agent mode keeps COPILOT_AGENT for back-compat; Copilot CLI sets COPILOT_CLI and, on
   // shell-tool commands, COPILOT_AGENT_SESSION_ID (npm @github/copilot@1.0.60).
   { vars: ['COPILOT_AGENT', 'COPILOT_CLI', 'COPILOT_AGENT_SESSION_ID'], name: 'copilot' },
   // Claude Code's environment-variable reference (CLAUDECODE, CLAUDE_CODE_CHILD_SESSION); the entry
   // point is observed. CLAUDECODE is also set in the IDE extensions' integrated terminals.
-  { vars: ['CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_CODE_CHILD_SESSION'], name: 'claude-code' },
+  {
+    vars: ['CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_CODE_CHILD_SESSION'],
+    name: 'claude-code',
+  },
   // Codex (codex-rs/core spawn.rs and exec_env.rs): the
   // thread id and CODEX_CI always; the sandbox variables only under the macOS sandbox.
-  { vars: ['CODEX_THREAD_ID', 'CODEX_CI', 'CODEX_SANDBOX', 'CODEX_SANDBOX_NETWORK_DISABLED'], name: 'codex' },
+  {
+    vars: ['CODEX_THREAD_ID', 'CODEX_CI', 'CODEX_SANDBOX', 'CODEX_SANDBOX_NETWORK_DISABLED'],
+    name: 'codex',
+  },
   // Gemini CLI's shell execution service.
   { vars: ['GEMINI_CLI'], name: 'gemini-cli' },
   // Cursor's terminal and run-mode documentation.
@@ -52,7 +65,14 @@ export const MARKERS = [
 ];
 
 /** Set in a person's terminals too, so never a marker. Listed for the docs and the tests. */
-export const NOT_MARKERS = ['TERM_PROGRAM', 'VSCODE_INJECTION', 'VSCODE_GIT_ASKPASS_NODE', 'GIT_ASKPASS', 'ZED_TERM', 'CURSOR_TRACE_ID'];
+export const NOT_MARKERS = [
+  'TERM_PROGRAM',
+  'VSCODE_INJECTION',
+  'VSCODE_GIT_ASKPASS_NODE',
+  'GIT_ASKPASS',
+  'ZED_TERM',
+  'CURSOR_TRACE_ID',
+];
 
 /**
  * The assistant this environment names: `{ name, variable, value }`, or null. `value` is cleaned
@@ -64,7 +84,11 @@ export function detectAgent(env = process.env) {
       if (!set(env, k)) continue;
       const v = env[k];
       if (row.when && !row.when(v)) continue;
-      return { name: typeof row.name === 'function' ? row.name(v) : row.name, variable: k, value: clean(v) };
+      return {
+        name: typeof row.name === 'function' ? row.name(v) : row.name,
+        variable: k,
+        value: clean(v),
+      };
     }
   return null;
 }

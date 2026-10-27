@@ -6,11 +6,11 @@ carry-forward, reports). This page covers making it required, and running it in 
 
 ## What fails the job
 
-| Step | Exit 0 | Exit 1 | Exit 2 |
-| --- | --- | --- | --- |
-| `pxsig check --full` | every selected entry passes (a pass on retry is `flaky`, and passes) | an entry changed, is new (no baseline), or failed to render | setup error: no manifest, Storybook unreachable or broken, missing binary, store locked by another writer |
-| `pxsig approve verify` | every baseline matches its last logged approval | a baseline's bytes differ from its last logged approval (written outside the log); a baseline has no log line at all (strict, the default); with `--since`, the log was rewritten rather than appended to, or there is no merge base | setup error, or `--since` is not a commit |
-| `pxsig doctor --ci` | no error-severity integrity code | an error-severity code | setup error (no manifest, broken Storybook index, unknown project) |
+| Step                   | Exit 0                                                               | Exit 1                                                                                                                                                                                                                               | Exit 2                                                                                                    |
+| ---------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `pxsig check --full`   | every selected entry passes (a pass on retry is `flaky`, and passes) | an entry changed, is new (no baseline), or failed to render                                                                                                                                                                          | setup error: no manifest, Storybook unreachable or broken, missing binary, store locked by another writer |
+| `pxsig approve verify` | every baseline matches its last logged approval                      | a baseline's bytes differ from its last logged approval (written outside the log); a baseline has no log line at all (strict, the default); with `--since`, the log was rewritten rather than appended to, or there is no merge base | setup error, or `--since` is not a commit                                                                 |
+| `pxsig doctor --ci`    | no error-severity integrity code                                     | an error-severity code                                                                                                                                                                                                               | setup error (no manifest, broken Storybook index, unknown project)                                        |
 
 None of these commands needs a person. The ones that write baselines refuse to run in CI (`CI`
 set), when output is piped, or under a coding assistant's marker: `approve apply` and `check --full --update` exit
@@ -57,7 +57,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: '0 4 * * *'   # nightly: everything, against what changed outside the repository
+    - cron: '0 4 * * *' # nightly: everything, against what changed outside the repository
 
 jobs:
   pxsig:
@@ -174,13 +174,13 @@ Notes:
 
 ## Artifacts
 
-| Path | What it is for |
-| --- | --- |
+| Path                                   | What it is for                                                    |
+| -------------------------------------- | ----------------------------------------------------------------- |
 | `pxsig-report/` (`pxsig report --out`) | The dashboard as static files with the images. Open `index.html`. |
-| `<store>/reports/summary.md` | The PR comment (`gh pr comment <n> --body-file …`). |
-| `<store>/reports/junit.xml` | One test case per entry, for a JUnit viewer. |
-| `<store>/reports/check.json` | Every row, for scripts. |
-| `<store>/diffs/latest/` | Diff images of the entries that failed. |
+| `<store>/reports/summary.md`           | The PR comment (`gh pr comment <n> --body-file …`).               |
+| `<store>/reports/junit.xml`            | One test case per entry, for a JUnit viewer.                      |
+| `<store>/reports/check.json`           | Every row, for scripts.                                           |
+| `<store>/diffs/latest/`                | Diff images of the entries that failed.                           |
 
 `pxsig report` exits 2 when it cannot write the report (no project, no dashboard build). The report
 is for review; the check's exit code is the verdict.
@@ -198,15 +198,15 @@ only they, can open it.
 
 On the protected branch (a branch protection rule or a ruleset):
 
-| Setting | Value |
-| --- | --- |
-| Require status checks to pass before merging | on; add `pxsig` (the job name) |
-| Require branches to be up to date before merging | on, or use the merge queue instead |
-| Require a pull request before merging | on |
-| Require review from Code Owners | on, with `CODEOWNERS` over the baseline paths ([codeowners.md](codeowners.md)) |
-| Dismiss stale pull request approvals when new commits are pushed | on |
-| Require merge queue | optional (below) |
-| Do not allow bypassing the above settings | on |
+| Setting                                                          | Value                                                                          |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Require status checks to pass before merging                     | on; add `pxsig` (the job name)                                                 |
+| Require branches to be up to date before merging                 | on, or use the merge queue instead                                             |
+| Require a pull request before merging                            | on                                                                             |
+| Require review from Code Owners                                  | on, with `CODEOWNERS` over the baseline paths ([codeowners.md](codeowners.md)) |
+| Dismiss stale pull request approvals when new commits are pushed | on                                                                             |
+| Require merge queue                                              | optional (below)                                                               |
+| Do not allow bypassing the above settings                        | on                                                                             |
 
 Give the required job a name no other workflow uses. Two jobs named `pxsig` report under one
 name, and the rule cannot tell them apart.

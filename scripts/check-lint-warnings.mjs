@@ -26,7 +26,11 @@ const baselinePath = join(repoRoot, 'scripts', 'lint-warnings-baseline.json');
 const update = process.argv.includes('--update');
 const init = process.argv.includes('--init');
 // oxlint's own launcher, run by this Node: no shell and no package-manager shim on any OS.
-const oxlint = join(dirname(createRequire(import.meta.url).resolve('oxlint/package.json')), 'bin', 'oxlint');
+const oxlint = join(
+  dirname(createRequire(import.meta.url).resolve('oxlint/package.json')),
+  'bin',
+  'oxlint'
+);
 
 let raw;
 try {

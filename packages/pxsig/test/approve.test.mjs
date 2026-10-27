@@ -14,10 +14,15 @@ import { fixture, hasRust, png, rustBin } from './fixture.mjs';
 const src = fileURLToPath(new URL('../src/', import.meta.url));
 const { repo, sig } = fixture({ withSigs: hasRust });
 const node = (args, env = {}) =>
-  spawnSync(process.execPath, args, { cwd: repo, encoding: 'utf8', env: { ...process.env, PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin, ...env } });
+  spawnSync(process.execPath, args, {
+    cwd: repo,
+    encoding: 'utf8',
+    env: { ...process.env, PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin, ...env },
+  });
 
 // A light page with a dark "thumb" at x0, and the same thumb moved, recoloured, or on a bigger page.
-const page = (w, h, x0, ink = [30, 40, 60]) => png(w, h, (x, y) => (x >= x0 && x < x0 + 24 && y >= 20 && y < 44 ? ink : [245, 245, 245]));
+const page = (w, h, x0, ink = [30, 40, 60]) =>
+  png(w, h, (x, y) => (x >= x0 && x < x0 + 24 && y >= 20 && y < 44 ? ink : [245, 245, 245]));
 const OFF = page(96, 64, 12);
 const ON = page(96, 64, 60);
 const RECOLOURED = page(96, 64, 12, [60, 30, 40]);
@@ -74,23 +79,27 @@ test('check --kind and --reason go with --update; a kind is one short word', () 
   assert.match(r.stderr, /--kind takes a short lower-case word/);
 });
 
-test('snapshot + record + undo round-trip, and verify catches an out-of-band write', { skip: !hasRust && 'Rust binary not built' }, () => {
-  const P = openProject({ cwd: repo, env: { PXSIG_BIN: rustBin } });
-  const id = 'components-alpha--default';
-  const entry = { id, sig: `.pxsig/baselines/components/Alpha/${id}.psig` };
-  const manifest = { stories: [entry] };
-  const original = readFileSync(sig(id));
-  // approve: snapshot the old baseline, write the new one, log it
-  const { before } = snapshot(P, entry, 'b1');
-  cpSync(sig('components-alpha--with-icon'), sig(id));
-  record(P, entry, { batch: 'b1', via: 'test', before });
-  assert.equal(readLog(P).length, 1);
-  assert.deepEqual(verify(P, manifest).mismatched, []);
-  // a write outside the trail is caught
-  writeFileSync(sig(id), Buffer.concat([readFileSync(sig(id)), Buffer.from([0])]));
-  assert.equal(verify(P, manifest).mismatched.length, 1);
-  // undo restores the pre-approval baseline, byte for byte
-  assert.deepEqual(undo(P, manifest, 'b1').restored, [id]);
-  assert.deepEqual(readFileSync(sig(id)), original);
-  assert.ok(existsSync(join(P.store.history, 'b1', `${id}.psig`)));
-});
+test(
+  'snapshot + record + undo round-trip, and verify catches an out-of-band write',
+  { skip: !hasRust && 'Rust binary not built' },
+  () => {
+    const P = openProject({ cwd: repo, env: { PXSIG_BIN: rustBin } });
+    const id = 'components-alpha--default';
+    const entry = { id, sig: `.pxsig/baselines/components/Alpha/${id}.psig` };
+    const manifest = { stories: [entry] };
+    const original = readFileSync(sig(id));
+    // approve: snapshot the old baseline, write the new one, log it
+    const { before } = snapshot(P, entry, 'b1');
+    cpSync(sig('components-alpha--with-icon'), sig(id));
+    record(P, entry, { batch: 'b1', via: 'test', before });
+    assert.equal(readLog(P).length, 1);
+    assert.deepEqual(verify(P, manifest).mismatched, []);
+    // a write outside the trail is caught
+    writeFileSync(sig(id), Buffer.concat([readFileSync(sig(id)), Buffer.from([0])]));
+    assert.equal(verify(P, manifest).mismatched.length, 1);
+    // undo restores the pre-approval baseline, byte for byte
+    assert.deepEqual(undo(P, manifest, 'b1').restored, [id]);
+    assert.deepEqual(readFileSync(sig(id)), original);
+    assert.ok(existsSync(join(P.store.history, 'b1', `${id}.psig`)));
+  }
+);

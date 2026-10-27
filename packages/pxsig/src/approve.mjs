@@ -51,7 +51,14 @@ import { classify } from './lib/shape.mjs';
 import { ask, emit, humanAtTerminal, progress, whyNotPerson } from './lib/term.mjs';
 import { relPath } from './lib/paths.mjs';
 import { writeJson } from './lib/files.mjs';
-import { appendReadiness, lastLine, leadLine, outcome, reportBlock, resolveOrExit } from './lib/enforcement.mjs';
+import {
+  appendReadiness,
+  lastLine,
+  leadLine,
+  outcome,
+  reportBlock,
+  resolveOrExit,
+} from './lib/enforcement.mjs';
 
 const PLAN_MAX_AGE_H = 24;
 
@@ -66,7 +73,8 @@ export async function approveCommand({
   CMD,
   fail,
 }) {
-  const run = (name, a = {}) => tools.find((t) => t.name === `pxsig_${name}`).run({ project: P.name, ...a });
+  const run = (name, a = {}) =>
+    tools.find((t) => t.name === `pxsig_${name}`).run({ project: P.name, ...a });
   const manifest = JSON.parse(readFileSync(P.manifestPath(), 'utf8'));
   const byId = new Map(manifest.stories.map((e) => [e.id, e]));
   const planPath = join(P.store.reports, 'approval-plan.json');
@@ -83,11 +91,15 @@ export async function approveCommand({
     const reason = typeof flags.reason === 'string' ? flags.reason.trim() : '';
     if (reason.length < 8)
       fail('plan needs --reason "…" (at least a sentence: why these changes are intended)');
-    const all = (await run('list', { state: 'all', limit: 100000 }).catch(() => ({ entries: [] }))).entries;
+    const all = (await run('list', { state: 'all', limit: 100000 }).catch(() => ({ entries: [] })))
+      .entries;
     const state = new Map(all.map((e) => [e.id, e.state]));
     // An entry with no baseline and no row yet, but a latest render, is NEW too.
-    for (const e of manifest.stories) if (!state.has(e.id) && !existsSync(paths(P, e).sig) && existsSync(paths(P, e).latestPng)) state.set(e.id, 'new');
-    const isNew = (id) => state.get(id) === 'new' || (byId.has(id) && !existsSync(paths(P, byId.get(id)).sig));
+    for (const e of manifest.stories)
+      if (!state.has(e.id) && !existsSync(paths(P, e).sig) && existsSync(paths(P, e).latestPng))
+        state.set(e.id, 'new');
+    const isNew = (id) =>
+      state.get(id) === 'new' || (byId.has(id) && !existsSync(paths(P, byId.get(id)).sig));
     let ids = args;
     if (flags.component)
       ids = all
@@ -96,7 +108,15 @@ export async function approveCommand({
         )
         .map((e) => e.id);
     else if (flags['all-changed']) ids = all.filter((e) => e.state === 'changed').map((e) => e.id);
-    if (flags.new) ids = [...new Set([...(flags['all-changed'] || flags.component || args.length ? ids : []), ...[...state.keys()].filter((id) => isNew(id) && existsSync(paths(P, byId.get(id) ?? { id, sig: '' }).latestPng))])];
+    if (flags.new)
+      ids = [
+        ...new Set([
+          ...(flags['all-changed'] || flags.component || args.length ? ids : []),
+          ...[...state.keys()].filter(
+            (id) => isNew(id) && existsSync(paths(P, byId.get(id) ?? { id, sig: '' }).latestPng)
+          ),
+        ]),
+      ];
     if (!ids.length)
       fail(
         'nothing to plan: name ids, --component <name>, --all-changed or --new (only changed and NEW entries are approvable)'
@@ -130,7 +150,12 @@ export async function approveCommand({
       else {
         const c = baseImg
           ? classify(baseImg, p.latestPng)
-          : { kind: 'shape', reason: base.baseSha ? 'the baseline has no image to compare' : 'no baseline yet (a first baseline)' };
+          : {
+              kind: 'shape',
+              reason: base.baseSha
+                ? 'the baseline has no image to compare'
+                : 'no baseline yet (a first baseline)',
+            };
         const allowed = c.kind === 'colour' || allowShape.has(id) || (fresh && firstBaselines);
         entries.push({
           ...base,
@@ -249,21 +274,24 @@ export async function approveCommand({
       .then((r) => r.json())
       .catch(() => null);
     if (!status)
-      fail(
-        `the pxsig server is not running (${serverUrl}): start it with \`${CMD} serve\``
-      );
+      fail(`the pxsig server is not running (${serverUrl}): start it with \`${CMD} serve\``);
     if (status.running || status.queued) fail('a check is running: wait for it, then plan again');
     // The server refuses decisions without its token (lib/guard.mjs); this path read it only after
     // the person-at-a-terminal check above.
     const token = readToken(P.workspaceRoot, serverUrl);
     if (!token)
-      fail(`no token from the pxsig server at ${serverUrl} (it writes one when it starts): restart \`${CMD} serve\` with this version`);
+      fail(
+        `no token from the pxsig server at ${serverUrl} (it writes one when it starts): restart \`${CMD} serve\` with this version`
+      );
     const shape = ok.filter((e) => e.kind === 'shape' && !e.first);
     const first = ok.filter((e) => e.first);
     process.stdout.write(
       `\nApprove ${ok.length} baselines (${ok.length - shape.length - first.length} colour only, ${shape.length} shape changes allowed by name, ${first.length} first baselines).\nReason: ${plan.reason}\n`
     );
-    if (first.length) process.stdout.write(`First baselines (nothing to compare them with): ${first.map((e) => e.id).join(', ')}\n`);
+    if (first.length)
+      process.stdout.write(
+        `First baselines (nothing to compare them with): ${first.map((e) => e.id).join(', ')}\n`
+      );
     if (shape.length) process.stdout.write(`Shape changes: ${shape.map((e) => e.id).join(', ')}\n`);
     const phrase = `APPROVE ${ok.length} ENTRIES`;
     const typed = await ask(`Type "${phrase}" to continue: `);
@@ -275,7 +303,14 @@ export async function approveCommand({
       const r = await fetch(`${serverUrl}/__pxsig/approve`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', [TOKEN_HEADER]: token },
-        body: JSON.stringify({ project: P.name, id: e.id, batch, via: 'cli', reason: plan.reason, kind: e.kind }),
+        body: JSON.stringify({
+          project: P.name,
+          id: e.id,
+          batch,
+          via: 'cli',
+          reason: plan.reason,
+          kind: e.kind,
+        }),
       });
       if (!r.ok) {
         spin.done(
@@ -315,7 +350,8 @@ export async function approveCommand({
     // --trace (decision 82): the commit that added a batch's lines and the PR that merged it, from
     // git. pxsig points at the trail; it shows no names (the commit and the PR say who).
     const trace = flags.trace ? traceLog(P) : null;
-    if (flags.trace && !trace) fail('approve log --trace needs the approval log in a git repository', 2);
+    if (flags.trace && !trace)
+      fail('approve log --trace needs the approval log in a git repository', 2);
     const where = new Map();
     for (const t of trace ?? []) {
       const w = where.get(t.batch) ?? { commits: new Set(), prs: new Set() };
@@ -412,10 +448,17 @@ export async function approveCommand({
     emit(
       format,
       [
-        { h: 'Restored', sub: `${res.restored.length} baselines from ${batch} (${res.source === 'git' ? 'git history' : 'local snapshot'})${res.removed.length ? ` · ${res.removed.length} first baselines moved to trash/` : ''}` },
+        {
+          h: 'Restored',
+          sub: `${res.restored.length} baselines from ${batch} (${res.source === 'git' ? 'git history' : 'local snapshot'})${res.removed.length ? ` · ${res.removed.length} first baselines moved to trash/` : ''}`,
+        },
         res.refused.length
           ? { h: 'Refused' }
-          : { note: res.restored.length ? 'Re-checked against the restored baselines.' : 'Nothing to re-check.' },
+          : {
+              note: res.restored.length
+                ? 'Re-checked against the restored baselines.'
+                : 'Nothing to re-check.',
+            },
         res.refused.length ? { list: res.refused.map((r) => `${r.id} — ${r.why}`) } : {},
       ],
       res
@@ -428,8 +471,13 @@ export async function approveCommand({
     // Which manifests: the main one, one suite, or every suite (a suite whose manifest is not in
     // this checkout, such as a git-ignored matrix suite, is listed as not committed, not failed).
     const suiteNames = Object.keys(P.config.suites ?? {});
-    if (typeof flags.suite === 'string' && !suiteNames.includes(flags.suite)) fail(`unknown suite "${flags.suite}" (suites: ${suiteNames.join(', ') || 'none'})`, 2);
-    const suites = flags['all-suites'] ? ['', ...suiteNames] : typeof flags.suite === 'string' ? [flags.suite] : [''];
+    if (typeof flags.suite === 'string' && !suiteNames.includes(flags.suite))
+      fail(`unknown suite "${flags.suite}" (suites: ${suiteNames.join(', ') || 'none'})`, 2);
+    const suites = flags['all-suites']
+      ? ['', ...suiteNames]
+      : typeof flags.suite === 'string'
+        ? [flags.suite]
+        : [''];
     const suiteArg = (s) => (s ? ` --suite ${s}` : '');
     const load = (s) => {
       const path = P.manifestPath(s || null);
@@ -441,7 +489,9 @@ export async function approveCommand({
       const sets = suites.map((s) => [s, load(s)]).filter(([, m]) => m);
       const n = sets.reduce((k, [, m]) => k + m.stories.length, 0);
       const drifted = sets.reduce((k, [, m]) => k + verify(P, m).mismatched.length, 0);
-      const typed = await ask(`Log the ${n} current baselines as the trusted starting point? Type "ADOPT" to continue: `);
+      const typed = await ask(
+        `Log the ${n} current baselines as the trusted starting point? Type "ADOPT" to continue: `
+      );
       if (typed !== 'ADOPT') fail('not confirmed', 1);
       try {
         (await takeLock(P, { holder: 'approve verify --adopt' })).check();
@@ -457,7 +507,11 @@ export async function approveCommand({
             reason: 'adopt current baselines as the starting point',
             before: null,
           });
-      emit(format, [{ h: 'Adopted', sub: `${n} baselines logged (${drifted} had drifted from their log)` }], { batch });
+      emit(
+        format,
+        [{ h: 'Adopted', sub: `${n} baselines logged (${drifted} had drifted from their log)` }],
+        { batch }
+      );
       return;
     }
 
@@ -471,7 +525,11 @@ export async function approveCommand({
       if (!m) notCommitted.push(s);
       else results.push({ suite: s, ...verify(P, m) });
     }
-    if (!results.length) fail(`no manifest to verify${notCommitted.length ? ` (not in this checkout: ${notCommitted.map((s) => s || 'main').join(', ')})` : ''}`, 2);
+    if (!results.length)
+      fail(
+        `no manifest to verify${notCommitted.length ? ` (not in this checkout: ${notCommitted.map((s) => s || 'main').join(', ')})` : ''}`,
+        2
+      );
     // --since: the log at the merge base must be a byte prefix of today's (append-only). With no
     // merge base this gate cannot verify, and that is a failure here.
     let range = null;
@@ -481,7 +539,12 @@ export async function approveCommand({
       if (!mb.base) range = { since: flags.since, base: null, why: mb.why };
       else {
         const a = appendedSince(P, mb.base);
-        range = { since: flags.since, base: mb.base, rewritten: a.rewritten, appended: a.lines.length };
+        range = {
+          since: flags.since,
+          base: mb.base,
+          rewritten: a.rewritten,
+          appended: a.lines.length,
+        };
       }
     }
     const sum = (k) => results.reduce((n, r) => n + (Array.isArray(r[k]) ? r[k].length : r[k]), 0);
@@ -497,28 +560,89 @@ export async function approveCommand({
     const missing = results.filter((r) => r.untracked);
     // Warn mode: only the untracked baselines can be warned; the rest fails in every mode (10.4).
     const gated = outcome(enf, [
-      { gate: 'verify', exit: failUntracked ? 1 : 0, count: untracked, what: untracked === 1 ? 'baseline without a log line' : 'baselines without a log line' },
-      ...(bad ? [{ gate: null, exit: 1, count: bad, what: 'differ from their logged approval' }] : []),
-      ...(interrupted.length ? [{ gate: null, exit: 1, count: interrupted.length, what: 'written by an interrupted approval' }] : []),
-      ...(rangeBad ? [{ gate: null, exit: 1, count: 1, what: range.base ? 'rewritten log' : 'range without a merge base' }] : []),
+      {
+        gate: 'verify',
+        exit: failUntracked ? 1 : 0,
+        count: untracked,
+        what: untracked === 1 ? 'baseline without a log line' : 'baselines without a log line',
+      },
+      ...(bad
+        ? [{ gate: null, exit: 1, count: bad, what: 'differ from their logged approval' }]
+        : []),
+      ...(interrupted.length
+        ? [
+            {
+              gate: null,
+              exit: 1,
+              count: interrupted.length,
+              what: 'written by an interrupted approval',
+            },
+          ]
+        : []),
+      ...(rangeBad
+        ? [
+            {
+              gate: null,
+              exit: 1,
+              count: 1,
+              what: range.base ? 'rewritten log' : 'range without a merge base',
+            },
+          ]
+        : []),
     ]);
     const lead = leadLine(enf);
     const last = lastLine(enf, gated);
-    appendReadiness(P, enf, gated, { source: 'verify', counts: { verify: untracked + bad + interrupted.length } });
+    appendReadiness(P, enf, gated, {
+      source: 'verify',
+      counts: { verify: untracked + bad + interrupted.length },
+    });
     emit(
       format,
       [
         lead ? { note: lead, tone: 'warn' } : {},
-        { h: 'Baseline integrity', sub: `${logged} logged · ${untracked} baselines without a log entry${results.length > 1 || suites[0] ? ` · ${results.map((r) => r.suite || 'main').join(', ')}` : ''}` },
-        notCommitted.length ? { note: `Not in this checkout, not verified: ${notCommitted.map((s) => `suite ${s}`).join(', ')} (its manifest is not committed).` } : {},
-        range && !range.base ? { note: `Cannot verify the log since ${range.since}: ${range.why}.`, tone: 'bad' } : {},
-        range?.rewritten ? { note: `approvals.ndjson was rewritten since ${range.since}, not appended to: lines were removed or changed. The log is append-only; restore the lines from ${range.since} and add new ones after them.`, tone: 'bad' } : {},
-        range?.base && !range.rewritten ? { note: `${range.appended} log lines added since ${range.since}; the rest is unchanged.` } : {},
-        torn ? { note: `${torn} line(s) of the approval log were cut short (a crash mid-write) and are left out: \`${CMD} doctor --repair --only log-torn\` removes them`, tone: 'warn' } : {},
-        interrupted.length
-          ? { note: `${interrupted.length} baselines were written by an approval that stopped before logging them (batch ${cut.join(', ')}): undo it, or approve those entries again`, tone: 'warn' }
+        {
+          h: 'Baseline integrity',
+          sub: `${logged} logged · ${untracked} baselines without a log entry${results.length > 1 || suites[0] ? ` · ${results.map((r) => r.suite || 'main').join(', ')}` : ''}`,
+        },
+        notCommitted.length
+          ? {
+              note: `Not in this checkout, not verified: ${notCommitted.map((s) => `suite ${s}`).join(', ')} (its manifest is not committed).`,
+            }
           : {},
-        interrupted.length ? { next: cut.map((batch) => [`${CMD} approve undo ${batch}`, 'put back the baselines it replaced']) } : {},
+        range && !range.base
+          ? { note: `Cannot verify the log since ${range.since}: ${range.why}.`, tone: 'bad' }
+          : {},
+        range?.rewritten
+          ? {
+              note: `approvals.ndjson was rewritten since ${range.since}, not appended to: lines were removed or changed. The log is append-only; restore the lines from ${range.since} and add new ones after them.`,
+              tone: 'bad',
+            }
+          : {},
+        range?.base && !range.rewritten
+          ? {
+              note: `${range.appended} log lines added since ${range.since}; the rest is unchanged.`,
+            }
+          : {},
+        torn
+          ? {
+              note: `${torn} line(s) of the approval log were cut short (a crash mid-write) and are left out: \`${CMD} doctor --repair --only log-torn\` removes them`,
+              tone: 'warn',
+            }
+          : {},
+        interrupted.length
+          ? {
+              note: `${interrupted.length} baselines were written by an approval that stopped before logging them (batch ${cut.join(', ')}): undo it, or approve those entries again`,
+              tone: 'warn',
+            }
+          : {},
+        interrupted.length
+          ? {
+              next: cut.map((batch) => [
+                `${CMD} approve undo ${batch}`,
+                'put back the baselines it replaced',
+              ]),
+            }
+          : {},
         bad
           ? {
               note: `${bad} baselines differ from their last logged approval: written outside the trail${results.some((r) => r.mismatched.some((x) => x.older)) ? `. ${results.flatMap((r) => r.mismatched).filter((x) => x.older).length} of them were last logged by an older pxsig (the Logged by column): if a teammate still runs it, they upgrade pxsig and approve those entries again` : ''}`,
@@ -534,26 +658,58 @@ export async function approveCommand({
                   { key: 'now', label: 'Now' },
                   { key: 'by', label: 'Logged by' },
                 ],
-                rows: results.flatMap((r) => r.mismatched).slice(0, 40).map((x) => ({ ...x, by: x.writtenBy ? `pxsig ${x.writtenBy}` : 'pxsig before 0.4' })),
+                rows: results
+                  .flatMap((r) => r.mismatched)
+                  .slice(0, 40)
+                  .map((x) => ({
+                    ...x,
+                    by: x.writtenBy ? `pxsig ${x.writtenBy}` : 'pxsig before 0.4',
+                  })),
               },
             }
           : {},
         untracked
           ? {
               note: failUntracked
-                ? `${untracked} baselines have no approval log line, so nothing records that a person approved them: ${missing.flatMap((r) => r.untrackedIds).slice(0, 10).join(', ')}${untracked > 10 ? ` and ${untracked - 10} more` : ''}. Baselines from before pxsig kept a log are adopted once, by a person; any other is a baseline written outside the trail. (\`--no-strict\` reports these without failing.)`
+                ? `${untracked} baselines have no approval log line, so nothing records that a person approved them: ${missing
+                    .flatMap((r) => r.untrackedIds)
+                    .slice(0, 10)
+                    .join(
+                      ', '
+                    )}${untracked > 10 ? ` and ${untracked - 10} more` : ''}. Baselines from before pxsig kept a log are adopted once, by a person; any other is a baseline written outside the trail. (\`--no-strict\` reports these without failing.)`
                 : `${untracked} baselines have no approval log line (not a failure with --no-strict).`,
               tone: failUntracked ? 'bad' : 'warn',
             }
           : {},
-        untracked ? { next: missing.map((r) => [adoptCmd(r), 'a person, in a terminal: log the current baselines as the starting point']) } : {},
-        !bad && !interrupted.length && !untracked && !rangeBad ? { note: logged ? 'Every baseline matches its approval.' : 'No baselines to verify.', tone: logged ? 'ok' : undefined } : {},
+        untracked
+          ? {
+              next: missing.map((r) => [
+                adoptCmd(r),
+                'a person, in a terminal: log the current baselines as the starting point',
+              ]),
+            }
+          : {},
+        !bad && !interrupted.length && !untracked && !rangeBad
+          ? {
+              note: logged ? 'Every baseline matches its approval.' : 'No baselines to verify.',
+              tone: logged ? 'ok' : undefined,
+            }
+          : {},
         last ? { note: last, tone: gated.advisory ? 'warn' : undefined } : {},
       ],
-      { strict, suites: results.map(({ untrackedIds, ...r }) => r), notCommitted, range, ...(results.length === 1 ? (({ untrackedIds, suite, ...r }) => r)(results[0]) : {}), ...(reportBlock(enf, gated) ? { enforcement: reportBlock(enf, gated) } : {}) }
+      {
+        strict,
+        suites: results.map(({ untrackedIds, ...r }) => r),
+        notCommitted,
+        range,
+        ...(results.length === 1 ? (({ untrackedIds, suite, ...r }) => r)(results[0]) : {}),
+        ...(reportBlock(enf, gated) ? { enforcement: reportBlock(enf, gated) } : {}),
+      }
     );
     process.exit(gated.exit);
   }
 
-  fail(`usage: approve plan | apply | log [--trace] | undo <batch> | verify [--no-strict] [--since <ref>] [--suite <name> | --all-suites] [--adopt]`);
+  fail(
+    `usage: approve plan | apply | log [--trace] | undo <batch> | verify [--no-strict] [--since <ref>] [--suite <name> | --all-suites] [--adopt]`
+  );
 }

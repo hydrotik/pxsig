@@ -25,15 +25,22 @@ const env = process.env;
  * (lib/agents.mjs). Baseline writes in bulk require this. A TTY alone says nothing about who types:
  * several assistants run commands in a real terminal, so the markers are checked too.
  */
-export const humanAtTerminal = ({ e = env, stdin = process.stdin.isTTY, stdout = process.stdout.isTTY } = {}) =>
-  Boolean(stdin && stdout && !e.CI && !detectAgent(e));
+export const humanAtTerminal = ({
+  e = env,
+  stdin = process.stdin.isTTY,
+  stdout = process.stdout.isTTY,
+} = {}) => Boolean(stdin && stdout && !e.CI && !detectAgent(e));
 
 /**
  * Why `humanAtTerminal()` is false, for a refusal: "refused under copilot (AI_AGENT=…)", "refused
  * in CI (CI is set)", "refused: output is piped" or "refused: input is not a terminal". Null when it
  * is true.
  */
-export function whyNotPerson({ e = env, stdin = process.stdin.isTTY, stdout = process.stdout.isTTY } = {}) {
+export function whyNotPerson({
+  e = env,
+  stdin = process.stdin.isTTY,
+  stdout = process.stdout.isTTY,
+} = {}) {
   const a = detectAgent(e);
   if (a) return `refused under ${describeAgent(a)}`;
   if (e.CI) return 'refused in CI (CI is set)';

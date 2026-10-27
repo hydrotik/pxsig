@@ -9,10 +9,10 @@ for every baseline that team owns. pxsig needs no setup for this.
 The component folder is the story file's folder relative to the project's `srcRoot`. Stories
 outside `srcRoot` go under `_`. See [monorepo.md](monorepo.md#store-layout).
 
-| `store.layout` | Baseline path | Glob for one component |
-| --- | --- | --- |
-| `package` (default) | `<project>/.pxsig/baselines/<component>/<id>.psig` | `/<project>/.pxsig/baselines/<component>/` |
-| `colocated` | `<project>/<srcRoot>/<component>/__pxsig__/<id>.psig` | `/<project>/<srcRoot>/<component>/__pxsig__/` |
+| `store.layout`      | Baseline path                                         | Glob for one component                        |
+| ------------------- | ----------------------------------------------------- | --------------------------------------------- |
+| `package` (default) | `<project>/.pxsig/baselines/<component>/<id>.psig`    | `/<project>/.pxsig/baselines/<component>/`    |
+| `colocated`         | `<project>/<srcRoot>/<component>/__pxsig__/<id>.psig` | `/<project>/<srcRoot>/<component>/__pxsig__/` |
 
 A pattern that ends in `/` matches everything below that folder, so a component's nested states
 and modes are covered.
@@ -21,13 +21,13 @@ and modes are covered.
 
 Each store also has files that every approval touches, whatever the component:
 
-| File | Changes when |
-| --- | --- |
-| `<store>/approvals.ndjson` | every approval appends a line |
-| `<store>/manifest.json`, `<store>/manifest.<suite>.json` | a story is added, removed or renamed |
-| `<store>/a11y.json` | an approval or an accessibility decision changes the accepted violations |
-| `<store>/a11y-decisions.ndjson` | an accessibility decision is logged |
-| `<project>/pxsig.config.json` | the gate, modes or Storybook settings change |
+| File                                                     | Changes when                                                             |
+| -------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `<store>/approvals.ndjson`                               | every approval appends a line                                            |
+| `<store>/manifest.json`, `<store>/manifest.<suite>.json` | a story is added, removed or renamed                                     |
+| `<store>/a11y.json`                                      | an approval or an accessibility decision changes the accepted violations |
+| `<store>/a11y-decisions.ndjson`                          | an accessibility decision is logged                                      |
+| `<project>/pxsig.config.json`                            | the gate, modes or Storybook settings change                             |
 
 GitHub requires one approving review from an owner of **each** owned file. If the shared files
 named one team only, every baseline change in the store would need that team as well. List every
@@ -42,12 +42,12 @@ the team that owns the gate, not every team.
 CODEOWNERS is the control for who may approve a baseline change: map each role to the paths it
 owns.
 
-| Role | Owns | Why |
-| --- | --- | --- |
-| A component's team | that component's baseline folder | approves its own visual changes |
-| Every team that approves in the store | `approvals.ndjson`, the manifests, `a11y.json`, `a11y-decisions.ndjson` | every approval touches them |
-| The gate's owner (a design system or platform team) | `pxsig.config.json`, `pxsig.workspace.json`, `CODEOWNERS` | a looser gate passes changes no baseline records |
-| The CI owner | the workflow that runs `pxsig check` and `pxsig approve verify` | removing a step removes the check |
+| Role                                                | Owns                                                                    | Why                                              |
+| --------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------ |
+| A component's team                                  | that component's baseline folder                                        | approves its own visual changes                  |
+| Every team that approves in the store               | `approvals.ndjson`, the manifests, `a11y.json`, `a11y-decisions.ndjson` | every approval touches them                      |
+| The gate's owner (a design system or platform team) | `pxsig.config.json`, `pxsig.workspace.json`, `CODEOWNERS`               | a looser gate passes changes no baseline records |
+| The CI owner                                        | the workflow that runs `pxsig check` and `pxsig approve verify`         | removing a step removes the check                |
 
 ## Example: two teams in one monorepo
 
@@ -92,13 +92,13 @@ routes the example workspace the same way.
 CODEOWNERS only routes review requests until the branch requires it. On the protected branch (a
 branch protection rule or a ruleset):
 
-| Setting | Why |
-| --- | --- |
-| Require a pull request before merging | baselines change only through a reviewed PR |
-| Require review from Code Owners | the owner's review becomes a merge condition |
-| Dismiss stale pull request approvals when new commits are pushed | a review covers the baselines it saw, not ones pushed after |
-| Require approval of the most recent reviewable push | the person who pushed the last baselines cannot be their only reviewer |
-| Do not allow bypassing the above settings | administrators follow the same rule |
+| Setting                                                          | Why                                                                    |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Require a pull request before merging                            | baselines change only through a reviewed PR                            |
+| Require review from Code Owners                                  | the owner's review becomes a merge condition                           |
+| Dismiss stale pull request approvals when new commits are pushed | a review covers the baselines it saw, not ones pushed after            |
+| Require approval of the most recent reviewable push              | the person who pushed the last baselines cannot be their only reviewer |
+| Do not allow bypassing the above settings                        | administrators follow the same rule                                    |
 
 Required status checks and the merge queue are in [required-checks.md](required-checks.md).
 

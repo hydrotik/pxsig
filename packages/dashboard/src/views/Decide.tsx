@@ -11,7 +11,9 @@ type DecideState = 'waiting' | 'working' | 'needs-link' | 'failed' | 'no-opener'
  * only to say what to do: open the dashboard link first, or why the decision was not recorded.
  */
 export function Decide() {
-  const [state, setState] = React.useState<{ state: DecideState; detail?: string }>({ state: 'waiting' });
+  const [state, setState] = React.useState<{ state: DecideState; detail?: string }>({
+    state: 'waiting',
+  });
   React.useEffect(() => {
     document.title = t('app.decide.title');
     return runDecideWindow((next, detail) => setState({ state: next, detail }));

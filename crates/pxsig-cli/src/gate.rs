@@ -93,7 +93,10 @@ impl GateSpec {
 /// The built-in gate: today's v1 rule plus the detail channel (used only when a
 /// baseline carries detail).
 pub fn builtin() -> GateThresholds {
-    GateThresholds { detail: Some(DetailGate::default()), ..GateThresholds::default() }
+    GateThresholds {
+        detail: Some(DetailGate::default()),
+        ..GateThresholds::default()
+    }
 }
 
 /// Explicit CLI gate flags. Every field is optional so an unset flag never
@@ -126,7 +129,11 @@ impl GateArgs {
             max_changed_pct: self.max_changed_pct,
             max_edge_pct: self.max_edge_pct,
             min_cells: self.min_cells,
-            detail: if self.no_detail { Some(DetailSpec::Enabled(false)) } else { None },
+            detail: if self.no_detail {
+                Some(DetailSpec::Enabled(false))
+            } else {
+                None
+            },
         }
     }
 }
@@ -151,9 +158,17 @@ pub fn env_spec_from(get: impl Fn(&str) -> Option<String>) -> GateSpec {
 }
 
 /// Resolve the gate for one story: defaults < manifest < env < CLI < story.
-pub fn resolve(manifest: Option<&GateSpec>, env: &GateSpec, cli: &GateSpec, story: Option<&GateSpec>) -> GateThresholds {
+pub fn resolve(
+    manifest: Option<&GateSpec>,
+    env: &GateSpec,
+    cli: &GateSpec,
+    story: Option<&GateSpec>,
+) -> GateThresholds {
     let mut g = builtin();
-    for layer in [manifest, Some(env), Some(cli), story].into_iter().flatten() {
+    for layer in [manifest, Some(env), Some(cli), story]
+        .into_iter()
+        .flatten()
+    {
         g = layer.over(&g);
     }
     g
@@ -179,18 +194,35 @@ mod tests {
 
     #[test]
     fn story_beats_cli_beats_env_beats_manifest() {
-        let m = GateSpec { threshold: Some(32.0), min_cells: Some(2), max_changed_pct: Some(5.0), min_ssim: Some(0.9), ..Default::default() };
+        let m = GateSpec {
+            threshold: Some(32.0),
+            min_cells: Some(2),
+            max_changed_pct: Some(5.0),
+            min_ssim: Some(0.9),
+            ..Default::default()
+        };
         let env = env_spec_from(|k| match k {
             "PXSIG_MIN_CELLS" => Some("7".into()),
             "PXSIG_MIN_SSIM" => Some("0.95".into()),
             "PXSIG_MAX_CHANGED_PCT" => Some("4".into()),
             _ => None,
         });
-        let cli = GateSpec { min_cells: Some(9), min_ssim: Some(0.97), ..Default::default() };
-        let s = GateSpec { threshold: Some(24.0), min_cells: Some(3), ..Default::default() };
+        let cli = GateSpec {
+            min_cells: Some(9),
+            min_ssim: Some(0.97),
+            ..Default::default()
+        };
+        let s = GateSpec {
+            threshold: Some(24.0),
+            min_cells: Some(3),
+            ..Default::default()
+        };
         let g = resolve(Some(&m), &env, &cli, Some(&s));
         // story: threshold + minCells · CLI: minSsim · env: maxChangedPct
-        assert_eq!((g.threshold, g.min_cells, g.min_ssim, g.max_changed_pct), (24.0, 3, 0.97, 4.0));
+        assert_eq!(
+            (g.threshold, g.min_cells, g.min_ssim, g.max_changed_pct),
+            (24.0, 3, 0.97, 4.0)
+        );
         // without a story gate, the CLI flag beats the environment, which beats the manifest
         let g = resolve(Some(&m), &env, &cli, None);
         assert_eq!((g.threshold, g.min_cells, g.min_ssim), (32.0, 9, 0.97));
@@ -210,6 +242,12 @@ mod tests {
         let none = GateSpec::default();
         assert!(resolve(None, &none, &none, Some(&s)).detail.is_none());
         let t: GateSpec = serde_json::from_str(r#"{"detail": {"minTiles": 5}}"#).unwrap();
-        assert_eq!(resolve(None, &none, &none, Some(&t)).detail.unwrap().min_tiles, 5);
+        assert_eq!(
+            resolve(None, &none, &none, Some(&t))
+                .detail
+                .unwrap()
+                .min_tiles,
+            5
+        );
     }
 }
