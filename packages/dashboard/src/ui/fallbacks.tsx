@@ -311,7 +311,7 @@ const Heatmap: F<'Heatmap'> = ({ label, cells, legend, onSelect, className }) =>
           <>
             <span aria-hidden="true" style={swatch(heatStep(c.value))} />
             <span style={{ display: 'flex', flexDirection: 'column', minInlineSize: 0 }}>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.label}</span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.label}</span>{' '}
               <span style={{ fontFamily: v.font.mono, fontSize: v.fontSize['2xs'], color: v.color.textMuted }}>{c.text}</span>
             </span>
           </>

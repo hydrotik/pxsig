@@ -312,6 +312,9 @@ test('stale heatmap tiles name their component and count, worst share first, and
     const names = await grid.getByRole('button').evaluateAll((bs) => bs.map((b) => b.getAttribute('aria-label')));
     assert.deepEqual(names, ['Card: 2 stale of 2 entries', 'Button: 1 stale of 3 entries'], 'no tile for a component with nothing stale');
     assert.match(await grid.innerText(), /2 stale of 2/, 'the count is on the tile, not only its colour');
+    // The tile's text, read as one line, is inside its name (WCAG 2.5.3): a space between the two lines.
+    const text = await grid.getByRole('button').first().evaluate((b) => b.textContent);
+    assert.equal(text, 'Card 2 stale of 2');
     await grid.getByRole('button', { name: 'Button: 1 stale of 3 entries' }).click();
     await page.getByRole('button', { name: 'Only Button' }).waitFor();
     await page.getByRole('heading', { name: 'Button', exact: true }).waitFor();
@@ -323,6 +326,42 @@ test('stale heatmap tiles name their component and count, worst share first, and
     assert.deepEqual(errors, []);
   } finally {
     await page.close();
+  }
+});
+
+test('every page the dashboard can open on has one main region and one level-one heading', async (t) => {
+  if (skip) return t.skip(skip);
+  const story = 'ui-button--primary';
+  const d = data({ rows: [row(story, changed)], entries: [entry(story)] });
+  // `data`: answer the report request with it, a status for a failed load, or never (still loading).
+  const visit = async (search, answer) => {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    await page.route('**/__pxsig/**', (route) => {
+      const name = new URL(route.request().url()).pathname.replace('/__pxsig/', '');
+      if (name === 'events') return route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream' }, body: 'retry: 60000\nevent: hello\ndata: {}\n\n' });
+      if (name === 'data') return answer === 'never' ? undefined : typeof answer === 'number' ? route.fulfill({ status: answer, json: { error: 'unreadable' } }) : route.fulfill({ json: answer });
+      if (name === 'projects') return route.fulfill({ json: { projects: [{ name: 'demo', root: '.', entries: 1, integrity: null }] } });
+      return route.fulfill({ status: 404, json: {} });
+    });
+    await page.route('**/p/demo/**', (route) => route.fulfill({ status: 404, body: '' }));
+    await page.goto(`${base}/report/${search}`);
+    return page;
+  };
+  const cases = [
+    ['loading', '', 'never', 'Loading…'],
+    ['a failed load', '', 500, 'Report data failed to load'],
+    ['the Storybook panel', `?embed=1&story=${story}`, d, story],
+    ['the decision window', '?decide=1', d, 'Opened on its own'],
+  ];
+  for (const [what, search, answer, shows] of cases) {
+    const page = await visit(search, answer);
+    try {
+      await page.getByText(shows).first().waitFor();
+      assert.equal(await page.getByRole('main').count(), 1, `${what}: one main region`);
+      assert.equal(await page.getByRole('heading', { level: 1 }).count(), 1, `${what}: one level-one heading`);
+    } finally {
+      await page.close();
+    }
   }
 });
 

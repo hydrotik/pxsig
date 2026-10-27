@@ -375,6 +375,7 @@ export interface AlertProps {
   label: string;
   children: React.ReactNode;
 }
+/** An alert's title line: emphasised text, not a heading (an alert sits anywhere in the outline). */
 export interface AlertTitleProps {
   children: React.ReactNode;
 }
@@ -507,7 +508,7 @@ export const CONTRACT = {
   KeyValueList: { group: 'controls', required: false, role: 'label → value pairs' },
   KeyValueItem: { group: 'controls', required: false, role: 'one label → value pair' },
   Alert: { group: 'controls', required: false, role: 'a message about the whole page' },
-  AlertTitle: { group: 'controls', required: false, role: "an alert's heading" },
+  AlertTitle: { group: 'controls', required: false, role: "an alert's title line, not a heading" },
   AlertDescription: { group: 'controls', required: false, role: "an alert's body" },
   SearchField: { group: 'controls', required: false, role: 'a controlled search input' },
   Select: { group: 'controls', required: true, role: 'one value from a list' },

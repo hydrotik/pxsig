@@ -406,7 +406,7 @@
     "AlertTitle": {
       "group": "controls",
       "required": false,
-      "role": "an alert's heading",
+      "role": "an alert's title line, not a heading",
       "usedBy": [
         "App",
         "views/Integrity"

@@ -341,7 +341,8 @@ export const Alert = ({ tone, label, children }: C.AlertProps) => (
     {children}
   </DS.Alert>
 );
-export const AlertTitle = ({ children }: C.AlertTitleProps) => <DS.AlertTitle>{children}</DS.AlertTitle>;
+// The design system's title is an h5; an alert's title is not a heading (the contract), so its role is removed.
+export const AlertTitle = ({ children }: C.AlertTitleProps) => <DS.AlertTitle role="none">{children}</DS.AlertTitle>;
 export const AlertDescription = ({ children }: C.AlertDescriptionProps) => <DS.AlertDescription>{children}</DS.AlertDescription>;
 
 export const SearchField = ({ id, value, onValueChange, placeholder }: C.SearchFieldProps) => <DS.SearchBar id={id} value={value} onValueChange={onValueChange} placeholder={placeholder} />;
@@ -420,7 +421,7 @@ export function Heatmap({ label, cells, legend, onSelect, className }: C.Heatmap
           const name = c.accessibleLabel ?? `${c.label}, ${c.text}`;
           const body = (
             <>
-              <span className={hm.name}>{c.label}</span>
+              <span className={hm.name}>{c.label}</span>{' '}
               <span className={hm.figure}>{c.text}</span>
             </>
           );

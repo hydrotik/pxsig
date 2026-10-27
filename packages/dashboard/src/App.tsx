@@ -65,8 +65,26 @@ function Embed({ data, story }: { data: Data; story: string }) {
   const pick = rows.find((r) => !r.pass) ?? rows[0];
   const [target, setTarget] = React.useState<InspectTarget | null>(pick ? { row: pick, scenario: null, list: rows } : null);
   React.useEffect(() => setTarget(pick ? { row: pick, scenario: null, list: rows } : null), [story, data]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!target) return <div className={s.empty}>{t('app.embedEmpty')}</div>;
-  return <Inspector data={data} target={target} onNavigate={setTarget} onClose={() => {}} embedded />;
+  // Its own page (an iframe in the panel): one main region and a level-one heading, read but not drawn.
+  return (
+    <main>
+      <h1 className={s.srOnly}>
+        {t('app.mark')}
+        {story ? t('app.titleLabel', { label: story }) : null}
+      </h1>
+      {target ? <Inspector data={data} target={target} onNavigate={setTarget} onClose={() => {}} embedded /> : <div className={s.empty}>{t('app.embedEmpty')}</div>}
+    </main>
+  );
+}
+
+/** Loading, or the report failed to load: a main region and a level-one heading, as on the full page. */
+function Placeholder({ text }: { text: string }) {
+  return (
+    <main className={s.page}>
+      <h1 className={s.srOnly}>{t('app.mark')}</h1>
+      <div className={s.empty}>{text}</div>
+    </main>
+  );
 }
 
 /** The project switcher: shown when the server holds more than one project. */
@@ -152,8 +170,8 @@ export function App() {
     if (fresh && fresh !== target.row) setTarget((t) => t && { ...t, row: fresh, list: t.list.map((r) => data.check!.rows.find((x) => x.id === r.id) ?? r) });
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (error && !data) return <div className={s.page}><div className={s.empty}>{t('app.loadError', { error })}</div></div>;
-  if (!data) return <div className={s.page}><div className={s.empty}>{t('app.loading')}</div></div>;
+  if (error && !data) return <Placeholder text={t('app.loadError', { error })} />;
+  if (!data) return <Placeholder text={t('app.loading')} />;
   if (params.get('embed')) return <Embed data={data} story={params.get('story') ?? ''} />;
 
   const rows = data.check?.rows ?? [];
