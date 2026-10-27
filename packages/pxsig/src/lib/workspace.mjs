@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { toPosix } from './paths.mjs';
 import { writeAtomic } from './files.mjs';
 import { spawnSync } from './spawn.mjs';
+import { checkEnforcementConfig } from './enforcement.mjs';
 
 export const WORKSPACE_FILE = 'pxsig.workspace.json';
 export const CONFIG_FILE = 'pxsig.config.json';
@@ -475,6 +476,11 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
   const config = merge(...layers.map((l) => l.value));
   const sources = provenance(layers);
   checkApprovals(config, ref);
+  try {
+    checkEnforcementConfig(config.enforcement, `project "${ref.name}": enforcement`);
+  } catch (e) {
+    throw new SetupError(e.message);
+  }
   const root = ref.dir;
   const store = expand(ws, root, config.store.dir);
   // Modes are a set, not settings: a project's modes replace the defaults instead of joining them.

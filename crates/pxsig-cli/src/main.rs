@@ -93,6 +93,9 @@ enum Cmd {
         /// Append this run to an ndjson history file.
         #[arg(long)]
         history: Option<PathBuf>,
+        /// Warn mode for the history line: `@file` (or inline JSON) `{ "gates": {…}, "a11yNew": n }`.
+        #[arg(long)]
+        enforcement: Option<String>,
         /// Base renders; failing entries also get a pixel diff with change regions.
         #[arg(long)]
         base_png_dir: Option<PathBuf>,
@@ -231,10 +234,10 @@ fn main() -> ExitCode {
     let res = match cli.cmd {
         Cmd::Capture { png, out, grid, detail } => cmd_capture(&png, out, grid, detail),
         Cmd::Compare { png, sig, out_dir, json, gate } => cmd_compare(&png, &sig, out_dir, json, &gate),
-        Cmd::Check { batch, out_dir, json, format, no_artifacts, artifacts, cache, history, base_png_dir, tolerance, gate } => {
+        Cmd::Check { batch, out_dir, json, format, no_artifacts, artifacts, cache, history, enforcement, base_png_dir, tolerance, gate } => {
             let format = format.unwrap_or_else(|| if json { "json".into() } else { "human".into() });
             let artifacts = if no_artifacts { Ok(batch::Artifacts::None) } else { batch::Artifacts::parse(&artifacts) };
-            artifacts.and_then(|a| cmd_check(batch, out_dir, &format, a, cache, history, base_png_dir, tolerance, &gate))
+            artifacts.and_then(|a| cmd_check(batch, out_dir, &format, a, cache, history, enforcement, base_png_dir, tolerance, &gate))
         }
         Cmd::Trim { dir, only, pad, tolerance, json } => cmd_trim(&dir, only.as_deref(), pad, tolerance, json),
         Cmd::Baseline { batch, no_detail, env, json } => cmd_baseline(batch, no_detail, env, json),
@@ -428,6 +431,7 @@ fn cmd_check(
     artifacts: batch::Artifacts,
     cache: Option<PathBuf>,
     history: Option<PathBuf>,
+    enforcement: Option<String>,
     base_png_dir: Option<PathBuf>,
     tolerance: u8,
     gate: &GateArgs,
@@ -442,6 +446,7 @@ fn cmd_check(
         only: batch::parse_only(b.only.as_deref())?,
         cache,
         history,
+        enforcement: batch::parse_enforcement(enforcement.as_deref())?,
         base_png_dir,
         tolerance,
         cli_gate: gate.spec(),

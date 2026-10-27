@@ -7,5 +7,9 @@
 | 2 | Usage or setup error: unknown command or project, no project chosen, no manifest, Storybook unreachable or broken, missing binary, the store locked by another writer, a failed `report`, and `check --strict-env` refusing baselines approved in a different render environment (nothing rendered) |
 | 3 | Needs a person at a terminal (`check --full --update`, `approve apply`, `approve undo`, `approve verify --adopt`, `a11y --prune`, `doctor --repair --apply --prune`, `serve --link`): refused when piped, in CI, or under an assistant's marker (the message names it) |
 
-Over several projects (`--all`), the worst exit wins. Each command's page (`pxsig help <command>`)
-lists its own exits.
+Warn mode: a gate the committed config sets to `warn` (`enforcement` in pxsig.config.json) exits
+`enforcement.advisoryExit` (0 by default, or 10 to 125) where only it would have failed, and the
+output says so in ADVISORY lines. Setup errors (2) and refusals (3) are never warned.
+
+Over several projects (`--all`), the worst exit wins; an advisory exit never hides another
+project's failure. Each command's page (`pxsig help <command>`) lists its own exits.

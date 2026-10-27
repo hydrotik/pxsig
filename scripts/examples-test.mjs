@@ -15,6 +15,11 @@
  *                    forced font-probe difference warns (exit 0, one setup finding), and
  *                    --strict-env refuses it (exit 2)
  *   5. change        a component's colour changes; the check fails on exactly its entries
+ *   5b. warn         (single-package) the visual gate on warn: the same failing rows, exit 0,
+ *                    ADVISORY lines, `enforcement` in check.json, the summary.md lead and the
+ *                    junit property; --enforce and PXSIG_ENFORCEMENT=enforce fail it again,
+ *                    PXSIG_ENFORCEMENT=warn is refused; the env gate on warn renders past
+ *                    --strict-env
  *   6. doctor --ci   no error-severity integrity codes
  * And custom-ui (no Storybook): `pxsig dashboard gaps` reports the plain adapter's gaps, and
  * `pxsig dashboard build` rebuilds the dashboard on it from the installed pxsig.
@@ -46,6 +51,9 @@ const sh = (cmd, args, cwd, opts = {}) => {
   return r;
 };
 const pxsig = (args, cwd) => sh(process.execPath, [cli, ...args], cwd, { must: false });
+// Warn-mode runs write a readiness line in the machine's state folder: point it at a temp folder.
+const stateHome = mkdtempSync(join(tmpdir(), 'pxsig-example-state-'));
+const pxsigIn = (args, cwd, extra = {}) => sh(process.execPath, [cli, ...args], cwd, { must: false, env: { ...env, HOME: stateHome, USERPROFILE: stateHome, XDG_STATE_HOME: stateHome, LOCALAPPDATA: stateHome, ...extra } });
 // pnpm is a .cmd shim on Windows, which Node starts only through a shell. This is the test
 // harness on a CI runner; pxsig itself never starts a shell (docs/platforms.md).
 const pnpm = (args, cwd, opts = {}) => (process.platform === 'win32' ? sh('pnpm.cmd', args, cwd, { ...opts, shell: true }) : sh('pnpm', args, cwd, opts));
@@ -163,6 +171,7 @@ async function run(name, { projects, storybookDir, change }) {
       const failed = rows.filter((x) => !x.pass).map((x) => x.id);
       const want = rows.filter((x) => change.affects(p, x.id)).map((x) => x.id);
       expect(JSON.stringify(failed.sort()) === JSON.stringify(want.sort()) && (want.length ? r.status === 1 : r.status === 0), `${p}: the change fails exactly ${want.length} entries (${failed.length} failed)`);
+      if (name === 'single-package') warnSteps(dir, p, failed);
       const d = pxsig(['doctor', '--ci', '--project', p, '--json'], dir);
       expect(d.status === 0 || d.status === 1, `${p}: doctor --ci ran (exit ${d.status})`);
       const doc = JSON.parse(d.stdout);
@@ -201,6 +210,37 @@ function envSteps(dir, p) {
   expect(finding.length === 1 && finding[0].severity === 'warn', 'env: one env-mismatch setup warning in doctor');
   r = pxsig(['check', '--full', '--project', p, '--retries', '1', '--strict-env'], dir);
   expect(r.status === 2 && /different environment/.test(r.stderr) && !/\[check\] rendered/.test(r.stdout), `env: --strict-env refuses before rendering (exit ${r.status})`);
+  // The env gate on warn: --strict-env's refusal becomes a would-have-refused, and the check renders.
+  writeFileSync(cfgPath, JSON.stringify({ ...JSON.parse(cfg), env: { fontProbe: ['Courier New'] }, enforcement: { gates: { env: 'warn' } } }, null, 2));
+  r = pxsigIn(['check', '--full', '--project', p, '--retries', '1', '--strict-env'], dir);
+  expect(r.status === 0 && /--strict-env would have refused this run/.test(r.stdout) && /\[check\] rendered/.test(r.stdout) && /\[pxsig\] ADVISORY: would have failed \(exit 2\)/.test(r.stdout), `warn: the env gate on warn renders past --strict-env (exit ${r.status})`);
+  writeFileSync(cfgPath, cfg);
+}
+
+/** Warn mode end to end, on the changed component's failing entries. */
+function warnSteps(dir, p, failing) {
+  const cfgPath = join(dir, 'pxsig.config.json');
+  const cfg = readFileSync(cfgPath, 'utf8');
+  writeFileSync(cfgPath, JSON.stringify({ ...JSON.parse(cfg), enforcement: { gates: { visual: 'warn' } } }, null, 2));
+  const store = join(dir, ...projectStore(dir, p), 'reports');
+  let r = pxsigIn(['check', '--full', '--project', p, '--retries', '1'], dir);
+  const c = checkJson(dir, p);
+  const now = c.rows.filter((x) => !x.pass).map((x) => x.id).sort();
+  expect(r.status === 0, `warn: the visual gate on warn exits 0 (exit ${r.status})`);
+  expect(JSON.stringify(now) === JSON.stringify([...failing].sort()), `warn: the same ${failing.length} rows fail as under enforce (${now.length})`);
+  expect(/^\[pxsig\] ADVISORY: warn mode for visual \(pxsig\.config\.json\)/m.test(r.stdout) && new RegExp(`\\[pxsig\\] ADVISORY: would have failed \\(exit 1\\): ${failing.length} changed\\. Not blocking\\.`).test(r.stdout), 'warn: the ADVISORY lead and last lines');
+  expect(c.enforcement?.wouldFail === true && c.enforcement.contexts.advisory.includes('visual') && c.git && 'head' in c.git, 'warn: check.json carries enforcement and git.head (null here: the example is not a git repository)');
+  expect(readFileSync(join(store, 'summary.md'), 'utf8').startsWith('> **ADVISORY: warn mode** (visual). This run would have failed'), 'warn: summary.md opens with the advisory lead');
+  expect(readFileSync(join(store, 'junit.xml'), 'utf8').includes('<property name="pxsig.enforcement" value="warn"/>') && readFileSync(join(store, 'junit.xml'), 'utf8').includes('<failure'), 'warn: junit keeps its failures and says warn');
+  r = pxsigIn(['check', '--full', '--project', p, '--retries', '1', '--enforce'], dir);
+  expect(r.status === 1, `warn: --enforce fails it again (exit ${r.status})`);
+  r = pxsigIn(['check', '--full', '--project', p, '--retries', '1'], dir, { PXSIG_ENFORCEMENT: 'enforce' });
+  expect(r.status === 1, `warn: PXSIG_ENFORCEMENT=enforce fails it again (exit ${r.status})`);
+  r = pxsigIn(['check', '--full', '--project', p, '--retries', '1'], dir, { PXSIG_ENFORCEMENT: 'warn' });
+  expect(r.status === 2 && /PXSIG_ENFORCEMENT=warn is refused/.test(r.stderr), `warn: PXSIG_ENFORCEMENT=warn is refused (exit ${r.status})`);
+  writeFileSync(cfgPath, JSON.stringify({ ...JSON.parse(cfg), enforcement: { gates: { visual: 'warn' }, advisoryExit: 78 } }, null, 2));
+  r = pxsigIn(['check', '--full', '--project', p, '--retries', '1'], dir);
+  expect(r.status === 78, `warn: advisoryExit 78 (exit ${r.status})`);
   writeFileSync(cfgPath, cfg);
 }
 

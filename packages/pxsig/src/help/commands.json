@@ -115,7 +115,7 @@
     "stale": {
       "summary": "Verdicts older than an edit that can change them, or made on a render of a different size.",
       "usage": [
-        "pxsig stale [--limit 200]"
+        "pxsig stale [--limit 200] [--warn[=gates]] [--enforce[=gates]]"
       ],
       "flags": [
         {
@@ -123,13 +123,23 @@
           "value": "n",
           "default": "200",
           "meaning": "Rows shown."
+        },
+        {
+          "name": "warn",
+          "value": "gates",
+          "meaning": "Warn mode for this run, for the named gates (comma-separated; all without a value): a failure in them is reported and exits advisoryExit. A person at a terminal only (exit 3 otherwise); a team sets warn in pxsig.config.json (enforcement)."
+        },
+        {
+          "name": "enforce",
+          "value": "gates",
+          "meaning": "Enforce the named gates (all without a value) whatever the config says. Anyone may raise a gate; PXSIG_ENFORCEMENT=enforce does the same."
         }
       ],
       "effects": [
         "reads-only"
       ],
       "exits": {
-        "0": "No stale verdicts",
+        "0": "No stale verdicts, or warn mode: the stale gate is on warn (advisoryExit, default 0)",
         "1": "Stale verdicts found",
         "2": "Usage or setup error"
       },
@@ -229,7 +239,7 @@
       "summary": "Re-render and re-check entries: some through the running server, or the full check. Never writes baselines unless --update is given by a person.",
       "usage": [
         "pxsig check [ids…] [--changed a.tsx,b.ts] [--since <ref>] [--all]",
-        "pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] [--only id,id] [--concurrency 8] [--retries 2] [--no-a11y] [--link-base <url>] [--out <name>] [--no-server] [--strict-env] [--update [--kind word] [--reason text]]"
+        "pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] [--only id,id] [--concurrency 8] [--retries 2] [--no-a11y] [--link-base <url>] [--out <name>] [--no-server] [--strict-env] [--sarif file] [--warn[=gates]] [--enforce[=gates]] [--update [--kind word] [--reason text]]"
       ],
       "flags": [
         {
@@ -320,6 +330,21 @@
           "name": "reason",
           "value": "text",
           "meaning": "With --update: the reason written on each log line, instead of \"pxsig check --update\"."
+        },
+        {
+          "name": "sarif",
+          "value": "file",
+          "meaning": "With --full: also write the new axe violations (not on an entry's accepted list) as SARIF 2.1.0, for code-scanning viewers. Changes no exit code."
+        },
+        {
+          "name": "warn",
+          "value": "gates",
+          "meaning": "Warn mode for this run, for the named gates (comma-separated; all without a value): a failure in them is reported and exits advisoryExit. A person at a terminal only (exit 3 otherwise); a team sets warn in pxsig.config.json (enforcement)."
+        },
+        {
+          "name": "enforce",
+          "value": "gates",
+          "meaning": "Enforce the named gates (all without a value) whatever the config says. Anyone may raise a gate; PXSIG_ENFORCEMENT=enforce does the same."
         }
       ],
       "effects": [
@@ -328,7 +353,7 @@
         "needs-a-person (--update only)"
       ],
       "exits": {
-        "0": "Every checked entry passed",
+        "0": "Every checked entry passed, or warn mode: only gates on warn would have failed (advisoryExit, default 0; the ADVISORY lines say what)",
         "1": "At least one entry changed, is new or failed to render",
         "2": "Usage or setup error, Storybook unreachable, the store locked, or (--strict-env) baselines from a different render environment",
         "3": "--update without a person at a terminal"
@@ -389,7 +414,7 @@
     "a11y": {
       "summary": "axe violations per entry, grouped by rule; with --prune, the accepted rules that no longer fire.",
       "usage": [
-        "pxsig a11y [--component text] [--new] [--limit 50]",
+        "pxsig a11y [--component text] [--new] [--sarif file] [--limit 50]",
         "pxsig a11y --prune --dry-run [--component text] [--mode m] [--only id,…]",
         "pxsig a11y --prune [--component text] [--mode m] [--only id,…] [--reason \"why\"]"
       ],
@@ -431,6 +456,11 @@
           "name": "reason",
           "value": "text",
           "meaning": "With --prune: why, written on each log line."
+        },
+        {
+          "name": "sarif",
+          "value": "file",
+          "meaning": "Write the new violations of the last report as SARIF 2.1.0 (with --component: that component's). Changes no exit code."
         }
       ],
       "effects": [
@@ -497,7 +527,7 @@
     "doctor": {
       "summary": "Integrity per component, and the safe repairs (a dry-run plan, or with --apply, run).",
       "usage": [
-        "pxsig doctor [--component x] [--status code,…] [--ci] [--fail-on error|warn|info] [--offline] [--limit 40]",
+        "pxsig doctor [--component x] [--status code,…] [--ci] [--fail-on error|warn|info] [--offline] [--limit 40] [--warn[=gates]] [--enforce[=gates]]",
         "pxsig doctor --repair [--only register,recheck,restore-baseline-image,convert-legacy,log-torn] [--apply] [--prune] [--stale]"
       ],
       "flags": [
@@ -551,6 +581,16 @@
         {
           "name": "stale",
           "meaning": "Also re-check stale verdicts (left out by default)."
+        },
+        {
+          "name": "warn",
+          "value": "gates",
+          "meaning": "Warn mode for this run, for the named gates (comma-separated; all without a value): a failure in them is reported and exits advisoryExit. A person at a terminal only (exit 3 otherwise); a team sets warn in pxsig.config.json (enforcement)."
+        },
+        {
+          "name": "enforce",
+          "value": "gates",
+          "meaning": "Enforce the named gates (all without a value) whatever the config says. Anyone may raise a gate; PXSIG_ENFORCEMENT=enforce does the same."
         }
       ],
       "effects": [
@@ -559,7 +599,7 @@
         "needs-a-person (--prune, --only log-torn --apply)"
       ],
       "exits": {
-        "0": "Nothing at or above --fail-on",
+        "0": "Nothing at or above --fail-on, or warn mode: only the doctor gate on warn would have failed (advisoryExit, default 0)",
         "1": "Findings at or above --fail-on",
         "2": "A setup error, or usage",
         "3": "--prune or log-torn without a person at a terminal"
@@ -719,7 +759,7 @@
         "verify": {
           "summary": "Baselines whose bytes differ from their last logged approval, baselines with no log line (strict, the default), approvals a crash interrupted, and with --since a rewritten log.",
           "usage": [
-            "pxsig approve verify [--no-strict] [--since <ref>] [--suite <name> | --all-suites] [--adopt]"
+            "pxsig approve verify [--no-strict] [--since <ref>] [--suite <name> | --all-suites] [--adopt] [--warn[=gates]] [--enforce[=gates]]"
           ],
           "flags": [
             {
@@ -743,6 +783,16 @@
             {
               "name": "adopt",
               "meaning": "Log the current baselines (of the manifests named by --suite / --all-suites, else the main one) as the starting point. A person at a terminal."
+            },
+            {
+              "name": "warn",
+              "value": "gates",
+              "meaning": "Warn mode for this run, for the named gates (comma-separated; all without a value): a failure in them is reported and exits advisoryExit. A person at a terminal only (exit 3 otherwise); a team sets warn in pxsig.config.json (enforcement)."
+            },
+            {
+              "name": "enforce",
+              "value": "gates",
+              "meaning": "Enforce the named gates (all without a value) whatever the config says. Anyone may raise a gate; PXSIG_ENFORCEMENT=enforce does the same."
             }
           ],
           "effects": [
@@ -751,7 +801,7 @@
             "needs-a-person (--adopt)"
           ],
           "exits": {
-            "0": "Every baseline matches the log",
+            "0": "Every baseline matches the log; or warn mode: only baselines without a log line, with the verify gate on warn (advisoryExit, default 0). A mismatch or a rewritten log fails in every mode",
             "1": "A mismatch, an interrupted approval, a baseline with no log line (unless --no-strict), a rewritten log or no merge base (--since), or --adopt not confirmed",
             "2": "Usage or setup error, or --since is not a commit",
             "3": "--adopt without a person at a terminal"

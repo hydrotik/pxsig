@@ -7,7 +7,7 @@
 export const BOOLEAN_FLAGS = new Set([
   'json', 'plain', 'pretty', 'markdown', 'help', 'all', 'new', 'adopt', 'all-changed', 'first-baselines',
   'ci', 'repair', 'apply', 'prune', 'offline', 'full', 'update', 'watch', 'no-open', 'no-verify', 'no-a11y',
-  'no-server', 'from-git', 'strict-env',
+  'no-server', 'from-git', 'strict-env', 'warn', 'enforce',
 ]);
 
 export function parseArgs(argv, { booleans = BOOLEAN_FLAGS } = {}) {

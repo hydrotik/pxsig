@@ -167,6 +167,30 @@
         "strict": { "type": "boolean", "default": false, "description": "Refuse a check (exit 2, nothing rendered) when a selected baseline was approved in a different environment. Same as --strict-env and PXSIG_STRICT_ENV=1." }
       }
     },
+    "enforcement": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Warn mode: per gate, enforce (fail the run, as before) or warn (report, exit advisoryExit). Only this committed config, or --warn from a person at a terminal, lowers a gate (docs/configuration.md#enforcement).",
+      "properties": {
+        "default": { "enum": ["enforce", "warn"], "default": "enforce", "description": "Every gate not named in gates." },
+        "gates": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "One setting per gate.",
+          "properties": {
+            "visual": { "enum": ["enforce", "warn"], "description": "Check rows not passing: changed, new, render errors." },
+            "a11y": { "enum": ["enforce", "warn", "off"], "description": "New axe violations against a11y.json. Default warn, quiet unless one appears; off: no a11y gate." },
+            "verify": { "enum": ["enforce", "warn"], "description": "approve verify: baselines with no log line (a mismatch or a rewritten log always fails)." },
+            "env": { "enum": ["enforce", "warn"], "description": "--strict-env's refusal: under warn the check renders and lists the mismatches." },
+            "doctor": { "enum": ["enforce", "warn"], "description": "pxsig doctor findings at or above --fail-on." },
+            "stale": { "enum": ["enforce", "warn"], "description": "pxsig stale: stale or inconsistent verdicts." }
+          }
+        },
+        "warnUntil": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "End of warn mode (the end of that day, UTC): the warned gates are enforced after it, with no commit." },
+        "noticeDays": { "type": "integer", "minimum": 0, "default": 14, "description": "Days before warnUntil when every run starts saying it ends." },
+        "advisoryExit": { "type": "integer", "default": 0, "anyOf": [{ "const": 0 }, { "minimum": 10, "maximum": 125 }], "description": "Exit code of a run that would have failed only in warned gates: 0, or 10-125 for a forge's native warning state (GitLab allow_failure exit_codes, Jenkins UNSTABLE)." }
+      }
+    },
     "nonVisual": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Top-level folders under srcRoot with no visual stories." },
     "a11y": { "type": "boolean", "default": true, "description": "Run axe on every render." },
     "integrity": {

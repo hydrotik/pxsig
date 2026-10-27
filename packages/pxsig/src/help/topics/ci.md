@@ -18,6 +18,11 @@ classes before a run.
 `--link-base <url>` links each entry to a published dashboard) and `junit.xml`. `pxsig report
 --out <dir>` writes a static dashboard to publish as an artifact.
 
+Warn mode lets a gate report without failing: set `enforcement.gates.<gate>` to `warn` in
+pxsig.config.json (never by a CI variable; `PXSIG_ENFORCEMENT=enforce` can only raise one). The
+run exits 0 where only that gate failed and says what would have failed. `--sarif <file>` on
+`check --full` writes new axe violations for code-scanning viewers.
+
 Baselines are approved by a person before they are committed; CI never writes them. Who must
 review a baseline change is the code host's rule: see docs/codeowners.md.
 

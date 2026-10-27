@@ -242,6 +242,9 @@ pub struct CheckOpts {
     pub cache: Option<PathBuf>,
     /// Append one line per run (ndjson) for history / trends.
     pub history: Option<PathBuf>,
+    /// Warn mode (`--enforcement @file`, `{ gates, a11yNew }`): the history line records the gates
+    /// and whether the run would have failed. Absent: the line is as before.
+    pub enforcement: Option<Value>,
     /// Base renders: when set, failing entries also get a full-resolution pixel diff.
     pub base_png_dir: Option<PathBuf>,
     pub tolerance: u8,
@@ -396,7 +399,7 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
         "identicalRenders": identical,
     });
     if let Some(h) = &o.history {
-        append_history(h, &summary, &rows)?;
+        append_history(h, &summary, &rows, o.enforcement.as_ref())?;
     }
     Ok(json!({ "summary": summary, "results": rows, "baselineEnvs": baseline_envs }))
 }
@@ -458,7 +461,7 @@ pub fn flag_identical_renders(rows: &mut [Value]) -> Vec<Value> {
     out.into_iter().map(|(_, v)| v).collect()
 }
 
-fn append_history(path: &Path, summary: &Value, rows: &[Value]) -> Result<()> {
+fn append_history(path: &Path, summary: &Value, rows: &[Value], enforcement: Option<&Value>) -> Result<()> {
     if let Some(d) = path.parent() {
         fs::create_dir_all(d)?;
     }
@@ -473,7 +476,12 @@ fn append_history(path: &Path, summary: &Value, rows: &[Value]) -> Result<()> {
             )
         })
         .collect();
-    let line = json!({ "at": io::iso_now(), "summary": summary, "rows": per });
+    let mut line = json!({ "at": io::iso_now(), "summary": summary, "rows": per });
+    if let Some(e) = enforcement {
+        let would = summary["failed"].as_u64().unwrap_or(0) > 0 || e["a11yNew"].as_u64().unwrap_or(0) > 0;
+        line["enforcement"] = e["gates"].clone();
+        line["wouldFail"] = json!(would);
+    }
     let mut f = OpenOptions::new().create(true).append(true).open(path)?;
     writeln!(f, "{line}")?;
     Ok(())
@@ -507,6 +515,16 @@ impl EnvPlan {
         m.insert("env".into(), env.clone());
         Some(m)
     }
+}
+
+/// Read `--enforcement @file` (or inline JSON).
+pub fn parse_enforcement(spec: Option<&str>) -> Result<Option<Value>> {
+    let Some(spec) = spec else { return Ok(None) };
+    let text = match spec.strip_prefix('@') {
+        Some(file) => fs::read_to_string(file).with_context(|| format!("reading --enforcement file {file}"))?,
+        None => spec.to_string(),
+    };
+    Ok(Some(serde_json::from_str(&text).context("--enforcement is not JSON ({ gates, a11yNew })")?))
 }
 
 /// Read `--env @file` (or inline JSON).
@@ -656,7 +674,7 @@ mod tests {
 
         let res = check(&CheckOpts {
             manifest: d.join("m.json"), png_dir: d.join("png"), root: d.clone(), out_dir: None, artifacts: Artifacts::None,
-            only: None, cache: None, history: None, base_png_dir: None, tolerance: 16, cli_gate: GateSpec::default(), env_gate: GateSpec::default(),
+            only: None, cache: None, history: None, enforcement: None, base_png_dir: None, tolerance: 16, cli_gate: GateSpec::default(), env_gate: GateSpec::default(),
         }).unwrap();
         let row = |id: &str| res["results"].as_array().unwrap().iter().find(|r| r["id"] == json!(id)).unwrap().clone();
         assert_eq!(row("a")["baselineEnv"], json!("aaaabbbbccccdddd"));

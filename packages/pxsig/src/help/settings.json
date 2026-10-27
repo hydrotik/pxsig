@@ -265,6 +265,78 @@
       "default": "false",
       "operation": "Same as `check --strict-env` and `PXSIG_STRICT_ENV=1`: exit 2 before rendering, nothing written. `--update` is never refused (it re-takes baselines in this environment)."
     },
+    "enforcement": {
+      "file": "pxsig.config.json",
+      "meaning": "Warn mode: per gate, `enforce` (a failure fails the run, as before) or `warn` (the failure is reported and the run exits `advisoryExit`). Also under the workspace file's `defaults`, for every project.",
+      "default": "{} (every gate enforced; the a11y gate on warn, quiet unless a new violation appears)",
+      "operation": "Only this committed config, or `--warn` from a person at a terminal, lowers a gate; `--enforce` and `PXSIG_ENFORCEMENT=enforce` raise one. A warned run prints ADVISORY lead and last lines, adds `enforcement` to check.json and a lead block to summary.md. Setup errors (exit 2) and person-only refusals (exit 3) are never warned."
+    },
+    "enforcement.default": {
+      "file": "pxsig.config.json",
+      "meaning": "The setting of every gate not named in `gates`: `enforce` or `warn`.",
+      "default": "enforce",
+      "operation": "Applies to visual, verify, env, doctor and stale. The a11y gate keeps its own default (warn, quiet) unless `gates.a11y` sets it."
+    },
+    "enforcement.gates": {
+      "file": "pxsig.config.json",
+      "meaning": "One setting per gate: `visual`, `a11y`, `verify`, `env`, `doctor`, `stale`.",
+      "default": "{}",
+      "operation": "An unknown gate name is a setup error at load, never ignored."
+    },
+    "enforcement.gates.visual": {
+      "file": "pxsig.config.json",
+      "meaning": "The visual gate: check rows not passing (changed, new, render errors).",
+      "default": "enforce",
+      "operation": "On warn, `check` exits advisoryExit where only these would have failed; rows, selection and approvals are unchanged."
+    },
+    "enforcement.gates.a11y": {
+      "file": "pxsig.config.json",
+      "meaning": "The accessibility gate: new axe violations, against each entry's accepted list (a11y.json). `enforce`, `warn` or `off`.",
+      "default": "warn",
+      "operation": "On its default warn it says nothing unless a new violation appears, then one ADVISORY line and a summary.md lead, exit 0; `enforce` makes a new violation fail the run (exit 1); `off` drops the gate and its lines."
+    },
+    "enforcement.gates.verify": {
+      "file": "pxsig.config.json",
+      "meaning": "The verify gate: `approve verify`'s baselines with no log line.",
+      "default": "enforce",
+      "operation": "Only baselines with no log line are warned; a mismatch, an interrupted approval or a rewritten log fails in every mode."
+    },
+    "enforcement.gates.env": {
+      "file": "pxsig.config.json",
+      "meaning": "The env gate: `--strict-env`'s refusal of baselines approved in a different render environment.",
+      "default": "enforce",
+      "operation": "On warn the check renders anyway and lists the baselines it would have refused."
+    },
+    "enforcement.gates.doctor": {
+      "file": "pxsig.config.json",
+      "meaning": "The doctor gate: `pxsig doctor` findings at or above `--fail-on`.",
+      "default": "enforce",
+      "operation": "A setup error in `doctor` still exits 2."
+    },
+    "enforcement.gates.stale": {
+      "file": "pxsig.config.json",
+      "meaning": "The stale gate: `pxsig stale`'s stale or inconsistent verdicts.",
+      "default": "enforce",
+      "operation": "On warn, `stale` exits advisoryExit where it would have exited 1."
+    },
+    "enforcement.warnUntil": {
+      "file": "pxsig.config.json",
+      "meaning": "The date warn mode ends (`YYYY-MM-DD`, the end of that day in UTC).",
+      "default": "none",
+      "operation": "After it, the gates the config set to warn are enforced with no commit; from `noticeDays` before, every run, summary.md, `pxsig doctor` (`enforcement-ending`) and `pxsig status` say so. Extending it is a one-line change in a pull request."
+    },
+    "enforcement.noticeDays": {
+      "file": "pxsig.config.json",
+      "meaning": "How many days before `warnUntil` the runs start saying warn mode ends.",
+      "default": "14",
+      "operation": "Also how long `enforcement-expired` stays in `pxsig doctor` after the date."
+    },
+    "enforcement.advisoryExit": {
+      "file": "pxsig.config.json",
+      "meaning": "The exit code of a run that would have failed only in gates on warn: 0, or 10 to 125.",
+      "default": "0",
+      "operation": "A code other than 0 lets a forge show its own warning state (GitLab `allow_failure: exit_codes`, Jenkins UNSTABLE). 1, 2 and 3 are refused: they already mean something."
+    },
     "nonVisual": {
       "file": "pxsig.config.json",
       "meaning": "Top-level folders under srcRoot with no visual stories; their stories are reported as excluded.",

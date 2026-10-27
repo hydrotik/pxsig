@@ -22,7 +22,9 @@
  *                         baselines whose bytes differ from their last logged approval, and (strict,
  *                         the default) baselines with no log line at all; --since also fails when the
  *                         log was rewritten rather than appended to; --adopt logs the current
- *                         baselines as the starting point (terminal only)
+ *                         baselines as the starting point (terminal only). Under warn mode
+ *                         (the `verify` gate) only baselines with no log line are warned; a
+ *                         mismatch or a rewritten log fails in every mode (decision 10.4)
  *
  * Per-entry approval in the dashboard / Storybook panel stays as it is (one entry, images on
  * screen) and is logged the same way.
@@ -49,6 +51,7 @@ import { classify } from './lib/shape.mjs';
 import { ask, emit, humanAtTerminal, progress, whyNotPerson } from './lib/term.mjs';
 import { relPath } from './lib/paths.mjs';
 import { writeJson } from './lib/files.mjs';
+import { appendReadiness, lastLine, leadLine, outcome, reportBlock, resolveOrExit } from './lib/enforcement.mjs';
 
 const PLAN_MAX_AGE_H = 24;
 
@@ -460,6 +463,7 @@ export async function approveCommand({
 
     // Strict by default (decision 6.1h): a baseline with no log line fails. --no-strict reports it only.
     const strict = !flags['no-strict'];
+    const enf = resolveOrExit(P, { flags }, (m, code) => fail(m, code));
     const results = [];
     const notCommitted = [];
     for (const s of suites) {
@@ -491,9 +495,20 @@ export async function approveCommand({
     const rangeBad = range && (!range.base || range.rewritten);
     const adoptCmd = (r) => `${CMD} approve verify --adopt${suiteArg(r.suite)}`;
     const missing = results.filter((r) => r.untracked);
+    // Warn mode: only the untracked baselines can be warned; the rest fails in every mode (10.4).
+    const gated = outcome(enf, [
+      { gate: 'verify', exit: failUntracked ? 1 : 0, count: untracked, what: untracked === 1 ? 'baseline without a log line' : 'baselines without a log line' },
+      ...(bad ? [{ gate: null, exit: 1, count: bad, what: 'differ from their logged approval' }] : []),
+      ...(interrupted.length ? [{ gate: null, exit: 1, count: interrupted.length, what: 'written by an interrupted approval' }] : []),
+      ...(rangeBad ? [{ gate: null, exit: 1, count: 1, what: range.base ? 'rewritten log' : 'range without a merge base' }] : []),
+    ]);
+    const lead = leadLine(enf);
+    const last = lastLine(enf, gated);
+    appendReadiness(P, enf, gated, { source: 'verify', counts: { verify: untracked + bad + interrupted.length } });
     emit(
       format,
       [
+        lead ? { note: lead, tone: 'warn' } : {},
         { h: 'Baseline integrity', sub: `${logged} logged · ${untracked} baselines without a log entry${results.length > 1 || suites[0] ? ` · ${results.map((r) => r.suite || 'main').join(', ')}` : ''}` },
         notCommitted.length ? { note: `Not in this checkout, not verified: ${notCommitted.map((s) => `suite ${s}`).join(', ')} (its manifest is not committed).` } : {},
         range && !range.base ? { note: `Cannot verify the log since ${range.since}: ${range.why}.`, tone: 'bad' } : {},
@@ -533,10 +548,11 @@ export async function approveCommand({
           : {},
         untracked ? { next: missing.map((r) => [adoptCmd(r), 'a person, in a terminal: log the current baselines as the starting point']) } : {},
         !bad && !interrupted.length && !untracked && !rangeBad ? { note: logged ? 'Every baseline matches its approval.' : 'No baselines to verify.', tone: logged ? 'ok' : undefined } : {},
+        last ? { note: last, tone: gated.advisory ? 'warn' : undefined } : {},
       ],
-      { strict, suites: results.map(({ untrackedIds, ...r }) => r), notCommitted, range, ...(results.length === 1 ? (({ untrackedIds, suite, ...r }) => r)(results[0]) : {}) }
+      { strict, suites: results.map(({ untrackedIds, ...r }) => r), notCommitted, range, ...(results.length === 1 ? (({ untrackedIds, suite, ...r }) => r)(results[0]) : {}), ...(reportBlock(enf, gated) ? { enforcement: reportBlock(enf, gated) } : {}) }
     );
-    process.exit(bad || interrupted.length || failUntracked || rangeBad ? 1 : 0);
+    process.exit(gated.exit);
   }
 
   fail(`usage: approve plan | apply | log [--trace] | undo <batch> | verify [--no-strict] [--since <ref>] [--suite <name> | --all-suites] [--adopt]`);
