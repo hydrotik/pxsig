@@ -18,6 +18,7 @@ pxsig has two command-line tools with the same name:
 | `--plain` (or `--markdown`)  | Markdown output. Both are switches: they never take the next word as a value.                                                      |
 | `--pretty`                   | Terminal output: colour, aligned tables, links, a spinner, inline images in terminals that support them.                           |
 | `--help`                     | With a command, that command's page (`pxsig check --help`, `pxsig approve apply --help`); alone, the command list.                 |
+| `--version`                  | The versions of this CLI, the engine it would run and the UI contract (`pxsig version` is the same; `--json` as data).             |
 
 Config flags, accepted by every command, form the top configuration layer (see
 [configuration.md](configuration.md#layers)): `--storybook-url <url>`, `--storybook-static <dir>`,
@@ -90,7 +91,7 @@ Alone (or `pxsig --help`), the command list. With a name, one page:
 - **a command or subcommand** (`pxsig help check`, `pxsig help approve apply`): usage, flags with
   their defaults and the setting or variable each overrides, exit codes, what it changes (reads
   only, writes the store, writes baselines, needs a person), examples;
-- **a topic**: `agents`, `approvals`, `exit-codes`, `platforms`, `dashboard`, `ci`;
+- **a topic**: `agents`, `approvals`, `catalog`, `exit-codes`, `platforms`, `dashboard`, `ci`;
 - **a setting** (`pxsig help gate.threshold`): its file, meaning, values, default, and what it
   changes day to day;
 - `global`: the options every command takes.
@@ -131,7 +132,8 @@ the binary in use, and every setting with the layer that set it: `defaults`, `wo
 ### `pxsig setup [assistant] [--assistant name] [--print]`
 
 The coding assistant's recipe ([agents.md](agents.md#recipes)). A person at a terminal is asked
-which assistant is used here (a numbered list); `--assistant` names it. It prints the MCP entry,
+which assistant is used here (a numbered list); `pxsig setup vscode` or `--assistant vscode` names it
+(`pxsig setup` lists the names). It prints the MCP entry,
 which starts the server with the local install (`node node_modules/pxsig/bin/pxsig.mjs mcp`, no
 `npx`), the policy that can turn it off on a managed machine, and the instruction for the
 assistant not to approve. It then offers the repository's MCP file (for example

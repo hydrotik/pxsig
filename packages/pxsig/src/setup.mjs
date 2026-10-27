@@ -1,7 +1,10 @@
 /**
  * setup.mjs — `pxsig setup`: the assistant step (decisions 9.6, 80, 93).
  *
- *   pxsig setup [assistant] [--assistant <name>] [--print]
+ *   pxsig setup [<assistant>|assistant] [--assistant <name>] [--print]
+ *
+ * The word after `setup` is an assistant's name (`pxsig setup vscode`, as `--assistant vscode`) or
+ * the step's name, `assistant`, which is the only step in this version.
  *
  * Asks which coding assistant is used here (a numbered list; a person at a terminal only), then
  * prints its recipe: the MCP file, the entry that starts pxsig's MCP server with the local install,
@@ -45,10 +48,15 @@ export async function setupCommand({
   CMD = 'pxsig',
 }) {
   const usage = (m) => Object.assign(new Error(m), { exit: 2 });
-  if (step && !STEPS.includes(step))
-    throw usage(`setup has one step in this version: assistant (got "${step}")`);
+  const named = step && !STEPS.includes(step) ? step : null;
+  if (named && !assistant(named))
+    throw usage(
+      `unknown assistant "${named}": one of ${ASSISTANTS.map((a) => a.id).join(', ')} (or the step: assistant)`
+    );
+  if (named && typeof flags.assistant === 'string' && flags.assistant !== named)
+    throw usage(`two assistants named: "${named}" and --assistant ${flags.assistant}`);
   const print = Boolean(flags.print) || !person;
-  let id = typeof flags.assistant === 'string' ? flags.assistant : null;
+  let id = typeof flags.assistant === 'string' ? flags.assistant : named;
   if (id && !assistant(id))
     throw usage(`unknown assistant "${id}": one of ${ASSISTANTS.map((a) => a.id).join(', ')}`);
 
