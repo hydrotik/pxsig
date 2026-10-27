@@ -377,6 +377,10 @@
       "engine-old": {
         "title": "Engine older than the CLI",
         "help": "The pxsig engine binary is an older version: baselines it writes carry no render environment."
+      },
+      "image-mismatch": {
+        "title": "Container image mismatch",
+        "help": "The container image's pxsig or Playwright version is not the one this project pins."
       }
     }
   },

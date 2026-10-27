@@ -7,6 +7,7 @@
  *   osascript, open (open the dashboard)                     macOS
  *   xdg-open (open the dashboard)                            Linux
  *   fc-list (a digest of the installed fonts, render env)    Linux, when fontconfig is installed
+ *   docker (`pxsig browser start|stop|status` only)          every OS, only on that command
  *
  * Windows starts nothing else: no shell, no PowerShell, no cmd.exe. Playwright starts its own
  * browser; that is the library's process, listed in the docs. `PXSIG_DEBUG=spawn` (set by
@@ -15,9 +16,9 @@
 import * as cp from 'node:child_process';
 
 const BY_OS = {
-  darwin: ['git', 'ps', 'osascript', 'open'],
-  linux: ['git', 'ps', 'xdg-open', 'fc-list'],
-  win32: ['git'],
+  darwin: ['git', 'ps', 'osascript', 'open', 'docker'],
+  linux: ['git', 'ps', 'xdg-open', 'fc-list', 'docker'],
+  win32: ['git', 'docker'],
 };
 
 /** Why pxsig may not start `program` on `platform`, or null. */

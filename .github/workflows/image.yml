@@ -1,0 +1,271 @@
+name: image
+
+# The container image ghcr.io/hydrotik/pxsig (docs/container.md): pxsig from npm, Playwright's three
+# browsers and a fixed font set, for amd64 (the canonical one) and arm64, under the fixed tag
+# <pxsig>-pw<playwright> (a base-image rebuild: -r2, -r3, …), with no `latest`.
+#
+# - After a release run of a pushed tag succeeds: one image per version in docker/playwright-versions.json.
+# - By hand: any published pxsig with any Playwright (a new Playwright for an existing pxsig), or a rebuild.
+# - Weekly: only reports a Playwright on npm that has no image yet. It builds nothing.
+# - Pull requests that change docker/ or this file: build and smoke-test on amd64; nothing is pushed.
+#
+# Not in ci.yml: the required checks on main are ci.yml's; this workflow adds none.
+on:
+  workflow_run:
+    workflows: [release]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pxsig:
+        description: pxsig version, already on npm (e.g. 0.5.0)
+        required: true
+      playwright:
+        description: Playwright version (e.g. 1.58.2); empty for every version in docker/playwright-versions.json
+        required: false
+        default: ''
+      rebuild:
+        description: 'A rebuild of a published pair (a base-image fix): r2, r3, … Empty for the first build.'
+        required: false
+        default: ''
+  schedule:
+    - cron: '0 6 * * 1'
+  pull_request:
+    paths:
+      - 'docker/**'
+      - '.github/workflows/image.yml'
+
+permissions:
+  contents: read
+
+env:
+  REPO: ghcr.io/hydrotik/pxsig
+
+jobs:
+  plan:
+    name: Plan
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' && startsWith(github.event.workflow_run.head_branch, 'v'))
+    runs-on: ubuntu-latest
+    outputs:
+      pxsig: ${{ steps.p.outputs.pxsig }}
+      ref: ${{ steps.p.outputs.ref }}
+      suffix: ${{ steps.p.outputs.suffix }}
+      playwright: ${{ steps.p.outputs.playwright }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: p
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          RUN_TAG: ${{ github.event.workflow_run.head_branch }}
+          IN_PXSIG: ${{ github.event.inputs.pxsig }}
+          IN_PLAYWRIGHT: ${{ github.event.inputs.playwright }}
+          IN_REBUILD: ${{ github.event.inputs.rebuild }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = workflow_run ]; then pxsig="${RUN_TAG#v}"; else pxsig="${IN_PXSIG#v}"; fi
+          [[ "$pxsig" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "::error::not a pxsig version: $pxsig"; exit 1; }
+          rebuild="${IN_REBUILD:-}"
+          [[ -z "$rebuild" || "$rebuild" =~ ^r[2-9][0-9]*$ ]] || { echo "::error::rebuild must be r2, r3, … (got $rebuild)"; exit 1; }
+          if [ -n "${IN_PLAYWRIGHT:-}" ]; then
+            [[ "$IN_PLAYWRIGHT" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::not a Playwright version: $IN_PLAYWRIGHT"; exit 1; }
+            pw="[\"$IN_PLAYWRIGHT\"]"
+          else
+            pw="$(node -p 'JSON.stringify(require("./docker/playwright-versions.json").versions)')"
+          fi
+          {
+            echo "pxsig=$pxsig"
+            echo "ref=v$pxsig"
+            echo "suffix=${rebuild:+-$rebuild}"
+            echo "playwright=$pw"
+          } >> "$GITHUB_OUTPUT"
+          echo "pxsig $pxsig · Playwright $pw · ${rebuild:-first build}" >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    name: Build ${{ matrix.playwright }} ${{ matrix.arch }}
+    needs: plan
+    strategy:
+      fail-fast: false
+      matrix:
+        playwright: ${{ fromJSON(needs.plan.outputs.playwright) }}
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            node_arch: x64
+            runner: ubuntu-latest
+          - arch: arm64
+            node_arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      PXSIG: ${{ needs.plan.outputs.pxsig }}
+      PW: ${{ matrix.playwright }}
+      TAG: ${{ needs.plan.outputs.pxsig }}-pw${{ matrix.playwright }}${{ needs.plan.outputs.suffix }}
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      # The release's own sources, so smoke.mjs and the examples match the published pxsig.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+      - name: Log in to ghcr.io
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: echo "$TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+      # Tags are immutable: a published pair is rebuilt only under a new -rN.
+      - name: Refuse a published tag
+        shell: bash
+        run: |
+          if docker manifest inspect "$REPO:$TAG-${{ matrix.arch }}" >/dev/null 2>&1; then
+            echo "::error::$REPO:$TAG-${{ matrix.arch }} is already published; tags never move. Dispatch with rebuild: r2 (or the next) for a rebuild."
+            exit 1
+          fi
+      - name: Wait for the release on npm
+        shell: bash
+        run: |
+          for i in $(seq 1 40); do npm view "pxsig@$PXSIG" version >/dev/null 2>&1 && exit 0; sleep 15; done
+          echo "::error::pxsig@$PXSIG is not on npm after 10 minutes"; exit 1
+      - name: Build
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The release tag's commit (on workflow_run, GITHUB_SHA is main's head, not the release's).
+          args=(-f docker/Dockerfile --build-arg "PXSIG_VERSION=$PXSIG" --build-arg "PLAYWRIGHT_VERSION=$PW" --build-arg "IMAGE_TAG=$REPO:$TAG" --build-arg "REVISION=$(git rev-parse HEAD)")
+          docker build "${args[@]}" -t pxsig-local docker
+          fonts="$(docker run --rm -v "$PWD/docker:/smoke:ro" pxsig-local node /smoke/smoke.mjs fonts)"
+          echo "fonts.system: ${fonts:-none}"
+          # Again with the fonts digest as a label: every layer is cached, only the label changes.
+          docker build "${args[@]}" --build-arg "FONTS_SHA=$fonts" -t "$REPO:$TAG-${{ matrix.arch }}" docker
+          echo "FONTS=$fonts" >> "$GITHUB_ENV"
+      - name: Smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          img="$REPO:$TAG-${{ matrix.arch }}"
+          docker run --rm "$img" pxsig --help >/dev/null
+          docker run --rm "$img" sh -c '"$PXSIG_BIN" --version && playwright --version'
+          docker run --rm -v "$PWD/docker:/smoke:ro" "$img" node /smoke/smoke.mjs env --arch "${{ matrix.node_arch }}" --fonts "$FONTS" --image "$REPO:$TAG"
+          # The examples end to end inside the image: its browsers, fonts and engine, this release's
+          # CLI from the checkout (root, for the bind-mounted checkout and the pnpm install).
+          docker run --rm -u root -e CI=1 -v "$PWD:/repo" -w /repo "$img" bash -c \
+            'corepack enable pnpm && pnpm install --frozen-lockfile && node scripts/examples-test.mjs single-package'
+      - name: Push
+        id: push
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker push "$REPO:$TAG-${{ matrix.arch }}"
+          digest="$(docker inspect --format '{{index .RepoDigests 0}}' "$REPO:$TAG-${{ matrix.arch }}" | cut -d@ -f2)"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          mkdir -p digests && echo "$digest" > "digests/${{ matrix.arch }}"
+          echo "$REPO:$TAG-${{ matrix.arch }}@$digest" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.REPO }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: digest-${{ matrix.playwright }}-${{ matrix.arch }}
+          path: digests/${{ matrix.arch }}
+          retention-days: 1
+
+  manifest:
+    name: Manifest ${{ matrix.playwright }}
+    needs: [plan, build]
+    strategy:
+      matrix:
+        playwright: ${{ fromJSON(needs.plan.outputs.playwright) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      TAG: ${{ needs.plan.outputs.pxsig }}-pw${{ matrix.playwright }}${{ needs.plan.outputs.suffix }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: digest-${{ matrix.playwright }}-*
+          path: digests
+          merge-multiple: true
+      - name: Log in to ghcr.io
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: echo "$TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+      - name: Multi-arch manifest
+        id: m
+        shell: bash
+        run: |
+          set -euo pipefail
+          if docker manifest inspect "$REPO:$TAG" >/dev/null 2>&1; then echo "::error::$REPO:$TAG is already published"; exit 1; fi
+          docker buildx imagetools create -t "$REPO:$TAG" "$REPO@$(cat digests/amd64)" "$REPO@$(cat digests/arm64)"
+          digest="$(docker buildx imagetools inspect "$REPO:$TAG" --format '{{json .Manifest}}' | jq -r .digest)"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          {
+            echo "### $REPO:$TAG"
+            echo
+            echo "Pin it as \`$REPO:$TAG@$digest\`."
+            echo
+            echo "Verify: \`gh attestation verify oci://$REPO:$TAG -R ${{ github.repository }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.REPO }}
+          subject-digest: ${{ steps.m.outputs.digest }}
+          push-to-registry: true
+
+  # A pull request that changes the image: build it and run the smoke test on amd64, with the latest
+  # pxsig on npm. Read-only: nothing is pushed or attested.
+  pr:
+    name: Build and smoke-test (no push)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build and smoke-test
+        shell: bash
+        run: |
+          set -euo pipefail
+          pxsig="$(npm view pxsig version)"
+          pw="$(node -p 'require("./docker/playwright-versions.json").versions[0]')"
+          args=(-f docker/Dockerfile --build-arg "PXSIG_VERSION=$pxsig" --build-arg "PLAYWRIGHT_VERSION=$pw" --build-arg "IMAGE_TAG=$REPO:$pxsig-pw$pw" --build-arg "REVISION=$GITHUB_SHA")
+          docker build "${args[@]}" -t pxsig-local docker
+          fonts="$(docker run --rm -v "$PWD/docker:/smoke:ro" pxsig-local node /smoke/smoke.mjs fonts)"
+          docker build "${args[@]}" --build-arg "FONTS_SHA=$fonts" -t pxsig-local docker
+          docker run --rm pxsig-local pxsig --help >/dev/null
+          docker run --rm pxsig-local sh -c '"$PXSIG_BIN" --version && playwright --version'
+          docker run --rm -v "$PWD/docker:/smoke:ro" pxsig-local node /smoke/smoke.mjs env --arch x64 --fonts "$fonts" --image "$REPO:$pxsig-pw$pw"
+          docker image inspect pxsig-local --format '{{json .Config.Labels}}' | jq .
+
+  # Weekly: a Playwright release with no image for the latest pxsig. Reports; never builds.
+  playwright-check:
+    name: Newer Playwright
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - shell: bash
+        run: |
+          set -euo pipefail
+          latest="$(npm view playwright version)"
+          pxsig="$(npm view pxsig version)"
+          if node -e 'process.exit(require("./docker/playwright-versions.json").versions.includes(process.argv[1]) ? 0 : 1)' "$latest"; then
+            echo "Playwright $latest has an image entry (pxsig $pxsig)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            msg="Playwright $latest is on npm with no image for pxsig $pxsig: add it to docker/playwright-versions.json, or dispatch this workflow with pxsig=$pxsig playwright=$latest."
+            echo "::notice::$msg"
+            echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+          fi

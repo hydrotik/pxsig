@@ -78,6 +78,13 @@
         "value": "n",
         "meaning": "Config flag: the minimum wait after fonts load.",
         "setting": "capture.settleMs"
+      },
+      {
+        "name": "browser",
+        "value": "ws://…",
+        "meaning": "Config flag: render with this Playwright browser server instead of launching a browser here, usually the container's from `pxsig browser start`.",
+        "setting": "capture.browserEndpoint",
+        "env": "PXSIG_BROWSER_WS"
       }
     ]
   },
@@ -1139,6 +1146,86 @@
       ],
       "seeAlso": [
         "dashboard"
+      ]
+    },
+    "browser": {
+      "summary": "Playwright's browser in the pxsig container image, so checks and the dashboard on this machine render with the image's browser and fonts. The only commands that start docker.",
+      "usage": [
+        "pxsig browser start|stop|status"
+      ],
+      "subcommands": {
+        "start": {
+          "summary": "Run `playwright run-server` in the image, published on 127.0.0.1 only, and record its endpoint, image and digest in node_modules/.cache/pxsig/browser.json. Then pass --browser <endpoint> (or set PXSIG_BROWSER_WS) to render there.",
+          "usage": [
+            "pxsig browser start [--image tag] [--port 3000]"
+          ],
+          "flags": [
+            {
+              "name": "image",
+              "value": "tag",
+              "default": "ghcr.io/hydrotik/pxsig:<this pxsig>-pw<the project's Playwright>",
+              "meaning": "The image to run; pin it with tag@sha256:… ."
+            },
+            {
+              "name": "port",
+              "value": "n",
+              "default": "3000",
+              "meaning": "The port on 127.0.0.1 the browser server is published on."
+            }
+          ],
+          "effects": [
+            "starts-docker",
+            "writes-files"
+          ],
+          "exits": {
+            "0": "Started, or already running with the same image and port",
+            "2": "No docker CLI, its daemon not answering, no Playwright to name the image, or the server did not start"
+          },
+          "examples": [
+            {
+              "cmd": "pxsig browser start --port 3000",
+              "shows": "The image's browser on ws://127.0.0.1:3000/"
+            }
+          ]
+        },
+        "stop": {
+          "summary": "Stop the recorded browser container and remove its record.",
+          "usage": [
+            "pxsig browser stop"
+          ],
+          "effects": [
+            "starts-docker",
+            "writes-files"
+          ],
+          "exits": {
+            "0": "Stopped, or nothing recorded",
+            "2": "A container is recorded but docker is missing or not answering"
+          }
+        },
+        "status": {
+          "summary": "The recorded browser container: endpoint, image, digest, Playwright version, and whether it runs. Warns when the project's Playwright is not the image's major.minor (Playwright refuses that pairing).",
+          "usage": [
+            "pxsig browser status [--json]"
+          ],
+          "effects": [
+            "reads-only"
+          ],
+          "exits": {
+            "0": "Shown (also when nothing is recorded)",
+            "2": "A container is recorded but docker is missing or not answering"
+          },
+          "examples": [
+            {
+              "cmd": "pxsig browser status --json",
+              "shows": "The endpoint and image in use"
+            }
+          ]
+        }
+      },
+      "seeAlso": [
+        "check",
+        "serve",
+        "capture.browserEndpoint"
       ]
     },
     "cat": {

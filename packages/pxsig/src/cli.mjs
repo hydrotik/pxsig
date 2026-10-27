@@ -3,7 +3,7 @@
  * cli.mjs — `pxsig`: the harness from a shell, for people and for agents.
  *
  *   pxsig [command] [args] [--project name | --all] [--workspace dir] [--json | --plain | --markdown | --pretty]
- *         [--storybook-url u] [--storybook-static dir] [--grid n]     (config flags: the top layer)
+ *         [--storybook-url u] [--storybook-static dir] [--grid n] [--browser ws://…]   (config flags: the top layer)
  *
  *   projects                    the projects in this workspace, with their store and integrity
  *   init [dir] [--name x] [--src src] [--storybook-url url] [--storybook-config dir] [--layout colocated]
@@ -21,6 +21,9 @@
  *                               rebuild the dashboard on this project's design system through a UI adapter
  *                               (--ui, else dashboard.ui in pxsig.config.json; docs/ui/build-adapter.md)
  *   dashboard gaps [--ui path]  what that adapter covers of the UI contract, and what it does not
+ *   browser start [--image tag] [--port 3000] | stop | status
+ *                               Playwright's browser in the pxsig container image, for --browser <ws>
+ *                               (the only commands that start docker; docs/container.md)
  *   cat <file.psig> [--image out.png]
  *                               a baseline's header (git's textconv for *.psig), or its image
  *   migrate --from <dir> [--apply] [--no-verify]
@@ -1025,6 +1028,26 @@ const commands = {
         show: (blocks) => emit(format, blocks, null),
         CMD,
       });
+    } catch (e) {
+      fail(e.message, e.exit ?? 2);
+    }
+    emit(format, r.blocks, r.data);
+    process.exit(r.exit);
+  },
+
+  async browser() {
+    const { browserCommand } = await import('./browser.mjs');
+    let root = null;
+    let P = null;
+    try {
+      root = findWorkspace({}).root;
+      P = openProject({ project: project ?? null });
+    } catch {
+      // several projects and none chosen, or no workspace: the root alone is enough
+    }
+    let r;
+    try {
+      r = await browserCommand({ sub: rest[0] ?? 'status', flags, root, P, CMD });
     } catch (e) {
       fail(e.message, e.exit ?? 2);
     }

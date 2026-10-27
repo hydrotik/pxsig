@@ -31,7 +31,7 @@ export const DEFAULTS = Object.freeze({
   srcRoot: 'src',
   storybook: { url: 'http://localhost:6006', configDir: null, staticDir: null },
   store: { dir: '.pxsig', layout: 'package' },
-  capture: { viewport: [900, 600], settleMs: 200, target: '#storybook-root', waitFor: [] },
+  capture: { viewport: [900, 600], settleMs: 200, target: '#storybook-root', waitFor: [], browserEndpoint: null },
   grid: 64,
   minCellPx: 8,
   detail: true,
@@ -216,6 +216,40 @@ export function workspaceProblems(P) {
     }
   }
   out.push(...engineProblems(P.rustBin));
+  out.push(...imageProblems(P, ws.root));
+  return out;
+}
+
+/** `ghcr.io/hydrotik/pxsig:0.5.0-pw1.58.2[-r2][-amd64]` → { pxsig, playwright }, or null. */
+export function parseImageTag(image) {
+  const m = String(image ?? '').match(/:(\d+\.\d+\.\d+(?:-[\w.]+?)?)-pw(\d+\.\d+\.\d+)(?:-r\d+)?(?:-(?:amd64|arm64))?(?:@|$)/);
+  return m ? { pxsig: m[1], playwright: m[2] } : null;
+}
+
+/**
+ * Inside the container image (`PXSIG_IMAGE` set): the image's pxsig and Playwright should be the
+ * ones the project pins, or its renders are not the ones the project's own install would make.
+ */
+export function imageProblems(P, wsRoot, env = process.env) {
+  const tag = parseImageTag(env.PXSIG_IMAGE);
+  if (!tag) return [];
+  const out = [];
+  const version = (pj) => {
+    try {
+      return JSON.parse(readFileSync(pj, 'utf8')).version ?? null;
+    } catch {
+      return null;
+    }
+  };
+  let pw = null;
+  try {
+    pw = version(resolvePeer(P, 'playwright/package.json', env));
+  } catch {
+    // no Playwright resolves: the check itself says so
+  }
+  if (pw && pw !== tag.playwright) out.push({ code: 'image-mismatch', severity: 'warn', reason: `the image ${env.PXSIG_IMAGE} is built for Playwright ${tag.playwright}, but Playwright ${pw} resolves here: renders use browsers that do not match the driver. Use the image tag for ${pw}, or set PXSIG_PLAYWRIGHT to the image's own` });
+  const pinned = wsRoot ? version(join(wsRoot, 'node_modules', 'pxsig', 'package.json')) : null;
+  if (pinned && pinned !== tag.pxsig) out.push({ code: 'image-mismatch', severity: 'warn', reason: `the image ${env.PXSIG_IMAGE} runs pxsig ${tag.pxsig}, but this project pins pxsig ${pinned}: use the image tag for ${pinned}` });
   return out;
 }
 
@@ -282,6 +316,7 @@ function anchorPaths(ws, layer, base) {
  *   --storybook-url u      storybook.url          --storybook-static dir   storybook.staticDir
  *   --storybook-config d   storybook.configDir    --grid n                 grid
  *   --min-cell-px n        minCellPx              --settle-ms n            capture.settleMs
+ *   --browser ws://…       capture.browserEndpoint
  */
 export function flagLayer(flags = {}, cwd = process.cwd()) {
   const str = (k) => (typeof flags[k] === 'string' && flags[k] !== '' ? flags[k] : null);
@@ -295,6 +330,7 @@ export function flagLayer(flags = {}, cwd = process.cwd()) {
   if (num('grid') != null) out.grid = num('grid');
   if (num('min-cell-px') != null) out.minCellPx = num('min-cell-px');
   if (num('settle-ms') != null) out.capture = { settleMs: num('settle-ms') };
+  if (str('browser')) out.capture = { ...out.capture, browserEndpoint: str('browser') };
   return out;
 }
 
@@ -345,6 +381,7 @@ function envLayer(env) {
   const out = {};
   if (env.PXSIG_STORYBOOK_URL) out.storybook = { url: env.PXSIG_STORYBOOK_URL };
   if (env.PXSIG_GRID) out.grid = Number(env.PXSIG_GRID);
+  if (env.PXSIG_BROWSER_WS) out.capture = { browserEndpoint: env.PXSIG_BROWSER_WS };
   if (env.PXSIG_SOURCES) out.affects = { extra: env.PXSIG_SOURCES.split(',').map((s) => `$workspace/${s.trim()}`), workspaceDeps: false };
   return out;
 }
@@ -627,12 +664,19 @@ export function rustBinary(env = process.env) {
 
 /**
  * Load a peer dependency (playwright, axe-core) the way the project would: from the project, then
- * the workspace root, then pxsig's own install. Playwright is also found through
+ * the workspace root, then pxsig's own install (`PXSIG_PLAYWRIGHT`, when set, comes first for
+ * Playwright). Playwright is also found through
  * `@playwright/test`, so renders use the browser build the project already tests with.
  */
-export function resolvePeer(P, name) {
+export function resolvePeer(P, name, env = process.env) {
   const bases = [P?.root, P?.workspaceRoot].filter(Boolean);
   const tries = [];
+  // PXSIG_PLAYWRIGHT (the container image sets it): that Playwright package folder first, so the
+  // driver always matches the browsers installed beside it. Unset, nothing changes.
+  if (env.PXSIG_PLAYWRIGHT && (name === 'playwright' || name.startsWith('playwright/'))) {
+    const dir = resolve(env.PXSIG_PLAYWRIGHT);
+    tries.push(() => createRequire(join(dir, 'package.json')).resolve(dir + name.slice('playwright'.length)));
+  }
   for (const base of bases) {
     tries.push(() => createRequire(join(base, 'package.json')).resolve(name));
     if (name === 'playwright' || name.startsWith('playwright/'))
@@ -651,6 +695,8 @@ export function resolvePeer(P, name) {
 
 /** Where the running server writes its address: never committed, never inside a package. */
 export const serverFile = (root) => join(root, 'node_modules', '.cache', 'pxsig', 'server.json');
+/** Where `pxsig browser start` records its container (endpoint, image, digest): beside server.json. */
+export const browserFile = (root) => join(root, 'node_modules', '.cache', 'pxsig', 'browser.json');
 
 /** The server URL for a workspace: PXSIG_URL, else the running server's file, else the configured port. */
 export function serverUrlFor(wsRoot, { env = process.env, port = null } = {}) {
