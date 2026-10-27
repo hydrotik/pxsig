@@ -93,7 +93,7 @@ pub struct DetailMetrics {
 /// Alpha-flattened-on-white luminance, one f32 per pixel.
 pub fn luminance(data: &[u8], w: usize, h: usize) -> Vec<f32> {
     let mut out = vec![0f32; w * h];
-    for (i, px) in data.chunks_exact(4).take(w * h).enumerate() {
+    for (i, px) in data.as_chunks::<4>().0.iter().take(w * h).enumerate() {
         let a = px[3] as f32 / 255.0;
         let f = |c: u8| c as f32 * a + 255.0 * (1.0 - a);
         out[i] = 0.299 * f(px[0]) + 0.587 * f(px[1]) + 0.114 * f(px[2]);
@@ -239,13 +239,13 @@ impl DetailRecord {
         let energy = STANDARD.decode(&self.energy).map_err(|e| format!("bad detail.energy: {e}"))?;
         let sel_raw = STANDARD.decode(&self.sel).map_err(|e| format!("bad detail.sel: {e}"))?;
         let blocks = STANDARD.decode(&self.blocks).map_err(|e| format!("bad detail.blocks: {e}"))?;
-        if self.block == 0 || self.tile % self.block != 0 {
+        if self.block == 0 || !self.tile.is_multiple_of(self.block) {
             return Err(format!("detail tile {} is not a multiple of block {}", self.tile, self.block));
         }
         if energy.len() != self.cols * self.rows || sel_raw.len() % 4 != 0 {
             return Err("detail lengths do not match cols × rows".into());
         }
-        let sel: Vec<u32> = sel_raw.chunks_exact(4).map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect();
+        let sel: Vec<u32> = sel_raw.as_chunks::<4>().0.iter().map(|c| u32::from_le_bytes(*c)).collect();
         let per = (self.tile / self.block).pow(2);
         if blocks.len() != sel.len() * per || sel.iter().any(|&i| i as usize >= energy.len()) {
             return Err("detail blocks do not match the kept tiles".into());

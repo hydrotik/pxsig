@@ -1,3 +1,4 @@
 [toolchain]
-channel = "stable"
+# Pinned: clippy's lints and the release binaries change only when this is bumped on purpose.
+channel = "1.99.0"
 components = ["rustfmt", "clippy"]

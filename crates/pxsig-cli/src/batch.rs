@@ -457,7 +457,7 @@ pub fn flag_identical_renders(rows: &mut [Value]) -> Vec<Value> {
         let ids: Vec<Value> = idx.iter().take(10).map(|&i| rows[i]["id"].clone()).collect();
         out.push((idx.len(), json!({ "render": render, "count": idx.len(), "ids": ids })));
     }
-    out.sort_by(|a, b| b.0.cmp(&a.0));
+    out.sort_by_key(|a| std::cmp::Reverse(a.0));
     out.into_iter().map(|(_, v)| v).collect()
 }
 

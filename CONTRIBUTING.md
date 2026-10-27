@@ -9,7 +9,9 @@ You need:
 - Node.js 22.18 or later to work on the repository (`pnpm ui:check` and `pnpm ui:docs` read TypeScript
   with Node's type stripping). The published `pxsig` package still runs on Node 20.
 - pnpm 10 (the version is pinned in `package.json`; `corepack enable` picks it up)
-- Rust stable, with cargo
+- Rust 1.99.0, with cargo: `rust-toolchain.toml` pins it and rustup installs it. A Rust that is
+  not managed by rustup (Homebrew's, for one) ignores the pin; put the rustup toolchain first on
+  `PATH`.
 
 ```bash
 git clone https://github.com/hydrotik/pxsig
