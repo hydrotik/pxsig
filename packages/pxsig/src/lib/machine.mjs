@@ -24,8 +24,13 @@ import { writeJson } from './files.mjs';
 import { spawnSync } from './spawn.mjs';
 
 /** This machine's pxsig folder, for `platform` and `env` (the defaults: this process). */
-export function machineDir({ platform = process.platform, env = process.env, home = homedir() } = {}) {
-  if (platform === 'win32') return join(env.LOCALAPPDATA || join(home, 'AppData', 'Local'), 'pxsig');
+export function machineDir({
+  platform = process.platform,
+  env = process.env,
+  home = homedir(),
+} = {}) {
+  if (platform === 'win32')
+    return join(env.LOCALAPPDATA || join(home, 'AppData', 'Local'), 'pxsig');
   if (platform === 'darwin') return join(home, 'Library', 'Application Support', 'pxsig');
   return join(env.XDG_CONFIG_HOME || join(home, '.config'), 'pxsig');
 }
@@ -50,22 +55,36 @@ export function writeSettings(settings, opts) {
 
 /** Where a workspace's server token files go on Windows: one folder per workspace, in the profile. */
 export function windowsTokenDir(workspaceRoot, opts) {
-  const key = createHash('sha256').update(resolve(workspaceRoot).toLowerCase()).digest('hex').slice(0, 16);
+  const key = createHash('sha256')
+    .update(resolve(workspaceRoot).toLowerCase())
+    .digest('hex')
+    .slice(0, 16);
   return join(machineDir({ platform: 'win32', ...opts }), 'tokens', key);
 }
 
 /** The folder that holds every repository's `<stateDir>` on this machine. */
-export function stateRoot({ platform = process.platform, env = process.env, home = homedir() } = {}) {
-  if (platform === 'linux') return join(env.XDG_STATE_HOME || join(home, '.local', 'state'), 'pxsig');
+export function stateRoot({
+  platform = process.platform,
+  env = process.env,
+  home = homedir(),
+} = {}) {
+  if (platform === 'linux')
+    return join(env.XDG_STATE_HOME || join(home, '.local', 'state'), 'pxsig');
   return machineDir({ platform, env, home });
 }
 
 /** A remote URL without credentials, `.git` or a trailing slash, its host lower-cased. */
 export function normaliseRemote(url) {
   if (!url) return '';
-  let u = String(url).trim().replace(/\/+$/, '').replace(/\.git$/, '');
+  let u = String(url)
+    .trim()
+    .replace(/\/+$/, '')
+    .replace(/\.git$/, '');
   u = u.replace(/^([a-z+]+:\/\/)[^@/]*@/i, '$1');
-  return u.replace(/^([a-z+]+:\/\/)?([^/:]+)/i, (_, scheme = '', host) => `${scheme}${host.toLowerCase()}`);
+  return u.replace(
+    /^([a-z+]+:\/\/)?([^/:]+)/i,
+    (_, scheme = '', host) => `${scheme}${host.toLowerCase()}`
+  );
 }
 
 /**
@@ -82,16 +101,21 @@ export function repoKey(workspaceRoot, { platform = process.platform, git = gitL
       return resolve(p);
     }
   };
-  let common = git(workspaceRoot, ['rev-parse', '--path-format=absolute', '--git-common-dir']) || git(workspaceRoot, ['rev-parse', '--git-common-dir']);
+  let common =
+    git(workspaceRoot, ['rev-parse', '--path-format=absolute', '--git-common-dir']) ||
+    git(workspaceRoot, ['rev-parse', '--git-common-dir']);
   if (common && !isAbsolute(common)) common = resolve(workspaceRoot, common);
   let path = real(common || workspaceRoot).replace(/\\/g, '/');
   if (platform === 'win32' || platform === 'darwin') path = path.toLowerCase();
-  const remote = common ? normaliseRemote(git(workspaceRoot, ['config', '--get', 'remote.origin.url'])) : '';
+  const remote = common
+    ? normaliseRemote(git(workspaceRoot, ['config', '--get', 'remote.origin.url']))
+    : '';
   return createHash('sha256').update(`${path}\n${remote}`).digest('hex').slice(0, 12);
 }
 
 /** This repository's `<stateDir>`. */
-export const repoStateDir = (workspaceRoot, opts = {}) => join(stateRoot(opts), repoKey(workspaceRoot, opts));
+export const repoStateDir = (workspaceRoot, opts = {}) =>
+  join(stateRoot(opts), repoKey(workspaceRoot, opts));
 
 function gitLine(cwd, args) {
   const r = spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8' });

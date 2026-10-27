@@ -91,12 +91,8 @@
   "commands": {
     "status": {
       "summary": "Overview: counts per state, accessibility totals, the most-changed components, the server, staleness. The default command.",
-      "usage": [
-        "pxsig status"
-      ],
-      "effects": [
-        "reads-only"
-      ],
+      "usage": ["pxsig status"],
+      "effects": ["reads-only"],
       "exits": {
         "0": "OK",
         "2": "Usage or setup error"
@@ -107,16 +103,11 @@
           "shows": "Where the project stands, and what to run next"
         }
       ],
-      "seeAlso": [
-        "list",
-        "doctor"
-      ]
+      "seeAlso": ["list", "doctor"]
     },
     "stale": {
       "summary": "Verdicts older than an edit that can change them, or made on a render of a different size.",
-      "usage": [
-        "pxsig stale [--limit 200] [--warn[=gates]] [--enforce[=gates]]"
-      ],
+      "usage": ["pxsig stale [--limit 200] [--warn[=gates]] [--enforce[=gates]]"],
       "flags": [
         {
           "name": "limit",
@@ -135,9 +126,7 @@
           "meaning": "Enforce the named gates (all without a value) whatever the config says. Anyone may raise a gate; PXSIG_ENFORCEMENT=enforce does the same."
         }
       ],
-      "effects": [
-        "reads-only"
-      ],
+      "effects": ["reads-only"],
       "exits": {
         "0": "No stale verdicts, or warn mode: the stale gate is on warn (advisoryExit, default 0)",
         "1": "Stale verdicts found",
@@ -149,16 +138,11 @@
           "shows": "The verdicts to re-check before trusting the report"
         }
       ],
-      "seeAlso": [
-        "check",
-        "doctor"
-      ]
+      "seeAlso": ["check", "doctor"]
     },
     "list": {
       "summary": "Entries in one state, with SSIM, the share of changed cells and the first gate reason.",
-      "usage": [
-        "pxsig list [state] [--component text] [--mode name] [--limit 30]"
-      ],
+      "usage": ["pxsig list [state] [--component text] [--mode name] [--limit 30]"],
       "flags": [
         {
           "name": "state",
@@ -183,9 +167,7 @@
           "meaning": "Rows shown."
         }
       ],
-      "effects": [
-        "reads-only"
-      ],
+      "effects": ["reads-only"],
       "exits": {
         "0": "OK",
         "2": "Usage or setup error"
@@ -200,16 +182,11 @@
           "shows": "Problems in one component"
         }
       ],
-      "seeAlso": [
-        "entry",
-        "status"
-      ]
+      "seeAlso": ["entry", "status"]
     },
     "entry": {
       "summary": "One entry: verdict, metrics, gate reasons, regions, accessibility, review decision, and where its images are.",
-      "usage": [
-        "pxsig entry <id> [--images baseline,current,diff]"
-      ],
+      "usage": ["pxsig entry <id> [--images baseline,current,diff]"],
       "flags": [
         {
           "name": "images",
@@ -218,9 +195,7 @@
           "meaning": "Which images to show."
         }
       ],
-      "effects": [
-        "reads-only"
-      ],
+      "effects": ["reads-only"],
       "exits": {
         "0": "OK",
         "2": "Unknown entry, usage or setup error"
@@ -231,9 +206,7 @@
           "shows": "Why one entry changed"
         }
       ],
-      "seeAlso": [
-        "list"
-      ]
+      "seeAlso": ["list"]
     },
     "check": {
       "summary": "Re-render and re-check entries: some through the running server, or the full check. Never writes baselines unless --update is given by a person.",
@@ -372,17 +345,11 @@
           "shows": "Re-check one story's entries"
         }
       ],
-      "seeAlso": [
-        "affected",
-        "approve",
-        "exit-codes"
-      ]
+      "seeAlso": ["affected", "approve", "exit-codes"]
     },
     "affected": {
       "summary": "Which entries a set of edited files can change: baselines, store records and the import graph; a path nothing traces selects all, and is listed.",
-      "usage": [
-        "pxsig affected <files…> | --since <ref>"
-      ],
+      "usage": ["pxsig affected <files…> | --since <ref>"],
       "flags": [
         {
           "name": "since",
@@ -390,9 +357,7 @@
           "meaning": "The files changed since the merge base with <ref>, plus staged, unstaged and untracked work."
         }
       ],
-      "effects": [
-        "reads-only"
-      ],
+      "effects": ["reads-only"],
       "exits": {
         "0": "OK",
         "2": "Usage or setup error"
@@ -407,9 +372,7 @@
           "shows": "What a pull request selects, and each path that selects every entry (a candidate for affects.ignore)"
         }
       ],
-      "seeAlso": [
-        "check"
-      ]
+      "seeAlso": ["check"]
     },
     "a11y": {
       "summary": "axe violations per entry, grouped by rule; with --prune, the accepted rules that no longer fire.",
@@ -488,17 +451,11 @@
           "shows": "A person removes them, after typing the phrase"
         }
       ],
-      "seeAlso": [
-        "entry",
-        "stale",
-        "approvals"
-      ]
+      "seeAlso": ["entry", "stale", "approvals"]
     },
     "history": {
       "summary": "The last runs: when, how many entries, how many changed, which.",
-      "usage": [
-        "pxsig history [--limit 10]"
-      ],
+      "usage": ["pxsig history [--limit 10]"],
       "flags": [
         {
           "name": "limit",
@@ -507,9 +464,7 @@
           "meaning": "Runs shown."
         }
       ],
-      "effects": [
-        "reads-only"
-      ],
+      "effects": ["reads-only"],
       "exits": {
         "0": "OK",
         "2": "Usage or setup error"
@@ -520,9 +475,7 @@
           "shows": "Recent runs and what changed in each"
         }
       ],
-      "seeAlso": [
-        "status"
-      ]
+      "seeAlso": ["status"]
     },
     "doctor": {
       "summary": "Integrity per component, and the safe repairs (a dry-run plan, or with --apply, run).",
@@ -618,16 +571,11 @@
           "shows": "In CI: fail on error-severity codes only"
         }
       ],
-      "seeAlso": [
-        "stale",
-        "approvals"
-      ]
+      "seeAlso": ["stale", "approvals"]
     },
     "approve": {
       "summary": "The guarded way to accept many changes at once: plan, then a person applies. Every approval is logged.",
-      "usage": [
-        "pxsig approve plan|apply|log|undo|verify"
-      ],
+      "usage": ["pxsig approve plan|apply|log|undo|verify"],
       "subcommands": {
         "plan": {
           "summary": "Classify each selected change as colour or shape, block shape changes and stale verdicts, pin every render's hash, write approval-plan.json. Safe for anyone.",
@@ -663,9 +611,7 @@
               "meaning": "With --new: allow every first baseline at once."
             }
           ],
-          "effects": [
-            "writes-store"
-          ],
+          "effects": ["writes-store"],
           "exits": {
             "0": "A plan was written",
             "2": "Nothing to plan, no --reason, usage or setup error"
@@ -679,13 +625,8 @@
         },
         "apply": {
           "summary": "A person at a terminal applies the plan through the server, after typing APPROVE <n> ENTRIES. Refused when any render changed since planning.",
-          "usage": [
-            "pxsig approve apply [plan]"
-          ],
-          "effects": [
-            "writes-baselines",
-            "needs-a-person"
-          ],
+          "usage": ["pxsig approve apply [plan]"],
+          "effects": ["writes-baselines", "needs-a-person"],
           "exits": {
             "0": "Applied",
             "1": "Not confirmed, or only part applied (the undo command is printed)",
@@ -701,9 +642,7 @@
         },
         "log": {
           "summary": "Approvals by batch; --trace adds the commit and pull request each came in by.",
-          "usage": [
-            "pxsig approve log [--limit 10] [--trace]"
-          ],
+          "usage": ["pxsig approve log [--limit 10] [--trace]"],
           "flags": [
             {
               "name": "limit",
@@ -716,9 +655,7 @@
               "meaning": "For each batch, the commit that added its log lines and the pull request that merged it (from git). Shows no names: the commit and the PR say who."
             }
           ],
-          "effects": [
-            "reads-only"
-          ],
+          "effects": ["reads-only"],
           "exits": {
             "0": "OK",
             "2": "Usage or setup error"
@@ -736,13 +673,8 @@
         },
         "undo": {
           "summary": "Restore the baselines a batch replaced, from the local snapshot or from git. A person at a terminal, after a typed phrase.",
-          "usage": [
-            "pxsig approve undo <batch>"
-          ],
-          "effects": [
-            "writes-baselines",
-            "needs-a-person"
-          ],
+          "usage": ["pxsig approve undo <batch>"],
+          "effects": ["writes-baselines", "needs-a-person"],
           "exits": {
             "0": "Restored",
             "1": "An entry was refused, or not confirmed",
@@ -795,11 +727,7 @@
               "meaning": "Enforce the named gates (all without a value) whatever the config says. Anyone may raise a gate; PXSIG_ENFORCEMENT=enforce does the same."
             }
           ],
-          "effects": [
-            "reads-only",
-            "writes-store (--adopt)",
-            "needs-a-person (--adopt)"
-          ],
+          "effects": ["reads-only", "writes-store (--adopt)", "needs-a-person (--adopt)"],
           "exits": {
             "0": "Every baseline matches the log; or warn mode: only baselines without a log line, with the verify gate on warn (advisoryExit, default 0). A mismatch or a rewritten log fails in every mode",
             "1": "A mismatch, an interrupted approval, a baseline with no log line (unless --no-strict), a rewritten log or no merge base (--since), or --adopt not confirmed",
@@ -818,9 +746,7 @@
           ]
         }
       },
-      "effects": [
-        "see each subcommand"
-      ],
+      "effects": ["see each subcommand"],
       "exits": {
         "0": "OK",
         "1": "See each subcommand",
@@ -833,19 +759,12 @@
           "shows": "Plan the first baselines of new stories"
         }
       ],
-      "seeAlso": [
-        "approvals",
-        "check"
-      ]
+      "seeAlso": ["approvals", "check"]
     },
     "projects": {
       "summary": "The projects in this workspace: name, folder, entry count, integrity headline.",
-      "usage": [
-        "pxsig projects"
-      ],
-      "effects": [
-        "reads-only"
-      ],
+      "usage": ["pxsig projects"],
+      "effects": ["reads-only"],
       "exits": {
         "0": "OK",
         "2": "No workspace"
@@ -856,9 +775,7 @@
           "shows": "Every project and its state"
         }
       ],
-      "seeAlso": [
-        "config"
-      ]
+      "seeAlso": ["config"]
     },
     "init": {
       "summary": "Set a package up: pxsig.config.json, its store and, in a monorepo, the workspace entry.",
@@ -906,9 +823,7 @@
           "setting": "store.layout"
         }
       ],
-      "effects": [
-        "writes-files"
-      ],
+      "effects": ["writes-files"],
       "exits": {
         "0": "Set up (or already set up)",
         "2": "Usage or setup error"
@@ -919,19 +834,12 @@
           "shows": "A new project and its store"
         }
       ],
-      "seeAlso": [
-        "manifest",
-        "config"
-      ]
+      "seeAlso": ["manifest", "config"]
     },
     "config": {
       "summary": "The resolved config of a project, and which layer set each key.",
-      "usage": [
-        "pxsig config"
-      ],
-      "effects": [
-        "reads-only"
-      ],
+      "usage": ["pxsig config"],
+      "effects": ["reads-only"],
       "exits": {
         "0": "OK",
         "2": "Usage or setup error"
@@ -942,15 +850,11 @@
           "shows": "What a run with --grid 32 would use"
         }
       ],
-      "seeAlso": [
-        "projects"
-      ]
+      "seeAlso": ["projects"]
     },
     "setup": {
       "summary": "The coding assistant's recipe: the MCP entry that starts pxsig with the local install, and the instruction not to approve. Creates those files only on a yes, and only when they do not exist.",
-      "usage": [
-        "pxsig setup [assistant] [--assistant name] [--print]"
-      ],
+      "usage": ["pxsig setup [assistant] [--assistant name] [--print]"],
       "flags": [
         {
           "name": "assistant",
@@ -962,9 +866,7 @@
           "meaning": "Print the recipe and write nothing. Always the case in CI, when piped and under an assistant."
         }
       ],
-      "effects": [
-        "writes-files"
-      ],
+      "effects": ["writes-files"],
       "exits": {
         "0": "Printed (and, on a yes, written)",
         "2": "Usage error, or an answer that is not on the list"
@@ -975,16 +877,11 @@
           "shows": "The VS Code recipe and the instruction, without writing"
         }
       ],
-      "seeAlso": [
-        "agents",
-        "mcp"
-      ]
+      "seeAlso": ["agents", "mcp"]
     },
     "manifest": {
       "summary": "Rebuild the project's entries from the running Storybook (or its static build).",
-      "usage": [
-        "pxsig manifest [--suite name]"
-      ],
+      "usage": ["pxsig manifest [--suite name]"],
       "flags": [
         {
           "name": "suite",
@@ -992,9 +889,7 @@
           "meaning": "Write manifest.<suite>.json."
         }
       ],
-      "effects": [
-        "writes-store"
-      ],
+      "effects": ["writes-store"],
       "exits": {
         "0": "Written",
         "2": "Storybook unreachable, usage or setup error"
@@ -1005,9 +900,7 @@
           "shows": "The stories to check, with new and removed counts"
         }
       ],
-      "seeAlso": [
-        "check"
-      ]
+      "seeAlso": ["check"]
     },
     "serve": {
       "summary": "The server and dashboard for every project in the workspace.",
@@ -1045,10 +938,7 @@
           "env": "PXSIG_DEBUG"
         }
       ],
-      "effects": [
-        "starts-server",
-        "writes-store"
-      ],
+      "effects": ["starts-server", "writes-store"],
       "exits": {
         "0": "Stopped",
         "2": "Usage or setup error"
@@ -1059,19 +949,12 @@
           "shows": "Start the server and this dashboard; re-check on source edits"
         }
       ],
-      "seeAlso": [
-        "platforms",
-        "approvals"
-      ]
+      "seeAlso": ["platforms", "approvals"]
     },
     "mcp": {
       "summary": "The MCP server on stdio, for coding assistants. It reads, checks and rejects; it never approves.",
-      "usage": [
-        "pxsig mcp"
-      ],
-      "effects": [
-        "starts-server"
-      ],
+      "usage": ["pxsig mcp"],
+      "effects": ["starts-server"],
       "exits": {
         "0": "Stopped"
       },
@@ -1081,17 +964,11 @@
           "shows": "The MCP server an assistant connects to"
         }
       ],
-      "seeAlso": [
-        "agents",
-        "setup",
-        "approvals"
-      ]
+      "seeAlso": ["agents", "setup", "approvals"]
     },
     "report": {
       "summary": "A static dashboard for one project, which opens from disk.",
-      "usage": [
-        "pxsig report [--out dir]"
-      ],
+      "usage": ["pxsig report [--out dir]"],
       "flags": [
         {
           "name": "out",
@@ -1100,9 +977,7 @@
           "meaning": "Where to write it."
         }
       ],
-      "effects": [
-        "writes-files"
-      ],
+      "effects": ["writes-files"],
       "exits": {
         "0": "Written",
         "2": "Any error"
@@ -1113,21 +988,15 @@
           "shows": "A dashboard to publish as a CI artifact"
         }
       ],
-      "seeAlso": [
-        "ci"
-      ]
+      "seeAlso": ["ci"]
     },
     "dashboard": {
       "summary": "The dashboard on this project's design system, through a UI adapter.",
-      "usage": [
-        "pxsig dashboard build|gaps|check"
-      ],
+      "usage": ["pxsig dashboard build|gaps|check"],
       "subcommands": {
         "build": {
           "summary": "Rebuild the dashboard through a UI adapter with the project's own Vite. pxsig serve then serves it while it is current. Refused when the adapter is written for an older major version of the UI contract.",
-          "usage": [
-            "pxsig dashboard build [--ui path] [--out dir]"
-          ],
+          "usage": ["pxsig dashboard build [--ui path] [--out dir]"],
           "flags": [
             {
               "name": "ui",
@@ -1143,9 +1012,7 @@
               "meaning": "Where to write the build."
             }
           ],
-          "effects": [
-            "writes-files"
-          ],
+          "effects": ["writes-files"],
           "exits": {
             "0": "Built",
             "2": "Usage or setup error, or an adapter written for an older major UI contract (the migration notes are printed)"
@@ -1159,9 +1026,7 @@
         },
         "gaps": {
           "summary": "What the adapter covers of the UI contract: missing, partial and bespoke components, the dashboard files each affects, and the contract version it is written for against this pxsig's.",
-          "usage": [
-            "pxsig dashboard gaps [--ui path] [--json]"
-          ],
+          "usage": ["pxsig dashboard gaps [--ui path] [--json]"],
           "flags": [
             {
               "name": "ui",
@@ -1171,9 +1036,7 @@
               "env": "PXSIG_UI_ADAPTER"
             }
           ],
-          "effects": [
-            "reads-only"
-          ],
+          "effects": ["reads-only"],
           "exits": {
             "0": "Every required component present",
             "1": "A required component missing, a malformed conformance.json, or an adapter written for an older major UI contract",
@@ -1233,9 +1096,7 @@
               "meaning": "Any axe violation fails the check (exit 1); without it they are listed and advisory."
             }
           ],
-          "effects": [
-            "writes-files"
-          ],
+          "effects": ["writes-files"],
           "exits": {
             "0": "Every screen rendered with no page error",
             "1": "A screen did not render, or (with --strict) an axe violation",
@@ -1253,9 +1114,7 @@
           ]
         }
       },
-      "effects": [
-        "see each subcommand"
-      ],
+      "effects": ["see each subcommand"],
       "exits": {
         "0": "OK",
         "1": "See gaps and check",
@@ -1267,21 +1126,15 @@
           "shows": "How far an adapter gets"
         }
       ],
-      "seeAlso": [
-        "dashboard"
-      ]
+      "seeAlso": ["dashboard"]
     },
     "browser": {
       "summary": "Playwright's browser in the pxsig container image, so checks and the dashboard on this machine render with the image's browser and fonts. The only commands that start docker.",
-      "usage": [
-        "pxsig browser start|stop|status"
-      ],
+      "usage": ["pxsig browser start|stop|status"],
       "subcommands": {
         "start": {
           "summary": "Run `playwright run-server` in the image, published on 127.0.0.1 only, and record its endpoint, image and digest in node_modules/.cache/pxsig/browser.json. Then pass --browser <endpoint> (or set PXSIG_BROWSER_WS) to render there.",
-          "usage": [
-            "pxsig browser start [--image tag] [--port 3000]"
-          ],
+          "usage": ["pxsig browser start [--image tag] [--port 3000]"],
           "flags": [
             {
               "name": "image",
@@ -1296,10 +1149,7 @@
               "meaning": "The port on 127.0.0.1 the browser server is published on."
             }
           ],
-          "effects": [
-            "starts-docker",
-            "writes-files"
-          ],
+          "effects": ["starts-docker", "writes-files"],
           "exits": {
             "0": "Started, or already running with the same image and port",
             "2": "No docker CLI, its daemon not answering, no Playwright to name the image, or the server did not start"
@@ -1313,13 +1163,8 @@
         },
         "stop": {
           "summary": "Stop the recorded browser container and remove its record.",
-          "usage": [
-            "pxsig browser stop"
-          ],
-          "effects": [
-            "starts-docker",
-            "writes-files"
-          ],
+          "usage": ["pxsig browser stop"],
+          "effects": ["starts-docker", "writes-files"],
           "exits": {
             "0": "Stopped, or nothing recorded",
             "2": "A container is recorded but docker is missing or not answering"
@@ -1327,12 +1172,8 @@
         },
         "status": {
           "summary": "The recorded browser container: endpoint, image, digest, Playwright version, and whether it runs. Warns when the project's Playwright is not the image's major.minor (Playwright refuses that pairing).",
-          "usage": [
-            "pxsig browser status [--json]"
-          ],
-          "effects": [
-            "reads-only"
-          ],
+          "usage": ["pxsig browser status [--json]"],
+          "effects": ["reads-only"],
           "exits": {
             "0": "Shown (also when nothing is recorded)",
             "2": "A container is recorded but docker is missing or not answering"
@@ -1345,17 +1186,11 @@
           ]
         }
       },
-      "seeAlso": [
-        "check",
-        "serve",
-        "capture.browserEndpoint"
-      ]
+      "seeAlso": ["check", "serve", "capture.browserEndpoint"]
     },
     "cat": {
       "summary": "A baseline's header as JSON (git's textconv for *.psig), or its image.",
-      "usage": [
-        "pxsig cat <file.psig> [--image out.png]"
-      ],
+      "usage": ["pxsig cat <file.psig> [--image out.png]"],
       "flags": [
         {
           "name": "image",
@@ -1364,9 +1199,7 @@
           "readBy": "engine"
         }
       ],
-      "effects": [
-        "reads-only"
-      ],
+      "effects": ["reads-only"],
       "exits": {
         "0": "OK",
         "2": "Not a baseline, or usage"
@@ -1377,15 +1210,11 @@
           "shows": "What a baseline holds"
         }
       ],
-      "seeAlso": [
-        "entry"
-      ]
+      "seeAlso": ["entry"]
     },
     "migrate": {
       "summary": "Move a pre-0.2 store (.baselines + .renders/base) into this project. A dry run unless --apply.",
-      "usage": [
-        "pxsig migrate --from <dir> [--apply] [--no-verify]"
-      ],
+      "usage": ["pxsig migrate --from <dir> [--apply] [--no-verify]"],
       "flags": [
         {
           "name": "from",
@@ -1401,9 +1230,7 @@
           "meaning": "Skip re-checking the legacy renders against old and new baselines."
         }
       ],
-      "effects": [
-        "writes-store (--apply)"
-      ],
+      "effects": ["writes-store (--apply)"],
       "exits": {
         "0": "Planned or moved",
         "1": "The migration differs",
@@ -1415,18 +1242,12 @@
           "shows": "The plan for moving an old store"
         }
       ],
-      "seeAlso": [
-        "config"
-      ]
+      "seeAlso": ["config"]
     },
     "help": {
       "summary": "A command's, topic's or setting's page. Alone: the command list.",
-      "usage": [
-        "pxsig help [command [subcommand] | topic | setting]"
-      ],
-      "effects": [
-        "reads-only"
-      ],
+      "usage": ["pxsig help [command [subcommand] | topic | setting]"],
+      "effects": ["reads-only"],
       "exits": {
         "0": "OK",
         "2": "No such command, topic or setting"
@@ -1441,10 +1262,7 @@
           "shows": "One setting and what it changes"
         }
       ],
-      "seeAlso": [
-        "approvals",
-        "exit-codes"
-      ]
+      "seeAlso": ["approvals", "exit-codes"]
     }
   }
 }

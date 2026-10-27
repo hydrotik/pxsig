@@ -24,7 +24,9 @@ before(async () => {
   let chromium;
   try {
     ({ chromium } = require('playwright'));
-    browser = await chromium.launch(process.env.PXSIG_CHROMIUM ? { executablePath: process.env.PXSIG_CHROMIUM } : {});
+    browser = await chromium.launch(
+      process.env.PXSIG_CHROMIUM ? { executablePath: process.env.PXSIG_CHROMIUM } : {}
+    );
   } catch (e) {
     skip = `no Chromium (${String(e.message).split('\n')[0]})`;
     return;
@@ -38,13 +40,28 @@ before(async () => {
     logLevel: 'silent',
     plugins: [react()],
     resolve: { dedupe: ['react', 'react-dom'] },
-    build: { outDir: out, emptyOutDir: true, minify: false, rollupOptions: { output: { format: 'iife', inlineDynamicImports: true, entryFileNames: 'app.js' } } },
+    build: {
+      outDir: out,
+      emptyOutDir: true,
+      minify: false,
+      rollupOptions: {
+        output: { format: 'iife', inlineDynamicImports: true, entryFileNames: 'app.js' },
+      },
+    },
   });
-  const js = readFileSync(path.join(out, readdirSync(out).find((f) => f === 'app.js')), 'utf8');
+  const js = readFileSync(
+    path.join(
+      out,
+      readdirSync(out).find((f) => f === 'app.js')
+    ),
+    'utf8'
+  );
   page = await browser.newPage({ viewport: { width: 800, height: 600 } });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.setContent('<!doctype html><html><head></head><body><div id="root"></div></body></html>');
+  await page.setContent(
+    '<!doctype html><html><head></head><body><div id="root"></div></body></html>'
+  );
   await page.addScriptTag({ content: js });
   await page.waitForSelector('[role="radiogroup"]');
   assert.deepEqual(errors, []);
@@ -54,9 +71,13 @@ after(async () => {
   if (out) rmSync(out, { recursive: true, force: true });
 });
 
-const mount = (o) => page.evaluate((o) => window.harness.mount(o), o).then(() => page.waitForTimeout(50));
+const mount = (o) =>
+  page.evaluate((o) => window.harness.mount(o), o).then(() => page.waitForTimeout(50));
 /** The callbacks so far, without the zoom reports every layout makes. */
-const log = (all = false) => page.evaluate(() => window.harness.log.map((x) => [...x])).then((l) => (all ? l : l.filter(([k]) => k !== 'zoom')));
+const log = (all = false) =>
+  page
+    .evaluate(() => window.harness.log.map((x) => [...x]))
+    .then((l) => (all ? l : l.filter(([k]) => k !== 'zoom')));
 const checked = () => page.$eval('[role="radio"][aria-checked="true"]', (el) => el.dataset.mode);
 
 test('ARIA: radiogroup, slider, stage, decorative regions, live zoom', async (t) => {
@@ -64,8 +85,14 @@ test('ARIA: radiogroup, slider, stage, decorative regions, live zoom', async (t)
   await mount({});
   assert.equal(await page.getAttribute('[role="radiogroup"]', 'aria-label'), 'View');
   assert.equal(await page.locator('[role="radio"]').count(), 5);
-  assert.deepEqual(await page.$$eval('[role="radio"]', (els) => els.map((e) => e.tabIndex)), [0, -1, -1, -1, -1]);
-  assert.equal(await page.getAttribute('[role="group"][aria-label="Image stage"]', 'tabindex'), '0');
+  assert.deepEqual(
+    await page.$$eval('[role="radio"]', (els) => els.map((e) => e.tabIndex)),
+    [0, -1, -1, -1, -1]
+  );
+  assert.equal(
+    await page.getAttribute('[role="group"][aria-label="Image stage"]', 'tabindex'),
+    '0'
+  );
   assert.equal(await page.getAttribute('[role="slider"]', 'aria-valuenow'), '50');
   assert.equal(await page.getAttribute('[role="slider"]', 'aria-label'), 'Swipe');
   assert.equal(await page.getAttribute('svg', 'aria-hidden'), 'true');
@@ -88,7 +115,10 @@ test('keyboard: arrows move and select the mode; Home / End jump', async (t) => 
   assert.equal(await checked(), 'heat');
   await page.keyboard.press('Home');
   assert.equal(await checked(), 'side');
-  assert.equal(await page.getAttribute('[role="group"][aria-label="Image stage"]', 'data-mode'), 'side');
+  assert.equal(
+    await page.getAttribute('[role="group"][aria-label="Image stage"]', 'data-mode'),
+    'side'
+  );
 });
 
 test('keyboard: the swipe slider steps by 2, Home / End reach the ends', async (t) => {
@@ -104,7 +134,10 @@ test('keyboard: the swipe slider steps by 2, Home / End reach the ends', async (
   assert.equal(await page.getAttribute('[role="slider"]', 'aria-valuenow'), '0');
   await page.keyboard.press('End');
   assert.equal(await page.getAttribute('[role="slider"]', 'aria-valuenow'), '100');
-  assert.equal(await page.$eval('canvas[data-kind="latest"]', (c) => c.style.clipPath), 'inset(0px 0% 0px 0px)');
+  assert.equal(
+    await page.$eval('canvas[data-kind="latest"]', (c) => c.style.clipPath),
+    'inset(0px 0% 0px 0px)'
+  );
 });
 
 test('keyboard: + / − / 0 on the focused stage zoom, and the level is announced', async (t) => {
@@ -121,10 +154,16 @@ test('keyboard: + / − / 0 on the focused stage zoom, and the level is announce
   await page.keyboard.press('+');
   await page.keyboard.press('0');
   assert.equal(await page.textContent('output[aria-live]'), '100%');
-  assert.equal(await page.$eval('[aria-label="Image stage"]', (el) => el.style.getPropertyValue('--dv-zoom')), '1');
+  assert.equal(
+    await page.$eval('[aria-label="Image stage"]', (el) => el.style.getPropertyValue('--dv-zoom')),
+    '1'
+  );
   await page.click('button[aria-label="Zoom in"]');
   assert.equal(await page.textContent('output[aria-live]'), '150%');
-  assert.equal(await page.$eval('[aria-label="Image stage"]', (el) => el.style.getPropertyValue('--dv-zoom')), '1.5');
+  assert.equal(
+    await page.$eval('[aria-label="Image stage"]', (el) => el.style.getPropertyValue('--dv-zoom')),
+    '1.5'
+  );
   assert.ok((await log(true)).some(([k, v]) => k === 'zoom' && v === 1.5));
 });
 
@@ -150,13 +189,22 @@ test('uncontrolled: the mode changes on click and still reports it', async (t) =
   await page.click('[role="radio"][data-mode="heat"]');
   assert.equal(await checked(), 'heat');
   assert.deepEqual(await log(), [['mode', 'heat']]);
-  assert.match(await page.getAttribute('[aria-label="Image stage"]', 'class'), /stage-heat/, 'className as a function of state');
+  assert.match(
+    await page.getAttribute('[aria-label="Image stage"]', 'class'),
+    /stage-heat/,
+    'className as a function of state'
+  );
 });
 
 test('regions: the active one is marked; tiles are drawn', async (t) => {
   if (skip) return t.skip(skip);
   await mount({ activeRegion: 1 });
-  assert.deepEqual(await page.$$eval('svg rect:not([data-tile])', (rs) => rs.map((r) => r.hasAttribute('data-active'))), [false, true]);
+  assert.deepEqual(
+    await page.$$eval('svg rect:not([data-tile])', (rs) =>
+      rs.map((r) => r.hasAttribute('data-active'))
+    ),
+    [false, true]
+  );
   assert.equal(await page.locator('svg rect[data-tile]').count(), 1);
 });
 
@@ -166,10 +214,18 @@ test('probe: the pixel under the pointer, with both images’ values, and the ma
   await page.evaluate(() => window.harness.actions.current.zoomTo(4));
   await page.waitForTimeout(30);
   const box = await page.locator('[data-pane]').boundingBox();
-  const { tx, ty } = await page.$eval('[aria-label="Image stage"]', (el) => ({ tx: parseFloat(el.style.getPropertyValue('--dv-tx')), ty: parseFloat(el.style.getPropertyValue('--dv-ty')) }));
+  const { tx, ty } = await page.$eval('[aria-label="Image stage"]', (el) => ({
+    tx: parseFloat(el.style.getPropertyValue('--dv-tx')),
+    ty: parseFloat(el.style.getPropertyValue('--dv-ty')),
+  }));
   await page.mouse.move(box.x + tx + 11 * 4 + 1, box.y + ty + 6 * 4 + 1);
   assert.equal(await page.textContent('#probe'), '11,6 0/0/0/255 255/0/0/255');
-  assert.equal(await page.locator('[data-marker]').evaluate((m) => !m.hidden && m.hasAttribute('data-visible')), true);
+  assert.equal(
+    await page
+      .locator('[data-marker]')
+      .evaluate((m) => !m.hidden && m.hasAttribute('data-visible')),
+    true
+  );
   await page.mouse.move(box.x + box.width + 50, box.y);
   assert.equal(await page.textContent('#probe'), 'none');
 });

@@ -52,8 +52,21 @@ function uiOf(project) {
  * @param {Record<string, string | undefined>} [o.env]
  * @returns {{ dir: string, source: 'env' | 'adapter' | 'prebuilt', note: string | null }}
  */
-export function chooseDashboard({ projects, prebuilt, version, contract = null, root = process.cwd(), builtinDir = () => null, env = process.env }) {
-  if (env.PXSIG_DASHBOARD_DIR) return { dir: resolve(env.PXSIG_DASHBOARD_DIR), source: 'env', note: `dashboard: ${env.PXSIG_DASHBOARD_DIR} (PXSIG_DASHBOARD_DIR)` };
+export function chooseDashboard({
+  projects,
+  prebuilt,
+  version,
+  contract = null,
+  root = process.cwd(),
+  builtinDir = () => null,
+  env = process.env,
+}) {
+  if (env.PXSIG_DASHBOARD_DIR)
+    return {
+      dir: resolve(env.PXSIG_DASHBOARD_DIR),
+      source: 'env',
+      note: `dashboard: ${env.PXSIG_DASHBOARD_DIR} (PXSIG_DASHBOARD_DIR)`,
+    };
   const asking = projects.map((p) => ({ p, ui: uiOf(p) })).filter((x) => x.ui);
   if (!asking.length) return { dir: prebuilt, source: 'prebuilt', note: null };
   const rel = (p) => relative(root, p) || '.';
@@ -69,7 +82,12 @@ export function chooseDashboard({ projects, prebuilt, version, contract = null, 
   const out = buildDirFor(p.dir);
   const command = `run \`pxsig dashboard build\` in ${rel(p.dir)}`;
   const where = `dashboard.ui (${ui}) in ${rel(p.configPath)}`;
-  if (!existsSync(join(out, 'index.html'))) return { dir: prebuilt, source: 'prebuilt', note: `dashboard: ${where} has no build yet: ${command}. Serving the prebuilt dashboard.` };
+  if (!existsSync(join(out, 'index.html')))
+    return {
+      dir: prebuilt,
+      source: 'prebuilt',
+      note: `dashboard: ${where} has no build yet: ${command}. Serving the prebuilt dashboard.`,
+    };
   let stamp = null;
   try {
     stamp = JSON.parse(readFileSync(join(out, STAMP), 'utf8'));
@@ -78,11 +96,28 @@ export function chooseDashboard({ projects, prebuilt, version, contract = null, 
   }
   const builtAt = stamp?.builtAt ?? statSync(join(out, 'index.html')).mtimeMs;
   if (stamp?.pxsig && stamp.pxsig !== version)
-    return { dir: prebuilt, source: 'prebuilt', note: `dashboard: the build for ${where} is from pxsig ${stamp.pxsig} (this is ${version}): ${command}. Serving the prebuilt dashboard.` };
+    return {
+      dir: prebuilt,
+      source: 'prebuilt',
+      note: `dashboard: the build for ${where} is from pxsig ${stamp.pxsig} (this is ${version}): ${command}. Serving the prebuilt dashboard.`,
+    };
   if (stamp?.contract && contract && stamp.contract.split('.')[0] !== contract.split('.')[0])
-    return { dir: prebuilt, source: 'prebuilt', note: `dashboard: the build for ${where} is for UI contract ${stamp.contract} (this pxsig has ${contract}): update the adapter (docs/ui/contract-changes.md), then ${command}. Serving the prebuilt dashboard.` };
+    return {
+      dir: prebuilt,
+      source: 'prebuilt',
+      note: `dashboard: the build for ${where} is for UI contract ${stamp.contract} (this pxsig has ${contract}): update the adapter (docs/ui/contract-changes.md), then ${command}. Serving the prebuilt dashboard.`,
+    };
   const adapterDir = BUILTIN.test(ui) ? builtinDir(ui) : resolve(p.dir, ui);
   const edited = adapterDir ? newestMtime(adapterDir) : 0;
-  if (edited > builtAt) return { dir: prebuilt, source: 'prebuilt', note: `dashboard: the adapter for ${where} changed after its last build: ${command}. Serving the prebuilt dashboard.` };
-  return { dir: out, source: 'adapter', note: `dashboard: built with the UI adapter ${ui} (${rel(out)})` };
+  if (edited > builtAt)
+    return {
+      dir: prebuilt,
+      source: 'prebuilt',
+      note: `dashboard: the adapter for ${where} changed after its last build: ${command}. Serving the prebuilt dashboard.`,
+    };
+  return {
+    dir: out,
+    source: 'adapter',
+    note: `dashboard: built with the UI adapter ${ui} (${rel(out)})`,
+  };
 }

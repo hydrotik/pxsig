@@ -3,11 +3,17 @@
   "contract": "1.1.0",
   "designSystem": "@hydrotik/design-system (built from source: PXSIG_DS_SOURCE)",
   "components": {
-    "UiProvider": { "status": "bespoke", "note": "ThemeProvider kept in step with the runtime's mode, plus TooltipProvider" },
+    "UiProvider": {
+      "status": "bespoke",
+      "note": "ThemeProvider kept in step with the runtime's mode, plus TooltipProvider"
+    },
     "AppShell": { "status": "full", "note": "AppShell" },
     "AppMain": { "status": "full", "note": "AppShellContent as a <main>" },
     "TopNav": { "status": "full", "note": "Navbar, brand in its logo slot" },
-    "NavList": { "status": "full", "note": "NavItems; contract NavLinks become NavItemLinks so its More menu finds them" },
+    "NavList": {
+      "status": "full",
+      "note": "NavItems; contract NavLinks become NavItemLinks so its More menu finds them"
+    },
     "NavLink": { "status": "full", "note": "NavItemLink; count tone info → attention" },
     "NavEnd": { "status": "bespoke", "note": "a plain div inside the Navbar" },
     "Button": { "status": "full", "note": "Button; href renders the Button as an <a> (asChild)" },
@@ -20,7 +26,10 @@
     "StatGroup": { "status": "full", "note": "StatPanel; selectable items are filter cards" },
     "DataTable": { "status": "full", "note": "DataGrid, compact density" },
     "StatusBadge": { "status": "full", "note": "StatusBadge with an explicit tone and glyph" },
-    "Badge": { "status": "full", "note": "Badge variants: neutral → secondary / outline, danger → destructive" },
+    "Badge": {
+      "status": "full",
+      "note": "Badge variants: neutral → secondary / outline, danger → destructive"
+    },
     "Icon": { "status": "full", "note": "lucide glyphs (the design system's Icons)" },
     "Dialog": { "status": "full", "note": "Dialog + DialogContent, no close button" },
     "DialogTitle": { "status": "full" },
@@ -35,7 +44,10 @@
     "ToolbarSummary": { "status": "full" },
     "CopyValue": { "status": "full" },
     "Kbd": { "status": "full" },
-    "Tooltip": { "status": "full", "note": "Tooltip, TooltipTrigger (asChild) and TooltipContent below the element" },
+    "Tooltip": {
+      "status": "full",
+      "note": "Tooltip, TooltipTrigger (asChild) and TooltipContent below the element"
+    },
     "Link": { "status": "full" },
     "Progress": { "status": "full" },
     "KeyValueList": { "status": "full", "note": "StaticList" },
@@ -44,8 +56,17 @@
     "AlertTitle": { "status": "full" },
     "AlertDescription": { "status": "full" },
     "SearchField": { "status": "full", "note": "SearchBar" },
-    "Select": { "status": "full", "note": "Select with trigger, value and items built from options" },
-    "Chart": { "status": "full", "note": "the design system's Chart on recharts, chart tokens 1–4; solid points with no outline" },
-    "Heatmap": { "status": "bespoke", "note": "tiles on the design system's tokens: the first chart colour over the surface in five steps, text at 4.5:1 or better on every step in both themes" }
+    "Select": {
+      "status": "full",
+      "note": "Select with trigger, value and items built from options"
+    },
+    "Chart": {
+      "status": "full",
+      "note": "the design system's Chart on recharts, chart tokens 1–4; solid points with no outline"
+    },
+    "Heatmap": {
+      "status": "bespoke",
+      "note": "tiles on the design system's tokens: the first chart colour over the surface in five steps, text at 4.5:1 or better on every step in both themes"
+    }
   }
 }

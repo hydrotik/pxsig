@@ -23,7 +23,16 @@
  * Repository and license come from the Cargo workspace ([workspace.package]).
  * Node >= 20, no dependencies. Exit 1 on a failure, 2 on a usage error.
  */
-import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -50,7 +59,13 @@ function fail(msg) {
 
 function parseArgs(argv) {
   const opts = { only: null, dryRun: false, allowMissing: false };
-  const valued = { '--version': 'version', '--artifacts': 'artifacts', '--out': 'out', '--only': 'only', '--write-optional-deps': 'optionalDeps' };
+  const valued = {
+    '--version': 'version',
+    '--artifacts': 'artifacts',
+    '--out': 'out',
+    '--only': 'only',
+    '--write-optional-deps': 'optionalDeps',
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--help' || a === '-h') {
@@ -58,7 +73,8 @@ function parseArgs(argv) {
       process.exit(0);
     } else if (a === '--dry-run') opts.dryRun = true;
     else if (a === '--allow-missing') opts.allowMissing = true;
-    else if (a.includes('=') && valued[a.slice(0, a.indexOf('='))]) opts[valued[a.slice(0, a.indexOf('='))]] = a.slice(a.indexOf('=') + 1);
+    else if (a.includes('=') && valued[a.slice(0, a.indexOf('='))])
+      opts[valued[a.slice(0, a.indexOf('='))]] = a.slice(a.indexOf('=') + 1);
     else if (valued[a]) {
       const v = argv[++i];
       if (v === undefined || v.startsWith('--')) usage(`${a} needs a value`);
@@ -66,7 +82,8 @@ function parseArgs(argv) {
     } else usage(`unknown argument: ${a}`);
   }
   if (!opts.version) usage('--version is required');
-  if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/.test(opts.version)) usage(`--version is not a semver version: ${opts.version}`);
+  if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/.test(opts.version))
+    usage(`--version is not a semver version: ${opts.version}`);
   if (!opts.artifacts) usage('--artifacts is required');
   if (!opts.out) usage('--out is required');
   return opts;
@@ -97,7 +114,10 @@ const repository = repoUrl ? { type: 'git', url: `git+${repoUrl}.git` } : undefi
 
 let targets = PLATFORMS;
 if (opts.only) {
-  const wanted = opts.only.split(',').map((s) => s.trim()).filter(Boolean);
+  const wanted = opts.only
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   const known = new Set(PLATFORMS.map((p) => `${p.platform}-${p.arch}`));
   const unknown = wanted.filter((w) => !known.has(w));
   if (unknown.length) usage(`unknown platform(s) in --only: ${unknown.join(', ')}`);
@@ -119,9 +139,18 @@ for (const { platform, arch } of targets) {
     missing.push(`${id}: expected ${src}`);
     continue;
   }
-  plan.push({ id, platform, arch, exe, src, dir: join(out, `cli-${id}`), name: `@pxsig/cli-${id}` });
+  plan.push({
+    id,
+    platform,
+    arch,
+    exe,
+    src,
+    dir: join(out, `cli-${id}`),
+    name: `@pxsig/cli-${id}`,
+  });
 }
-if (missing.length && !opts.allowMissing) fail(`missing binaries (use --allow-missing to skip them):\n  ${missing.join('\n  ')}`);
+if (missing.length && !opts.allowMissing)
+  fail(`missing binaries (use --allow-missing to skip them):\n  ${missing.join('\n  ')}`);
 for (const m of missing) console.warn(`[make-platform-packages] skipping ${m}`);
 if (!plan.length) fail('no platform packages to generate');
 
@@ -184,12 +213,16 @@ if (opts.optionalDeps) {
   if (!pkg.repository && repository) pkg.repository = repository;
   const deps = { ...(pkg.optionalDependencies ?? {}) };
   for (const p of plan) deps[p.name] = opts.version;
-  pkg.optionalDependencies = Object.fromEntries(Object.entries(deps).sort(([a], [b]) => a.localeCompare(b)));
+  pkg.optionalDependencies = Object.fromEntries(
+    Object.entries(deps).sort(([a], [b]) => a.localeCompare(b))
+  );
   if (opts.dryRun) {
     console.log(`[dry-run] ${opts.optionalDeps}: version ${opts.version}, optionalDependencies:`);
     for (const [k, v] of Object.entries(pkg.optionalDependencies)) console.log(`  ${k}: ${v}`);
   } else {
     writeFileSync(f, `${JSON.stringify(pkg, null, 2)}\n`);
-    console.log(`[make-platform-packages] ${opts.optionalDeps}: version ${opts.version}, ${plan.length} optionalDependencies`);
+    console.log(
+      `[make-platform-packages] ${opts.optionalDeps}: version ${opts.version}, ${plan.length} optionalDependencies`
+    );
   }
 }

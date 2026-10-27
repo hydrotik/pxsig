@@ -41,7 +41,14 @@
   ],
   "overrides": [
     {
-      "files": ["**/*.test.ts", "**/*.test.tsx", "**/*.test.js", "**/*.test.mjs", "**/*.test.cjs", "**/test/**"],
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.test.js",
+        "**/*.test.mjs",
+        "**/*.test.cjs",
+        "**/test/**"
+      ],
       "rules": {
         "typescript/no-floating-promises": "off",
         "typescript/unbound-method": "off",

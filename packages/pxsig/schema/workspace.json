@@ -25,7 +25,13 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "port": { "type": "integer", "minimum": 1, "maximum": 65535, "default": 6070, "description": "Port pxsig serve tries first; the next ten are tried if it is taken." }
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 6070,
+          "description": "Port pxsig serve tries first; the next ten are tried if it is taken."
+        }
       }
     }
   }

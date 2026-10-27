@@ -71,11 +71,7 @@ impl PxsigRecord {
 impl PxsigRecord {
     /// Build the committable record from a signature (JS `toRecord`). The caller
     /// supplies `created_at` so the core stays free of wall-clock reads.
-    pub fn from_signature(
-        s: &crate::signature::Signature,
-        source: &str,
-        created_at: &str,
-    ) -> Self {
+    pub fn from_signature(s: &crate::signature::Signature, source: &str, created_at: &str) -> Self {
         Self {
             tool: "pxsig".to_string(),
             version: SPEC_VERSION,

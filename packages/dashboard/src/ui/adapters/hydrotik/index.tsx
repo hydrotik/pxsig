@@ -6,10 +6,24 @@
 import React from 'react';
 import '@hydrotik/design-system/fonts';
 import * as DS from '@hydrotik/design-system';
-import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@hydrotik/design-system/chart';
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@hydrotik/design-system/chart';
 import { ThemeProvider, useTheme } from '@hydrotik/theme-provider';
 import { vars } from '@hydrotik/tokens';
-import { Bar, BarChart as RBarChart, CartesianGrid, Line, LineChart as RLineChart, XAxis, YAxis } from 'recharts';
+import {
+  Bar,
+  BarChart as RBarChart,
+  CartesianGrid,
+  Line,
+  LineChart as RLineChart,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import type * as C from '../../contract';
 import { heatStep } from '../../contract';
 import * as hm from './heatmap.css';
@@ -97,12 +111,19 @@ const navItemProps = ({ href, active, count, countTone, countLabel }: C.NavLinkP
   href,
   active,
   count,
-  countTone: countTone === undefined ? undefined : countTone === 'info' ? ('attention' as const) : ('neutral' as const),
+  countTone:
+    countTone === undefined
+      ? undefined
+      : countTone === 'info'
+        ? ('attention' as const)
+        : ('neutral' as const),
   // A count over 99 shows as "99+": the name says so too, so it contains what is on screen.
   countLabel: count !== undefined && count > 99 ? `99+, ${countLabel ?? count}` : countLabel,
 });
 
-export const NavLink = (p: C.NavLinkProps) => <DS.NavItemLink {...navItemProps(p)}>{p.children}</DS.NavItemLink>;
+export const NavLink = (p: C.NavLinkProps) => (
+  <DS.NavItemLink {...navItemProps(p)}>{p.children}</DS.NavItemLink>
+);
 
 /**
  * The design system's NavItems finds its links by element type (to measure them and move the ones
@@ -122,18 +143,32 @@ export const NavList = ({ children }: C.NavListProps) => (
   </DS.NavItems>
 );
 
-export const NavEnd = ({ className, children }: C.NavEndProps) => <div className={className}>{children}</div>;
+export const NavEnd = ({ className, children }: C.NavEndProps) => (
+  <div className={className}>{children}</div>
+);
 
 // --- core ----------------------------------------------------------------------------------------
 
 const VARIANT = { solid: 'default', outline: 'outline', ghost: 'ghost' } as const;
 
-export function Button({ emphasis = 'solid', size, href, external, children, ...rest }: C.ButtonProps) {
+export function Button({
+  emphasis = 'solid',
+  size,
+  href,
+  external,
+  children,
+  ...rest
+}: C.ButtonProps) {
   const variant = VARIANT[emphasis];
   if (href)
     return (
       <DS.Button asChild size={size} variant={variant}>
-        <a href={href} {...(external ? { target: '_blank', rel: 'noreferrer' } : {})} title={rest.title} aria-label={rest['aria-label']}>
+        <a
+          href={href}
+          {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}
+          title={rest.title}
+          aria-label={rest['aria-label']}
+        >
           {children}
         </a>
       </DS.Button>
@@ -145,20 +180,47 @@ export function Button({ emphasis = 'solid', size, href, external, children, ...
   );
 }
 
-export const IconButton = ({ label, title, emphasis = 'outline', size, disabled, onClick, children }: C.IconButtonProps) => (
-  <DS.Button size={size === 'sm' ? 'icon-sm' : 'icon'} variant={emphasis} aria-label={label} title={title} disabled={disabled} onClick={onClick}>
+export const IconButton = ({
+  label,
+  title,
+  emphasis = 'outline',
+  size,
+  disabled,
+  onClick,
+  children,
+}: C.IconButtonProps) => (
+  <DS.Button
+    size={size === 'sm' ? 'icon-sm' : 'icon'}
+    variant={emphasis}
+    aria-label={label}
+    title={title}
+    disabled={disabled}
+    onClick={onClick}
+  >
     {children}
   </DS.Button>
 );
 
 export const Card = ({ children }: C.CardProps) => <DS.Card>{children}</DS.Card>;
-export const CardHeader = ({ children }: C.CardHeaderProps) => <DS.CardHeader>{children}</DS.CardHeader>;
-export const CardTitle = ({ children }: C.CardTitleProps) => <DS.CardTitle>{children}</DS.CardTitle>;
-export const CardDescription = ({ className, children }: C.CardDescriptionProps) => <DS.CardDescription className={className}>{children}</DS.CardDescription>;
-export const CardContent = ({ children }: C.CardContentProps) => <DS.CardContent>{children}</DS.CardContent>;
+export const CardHeader = ({ children }: C.CardHeaderProps) => (
+  <DS.CardHeader>{children}</DS.CardHeader>
+);
+export const CardTitle = ({ children }: C.CardTitleProps) => (
+  <DS.CardTitle>{children}</DS.CardTitle>
+);
+export const CardDescription = ({ className, children }: C.CardDescriptionProps) => (
+  <DS.CardDescription className={className}>{children}</DS.CardDescription>
+);
+export const CardContent = ({ children }: C.CardContentProps) => (
+  <DS.CardContent>{children}</DS.CardContent>
+);
 
 /** Tone → the stat card's accent (only the states it colours). */
-const ACCENT: Partial<Record<C.Tone, 'success' | 'error' | 'warning'>> = { success: 'success', danger: 'error', warning: 'warning' };
+const ACCENT: Partial<Record<C.Tone, 'success' | 'error' | 'warning'>> = {
+  success: 'success',
+  danger: 'error',
+  warning: 'warning',
+};
 
 export const StatGroup = ({ label, items, layout, className }: C.StatGroupProps) => (
   <DS.StatPanel
@@ -170,7 +232,14 @@ export const StatGroup = ({ label, items, layout, className }: C.StatGroupProps)
       value: it.value,
       ...(it.unit !== undefined ? { unit: it.unit } : {}),
       ...(it.tone ? { accent: ACCENT[it.tone] } : {}),
-      ...(it.onSelect ? { type: 'filter' as const, onSelect: it.onSelect, ...(it.active !== undefined ? { active: it.active } : {}), icon: it.icon } : {}),
+      ...(it.onSelect
+        ? {
+            type: 'filter' as const,
+            onSelect: it.onSelect,
+            ...(it.active !== undefined ? { active: it.active } : {}),
+            icon: it.icon,
+          }
+        : {}),
     }))}
   />
 );
@@ -202,7 +271,14 @@ function Grid<T>({ rows, rowId, columns, onRowClick, search, paginate }: C.DataT
 }
 
 /** Each icon name → a lucide glyph (the design system's icon set). */
-const GLYPH: Record<C.IconName, React.ComponentType<{ 'aria-hidden'?: boolean | 'true'; className?: string; size?: string | number }>> = {
+const GLYPH: Record<
+  C.IconName,
+  React.ComponentType<{
+    'aria-hidden'?: boolean | 'true';
+    className?: string;
+    size?: string | number;
+  }>
+> = {
   check: DS.Icons.CircleCheck,
   alert: DS.Icons.TriangleAlert,
   dot: DS.Icons.CircleDot,
@@ -217,14 +293,42 @@ const GLYPH: Record<C.IconName, React.ComponentType<{ 'aria-hidden'?: boolean | 
   external: DS.Icons.ExternalLink,
 };
 
-const STATUS_TONE: Record<C.Tone, 'neutral' | 'info' | 'success' | 'warning' | 'error'> = { neutral: 'neutral', info: 'info', success: 'success', warning: 'warning', danger: 'error' };
+const STATUS_TONE: Record<C.Tone, 'neutral' | 'info' | 'success' | 'warning' | 'error'> = {
+  neutral: 'neutral',
+  info: 'info',
+  success: 'success',
+  warning: 'warning',
+  danger: 'error',
+};
 
 export const StatusBadge = ({ tone, icon, label, title, className }: C.StatusBadgeProps) => (
-  <DS.StatusBadge label={label} tone={STATUS_TONE[tone]} icon={GLYPH[icon] as never} title={title} className={className} />
+  <DS.StatusBadge
+    label={label}
+    tone={STATUS_TONE[tone]}
+    icon={GLYPH[icon] as never}
+    title={title}
+    className={className}
+  />
 );
 
-export function Badge({ tone = 'neutral', emphasis = 'subtle', pulse, title, className, children }: C.BadgeProps) {
-  const variant = tone === 'neutral' ? (emphasis === 'outline' ? 'outline' : 'secondary') : tone === 'danger' ? 'destructive' : tone === 'info' ? 'default' : tone;
+export function Badge({
+  tone = 'neutral',
+  emphasis = 'subtle',
+  pulse,
+  title,
+  className,
+  children,
+}: C.BadgeProps) {
+  const variant =
+    tone === 'neutral'
+      ? emphasis === 'outline'
+        ? 'outline'
+        : 'secondary'
+      : tone === 'danger'
+        ? 'destructive'
+        : tone === 'info'
+          ? 'default'
+          : tone;
   return (
     <DS.Badge variant={variant} pulse={pulse} title={title} className={className}>
       {children}
@@ -265,10 +369,21 @@ export function Dialog({ open, onOpenChange, initialFocus, className, children }
     </DS.Dialog>
   );
 }
-export const DialogTitle = ({ ref, ...p }: C.DialogTitleProps) => <DS.DialogTitle ref={ref} {...p} />;
+export const DialogTitle = ({ ref, ...p }: C.DialogTitleProps) => (
+  <DS.DialogTitle ref={ref} {...p} />
+);
 export const DialogDescription = (p: C.DialogDescriptionProps) => <DS.DialogDescription {...p} />;
 
-export const Slider = ({ label, value, onValueChange, min, max, step, formatValue, className }: C.SliderProps) => (
+export const Slider = ({
+  label,
+  value,
+  onValueChange,
+  min,
+  max,
+  step,
+  formatValue,
+  className,
+}: C.SliderProps) => (
   <DS.Slider
     className={className}
     label={label}
@@ -282,12 +397,29 @@ export const Slider = ({ label, value, onValueChange, min, max, step, formatValu
   />
 );
 
-export const Switch = ({ checked, onCheckedChange, label }: C.SwitchProps) => <DS.Switch checked={checked} onCheckedChange={onCheckedChange} aria-label={label} />;
+export const Switch = ({ checked, onCheckedChange, label }: C.SwitchProps) => (
+  <DS.Switch checked={checked} onCheckedChange={onCheckedChange} aria-label={label} />
+);
 
-export const SegmentedChoice = ({ label, value, onValueChange, options }: C.SegmentedChoiceProps) => (
-  <DS.ToggleGroup type="single" value={value} onValueChange={(v: string) => v && onValueChange(v)} aria-label={label}>
+export const SegmentedChoice = ({
+  label,
+  value,
+  onValueChange,
+  options,
+}: C.SegmentedChoiceProps) => (
+  <DS.ToggleGroup
+    type="single"
+    value={value}
+    onValueChange={(v: string) => v && onValueChange(v)}
+    aria-label={label}
+  >
     {options.map((o) => (
-      <DS.ToggleGroupItem key={o.value} value={o.value} title={o.title} aria-label={o.accessibleLabel}>
+      <DS.ToggleGroupItem
+        key={o.value}
+        value={o.value}
+        title={o.title}
+        aria-label={o.accessibleLabel}
+      >
         {o.label}
       </DS.ToggleGroupItem>
     ))}
@@ -299,14 +431,24 @@ export const Toolbar = ({ size, className, children }: C.ToolbarProps) => (
     {children}
   </DS.Toolbar>
 );
-export const ToolbarStart = ({ children }: C.ToolbarStartProps) => <DS.ToolbarLeft>{children}</DS.ToolbarLeft>;
-export const ToolbarEnd = ({ children }: C.ToolbarEndProps) => <DS.ToolbarRight>{children}</DS.ToolbarRight>;
+export const ToolbarStart = ({ children }: C.ToolbarStartProps) => (
+  <DS.ToolbarLeft>{children}</DS.ToolbarLeft>
+);
+export const ToolbarEnd = ({ children }: C.ToolbarEndProps) => (
+  <DS.ToolbarRight>{children}</DS.ToolbarRight>
+);
 export const ToolbarField = ({ label, minInlineSize, grow, children }: C.ToolbarFieldProps) => (
-  <DS.ToolbarFormField label={label} minInlineSize={minInlineSize} {...(grow ? { flexGrow: 1 } : {})}>
+  <DS.ToolbarFormField
+    label={label}
+    minInlineSize={minInlineSize}
+    {...(grow ? { flexGrow: 1 } : {})}
+  >
     {children}
   </DS.ToolbarFormField>
 );
-export const ToolbarSummary = ({ live, children }: C.ToolbarSummaryProps) => <DS.ToolbarSummary live={live}>{children}</DS.ToolbarSummary>;
+export const ToolbarSummary = ({ live, children }: C.ToolbarSummaryProps) => (
+  <DS.ToolbarSummary live={live}>{children}</DS.ToolbarSummary>
+);
 
 export const CopyValue = ({ value }: C.CopyValueProps) => <DS.CopyValue value={value} />;
 export const Kbd = ({ children }: C.KbdProps) => <DS.Kbd size="sm">{children}</DS.Kbd>;
@@ -318,7 +460,14 @@ export const Tooltip = ({ content, children }: C.TooltipProps) => (
 );
 
 export function Link({ href, external, title, className, render, children }: C.LinkProps) {
-  if (render) return render({ href, title, className, children, ...(external ? { target: '_blank', rel: 'noreferrer' } : {}) });
+  if (render)
+    return render({
+      href,
+      title,
+      className,
+      children,
+      ...(external ? { target: '_blank', rel: 'noreferrer' } : {}),
+    });
   return (
     <DS.Link href={href} external={external} title={title} className={className}>
       {children}
@@ -327,30 +476,61 @@ export function Link({ href, external, title, className, render, children }: C.L
 }
 
 export const Progress = ({ value, label, showLabel, className }: C.ProgressProps) =>
-  showLabel ? <DS.Progress className={className} value={value} showValue label={label} /> : <DS.Progress className={className} value={value} aria-label={label} />;
+  showLabel ? (
+    <DS.Progress className={className} value={value} showValue label={label} />
+  ) : (
+    <DS.Progress className={className} value={value} aria-label={label} />
+  );
 
 export const KeyValueList = ({ orientation, labelWidth, children }: C.KeyValueListProps) => (
-  <DS.StaticList {...(orientation === 'horizontal' ? { orientation } : {})} {...(labelWidth ? { labelWidth } : {})}>
+  <DS.StaticList
+    {...(orientation === 'horizontal' ? { orientation } : {})}
+    {...(labelWidth ? { labelWidth } : {})}
+  >
     {children}
   </DS.StaticList>
 );
-export const KeyValueItem = ({ label, children }: C.KeyValueItemProps) => <DS.StaticListItem label={label}>{children}</DS.StaticListItem>;
+export const KeyValueItem = ({ label, children }: C.KeyValueItemProps) => (
+  <DS.StaticListItem label={label}>{children}</DS.StaticListItem>
+);
 
 export const Alert = ({ tone, label, children }: C.AlertProps) => (
-  <DS.Alert variant={tone === 'danger' ? 'destructive' : 'default'} aria-label={label} style={{ boxSizing: 'border-box' }}>
+  <DS.Alert
+    variant={tone === 'danger' ? 'destructive' : 'default'}
+    aria-label={label}
+    style={{ boxSizing: 'border-box' }}
+  >
     {children}
   </DS.Alert>
 );
 // The design system's title is an h5; an alert's title is not a heading (the contract), so its role is removed.
-export const AlertTitle = ({ children }: C.AlertTitleProps) => <DS.AlertTitle role="none">{children}</DS.AlertTitle>;
-export const AlertDescription = ({ children }: C.AlertDescriptionProps) => <DS.AlertDescription>{children}</DS.AlertDescription>;
+export const AlertTitle = ({ children }: C.AlertTitleProps) => (
+  <DS.AlertTitle role="none">{children}</DS.AlertTitle>
+);
+export const AlertDescription = ({ children }: C.AlertDescriptionProps) => (
+  <DS.AlertDescription>{children}</DS.AlertDescription>
+);
 
-export const SearchField = ({ id, value, onValueChange, placeholder }: C.SearchFieldProps) => <DS.SearchBar id={id} value={value} onValueChange={onValueChange} placeholder={placeholder} />;
+export const SearchField = ({ id, value, onValueChange, placeholder }: C.SearchFieldProps) => (
+  <DS.SearchBar id={id} value={value} onValueChange={onValueChange} placeholder={placeholder} />
+);
 
-export const Select = ({ id, value, onValueChange, options, label, size, inlineSize }: C.SelectProps) => (
+export const Select = ({
+  id,
+  value,
+  onValueChange,
+  options,
+  label,
+  size,
+  inlineSize,
+}: C.SelectProps) => (
   // The root passes `id` on to its trigger (untyped), so a toolbar field's label names it.
   <DS.Select {...((id ? { id } : {}) as object)} value={value} onValueChange={onValueChange}>
-    <DS.SelectTrigger {...(size ? { size } : {})} {...(label ? { 'aria-label': label } : {})} {...(inlineSize ? { style: { inlineSize } } : {})}>
+    <DS.SelectTrigger
+      {...(size ? { size } : {})}
+      {...(label ? { 'aria-label': label } : {})}
+      {...(inlineSize ? { style: { inlineSize } } : {})}
+    >
       <DS.SelectValue />
     </DS.SelectTrigger>
     <DS.SelectContent>
@@ -368,19 +548,41 @@ export const Select = ({ id, value, onValueChange, options, label, size, inlineS
 /** Categorical colours from the chart tokens, in a fixed order; text stays in text tokens. */
 const SERIES = [vars.color.chart1, vars.color.chart2, vars.color.chart3, vars.color.chart4];
 
-export function Chart({ kind, data, series, x, format = (v: number) => String(v), max, height, className }: C.ChartProps) {
-  const config = Object.fromEntries(series.map((sd, i) => [sd.key, { label: sd.label, color: SERIES[i % SERIES.length] }]));
+export function Chart({
+  kind,
+  data,
+  series,
+  x,
+  format = (v: number) => String(v),
+  max,
+  height,
+  className,
+}: C.ChartProps) {
+  const config = Object.fromEntries(
+    series.map((sd, i) => [sd.key, { label: sd.label, color: SERIES[i % SERIES.length] }])
+  );
   return (
     <ChartContainer config={config} className={className} style={{ blockSize: height }}>
       {kind === 'bar' ? (
         <RBarChart data={data} layout="vertical" margin={{ left: 8, right: 24 }} barGap={2}>
           <CartesianGrid horizontal={false} />
-          <XAxis type="number" domain={[0, max ?? 'auto']} tickFormatter={format} tickLine={false} axisLine={false} />
+          <XAxis
+            type="number"
+            domain={[0, max ?? 'auto']}
+            tickFormatter={format}
+            tickLine={false}
+            axisLine={false}
+          />
           <YAxis type="category" dataKey={x} width={150} tickLine={false} axisLine={false} />
           <ChartTooltip content={<ChartTooltipContent />} />
           {series.length > 1 ? <ChartLegend content={<ChartLegendContent />} /> : null}
           {series.map((sd) => (
-            <Bar key={sd.key} dataKey={sd.key} fill={`var(--color-${sd.key})`} radius={[0, 4, 4, 0]} />
+            <Bar
+              key={sd.key}
+              dataKey={sd.key}
+              fill={`var(--color-${sd.key})`}
+              radius={[0, 4, 4, 0]}
+            />
           ))}
         </RBarChart>
       ) : (
@@ -393,7 +595,15 @@ export function Chart({ kind, data, series, x, format = (v: number) => String(v)
           {series.map((sd) => (
             // Points are solid in the series colour, no outline, smaller than the line's weight
             // suggests, so the line reads first; the one under the pointer grows a little.
-            <Line key={sd.key} dataKey={sd.key} stroke={`var(--color-${sd.key})`} strokeWidth={2} dot={{ r: 2.5, fill: `var(--color-${sd.key})`, stroke: 'none', strokeWidth: 0 }} activeDot={{ r: 3.5, fill: `var(--color-${sd.key})`, stroke: 'none', strokeWidth: 0 }} isAnimationActive={false} />
+            <Line
+              key={sd.key}
+              dataKey={sd.key}
+              stroke={`var(--color-${sd.key})`}
+              strokeWidth={2}
+              dot={{ r: 2.5, fill: `var(--color-${sd.key})`, stroke: 'none', strokeWidth: 0 }}
+              activeDot={{ r: 3.5, fill: `var(--color-${sd.key})`, stroke: 'none', strokeWidth: 0 }}
+              isAnimationActive={false}
+            />
           ))}
         </RLineChart>
       )}
@@ -412,7 +622,8 @@ const INK_FROM = { light: 6, dark: 6 } as const; // no step needs it on the char
 export function Heatmap({ label, cells, legend, onSelect, className }: C.HeatmapProps) {
   const { theme } = useTheme();
   const from = INK_FROM[theme === 'light' ? 'light' : 'dark'];
-  const cls = (n: number) => [hm.tile, hm.step[n as 0], n >= from ? hm.inverse : ''].filter(Boolean).join(' ');
+  const cls = (n: number) =>
+    [hm.tile, hm.step[n as 0], n >= from ? hm.inverse : ''].filter(Boolean).join(' ');
   return (
     <div className={[hm.root, className].filter(Boolean).join(' ')}>
       <ul className={hm.grid} aria-label={label}>
@@ -421,14 +632,20 @@ export function Heatmap({ label, cells, legend, onSelect, className }: C.Heatmap
           const name = c.accessibleLabel ?? `${c.label}, ${c.text}`;
           const body = (
             <>
-              <span className={hm.name}>{c.label}</span>{' '}
-              <span className={hm.figure}>{c.text}</span>
+              <span className={hm.name}>{c.label}</span> <span className={hm.figure}>{c.text}</span>
             </>
           );
           return (
             <li key={c.id}>
               {onSelect ? (
-                <button type="button" className={cls(n)} aria-label={name} title={name} data-step={n} onClick={() => onSelect(c)}>
+                <button
+                  type="button"
+                  className={cls(n)}
+                  aria-label={name}
+                  title={name}
+                  data-step={n}
+                  onClick={() => onSelect(c)}
+                >
                   {body}
                 </button>
               ) : (

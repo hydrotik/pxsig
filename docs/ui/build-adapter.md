@@ -13,14 +13,14 @@ chosen once, at build time.
 
 Read, in `node_modules/pxsig/` (or `packages/dashboard/` in a clone of pxsig):
 
-| File | What it gives you |
-| --- | --- |
-| `dashboard/src/ui/contract.ts` | Every component's props, as TypeScript, and the 11 contract rules. The source of truth: where this page and the contract differ, the contract wins. |
-| `dashboard/src/ui/tokens.ts` | The neutral theme tokens your adapter must map. |
-| `docs/ui/features.md` | Every dashboard feature and the components it renders: what your components will be used for. |
-| `dashboard/src/ui/adapters/hydrotik/` | The reference adapter: a worked mapping onto a real design system. |
-| `dashboard/src/ui/fallbacks.tsx` | What each optional component looks like when you leave it out. |
-| `docs/ui/catalog/` | The reference design system's components: what each does, which ones the reference adapter uses, and the equivalent in 11 other design systems. A starting point for the mapping questions below ([README](catalog/README.md)). |
+| File                                  | What it gives you                                                                                                                                                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dashboard/src/ui/contract.ts`        | Every component's props, as TypeScript, and the 11 contract rules. The source of truth: where this page and the contract differ, the contract wins.                                                                             |
+| `dashboard/src/ui/tokens.ts`          | The neutral theme tokens your adapter must map.                                                                                                                                                                                 |
+| `docs/ui/features.md`                 | Every dashboard feature and the components it renders: what your components will be used for.                                                                                                                                   |
+| `dashboard/src/ui/adapters/hydrotik/` | The reference adapter: a worked mapping onto a real design system.                                                                                                                                                              |
+| `dashboard/src/ui/fallbacks.tsx`      | What each optional component looks like when you leave it out.                                                                                                                                                                  |
+| `docs/ui/catalog/`                    | The reference design system's components: what each does, which ones the reference adapter uses, and the equivalent in 11 other design systems. A starting point for the mapping questions below ([README](catalog/README.md)). |
 
 The types are importable: `import type * as C from 'pxsig/dashboard'`.
 
@@ -60,13 +60,18 @@ command to run; it never builds by itself. `PXSIG_DASHBOARD_DIR` overrides both.
 5. Beside it, `conformance.json` says how fully you cover each component:
 
    ```json
-   { "adapter": "acme", "contract": "1.1.0", "components": { "Button": { "status": "full", "note": "Acme Button" } } }
+   {
+     "adapter": "acme",
+     "contract": "1.1.0",
+     "components": { "Button": { "status": "full", "note": "Acme Button" } }
+   }
    ```
 
    Status is `full` (your design system's component, all behaviour), `partial` (some behaviour
    missing: say which in the note), `bespoke` (built for the adapter from primitives) or `missing`.
    `contract` is the UI contract version you wrote the adapter for (see
    [The contract version](#the-contract-version)); without it, 1.0.0.
+
 6. Optional: a `vite.mjs` whose default export returns build settings your design system needs:
    `{ alias: { name: path }, allow: [folders], optimizeDepsExclude: [names] }`.
 
@@ -136,16 +141,16 @@ The dashboard's own stylesheets read `var(--pxsig-<group>-<name>)`; your `tokens
 value. Point colours at your design system's CSS variables so they follow the theme mode; a
 literal colour does not switch with it.
 
-| Group | Names | Used for |
-| --- | --- | --- |
-| `color` | `background`, `surface`, `surfaceRaised`, `border`, `text`, `textMuted`, `accent`, `focus`, `hover`, `success`, `warning`, `danger` | page, cards, the transparency checker, edges, text, links and selection, focus outlines, hover washes, verdict edges |
-| `space` | `0_5`, `1`, `1_5`, `2`, `2_5`, `3`, `4`, `5`, `6`, `8`, `12` | gaps and padding; `1` is 0.25rem in the reference |
-| `radius` | `sm`, `md`, `lg` | corners |
-| `font` | `sans`, `mono` | families |
-| `fontSize` | `3xs`, `2xs`, `xs`, `sm`, `lg` | micro labels to section titles |
-| `fontWeight`, `lineHeight`, `letterSpacing` | `semibold`, `relaxed`, `caps` | headings, running text, tracked caps |
-| `line` | `emphasis` | the verdict edge on a card (2px in the reference) |
-| `motion` | `fast` | hover colour changes (120ms in the reference) |
+| Group                                       | Names                                                                                                                               | Used for                                                                                                             |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `color`                                     | `background`, `surface`, `surfaceRaised`, `border`, `text`, `textMuted`, `accent`, `focus`, `hover`, `success`, `warning`, `danger` | page, cards, the transparency checker, edges, text, links and selection, focus outlines, hover washes, verdict edges |
+| `space`                                     | `0_5`, `1`, `1_5`, `2`, `2_5`, `3`, `4`, `5`, `6`, `8`, `12`                                                                        | gaps and padding; `1` is 0.25rem in the reference                                                                    |
+| `radius`                                    | `sm`, `md`, `lg`                                                                                                                    | corners                                                                                                              |
+| `font`                                      | `sans`, `mono`                                                                                                                      | families                                                                                                             |
+| `fontSize`                                  | `3xs`, `2xs`, `xs`, `sm`, `lg`                                                                                                      | micro labels to section titles                                                                                       |
+| `fontWeight`, `lineHeight`, `letterSpacing` | `semibold`, `relaxed`, `caps`                                                                                                       | headings, running text, tracked caps                                                                                 |
+| `line`                                      | `emphasis`                                                                                                                          | the verdict edge on a card (2px in the reference)                                                                    |
+| `motion`                                    | `fast`                                                                                                                              | hover colour changes (120ms in the reference)                                                                        |
 
 Mapping questions: Which of your variables switch with the theme? Which of your surfaces is a
 card and which a page? Is your accent accessible on both backgrounds?

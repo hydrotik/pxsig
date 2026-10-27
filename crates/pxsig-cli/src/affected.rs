@@ -61,15 +61,25 @@ pub struct Changes {
 }
 
 fn git_raw(dir: &Path, args: &[&str]) -> Result<Vec<u8>> {
-    let out = Command::new("git").args(args).current_dir(dir).output().context("running git")?;
+    let out = Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .context("running git")?;
     if !out.status.success() {
-        bail!("git {}: {}", args.join(" "), String::from_utf8_lossy(&out.stderr).trim());
+        bail!(
+            "git {}: {}",
+            args.join(" "),
+            String::from_utf8_lossy(&out.stderr).trim()
+        );
     }
     Ok(out.stdout)
 }
 
 fn git_line(dir: &Path, args: &[&str]) -> Result<String> {
-    Ok(String::from_utf8_lossy(&git_raw(dir, args)?).trim_end_matches(['\n', '\r']).to_string())
+    Ok(String::from_utf8_lossy(&git_raw(dir, args)?)
+        .trim_end_matches(['\n', '\r'])
+        .to_string())
 }
 
 /// The repository top level and the workspace's prefix inside it (`""` or `ws/`).
@@ -90,15 +100,33 @@ fn from_repo(prefix: &str, p: &str) -> String {
 /// `git diff --name-status -z` output: `S\0path\0`, or `R<score>\0old\0new\0` for renames and
 /// copies. A rename contributes both paths: the new one, and the old one as deleted.
 fn parse_name_status(raw: &[u8], prefix: &str, out: &mut Vec<Change>) {
-    let mut it = raw.split(|&b| b == 0).map(|t| String::from_utf8_lossy(t).into_owned());
+    let mut it = raw
+        .split(|&b| b == 0)
+        .map(|t| String::from_utf8_lossy(t).into_owned());
     while let Some(st) = it.next() {
-        let Some(status) = st.chars().next() else { continue };
+        let Some(status) = st.chars().next() else {
+            continue;
+        };
         if matches!(status, 'R' | 'C') {
-            let (Some(old), Some(new)) = (it.next(), it.next()) else { break };
-            out.push(Change { path: from_repo(prefix, &new), status, from: Some(from_repo(prefix, &old)) });
-            out.push(Change { path: from_repo(prefix, &old), status: if status == 'R' { 'D' } else { 'M' }, from: None });
+            let (Some(old), Some(new)) = (it.next(), it.next()) else {
+                break;
+            };
+            out.push(Change {
+                path: from_repo(prefix, &new),
+                status,
+                from: Some(from_repo(prefix, &old)),
+            });
+            out.push(Change {
+                path: from_repo(prefix, &old),
+                status: if status == 'R' { 'D' } else { 'M' },
+                from: None,
+            });
         } else if let Some(p) = it.next() {
-            out.push(Change { path: from_repo(prefix, &p), status, from: None });
+            out.push(Change {
+                path: from_repo(prefix, &p),
+                status,
+                from: None,
+            });
         }
     }
 }
@@ -108,22 +136,45 @@ fn parse_name_status(raw: &[u8], prefix: &str, out: &mut Vec<Change>) {
 /// against `since` itself. `since` that does not resolve is an error (exit 2).
 pub fn changes_since(root: &Path, since: &str) -> Result<Changes> {
     let (top, prefix) = repo_of(root)?;
-    if git_raw(&top, &["rev-parse", "--verify", "--quiet", &format!("{since}^{{commit}}")]).is_err() {
+    if git_raw(
+        &top,
+        &[
+            "rev-parse",
+            "--verify",
+            "--quiet",
+            &format!("{since}^{{commit}}"),
+        ],
+    )
+    .is_err()
+    {
         bail!("git: `{since}` is not a commit here (fetch it, or pass another --since)");
     }
-    let mut ch = Changes { top: Some(top.clone()), prefix: prefix.clone(), ..Default::default() };
+    let mut ch = Changes {
+        top: Some(top.clone()),
+        prefix: prefix.clone(),
+        ..Default::default()
+    };
     let mut files = Vec::new();
     match git_line(&top, &["merge-base", since, "HEAD"]) {
         Ok(base) => {
-            parse_name_status(&git_raw(&top, &["diff", "--name-status", "-M", "-z", &base, "HEAD"])?, &prefix, &mut files);
+            parse_name_status(
+                &git_raw(&top, &["diff", "--name-status", "-M", "-z", &base, "HEAD"])?,
+                &prefix,
+                &mut files,
+            );
             ch.base = Some(base.clone());
             ch.merge_base = Some(base);
         }
         Err(_) => {
-            let shallow = git_line(&top, &["rev-parse", "--is-shallow-repository"]).is_ok_and(|s| s == "true");
+            let shallow = git_line(&top, &["rev-parse", "--is-shallow-repository"])
+                .is_ok_and(|s| s == "true");
             let why = format!(
                 "no merge base between {since} and HEAD{}: every entry selected",
-                if shallow { " (shallow clone: fetch with fetch-depth: 0)" } else { "" }
+                if shallow {
+                    " (shallow clone: fetch with fetch-depth: 0)"
+                } else {
+                    ""
+                }
             );
             eprintln!("[pxsig] {why}");
             ch.warnings.push(why.clone());
@@ -131,11 +182,34 @@ pub fn changes_since(root: &Path, since: &str) -> Result<Changes> {
             ch.base = Some("HEAD".into());
         }
     }
-    parse_name_status(&git_raw(&top, &["diff", "--name-status", "-M", "-z"])?, &prefix, &mut files);
-    parse_name_status(&git_raw(&top, &["diff", "--name-status", "-M", "-z", "--cached"])?, &prefix, &mut files);
-    for p in git_raw(&top, &["ls-files", "--others", "--exclude-standard", "-z", "--full-name"])?.split(|&b| b == 0) {
+    parse_name_status(
+        &git_raw(&top, &["diff", "--name-status", "-M", "-z"])?,
+        &prefix,
+        &mut files,
+    );
+    parse_name_status(
+        &git_raw(&top, &["diff", "--name-status", "-M", "-z", "--cached"])?,
+        &prefix,
+        &mut files,
+    );
+    for p in git_raw(
+        &top,
+        &[
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+            "-z",
+            "--full-name",
+        ],
+    )?
+    .split(|&b| b == 0)
+    {
         if !p.is_empty() {
-            files.push(Change { path: from_repo(&prefix, &String::from_utf8_lossy(p)), status: '?', from: None });
+            files.push(Change {
+                path: from_repo(&prefix, &String::from_utf8_lossy(p)),
+                status: '?',
+                from: None,
+            });
         }
     }
     ch.files = dedup(files);
@@ -163,31 +237,59 @@ pub fn changes_from_files(root: &Path, files: &[String]) -> Changes {
                     p = format!("$repo/{}", repo_relative(top, &p));
                 }
             }
-            let status = if p.starts_with("$repo/") || root.join(&p).exists() { 'M' } else { 'D' };
-            Change { path: p, status, from: None }
+            let status = if p.starts_with("$repo/") || root.join(&p).exists() {
+                'M'
+            } else {
+                'D'
+            };
+            Change {
+                path: p,
+                status,
+                from: None,
+            }
         })
         .collect();
     let (top, prefix) = repo.map_or((None, String::new()), |(t, p)| (Some(t), p));
-    Changes { files: dedup(files), base: top.as_ref().map(|_| "HEAD".into()), explicit: true, top, prefix, ..Default::default() }
+    Changes {
+        files: dedup(files),
+        base: top.as_ref().map(|_| "HEAD".into()),
+        explicit: true,
+        top,
+        prefix,
+        ..Default::default()
+    }
 }
 
 /// `path` relative to `root` once both are resolved through symlinks (a deleted file: through its folder).
 fn real_relative(root: &Path, path: &Path) -> Option<String> {
-    let real = fs::canonicalize(path).ok().or_else(|| Some(fs::canonicalize(path.parent()?).ok()?.join(path.file_name()?)))?;
+    let real = fs::canonicalize(path).ok().or_else(|| {
+        Some(
+            fs::canonicalize(path.parent()?)
+                .ok()?
+                .join(path.file_name()?),
+        )
+    })?;
     let rest = real.strip_prefix(fs::canonicalize(root).ok()?).ok()?;
     Some(crate::io::to_slash(rest))
 }
 
 fn dedup(files: Vec<Change>) -> Vec<Change> {
     let mut seen = HashSet::new();
-    files.into_iter().filter(|c| seen.insert(c.path.clone())).collect()
+    files
+        .into_iter()
+        .filter(|c| seen.insert(c.path.clone()))
+        .collect()
 }
 
 impl Changes {
     /// The base side of a workspace file (empty when absent there, or when there is no git).
     fn base_text(&self, ws_path: &str) -> String {
-        let (Some(top), Some(base)) = (&self.top, &self.base) else { return String::new() };
-        git_raw(top, &["show", &format!("{base}:{}{ws_path}", self.prefix)]).map(|b| String::from_utf8_lossy(&b).into_owned()).unwrap_or_default()
+        let (Some(top), Some(base)) = (&self.top, &self.base) else {
+            return String::new();
+        };
+        git_raw(top, &["show", &format!("{base}:{}{ws_path}", self.prefix)])
+            .map(|b| String::from_utf8_lossy(&b).into_owned())
+            .unwrap_or_default()
     }
 }
 
@@ -211,11 +313,20 @@ fn norm_str(p: &str) -> String {
 }
 
 fn is_module(p: &Path) -> bool {
-    p.extension().and_then(|x| x.to_str()).is_some_and(|x| MODULES.contains(&x))
+    p.extension()
+        .and_then(|x| x.to_str())
+        .is_some_and(|x| MODULES.contains(&x))
 }
 
 /// Folders never walked: dependencies, build output, pxsig's own files.
-const SKIP_DIRS: [&str; 6] = ["node_modules", "dist", ".turbo", "__pixels__", "__pxsig__", ".git"];
+const SKIP_DIRS: [&str; 6] = [
+    "node_modules",
+    "dist",
+    ".turbo",
+    "__pixels__",
+    "__pxsig__",
+    ".git",
+];
 
 fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(rd) = fs::read_dir(dir) else { return };
@@ -252,8 +363,18 @@ pub struct Graph {
     pub remote: Vec<(String, String, usize)>,
 }
 
-pub fn graph(root: &Path, m: &Manifest, src_root: &str, top: Option<PathBuf>, deleted: &[String]) -> Graph {
-    let aliases: Vec<(String, String)> = m.affects_aliases.iter().map(|(k, v)| (k.clone(), norm_str(v))).collect();
+pub fn graph(
+    root: &Path,
+    m: &Manifest,
+    src_root: &str,
+    top: Option<PathBuf>,
+    deleted: &[String],
+) -> Graph {
+    let aliases: Vec<(String, String)> = m
+        .affects_aliases
+        .iter()
+        .map(|(k, v)| (k.clone(), norm_str(v)))
+        .collect();
     let mut r = Resolver::new(root, top, &aliases, deleted.iter().cloned().collect());
     let mut nodes: HashSet<String> = deleted.iter().cloned().collect();
     let mut walked: HashSet<String> = HashSet::new();
@@ -290,11 +411,17 @@ pub fn graph(root: &Path, m: &Manifest, src_root: &str, top: Option<PathBuf>, de
         }
         let Some(f) = queue.pop_front() else { break };
         let Some(code) = scanner(&f) else { continue };
-        let Ok(text) = fs::read_to_string(r.abs_of(&f)) else { continue };
+        let Ok(text) = fs::read_to_string(r.abs_of(&f)) else {
+            continue;
+        };
         if text.len() > 4 << 20 {
             continue;
         }
-        for x in if code { scan_code(&text) } else { scan_style(&text) } {
+        for x in if code {
+            scan_code(&text)
+        } else {
+            scan_style(&text)
+        } {
             match r.resolve(&f, &x, !code) {
                 Target::File(k) => {
                     add(&mut nodes, &mut queue, k.clone());
@@ -313,7 +440,12 @@ pub fn graph(root: &Path, m: &Manifest, src_root: &str, top: Option<PathBuf>, de
                     patterns.push((t, f.clone()));
                 }
                 Target::Remote(u) => remote.push((f.clone(), u, x.line)),
-                Target::Unresolved(why) => unresolved.push(Unresolved { file: f.clone(), spec: x.text(), line: x.line, why }),
+                Target::Unresolved(why) => unresolved.push(Unresolved {
+                    file: f.clone(),
+                    spec: x.text(),
+                    line: x.line,
+                    why,
+                }),
                 Target::External | Target::Skip => {}
             }
         }
@@ -336,7 +468,12 @@ pub fn graph(root: &Path, m: &Manifest, src_root: &str, top: Option<PathBuf>, de
     for (t, from) in edges {
         rev.entry(key(&t)).or_default().push(key(&from));
     }
-    Graph { nodes: nodes.iter().map(|n| key(n)).collect(), rev, unresolved, remote }
+    Graph {
+        nodes: nodes.iter().map(|n| key(n)).collect(),
+        rev,
+        unresolved,
+        remote,
+    }
 }
 
 /// A changed file as `--files` may give it (repo-relative or absolute, either separator on Windows),
@@ -344,16 +481,30 @@ pub fn graph(root: &Path, m: &Manifest, src_root: &str, top: Option<PathBuf>, de
 /// Windows paths compare case-insensitively (`C:\Repo` and `c:\repo` are one folder).
 pub fn repo_relative(root: &Path, f: &str) -> String {
     let windows = std::path::MAIN_SEPARATOR == '\\';
-    let f = if windows { f.replace('\\', "/") } else { f.to_string() };
+    let f = if windows {
+        f.replace('\\', "/")
+    } else {
+        f.to_string()
+    };
     if !Path::new(&f).is_absolute() {
         return f.trim_start_matches("./").to_string();
     }
-    let root = if root.is_absolute() { root.to_path_buf() } else { std::env::current_dir().map(|d| d.join(root)).unwrap_or_else(|_| root.to_path_buf()) };
+    let root = if root.is_absolute() {
+        root.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .map(|d| d.join(root))
+            .unwrap_or_else(|_| root.to_path_buf())
+    };
     let mut base = crate::io::to_slash(&normalize(&root));
     if !base.ends_with('/') {
         base.push('/');
     }
-    let starts = if windows { f.to_lowercase().starts_with(&base.to_lowercase()) } else { f.starts_with(&base) };
+    let starts = if windows {
+        f.to_lowercase().starts_with(&base.to_lowercase())
+    } else {
+        f.starts_with(&base)
+    };
     match f.get(base.len()..) {
         Some(rest) if starts => rest.to_string(),
         _ => f,
@@ -363,13 +514,21 @@ pub fn repo_relative(root: &Path, f: &str) -> String {
 /// `affects.ignore` globs: `*` within a segment, `**` any depth, `?`, `{a,b}`; a trailing `/`
 /// matches the folder's contents. Matched on `/` paths.
 pub fn glob_match(pattern: &str, path: &str) -> bool {
-    let pattern = if pattern.ends_with('/') { format!("{pattern}**") } else { pattern.to_string() };
+    let pattern = if pattern.ends_with('/') {
+        format!("{pattern}**")
+    } else {
+        pattern.to_string()
+    };
     let path: Vec<char> = path.chars().collect();
-    expand_braces(&pattern).iter().any(|p| glob_chars(&p.chars().collect::<Vec<_>>(), &path))
+    expand_braces(&pattern)
+        .iter()
+        .any(|p| glob_chars(&p.chars().collect::<Vec<_>>(), &path))
 }
 
 fn expand_braces(p: &str) -> Vec<String> {
-    let Some(open) = p.find('{') else { return vec![p.to_string()] };
+    let Some(open) = p.find('{') else {
+        return vec![p.to_string()];
+    };
     let mut depth = 0;
     let mut close = None;
     let mut parts = Vec::new();
@@ -392,9 +551,14 @@ fn expand_braces(p: &str) -> Vec<String> {
             _ => {}
         }
     }
-    let Some(close) = close else { return vec![p.to_string()] };
+    let Some(close) = close else {
+        return vec![p.to_string()];
+    };
     let (head, tail) = (&p[..open], &p[close + 1..]);
-    parts.iter().flat_map(|alt| expand_braces(&format!("{head}{alt}{tail}"))).collect()
+    parts
+        .iter()
+        .flat_map(|alt| expand_braces(&format!("{head}{alt}{tail}")))
+        .collect()
 }
 
 fn glob_chars(p: &[char], s: &[char]) -> bool {
@@ -404,7 +568,8 @@ fn glob_chars(p: &[char], s: &[char]) -> bool {
             let rest = &p[2..];
             if rest.first() == Some(&'/') {
                 // `**/`: nothing, or any run of whole segments
-                glob_chars(&rest[1..], s) || (1..=s.len()).any(|i| s[i - 1] == '/' && glob_chars(&rest[1..], &s[i..]))
+                glob_chars(&rest[1..], s)
+                    || (1..=s.len()).any(|i| s[i - 1] == '/' && glob_chars(&rest[1..], &s[i..]))
             } else {
                 (0..=s.len()).any(|i| glob_chars(rest, &s[i..]))
             }
@@ -435,14 +600,19 @@ fn under(path: &str, dir: &str) -> bool {
 enum RecordDiff {
     /// Every entry it covers (a rewritten log, a side that does not parse, a top-level change).
     All(String),
-    Ids { ids: Vec<String>, removed: Vec<String> },
+    Ids {
+        ids: Vec<String>,
+        removed: Vec<String>,
+    },
 }
 
 fn parse_obj(text: &str, empty: Value) -> Option<Value> {
     if text.trim().is_empty() {
         return Some(empty);
     }
-    serde_json::from_str::<Value>(text).ok().filter(Value::is_object)
+    serde_json::from_str::<Value>(text)
+        .ok()
+        .filter(Value::is_object)
 }
 
 fn diff_a11y(base: &str, now: &str) -> RecordDiff {
@@ -450,10 +620,18 @@ fn diff_a11y(base: &str, now: &str) -> RecordDiff {
         return RecordDiff::All("a11y.json does not parse".into());
     };
     let (a, b) = (a.as_object().unwrap(), b.as_object().unwrap());
-    let mut ids: Vec<String> = a.keys().chain(b.keys()).filter(|k| a.get(*k) != b.get(*k)).cloned().collect();
+    let mut ids: Vec<String> = a
+        .keys()
+        .chain(b.keys())
+        .filter(|k| a.get(*k) != b.get(*k))
+        .cloned()
+        .collect();
     ids.sort();
     ids.dedup();
-    RecordDiff::Ids { ids, removed: vec![] }
+    RecordDiff::Ids {
+        ids,
+        removed: vec![],
+    }
 }
 
 fn diff_manifest(base: &str, now: &str) -> RecordDiff {
@@ -463,17 +641,33 @@ fn diff_manifest(base: &str, now: &str) -> RecordDiff {
     };
     let (ao, bo) = (a.as_object().unwrap(), b.as_object().unwrap());
     let top = |o: &serde_json::Map<String, Value>| -> BTreeMap<String, Value> {
-        o.iter().filter(|(k, _)| !matches!(k.as_str(), "stories" | "skipped")).map(|(k, v)| (k.clone(), v.clone())).collect()
+        o.iter()
+            .filter(|(k, _)| !matches!(k.as_str(), "stories" | "skipped"))
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
     };
     if !base.trim().is_empty() && top(ao) != top(bo) {
         return RecordDiff::All("a manifest setting changed".into());
     }
     let by_id = |v: &Value| -> BTreeMap<String, Value> {
-        v["stories"].as_array().into_iter().flatten().filter_map(|e| e["id"].as_str().map(|id| (id.to_string(), e.clone()))).collect()
+        v["stories"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|e| e["id"].as_str().map(|id| (id.to_string(), e.clone())))
+            .collect()
     };
     let (sa, sb) = (by_id(&a), by_id(&b));
-    let ids = sb.iter().filter(|(id, e)| sa.get(*id) != Some(e)).map(|(id, _)| id.clone()).collect();
-    let removed = sa.keys().filter(|id| !sb.contains_key(*id)).cloned().collect();
+    let ids = sb
+        .iter()
+        .filter(|(id, e)| sa.get(*id) != Some(e))
+        .map(|(id, _)| id.clone())
+        .collect();
+    let removed = sa
+        .keys()
+        .filter(|id| !sb.contains_key(*id))
+        .cloned()
+        .collect();
     RecordDiff::Ids { ids, removed }
 }
 
@@ -482,15 +676,24 @@ fn diff_log(base: &str, now: &str, name: &str) -> RecordDiff {
         return RecordDiff::All(format!("{name} was rewritten, not appended to"));
     };
     let mut ids = Vec::new();
-    for line in String::from_utf8_lossy(appended).lines().filter(|l| !l.trim().is_empty()) {
-        match serde_json::from_str::<Value>(line).ok().and_then(|v| v["id"].as_str().map(String::from)) {
+    for line in String::from_utf8_lossy(appended)
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+    {
+        match serde_json::from_str::<Value>(line)
+            .ok()
+            .and_then(|v| v["id"].as_str().map(String::from))
+        {
             Some(id) => ids.push(id),
             None => return RecordDiff::All(format!("an appended {name} line does not parse")),
         }
     }
     ids.sort();
     ids.dedup();
-    RecordDiff::Ids { ids, removed: vec![] }
+    RecordDiff::Ids {
+        ids,
+        removed: vec![],
+    }
 }
 
 /// The entries of the store's other manifests, by id and by baseline path, and each suite's size.
@@ -501,15 +704,23 @@ struct OtherSuites {
 }
 
 fn other_suites(root: &Path, store: Option<&StoreInfo>) -> OtherSuites {
-    let mut o = OtherSuites { by_id: HashMap::new(), by_sig: HashMap::new(), size: HashMap::new() };
+    let mut o = OtherSuites {
+        by_id: HashMap::new(),
+        by_sig: HashMap::new(),
+        size: HashMap::new(),
+    };
     let Some(store) = store else { return o };
     let this = store.suite.clone().unwrap_or_default();
     for (suite, path) in &store.manifests {
         if *suite == this {
             continue;
         }
-        let Ok(text) = fs::read_to_string(root.join(path)) else { continue };
-        let Ok(v) = serde_json::from_str::<Value>(&text) else { continue };
+        let Ok(text) = fs::read_to_string(root.join(path)) else {
+            continue;
+        };
+        let Ok(v) = serde_json::from_str::<Value>(&text) else {
+            continue;
+        };
         let stories = v["stories"].as_array().cloned().unwrap_or_default();
         o.size.insert(suite.clone(), stories.len());
         for e in stories {
@@ -533,7 +744,10 @@ fn record_kind(s: &StoreInfo, p: &str) -> Option<(&'static str, Option<String>)>
     if is(&s.approvals) || is(&s.a11y_decisions) {
         return Some(("log", None));
     }
-    s.manifests.iter().find(|(_, path)| norm_str(path) == p).map(|(suite, _)| ("manifest", Some(suite.clone())))
+    s.manifests
+        .iter()
+        .find(|(_, path)| norm_str(path) == p)
+        .map(|(suite, _)| ("manifest", Some(suite.clone())))
 }
 
 /// One classified path: (class, selects, n, why).
@@ -548,11 +762,21 @@ pub fn affected(root: &Path, m: &Manifest, ch: &Changes) -> Result<Value> {
     let others = other_suites(root, store);
     let all_ids: Vec<String> = m.stories.iter().map(|s| s.id.clone()).collect();
     let in_manifest: HashSet<&str> = all_ids.iter().map(String::as_str).collect();
-    let by_sig: HashMap<String, &str> = m.stories.iter().map(|s| (norm_str(&s.sig), s.id.as_str())).collect();
-    let story_file = |s: &crate::batch::Entry| s.import_path.as_deref().map(|p| normalize(Path::new(p)));
+    let by_sig: HashMap<String, &str> = m
+        .stories
+        .iter()
+        .map(|s| (norm_str(&s.sig), s.id.as_str()))
+        .collect();
+    let story_file =
+        |s: &crate::batch::Entry| s.import_path.as_deref().map(|p| normalize(Path::new(p)));
     let story_files: HashSet<PathBuf> = m.stories.iter().filter_map(story_file).collect();
 
-    let deleted: Vec<String> = ch.files.iter().filter(|c| c.status == 'D' && !c.path.starts_with("$repo/")).map(|c| norm_str(&c.path)).collect();
+    let deleted: Vec<String> = ch
+        .files
+        .iter()
+        .filter(|c| c.status == 'D' && !c.path.starts_with("$repo/"))
+        .map(|c| norm_str(&c.path))
+        .collect();
     let g = graph(root, m, &src_root, ch.top.clone(), &deleted);
     let reach = |start: &Path| -> HashSet<PathBuf> {
         let mut seen = HashSet::new();
@@ -584,29 +808,62 @@ pub fn affected(root: &Path, m: &Manifest, ch: &Changes) -> Result<Value> {
     for c in &ch.files {
         let p = c.path.as_str();
         let np = normalize(Path::new(p));
-        let (class, selects, n, why): Class = if let Some(a) = all_prefixes.iter().find(|a| under(p, a)) {
+        let (class, selects, n, why): Class = if let Some(a) =
+            all_prefixes.iter().find(|a| under(p, a))
+        {
             traced_all.get_or_insert_with(|| format!("{p} changed (affects every story)"));
-            ("affects-all", "all", None, format!("under {a}, which affects every entry"))
+            (
+                "affects-all",
+                "all",
+                None,
+                format!("under {a}, which affects every entry"),
+            )
         } else if p.ends_with(".psig") {
             let key = norm_str(p);
             if let Some(id) = by_sig.get(&key) {
                 ids.insert(id.to_string());
                 baselines.push(id.to_string());
-                ("baseline", "entries", Some(1), format!("the baseline of {id}"))
+                (
+                    "baseline",
+                    "entries",
+                    Some(1),
+                    format!("the baseline of {id}"),
+                )
             } else if let Some(suite) = others.by_sig.get(&key) {
                 *other.entry(suite.clone()).or_default() += 1;
-                ("baseline-other", "none", None, format!("a baseline of suite {suite} (check it with --suite {suite})"))
+                (
+                    "baseline-other",
+                    "none",
+                    None,
+                    format!("a baseline of suite {suite} (check it with --suite {suite})"),
+                )
             } else {
-                ("baseline-other", "none", None, "a baseline no manifest names (orphaned)".into())
+                (
+                    "baseline-other",
+                    "none",
+                    None,
+                    "a baseline no manifest names (orphaned)".into(),
+                )
             }
         } else if let Some((kind, suite)) = store.and_then(|s| record_kind(s, p)) {
             let base = ch.base_text(p);
             let now = fs::read_to_string(root.join(p)).unwrap_or_default();
-            let base = if ch.explicit && base == now { String::new() } else { base };
+            let base = if ch.explicit && base == now {
+                String::new()
+            } else {
+                base
+            };
             let d = match kind {
                 "a11y" => diff_a11y(&base, &now),
                 "manifest" => diff_manifest(&base, &now),
-                _ => diff_log(&base, &now, Path::new(p).file_name().and_then(|f| f.to_str()).unwrap_or(p)),
+                _ => diff_log(
+                    &base,
+                    &now,
+                    Path::new(p)
+                        .file_name()
+                        .and_then(|f| f.to_str())
+                        .unwrap_or(p),
+                ),
             };
             // a11y.json and the logs cover every suite; a manifest, its own.
             let mine = suite.as_ref().is_none_or(|s| *s == this_suite);
@@ -617,15 +874,23 @@ pub fn affected(root: &Path, m: &Manifest, ch: &Changes) -> Result<Value> {
                 }
                 RecordDiff::All(why) => {
                     let s = suite.unwrap_or_default();
-                    *other.entry(s.clone()).or_default() += others.size.get(&s).copied().unwrap_or(0);
+                    *other.entry(s.clone()).or_default() +=
+                        others.size.get(&s).copied().unwrap_or(0);
                     ("store-record", "none", None, format!("{why} (suite {s})"))
                 }
-                RecordDiff::Ids { ids: changed, removed: gone } => {
+                RecordDiff::Ids {
+                    ids: changed,
+                    removed: gone,
+                } => {
                     let mut here = Vec::new();
                     for id in changed {
                         if mine && in_manifest.contains(id.as_str()) {
                             here.push(id);
-                        } else if let Some(s) = if mine { others.by_id.get(&id) } else { suite.as_ref() } {
+                        } else if let Some(s) = if mine {
+                            others.by_id.get(&id)
+                        } else {
+                            suite.as_ref()
+                        } {
                             *other.entry(s.clone()).or_default() += 1;
                         }
                     }
@@ -635,26 +900,57 @@ pub fn affected(root: &Path, m: &Manifest, ch: &Changes) -> Result<Value> {
                     ids.extend(here.iter().cloned());
                     let n = here.len();
                     records.insert(p.to_string(), here);
-                    ("store-record", if n > 0 { "entries" } else { "none" }, Some(n), format!("{n} entries' records changed"))
+                    (
+                        "store-record",
+                        if n > 0 { "entries" } else { "none" },
+                        Some(n),
+                        format!("{n} entries' records changed"),
+                    )
                 }
             }
         } else if store.is_some_and(|s| under(p, &norm_str(&s.dir))) {
             traced_all.get_or_insert_with(|| format!("{p}: a store file pxsig does not trace"));
-            ("store-other", "all", None, "a store file pxsig does not trace".into())
-        } else if story_files.contains(&np) || g.rev.contains_key(&np) || (g.nodes.contains(&np) && is_module(&np)) {
+            (
+                "store-other",
+                "all",
+                None,
+                "a store file pxsig does not trace".into(),
+            )
+        } else if story_files.contains(&np)
+            || g.rev.contains_key(&np)
+            || (g.nodes.contains(&np) && is_module(&np))
+        {
             let seen = reach(&np);
-            if let Some(a) = seen.iter().map(|f| crate::io::to_slash(f)).find(|f| all_prefixes.iter().any(|a| under(f, a))) {
+            if let Some(a) = seen
+                .iter()
+                .map(|f| crate::io::to_slash(f))
+                .find(|f| all_prefixes.iter().any(|a| under(f, a)))
+            {
                 traced_all.get_or_insert_with(|| format!("{p} reaches {a} (affects every story)"));
-                ("graph", "all", None, format!("reaches {a}, which affects every entry"))
+                (
+                    "graph",
+                    "all",
+                    None,
+                    format!("reaches {a}, which affects every entry"),
+                )
             } else {
-                let hit: Vec<&crate::batch::Entry> = m.stories.iter().filter(|s| story_file(s).is_some_and(|f| seen.contains(&f))).collect();
+                let hit: Vec<&crate::batch::Entry> = m
+                    .stories
+                    .iter()
+                    .filter(|s| story_file(s).is_some_and(|f| seen.contains(&f)))
+                    .collect();
                 let files: HashSet<PathBuf> = hit.iter().filter_map(|s| story_file(s)).collect();
                 ids.extend(hit.iter().map(|s| s.id.clone()));
                 story_hits.extend(files.iter().cloned());
                 if hit.is_empty() {
                     ("graph-no-entry", "none", None, "no story imports it".into())
                 } else {
-                    ("graph", "entries", Some(hit.len()), format!("{} story files import it", files.len()))
+                    (
+                        "graph",
+                        "entries",
+                        Some(hit.len()),
+                        format!("{} story files import it", files.len()),
+                    )
                 }
             }
         } else if m.affects_ignore.iter().any(|g| glob_match(g, p)) {
@@ -690,14 +986,29 @@ pub fn affected(root: &Path, m: &Manifest, ch: &Changes) -> Result<Value> {
         let mut o = json!({ "file": u.file, "spec": u.spec, "line": u.line, "why": u.why, "accepted": accepted, "selects": "none" });
         if !accepted {
             let seen = reach(Path::new(&u.file));
-            let why = format!("{}:{}: `{}` does not resolve ({})", u.file, u.line, u.spec, u.why);
-            if seen.iter().map(|f| crate::io::to_slash(f)).any(|f| all_prefixes.iter().any(|a| under(&f, a))) {
+            let why = format!(
+                "{}:{}: `{}` does not resolve ({})",
+                u.file, u.line, u.spec, u.why
+            );
+            if seen
+                .iter()
+                .map(|f| crate::io::to_slash(f))
+                .any(|f| all_prefixes.iter().any(|a| under(&f, a)))
+            {
                 o["selects"] = json!("all");
-                if !fail_safe.iter().any(|f| f["path"] == u.file && f["class"] == "unresolved") {
+                if !fail_safe
+                    .iter()
+                    .any(|f| f["path"] == u.file && f["class"] == "unresolved")
+                {
                     fail_safe.push(json!({ "path": u.file, "class": "unresolved", "why": format!("{why}; it affects every entry") }));
                 }
             } else {
-                let hit: Vec<&str> = m.stories.iter().filter(|s| story_file(s).is_some_and(|f| seen.contains(&f))).map(|s| s.id.as_str()).collect();
+                let hit: Vec<&str> = m
+                    .stories
+                    .iter()
+                    .filter(|s| story_file(s).is_some_and(|f| seen.contains(&f)))
+                    .map(|s| s.id.as_str())
+                    .collect();
                 if !hit.is_empty() {
                     o["selects"] = json!("entries");
                     o["n"] = json!(hit.len());
@@ -707,27 +1018,57 @@ pub fn affected(root: &Path, m: &Manifest, ch: &Changes) -> Result<Value> {
         }
         unresolved_out.push(o);
     }
-    let remote: Vec<Value> = g.remote.iter().map(|(file, url, line)| json!({ "file": file, "url": url, "line": line })).collect();
+    let remote: Vec<Value> = g
+        .remote
+        .iter()
+        .map(|(file, url, line)| json!({ "file": file, "url": url, "line": line }))
+        .collect();
 
-    let traced: Vec<String> = if traced_all.is_some() { all_ids.clone() } else { all_ids.iter().filter(|id| ids.contains(*id)).cloned().collect() };
+    let traced: Vec<String> = if traced_all.is_some() {
+        all_ids.clone()
+    } else {
+        all_ids
+            .iter()
+            .filter(|id| ids.contains(*id))
+            .cloned()
+            .collect()
+    };
     let all = traced_all.is_some() || !fail_safe.is_empty();
-    let selected: Vec<String> = if all { all_ids.clone() } else { all_ids.iter().filter(|id| ids.contains(*id) || unresolved_ids.contains(*id)).cloned().collect() };
+    let selected: Vec<String> = if all {
+        all_ids.clone()
+    } else {
+        all_ids
+            .iter()
+            .filter(|id| ids.contains(*id) || unresolved_ids.contains(*id))
+            .cloned()
+            .collect()
+    };
     let mut files: Vec<String> = story_hits.iter().map(|p| crate::io::to_slash(p)).collect();
     files.sort();
     baselines.sort();
     removed.sort();
-    let extra = [(baselines.len(), "baselines"), (records.values().map(Vec::len).sum::<usize>(), "records")]
-        .iter()
-        .filter(|(n, _)| *n > 0)
-        .map(|(n, w)| format!("; {n} {w}"))
-        .collect::<String>();
+    let extra = [
+        (baselines.len(), "baselines"),
+        (records.values().map(Vec::len).sum::<usize>(), "records"),
+    ]
+    .iter()
+    .filter(|(n, _)| *n > 0)
+    .map(|(n, w)| format!("; {n} {w}"))
+    .collect::<String>();
     let reason = if let Some(first) = fail_safe.first() {
         let why = first["why"].as_str().unwrap_or("").to_string();
-        if fail_safe.len() > 1 { format!("{why} (+{} more)", fail_safe.len() - 1) } else { why }
+        if fail_safe.len() > 1 {
+            format!("{why} (+{} more)", fail_safe.len() - 1)
+        } else {
+            why
+        }
     } else if let Some(r) = &traced_all {
         r.clone()
     } else if files.is_empty() && extra.is_empty() && !unresolved_ids.is_empty() {
-        format!("{} entries reach an unresolved import", unresolved_ids.len())
+        format!(
+            "{} entries reach an unresolved import",
+            unresolved_ids.len()
+        )
     } else if files.is_empty() && !extra.is_empty() {
         extra.trim_start_matches("; ").to_string()
     } else if files.is_empty() {
@@ -772,7 +1113,10 @@ mod tests {
         assert!(glob_match("*.png", "logo.png"));
         assert!(glob_match("packages/{a,b}/**", "packages/b/x.ts"));
         assert!(!glob_match("packages/{a,b}/**", "packages/c/x.ts"));
-        assert!(glob_match("**/{jest,tsdown}.config.*", "packages/x/jest.config.cjs"));
+        assert!(glob_match(
+            "**/{jest,tsdown}.config.*",
+            "packages/x/jest.config.cjs"
+        ));
         assert!(glob_match("a?c", "abc"));
         assert!(!glob_match("a?c", "a/c"));
         assert!(glob_match("$repo/other/**", "$repo/other/x"));
@@ -782,8 +1126,15 @@ mod tests {
     #[test]
     fn name_status_keeps_both_sides_of_a_rename() {
         let mut out = Vec::new();
-        parse_name_status(b"R100\0ws/src/a.ts\0ws/src/b.ts\0M\0ws/src/c.ts\0A\0top.txt\0", "ws/", &mut out);
-        let got: Vec<(String, char, Option<String>)> = out.into_iter().map(|c| (c.path, c.status, c.from)).collect();
+        parse_name_status(
+            b"R100\0ws/src/a.ts\0ws/src/b.ts\0M\0ws/src/c.ts\0A\0top.txt\0",
+            "ws/",
+            &mut out,
+        );
+        let got: Vec<(String, char, Option<String>)> = out
+            .into_iter()
+            .map(|c| (c.path, c.status, c.from))
+            .collect();
         assert_eq!(
             got,
             vec![
@@ -797,20 +1148,46 @@ mod tests {
 
     #[test]
     fn record_diffs() {
-        let RecordDiff::Ids { ids, .. } = diff_a11y(r#"{"a":["x"],"b":[]}"#, r#"{"a":["x","y"],"c":[]}"#) else { panic!() };
-        assert_eq!(ids, vec!["a", "b", "c"]);
-        assert!(matches!(diff_a11y("{", "{}"), RecordDiff::All(_)));
-        let RecordDiff::Ids { ids, removed } =
-            diff_manifest(r#"{"stories":[{"id":"a","sig":"1"},{"id":"b"}]}"#, r#"{"stories":[{"id":"a","sig":"2"},{"id":"c"}]}"#)
+        let RecordDiff::Ids { ids, .. } =
+            diff_a11y(r#"{"a":["x"],"b":[]}"#, r#"{"a":["x","y"],"c":[]}"#)
         else {
             panic!()
         };
-        assert_eq!((ids, removed), (vec!["a".to_string(), "c".to_string()], vec!["b".to_string()]));
-        assert!(matches!(diff_manifest(r#"{"grid":1,"stories":[]}"#, r#"{"grid":2,"stories":[]}"#), RecordDiff::All(_)));
-        let RecordDiff::Ids { ids, .. } = diff_log("{\"id\":\"a\"}\n", "{\"id\":\"a\"}\n{\"id\":\"b\"}\n{\"id\":\"b\"}\n", "approvals.ndjson") else { panic!() };
+        assert_eq!(ids, vec!["a", "b", "c"]);
+        assert!(matches!(diff_a11y("{", "{}"), RecordDiff::All(_)));
+        let RecordDiff::Ids { ids, removed } = diff_manifest(
+            r#"{"stories":[{"id":"a","sig":"1"},{"id":"b"}]}"#,
+            r#"{"stories":[{"id":"a","sig":"2"},{"id":"c"}]}"#,
+        ) else {
+            panic!()
+        };
+        assert_eq!(
+            (ids, removed),
+            (
+                vec!["a".to_string(), "c".to_string()],
+                vec!["b".to_string()]
+            )
+        );
+        assert!(matches!(
+            diff_manifest(r#"{"grid":1,"stories":[]}"#, r#"{"grid":2,"stories":[]}"#),
+            RecordDiff::All(_)
+        ));
+        let RecordDiff::Ids { ids, .. } = diff_log(
+            "{\"id\":\"a\"}\n",
+            "{\"id\":\"a\"}\n{\"id\":\"b\"}\n{\"id\":\"b\"}\n",
+            "approvals.ndjson",
+        ) else {
+            panic!()
+        };
         assert_eq!(ids, vec!["b"]);
-        assert!(matches!(diff_log("{\"id\":\"a\"}\n", "{\"id\":\"z\"}\n", "approvals.ndjson"), RecordDiff::All(_)));
-        assert!(matches!(diff_log("", "not json\n", "approvals.ndjson"), RecordDiff::All(_)));
+        assert!(matches!(
+            diff_log("{\"id\":\"a\"}\n", "{\"id\":\"z\"}\n", "approvals.ndjson"),
+            RecordDiff::All(_)
+        ));
+        assert!(matches!(
+            diff_log("", "not json\n", "approvals.ndjson"),
+            RecordDiff::All(_)
+        ));
     }
 }
 
@@ -821,18 +1198,39 @@ mod repo_relative_tests {
 
     #[test]
     fn changed_files_become_repo_relative() {
-        assert_eq!(repo_relative(Path::new("/r/repo"), "src/a.tsx"), "src/a.tsx");
-        assert_eq!(repo_relative(Path::new("/r/repo"), "./src/a.tsx"), "src/a.tsx");
+        assert_eq!(
+            repo_relative(Path::new("/r/repo"), "src/a.tsx"),
+            "src/a.tsx"
+        );
+        assert_eq!(
+            repo_relative(Path::new("/r/repo"), "./src/a.tsx"),
+            "src/a.tsx"
+        );
         #[cfg(not(windows))]
         {
-            assert_eq!(repo_relative(Path::new("/r/repo"), "/r/repo/src/a.tsx"), "src/a.tsx");
-            assert_eq!(repo_relative(Path::new("/r/repo/"), "/r/repo/src/a.tsx"), "src/a.tsx");
-            assert_eq!(repo_relative(Path::new("/r/repo"), "/elsewhere/a.tsx"), "/elsewhere/a.tsx");
+            assert_eq!(
+                repo_relative(Path::new("/r/repo"), "/r/repo/src/a.tsx"),
+                "src/a.tsx"
+            );
+            assert_eq!(
+                repo_relative(Path::new("/r/repo/"), "/r/repo/src/a.tsx"),
+                "src/a.tsx"
+            );
+            assert_eq!(
+                repo_relative(Path::new("/r/repo"), "/elsewhere/a.tsx"),
+                "/elsewhere/a.tsx"
+            );
         }
         #[cfg(windows)]
         {
-            assert_eq!(repo_relative(Path::new("C:\\Repo"), "c:\\repo\\src\\a.tsx"), "src/a.tsx");
-            assert_eq!(repo_relative(Path::new("C:\\Repo"), "src\\a.tsx"), "src/a.tsx");
+            assert_eq!(
+                repo_relative(Path::new("C:\\Repo"), "c:\\repo\\src\\a.tsx"),
+                "src/a.tsx"
+            );
+            assert_eq!(
+                repo_relative(Path::new("C:\\Repo"), "src\\a.tsx"),
+                "src/a.tsx"
+            );
         }
     }
 }
@@ -846,15 +1244,27 @@ mod git_tests {
     static N: AtomicUsize = AtomicUsize::new(0);
 
     fn tmp(name: &str) -> PathBuf {
-        let d = std::env::temp_dir().join(format!("pxsig-affected-{}-{}-{name}", std::process::id(), N.fetch_add(1, Ordering::SeqCst)));
+        let d = std::env::temp_dir().join(format!(
+            "pxsig-affected-{}-{}-{name}",
+            std::process::id(),
+            N.fetch_add(1, Ordering::SeqCst)
+        ));
         let _ = fs::remove_dir_all(&d);
         fs::create_dir_all(&d).unwrap();
         d
     }
 
     fn git(dir: &Path, args: &[&str]) {
-        let out = Command::new("git").args(args).current_dir(dir).output().unwrap();
-        assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+        let out = Command::new("git")
+            .args(args)
+            .current_dir(dir)
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
     }
 
     fn write(dir: &Path, rel: &str, text: &str) {
@@ -879,15 +1289,31 @@ mod git_tests {
     /// A workspace: a story importing a component, a test, a data file, a store with records.
     fn workspace(ws: &Path) {
         write(ws, "src/Button/Button.tsx", "export const B = 1;\n");
-        write(ws, "src/Button/Button.stories.tsx", "import { B } from './Button';\n");
-        write(ws, "src/Button/Button.test.tsx", "import { B } from './Button';\n");
+        write(
+            ws,
+            "src/Button/Button.stories.tsx",
+            "import { B } from './Button';\n",
+        );
+        write(
+            ws,
+            "src/Button/Button.test.tsx",
+            "import { B } from './Button';\n",
+        );
         write(ws, "src/Ünïcode/Card.stories.tsx", "export {};\n");
         write(ws, "src/data.json", "{}\n");
         write(ws, ".pxsig/baselines/Button/b.psig", "x");
         write(ws, ".pxsig/a11y.json", "{\"b\":[]}\n");
         write(ws, ".pxsig/approvals.ndjson", "{\"id\":\"b\"}\n");
-        write(ws, ".pxsig/manifest.json", "{\"stories\":[{\"id\":\"b\",\"sig\":\".pxsig/baselines/Button/b.psig\"}]}\n");
-        write(ws, ".pxsig/manifest.matrix.json", "{\"stories\":[{\"id\":\"b@m\",\"sig\":\".pxsig/baselines/Button/b@m.psig\"}]}\n");
+        write(
+            ws,
+            ".pxsig/manifest.json",
+            "{\"stories\":[{\"id\":\"b\",\"sig\":\".pxsig/baselines/Button/b.psig\"}]}\n",
+        );
+        write(
+            ws,
+            ".pxsig/manifest.matrix.json",
+            "{\"stories\":[{\"id\":\"b@m\",\"sig\":\".pxsig/baselines/Button/b@m.psig\"}]}\n",
+        );
         write(ws, ".pxsig/.gitignore", "renders/\n");
         write(ws, "README.md", "hi\n");
     }
@@ -911,11 +1337,22 @@ mod git_tests {
     }
 
     fn class_of(v: &Value, path: &str) -> String {
-        v["files"].as_array().unwrap().iter().find(|f| f["path"] == path).map(|f| f["class"].as_str().unwrap().to_string()).unwrap_or_else(|| panic!("{path} not in {v}"))
+        v["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|f| f["path"] == path)
+            .map(|f| f["class"].as_str().unwrap().to_string())
+            .unwrap_or_else(|| panic!("{path} not in {v}"))
     }
 
     fn ids(v: &Value, key: &str) -> Vec<String> {
-        let mut a: Vec<String> = v[key].as_array().unwrap().iter().map(|x| x.as_str().unwrap().to_string()).collect();
+        let mut a: Vec<String> = v[key]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.as_str().unwrap().to_string())
+            .collect();
         a.sort();
         a
     }
@@ -927,41 +1364,118 @@ mod git_tests {
         workspace(&ws);
         commit(&ws, "base");
         let m = manifest(&["docs/**", "**/*.md"]);
-        let run = |files: &[&str]| affected(&ws, &m, &changes_from_files(&ws, &files.iter().map(|s| s.to_string()).collect::<Vec<_>>())).unwrap();
+        let run = |files: &[&str]| {
+            affected(
+                &ws,
+                &m,
+                &changes_from_files(
+                    &ws,
+                    &files.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+                ),
+            )
+            .unwrap()
+        };
 
         let v = run(&["src/Button/Button.tsx"]);
-        assert_eq!((class_of(&v, "src/Button/Button.tsx"), ids(&v, "ids"), v["all"].clone()), ("graph".into(), vec!["b".to_string()], json!(false)));
+        assert_eq!(
+            (
+                class_of(&v, "src/Button/Button.tsx"),
+                ids(&v, "ids"),
+                v["all"].clone()
+            ),
+            ("graph".into(), vec!["b".to_string()], json!(false))
+        );
         let v = run(&["src/Button/Button.test.tsx"]);
-        assert_eq!((class_of(&v, "src/Button/Button.test.tsx"), ids(&v, "ids")), ("graph-no-entry".into(), vec![]));
+        assert_eq!(
+            (class_of(&v, "src/Button/Button.test.tsx"), ids(&v, "ids")),
+            ("graph-no-entry".into(), vec![])
+        );
         let v = run(&["src/Ünïcode/Card.stories.tsx"]);
         assert_eq!(ids(&v, "ids"), vec!["c"]);
         let v = run(&[".pxsig/baselines/Button/b.psig"]);
-        assert_eq!((class_of(&v, ".pxsig/baselines/Button/b.psig"), ids(&v, "ids"), ids(&v, "baselines")), ("baseline".into(), vec!["b".to_string()], vec!["b".to_string()]));
-        let v = run(&[".pxsig/baselines/Button/b@m.psig", ".pxsig/baselines/Gone/z.psig"]);
-        assert_eq!(class_of(&v, ".pxsig/baselines/Button/b@m.psig"), "baseline-other");
+        assert_eq!(
+            (
+                class_of(&v, ".pxsig/baselines/Button/b.psig"),
+                ids(&v, "ids"),
+                ids(&v, "baselines")
+            ),
+            (
+                "baseline".into(),
+                vec!["b".to_string()],
+                vec!["b".to_string()]
+            )
+        );
+        let v = run(&[
+            ".pxsig/baselines/Button/b@m.psig",
+            ".pxsig/baselines/Gone/z.psig",
+        ]);
+        assert_eq!(
+            class_of(&v, ".pxsig/baselines/Button/b@m.psig"),
+            "baseline-other"
+        );
         assert_eq!(v["otherSuites"]["matrix"], 1);
         assert!(v["files"][1]["why"].as_str().unwrap().contains("orphaned"));
         assert_eq!(ids(&v, "ids"), Vec::<String>::new());
 
         // Unchanged record named explicitly: every entry it names.
         let v = run(&[".pxsig/a11y.json"]);
-        assert_eq!((class_of(&v, ".pxsig/a11y.json"), ids(&v, "ids")), ("store-record".into(), vec!["b".to_string()]));
+        assert_eq!(
+            (class_of(&v, ".pxsig/a11y.json"), ids(&v, "ids")),
+            ("store-record".into(), vec!["b".to_string()])
+        );
         let v = run(&[".pxsig/.gitignore"]);
-        assert_eq!((class_of(&v, ".pxsig/.gitignore"), v["all"].clone()), ("store-other".into(), json!(true)));
-        assert_eq!(v["failSafe"], json!([]), "a store file is traced all, not the fail-safe");
+        assert_eq!(
+            (class_of(&v, ".pxsig/.gitignore"), v["all"].clone()),
+            ("store-other".into(), json!(true))
+        );
+        assert_eq!(
+            v["failSafe"],
+            json!([]),
+            "a store file is traced all, not the fail-safe"
+        );
 
         // The fail-safe: untraced under srcRoot, outside srcRoot. `traced` leaves it out.
         let v = run(&["src/data.json", "src/Button/Button.tsx"]);
-        assert_eq!((class_of(&v, "src/data.json"), v["all"].clone(), ids(&v, "traced")), ("untraced".into(), json!(true), vec!["b".to_string()]));
+        assert_eq!(
+            (
+                class_of(&v, "src/data.json"),
+                v["all"].clone(),
+                ids(&v, "traced")
+            ),
+            ("untraced".into(), json!(true), vec!["b".to_string()])
+        );
         assert_eq!(v["reason"], "src/data.json: nothing imports it");
         let v = run(&["package.json"]);
-        assert_eq!((class_of(&v, "package.json"), ids(&v, "ids").len()), ("outside".into(), 2));
-        let v = run(&["docs/a.txt", "README.md", "src/Button/Button.llm-context.md"]);
-        assert_eq!((v["all"].clone(), ids(&v, "ignored").len()), (json!(false), 3));
+        assert_eq!(
+            (class_of(&v, "package.json"), ids(&v, "ids").len()),
+            ("outside".into(), 2)
+        );
+        let v = run(&[
+            "docs/a.txt",
+            "README.md",
+            "src/Button/Button.llm-context.md",
+        ]);
+        assert_eq!(
+            (v["all"].clone(), ids(&v, "ignored").len()),
+            (json!(false), 3)
+        );
 
         // The ignore list never hides a traced path, a baseline, a store file or an affects-all path.
         let m = manifest(&["**"]);
-        let v = affected(&ws, &m, &changes_from_files(&ws, &["src/Button/Button.tsx".into(), ".pxsig/baselines/Button/b.psig".into(), ".pxsig/.gitignore".into(), "pxsig.config.json".into()])).unwrap();
+        let v = affected(
+            &ws,
+            &m,
+            &changes_from_files(
+                &ws,
+                &[
+                    "src/Button/Button.tsx".into(),
+                    ".pxsig/baselines/Button/b.psig".into(),
+                    ".pxsig/.gitignore".into(),
+                    "pxsig.config.json".into(),
+                ],
+            ),
+        )
+        .unwrap();
         assert_eq!(class_of(&v, "src/Button/Button.tsx"), "graph");
         assert_eq!(class_of(&v, ".pxsig/baselines/Button/b.psig"), "baseline");
         assert_eq!(class_of(&v, ".pxsig/.gitignore"), "store-other");
@@ -971,27 +1485,41 @@ mod git_tests {
 
     /// A workspace for the resolver: one story per kind of import, each reaching one file.
     fn resolver_workspace(ws: &Path) {
-        let story = |name: &str, body: &str| write(ws, &format!("src/{name}/{name}.stories.tsx"), body);
+        let story =
+            |name: &str, body: &str| write(ws, &format!("src/{name}/{name}.stories.tsx"), body);
         write(ws, "src/data/a.json", "{}");
         story("Json", "import a from '../data/a.json';\n");
         write(ws, "src/icons/x.svg", "<svg/>");
         write(ws, "src/icons/y.svg", "<svg/>");
         story("Raw", "import t from '../docs/a.md?raw';\n");
         write(ws, "src/docs/a.md", "# a\n");
-        write(ws, "src/styles/base.css", "@import './tokens.css';\n.a { background: url(img/bg.png); }\n");
+        write(
+            ws,
+            "src/styles/base.css",
+            "@import './tokens.css';\n.a { background: url(img/bg.png); }\n",
+        );
         write(ws, "src/styles/tokens.css", ":root {}\n");
         write(ws, "src/styles/img/bg.png", "png");
         story("Css", "import '../styles/base.css';\n");
-        story("Worker", "const w = new URL('../work/w.js', import.meta.url);\n");
+        story(
+            "Worker",
+            "const w = new URL('../work/w.js', import.meta.url);\n",
+        );
         write(ws, "src/work/w.js", "x\n");
         story("Glob", "const g = import.meta.glob('../icons/*.svg');\n");
-        story("Ctx", "const c = require.context('../locales', true, /json$/);\n");
+        story(
+            "Ctx",
+            "const c = require.context('../locales', true, /json$/);\n",
+        );
         write(ws, "src/locales/en/a.json", "{}");
         story("Tpl", "const i = (n) => import(`../flags/${n}.svg`);\n");
         write(ws, "src/flags/de.svg", "<svg/>");
         story("Esm", "import { e } from '../esm/e.js';\n");
         write(ws, "src/esm/e.ts", "export const e = 1;\n");
-        story("Font", "const face = { src: \"url('../fonts/a.woff2')\" };\n");
+        story(
+            "Font",
+            "const face = { src: \"url('../fonts/a.woff2')\" };\n",
+        );
         write(ws, "src/fonts/a.woff2", "font");
         // Bare specifiers: tsconfig paths, `#` imports, an alias, a self-import through `exports`
         // (dist mapped back to src), a workspace package, built-ins and an npm package.
@@ -1005,17 +1533,32 @@ mod git_tests {
         story("Alias", "import { al } from '~al/al';\n");
         write(ws, "src/widgets/w.tsx", "export const w = 1;\n");
         story("Self", "import { w } from 'me/widgets/w';\nimport fs from 'node:fs';\nimport p from 'path';\nimport r from 'react';\n");
-        write(ws, "node_modules/react/package.json", "{ \"name\": \"react\" }");
-        write(ws, "packages/kit/package.json", "{ \"name\": \"kit\", \"main\": \"./dist/index.js\" }");
+        write(
+            ws,
+            "node_modules/react/package.json",
+            "{ \"name\": \"react\" }",
+        );
+        write(
+            ws,
+            "packages/kit/package.json",
+            "{ \"name\": \"kit\", \"main\": \"./dist/index.js\" }",
+        );
         write(ws, "packages/kit/src/index.ts", "export const k = 1;\n");
         story("Virtual", "import s from 'virtual:status';\n");
         story("Accepted", "import s from 'virtual:other';\n");
-        write(ws, ".storybook/preview.tsx", "import '../src/global.css.ts';\n");
+        write(
+            ws,
+            ".storybook/preview.tsx",
+            "import '../src/global.css.ts';\n",
+        );
         write(ws, "src/global.css.ts", "export {};\n");
     }
 
     fn resolver_manifest() -> Manifest {
-        let names = ["Json", "Raw", "Css", "Worker", "Glob", "Ctx", "Tpl", "Esm", "Font", "Paths", "Hash", "Alias", "Self", "Virtual", "Accepted", "Kit"];
+        let names = [
+            "Json", "Raw", "Css", "Worker", "Glob", "Ctx", "Tpl", "Esm", "Font", "Paths", "Hash",
+            "Alias", "Self", "Virtual", "Accepted", "Kit",
+        ];
         let stories: Vec<Value> = names.iter().map(|n| json!({ "id": n.to_lowercase(), "sig": format!(".pxsig/baselines/{n}.psig"), "importPath": format!("src/{n}/{n}.stories.tsx") })).collect();
         serde_json::from_value(json!({
             "srcRoot": "src",
@@ -1034,7 +1577,8 @@ mod git_tests {
         #[cfg(unix)]
         {
             fs::create_dir_all(ws.join("node_modules")).unwrap();
-            std::os::unix::fs::symlink(ws.join("packages/kit"), ws.join("node_modules/kit")).unwrap();
+            std::os::unix::fs::symlink(ws.join("packages/kit"), ws.join("node_modules/kit"))
+                .unwrap();
             write(&ws, "src/Kit/Kit.stories.tsx", "import { k } from 'kit';\n");
         }
         let m = resolver_manifest();
@@ -1056,20 +1600,57 @@ mod git_tests {
             ("src/widgets/w.tsx", "self"),
         ] {
             let v = run(file);
-            assert_eq!((class_of(&v, file), ids(&v, "traced")), ("graph".to_string(), vec![id.to_string()]), "{file}: {}", v["reason"]);
+            assert_eq!(
+                (class_of(&v, file), ids(&v, "traced")),
+                ("graph".to_string(), vec![id.to_string()]),
+                "{file}: {}",
+                v["reason"]
+            );
             // The unresolved `virtual:status` adds its story to every run; the accepted one adds nothing.
-            assert_eq!(ids(&v, "ids"), { let mut x = vec![id.to_string(), "virtual".to_string()]; x.sort(); x }, "{file}");
+            assert_eq!(
+                ids(&v, "ids"),
+                {
+                    let mut x = vec![id.to_string(), "virtual".to_string()];
+                    x.sort();
+                    x
+                },
+                "{file}"
+            );
         }
         #[cfg(unix)]
         {
             let v = run("packages/kit/src/index.ts");
-            assert_eq!(ids(&v, "traced"), vec!["kit"], "a workspace package's dist maps to its source: {}", v["reason"]);
+            assert_eq!(
+                ids(&v, "traced"),
+                vec!["kit"],
+                "a workspace package's dist maps to its source: {}",
+                v["reason"]
+            );
         }
         let v = run("src/global.css.ts");
-        assert_eq!((v["all"].clone(), v["failSafe"].clone()), (json!(true), json!([])), "imported by an affects-all file: a traced all");
+        assert_eq!(
+            (v["all"].clone(), v["failSafe"].clone()),
+            (json!(true), json!([])),
+            "imported by an affects-all file: a traced all"
+        );
         let v = run("src/Css/Css.stories.tsx");
-        let u: Vec<(String, bool, String)> = v["unresolved"].as_array().unwrap().iter().map(|u| (u["spec"].as_str().unwrap().to_string(), u["accepted"].as_bool().unwrap(), u["selects"].as_str().unwrap().to_string())).collect();
-        assert!(u.contains(&("virtual:status".into(), false, "entries".into())) && u.contains(&("virtual:other".into(), true, "none".into())), "{u:?}");
+        let u: Vec<(String, bool, String)> = v["unresolved"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|u| {
+                (
+                    u["spec"].as_str().unwrap().to_string(),
+                    u["accepted"].as_bool().unwrap(),
+                    u["selects"].as_str().unwrap().to_string(),
+                )
+            })
+            .collect();
+        assert!(
+            u.contains(&("virtual:status".into(), false, "entries".into()))
+                && u.contains(&("virtual:other".into(), true, "none".into())),
+            "{u:?}"
+        );
         let _ = fs::remove_dir_all(&ws);
     }
 
@@ -1077,13 +1658,23 @@ mod git_tests {
     fn an_unresolved_import_in_an_affects_all_file_selects_all() {
         let ws = tmp("unresolved-all");
         write(&ws, "src/A/A.stories.tsx", "export {};\n");
-        write(&ws, ".storybook/main.ts", "const s = import(`${dir}/status.mjs`);\n");
+        write(
+            &ws,
+            ".storybook/main.ts",
+            "const s = import(`${dir}/status.mjs`);\n",
+        );
         let mut m: Manifest = serde_json::from_value(json!({ "srcRoot": "src", "affectsAll": [".storybook"], "stories": [{ "id": "a", "sig": "a.psig", "importPath": "src/A/A.stories.tsx" }] })).unwrap();
         let v = affected(&ws, &m, &changes_from_files(&ws, &[])).unwrap();
-        assert_eq!((v["all"].clone(), v["failSafe"][0]["class"].clone()), (json!(true), json!("unresolved")));
+        assert_eq!(
+            (v["all"].clone(), v["failSafe"][0]["class"].clone()),
+            (json!(true), json!("unresolved"))
+        );
         m.affects_unresolved = vec![".storybook/main.ts".into()];
         let v = affected(&ws, &m, &changes_from_files(&ws, &[])).unwrap();
-        assert_eq!((v["all"].clone(), ids(&v, "ids")), (json!(false), Vec::<String>::new()));
+        assert_eq!(
+            (v["all"].clone(), ids(&v, "ids")),
+            (json!(false), Vec::<String>::new())
+        );
         let _ = fs::remove_dir_all(&ws);
     }
 
@@ -1094,7 +1685,11 @@ mod git_tests {
         workspace(&ws);
         commit(&ws, "base");
         git(&ws, &["checkout", "-q", "-b", "pr"]);
-        write(&ws, ".pxsig/approvals.ndjson", "{\"id\":\"b\"}\n{\"id\":\"c\"}\n");
+        write(
+            &ws,
+            ".pxsig/approvals.ndjson",
+            "{\"id\":\"b\"}\n{\"id\":\"c\"}\n",
+        );
         write(&ws, ".pxsig/a11y.json", "{\"b\":[\"x\"]}\n");
         commit(&ws, "approve");
         let m = manifest(&[]);
@@ -1106,8 +1701,15 @@ mod git_tests {
         // A rewritten log selects everything.
         write(&ws, ".pxsig/approvals.ndjson", "{\"id\":\"c\"}\n");
         let v = affected(&ws, &m, &changes_since(&ws, "main").unwrap()).unwrap();
-        assert_eq!((v["all"].clone(), v["failSafe"].clone()), (json!(true), json!([])));
-        assert!(v["reason"].as_str().unwrap().contains("rewritten"), "{}", v["reason"]);
+        assert_eq!(
+            (v["all"].clone(), v["failSafe"].clone()),
+            (json!(true), json!([]))
+        );
+        assert!(
+            v["reason"].as_str().unwrap().contains("rewritten"),
+            "{}",
+            v["reason"]
+        );
         let _ = fs::remove_dir_all(&ws);
     }
 
@@ -1118,14 +1720,35 @@ mod git_tests {
         workspace(&ws);
         commit(&ws, "base");
         git(&ws, &["checkout", "-q", "-b", "pr"]);
-        git(&ws, &["mv", "src/Ünïcode/Card.stories.tsx", "src/Ünïcode/Kärt.stories.tsx"]);
+        git(
+            &ws,
+            &[
+                "mv",
+                "src/Ünïcode/Card.stories.tsx",
+                "src/Ünïcode/Kärt.stories.tsx",
+            ],
+        );
         commit(&ws, "rename");
         let ch = changes_since(&ws, "main").unwrap();
         let paths: Vec<&str> = ch.files.iter().map(|c| c.path.as_str()).collect();
-        assert!(paths.contains(&"src/Ünïcode/Card.stories.tsx") && paths.contains(&"src/Ünïcode/Kärt.stories.tsx"), "{paths:?}");
+        assert!(
+            paths.contains(&"src/Ünïcode/Card.stories.tsx")
+                && paths.contains(&"src/Ünïcode/Kärt.stories.tsx"),
+            "{paths:?}"
+        );
         let v = affected(&ws, &manifest(&[]), &ch).unwrap();
-        assert_eq!(ids(&v, "ids"), vec!["c"], "the old path is still entry c's importPath");
-        let renamed = v["files"].as_array().unwrap().iter().find(|f| f["path"] == "src/Ünïcode/Kärt.stories.tsx").unwrap().clone();
+        assert_eq!(
+            ids(&v, "ids"),
+            vec!["c"],
+            "the old path is still entry c's importPath"
+        );
+        let renamed = v["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|f| f["path"] == "src/Ünïcode/Kärt.stories.tsx")
+            .unwrap()
+            .clone();
         assert_eq!(renamed["from"], "src/Ünïcode/Card.stories.tsx");
         let _ = fs::remove_dir_all(&ws);
     }
@@ -1149,7 +1772,10 @@ mod git_tests {
         assert_eq!(class_of(&v, "src/new.json"), "untraced");
         assert_eq!(class_of(&v, "$repo/top.txt"), "outside-workspace");
         let v = affected(&ws, &manifest(&["$repo/top.txt", "src/*.json"]), &ch).unwrap();
-        assert_eq!((v["all"].clone(), ids(&v, "ids")), (json!(false), vec!["b".to_string()]));
+        assert_eq!(
+            (v["all"].clone(), ids(&v, "ids")),
+            (json!(false), vec!["b".to_string()])
+        );
         let _ = fs::remove_dir_all(&repo);
     }
 
@@ -1168,14 +1794,40 @@ mod git_tests {
         let clone = tmp("shallow");
         // file:// so --depth applies (a plain path makes a local, full clone); `C:/…` needs a third slash.
         let path = crate::io::to_slash(&origin);
-        let url = if path.starts_with('/') { format!("file://{path}") } else { format!("file:///{path}") };
-        git(&clone, &["clone", "-q", "--depth", "1", "--branch", "main", &url, "."]);
-        git(&clone, &["fetch", "-q", "--depth", "1", "origin", "feature:feature"]);
+        let url = if path.starts_with('/') {
+            format!("file://{path}")
+        } else {
+            format!("file:///{path}")
+        };
+        git(
+            &clone,
+            &["clone", "-q", "--depth", "1", "--branch", "main", &url, "."],
+        );
+        git(
+            &clone,
+            &["fetch", "-q", "--depth", "1", "origin", "feature:feature"],
+        );
         let ch = changes_since(&clone, "feature").unwrap();
-        assert!(ch.fail_all.as_deref().is_some_and(|w| w.contains("shallow clone")), "{:?}", ch.fail_all);
+        assert!(
+            ch.fail_all
+                .as_deref()
+                .is_some_and(|w| w.contains("shallow clone")),
+            "{:?}",
+            ch.fail_all
+        );
         let v = affected(&clone, &manifest(&[]), &ch).unwrap();
-        assert_eq!((v["all"].clone(), ids(&v, "ids").len(), v["failSafe"][0]["class"].clone()), (json!(true), 2, json!("no-merge-base")));
-        assert!(changes_since(&clone, "no-such-ref").is_err(), "an unknown ref stays an error");
+        assert_eq!(
+            (
+                v["all"].clone(),
+                ids(&v, "ids").len(),
+                v["failSafe"][0]["class"].clone()
+            ),
+            (json!(true), 2, json!("no-merge-base"))
+        );
+        assert!(
+            changes_since(&clone, "no-such-ref").is_err(),
+            "an unknown ref stays an error"
+        );
         let _ = fs::remove_dir_all(&origin);
         let _ = fs::remove_dir_all(&clone);
     }

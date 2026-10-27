@@ -3,11 +3,60 @@
   "fullCheckAt": "2026-10-26T12:00:00.000Z",
   "project": "fixture",
   "suite": null,
-  "manifest": { "grid": 16, "modes": { "dark": { "globals": "theme:dark", "colorScheme": "dark" } }, "defaultMode": "dark" },
-  "summary": { "entries": 2, "checked": 2, "skipped": 0, "passed": 1, "failed": 1, "changed": 1, "approved": 0, "flaky": 0, "new": 0, "errors": 0, "cached": 0, "a11yViolations": 0, "a11yNew": 0, "modes": ["dark"] },
+  "manifest": {
+    "grid": 16,
+    "modes": { "dark": { "globals": "theme:dark", "colorScheme": "dark" } },
+    "defaultMode": "dark"
+  },
+  "summary": {
+    "entries": 2,
+    "checked": 2,
+    "skipped": 0,
+    "passed": 1,
+    "failed": 1,
+    "changed": 1,
+    "approved": 0,
+    "flaky": 0,
+    "new": 0,
+    "errors": 0,
+    "cached": 0,
+    "a11yViolations": 0,
+    "a11yNew": 0,
+    "modes": ["dark"]
+  },
   "affected": null,
   "rows": [
-    { "id": "components-alpha--default", "story": "components-alpha--default", "mode": "dark", "state": null, "browser": "chromium", "pass": true, "changed": false, "error": null, "metrics": { "ssim": 1 }, "reasons": [], "renderMs": 120, "checkedAt": "2026-10-26T12:00:00.000Z", "a11y": { "violations": [], "new": 0, "baseline": [] }, "cached": false },
-    { "id": "components-beta--default", "story": "components-beta--default", "mode": "dark", "state": null, "browser": "chromium", "pass": false, "changed": true, "error": null, "metrics": { "ssim": 0.8 }, "reasons": ["ssim 0.8 < min 0.99"], "renderMs": 130, "checkedAt": "2026-10-26T12:00:00.000Z", "a11y": { "violations": [], "new": 0, "baseline": [] }, "cached": false }
+    {
+      "id": "components-alpha--default",
+      "story": "components-alpha--default",
+      "mode": "dark",
+      "state": null,
+      "browser": "chromium",
+      "pass": true,
+      "changed": false,
+      "error": null,
+      "metrics": { "ssim": 1 },
+      "reasons": [],
+      "renderMs": 120,
+      "checkedAt": "2026-10-26T12:00:00.000Z",
+      "a11y": { "violations": [], "new": 0, "baseline": [] },
+      "cached": false
+    },
+    {
+      "id": "components-beta--default",
+      "story": "components-beta--default",
+      "mode": "dark",
+      "state": null,
+      "browser": "chromium",
+      "pass": false,
+      "changed": true,
+      "error": null,
+      "metrics": { "ssim": 0.8 },
+      "reasons": ["ssim 0.8 < min 0.99"],
+      "renderMs": 130,
+      "checkedAt": "2026-10-26T12:00:00.000Z",
+      "a11y": { "violations": [], "new": 0, "baseline": [] },
+      "cached": false
+    }
   ]
 }

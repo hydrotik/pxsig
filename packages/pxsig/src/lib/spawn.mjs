@@ -32,13 +32,18 @@ export function refused(program, platform = process.platform) {
 function check(program, args, opts = {}) {
   const why = refused(program);
   if (why) throw new Error(why);
-  if (opts.shell) throw new Error(`pxsig does not start a shell (asked to run "${program}" through one)`);
-  if (/(^|,)spawn(,|$)/.test(process.env.PXSIG_DEBUG ?? '')) process.stderr.write(`[spawn] ${program} ${args.map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(' ')}\n`);
+  if (opts.shell)
+    throw new Error(`pxsig does not start a shell (asked to run "${program}" through one)`);
+  if (/(^|,)spawn(,|$)/.test(process.env.PXSIG_DEBUG ?? ''))
+    process.stderr.write(
+      `[spawn] ${program} ${args.map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(' ')}\n`
+    );
 }
 
 /** A start a policy blocked (AppLocker, WDAC, a sandbox) names the list instead of failing bare. */
 function explain(program, e) {
-  if (e && ['EACCES', 'EPERM'].includes(e.code)) e.message = `${program} could not start (${e.code}): it may be blocked on this machine. What pxsig starts and why: "Programs pxsig starts" in docs/platforms.md`;
+  if (e && ['EACCES', 'EPERM'].includes(e.code))
+    e.message = `${program} could not start (${e.code}): it may be blocked on this machine. What pxsig starts and why: "Programs pxsig starts" in docs/platforms.md`;
   return e;
 }
 
@@ -57,5 +62,7 @@ export function spawnSync(program, args = [], opts = {}) {
 export function execFile(program, args = [], opts = {}, done = () => {}) {
   if (typeof opts === 'function') [opts, done] = [{}, opts];
   check(program, args, opts);
-  return cp.execFile(program, args, opts, (err, ...rest) => done(err && explain(program, err), ...rest));
+  return cp.execFile(program, args, opts, (err, ...rest) =>
+    done(err && explain(program, err), ...rest)
+  );
 }

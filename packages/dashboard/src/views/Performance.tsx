@@ -1,4 +1,12 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, DataTable, StatGroup } from '@ui';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DataTable,
+  StatGroup,
+} from '@ui';
 import { type Data, fmt } from '../data';
 import { HBars } from '../parts/Charts';
 import { Cmd, t, tx } from '../copy';
@@ -13,7 +21,9 @@ export function Performance({ data }: { data: Data }) {
   const c = data.check?.summary;
   if (!b)
     return (
-      <div className={s.empty}>{tx('diagnostics.performance.empty', { command: <Cmd>node tools/bench.mjs</Cmd> })}</div>
+      <div className={s.empty}>
+        {tx('diagnostics.performance.empty', { command: <Cmd>node tools/bench.mjs</Cmd> })}
+      </div>
     );
 
   // Batch check by thread count, against one thread.
@@ -32,7 +42,10 @@ export function Performance({ data }: { data: Data }) {
     .map(Number)
     .filter((p) => ok(byConc[p]?.msPerStory))
     .sort((x, y) => x - y);
-  const renders = pools.map((p) => ({ pages: t('diagnostics.performance.pages', { count: p }), ms: Math.round(byConc[p].msPerStory) }));
+  const renders = pools.map((p) => ({
+    pages: t('diagnostics.performance.pages', { count: p }),
+    ms: Math.round(byConc[p].msPerStory),
+  }));
 
   const capWall = b.capture?.rustWallMs;
   const capInternal = b.capture?.rustInternalMs;
@@ -42,57 +55,129 @@ export function Performance({ data }: { data: Data }) {
   const rss = b.memory?.rustPeakRssBytes;
   const bin = b.footprint?.rustBinaryBytes;
   const cards = [
-    ...(top !== undefined ? [{ label: t('diagnostics.performance.batch', { count: top }), value: fmt.ms(wall(top)), unit: one && top !== 1 ? t('diagnostics.performance.vsOne', { factor: fmt.x(one / wall(top)) }) : t('diagnostics.performance.renders', { count: b.stories }) }] : []),
-    ...(ok(capWall) ? [{ label: t('diagnostics.performance.capture'), value: fmt.ms(capWall), unit: ok(capInternal) ? t('diagnostics.performance.inEngine', { ms: fmt.ms(capInternal) }) : t('diagnostics.performance.renders', { count: b.stories }) }] : []),
-    ...(perCall ? [{ label: t('diagnostics.performance.perCall'), value: `${callMs(cli!)} → ${callMs(serve!)}`, unit: fmt.x(cli! / serve!) }] : []),
+    ...(top !== undefined
+      ? [
+          {
+            label: t('diagnostics.performance.batch', { count: top }),
+            value: fmt.ms(wall(top)),
+            unit:
+              one && top !== 1
+                ? t('diagnostics.performance.vsOne', { factor: fmt.x(one / wall(top)) })
+                : t('diagnostics.performance.renders', { count: b.stories }),
+          },
+        ]
+      : []),
+    ...(ok(capWall)
+      ? [
+          {
+            label: t('diagnostics.performance.capture'),
+            value: fmt.ms(capWall),
+            unit: ok(capInternal)
+              ? t('diagnostics.performance.inEngine', { ms: fmt.ms(capInternal) })
+              : t('diagnostics.performance.renders', { count: b.stories }),
+          },
+        ]
+      : []),
+    ...(perCall
+      ? [
+          {
+            label: t('diagnostics.performance.perCall'),
+            value: `${callMs(cli!)} → ${callMs(serve!)}`,
+            unit: fmt.x(cli! / serve!),
+          },
+        ]
+      : []),
     ...(ok(rss) ? [{ label: t('diagnostics.performance.memory'), value: mb(rss) }] : []),
     ...(ok(bin) ? [{ label: t('diagnostics.performance.binary'), value: mb(bin) }] : []),
-    ...(c ? [{ label: t('diagnostics.performance.fullCheck'), value: fmt.ms(c.totalMs), unit: t('diagnostics.performance.entries', { count: c.checked }) }] : []),
+    ...(c
+      ? [
+          {
+            label: t('diagnostics.performance.fullCheck'),
+            value: fmt.ms(c.totalMs),
+            unit: t('diagnostics.performance.entries', { count: c.checked }),
+          },
+        ]
+      : []),
   ];
   if (!threads.length && !renders.length && !ok(capWall) && !perCall)
     return (
-      <div className={s.empty}>{tx('diagnostics.performance.noResults', { command: <Cmd>node tools/bench.mjs</Cmd> })}</div>
+      <div className={s.empty}>
+        {tx('diagnostics.performance.noResults', { command: <Cmd>node tools/bench.mjs</Cmd> })}
+      </div>
     );
 
   return (
     <div className={s.stack}>
       <span className={s.muted}>
-        {[t('diagnostics.performance.entries', { count: b.stories }), `${t('diagnostics.performance.cpus', { count: b.cpus })}${b.cpu ? ` (${b.cpu})` : ''}`, t('diagnostics.performance.median', { count: b.runs }), ...(b.generatedAt ? [new Date(b.generatedAt).toLocaleString()] : [])].join(' · ')}
+        {[
+          t('diagnostics.performance.entries', { count: b.stories }),
+          `${t('diagnostics.performance.cpus', { count: b.cpus })}${b.cpu ? ` (${b.cpu})` : ''}`,
+          t('diagnostics.performance.median', { count: b.runs }),
+          ...(b.generatedAt ? [new Date(b.generatedAt).toLocaleString()] : []),
+        ].join(' · ')}
       </span>
-      {cards.length ? <StatGroup label={t('diagnostics.performance.engine')} items={cards} /> : null}
+      {cards.length ? (
+        <StatGroup label={t('diagnostics.performance.engine')} items={cards} />
+      ) : null}
       <div className={s.twoCol}>
         <Card>
           <CardHeader>
             <CardTitle>{t('diagnostics.performance.renderTitle')}</CardTitle>
-            {b.render ? <CardDescription>{t('diagnostics.performance.renderDescription', { count: b.render.stories })}</CardDescription> : null}
+            {b.render ? (
+              <CardDescription>
+                {t('diagnostics.performance.renderDescription', { count: b.render.stories })}
+              </CardDescription>
+            ) : null}
           </CardHeader>
           <CardContent>
             {renders.length ? (
               <>
-                <HBars data={renders} category="pages" series={[{ key: 'ms', label: t('diagnostics.performance.renderSeries') }]} format={(v) => `${v} ms`} height={10} />
+                <HBars
+                  data={renders}
+                  category="pages"
+                  series={[{ key: 'ms', label: t('diagnostics.performance.renderSeries') }]}
+                  format={(v) => `${v} ms`}
+                  height={10}
+                />
                 <DataTable
                   rows={pools.map((p) => ({
                     id: String(p),
                     pages: p,
                     wall: ok(byConc[p].wallMs) ? fmt.ms(byConc[p].wallMs) : '—',
                     ms: Math.round(byConc[p].msPerStory),
-                    speedup: pools.includes(1) ? fmt.x(byConc[1].msPerStory / byConc[p].msPerStory) : '—',
+                    speedup: pools.includes(1)
+                      ? fmt.x(byConc[1].msPerStory / byConc[p].msPerStory)
+                      : '—',
                     errors: byConc[p].errors ?? 0,
                     reloads: byConc[p].reloads ?? 0,
                   }))}
                   rowId={(r) => r.id}
                   columns={[
-                    { id: 'pages', field: 'pages', header: t('diagnostics.performance.pagesColumn') },
+                    {
+                      id: 'pages',
+                      field: 'pages',
+                      header: t('diagnostics.performance.pagesColumn'),
+                    },
                     { id: 'wall', field: 'wall', header: t('diagnostics.performance.wall') },
                     { id: 'ms', field: 'ms', header: t('diagnostics.performance.msPerStory') },
-                    { id: 'speedup', field: 'speedup', header: t('diagnostics.performance.vsOnePage') },
+                    {
+                      id: 'speedup',
+                      field: 'speedup',
+                      header: t('diagnostics.performance.vsOnePage'),
+                    },
                     { id: 'errors', field: 'errors', header: t('diagnostics.performance.errors') },
-                    { id: 'reloads', field: 'reloads', header: t('diagnostics.performance.reloads') },
+                    {
+                      id: 'reloads',
+                      field: 'reloads',
+                      header: t('diagnostics.performance.reloads'),
+                    },
                   ]}
                 />
               </>
             ) : (
-              <div className={s.empty}>{tx('diagnostics.performance.noRender', { flag: <Cmd>--no-render</Cmd> })}</div>
+              <div className={s.empty}>
+                {tx('diagnostics.performance.noRender', { flag: <Cmd>--no-render</Cmd> })}
+              </div>
             )}
           </CardContent>
         </Card>
@@ -104,13 +189,27 @@ export function Performance({ data }: { data: Data }) {
           <CardContent>
             {threads.length ? (
               <DataTable
-                rows={threads.map((t) => ({ id: String(t), threads: t, wall: Math.round(wall(t)), internal: ok(rust[t].internalMs) ? Math.round(rust[t].internalMs) : '—', speedup: one ? fmt.x(one / wall(t)) : '—' }))}
+                rows={threads.map((t) => ({
+                  id: String(t),
+                  threads: t,
+                  wall: Math.round(wall(t)),
+                  internal: ok(rust[t].internalMs) ? Math.round(rust[t].internalMs) : '—',
+                  speedup: one ? fmt.x(one / wall(t)) : '—',
+                }))}
                 rowId={(r) => r.id}
                 columns={[
                   { id: 'threads', field: 'threads', header: t('diagnostics.performance.threads') },
                   { id: 'wall', field: 'wall', header: t('diagnostics.performance.wallMs') },
-                  { id: 'internal', field: 'internal', header: t('diagnostics.performance.engineMs') },
-                  { id: 'speedup', field: 'speedup', header: t('diagnostics.performance.vsOneThread') },
+                  {
+                    id: 'internal',
+                    field: 'internal',
+                    header: t('diagnostics.performance.engineMs'),
+                  },
+                  {
+                    id: 'speedup',
+                    field: 'speedup',
+                    header: t('diagnostics.performance.vsOneThread'),
+                  },
                 ]}
               />
             ) : (
@@ -123,7 +222,12 @@ export function Performance({ data }: { data: Data }) {
         <Card>
           <CardHeader>
             <CardTitle>{t('diagnostics.performance.perCallTitle')}</CardTitle>
-            <CardDescription>{tx('diagnostics.performance.perCallDescription', { count: b.perCall?.samples ?? '?', command: <Cmd>pxsig serve</Cmd> })}</CardDescription>
+            <CardDescription>
+              {tx('diagnostics.performance.perCallDescription', {
+                count: b.perCall?.samples ?? '?',
+                command: <Cmd>pxsig serve</Cmd>,
+              })}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <HBars

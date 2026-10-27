@@ -16,19 +16,34 @@ import { packagesIn } from '../packages/dashboard/src/ui/adapters/hydrotik/vite.
 
 const repo = fileURLToPath(new URL('..', import.meta.url));
 const tsc = createRequire(path.join(repo, 'package.json')).resolve('typescript/bin/tsc');
-const run = (project) => spawnSync(process.execPath, [tsc, '-p', project], { cwd: repo, stdio: 'inherit' }).status ?? 1;
+const run = (project) =>
+  spawnSync(process.execPath, [tsc, '-p', project], { cwd: repo, stdio: 'inherit' }).status ?? 1;
 
 let status = run('tsconfig.json');
-console.log(status ? '[typecheck] dashboard: errors above' : '[typecheck] dashboard, test harness, plain example adapter: ok');
+console.log(
+  status
+    ? '[typecheck] dashboard: errors above'
+    : '[typecheck] dashboard, test harness, plain example adapter: ok'
+);
 
 const source = process.env.PXSIG_DS_SOURCE;
-if (!source) console.log('[typecheck] reference adapter: skipped (set PXSIG_DS_SOURCE to check it against its design system)');
+if (!source)
+  console.log(
+    '[typecheck] reference adapter: skipped (set PXSIG_DS_SOURCE to check it against its design system)'
+  );
 else {
   const pkgs = packagesIn(source);
-  const need = (name) => pkgs[name] ?? (() => { throw new Error(`[typecheck] ${name} not found in ${source}`); })();
+  const need = (name) =>
+    pkgs[name] ??
+    (() => {
+      throw new Error(`[typecheck] ${name} not found in ${source}`);
+    })();
   const ds = need('@hydrotik/design-system');
   // One copy of React's types: the design system's, so its components and the adapter agree.
-  const types = [path.join(source, 'node_modules', '@types'), path.join(ds, 'node_modules', '@types')].find((d) => existsSync(path.join(d, 'react')));
+  const types = [
+    path.join(source, 'node_modules', '@types'),
+    path.join(ds, 'node_modules', '@types'),
+  ].find((d) => existsSync(path.join(d, 'react')));
   const cfgDir = path.join(repo, 'node_modules', '.cache', 'pxsig-typecheck');
   mkdirSync(cfgDir, { recursive: true });
   const rel = (p) => path.relative(cfgDir, p).split(path.sep).join('/');
@@ -47,17 +62,27 @@ else {
         '@hydrotik/theme-provider': [path.join(need('@hydrotik/theme-provider'), 'src/index.ts')],
         recharts: [path.join(ds, 'node_modules', 'recharts')],
         ...(types
-          ? Object.fromEntries(['react', 'react-dom'].flatMap((n) => [[n, [realpathSync(path.join(types, n))]], [`${n}/*`, [`${realpathSync(path.join(types, n))}/*`]]]))
+          ? Object.fromEntries(
+              ['react', 'react-dom'].flatMap((n) => [
+                [n, [realpathSync(path.join(types, n))]],
+                [`${n}/*`, [`${realpathSync(path.join(types, n))}/*`]],
+              ])
+            )
           : {}),
       },
     },
-    include: [rel(path.join(repo, 'packages/dashboard/src/ui/adapters/hydrotik')), rel(path.join(repo, 'types'))],
+    include: [
+      rel(path.join(repo, 'packages/dashboard/src/ui/adapters/hydrotik')),
+      rel(path.join(repo, 'types')),
+    ],
     exclude: [],
   };
   const file = path.join(cfgDir, 'tsconfig.hydrotik.json');
   writeFileSync(file, JSON.stringify(config, null, 2));
   const s = run(file);
-  console.log(s ? '[typecheck] reference adapter: errors above' : '[typecheck] reference adapter: ok');
+  console.log(
+    s ? '[typecheck] reference adapter: errors above' : '[typecheck] reference adapter: ok'
+  );
   status ||= s;
 }
 process.exit(status);

@@ -1,12 +1,12 @@
 {
   "$description": "oxlint warnings per file and rule. A file may not gain a warning; lower with `node scripts/check-lint-warnings.mjs --update` after fixing some. See scripts/check-lint-warnings.mjs.",
-  "total": 87,
+  "total": 86,
   "files": {
     "packages/dashboard/src/App.tsx": {
       "eslint(no-unused-vars)": 1,
       "jsx-a11y(prefer-tag-over-role)": 1,
       "react(refs)": 1,
-      "react(set-state-in-effect)": 4
+      "react(set-state-in-effect)": 3
     },
     "packages/dashboard/src/data.ts": {
       "typescript(no-explicit-any)": 2

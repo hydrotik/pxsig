@@ -42,21 +42,31 @@ export const storybookSentinel = (arg) => {
     // can carry another file's overlay: drop it from this page. Only a story that did not render
     // is the error.
     const cur = pv?.currentRender;
-    const rendered = cur?.id === id && ['finished', 'completed'].includes(cur.phase) && (document.querySelector(root)?.childElementCount ?? 0) > 0;
+    const rendered =
+      cur?.id === id &&
+      ['finished', 'completed'].includes(cur.phase) &&
+      (document.querySelector(root)?.childElementCount ?? 0) > 0;
     if (rendered) overlay.remove();
     else {
-      const box = overlay.shadowRoot?.querySelector('.message-body') ?? overlay.shadowRoot?.querySelector('.message');
+      const box =
+        overlay.shadowRoot?.querySelector('.message-body') ??
+        overlay.shadowRoot?.querySelector('.message');
       const msg = (box?.textContent ?? '').trim().split('\n')[0].slice(0, 200);
       return `Vite error overlay${msg ? `: ${msg}` : ''}`;
     }
   }
   if (!pv) return 'the Storybook preview did not start';
   if (b?.classList.contains('sb-show-errordisplay')) {
-    const msg = (document.querySelector('#error-message')?.textContent ?? '').trim().split('\n')[0].slice(0, 200);
+    const msg = (document.querySelector('#error-message')?.textContent ?? '')
+      .trim()
+      .split('\n')[0]
+      .slice(0, 200);
     return `Storybook error page${msg ? `: ${msg}` : ''}`;
   }
-  if (b?.classList.contains('sb-show-nopreview')) return 'Storybook shows "no preview" (story missing from the index?)';
-  if (pv?.currentRender?.id && pv.currentRender.id !== id) return `Storybook rendered ${pv.currentRender.id}, not ${id}`;
+  if (b?.classList.contains('sb-show-nopreview'))
+    return 'Storybook shows "no preview" (story missing from the index?)';
+  if (pv?.currentRender?.id && pv.currentRender.id !== id)
+    return `Storybook rendered ${pv.currentRender.id}, not ${id}`;
   return null;
 };
 
@@ -157,12 +167,17 @@ export async function launchBrowser(project, channel) {
  */
 export async function connectBrowser(pw, endpoint, type = 'chromium') {
   try {
-    const b = await pw[type].connect(endpoint, { exposeNetwork: '<loopback>', headers: { 'x-playwright-browser': type } });
+    const b = await pw[type].connect(endpoint, {
+      exposeNetwork: '<loopback>',
+      headers: { 'x-playwright-browser': type },
+    });
     b.__pxsigRemote = endpoint;
     return b;
   } catch (e) {
     const why = String(e?.message ?? e).split('\n')[0];
-    throw new SetupError(`cannot use the browser server at ${endpoint} (${type}): ${why}. Is it running (pxsig browser status), and is this project's Playwright the server's major.minor?`);
+    throw new SetupError(
+      `cannot use the browser server at ${endpoint} (${type}): ${why}. Is it running (pxsig browser status), and is this project's Playwright the server's major.minor?`
+    );
   }
 }
 
@@ -183,7 +198,11 @@ export function browserRecord(project, endpoint) {
  * With `endpoint` (`capture.browserEndpoint`, `--browser`, `PXSIG_BROWSER_WS`) every engine is
  * connected to that browser server instead; without it, launching is exactly as before.
  */
-export function browserPool(project, given = {}, { endpoint = project?.config?.capture?.browserEndpoint ?? null, pw = null } = {}) {
+export function browserPool(
+  project,
+  given = {},
+  { endpoint = project?.config?.capture?.browserEndpoint ?? null, pw = null } = {}
+) {
   const open = new Map(Object.entries(given).map(([k, b]) => [k, Promise.resolve(b)]));
   const envs = new Map();
   const lib = () => (pw ? Promise.resolve(pw) : playwright(project));
@@ -197,8 +216,12 @@ export function browserPool(project, given = {}, { endpoint = project?.config?.c
             collectEnv(b, {
               type,
               channel: b.__pxsigChannel ?? null,
-              playwright: project ? playwrightVersion(() => resolvePeer(project, 'playwright/package.json')) : null,
-              remote: b.__pxsigRemote ? { endpoint: b.__pxsigRemote, record: browserRecord(project, b.__pxsigRemote) } : null,
+              playwright: project
+                ? playwrightVersion(() => resolvePeer(project, 'playwright/package.json'))
+                : null,
+              remote: b.__pxsigRemote
+                ? { endpoint: b.__pxsigRemote, record: browserRecord(project, b.__pxsigRemote) }
+                : null,
               ...opts,
             })
           )
@@ -234,7 +257,10 @@ let axeSource = null;
 export function axeScript(project) {
   if (axeSource != null) return axeSource;
   try {
-    axeSource = readFileSync(join(dirname(resolvePeer(project, 'axe-core/package.json')), 'axe.min.js'), 'utf8');
+    axeSource = readFileSync(
+      join(dirname(resolvePeer(project, 'axe-core/package.json')), 'axe.min.js'),
+      'utf8'
+    );
   } catch {
     axeSource = '';
   }
@@ -258,16 +284,20 @@ export function applyTokenOverrides(want) {
     } catch {
       continue;
     }
-    for (const r of rules) if (r.style) for (const n of r.style) if (n.startsWith('--')) names.add(n);
+    for (const r of rules)
+      if (r.style) for (const n of r.style) if (n.startsWith('--')) names.add(n);
   }
-  const probe = getComputedStyle(document.querySelector('[data-theme]') || document.documentElement);
+  const probe = getComputedStyle(
+    document.querySelector('[data-theme]') || document.documentElement
+  );
   const next = (spec, current) => {
     if (spec && typeof spec === 'object') {
       if (typeof spec.scale === 'number') {
         const m = /^(-?[\d.]+)(.*)$/.exec(current);
         return m ? `${Number(m[1]) * spec.scale}${m[2]}` : current;
       }
-      if (typeof spec.mix === 'string') return `color-mix(in srgb, ${current} ${100 - (spec.amount ?? 50)}%, ${spec.mix})`;
+      if (typeof spec.mix === 'string')
+        return `color-mix(in srgb, ${current} ${100 - (spec.amount ?? 50)}%, ${spec.mix})`;
       return current;
     }
     return String(spec);
@@ -287,7 +317,8 @@ export function applyTokenOverrides(want) {
 
 /** Load axe-core's bundle into the page once (a page is reused across stories). */
 export async function injectAxe(page, src) {
-  if (!(await page.evaluate(() => typeof window.axe !== 'undefined'))) await page.addScriptTag({ content: src });
+  if (!(await page.evaluate(() => typeof window.axe !== 'undefined')))
+    await page.addScriptTag({ content: src });
 }
 
 /** Ask the loaded preview to render another story; resolves false if it does not within 10 s. */
@@ -444,7 +475,9 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             .catch(() => {});
           // Never record Storybook's own error page as a render (a broken index, an unknown story,
           // a story that threw): that would turn "Unable to index files" into a baseline or a diff.
-          const sentinel = await page.evaluate(storybookSentinel, { id: storyId, root: target }).catch(() => null);
+          const sentinel = await page
+            .evaluate(storybookSentinel, { id: storyId, root: target })
+            .catch(() => null);
           if (sentinel) throw new Error(`${STORYBOOK_ERROR} ${sentinel}`);
           if (!switched) {
             await page.addStyleTag({ content: FREEZE_CSS + css });
@@ -467,7 +500,8 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             if (it.action === 'hover') await loc.hover({ timeout: 5000 });
             else if (it.action === 'focus') await loc.focus({ timeout: 5000 });
             else if (it.action === 'click') await loc.click({ timeout: 5000 });
-            else if (it.action === 'rightclick') await loc.click({ button: 'right', timeout: 5000 });
+            else if (it.action === 'rightclick')
+              await loc.click({ button: 'right', timeout: 5000 });
             else if (it.action === 'press') {
               if (it.target) await loc.focus({ timeout: 5000 });
               for (const k of [].concat(it.key ?? 'Tab')) await page.keyboard.press(k);
@@ -496,19 +530,19 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             a11yRes = await injectAxe(page, axe)
               .then(() =>
                 page.evaluate(
-                async ({ sel: root }) => {
-                  const r = await window.axe.run(document.querySelector(root) ?? document, {
-                    resultTypes: ['violations'],
-                  });
-                  return r.violations.map((v) => ({
-                    id: v.id,
-                    impact: v.impact,
-                    help: v.help,
-                    nodes: v.nodes.length,
-                    targets: v.nodes.slice(0, 3).map((n) => n.target.join(' ')),
-                  }));
-                },
-                { sel }
+                  async ({ sel: root }) => {
+                    const r = await window.axe.run(document.querySelector(root) ?? document, {
+                      resultTypes: ['violations'],
+                    });
+                    return r.violations.map((v) => ({
+                      id: v.id,
+                      impact: v.impact,
+                      help: v.help,
+                      nodes: v.nodes.length,
+                      targets: v.nodes.slice(0, 3).map((n) => n.target.join(' ')),
+                    }));
+                  },
+                  { sel }
                 )
               )
               .then((violations) => ({ violations }))

@@ -19,26 +19,47 @@ use crate::gate::{self, GateSpec};
 use crate::{affected, io};
 
 fn s<'a>(p: &'a Value, k: &str) -> Result<&'a str> {
-    p[k].as_str().ok_or_else(|| anyhow!("missing string param `{k}`"))
+    p[k].as_str()
+        .ok_or_else(|| anyhow!("missing string param `{k}`"))
 }
 
 fn only(p: &Value) -> Option<std::collections::HashSet<String>> {
-    p["only"].as_array().map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+    p["only"].as_array().map(|a| {
+        a.iter()
+            .filter_map(|x| x.as_str().map(String::from))
+            .collect()
+    })
 }
 
 fn gate_of(p: &Value) -> Result<GateSpec> {
-    Ok(if p["gate"].is_object() { serde_json::from_value(p["gate"].clone())? } else { GateSpec::default() })
+    Ok(if p["gate"].is_object() {
+        serde_json::from_value(p["gate"].clone())?
+    } else {
+        GateSpec::default()
+    })
 }
 
 fn dispatch(method: &str, p: &Value) -> Result<Value> {
     match method {
-        "ping" => Ok(json!({ "pong": true, "version": env!("CARGO_PKG_VERSION"), "threads": rayon::current_num_threads() })),
+        "ping" => Ok(
+            json!({ "pong": true, "version": env!("CARGO_PKG_VERSION"), "threads": rayon::current_num_threads() }),
+        ),
         "capture" => {
             let grid = (p["grid"].as_u64().unwrap_or(64) as usize).clamp(8, 256);
             let min_cell = p["minCellPx"].as_u64().map(|v| v as usize);
             // `env`: the environment the render was made in, written into the header as is.
-            let extra = p["env"].is_object().then(|| serde_json::Map::from_iter([("env".to_string(), p["env"].clone())]));
-            let r = batch::capture_png_policy(&PathBuf::from(s(p, "png")?), &PathBuf::from(s(p, "out")?), grid, min_cell, p["detail"].as_bool().unwrap_or(true), p.get("entry"), extra.as_ref())?;
+            let extra = p["env"]
+                .is_object()
+                .then(|| serde_json::Map::from_iter([("env".to_string(), p["env"].clone())]));
+            let r = batch::capture_png_policy(
+                &PathBuf::from(s(p, "png")?),
+                &PathBuf::from(s(p, "out")?),
+                grid,
+                min_cell,
+                p["detail"].as_bool().unwrap_or(true),
+                p.get("entry"),
+                extra.as_ref(),
+            )?;
             Ok(json!({ "sha256": r.sha256, "grid": r.config.grid, "detail": r.detail.is_some() }))
         }
         "compare" => {
@@ -51,7 +72,9 @@ fn dispatch(method: &str, p: &Value) -> Result<Value> {
             if let Some(out) = p["outDir"].as_str() {
                 io::write_diff_artifacts(&PathBuf::from(out), &io::stem_of(&sig), &r, &metrics)?;
             }
-            Ok(json!({ "pass": r.pass, "metrics": metrics, "reasons": r.reasons, "detail": batch::detail_json(&r) }))
+            Ok(
+                json!({ "pass": r.pass, "metrics": metrics, "reasons": r.reasons, "detail": batch::detail_json(&r) }),
+            )
         }
         "check" => batch::check(&CheckOpts {
             manifest: s(p, "manifest")?.into(),
@@ -77,12 +100,24 @@ fn dispatch(method: &str, p: &Value) -> Result<Value> {
             root: p["root"].as_str().unwrap_or(".").into(),
             only: only(p),
             no_detail: p["detail"] == json!(false),
-            env: if p["env"].is_object() { Some(serde_json::from_value(p["env"].clone())?) } else { None },
+            env: if p["env"].is_object() {
+                Some(serde_json::from_value(p["env"].clone())?)
+            } else {
+                None
+            },
         }),
         "diff" => {
             let (a, aw, ah) = io::decode_png(&PathBuf::from(s(p, "a")?))?;
             let (b, bw, bh) = io::decode_png(&PathBuf::from(s(p, "b")?))?;
-            let d = pxsig_core::pixel_diff(&a, aw, ah, &b, bw, bh, p["tolerance"].as_u64().unwrap_or(16) as u8);
+            let d = pxsig_core::pixel_diff(
+                &a,
+                aw,
+                ah,
+                &b,
+                bw,
+                bh,
+                p["tolerance"].as_u64().unwrap_or(16) as u8,
+            );
             if let Some(mask) = p["mask"].as_str() {
                 io::write_mask(&PathBuf::from(mask), &d)?;
             }
@@ -98,7 +133,12 @@ fn dispatch(method: &str, p: &Value) -> Result<Value> {
             let root = PathBuf::from(p["root"].as_str().unwrap_or("."));
             let m = batch::load_manifest(&PathBuf::from(s(p, "manifest")?))?;
             let ch = match p["files"].as_array() {
-                Some(a) => affected::changes_from_files(&root, &a.iter().filter_map(|x| x.as_str().map(String::from)).collect::<Vec<_>>()),
+                Some(a) => affected::changes_from_files(
+                    &root,
+                    &a.iter()
+                        .filter_map(|x| x.as_str().map(String::from))
+                        .collect::<Vec<_>>(),
+                ),
                 None => affected::changes_since(&root, p["since"].as_str().unwrap_or("main"))?,
             };
             affected::affected(&root, &m, &ch)
@@ -120,7 +160,9 @@ pub fn run() -> Result<u8> {
                 let id = req["id"].clone();
                 let t = std::time::Instant::now();
                 match dispatch(req["method"].as_str().unwrap_or(""), &req["params"]) {
-                    Ok(result) => json!({ "id": id, "result": result, "ms": t.elapsed().as_secs_f64() * 1000.0 }),
+                    Ok(result) => {
+                        json!({ "id": id, "result": result, "ms": t.elapsed().as_secs_f64() * 1000.0 })
+                    }
                     Err(e) => json!({ "id": id, "error": format!("{e:#}") }),
                 }
             }

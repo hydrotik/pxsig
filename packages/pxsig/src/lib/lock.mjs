@@ -22,7 +22,15 @@
  */
 import { spawnSync } from './spawn.mjs';
 import { randomBytes } from 'node:crypto';
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  rmSync,
+  writeSync,
+} from 'node:fs';
 import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { writeAtomic } from './files.mjs';
@@ -46,7 +54,10 @@ export class LockError extends Error {
 /** When `pid` started (ms), where the platform can say; null when unknown. */
 function processStart(pid) {
   if (process.platform === 'win32') return null;
-  const r = spawnSync('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', env: { ...process.env, LC_ALL: 'C' } });
+  const r = spawnSync('ps', ['-o', 'lstart=', '-p', String(pid)], {
+    encoding: 'utf8',
+    env: { ...process.env, LC_ALL: 'C' },
+  });
   const t = Date.parse(r.stdout?.trim() ?? '');
   return Number.isFinite(t) ? t : null;
 }
@@ -78,7 +89,8 @@ export function readLock(P) {
   if (!alive(l.pid)) return { ...l, stale: true, why: `process ${l.pid} is gone` };
   const started = processStart(l.pid);
   // `lstart` has one-second resolution: allow a little slack before calling the pid reused.
-  if (started != null && l.startedAt && started > Date.parse(l.startedAt) + 2000) return { ...l, stale: true, why: `pid ${l.pid} now belongs to a newer process` };
+  if (started != null && l.startedAt && started > Date.parse(l.startedAt) + 2000)
+    return { ...l, stale: true, why: `pid ${l.pid} now belongs to a newer process` };
   return { ...l, stale: false, quiet: l.heartbeatAgeMs != null && l.heartbeatAgeMs > QUIET_MS };
 }
 
@@ -86,7 +98,10 @@ const ago = (ms) => (ms < 90_000 ? `${Math.round(ms / 1000)} s` : `${Math.round(
 
 /** A sentence naming who holds a lock. */
 export function describeLock(P, l) {
-  const what = l.holder === 'serve' ? `the pxsig server${l.url ? ` at ${l.url}` : ''}` : `\`${l.command ?? `pxsig ${l.holder}`}\``;
+  const what =
+    l.holder === 'serve'
+      ? `the pxsig server${l.url ? ` at ${l.url}` : ''}`
+      : `\`${l.command ?? `pxsig ${l.holder}`}\``;
   const beat = l.heartbeatAgeMs != null ? `, last heartbeat ${ago(l.heartbeatAgeMs)} ago` : '';
   return `${what} (pid ${l.pid}${l.foreign ? ` on ${l.host}` : ''}, since ${l.startedAt}${beat}) holds the store ${relPath(P.workspaceRoot, P.store.root) || '.'}`;
 }
@@ -97,11 +112,24 @@ export function describeLock(P, l) {
  * quiet one. The lock is released by `release` and on process exit; a process killed outright
  * leaves its lock behind, which the next taker finds stale (its pid is gone).
  */
-export function acquireLock(P, { holder, command = process.argv.slice(1).join(' '), url = null, takeOver = null } = {}) {
+export function acquireLock(
+  P,
+  { holder, command = process.argv.slice(1).join(' '), url = null, takeOver = null } = {}
+) {
   const p = lockPath(P);
   mkdirSync(P.store.reports, { recursive: true });
   const now = () => new Date().toISOString();
-  const body = { pid: process.pid, startedAt: now(), host: hostname(), holder, command, ...(url ? { url } : {}), nonce: randomBytes(8).toString('hex'), generation: 1, heartbeatAt: now() };
+  const body = {
+    pid: process.pid,
+    startedAt: now(),
+    host: hostname(),
+    holder,
+    command,
+    ...(url ? { url } : {}),
+    nonce: randomBytes(8).toString('hex'),
+    generation: 1,
+    heartbeatAt: now(),
+  };
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const fd = openSync(p, 'wx');
@@ -145,17 +173,26 @@ export function acquireLock(P, { holder, command = process.argv.slice(1).join(' 
         check() {
           if (ours()) return;
           const held = readLock(P);
-          throw new LockError(`lock taken over by ${held ? describeLock(P, held) : 'nobody (the lock file is gone)'}: nothing more was written`, held);
+          throw new LockError(
+            `lock taken over by ${held ? describeLock(P, held) : 'nobody (the lock file is gone)'}: nothing more was written`,
+            held
+          );
         },
       };
     } catch (e) {
       if (e.code !== 'EEXIST') throw e;
       const held = readLock(P);
       if (held && !held.stale) {
-        if (held.pid === process.pid && held.host === hostname()) return { release: () => {}, update: () => {}, check: () => {}, reentrant: true };
+        if (held.pid === process.pid && held.host === hostname())
+          return { release: () => {}, update: () => {}, check: () => {}, reentrant: true };
         if (!(takeOver && held.quiet && held.nonce === takeOver)) {
-          const quiet = held.quiet ? `; its heartbeat stopped ${ago(held.heartbeatAgeMs)} ago, so a person at a terminal can take it over` : '';
-          throw new LockError(`${describeLock(P, held)}: wait for it to finish${held.holder === 'serve' ? ', or stop the server' : ''}${quiet}`, held);
+          const quiet = held.quiet
+            ? `; its heartbeat stopped ${ago(held.heartbeatAgeMs)} ago, so a person at a terminal can take it over`
+            : '';
+          throw new LockError(
+            `${describeLock(P, held)}: wait for it to finish${held.holder === 'serve' ? ', or stop the server' : ''}${quiet}`,
+            held
+          );
         }
         body.generation = (held.generation ?? 1) + 1;
       }
@@ -175,10 +212,17 @@ export async function takeLock(P, opts) {
     return acquireLock(P, opts);
   } catch (e) {
     if (!(e instanceof LockError) || !e.lock?.quiet || !e.lock.nonce) throw e;
-    if (!humanAtTerminal()) throw Object.assign(e, { exit: 3, message: `${e.message} (${whyNotPerson()})` });
+    if (!humanAtTerminal())
+      throw Object.assign(e, { exit: 3, message: `${e.message} (${whyNotPerson()})` });
     const phrase = 'TAKE OVER';
-    if ((await ask(`${e.message}. Type "${phrase}" to take the lock (the old holder stops before its next write): `)) !== phrase)
-      throw Object.assign(new LockError('not confirmed: the lock was left as it is', e.lock), { exit: 1 });
+    if (
+      (await ask(
+        `${e.message}. Type "${phrase}" to take the lock (the old holder stops before its next write): `
+      )) !== phrase
+    )
+      throw Object.assign(new LockError('not confirmed: the lock was left as it is', e.lock), {
+        exit: 1,
+      });
     return acquireLock(P, { ...opts, takeOver: e.lock.nonce });
   }
 }

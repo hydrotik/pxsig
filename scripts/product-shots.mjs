@@ -21,7 +21,16 @@
  * skipping steps 1–3. --raw skips the compression (it takes minutes with zopflipng).
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
 import { join, resolve } from 'node:path';
@@ -29,26 +38,46 @@ import { fileURLToPath } from 'node:url';
 
 const repo = fileURLToPath(new URL('..', import.meta.url));
 const cli = join(repo, 'packages', 'pxsig', 'bin', 'pxsig.mjs');
-const bin = process.env.PXSIG_BIN ?? join(repo, 'target', 'release', process.platform === 'win32' ? 'pxsig.exe' : 'pxsig');
+const bin =
+  process.env.PXSIG_BIN ??
+  join(repo, 'target', 'release', process.platform === 'win32' ? 'pxsig.exe' : 'pxsig');
 const arg = (k, d) => (process.argv.includes(k) ? process.argv[process.argv.indexOf(k) + 1] : d);
 const out = resolve(arg('--out', join(repo, 'docs', 'product-shots')));
 const keep = process.argv.includes('--keep');
 if (!existsSync(bin)) throw new Error('build the Rust binary first: cargo build --release');
-if (!existsSync(join(repo, 'packages', 'pxsig', 'dist', 'dashboard', 'index.html'))) throw new Error('build the dashboard first: pnpm build:dashboard');
+if (!existsSync(join(repo, 'packages', 'pxsig', 'dist', 'dashboard', 'index.html')))
+  throw new Error('build the dashboard first: pnpm build:dashboard');
 const { chromium } = createRequire(join(repo, 'packages', 'pxsig', 'package.json'))('playwright');
 
 /** The change the shots show, and the entry the inspector opens on. */
-const CHANGE = { file: 'src/Button/Button.jsx', from: "padding: '10px 16px'", to: "padding: '12px 22px'" };
+const CHANGE = {
+  file: 'src/Button/Button.jsx',
+  from: "padding: '10px 16px'",
+  to: "padding: '12px 22px'",
+};
 const ENTRY = 'components-button--primary';
 /** The inspector's stored view: the diff view, with the boxes round each changed region. */
 const INSPECTOR = { mode: 'side', boxes: true, highlight: true, tiles: false };
 const SIZE = { width: 1600, height: 1000 };
 
 const log = (m) => console.log(`[shots] ${m}`);
-const env = { ...process.env, PXSIG_BIN: bin, PXSIG_FORMAT: 'plain', PXSIG_NO_DELEGATE: '1', CI: '1' };
+const env = {
+  ...process.env,
+  PXSIG_BIN: bin,
+  PXSIG_FORMAT: 'plain',
+  PXSIG_NO_DELEGATE: '1',
+  CI: '1',
+};
 const sh = (cmd, args, cwd, { allow = [0], ...opts } = {}) => {
-  const r = spawnSync(cmd, args, { cwd, env, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, ...opts });
-  if (!allow.includes(r.status)) throw new Error(`${cmd} ${args.join(' ')} → ${r.status}\n${r.stdout ?? ''}\n${r.stderr ?? ''}`);
+  const r = spawnSync(cmd, args, {
+    cwd,
+    env,
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+    ...opts,
+  });
+  if (!allow.includes(r.status))
+    throw new Error(`${cmd} ${args.join(' ')} → ${r.status}\n${r.stdout ?? ''}\n${r.stderr ?? ''}`);
   return r;
 };
 const pxsig = (args, cwd, allow) => sh(process.execPath, [cli, ...args], cwd, { allow });
@@ -75,8 +104,16 @@ try {
       ['inspector', `#inspect=${encodeURIComponent(entry)}`],
     ]) {
       // A fresh page each time: the dashboard reads a deep link only as it opens.
-      const ctx = await browser.newContext({ viewport: SIZE, deviceScaleFactor: 2, colorScheme: theme, reducedMotion: 'reduce' });
-      await ctx.addInitScript((prefs) => localStorage.setItem('pxsig-inspector', prefs), JSON.stringify(INSPECTOR));
+      const ctx = await browser.newContext({
+        viewport: SIZE,
+        deviceScaleFactor: 2,
+        colorScheme: theme,
+        reducedMotion: 'reduce',
+      });
+      await ctx.addInitScript(
+        (prefs) => localStorage.setItem('pxsig-inspector', prefs),
+        JSON.stringify(INSPECTOR)
+      );
       const page = await ctx.newPage();
       await page.goto(`${url}?theme=${theme}${hash}`);
       await page.waitForLoadState('networkidle');
@@ -100,19 +137,34 @@ async function prepare() {
   // 1. A fresh copy of the example, linked to this checkout.
   const dir = join(repo, '.local', 'product-shots', 'single-package');
   rmSync(dir, { recursive: true, force: true });
-  cpSync(join(repo, 'examples', 'single-package'), dir, { recursive: true, filter: (p) => !/node_modules|storybook-static|\.pxsig/.test(p) });
+  cpSync(join(repo, 'examples', 'single-package'), dir, {
+    recursive: true,
+    filter: (p) => !/node_modules|storybook-static|\.pxsig/.test(p),
+  });
   const pjPath = join(dir, 'package.json');
   const pj = JSON.parse(readFileSync(pjPath, 'utf8'));
   for (const k of ['dependencies', 'devDependencies'])
-    for (const [dep, v] of Object.entries(pj[k] ?? {})) if (String(v).startsWith('link:')) pj[k][dep] = `link:${join(repo, 'packages', dep.replace('@pxsig/', ''))}`;
+    for (const [dep, v] of Object.entries(pj[k] ?? {}))
+      if (String(v).startsWith('link:'))
+        pj[k][dep] = `link:${join(repo, 'packages', dep.replace('@pxsig/', ''))}`;
   writeFileSync(pjPath, JSON.stringify(pj, null, 2));
   log(`installing the example in ${dir}`);
-  sh('pnpm', ['install', '--ignore-workspace', '--no-frozen-lockfile', '--config.confirmModulesPurge=false'], dir, { stdio: 'inherit' });
+  sh(
+    'pnpm',
+    ['install', '--ignore-workspace', '--no-frozen-lockfile', '--config.confirmModulesPurge=false'],
+    dir,
+    { stdio: 'inherit' }
+  );
   const build = () => sh('pnpm', ['build-storybook'], dir, { stdio: 'inherit' });
   build();
 
   // The check serves the static build itself when nothing answers at storybook.url.
-  const static_ = ['--storybook-url', 'http://127.0.0.1:1', '--storybook-static', join(dir, 'storybook-static')];
+  const static_ = [
+    '--storybook-url',
+    'http://127.0.0.1:1',
+    '--storybook-static',
+    join(dir, 'storybook-static'),
+  ];
   pxsig(['manifest', ...static_], dir);
   pxsig(['check', '--full', '--retries', '0', ...static_], dir, [1]);
 
@@ -132,16 +184,28 @@ async function prepare() {
   build();
   pxsig(['check', '--full', '--retries', '1', ...static_], dir, [1]);
   const rows = JSON.parse(readFileSync(join(dir, '.pxsig', 'reports', 'check.json'), 'utf8')).rows;
-  log(`changed: ${rows.filter((r) => !r.pass).map((r) => r.id).join(', ')}`);
+  log(
+    `changed: ${rows
+      .filter((r) => !r.pass)
+      .map((r) => r.id)
+      .join(', ')}`
+  );
 
   // 3. The dashboard, and the shots.
   const port = await freePort();
-  server = spawn(process.execPath, [cli, 'serve', '--port', String(port), '--no-open'], { cwd: dir, env, stdio: ['ignore', 'pipe', 'inherit'] });
+  server = spawn(process.execPath, [cli, 'serve', '--port', String(port), '--no-open'], {
+    cwd: dir,
+    env,
+    stdio: ['ignore', 'pipe', 'inherit'],
+  });
   server.stdout.on('data', () => {});
   const url = `http://127.0.0.1:${port}/report/`;
   for (let i = 0; ; i++) {
     if (i > 120) throw new Error(`the server did not answer at ${url}`);
-    const ok = await fetch(url).then((r) => r.ok, () => false);
+    const ok = await fetch(url).then(
+      (r) => r.ok,
+      () => false
+    );
     if (ok) break;
     await new Promise((r) => setTimeout(r, 500));
   }
@@ -153,7 +217,8 @@ const has = (t) => spawnSync(t, ['--help'], { stdio: 'ignore' }).error === undef
 const raw = process.argv.includes('--raw');
 for (const file of shots) {
   if (raw);
-  else if (has('oxipng')) spawnSync('oxipng', ['-o', '4', '--strip', 'safe', file], { stdio: 'ignore' });
+  else if (has('oxipng'))
+    spawnSync('oxipng', ['-o', '4', '--strip', 'safe', file], { stdio: 'ignore' });
   else if (has('zopflipng')) spawnSync('zopflipng', ['-y', file, file], { stdio: 'ignore' });
   log(`${file.slice(repo.length)} · ${(statSync(file).size / 1024).toFixed(0)} KB`);
 }

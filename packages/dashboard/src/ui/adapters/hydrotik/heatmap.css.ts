@@ -11,9 +11,17 @@ import { vars } from '@hydrotik/tokens';
 
 /** Percent of the chart colour in each step's fill (step 0 is the plain surface). */
 export const HEAT_MIX = [0, 14, 29, 44, 66, 86] as const;
-const fill = (step: number) => (step ? `color-mix(in srgb, ${vars.color.chart1} ${HEAT_MIX[step]}%, ${vars.color.surface})` : vars.color.surface);
+const fill = (step: number) =>
+  step
+    ? `color-mix(in srgb, ${vars.color.chart1} ${HEAT_MIX[step]}%, ${vars.color.surface})`
+    : vars.color.surface;
 
-export const root = style({ display: 'flex', flexDirection: 'column', gap: vars.space['3'], minInlineSize: 0 });
+export const root = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: vars.space['3'],
+  minInlineSize: 0,
+});
 
 export const grid = style({
   listStyle: 'none',
@@ -45,7 +53,9 @@ export const tile = style({
     '&:focus-visible': focusOutline,
   },
 });
-export const step = styleVariants({ 0: {}, 1: {}, 2: {}, 3: {}, 4: {}, 5: {} }, (_, k) => ({ backgroundColor: fill(Number(k)) }));
+export const step = styleVariants({ 0: {}, 1: {}, 2: {}, 3: {}, 4: {}, 5: {} }, (_, k) => ({
+  backgroundColor: fill(Number(k)),
+}));
 /** The surface colour as ink, on the dark end of the scale. */
 export const inverse = style({ color: vars.color.surface });
 
@@ -57,7 +67,11 @@ export const name = style({
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
 });
-export const figure = style({ fontFamily: vars.font.family.mono, fontSize: vars.font.size['2xs'], fontVariantNumeric: 'tabular-nums' });
+export const figure = style({
+  fontFamily: vars.font.family.mono,
+  fontSize: vars.font.size['2xs'],
+  fontVariantNumeric: 'tabular-nums',
+});
 
 export const legend = style({
   display: 'flex',
@@ -75,5 +89,9 @@ export const legendLabel = style({
   marginInlineEnd: vars.space['1'],
 });
 export const ramp = style({ display: 'inline-flex', gap: vars.space['0_5'] });
-export const swatch = style({ inlineSize: '1.5rem', blockSize: '0.5rem', borderRadius: vars.radii.sm });
+export const swatch = style({
+  inlineSize: '1.5rem',
+  blockSize: '0.5rem',
+  borderRadius: vars.radii.sm,
+});
 globalStyle(`${legend} > span`, { whiteSpace: 'nowrap' });

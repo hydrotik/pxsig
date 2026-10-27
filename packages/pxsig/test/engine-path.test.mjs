@@ -20,13 +20,15 @@ test('PXSIG_BIN wins', () => {
   assert.equal(rustBinary({ PXSIG_BIN: join(tmpdir(), 'x', exe) }), join(tmpdir(), 'x', exe));
 });
 
-test('an installed pxsig without its platform package names that package, not the project\'s target/', async () => {
+test("an installed pxsig without its platform package names that package, not the project's target/", async () => {
   const project = mkdtempSync(join(tmpdir(), 'pxsig-engine-'));
   const installed = join(project, 'node_modules', 'pxsig');
   mkdirSync(installed, { recursive: true });
   cpSync(join(pkg, 'src'), join(installed, 'src'), { recursive: true });
   cpSync(join(pkg, 'package.json'), join(installed, 'package.json'));
-  const { rustBinary: installedRustBinary } = await import(pathToFileURL(join(installed, 'src', 'lib', 'workspace.mjs')).href);
+  const { rustBinary: installedRustBinary } = await import(
+    pathToFileURL(join(installed, 'src', 'lib', 'workspace.mjs')).href
+  );
   const p = installedRustBinary({});
   assert.ok(!p.startsWith(join(project, 'target')), p);
   assert.ok(p.includes(`${sep}@pxsig${sep}cli-${process.platform}-${process.arch}${sep}`), p);

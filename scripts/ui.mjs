@@ -15,7 +15,28 @@
  * Exit: 0 ok · 1 problems (a required component missing, a malformed conformance file).
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { buildManifest, checkAll, compareVersions, contractDiff, contractShape, docsDir, featuresMarkdown, featuresMdFile, gapsOf, gapsText, lockFile, lockFor, lockText, manifestFile, manifestText, readChanges, readFeatures, readLock, screensFile, screensText } from '../packages/dashboard/ui-tools.mjs';
+import {
+  buildManifest,
+  checkAll,
+  compareVersions,
+  contractDiff,
+  contractShape,
+  docsDir,
+  featuresMarkdown,
+  featuresMdFile,
+  gapsOf,
+  gapsText,
+  lockFile,
+  lockFor,
+  lockText,
+  manifestFile,
+  manifestText,
+  readChanges,
+  readFeatures,
+  readLock,
+  screensFile,
+  screensText,
+} from '../packages/dashboard/ui-tools.mjs';
 import { resolveAdapter } from '../packages/dashboard/build-config.mjs';
 
 const [cmd, ...args] = process.argv.slice(2);
@@ -23,7 +44,9 @@ const [cmd, ...args] = process.argv.slice(2);
 // docs and check read src/ui/features.ts with Node's type stripping, on by default from 22.18.
 const [major, minor] = process.versions.node.split('.').map(Number);
 if ((cmd === 'docs' || cmd === 'check') && (major < 22 || (major === 22 && minor < 18))) {
-  console.error(`[ui] ${cmd} needs Node 22.18 or later (it reads src/ui/features.ts with type stripping); this is Node ${process.versions.node}`);
+  console.error(
+    `[ui] ${cmd} needs Node 22.18 or later (it reads src/ui/features.ts with type stripping); this is Node ${process.versions.node}`
+  );
   process.exit(2);
 }
 const flag = (n) => {
@@ -50,7 +73,9 @@ try {
       for (const p of problems) console.error(`  ${p}`);
       process.exit(1);
     }
-    console.log('[ui] ok · imports, manifest, feature catalogue, build prompt and reference adapter agree');
+    console.log(
+      '[ui] ok · imports, manifest, feature catalogue, build prompt and reference adapter agree'
+    );
   } else if (cmd === 'lock') {
     const now = contractShape();
     const lock = readLock();
@@ -62,9 +87,12 @@ try {
         process.exit(0);
       }
       const bad = [];
-      if (compareVersions(now.version, lock.version) <= 0) bad.push(`CONTRACT_VERSION (${now.version}) must be above the locked ${lock.version}`);
-      if (big.length && Number(now.version.split('.')[0]) <= Number(lock.version.split('.')[0])) bad.push(`${big.join('; ')}: a major change needs a major version`);
-      if (!readChanges()[now.version]) bad.push(`docs/ui/contract-changes.md needs a "## ${now.version}" section`);
+      if (compareVersions(now.version, lock.version) <= 0)
+        bad.push(`CONTRACT_VERSION (${now.version}) must be above the locked ${lock.version}`);
+      if (big.length && Number(now.version.split('.')[0]) <= Number(lock.version.split('.')[0]))
+        bad.push(`${big.join('; ')}: a major change needs a major version`);
+      if (!readChanges()[now.version])
+        bad.push(`docs/ui/contract-changes.md needs a "## ${now.version}" section`);
       if (bad.length) {
         console.error(`[ui] not locked:\n  ${bad.join('\n  ')}`);
         process.exit(1);
@@ -72,14 +100,18 @@ try {
       if (why.length) console.log(`[ui] ${now.version}: ${why.join('; ')}`);
     }
     writeFileSync(lockFile, lockText(lockFor(now, lock)));
-    console.log(`[ui] wrote packages/dashboard/src/ui/contract-lock.json (contract ${now.version})`);
+    console.log(
+      `[ui] wrote packages/dashboard/src/ui/contract-lock.json (contract ${now.version})`
+    );
   } else if (cmd === 'gaps') {
     const ui = resolveAdapter({ adapter: flag('ui') });
     const report = gapsOf({ adapterFile: ui.file, manifest: buildManifest() });
     console.log(args.includes('--json') ? JSON.stringify(report, null, 2) : gapsText(report));
     process.exit(report.problems.length ? 1 : 0);
   } else {
-    console.error('usage: node scripts/ui.mjs docs | manifest | check | lock | gaps [--ui <name or path>] [--json]');
+    console.error(
+      'usage: node scripts/ui.mjs docs | manifest | check | lock | gaps [--ui <name or path>] [--json]'
+    );
     process.exit(2);
   }
 } catch (e) {

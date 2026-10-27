@@ -42,22 +42,97 @@ export const SCHEMA_VERSION = 1;
  * `rank` orders codes within a severity when picking an entry's primary status.
  */
 export const CODES = {
-  unregistered: { severity: 'error', rank: 1, title: 'Story has no coverage', help: 'The story is in the story index but not in the manifest: nothing renders or checks it.' },
-  'render-error': { severity: 'error', rank: 2, title: 'Render failed', help: 'The last render of this entry failed (timeout, missing selector, Storybook error page).' },
-  'never-checked': { severity: 'error', rank: 3, title: 'Never checked', help: 'In the manifest, with a signature, but absent from the last report.' },
-  'missing-baseline-image': { severity: 'error', rank: 4, title: 'Baseline image missing', help: 'The signature exists but the baseline display PNG does not: the dashboard and the approval list cannot show the baseline.' },
-  'legacy-format': { severity: 'warn', rank: 4.5, title: 'Legacy baseline format', help: 'A pre-0.2 `.pxsig.json` baseline: it holds the signature but cannot hold the baseline image. `pxsig doctor --repair` converts it to `.psig` when its latest render passes the gate; `pxsig migrate` moves a whole legacy store.' },
-  unbaselined: { severity: 'warn', rank: 5, title: 'New: no baseline yet', help: 'In the manifest without a signature. A person must review and approve its first render.' },
-  'missing-render': { severity: 'warn', rank: 6, title: 'No latest render', help: 'There is no latest render on disk to compare or review.' },
-  orphaned: { severity: 'warn', rank: 7, title: 'Orphaned', help: 'A signature or baseline image whose story no longer exists (renamed or deleted).' },
-  changed: { severity: 'warn', rank: 8, title: 'Changed', help: 'The gate failed: the render differs from the baseline. Needs review.' },
-  flaky: { severity: 'warn', rank: 9, title: 'Flaky', help: 'Failed, then passed on a fresh render.' },
-  stale: { severity: 'warn', rank: 10, title: 'Stale verdict', help: 'A source the entry depends on changed after its verdict (or its render was rewritten after it).' },
-  'a11y-new': { severity: 'warn', rank: 11, title: 'New a11y violations', help: 'axe reports violations not in the a11y baseline.' },
-  'skipped-unaffected': { severity: 'info', rank: 11.5, title: 'Skipped: unaffected', help: 'A partial run (--since / --changed) left it out because no edit can change it (import graph). It has a baseline but no verdict of its own yet: ok, unverified.' },
+  unregistered: {
+    severity: 'error',
+    rank: 1,
+    title: 'Story has no coverage',
+    help: 'The story is in the story index but not in the manifest: nothing renders or checks it.',
+  },
+  'render-error': {
+    severity: 'error',
+    rank: 2,
+    title: 'Render failed',
+    help: 'The last render of this entry failed (timeout, missing selector, Storybook error page).',
+  },
+  'never-checked': {
+    severity: 'error',
+    rank: 3,
+    title: 'Never checked',
+    help: 'In the manifest, with a signature, but absent from the last report.',
+  },
+  'missing-baseline-image': {
+    severity: 'error',
+    rank: 4,
+    title: 'Baseline image missing',
+    help: 'The signature exists but the baseline display PNG does not: the dashboard and the approval list cannot show the baseline.',
+  },
+  'legacy-format': {
+    severity: 'warn',
+    rank: 4.5,
+    title: 'Legacy baseline format',
+    help: 'A pre-0.2 `.pxsig.json` baseline: it holds the signature but cannot hold the baseline image. `pxsig doctor --repair` converts it to `.psig` when its latest render passes the gate; `pxsig migrate` moves a whole legacy store.',
+  },
+  unbaselined: {
+    severity: 'warn',
+    rank: 5,
+    title: 'New: no baseline yet',
+    help: 'In the manifest without a signature. A person must review and approve its first render.',
+  },
+  'missing-render': {
+    severity: 'warn',
+    rank: 6,
+    title: 'No latest render',
+    help: 'There is no latest render on disk to compare or review.',
+  },
+  orphaned: {
+    severity: 'warn',
+    rank: 7,
+    title: 'Orphaned',
+    help: 'A signature or baseline image whose story no longer exists (renamed or deleted).',
+  },
+  changed: {
+    severity: 'warn',
+    rank: 8,
+    title: 'Changed',
+    help: 'The gate failed: the render differs from the baseline. Needs review.',
+  },
+  flaky: {
+    severity: 'warn',
+    rank: 9,
+    title: 'Flaky',
+    help: 'Failed, then passed on a fresh render.',
+  },
+  stale: {
+    severity: 'warn',
+    rank: 10,
+    title: 'Stale verdict',
+    help: 'A source the entry depends on changed after its verdict (or its render was rewritten after it).',
+  },
+  'a11y-new': {
+    severity: 'warn',
+    rank: 11,
+    title: 'New a11y violations',
+    help: 'axe reports violations not in the a11y baseline.',
+  },
+  'skipped-unaffected': {
+    severity: 'info',
+    rank: 11.5,
+    title: 'Skipped: unaffected',
+    help: 'A partial run (--since / --changed) left it out because no edit can change it (import graph). It has a baseline but no verdict of its own yet: ok, unverified.',
+  },
   drift: { severity: 'info', rank: 12, title: 'Drift', help: 'Passes the gate, but SSIM < 1.' },
-  excluded: { severity: 'info', rank: 13, title: 'Excluded', help: 'Excluded by configuration (nonVisual folder, parameters.pxsig.disable or the no-pxsig tag).' },
-  ok: { severity: 'info', rank: 14, title: 'OK', help: 'Covered, rendered, checked, fresh and passing.' },
+  excluded: {
+    severity: 'info',
+    rank: 13,
+    title: 'Excluded',
+    help: 'Excluded by configuration (nonVisual folder, parameters.pxsig.disable or the no-pxsig tag).',
+  },
+  ok: {
+    severity: 'info',
+    rank: 14,
+    title: 'OK',
+    help: 'Covered, rendered, checked, fresh and passing.',
+  },
 };
 export const SEVERITIES = ['error', 'warn', 'info'];
 const sevRank = (s) => SEVERITIES.indexOf(s);
@@ -94,7 +169,8 @@ const mtime = (p) => {
   }
 };
 const iso = (ms) => (ms == null ? null : new Date(ms).toISOString());
-export const sha256File = (p) => (existsSync(p) ? createHash('sha256').update(readFileSync(p)).digest('hex') : null);
+export const sha256File = (p) =>
+  existsSync(p) ? createHash('sha256').update(readFileSync(p)).digest('hex') : null;
 const isPsig = (p) => p.endsWith('.psig');
 
 /** Atomic JSON write (tmp + rename): a reader never sees half a file. */
@@ -109,7 +185,11 @@ export const writeJsonAtomic = (path, value, opts) => writeJson(path, value, opt
 export function resolveContext(P, { manifestPath } = {}) {
   if (!P?.store) throw new Error('resolveContext: a resolved project is required');
   const ws = (abs) => toPosix(relative(P.workspaceRoot, abs));
-  const integrity = { ...DEFAULT_INTEGRITY, ...(P.config.integrity ?? {}), severity: { ...(P.config.integrity?.severity ?? {}) } };
+  const integrity = {
+    ...DEFAULT_INTEGRITY,
+    ...(P.config.integrity ?? {}),
+    severity: { ...(P.config.integrity?.severity ?? {}) },
+  };
   return {
     project: P,
     pxsigDir: P.store.root,
@@ -173,12 +253,19 @@ export const toId = (title, name) => `${sanitize(title)}--${sanitize(name)}`;
 /** Normalise an index.json importPath (relative to the Storybook config dir) to repo-relative. */
 export function normaliseImportPath(ctx, p) {
   if (!p) return p;
-  if (ctx.config.storybookDir) return toPosix(relative(ctx.repoRoot, resolve(ctx.repoRoot, ctx.config.storybookDir, p)));
+  if (ctx.config.storybookDir)
+    return toPosix(relative(ctx.repoRoot, resolve(ctx.repoRoot, ctx.config.storybookDir, p)));
   const stripped = p.replace(/^(\.\.?\/)+/, '');
-  return existsSync(resolve(ctx.repoRoot, stripped)) ? stripped : toPosix(relative(ctx.repoRoot, resolve(ctx.repoRoot, p)));
+  return existsSync(resolve(ctx.repoRoot, stripped))
+    ? stripped
+    : toPosix(relative(ctx.repoRoot, resolve(ctx.repoRoot, p)));
 }
 
-const scopeRe = (ctx) => new RegExp(ctx.config.importPathPattern ?? `${ctx.srcRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/(.+)/[^/]+\\.stories\\.[jt]sx?$`);
+const scopeRe = (ctx) =>
+  new RegExp(
+    ctx.config.importPathPattern ??
+      `${ctx.srcRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/(.+)/[^/]+\\.stories\\.[jt]sx?$`
+  );
 
 /** The storied folder (component) an importPath belongs to, or null when outside scope. */
 export function componentOf(ctx, importPath) {
@@ -193,13 +280,21 @@ export function componentOf(ctx, importPath) {
  * index with entries. Storybook answers a broken build (e.g. "Unable to index files") with an
  * error, which is not an index: callers must not render against it.
  */
-export async function fetchStoryIndex(baseUrl, { timeoutMs = 4000, fetchImpl = globalThis.fetch } = {}) {
+export async function fetchStoryIndex(
+  baseUrl,
+  { timeoutMs = 4000, fetchImpl = globalThis.fetch } = {}
+) {
   const url = `${String(baseUrl).replace(/\/$/, '')}/index.json`;
   let res;
   try {
     res = await fetchImpl(url, { signal: AbortSignal.timeout(timeoutMs) });
   } catch (e) {
-    return { url, reachable: false, healthy: false, error: `unreachable: ${e.cause?.code ?? e.message}` };
+    return {
+      url,
+      reachable: false,
+      healthy: false,
+      error: `unreachable: ${e.cause?.code ?? e.message}`,
+    };
   }
   const body = await res.text().catch(() => '');
   let json = null;
@@ -209,17 +304,34 @@ export async function fetchStoryIndex(baseUrl, { timeoutMs = 4000, fetchImpl = g
     /* not JSON: an error page */
   }
   if (!res.ok || !json || typeof json.entries !== 'object') {
-    const msg = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
-    return { url, reachable: true, healthy: false, status: res.status, error: `broken index (HTTP ${res.status}): ${msg || 'not a story index'}` };
+    const msg = body
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 300);
+    return {
+      url,
+      reachable: true,
+      healthy: false,
+      status: res.status,
+      error: `broken index (HTTP ${res.status}): ${msg || 'not a story index'}`,
+    };
   }
   const stories = Object.values(json.entries)
     .filter((e) => e.type === 'story')
-    .map((e) => ({ id: e.id, title: e.title, name: e.name, importPath: e.importPath, tags: e.tags ?? [] }));
+    .map((e) => ({
+      id: e.id,
+      title: e.title,
+      name: e.name,
+      importPath: e.importPath,
+      tags: e.tags ?? [],
+    }));
   return { url, reachable: true, healthy: true, version: json.v ?? null, stories };
 }
 
 /** Strip comments so a commented-out `export const` is not a story. */
-const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:\\])\/\/.*$/gm, '$1');
+const stripComments = (src) =>
+  src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:\\])\/\/.*$/gm, '$1');
 
 /**
  * Static fallback: scan `*.stories.{tsx,ts,jsx,js}` under srcRoot. Title from the default export's
@@ -231,8 +343,14 @@ export function scanStories(ctx) {
   const out = [];
   if (!existsSync(root)) return out;
   const walk = (dir) => {
-    for (const d of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-      if (d.name.startsWith('.') || ['node_modules', 'dist', 'build', ctx.pixelsDir].includes(d.name)) continue;
+    for (const d of readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    )) {
+      if (
+        d.name.startsWith('.') ||
+        ['node_modules', 'dist', 'build', ctx.pixelsDir].includes(d.name)
+      )
+        continue;
       const p = join(dir, d.name);
       if (d.isDirectory()) walk(p);
       else if (/\.stories\.[jt]sx?$/.test(d.name)) {
@@ -240,11 +358,22 @@ export function scanStories(ctx) {
         const importPath = toPosix(relative(ctx.repoRoot, p));
         const metaAt = Math.max(0, src.search(/export\s+default\b|const\s+meta\b/));
         const t = src.slice(metaAt).match(/\btitle\s*:\s*(['"`])((?:(?!\1).)+)\1/);
-        const title = t ? t[2] : toPosix(relative(root, p)).replace(/\.stories\.[jt]sx?$/, '').replace(/\/index$/, '');
+        const title = t
+          ? t[2]
+          : toPosix(relative(root, p))
+              .replace(/\.stories\.[jt]sx?$/, '')
+              .replace(/\/index$/, '');
         for (const m of src.matchAll(/^export\s+const\s+([A-Za-z_$][\w$]*)\s*(?::[^=]+)?=/gm)) {
           if (m[1] === '__namedExportsOrder') continue;
           const name = storyNameFromExport(m[1]);
-          out.push({ id: toId(title, name), title, name, exportName: m[1], importPath, titleSource: t ? 'meta' : 'inferred' });
+          out.push({
+            id: toId(title, name),
+            title,
+            name,
+            exportName: m[1],
+            importPath,
+            titleSource: t ? 'meta' : 'inferred',
+          });
         }
       }
     }
@@ -256,18 +385,42 @@ export function scanStories(ctx) {
 /** The story index to reconcile against: live when healthy, else the static scan. */
 export async function loadStoryIndex(ctx, { fetchImpl, offline = false, live } = {}) {
   const baseUrl = ctx.config.baseUrl ?? 'http://localhost:6006';
-  const res = live ?? (offline ? { url: `${baseUrl}/index.json`, reachable: false, healthy: false, error: 'offline (not fetched)' } : await fetchStoryIndex(baseUrl, { timeoutMs: ctx.integrity.indexTimeoutMs, fetchImpl }));
+  const res =
+    live ??
+    (offline
+      ? {
+          url: `${baseUrl}/index.json`,
+          reachable: false,
+          healthy: false,
+          error: 'offline (not fetched)',
+        }
+      : await fetchStoryIndex(baseUrl, { timeoutMs: ctx.integrity.indexTimeoutMs, fetchImpl }));
   if (res.healthy) {
-    const stories = res.stories.map((s) => ({ ...s, importPath: normaliseImportPath(ctx, s.importPath) }));
-    return { source: 'storybook', storybook: { url: res.url, reachable: true, healthy: true, version: res.version }, stories };
+    const stories = res.stories.map((s) => ({
+      ...s,
+      importPath: normaliseImportPath(ctx, s.importPath),
+    }));
+    return {
+      source: 'storybook',
+      storybook: { url: res.url, reachable: true, healthy: true, version: res.version },
+      stories,
+    };
   }
-  return { source: 'static', storybook: { url: res.url, reachable: res.reachable, healthy: false, error: res.error }, stories: scanStories(ctx) };
+  return {
+    source: 'static',
+    storybook: { url: res.url, reachable: res.reachable, healthy: false, error: res.error },
+    stories: scanStories(ctx),
+  };
 }
 
 // --- staleness: which sources changed after each verdict? -----------------------------------------------
 
 function sourceRoots(ctx) {
-  const roots = process.env.PXSIG_SOURCES?.split(',') ?? ctx.integrity.sourceRoots ?? [ctx.srcRoot, ...(ctx.config.affectsAll ?? []).filter((p) => !/\.[a-z]+$/i.test(p))];
+  const roots = process.env.PXSIG_SOURCES?.split(',') ??
+    ctx.integrity.sourceRoots ?? [
+      ctx.srcRoot,
+      ...(ctx.config.affectsAll ?? []).filter((p) => !/\.[a-z]+$/i.test(p)),
+    ];
   return [...new Set(roots)].map((r) => resolve(ctx.repoRoot, r)).filter((r) => existsSync(r));
 }
 
@@ -282,12 +435,20 @@ export function editedFilesSince(ctx, sinceMs) {
       return;
     }
     for (const d of list) {
-      if (d.name.startsWith('.') || ['node_modules', 'dist', 'build', 'coverage', ctx.pixelsDir].includes(d.name)) continue;
+      if (
+        d.name.startsWith('.') ||
+        ['node_modules', 'dist', 'build', 'coverage', ctx.pixelsDir].includes(d.name)
+      )
+        continue;
       const p = join(dir, d.name);
       if (d.isDirectory()) walk(p);
-      else if (/\.(tsx?|jsx?|mjs|cjs|css|json|mdx)$/.test(d.name) && !/\.(test|spec)\.[jt]sx?$/.test(d.name)) {
+      else if (
+        /\.(tsx?|jsx?|mjs|cjs|css|json|mdx)$/.test(d.name) &&
+        !/\.(test|spec)\.[jt]sx?$/.test(d.name)
+      ) {
         const t = mtime(p);
-        if (t != null && t > sinceMs) out.push({ file: toPosix(relative(ctx.repoRoot, p)), mtime: t });
+        if (t != null && t > sinceMs)
+          out.push({ file: toPosix(relative(ctx.repoRoot, p)), mtime: t });
       }
     }
   };
@@ -301,7 +462,10 @@ export function editedFilesSince(ctx, sinceMs) {
  */
 export function rustAffected(ctx) {
   if (!existsSync(ctx.rustBin)) return null;
-  const proc = spawn(ctx.rustBin, ['serve'], { cwd: ctx.repoRoot, stdio: ['pipe', 'pipe', 'ignore'] });
+  const proc = spawn(ctx.rustBin, ['serve'], {
+    cwd: ctx.repoRoot,
+    stdio: ['pipe', 'pipe', 'ignore'],
+  });
   const pending = new Map();
   let seq = 0;
   let dead = null;
@@ -328,7 +492,9 @@ export function rustAffected(ctx) {
       const id = ++seq;
       return new Promise((ok, fail) => {
         pending.set(id, { resolve: (r) => ok(r.traced ?? r.ids ?? []), reject: fail });
-        proc.stdin.write(`${JSON.stringify({ id, method: 'affected', params: { manifest: ctx.manifestPath, root: ctx.repoRoot, files: [file] } })}\n`);
+        proc.stdin.write(
+          `${JSON.stringify({ id, method: 'affected', params: { manifest: ctx.manifestPath, root: ctx.repoRoot, files: [file] } })}\n`
+        );
       });
     },
     close: () => proc.stdin.end(),
@@ -336,7 +502,6 @@ export function rustAffected(ctx) {
 }
 
 // --- the reconciler ---------------------------------------------------------------------------------
-
 
 function listFiles(dir, re) {
   if (!existsSync(dir)) return [];
@@ -376,10 +541,16 @@ const sigComponent = (ctx, abs) => {
   return toPosix(dirname(dirname(relative(resolve(ctx.repoRoot, ctx.srcRoot), abs))));
 };
 
-const issue = (ctx, code, reason, extra = {}) => ({ code, severity: ctx.integrity.severity[code] ?? CODES[code].severity, reason, ...extra });
+const issue = (ctx, code, reason, extra = {}) => ({
+  code,
+  severity: ctx.integrity.severity[code] ?? CODES[code].severity,
+  reason,
+  ...extra,
+});
 
 /** Most severe first, then by code rank: the order issues are listed in. */
-const byGravity = (a, b) => sevRank(a.severity) - sevRank(b.severity) || CODES[a.code].rank - CODES[b.code].rank;
+const byGravity = (a, b) =>
+  sevRank(a.severity) - sevRank(b.severity) || CODES[a.code].rank - CODES[b.code].rank;
 
 /** The primary status of a list of issues: the most severe, then the lowest rank. */
 export function primaryOf(issues) {
@@ -398,8 +569,10 @@ export function primaryOf(issues) {
 export async function reconcile(ctx, opts = {}) {
   const t0 = performance.now();
   const manifest = readJson(ctx.manifestPath, null);
-  if (!manifest?.stories) throw Object.assign(new Error(`no readable manifest at ${ctx.manifestPath}`), { setup: true });
-  const index = opts.index ?? (await loadStoryIndex(ctx, { offline: opts.offline, fetchImpl: opts.fetchImpl }));
+  if (!manifest?.stories)
+    throw Object.assign(new Error(`no readable manifest at ${ctx.manifestPath}`), { setup: true });
+  const index =
+    opts.index ?? (await loadStoryIndex(ctx, { offline: opts.offline, fetchImpl: opts.fetchImpl }));
   const reportPath = join(ctx.dirs.reports, 'check.json');
   const report = readJson(reportPath, null);
   const review = readJson(join(ctx.dirs.reports, 'review.json'), {}) ?? {};
@@ -409,7 +582,11 @@ export async function reconcile(ctx, opts = {}) {
   for (const a of approvals) lastApproval.set(a.id, a);
   const rows = new Map((report?.rows ?? []).map((r) => [r.id, r]));
   // When every entry was last checked together; a server re-check moves `generatedAt` only.
-  const reportAt = report?.fullCheckAt ? Date.parse(report.fullCheckAt) : report?.generatedAt ? Date.parse(report.generatedAt) : null;
+  const reportAt = report?.fullCheckAt
+    ? Date.parse(report.fullCheckAt)
+    : report?.generatedAt
+      ? Date.parse(report.generatedAt)
+      : null;
   const manifestMtime = mtime(ctx.manifestPath);
   const nonVisual = new Set(ctx.config.nonVisual ?? []);
   const isNonVisual = (component) => component != null && nonVisual.has(component.split('/')[0]);
@@ -420,7 +597,9 @@ export async function reconcile(ctx, opts = {}) {
   const files = {
     latest: new Set(listFiles(ctx.dirs.latest, /\.png$/).map((n) => n.slice(0, -4))),
     diff: new Set(listFiles(ctx.dirs.diff, /\.diff\.png$/).map((n) => n.slice(0, -9))),
-    reconstructed: new Set(listFiles(ctx.dirs.diff, /\.baseline\.png$/).map((n) => n.slice(0, -13))),
+    reconstructed: new Set(
+      listFiles(ctx.dirs.diff, /\.baseline\.png$/).map((n) => n.slice(0, -13))
+    ),
   };
   const rel = (p) => toPosix(relative(ctx.repoRoot, p));
 
@@ -434,14 +613,20 @@ export async function reconcile(ctx, opts = {}) {
     staleness = { method: 'none-edited', filesTraced: edited.length };
     if (edited.length) {
       let engine = null;
-      const tracer = opts.affected ?? (edited.length <= ctx.integrity.maxTracedFiles ? (engine = rustAffected(ctx))?.affected : null);
+      const tracer =
+        opts.affected ??
+        (edited.length <= ctx.integrity.maxTracedFiles
+          ? (engine = rustAffected(ctx))?.affected
+          : null);
       if (tracer) {
         staleness.method = 'import-graph';
         try {
           const lists = await Promise.all(edited.map((f) => tracer(f.file).catch(() => null)));
           lists.forEach((ids, i) => {
             if (!ids) return;
-            for (const id of ids) if (!staleBy.has(id) || staleBy.get(id).mtime < edited[i].mtime) staleBy.set(id, edited[i]);
+            for (const id of ids)
+              if (!staleBy.has(id) || staleBy.get(id).mtime < edited[i].mtime)
+                staleBy.set(id, edited[i]);
           });
         } finally {
           engine?.close();
@@ -450,7 +635,9 @@ export async function reconcile(ctx, opts = {}) {
         staleness.method = 'folder';
         for (const e of manifest.stories) {
           const folder = e.importPath ? dirname(e.importPath) + '/' : null;
-          for (const f of edited) if (folder && (f.file === e.importPath || f.file.startsWith(folder))) if (!staleBy.has(e.id) || staleBy.get(e.id).mtime < f.mtime) staleBy.set(e.id, f);
+          for (const f of edited)
+            if (folder && (f.file === e.importPath || f.file.startsWith(folder)))
+              if (!staleBy.has(e.id) || staleBy.get(e.id).mtime < f.mtime) staleBy.set(e.id, f);
         }
       }
     }
@@ -478,34 +665,125 @@ export async function reconcile(ctx, opts = {}) {
     const latestAt = has.latest ? mtime(join(ctx.dirs.latest, `${e.id}.png`)) : null;
     const vAt = row ? verdictAt(row) : null;
     const issues = [];
-    if (isNonVisual(component)) issues.push(issue(ctx, 'excluded', `folder "${component.split('/')[0]}" is listed in config.nonVisual`));
+    if (isNonVisual(component))
+      issues.push(
+        issue(ctx, 'excluded', `folder "${component.split('/')[0]}" is listed in config.nonVisual`)
+      );
     else {
       if (index.stories.length && !indexIds.has(story))
-        issues.push(issue(ctx, 'orphaned', `story "${story}" is not in the ${index.source === 'storybook' ? 'Storybook' : 'static'} story index (renamed or deleted?)`));
-      if (!has.sig) issues.push(issue(ctx, 'unbaselined', `no signature at ${e.sig}: approve its first render to create one`));
+        issues.push(
+          issue(
+            ctx,
+            'orphaned',
+            `story "${story}" is not in the ${index.source === 'storybook' ? 'Storybook' : 'static'} story index (renamed or deleted?)`
+          )
+        );
+      if (!has.sig)
+        issues.push(
+          issue(
+            ctx,
+            'unbaselined',
+            `no signature at ${e.sig}: approve its first render to create one`
+          )
+        );
       else if (!has.base && !isPsig(sigAbs))
-        issues.push(issue(ctx, 'legacy-format', `${e.sig} is a legacy .pxsig.json baseline, which cannot hold its image`, { hint: has.latest ? 'pxsig doctor --repair converts it to .psig if the latest render passes the gate (or pxsig migrate / pxsig pack)' : 'render it (pxsig check), then pxsig doctor --repair converts it to .psig; or pxsig migrate / pxsig pack' }));
+        issues.push(
+          issue(
+            ctx,
+            'legacy-format',
+            `${e.sig} is a legacy .pxsig.json baseline, which cannot hold its image`,
+            {
+              hint: has.latest
+                ? 'pxsig doctor --repair converts it to .psig if the latest render passes the gate (or pxsig migrate / pxsig pack)'
+                : 'render it (pxsig check), then pxsig doctor --repair converts it to .psig; or pxsig migrate / pxsig pack',
+            }
+          )
+        );
       else if (!has.base && ctx.integrity.requireBaselineImages)
-        issues.push(issue(ctx, 'missing-baseline-image', `${e.sig} has a signature but no baseline image`, { recoverable: has.latest ? 'if the latest render passes the gate' : 'after a fresh render passes the gate', fallback: has.reconstructed ? rel(join(ctx.dirs.diff, `${e.id}.baseline.png`)) : null }));
-      if (!has.latest) issues.push(issue(ctx, 'missing-render', `no ${rel(join(ctx.dirs.latest, `${e.id}.png`))}`));
+        issues.push(
+          issue(ctx, 'missing-baseline-image', `${e.sig} has a signature but no baseline image`, {
+            recoverable: has.latest
+              ? 'if the latest render passes the gate'
+              : 'after a fresh render passes the gate',
+            fallback: has.reconstructed ? rel(join(ctx.dirs.diff, `${e.id}.baseline.png`)) : null,
+          })
+        );
+      if (!has.latest)
+        issues.push(
+          issue(ctx, 'missing-render', `no ${rel(join(ctx.dirs.latest, `${e.id}.png`))}`)
+        );
       // Left out of a partial run as unaffected, with nothing earlier to carry: ok, but unverified.
       const unverified = has.sig && row?.skipped && !row.inherited && row.unaffected;
       const neverChecked = has.sig && !unverified && (!row || (row.skipped && !row.inherited));
-      if (unverified) issues.push(issue(ctx, 'skipped-unaffected', `not affected by the edits a partial check traced (${report?.affected?.reason ?? 'import graph'}); baseline present, no verdict recorded yet`));
-      if (neverChecked) issues.push(issue(ctx, 'never-checked', neverCheckedReason({ report, reportAt, manifestMtime, sigAt: mtime(sigAbs), latestAt, row })));
+      if (unverified)
+        issues.push(
+          issue(
+            ctx,
+            'skipped-unaffected',
+            `not affected by the edits a partial check traced (${report?.affected?.reason ?? 'import graph'}); baseline present, no verdict recorded yet`
+          )
+        );
+      if (neverChecked)
+        issues.push(
+          issue(
+            ctx,
+            'never-checked',
+            neverCheckedReason({
+              report,
+              reportAt,
+              manifestMtime,
+              sigAt: mtime(sigAbs),
+              latestAt,
+              row,
+            })
+          )
+        );
       if (row && !neverChecked && !unverified) {
         const rv = review[e.id]?.state ?? null;
         const unbaselinedRow = row.new || /^no baseline sig/.test(String(row.error ?? ''));
-        if (row.error && !unbaselinedRow) issues.push(issue(ctx, 'render-error', String(row.error).split('\n')[0].slice(0, 300)));
-        else if (row.flaky) issues.push(issue(ctx, 'flaky', `failed, then passed on retry ${row.retry?.attempt ?? ''}`.trim()));
+        if (row.error && !unbaselinedRow)
+          issues.push(issue(ctx, 'render-error', String(row.error).split('\n')[0].slice(0, 300)));
+        else if (row.flaky)
+          issues.push(
+            issue(ctx, 'flaky', `failed, then passed on retry ${row.retry?.attempt ?? ''}`.trim())
+          );
         else if (!row.pass && !unbaselinedRow && rv !== 'approved')
-          issues.push(issue(ctx, 'changed', rv === 'rejected' ? 'rejected in review' : (row.reasons ?? [])[0] ?? 'gate failed'));
-        else if (row.pass && row.metrics && row.metrics.ssim < 1) issues.push(issue(ctx, 'drift', `ssim ${row.metrics.ssim}`));
-        if (row.a11y?.new) issues.push(issue(ctx, 'a11y-new', `${row.a11y.new} violation(s) not in the a11y baseline`));
+          issues.push(
+            issue(
+              ctx,
+              'changed',
+              rv === 'rejected' ? 'rejected in review' : ((row.reasons ?? [])[0] ?? 'gate failed')
+            )
+          );
+        else if (row.pass && row.metrics && row.metrics.ssim < 1)
+          issues.push(issue(ctx, 'drift', `ssim ${row.metrics.ssim}`));
+        if (row.a11y?.new)
+          issues.push(
+            issue(ctx, 'a11y-new', `${row.a11y.new} violation(s) not in the a11y baseline`)
+          );
         const src = staleBy.get(e.id);
-        if (src && vAt != null && src.mtime > vAt) issues.push(issue(ctx, 'stale', `${src.file} edited ${iso(src.mtime)}, after the verdict (${iso(vAt)})`, { file: src.file }));
-        else if (latestAt != null && vAt != null && latestAt - vAt > ctx.integrity.renderSkewMs && rv !== 'approved')
-          issues.push(issue(ctx, 'stale', `render rewritten ${iso(latestAt)}, after its verdict (${iso(vAt)})`));
+        if (src && vAt != null && src.mtime > vAt)
+          issues.push(
+            issue(
+              ctx,
+              'stale',
+              `${src.file} edited ${iso(src.mtime)}, after the verdict (${iso(vAt)})`,
+              { file: src.file }
+            )
+          );
+        else if (
+          latestAt != null &&
+          vAt != null &&
+          latestAt - vAt > ctx.integrity.renderSkewMs &&
+          rv !== 'approved'
+        )
+          issues.push(
+            issue(
+              ctx,
+              'stale',
+              `render rewritten ${iso(latestAt)}, after its verdict (${iso(vAt)})`
+            )
+          );
       }
     }
     issues.sort(byGravity);
@@ -529,12 +807,23 @@ export async function reconcile(ctx, opts = {}) {
         reconstructedBaseline: has.reconstructed,
       },
       verdict: row
-        ? { pass: row.pass ?? null, flaky: !!row.flaky, error: row.error ?? null, skipped: !!row.skipped, ssim: row.metrics?.ssim ?? null, checkedAt: iso(vAt) }
+        ? {
+            pass: row.pass ?? null,
+            flaky: !!row.flaky,
+            error: row.error ?? null,
+            skipped: !!row.skipped,
+            ssim: row.metrics?.ssim ?? null,
+            checkedAt: iso(vAt),
+          }
         : null,
       renderedAt: iso(latestAt),
       review: review[e.id]?.state ?? null,
       approval: last ? { at: last.at, by: last.by, via: last.via, batch: last.batch } : null,
-      a11y: { enabled: e.a11y !== false, baselined: a11yBase ? Object.hasOwn(a11yBase, e.id) : false, new: row?.a11y?.new ?? 0 },
+      a11y: {
+        enabled: e.a11y !== false,
+        baselined: a11yBase ? Object.hasOwn(a11yBase, e.id) : false,
+        new: row?.a11y?.new ?? 0,
+      },
     });
   }
 
@@ -543,12 +832,42 @@ export async function reconcile(ctx, opts = {}) {
     const component = componentOf(ctx, s.importPath);
     if (component == null || manifestStories.has(s.id)) continue;
     const issues = [];
-    if (isNonVisual(component)) issues.push(issue(ctx, 'excluded', `folder "${component.split('/')[0]}" is listed in config.nonVisual`));
-    else if (skippedStories.has(s.id)) issues.push(issue(ctx, 'excluded', skippedStories.get(s.id)));
-    else if ((s.tags ?? []).includes('no-pxsig')) issues.push(issue(ctx, 'excluded', "tag 'no-pxsig'"));
-    else issues.push(issue(ctx, 'unregistered', `in the ${index.source === 'storybook' ? 'Storybook' : 'static'} story index (${s.importPath}) but not in the manifest`));
+    if (isNonVisual(component))
+      issues.push(
+        issue(ctx, 'excluded', `folder "${component.split('/')[0]}" is listed in config.nonVisual`)
+      );
+    else if (skippedStories.has(s.id))
+      issues.push(issue(ctx, 'excluded', skippedStories.get(s.id)));
+    else if ((s.tags ?? []).includes('no-pxsig'))
+      issues.push(issue(ctx, 'excluded', "tag 'no-pxsig'"));
+    else
+      issues.push(
+        issue(
+          ctx,
+          'unregistered',
+          `in the ${index.source === 'storybook' ? 'Storybook' : 'static'} story index (${s.importPath}) but not in the manifest`
+        )
+      );
     const primary = primaryOf(issues);
-    entries.push({ id: s.id, story: s.id, component, mode: null, state: null, status: primary.code, severity: primary.severity, issues, files: null, verdict: null, renderedAt: null, review: null, approval: null, a11y: null, importPath: s.importPath, title: s.title, name: s.name });
+    entries.push({
+      id: s.id,
+      story: s.id,
+      component,
+      mode: null,
+      state: null,
+      status: primary.code,
+      severity: primary.severity,
+      issues,
+      files: null,
+      verdict: null,
+      renderedAt: null,
+      review: null,
+      approval: null,
+      a11y: null,
+      importPath: s.importPath,
+      title: s.title,
+      name: s.name,
+    });
   }
 
   // --- orphaned files (no entry in any manifest) --------------------------------------------------------
@@ -566,18 +885,66 @@ export async function reconcile(ctx, opts = {}) {
     o.files.push(file);
     orphans.set(id, o);
   };
-  for (const p of sigFilesOnDisk(ctx)) if (!sigPaths.has(p)) addOrphan(p.split(sep).pop().replace(/\.(psig|pxsig\.json)$/, ''), sigComponent(ctx, p), rel(p));
+  for (const p of sigFilesOnDisk(ctx))
+    if (!sigPaths.has(p))
+      addOrphan(
+        p
+          .split(sep)
+          .pop()
+          .replace(/\.(psig|pxsig\.json)$/, ''),
+        sigComponent(ctx, p),
+        rel(p)
+      );
   for (const o of orphans.values()) {
-    const issues = [issue(ctx, 'orphaned', `${o.files.length === 1 ? 'file has' : 'files have'} no manifest entry: ${o.files.join(', ')}`, { orphanFiles: o.files })];
-    entries.push({ id: o.id, story: o.id.replace(/(__[^@]+)?(@.+)?$/, ''), component: o.component, mode: null, state: null, status: 'orphaned', severity: issues[0].severity, issues, files: null, verdict: null, renderedAt: null, review: null, approval: null, a11y: null, orphanFiles: o.files });
+    const issues = [
+      issue(
+        ctx,
+        'orphaned',
+        `${o.files.length === 1 ? 'file has' : 'files have'} no manifest entry: ${o.files.join(', ')}`,
+        { orphanFiles: o.files }
+      ),
+    ];
+    entries.push({
+      id: o.id,
+      story: o.id.replace(/(__[^@]+)?(@.+)?$/, ''),
+      component: o.component,
+      mode: null,
+      state: null,
+      status: 'orphaned',
+      severity: issues[0].severity,
+      issues,
+      files: null,
+      verdict: null,
+      renderedAt: null,
+      review: null,
+      approval: null,
+      a11y: null,
+      orphanFiles: o.files,
+    });
   }
 
-  entries.sort((a, b) => (a.component < b.component ? -1 : a.component > b.component ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  entries.sort((a, b) =>
+    a.component < b.component
+      ? -1
+      : a.component > b.component
+        ? 1
+        : a.id < b.id
+          ? -1
+          : a.id > b.id
+            ? 1
+            : 0
+  );
 
   // --- roll-ups -------------------------------------------------------------------------------------------
   const byComp = new Map();
   for (const x of entries) {
-    const c = byComp.get(x.component) ?? { component: x.component, entries: 0, stories: new Set(), counts: {}, issues: [] };
+    const c = byComp.get(x.component) ?? {
+      component: x.component,
+      entries: 0,
+      stories: new Set(),
+      counts: {},
+      issues: [],
+    };
     c.entries++;
     c.stories.add(x.story);
     for (const i of x.issues) c.counts[i.code] = (c.counts[i.code] ?? 0) + 1;
@@ -586,7 +953,14 @@ export async function reconcile(ctx, opts = {}) {
   }
   const components = [...byComp.values()].map((c) => {
     const p = primaryOf(c.issues.filter((i) => i.severity !== 'info' || i.code !== 'ok'));
-    return { component: c.component, status: p.code, severity: p.severity, entries: c.entries, stories: c.stories.size, counts: c.counts };
+    return {
+      component: c.component,
+      status: p.code,
+      severity: p.severity,
+      entries: c.entries,
+      stories: c.stories.size,
+      counts: c.counts,
+    };
   });
 
   const summary = summarise(entries, components);
@@ -595,18 +969,65 @@ export async function reconcile(ctx, opts = {}) {
     generatedAt: iso(opts.now ?? Date.now()),
     tool: { name: 'pxsig', component: 'integrity' },
     sources: {
-      storyIndex: { source: index.source, stories: index.stories.length, inScope: index.stories.filter((s) => componentOf(ctx, s.importPath) != null).length, ...index.storybook },
-      manifest: { path: rel(ctx.manifestPath), entries: manifest.stories.length, skipped: (manifest.skipped ?? []).length, updatedAt: iso(manifestMtime), siblings: siblings.map(rel) },
-      config: { path: rel(ctx.configPath), srcRoot: ctx.srcRoot, pixelsRoot: ctx.pixelsRoot, nonVisual: [...nonVisual], integrity: { requireBaselineImages: ctx.integrity.requireBaselineImages, staleAfterSourceChange: ctx.integrity.staleAfterSourceChange } },
-      report: report ? { path: rel(reportPath), generatedAt: report.generatedAt, rows: report.rows.length } : { path: rel(reportPath), missing: true },
-      renders: { base: entries.filter((x) => x.files?.baseImage).length, latest: files.latest.size, diffs: files.diff.size, reconstructed: files.reconstructed.size },
+      storyIndex: {
+        source: index.source,
+        stories: index.stories.length,
+        inScope: index.stories.filter((s) => componentOf(ctx, s.importPath) != null).length,
+        ...index.storybook,
+      },
+      manifest: {
+        path: rel(ctx.manifestPath),
+        entries: manifest.stories.length,
+        skipped: (manifest.skipped ?? []).length,
+        updatedAt: iso(manifestMtime),
+        siblings: siblings.map(rel),
+      },
+      config: {
+        path: rel(ctx.configPath),
+        srcRoot: ctx.srcRoot,
+        pixelsRoot: ctx.pixelsRoot,
+        nonVisual: [...nonVisual],
+        integrity: {
+          requireBaselineImages: ctx.integrity.requireBaselineImages,
+          staleAfterSourceChange: ctx.integrity.staleAfterSourceChange,
+        },
+      },
+      report: report
+        ? { path: rel(reportPath), generatedAt: report.generatedAt, rows: report.rows.length }
+        : { path: rel(reportPath), missing: true },
+      renders: {
+        base: entries.filter((x) => x.files?.baseImage).length,
+        latest: files.latest.size,
+        diffs: files.diff.size,
+        reconstructed: files.reconstructed.size,
+      },
       signatures: [...sigPaths].filter((p) => existsSync(p)).length,
-      approvals: { path: rel(ctx.files.approvals), lines: approvals.length, entries: lastApproval.size },
+      approvals: {
+        path: rel(ctx.files.approvals),
+        lines: approvals.length,
+        entries: lastApproval.size,
+      },
       review: { decisions: Object.keys(review).length },
-      a11yBaseline: { path: rel(ctx.files.a11y), entries: a11yBase ? Object.keys(a11yBase).length : null },
+      a11yBaseline: {
+        path: rel(ctx.files.a11y),
+        entries: a11yBase ? Object.keys(a11yBase).length : null,
+      },
       staleness,
     },
-    setup: [...setupProblems(index), ...(ctx.project ? workspaceProblems(ctx.project) : []), ...portabilityProblems({ repoRoot: ctx.repoRoot, sigPaths, records: [ctx.manifestPath, ...siblings, ctx.files.approvals, ctx.files.a11y] }), ...tornProblems(rel(ctx.files.approvals), torn), ...unloggedProblems(unlogged, ctx), ...conflictProblems(ctx), ...envProblems(report, ctx), ...warnModeProblems(ctx)],
+    setup: [
+      ...setupProblems(index),
+      ...(ctx.project ? workspaceProblems(ctx.project) : []),
+      ...portabilityProblems({
+        repoRoot: ctx.repoRoot,
+        sigPaths,
+        records: [ctx.manifestPath, ...siblings, ctx.files.approvals, ctx.files.a11y],
+      }),
+      ...tornProblems(rel(ctx.files.approvals), torn),
+      ...unloggedProblems(unlogged, ctx),
+      ...conflictProblems(ctx),
+      ...envProblems(report, ctx),
+      ...warnModeProblems(ctx),
+    ],
     summary,
     components,
     entries,
@@ -616,10 +1037,16 @@ export async function reconcile(ctx, opts = {}) {
 
 /** Other manifests whose baselines are not orphans: config.integrity.manifests, else `manifest.<suite>.json` beside the main one. */
 export function siblingManifests(ctx) {
-  if (Array.isArray(ctx.integrity.manifests)) return ctx.integrity.manifests.map((p) => resolve(ctx.pxsigDir, p)).filter((p) => existsSync(p));
+  if (Array.isArray(ctx.integrity.manifests))
+    return ctx.integrity.manifests
+      .map((p) => resolve(ctx.pxsigDir, p))
+      .filter((p) => existsSync(p));
   const dir = dirname(ctx.manifestPath);
   const main = ctx.manifestPath.split(sep).pop();
-  return listFiles(dir, /^manifest\..+\.json$/).filter((n) => n !== main).sort().map((n) => join(dir, n));
+  return listFiles(dir, /^manifest\..+\.json$/)
+    .filter((n) => n !== main)
+    .sort()
+    .map((n) => join(dir, n));
 }
 
 function neverCheckedReason({ report, reportAt, manifestMtime, sigAt, latestAt, row }) {
@@ -629,16 +1056,32 @@ function neverCheckedReason({ report, reportAt, manifestMtime, sigAt, latestAt, 
   // The signature's write time is the best evidence of when the entry appeared (the manifest's own
   // mtime moves with every later edit).
   const added = sigAt ?? manifestMtime;
-  if (reportAt != null && added != null && added > reportAt) parts.push(`added after the last full check (${iso(reportAt)}): its ${sigAt != null ? 'signature' : 'manifest entry'} dates from ${iso(added)}`);
-  else parts.push(`absent from the last full check (${iso(reportAt)}), which ran on a different manifest or a --modes / --manifest subset`);
-  if (latestAt != null && reportAt != null && latestAt > reportAt) parts.push(`rendered ${iso(latestAt)} by a partial re-check that did not record it (re-checks only updated rows already in the report)`);
+  if (reportAt != null && added != null && added > reportAt)
+    parts.push(
+      `added after the last full check (${iso(reportAt)}): its ${sigAt != null ? 'signature' : 'manifest entry'} dates from ${iso(added)}`
+    );
+  else
+    parts.push(
+      `absent from the last full check (${iso(reportAt)}), which ran on a different manifest or a --modes / --manifest subset`
+    );
+  if (latestAt != null && reportAt != null && latestAt > reportAt)
+    parts.push(
+      `rendered ${iso(latestAt)} by a partial re-check that did not record it (re-checks only updated rows already in the report)`
+    );
   return parts.join('; ');
 }
 
 /** Baselines no approval line covers: a warning before strict `approve verify` fails a pull request on them. */
 function unloggedProblems(ids, ctx) {
   if (!ids.length) return [];
-  return [{ code: 'verify-unlogged', severity: 'warn', count: ids.length, reason: `${ids.length} baselines have no approval log line (${ids.slice(0, 3).join(', ')}${ids.length > 3 ? ', …' : ''}): \`pxsig approve verify\` fails on them (strict by default since 0.4.0). For baselines from before pxsig kept a log, a person runs \`pxsig approve verify --adopt\` once; \`--no-strict\` only reports them` }];
+  return [
+    {
+      code: 'verify-unlogged',
+      severity: 'warn',
+      count: ids.length,
+      reason: `${ids.length} baselines have no approval log line (${ids.slice(0, 3).join(', ')}${ids.length > 3 ? ', …' : ''}): \`pxsig approve verify\` fails on them (strict by default since 0.4.0). For baselines from before pxsig kept a log, a person runs \`pxsig approve verify --adopt\` once; \`--no-strict\` only reports them`,
+    },
+  ];
 }
 
 /**
@@ -649,9 +1092,18 @@ function unloggedProblems(ids, ctx) {
 function envProblems(report, ctx) {
   const n = report?.summary?.envMismatch ?? 0;
   if (!n) return [];
-  const fields = report.summary.envFields?.length ? ` (${report.summary.envFields.join(', ')})` : '';
+  const fields = report.summary.envFields?.length
+    ? ` (${report.summary.envFields.join(', ')})`
+    : '';
   const severity = ctx.integrity?.severity?.['env-mismatch'] ?? 'warn';
-  return [{ code: 'env-mismatch', severity, count: n, reason: `${n} entries were rendered in a different environment than their baseline${fields}: a change there can be the machine, not the code. Render where the baselines were made (the pinned container), or re-take them there (\`pxsig check --full --update --kind environment\`); \`--strict-env\` refuses such a run instead` }];
+  return [
+    {
+      code: 'env-mismatch',
+      severity,
+      count: n,
+      reason: `${n} entries were rendered in a different environment than their baseline${fields}: a change there can be the machine, not the code. Render where the baselines were made (the pinned container), or re-take them there (\`pxsig check --full --update --kind environment\`); \`--strict-env\` refuses such a run instead`,
+    },
+  ];
 }
 
 /**
@@ -668,7 +1120,9 @@ function warnModeProblems(ctx) {
   } catch {
     return [];
   }
-  return enforcementProblems(enf, enf.configured.length ? readinessTally(ctx.project) : null).map((x) => ({ ...x, severity: ctx.integrity?.severity?.[x.code] ?? x.severity }));
+  return enforcementProblems(enf, enf.configured.length ? readinessTally(ctx.project) : null).map(
+    (x) => ({ ...x, severity: ctx.integrity?.severity?.[x.code] ?? x.severity })
+  );
 }
 
 /** Store files a merge or rebase left conflicted (decision 97). */
@@ -676,19 +1130,39 @@ function conflictProblems(ctx) {
   if (!ctx.project) return [];
   const files = conflictedStoreFiles(ctx.project);
   if (!files.length) return [];
-  return [{ code: 'store-conflict', severity: 'error', count: files.length, reason: `${files.length} store files are conflicted (a merge or rebase is not finished): ${files.slice(0, 5).join(', ')}${files.length > 5 ? ', …' : ''}. Take main's version of each baseline, keep both sides' lines of a log, then \`pxsig check --since main\` and approve again (docs/ci.md, "Rebasing with baselines")` }];
+  return [
+    {
+      code: 'store-conflict',
+      severity: 'error',
+      count: files.length,
+      reason: `${files.length} store files are conflicted (a merge or rebase is not finished): ${files.slice(0, 5).join(', ')}${files.length > 5 ? ', …' : ''}. Take main's version of each baseline, keep both sides' lines of a log, then \`pxsig check --since main\` and approve again (docs/ci.md, "Rebasing with baselines")`,
+    },
+  ];
 }
 
 /** A log line a crash cut short: left out of every reading, removed only by a person. */
 function tornProblems(file, torn) {
   if (!torn.length) return [];
-  return [{ code: 'log-torn', severity: 'warn', count: torn.length, reason: `${torn.length} line(s) of ${file} were cut short by a crash (line ${torn.map((t) => t.line).join(', ')}) and are left out: \`pxsig doctor --repair --only log-torn --apply\` (a person at a terminal) removes them` }];
+  return [
+    {
+      code: 'log-torn',
+      severity: 'warn',
+      count: torn.length,
+      reason: `${torn.length} line(s) of ${file} were cut short by a crash (line ${torn.map((t) => t.line).join(', ')}) and are left out: \`pxsig doctor --repair --only log-torn --apply\` (a person at a terminal) removes them`,
+    },
+  ];
 }
 
 function setupProblems(index) {
   const out = [];
-  if (index.storybook?.reachable && !index.storybook.healthy) out.push({ code: 'storybook-index-broken', severity: 'error', reason: index.storybook.error });
-  else if (!index.storybook?.reachable && index.source === 'static') out.push({ code: 'storybook-unreachable', severity: 'info', reason: `${index.storybook?.error ?? 'not reachable'}: reconciled against a static scan of the story files` });
+  if (index.storybook?.reachable && !index.storybook.healthy)
+    out.push({ code: 'storybook-index-broken', severity: 'error', reason: index.storybook.error });
+  else if (!index.storybook?.reachable && index.source === 'static')
+    out.push({
+      code: 'storybook-unreachable',
+      severity: 'info',
+      reason: `${index.storybook?.error ?? 'not reachable'}: reconciled against a static scan of the story files`,
+    });
   return out;
 }
 
@@ -698,7 +1172,10 @@ const PLURAL = {
   'never-checked': ['never-checked entry', 'never-checked entries'],
   'missing-baseline-image': ['missing baseline image', 'missing baseline images'],
   'legacy-format': ['legacy .pxsig.json baseline', 'legacy .pxsig.json baselines'],
-  'skipped-unaffected': ['unaffected entry not yet verified', 'unaffected entries not yet verified'],
+  'skipped-unaffected': [
+    'unaffected entry not yet verified',
+    'unaffected entries not yet verified',
+  ],
   unbaselined: ['new entry without a baseline', 'new entries without a baseline'],
   'missing-render': ['missing render', 'missing renders'],
   orphaned: ['orphan', 'orphans'],
@@ -723,7 +1200,10 @@ export function summarise(entries, components) {
   }
   const errComps = components.filter((c) => c.severity === 'error');
   const warnComps = components.filter((c) => c.severity === 'warn');
-  const errCodes = Object.keys(CODES).filter((c) => byCode[c] && entries.some((x) => x.issues.some((i) => i.code === c && i.severity === 'error')));
+  const errCodes = Object.keys(CODES).filter(
+    (c) =>
+      byCode[c] && entries.some((x) => x.issues.some((i) => i.code === c && i.severity === 'error'))
+  );
   const headline = errComps.length
     ? `${errComps.length} component${errComps.length === 1 ? '' : 's'} with errors: ${errCodes.map((c) => phrase(c, entries.filter((x) => x.issues.some((i) => i.code === c && i.severity === 'error')).length)).join(', ')}`
     : warnComps.length
@@ -734,7 +1214,11 @@ export function summarise(entries, components) {
     headline,
     entries: entries.length,
     components: components.length,
-    componentsBySeverity: { error: errComps.length, warn: warnComps.length, info: components.length - errComps.length - warnComps.length },
+    componentsBySeverity: {
+      error: errComps.length,
+      warn: warnComps.length,
+      info: components.length - errComps.length - warnComps.length,
+    },
     bySeverity,
     /** Info-severity entries whose status is a finding (not ok / excluded / drift). */
     infoFindings: entries.filter((x) => x.severity === 'info' && !BENIGN_INFO.has(x.status)).length,
@@ -756,10 +1240,16 @@ export function filterLedger(ledger, { component, status, severity } = {}) {
   const matchC = (name) => !c || name.toLowerCase().includes(c);
   const codes = status ? new Set(String(status).split(',')) : null;
   const sev = severity ? sevRank(severity) : null;
-  const entries = ledger.entries.filter((x) => matchC(x.component) && (!codes || x.issues.some((i) => codes.has(i.code)) || codes.has(x.status)) && (sev == null || sevRank(x.severity) <= sev));
+  const entries = ledger.entries.filter(
+    (x) =>
+      matchC(x.component) &&
+      (!codes || x.issues.some((i) => codes.has(i.code)) || codes.has(x.status)) &&
+      (sev == null || sevRank(x.severity) <= sev)
+  );
   const names = new Set(entries.map((x) => x.component));
   return { components: ledger.components.filter((x) => names.has(x.component)), entries };
 }
 
 /** One line, for check.mjs and the CLI: "integrity: No issues" / "integrity: 3 components with errors: …". */
-export const oneLine = (ledger) => `integrity: ${ledger.summary.headline}${ledger.setup.length ? ` · setup: ${ledger.setup.map((s) => s.code).join(', ')}` : ''}`;
+export const oneLine = (ledger) =>
+  `integrity: ${ledger.summary.headline}${ledger.setup.length ? ` · setup: ${ledger.setup.map((s) => s.code).join(', ')}` : ''}`;

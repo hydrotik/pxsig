@@ -59,14 +59,40 @@
  * Binds to 127.0.0.1 only.
  */
 import { execFile, spawn } from './lib/spawn.mjs';
-import { createReadStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, watch } from 'node:fs';
+import {
+  createReadStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  watch,
+} from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, extname, join, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
-import { newBatch, PERSON_VIA, paths, record, sha256, snapshot, stamp, undo, who } from './lib/approvals.mjs';
+import {
+  newBatch,
+  PERSON_VIA,
+  paths,
+  record,
+  sha256,
+  snapshot,
+  stamp,
+  undo,
+  who,
+} from './lib/approvals.mjs';
 import { browserPool, renderStories, STORYBOOK_ERROR } from './lib/capture.mjs';
-import { fetchStoryIndex, filterLedger, loadStoryIndex, oneLine, reconcile, resolveContext, writeLedger } from './lib/integrity.mjs';
+import {
+  fetchStoryIndex,
+  filterLedger,
+  loadStoryIndex,
+  oneLine,
+  reconcile,
+  resolveContext,
+  writeLedger,
+} from './lib/integrity.mjs';
 import { readHeader, readImage } from './lib/psig.mjs';
 import { parseArgs, strFlag } from './lib/args.mjs';
 import { acquireLock, alive, describeLock, LockError } from './lib/lock.mjs';
@@ -74,10 +100,36 @@ import { applyRepairs, defaultHooks, planRepairs, registerNamed } from './lib/re
 import { buildRow, dropStaleRows, storybookBroken, summarize } from './lib/rows.mjs';
 import { annotateRow, byId, envConfig, envSummary } from './lib/env.mjs';
 import { ensureStorybook } from './lib/static.mjs';
-import { findWorkspace, flagLayer, loadProject, PXSIG_VERSION, rustBinary, serverFile, writeRunManifest } from './lib/workspace.mjs';
-import { buildData, dashboardDir, prebuiltDashboardDir, uiContractVersion, useDashboard } from './report.mjs';
+import {
+  findWorkspace,
+  flagLayer,
+  loadProject,
+  PXSIG_VERSION,
+  rustBinary,
+  serverFile,
+  writeRunManifest,
+} from './lib/workspace.mjs';
+import {
+  buildData,
+  dashboardDir,
+  prebuiltDashboardDir,
+  uiContractVersion,
+  useDashboard,
+} from './report.mjs';
 import { chooseDashboard } from './lib/dashboard-dir.mjs';
-import { authorize, Links, linkSetCookie, loopbackHost, mayMintTicket, NEEDS_PERSON, newToken, pageHeaders, removeToken, sameOriginPage, writeToken } from './lib/guard.mjs';
+import {
+  authorize,
+  Links,
+  linkSetCookie,
+  loopbackHost,
+  mayMintTicket,
+  NEEDS_PERSON,
+  newToken,
+  pageHeaders,
+  removeToken,
+  sameOriginPage,
+  writeToken,
+} from './lib/guard.mjs';
 import { humanAtTerminal } from './lib/term.mjs';
 import { fileURLToPath } from 'node:url';
 import { relPath } from './lib/paths.mjs';
@@ -88,7 +140,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 const { flags } = parseArgs(process.argv.slice(2));
 // Children inherit it, so the engine and checks the server starts are printed too.
-if (flags.debug) process.env.PXSIG_DEBUG = [process.env.PXSIG_DEBUG, 'spawn'].filter(Boolean).join(',');
+if (flags.debug)
+  process.env.PXSIG_DEBUG = [process.env.PXSIG_DEBUG, 'spawn'].filter(Boolean).join(',');
 const str = (k) => strFlag(flags, k);
 let ws;
 try {
@@ -104,12 +157,21 @@ const only = str('project')?.split(',');
 // when it is current, else the prebuilt one. Serve never builds: it says which command does.
 {
   const builtinDir = (name) => {
-    for (const d of [join(here, '..', 'dashboard'), join(here, '..', '..', 'dashboard')]) if (existsSync(join(d, 'src', 'ui', 'adapters', name))) return join(d, 'src', 'ui', 'adapters', name);
+    for (const d of [join(here, '..', 'dashboard'), join(here, '..', '..', 'dashboard')])
+      if (existsSync(join(d, 'src', 'ui', 'adapters', name)))
+        return join(d, 'src', 'ui', 'adapters', name);
     return null;
   };
   // This pxsig's UI contract version, from the lock shipped with the dashboard source.
   const contract = uiContractVersion();
-  const dash = chooseDashboard({ projects: ws.projects.filter((p) => !only || only.includes(p.name)), prebuilt: prebuiltDashboardDir, version: PXSIG_VERSION, contract, root: ws.root, builtinDir });
+  const dash = chooseDashboard({
+    projects: ws.projects.filter((p) => !only || only.includes(p.name)),
+    prebuilt: prebuiltDashboardDir,
+    version: PXSIG_VERSION,
+    contract,
+    root: ws.root,
+    builtinDir,
+  });
   // oxlint-disable-next-line react-hooks/rules-of-hooks -- not a React hook: it selects the dashboard folder to serve.
   useDashboard(dash.dir);
   if (dash.note) console.log(`[serve] ${dash.note}`);
@@ -144,10 +206,15 @@ const TOKENS = { cli: newToken(), mcp: newToken() };
 // The dashboard link's tickets and cookies (lib/guard.mjs): in memory, so a restart ends them.
 const links = new Links();
 /** The dashboard link: the dashboard (on `tab`) with a fresh one-time ticket in its fragment. */
-const dashboardLink = (base, tab = null) => `${base}#${tab ? `tab=${encodeURIComponent(tab)}&` : ''}ticket=${links.mint()}`;
+const dashboardLink = (base, tab = null) =>
+  `${base}#${tab ? `tab=${encodeURIComponent(tab)}&` : ''}ticket=${links.mint()}`;
 /** An agent clears its own kind of decision only: never a person's approval or accept. */
 const agentMayClear = (meta, state) => {
-  if (meta.via === 'mcp' && (state === 'approved' || state === 'accepted')) throw httpError(403, `clearing an ${state === 'approved' ? 'approval' : 'accept'} ${NEEDS_PERSON.slice('approving '.length)}`);
+  if (meta.via === 'mcp' && (state === 'approved' || state === 'accepted'))
+    throw httpError(
+      403,
+      `clearing an ${state === 'approved' ? 'approval' : 'accept'} ${NEEDS_PERSON.slice('approving '.length)}`
+    );
 };
 
 // --- the Rust engine, kept running --------------------------------------------------
@@ -220,7 +287,11 @@ function openState(ref) {
   S.reload = () => {
     try {
       // Without the store lock (another process holds it) the run manifest goes to a temp folder.
-      const r = writeRunManifest(P, undefined, S.lock ? {} : { dir: join(tmpdir(), `pxsig-serve-${process.pid}`, S.name) });
+      const r = writeRunManifest(
+        P,
+        undefined,
+        S.lock ? {} : { dir: join(tmpdir(), `pxsig-serve-${process.pid}`, S.name) }
+      );
       S.runPath = r.path;
       S.manifest = r.manifest;
     } catch (e) {
@@ -232,7 +303,12 @@ function openState(ref) {
   S.reload();
   S.integrity = readJson(join(P.store.reports, 'integrity.json'), null);
   // Staleness traces edits (never the gates' fail-safe: decision 6.1f).
-  S.affected = (file) => (S.runPath ? rust('affected', { manifest: S.runPath, root: P.workspaceRoot, files: [file] }).then((r) => r.traced ?? r.ids) : Promise.resolve([]));
+  S.affected = (file) =>
+    S.runPath
+      ? rust('affected', { manifest: S.runPath, root: P.workspaceRoot, files: [file] }).then(
+          (r) => r.traced ?? r.ids
+        )
+      : Promise.resolve([]);
   mkdirSync(P.store.reports, { recursive: true });
   return S;
 }
@@ -261,18 +337,26 @@ for (const S of states.values()) {
 function stateFor({ project, id, story } = {}) {
   if (project) {
     const S = states.get(project);
-    if (!S) throw httpError(404, `no project "${project}" (projects: ${[...states.keys()].join(', ')})`);
+    if (!S)
+      throw httpError(404, `no project "${project}" (projects: ${[...states.keys()].join(', ')})`);
     return S;
   }
   if (states.size === 1) return [...states.values()][0];
-  const owners = [...states.values()].filter((S) => S.manifest.stories.some((e) => (id && e.id === id) || (story && (e.story ?? e.id) === story)));
+  const owners = [...states.values()].filter((S) =>
+    S.manifest.stories.some((e) => (id && e.id === id) || (story && (e.story ?? e.id) === story))
+  );
   if (owners.length === 1) return owners[0];
   throw httpError(400, `name a project (projects: ${[...states.keys()].join(', ')})`);
 }
 
 // --- review --------------------------------------------------------------------------------
 function updateCheckRows(S, mut, fresh = new Map(), timing = null, envs = null) {
-  const check = readJson(S.checkPath, null) ?? { generatedAt: new Date().toISOString(), project: S.name, summary: {}, rows: [] };
+  const check = readJson(S.checkPath, null) ?? {
+    generatedAt: new Date().toISOString(),
+    project: S.name,
+    summary: {},
+    rows: [],
+  };
   // Every environment a row names (lib/env.mjs), by id: the fresh rows' and their baselines'.
   if (envs) check.envs = { ...(check.envs ?? {}), ...envs };
   const seen = new Set(check.rows.map((r) => r.id));
@@ -282,13 +366,21 @@ function updateCheckRows(S, mut, fresh = new Map(), timing = null, envs = null) 
   const add = [...fresh.values()].filter((r) => !seen.has(r.id));
   if (add.length) {
     const order = new Map(S.manifest.stories.map((e, i) => [e.id, i]));
-    check.rows = [...check.rows, ...add].sort((a, b) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9));
+    check.rows = [...check.rows, ...add].sort(
+      (a, b) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9)
+    );
   }
   const dropped = S.runPath ? dropStaleRows(check, S.manifest) : [];
-  if (dropped.length) console.log(`[serve] ${S.name}: dropped ${dropped.length} rows no longer in the manifest`);
+  if (dropped.length)
+    console.log(`[serve] ${S.name}: dropped ${dropped.length} rows no longer in the manifest`);
   // Timings describe one run: a full re-check replaces them; a partial one leaves the last full
   // run's (the Duration card and Diagnostics read them against `checked`).
-  check.summary = { ...check.summary, ...summarize(check.rows), ...envSummary(check.rows, check.envs ?? {}), ...(timing ?? {}) };
+  check.summary = {
+    ...check.summary,
+    ...summarize(check.rows),
+    ...envSummary(check.rows, check.envs ?? {}),
+    ...(timing ?? {}),
+  };
   if (!check.summary.envMismatch) delete check.summary.envFields;
   // New verdicts move the report's time ("Last check"); `fullCheckAt` keeps when every entry was
   // last checked together, which is what integrity's "absent from the last full check" means.
@@ -313,7 +405,9 @@ function pruneStaleRows(S) {
   if (!dropped.length) return;
   S.quietUntil = Date.now() + 800;
   writeJson(S.checkPath, check);
-  console.log(`[serve] ${S.name}: dropped ${dropped.length} rows no longer in the manifest (${dropped.slice(0, 3).join(', ')}${dropped.length > 3 ? ', …' : ''})`);
+  console.log(
+    `[serve] ${S.name}: dropped ${dropped.length} rows no longer in the manifest (${dropped.slice(0, 3).join(', ')}${dropped.length > 3 ? ', …' : ''})`
+  );
   broadcast('data', { project: S.name });
 }
 
@@ -331,7 +425,10 @@ function needLock(S) {
       setTimeout(() => takeLock(S), 2000).unref();
     }
   }
-  throw httpError(409, `${S.lockWait ?? 'the store lock is not held'}: this project is read-only until it is free`);
+  throw httpError(
+    409,
+    `${S.lockWait ?? 'the store lock is not held'}: this project is read-only until it is free`
+  );
 }
 
 /** Take a project's store lock now, or keep trying every 2 s while another process holds it. */
@@ -350,7 +447,8 @@ function takeLock(S) {
   } catch (e) {
     if (!(e instanceof LockError)) throw e;
     const msg = e.lock ? describeLock(S.P, e.lock) : e.message;
-    if (S.lockWait !== msg) console.error(`[serve] ${S.name}: ${msg}; waiting for it (writes are refused until then)`);
+    if (S.lockWait !== msg)
+      console.error(`[serve] ${S.name}: ${msg}; waiting for it (writes are refused until then)`);
     S.lockWait = msg;
     setTimeout(() => takeLock(S), 2000).unref();
     return false;
@@ -365,17 +463,22 @@ async function approve(S, id, meta = {}) {
   const latest = join(P.store.latest, `${id}.png`);
   if (!existsSync(latest)) throw httpError(409, `no latest render for ${id}; run a check`);
   // Mid-check, latest/ holds renders not yet trimmed or verified: approving one bakes in that.
-  if (S.checking?.has(id) || S.queued.has(id)) throw httpError(409, `${id} is being re-checked; approve it once the check finishes`);
+  if (S.checking?.has(id) || S.queued.has(id))
+    throw httpError(409, `${id} is being re-checked; approve it once the check finishes`);
   // A render that failed (an error page, a timeout) left the previous image behind, not this story.
   const current = readJson(S.checkPath, { rows: [] }).rows.find((r) => r.id === id);
-  if (current?.error) throw httpError(409, `${id} did not render (${current.error}); fix it and re-check before approving`);
+  if (current?.error)
+    throw httpError(
+      409,
+      `${id} did not render (${current.error}); fix it and re-check before approving`
+    );
   const batch = meta.batch ?? newBatch(meta.via ?? 'dashboard');
   // No baseline yet (a NEW entry): nothing to snapshot, `before` is null and undo removes the file.
   const { before } = snapshot(P, e, batch);
   // A .psig output carries the render itself as the baseline image, and the environment of that
   // render (the row's, from the check that made it), never this server's or the approver's.
   const report = readJson(S.checkPath, { rows: [] });
-  const renderEnv = current?.env ? report.envs?.[current.env] ?? null : null;
+  const renderEnv = current?.env ? (report.envs?.[current.env] ?? null) : null;
   const res = await rust('capture', {
     png: latest,
     out: resolve(P.workspaceRoot, e.sig),
@@ -394,8 +497,19 @@ async function approve(S, id, meta = {}) {
     base[id] = row.a11y.violations.map((v) => v.id).sort();
     writeJson(P.store.a11y, base, { pretty: true });
   }
-  const logged = record(P, e, { batch, via: meta.via ?? 'dashboard', reason: meta.reason ?? null, kind: meta.kind ?? null, before });
-  return { ...res, batch, after: logged.after, ...(a11yBefore !== undefined ? { a11yBefore } : {}) };
+  const logged = record(P, e, {
+    batch,
+    via: meta.via ?? 'dashboard',
+    reason: meta.reason ?? null,
+    kind: meta.kind ?? null,
+    before,
+  });
+  return {
+    ...res,
+    batch,
+    after: logged.after,
+    ...(a11yBefore !== undefined ? { a11yBefore } : {}),
+  };
 }
 
 /**
@@ -410,8 +524,15 @@ function unapprove(S, id, entry, via = 'dashboard') {
   const before = sha256(paths(P, e).sig);
   const res = undo(P, manifest, entry.batch, { git: false, ids: [id] });
   if (res.refused.length) throw httpError(409, `cannot undo ${id}: ${res.refused[0].why}`);
-  if (!res.restored.length && !res.removed.length) throw httpError(409, `cannot undo ${id}: nothing in batch ${entry.batch} to restore`);
-  record(P, e, { batch: `${entry.batch}-undo`, via: 'undo', reason: `undo ${entry.batch} (dashboard)`, before, person: PERSON_VIA.has(via) });
+  if (!res.restored.length && !res.removed.length)
+    throw httpError(409, `cannot undo ${id}: nothing in batch ${entry.batch} to restore`);
+  record(P, e, {
+    batch: `${entry.batch}-undo`,
+    via: 'undo',
+    reason: `undo ${entry.batch} (dashboard)`,
+    before,
+    person: PERSON_VIA.has(via),
+  });
   if ('a11yBefore' in entry) {
     const base = readJson(P.store.a11y, {});
     if (entry.a11yBefore == null) delete base[id];
@@ -426,15 +547,20 @@ async function review(S, action, id, meta = {}) {
   if (action === 'approve') {
     rv[id] = { state: 'approved', at: new Date().toISOString(), ...(await approve(S, id, meta)) };
     // The report says so too, so its counts (failed, changed) agree with the review.
-    updateCheckRows(S, (r) => (r.id === id ? { ...r, approved: { at: rv[id].at, batch: rv[id].batch } } : null));
-  } else if (action === 'reject') rv[id] = { state: 'rejected', at: new Date().toISOString(), via: meta.via ?? 'dashboard' };
+    updateCheckRows(S, (r) =>
+      r.id === id ? { ...r, approved: { at: rv[id].at, batch: rv[id].batch } } : null
+    );
+  } else if (action === 'reject')
+    rv[id] = { state: 'rejected', at: new Date().toISOString(), via: meta.via ?? 'dashboard' };
   else if (action === 'unreview') {
     agentMayClear(meta, rv[id]?.state);
-    if (rv[id]?.state === 'approved' && rv[id].batch) unapprove(S, id, rv[id], meta.via ?? 'dashboard');
+    if (rv[id]?.state === 'approved' && rv[id].batch)
+      unapprove(S, id, rv[id], meta.via ?? 'dashboard');
     delete rv[id];
-    updateCheckRows(S, (r) => (r.id === id && r.approved ? (({ approved, ...rest }) => rest)(r) : null));
-  }
-  else throw httpError(404, 'unknown action');
+    updateCheckRows(S, (r) =>
+      r.id === id && r.approved ? (({ approved, ...rest }) => rest)(r) : null
+    );
+  } else throw httpError(404, 'unknown action');
   S.quietUntil = Date.now() + 800;
   writeJson(S.reviewPath, rv, { pretty: true });
   console.log(`[serve] ${S.name}: ${action} ${id} (via ${meta.via ?? 'dashboard'})`);
@@ -459,7 +585,18 @@ async function approveStory(S, story, meta = {}) {
   const skipped = [];
   for (const e of entries) {
     const r = rows.get(e.id);
-    const why = rv[e.id]?.state === 'approved' ? 'already approved' : rv[e.id]?.state === 'rejected' ? 'rejected: decide on it alone' : !r || r.skipped ? 'not checked yet' : r.error ? `did not render (${String(r.error).split('\n')[0]})` : r.pass && !r.new ? 'passes: nothing to approve' : null;
+    const why =
+      rv[e.id]?.state === 'approved'
+        ? 'already approved'
+        : rv[e.id]?.state === 'rejected'
+          ? 'rejected: decide on it alone'
+          : !r || r.skipped
+            ? 'not checked yet'
+            : r.error
+              ? `did not render (${String(r.error).split('\n')[0]})`
+              : r.pass && !r.new
+                ? 'passes: nothing to approve'
+                : null;
     if (why) {
       skipped.push({ id: e.id, why });
       continue;
@@ -471,7 +608,9 @@ async function approveStory(S, story, meta = {}) {
       skipped.push({ id: e.id, why: err.message });
     }
   }
-  console.log(`[serve] ${S.name}: approve story ${story}: ${approved.length} approved, ${skipped.length} left (batch ${batch})`);
+  console.log(
+    `[serve] ${S.name}: approve story ${story}: ${approved.length} approved, ${skipped.length} left (batch ${batch})`
+  );
   return { story, batch, approved, skipped };
 }
 
@@ -492,17 +631,48 @@ async function runChecks(S) {
       const entries = manifest.stories.filter((e) => ids.includes(e.id));
       // Guard: a broken Storybook index makes every render its error page. Refuse, record nothing.
       const idx = await fetchStoryIndex(manifest.baseUrl);
-      if (!idx.healthy) throw Object.assign(new Error(`setup error: ${idx.reachable ? "Storybook's story index is broken" : 'Storybook is not reachable'} — ${idx.error}. Nothing was rendered.`), { setup: true });
+      if (!idx.healthy)
+        throw Object.assign(
+          new Error(
+            `setup error: ${idx.reachable ? "Storybook's story index is broken" : 'Storybook is not reachable'} — ${idx.error}. Nothing was rendered.`
+          ),
+          { setup: true }
+        );
       pool ??= browserPool(P);
       const concurrency = Math.min(8, entries.length);
       const envCfg = envConfig(P.config);
-      const engineVersion = await rust('ping', {}).then((p) => p.version ?? null).catch(() => null);
-      const current = await pool.envs(entries.map((e) => e.browser ?? 'chromium'), { fontProbe: envCfg.fontProbe, pxsig: PXSIG_VERSION, engine: engineVersion });
-      const { results, wallMs, reloads = 0 } = await renderStories(pool, entries, P.store.latest, { ...manifest, concurrency, project: P, a11y: true });
+      const engineVersion = await rust('ping', {})
+        .then((p) => p.version ?? null)
+        .catch(() => null);
+      const current = await pool.envs(
+        entries.map((e) => e.browser ?? 'chromium'),
+        { fontProbe: envCfg.fontProbe, pxsig: PXSIG_VERSION, engine: engineVersion }
+      );
+      const {
+        results,
+        wallMs,
+        reloads = 0,
+      } = await renderStories(pool, entries, P.store.latest, {
+        ...manifest,
+        concurrency,
+        project: P,
+        a11y: true,
+      });
       const sbErrors = results.filter((r) => r.error?.startsWith(STORYBOOK_ERROR));
       if (storybookBroken(sbErrors.length, results.length))
-        throw Object.assign(new Error(`setup error: ${sbErrors.length} of ${results.length} renders hit Storybook's error page (${sbErrors[0].error.slice(STORYBOOK_ERROR.length).trim()}). Nothing was recorded.`), { setup: true });
-      if (manifest.trim) await rust('trim', { dir: P.store.latest, only: ids, pad: manifest.trim.pad ?? 16, tolerance: manifest.trim.tolerance ?? 8 });
+        throw Object.assign(
+          new Error(
+            `setup error: ${sbErrors.length} of ${results.length} renders hit Storybook's error page (${sbErrors[0].error.slice(STORYBOOK_ERROR.length).trim()}). Nothing was recorded.`
+          ),
+          { setup: true }
+        );
+      if (manifest.trim)
+        await rust('trim', {
+          dir: P.store.latest,
+          only: ids,
+          pad: manifest.trim.pad ?? 16,
+          tolerance: manifest.trim.tolerance ?? 8,
+        });
       const res = await rust('check', {
         manifest: S.runPath,
         pngDir: P.store.latest,
@@ -514,7 +684,9 @@ async function runChecks(S) {
         history: join(P.store.reports, 'history.ndjson'),
       });
       for (const g of res.summary.identicalRenders ?? [])
-        console.error(`[serve] ${S.name}: ${g.count} failing entries rendered the same image (${g.ids.slice(0, 3).join(', ')}…): marked as errors, nothing to approve`);
+        console.error(
+          `[serve] ${S.name}: ${g.count} failing entries rendered the same image (${g.ids.slice(0, 3).join(', ')}…): marked as errors, nothing to approve`
+        );
       const rustRows = new Map(res.results.map((r) => [r.id, r]));
       const renders = new Map(results.map((r) => [r.id, r]));
       const a11yBase = readJson(P.store.a11y, null);
@@ -525,18 +697,55 @@ async function runChecks(S) {
       for (const id of ids) delete av[id];
       writeJson(S.a11yReviewPath, av, { pretty: true });
       const envs = { ...(res.baselineEnvs ?? {}), ...byId(current) };
-      const fresh = new Map(entries.map((e) => [e.id, annotateRow(buildRow(e, rustRows.get(e.id), renders.get(e.id), a11yBase, manifest), { current, envs, ignore: envCfg.ignore })]));
+      const fresh = new Map(
+        entries.map((e) => [
+          e.id,
+          annotateRow(buildRow(e, rustRows.get(e.id), renders.get(e.id), a11yBase, manifest), {
+            current,
+            envs,
+            ignore: envCfg.ignore,
+          }),
+        ])
+      );
       const full = entries.length === manifest.stories.length;
-      const timing = full ? { concurrency, renderWallMs: wallMs, pageLoads: reloads, rustEngineMs: res.summary.elapsedMs, totalMs: performance.now() - t0 } : null;
+      const timing = full
+        ? {
+            concurrency,
+            renderWallMs: wallMs,
+            pageLoads: reloads,
+            rustEngineMs: res.summary.elapsedMs,
+            totalMs: performance.now() - t0,
+          }
+        : null;
       updateCheckRows(S, (r) => fresh.get(r.id), fresh, timing, envs);
       const failed = [...fresh.values()].filter((r) => !r.pass).length;
-      console.log(`[serve] ${S.name}: re-checked ${ids.length} entries · ${failed} changed · ${((performance.now() - t0) / 1000).toFixed(1)} s (Rust ${res.summary.elapsedMs.toFixed(0)} ms)`);
-      broadcast('check', { project: S.name, state: 'done', ids, failed, ms: performance.now() - t0 });
+      console.log(
+        `[serve] ${S.name}: re-checked ${ids.length} entries · ${failed} changed · ${((performance.now() - t0) / 1000).toFixed(1)} s (Rust ${res.summary.elapsedMs.toFixed(0)} ms)`
+      );
+      broadcast('check', {
+        project: S.name,
+        state: 'done',
+        ids,
+        failed,
+        ms: performance.now() - t0,
+      });
       broadcast('data', { project: S.name });
     } catch (e) {
       console.error(`[serve] ${S.name}: check failed: ${e.message}`);
-      S.lastFailure = { seq, error: e.message, setup: !!e.setup, ids: ids.length, at: new Date().toISOString() };
-      broadcast('check', { project: S.name, state: 'error', ids, error: e.message, setup: !!e.setup });
+      S.lastFailure = {
+        seq,
+        error: e.message,
+        setup: !!e.setup,
+        ids: ids.length,
+        at: new Date().toISOString(),
+      };
+      broadcast('check', {
+        project: S.name,
+        state: 'error',
+        ids,
+        error: e.message,
+        setup: !!e.setup,
+      });
     } finally {
       S.running = null;
       S.checking = null;
@@ -552,7 +761,8 @@ async function runChecks(S) {
 // accepted list (<store>/a11y.json); rejecting marks them for a fix. Both last until the next
 // check of the entry, like review.json. Every accept and undo is logged beside a11y.json.
 
-const a11yLog = (P, line) => appendLine(join(dirname(P.store.a11y), 'a11y-decisions.ndjson'), stamp(line));
+const a11yLog = (P, line) =>
+  appendLine(join(dirname(P.store.a11y), 'a11y-decisions.ndjson'), stamp(line));
 const writeA11y = (P, base) => writeJson(P.store.a11y, base, { pretty: true });
 
 function a11yReview(S, action, id, meta = {}) {
@@ -566,7 +776,8 @@ function a11yReview(S, action, id, meta = {}) {
   const via = meta.via ?? 'dashboard';
   if (action === 'a11y-accept') {
     const row = readJson(S.checkPath, { rows: [] }).rows.find((r) => r.id === id);
-    if (!row?.a11y?.violations) throw httpError(409, `no accessibility results for ${id}; run a check`);
+    if (!row?.a11y?.violations)
+      throw httpError(409, `no accessibility results for ${id}; run a check`);
     const before = base[id] ?? null;
     const after = row.a11y.violations.map((v) => v.id).sort();
     base[id] = after;
@@ -578,14 +789,34 @@ function a11yReview(S, action, id, meta = {}) {
     // Take a rule (or every rule) off the accepted list: the report shows it as new at once.
     const current = base[id] ?? [];
     const after = current.filter((r) => meta.rule && r !== meta.rule);
-    if (after.length === current.length) throw httpError(409, `${meta.rule ?? 'nothing'} is not on the accepted list of ${id}`);
+    if (after.length === current.length)
+      throw httpError(409, `${meta.rule ?? 'nothing'} is not on the accepted list of ${id}`);
     base[id] = after;
     writeA11y(P, base);
-    a11yLog(P, { at, by, via, action: 'unaccept', id, before: current, after, rule: meta.rule ?? null });
+    a11yLog(P, {
+      at,
+      by,
+      via,
+      action: 'unaccept',
+      id,
+      before: current,
+      after,
+      rule: meta.rule ?? null,
+    });
     delete av[id];
-    updateCheckRows(S, (r) => (r.id === id && r.a11y?.violations ? { ...r, a11y: { ...r.a11y, baseline: after, new: r.a11y.violations.filter((v) => !after.includes(v.id)).length } } : null));
-  }
-  else if (action === 'a11y-unreview') {
+    updateCheckRows(S, (r) =>
+      r.id === id && r.a11y?.violations
+        ? {
+            ...r,
+            a11y: {
+              ...r.a11y,
+              baseline: after,
+              new: r.a11y.violations.filter((v) => !after.includes(v.id)).length,
+            },
+          }
+        : null
+    );
+  } else if (action === 'a11y-unreview') {
     const prev = av[id];
     agentMayClear(meta, prev?.state);
     if (prev?.state === 'accepted') {
@@ -614,9 +845,16 @@ function a11yPrune(S, body, via) {
   const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : null);
   const batch = s(body.batch, 80)?.replace(/[^\w.-]/g, '') || newBatch('prune');
   // Errors carry their status (400 a bad plan, 409 a11y.json changed since it was made).
-  const r = applyPrune(S.P, body.plan, { batch, reason: s(body.reason, 500), via, lockCheck: () => needLock(S) });
+  const r = applyPrune(S.P, body.plan, {
+    batch,
+    reason: s(body.reason, 500),
+    via,
+    lockCheck: () => needLock(S),
+  });
   S.quietUntil = Date.now() + 800;
-  console.log(`[serve] ${S.name}: pruned ${r.rules} accepted a11y rules from ${r.entries} entries (batch ${batch}, via ${via})`);
+  console.log(
+    `[serve] ${S.name}: pruned ${r.rules} accepted a11y rules from ${r.entries} entries (batch ${batch}, via ${via})`
+  );
   broadcast('data', { project: S.name });
   return { batch, entries: r.entries, rules: r.rules };
 }
@@ -633,16 +871,29 @@ async function enqueue(S, body) {
   if (!S.running) S.reload();
   const asked = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []);
   const ids = new Set(asked(body.ids));
-  const stories = new Set([...asked(body.stories), ...(typeof body.story === 'string' ? [body.story] : [])]);
-  const known = (name) => S.manifest.stories.some((e) => e.id === name || (e.story ?? e.id) === name);
+  const stories = new Set([
+    ...asked(body.stories),
+    ...(typeof body.story === 'string' ? [body.story] : []),
+  ]);
+  const known = (name) =>
+    S.manifest.stories.some((e) => e.id === name || (e.story ?? e.id) === name);
   const unknown = [...new Set([...ids, ...stories])].filter((n) => !known(n));
   let registered = { added: [], stories: [], skipped: [] };
   if (unknown.length && !body.all) {
     const index = await loadStoryIndex(S.ctx);
-    registered = await registerNamed(S.ctx, unknown, { index, harvest: defaultHooks(S.ctx).harvest, via: typeof body.via === 'string' ? body.via.replace(/[^\w-]/g, '').slice(0, 20) || 'server' : 'server' });
+    registered = await registerNamed(S.ctx, unknown, {
+      index,
+      harvest: defaultHooks(S.ctx).harvest,
+      via:
+        typeof body.via === 'string'
+          ? body.via.replace(/[^\w-]/g, '').slice(0, 20) || 'server'
+          : 'server',
+    });
     if (registered.added.length) {
       S.reload();
-      console.log(`[serve] ${S.name}: registered ${registered.stories.join(', ')} (${registered.added.length} NEW entries) to check them`);
+      console.log(
+        `[serve] ${S.name}: registered ${registered.stories.join(', ')} (${registered.added.length} NEW entries) to check them`
+      );
     }
     for (const story of registered.stories) stories.add(story);
   }
@@ -657,14 +908,41 @@ async function enqueue(S, body) {
 /** Per-story status for the addon's sidebar, across every project (story ids are per Storybook). */
 function statuses() {
   const out = {};
-  const rank = { error: 5, changed: 4, rejected: 4, flaky: 3, drift: 2, approved: 1, pass: 0, skipped: 0 };
+  const rank = {
+    error: 5,
+    changed: 4,
+    rejected: 4,
+    flaky: 3,
+    drift: 2,
+    approved: 1,
+    pass: 0,
+    skipped: 0,
+  };
   for (const S of states.values()) {
     const check = readJson(S.checkPath, { rows: [] });
     const rv = readJson(S.reviewPath, {});
     for (const r of check.rows) {
       const s = (out[r.story] ??= { status: 'pass', project: S.name, entries: [] });
-      const st = rv[r.id]?.state ?? (r.skipped ? 'skipped' : r.error ? 'error' : r.flaky ? 'flaky' : r.pass ? (r.metrics && r.metrics.ssim < 1 ? 'drift' : 'pass') : 'changed');
-      s.entries.push({ id: r.id, mode: r.mode, state: st, ssim: r.metrics?.ssim ?? null, reasons: r.reasons ?? [] });
+      const st =
+        rv[r.id]?.state ??
+        (r.skipped
+          ? 'skipped'
+          : r.error
+            ? 'error'
+            : r.flaky
+              ? 'flaky'
+              : r.pass
+                ? r.metrics && r.metrics.ssim < 1
+                  ? 'drift'
+                  : 'pass'
+                : 'changed');
+      s.entries.push({
+        id: r.id,
+        mode: r.mode,
+        state: st,
+        ssim: r.metrics?.ssim ?? null,
+        reasons: r.reasons ?? [],
+      });
       if ((rank[st] ?? 0) > (rank[s.status] ?? 0)) s.status = st;
     }
   }
@@ -678,9 +956,16 @@ function storyIntegrity() {
   for (const S of states.values()) {
     if (!S.integrity) continue;
     for (const x of S.integrity.entries) {
-      const s = (out[x.story] ??= { status: 'ok', severity: 'info', project: S.name, component: x.component, codes: {} });
+      const s = (out[x.story] ??= {
+        status: 'ok',
+        severity: 'info',
+        project: S.name,
+        component: x.component,
+        codes: {},
+      });
       for (const i of x.issues) s.codes[i.code] = (s.codes[i.code] ?? 0) + 1;
-      if (sev[x.severity] < sev[s.severity] || (x.severity === s.severity && s.status === 'ok')) Object.assign(s, { status: x.status, severity: x.severity });
+      if (sev[x.severity] < sev[s.severity] || (x.severity === s.severity && s.status === 'ok'))
+        Object.assign(s, { status: x.status, severity: x.severity });
     }
   }
   return out;
@@ -705,7 +990,8 @@ async function runIntegrity(S, why) {
       S.quietUntil = Date.now() + 800;
       writeLedger(S.ctx, ledger);
     }
-    if (before !== ledger.summary.headline) console.log(`[serve] ${S.name}: ${oneLine(ledger)} (${why}, ${ledger.elapsedMs} ms)`);
+    if (before !== ledger.summary.headline)
+      console.log(`[serve] ${S.name}: ${oneLine(ledger)} (${why}, ${ledger.elapsedMs} ms)`);
     broadcast('integrity', { project: S.name, summary: ledger.summary, setup: ledger.setup });
   } catch (e) {
     console.error(`[serve] ${S.name}: integrity failed: ${e.message}`);
@@ -737,17 +1023,26 @@ for (const S of states.values()) {
   watchFor(join(P.store.root, 'renders'), later('renders changed'), (f) => f.startsWith('latest'));
   watchFor(P.store.root, later('manifest changed'), (f) => /^manifest(\..+)?\.json$/.test(f));
   let dataTimer = null;
-  watchFor(P.store.reports, (file) => {
-    if (Date.now() < S.quietUntil || file.startsWith('.run')) return;
-    clearTimeout(dataTimer);
-    dataTimer = setTimeout(() => broadcast('data', { project: S.name }), 300);
-  }, (f) => /\.(nd)?json$/.test(f));
+  watchFor(
+    P.store.reports,
+    (file) => {
+      if (Date.now() < S.quietUntil || file.startsWith('.run')) return;
+      clearTimeout(dataTimer);
+      dataTimer = setTimeout(() => broadcast('data', { project: S.name }), 300);
+    },
+    (f) => /\.(nd)?json$/.test(f)
+  );
 }
 
 /** Safe repairs, as the dashboard's button asks: plan, or apply (never prune, never approve). */
 async function repair(S, { apply = false, only: onlySteps, stale = false } = {}) {
   const ledger = await reconcile(S.ctx, { affected: S.affected });
-  const plan = planRepairs(ledger, { only: Array.isArray(onlySteps) ? onlySteps.filter((a) => a !== 'prune') : undefined, prune: false, server: { up: true }, stale });
+  const plan = planRepairs(ledger, {
+    only: Array.isArray(onlySteps) ? onlySteps.filter((a) => a !== 'prune') : undefined,
+    prune: false,
+    server: { up: true },
+    stale,
+  });
   if (!apply) return { plan };
   needLock(S);
   if (S.repairing) throw httpError(409, 'a repair is already running');
@@ -757,20 +1052,31 @@ async function repair(S, { apply = false, only: onlySteps, stale = false } = {})
     async recheck(ids) {
       const from = S.runs;
       await enqueue(S, { ids });
-      while (S.running || S.queued.size) await (S.running ?? new Promise((r) => setTimeout(r, 200)));
+      while (S.running || S.queued.size)
+        await (S.running ?? new Promise((r) => setTimeout(r, 200)));
       // A run that failed (Storybook down, a broken index) recorded nothing: say so.
       if (S.lastFailure && S.lastFailure.seq > from) throw new Error(S.lastFailure.error);
       return { via: 'server' };
     },
   };
-  S.repairing = applyRepairs(S.ctx, plan, { hooks, via: 'dashboard', reconcileOpts: { affected: S.affected } });
+  S.repairing = applyRepairs(S.ctx, plan, {
+    hooks,
+    via: 'dashboard',
+    reconcileOpts: { affected: S.affected },
+  });
   try {
     const res = await S.repairing;
     S.integrity = res.ledger;
     writeLedger(S.ctx, res.ledger);
-    broadcast('integrity', { project: S.name, summary: res.ledger.summary, setup: res.ledger.setup });
+    broadcast('integrity', {
+      project: S.name,
+      summary: res.ledger.summary,
+      setup: res.ledger.setup,
+    });
     broadcast('data', { project: S.name });
-    console.log(`[serve] ${S.name}: repair: ${res.steps.map((s) => `${s.action} → ${s.result}`).join(' · ') || 'nothing to do'}`);
+    console.log(
+      `[serve] ${S.name}: repair: ${res.steps.map((s) => `${s.action} → ${s.result}`).join(' · ') || 'nothing to do'}`
+    );
     return { plan, applied: res.steps, summary: res.ledger.summary };
   } finally {
     S.repairing = null;
@@ -783,29 +1089,40 @@ if (flags.watch) {
     const src = S.P.srcRoot;
     const changed = new Set();
     let t = null;
-    watchFor(src, (file) => {
-      changed.add(relPath(ws.root, join(src, file)));
-      clearTimeout(t);
-      // Give Storybook's dev server a moment to rebuild before we render.
-      t = setTimeout(async () => {
-        const files = [...changed];
-        changed.clear();
-        try {
-          if (!S.runPath) return;
-          const a = await rust('affected', { manifest: S.runPath, root: ws.root, files });
-          // Watch is not a gate: it re-checks what the edits trace to, and names what it cannot trace
-          // (the gates would check everything for those; decision 6.1f).
-          const ids = a.traced ?? a.ids;
-          console.log(`[serve] ${S.name}: watch: ${files.join(', ')} → ${ids.length} entries (${a.failSafe?.length ? 'traced only' : a.reason})`);
-          for (const f of a.failSafe ?? []) console.log(`[serve] ${S.name}: watch: not traced: ${f.why} (a gate would check every entry)`);
-          broadcast('watch', { project: S.name, files, ids: ids.length });
-          if (ids.length) await enqueue(S, { ids });
-        } catch (e) {
-          console.error(`[serve] ${S.name}: watch: ${e.message}`);
-        }
-      }, 900);
-    }, (f) => !/(^|\/)(__pxsig__|node_modules)\//.test(f));
-    console.log(`[serve] ${S.name}: watching ${relPath(ws.root, src)} — edits re-check affected entries`);
+    watchFor(
+      src,
+      (file) => {
+        changed.add(relPath(ws.root, join(src, file)));
+        clearTimeout(t);
+        // Give Storybook's dev server a moment to rebuild before we render.
+        t = setTimeout(async () => {
+          const files = [...changed];
+          changed.clear();
+          try {
+            if (!S.runPath) return;
+            const a = await rust('affected', { manifest: S.runPath, root: ws.root, files });
+            // Watch is not a gate: it re-checks what the edits trace to, and names what it cannot trace
+            // (the gates would check everything for those; decision 6.1f).
+            const ids = a.traced ?? a.ids;
+            console.log(
+              `[serve] ${S.name}: watch: ${files.join(', ')} → ${ids.length} entries (${a.failSafe?.length ? 'traced only' : a.reason})`
+            );
+            for (const f of a.failSafe ?? [])
+              console.log(
+                `[serve] ${S.name}: watch: not traced: ${f.why} (a gate would check every entry)`
+              );
+            broadcast('watch', { project: S.name, files, ids: ids.length });
+            if (ids.length) await enqueue(S, { ids });
+          } catch (e) {
+            console.error(`[serve] ${S.name}: watch: ${e.message}`);
+          }
+        }, 900);
+      },
+      (f) => !/(^|\/)(__pxsig__|node_modules)\//.test(f)
+    );
+    console.log(
+      `[serve] ${S.name}: watching ${relPath(ws.root, src)} — edits re-check affected entries`
+    );
   }
 }
 
@@ -821,7 +1138,11 @@ const cors = (req, res) => {
   }
 };
 const json = (res, status, body) => {
-  res.writeHead(status, { 'content-type': TYPES['.json'], 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
+  res.writeHead(status, {
+    'content-type': TYPES['.json'],
+    'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff',
+  });
   res.end(JSON.stringify(body));
 };
 const readBody = (req) =>
@@ -841,17 +1162,31 @@ const readBody = (req) =>
   });
 
 const projectsList = () =>
-  [...states.values()].map((S) => ({ name: S.name, label: S.P.label ?? null, root: relPath(ws.root, S.P.root) || '.', storybook: S.P.storybook.url, entries: S.manifest.stories.length, integrity: S.integrity?.summary ?? null, error: S.error ?? null, locked: S.lock ? 'held' : S.lockWait }));
+  [...states.values()].map((S) => ({
+    name: S.name,
+    label: S.P.label ?? null,
+    root: relPath(ws.root, S.P.root) || '.',
+    storybook: S.P.storybook.url,
+    entries: S.manifest.stories.length,
+    integrity: S.integrity?.summary ?? null,
+    error: S.error ?? null,
+    locked: S.lock ? 'held' : S.lockWait,
+  }));
 
 async function api(req, res, action, q) {
   if (action === 'events') {
-    res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
+    res.writeHead(200, {
+      'content-type': 'text/event-stream',
+      'cache-control': 'no-store',
+      connection: 'keep-alive',
+    });
     res.write('event: hello\ndata: {}\n\n');
     clients.add(res);
     req.on('close', () => clients.delete(res));
     return;
   }
-  if (action === 'projects') return json(res, 200, { workspace: ws.root, projects: projectsList() });
+  if (action === 'projects')
+    return json(res, 200, { workspace: ws.root, projects: projectsList() });
   if (action === 'status')
     return json(res, 200, {
       served: true,
@@ -862,7 +1197,18 @@ async function api(req, res, action, q) {
       review: Object.assign({}, ...[...states.values()].map((S) => readJson(S.reviewPath, {}))),
       stories: statuses(),
       integrity: storyIntegrity(),
-      integritySummary: Object.fromEntries([...states.values()].filter((S) => S.integrity).map((S) => [S.name, { ...S.integrity.summary, setup: S.integrity.setup, generatedAt: S.integrity.generatedAt }])),
+      integritySummary: Object.fromEntries(
+        [...states.values()]
+          .filter((S) => S.integrity)
+          .map((S) => [
+            S.name,
+            {
+              ...S.integrity.summary,
+              setup: S.integrity.setup,
+              generatedAt: S.integrity.generatedAt,
+            },
+          ])
+      ),
       dashboard: `${url}/report/`,
     });
   if (req.method === 'GET') {
@@ -870,14 +1216,23 @@ async function api(req, res, action, q) {
     if (action === 'data') return json(res, 200, buildData(S.P));
     if (action === 'integrity') {
       if (!S.integrity || q.get('fresh')) {
-      // A run already going (startup, a file change) answers this request too: wait for it.
-      if (S.integrityRunning) await S.integrityDone;
-      else await runIntegrity(S, 'request');
-    }
+        // A run already going (startup, a file change) answers this request too: wait for it.
+        if (S.integrityRunning) await S.integrityDone;
+        else await runIntegrity(S, 'request');
+      }
       if (!S.integrity) return json(res, 503, { error: 'integrity not computed yet' });
       const story = q.get('story');
-      if (story) return json(res, 200, { project: S.name, story, ...(storyIntegrity()[story] ?? { status: 'unknown' }), entries: S.integrity.entries.filter((x) => x.story === story) });
-      const f = q.get('component') || q.get('status') ? filterLedger(S.integrity, { component: q.get('component'), status: q.get('status') }) : null;
+      if (story)
+        return json(res, 200, {
+          project: S.name,
+          story,
+          ...(storyIntegrity()[story] ?? { status: 'unknown' }),
+          entries: S.integrity.entries.filter((x) => x.story === story),
+        });
+      const f =
+        q.get('component') || q.get('status')
+          ? filterLedger(S.integrity, { component: q.get('component'), status: q.get('status') })
+          : null;
       return json(res, 200, f ? { ...S.integrity, ...f } : S.integrity);
     }
     return json(res, 405, { error: 'POST only' });
@@ -885,9 +1240,14 @@ async function api(req, res, action, q) {
   if (req.method !== 'POST') return json(res, 405, { error: 'POST only' });
   // The dashboard link: the page trades its ticket once for the cookie decisions carry.
   if (action === 'session') {
-    if (!sameOriginPage(req.headers, `http://${req.headers.host}`)) return json(res, 403, { error: 'the dashboard link is opened by the dashboard page only' });
+    if (!sameOriginPage(req.headers, `http://${req.headers.host}`))
+      return json(res, 403, { error: 'the dashboard link is opened by the dashboard page only' });
     const session = links.redeem((await readBody(req)).ticket);
-    if (!session) return json(res, 403, { error: 'this dashboard link was used or is older than two minutes: run `pxsig serve --link` in a terminal for a new one' });
+    if (!session)
+      return json(res, 403, {
+        error:
+          'this dashboard link was used or is older than two minutes: run `pxsig serve --link` in a terminal for a new one',
+      });
     res.setHeader('set-cookie', linkSetCookie(server.address().port, session));
     return json(res, 200, { ok: true });
   }
@@ -898,7 +1258,15 @@ async function api(req, res, action, q) {
   }
   // Same-origin, or a project's Storybook (the addon, checks only): a page on any other site must
   // not write. Decisions also need the token: a person in the dashboard, or `pxsig approve apply`.
-  const auth = authorize({ action, headers: req.headers, tokens: TOKENS, links, port: server.address().port, ownOrigin: `http://${req.headers.host}`, allowedOrigins });
+  const auth = authorize({
+    action,
+    headers: req.headers,
+    tokens: TOKENS,
+    links,
+    port: server.address().port,
+    ownOrigin: `http://${req.headers.host}`,
+    allowedOrigins,
+  });
   if (!auth.ok) {
     console.error(`[serve] refused POST /__pxsig/${action}: ${auth.error}`);
     return json(res, auth.status, { error: auth.error, ...(auth.code ? { code: auth.code } : {}) });
@@ -913,29 +1281,64 @@ async function api(req, res, action, q) {
     const skipped = results.flatMap((r) => r.skipped);
     // Split across projects, a name only one project knows is not skipped by the others.
     const named = new Set(queued.flatMap((id) => [id, id.replace(/(__[^@]+)?(@.+)?$/, '')]));
-    return json(res, 202, { ok: true, queued, registered: results.flatMap((r) => r.registered), skipped: targets.length > 1 ? skipped.filter((x) => !named.has(x.name)) : skipped });
+    return json(res, 202, {
+      ok: true,
+      queued,
+      registered: results.flatMap((r) => r.registered),
+      skipped: targets.length > 1 ? skipped.filter((x) => !named.has(x.name)) : skipped,
+    });
   }
   const S = stateFor(body);
-  if (action === 'repair') return json(res, 200, await repair(S, { apply: body.apply === true, only: body.only, stale: body.stale === true }));
-  if (action === 'a11y-prune') return json(res, 200, { ok: true, project: S.name, ...a11yPrune(S, body, auth.via) });
+  if (action === 'repair')
+    return json(
+      res,
+      200,
+      await repair(S, { apply: body.apply === true, only: body.only, stale: body.stale === true })
+    );
+  if (action === 'a11y-prune')
+    return json(res, 200, { ok: true, project: S.name, ...a11yPrune(S, body, auth.via) });
   if (action === 'approve-story') {
     const { story } = body;
-    if (typeof story !== 'string' || !/^[a-z0-9-]+--[a-z0-9-]+$/.test(story)) return json(res, 400, { error: 'bad story' });
+    if (typeof story !== 'string' || !/^[a-z0-9-]+--[a-z0-9-]+$/.test(story))
+      return json(res, 400, { error: 'bad story' });
     const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : undefined);
     // `via` is how the decision reached the server (the token it carried), never the body's word.
-    return json(res, 200, { ok: true, project: S.name, ...(await approveStory(S, story, { via: auth.via, reason: s(body.reason, 500) })) });
+    return json(res, 200, {
+      ok: true,
+      project: S.name,
+      ...(await approveStory(S, story, { via: auth.via, reason: s(body.reason, 500) })),
+    });
   }
   const { id } = body;
-  if (typeof id !== 'string' || !/^[a-z0-9-]+--[a-z0-9-]+(__[a-z0-9-]+)?(@[a-z0-9-]+)?$/.test(id)) return json(res, 400, { error: 'bad id' });
+  if (typeof id !== 'string' || !/^[a-z0-9-]+--[a-z0-9-]+(__[a-z0-9-]+)?(@[a-z0-9-]+)?$/.test(id))
+    return json(res, 400, { error: 'bad id' });
   const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : undefined);
-  const meta = { batch: s(body.batch, 80)?.replace(/[^\w.-]/g, ''), via: auth.via, reason: s(body.reason, 500), kind: s(body.kind, 16), rule: s(body.rule, 80)?.replace(/[^\w-]/g, '') };
-  if (action.startsWith('a11y-')) return json(res, 200, { ok: true, project: S.name, id, entry: a11yReview(S, action, id, meta) });
+  const meta = {
+    batch: s(body.batch, 80)?.replace(/[^\w.-]/g, ''),
+    via: auth.via,
+    reason: s(body.reason, 500),
+    kind: s(body.kind, 16),
+    rule: s(body.rule, 80)?.replace(/[^\w-]/g, ''),
+  };
+  if (action.startsWith('a11y-'))
+    return json(res, 200, {
+      ok: true,
+      project: S.name,
+      id,
+      entry: a11yReview(S, action, id, meta),
+    });
   json(res, 200, { ok: true, project: S.name, id, entry: await review(S, action, id, meta) });
 }
 
 const sendFile = (req, res, file) => {
   const st = statSync(file);
-  res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream', 'content-length': st.size, 'cache-control': 'no-cache', 'last-modified': st.mtime.toUTCString(), 'x-content-type-options': 'nosniff' });
+  res.writeHead(200, {
+    'content-type': TYPES[extname(file)] ?? 'application/octet-stream',
+    'content-length': st.size,
+    'cache-control': 'no-cache',
+    'last-modified': st.mtime.toUTCString(),
+    'x-content-type-options': 'nosniff',
+  });
   if (req.method === 'HEAD') return res.end();
   createReadStream(file).pipe(res);
 };
@@ -952,7 +1355,11 @@ function projectFile(req, res, name, rest) {
     const e = entryOf(m[1]);
     const img = e && readImage(resolve(P.workspaceRoot, e.sig));
     if (!img) return json(res, 404, { error: 'no baseline image' });
-    res.writeHead(200, { 'content-type': 'image/png', 'content-length': img.length, 'cache-control': 'no-cache' });
+    res.writeHead(200, {
+      'content-type': 'image/png',
+      'content-length': img.length,
+      'cache-control': 'no-cache',
+    });
     return res.end(req.method === 'HEAD' ? undefined : img);
   }
   m = rest.match(/^sig\/(.+)$/);
@@ -965,7 +1372,8 @@ function projectFile(req, res, name, rest) {
   for (const [prefix, root] of Object.entries(roots)) {
     if (!rest.startsWith(prefix)) continue;
     const file = resolve(root, rest.slice(prefix.length));
-    if (!inside(root, file) || !existsSync(file) || statSync(file).isDirectory()) return json(res, 404, { error: 'not found' });
+    if (!inside(root, file) || !existsSync(file) || statSync(file).isDirectory())
+      return json(res, 404, { error: 'not found' });
     return sendFile(req, res, file);
   }
   return json(res, 404, { error: 'not found' });
@@ -974,7 +1382,8 @@ function projectFile(req, res, name, rest) {
 const server = createServer(async (req, res) => {
   try {
     // A Host that is not loopback is a DNS-rebinding page posing as same-origin.
-    if (!loopbackHost(req.headers.host, server.address().port)) return json(res, 403, { error: 'unknown host' });
+    if (!loopbackHost(req.headers.host, server.address().port))
+      return json(res, 403, { error: 'unknown host' });
     cors(req, res);
     if (req.method === 'OPTIONS') return res.writeHead(204).end();
     const u = new URL(req.url, 'http://localhost');
@@ -988,12 +1397,24 @@ const server = createServer(async (req, res) => {
       let file = resolve(dashboardDir, `.${path.slice('/report'.length) || '/'}`);
       if (!inside(dashboardDir, file)) return json(res, 403, { error: 'outside root' });
       if (existsSync(file) && statSync(file).isDirectory()) file = join(file, 'index.html');
-      if (!existsSync(file)) return json(res, 404, { error: existsSync(dashboardDir) ? 'not found' : `the dashboard is not built (${dashboardDir})` });
+      if (!existsSync(file))
+        return json(res, 404, {
+          error: existsSync(dashboardDir)
+            ? 'not found'
+            : `the dashboard is not built (${dashboardDir})`,
+        });
       if (file === join(dashboardDir, 'index.html')) {
         // Served pages fetch live data: drop whatever a static build inlined.
-        const html = readFileSync(file, 'utf8').replace(/<script id="pxsig-data">[\s\S]*?<\/script>/, '');
+        const html = readFileSync(file, 'utf8').replace(
+          /<script id="pxsig-data">[\s\S]*?<\/script>/,
+          ''
+        );
         // No token is ever in the page: decisions carry the dashboard link's cookie instead.
-        res.writeHead(200, { 'content-type': TYPES['.html'], 'cache-control': 'no-store', ...pageHeaders(allowedOrigins) });
+        res.writeHead(200, {
+          'content-type': TYPES['.html'],
+          'cache-control': 'no-store',
+          ...pageHeaders(allowedOrigins),
+        });
         return res.end(html);
       }
       return sendFile(req, res, file);
@@ -1030,7 +1451,8 @@ function openBrowser(target) {
     end if
     return "none"`;
   execFile('osascript', ['-e', script], (err, out) => {
-    if (!err && out.trim() === 'reused') return console.log('[serve] reloaded the open dashboard tab');
+    if (!err && out.trim() === 'reused')
+      return console.log('[serve] reloaded the open dashboard tab');
     execFile('open', [target], () => {});
   });
 }
@@ -1050,23 +1472,43 @@ function listen(port, tries = 10) {
     // The CLI, the MCP and the addon find the server through this file: a second server (on
     // another port, read-only beside the one holding the stores) leaves a live server's record.
     const recorded = readJson(info, null);
-    if (recorded?.pid && recorded.pid !== process.pid && alive(recorded.pid)) console.log(`[serve] ${relPath(ws.root, info)} names the running server at ${recorded.url} (pid ${recorded.pid}): left as it is`);
+    if (recorded?.pid && recorded.pid !== process.pid && alive(recorded.pid))
+      console.log(
+        `[serve] ${relPath(ws.root, info)} names the running server at ${recorded.url} (pid ${recorded.pid}): left as it is`
+      );
     else {
       mkdirSync(dirname(info), { recursive: true });
-      writeJson(info, { url, pid: process.pid, startedAt: new Date().toISOString(), projects: [...states.keys()] }, { pretty: true });
+      writeJson(
+        info,
+        {
+          url,
+          pid: process.pid,
+          startedAt: new Date().toISOString(),
+          projects: [...states.keys()],
+        },
+        { pretty: true }
+      );
     }
     for (const S of states.values()) S.lock?.update({ url });
     mkdirSync(dirname(info), { recursive: true });
     writeToken(ws.root, url, TOKENS.cli);
     writeToken(ws.root, url, TOKENS.mcp, 'mcp');
     const page = `${url}/report/${flags.tab ? `#${flags.tab}` : ''}`;
-    console.log(`[serve] pxsig dashboard → ${page}  (${[...states.keys()].join(', ')}; Ctrl+C to stop)`);
+    console.log(
+      `[serve] pxsig dashboard → ${page}  (${[...states.keys()].join(', ')}; Ctrl+C to stop)`
+    );
     // The dashboard link goes only to a person at this terminal: an agent or a background start
     // reads this output, and with the link it could approve from a browser it drives.
     const person = humanAtTerminal();
     const link = person ? dashboardLink(`${url}/report/`, flags.tab ?? null) : null;
-    if (link) console.log(`[serve] dashboard link (approve from the dashboard; once, within two minutes): ${link}`);
-    else console.log('[serve] to approve from the dashboard, run `pxsig serve --link` in a terminal and open the link it prints');
+    if (link)
+      console.log(
+        `[serve] dashboard link (approve from the dashboard; once, within two minutes): ${link}`
+      );
+    else
+      console.log(
+        '[serve] to approve from the dashboard, run `pxsig serve --link` in a terminal and open the link it prints'
+      );
     if (!flags['no-open']) openBrowser(link ?? page);
   };
   server.once('error', onError);
@@ -1095,7 +1537,9 @@ process.on('SIGTERM', shutdown);
 // Ctrl+Break in a Windows console (Ctrl+C arrives as SIGINT there too).
 process.on('SIGBREAK', shutdown);
 
-await rust('ping', {}).then((p) => console.log(`[serve] Rust engine up (pxsig ${p.version}, ${p.threads} threads)`));
+await rust('ping', {}).then((p) =>
+  console.log(`[serve] Rust engine up (pxsig ${p.version}, ${p.threads} threads)`)
+);
 for (const S of states.values()) {
   takeLock(S);
   // No Storybook at storybook.url but a build in storybook.staticDir: serve it ourselves.

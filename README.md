@@ -123,45 +123,45 @@ include it (see [packages/dashboard/README.md](packages/dashboard/README.md)).
 
 ## Documentation
 
-| Topic | File |
-| --- | --- |
-| Signature format, metrics, gate, `.psig` container, manifest | [docs/spec.md](docs/spec.md) |
-| Configuration files, layers, environment, story parameters | [docs/configuration.md](docs/configuration.md) |
-| Workspaces, projects and stores | [docs/monorepo.md](docs/monorepo.md) |
-| Every command and flag | [docs/cli.md](docs/cli.md) |
-| Integrity codes, repairs and guarantees | [docs/integrity.md](docs/integrity.md) |
-| Server, HTTP API and dashboard | [docs/server.md](docs/server.md) |
-| The dashboard on your own design system: the UI contract and how to build an adapter | [docs/ui/build-adapter.md](docs/ui/build-adapter.md), [docs/ui/features.md](docs/ui/features.md) |
-| MCP server | [docs/mcp.md](docs/mcp.md) |
-| Coding assistants: markers, the instruction not to approve, MCP recipes, `pxsig setup` | [docs/agents.md](docs/agents.md) |
-| Storybook addon | [docs/storybook.md](docs/storybook.md) |
-| Continuous integration | [docs/ci.md](docs/ci.md) |
-| The container image: the same renders on every machine | [docs/container.md](docs/container.md) |
-| Required checks, branch protection and the merge queue | [docs/required-checks.md](docs/required-checks.md) |
-| Checks on a machine without hosted CI, as commit statuses | [docs/local-ci.md](docs/local-ci.md) |
-| Baseline owners per component with CODEOWNERS | [docs/codeowners.md](docs/codeowners.md) |
-| Moving a pre-0.2 store | [docs/migrating.md](docs/migrating.md) |
-| Architecture | [docs/architecture.md](docs/architecture.md) |
-| Design decisions | [docs/decisions.md](docs/decisions.md) |
-| macOS, Linux and Windows: the programs pxsig starts, paths, line endings | [docs/platforms.md](docs/platforms.md) |
-| Releases: platform binaries, npm packages, the dashboard build | [docs/releasing.md](docs/releasing.md) |
-| Research tools: scenarios, calibration, benchmarks | [tools/README.md](tools/README.md) |
+| Topic                                                                                  | File                                                                                             |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Signature format, metrics, gate, `.psig` container, manifest                           | [docs/spec.md](docs/spec.md)                                                                     |
+| Configuration files, layers, environment, story parameters                             | [docs/configuration.md](docs/configuration.md)                                                   |
+| Workspaces, projects and stores                                                        | [docs/monorepo.md](docs/monorepo.md)                                                             |
+| Every command and flag                                                                 | [docs/cli.md](docs/cli.md)                                                                       |
+| Integrity codes, repairs and guarantees                                                | [docs/integrity.md](docs/integrity.md)                                                           |
+| Server, HTTP API and dashboard                                                         | [docs/server.md](docs/server.md)                                                                 |
+| The dashboard on your own design system: the UI contract and how to build an adapter   | [docs/ui/build-adapter.md](docs/ui/build-adapter.md), [docs/ui/features.md](docs/ui/features.md) |
+| MCP server                                                                             | [docs/mcp.md](docs/mcp.md)                                                                       |
+| Coding assistants: markers, the instruction not to approve, MCP recipes, `pxsig setup` | [docs/agents.md](docs/agents.md)                                                                 |
+| Storybook addon                                                                        | [docs/storybook.md](docs/storybook.md)                                                           |
+| Continuous integration                                                                 | [docs/ci.md](docs/ci.md)                                                                         |
+| The container image: the same renders on every machine                                 | [docs/container.md](docs/container.md)                                                           |
+| Required checks, branch protection and the merge queue                                 | [docs/required-checks.md](docs/required-checks.md)                                               |
+| Checks on a machine without hosted CI, as commit statuses                              | [docs/local-ci.md](docs/local-ci.md)                                                             |
+| Baseline owners per component with CODEOWNERS                                          | [docs/codeowners.md](docs/codeowners.md)                                                         |
+| Moving a pre-0.2 store                                                                 | [docs/migrating.md](docs/migrating.md)                                                           |
+| Architecture                                                                           | [docs/architecture.md](docs/architecture.md)                                                     |
+| Design decisions                                                                       | [docs/decisions.md](docs/decisions.md)                                                           |
+| macOS, Linux and Windows: the programs pxsig starts, paths, line endings               | [docs/platforms.md](docs/platforms.md)                                                           |
+| Releases: platform binaries, npm packages, the dashboard build                         | [docs/releasing.md](docs/releasing.md)                                                           |
+| Research tools: scenarios, calibration, benchmarks                                     | [tools/README.md](tools/README.md)                                                               |
 
 ## Repository layout
 
-| Path | What it is |
-| --- | --- |
-| `crates/pxsig-core` | The engine: signatures, metrics, detail channel, pixel diff, trimming, the `.psig` container |
-| `crates/pxsig-cli` | The `pxsig` binary: capture, compare, batch check and baseline, affected, report, pack, cat, attach, and a stdio engine for the server |
-| `packages/pxsig` | The npm package `pxsig`: CLI, workspace resolver, renderer, full check, server, MCP server, integrity, approvals, JSON schemas |
-| `packages/storybook-addon` | `@pxsig/storybook-addon`: Storybook panel and sidebar statuses |
-| `packages/dashboard` | Dashboard source (React) on a UI contract (`src/ui/`), its diff-viewer primitives and the reference adapter; built into the `pxsig` package at release, and shipped as source for `pxsig dashboard build` |
-| `docs` | The documentation above |
-| `tools` | Research tools (not in the npm package): simulated regressions, gate and detail calibration, benchmarks; their reports feed the dashboard's Scenarios, Calibration and Performance tabs |
-| `examples` | A single-package and a monorepo example, and a plain UI adapter (`custom-ui`), run end to end by `scripts/examples-test.mjs` |
-| `scripts/check-clean.mjs` | Fails the build if images, baselines, run output or private paths are committed |
-| `scripts/make-platform-packages.mjs` | Builds the `@pxsig/cli-<platform>-<arch>` packages at release time |
-| `.github/workflows` | CI (`ci.yml`) and the tag-driven release (`release.yml`) |
+| Path                                 | What it is                                                                                                                                                                                                |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `crates/pxsig-core`                  | The engine: signatures, metrics, detail channel, pixel diff, trimming, the `.psig` container                                                                                                              |
+| `crates/pxsig-cli`                   | The `pxsig` binary: capture, compare, batch check and baseline, affected, report, pack, cat, attach, and a stdio engine for the server                                                                    |
+| `packages/pxsig`                     | The npm package `pxsig`: CLI, workspace resolver, renderer, full check, server, MCP server, integrity, approvals, JSON schemas                                                                            |
+| `packages/storybook-addon`           | `@pxsig/storybook-addon`: Storybook panel and sidebar statuses                                                                                                                                            |
+| `packages/dashboard`                 | Dashboard source (React) on a UI contract (`src/ui/`), its diff-viewer primitives and the reference adapter; built into the `pxsig` package at release, and shipped as source for `pxsig dashboard build` |
+| `docs`                               | The documentation above                                                                                                                                                                                   |
+| `tools`                              | Research tools (not in the npm package): simulated regressions, gate and detail calibration, benchmarks; their reports feed the dashboard's Scenarios, Calibration and Performance tabs                   |
+| `examples`                           | A single-package and a monorepo example, and a plain UI adapter (`custom-ui`), run end to end by `scripts/examples-test.mjs`                                                                              |
+| `scripts/check-clean.mjs`            | Fails the build if images, baselines, run output or private paths are committed                                                                                                                           |
+| `scripts/make-platform-packages.mjs` | Builds the `@pxsig/cli-<platform>-<arch>` packages at release time                                                                                                                                        |
+| `.github/workflows`                  | CI (`ci.yml`) and the tag-driven release (`release.yml`)                                                                                                                                                  |
 
 This repository holds source, schemas, tests and documentation only. Baselines, renders and
 reports belong to the projects under test.

@@ -2,21 +2,21 @@
 
 ## Components
 
-| Component | Where | Role |
-| --- | --- | --- |
-| Resolver | `packages/pxsig/src/lib/workspace.mjs` | Finds the workspace, picks the project, layers the config, computes the store's paths, finds the engine binary and the server. Every surface goes through it. |
-| CLI | `packages/pxsig/src/cli.mjs` | The `pxsig` command. Reuses the MCP tools in-process and renders their answers for a terminal, Markdown or JSON. |
-| Full check | `packages/pxsig/src/check.mjs` | Select, render, trim, check, retry, a11y, report, integrity. |
-| Renderer | `packages/pxsig/src/lib/capture.mjs` | Deterministic Storybook renders with Playwright: a pool of pages, masks, interaction states, an axe pass. |
-| Manifest | `packages/pxsig/src/lib/manifest.mjs`, `setup.mjs` | Reads `parameters.pxsig` from the running Storybook and expands stories into entries. Also `init` and `migrate`. |
-| Server | `packages/pxsig/src/serve.mjs` | Dashboard, HTTP API, event stream, review, on-demand checks, watch mode, integrity for every project. |
-| MCP server | `packages/pxsig/src/mcp.mjs` | The tools, over stdio. |
-| Integrity | `packages/pxsig/src/lib/integrity.mjs`, `repair.mjs` | The ledger, and the safe repairs. |
-| Approvals | `packages/pxsig/src/lib/approvals.mjs`, `approve.mjs` | Snapshot, log, undo, verify; the guarded bulk approval. |
-| Engine | `crates/pxsig-core` | Signatures, metrics, gate, detail channel, pixel diff, trim, the `.psig` container. Pure: no filesystem access, no clock. |
-| Engine binary | `crates/pxsig-cli` | Batch commands over a manifest on a thread pool, the import graph, reports, and a long-lived stdio mode for the server. |
-| Dashboard | `packages/dashboard` | The React app the server and `pxsig report` serve. |
-| Storybook addon | `packages/storybook-addon` | Panel and sidebar statuses, fed by the server. |
+| Component       | Where                                                 | Role                                                                                                                                                          |
+| --------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Resolver        | `packages/pxsig/src/lib/workspace.mjs`                | Finds the workspace, picks the project, layers the config, computes the store's paths, finds the engine binary and the server. Every surface goes through it. |
+| CLI             | `packages/pxsig/src/cli.mjs`                          | The `pxsig` command. Reuses the MCP tools in-process and renders their answers for a terminal, Markdown or JSON.                                              |
+| Full check      | `packages/pxsig/src/check.mjs`                        | Select, render, trim, check, retry, a11y, report, integrity.                                                                                                  |
+| Renderer        | `packages/pxsig/src/lib/capture.mjs`                  | Deterministic Storybook renders with Playwright: a pool of pages, masks, interaction states, an axe pass.                                                     |
+| Manifest        | `packages/pxsig/src/lib/manifest.mjs`, `setup.mjs`    | Reads `parameters.pxsig` from the running Storybook and expands stories into entries. Also `init` and `migrate`.                                              |
+| Server          | `packages/pxsig/src/serve.mjs`                        | Dashboard, HTTP API, event stream, review, on-demand checks, watch mode, integrity for every project.                                                         |
+| MCP server      | `packages/pxsig/src/mcp.mjs`                          | The tools, over stdio.                                                                                                                                        |
+| Integrity       | `packages/pxsig/src/lib/integrity.mjs`, `repair.mjs`  | The ledger, and the safe repairs.                                                                                                                             |
+| Approvals       | `packages/pxsig/src/lib/approvals.mjs`, `approve.mjs` | Snapshot, log, undo, verify; the guarded bulk approval.                                                                                                       |
+| Engine          | `crates/pxsig-core`                                   | Signatures, metrics, gate, detail channel, pixel diff, trim, the `.psig` container. Pure: no filesystem access, no clock.                                     |
+| Engine binary   | `crates/pxsig-cli`                                    | Batch commands over a manifest on a thread pool, the import graph, reports, and a long-lived stdio mode for the server.                                       |
+| Dashboard       | `packages/dashboard`                                  | The React app the server and `pxsig report` serve.                                                                                                            |
+| Storybook addon | `packages/storybook-addon`                            | Panel and sidebar statuses, fed by the server.                                                                                                                |
 
 ## Data flow
 

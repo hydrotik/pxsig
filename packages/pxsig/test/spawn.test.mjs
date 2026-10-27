@@ -23,13 +23,29 @@ test('the list, per OS', () => {
   }
   for (const p of ['ps', 'osascript', 'open']) assert.equal(refused(p, 'darwin'), null, p);
   for (const p of ['ps', 'xdg-open', 'fc-list']) assert.equal(refused(p, 'linux'), null, p);
-  for (const p of ['ps', 'osascript', 'open', 'xdg-open', 'fc-list']) assert.match(refused(p, 'win32'), /does not start/, `${p} on Windows`);
+  for (const p of ['ps', 'osascript', 'open', 'xdg-open', 'fc-list'])
+    assert.match(refused(p, 'win32'), /does not start/, `${p} on Windows`);
   assert.match(refused('fc-list', 'darwin'), /does not start/, 'fc-list is Linux only');
 });
 
 test('never a shell or a system tool', () => {
   for (const os of ['darwin', 'linux', 'win32'])
-    for (const p of ['cmd.exe', 'cmd', 'start', 'powershell', 'pwsh', 'icacls', 'whoami', 'rundll32', 'reg', 'schtasks', 'sh', 'bash', 'npx', 'curl'])
+    for (const p of [
+      'cmd.exe',
+      'cmd',
+      'start',
+      'powershell',
+      'pwsh',
+      'icacls',
+      'whoami',
+      'rundll32',
+      'reg',
+      'schtasks',
+      'sh',
+      'bash',
+      'npx',
+      'curl',
+    ])
       assert.match(refused(p, os), /Programs pxsig starts/, `${p} on ${os}`);
   assert.throws(() => spawnSync('git', ['--version'], { shell: true }), /does not start a shell/);
   assert.throws(() => spawnSync('cmd.exe', ['/c', 'echo']), /does not start "cmd\.exe"/);
@@ -41,7 +57,11 @@ test('every start goes through lib/spawn.mjs', () => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const p = join(d, e.name);
       if (e.isDirectory()) walk(p);
-      else if (/\.m?js$/.test(e.name) && /node:child_process|['"]child_process['"]/.test(readFileSync(p, 'utf8'))) offenders.push(relative(pkg, p).split('\\').join('/'));
+      else if (
+        /\.m?js$/.test(e.name) &&
+        /node:child_process|['"]child_process['"]/.test(readFileSync(p, 'utf8'))
+      )
+        offenders.push(relative(pkg, p).split('\\').join('/'));
     }
   };
   walk(join(pkg, 'src'));
@@ -51,7 +71,10 @@ test('every start goes through lib/spawn.mjs', () => {
 
 test('PXSIG_DEBUG=spawn prints each start', () => {
   const code = `import { spawnSync } from ${JSON.stringify(new URL('../src/lib/spawn.mjs', import.meta.url).href)}; spawnSync(process.execPath, ['-e', '']);`;
-  const r = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', env: { ...process.env, PXSIG_DEBUG: 'spawn' } });
+  const r = spawnSync(process.execPath, ['--input-type=module', '-e', code], {
+    encoding: 'utf8',
+    env: { ...process.env, PXSIG_DEBUG: 'spawn' },
+  });
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stderr, /^\[spawn\] .*node(\.exe)? -e/m);
 });

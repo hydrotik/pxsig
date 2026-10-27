@@ -15,7 +15,13 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { toPosix } from '../src/lib/paths.mjs';
-import { caseCollisions, crlfFiles, MAX_PATH, portabilityProblems, windowsPathProblem } from '../src/lib/portability.mjs';
+import {
+  caseCollisions,
+  crlfFiles,
+  MAX_PATH,
+  portabilityProblems,
+  windowsPathProblem,
+} from '../src/lib/portability.mjs';
 import { initProject } from '../src/lib/setup.mjs';
 import { fixture, hasRust, rustBin } from './fixture.mjs';
 
@@ -23,11 +29,19 @@ const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const tmp = () => mkdtempSync(join(tmpdir(), 'pxsig-platform-'));
 
 test('paths Windows cannot check out are named', () => {
-  for (const ok of ['.pxsig/baselines/components/Button/components-button--default.psig', 'a/b.c/d.psig']) assert.equal(windowsPathProblem(ok), null, ok);
+  for (const ok of [
+    '.pxsig/baselines/components/Button/components-button--default.psig',
+    'a/b.c/d.psig',
+  ])
+    assert.equal(windowsPathProblem(ok), null, ok);
   assert.match(windowsPathProblem('.pxsig/baselines/con/x.psig'), /reserved/);
   assert.match(windowsPathProblem('.pxsig/baselines/x/NUL.psig'), /reserved/);
   assert.match(windowsPathProblem('.pxsig/baselines/x/com1.psig'), /reserved/);
-  assert.equal(windowsPathProblem('.pxsig/baselines/console/x.psig'), null, 'only the exact device names');
+  assert.equal(
+    windowsPathProblem('.pxsig/baselines/console/x.psig'),
+    null,
+    'only the exact device names'
+  );
   assert.match(windowsPathProblem('.pxsig/baselines/x./a.psig'), /dot or a space/);
   assert.match(windowsPathProblem('.pxsig/baselines/x /a.psig'), /dot or a space/);
   assert.match(windowsPathProblem('.pxsig/baselines/a:b/c.psig'), /character/);
@@ -35,30 +49,72 @@ test('paths Windows cannot check out are named', () => {
 });
 
 test('paths that differ only in case are pairs', () => {
-  assert.deepEqual(caseCollisions(['a/Button.psig', 'a/button.psig', 'a/Card.psig']), [['a/Button.psig', 'a/button.psig']]);
-  assert.deepEqual(caseCollisions(['a/x.psig', 'a/x.psig']), [], 'the same path twice is not a pair');
+  assert.deepEqual(caseCollisions(['a/Button.psig', 'a/button.psig', 'a/Card.psig']), [
+    ['a/Button.psig', 'a/button.psig'],
+  ]);
+  assert.deepEqual(
+    caseCollisions(['a/x.psig', 'a/x.psig']),
+    [],
+    'the same path twice is not a pair'
+  );
 });
 
 test('CRLF text records and unportable baselines become warnings, never errors', () => {
   const root = tmp();
   writeFileSync(join(root, 'manifest.json'), '{\r\n  "stories": []\r\n}\r\n');
   writeFileSync(join(root, 'approvals.ndjson'), '{"id":"a"}\n');
-  assert.deepEqual(crlfFiles([join(root, 'manifest.json'), join(root, 'approvals.ndjson'), join(root, 'gone.json')]), [join(root, 'manifest.json')]);
-  const problems = portabilityProblems({ repoRoot: root, sigPaths: new Set([join(root, '.pxsig/baselines/aux/a.psig'), join(root, '.pxsig/A.psig'), join(root, '.pxsig/a.psig')]), records: [join(root, 'manifest.json')] });
-  assert.deepEqual(problems.map((p) => p.code).sort(), ['line-endings', 'path-portability', 'path-portability']);
+  assert.deepEqual(
+    crlfFiles([
+      join(root, 'manifest.json'),
+      join(root, 'approvals.ndjson'),
+      join(root, 'gone.json'),
+    ]),
+    [join(root, 'manifest.json')]
+  );
+  const problems = portabilityProblems({
+    repoRoot: root,
+    sigPaths: new Set([
+      join(root, '.pxsig/baselines/aux/a.psig'),
+      join(root, '.pxsig/A.psig'),
+      join(root, '.pxsig/a.psig'),
+    ]),
+    records: [join(root, 'manifest.json')],
+  });
+  assert.deepEqual(problems.map((p) => p.code).sort(), [
+    'line-endings',
+    'path-portability',
+    'path-portability',
+  ]);
   assert.ok(problems.every((p) => p.severity === 'warn'));
-  assert.match(problems.find((p) => p.code === 'line-endings').reason, /^manifest\.json checked out with CRLF/);
-  assert.deepEqual(portabilityProblems({ repoRoot: root, sigPaths: new Set(), records: [join(root, 'approvals.ndjson')] }), []);
+  assert.match(
+    problems.find((p) => p.code === 'line-endings').reason,
+    /^manifest\.json checked out with CRLF/
+  );
+  assert.deepEqual(
+    portabilityProblems({
+      repoRoot: root,
+      sigPaths: new Set(),
+      records: [join(root, 'approvals.ndjson')],
+    }),
+    []
+  );
 });
 
-test('git not treating .psig as binary is a line-endings warning', { skip: spawnSync('git', ['--version']).status !== 0 && 'no git' }, () => {
-  const root = tmp();
-  spawnSync('git', ['init', '-q', root]);
-  const sig = new Set([join(root, '.pxsig/baselines/a.psig')]);
-  assert.match(portabilityProblems({ repoRoot: root, sigPaths: sig, records: [] })[0]?.reason ?? '', /not treat \.psig files as binary/);
-  writeFileSync(join(root, '.gitattributes'), '*.psig binary\n');
-  assert.deepEqual(portabilityProblems({ repoRoot: root, sigPaths: sig, records: [] }), []);
-});
+test(
+  'git not treating .psig as binary is a line-endings warning',
+  { skip: spawnSync('git', ['--version']).status !== 0 && 'no git' },
+  () => {
+    const root = tmp();
+    spawnSync('git', ['init', '-q', root]);
+    const sig = new Set([join(root, '.pxsig/baselines/a.psig')]);
+    assert.match(
+      portabilityProblems({ repoRoot: root, sigPaths: sig, records: [] })[0]?.reason ?? '',
+      /not treat \.psig files as binary/
+    );
+    writeFileSync(join(root, '.gitattributes'), '*.psig binary\n');
+    assert.deepEqual(portabilityProblems({ repoRoot: root, sigPaths: sig, records: [] }), []);
+  }
+);
 
 test('one path helper: toPosix gives / on every OS', () => {
   assert.equal(toPosix(join('a', 'b', 'c.psig')), 'a/b/c.psig');
@@ -68,7 +124,8 @@ test('a new store keeps its records LF and its baselines binary', () => {
   const dir = tmp();
   initProject({ dir });
   const ga = readFileSync(join(dir, '.pxsig', '.gitattributes'), 'utf8');
-  for (const line of ['*.psig binary diff=psig', '*.json text eol=lf', '*.ndjson text eol=lf']) assert.ok(ga.split('\n').includes(line), line);
+  for (const line of ['*.psig binary diff=psig', '*.json text eol=lf', '*.ndjson text eol=lf'])
+    assert.ok(ga.split('\n').includes(line), line);
 });
 
 const freePort = () =>
@@ -81,7 +138,11 @@ const freePort = () =>
 
 async function startServe(repo) {
   const port = await freePort();
-  const proc = spawn(process.execPath, [join(src, 'serve.mjs'), '--port', String(port), '--no-open'], { cwd: repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } });
+  const proc = spawn(
+    process.execPath,
+    [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
+    { cwd: repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
+  );
   let log = '';
   proc.stdout.on('data', (d) => (log += d));
   proc.stderr.on('data', (d) => (log += d));
@@ -94,25 +155,28 @@ async function startServe(repo) {
   return { proc, exited, log: () => log };
 }
 
-test('stopping pxsig serve gives the store lock back', { skip: !hasRust && 'Rust binary not built' }, async () => {
-  const f = fixture();
-  const lock = join(f.px, 'reports', '.lock');
-  const s = await startServe(f.repo);
-  assert.ok(existsSync(lock), 'serve holds the lock while it runs');
-  if (process.platform === 'win32') {
-    // Windows cannot send a console Ctrl+C to a child from Node: kill() terminates it, as a forced
-    // stop does. The lock it leaves names a pid that is gone, so the next serve takes it over.
-    s.proc.kill();
-    await s.exited;
-    const again = await startServe(f.repo);
-    assert.match(again.log(), /dashboard →/);
-    again.proc.kill();
-    await again.exited;
-  } else {
-    s.proc.kill('SIGINT');
-    const { code } = await s.exited;
-    assert.equal(code, 0, s.log());
-    assert.ok(!existsSync(lock), `the lock is released on Ctrl+C:\n${s.log()}`);
+test(
+  'stopping pxsig serve gives the store lock back',
+  { skip: !hasRust && 'Rust binary not built' },
+  async () => {
+    const f = fixture();
+    const lock = join(f.px, 'reports', '.lock');
+    const s = await startServe(f.repo);
+    assert.ok(existsSync(lock), 'serve holds the lock while it runs');
+    if (process.platform === 'win32') {
+      // Windows cannot send a console Ctrl+C to a child from Node: kill() terminates it, as a forced
+      // stop does. The lock it leaves names a pid that is gone, so the next serve takes it over.
+      s.proc.kill();
+      await s.exited;
+      const again = await startServe(f.repo);
+      assert.match(again.log(), /dashboard →/);
+      again.proc.kill();
+      await again.exited;
+    } else {
+      s.proc.kill('SIGINT');
+      const { code } = await s.exited;
+      assert.equal(code, 0, s.log());
+      assert.ok(!existsSync(lock), `the lock is released on Ctrl+C:\n${s.log()}`);
+    }
   }
-});
-
+);

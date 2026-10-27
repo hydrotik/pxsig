@@ -23,7 +23,9 @@ const imgIdx = argv.indexOf('--images-to');
 const imagesTo = imgIdx >= 0 ? argv.splice(imgIdx, 2)[1] : null;
 const [tool, rawArgs] = argv;
 
-const proc = spawn(process.execPath, [join(here, 'mcp.mjs')], { stdio: ['pipe', 'pipe', 'inherit'] });
+const proc = spawn(process.execPath, [join(here, 'mcp.mjs')], {
+  stdio: ['pipe', 'pipe', 'inherit'],
+});
 const pending = new Map();
 let seq = 0;
 createInterface({ input: proc.stdout }).on('line', (line) => {
@@ -38,7 +40,11 @@ const call = (method, params) =>
     proc.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id, method, params })}\n`);
   });
 
-const init = await call('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'mcp-call', version: '0' } });
+const init = await call('initialize', {
+  protocolVersion: '2025-06-18',
+  capabilities: {},
+  clientInfo: { name: 'mcp-call', version: '0' },
+});
 if (init.error) throw new Error(init.error.message);
 proc.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' })}\n`);
 
@@ -47,7 +53,10 @@ if (!tool) {
   const res = await call('tools/list', {});
   for (const t of res.result.tools) console.log(`${t.name}\n  ${t.description}\n`);
 } else {
-  const res = await call('tools/call', { name: tool, arguments: rawArgs ? JSON.parse(rawArgs) : {} });
+  const res = await call('tools/call', {
+    name: tool,
+    arguments: rawArgs ? JSON.parse(rawArgs) : {},
+  });
   if (res.error) {
     console.error(res.error.message);
     code = 1;
@@ -60,7 +69,8 @@ if (!tool) {
         const p = join(imagesTo, `${tool}-${++n}.png`);
         writeFileSync(p, Buffer.from(c.data, 'base64'));
         console.log(`[image → ${p}]`);
-      } else if (c.type === 'image') console.log(`[image ${c.mimeType}, ${Math.round((c.data.length * 3) / 4 / 1024)} KB]`);
+      } else if (c.type === 'image')
+        console.log(`[image ${c.mimeType}, ${Math.round((c.data.length * 3) / 4 / 1024)} KB]`);
     }
     if (res.result.isError) code = 1;
   }

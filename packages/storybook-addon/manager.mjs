@@ -19,7 +19,12 @@
  * story with no coverage at all gets one — so a gap shows without anyone opening the panel.
  */
 import React from 'react';
-import { addons, experimental_getStatusStore, types, useStorybookState } from 'storybook/manager-api';
+import {
+  addons,
+  experimental_getStatusStore,
+  types,
+  useStorybookState,
+} from 'storybook/manager-api';
 import { AddonPanel } from 'storybook/internal/components';
 import { useTheme } from 'storybook/theming';
 import { buttonStyle, dashboardUrl, panelColors, themeMode } from './panel-style.mjs';
@@ -27,7 +32,9 @@ import { buttonStyle, dashboardUrl, panelColors, themeMode } from './panel-style
 const ADDON = 'pxsig';
 const PANEL = `${ADDON}/panel`;
 const CANDIDATES = [
-  ...(typeof window !== 'undefined' && window.localStorage?.getItem('pxsig-server') ? [window.localStorage.getItem('pxsig-server')] : []),
+  ...(typeof window !== 'undefined' && window.localStorage?.getItem('pxsig-server')
+    ? [window.localStorage.getItem('pxsig-server')]
+    : []),
   ...((typeof window !== 'undefined' && window.__PXSIG__?.servers) || []),
   'http://127.0.0.1:6070',
 ];
@@ -46,10 +53,24 @@ async function status() {
   }
   throw new Error('no pxsig server');
 }
-const STATUS = { pass: 'success', drift: 'success', approved: 'success', flaky: 'warning', changed: 'warning', new: 'warning', rejected: 'error', error: 'error', skipped: 'unknown' };
+const STATUS = {
+  pass: 'success',
+  drift: 'success',
+  approved: 'success',
+  flaky: 'warning',
+  changed: 'warning',
+  new: 'warning',
+  rejected: 'error',
+  error: 'error',
+  skipped: 'unknown',
+};
 const SEV = { error: 'error', warn: 'warning', info: 'success' };
 const statusStore = experimental_getStatusStore(ADDON);
-const codesText = (codes) => Object.entries(codes ?? {}).filter(([c]) => !['drift', 'ok'].includes(c)).map(([c, n]) => `${n} ${c}`).join(', ');
+const codesText = (codes) =>
+  Object.entries(codes ?? {})
+    .filter(([c]) => !['drift', 'ok'].includes(c))
+    .map(([c, n]) => `${n} ${c}`)
+    .join(', ');
 
 // One shared connection: the panel subscribes to the same events the status updater uses.
 const bus = new EventTarget();
@@ -60,13 +81,22 @@ addons.register(ADDON, () => {
   const refresh = async () => {
     try {
       const s = await status();
-      state = { ...state, up: true, running: s.running, stories: s.stories, integrity: s.integrity ?? {}, integritySummary: s.integritySummary ?? null };
+      state = {
+        ...state,
+        up: true,
+        running: s.running,
+        stories: s.stories,
+        integrity: s.integrity ?? {},
+        integritySummary: s.integritySummary ?? null,
+      };
       const update = {};
       for (const [id, st] of Object.entries(s.stories)) {
         update[id] = {
           status: STATUS[st.status] ?? 'unknown',
           title: `pxsig: ${st.status}`,
-          description: st.entries.map((e) => `${e.mode}: ${e.state}${e.ssim != null ? ` · ssim ${e.ssim}` : ''}`).join('\n'),
+          description: st.entries
+            .map((e) => `${e.mode}: ${e.state}${e.ssim != null ? ` · ssim ${e.ssim}` : ''}`)
+            .join('\n'),
         };
       }
       for (const [id, ig] of Object.entries(state.integrity)) {
@@ -81,7 +111,13 @@ addons.register(ADDON, () => {
       // Replace, not merge: a story the server no longer reports loses its dot.
       statusStore.unset();
       statusStore.set(
-        Object.entries(update).map(([storyId, u]) => ({ storyId, typeId: ADDON, value: `status-value:${u.status}`, title: u.title, description: u.description }))
+        Object.entries(update).map(([storyId, u]) => ({
+          storyId,
+          typeId: ADDON,
+          value: `status-value:${u.status}`,
+          title: u.title,
+          description: u.description,
+        }))
       );
     } catch {
       state = { ...state, up: false };
@@ -118,7 +154,8 @@ addons.register(ADDON, () => {
     type: types.PANEL,
     title: 'PXSIG: Visual regression',
     paramKey: 'pxsig',
-    render: ({ active }) => React.createElement(AddonPanel, { active: !!active }, React.createElement(Panel)),
+    render: ({ active }) =>
+      React.createElement(AddonPanel, { active: !!active }, React.createElement(Panel)),
   });
 });
 
@@ -130,13 +167,19 @@ function Panel() {
   const theme = useTheme();
   const mode = themeMode(theme);
   const colors = panelColors(theme);
-  const btn = (label, onClick, disabled) => h('button', { type: 'button', onClick, disabled, style: buttonStyle(theme, disabled) }, label);
+  const btn = (label, onClick, disabled) =>
+    h('button', { type: 'button', onClick, disabled, style: buttonStyle(theme, disabled) }, label);
   const [, force] = React.useReducer((n) => n + 1, 0);
   React.useEffect(() => {
     bus.addEventListener('change', force);
     return () => bus.removeEventListener('change', force);
   }, []);
-  const post = (body) => fetch(`${SERVER}/__pxsig/check`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
+  const post = (body) =>
+    fetch(`${SERVER}/__pxsig/check`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }).catch(() => {});
   const st = state.stories[storyId];
   const ig = state.integrity[storyId];
   if (!state.up)
@@ -149,18 +192,52 @@ function Panel() {
     );
   return h(
     'div',
-    { style: { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, color: colors.text } },
+    {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        minHeight: 0,
+        color: colors.text,
+      },
+    },
     h(
       'div',
-      { style: { display: 'flex', gap: 8, alignItems: 'center', padding: '6px 10px', borderBottom: `1px solid ${colors.border}`, fontSize: 12 } },
+      {
+        style: {
+          display: 'flex',
+          gap: 8,
+          alignItems: 'center',
+          padding: '6px 10px',
+          borderBottom: `1px solid ${colors.border}`,
+          fontSize: 12,
+        },
+      },
       h('strong', null, st ? `pxsig: ${st.status}` : 'pxsig: no result yet'),
-      st ? h('span', { style: { opacity: 0.7 } }, st.entries.map((e) => `${e.mode} ${e.state}`).join(' · ')) : null,
+      st
+        ? h(
+            'span',
+            { style: { opacity: 0.7 } },
+            st.entries.map((e) => `${e.mode} ${e.state}`).join(' · ')
+          )
+        : null,
       ig && ig.status !== 'ok'
         ? h(
             'span',
             {
               title: codesText(ig.codes),
-              style: { padding: '1px 6px', borderRadius: 3, fontSize: 11, color: ig.severity === 'error' ? '#fff' : 'inherit', background: ig.severity === 'error' ? '#c62828' : ig.severity === 'warn' ? 'rgba(240,160,0,.25)' : 'rgba(128,128,128,.2)' },
+              style: {
+                padding: '1px 6px',
+                borderRadius: 3,
+                fontSize: 11,
+                color: ig.severity === 'error' ? '#fff' : 'inherit',
+                background:
+                  ig.severity === 'error'
+                    ? '#c62828'
+                    : ig.severity === 'warn'
+                      ? 'rgba(240,160,0,.25)'
+                      : 'rgba(128,128,128,.2)',
+              },
             },
             `integrity: ${ig.status}${codesText(ig.codes) ? ` (${codesText(ig.codes)})` : ''}`
           )
@@ -169,7 +246,20 @@ function Panel() {
       state.running ? h('span', { style: { opacity: 0.7 } }, 'Checking…') : null,
       btn('Check story', () => post({ story: storyId }), state.running),
       btn('Check all', () => post({ all: true }), state.running),
-      btn('Open dashboard', () => window.open(dashboardUrl(SERVER, { project: st?.project ?? null, story: storyId, hash: `inspect=${encodeURIComponent(st?.entries[0]?.id ?? storyId)}` }, mode), '_blank'))
+      btn('Open dashboard', () =>
+        window.open(
+          dashboardUrl(
+            SERVER,
+            {
+              project: st?.project ?? null,
+              story: storyId,
+              hash: `inspect=${encodeURIComponent(st?.entries[0]?.id ?? storyId)}`,
+            },
+            mode
+          ),
+          '_blank'
+        )
+      )
     ),
     h('iframe', {
       key: `${storyId}:${mode}`,

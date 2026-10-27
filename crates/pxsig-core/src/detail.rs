@@ -31,7 +31,11 @@ pub struct DetailParams {
 
 impl Default for DetailParams {
     fn default() -> Self {
-        Self { tile: 16, block: 4, sel_energy: 10 }
+        Self {
+            tile: 16,
+            block: 4,
+            sel_energy: 10,
+        }
     }
 }
 
@@ -44,7 +48,11 @@ pub struct DetailGate {
 
 impl Default for DetailGate {
     fn default() -> Self {
-        Self { block_delta: 32.0, energy_delta: 48.0, min_tiles: 3 }
+        Self {
+            block_delta: 32.0,
+            energy_delta: 48.0,
+            min_tiles: 3,
+        }
     }
 }
 
@@ -126,7 +134,16 @@ fn tile_energy(lum: &[f32], w: usize, h: usize, tx: usize, ty: usize, tile: usiz
 }
 
 #[allow(clippy::too_many_arguments)]
-fn tile_blocks(lum: &[f32], w: usize, h: usize, tx: usize, ty: usize, tile: usize, block: usize, out: &mut Vec<u8>) {
+fn tile_blocks(
+    lum: &[f32],
+    w: usize,
+    h: usize,
+    tx: usize,
+    ty: usize,
+    tile: usize,
+    block: usize,
+    out: &mut Vec<u8>,
+) {
     let per = tile / block;
     for by in 0..per {
         for bx in 0..per {
@@ -140,7 +157,11 @@ fn tile_blocks(lum: &[f32], w: usize, h: usize, tx: usize, ty: usize, tile: usiz
                 }
             }
             // Blocks past the image edge read as white, like the alpha flatten.
-            out.push(if n == 0.0 { 255 } else { (s / n).round().clamp(0.0, 255.0) as u8 });
+            out.push(if n == 0.0 {
+                255
+            } else {
+                (s / n).round().clamp(0.0, 255.0) as u8
+            });
         }
     }
 }
@@ -166,16 +187,36 @@ pub fn detail_of_lum(lum: &[f32], w: usize, h: usize, p: DetailParams) -> Detail
             }
         }
     }
-    Detail { tile: p.tile, block: p.block, cols, rows, energy, sel, blocks }
+    Detail {
+        tile: p.tile,
+        block: p.block,
+        cols,
+        rows,
+        energy,
+        sel,
+        blocks,
+    }
 }
 
 /// Compare a baseline detail signature with a current render (decoded RGBA).
-pub fn compare_detail(base: &Detail, data: &[u8], w: usize, h: usize, gate: &DetailGate) -> DetailMetrics {
+pub fn compare_detail(
+    base: &Detail,
+    data: &[u8],
+    w: usize,
+    h: usize,
+    gate: &DetailGate,
+) -> DetailMetrics {
     let lum = luminance(data, w, h);
     compare_detail_lum(base, &lum, w, h, gate)
 }
 
-pub fn compare_detail_lum(base: &Detail, lum: &[f32], w: usize, h: usize, gate: &DetailGate) -> DetailMetrics {
+pub fn compare_detail_lum(
+    base: &Detail,
+    lum: &[f32],
+    w: usize,
+    h: usize,
+    gate: &DetailGate,
+) -> DetailMetrics {
     let (tile, block) = (base.tile, base.block);
     let per = (tile / block) * (tile / block);
     let (cols, rows) = (w.div_ceil(tile), h.div_ceil(tile));
@@ -195,7 +236,12 @@ pub fn compare_detail_lum(base: &Detail, lum: &[f32], w: usize, h: usize, gate: 
         }
         scratch.clear();
         tile_blocks(lum, w, h, tx, ty, tile, block, &mut scratch);
-        let d = stored.iter().zip(&scratch).map(|(a, b)| (*a as i32 - *b as i32).unsigned_abs()).max().unwrap_or(0);
+        let d = stored
+            .iter()
+            .zip(&scratch)
+            .map(|(a, b)| (*a as i32 - *b as i32).unsigned_abs())
+            .max()
+            .unwrap_or(0);
         m.max_block_delta = m.max_block_delta.max(d);
         if d as f64 > gate.block_delta {
             m.changed_tiles += 1;
@@ -215,7 +261,12 @@ pub fn compare_detail_lum(base: &Detail, lum: &[f32], w: usize, h: usize, gate: 
             }
         }
     }
-    m.tripped = tripped.iter().enumerate().filter(|(_, t)| **t).map(|(i, _)| i as u32).collect();
+    m.tripped = tripped
+        .iter()
+        .enumerate()
+        .filter(|(_, t)| **t)
+        .map(|(i, _)| i as u32)
+        .collect();
     m
 }
 
@@ -236,21 +287,43 @@ impl Detail {
 
 impl DetailRecord {
     pub fn decode(&self) -> Result<Detail, String> {
-        let energy = STANDARD.decode(&self.energy).map_err(|e| format!("bad detail.energy: {e}"))?;
-        let sel_raw = STANDARD.decode(&self.sel).map_err(|e| format!("bad detail.sel: {e}"))?;
-        let blocks = STANDARD.decode(&self.blocks).map_err(|e| format!("bad detail.blocks: {e}"))?;
+        let energy = STANDARD
+            .decode(&self.energy)
+            .map_err(|e| format!("bad detail.energy: {e}"))?;
+        let sel_raw = STANDARD
+            .decode(&self.sel)
+            .map_err(|e| format!("bad detail.sel: {e}"))?;
+        let blocks = STANDARD
+            .decode(&self.blocks)
+            .map_err(|e| format!("bad detail.blocks: {e}"))?;
         if self.block == 0 || !self.tile.is_multiple_of(self.block) {
-            return Err(format!("detail tile {} is not a multiple of block {}", self.tile, self.block));
+            return Err(format!(
+                "detail tile {} is not a multiple of block {}",
+                self.tile, self.block
+            ));
         }
         if energy.len() != self.cols * self.rows || sel_raw.len() % 4 != 0 {
             return Err("detail lengths do not match cols × rows".into());
         }
-        let sel: Vec<u32> = sel_raw.as_chunks::<4>().0.iter().map(|c| u32::from_le_bytes(*c)).collect();
+        let sel: Vec<u32> = sel_raw
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|c| u32::from_le_bytes(*c))
+            .collect();
         let per = (self.tile / self.block).pow(2);
         if blocks.len() != sel.len() * per || sel.iter().any(|&i| i as usize >= energy.len()) {
             return Err("detail blocks do not match the kept tiles".into());
         }
-        Ok(Detail { tile: self.tile, block: self.block, cols: self.cols, rows: self.rows, energy, sel, blocks })
+        Ok(Detail {
+            tile: self.tile,
+            block: self.block,
+            cols: self.cols,
+            rows: self.rows,
+            energy,
+            sel,
+            blocks,
+        })
     }
 }
 
@@ -275,7 +348,10 @@ mod tests {
         let d = detail_of(&img, 200, 120, DetailParams::default());
         assert!(!d.sel.is_empty());
         let m = compare_detail(&d, &img, 200, 120, &DetailGate::default());
-        assert_eq!((m.changed_tiles, m.new_edge_tiles, m.max_block_delta), (0, 0, 0));
+        assert_eq!(
+            (m.changed_tiles, m.new_edge_tiles, m.max_block_delta),
+            (0, 0, 0)
+        );
     }
 
     #[test]

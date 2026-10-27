@@ -129,19 +129,19 @@ base (a shallow clone: fetch with `fetch-depth: 0`), every entry is selected, wi
 
 Each changed path gets one class, by the first row that matches:
 
-| Class | The path | Selects |
-| --- | --- | --- |
-| `affects-all` | is under an "affects every entry" path: a workspace dependency's source, `affects.extra`, the project config, the workspace file, `storybook.configDir` | all |
-| `baseline` | is an entry's `.psig` | that entry |
-| `baseline-other` | is another `.psig`: another suite's (run `--suite <name>`) or orphaned | nothing here |
-| `store-record` | is `a11y.json`, a manifest, `approvals.ndjson` or `a11y-decisions.ndjson` in the store | the entries whose records changed; all when a log was rewritten or a file does not parse |
-| `store-other` | is any other file in the store | all |
-| `graph` | is a file a story file imports, directly or not (below) | those entries; all when an "affects every entry" file imports it |
-| `graph-no-entry` | is a module that no story reaches (a test, a script) | nothing |
-| `ignored` | matches `affects.ignore` | nothing |
-| `untraced` | is under `srcRoot` and nothing imports it (an unimported `.json`, `.md`, image) | all |
-| `outside` | is outside `srcRoot`, in the workspace | all |
-| `outside-workspace` | is elsewhere in the repository | all |
+| Class               | The path                                                                                                                                                | Selects                                                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `affects-all`       | is under an "affects every entry" path: a workspace dependency's source, `affects.extra`, the project config, the workspace file, `storybook.configDir` | all                                                                                      |
+| `baseline`          | is an entry's `.psig`                                                                                                                                   | that entry                                                                               |
+| `baseline-other`    | is another `.psig`: another suite's (run `--suite <name>`) or orphaned                                                                                  | nothing here                                                                             |
+| `store-record`      | is `a11y.json`, a manifest, `approvals.ndjson` or `a11y-decisions.ndjson` in the store                                                                  | the entries whose records changed; all when a log was rewritten or a file does not parse |
+| `store-other`       | is any other file in the store                                                                                                                          | all                                                                                      |
+| `graph`             | is a file a story file imports, directly or not (below)                                                                                                 | those entries; all when an "affects every entry" file imports it                         |
+| `graph-no-entry`    | is a module that no story reaches (a test, a script)                                                                                                    | nothing                                                                                  |
+| `ignored`           | matches `affects.ignore`                                                                                                                                | nothing                                                                                  |
+| `untraced`          | is under `srcRoot` and nothing imports it (an unimported `.json`, `.md`, image)                                                                         | all                                                                                      |
+| `outside`           | is outside `srcRoot`, in the workspace                                                                                                                  | all                                                                                      |
+| `outside-workspace` | is elsewhere in the repository                                                                                                                          | all                                                                                      |
 
 The last three are the fail-safe. `pxsig affected` prints one line for each; the `check` line and
 `summary.md` name the first (`All N entries selected: <path> (<class>)`). A path that never
@@ -166,7 +166,7 @@ reaches. pxsig reads:
 - **Style sheets** (`.css .scss .sass .less .pcss`): `@import`, `@use`, `@forward`, `composes … from`
   and `url(…)`.
 - Any file type can be imported: `.json`, `.svg`, `.md?raw`, fonts, images. `?query` and `#hash`
-  suffixes are ignored. A template literal (`` import(`./icons/${name}.svg`) ``) stands for every
+  suffixes are ignored. A template literal (``import(`./icons/${name}.svg`)``) stands for every
   file under its folder that ends the same way.
 
 A specifier resolves, in this order:
@@ -198,12 +198,12 @@ they could not trace.
 
 ## Reports
 
-| File | Use |
-| --- | --- |
-| `<store>/reports/junit.xml` | Test results, one case per entry, for any JUnit viewer |
+| File                         | Use                                                                                                                  |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `<store>/reports/junit.xml`  | Test results, one case per entry, for any JUnit viewer                                                               |
 | `<store>/reports/summary.md` | A Markdown summary for a pull request comment. `--link-base <url>` on the check links each entry to a hosted report. |
-| `<store>/reports/check.json` | Every row, for scripts |
-| `pxsig report --out <dir>` | The dashboard as static files, with the images. Open `index.html` from the artifact. |
+| `<store>/reports/check.json` | Every row, for scripts                                                                                               |
+| `pxsig report --out <dir>`   | The dashboard as static files, with the images. Open `index.html` from the artifact.                                 |
 
 To post the summary on the pull request, for example:
 
@@ -280,9 +280,9 @@ appears, then one ADVISORY line and a `summary.md` lead, exit 0. Set `enforcemen
 
 ## Exit codes
 
-| Command | 0 | 1 | 2 |
-| --- | --- | --- | --- |
-| `pxsig check --full` | pass (or only gates on warn would have failed: `advisoryExit`) | changed, new or render error (with `a11y: enforce`, new axe violations) | setup error |
-| `pxsig approve verify` | every baseline matches its approval | a mismatch, an interrupted approval, a baseline with no log line (unless `--no-strict`), or with `--since` a rewritten log or no merge base | setup error |
-| `pxsig doctor --ci` | no error-severity codes | error-severity codes | setup error |
-| `pxsig report` | written | | dashboard not built, no project, or output not writable |
+| Command                | 0                                                              | 1                                                                                                                                           | 2                                                       |
+| ---------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `pxsig check --full`   | pass (or only gates on warn would have failed: `advisoryExit`) | changed, new or render error (with `a11y: enforce`, new axe violations)                                                                     | setup error                                             |
+| `pxsig approve verify` | every baseline matches its approval                            | a mismatch, an interrupted approval, a baseline with no log line (unless `--no-strict`), or with `--since` a rewritten log or no merge base | setup error                                             |
+| `pxsig doctor --ci`    | no error-severity codes                                        | error-severity codes                                                                                                                        | setup error                                             |
+| `pxsig report`         | written                                                        |                                                                                                                                             | dashboard not built, no project, or output not writable |

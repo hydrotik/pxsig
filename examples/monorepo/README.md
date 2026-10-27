@@ -3,9 +3,9 @@
 `pxsig.workspace.json` lists the projects; each has its own `pxsig.config.json` and its own store.
 One install of pxsig at the root serves both, and `apps/storybook` renders the stories of both.
 
-| Project | Folder | Store |
-| --- | --- | --- |
-| `ui` | `packages/ui` | `packages/ui/.pxsig/` (layout `package`) |
+| Project | Folder           | Store                                                                                                      |
+| ------- | ---------------- | ---------------------------------------------------------------------------------------------------------- |
+| `ui`    | `packages/ui`    | `packages/ui/.pxsig/` (layout `package`)                                                                   |
 | `forms` | `packages/forms` | baselines beside each component in `__pxsig__/` (layout `colocated`), the rest in `packages/forms/.pxsig/` |
 
 `forms` depends on `ui`, so an edit to `packages/ui/src` marks the `forms` entries that import it

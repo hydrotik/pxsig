@@ -20,7 +20,8 @@ import { pathToFileURL } from 'node:url';
 export const DEV_ONLY = ['scripts', 'devDependencies'];
 
 /** The manifest as published: the same object without DEV_ONLY keys, key order kept. */
-export const publishedManifest = (pj) => Object.fromEntries(Object.entries(pj).filter(([k]) => !DEV_ONLY.includes(k)));
+export const publishedManifest = (pj) =>
+  Object.fromEntries(Object.entries(pj).filter(([k]) => !DEV_ONLY.includes(k)));
 
 /** The DEV_ONLY keys a manifest still has. */
 export const devOnlyKeys = (pj) => DEV_ONLY.filter((k) => k in pj);
@@ -50,11 +51,14 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   for (const t of targets) {
     if (check) {
       const left = devOnlyKeys(packedManifest(t));
-      if (left.length) (failed++, console.error(`[pack-manifest] ${t}: still has ${left.join(', ')}`));
+      if (left.length)
+        (failed++, console.error(`[pack-manifest] ${t}: still has ${left.join(', ')}`));
       else console.log(`[pack-manifest] ${t}: ok`);
     } else {
       const removed = rewrite(t);
-      console.log(`[pack-manifest] ${t}: removed ${removed.length ? removed.join(', ') : 'nothing'}`);
+      console.log(
+        `[pack-manifest] ${t}: removed ${removed.length ? removed.join(', ') : 'nothing'}`
+      );
     }
   }
   process.exit(failed ? 1 : 0);

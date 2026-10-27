@@ -15,7 +15,11 @@ use pxsig_core::{CompareResult, PixelDiff, PxsigRecord};
 /// A path as pxsig prints it in JSON: `/`-separated on every OS (Windows gives `\`).
 pub fn to_slash(p: &Path) -> String {
     let s = p.to_string_lossy();
-    if std::path::MAIN_SEPARATOR == '\\' { s.replace('\\', "/") } else { s.into_owned() }
+    if std::path::MAIN_SEPARATOR == '\\' {
+        s.replace('\\', "/")
+    } else {
+        s.into_owned()
+    }
 }
 
 /// Decode any PNG to 8-bit RGBA (palette/gray/RGB expanded, 16-bit stripped).
@@ -28,9 +32,13 @@ pub fn decode_png(path: &Path) -> Result<(Vec<u8>, usize, usize)> {
 pub fn decode_png_bytes(bytes: &[u8], path: &Path) -> Result<(Vec<u8>, usize, usize)> {
     let mut decoder = png::Decoder::new(std::io::Cursor::new(bytes));
     decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
-    let mut reader = decoder.read_info().with_context(|| format!("decoding {}", path.display()))?;
+    let mut reader = decoder
+        .read_info()
+        .with_context(|| format!("decoding {}", path.display()))?;
     let mut buf = vec![0; reader.output_buffer_size()];
-    let info = reader.next_frame(&mut buf).with_context(|| format!("decoding {}", path.display()))?;
+    let info = reader
+        .next_frame(&mut buf)
+        .with_context(|| format!("decoding {}", path.display()))?;
     let (w, h) = (info.width as usize, info.height as usize);
     if w == 0 || h == 0 {
         bail!("PNG has zero dimensions: {}", path.display());
@@ -38,10 +46,18 @@ pub fn decode_png_bytes(bytes: &[u8], path: &Path) -> Result<(Vec<u8>, usize, us
     buf.truncate(info.buffer_size());
     let rgba = match info.color_type {
         png::ColorType::Rgba => buf,
-        png::ColorType::Rgb => buf.as_chunks::<3>().0.iter().flat_map(|p| [p[0], p[1], p[2], 255]).collect(),
-        png::ColorType::GrayscaleAlpha => {
-            buf.as_chunks::<2>().0.iter().flat_map(|p| [p[0], p[0], p[0], p[1]]).collect()
-        }
+        png::ColorType::Rgb => buf
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .flat_map(|p| [p[0], p[1], p[2], 255])
+            .collect(),
+        png::ColorType::GrayscaleAlpha => buf
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .flat_map(|p| [p[0], p[0], p[0], p[1]])
+            .collect(),
         png::ColorType::Grayscale => buf.iter().flat_map(|&v| [v, v, v, 255]).collect(),
         png::ColorType::Indexed => bail!("unexpanded indexed PNG: {}", path.display()),
     };
@@ -51,7 +67,11 @@ pub fn decode_png_bytes(bytes: &[u8], path: &Path) -> Result<(Vec<u8>, usize, us
 /// Width and height from the PNG header, without decoding pixels.
 pub fn png_size(path: &Path) -> Result<((), usize, usize)> {
     let file = File::open(path).with_context(|| format!("PNG not found: {}", path.display()))?;
-    let info = png::Decoder::new(std::io::BufReader::new(file)).read_info().with_context(|| format!("reading {}", path.display()))?.info().clone();
+    let info = png::Decoder::new(std::io::BufReader::new(file))
+        .read_info()
+        .with_context(|| format!("reading {}", path.display()))?
+        .info()
+        .clone();
     Ok(((), info.width as usize, info.height as usize))
 }
 
@@ -66,12 +86,19 @@ fn encode_png(path: &Path, w: usize, h: usize, rgba: &[u8]) -> Result<()> {
 
 /// True for a `.psig` container path (otherwise a spec v1 `.pxsig.json`).
 pub fn is_psig_path(p: &Path) -> bool {
-    p.extension().is_some_and(|e| e.eq_ignore_ascii_case("psig"))
+    p.extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("psig"))
 }
 
 /// Write a baseline: a `.psig` container (record + image + entry + extra header keys such as `env`)
 /// or a spec v1 `.pxsig.json` (which has no header, so `extra` is not written there).
-pub fn write_baseline(out: &Path, record: &PxsigRecord, image: Option<&[u8]>, entry: Option<&Value>, extra: Option<&serde_json::Map<String, Value>>) -> Result<()> {
+pub fn write_baseline(
+    out: &Path,
+    record: &PxsigRecord,
+    image: Option<&[u8]>,
+    entry: Option<&Value>,
+    extra: Option<&serde_json::Map<String, Value>>,
+) -> Result<()> {
     if let Some(dir) = out.parent() {
         fs::create_dir_all(dir)?;
     }
@@ -97,7 +124,9 @@ pub fn default_sig_path(png: &Path) -> PathBuf {
 }
 
 pub fn file_name(p: &Path) -> String {
-    p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()
+    p.file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default()
 }
 
 /// `<id>.pxsig.json` or `<id>.psig` → `<id>`.
@@ -114,7 +143,9 @@ pub fn stem_of(sig: &Path) -> String {
 
 /// ISO-8601 UTC with milliseconds, like JS `Date#toISOString`.
 pub fn iso_now() -> String {
-    let d = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
+    let d = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default();
     let secs = d.as_secs() as i64;
     let (days, rem) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));
     // Howard Hinnant's civil_from_days.
@@ -179,7 +210,12 @@ pub fn write_diff_artifacts(
     let diff_png = out_dir.join(format!("{stem}.diff.png"));
     let diff_html = out_dir.join(format!("{stem}.diff.html"));
 
-    encode_png(&baseline_png, side, side, &upscale(&|c| rgb(&r.base_sig, c)))?;
+    encode_png(
+        &baseline_png,
+        side,
+        side,
+        &upscale(&|c| rgb(&r.base_sig, c)),
+    )?;
     encode_png(&current_png, side, side, &upscale(&|c| rgb(&r.cur_sig, c)))?;
     encode_png(
         &diff_png,
@@ -188,7 +224,11 @@ pub fn write_diff_artifacts(
         &upscale(&|c| {
             let [cr, cg, cb] = rgb(&r.cur_sig, c);
             let lum = (0.299 * cr as f64 + 0.587 * cg as f64 + 0.114 * cb as f64) * 0.25;
-            [(lum + r.heat[c] as f64).min(255.0) as u8, lum as u8, lum as u8]
+            [
+                (lum + r.heat[c] as f64).min(255.0) as u8,
+                lum as u8,
+                lum as u8,
+            ]
         }),
     )?;
 
@@ -234,7 +274,10 @@ pub struct GalleryRow {
 
 /// The batch `index.html`: one row per entry, failures first.
 pub fn write_gallery(out_dir: &Path, rows: &[GalleryRow]) -> Result<()> {
-    let opt = |v: Option<f64>| v.map(|x| js_display(&serde_json::json!(x))).unwrap_or_default();
+    let opt = |v: Option<f64>| {
+        v.map(|x| js_display(&serde_json::json!(x)))
+            .unwrap_or_default()
+    };
     let failed = rows.iter().filter(|r| !r.ok).count();
     let body: String = rows
         .iter()
@@ -296,6 +339,9 @@ mod tests {
     fn printed_paths_use_forward_slashes() {
         assert_eq!(to_slash(Path::new("src/a/b.tsx")), "src/a/b.tsx");
         #[cfg(windows)]
-        assert_eq!(to_slash(&Path::new("src").join("a").join("b.tsx")), "src/a/b.tsx");
+        assert_eq!(
+            to_slash(&Path::new("src").join("a").join("b.tsx")),
+            "src/a/b.tsx"
+        );
     }
 }

@@ -37,7 +37,7 @@ project with a run history, changes awaiting review, a new story, a render error
 an accessibility violation — all from real checks), light theme, at 2x. `scripts/product-shots.mjs`
 reproduces a simpler version of both from the example.
 
-| File | What it shows |
-| --- | --- |
-| `overview.png` | The README hero: the Overview mid-review — status cards, Open Items, the stale-entries heatmap, the Errors card with the safe repairs, and Changed Entries per Run |
+| File            | What it shows                                                                                                                                                                    |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `overview.png`  | The README hero: the Overview mid-review — status cards, Open Items, the stale-entries heatmap, the Errors card with the safe repairs, and Changed Entries per Run               |
 | `inspector.png` | The inspector on a changed card: baseline and latest render side by side, changed pixels and detail tiles highlighted, the changed regions, and the metrics that failed the gate |

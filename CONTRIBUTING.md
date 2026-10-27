@@ -49,14 +49,19 @@ same way: synthesise what you need in code.
 pnpm lint                      # oxlint (.oxlintrc.json): an error fails CI
 pnpm lint:ratchet              # a file may not gain a warning (scripts/lint-warnings-baseline.json)
 pnpm lint:workspace            # sherif: the workspace's package.json files agree
+pnpm format                    # oxfmt (.oxfmtrc.json); pnpm format:check is the CI gate
+cargo fmt --all
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
-The rules are the same as the hydrotik monorepo's. After fixing warnings, lower the baseline in
+The rules and the format are the same as the hydrotik monorepo's. oxfmt leaves alone the files a
+tool reads or compares by their text: the UI contract (`contract.ts`, `tokens.ts`, parsed and
+hashed by `pnpm ui:lock`), the generated UI docs and manifest, and `docs/agents.md`, whose recipes
+must match what `pxsig setup` writes word for word. After fixing warnings, lower the baseline in
 its own commit: `node scripts/check-lint-warnings.mjs --update`. A warning that is right to keep
 gets an inline `oxlint-disable-next-line <rule> -- <reason>`, not a higher baseline.
 
-`pnpm install` sets up the git hooks (husky): the pre-commit hook lints the staged files, and the
+`pnpm install` sets up the git hooks (husky): the pre-commit hook lints and formats the staged files, and the
 commit-msg hook checks the subject against `commitlint.config.cjs`: `<type>(<scope>): <subject>`,
 lower case after the scope, at most 100 characters. Never skip them with `--no-verify`.
 

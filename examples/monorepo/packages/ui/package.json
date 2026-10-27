@@ -3,5 +3,7 @@
   "private": true,
   "type": "module",
   "main": "src/index.js",
-  "peerDependencies": { "react": ">=18" }
+  "peerDependencies": {
+    "react": ">=18"
+  }
 }

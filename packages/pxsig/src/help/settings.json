@@ -67,10 +67,7 @@
     "store.layout": {
       "file": "pxsig.config.json",
       "meaning": "Where baselines go: in the store, or beside each component.",
-      "values": [
-        "package",
-        "colocated"
-      ],
+      "values": ["package", "colocated"],
       "default": "\"package\"",
       "operation": "package: <store>/baselines/<component>/<id>.psig. colocated: <srcRoot>/<component>/__pxsig__/<id>.psig, so a component and its baselines move together in reviews.",
       "flag": "--layout (init)"

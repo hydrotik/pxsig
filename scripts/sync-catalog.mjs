@@ -42,7 +42,11 @@ export function withoutContext(text) {
 
 /** Copies the catalog from `from` into `to`; returns `{ ok, message }`. */
 export function syncCatalog(from, to = CATALOG_DIR) {
-  const git = (...args) => execFileSync('git', ['-C', from, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  const git = (...args) =>
+    execFileSync('git', ['-C', from, ...args], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }).trim();
   const refuse = (message) => ({ ok: false, message });
   if (!existsSync(from)) return refuse(`${from}: no such directory`);
   let origin;
@@ -55,12 +59,19 @@ export function syncCatalog(from, to = CATALOG_DIR) {
   }
   if (!ORIGIN.test(origin)) return refuse(`${from}: origin is ${origin}, not hydrotik/hydrotik`);
   const dirty = git('status', '--porcelain', '--', 'docs/llm');
-  if (dirty) return refuse(`${from} has uncommitted changes under docs/llm:\n${dirty}\ncommit or stash them first`);
-  if (!git('branch', '-r', '--contains', commit)) return refuse(`${from}: ${commit.slice(0, 7)} is on no remote branch; push it first, so the copy names a commit others can see`);
+  if (dirty)
+    return refuse(
+      `${from} has uncommitted changes under docs/llm:\n${dirty}\ncommit or stash them first`
+    );
+  if (!git('branch', '-r', '--contains', commit))
+    return refuse(
+      `${from}: ${commit.slice(0, 7)} is on no remote branch; push it first, so the copy names a commit others can see`
+    );
   const texts = FILES.map(([src]) => readFileSync(join(from, src), 'utf8'));
   const schema = JSON.parse(texts[1]);
   const errors = validate(schema, JSON.parse(texts[0]));
-  if (errors.length) return refuse(`${FILES[0][0]} does not pass its schema:\n${errors.slice(0, 20).join('\n')}`);
+  if (errors.length)
+    return refuse(`${FILES[0][0]} does not pass its schema:\n${errors.slice(0, 20).join('\n')}`);
   texts[0] = withoutContext(texts[0]);
   const source = {
     repo: 'hydrotik/hydrotik',
@@ -70,7 +81,10 @@ export function syncCatalog(from, to = CATALOG_DIR) {
   mkdirSync(to, { recursive: true });
   FILES.forEach(([, dest], i) => writeFileSync(join(to, dest), texts[i]));
   writeFileSync(join(to, 'hydrotik.catalog.source.json'), `${JSON.stringify(source, null, 2)}\n`);
-  return { ok: true, message: `copied the catalog from hydrotik/hydrotik ${commit.slice(0, 7)} into ${to}` };
+  return {
+    ok: true,
+    message: `copied the catalog from hydrotik/hydrotik ${commit.slice(0, 7)} into ${to}`,
+  };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

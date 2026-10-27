@@ -34,7 +34,10 @@ pub struct Psig {
 }
 
 fn sha256_hex(b: &[u8]) -> String {
-    Sha256::digest(b).iter().map(|x| format!("{x:02x}")).collect()
+    Sha256::digest(b)
+        .iter()
+        .map(|x| format!("{x:02x}"))
+        .collect()
 }
 
 /// Width and height from a PNG's IHDR, without decoding it.
@@ -49,22 +52,43 @@ pub fn png_dimensions(png: &[u8]) -> Option<(u32, u32)> {
 /// Header keys this module writes itself. Any other top-level key (`env`, the environment the
 /// baseline was rendered in) is the caller's: `encode` writes it through and `extras` hands it back,
 /// so re-encoding a file never drops a key a newer version added.
-pub const OWNED_KEYS: [&str; 6] = ["format", "container", "entry", "record", "encryption", "sections"];
+pub const OWNED_KEYS: [&str; 6] = [
+    "format",
+    "container",
+    "entry",
+    "record",
+    "encryption",
+    "sections",
+];
 
 /// The header's top-level keys this module does not own (see [`OWNED_KEYS`]).
 pub fn extras(header: &Value) -> Map<String, Value> {
-    header.as_object().map(|o| o.iter().filter(|(k, _)| !OWNED_KEYS.contains(&k.as_str())).map(|(k, v)| (k.clone(), v.clone())).collect()).unwrap_or_default()
+    header
+        .as_object()
+        .map(|o| {
+            o.iter()
+                .filter(|(k, _)| !OWNED_KEYS.contains(&k.as_str()))
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Pack a record, its image, optional entry metadata (`id`, `story`, `mode`, `state`) and extra
 /// top-level header keys (`env`). An extra key that this module owns is ignored.
-pub fn encode(record: &PxsigRecord, image: Option<&[u8]>, entry: Option<&Value>, extra: Option<&Map<String, Value>>) -> Result<Vec<u8>, String> {
+pub fn encode(
+    record: &PxsigRecord,
+    image: Option<&[u8]>,
+    entry: Option<&Value>,
+    extra: Option<&Map<String, Value>>,
+) -> Result<Vec<u8>, String> {
     let (_, sig) = record.baseline()?;
     let mut rec = serde_json::to_value(record).map_err(|e| e.to_string())?;
     if let Value::Object(o) = &mut rec {
         o.remove("sig");
     }
-    let mut sections = vec![json!({ "name": "sig", "length": sig.len(), "sha256": sha256_hex(&sig) })];
+    let mut sections =
+        vec![json!({ "name": "sig", "length": sig.len(), "sha256": sha256_hex(&sig) })];
     if let Some(img) = image {
         let mut s = json!({ "name": "image", "type": "image/png", "length": img.len(), "sha256": sha256_hex(img) });
         if let Some((w, h)) = png_dimensions(img) {
@@ -87,9 +111,11 @@ pub fn encode(record: &PxsigRecord, image: Option<&[u8]>, entry: Option<&Value>,
     header.insert("record".into(), rec);
     header.insert("encryption".into(), json!("none"));
     header.insert("sections".into(), Value::Array(sections));
-    let head = serde_json::to_string_pretty(&Value::Object(header)).map_err(|e| e.to_string())? + "\n";
+    let head =
+        serde_json::to_string_pretty(&Value::Object(header)).map_err(|e| e.to_string())? + "\n";
 
-    let mut out = Vec::with_capacity(PREFIX + head.len() + sig.len() + image.map_or(0, <[u8]>::len));
+    let mut out =
+        Vec::with_capacity(PREFIX + head.len() + sig.len() + image.map_or(0, <[u8]>::len));
     out.extend_from_slice(MAGIC);
     out.extend_from_slice(&CONTAINER_VERSION.to_le_bytes());
     out.extend_from_slice(&(head.len() as u32).to_le_bytes());
@@ -116,10 +142,14 @@ pub fn header(bytes: &[u8]) -> Result<Value, String> {
     }
     let version = u16::from_le_bytes([bytes[4], bytes[5]]);
     if version != CONTAINER_VERSION {
-        return Err(format!("container version {version} is not supported (this tool reads {CONTAINER_VERSION})"));
+        return Err(format!(
+            "container version {version} is not supported (this tool reads {CONTAINER_VERSION})"
+        ));
     }
     let len = u32::from_le_bytes([bytes[6], bytes[7], bytes[8], bytes[9]]) as usize;
-    let head = bytes.get(PREFIX..PREFIX + len).ok_or("truncated .psig header")?;
+    let head = bytes
+        .get(PREFIX..PREFIX + len)
+        .ok_or("truncated .psig header")?;
     serde_json::from_slice(head).map_err(|e| format!("bad .psig header: {e}"))
 }
 
@@ -127,15 +157,23 @@ pub fn header(bytes: &[u8]) -> Result<Value, String> {
 pub fn decode(bytes: &[u8]) -> Result<Psig, String> {
     let header = self::header(bytes)?;
     if header["encryption"] != json!("none") {
-        return Err(format!("encrypted .psig ({}) is not supported", header["encryption"]));
+        return Err(format!(
+            "encrypted .psig ({}) is not supported",
+            header["encryption"]
+        ));
     }
     let len = u32::from_le_bytes([bytes[6], bytes[7], bytes[8], bytes[9]]) as usize;
     let mut at = PREFIX + len;
     let mut sig = None;
     let mut image = None;
-    for s in header["sections"].as_array().ok_or("header has no section table")? {
+    for s in header["sections"]
+        .as_array()
+        .ok_or("header has no section table")?
+    {
         let n = s["length"].as_u64().ok_or("section without a length")? as usize;
-        let body = bytes.get(at..at + n).ok_or_else(|| format!("section {} is truncated", s["name"]))?;
+        let body = bytes
+            .get(at..at + n)
+            .ok_or_else(|| format!("section {} is truncated", s["name"]))?;
         if s["sha256"].as_str() != Some(sha256_hex(body).as_str()) {
             return Err(format!("section {} fails its sha256", s["name"]));
         }
@@ -149,12 +187,18 @@ pub fn decode(bytes: &[u8]) -> Result<Psig, String> {
     let sig = sig.ok_or(".psig has no sig section")?;
     let mut rec = header["record"].clone();
     rec["sig"] = json!(base64::engine::general_purpose::STANDARD.encode(&sig));
-    let record: PxsigRecord = serde_json::from_value(rec).map_err(|e| format!("bad record in .psig header: {e}"))?;
+    let record: PxsigRecord =
+        serde_json::from_value(rec).map_err(|e| format!("bad record in .psig header: {e}"))?;
     let (_, check) = record.baseline()?;
     if check != sig {
         return Err("signature section does not match its record".into());
     }
-    Ok(Psig { record, sig, image, header })
+    Ok(Psig {
+        record,
+        sig,
+        image,
+        header,
+    })
 }
 
 #[cfg(test)]
@@ -164,7 +208,11 @@ mod tests {
 
     fn record() -> PxsigRecord {
         let px: Vec<u8> = (0..32 * 32 * 4).map(|i| (i * 7 % 251) as u8).collect();
-        PxsigRecord::from_signature(&signature_of(&px, 32, 32, 16), "a.png", "2026-10-18T00:00:00.000Z")
+        PxsigRecord::from_signature(
+            &signature_of(&px, 32, 32, 16),
+            "a.png",
+            "2026-10-18T00:00:00.000Z",
+        )
     }
 
     #[test]
@@ -174,7 +222,10 @@ mod tests {
         let entry = json!({ "id": "x--y", "mode": "dark" });
         let bytes = encode(&r, Some(&png), Some(&entry), None).unwrap();
         let p = decode(&bytes).unwrap();
-        assert_eq!(serde_json::to_string(&p.record).unwrap(), serde_json::to_string(&r).unwrap());
+        assert_eq!(
+            serde_json::to_string(&p.record).unwrap(),
+            serde_json::to_string(&r).unwrap()
+        );
         assert_eq!(p.image.as_deref(), Some(png.as_slice()));
         assert_eq!(p.header["entry"]["id"], json!("x--y"));
         assert_eq!(p.header["sections"][1]["width"], json!(32));
@@ -200,7 +251,10 @@ mod tests {
         let bytes = encode(&r, None, None, Some(&extra)).unwrap();
         let p = decode(&bytes).unwrap();
         assert_eq!(p.header["env"]["id"], json!("0123456789abcdef"));
-        assert_eq!(serde_json::to_string(&p.record).unwrap(), serde_json::to_string(&r).unwrap());
+        assert_eq!(
+            serde_json::to_string(&p.record).unwrap(),
+            serde_json::to_string(&r).unwrap()
+        );
         let back = extras(&p.header);
         assert_eq!(back.keys().collect::<Vec<_>>(), vec!["env"]);
     }
@@ -220,7 +274,11 @@ mod tests {
     #[test]
     fn raw_sig_is_smaller_than_base64_at_grid_64() {
         let px: Vec<u8> = (0..128 * 128 * 4).map(|i| (i * 7 % 251) as u8).collect();
-        let r = PxsigRecord::from_signature(&signature_of(&px, 128, 128, 64), "a.png", "2026-10-18T00:00:00.000Z");
+        let r = PxsigRecord::from_signature(
+            &signature_of(&px, 128, 128, 64),
+            "a.png",
+            "2026-10-18T00:00:00.000Z",
+        );
         let bytes = encode(&r, None, None, None).unwrap();
         assert!(bytes.len() < serde_json::to_string_pretty(&r).unwrap().len());
     }

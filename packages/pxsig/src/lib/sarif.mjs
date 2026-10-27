@@ -23,15 +23,25 @@ export function sarifLog(rows, { entries = new Map(), version = null } = {}) {
     for (const v of vs) {
       const id = v.id ?? v;
       if (known.includes(id)) continue;
-      if (!rules.has(id)) rules.set(id, { id, shortDescription: { text: v.help ?? id }, helpUri: helpUri(id), properties: { tags: ['accessibility', 'axe'] } });
+      if (!rules.has(id))
+        rules.set(id, {
+          id,
+          shortDescription: { text: v.help ?? id },
+          helpUri: helpUri(id),
+          properties: { tags: ['accessibility', 'axe'] },
+        });
       const e = entries.get(r.id);
       results.push({
         ruleId: id,
         level: LEVEL[v.impact] ?? 'warning',
-        message: { text: `${r.id}: ${v.help ?? id}${v.nodes ? ` (${v.nodes} element${v.nodes === 1 ? '' : 's'}${v.targets?.length ? `: ${v.targets.join(', ')}` : ''})` : ''}` },
+        message: {
+          text: `${r.id}: ${v.help ?? id}${v.nodes ? ` (${v.nodes} element${v.nodes === 1 ? '' : 's'}${v.targets?.length ? `: ${v.targets.join(', ')}` : ''})` : ''}`,
+        },
         locations: [
           {
-            ...(e?.importPath ? { physicalLocation: { artifactLocation: { uri: e.importPath } } } : {}),
+            ...(e?.importPath
+              ? { physicalLocation: { artifactLocation: { uri: e.importPath } } }
+              : {}),
             logicalLocations: [{ name: r.id, kind: 'module' }],
           },
         ],
@@ -44,7 +54,14 @@ export function sarifLog(rows, { entries = new Map(), version = null } = {}) {
     version: '2.1.0',
     runs: [
       {
-        tool: { driver: { name: 'pxsig', ...(version ? { version } : {}), informationUri: 'https://github.com/hydrotik/pxsig', rules: [...rules.values()] } },
+        tool: {
+          driver: {
+            name: 'pxsig',
+            ...(version ? { version } : {}),
+            informationUri: 'https://github.com/hydrotik/pxsig',
+            rules: [...rules.values()],
+          },
+        },
         results,
       },
     ],

@@ -39,7 +39,8 @@ export const VIEWPORT = { width: 1280, height: 900 };
 export const FIXED_TIME = '2026-10-25T12:00:00.000Z';
 const THEMES = ['dark', 'light'];
 const LANDMARK_MS = 10_000;
-const FREEZE = '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}';
+const FREEZE =
+  '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}';
 
 const load = (dir, file) => import(pathToFileURL(join(dir, file)).href);
 /** A path for messages: relative to `cwd` when it is inside it, else absolute. */
@@ -57,8 +58,11 @@ const readJson = (f) => {
 
 /** A built dashboard folder: index.html with the data placeholder, and its assets. */
 export function isDashboardBuild(dir) {
-  if (!dir || !existsSync(join(dir, 'index.html')) || !existsSync(join(dir, 'assets'))) return false;
-  return /<!--pxsig:data-->|<script id="pxsig-data">/.test(readFileSync(join(dir, 'index.html'), 'utf8'));
+  if (!dir || !existsSync(join(dir, 'index.html')) || !existsSync(join(dir, 'assets')))
+    return false;
+  return /<!--pxsig:data-->|<script id="pxsig-data">/.test(
+    readFileSync(join(dir, 'index.html'), 'utf8')
+  );
 }
 
 /**
@@ -88,13 +92,29 @@ function sampleImages(width = 320, height = 200) {
   const render = draw(16, scene);
   const diff = draw(0, (x, y) => {
     const i = (y * width + x) * 4;
-    const same = baseline.data[i] === render.data[i] && baseline.data[i + 1] === render.data[i + 1] && baseline.data[i + 2] === render.data[i + 2];
+    const same =
+      baseline.data[i] === render.data[i] &&
+      baseline.data[i + 1] === render.data[i + 1] &&
+      baseline.data[i + 2] === render.data[i + 2];
     return same ? [236, 238, 242] : [214, 48, 48];
   });
-  return { baseline: PNG.sync.write(baseline), render: PNG.sync.write(render), diff: PNG.sync.write(diff) };
+  return {
+    baseline: PNG.sync.write(baseline),
+    render: PNG.sync.write(render),
+    diff: PNG.sync.write(diff),
+  };
 }
 
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.woff': 'font/woff', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json' };
+const TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.json': 'application/json',
+};
 
 /**
  * A server for one build and one scenario: the build under /report/, /__pxsig/ from the scenario,
@@ -106,7 +126,8 @@ export function scenarioServer({ dir, scenario, fixtures, images, posts }) {
     open.add(res);
     res.on('close', () => open.delete(res));
     const u = new URL(req.url, 'http://x');
-    const send = (status, type, body) => res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }).end(body);
+    const send = (status, type, body) =>
+      res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }).end(body);
     if (u.pathname.startsWith('/__pxsig/')) {
       const name = u.pathname.slice('/__pxsig/'.length);
       if (req.method === 'POST') {
@@ -131,29 +152,68 @@ export function scenarioServer({ dir, scenario, fixtures, images, posts }) {
       }
       if (name === 'data') {
         if (scenario === 'loading') return; // the data never arrives: the loading line stays
-        if (scenario === 'load-error') return send(500, 'application/json', JSON.stringify({ error: fixtures.LOAD_ERROR }));
+        if (scenario === 'load-error')
+          return send(500, 'application/json', JSON.stringify({ error: fixtures.LOAD_ERROR }));
         try {
           return send(200, 'application/json', JSON.stringify(fixtures.scenarioData(scenario)));
         } catch (e) {
           return send(500, 'application/json', JSON.stringify({ error: e.message }));
         }
       }
-      if (name === 'projects') return send(200, 'application/json', JSON.stringify({ projects: fixtures.SERVER_STATES.includes(scenario) || fixtures.SCENARIOS[scenario] ? fixtures.projectsOf(scenario) : [] }));
+      if (name === 'projects')
+        return send(
+          200,
+          'application/json',
+          JSON.stringify({
+            projects:
+              fixtures.SERVER_STATES.includes(scenario) || fixtures.SCENARIOS[scenario]
+                ? fixtures.projectsOf(scenario)
+                : [],
+          })
+        );
       return send(404, 'application/json', '{"error":"not found"}');
     }
     if (u.pathname.startsWith('/p/demo/')) {
-      if (u.pathname.startsWith('/p/demo/sig/')) return send(200, 'application/json', JSON.stringify({ format: 'psig', entry: { id: decodeURIComponent(u.pathname.slice('/p/demo/sig/'.length)) } }));
-      if (u.pathname.endsWith('.png')) return send(200, 'image/png', u.pathname.includes('/diffs/') ? images.diff : u.pathname.includes('/base') ? images.baseline : images.render);
+      if (u.pathname.startsWith('/p/demo/sig/'))
+        return send(
+          200,
+          'application/json',
+          JSON.stringify({
+            format: 'psig',
+            entry: { id: decodeURIComponent(u.pathname.slice('/p/demo/sig/'.length)) },
+          })
+        );
+      if (u.pathname.endsWith('.png'))
+        return send(
+          200,
+          'image/png',
+          u.pathname.includes('/diffs/')
+            ? images.diff
+            : u.pathname.includes('/base')
+              ? images.baseline
+              : images.render
+        );
       return send(404, 'text/plain', '');
     }
     if (!u.pathname.startsWith('/report')) return send(404, 'text/plain', '');
     const rel = decodeURIComponent(u.pathname.replace(/^\/report\/?/, '')) || 'index.html';
     const file = resolve(dir, rel);
-    if (relative(dir, file).startsWith('..') || !existsSync(file)) return send(404, 'text/plain', '');
+    if (relative(dir, file).startsWith('..') || !existsSync(file))
+      return send(404, 'text/plain', '');
     if (rel === 'index.html' && scenario === 'static') {
       // As `pxsig report` writes it: the data inlined, marked static.
-      const json = JSON.stringify({ ...fixtures.scenarioData('clean'), static: true }).replace(/</g, '\\u003c');
-      return send(200, TYPES['.html'], readFileSync(file, 'utf8').replace(/<script id="pxsig-data">[\s\S]*?<\/script>|<!--pxsig:data-->/, `<script id="pxsig-data">window.PXSIG=${json}</script>`));
+      const json = JSON.stringify({ ...fixtures.scenarioData('clean'), static: true }).replace(
+        /</g,
+        '\\u003c'
+      );
+      return send(
+        200,
+        TYPES['.html'],
+        readFileSync(file, 'utf8').replace(
+          /<script id="pxsig-data">[\s\S]*?<\/script>|<!--pxsig:data-->/,
+          `<script id="pxsig-data">window.PXSIG=${json}</script>`
+        )
+      );
     }
     send(200, TYPES[extname(file)] ?? 'application/octet-stream', readFileSync(file));
   });
@@ -173,10 +233,14 @@ export function scenarioServer({ dir, scenario, fixtures, images, posts }) {
 
 /** A screen's target: `{ role, name?, exact? }` or `{ text, exact? }`. */
 function locate(page, t) {
-  if (t.role) return page.getByRole(t.role, { ...(t.name != null ? { name: t.name } : {}), exact: t.exact ?? false }).first();
+  if (t.role)
+    return page
+      .getByRole(t.role, { ...(t.name != null ? { name: t.name } : {}), exact: t.exact ?? false })
+      .first();
   return page.getByText(t.text, { exact: t.exact ?? false }).first();
 }
-const describe = (t) => (t.role ? `${t.role}${t.name != null ? ` "${t.name}"` : ''}` : `text "${t.text}"`);
+const describe = (t) =>
+  t.role ? `${t.role}${t.name != null ? ` "${t.name}"` : ''}` : `text "${t.text}"`;
 
 /** The page address for a screen in a theme: its query (with the theme) and hash. */
 export function screenUrl(base, screen, theme) {
@@ -188,7 +252,11 @@ export function screenUrl(base, screen, theme) {
 /** Render one screen in one theme; never throws (a failure is the result). */
 async function capture(browser, { url, screen, shot, axe, initScript = null }) {
   const started = Date.now();
-  const context = await browser.newContext({ viewport: VIEWPORT, reducedMotion: 'reduce', colorScheme: url.includes('theme=light') ? 'light' : 'dark' });
+  const context = await browser.newContext({
+    viewport: VIEWPORT,
+    reducedMotion: 'reduce',
+    colorScheme: url.includes('theme=light') ? 'light' : 'dark',
+  });
   const errors = [];
   try {
     await context.addInitScript((css) => {
@@ -210,7 +278,13 @@ async function capture(browser, { url, screen, shot, axe, initScript = null }) {
     try {
       await locate(page, screen.wait).waitFor({ state: 'visible', timeout: LANDMARK_MS });
     } catch {
-      return { rendered: false, reason: `landmark missing: ${describe(screen.wait)}`, errors, axe: [], ms: Date.now() - started };
+      return {
+        rendered: false,
+        reason: `landmark missing: ${describe(screen.wait)}`,
+        errors,
+        axe: [],
+        ms: Date.now() - started,
+      };
     }
     await page.evaluate(() => document.fonts?.ready);
     mkdirSync(dirname(shot), { recursive: true });
@@ -220,13 +294,30 @@ async function capture(browser, { url, screen, shot, axe, initScript = null }) {
       await injectAxe(page, axe);
       violations = await page.evaluate(async () => {
         const r = await window.axe.run(document, { resultTypes: ['violations'] });
-        return r.violations.map((v) => ({ id: v.id, impact: v.impact ?? null, count: v.nodes.length }));
+        return r.violations.map((v) => ({
+          id: v.id,
+          impact: v.impact ?? null,
+          count: v.nodes.length,
+        }));
       });
     }
-    if (errors.length) return { rendered: false, reason: `page error: ${errors[0]}`, errors, axe: violations, ms: Date.now() - started };
+    if (errors.length)
+      return {
+        rendered: false,
+        reason: `page error: ${errors[0]}`,
+        errors,
+        axe: violations,
+        ms: Date.now() - started,
+      };
     return { rendered: true, reason: null, errors, axe: violations, ms: Date.now() - started };
   } catch (e) {
-    return { rendered: false, reason: String(e.message ?? e).split('\n')[0], errors, axe: [], ms: Date.now() - started };
+    return {
+      rendered: false,
+      reason: String(e.message ?? e).split('\n')[0],
+      errors,
+      axe: [],
+      ms: Date.now() - started,
+    };
   } finally {
     await context.close().catch(() => {});
   }
@@ -247,7 +338,11 @@ async function pool(items, n, fn) {
   return out;
 }
 
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const esc = (s) =>
+  String(s ?? '').replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+  );
 
 /** summary.md: the counts, then every screen that failed or has axe violations. */
 export function summaryMarkdown(report) {
@@ -263,9 +358,24 @@ export function summaryMarkdown(report) {
     `| ${s.screens} | ${s.rendered} | ${s.failed} | ${s.withAxe}${report.strict ? ' (strict)' : ' (advisory)'} |`,
   ];
   const bad = report.screens.filter((x) => !x.rendered);
-  if (bad.length) lines.push('', '### Failed', '', ...bad.map((x) => `- \`${x.feature}\` #${x.index + 1} (${x.theme}): ${x.reason}`));
+  if (bad.length)
+    lines.push(
+      '',
+      '### Failed',
+      '',
+      ...bad.map((x) => `- \`${x.feature}\` #${x.index + 1} (${x.theme}): ${x.reason}`)
+    );
   const ax = report.screens.filter((x) => x.axe.length);
-  if (ax.length) lines.push('', '### Accessibility', '', ...ax.map((x) => `- \`${x.feature}\` #${x.index + 1} (${x.theme}): ${x.axe.map((v) => `${v.id} (${v.impact ?? 'n/a'}, ${v.count})`).join(', ')}`));
+  if (ax.length)
+    lines.push(
+      '',
+      '### Accessibility',
+      '',
+      ...ax.map(
+        (x) =>
+          `- \`${x.feature}\` #${x.index + 1} (${x.theme}): ${x.axe.map((v) => `${v.id} (${v.impact ?? 'n/a'}, ${v.count})`).join(', ')}`
+      )
+    );
   return `${lines.join('\n')}\n`;
 }
 
@@ -273,7 +383,10 @@ export function summaryMarkdown(report) {
 export function galleryHtml(report) {
   const groups = new Map();
   for (const x of report.screens) groups.set(x.feature, [...(groups.get(x.feature) ?? []), x]);
-  const img = (src, alt) => (src ? `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy">` : `<p class="none">${esc(alt)}</p>`);
+  const img = (src, alt) =>
+    src
+      ? `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy">`
+      : `<p class="none">${esc(alt)}</p>`;
   const sections = [...groups.values()].map((xs) => {
     const f = xs[0];
     const cells = xs
@@ -307,52 +420,110 @@ ${sections.join('\n')}
  * Run the check. Returns `{ code, report, outDir }`; throws CheckSetupError for exit 2.
  * `browser` (tests) skips the launch.
  */
-export async function dashboardCheck(flags = {}, cwd = process.cwd(), { log = (m) => process.stderr.write(`${m}\n`), browser: given = null, concurrency = 4, catalogue: givenCatalogue = null, initScript = null } = {}) {
+export async function dashboardCheck(
+  flags = {},
+  cwd = process.cwd(),
+  {
+    log = (m) => process.stderr.write(`${m}\n`),
+    browser: given = null,
+    concurrency = 4,
+    catalogue: givenCatalogue = null,
+    initScript = null,
+  } = {}
+) {
   const src = dashboardSource();
   const fixtures = await load(src, 'fixtures/scenarios.mjs');
   const catalogue = givenCatalogue ?? readJson(join(src, 'fixtures', 'screens.json'));
-  if (!catalogue?.features?.length) throw new CheckSetupError(`the dashboard's screen list is missing (${join(src, 'fixtures', 'screens.json')})`);
+  if (!catalogue?.features?.length)
+    throw new CheckSetupError(
+      `the dashboard's screen list is missing (${join(src, 'fixtures', 'screens.json')})`
+    );
   // --only <feature,…>: a part of the check, while working on one feature.
-  const only = typeof flags.only === 'string' ? flags.only.split(',').map((x) => x.trim()).filter(Boolean) : null;
+  const only =
+    typeof flags.only === 'string'
+      ? flags.only
+          .split(',')
+          .map((x) => x.trim())
+          .filter(Boolean)
+      : null;
   const unknown = (only ?? []).filter((id) => !catalogue.features.some((f) => f.id === id));
-  if (unknown.length) throw new CheckSetupError(`--only names no feature: ${unknown.join(', ')} (features: ${catalogue.features.map((f) => f.id).join(', ')})`);
-  const features = only ? catalogue.features.filter((f) => only.includes(f.id)) : catalogue.features;
+  if (unknown.length)
+    throw new CheckSetupError(
+      `--only names no feature: ${unknown.join(', ')} (features: ${catalogue.features.map((f) => f.id).join(', ')})`
+    );
+  const features = only
+    ? catalogue.features.filter((f) => only.includes(f.id))
+    : catalogue.features;
 
   const build = typeof flags.build === 'string' ? resolve(cwd, flags.build) : buildDirFor(cwd);
-  if (!isDashboardBuild(build)) throw new CheckSetupError(`no dashboard build at ${shown(cwd, build)}: run \`pxsig dashboard build\` first, or pass --build <dir>`);
+  if (!isDashboardBuild(build))
+    throw new CheckSetupError(
+      `no dashboard build at ${shown(cwd, build)}: run \`pxsig dashboard build\` first, or pass --build <dir>`
+    );
 
   // The adapter, for the contract version and the components it leaves to fallbacks.
   const { resolveAdapter } = await load(src, 'build-config.mjs');
-  const { contractStatus, gapsOf, buildManifest, readConformance } = await load(src, 'ui-tools.mjs');
+  const { contractStatus, gapsOf, buildManifest, readConformance } = await load(
+    src,
+    'ui-tools.mjs'
+  );
   // --ui, else the adapter the build's stamp names (`pxsig dashboard build` records it), else the
   // project's dashboard.ui. Without any of them the fallbacks column stays empty.
   const stamp = readJson(join(build, STAMP));
   let ui = null;
   try {
-    const spec = typeof flags.ui === 'string' ? flags.ui : stamp?.adapter && existsSync(stamp.adapter) ? stamp.adapter : undefined;
+    const spec =
+      typeof flags.ui === 'string'
+        ? flags.ui
+        : stamp?.adapter && existsSync(stamp.adapter)
+          ? stamp.adapter
+          : undefined;
     const { from } = (await load(src, 'build-config.mjs')).adapterSpec({ adapter: spec, cwd });
     if (from !== 'default') ui = resolveAdapter({ adapter: spec, cwd });
   } catch {
     ui = null;
   }
-  const contract = contractStatus((ui ? readConformance(ui.dir)?.contract : null) ?? stamp?.adapterContract ?? '1.0.0');
-  if (contract.status === 'older-major') throw new CheckSetupError([`the adapter is ${contract.line}.`, ...(contract.notes ?? [])].join('\n\n'));
+  const contract = contractStatus(
+    (ui ? readConformance(ui.dir)?.contract : null) ?? stamp?.adapterContract ?? '1.0.0'
+  );
+  if (contract.status === 'older-major')
+    throw new CheckSetupError(
+      [`the adapter is ${contract.line}.`, ...(contract.notes ?? [])].join('\n\n')
+    );
   const gapRows = ui ? gapsOf({ adapterFile: ui.file, manifest: buildManifest() }).rows : null;
-  const fallback = new Set((gapRows ?? []).filter((r) => r.status === 'missing').map((r) => r.name));
+  const fallback = new Set(
+    (gapRows ?? []).filter((r) => r.status === 'missing').map((r) => r.name)
+  );
 
-  const refDir = typeof flags.reference === 'string' ? resolve(cwd, flags.reference) : prebuiltDashboardDir;
+  const refDir =
+    typeof flags.reference === 'string' ? resolve(cwd, flags.reference) : prebuiltDashboardDir;
   const reference = { dir: refDir, used: false, note: null };
-  if (resolve(refDir) === resolve(build)) reference.note = 'the build checked is the reference itself';
-  else if (!isDashboardBuild(refDir)) reference.note = existsSync(join(refDir, 'index.html')) ? `${refDir} is a placeholder, not a built dashboard` : `no prebuilt dashboard at ${refDir}`;
+  if (resolve(refDir) === resolve(build))
+    reference.note = 'the build checked is the reference itself';
+  else if (!isDashboardBuild(refDir))
+    reference.note = existsSync(join(refDir, 'index.html'))
+      ? `${refDir} is a placeholder, not a built dashboard`
+      : `no prebuilt dashboard at ${refDir}`;
   else reference.used = true;
 
-  const themes = typeof flags.themes === 'string' ? flags.themes.split(',').map((x) => x.trim()).filter(Boolean) : THEMES;
+  const themes =
+    typeof flags.themes === 'string'
+      ? flags.themes
+          .split(',')
+          .map((x) => x.trim())
+          .filter(Boolean)
+      : THEMES;
   const bad = themes.filter((x) => !THEMES.includes(x));
-  if (bad.length || !themes.length) throw new CheckSetupError(`--themes takes dark, light or both (got ${flags.themes})`);
+  if (bad.length || !themes.length)
+    throw new CheckSetupError(`--themes takes dark, light or both (got ${flags.themes})`);
 
-  const outDir = typeof flags.out === 'string' ? resolve(cwd, flags.out) : join(cwd, 'node_modules', '.cache', 'pxsig', 'dashboard-check');
+  const outDir =
+    typeof flags.out === 'string'
+      ? resolve(cwd, flags.out)
+      : join(cwd, 'node_modules', '.cache', 'pxsig', 'dashboard-check');
   // Only what this command writes is replaced; anything else in the folder stays.
-  for (const f of ['shots', 'index.html', 'report.json', 'summary.md']) rmSync(join(outDir, f), { recursive: true, force: true });
+  for (const f of ['shots', 'index.html', 'report.json', 'summary.md'])
+    rmSync(join(outDir, f), { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
 
   let browser = given;
@@ -360,7 +531,9 @@ export async function dashboardCheck(flags = {}, cwd = process.cwd(), { log = (m
     try {
       browser = await launchBrowser({ root: cwd, workspaceRoot: cwd });
     } catch (e) {
-      throw new CheckSetupError(`no Chromium for the check (${String(e.message ?? e).split('\n')[0]}): install it with \`npx playwright install chromium\``);
+      throw new CheckSetupError(
+        `no Chromium for the check (${String(e.message ?? e).split('\n')[0]}): install it with \`npx playwright install chromium\``
+      );
     }
   }
   const axe = axeScript({ root: cwd, workspaceRoot: cwd });
@@ -378,19 +551,32 @@ export async function dashboardCheck(flags = {}, cwd = process.cwd(), { log = (m
     f.screens.forEach((screen, index) => {
       for (const theme of themes) jobs.push({ f, screen, index, theme });
     });
-  log(`[dashboard] checking ${jobs.length} screens (${features.length} features × ${themes.join(', ')}) on ${shown(cwd, build)}${reference.used ? ', beside the reference' : ''}`);
+  log(
+    `[dashboard] checking ${jobs.length} screens (${features.length} features × ${themes.join(', ')}) on ${shown(cwd, build)}${reference.used ? ', beside the reference' : ''}`
+  );
   const name = (j) => `${j.f.id}__${j.index + 1}__${j.theme}.png`;
   let screens;
   try {
     screens = await pool(jobs, concurrency, async (j) => {
       const server = await serverFor(build, j.screen.scenario);
       const shot = join(outDir, 'shots', 'adapter', name(j));
-      const r = await capture(browser, { url: screenUrl(server.base, j.screen, j.theme), screen: j.screen, shot, axe, initScript });
+      const r = await capture(browser, {
+        url: screenUrl(server.base, j.screen, j.theme),
+        screen: j.screen,
+        shot,
+        axe,
+        initScript,
+      });
       let referenceShot = null;
       if (reference.used) {
         const rs = await serverFor(refDir, j.screen.scenario);
         const file = join(outDir, 'shots', 'reference', name(j));
-        const rr = await capture(browser, { url: screenUrl(rs.base, j.screen, j.theme), screen: j.screen, shot: file, axe: '' });
+        const rr = await capture(browser, {
+          url: screenUrl(rs.base, j.screen, j.theme),
+          screen: j.screen,
+          shot: file,
+          axe: '',
+        });
         referenceShot = rr.rendered ? `shots/reference/${name(j)}` : null;
       }
       return {
@@ -426,7 +612,13 @@ export async function dashboardCheck(flags = {}, cwd = process.cwd(), { log = (m
     reference: { ...reference, dir: shown(cwd, reference.dir) },
     themes,
     strict: Boolean(flags.strict),
-    summary: { screens: screens.length, rendered: screens.length - failed, failed, withAxe, posts: posts.length },
+    summary: {
+      screens: screens.length,
+      rendered: screens.length - failed,
+      failed,
+      withAxe,
+      posts: posts.length,
+    },
     screens,
   };
   writeFileSync(join(outDir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);

@@ -13,7 +13,19 @@
  * `fault(point)` exits at a named point when `PXSIG_FAULT` names it, and only under NODE_ENV=test:
  * the crash tests use it; it does nothing in a normal run.
  */
-import { closeSync, existsSync, fstatSync, fsyncSync, mkdirSync, openSync, readFileSync, readSync, renameSync, rmSync, writeSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  fstatSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  readSync,
+  renameSync,
+  rmSync,
+  writeSync,
+} from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { dirname } from 'node:path';
 
@@ -53,7 +65,8 @@ export function writeAtomic(path, data) {
 }
 
 /** A JSON record, written whole. */
-export const writeJson = (path, value, { pretty = false } = {}) => writeAtomic(path, `${JSON.stringify(value, null, pretty ? 2 : 0)}\n`);
+export const writeJson = (path, value, { pretty = false } = {}) =>
+  writeAtomic(path, `${JSON.stringify(value, null, pretty ? 2 : 0)}\n`);
 
 /** Does the file end mid-line (a write cut short)? */
 function endsTorn(fd) {
@@ -107,7 +120,9 @@ export function dropTorn(path) {
   if (!torn.length) return 0;
   const cut = new Set(torn.map((t) => t.line));
   // The complete lines keep their exact bytes.
-  const keep = readFileSync(path, 'utf8').split('\n').filter((text, i) => text.trim() && !cut.has(i + 1));
+  const keep = readFileSync(path, 'utf8')
+    .split('\n')
+    .filter((text, i) => text.trim() && !cut.has(i + 1));
   writeAtomic(path, keep.map((t) => `${t}\n`).join(''));
   return torn.length;
 }

@@ -25,8 +25,8 @@ With options:
 addons: [{ name: '@pxsig/storybook-addon', options: { server: 'http://127.0.0.1:6070' } }],
 ```
 
-| Option | Meaning |
-| --- | --- |
+| Option   | Meaning                                                                      |
+| -------- | ---------------------------------------------------------------------------- |
 | `server` | The pxsig server's URL. Only needed when the server is not found on its own. |
 
 The addon needs Storybook 9 or later (the examples in this repository use Storybook 10). Its
@@ -60,12 +60,12 @@ project's `storybook.url`, so set `storybook.url` to the address Storybook reall
 The dots come from `/__pxsig/status` and refresh on the server's event stream. With
 `pxsig serve --watch`, editing a component re-checks it and the dots update without a reload.
 
-| pxsig state | Storybook status |
-| --- | --- |
-| `pass`, `drift`, `approved` | success |
-| `changed`, `flaky`, `new` | warn: needs review, not a failure |
-| `rejected`, `error` | error |
-| `skipped`, not checked | unknown |
+| pxsig state                 | Storybook status                  |
+| --------------------------- | --------------------------------- |
+| `pass`, `drift`, `approved` | success                           |
+| `changed`, `flaky`, `new`   | warn: needs review, not a failure |
+| `rejected`, `error`         | error                             |
+| `skipped`, not checked      | unknown                           |
 
 The tooltip lists each mode's state and SSIM.
 

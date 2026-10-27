@@ -25,21 +25,21 @@ A signature is a `grid x grid` RGB thumbnail of a render, plus hashes. Its recor
 }
 ```
 
-| Field | Type | Meaning |
-| --- | --- | --- |
-| `tool` | string | Always `"pxsig"`. A record with another value is rejected. |
-| `version` | integer | Spec version. Always `1`. A record with another value is rejected. |
-| `config.grid` | integer | Cells per side. At least 8; the engine clamps to 8..256. |
-| `config.channels` | integer | Always `3` (RGB). |
-| `config.encoding` | string | Always `"base64-rgb-row-major"`. |
-| `config.alphaFlatten` | string | Always `"white"`. |
-| `source` | string | The render's file name. Informational. |
-| `srcWidth`, `srcHeight` | integer | The render's size in pixels. |
-| `ahash`, `dhash` | string | Perceptual hashes (section 2). |
-| `sha256` | string | sha256 of the decoded signature bytes. Equal hashes mean identical signatures. |
-| `createdAt` | string | ISO 8601 time the record was written. |
-| `sig` | string | base64 of `grid * grid * 3` bytes. Its decoded length must match `grid`. |
-| `detail` | object | Optional. Absent when the detail channel is off, so such a record is plain spec v1. |
+| Field                   | Type    | Meaning                                                                             |
+| ----------------------- | ------- | ----------------------------------------------------------------------------------- |
+| `tool`                  | string  | Always `"pxsig"`. A record with another value is rejected.                          |
+| `version`               | integer | Spec version. Always `1`. A record with another value is rejected.                  |
+| `config.grid`           | integer | Cells per side. At least 8; the engine clamps to 8..256.                            |
+| `config.channels`       | integer | Always `3` (RGB).                                                                   |
+| `config.encoding`       | string  | Always `"base64-rgb-row-major"`.                                                    |
+| `config.alphaFlatten`   | string  | Always `"white"`.                                                                   |
+| `source`                | string  | The render's file name. Informational.                                              |
+| `srcWidth`, `srcHeight` | integer | The render's size in pixels.                                                        |
+| `ahash`, `dhash`        | string  | Perceptual hashes (section 2).                                                      |
+| `sha256`                | string  | sha256 of the decoded signature bytes. Equal hashes mean identical signatures.      |
+| `createdAt`             | string  | ISO 8601 time the record was written.                                               |
+| `sig`                   | string  | base64 of `grid * grid * 3` bytes. Its decoded length must match `grid`.            |
+| `detail`                | object  | Optional. Absent when the detail channel is off, so such a record is plain spec v1. |
 
 A standalone record is stored as `<id>.pxsig.json`. pxsig still reads that form. New baselines are
 written as `.psig` containers (section 5), which hold the same record and the same signature bytes.
@@ -91,34 +91,34 @@ The gate fails when `changedTiles + newEdgeTiles >= minTiles`.
 A comparison decodes the current render, builds its signature at the baseline's grid, and
 computes these metrics from the two signatures:
 
-| Metric | Definition |
-| --- | --- |
-| `ssim` | Mean SSIM over 8x8 windows, stride 4, on the grayscale grids. `C1 = (0.01*255)^2`, `C2 = (0.03*255)^2`. Rounded to 4 places. |
-| `matchScore` | `ssim * 100`, rounded to 3 places. |
-| `colorDiffPct` | Mean per-cell RGB delta, as a percentage of 255. |
-| `edgeDiffPct` | Mean absolute difference of the two Sobel gradient-magnitude maps, as a percentage of `4 * 255`. |
-| `maxCellDiff` | The largest per-cell mean RGB delta. |
-| `changedCells` | Cells whose mean RGB delta is above `threshold`. |
-| `changedCellsPct` | `changedCells` as a percentage of all cells. |
-| `psnr` | Luminance PSNR in dB; `"inf"` when identical. |
-| `ahashHamming`, `dhashHamming` | Bit differences between the hashes. |
-| `identical` | The current signature's sha256 equals the baseline's. |
-| `grid`, `threshold` | The grid and cell threshold used. |
+| Metric                         | Definition                                                                                                                   |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `ssim`                         | Mean SSIM over 8x8 windows, stride 4, on the grayscale grids. `C1 = (0.01*255)^2`, `C2 = (0.03*255)^2`. Rounded to 4 places. |
+| `matchScore`                   | `ssim * 100`, rounded to 3 places.                                                                                           |
+| `colorDiffPct`                 | Mean per-cell RGB delta, as a percentage of 255.                                                                             |
+| `edgeDiffPct`                  | Mean absolute difference of the two Sobel gradient-magnitude maps, as a percentage of `4 * 255`.                             |
+| `maxCellDiff`                  | The largest per-cell mean RGB delta.                                                                                         |
+| `changedCells`                 | Cells whose mean RGB delta is above `threshold`.                                                                             |
+| `changedCellsPct`              | `changedCells` as a percentage of all cells.                                                                                 |
+| `psnr`                         | Luminance PSNR in dB; `"inf"` when identical.                                                                                |
+| `ahashHamming`, `dhashHamming` | Bit differences between the hashes.                                                                                          |
+| `identical`                    | The current signature's sha256 equals the baseline's.                                                                        |
+| `grid`, `threshold`            | The grid and cell threshold used.                                                                                            |
 
 ### Gate
 
 An entry **fails** when any rule trips. Each tripped rule adds a line to `reasons`.
 
-| Key | Rule | pxsig default | Engine built-in |
-| --- | --- | --- | --- |
-| `minSsim` | `ssim < minSsim` | 0.99 | 0.99 |
-| `maxChangedPct` | `changedCellsPct > maxChangedPct` | 2 | 2 |
-| `threshold` | per-cell delta that counts a cell as changed | 24 | 12 |
-| `minCells` | `changedCells >= minCells` (0 turns it off) | 3 | 0 |
-| `maxEdgePct` | `edgeDiffPct > maxEdgePct` | off | off |
-| `detail.blockDelta` | see section 3 | 32 | 32 |
-| `detail.energyDelta` | see section 3 | 48 | 48 |
-| `detail.minTiles` | see section 3 | 3 | 3 |
+| Key                  | Rule                                         | pxsig default | Engine built-in |
+| -------------------- | -------------------------------------------- | ------------- | --------------- |
+| `minSsim`            | `ssim < minSsim`                             | 0.99          | 0.99            |
+| `maxChangedPct`      | `changedCellsPct > maxChangedPct`            | 2             | 2               |
+| `threshold`          | per-cell delta that counts a cell as changed | 24            | 12              |
+| `minCells`           | `changedCells >= minCells` (0 turns it off)  | 3             | 0               |
+| `maxEdgePct`         | `edgeDiffPct > maxEdgePct`                   | off           | off             |
+| `detail.blockDelta`  | see section 3                                | 32            | 32              |
+| `detail.energyDelta` | see section 3                                | 48            | 48              |
+| `detail.minTiles`    | see section 3                                | 3             | 3               |
 
 "pxsig default" is the `gate` in the built-in project config, which every run sends to the engine.
 "Engine built-in" applies only when the `pxsig` binary runs without a manifest gate.
@@ -142,25 +142,25 @@ The resolved gate is recorded on each result row, so a verdict can be explained 
 
 ### Verdicts
 
-| State | Meaning |
-| --- | --- |
-| `pass` | The gate held and SSIM is 1. |
-| `drift` | The gate held, but SSIM is below 1. |
-| `changed` | The gate failed. Needs review. |
-| `flaky` | Failed, then passed on a fresh render (`--retries`). Reported, does not fail the run. |
-| `new` | No baseline yet. Needs a person to approve its first render. Counts as failed. |
-| `error` | The render failed (timeout, missing selector, Storybook error page). |
-| `approved`, `rejected` | A review decision on the current result. A new verdict clears it. |
-| `skipped` | Not selected by this run; its previous row is carried forward. |
+| State                  | Meaning                                                                               |
+| ---------------------- | ------------------------------------------------------------------------------------- |
+| `pass`                 | The gate held and SSIM is 1.                                                          |
+| `drift`                | The gate held, but SSIM is below 1.                                                   |
+| `changed`              | The gate failed. Needs review.                                                        |
+| `flaky`                | Failed, then passed on a fresh render (`--retries`). Reported, does not fail the run. |
+| `new`                  | No baseline yet. Needs a person to approve its first render. Counts as failed.        |
+| `error`                | The render failed (timeout, missing selector, Storybook error page).                  |
+| `approved`, `rejected` | A review decision on the current result. A new verdict clears it.                     |
+| `skipped`              | Not selected by this run; its previous row is carried forward.                        |
 
 ### Exit codes
 
-| Code | Meaning |
-| --- | --- |
-| 0 | Pass |
-| 1 | At least one entry changed, is new, or failed to render |
-| 2 | Usage, setup, IO or validation error |
-| 3 | The `pxsig` CLI needs a person at a terminal (see [cli.md](cli.md)) |
+| Code | Meaning                                                             |
+| ---- | ------------------------------------------------------------------- |
+| 0    | Pass                                                                |
+| 1    | At least one entry changed, is new, or failed to render             |
+| 2    | Usage, setup, IO or validation error                                |
+| 3    | The `pxsig` CLI needs a person at a terminal (see [cli.md](cli.md)) |
 
 The `pxsig` binary uses 0, 1 and 2. The `pxsig` CLI adds 3.
 
@@ -170,13 +170,13 @@ One file per baseline: the record, the raw signature bytes and, optionally, the 
 
 ### Byte layout
 
-| Offset | Size | Content |
-| --- | --- | --- |
-| 0 | 4 | Magic `PSIG` (ASCII) |
-| 4 | 2 | Container version, u16 little-endian. Currently `1`. |
-| 6 | 4 | Header length `N` in bytes, u32 little-endian |
-| 10 | N | Header: UTF-8 JSON (pretty-printed, ends with a newline) |
-| 10 + N | … | Sections, in the order of the header's `sections` array |
+| Offset | Size | Content                                                  |
+| ------ | ---- | -------------------------------------------------------- |
+| 0      | 4    | Magic `PSIG` (ASCII)                                     |
+| 4      | 2    | Container version, u16 little-endian. Currently `1`.     |
+| 6      | 4    | Header length `N` in bytes, u32 little-endian            |
+| 10     | N    | Header: UTF-8 JSON (pretty-printed, ends with a newline) |
+| 10 + N | …    | Sections, in the order of the header's `sections` array  |
 
 ### Header
 
@@ -195,22 +195,22 @@ One file per baseline: the record, the raw signature bytes and, optionally, the 
 }
 ```
 
-| Field | Meaning |
-| --- | --- |
-| `format` | Always `"psig"`. |
-| `container` | Container version, the same number as bytes 4..6. |
-| `entry` | Optional. The manifest entry the baseline belongs to: `id`, `story`, `mode`, `state`. |
-| `env` | Optional (0.5 and later). The environment the baseline's render was made in, `v` 1: browser, OS, font probe, render settings, versions, and `id` over the major fields ([configuration.md](configuration.md#env)). Always the render's, never the approving machine's. A baseline without it compares as `unknown`. |
-| `record` | The spec v1 record, without `sig`. |
-| `encryption` | `"none"`. Reserved: encryption is not implemented, and a reader refuses any other value. |
-| `sections` | One object per section: `name`, `length` in bytes, `sha256` hex of its bytes. The image section adds `type`, and `width` / `height` read from the PNG header. |
+| Field        | Meaning                                                                                                                                                                                                                                                                                                             |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `format`     | Always `"psig"`.                                                                                                                                                                                                                                                                                                    |
+| `container`  | Container version, the same number as bytes 4..6.                                                                                                                                                                                                                                                                   |
+| `entry`      | Optional. The manifest entry the baseline belongs to: `id`, `story`, `mode`, `state`.                                                                                                                                                                                                                               |
+| `env`        | Optional (0.5 and later). The environment the baseline's render was made in, `v` 1: browser, OS, font probe, render settings, versions, and `id` over the major fields ([configuration.md](configuration.md#env)). Always the render's, never the approving machine's. A baseline without it compares as `unknown`. |
+| `record`     | The spec v1 record, without `sig`.                                                                                                                                                                                                                                                                                  |
+| `encryption` | `"none"`. Reserved: encryption is not implemented, and a reader refuses any other value.                                                                                                                                                                                                                            |
+| `sections`   | One object per section: `name`, `length` in bytes, `sha256` hex of its bytes. The image section adds `type`, and `width` / `height` read from the PNG header.                                                                                                                                                       |
 
 ### Sections
 
-| Name | Content | Required |
-| --- | --- | --- |
-| `sig` | The raw signature: `grid * grid * 3` bytes, not base64 | Yes |
-| `image` | The baseline render, PNG bytes, unchanged | No |
+| Name    | Content                                                | Required |
+| ------- | ------------------------------------------------------ | -------- |
+| `sig`   | The raw signature: `grid * grid * 3` bytes, not base64 | Yes      |
+| `image` | The baseline render, PNG bytes, unchanged              | No       |
 
 Sections follow the header back to back, in table order. pxsig writes `sig` first, then `image`.
 
@@ -285,27 +285,27 @@ letters, digits and hyphens.
 
 ### Entry keys
 
-| Key | Meaning |
-| --- | --- |
-| `id` | Entry id (above). Also the render's file name: `<id>.png`. |
-| `story` | Storybook story id. |
-| `mode` | Mode name (see `modes` in [configuration.md](configuration.md)). |
-| `state` | Interaction state name, or `null`. |
-| `sig` | Baseline path, relative to the workspace root. |
-| `importPath` | The story file, relative to the workspace root. |
-| `globals` | Storybook globals for the mode, as in the `globals` URL parameter (`theme:dark;density:compact`). |
-| `colorScheme` | `light` or `dark`, emulated by the browser. |
-| `viewport` | `[width, height]` in CSS pixels. |
-| `browser` | `chromium`, `firefox` or `webkit`. |
-| `grid` | Story override of the signature grid. |
-| `gate` | Story gate override (section 4). |
-| `detail` | `false` when the story turns the detail channel off. |
-| `ignore` | CSS selectors masked before every capture. |
-| `interaction` | The state's action: `{ name, action, target?, key?, waitFor?, fullPage? }`. |
-| `delay` | Extra settle time in ms. |
-| `target` | The element to capture, when not the project's `capture.target`. |
-| `play` | `true` when the story has a play function. |
-| `a11y` | `false` skips the axe pass for this entry. |
+| Key           | Meaning                                                                                           |
+| ------------- | ------------------------------------------------------------------------------------------------- |
+| `id`          | Entry id (above). Also the render's file name: `<id>.png`.                                        |
+| `story`       | Storybook story id.                                                                               |
+| `mode`        | Mode name (see `modes` in [configuration.md](configuration.md)).                                  |
+| `state`       | Interaction state name, or `null`.                                                                |
+| `sig`         | Baseline path, relative to the workspace root.                                                    |
+| `importPath`  | The story file, relative to the workspace root.                                                   |
+| `globals`     | Storybook globals for the mode, as in the `globals` URL parameter (`theme:dark;density:compact`). |
+| `colorScheme` | `light` or `dark`, emulated by the browser.                                                       |
+| `viewport`    | `[width, height]` in CSS pixels.                                                                  |
+| `browser`     | `chromium`, `firefox` or `webkit`.                                                                |
+| `grid`        | Story override of the signature grid.                                                             |
+| `gate`        | Story gate override (section 4).                                                                  |
+| `detail`      | `false` when the story turns the detail channel off.                                              |
+| `ignore`      | CSS selectors masked before every capture.                                                        |
+| `interaction` | The state's action: `{ name, action, target?, key?, waitFor?, fullPage? }`.                       |
+| `delay`       | Extra settle time in ms.                                                                          |
+| `target`      | The element to capture, when not the project's `capture.target`.                                  |
+| `play`        | `true` when the story has a play function.                                                        |
+| `a11y`        | `false` skips the axe pass for this entry.                                                        |
 
 `skipped` lists stories left out by `parameters.pxsig.disable` or the `no-pxsig` tag, with the
 reason. `pxsig manifest` rebuilds the file from the running Storybook. Existing entries keep their
@@ -315,13 +315,13 @@ reason. `pxsig manifest` rebuilds the file from the running Storybook. Existing 
 
 A full check writes, under `<store>/reports/`:
 
-| File | Content |
-| --- | --- |
+| File                                | Content                                                                                                                                                                                                                                                                                                                                                                                        |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `check.json` (`check-<suite>.json`) | `{ generatedAt, project, suite, manifest, summary, affected, envs, rows }`, one row per entry. `envs` maps every render environment a row names (its render's `env`, its baseline's `baselineEnv`) by id; each row adds `envMatch` (`same`, `compatible`, `mismatch`, `unknown`) and, when not `same`, `envDiff` (the differing field names); `summary.envMismatch` counts the mismatched rows |
-| `summary.md` (`summary-<suite>.md`) | Markdown summary, suitable for a pull request comment |
-| `junit.xml` (`junit-<suite>.xml`) | JUnit results, one test case per entry |
-| `history.ndjson` | One line per run (full checks and server re-checks) |
-| `integrity.json` | The integrity ledger (see [integrity.md](integrity.md)) |
+| `summary.md` (`summary-<suite>.md`) | Markdown summary, suitable for a pull request comment                                                                                                                                                                                                                                                                                                                                          |
+| `junit.xml` (`junit-<suite>.xml`)   | JUnit results, one test case per entry                                                                                                                                                                                                                                                                                                                                                         |
+| `history.ndjson`                    | One line per run (full checks and server re-checks)                                                                                                                                                                                                                                                                                                                                            |
+| `integrity.json`                    | The integrity ledger (see [integrity.md](integrity.md))                                                                                                                                                                                                                                                                                                                                        |
 
 Renders go to `<store>/renders/latest/<id>.png`; diff images for failures to
 `<store>/diffs/latest/`.

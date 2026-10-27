@@ -22,14 +22,18 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const lib = resolve(here, '..', '..', 'packages', 'pxsig', 'src', 'lib');
 export const { openProject, writeRunManifest } = await import(join(lib, 'workspace.mjs'));
-export const { browserPool, renderStories, STORYBOOK_ERROR } = await import(join(lib, 'capture.mjs'));
+export const { browserPool, renderStories, STORYBOOK_ERROR } = await import(
+  join(lib, 'capture.mjs')
+);
 const { readImage } = await import(join(lib, 'psig.mjs'));
 
 /** `--key value` and bare `--flag` → object. */
 export function parseFlags(argv = process.argv.slice(2)) {
   const flags = {};
   for (let i = 0; i < argv.length; i++)
-    if (argv[i].startsWith('--')) flags[argv[i].slice(2)] = argv[i + 1] != null && !argv[i + 1].startsWith('--') ? argv[++i] : true;
+    if (argv[i].startsWith('--'))
+      flags[argv[i].slice(2)] =
+        argv[i + 1] != null && !argv[i + 1].startsWith('--') ? argv[++i] : true;
   return flags;
 }
 export const str = (v) => (v && v !== true ? String(v) : null);
@@ -48,7 +52,9 @@ export function project(flags) {
 /** Refuse any write target that is a baseline: the store's baselines folder or a colocated one. */
 export function assertScratch(P, path) {
   const abs = resolve(path);
-  const bad = [P.store.baselines].some((b) => abs === b || abs.startsWith(b + sep)) || abs.split(sep).includes('__pxsig__');
+  const bad =
+    [P.store.baselines].some((b) => abs === b || abs.startsWith(b + sep)) ||
+    abs.split(sep).includes('__pxsig__');
   if (bad) throw new Error(`refusing to write a baseline location: ${abs}`);
   return abs;
 }
@@ -77,11 +83,21 @@ export const readReport = (P, name) => {
 /** One CLI call; parses stdout as JSON when `json`. Exit 2 is an engine error. */
 export function rust(P, args, { json = true, env } = {}) {
   const t = performance.now();
-  const r = spawnSync(P.rustBin, args, { encoding: 'utf8', maxBuffer: 512 * 1024 * 1024, env: env ? { ...process.env, ...env } : process.env });
+  const r = spawnSync(P.rustBin, args, {
+    encoding: 'utf8',
+    maxBuffer: 512 * 1024 * 1024,
+    env: env ? { ...process.env, ...env } : process.env,
+  });
   const wallMs = performance.now() - t;
   if (r.error) throw new Error(`pxsig ${args[0]}: ${r.error.message} (binary: ${P.rustBin})`);
-  if (r.status === 2 || (json && !r.stdout.trim())) throw new Error(`pxsig ${args.join(' ')} → exit ${r.status}\n${r.stderr}`);
-  return { out: json ? JSON.parse(r.stdout) : r.stdout, status: r.status, wallMs, stderr: r.stderr };
+  if (r.status === 2 || (json && !r.stdout.trim()))
+    throw new Error(`pxsig ${args.join(' ')} → exit ${r.status}\n${r.stderr}`);
+  return {
+    out: json ? JSON.parse(r.stdout) : r.stdout,
+    status: r.status,
+    wallMs,
+    stderr: r.stderr,
+  };
 }
 
 /** The Rust daemon (`pxsig serve`): one JSON request per line, answers matched by id. */
@@ -176,7 +192,15 @@ export function scratchManifest(P, path, base, entries, sigOf) {
 /** Crop renders to content the way a check does (the run manifest's `trim`), in place. */
 export function trimDir(P, run, dir) {
   if (!run.trim || !existsSync(dir)) return null;
-  return rust(P, ['trim', dir, '--json', '--pad', String(run.trim.pad ?? 16), '--tolerance', String(run.trim.tolerance ?? 8)]).out;
+  return rust(P, [
+    'trim',
+    dir,
+    '--json',
+    '--pad',
+    String(run.trim.pad ?? 16),
+    '--tolerance',
+    String(run.trim.tolerance ?? 8),
+  ]).out;
 }
 
 export const log = (tag) => (m) => console.log(`[${tag}] ${m}`);

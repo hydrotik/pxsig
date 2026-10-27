@@ -17,7 +17,14 @@
  *
  * `pxsig report` exits 2 on any error (no project, dashboard not built, unwritable output).
  */
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readImage } from './lib/psig.mjs';
@@ -29,7 +36,9 @@ const here = dirname(fileURLToPath(import.meta.url));
  * rebuilt on a project's own design system by `pxsig dashboard build`).
  */
 export const prebuiltDashboardDir = resolve(here, '..', 'dist', 'dashboard');
-export let dashboardDir = process.env.PXSIG_DASHBOARD_DIR ? resolve(process.env.PXSIG_DASHBOARD_DIR) : prebuiltDashboardDir;
+export let dashboardDir = process.env.PXSIG_DASHBOARD_DIR
+  ? resolve(process.env.PXSIG_DASHBOARD_DIR)
+  : prebuiltDashboardDir;
 /** Serve or write another dashboard folder (`pxsig serve` picks one: lib/dashboard-dir.mjs). */
 export function useDashboard(dir) {
   dashboardDir = dir;
@@ -53,7 +62,13 @@ function history(P, limit = 100) {
     .map((l) => {
       try {
         const r = JSON.parse(l);
-        return { at: r.at, summary: r.summary, failedIds: Object.entries(r.rows ?? {}).filter(([, v]) => v[0] === 0).map(([k]) => k) };
+        return {
+          at: r.at,
+          summary: r.summary,
+          failedIds: Object.entries(r.rows ?? {})
+            .filter(([, v]) => v[0] === 0)
+            .map(([k]) => k),
+        };
       } catch {
         return null;
       }
@@ -104,7 +119,11 @@ export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/` } = {}
     /** The title the dashboard shows after "pxsig ·": the project's `label`, else its name. */
     label: P.label ?? P.name,
     /** What drew the page, for the top bar's tooltip and the Help section. */
-    versions: { pxsig: PXSIG_VERSION, engine: engineVersion(P.rustBin), contract: uiContractVersion() },
+    versions: {
+      pxsig: PXSIG_VERSION,
+      engine: engineVersion(P.rustBin),
+      contract: uiContractVersion(),
+    },
     store: relative(P.workspaceRoot, P.store.root),
     check: read('check'),
     gateCalibration: read('calibration-gate'),
@@ -120,8 +139,14 @@ export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/` } = {}
     integrity: read('integrity'),
     storybook: { baseUrl: P.storybook.url },
     // renders/base/<id>.png is the baseline image inside each .psig, served (or written) by id.
-    paths: { diffRoot: `${base}diffs/`, renders: `${base}renders/`, baselines: `${base}baselines/` },
-    sigs: Object.fromEntries((manifest.stories ?? []).map((s) => [s.id, `${base}sig/${encodeURIComponent(s.id)}`])),
+    paths: {
+      diffRoot: `${base}diffs/`,
+      renders: `${base}renders/`,
+      baselines: `${base}baselines/`,
+    },
+    sigs: Object.fromEntries(
+      (manifest.stories ?? []).map((s) => [s.id, `${base}sig/${encodeURIComponent(s.id)}`])
+    ),
   };
 }
 
@@ -129,21 +154,27 @@ export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/` } = {}
 export function pageWithData(data) {
   const html = readFileSync(join(dashboardDir, 'index.html'), 'utf8');
   const json = JSON.stringify({ ...data, static: true }).replace(/</g, '\\u003c');
-  return html.replace(/<script id="pxsig-data">[\s\S]*?<\/script>|<!--pxsig:data-->/, `<script id="pxsig-data">window.PXSIG=${json}</script>`);
+  return html.replace(
+    /<script id="pxsig-data">[\s\S]*?<\/script>|<!--pxsig:data-->/,
+    `<script id="pxsig-data">window.PXSIG=${json}</script>`
+  );
 }
 
 /** Write a static report for one project into `out`: the app, the data and the images it shows. */
 export function writeStaticReport(P, out) {
-  if (!existsSync(join(dashboardDir, 'index.html'))) throw new Error(`the dashboard is not built (${dashboardDir})`);
+  if (!existsSync(join(dashboardDir, 'index.html')))
+    throw new Error(`the dashboard is not built (${dashboardDir})`);
   mkdirSync(join(out, 'assets'), { recursive: true });
-  for (const f of readdirSync(join(dashboardDir, 'assets'))) copyFileSync(join(dashboardDir, 'assets', f), join(out, 'assets', f));
+  for (const f of readdirSync(join(dashboardDir, 'assets')))
+    copyFileSync(join(dashboardDir, 'assets', f), join(out, 'assets', f));
   const data = buildData(P, { base: './' });
   writeFileSync(join(out, 'index.html'), pageWithData(data));
   // Images: latest renders and diffs as they are; baseline images out of their .psig files.
   const copyDir = (from, to) => {
     if (!existsSync(from)) return;
     mkdirSync(to, { recursive: true });
-    for (const f of readdirSync(from)) if (/\.(png|html)$/.test(f)) copyFileSync(join(from, f), join(to, f));
+    for (const f of readdirSync(from))
+      if (/\.(png|html)$/.test(f)) copyFileSync(join(from, f), join(to, f));
   };
   copyDir(P.store.latest, join(out, 'renders', 'latest'));
   copyDir(P.store.diffLatest, join(out, 'diffs', 'latest'));
@@ -164,10 +195,15 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const { parseArgs, strFlag } = await import('./lib/args.mjs');
   const { flags } = parseArgs(process.argv.slice(2));
   try {
-    const P = openProject({ project: strFlag(flags, 'project'), workspace: strFlag(flags, 'workspace') });
+    const P = openProject({
+      project: strFlag(flags, 'project'),
+      workspace: strFlag(flags, 'workspace'),
+    });
     const out = resolve(strFlag(flags, 'out') ?? join(P.store.reports, 'site'));
     const { images } = writeStaticReport(P, out);
-    console.log(`[report] ${join(out, 'index.html')} · project ${P.name} · ${images} baseline images`);
+    console.log(
+      `[report] ${join(out, 'index.html')} · project ${P.name} · ${images} baseline images`
+    );
   } catch (e) {
     console.error(`[report] ${e.message}`);
     process.exit(2);

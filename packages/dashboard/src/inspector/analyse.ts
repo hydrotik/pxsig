@@ -16,7 +16,8 @@ export interface Analysis {
   regions: Region[];
 }
 
-export const canvasOf = (w: number, h: number) => Object.assign(document.createElement('canvas'), { width: w, height: h });
+export const canvasOf = (w: number, h: number) =>
+  Object.assign(document.createElement('canvas'), { width: w, height: h });
 
 export function readPixels(img: HTMLImageElement): ImageData | null {
   try {
@@ -82,7 +83,8 @@ export function regionsOf(mask: Uint8Array, W: number, H: number, T: number): Re
   const tw = Math.ceil(W / T);
   const th = Math.ceil(H / T);
   const tiles = new Uint8Array(tw * th);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (mask[y * W + x]) tiles[((y / T) | 0) * tw + ((x / T) | 0)] = 1;
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) if (mask[y * W + x]) tiles[((y / T) | 0) * tw + ((x / T) | 0)] = 1;
   const seen = new Uint8Array(tw * th);
   const out: Region[] = [];
   for (let t = 0; t < tiles.length; t++) {
@@ -146,4 +148,5 @@ export const loadImg = (src: string) =>
     im.src = src;
   });
 
-export const hex = (r: number, g: number, b: number) => `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+export const hex = (r: number, g: number, b: number) =>
+  `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;

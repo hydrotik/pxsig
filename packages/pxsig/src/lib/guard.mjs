@@ -40,14 +40,26 @@ import { serverFile } from './workspace.mjs';
 export const TOKEN_HEADER = 'x-pxsig-token';
 
 /** Routes that record a decision: refused without the token. */
-export const DECISIONS = new Set(['approve', 'approve-story', 'reject', 'unreview', 'a11y-accept', 'a11y-reject', 'a11y-unreview', 'a11y-unaccept', 'a11y-prune']);
+export const DECISIONS = new Set([
+  'approve',
+  'approve-story',
+  'reject',
+  'unreview',
+  'a11y-accept',
+  'a11y-reject',
+  'a11y-unreview',
+  'a11y-unaccept',
+  'a11y-prune',
+]);
 
 /** What an agent's (the MCP's) token may decide: rejections, and clearing them. */
 export const AGENT_DECISIONS = new Set(['reject', 'unreview', 'a11y-reject', 'a11y-unreview']);
 
-export const NEEDS_PERSON = 'approving needs a person: use the dashboard or `pxsig approve` in a terminal';
+export const NEEDS_PERSON =
+  'approving needs a person: use the dashboard or `pxsig approve` in a terminal';
 /** A browser decision without the dashboard link's cookie (a tab opened from a bookmark, say). */
-export const NEEDS_LINK = 'approving here needs the dashboard link: open the link `pxsig serve` printed, or run `pxsig serve --link` in a terminal';
+export const NEEDS_LINK =
+  'approving here needs the dashboard link: open the link `pxsig serve` printed, or run `pxsig serve --link` in a terminal';
 export const NEEDS_LINK_CODE = 'needs-dashboard-link';
 
 export const newToken = () => randomBytes(32).toString('hex');
@@ -57,7 +69,10 @@ export const newToken = () => randomBytes(32).toString('hex');
  * own); `kind` is `cli` or `mcp`.
  */
 export const tokenFile = (root, url, kind = 'cli', platform = process.platform) =>
-  join(platform === 'win32' ? windowsTokenDir(root) : dirname(serverFile(root)), `serve-${new URL(url).port || '80'}${kind === 'cli' ? '' : `.${kind}`}.token`);
+  join(
+    platform === 'win32' ? windowsTokenDir(root) : dirname(serverFile(root)),
+    `serve-${new URL(url).port || '80'}${kind === 'cli' ? '' : `.${kind}`}.token`
+  );
 
 export function writeToken(root, url, token, kind = 'cli') {
   const file = tokenFile(root, url, kind);
@@ -84,7 +99,9 @@ const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]']);
 /** A Host header naming this server on a loopback name (or none: HTTP/1.0). */
 export function loopbackHost(host, port) {
   if (!host) return true;
-  const m = String(host).toLowerCase().match(/^(\[[^\]]+\]|[^:]+)(?::(\d+))?$/);
+  const m = String(host)
+    .toLowerCase()
+    .match(/^(\[[^\]]+\]|[^:]+)(?::(\d+))?$/);
   return !!m && LOOPBACK.has(m[1]) && Number(m[2] ?? 80) === port;
 }
 
@@ -108,7 +125,8 @@ export function cookieValue(header, name) {
 }
 
 /** The `Set-Cookie` value for a dashboard link `session` (no Max-Age: it ends with the browser too). */
-export const linkSetCookie = (port, session) => `${linkCookie(port)}=${session}; HttpOnly; SameSite=Strict; Path=/`;
+export const linkSetCookie = (port, session) =>
+  `${linkCookie(port)}=${session}; HttpOnly; SameSite=Strict; Path=/`;
 
 export const TICKET_MS = 2 * 60 * 1000;
 
@@ -146,25 +164,37 @@ export class Links {
  * `ownOrigin` is `http://<host header>` (already checked to be loopback); `allowedOrigins` the
  * Storybook origins.
  */
-export function authorize({ action, headers, tokens, links = null, port = null, ownOrigin, allowedOrigins }) {
+export function authorize({
+  action,
+  headers,
+  tokens,
+  links = null,
+  port = null,
+  ownOrigin,
+  allowedOrigins,
+}) {
   const refused = refuseWrite({ action, headers, ownOrigin, allowedOrigins });
   if (refused) return { ok: false, ...refused };
   if (!DECISIONS.has(action)) return { ok: true, via: null };
   // The file tokens never come from a browser: a browser request carrying one is refused.
   const browser = !!(headers.origin || headers['sec-fetch-site']);
-  if (browser && links?.has(cookieValue(headers.cookie, linkCookie(port)))) return { ok: true, via: 'dashboard' };
+  if (browser && links?.has(cookieValue(headers.cookie, linkCookie(port))))
+    return { ok: true, via: 'dashboard' };
   const sent = headers[TOKEN_HEADER];
   if (same(sent, tokens.cli) && !browser) return { ok: true, via: 'cli' };
-  if (same(sent, tokens.mcp) && !browser && AGENT_DECISIONS.has(action)) return { ok: true, via: 'mcp' };
+  if (same(sent, tokens.mcp) && !browser && AGENT_DECISIONS.has(action))
+    return { ok: true, via: 'mcp' };
   if (browser) return { ok: false, status: 403, error: NEEDS_LINK, code: NEEDS_LINK_CODE };
   return { ok: false, status: 403, error: NEEDS_PERSON };
 }
 
 /** `pxsig serve --link` asking the running server for a ticket: the CLI's token, never a browser. */
-export const mayMintTicket = (headers, tokens) => !(headers.origin || headers['sec-fetch-site']) && same(headers[TOKEN_HEADER], tokens.cli);
+export const mayMintTicket = (headers, tokens) =>
+  !(headers.origin || headers['sec-fetch-site']) && same(headers[TOKEN_HEADER], tokens.cli);
 
 /** A browser page trading a ticket (`POST /__pxsig/session`): from this server's own page only. */
-export const sameOriginPage = (headers, ownOrigin) => headers['sec-fetch-site'] === 'same-origin' && (!headers.origin || headers.origin === ownOrigin);
+export const sameOriginPage = (headers, ownOrigin) =>
+  headers['sec-fetch-site'] === 'same-origin' && (!headers.origin || headers.origin === ownOrigin);
 
 /** Why a write is refused on its origin alone, or null (the token is `authorize`'s). */
 function refuseWrite({ action, headers, ownOrigin, allowedOrigins }) {
@@ -172,8 +202,10 @@ function refuseWrite({ action, headers, ownOrigin, allowedOrigins }) {
   const origin = headers.origin;
   const site = headers['sec-fetch-site'];
   const fromStorybook = !!origin && allowedOrigins.has(origin);
-  if (origin && origin !== ownOrigin && !(fromStorybook && !decision)) return { status: 403, error: decision ? `cross-origin: ${NEEDS_PERSON}` : 'cross-origin' };
-  if (site && site !== 'same-origin' && !(fromStorybook && !decision)) return { status: 403, error: decision ? `cross-site: ${NEEDS_PERSON}` : 'cross-site' };
+  if (origin && origin !== ownOrigin && !(fromStorybook && !decision))
+    return { status: 403, error: decision ? `cross-origin: ${NEEDS_PERSON}` : 'cross-origin' };
+  if (site && site !== 'same-origin' && !(fromStorybook && !decision))
+    return { status: 403, error: decision ? `cross-site: ${NEEDS_PERSON}` : 'cross-site' };
   return null;
 }
 

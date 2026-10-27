@@ -28,7 +28,27 @@
  */
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
-import { assertScratch, baselineImages, browserPool, engine, freshDir, log as logger, parseFlags, pct, pickEntries, pool, project, readReport, renderStories, rust, scratchManifest, str, STORYBOOK_ERROR, trimDir, writeReport } from './lib/research.mjs';
+import {
+  assertScratch,
+  baselineImages,
+  browserPool,
+  engine,
+  freshDir,
+  log as logger,
+  parseFlags,
+  pct,
+  pickEntries,
+  pool,
+  project,
+  readReport,
+  renderStories,
+  rust,
+  scratchManifest,
+  str,
+  STORYBOOK_ERROR,
+  trimDir,
+  writeReport,
+} from './lib/research.mjs';
 
 const log = logger('scenarios');
 
@@ -37,22 +57,105 @@ const log = logger('scenarios');
  * capture target (capture.target, `#storybook-root` by default).
  */
 export const DEFAULT_SCENARIOS = [
-  { name: 'control', kind: 'noise', title: 'Re-render, no change', change: 'Determinism: the same entries rendered again.' },
-  { name: 'type-scale', kind: 'regression', title: 'Root font size changed', change: 'html { font-size: 18px }: every rem grows 12.5%', css: 'html{font-size:18px!important}' },
-  { name: 'font-fallback', kind: 'regression', title: 'Web font failed to load', change: 'font-family → Georgia, serif', css: '*{font-family:Georgia,serif!important}' },
-  { name: 'color-shift', kind: 'regression', title: 'Colours shifted', change: 'hue-rotate(90deg) on the story root', css: '{target}{filter:hue-rotate(90deg)!important}' },
-  { name: 'radius-zero', kind: 'regression', title: 'Corner radius dropped', change: 'border-radius → 0 everywhere', css: '*{border-radius:0!important}' },
-  { name: 'padding-lost', kind: 'regression', title: 'Inline padding lost', change: 'padding-inline → 0 everywhere', css: '{target} *{padding-inline:0!important}' },
-  { name: 'borders-gone', kind: 'regression', title: 'Borders disappeared', change: 'border-color → transparent', css: '*{border-color:transparent!important}' },
-  { name: 'icons-missing', kind: 'regression', title: 'Icons stopped rendering', change: 'svg { visibility: hidden }', css: 'svg{visibility:hidden!important}' },
-  { name: 'tracking', kind: 'regression', title: 'Letter-spacing regression', change: 'letter-spacing: 0.06em on everything', css: '*{letter-spacing:.06em!important}' },
-  { name: 'layout-shift', kind: 'regression', title: 'Layout shifted 12px', change: '{target} > * { margin-inline-start: 12px }', css: '{target}>*{margin-inline-start:12px!important}' },
-  { name: 'mode-swap', kind: 'regression', title: 'Wrong mode shipped', change: "Each entry rendered with another mode's globals and colour scheme", modeSwap: true },
+  {
+    name: 'control',
+    kind: 'noise',
+    title: 'Re-render, no change',
+    change: 'Determinism: the same entries rendered again.',
+  },
+  {
+    name: 'type-scale',
+    kind: 'regression',
+    title: 'Root font size changed',
+    change: 'html { font-size: 18px }: every rem grows 12.5%',
+    css: 'html{font-size:18px!important}',
+  },
+  {
+    name: 'font-fallback',
+    kind: 'regression',
+    title: 'Web font failed to load',
+    change: 'font-family → Georgia, serif',
+    css: '*{font-family:Georgia,serif!important}',
+  },
+  {
+    name: 'color-shift',
+    kind: 'regression',
+    title: 'Colours shifted',
+    change: 'hue-rotate(90deg) on the story root',
+    css: '{target}{filter:hue-rotate(90deg)!important}',
+  },
+  {
+    name: 'radius-zero',
+    kind: 'regression',
+    title: 'Corner radius dropped',
+    change: 'border-radius → 0 everywhere',
+    css: '*{border-radius:0!important}',
+  },
+  {
+    name: 'padding-lost',
+    kind: 'regression',
+    title: 'Inline padding lost',
+    change: 'padding-inline → 0 everywhere',
+    css: '{target} *{padding-inline:0!important}',
+  },
+  {
+    name: 'borders-gone',
+    kind: 'regression',
+    title: 'Borders disappeared',
+    change: 'border-color → transparent',
+    css: '*{border-color:transparent!important}',
+  },
+  {
+    name: 'icons-missing',
+    kind: 'regression',
+    title: 'Icons stopped rendering',
+    change: 'svg { visibility: hidden }',
+    css: 'svg{visibility:hidden!important}',
+  },
+  {
+    name: 'tracking',
+    kind: 'regression',
+    title: 'Letter-spacing regression',
+    change: 'letter-spacing: 0.06em on everything',
+    css: '*{letter-spacing:.06em!important}',
+  },
+  {
+    name: 'layout-shift',
+    kind: 'regression',
+    title: 'Layout shifted 12px',
+    change: '{target} > * { margin-inline-start: 12px }',
+    css: '{target}>*{margin-inline-start:12px!important}',
+  },
+  {
+    name: 'mode-swap',
+    kind: 'regression',
+    title: 'Wrong mode shipped',
+    change: "Each entry rendered with another mode's globals and colour scheme",
+    modeSwap: true,
+  },
   // The story's content moves, not the capture box: shifting the root itself against the page leaves
   // a blended seam on its edge, which the content trim reads as content (see tools/README.md).
-  { name: 'subpixel', kind: 'noise', title: 'Sub-pixel offset', change: '{target} > * { transform: translateX(0.4px) }: anti-aliasing drift', css: '{target}>*{transform:translateX(.4px)}' },
-  { name: 'opacity-99', kind: 'noise', title: 'Imperceptible opacity', change: 'opacity 0.99 on the story root', css: '{target}{opacity:.99}' },
-  { name: 'brightness-step', kind: 'noise', title: 'One-step colour jitter', change: 'brightness(1.004): about one 8-bit step per channel', css: '{target}{filter:brightness(1.004)}' },
+  {
+    name: 'subpixel',
+    kind: 'noise',
+    title: 'Sub-pixel offset',
+    change: '{target} > * { transform: translateX(0.4px) }: anti-aliasing drift',
+    css: '{target}>*{transform:translateX(.4px)}',
+  },
+  {
+    name: 'opacity-99',
+    kind: 'noise',
+    title: 'Imperceptible opacity',
+    change: 'opacity 0.99 on the story root',
+    css: '{target}{opacity:.99}',
+  },
+  {
+    name: 'brightness-step',
+    kind: 'noise',
+    title: 'One-step colour jitter',
+    change: 'brightness(1.004): about one 8-bit step per channel',
+    css: '{target}{filter:brightness(1.004)}',
+  },
 ];
 
 /**
@@ -80,11 +183,17 @@ function loadScenarios(flags, P) {
   for (const s of all)
     for (const [k, v] of Object.entries(s.tokens ?? {}))
       if (typeof v === 'string' && v.startsWith('fn:'))
-        throw new Error(`scenario "${s.name}": token "${k}" uses "fn:", which is no longer run as code; use a literal, { "scale": n } or { "mix": colour, "amount": pct }`);
+        throw new Error(
+          `scenario "${s.name}": token "${k}" uses "fn:", which is no longer run as code; use a literal, { "scale": n } or { "mix": colour, "amount": pct }`
+        );
   if (Object.keys(P.modes).length < 2) all = all.filter((s) => !s.modeSwap);
   const target = P.config.capture.target ?? '#storybook-root';
   const fill = (s) => (s ? s.replaceAll('{target}', target) : s);
-  return { suiteName, suite, all: all.map((s) => ({ ...s, css: fill(s.css), change: fill(s.change) })) };
+  return {
+    suiteName,
+    suite,
+    all: all.map((s) => ({ ...s, css: fill(s.css), change: fill(s.change) })),
+  };
 }
 
 /** The mode an entry is swapped to: the next one in the project's mode list. */
@@ -103,8 +212,11 @@ async function main() {
   const scenarios = all.filter((s) => !only || s.name === 'control' || only.has(s.name));
   const tag = suiteName ? `scenarios-${suiteName}` : 'scenarios';
   const concurrency = Number(flags.concurrency) || 6;
-  const entries = pickEntries(run, flags, suite ? new RegExp(suite.stories) : null).filter((e) => existsSync(resolve(P.workspaceRoot, e.sig)));
-  if (!entries.length) throw new Error('no entries with a baseline: run `pxsig check` and approve baselines first');
+  const entries = pickEntries(run, flags, suite ? new RegExp(suite.stories) : null).filter((e) =>
+    existsSync(resolve(P.workspaceRoot, e.sig))
+  );
+  if (!entries.length)
+    throw new Error('no entries with a baseline: run `pxsig check` and approve baselines first');
 
   const scratch = freshDir(P, tag);
   const manifest = scratchManifest(P, join(scratch, 'manifest.json'), run, entries);
@@ -112,7 +224,9 @@ async function main() {
   baselineImages(P, entries, baseDir);
   const renderRoot = assertScratch(P, join(P.store.root, 'renders', tag));
   const diffRoot = assertScratch(P, join(P.store.diffs, tag));
-  log(`${P.name}: ${scenarios.length} scenarios × ${entries.length} entries · concurrency ${concurrency}${flags.rescore ? ' · re-scoring saved renders' : ''}`);
+  log(
+    `${P.name}: ${scenarios.length} scenarios × ${entries.length} entries · concurrency ${concurrency}${flags.rescore ? ' · re-scoring saved renders' : ''}`
+  );
 
   const browser = flags.rescore ? null : browserPool(P);
   const eng = engine(P);
@@ -125,28 +239,76 @@ async function main() {
       if (flags.rescore) {
         results = entries.map((e) => {
           const png = join(dir, `${e.id}.png`);
-          return existsSync(png) ? { id: e.id, png, ms: 0 } : { id: e.id, png: null, ms: 0, error: 'no saved render' };
+          return existsSync(png)
+            ? { id: e.id, png, ms: 0 }
+            : { id: e.id, png: null, ms: 0, error: 'no saved render' };
         });
       } else {
         rmSync(dir, { recursive: true, force: true });
         mkdirSync(dir, { recursive: true });
-        const list = entries.map((e) => (sc.modeSwap ? swapMode(P, e) : { ...e, globals: sc.globals ?? e.globals, colorScheme: sc.colorScheme ?? e.colorScheme }));
-        ({ results, wallMs } = await renderStories(browser, list, dir, { ...run, concurrency, css: sc.css ?? '', tokens: sc.tokens ?? null, a11y: false, project: P }));
+        const list = entries.map((e) =>
+          sc.modeSwap
+            ? swapMode(P, e)
+            : {
+                ...e,
+                globals: sc.globals ?? e.globals,
+                colorScheme: sc.colorScheme ?? e.colorScheme,
+              }
+        );
+        ({ results, wallMs } = await renderStories(browser, list, dir, {
+          ...run,
+          concurrency,
+          css: sc.css ?? '',
+          tokens: sc.tokens ?? null,
+          a11y: false,
+          project: P,
+        }));
         const sb = results.filter((r) => r.error?.startsWith(STORYBOOK_ERROR));
-        if (sb.length === results.length) throw new Error(`every render hit Storybook's error page (${sb[0].error}): is Storybook running at ${run.baseUrl}?`);
+        if (sb.length === results.length)
+          throw new Error(
+            `every render hit Storybook's error page (${sb[0].error}): is Storybook running at ${run.baseUrl}?`
+          );
         trimDir(P, run, dir);
       }
 
       // Rust: the shipped gate (with artifacts for the inspector), then the whole-image signature alone.
       const diffDir = join(diffRoot, sc.name);
       rmSync(diffDir, { recursive: true, force: true });
-      const shipped = rust(P, ['check', '--manifest', manifest, '--png-dir', dir, '--root', P.workspaceRoot, '--json', '--out-dir', diffDir, '--artifacts', 'all']).out;
-      const whole = rust(P, ['check', '--manifest', manifest, '--png-dir', dir, '--root', P.workspaceRoot, '--json', '--artifacts', 'none', '--no-detail']).out;
+      const shipped = rust(P, [
+        'check',
+        '--manifest',
+        manifest,
+        '--png-dir',
+        dir,
+        '--root',
+        P.workspaceRoot,
+        '--json',
+        '--out-dir',
+        diffDir,
+        '--artifacts',
+        'all',
+      ]).out;
+      const whole = rust(P, [
+        'check',
+        '--manifest',
+        manifest,
+        '--png-dir',
+        dir,
+        '--root',
+        P.workspaceRoot,
+        '--json',
+        '--artifacts',
+        'none',
+        '--no-detail',
+      ]).out;
       const byId = new Map(shipped.results.map((x) => [x.id, x]));
       const wholeById = new Map(whole.results.map((x) => [x.id, x]));
 
       // Changed pixels: against the control render (the control: against the baseline image).
-      const ref = (id) => (sc.name === 'control' ? join(baseDir, `${id}.png`) : join(renderRoot, 'control', `${id}.png`));
+      const ref = (id) =>
+        sc.name === 'control'
+          ? join(baseDir, `${id}.png`)
+          : join(renderRoot, 'control', `${id}.png`);
       const changed = await pool(results, 16, async (r) => {
         if (!r.png || !existsSync(ref(r.id))) return null;
         const d = await eng.call('diff', { a: ref(r.id), b: r.png, tolerance: 0 });
@@ -187,7 +349,9 @@ async function main() {
         sc.kind === 'regression'
           ? `recall ${summary.detected}/${summary.changed} (${pct(summary.detected, summary.changed)}) · whole-image only ${summary.detectedWholeImage}/${summary.changed}`
           : `false positives ${summary.falsePositives}/${summary.stories} · changed ${summary.changed}`;
-      log(`  ${sc.kind === 'regression' ? 'break' : 'noise'} ${sc.name.padEnd(16)} ${line}${summary.errors ? ` · ${summary.errors} errors` : ''} · render ${(wallMs / 1000).toFixed(1)} s`);
+      log(
+        `  ${sc.kind === 'regression' ? 'break' : 'noise'} ${sc.name.padEnd(16)} ${line}${summary.errors ? ` · ${summary.errors} errors` : ''} · render ${(wallMs / 1000).toFixed(1)} s`
+      );
     }
   } finally {
     eng.close();
@@ -196,12 +360,25 @@ async function main() {
 
   // --only re-runs a subset: keep the other scenarios from the previous report.
   const prev = only ? readReport(P, tag) : null;
-  const scenariosOut = prev ? all.map((s) => out.find((o) => o.name === s.name) ?? prev.scenarios.find((p) => p.name === s.name)).filter(Boolean) : out;
+  const scenariosOut = prev
+    ? all
+        .map(
+          (s) => out.find((o) => o.name === s.name) ?? prev.scenarios.find((p) => p.name === s.name)
+        )
+        .filter(Boolean)
+    : out;
   const report = {
     generatedAt: new Date().toISOString(),
     project: P.name,
-    gate: { ...run.gate, grid: run.grid, minCellPx: run.minCellPx, detail: run.detail ? run.gate?.detail ?? true : false },
-    suite: suiteName ? { name: suiteName, title: suite.title ?? suiteName, pattern: String(suite.stories) } : null,
+    gate: {
+      ...run.gate,
+      grid: run.grid,
+      minCellPx: run.minCellPx,
+      detail: run.detail ? (run.gate?.detail ?? true) : false,
+    },
+    suite: suiteName
+      ? { name: suiteName, title: suite.title ?? suiteName, pattern: String(suite.stories) }
+      : null,
     sample: { every: suite ? 1 : Number(flags.every) || 1, stories: entries.length, concurrency },
     renders: relative(P.workspaceRoot, renderRoot),
     scenarios: scenariosOut,

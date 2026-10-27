@@ -12,17 +12,46 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { tokenFile } from '../src/lib/guard.mjs';
-import { machineDir, readSettings, settingsPath, windowsTokenDir, writeSettings } from '../src/lib/machine.mjs';
+import {
+  machineDir,
+  readSettings,
+  settingsPath,
+  windowsTokenDir,
+  writeSettings,
+} from '../src/lib/machine.mjs';
 import { fixture } from './fixture.mjs';
 
 const tmp = () => mkdtempSync(join(tmpdir(), 'pxsig-machine-'));
 
 test('one folder per machine, never the roaming profile', () => {
-  assert.equal(machineDir({ platform: 'darwin', home: '/Users/a', env: {} }), join('/Users/a', 'Library', 'Application Support', 'pxsig'));
-  assert.equal(machineDir({ platform: 'linux', home: '/home/a', env: {} }), join('/home/a', '.config', 'pxsig'));
-  assert.equal(machineDir({ platform: 'linux', home: '/home/a', env: { XDG_CONFIG_HOME: '/cfg' } }), join('/cfg', 'pxsig'));
-  assert.equal(machineDir({ platform: 'win32', home: 'C:\\Users\\a', env: { LOCALAPPDATA: 'C:\\Users\\a\\AppData\\Local', APPDATA: 'C:\\Users\\a\\AppData\\Roaming' } }), join('C:\\Users\\a\\AppData\\Local', 'pxsig'));
-  assert.equal(machineDir({ platform: 'win32', home: 'C:\\Users\\a', env: {} }), join('C:\\Users\\a', 'AppData', 'Local', 'pxsig'), 'without LOCALAPPDATA: its default place');
+  assert.equal(
+    machineDir({ platform: 'darwin', home: '/Users/a', env: {} }),
+    join('/Users/a', 'Library', 'Application Support', 'pxsig')
+  );
+  assert.equal(
+    machineDir({ platform: 'linux', home: '/home/a', env: {} }),
+    join('/home/a', '.config', 'pxsig')
+  );
+  assert.equal(
+    machineDir({ platform: 'linux', home: '/home/a', env: { XDG_CONFIG_HOME: '/cfg' } }),
+    join('/cfg', 'pxsig')
+  );
+  assert.equal(
+    machineDir({
+      platform: 'win32',
+      home: 'C:\\Users\\a',
+      env: {
+        LOCALAPPDATA: 'C:\\Users\\a\\AppData\\Local',
+        APPDATA: 'C:\\Users\\a\\AppData\\Roaming',
+      },
+    }),
+    join('C:\\Users\\a\\AppData\\Local', 'pxsig')
+  );
+  assert.equal(
+    machineDir({ platform: 'win32', home: 'C:\\Users\\a', env: {} }),
+    join('C:\\Users\\a', 'AppData', 'Local', 'pxsig'),
+    'without LOCALAPPDATA: its default place'
+  );
 });
 
 test('settings.json: missing means not set up; a write replaces it whole', () => {
@@ -39,7 +68,10 @@ test('an unreadable settings.json reads as not set up', () => {
   const opts = { platform: 'linux', env: { XDG_CONFIG_HOME: tmp() } };
   writeSettings({}, opts);
   const p = settingsPath(opts);
-  spawnSync(process.execPath, ['-e', `require('fs').writeFileSync(${JSON.stringify(p)}, '{ broken')`]);
+  spawnSync(process.execPath, [
+    '-e',
+    `require('fs').writeFileSync(${JSON.stringify(p)}, '{ broken')`,
+  ]);
   assert.equal(readSettings(opts).exists, false);
 });
 
@@ -49,16 +81,34 @@ test('Windows token files: in the profile, one folder per workspace, case-insens
   assert.notEqual(windowsTokenDir('C:\\Repo\\a', opts), windowsTokenDir('C:\\Repo\\b', opts));
   assert.ok(windowsTokenDir('C:\\Repo\\a', opts).startsWith(join('C:\\L', 'pxsig', 'tokens')));
   const root = tmp();
-  assert.equal(dirname(tokenFile(root, 'http://127.0.0.1:6070', 'cli', 'darwin')), join(root, 'node_modules', '.cache', 'pxsig'), 'macOS and Linux: beside server.json, as before');
-  assert.equal(dirname(tokenFile(root, 'http://127.0.0.1:6070', 'mcp', 'win32')), windowsTokenDir(root));
+  assert.equal(
+    dirname(tokenFile(root, 'http://127.0.0.1:6070', 'cli', 'darwin')),
+    join(root, 'node_modules', '.cache', 'pxsig'),
+    'macOS and Linux: beside server.json, as before'
+  );
+  assert.equal(
+    dirname(tokenFile(root, 'http://127.0.0.1:6070', 'mcp', 'win32')),
+    windowsTokenDir(root)
+  );
   assert.match(tokenFile(root, 'http://127.0.0.1:6071', 'mcp', 'win32'), /serve-6071\.mcp\.token$/);
 });
 
-test('pxsig doctor names this machine\'s settings and token folder', () => {
+test("pxsig doctor names this machine's settings and token folder", () => {
   const f = fixture();
   const cli = join(dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'pxsig.mjs');
   const cfg = tmp();
-  const r = spawnSync(process.execPath, [cli, 'doctor', '--offline', '--json'], { cwd: f.repo, encoding: 'utf8', env: { ...process.env, PXSIG_WORKSPACE: '', PXSIG_NO_DELEGATE: '1', XDG_CONFIG_HOME: cfg, LOCALAPPDATA: cfg, HOME: cfg } });
+  const r = spawnSync(process.execPath, [cli, 'doctor', '--offline', '--json'], {
+    cwd: f.repo,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      PXSIG_WORKSPACE: '',
+      PXSIG_NO_DELEGATE: '1',
+      XDG_CONFIG_HOME: cfg,
+      LOCALAPPDATA: cfg,
+      HOME: cfg,
+    },
+  });
   const out = JSON.parse(r.stdout);
   assert.equal(out.machine.setUp, false);
   assert.ok(out.machine.settings.endsWith('settings.json'));

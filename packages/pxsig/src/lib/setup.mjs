@@ -14,7 +14,15 @@
  * Nothing here approves anything or changes a signature: migration packs the same signature bytes.
  */
 import { spawnSync } from './spawn.mjs';
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { sha256 } from './approvals.mjs';
 import { componentOf, loadStoryIndex, resolveContext, writeJsonAtomic } from './integrity.mjs';
@@ -58,26 +66,54 @@ export function ensureGitattributes(root) {
   const text = existsSync(p) ? readFileSync(p, 'utf8') : '';
   if (text.split(/\r?\n/).some((l) => /^\s*\*\.psig\s/.test(l))) return null;
   const sep = text && !text.endsWith('\n') ? '\n' : '';
-  appendFileSync(p, `${sep}# pxsig baselines: binary; \`git config diff.psig.textconv "npx pxsig cat"\` shows their header in diffs\n${PSIG_ATTRIBUTE}\n`);
+  appendFileSync(
+    p,
+    `${sep}# pxsig baselines: binary; \`git config diff.psig.textconv "npx pxsig cat"\` shows their header in diffs\n${PSIG_ATTRIBUTE}\n`
+  );
   return p;
 }
 
 /** The layout a project resolves to, from its config and the workspace defaults. */
-const layoutOf = (cfg, workspaceRoot) => cfg.store?.layout ?? (workspaceRoot ? readJson(join(workspaceRoot, WORKSPACE_FILE), {})?.defaults?.store?.layout : null) ?? 'package';
+const layoutOf = (cfg, workspaceRoot) =>
+  cfg.store?.layout ??
+  (workspaceRoot
+    ? readJson(join(workspaceRoot, WORKSPACE_FILE), {})?.defaults?.store?.layout
+    : null) ??
+  'package';
 
 /**
  * Set a package up: its config (unless one exists), its store and, in a monorepo, its entry in
  * the workspace file. A colocated project also gets `*.psig binary diff=psig` in the root
  * `.gitattributes` (the workspace's, else its own). Returns what it wrote.
  */
-export function initProject({ dir, name = null, label = null, srcRoot = 'src', storybookUrl = null, storybookConfigDir = null, workspaceRoot = null, layout = null }) {
+export function initProject({
+  dir,
+  name = null,
+  label = null,
+  srcRoot = 'src',
+  storybookUrl = null,
+  storybookConfigDir = null,
+  workspaceRoot = null,
+  layout = null,
+}) {
   const wrote = [];
   const configPath = join(dir, CONFIG_FILE);
-  if (layout && !['package', 'colocated'].includes(layout)) throw new SetupError('--layout must be "package" or "colocated"');
-  if (label != null && (!label.trim() || label.trim().length > 60)) throw new SetupError('--label must be text of 1 to 60 characters');
+  if (layout && !['package', 'colocated'].includes(layout))
+    throw new SetupError('--layout must be "package" or "colocated"');
+  if (label != null && (!label.trim() || label.trim().length > 60))
+    throw new SetupError('--label must be text of 1 to 60 characters');
   if (!existsSync(configPath)) {
-    const cfg = { version: 1, ...(name ? { name } : {}), ...(label?.trim() ? { label: label.trim() } : {}), srcRoot };
-    if (storybookUrl || storybookConfigDir) cfg.storybook = { ...(storybookUrl ? { url: storybookUrl } : {}), ...(storybookConfigDir ? { configDir: storybookConfigDir } : {}) };
+    const cfg = {
+      version: 1,
+      ...(name ? { name } : {}),
+      ...(label?.trim() ? { label: label.trim() } : {}),
+      srcRoot,
+    };
+    if (storybookUrl || storybookConfigDir)
+      cfg.storybook = {
+        ...(storybookUrl ? { url: storybookUrl } : {}),
+        ...(storybookConfigDir ? { configDir: storybookConfigDir } : {}),
+      };
     if (layout) cfg.store = { layout };
     writeJson(configPath, cfg, { pretty: true });
     wrote.push(configPath);
@@ -85,7 +121,10 @@ export function initProject({ dir, name = null, label = null, srcRoot = 'src', s
   const cfg = readJson(configPath, {});
   const store = resolve(dir, cfg.store?.dir ?? '.pxsig');
   mkdirSync(store, { recursive: true });
-  for (const [file, text] of [['.gitignore', STORE_GITIGNORE], ['.gitattributes', STORE_GITATTRIBUTES]]) {
+  for (const [file, text] of [
+    ['.gitignore', STORE_GITIGNORE],
+    ['.gitattributes', STORE_GITATTRIBUTES],
+  ]) {
     const p = join(store, file);
     if (!existsSync(p)) {
       writeFileSync(p, text);
@@ -98,7 +137,8 @@ export function initProject({ dir, name = null, label = null, srcRoot = 'src', s
     const rel = toPosix(relative(workspaceRoot, dir));
     if (!Object.values(ws.projects ?? {}).includes(rel)) {
       const key = cfg.name ?? name ?? basename(dir);
-      if (ws.projects?.[key]) throw new SetupError(`${wsFile} already has a project named "${key}": pass --name`);
+      if (ws.projects?.[key])
+        throw new SetupError(`${wsFile} already has a project named "${key}": pass --name`);
       ws.projects = { ...ws.projects, [key]: rel };
       writeJson(wsFile, ws, { pretty: true });
       wrote.push(wsFile);
@@ -115,10 +155,14 @@ export function initProject({ dir, name = null, label = null, srcRoot = 'src', s
 function suiteOptions(P, suite) {
   if (!suite) return {};
   const s = P.config.suites?.[suite];
-  if (!s) throw new SetupError(`project "${P.name}" has no suite "${suite}" (suites: ${Object.keys(P.config.suites ?? {}).join(', ') || 'none'})`);
+  if (!s)
+    throw new SetupError(
+      `project "${P.name}" has no suite "${suite}" (suites: ${Object.keys(P.config.suites ?? {}).join(', ') || 'none'})`
+    );
   const modes = s.modes ?? s.addModes ?? [];
   const unknown = modes.filter((m) => !P.modes[m]);
-  if (unknown.length) throw new SetupError(`suite "${suite}" names unknown modes: ${unknown.join(', ')}`);
+  if (unknown.length)
+    throw new SetupError(`suite "${suite}" names unknown modes: ${unknown.join(', ')}`);
   return { addModes: modes, modes };
 }
 
@@ -129,20 +173,40 @@ function suiteOptions(P, suite) {
 export async function buildManifest(P, { suite = null, write = true } = {}) {
   const ctx = resolveContext(P, { manifestPath: P.manifestPath(suite) });
   const idx = await loadStoryIndex(ctx);
-  if (idx.source !== 'storybook') throw new SetupError(`Storybook is needed to read each story's parameters: ${idx.storybook.error} (${idx.storybook.url})`);
+  if (idx.source !== 'storybook')
+    throw new SetupError(
+      `Storybook is needed to read each story's parameters: ${idx.storybook.error} (${idx.storybook.url})`
+    );
   const nonVisual = new Set(P.config.nonVisual ?? []);
   const stories = idx.stories.filter((s) => {
     const c = componentOf(ctx, s.importPath);
     return c != null && !nonVisual.has(c.split('/')[0]);
   });
-  if (!stories.length) throw new SetupError(`no stories in ${toPosix(relative(P.workspaceRoot, P.srcRoot))} in the Storybook index (check srcRoot and storybook.configDir)`);
-  const params = await harvestParameters(P, P.storybook.url, stories.map((s) => s.id));
+  if (!stories.length)
+    throw new SetupError(
+      `no stories in ${toPosix(relative(P.workspaceRoot, P.srcRoot))} in the Storybook index (check srcRoot and storybook.configDir)`
+    );
+  const params = await harvestParameters(
+    P,
+    P.storybook.url,
+    stories.map((s) => s.id)
+  );
   const before = readJson(ctx.manifestPath, { stories: [] });
   const known = new Map((before.stories ?? []).map((e) => [e.id, e]));
-  const list = stories.map((s) => ({ id: s.id, importPath: s.importPath, sigFor: (key) => known.get(key)?.sig ?? P.sigFor(key, s.importPath) }));
+  const list = stories.map((s) => ({
+    id: s.id,
+    importPath: s.importPath,
+    sigFor: (key) => known.get(key)?.sig ?? P.sigFor(key, s.importPath),
+  }));
   const { entries, skipped } = expandEntries(entryConfig(P), list, params, suiteOptions(P, suite));
   const ids = new Set(entries.map((e) => e.id));
-  const manifest = { version: 2, project: P.name, ...(suite ? { suite } : {}), stories: entries, skipped };
+  const manifest = {
+    version: 2,
+    project: P.name,
+    ...(suite ? { suite } : {}),
+    stories: entries,
+    skipped,
+  };
   if (write) writeJsonAtomic(ctx.manifestPath, manifest, { pretty: true });
   return {
     manifest,
@@ -180,16 +244,41 @@ export function describeConfig(P) {
 /** The pre-0.2 layout's manifests (main and per suite), under the legacy folder's `js/`. */
 function legacyManifests(from) {
   const dir = join(from, 'js');
-  if (!existsSync(join(dir, 'pxsig.manifest.json'))) throw new SetupError(`no legacy manifest at ${join(dir, 'pxsig.manifest.json')}`);
+  if (!existsSync(join(dir, 'pxsig.manifest.json')))
+    throw new SetupError(`no legacy manifest at ${join(dir, 'pxsig.manifest.json')}`);
   return readdirSync(dir)
     .filter((n) => /^pxsig\.manifest(\.[a-z0-9-]+)?\.json$/.test(n))
     .sort()
-    .map((n) => ({ suite: n.match(/^pxsig\.manifest\.([a-z0-9-]+)\.json$/)?.[1] ?? null, path: join(dir, n) }));
+    .map((n) => ({
+      suite: n.match(/^pxsig\.manifest\.([a-z0-9-]+)\.json$/)?.[1] ?? null,
+      path: join(dir, n),
+    }));
 }
 
 /** Per-entry fields a manifest keeps; the settings the old manifest repeated come from config now. */
-const ENTRY_KEYS = ['id', 'story', 'mode', 'state', 'sig', 'importPath', 'globals', 'colorScheme', 'viewport', 'browser', 'grid', 'gate', 'detail', 'ignore', 'interaction', 'delay', 'target', 'play', 'a11y'];
-const pick = (e) => Object.fromEntries(ENTRY_KEYS.filter((k) => e[k] !== undefined).map((k) => [k, e[k]]));
+const ENTRY_KEYS = [
+  'id',
+  'story',
+  'mode',
+  'state',
+  'sig',
+  'importPath',
+  'globals',
+  'colorScheme',
+  'viewport',
+  'browser',
+  'grid',
+  'gate',
+  'detail',
+  'ignore',
+  'interaction',
+  'delay',
+  'target',
+  'play',
+  'a11y',
+];
+const pick = (e) =>
+  Object.fromEntries(ENTRY_KEYS.filter((k) => e[k] !== undefined).map((k) => [k, e[k]]));
 
 /**
  * Plan (and with `apply`, run) the move of a legacy store into the project's store. The legacy
@@ -213,14 +302,32 @@ export function migrateLegacy(P, { from, apply = false, verify = true, log = () 
       const sigOld = resolve(P.workspaceRoot, e.sig);
       const sigNew = P.sigFor(e.id, e.importPath);
       const out = resolve(P.workspaceRoot, sigNew);
-      if (outOf.has(out) && outOf.get(out) !== sigOld) plan.problems.push(`${e.id}: two baselines map to ${sigNew}`);
+      if (outOf.has(out) && outOf.get(out) !== sigOld)
+        plan.problems.push(`${e.id}: two baselines map to ${sigNew}`);
       outOf.set(out, sigOld);
       stories.push({ ...pick(e), sig: sigNew });
       if (!existsSync(sigOld)) continue; // unbaselined: nothing to pack
       const img = join(from, '.renders', 'base', `${e.id}.png`);
-      plan.pack.push({ sig: sigOld, out, image: m.suite ? null : existsSync(img) ? img : null, entry: { id: e.id, story: e.story ?? null, mode: e.mode ?? null, state: e.state ?? null } });
+      plan.pack.push({
+        sig: sigOld,
+        out,
+        image: m.suite ? null : existsSync(img) ? img : null,
+        entry: { id: e.id, story: e.story ?? null, mode: e.mode ?? null, state: e.state ?? null },
+      });
     }
-    plan.manifests.push({ suite: m.suite, from: m.path, to: target, entries: stories.length, manifest: { version: 2, project: P.name, ...(m.suite ? { suite: m.suite } : {}), stories, skipped: old.skipped ?? [] } });
+    plan.manifests.push({
+      suite: m.suite,
+      from: m.path,
+      to: target,
+      entries: stories.length,
+      manifest: {
+        version: 2,
+        project: P.name,
+        ...(m.suite ? { suite: m.suite } : {}),
+        stories,
+        skipped: old.skipped ?? [],
+      },
+    });
   }
   // Matrix entries share no images with the main manifest: a suite entry gets its image only if
   // the legacy store had one under its own id.
@@ -235,8 +342,14 @@ export function migrateLegacy(P, { from, apply = false, verify = true, log = () 
     ['.reports/history.ndjson', join(P.store.reports, 'history.ndjson')],
     ['.reports/check.json', join(P.store.reports, 'check.json')],
   ];
-  for (const m of manifests) if (m.suite) files.push([`.reports/check-${m.suite}.json`, join(P.store.reports, `check-${m.suite}.json`)]);
-  for (const [src, dest] of files) if (existsSync(join(from, src))) plan.copies.push({ from: join(from, src), to: dest });
+  for (const m of manifests)
+    if (m.suite)
+      files.push([
+        `.reports/check-${m.suite}.json`,
+        join(P.store.reports, `check-${m.suite}.json`),
+      ]);
+  for (const [src, dest] of files)
+    if (existsSync(join(from, src))) plan.copies.push({ from: join(from, src), to: dest });
   const approvalsFrom = join(from, '.baselines', 'approvals.ndjson');
   plan.summary = {
     manifests: plan.manifests.map((m) => `${basename(m.to)}: ${m.entries} entries`),
@@ -249,12 +362,18 @@ export function migrateLegacy(P, { from, apply = false, verify = true, log = () 
   if (!apply || plan.problems.length) return plan;
 
   const existing = plan.pack.filter((x) => existsSync(x.out));
-  if (existing.length) throw new SetupError(`${existing.length} baselines already exist in ${P.store.root} (first: ${existing[0].out}); migrate into an empty store`);
+  if (existing.length)
+    throw new SetupError(
+      `${existing.length} baselines already exist in ${P.store.root} (first: ${existing[0].out}); migrate into an empty store`
+    );
   mkdirSync(P.store.reports, { recursive: true });
   const planFile = join(P.store.reports, 'migrate-plan.json');
   writeFileSync(planFile, JSON.stringify(plan.pack));
   log(`packing ${plan.pack.length} baselines`);
-  const r = spawnSync(P.rustBin, ['pack', '--plan', planFile, '--json'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const r = spawnSync(P.rustBin, ['pack', '--plan', planFile, '--json'], {
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  });
   if (r.status !== 0) throw new SetupError(`pxsig pack failed: ${r.stderr || r.stdout}`);
   plan.packed = JSON.parse(r.stdout).summary;
   for (const m of plan.manifests) writeJsonAtomic(m.to, m.manifest, { pretty: true });
@@ -266,9 +385,26 @@ export function migrateLegacy(P, { from, apply = false, verify = true, log = () 
   // hash, so `pxsig approve verify` starts clean on the new store.
   if (existsSync(approvalsFrom)) copyFileSync(approvalsFrom, P.store.approvals);
   const at = new Date().toISOString();
-  const lines = plan.pack.map((x) => JSON.stringify({ at, id: x.entry.id, by: 'pxsig migrate', via: 'migrate', batch: `migrate-${at.replace(/[:.]/g, '-')}`, reason: `moved from ${toPosix(relative(P.workspaceRoot, x.sig))}`, kind: null, gitHead: null, before: sha256(x.sig), after: sha256(x.out) }));
+  const lines = plan.pack.map((x) =>
+    JSON.stringify({
+      at,
+      id: x.entry.id,
+      by: 'pxsig migrate',
+      via: 'migrate',
+      batch: `migrate-${at.replace(/[:.]/g, '-')}`,
+      reason: `moved from ${toPosix(relative(P.workspaceRoot, x.sig))}`,
+      kind: null,
+      gitHead: null,
+      before: sha256(x.sig),
+      after: sha256(x.out),
+    })
+  );
   for (const l of lines) appendLine(P.store.approvals, l);
-  for (const [file, text] of [['.gitignore', STORE_GITIGNORE], ['.gitattributes', STORE_GITATTRIBUTES]]) if (!existsSync(join(P.store.root, file))) writeFileSync(join(P.store.root, file), text);
+  for (const [file, text] of [
+    ['.gitignore', STORE_GITIGNORE],
+    ['.gitattributes', STORE_GITATTRIBUTES],
+  ])
+    if (!existsSync(join(P.store.root, file))) writeFileSync(join(P.store.root, file), text);
   if (P.store.layout === 'colocated') plan.gitattributes = ensureGitattributes(P.workspaceRoot);
   if (verify) plan.verify = verifyMigration(P, plan, from, log);
   return plan;
@@ -290,16 +426,41 @@ export function verifyMigration(P, plan, from, log = () => {}) {
     writeFileSync(oldRun, JSON.stringify(runManifest(P, oldManifest)));
     writeFileSync(newRun, JSON.stringify(runManifest(P, m.manifest)));
     const check = (manifest, dir) => {
-      const r = spawnSync(P.rustBin, ['check', '--manifest', manifest, '--png-dir', renders, '--root', P.workspaceRoot, '--json', '--artifacts', 'none'], { encoding: 'utf8', maxBuffer: 512 * 1024 * 1024 });
-      if (r.status === 2) throw new SetupError(`verification check failed: ${r.stderr || r.stdout}`);
+      const r = spawnSync(
+        P.rustBin,
+        [
+          'check',
+          '--manifest',
+          manifest,
+          '--png-dir',
+          renders,
+          '--root',
+          P.workspaceRoot,
+          '--json',
+          '--artifacts',
+          'none',
+        ],
+        { encoding: 'utf8', maxBuffer: 512 * 1024 * 1024 }
+      );
+      if (r.status === 2)
+        throw new SetupError(`verification check failed: ${r.stderr || r.stdout}`);
       return new Map(JSON.parse(r.stdout).results.map((x) => [x.id, x]));
     };
-    log(`verifying ${m.entries} entries${m.suite ? ` (suite ${m.suite})` : ''} against ${toPosix(relative(P.workspaceRoot, renders))}`);
+    log(
+      `verifying ${m.entries} entries${m.suite ? ` (suite ${m.suite})` : ''} against ${toPosix(relative(P.workspaceRoot, renders))}`
+    );
     const a = check(oldRun, join(scratch, 'old'));
     const b = check(newRun, join(scratch, 'new'));
     const key = (x) => JSON.stringify([x?.pass, x?.metrics, x?.detail, x?.error ? 'error' : null]);
     const differ = [...a.keys()].filter((id) => key(a.get(id)) !== key(b.get(id)));
-    out.push({ suite: m.suite, entries: a.size, passOld: [...a.values()].filter((x) => x.pass === true).length, passNew: [...b.values()].filter((x) => x.pass === true).length, differ: differ.length, sample: differ.slice(0, 10) });
+    out.push({
+      suite: m.suite,
+      entries: a.size,
+      passOld: [...a.values()].filter((x) => x.pass === true).length,
+      passNew: [...b.values()].filter((x) => x.pass === true).length,
+      differ: differ.length,
+      sample: differ.slice(0, 10),
+    });
   }
   return out;
 }

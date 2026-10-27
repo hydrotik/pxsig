@@ -48,16 +48,16 @@ satisfied, then delete it yourself.
 
 ## What moves where
 
-| Old location | New location | How |
-| --- | --- | --- |
-| `.baselines/**/<id>.pxsig.json` plus `.renders/base/<id>.png` | `<store>/baselines/<component>/<id>.psig` (or `__pxsig__/` with the colocated layout) | Packed by the engine (`pxsig pack`): the record and the signature bytes unchanged, the PNG bytes unchanged. Each file is read back and must equal its sources. |
-| `.baselines/**/<id>.pxsig.json` with no image | `<store>/baselines/<component>/<id>.psig` | Packed with the signature only. An approval adds an image later. |
-| `js/pxsig.manifest.json` | `<store>/manifest.json` | Each entry's `sig` rewritten to the new path. Settings the old manifest repeated are dropped; they come from the config now. |
-| `js/pxsig.manifest.<suite>.json` | `<store>/manifest.<suite>.json` | The same, per suite. |
-| `.baselines/approvals.ndjson` | `<store>/approvals.ndjson` | Copied, then one `migrated` line appended per baseline (below). |
-| `.baselines/a11y.json` | `<store>/a11y.json` | Copied. |
-| `.reports/review.json`, `history.ndjson`, `check.json`, `check-<suite>.json` | `<store>/reports/` | Copied, so pending reviews and run history survive. |
-| `.renders/latest`, caches, diff output, approval snapshots | not migrated | The next check regenerates them. |
+| Old location                                                                 | New location                                                                          | How                                                                                                                                                            |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.baselines/**/<id>.pxsig.json` plus `.renders/base/<id>.png`                | `<store>/baselines/<component>/<id>.psig` (or `__pxsig__/` with the colocated layout) | Packed by the engine (`pxsig pack`): the record and the signature bytes unchanged, the PNG bytes unchanged. Each file is read back and must equal its sources. |
+| `.baselines/**/<id>.pxsig.json` with no image                                | `<store>/baselines/<component>/<id>.psig`                                             | Packed with the signature only. An approval adds an image later.                                                                                               |
+| `js/pxsig.manifest.json`                                                     | `<store>/manifest.json`                                                               | Each entry's `sig` rewritten to the new path. Settings the old manifest repeated are dropped; they come from the config now.                                   |
+| `js/pxsig.manifest.<suite>.json`                                             | `<store>/manifest.<suite>.json`                                                       | The same, per suite.                                                                                                                                           |
+| `.baselines/approvals.ndjson`                                                | `<store>/approvals.ndjson`                                                            | Copied, then one `migrated` line appended per baseline (below).                                                                                                |
+| `.baselines/a11y.json`                                                       | `<store>/a11y.json`                                                                   | Copied.                                                                                                                                                        |
+| `.reports/review.json`, `history.ndjson`, `check.json`, `check-<suite>.json` | `<store>/reports/`                                                                    | Copied, so pending reviews and run history survive.                                                                                                            |
+| `.renders/latest`, caches, diff output, approval snapshots                   | not migrated                                                                          | The next check regenerates them.                                                                                                                               |
 
 Entries without a signature in the old folder are listed in the new manifest with no baseline; they
 show as new.
@@ -71,8 +71,18 @@ any of the target baselines: migrate into an empty store.
 The old trail is copied as it is. Then pxsig appends one line per migrated baseline:
 
 ```json
-{ "at": "…", "id": "button--primary", "by": "pxsig migrate", "via": "migrate", "batch": "migrate-…",
-  "reason": "moved from <old path>", "kind": null, "gitHead": null, "before": "<sha256 of the old file>", "after": "<sha256 of the new .psig>" }
+{
+  "at": "…",
+  "id": "button--primary",
+  "by": "pxsig migrate",
+  "via": "migrate",
+  "batch": "migrate-…",
+  "reason": "moved from <old path>",
+  "kind": null,
+  "gitHead": null,
+  "before": "<sha256 of the old file>",
+  "after": "<sha256 of the new .psig>"
+}
 ```
 
 `pxsig approve verify` then starts clean on the new store: every baseline's bytes match its last

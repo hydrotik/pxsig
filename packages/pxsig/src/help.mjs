@@ -19,7 +19,11 @@ export function helpSource() {
   const { settings } = json('settings.json');
   const topics = {};
   const td = join(dir, 'topics');
-  if (existsSync(td)) for (const f of readdirSync(td).filter((n) => n.endsWith('.md')).sort()) topics[f.slice(0, -3)] = readFileSync(join(td, f), 'utf8').replace(/\r\n/g, '\n');
+  if (existsSync(td))
+    for (const f of readdirSync(td)
+      .filter((n) => n.endsWith('.md'))
+      .sort())
+      topics[f.slice(0, -3)] = readFileSync(join(td, f), 'utf8').replace(/\r\n/g, '\n');
   return (cache = { global, commands, settings, topics });
 }
 
@@ -39,14 +43,25 @@ function distance(a, b) {
   const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
   for (let j = 1; j <= b.length; j++) d[0][j] = j;
   for (let i = 1; i <= a.length; i++)
-    for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    for (let j = 1; j <= b.length; j++)
+      d[i][j] = Math.min(
+        d[i - 1][j] + 1,
+        d[i][j - 1] + 1,
+        d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
   return d[a.length][b.length];
 }
 
 export function nearestNames(name, n = 5) {
   const q = name.toLowerCase();
   return helpNames()
-    .map((x) => ({ x, d: x.toLowerCase().includes(q) || q.includes(x.toLowerCase()) ? 0 : distance(q, x.toLowerCase()) }))
+    .map((x) => ({
+      x,
+      d:
+        x.toLowerCase().includes(q) || q.includes(x.toLowerCase())
+          ? 0
+          : distance(q, x.toLowerCase()),
+    }))
     .sort((a, b) => a.d - b.d || a.x.localeCompare(b.x))
     .slice(0, n)
     .map((r) => r.x);
@@ -63,13 +78,23 @@ export function lookup(words) {
   if (!first) return null;
   if (first === 'global' && !second) {
     const g = helpSource().global;
-    return { kind: 'command', name: 'global', entry: { summary: g.summary, usage: ['pxsig <command> [options]'], flags: g.flags } };
+    return {
+      kind: 'command',
+      name: 'global',
+      entry: { summary: g.summary, usage: ['pxsig <command> [options]'], flags: g.flags },
+    };
   }
   const cmd = commands[first];
   if (cmd) {
     const sub = second && cmd.subcommands?.[second];
     if (second && !sub) return null;
-    return { kind: 'command', name: sub ? `${first} ${second}` : first, entry: sub ?? cmd, parent: sub ? cmd : null, ...(topics[first] && !sub ? { topic: topics[first] } : {}) };
+    return {
+      kind: 'command',
+      name: sub ? `${first} ${second}` : first,
+      entry: sub ?? cmd,
+      parent: sub ? cmd : null,
+      ...(topics[first] && !sub ? { topic: topics[first] } : {}),
+    };
   }
   if (second) return null;
   if (topics[first]) return { kind: 'topic', name: first, topic: topics[first] };
@@ -84,7 +109,10 @@ export function helpBlocks(found, CMD = 'pxsig') {
   const { entry, name } = found;
   if (found.kind === 'topic') return [{ text: found.topic }];
   if (found.kind === 'setting') {
-    const kv = [['File', entry.file], ['Meaning', entry.meaning]];
+    const kv = [
+      ['File', entry.file],
+      ['Meaning', entry.meaning],
+    ];
     if (entry.values) kv.push(['Values', entry.values.join(', ')]);
     if (entry.default != null) kv.push(['Default', entry.default]);
     if (entry.operation) kv.push(['Effect', entry.operation]);
@@ -94,16 +122,70 @@ export function helpBlocks(found, CMD = 'pxsig') {
   }
   const blocks = [{ h: `${CMD} ${name}`, sub: entry.summary }, { list: entry.usage }];
   if (entry.subcommands)
-    blocks.push({ h: 'Subcommands' }, { table: { cols: [{ key: 's', label: 'Subcommand' }, { key: 'm', label: 'What it does' }], rows: Object.entries(entry.subcommands).map(([s, e]) => ({ s: `${name} ${s}`, m: e.summary })) } });
-  if (entry.flags?.length) blocks.push({ h: 'Flags' }, { table: { cols: [{ key: 'f', label: 'Flag' }, { key: 'd', label: 'Default' }, { key: 'm', label: 'Meaning' }], rows: entry.flags.map((f) => ({ f: flagName(f), d: f.default ?? '', m: [f.meaning, f.setting && `Setting: ${f.setting}.`, f.env && `Environment: ${f.env}.`].filter(Boolean).join(' ') })) } });
-  if (entry.exits) blocks.push({ h: 'Exit codes' }, { table: { cols: [{ key: 'c', label: 'Code' }, { key: 'm', label: 'Meaning' }], rows: Object.entries(entry.exits).map(([c, m]) => ({ c, m })) } });
+    blocks.push(
+      { h: 'Subcommands' },
+      {
+        table: {
+          cols: [
+            { key: 's', label: 'Subcommand' },
+            { key: 'm', label: 'What it does' },
+          ],
+          rows: Object.entries(entry.subcommands).map(([s, e]) => ({
+            s: `${name} ${s}`,
+            m: e.summary,
+          })),
+        },
+      }
+    );
+  if (entry.flags?.length)
+    blocks.push(
+      { h: 'Flags' },
+      {
+        table: {
+          cols: [
+            { key: 'f', label: 'Flag' },
+            { key: 'd', label: 'Default' },
+            { key: 'm', label: 'Meaning' },
+          ],
+          rows: entry.flags.map((f) => ({
+            f: flagName(f),
+            d: f.default ?? '',
+            m: [f.meaning, f.setting && `Setting: ${f.setting}.`, f.env && `Environment: ${f.env}.`]
+              .filter(Boolean)
+              .join(' '),
+          })),
+        },
+      }
+    );
+  if (entry.exits)
+    blocks.push(
+      { h: 'Exit codes' },
+      {
+        table: {
+          cols: [
+            { key: 'c', label: 'Code' },
+            { key: 'm', label: 'Meaning' },
+          ],
+          rows: Object.entries(entry.exits).map(([c, m]) => ({ c, m })),
+        },
+      }
+    );
   if (entry.effects?.length) blocks.push({ kv: [['Effects', entry.effects.join(', ')]] });
-  if (entry.examples?.length) blocks.push({ title: 'Examples', next: entry.examples.map((x) => [x.cmd, x.shows]) });
+  if (entry.examples?.length)
+    blocks.push({ title: 'Examples', next: entry.examples.map((x) => [x.cmd, x.shows]) });
   const see = entry.seeAlso ?? found.parent?.seeAlso;
-  if (see?.length) blocks.push({ note: `See also: ${see.map((s) => `${CMD} help ${s}`).join(' · ')} · ${CMD} help global` });
+  if (see?.length)
+    blocks.push({
+      note: `See also: ${see.map((s) => `${CMD} help ${s}`).join(' · ')} · ${CMD} help global`,
+    });
   if (found.topic) blocks.push({ text: found.topic });
   return blocks;
 }
 
 /** What `--json` and the MCP return. */
-export const helpData = (found) => ({ kind: found.kind, name: found.name, ...(found.entry ? { entry: found.entry } : {}), ...(found.topic ? { topic: found.topic } : {}) });
+export const helpData = (found) => ({
+  kind: found.kind,
+  name: found.name,
+  ...(found.entry ? { entry: found.entry } : {}),
+  ...(found.topic ? { topic: found.topic } : {}),
+});

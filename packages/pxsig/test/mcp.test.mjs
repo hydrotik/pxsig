@@ -47,11 +47,18 @@ before(() => {
 after(() => proc.kill());
 
 test('initialize echoes the protocol version and declares tools', async () => {
-  const res = await rpc('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '0' } });
+  const res = await rpc('initialize', {
+    protocolVersion: '2025-06-18',
+    capabilities: {},
+    clientInfo: { name: 't', version: '0' },
+  });
   assert.equal(res.result.protocolVersion, '2025-06-18');
   assert.ok(res.result.capabilities.tools);
   assert.equal(res.result.serverInfo.name, 'pxsig');
-  assert.match(res.result.instructions, /never approve, never accept, and never call `\/__pxsig\/approve`; ask the person to review in the dashboard/);
+  assert.match(
+    res.result.instructions,
+    /never approve, never accept, and never call `\/__pxsig\/approve`; ask the person to review in the dashboard/
+  );
 });
 
 test('notifications get no reply; ping does', async () => {
@@ -63,7 +70,20 @@ test('notifications get no reply; ping does', async () => {
 test('tools/list exposes every tool with a JSON schema and no handler', async () => {
   const { result } = await rpc('tools/list', {});
   const names = result.tools.map((t) => t.name);
-  for (const n of ['pxsig_projects', 'pxsig_status', 'pxsig_list', 'pxsig_entry', 'pxsig_a11y', 'pxsig_affected', 'pxsig_check', 'pxsig_review', 'pxsig_history', 'pxsig_doctor', 'pxsig_help']) assert.ok(names.includes(n), n);
+  for (const n of [
+    'pxsig_projects',
+    'pxsig_status',
+    'pxsig_list',
+    'pxsig_entry',
+    'pxsig_a11y',
+    'pxsig_affected',
+    'pxsig_check',
+    'pxsig_review',
+    'pxsig_history',
+    'pxsig_doctor',
+    'pxsig_help',
+  ])
+    assert.ok(names.includes(n), n);
   for (const t of result.tools) {
     assert.equal(t.inputSchema.type, 'object');
     assert.equal(t.run, undefined);
@@ -78,27 +98,48 @@ test('unknown tool and unknown method are errors', async () => {
 });
 
 test('review refuses without confirm: true, before touching the server', async () => {
-  const r = await call('pxsig_review', { action: 'reject', ids: ['components-button--default'], confirm: false });
+  const r = await call('pxsig_review', {
+    action: 'reject',
+    ids: ['components-button--default'],
+    confirm: false,
+  });
   assert.equal(r.isError, true);
   assert.match(r.content[0].text, /confirm: true/);
 });
 
-test('review offers rejections only: approving and accepting are a person\'s, even with confirm', async () => {
+test("review offers rejections only: approving and accepting are a person's, even with confirm", async () => {
   const list = await rpc('tools/list', {});
   const tool = list.result.tools.find((x) => x.name === 'pxsig_review');
-  assert.deepEqual(tool.inputSchema.properties.action.enum, ['reject', 'unreview', 'a11y-reject', 'a11y-unreview']);
+  assert.deepEqual(tool.inputSchema.properties.action.enum, [
+    'reject',
+    'unreview',
+    'a11y-reject',
+    'a11y-unreview',
+  ]);
   for (const action of ['approve', 'a11y-accept', 'a11y-unaccept']) {
-    const r = await call('pxsig_review', { action, ids: ['components-button--default'], confirm: true });
+    const r = await call('pxsig_review', {
+      action,
+      ids: ['components-button--default'],
+      confirm: true,
+    });
     assert.equal(r.isError, true, action);
     assert.match(r.content[0].text, /not an agent's decision.*needs a person/, action);
   }
-  const r = await call('pxsig_review', { action: 'a11y-reject', ids: ['components-button--default'], confirm: false });
+  const r = await call('pxsig_review', {
+    action: 'a11y-reject',
+    ids: ['components-button--default'],
+    confirm: false,
+  });
   assert.equal(r.isError, true);
   assert.match(r.content[0].text, /confirm: true/);
 });
 
 test('review with confirm still needs the server', async () => {
-  const r = await call('pxsig_review', { action: 'reject', ids: ['components-button--default'], confirm: true });
+  const r = await call('pxsig_review', {
+    action: 'reject',
+    ids: ['components-button--default'],
+    confirm: true,
+  });
   assert.equal(r.isError, true);
   assert.match(r.content[0].text, /not running/);
 });
@@ -135,7 +176,10 @@ test('entry returns text then inline PNGs', async () => {
 
 test('projects lists the workspace; an unknown project is an error naming the projects', async () => {
   const p = json(await call('pxsig_projects'));
-  assert.deepEqual(p.projects.map((x) => x.name), ['fixture']);
+  assert.deepEqual(
+    p.projects.map((x) => x.name),
+    ['fixture']
+  );
   const r = await call('pxsig_status', { project: 'nope' });
   assert.equal(r.isError, true);
   assert.match(r.content[0].text, /projects: fixture/);
@@ -145,11 +189,17 @@ test('doctor repair apply takes the store lock: a store another process holds is
   const lock = join(repo, '.pxsig', 'reports', '.lock');
   const manifest = join(repo, '.pxsig', 'manifest.json');
   const before = readFileSync(manifest, 'utf8');
-  writeFileSync(lock, `${JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), host: hostname(), holder: 'check', command: 'pxsig check --full' })}\n`);
+  writeFileSync(
+    lock,
+    `${JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), host: hostname(), holder: 'check', command: 'pxsig check --full' })}\n`
+  );
   try {
     const r = await call('pxsig_doctor', { repair: 'apply', offline: true });
     assert.equal(r.isError, true);
-    assert.match(r.content[0].text, /`pxsig check --full` \(pid \d+, since .+\) holds the store .+: the repair did not run/);
+    assert.match(
+      r.content[0].text,
+      /`pxsig check --full` \(pid \d+, since .+\) holds the store .+: the repair did not run/
+    );
     assert.equal(readFileSync(manifest, 'utf8'), before);
   } finally {
     rmSync(lock, { force: true });
@@ -162,13 +212,28 @@ test('doctor repair apply takes the store lock: a store another process holds is
 test('pxsig_a11y prune_plan lists accepted rules by class and writes nothing', async () => {
   const a11y = join(repo, '.pxsig', 'a11y.json');
   const before = readFileSync(a11y, 'utf8');
-  writeFileSync(a11y, JSON.stringify({ 'components-alpha--default': ['region'], 'components-delta--a-11-y': ['color-contrast'] }));
+  writeFileSync(
+    a11y,
+    JSON.stringify({
+      'components-alpha--default': ['region'],
+      'components-delta--a-11-y': ['color-contrast'],
+    })
+  );
   try {
     const r = json(await call('pxsig_a11y', { prune_plan: true }));
     assert.deepEqual(r.counts, { prunable: 1, 'still-fires': 1, stale: 0, 'not-covered': 0 });
-    assert.deepEqual(r.prunable.map((p) => [p.id, p.rules]), [['components-alpha--default', ['region']]]);
+    assert.deepEqual(
+      r.prunable.map((p) => [p.id, p.rules]),
+      [['components-alpha--default', ['region']]]
+    );
     assert.match(r.hint, /a person removes these with `pxsig a11y --prune` in a terminal/);
-    assert.equal(readFileSync(a11y, 'utf8'), JSON.stringify({ 'components-alpha--default': ['region'], 'components-delta--a-11-y': ['color-contrast'] }));
+    assert.equal(
+      readFileSync(a11y, 'utf8'),
+      JSON.stringify({
+        'components-alpha--default': ['region'],
+        'components-delta--a-11-y': ['color-contrast'],
+      })
+    );
   } finally {
     writeFileSync(a11y, before);
   }

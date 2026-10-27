@@ -166,7 +166,7 @@ Releases publish with **npm trusted publishing**: the publish job's GitHub OIDC 
 exchanged for a short-lived token, so no npm token is stored. Every package gets provenance.
 
 - **Trusted publishers.** On npmjs.com, for each package (`pxsig`, `@pxsig/storybook-addon` and
-  every `@pxsig/cli-<platform>-<arch>`), open *Settings → Trusted Publisher* and add GitHub
+  every `@pxsig/cli-<platform>-<arch>`), open _Settings → Trusted Publisher_ and add GitHub
   Actions with repository `hydrotik/pxsig`, workflow `release.yml` and environment `npm`.
 - **`npm` environment.** The publish job runs in it. Add required reviewers to hold each release
   for approval before anything is published.
@@ -199,4 +199,3 @@ gh attestation verify pxsig-v0.4.0/pxsig-0.4.0.tgz --repo hydrotik/pxsig
 gh attestation verify node_modules/@pxsig/cli-darwin-arm64/bin/pxsig --repo hydrotik/pxsig
 npm audit signatures   # npm's own provenance for every installed package
 ```
-

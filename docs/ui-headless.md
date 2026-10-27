@@ -41,12 +41,12 @@ packages/dashboard/src/
   component. Generic names stay generic; domain names are neutral. Indicative groups (final list
   from the import inventory):
 
-  | Group | Components |
-  | --- | --- |
-  | Shell | `UiProvider` (theme mode), `TopNav`, `NavLink`, `NavEnd`, `PageHeader` |
-  | Core | `Button`, `IconButton`, `Card` (+ header, title, description, content), `StatCard`, `DataTable` (custom cells), `VerdictBadge`, `Badge` (a tone label, not a count), `Icon` (named set) |
+  | Group    | Components                                                                                                                                                                                          |
+  | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | Shell    | `UiProvider` (theme mode), `TopNav`, `NavLink`, `NavEnd`, `PageHeader`                                                                                                                              |
+  | Core     | `Button`, `IconButton`, `Card` (+ header, title, description, content), `StatCard`, `DataTable` (custom cells), `VerdictBadge`, `Badge` (a tone label, not a count), `Icon` (named set)             |
   | Controls | `Dialog`, `SidePanel`, `Slider`, `Switch`, `SegmentedChoice`, `Toolbar` (+ start, end), `CopyValue`, `Kbd`, `Link`, `Progress`, `KeyValueList`, `Alert`, `SearchField`, `Select`, `Menu`, `Tooltip` |
-  | Charts | `BarChart` (horizontal bars), `LineChart`, `SeriesDef` — the chart library is an adapter detail |
+  | Charts   | `BarChart` (horizontal bars), `LineChart`, `SeriesDef` — the chart library is an adapter detail                                                                                                     |
 
 - **Contract rules** (informed by a real design system's capabilities, described neutrally):
   1. Emphasis and tone are separate props: `emphasis` (solid, outline, ghost) and one tone
@@ -144,12 +144,12 @@ maintainer in their own environment.
 
 ## Phases
 
-| Phase | Delivers | Proven by |
-| --- | --- | --- |
-| 1 | Contract, `@ui`, hydrotik adapter, build-time switch, generated manifest, conformance, `ui:gaps` | views free of design-system imports; reference renders identically (section × theme screenshots); unknown adapter fails fast |
-| 2 | Diff-viewer primitives; the inspector rebuilt on them | the inspector renders identically; primitive tests (keyboard, ARIA, controlled state) |
-| 3 | Shipping the source in `pxsig`, `pxsig dashboard build` / `gaps` for consumers, a deliberately plain example adapter in `examples/` | the plain adapter builds from an installed `pxsig` and reports its gaps |
-| 4 | Feature registry, generated catalogue, build prompt, `ui:check` in CI | removing a documented feature or adding an undocumented component fails CI |
+| Phase | Delivers                                                                                                                            | Proven by                                                                                                                    |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Contract, `@ui`, hydrotik adapter, build-time switch, generated manifest, conformance, `ui:gaps`                                    | views free of design-system imports; reference renders identically (section × theme screenshots); unknown adapter fails fast |
+| 2     | Diff-viewer primitives; the inspector rebuilt on them                                                                               | the inspector renders identically; primitive tests (keyboard, ARIA, controlled state)                                        |
+| 3     | Shipping the source in `pxsig`, `pxsig dashboard build` / `gaps` for consumers, a deliberately plain example adapter in `examples/` | the plain adapter builds from an installed `pxsig` and reports its gaps                                                      |
+| 4     | Feature registry, generated catalogue, build prompt, `ui:check` in CI                                                               | removing a documented feature or adding an undocumented component fails CI                                                   |
 
 Later, if wanted: pulling the views' logic into headless hooks so a team could replace whole
 views, not only components.

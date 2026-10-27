@@ -27,7 +27,15 @@ pub struct PixelDiff {
 pub const REGION_TILE: usize = 8;
 
 /// Diff two RGBA images. Pixels outside one image (a size change) count as changed.
-pub fn pixel_diff(a: &[u8], aw: usize, ah: usize, b: &[u8], bw: usize, bh: usize, tolerance: u8) -> PixelDiff {
+pub fn pixel_diff(
+    a: &[u8],
+    aw: usize,
+    ah: usize,
+    b: &[u8],
+    bw: usize,
+    bh: usize,
+    tolerance: u8,
+) -> PixelDiff {
     let (w, h) = (aw.max(bw), ah.max(bh));
     let mut mask = vec![0u8; w * h];
     let (mut changed, mut max_delta) = (0usize, 0u8);
@@ -35,7 +43,10 @@ pub fn pixel_diff(a: &[u8], aw: usize, ah: usize, b: &[u8], bw: usize, bh: usize
         for x in 0..w {
             let d = if x < aw && y < ah && x < bw && y < bh {
                 let (i, j) = ((y * aw + x) * 4, (y * bw + x) * 4);
-                (0..4).map(|c| a[i + c].abs_diff(b[j + c])).max().unwrap_or(0)
+                (0..4)
+                    .map(|c| a[i + c].abs_diff(b[j + c]))
+                    .max()
+                    .unwrap_or(0)
             } else {
                 255
             };
@@ -47,7 +58,14 @@ pub fn pixel_diff(a: &[u8], aw: usize, ah: usize, b: &[u8], bw: usize, bh: usize
         }
     }
     let regions = regions_of(&mask, w, h, REGION_TILE);
-    PixelDiff { width: w, height: h, changed, max_delta, mask, regions }
+    PixelDiff {
+        width: w,
+        height: h,
+        changed,
+        max_delta,
+        mask,
+        regions,
+    }
 }
 
 /// Connected boxes of changed tiles, sorted by changed pixels (desc), then position.
@@ -95,9 +113,18 @@ pub fn regions_of(mask: &[u8], w: usize, h: usize, t: usize) -> Vec<Region> {
         let (rw, rh) = (((x1 + 1) * t).min(w) - x, ((y1 + 1) * t).min(h) - y);
         let mut px = 0;
         for yy in y..y + rh {
-            px += mask[yy * w + x..yy * w + x + rw].iter().filter(|&&m| m != 0).count();
+            px += mask[yy * w + x..yy * w + x + rw]
+                .iter()
+                .filter(|&&m| m != 0)
+                .count();
         }
-        out.push(Region { x, y, w: rw, h: rh, px });
+        out.push(Region {
+            x,
+            y,
+            w: rw,
+            h: rh,
+            px,
+        });
     }
     out.sort_by(|p, q| q.px.cmp(&p.px).then(p.y.cmp(&q.y)).then(p.x.cmp(&q.x)));
     out
@@ -118,7 +145,16 @@ mod tests {
         let d = pixel_diff(&a, w, h, &b, w, h, 16);
         assert_eq!(d.changed, 3);
         assert_eq!(d.regions.len(), 2);
-        assert_eq!(d.regions[0], Region { x: 0, y: 0, w: 8, h: 8, px: 2 });
+        assert_eq!(
+            d.regions[0],
+            Region {
+                x: 0,
+                y: 0,
+                w: 8,
+                h: 8,
+                px: 2
+            }
+        );
     }
 
     #[test]

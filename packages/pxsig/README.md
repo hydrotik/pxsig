@@ -21,12 +21,12 @@ npx pxsig doctor            # what the check does not cover
 
 ## What the package contains
 
-| Path | Content |
-| --- | --- |
-| `bin/pxsig.mjs` | The `pxsig` command (hands over to the workspace root's install when there is one) |
-| `src/` | CLI, workspace resolver, renderer, full check, server, MCP server, integrity, approvals |
-| `schema/workspace.json`, `schema/project.json` | JSON Schemas for `pxsig.workspace.json` and `pxsig.config.json` |
-| `dist/dashboard/` | The prebuilt dashboard (in the published package) |
+| Path                                           | Content                                                                                 |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `bin/pxsig.mjs`                                | The `pxsig` command (hands over to the workspace root's install when there is one)      |
+| `src/`                                         | CLI, workspace resolver, renderer, full check, server, MCP server, integrity, approvals |
+| `schema/workspace.json`, `schema/project.json` | JSON Schemas for `pxsig.workspace.json` and `pxsig.config.json`                         |
+| `dist/dashboard/`                              | The prebuilt dashboard (in the published package)                                       |
 
 Module exports: `pxsig/workspace` (the resolver) and `pxsig/psig` (read `.psig` headers and images).
 

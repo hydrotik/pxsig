@@ -19,7 +19,10 @@ pub struct TrimBox {
 /// The kept size for an RGBA image: content extent + `pad`, never larger than the image.
 pub fn content_box(data: &[u8], w: usize, h: usize, tolerance: u8, pad: usize) -> TrimBox {
     if w == 0 || h == 0 {
-        return TrimBox { width: w, height: h };
+        return TrimBox {
+            width: w,
+            height: h,
+        };
     }
     let bg = &data[((h - 1) * w + (w - 1)) * 4..][..4];
     let differs = |i: usize| (0..4).any(|c| data[i + c].abs_diff(bg[c]) > tolerance);
@@ -35,9 +38,15 @@ pub fn content_box(data: &[u8], w: usize, h: usize, tolerance: u8, pad: usize) -
         }
     }
     if !any {
-        return TrimBox { width: w.min(pad.max(1)), height: h.min(pad.max(1)) };
+        return TrimBox {
+            width: w.min(pad.max(1)),
+            height: h.min(pad.max(1)),
+        };
     }
-    TrimBox { width: (max_x + 1 + pad).min(w), height: (max_y + 1 + pad).min(h) }
+    TrimBox {
+        width: (max_x + 1 + pad).min(w),
+        height: (max_y + 1 + pad).min(h),
+    }
 }
 
 /// Crop RGBA to `b` (top-left anchored).
@@ -64,19 +73,38 @@ mod tests {
     #[test]
     fn keeps_origin_and_trims_right_bottom() {
         let d = img(100, 80, &[(10, 5), (30, 40)]);
-        assert_eq!(content_box(&d, 100, 80, 8, 4), TrimBox { width: 35, height: 45 });
+        assert_eq!(
+            content_box(&d, 100, 80, 8, 4),
+            TrimBox {
+                width: 35,
+                height: 45
+            }
+        );
     }
 
     #[test]
     fn content_at_the_edge_keeps_full_size() {
         let d = img(50, 50, &[(48, 48)]);
-        assert_eq!(content_box(&d, 50, 50, 8, 16), TrimBox { width: 50, height: 50 });
+        assert_eq!(
+            content_box(&d, 50, 50, 8, 16),
+            TrimBox {
+                width: 50,
+                height: 50
+            }
+        );
     }
 
     #[test]
     fn crop_takes_the_top_left() {
         let d = img(4, 3, &[(1, 1)]);
-        let c = crop(&d, 4, TrimBox { width: 2, height: 2 });
+        let c = crop(
+            &d,
+            4,
+            TrimBox {
+                width: 2,
+                height: 2,
+            },
+        );
         assert_eq!(c.len(), 16);
         // Pixel (1, 1) of the 2-wide crop: index (y * width + x) * 4.
         assert_eq!(c[3 * 4], 250);

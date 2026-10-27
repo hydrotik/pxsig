@@ -21,7 +21,9 @@ export function storybookLink(baseUrl, row, modes) {
     .filter(Boolean)
     .map((pair) => {
       const i = pair.indexOf(':');
-      return i < 0 ? encodeURIComponent(pair) : `${encodeURIComponent(pair.slice(0, i))}:${encodeURIComponent(pair.slice(i + 1))}`;
+      return i < 0
+        ? encodeURIComponent(pair)
+        : `${encodeURIComponent(pair.slice(0, i))}:${encodeURIComponent(pair.slice(i + 1))}`;
     })
     .join(';');
   const base = String(baseUrl ?? '').replace(/\/+$/, '');

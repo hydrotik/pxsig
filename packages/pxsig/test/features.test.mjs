@@ -4,7 +4,16 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -25,26 +34,60 @@ const tree = (files) => {
   mkdirSync(join(root, '.git'));
   for (const [p, v] of Object.entries(files)) {
     mkdirSync(dirname(join(root, p)), { recursive: true });
-    writeFileSync(join(root, p), typeof v === 'string' || Buffer.isBuffer(v) ? v : JSON.stringify(v));
+    writeFileSync(
+      join(root, p),
+      typeof v === 'string' || Buffer.isBuffer(v) ? v : JSON.stringify(v)
+    );
   }
   return root;
 };
-const node = (args, cwd, extra = {}) => spawnSync(process.execPath, args, { cwd, encoding: 'utf8', env: { ...process.env, PXSIG_FORMAT: '', PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '', PXSIG_PROJECT: '', ...extra } });
+const node = (args, cwd, extra = {}) =>
+  spawnSync(process.execPath, args, {
+    cwd,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      PXSIG_FORMAT: '',
+      PXSIG_URL: 'http://127.0.0.1:1',
+      PXSIG_BIN: rustBin,
+      PXSIG_WORKSPACE: '',
+      PXSIG_PROJECT: '',
+      ...extra,
+    },
+  });
 const cli = (args, cwd, extra) => node([join(src, 'cli.mjs'), ...args], cwd, extra);
 
 // --- config layers -------------------------------------------------------------------------------------------
 
 test('workspace defaults: paths resolve against the workspace root; provenance names each layer', () => {
   const root = tree({
-    'pxsig.workspace.json': { projects: { ds: 'packages/ds' }, defaults: { storybook: { configDir: 'apps/sb/.storybook', staticDir: 'apps/sb/storybook-static' }, affects: { extra: ['shared/tokens'] }, grid: 48 } },
+    'pxsig.workspace.json': {
+      projects: { ds: 'packages/ds' },
+      defaults: {
+        storybook: { configDir: 'apps/sb/.storybook', staticDir: 'apps/sb/storybook-static' },
+        affects: { extra: ['shared/tokens'] },
+        grid: 48,
+      },
+    },
     'packages/ds/pxsig.config.json': { srcRoot: 'src', capture: { settleMs: 50 } },
   });
   const ws = findWorkspace({ cwd: root, env });
-  const P = loadProject(ws, ws.projects[0], { env: { PXSIG_STORYBOOK_URL: 'http://127.0.0.1:9' }, flags: { grid: 32 } });
-  assert.equal(P.storybook.configDir, join(root, 'apps', 'sb', '.storybook'), 'not relative to the project');
+  const P = loadProject(ws, ws.projects[0], {
+    env: { PXSIG_STORYBOOK_URL: 'http://127.0.0.1:9' },
+    flags: { grid: 32 },
+  });
+  assert.equal(
+    P.storybook.configDir,
+    join(root, 'apps', 'sb', '.storybook'),
+    'not relative to the project'
+  );
   assert.equal(P.storybook.staticDir, join(root, 'apps', 'sb', 'storybook-static'));
   assert.ok(P.affects.includes('shared/tokens'));
-  assert.equal(P.srcRoot, join(root, 'packages', 'ds', 'src'), 'a project path stays relative to the project');
+  assert.equal(
+    P.srcRoot,
+    join(root, 'packages', 'ds', 'src'),
+    'a project path stays relative to the project'
+  );
   const s = P.configSources;
   assert.equal(s.grid, 'flags');
   assert.equal(s['storybook.url'], 'env');
@@ -56,7 +99,9 @@ test('workspace defaults: paths resolve against the workspace root; provenance n
 
 test('pxsig config shows the layer of every key, and config flags are the top layer', () => {
   const root = tree({ 'pxsig.config.json': { name: 'one', grid: 96 }, 'src/a.ts': '' });
-  const c = JSON.parse(cli(['config', '--json', '--storybook-url', 'http://127.0.0.1:5', '--grid', '24'], root).stdout);
+  const c = JSON.parse(
+    cli(['config', '--json', '--storybook-url', 'http://127.0.0.1:5', '--grid', '24'], root).stdout
+  );
   assert.equal(c.config.grid, 24);
   assert.equal(c.sources.grid, 'flags');
   assert.equal(c.sources['storybook.url'], 'flags');
@@ -68,12 +113,27 @@ test('pxsig config shows the layer of every key, and config flags are the top la
 });
 
 test('modes extend through several levels; a cycle or an unknown parent is a setup error', () => {
-  const m = resolveModes({ base: { colorScheme: 'dark', globals: 'theme:dark' }, brand: { extends: 'base', globals: 'theme:brand' }, mobile: { extends: 'brand', viewport: [390, 844] } });
+  const m = resolveModes({
+    base: { colorScheme: 'dark', globals: 'theme:dark' },
+    brand: { extends: 'base', globals: 'theme:brand' },
+    mobile: { extends: 'brand', viewport: [390, 844] },
+  });
   assert.deepEqual(m.mobile, { colorScheme: 'dark', globals: 'theme:brand', viewport: [390, 844] });
   assert.equal(m.brand.extends, undefined);
-  assert.throws(() => resolveModes({ a: { extends: 'b' }, b: { extends: 'c' }, c: { extends: 'a' } }), /cycle: a → b → c → a/);
+  assert.throws(
+    () => resolveModes({ a: { extends: 'b' }, b: { extends: 'c' }, c: { extends: 'a' } }),
+    /cycle: a → b → c → a/
+  );
   assert.throws(() => resolveModes({ a: { extends: 'nope' } }), /"nope", which is not defined/);
-  const root = tree({ 'pxsig.config.json': { modes: { light: {}, dark: { extends: 'light', colorScheme: 'dark' }, dim: { extends: 'dark', globals: 'x' } } } });
+  const root = tree({
+    'pxsig.config.json': {
+      modes: {
+        light: {},
+        dark: { extends: 'light', colorScheme: 'dark' },
+        dim: { extends: 'dark', globals: 'x' },
+      },
+    },
+  });
   assert.equal(openProject({ cwd: root, env }).modes.dim.colorScheme, 'dark');
 });
 
@@ -94,13 +154,23 @@ test('staleness traces workspace dependencies: their source folders are source r
   const old = new Date(Date.now() - 60_000);
   utimesSync(join(root, 'packages/ds/src/Button/Button.stories.tsx'), old, old);
   const files = editedFilesSince(ctx, Date.now() - 30_000).map((f) => f.file);
-  assert.deepEqual(files, ['packages/tokens/src/colors.ts'], 'an edit in a workspace dependency is traced');
+  assert.deepEqual(
+    files,
+    ['packages/tokens/src/colors.ts'],
+    'an edit in a workspace dependency is traced'
+  );
 });
 
 // --- the store lock ------------------------------------------------------------------------------------------
 
 test('store lock: one holder; a dead holder is stale and taken over', () => {
-  const root = tree({ 'pxsig.config.json': {}, '.pxsig/manifest.json': { version: 2, stories: [{ id: 'a--b', sig: '.pxsig/baselines/a--b.psig' }] } });
+  const root = tree({
+    'pxsig.config.json': {},
+    '.pxsig/manifest.json': {
+      version: 2,
+      stories: [{ id: 'a--b', sig: '.pxsig/baselines/a--b.psig' }],
+    },
+  });
   const P = openProject({ cwd: root, env });
   const l = acquireLock(P, { holder: 'test' });
   assert.equal(readLock(P).pid, process.pid);
@@ -108,7 +178,15 @@ test('store lock: one holder; a dead holder is stale and taken over', () => {
   assert.equal(readLock(P), null);
   // A live process holds it: refused, naming the holder.
   const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 20000)']);
-  writeFileSync(lockPath(P), JSON.stringify({ pid: child.pid, startedAt: new Date(Date.now() + 5000).toISOString(), holder: 'check', command: 'pxsig check --full' }));
+  writeFileSync(
+    lockPath(P),
+    JSON.stringify({
+      pid: child.pid,
+      startedAt: new Date(Date.now() + 5000).toISOString(),
+      holder: 'check',
+      command: 'pxsig check --full',
+    })
+  );
   try {
     assert.throws(() => acquireLock(P, { holder: 'test' }), /pxsig check --full.*holds the store/);
     const r = node([join(src, 'check.mjs'), '--changed', 'x.ts'], root);
@@ -118,59 +196,108 @@ test('store lock: one holder; a dead holder is stale and taken over', () => {
     child.kill();
   }
   // Gone: stale, taken over.
-  writeFileSync(lockPath(P), JSON.stringify({ pid: 2 ** 22 + 12345, startedAt: new Date().toISOString(), holder: 'check' }));
+  writeFileSync(
+    lockPath(P),
+    JSON.stringify({ pid: 2 ** 22 + 12345, startedAt: new Date().toISOString(), holder: 'check' })
+  );
   assert.equal(readLock(P).stale, true);
   acquireLock(P, { holder: 'test' }).release();
 });
 
-test('a full check against a project the server holds goes through its queue', { skip: !hasRust && 'Rust binary not built' }, async () => {
-  const f = fixture();
-  const ids = [f.ids.ok, f.ids.drift];
-  const posted = [];
-  const srv = createServer((req, res) => {
-    let body = '';
-    req.on('data', (c) => (body += c));
-    req.on('end', () => {
-      if (req.url === '/__pxsig/check') {
-        const b = JSON.parse(body);
-        posted.push(b);
-        const check = JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8'));
-        for (const r of check.rows) if (b.ids.includes(r.id)) Object.assign(r, { pass: r.id !== f.ids.drift, reasons: r.id === f.ids.drift ? ['ssim 0.5 < min 0.99'] : [] });
-        writeFileSync(join(f.px, 'reports', 'check.json'), JSON.stringify(check));
-        res.writeHead(202).end(JSON.stringify({ queued: b.ids }));
-      } else res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ running: false, queued: 0 }));
+test(
+  'a full check against a project the server holds goes through its queue',
+  { skip: !hasRust && 'Rust binary not built' },
+  async () => {
+    const f = fixture();
+    const ids = [f.ids.ok, f.ids.drift];
+    const posted = [];
+    const srv = createServer((req, res) => {
+      let body = '';
+      req.on('data', (c) => (body += c));
+      req.on('end', () => {
+        if (req.url === '/__pxsig/check') {
+          const b = JSON.parse(body);
+          posted.push(b);
+          const check = JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8'));
+          for (const r of check.rows)
+            if (b.ids.includes(r.id))
+              Object.assign(r, {
+                pass: r.id !== f.ids.drift,
+                reasons: r.id === f.ids.drift ? ['ssim 0.5 < min 0.99'] : [],
+              });
+          writeFileSync(join(f.px, 'reports', 'check.json'), JSON.stringify(check));
+          res.writeHead(202).end(JSON.stringify({ queued: b.ids }));
+        } else
+          res
+            .writeHead(200, { 'content-type': 'application/json' })
+            .end(JSON.stringify({ running: false, queued: 0 }));
+      });
     });
-  });
-  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
-  const url = `http://127.0.0.1:${srv.address().port}`;
-  writeFileSync(join(f.px, 'reports', '.lock'), JSON.stringify({ pid: process.pid, startedAt: new Date(Date.now() - 1000).toISOString(), holder: 'serve', url }));
-  const out = await new Promise((ok) => {
-    const p = spawn(process.execPath, [join(src, 'check.mjs'), '--only', ids.join(',')], { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } });
-    let log = '';
-    p.stdout.on('data', (d) => (log += d));
-    p.stderr.on('data', (d) => (log += d));
-    p.on('exit', (code) => ok({ code, log }));
-  });
-  srv.close();
-  assert.equal(out.code, 1, out.log);
-  assert.match(out.log, /holds this store: queueing 2 entries/);
-  assert.deepEqual(posted[0].ids.sort(), [...ids].sort());
-  assert.equal(posted[0].project, 'fixture');
-  // --update never goes through the server: it refuses.
-  const upd = node([join(src, 'check.mjs'), '--suite', 'x'], f.repo);
-  assert.equal(upd.status, 2);
-});
+    await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+    const url = `http://127.0.0.1:${srv.address().port}`;
+    writeFileSync(
+      join(f.px, 'reports', '.lock'),
+      JSON.stringify({
+        pid: process.pid,
+        startedAt: new Date(Date.now() - 1000).toISOString(),
+        holder: 'serve',
+        url,
+      })
+    );
+    const out = await new Promise((ok) => {
+      const p = spawn(process.execPath, [join(src, 'check.mjs'), '--only', ids.join(',')], {
+        cwd: f.repo,
+        env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' },
+      });
+      let log = '';
+      p.stdout.on('data', (d) => (log += d));
+      p.stderr.on('data', (d) => (log += d));
+      p.on('exit', (code) => ok({ code, log }));
+    });
+    srv.close();
+    assert.equal(out.code, 1, out.log);
+    assert.match(out.log, /holds this store: queueing 2 entries/);
+    assert.deepEqual(posted[0].ids.sort(), [...ids].sort());
+    assert.equal(posted[0].project, 'fixture');
+    // --update never goes through the server: it refuses.
+    const upd = node([join(src, 'check.mjs'), '--suite', 'x'], f.repo);
+    assert.equal(upd.status, 2);
+  }
+);
 
 // --- CLI over several projects ----------------------------------------------------------------------------
 
 function twoProjects() {
-  const row = (id, pass) => ({ id, story: id, mode: 'default', pass, metrics: { ssim: pass ? 1 : 0.5 }, reasons: pass ? [] : ['gate'], checkedAt: new Date().toISOString() });
+  const row = (id, pass) => ({
+    id,
+    story: id,
+    mode: 'default',
+    pass,
+    metrics: { ssim: pass ? 1 : 0.5 },
+    reasons: pass ? [] : ['gate'],
+    checkedAt: new Date().toISOString(),
+  });
   const proj = (name, ids) => ({
     [`packages/${name}/pxsig.config.json`]: { storybook: { url: 'http://127.0.0.1:1' } },
-    [`packages/${name}/.pxsig/manifest.json`]: { version: 2, stories: ids.map((id) => ({ id, story: id, sig: `packages/${name}/.pxsig/baselines/${id}.psig` })) },
-    [`packages/${name}/.pxsig/reports/check.json`]: { generatedAt: new Date().toISOString(), summary: {}, rows: ids.map((id, i) => row(id, i === 0)) },
+    [`packages/${name}/.pxsig/manifest.json`]: {
+      version: 2,
+      stories: ids.map((id) => ({
+        id,
+        story: id,
+        sig: `packages/${name}/.pxsig/baselines/${id}.psig`,
+      })),
+    },
+    [`packages/${name}/.pxsig/reports/check.json`]: {
+      generatedAt: new Date().toISOString(),
+      summary: {},
+      rows: ids.map((id, i) => row(id, i === 0)),
+    },
   });
-  return tree({ 'pxsig.workspace.json': { projects: { ui: 'packages/ui', forms: 'packages/forms' } }, ...proj('ui', ['ui-button--a', 'ui-button--b']), ...proj('forms', ['forms-field--a']) });
+  return tree({
+    'pxsig.workspace.json': { projects: { ui: 'packages/ui', forms: 'packages/forms' } },
+    ...proj('ui', ['ui-button--a', 'ui-button--b']),
+    ...proj('forms', ['forms-field--a']),
+  });
 }
 
 test('read commands cover every project when none is chosen; rows carry the project', () => {
@@ -186,8 +313,15 @@ test('read commands cover every project when none is chosen; rows carry the proj
   assert.match(md.stdout, /\| ui \| .* \| ui-button--b /);
   assert.match(md.stdout, /\| forms \| /);
   // Inside one project's folder, only that project; --all widens it again.
-  assert.equal(JSON.parse(cli(['list', 'all', '--json'], join(root, 'packages/ui')).stdout).total, 2);
-  assert.equal(JSON.parse(cli(['list', 'all', '--all', '--json'], join(root, 'packages/ui')).stdout).projects.length, 2);
+  assert.equal(
+    JSON.parse(cli(['list', 'all', '--json'], join(root, 'packages/ui')).stdout).total,
+    2
+  );
+  assert.equal(
+    JSON.parse(cli(['list', 'all', '--all', '--json'], join(root, 'packages/ui')).stdout).projects
+      .length,
+    2
+  );
   // --workspace from anywhere.
   const away = cli(['status', '--json', '--workspace', root], tmpdir());
   assert.equal(away.status, 0, away.stderr);
@@ -208,7 +342,19 @@ test('write commands refuse without a project; report errors exit 2', () => {
 
 function cleanProject({ quiet = false } = {}) {
   const fake = (id) => {
-    const header = Buffer.from(JSON.stringify({ format: 'psig', container: 1, entry: { id }, record: {}, encryption: 'none', sections: [{ name: 'sig', length: 0, sha256: '' }, { name: 'image', type: 'image/png', length: 0, sha256: '' }] }));
+    const header = Buffer.from(
+      JSON.stringify({
+        format: 'psig',
+        container: 1,
+        entry: { id },
+        record: {},
+        encryption: 'none',
+        sections: [
+          { name: 'sig', length: 0, sha256: '' },
+          { name: 'image', type: 'image/png', length: 0, sha256: '' },
+        ],
+      })
+    );
     const pre = Buffer.alloc(10);
     pre.write('PSIG', 0, 'latin1');
     pre.writeUInt16LE(1, 4);
@@ -218,13 +364,46 @@ function cleanProject({ quiet = false } = {}) {
   const ids = ['c-a--one', 'c-a--two'];
   const now = new Date().toISOString();
   const rows = [
-    { id: ids[0], story: ids[0], pass: true, metrics: { ssim: 0.995 }, reasons: [], checkedAt: now },
-    quiet ? { id: ids[1], story: ids[1], skipped: true, pass: true, metrics: null, inherited: false, unaffected: true } : { id: ids[1], story: ids[1], pass: true, metrics: { ssim: 1 }, reasons: [], checkedAt: now },
+    {
+      id: ids[0],
+      story: ids[0],
+      pass: true,
+      metrics: { ssim: 0.995 },
+      reasons: [],
+      checkedAt: now,
+    },
+    quiet
+      ? {
+          id: ids[1],
+          story: ids[1],
+          skipped: true,
+          pass: true,
+          metrics: null,
+          inherited: false,
+          unaffected: true,
+        }
+      : {
+          id: ids[1],
+          story: ids[1],
+          pass: true,
+          metrics: { ssim: 1 },
+          reasons: [],
+          checkedAt: now,
+        },
   ];
   const root = tree({
     'pxsig.config.json': { name: 'clean', storybook: { url: 'http://127.0.0.1:1' } },
-    'src/A/A.stories.tsx': "export default { title: 'C/A' };\nexport const One = {};\nexport const Two = {};\n",
-    '.pxsig/manifest.json': { version: 2, stories: ids.map((id) => ({ id, story: id, sig: `.pxsig/baselines/A/${id}.psig`, importPath: 'src/A/A.stories.tsx' })) },
+    'src/A/A.stories.tsx':
+      "export default { title: 'C/A' };\nexport const One = {};\nexport const Two = {};\n",
+    '.pxsig/manifest.json': {
+      version: 2,
+      stories: ids.map((id) => ({
+        id,
+        story: id,
+        sig: `.pxsig/baselines/A/${id}.psig`,
+        importPath: 'src/A/A.stories.tsx',
+      })),
+    },
     '.pxsig/reports/check.json': { generatedAt: now, summary: {}, rows },
     ...Object.fromEntries(ids.map((id) => [`.pxsig/baselines/A/${id}.psig`, fake(id)])),
     ...Object.fromEntries(ids.map((id) => [`.pxsig/renders/latest/${id}.png`, CHECKER])),
@@ -241,31 +420,62 @@ test('doctor --fail-on info passes ok / drift-only ledgers and fails on info fin
   assert.equal(r.status, 0, r.stdout.slice(0, 2000) + r.stderr);
   assert.ok(JSON.parse(r.stdout).summary.byStatus.drift >= 1);
   const quiet = cleanProject({ quiet: true });
-  assert.equal(cli(['doctor', '--offline', '--fail-on', 'info', '--json'], quiet).status, 1, 'skipped-unaffected is an info finding');
-  assert.equal(cli(['doctor', '--offline', '--fail-on', 'warn', '--json'], quiet).status, 0, 'but not a warning');
+  assert.equal(
+    cli(['doctor', '--offline', '--fail-on', 'info', '--json'], quiet).status,
+    1,
+    'skipped-unaffected is an info finding'
+  );
+  assert.equal(
+    cli(['doctor', '--offline', '--fail-on', 'warn', '--json'], quiet).status,
+    0,
+    'but not a warning'
+  );
 });
 
-test('check --changed records unaffected entries with a baseline as skipped-unaffected, not never-checked', { skip: !hasRust && 'Rust binary not built' }, async () => {
-  const f = fixture();
-  const r = node([join(src, 'check.mjs'), '--changed', 'src/elsewhere/Unrelated.ts'], f.repo);
-  assert.equal(r.status, 0, r.stdout + r.stderr);
-  const rows = new Map(JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8')).rows.map((x) => [x.id, x]));
-  assert.equal(rows.get(f.ids.never).unaffected, true);
-  assert.equal(rows.get(f.ids.never).note, 'skipped-unaffected');
-  assert.equal(rows.get(f.ids.ok).inherited, true, 'a previous verdict is still carried forward');
-  assert.ok(!rows.get(f.ids.unbaselined).unaffected, 'no baseline: not ok-but-unverified');
-  const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
-  const never = led.entries.find((x) => x.id === f.ids.never);
-  assert.ok(!never.issues.some((i) => i.code === 'never-checked'), JSON.stringify(never.issues));
-  assert.ok(never.issues.some((i) => i.code === 'skipped-unaffected'));
-  assert.ok(!existsSync(join(f.px, 'reports', '.lock')), 'the lock is released');
-});
+test(
+  'check --changed records unaffected entries with a baseline as skipped-unaffected, not never-checked',
+  { skip: !hasRust && 'Rust binary not built' },
+  async () => {
+    const f = fixture();
+    const r = node([join(src, 'check.mjs'), '--changed', 'src/elsewhere/Unrelated.ts'], f.repo);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    const rows = new Map(
+      JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8')).rows.map((x) => [
+        x.id,
+        x,
+      ])
+    );
+    assert.equal(rows.get(f.ids.never).unaffected, true);
+    assert.equal(rows.get(f.ids.never).note, 'skipped-unaffected');
+    assert.equal(rows.get(f.ids.ok).inherited, true, 'a previous verdict is still carried forward');
+    assert.ok(!rows.get(f.ids.unbaselined).unaffected, 'no baseline: not ok-but-unverified');
+    const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
+    const never = led.entries.find((x) => x.id === f.ids.never);
+    assert.ok(!never.issues.some((i) => i.code === 'never-checked'), JSON.stringify(never.issues));
+    assert.ok(never.issues.some((i) => i.code === 'skipped-unaffected'));
+    assert.ok(!existsSync(join(f.px, 'reports', '.lock')), 'the lock is released');
+  }
+);
 
 // --- approve plan --new ------------------------------------------------------------------------------------------
 
 test('approve plan --new plans first baselines: blocked unless named or --first-baselines', () => {
   const f = fixture({ withSigs: false });
-  const plan = (extra) => JSON.parse(cli(['approve', 'plan', '--new', '--reason', 'first renders of the new stories', '--json', ...extra], f.repo).stdout);
+  const plan = (extra) =>
+    JSON.parse(
+      cli(
+        [
+          'approve',
+          'plan',
+          '--new',
+          '--reason',
+          'first renders of the new stories',
+          '--json',
+          ...extra,
+        ],
+        f.repo
+      ).stdout
+    );
   const p1 = plan([]);
   const e1 = p1.entries.find((e) => e.id === f.ids.unbaselined);
   assert.equal(e1.status, 'blocked');
@@ -276,7 +486,9 @@ test('approve plan --new plans first baselines: blocked unless named or --first-
   assert.equal(e2.status, 'ok');
   assert.equal(e2.first, true);
   assert.equal(e2.baseSha, null);
-  const e3 = plan(['--allow-shape', f.ids.unbaselined]).entries.find((e) => e.id === f.ids.unbaselined);
+  const e3 = plan(['--allow-shape', f.ids.unbaselined]).entries.find(
+    (e) => e.id === f.ids.unbaselined
+  );
   assert.equal(e3.status, 'ok');
   // apply stays a person's job
   assert.equal(cli(['approve', 'apply'], f.repo).status, 3);
@@ -287,7 +499,12 @@ test('approve plan --new plans first baselines: blocked unless named or --first-
 test('approve undo restores from git when the local snapshot is gone, only on a matching sha256', () => {
   const root = tree({ 'pxsig.config.json': { name: 'g' } });
   rmSync(join(root, '.git'), { recursive: true });
-  const git = (...a) => spawnSync('git', ['-c', 'user.email=t@example.com', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', ...a], { cwd: root, encoding: 'utf8' });
+  const git = (...a) =>
+    spawnSync(
+      'git',
+      ['-c', 'user.email=t@example.com', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', ...a],
+      { cwd: root, encoding: 'utf8' }
+    );
   git('init', '-q');
   const P = openProject({ cwd: root, env });
   const ids = ['a-b--one', 'a-b--two', 'a-b--new'];
@@ -319,7 +536,10 @@ test('approve undo restores from git when the local snapshot is gone, only on a 
   assert.equal(res.source, 'git');
   assert.deepEqual(res.restored, [ids[0]]);
   assert.equal(readFileSync(file(ids[0]), 'utf8'), 'v1-one');
-  assert.deepEqual(res.refused.map((r) => r.id), [ids[1]]);
+  assert.deepEqual(
+    res.refused.map((r) => r.id),
+    [ids[1]]
+  );
   assert.equal(readFileSync(file(ids[1]), 'utf8'), `v2-${ids[1]}`, 'a refused entry is left alone');
   assert.deepEqual(res.removed, [ids[2]], 'a first baseline is undone by moving it to trash/');
   assert.ok(!existsSync(file(ids[2])));
@@ -343,139 +563,270 @@ test('undo with ids restores only those entries of a batch (the dashboard undoes
   const one = undo(P, manifest, 'b3', { git: false, ids: [ids[0]] });
   assert.deepEqual(one.restored, [ids[0]]);
   assert.equal(readFileSync(file(ids[0]), 'utf8'), 'v1-one');
-  assert.equal(readFileSync(file(ids[1]), 'utf8'), `v2-${ids[1]}`, 'the rest of the batch is left alone');
+  assert.equal(
+    readFileSync(file(ids[1]), 'utf8'),
+    `v2-${ids[1]}`,
+    'the rest of the batch is left alone'
+  );
   const first = undo(P, manifest, 'b3', { git: false, ids: [ids[2]] });
   assert.deepEqual(first.removed, [ids[2]], 'a first baseline goes to trash/');
   assert.ok(!existsSync(file(ids[2])));
   assert.ok(existsSync(file(ids[1])));
 });
 
-test('the server: undoing an approval restores the baseline it replaced, and logs the undo', { skip: !hasRust && 'Rust binary not built' }, async () => {
-  const f = fixture();
-  const id = f.ids.unrecoverable;
-  const file = join(f.repo, f.manifest.stories.find((e) => e.id === id).sig);
-  const original = readFileSync(file);
-  const port = await new Promise((ok) => {
-    const s = createServer().listen(0, '127.0.0.1', () => {
-      const p = s.address().port;
-      s.close(() => ok(p));
+test(
+  'the server: undoing an approval restores the baseline it replaced, and logs the undo',
+  { skip: !hasRust && 'Rust binary not built' },
+  async () => {
+    const f = fixture();
+    const id = f.ids.unrecoverable;
+    const file = join(f.repo, f.manifest.stories.find((e) => e.id === id).sig);
+    const original = readFileSync(file);
+    const port = await new Promise((ok) => {
+      const s = createServer().listen(0, '127.0.0.1', () => {
+        const p = s.address().port;
+        s.close(() => ok(p));
+      });
     });
-  });
-  const proc = spawn(process.execPath, [join(src, 'serve.mjs'), '--port', String(port), '--no-open'], { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } });
-  try {
-    await new Promise((ok, fail) => {
-      let log = '';
-      const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-      proc.stdout.on('data', (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok())));
-      proc.stderr.on('data', (d) => (log += d));
-    });
-    const post = async (action) => {
-      const r = await fetch(`http://127.0.0.1:${port}/__pxsig/${action}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`) }, body: JSON.stringify({ id }) });
-      return { status: r.status, body: await r.json() };
-    };
-    assert.equal((await post('approve')).status, 200);
-    assert.notDeepEqual(readFileSync(file), original, 'approve wrote the latest render as the baseline');
-    const undone = await post('unreview');
-    assert.equal(undone.status, 200, JSON.stringify(undone.body));
-    assert.deepEqual(readFileSync(file), original, 'undo restored the previous baseline, byte for byte');
-    const log = readLog({ store: { approvals: join(f.px, 'approvals.ndjson') } });
-    assert.equal(log.at(-1).via, 'undo');
-    assert.match(log.at(-1).batch, /-undo$/);
-  } finally {
-    proc.kill();
+    const proc = spawn(
+      process.execPath,
+      [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
+      { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
+    );
+    try {
+      await new Promise((ok, fail) => {
+        let log = '';
+        const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+        proc.stdout.on(
+          'data',
+          (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok()))
+        );
+        proc.stderr.on('data', (d) => (log += d));
+      });
+      const post = async (action) => {
+        const r = await fetch(`http://127.0.0.1:${port}/__pxsig/${action}`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`),
+          },
+          body: JSON.stringify({ id }),
+        });
+        return { status: r.status, body: await r.json() };
+      };
+      assert.equal((await post('approve')).status, 200);
+      assert.notDeepEqual(
+        readFileSync(file),
+        original,
+        'approve wrote the latest render as the baseline'
+      );
+      const undone = await post('unreview');
+      assert.equal(undone.status, 200, JSON.stringify(undone.body));
+      assert.deepEqual(
+        readFileSync(file),
+        original,
+        'undo restored the previous baseline, byte for byte'
+      );
+      const log = readLog({ store: { approvals: join(f.px, 'approvals.ndjson') } });
+      assert.equal(log.at(-1).via, 'undo');
+      assert.match(log.at(-1).batch, /-undo$/);
+    } finally {
+      proc.kill();
+    }
   }
-});
+);
 
-test('the server refuses to approve an entry whose render failed, and leaves its baseline alone', { skip: !hasRust && 'Rust binary not built' }, async () => {
-  const f = fixture();
-  const id = f.ids.unrecoverable;
-  const file = join(f.repo, f.manifest.stories.find((e) => e.id === id).sig);
-  const original = readFileSync(file);
-  const checkFile = join(f.px, 'reports', 'check.json');
-  const report = JSON.parse(readFileSync(checkFile, 'utf8'));
-  report.rows = report.rows.map((r) => (r.id === id ? { ...r, pass: false, changed: false, error: 'storybook-error: Vite error overlay: Failed to resolve import' } : r));
-  writeFileSync(checkFile, JSON.stringify(report));
-  const port = await new Promise((ok) => {
-    const s = createServer().listen(0, '127.0.0.1', () => {
-      const p = s.address().port;
-      s.close(() => ok(p));
+test(
+  'the server refuses to approve an entry whose render failed, and leaves its baseline alone',
+  { skip: !hasRust && 'Rust binary not built' },
+  async () => {
+    const f = fixture();
+    const id = f.ids.unrecoverable;
+    const file = join(f.repo, f.manifest.stories.find((e) => e.id === id).sig);
+    const original = readFileSync(file);
+    const checkFile = join(f.px, 'reports', 'check.json');
+    const report = JSON.parse(readFileSync(checkFile, 'utf8'));
+    report.rows = report.rows.map((r) =>
+      r.id === id
+        ? {
+            ...r,
+            pass: false,
+            changed: false,
+            error: 'storybook-error: Vite error overlay: Failed to resolve import',
+          }
+        : r
+    );
+    writeFileSync(checkFile, JSON.stringify(report));
+    const port = await new Promise((ok) => {
+      const s = createServer().listen(0, '127.0.0.1', () => {
+        const p = s.address().port;
+        s.close(() => ok(p));
+      });
     });
-  });
-  const proc = spawn(process.execPath, [join(src, 'serve.mjs'), '--port', String(port), '--no-open'], { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } });
-  try {
-    await new Promise((ok, fail) => {
-      let log = '';
-      const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-      proc.stdout.on('data', (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok())));
-      proc.stderr.on('data', (d) => (log += d));
-    });
-    const r = await fetch(`http://127.0.0.1:${port}/__pxsig/approve`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`) }, body: JSON.stringify({ id }) });
-    const body = await r.json();
-    assert.equal(r.status, 409, JSON.stringify(body));
-    assert.match(body.error, /did not render/);
-    assert.deepEqual(readFileSync(file), original, 'the baseline is untouched');
-  } finally {
-    proc.kill();
+    const proc = spawn(
+      process.execPath,
+      [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
+      { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
+    );
+    try {
+      await new Promise((ok, fail) => {
+        let log = '';
+        const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+        proc.stdout.on(
+          'data',
+          (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok()))
+        );
+        proc.stderr.on('data', (d) => (log += d));
+      });
+      const r = await fetch(`http://127.0.0.1:${port}/__pxsig/approve`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`),
+        },
+        body: JSON.stringify({ id }),
+      });
+      const body = await r.json();
+      assert.equal(r.status, 409, JSON.stringify(body));
+      assert.match(body.error, /did not render/);
+      assert.deepEqual(readFileSync(file), original, 'the baseline is untouched');
+    } finally {
+      proc.kill();
+    }
   }
-});
+);
 
-test('the server: accepting a11y violations updates the accepted list; undo restores it; both are logged', { skip: !hasRust && 'Rust binary not built' }, async () => {
-  const f = fixture();
-  const id = f.ids.a11y;
-  const checkPath = join(f.px, 'reports', 'check.json');
-  const check = JSON.parse(readFileSync(checkPath, 'utf8'));
-  const row = check.rows.find((r) => r.id === id);
-  row.a11y = { violations: [{ id: 'color-contrast', impact: 'serious', help: 'x', nodes: 1, targets: [] }, { id: 'aria-hidden-focus', impact: 'serious', help: 'y', nodes: 1, targets: [] }], new: 1, baseline: ['aria-hidden-focus'] };
-  writeFileSync(checkPath, JSON.stringify(check));
-  const a11yPath = join(f.px, 'a11y.json');
-  writeFileSync(a11yPath, JSON.stringify({ [id]: ['aria-hidden-focus'] }));
-  const port = await new Promise((ok) => {
-    const s = createServer().listen(0, '127.0.0.1', () => {
-      const p = s.address().port;
-      s.close(() => ok(p));
-    });
-  });
-  const proc = spawn(process.execPath, [join(src, 'serve.mjs'), '--port', String(port), '--no-open'], { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } });
-  try {
-    await new Promise((ok, fail) => {
-      let log = '';
-      const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-      proc.stdout.on('data', (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok())));
-      proc.stderr.on('data', (d) => (log += d));
-    });
-    const post = async (action) => {
-      const r = await fetch(`http://127.0.0.1:${port}/__pxsig/${action}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`) }, body: JSON.stringify({ id }) });
-      return { status: r.status, body: await r.json() };
+test(
+  'the server: accepting a11y violations updates the accepted list; undo restores it; both are logged',
+  { skip: !hasRust && 'Rust binary not built' },
+  async () => {
+    const f = fixture();
+    const id = f.ids.a11y;
+    const checkPath = join(f.px, 'reports', 'check.json');
+    const check = JSON.parse(readFileSync(checkPath, 'utf8'));
+    const row = check.rows.find((r) => r.id === id);
+    row.a11y = {
+      violations: [
+        { id: 'color-contrast', impact: 'serious', help: 'x', nodes: 1, targets: [] },
+        { id: 'aria-hidden-focus', impact: 'serious', help: 'y', nodes: 1, targets: [] },
+      ],
+      new: 1,
+      baseline: ['aria-hidden-focus'],
     };
-    const accepted = await post('a11y-accept');
-    assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
-    assert.deepEqual(JSON.parse(readFileSync(a11yPath, 'utf8'))[id], ['aria-hidden-focus', 'color-contrast']);
-    assert.equal(JSON.parse(readFileSync(join(f.px, 'reports', 'a11y-review.json'), 'utf8'))[id].state, 'accepted');
-    assert.equal((await post('a11y-unreview')).status, 200);
-    assert.deepEqual(JSON.parse(readFileSync(a11yPath, 'utf8'))[id], ['aria-hidden-focus'], 'undo restored the accepted list');
-    const log = readFileSync(join(f.px, 'a11y-decisions.ndjson'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
-    assert.deepEqual(log.map((l) => l.action), ['accept', 'undo']);
-    assert.equal((await post('a11y-reject')).status, 200);
-    assert.deepEqual(JSON.parse(readFileSync(a11yPath, 'utf8'))[id], ['aria-hidden-focus'], 'reject leaves the accepted list alone');
-    // Unaccept takes a rule off the list, and the report shows it as new straight away.
-    const r = await fetch(`http://127.0.0.1:${port}/__pxsig/a11y-unaccept`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`) }, body: JSON.stringify({ id, rule: 'aria-hidden-focus' }) });
-    assert.equal(r.status, 200);
-    assert.deepEqual(JSON.parse(readFileSync(a11yPath, 'utf8'))[id], []);
-    const row2 = JSON.parse(readFileSync(checkPath, 'utf8')).rows.find((x) => x.id === id);
-    assert.equal(row2.a11y.new, 2);
-    const again = await fetch(`http://127.0.0.1:${port}/__pxsig/a11y-unaccept`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`) }, body: JSON.stringify({ id, rule: 'aria-hidden-focus' }) });
-    assert.equal(again.status, 409, 'a rule that is not on the list is refused');
-    assert.equal(readFileSync(join(f.px, 'a11y-decisions.ndjson'), 'utf8').trim().split('\n').map((l) => JSON.parse(l).action).at(-1), 'unaccept');
-  } finally {
-    proc.kill();
+    writeFileSync(checkPath, JSON.stringify(check));
+    const a11yPath = join(f.px, 'a11y.json');
+    writeFileSync(a11yPath, JSON.stringify({ [id]: ['aria-hidden-focus'] }));
+    const port = await new Promise((ok) => {
+      const s = createServer().listen(0, '127.0.0.1', () => {
+        const p = s.address().port;
+        s.close(() => ok(p));
+      });
+    });
+    const proc = spawn(
+      process.execPath,
+      [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
+      { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
+    );
+    try {
+      await new Promise((ok, fail) => {
+        let log = '';
+        const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+        proc.stdout.on(
+          'data',
+          (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok()))
+        );
+        proc.stderr.on('data', (d) => (log += d));
+      });
+      const post = async (action) => {
+        const r = await fetch(`http://127.0.0.1:${port}/__pxsig/${action}`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`),
+          },
+          body: JSON.stringify({ id }),
+        });
+        return { status: r.status, body: await r.json() };
+      };
+      const accepted = await post('a11y-accept');
+      assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
+      assert.deepEqual(JSON.parse(readFileSync(a11yPath, 'utf8'))[id], [
+        'aria-hidden-focus',
+        'color-contrast',
+      ]);
+      assert.equal(
+        JSON.parse(readFileSync(join(f.px, 'reports', 'a11y-review.json'), 'utf8'))[id].state,
+        'accepted'
+      );
+      assert.equal((await post('a11y-unreview')).status, 200);
+      assert.deepEqual(
+        JSON.parse(readFileSync(a11yPath, 'utf8'))[id],
+        ['aria-hidden-focus'],
+        'undo restored the accepted list'
+      );
+      const log = readFileSync(join(f.px, 'a11y-decisions.ndjson'), 'utf8')
+        .trim()
+        .split('\n')
+        .map((l) => JSON.parse(l));
+      assert.deepEqual(
+        log.map((l) => l.action),
+        ['accept', 'undo']
+      );
+      assert.equal((await post('a11y-reject')).status, 200);
+      assert.deepEqual(
+        JSON.parse(readFileSync(a11yPath, 'utf8'))[id],
+        ['aria-hidden-focus'],
+        'reject leaves the accepted list alone'
+      );
+      // Unaccept takes a rule off the list, and the report shows it as new straight away.
+      const r = await fetch(`http://127.0.0.1:${port}/__pxsig/a11y-unaccept`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`),
+        },
+        body: JSON.stringify({ id, rule: 'aria-hidden-focus' }),
+      });
+      assert.equal(r.status, 200);
+      assert.deepEqual(JSON.parse(readFileSync(a11yPath, 'utf8'))[id], []);
+      const row2 = JSON.parse(readFileSync(checkPath, 'utf8')).rows.find((x) => x.id === id);
+      assert.equal(row2.a11y.new, 2);
+      const again = await fetch(`http://127.0.0.1:${port}/__pxsig/a11y-unaccept`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`),
+        },
+        body: JSON.stringify({ id, rule: 'aria-hidden-focus' }),
+      });
+      assert.equal(again.status, 409, 'a rule that is not on the list is refused');
+      assert.equal(
+        readFileSync(join(f.px, 'a11y-decisions.ndjson'), 'utf8')
+          .trim()
+          .split('\n')
+          .map((l) => JSON.parse(l).action)
+          .at(-1),
+        'unaccept'
+      );
+    } finally {
+      proc.kill();
+    }
   }
-});
+);
 
 // --- colocated .gitattributes ----------------------------------------------------------------------------------
 
 test('init with the colocated layout adds *.psig binary diff=psig to the root .gitattributes, once', () => {
-  const root = tree({ 'pxsig.workspace.json': { version: 1, projects: {} }, '.gitattributes': '*.png binary', 'packages/forms/package.json': { name: 'forms' } });
-  const wrote = initProject({ dir: join(root, 'packages/forms'), workspaceRoot: root, layout: 'colocated' });
+  const root = tree({
+    'pxsig.workspace.json': { version: 1, projects: {} },
+    '.gitattributes': '*.png binary',
+    'packages/forms/package.json': { name: 'forms' },
+  });
+  const wrote = initProject({
+    dir: join(root, 'packages/forms'),
+    workspaceRoot: root,
+    layout: 'colocated',
+  });
   assert.ok(wrote.includes(join(root, '.gitattributes')));
   const text = readFileSync(join(root, '.gitattributes'), 'utf8');
   assert.match(text, /^\*\.png binary\n/);
@@ -483,9 +834,15 @@ test('init with the colocated layout adds *.psig binary diff=psig to the root .g
   assert.equal(ensureGitattributes(root), null, 'idempotent');
   initProject({ dir: join(root, 'packages/forms'), workspaceRoot: root, layout: 'colocated' });
   assert.equal(readFileSync(join(root, '.gitattributes'), 'utf8').match(/\*\.psig/g).length, 1);
-  assert.equal(JSON.parse(readFileSync(join(root, 'packages/forms/pxsig.config.json'), 'utf8')).store.layout, 'colocated');
+  assert.equal(
+    JSON.parse(readFileSync(join(root, 'packages/forms/pxsig.config.json'), 'utf8')).store.layout,
+    'colocated'
+  );
   // The package layout leaves the root alone.
-  const pkg = tree({ 'pxsig.workspace.json': { version: 1, projects: {} }, 'packages/ui/package.json': {} });
+  const pkg = tree({
+    'pxsig.workspace.json': { version: 1, projects: {} },
+    'packages/ui/package.json': {},
+  });
   initProject({ dir: join(pkg, 'packages/ui'), workspaceRoot: pkg });
   assert.ok(!existsSync(join(pkg, '.gitattributes')));
 });
@@ -494,28 +851,54 @@ test('init with the colocated layout adds *.psig binary diff=psig to the root .g
 
 test('storybook.staticDir: when storybook.url does not answer, the build is served on a free port', async () => {
   const { ensureStorybook } = await import('../src/lib/static.mjs');
-  const index = { v: 5, entries: { 'a--b': { type: 'story', id: 'a--b', title: 'A', name: 'B', importPath: './src/A.stories.tsx' } } };
-  const root = tree({ 'pxsig.config.json': { storybook: { url: 'http://127.0.0.1:1', staticDir: 'sb-static' } }, 'sb-static/index.json': index, 'sb-static/iframe.html': '<html></html>' });
+  const index = {
+    v: 5,
+    entries: {
+      'a--b': {
+        type: 'story',
+        id: 'a--b',
+        title: 'A',
+        name: 'B',
+        importPath: './src/A.stories.tsx',
+      },
+    },
+  };
+  const root = tree({
+    'pxsig.config.json': { storybook: { url: 'http://127.0.0.1:1', staticDir: 'sb-static' } },
+    'sb-static/index.json': index,
+    'sb-static/iframe.html': '<html></html>',
+  });
   const P = openProject({ cwd: root, env });
   const sb = await ensureStorybook(P);
   try {
     assert.equal(sb.served, true);
     assert.equal(P.storybook.url, sb.url);
     assert.equal(sb.index.healthy, true);
-    assert.deepEqual(sb.index.stories.map((s) => s.id), ['a--b']);
+    assert.deepEqual(
+      sb.index.stories.map((s) => s.id),
+      ['a--b']
+    );
     assert.equal((await fetch(`${sb.url}/iframe.html`)).status, 200);
     assert.equal((await fetch(`${sb.url}/../pxsig.config.json`)).status, 404);
   } finally {
     await sb.close();
   }
   // No build in the folder: nothing served, the caller reports Storybook unreachable.
-  const empty = tree({ 'pxsig.config.json': { storybook: { url: 'http://127.0.0.1:1', staticDir: 'nothing' } } });
+  const empty = tree({
+    'pxsig.config.json': { storybook: { url: 'http://127.0.0.1:1', staticDir: 'nothing' } },
+  });
   assert.equal((await ensureStorybook(openProject({ cwd: empty, env }))).served, false);
 });
 
 test('one version: the npm package, the MCP server and the Rust workspace agree', () => {
-  const cargo = readFileSync(new URL('../../../Cargo.toml', import.meta.url), 'utf8').match(/\[workspace\.package\][^[]*?version\s*=\s*"([^"]+)"/)[1];
+  const cargo = readFileSync(new URL('../../../Cargo.toml', import.meta.url), 'utf8').match(
+    /\[workspace\.package\][^[]*?version\s*=\s*"([^"]+)"/
+  )[1];
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
   assert.equal(pkg, cargo);
-  if (hasRust) assert.equal(spawnSync(rustBin, ['--version'], { encoding: 'utf8' }).stdout.trim(), `pxsig ${cargo}`);
+  if (hasRust)
+    assert.equal(
+      spawnSync(rustBin, ['--version'], { encoding: 'utf8' }).stdout.trim(),
+      `pxsig ${cargo}`
+    );
 });

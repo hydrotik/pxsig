@@ -64,13 +64,33 @@ export interface Row {
   reasons?: string[];
   detail?: DetailResult | null;
   gate?: Record<string, unknown>;
-  pixels?: { width: number; height: number; changed: number; maxDelta: number; regions: Region[]; regionCount: number } | null;
-  a11y?: { violations?: A11yViolation[]; new?: number; baseline?: string[] | null; error?: string } | null;
+  pixels?: {
+    width: number;
+    height: number;
+    changed: number;
+    maxDelta: number;
+    regions: Region[];
+    regionCount: number;
+  } | null;
+  a11y?: {
+    violations?: A11yViolation[];
+    new?: number;
+    baseline?: string[] | null;
+    error?: string;
+  } | null;
   retry?: { attempt: number; metrics: Metrics };
 }
 export interface CheckReport {
   generatedAt: string;
-  manifest: { grid: number; gate: Record<string, number> | null; modes: Record<string, { globals: string; colorScheme: string; viewport?: number[]; browser?: string }> | null; defaultMode: string };
+  manifest: {
+    grid: number;
+    gate: Record<string, number> | null;
+    modes: Record<
+      string,
+      { globals: string; colorScheme: string; viewport?: number[]; browser?: string }
+    > | null;
+    defaultMode: string;
+  };
   summary: {
     entries: number;
     checked: number;
@@ -151,7 +171,13 @@ export interface CalibrationReport {
   suite: { name: string; title: string; pattern?: string } | null;
   minCellPx: number | null;
   renders: number;
-  grids: { grid: number; signatureBytes: number; msPerCompare: number; rules: CalibrationRule[]; best: string | null }[];
+  grids: {
+    grid: number;
+    signatureBytes: number;
+    msPerCompare: number;
+    rules: CalibrationRule[];
+    best: string | null;
+  }[];
 }
 /** tools/bench.mjs. Every section is optional: a partial or older run may lack any of them. */
 export interface BenchReport {
@@ -168,7 +194,13 @@ export interface BenchReport {
   perCall?: { rustMs: number; serveMs: number; samples: number };
   memory?: { rustPeakRssBytes: number | null };
   footprint?: { rustBinaryBytes: number };
-  render?: { stories: number; byConcurrency: Record<string, { wallMs: number; msPerStory: number; errors: number; reloads?: number }> };
+  render?: {
+    stories: number;
+    byConcurrency: Record<
+      string,
+      { wallMs: number; msPerStory: number; errors: number; reloads?: number }
+    >;
+  };
 }
 export interface HistoryRun {
   at: string;
@@ -208,7 +240,16 @@ export interface IntegrityComponent {
 export interface IntegrityLedger {
   schemaVersion: number;
   generatedAt: string;
-  sources: { storyIndex: { source: 'storybook' | 'static'; reachable?: boolean; healthy?: boolean; error?: string; inScope: number }; report: { generatedAt?: string; rows?: number; missing?: boolean } };
+  sources: {
+    storyIndex: {
+      source: 'storybook' | 'static';
+      reachable?: boolean;
+      healthy?: boolean;
+      error?: string;
+      inScope: number;
+    };
+    report: { generatedAt?: string; rows?: number; missing?: boolean };
+  };
   setup: { code: string; severity: string; reason: string }[];
   summary: {
     status: 'clean' | 'warnings' | 'attention';
@@ -261,23 +302,48 @@ declare global {
 
 /** Suite keys in display order: `default` first, the rest by name. */
 export function suiteKeys(m: Record<string, unknown> | null | undefined): string[] {
-  return Object.keys(m ?? {}).sort((a, b) => (a === 'default' ? -1 : b === 'default' ? 1 : a.localeCompare(b)));
+  return Object.keys(m ?? {}).sort((a, b) =>
+    a === 'default' ? -1 : b === 'default' ? 1 : a.localeCompare(b)
+  );
 }
 /** A suite's display name: the report's own title, else the key (`default` → General sample). */
-export function suiteTitle(key: string, rep?: { suite?: { title?: string } | null } | null): string {
+export function suiteTitle(
+  key: string,
+  rep?: { suite?: { title?: string } | null } | null
+): string {
   return rep?.suite?.title ?? (key === 'default' ? t('diagnostics.scenario.defaultSuite') : key);
 }
 
-export const served = typeof location !== 'undefined' && location.protocol.startsWith('http') && !window.PXSIG?.static;
+export const served =
+  typeof location !== 'undefined' && location.protocol.startsWith('http') && !window.PXSIG?.static;
 
 /** The project in view: `?project=` in the URL, else the one owning `?story=` (the Storybook panel). */
-const query = typeof location !== 'undefined' ? new URLSearchParams(location.search) : new URLSearchParams();
+const query =
+  typeof location !== 'undefined' ? new URLSearchParams(location.search) : new URLSearchParams();
 let currentProject: string | null = query.get('project');
-const scope = () => (currentProject ? `?project=${encodeURIComponent(currentProject)}` : query.get('story') ? `?story=${encodeURIComponent(query.get('story')!)}` : '');
-const withProject = (body: object) => JSON.stringify(currentProject ? { project: currentProject, ...body } : body);
+const scope = () =>
+  currentProject
+    ? `?project=${encodeURIComponent(currentProject)}`
+    : query.get('story')
+      ? `?story=${encodeURIComponent(query.get('story')!)}`
+      : '';
+const withProject = (body: object) =>
+  JSON.stringify(currentProject ? { project: currentProject, ...body } : body);
 
 /** Counts a report's summary carries; a report missing one (written by an older or partial run) reads it as 0. */
-const SUMMARY_COUNTS = ['entries', 'checked', 'skipped', 'passed', 'failed', 'flaky', 'errors', 'cached', 'a11yViolations', 'a11yNew', 'concurrency'] as const;
+const SUMMARY_COUNTS = [
+  'entries',
+  'checked',
+  'skipped',
+  'passed',
+  'failed',
+  'flaky',
+  'errors',
+  'cached',
+  'a11yViolations',
+  'a11yNew',
+  'concurrency',
+] as const;
 
 /**
  * The report as the views read it: a summary with every count and its modes, and a rows list, even
@@ -291,7 +357,10 @@ export function normalizeData(d: Data): Data {
   for (const k of SUMMARY_COUNTS) if (typeof summary[k] !== 'number') summary[k] = 0;
   if (!Array.isArray(summary.modes)) summary.modes = [];
   if (summary.affected === undefined) summary.affected = null;
-  return { ...d, check: { ...d.check, summary, rows: Array.isArray(d.check.rows) ? d.check.rows : [] } };
+  return {
+    ...d,
+    check: { ...d.check, summary, rows: Array.isArray(d.check.rows) ? d.check.rows : [] },
+  };
 }
 
 async function fetchData(): Promise<Data> {
@@ -334,7 +403,9 @@ export function switchProject(name: string) {
 
 /** The report data, refetched whenever the server says a producer wrote new results. */
 export function useData(): { data: Data | null; error: string | null; live: boolean } {
-  const [data, setData] = React.useState<Data | null>(window.PXSIG ? normalizeData(window.PXSIG) : null);
+  const [data, setData] = React.useState<Data | null>(
+    window.PXSIG ? normalizeData(window.PXSIG) : null
+  );
   const [error, setError] = React.useState<string | null>(null);
   const [live, setLive] = React.useState(false);
   React.useEffect(() => {
@@ -385,18 +456,31 @@ export function useData(): { data: Data | null; error: string | null; live: bool
 
 // Decisions carry the dashboard link's cookie (link.ts); without it the server refuses them, so an
 // agent or a script posting to the server, or reading the page, cannot approve.
-export async function reviewAction(action: 'approve' | 'reject' | 'unreview', id: string): Promise<void> {
+export async function reviewAction(
+  action: 'approve' | 'reject' | 'unreview',
+  id: string
+): Promise<void> {
   await decide(`/__pxsig/${action}`, withProject({ id }));
 }
 
 /** `unaccept` takes `rule` (or every rule) off the entry's accepted list. */
-export async function a11yAction(action: 'accept' | 'reject' | 'unreview' | 'unaccept', id: string, rule?: string): Promise<void> {
+export async function a11yAction(
+  action: 'accept' | 'reject' | 'unreview' | 'unaccept',
+  id: string,
+  rule?: string
+): Promise<void> {
   await decide(`/__pxsig/a11y-${action}`, withProject(rule ? { id, rule } : { id }));
 }
 
 /** Queue entries (or stories) for a re-check on the server. Never writes a baseline. */
-export async function recheck(ids: string[]): Promise<{ queued: string[]; registered?: string[]; skipped?: { name: string; why: string }[] }> {
-  const r = await fetch('/__pxsig/check', { method: 'POST', headers: { 'content-type': 'application/json' }, body: withProject({ ids }) });
+export async function recheck(
+  ids: string[]
+): Promise<{ queued: string[]; registered?: string[]; skipped?: { name: string; why: string }[] }> {
+  const r = await fetch('/__pxsig/check', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: withProject({ ids }),
+  });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body.error || r.statusText);
   return { queued: body.queued ?? [], registered: body.registered, skipped: body.skipped };
@@ -406,8 +490,14 @@ export async function recheck(ids: string[]): Promise<{ queued: string[]; regist
  * Approve every entry of a story that waits for a decision, in one batch (a person's click; the
  * server leaves out entries that pass, did not render, or were rejected, and says why).
  */
-export async function approveStory(story: string): Promise<{ approved: string[]; skipped: { id: string; why: string }[]; batch: string }> {
-  return (await decide('/__pxsig/approve-story', withProject({ story }))) as { approved: string[]; skipped: { id: string; why: string }[]; batch: string };
+export async function approveStory(
+  story: string
+): Promise<{ approved: string[]; skipped: { id: string; why: string }[]; batch: string }> {
+  return (await decide('/__pxsig/approve-story', withProject({ story }))) as {
+    approved: string[];
+    skipped: { id: string; why: string }[];
+    batch: string;
+  };
 }
 
 /** The server's check runs, as its `check` events report them. */
@@ -426,7 +516,8 @@ const setActivity = (next: CheckActivity) => {
 function noteCheck(d: { state?: string; ids?: string[]; error?: string; setup?: boolean }) {
   if (d.state === 'running') setActivity({ ...activity, running: d.ids ?? [] });
   else if (d.state === 'done') setActivity({ running: null, error: null });
-  else if (d.state === 'error') setActivity({ running: null, error: { message: d.error ?? '', setup: !!d.setup } });
+  else if (d.state === 'error')
+    setActivity({ running: null, error: { message: d.error ?? '', setup: !!d.setup } });
 }
 export const dismissCheckError = () => setActivity({ ...activity, error: null });
 export function useCheckActivity(): CheckActivity {
@@ -438,8 +529,15 @@ export function useCheckActivity(): CheckActivity {
 }
 
 /** Run the safe repairs on the server (never writes signatures, never approves, never prunes). */
-export async function repairSafe(): Promise<{ applied?: { action: string; result: string }[]; plan: { steps: { action: string; ids: string[] }[] } }> {
-  const r = await fetch('/__pxsig/repair', { method: 'POST', headers: { 'content-type': 'application/json' }, body: withProject({ apply: true }) });
+export async function repairSafe(): Promise<{
+  applied?: { action: string; result: string }[];
+  plan: { steps: { action: string; ids: string[] }[] };
+}> {
+  const r = await fetch('/__pxsig/repair', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: withProject({ apply: true }),
+  });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body.error || r.statusText);
   return body;
@@ -465,7 +563,17 @@ export function rowsWithPending(d: Data): Row[] {
   const have = new Set(rows.map((r) => r.id));
   const pending = d.integrity.entries
     .filter((x) => x.files && !have.has(x.id) && x.issues.some((i) => i.code === 'unbaselined'))
-    .map((x): Row => ({ id: x.id, story: x.story, mode: x.mode ?? '', state: x.state, pass: false, new: true, pending: true, metrics: null, reasons: [t('review.pendingReason')] }));
+    .map((x): Row => ({
+      id: x.id,
+      story: x.story,
+      mode: x.mode ?? '',
+      state: x.state,
+      pass: false,
+      new: true,
+      pending: true,
+      metrics: null,
+      reasons: [t('review.pendingReason')],
+    }));
   return pending.length ? [...rows, ...pending] : rows;
 }
 
@@ -499,7 +607,12 @@ export function pathsFor(d: Data, id: string, scenario?: { tag: string; name: st
 
 export const fmt = {
   // A report without a timing (written by an older server) shows a dash, not NaN.
-  ms: (v: number | null | undefined) => (typeof v !== 'number' || !Number.isFinite(v) ? '—' : v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)} s` : `${Math.round(v)} ms`),
+  ms: (v: number | null | undefined) =>
+    typeof v !== 'number' || !Number.isFinite(v)
+      ? '—'
+      : v >= 1000
+        ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)} s`
+        : `${Math.round(v)} ms`,
   pct: (v: number, d = 0) => `${(v * 100).toFixed(d)}%`,
   num: (v: number) => (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(1)}K` : String(v)),
   kb: (b: number) => `${(b / 1024).toFixed(1)} KB`,
@@ -509,21 +622,28 @@ export const fmt = {
 export type Queue = 'changed' | 'new' | 'a11y';
 
 /** An entry with new axe violations whose visual verdict needs no review: the accessibility queue. */
-const a11yOnly = (r: Row) => (r.a11y?.new ?? 0) > 0 && !['changed', 'new'].includes(statusOf(r, {}));
+const a11yOnly = (r: Row) =>
+  (r.a11y?.new ?? 0) > 0 && !['changed', 'new'].includes(statusOf(r, {}));
 
 /**
  * The entries a review session walks: every changed (or new, rendered, or a11y-only) entry of the
  * last check, decided or not, largest change first. Progress is how many of them have a decision.
  */
 export function reviewQueue(d: Data, kind: Queue): Row[] {
-  const size = (r: Row) => (r.metrics?.ssim ?? 2) - (r.detail ? (r.detail.changedTiles + r.detail.newEdgeTiles) / 1000 : 0);
+  const size = (r: Row) =>
+    (r.metrics?.ssim ?? 2) -
+    (r.detail ? (r.detail.changedTiles + r.detail.newEdgeTiles) / 1000 : 0);
   return rowsWithPending(d)
     .filter((r) => !r.pending && (kind === 'a11y' ? a11yOnly(r) : statusOf(r, {}) === kind))
     .sort((a, b) => size(a) - size(b) || a.id.localeCompare(b.id));
 }
 
 /** The decision on an entry within a queue: the visual review, or the accessibility one. */
-export function decisionOf(d: Data, kind: Queue | null | undefined, id: string): { state: string } | undefined {
+export function decisionOf(
+  d: Data,
+  kind: Queue | null | undefined,
+  id: string
+): { state: string } | undefined {
   return kind === 'a11y' ? d.a11yReview?.[id] : d.review[id];
 }
 
@@ -533,7 +653,10 @@ export function componentOf(d: Data, r: Row): string {
 }
 
 /** A review decision (made on this run's results; a new check clears them) wins over the verdict. */
-export function statusOf(r: Row, review: Record<string, ReviewEntry>): 'approved' | 'rejected' | 'changed' | 'new' | 'flaky' | 'skipped' | 'error' | 'pass' {
+export function statusOf(
+  r: Row,
+  review: Record<string, ReviewEntry>
+): 'approved' | 'rejected' | 'changed' | 'new' | 'flaky' | 'skipped' | 'error' | 'pass' {
   const rv = review[r.id];
   if (rv) return rv.state;
   if (r.skipped) return 'skipped';

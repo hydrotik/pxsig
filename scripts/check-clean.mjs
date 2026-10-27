@@ -32,7 +32,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 /** Folders a run or a build writes. */
-const RUN_DIRS = /(^|\/)(\.pxsig|__pxsig__|\.baselines|\.renders|\.reports|px-diff-out|pxsig-diff|target|dist)\//;
+const RUN_DIRS =
+  /(^|\/)(\.pxsig|__pxsig__|\.baselines|\.renders|\.reports|px-diff-out|pxsig-diff|target|dist)\//;
 const FORBIDDEN_FILES = [
   /\.(png|jpe?g|gif|webp|avif|bmp|ico|woff2?|ttf|otf|wasm)$/i,
   /\.psig$/i,
@@ -62,15 +63,18 @@ export function fileProblem(f, size = 0) {
         ? `a product shot over ${SHOT_MAX_BYTES / 1024 / 1024} MB (${(size / 1024 / 1024).toFixed(2)} MB): the README loads it, compress it`
         : null;
     }
-    if (!/\.md$/i.test(f)) return `${SHOTS} holds product screenshots (png, jpg, webp, avif, gif) and Markdown only`;
+    if (!/\.md$/i.test(f))
+      return `${SHOTS} holds product screenshots (png, jpg, webp, avif, gif) and Markdown only`;
   }
-  if (FORBIDDEN_FILES.some((re) => re.test(f))) return 'this kind of file stays out of the repository';
+  if (FORBIDDEN_FILES.some((re) => re.test(f)))
+    return 'this kind of file stays out of the repository';
   return null;
 }
 
 const forbiddenPaths = [/\bpackages\/hy-[a-z]/, /\bapps\/hy-[a-z]/];
 const HOME = /(?:^|[\s"'`(=])\/(?:Users|home)\/[A-Za-z0-9._-]+\//;
-const SKIP_TEXT = /(^|\/)(pnpm-lock\.yaml|Cargo\.lock)$|\.(png|jpe?g|gif|webp|avif|ico|woff2?|ttf|otf|wasm)$/i;
+const SKIP_TEXT =
+  /(^|\/)(pnpm-lock\.yaml|Cargo\.lock)$|\.(png|jpe?g|gif|webp|avif|ico|woff2?|ttf|otf|wasm)$/i;
 /** Files that describe these rules and so must name the patterns. */
 const SELF = new Set(['scripts/check-clean.mjs', '.gitignore', '.clean-terms']);
 
@@ -88,12 +92,16 @@ function files() {
     walk(root);
     return out;
   }
-  return execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' }).split('\0').filter(Boolean);
+  return execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' })
+    .split('\0')
+    .filter(Boolean);
 }
 
 const flag = (k) => {
   const i = process.argv.indexOf(k);
-  return i > 0 && process.argv[i + 1] && !process.argv[i + 1].startsWith('--') ? process.argv[i + 1] : null;
+  return i > 0 && process.argv[i + 1] && !process.argv[i + 1].startsWith('--')
+    ? process.argv[i + 1]
+    : null;
 };
 const git = (...a) => execFileSync('git', a, { cwd: root, encoding: 'utf8' });
 
@@ -108,7 +116,11 @@ function mainCheckout() {
 
 function terms() {
   const list = (process.env.PXSIG_CLEAN_TERMS ?? '').split(',');
-  const config = join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'pxsig', 'clean-terms');
+  const config = join(
+    process.env.XDG_CONFIG_HOME || join(homedir(), '.config'),
+    'pxsig',
+    'clean-terms'
+  );
   const main = mainCheckout();
   for (const f of [config, join(root, '.clean-terms'), main && join(main, '.clean-terms')])
     if (f && existsSync(f)) list.push(...readFileSync(f, 'utf8').split(/\r?\n/));
@@ -121,12 +133,17 @@ if (main) run();
 
 function run() {
   if (process.argv.includes('--require-terms') && !terms().length) {
-    console.error('[check-clean] no denylist: create ~/.config/pxsig/clean-terms or .clean-terms (one name per line)');
+    console.error(
+      '[check-clean] no denylist: create ~/.config/pxsig/clean-terms or .clean-terms (one name per line)'
+    );
     process.exit(1);
   }
 
   const problems = [];
-  const denylist = terms().map((t) => ({ t, re: new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`) }));
+  const denylist = terms().map((t) => ({
+    t,
+    re: new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`),
+  }));
   for (const f of files()) {
     let size = 0;
     try {
@@ -151,7 +168,9 @@ function run() {
     text.split('\n').forEach((line, i) => {
       const at = `${f}:${i + 1}`;
       if (HOME.test(line)) problems.push(`${at}: absolute home path`);
-      for (const re of forbiddenPaths) if (re.test(line)) problems.push(`${at}: a consuming repository's package path (${re.source})`);
+      for (const re of forbiddenPaths)
+        if (re.test(line))
+          problems.push(`${at}: a consuming repository's package path (${re.source})`);
       for (const { re } of denylist) if (re.test(line)) problems.push(`${at}: denylisted name`);
     });
   }
@@ -160,7 +179,8 @@ function run() {
   function checkText(label, text) {
     text.split('\n').forEach((line, i) => {
       if (HOME.test(line)) problems.push(`${label}:${i + 1}: absolute home path`);
-      for (const { re } of denylist) if (re.test(line)) problems.push(`${label}:${i + 1}: denylisted name`);
+      for (const { re } of denylist)
+        if (re.test(line)) problems.push(`${label}:${i + 1}: denylisted name`);
     });
   }
   const since = flag('--since');
@@ -179,5 +199,7 @@ function run() {
     for (const p of problems.slice(0, 200)) console.error(`  ${p}`);
     process.exit(1);
   }
-  console.log(`[check-clean] ok · ${denylist.length ? `${denylist.length} denylisted names checked` : 'no denylist here (run /scrub on the maintainer\'s machine to check names)'}`);
+  console.log(
+    `[check-clean] ok · ${denylist.length ? `${denylist.length} denylisted names checked` : "no denylist here (run /scrub on the maintainer's machine to check names)"}`
+  );
 }

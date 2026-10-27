@@ -1,7 +1,11 @@
 import React from 'react';
 import { Button } from './Button';
 
-export default { title: 'Components/Button', component: Button, args: { children: 'Save changes' } };
+export default {
+  title: 'Components/Button',
+  component: Button,
+  args: { children: 'Save changes' },
+};
 
 export const Primary = {};
 export const Secondary = { args: { variant: 'secondary' } };
