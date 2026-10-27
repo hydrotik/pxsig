@@ -59,9 +59,13 @@ test('a design-system import outside the adapters fails', async () => {
 });
 
 test('a contract change without a version bump and a changes entry fails', async () => {
+  const version = readFileSync(path.join(dashboard, 'src/ui/contract.ts'), 'utf8').match(/CONTRACT_VERSION = '([\d.]+)'/)[1];
+  const [M, m] = version.split('.').map(Number);
+  const next = `${M}.${m + 1}.0`;
+  const esc = (v) => v.replace(/\./g, '\\.');
   const removed = await check(({ read, write }) => write('src/ui/contract.ts', read('src/ui/contract.ts').replace("  Kbd: { group: 'controls', required: false, role: 'a keyboard key' },\n", '')));
-  assert.ok(removed.some((p) => /Kbd was removed.*CONTRACT_VERSION is still 1\.0\.0: bump it \(major\)/.test(p)), removed.join('\n'));
-  const bumped = await check(({ read, write }) => write('src/ui/contract.ts', read('src/ui/contract.ts').replace("CONTRACT_VERSION = '1.0.0'", "CONTRACT_VERSION = '1.1.0'").replace('  /** A CSS size. Unset: the adapter\'s default. */\n  size?: string;', '  /** A CSS size. Unset: the adapter\'s default. */\n  size?: string;\n  spin?: boolean;')));
-  assert.ok(bumped.some((p) => /no "## 1\.1\.0" section/.test(p)), bumped.join('\n'));
-  assert.ok(bumped.some((p) => /reference adapter: conformance\.json says "contract": "1\.0\.0"/.test(p)), bumped.join('\n'));
+  assert.ok(removed.some((p) => new RegExp(`Kbd was removed.*CONTRACT_VERSION is still ${esc(version)}: bump it \\(major\\)`).test(p)), removed.join('\n'));
+  const bumped = await check(({ read, write }) => write('src/ui/contract.ts', read('src/ui/contract.ts').replace(`CONTRACT_VERSION = '${version}'`, `CONTRACT_VERSION = '${next}'`).replace('  /** A CSS size. Unset: the adapter\'s default. */\n  size?: string;', '  /** A CSS size. Unset: the adapter\'s default. */\n  size?: string;\n  spin?: boolean;')));
+  assert.ok(bumped.some((p) => new RegExp(`no "## ${esc(next)}" section`).test(p)), bumped.join('\n'));
+  assert.ok(bumped.some((p) => new RegExp(`reference adapter: conformance\\.json says "contract": "${esc(version)}"`).test(p)), bumped.join('\n'));
 });

@@ -39,29 +39,37 @@ test('major and minor changes', () => {
   assert.match(d((n) => (n.icons = n.icons.filter((i) => i !== 'sun'))).major[0], /icon sun was removed/);
 });
 
+/** Versions past the current one: `minorUp(k)` is k minors on, `majorUp` the next major. */
+const [M, m] = now.version.split('.').map(Number);
+const minorUp = (k) => `${M}.${m + k}.0`;
+const majorUp = `${M + 1}.0.0`;
+const esc = (v) => v.replace(/\./g, '\\.');
+
 test('ui:check asks a change for a bump of the right size and a changes entry', () => {
-  const changes = { '1.0.0': 'x', '1.1.0': 'y', '2.0.0': 'z' };
+  const changes = { [now.version]: 'x', [minorUp(1)]: 'y', [majorUp]: 'z' };
   const at = (version, edit = () => {}) => lockProblems({ lock, now: changed((n) => ((n.version = version), edit(n))), changes });
-  assert.deepEqual(at('1.0.0'), []);
-  assert.match(at('1.0.0', (n) => (n.components.Kbd.hash = 'x'))[0], /CONTRACT_VERSION is still 1\.0\.0: bump it \(minor\)/);
-  assert.match(at('1.1.0', (n) => delete n.components.Kbd)[0], /a major change, but CONTRACT_VERSION went from 1\.0\.0 to 1\.1\.0/);
-  assert.match(at('2.0.0', (n) => delete n.components.Kbd)[0], /run node scripts\/ui\.mjs lock to record 2\.0\.0/);
-  assert.match(at('1.1.0')[0], /nothing changed/);
-  assert.match(lockProblems({ lock, now: changed((n) => (n.version = '1.2.0')), changes })[0], /no "## 1\.2\.0" section/);
+  assert.deepEqual(at(now.version), []);
+  assert.match(at(now.version, (n) => (n.components.Kbd.hash = 'x'))[0], new RegExp(`CONTRACT_VERSION is still ${esc(now.version)}: bump it \\(minor\\)`));
+  assert.match(at(minorUp(1), (n) => delete n.components.Kbd)[0], new RegExp(`a major change, but CONTRACT_VERSION went from ${esc(now.version)} to ${esc(minorUp(1))}`));
+  assert.match(at(majorUp, (n) => delete n.components.Kbd)[0], new RegExp(`run node scripts/ui\\.mjs lock to record ${esc(majorUp)}`));
+  assert.match(at(minorUp(1))[0], /nothing changed/);
+  assert.match(lockProblems({ lock, now: changed((n) => (n.version = minorUp(2))), changes })[0], new RegExp(`no "## ${esc(minorUp(2))}" section`));
 });
 
 test("an adapter's recorded version against this pxsig's", () => {
-  const l = { ...lockFor(now), version: '1.2.0', components: { ...lockFor(now).components, Tabs: { required: false, hash: 'h', since: '1.1.0' } }, tokens: { ...lockFor(now).tokens, 'color.info': '1.2.0' } };
-  const changes = { '1.0.0': 'first', '1.1.0': 'Tabs', '1.2.0': 'color.info', '2.0.0': 'Move Badge to Tag.' };
-  assert.equal(contractStatus('1.2.0', { lock: l, changes }).status, 'same');
-  const minor = contractStatus('1.0.0', { lock: l, changes });
+  // From the committed lock, so every component keeps the version that added it.
+  const base = readLock();
+  const l = { ...base, version: minorUp(2), components: { ...base.components, Tabs: { required: false, hash: 'h', since: minorUp(1) } }, tokens: { ...base.tokens, 'color.info': minorUp(2) } };
+  const changes = { ...readChanges(), [minorUp(1)]: 'Tabs', [minorUp(2)]: 'color.info', [majorUp]: 'Move Badge to Tag.' };
+  assert.equal(contractStatus(minorUp(2), { lock: l, changes }).status, 'same');
+  const minor = contractStatus(now.version, { lock: l, changes });
   assert.equal(minor.status, 'older-minor');
   assert.match(minor.line, /fall back to their defaults until the adapter maps them: Tabs, token color\.info/);
-  assert.match(contractStatus('1.1.0', { lock: l, changes }).line, /token color\.info$/);
-  assert.equal(contractStatus('1.3.0', { lock: l, changes }).status, 'newer');
-  const major = contractStatus('1.2.0', { lock: { ...l, version: '2.0.0' }, changes });
+  assert.match(contractStatus(minorUp(1), { lock: l, changes }).line, /token color\.info$/);
+  assert.equal(contractStatus(minorUp(3), { lock: l, changes }).status, 'newer');
+  const major = contractStatus(minorUp(2), { lock: { ...l, version: majorUp }, changes });
   assert.equal(major.status, 'older-major');
-  assert.deepEqual(major.notes, ['2.0.0:\nMove Badge to Tag.']);
+  assert.deepEqual(major.notes, [`${majorUp}:\nMove Badge to Tag.`]);
   assert.equal(compareVersions('1.10.0', '1.9.0'), 1);
 });
 

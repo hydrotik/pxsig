@@ -60,7 +60,7 @@ command to run; it never builds by itself. `PXSIG_DASHBOARD_DIR` overrides both.
 5. Beside it, `conformance.json` says how fully you cover each component:
 
    ```json
-   { "adapter": "acme", "contract": "1.0.0", "components": { "Button": { "status": "full", "note": "Acme Button" } } }
+   { "adapter": "acme", "contract": "1.1.0", "components": { "Button": { "status": "full", "note": "Acme Button" } } }
    ```
 
    Status is `full` (your design system's component, all behaviour), `partial` (some behaviour

@@ -1,6 +1,6 @@
 {
   "adapter": "plain",
-  "contract": "1.0.0",
+  "contract": "1.1.0",
   "designSystem": "none: semantic HTML and theme.css",
   "components": {
     "UiProvider": { "status": "bespoke", "note": "sets data-theme on <html>; no density" },
@@ -21,6 +21,7 @@
     "DialogTitle": { "status": "full" },
     "DialogDescription": { "status": "full" },
     "Select": { "status": "full", "note": "native <select>" },
-    "Kbd": { "status": "full", "note": "native <kbd>" }
+    "Kbd": { "status": "full", "note": "native <kbd>" },
+    "Tooltip": { "status": "missing", "note": "the fallback: the native title attribute" }
   }
 }
