@@ -120,8 +120,8 @@ export function lookup(words) {
   }
   const cmd = commands[first];
   if (cmd) {
-    // An empty second word ('') would make `sub` '' and the entry ''; reported, not changed.
-    const sub = /** @type {HelpCommandEntry | undefined} */ (second && cmd.subcommands?.[second]);
+    // An empty second word ('') is no subcommand, as when there is none.
+    const sub = second ? cmd.subcommands?.[second] : undefined;
     if (second && !sub) return null;
     return {
       kind: 'command',

@@ -262,6 +262,11 @@ test('a setting whose values are one string has its page', () => {
   assert.match(pxsig(['help', 'approvals.identity']).stdout, /none \| git-email/);
 });
 
+test('an empty subcommand word is no subcommand', () => {
+  assert.deepEqual(lookup(['check', '']), lookup(['check']));
+  assert.equal(pxsig(['help', 'check', '']).stdout, pxsig(['help', 'check']).stdout);
+});
+
 test("the MCP's pxsig_help gives the same data, read-only", async () => {
   // pxsig_help is one of the tools; its run takes `{ name? }` and lists the names without one.
   const t = /** @type {{ run: (args: { name?: string }) => Promise<{ names: string[] }> }} */ (
