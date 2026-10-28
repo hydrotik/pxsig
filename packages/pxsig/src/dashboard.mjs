@@ -143,9 +143,10 @@ export async function build(
   };
   // Vite's `build`, @vitejs/plugin-react's default export, the vanilla-extract plugin: passed on
   // to dashboardConfig and Vite as they are.
-  const vite = /** @type {{ build(config: Record<string, unknown>): Promise<unknown> }} */ (
-    await imp('vite')
-  );
+  const vite =
+    /** @type {{ build(config: Record<string, unknown>): Promise<unknown>, version?: string }} */ (
+      await imp('vite')
+    );
   const react = /** @type {{ default: unknown }} */ (await imp('@vitejs/plugin-react')).default;
   const { vanillaExtractPlugin } = /** @type {{ vanillaExtractPlugin: unknown }} */ (
     await imp('@vanilla-extract/vite-plugin')
@@ -164,6 +165,7 @@ export async function build(
     react,
     vanillaExtractPlugin,
     root: src,
+    viteVersion: vite.version,
   });
   await vite.build({ ...config, configFile: false });
   classicScript(outDir);

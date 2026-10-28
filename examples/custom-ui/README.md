@@ -15,3 +15,7 @@ pxsig serve             # serves that build while it is newer than pxsig-ui/
 `pxsig.config.json` names the adapter (`"dashboard": { "ui": "./pxsig-ui" }`). The adapter's types
 come from `pxsig/dashboard`; the instructions for writing one, component by component, are in
 `node_modules/pxsig/docs/ui/build-adapter.md`.
+
+This example stays on Vite 6 and `@vitejs/plugin-react` 4 on purpose: `pxsig dashboard build` runs
+on the project's own Vite, and pxsig's own release build is on Vite 8, so CI builds the dashboard at
+both ends of the supported range.
