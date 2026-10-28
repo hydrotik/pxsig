@@ -9,7 +9,7 @@
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -21,6 +21,7 @@ import {
   primaryOf,
   reconcile,
   resolveContext,
+  rustAffected,
   sanitize,
   scanStories,
   storyNameFromExport,
@@ -111,6 +112,37 @@ test('an index whose entries are null is a broken index', async () => {
   assert.equal(r.healthy, false);
   assert.match(/** @type {{ error: string }} */ (r).error, /^broken index \(HTTP 200\)/);
 });
+
+test(
+  'an engine reply with neither a result nor an error is an engine error',
+  { skip: process.platform === 'win32' && 'the stand-in engine is a script' },
+  async () => {
+    const { ctx, repo } = fixture({ withSigs: false });
+    // A stand-in engine that answers every request with its id alone (named as the engine is).
+    mkdirSync(join(repo, 'fake-engine'));
+    const bin = join(repo, 'fake-engine', 'pxsig');
+    writeFileSync(
+      bin,
+      `#!/usr/bin/env node
+require('node:readline')
+  .createInterface({ input: process.stdin })
+  .on('line', (l) => process.stdout.write(JSON.stringify({ id: JSON.parse(l).id }) + '\\n'));
+`
+    );
+    chmodSync(bin, 0o755);
+    const r = /** @type {NonNullable<ReturnType<typeof rustAffected>>} */ (
+      rustAffected({ ...ctx, rustBin: bin })
+    );
+    try {
+      await assert.rejects(
+        r.affected('src/components/Alpha/Alpha.stories.tsx'),
+        /neither a result nor an error/
+      );
+    } finally {
+      r.close();
+    }
+  }
+);
 
 test('a broken Storybook index is reachable but not healthy; an unreachable one falls back to the static scan', async () => {
   const errPage = async () =>

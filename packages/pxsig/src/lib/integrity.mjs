@@ -572,7 +572,11 @@ export function rustAffected(ctx) {
       }
       const p = pending.get(msg.id);
       pending.delete(msg.id);
-      if (p) msg.error ? p.reject(new Error(msg.error)) : p.resolve(msg.result);
+      if (!p) return;
+      if (msg.error) p.reject(new Error(msg.error));
+      else if (msg.result == null)
+        p.reject(new Error('the engine answered with neither a result nor an error'));
+      else p.resolve(msg.result);
     }
   );
   proc.on('error', (e) => (dead = e));
