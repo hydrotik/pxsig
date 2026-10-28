@@ -223,8 +223,8 @@ export function resolveContext(P, { manifestPath } = {}) {
   /** @type {IntegritySettings} */
   const integrity = {
     ...DEFAULT_INTEGRITY,
-    ...(P.config.integrity ?? {}),
-    severity: { ...(P.config.integrity?.severity ?? {}) },
+    ...P.config.integrity,
+    severity: { ...P.config.integrity?.severity },
   };
   return {
     project: P,

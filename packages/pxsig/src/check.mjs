@@ -600,7 +600,7 @@ const previous = existsSync(join(reports, `${outName}.json`))
 /** @type {Map<string, CheckRow>} */
 const prevRows = new Map((previous?.rows ?? []).map((r) => [r.id, r]));
 // Every environment a row names (this run's, its baselines', carried rows'), by id.
-const envs = { ...(previous?.envs ?? {}), ...(rustRes.baselineEnvs ?? {}), ...byId(current) };
+const envs = { ...previous?.envs, ...rustRes.baselineEnvs, ...byId(current) };
 const out = manifest.stories
   .filter((e) => (modes ? modes.includes(e.mode ?? manifest.defaultMode) : true))
   .map((e) => {

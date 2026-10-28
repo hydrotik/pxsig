@@ -480,7 +480,7 @@ function updateCheckRows(S, mut, fresh = new Map(), timing = null, envs = null) 
     rows: [],
   };
   // Every environment a row names (lib/env.mjs), by id: the fresh rows' and their baselines'.
-  if (envs) check.envs = { ...(check.envs ?? {}), ...envs };
+  if (envs) check.envs = { ...check.envs, ...envs };
   const seen = new Set(check.rows.map((r) => r.id));
   check.rows = check.rows.map((r) => mut(r) ?? r);
   // Entries added after the last full check have no row yet: append them, or their verdicts are
@@ -501,7 +501,7 @@ function updateCheckRows(S, mut, fresh = new Map(), timing = null, envs = null) 
     ...check.summary,
     ...summarize(check.rows),
     ...envSummary(check.rows, check.envs ?? {}),
-    ...(timing ?? {}),
+    ...timing,
   };
   if (!check.summary.envMismatch) delete check.summary.envFields;
   // New verdicts move the report's time ("Last check"); `fullCheckAt` keeps when every entry was
@@ -878,7 +878,7 @@ async function runChecks(S) {
       const av = /** @type {A11yReviewFile} */ (readJson(S.a11yReviewPath, {}));
       for (const id of ids) delete av[id];
       writeJson(S.a11yReviewPath, av, { pretty: true });
-      const envs = { ...(res.baselineEnvs ?? {}), ...byId(current) };
+      const envs = { ...res.baselineEnvs, ...byId(current) };
       const fresh = new Map(
         entries.map((e) => [
           e.id,
