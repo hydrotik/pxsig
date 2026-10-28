@@ -3,8 +3,13 @@
  * toolbar and its buttons follow Storybook's light or dark theme, and the embedded inspector and
  * the dashboard it opens start in the same one. Plain functions: no Storybook import here.
  */
+/** @import { PanelTheme } from './types.js' */
 
-/** 'dark' or 'light': the theme's base, else read from its content background. */
+/**
+ * 'dark' or 'light': the theme's base, else read from its content background.
+ * @param {PanelTheme | null | undefined} theme
+ * @returns {'dark' | 'light'}
+ */
 export function themeMode(theme) {
   if (theme?.base === 'dark' || theme?.base === 'light') return theme.base;
   const bg = String(theme?.background?.content ?? theme?.appContentBg ?? '');
@@ -15,7 +20,10 @@ export function themeMode(theme) {
   return lum < 128 ? 'dark' : 'light';
 }
 
-/** Text and border colours for the panel, with neutral fallbacks for a theme that lacks them. */
+/**
+ * Text and border colours for the panel, with neutral fallbacks for a theme that lacks them.
+ * @param {PanelTheme | null | undefined} theme
+ */
 export function panelColors(theme) {
   return {
     text: theme?.color?.defaultText ?? theme?.textColor ?? 'inherit',
@@ -25,7 +33,11 @@ export function panelColors(theme) {
   };
 }
 
-/** A toolbar button styled like Storybook's inputs in the current theme. */
+/**
+ * A toolbar button styled like Storybook's inputs in the current theme.
+ * @param {PanelTheme | null | undefined} theme
+ * @param {boolean} [disabled]
+ */
 export function buttonStyle(theme, disabled = false) {
   const c = panelColors(theme);
   return {
@@ -41,7 +53,12 @@ export function buttonStyle(theme, disabled = false) {
   };
 }
 
-/** A dashboard URL on `server` with Storybook's theme mode added (`theme=dark|light`). */
+/**
+ * A dashboard URL on `server` with Storybook's theme mode added (`theme=dark|light`).
+ * @param {string} server
+ * @param {Record<string, string | number | null | undefined>} params
+ * @param {string} mode
+ */
 export function dashboardUrl(server, params, mode) {
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v != null && k !== 'hash') q.set(k, String(v));

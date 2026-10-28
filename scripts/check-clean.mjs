@@ -53,6 +53,8 @@ export const SHOT_MAX_BYTES = 1.5 * 1024 * 1024;
 /**
  * Why a tracked file must not be committed, from its path (and size, for a product shot), or null.
  * Its text is checked separately.
+ * @param {string} f
+ * @param {number} [size]
  */
 export function fileProblem(f, size = 0) {
   if (PRIVATE.test(f)) return '.local/ holds private notes and stays out of the repository';
@@ -80,7 +82,9 @@ const SELF = new Set(['scripts/check-clean.mjs', '.gitignore', '.clean-terms']);
 
 function files() {
   if (process.argv.includes('--all') || !existsSync(join(root, '.git'))) {
+    /** @type {string[]} */
     const out = [];
+    /** @param {string} d */
     const walk = (d) => {
       for (const e of readdirSync(d, { withFileTypes: true })) {
         if (['node_modules', '.git', 'target', '.local'].includes(e.name)) continue;
@@ -97,12 +101,14 @@ function files() {
     .filter(Boolean);
 }
 
+/** @param {string} k */
 const flag = (k) => {
   const i = process.argv.indexOf(k);
   return i > 0 && process.argv[i + 1] && !process.argv[i + 1].startsWith('--')
     ? process.argv[i + 1]
     : null;
 };
+/** @param {string[]} a */
 const git = (...a) => execFileSync('git', a, { cwd: root, encoding: 'utf8' });
 
 /** The main checkout's root (a worktree's .clean-terms is usually only there). */
@@ -139,6 +145,7 @@ function run() {
     process.exit(1);
   }
 
+  /** @type {string[]} */
   const problems = [];
   const denylist = terms().map((t) => ({
     t,
@@ -175,7 +182,11 @@ function run() {
     });
   }
 
-  /** Lines of free text (commit messages, a PR body): names and home paths, as in files. */
+  /**
+   * Lines of free text (commit messages, a PR body): names and home paths, as in files.
+   * @param {string} label
+   * @param {string} text
+   */
   function checkText(label, text) {
     text.split('\n').forEach((line, i) => {
       if (HOME.test(line)) problems.push(`${label}:${i + 1}: absolute home path`);

@@ -9,6 +9,7 @@
  *
  * Zero dependencies; the caller runs oxlint and passes its JSON diagnostics.
  */
+/** @import { Counts } from '../types.js' */
 
 /**
  * `{ file: { rule: count } }` for the warnings in oxlint's JSON diagnostics.
@@ -33,8 +34,13 @@ export function countDiagnostics(diagnostics) {
   return sortKeys(counts);
 }
 
-/** Every file/rule whose count rose above the baseline. */
+/**
+ * Every file/rule whose count rose above the baseline.
+ * @param {Counts} baseline
+ * @param {Counts} current
+ */
 export function regressions(baseline, current) {
+  /** @type {{ file: string, rule: string, allowed: number, count: number }[]} */
   const out = [];
   for (const [file, rules] of Object.entries(current)) {
     for (const [rule, count] of Object.entries(rules)) {
@@ -48,9 +54,11 @@ export function regressions(baseline, current) {
 /**
  * The baseline lowered to what is left: counts that fell drop, fixed entries
  * go, and nothing rises (new warnings are regressions, not baseline).
+ * @param {Counts} baseline
+ * @param {Counts} current
  */
 export function lowered(baseline, current) {
-  /** @type {Record<string, Record<string, number>>} */
+  /** @type {Counts} */
   const next = {};
   for (const [file, rules] of Object.entries(baseline)) {
     for (const [rule, allowed] of Object.entries(rules)) {
@@ -61,7 +69,10 @@ export function lowered(baseline, current) {
   return sortKeys(next);
 }
 
-/** Total warnings in a `{ file: { rule: count } }` map. */
+/**
+ * Total warnings in a `{ file: { rule: count } }` map.
+ * @param {Counts} counts
+ */
 export function total(counts) {
   return Object.values(counts).reduce(
     (sum, rules) => sum + Object.values(rules).reduce((a, b) => a + b, 0),
@@ -69,6 +80,10 @@ export function total(counts) {
   );
 }
 
+/**
+ * @param {Counts} counts
+ * @returns {Counts}
+ */
 function sortKeys(counts) {
   return Object.fromEntries(
     Object.keys(counts)

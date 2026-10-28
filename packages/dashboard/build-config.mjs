@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * The dashboard's Vite config, shared by this repository's build (vite.config.mjs) and by
  * `pxsig dashboard build` in a consumer project. The caller passes the plugins and where to resolve
@@ -11,6 +12,11 @@
  *   3. anything else fails the build at once, naming what it looked for.
  * Vite aliases `@ui-adapter` to the module. An adapter folder may carry a `vite.mjs` whose default
  * export returns build settings (aliases, folders to allow) for its design system.
+ *
+ * @typedef {{ adapter?: string, cwd?: string }} AdapterOptions
+ * @typedef {{ name: string, file: string, dir: string, from: string }} ResolvedAdapter
+ * @typedef {{ alias?: Record<string, string>, allow?: string[], dedupe?: string[], optimizeDepsExclude?: string[] }} AdapterBuildSettings
+ *   what an adapter folder's `vite.mjs` default export returns
  */
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -27,7 +33,11 @@ export const builtinAdapters = () =>
         .map((d) => d.name)
     : [];
 
-/** The adapter spec in force, and where it came from. */
+/**
+ * The adapter spec in force, and where it came from.
+ * @param {AdapterOptions} [opts]
+ * @returns {{ spec: string, base: string, from: string }}
+ */
 export function adapterSpec({ adapter, cwd = process.cwd() } = {}) {
   if (adapter) return { spec: adapter, base: cwd, from: '--ui' };
   if (process.env.PXSIG_UI_ADAPTER)
@@ -35,7 +45,10 @@ export function adapterSpec({ adapter, cwd = process.cwd() } = {}) {
   const cfg = path.join(cwd, 'pxsig.config.json');
   if (existsSync(cfg)) {
     try {
-      const ui = JSON.parse(readFileSync(cfg, 'utf8'))?.dashboard?.ui;
+      // pxsig.config.json as JSON; `dashboard.ui` is the adapter spec when set (a string).
+      const ui = /** @type {{ dashboard?: { ui?: string } } | null} */ (
+        JSON.parse(readFileSync(cfg, 'utf8'))
+      )?.dashboard?.ui;
       if (ui) return { spec: ui, base: cwd, from: 'pxsig.config.json dashboard.ui' };
     } catch {
       // an unreadable config is reported by the commands that read it
@@ -44,7 +57,11 @@ export function adapterSpec({ adapter, cwd = process.cwd() } = {}) {
   return { spec: 'hydrotik', base: cwd, from: 'default' };
 }
 
-/** The adapter's module file and folder, or an error that says what was looked for. */
+/**
+ * The adapter's module file and folder, or an error that says what was looked for.
+ * @param {AdapterOptions} [opts]
+ * @returns {ResolvedAdapter}
+ */
 export function resolveAdapter(opts = {}) {
   const { spec, base, from } = adapterSpec(opts);
   const known = builtinAdapters();
@@ -60,6 +77,7 @@ export function resolveAdapter(opts = {}) {
     return { name: spec, file, dir, from };
   }
   const p = path.resolve(base, spec);
+  /** @type {string | null | undefined} */
   let file = null;
   if (existsSync(p) && statSync(p).isDirectory())
     file = INDEX.map((f) => path.join(p, f)).find(existsSync) ?? null;
@@ -83,6 +101,9 @@ export function resolveAdapter(opts = {}) {
  * A package's folder, from the first of `fromDirs` that reaches it: node_modules/<name> in the
  * folder or a parent (what Node's resolution walks; works when a package's exports hide its
  * package.json).
+ * @param {string} name
+ * @param {string[]} fromDirs
+ * @returns {string | null}
  */
 export function packageDir(name, fromDirs) {
   for (const start of fromDirs) {
@@ -96,13 +117,16 @@ export function packageDir(name, fromDirs) {
 }
 
 /**
+ * `o.resolveFrom` lists the folders to resolve react, react-dom and the vanilla-extract css package
+ * from; `o.react` is the default export of the Vite React plugin (`\@vitejs/plugin-react`), and
+ * `o.vanillaExtractPlugin` the vanilla-extract Vite plugin.
  * @param {object} o
  * @param {string} [o.adapter]       --ui: a built-in name or a path
  * @param {string} [o.cwd]           where pxsig.config.json and relative paths are read
  * @param {string} o.outDir
- * @param {string[]} o.resolveFrom   folders to resolve react / react-dom / @vanilla-extract/css from
- * @param {Function} o.react         @vitejs/plugin-react's default export
- * @param {Function} o.vanillaExtractPlugin
+ * @param {string[]} o.resolveFrom
+ * @param {() => unknown} o.react
+ * @param {(options: { unstable_pluginFilter: (plugin: { name: string }) => boolean }) => unknown} o.vanillaExtractPlugin
  * @param {string} [o.root]          the dashboard source folder (default: this one)
  * @param {boolean} [o.minify]       minify the bundle; default false (readable output that a reviewer
  *                                   can audit), true when PXSIG_DASHBOARD_MINIFY=1
@@ -119,9 +143,14 @@ export async function dashboardConfig({
 }) {
   const ui = resolveAdapter({ adapter, cwd });
   const extraFile = path.join(ui.dir, 'vite.mjs');
+  /** @type {AdapterBuildSettings} */
   const extra = existsSync(extraFile)
-    ? await (await import(pathToFileURL(extraFile).href)).default()
+    ? // An adapter's vite.mjs: its default export returns these settings (this file's header).
+      await /** @type {{ default: () => AdapterBuildSettings | Promise<AdapterBuildSettings> }} */ (
+          await import(pathToFileURL(extraFile).href)
+      ).default()
     : {};
+  /** @param {string} name @param {string[]} [from] @returns {string} */
   const need = (name, from = resolveFrom) =>
     packageDir(name, from) ??
     (() => {
@@ -139,7 +168,10 @@ export async function dashboardConfig({
   let contract = '1.0.0';
   try {
     contract =
-      JSON.parse(readFileSync(path.join(ui.dir, 'conformance.json'), 'utf8')).contract ?? contract;
+      // conformance.json as JSON: `contract` is the version string the adapter was written for.
+      /** @type {{ contract?: string }} */ (
+        JSON.parse(readFileSync(path.join(ui.dir, 'conformance.json'), 'utf8'))
+      ).contract ?? contract;
   } catch {
     // no conformance.json: `pxsig dashboard gaps` reports it; the build treats the adapter as 1.0.0
   }

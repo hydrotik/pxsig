@@ -19,6 +19,7 @@ import { createRequire } from 'node:module';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { countDiagnostics, lowered, regressions, total } from './lib/lint-ratchet.mjs';
+/** @import { RatchetBaseline } from './types.js' */
 
 export const PROJECTS = ['packages/pxsig', 'packages/storybook-addon', 'scripts', 'tools'];
 
@@ -82,7 +83,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.log(`[types] baseline recorded: ${total(now)} errors`);
     process.exit(0);
   }
-  const baseline = JSON.parse(readFileSync(baselinePath, 'utf8')).files;
+  // The baseline this script writes (`write` above).
+  const baseline = /** @type {RatchetBaseline} */ (JSON.parse(readFileSync(baselinePath, 'utf8')))
+    .files;
   const worse = regressions(baseline, now);
   if (worse.length) {
     for (const r of worse)

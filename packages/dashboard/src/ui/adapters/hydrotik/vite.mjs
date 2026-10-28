@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * Build settings for the hydrotik adapter. @hydrotik/design-system is not published: the build
  * compiles it, its tokens and its theme provider from a local checkout of the monorepo that holds
@@ -9,8 +10,13 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-/** Package name → folder, for every package.json one level under the checkout's package folders. */
+/**
+ * Package name → folder, for every package.json one level under the checkout's package folders.
+ * @param {string} root
+ * @returns {Record<string, string>}
+ */
 export function packagesIn(root) {
+  /** @type {Record<string, string>} */
   const out = {};
   for (const group of ['packages', 'apps']) {
     const dir = path.join(root, group);
@@ -19,7 +25,9 @@ export function packagesIn(root) {
       const pj = path.join(dir, d.name, 'package.json');
       if (!d.isDirectory() || !existsSync(pj)) continue;
       try {
-        out[JSON.parse(readFileSync(pj, 'utf8')).name] = path.join(dir, d.name);
+        // A package.json: its `name` is the key.
+        out[/** @type {{ name: string }} */ (JSON.parse(readFileSync(pj, 'utf8'))).name] =
+          path.join(dir, d.name);
       } catch {
         // not a package
       }
@@ -28,6 +36,10 @@ export function packagesIn(root) {
   return out;
 }
 
+/**
+ * The build settings the dashboard build merges into its config.
+ * @returns {{ allow: string[], alias: Record<string, string>, optimizeDepsExclude: string[] }}
+ */
 export default function hydrotik() {
   const source = process.env.PXSIG_DS_SOURCE;
   if (!source || !existsSync(source))
@@ -35,6 +47,7 @@ export default function hydrotik() {
       '[pxsig ui] the hydrotik adapter needs PXSIG_DS_SOURCE: a checkout of the design-system monorepo'
     );
   const pkgs = packagesIn(source);
+  /** @param {string} name @returns {string} */
   const need = (name) =>
     pkgs[name] ??
     (() => {

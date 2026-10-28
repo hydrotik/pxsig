@@ -29,11 +29,17 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export const SUMS = 'SHA256SUMS';
+/** @param {string} path */
 const sha256 = (path) => createHash('sha256').update(readFileSync(path)).digest('hex');
 
-/** Copy `<artifacts>/pxsig-<p>-<a>/pxsig[.exe]` to `<out>/pxsig-<p>-<a>[.exe]`; returns the names. */
+/**
+ * Copy `<artifacts>/pxsig-<p>-<a>/pxsig[.exe]` to `<out>/pxsig-<p>-<a>[.exe]`; returns the names.
+ * @param {string} artifacts
+ * @param {string} out
+ */
 export function copyBinaries(artifacts, out) {
   mkdirSync(out, { recursive: true });
+  /** @type {string[]} */
   const names = [];
   for (const dir of readdirSync(artifacts).sort()) {
     if (!/^pxsig-[a-z0-9]+-[a-z0-9]+$/.test(dir) || !statSync(join(artifacts, dir)).isDirectory())
@@ -48,7 +54,10 @@ export function copyBinaries(artifacts, out) {
   return names;
 }
 
-/** Write `<dir>/SHA256SUMS` over every other file in <dir>; returns its text. */
+/**
+ * Write `<dir>/SHA256SUMS` over every other file in <dir>; returns its text.
+ * @param {string} dir
+ */
 export function writeSums(dir) {
   const files = readdirSync(dir)
     .filter((f) => f !== SUMS && statSync(join(dir, f)).isFile())
@@ -59,9 +68,14 @@ export function writeSums(dir) {
   return text;
 }
 
-/** Verify <dir> against its SHA256SUMS: `{ ok, bad: [names], missing: [names] }`. */
+/**
+ * Verify <dir> against its SHA256SUMS: `{ ok, bad: [names], missing: [names] }`.
+ * @param {string} dir
+ */
 export function checkSums(dir) {
+  /** @type {string[]} */
   const bad = [];
+  /** @type {string[]} */
   const missing = [];
   for (const line of readFileSync(join(dir, SUMS), 'utf8').split('\n').filter(Boolean)) {
     const [hash, name] = [line.slice(0, 64), line.slice(66)];
@@ -73,10 +87,12 @@ export function checkSums(dir) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const args = process.argv.slice(2);
+  /** @param {string} k */
   const opt = (k) => (args.includes(k) ? args[args.indexOf(k) + 1] : null);
   try {
     if (opt('--check')) {
-      const r = checkSums(opt('--check'));
+      // Checked on the line above.
+      const r = checkSums(/** @type {string} */ (opt('--check')));
       for (const n of r.bad) console.error(`[release-files] ${n}: checksum does not match`);
       for (const n of r.missing) console.error(`[release-files] ${n}: missing`);
       console.log(r.ok ? `[release-files] ok · ${SUMS} matches` : '[release-files] failed');
@@ -91,7 +107,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     const sums = writeSums(out);
     console.log(`[release-files] ${bins.length} binaries; ${SUMS}:\n${sums}`);
   } catch (e) {
-    console.error(`[release-files] ${e.message}`);
+    // copyBinaries/writeSums throw an Error; the fs calls a Node system error (an Error too).
+    console.error(`[release-files] ${/** @type {Error} */ (e).message}`);
     process.exit(1);
   }
 }

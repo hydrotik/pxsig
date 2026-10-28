@@ -36,6 +36,13 @@ import {
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+/**
+ * @typedef {'version' | 'artifacts' | 'out' | 'only' | 'optionalDeps'} ValuedKey
+ * @typedef {{ only: string | null, dryRun: boolean, allowMissing: boolean } & Partial<Record<Exclude<ValuedKey, 'only'>, string>>} RawOpts
+ * @typedef {RawOpts & { version: string, artifacts: string, out: string }} Opts
+ * @typedef {{ id: string, platform: string, arch: string, exe: string, src: string, dir: string, name: string }} Plan
+ */
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PLATFORMS = [
   { platform: 'darwin', arch: 'arm64' },
@@ -48,17 +55,31 @@ const USAGE = `usage: node scripts/make-platform-packages.mjs --version <x.y.z> 
          [--only <platform-arch,...>] [--write-optional-deps <package.json>] [--allow-missing] [--dry-run]
 platforms: ${PLATFORMS.map((p) => `${p.platform}-${p.arch}`).join(', ')}`;
 
+/**
+ * @param {string} msg
+ * @returns {never}
+ */
 function usage(msg) {
   console.error(`[make-platform-packages] ${msg}\n${USAGE}`);
   process.exit(2);
 }
+/**
+ * @param {string} msg
+ * @returns {never}
+ */
 function fail(msg) {
   console.error(`[make-platform-packages] ${msg}`);
   process.exit(1);
 }
 
+/**
+ * @param {string[]} argv
+ * @returns {Opts}
+ */
 function parseArgs(argv) {
+  /** @type {RawOpts} */
   const opts = { only: null, dryRun: false, allowMissing: false };
+  /** @type {Record<string, ValuedKey | undefined>} */
   const valued = {
     '--version': 'version',
     '--artifacts': 'artifacts',
@@ -74,7 +95,10 @@ function parseArgs(argv) {
     } else if (a === '--dry-run') opts.dryRun = true;
     else if (a === '--allow-missing') opts.allowMissing = true;
     else if (a.includes('=') && valued[a.slice(0, a.indexOf('='))])
-      opts[valued[a.slice(0, a.indexOf('='))]] = a.slice(a.indexOf('=') + 1);
+      // The condition above found the key in `valued`.
+      opts[/** @type {ValuedKey} */ (valued[a.slice(0, a.indexOf('='))])] = a.slice(
+        a.indexOf('=') + 1
+      );
     else if (valued[a]) {
       const v = argv[++i];
       if (v === undefined || v.startsWith('--')) usage(`${a} needs a value`);
@@ -86,13 +110,16 @@ function parseArgs(argv) {
     usage(`--version is not a semver version: ${opts.version}`);
   if (!opts.artifacts) usage('--artifacts is required');
   if (!opts.out) usage('--out is required');
-  return opts;
+  // version, artifacts and out are checked above (`usage` exits).
+  return /** @type {Opts} */ (opts);
 }
 
 /** `key = "value"` lines of the [workspace.package] table of the root Cargo.toml. */
+/** @returns {Record<string, string | undefined>} */
 function cargoWorkspacePackage() {
   const f = join(root, 'Cargo.toml');
   if (!existsSync(f)) return {};
+  /** @type {Record<string, string>} */
   const out = {};
   let inTable = false;
   for (const line of readFileSync(f, 'utf8').split(/\r?\n/)) {
@@ -129,7 +156,9 @@ const artifacts = resolve(opts.artifacts);
 const out = resolve(opts.out);
 if (!existsSync(artifacts)) fail(`artifacts directory not found: ${opts.artifacts}`);
 
+/** @type {Plan[]} */
 const plan = [];
+/** @type {string[]} */
 const missing = [];
 for (const { platform, arch } of targets) {
   const id = `${platform}-${arch}`;
@@ -154,6 +183,7 @@ if (missing.length && !opts.allowMissing)
 for (const m of missing) console.warn(`[make-platform-packages] skipping ${m}`);
 if (!plan.length) fail('no platform packages to generate');
 
+/** @param {Plan} p */
 function manifest(p) {
   return {
     name: p.name,
@@ -168,6 +198,7 @@ function manifest(p) {
   };
 }
 
+/** @param {Plan} p */
 function readme(p) {
   return `# ${p.name}
 
@@ -182,7 +213,7 @@ ${license}${repoUrl ? `. Source: ${repoUrl}` : ''}
 }
 
 for (const p of plan) {
-  const rel = (f) => join(p.dir, f).slice(out.length + 1);
+  const rel = (/** @type {string} */ f) => join(p.dir, f).slice(out.length + 1);
   if (opts.dryRun) {
     console.log(`[dry-run] ${p.name}@${opts.version}`);
     console.log(`  ${rel('package.json')}  os=${p.platform} cpu=${p.arch}`);
@@ -203,11 +234,15 @@ for (const p of plan) {
 if (opts.optionalDeps) {
   const f = resolve(opts.optionalDeps);
   if (!existsSync(f)) fail(`--write-optional-deps: not found: ${opts.optionalDeps}`);
+  /** @type {{ version?: string, repository?: unknown, optionalDependencies?: Record<string, string> }} */
   let pkg;
   try {
-    pkg = JSON.parse(readFileSync(f, 'utf8'));
+    // A package.json: an object (`version`, `repository` and `optionalDependencies` are read).
+    pkg = /** @type {typeof pkg} */ (JSON.parse(readFileSync(f, 'utf8')));
   } catch (e) {
-    fail(`--write-optional-deps: ${opts.optionalDeps} is not valid JSON: ${e.message}`);
+    fail(
+      `--write-optional-deps: ${opts.optionalDeps} is not valid JSON: ${/** @type {Error} */ (e).message}`
+    );
   }
   pkg.version = opts.version;
   if (!pkg.repository && repository) pkg.repository = repository;

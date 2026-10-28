@@ -20,6 +20,7 @@ test('a fragment is one or more known sections, each a list', () => {
 });
 
 test('a malformed fragment names each problem', () => {
+  /** @param {string} t */
   const p = (t) => parseFragment(t, 'f.md').problems.join('\n');
   assert.match(p('### Improvements\n\n- x\n'), /unknown heading "Improvements"/);
   assert.match(p('- x\n'), /text before the first/);
@@ -77,5 +78,9 @@ test('merge keeps HEADINGS order and skips empty headings', () => {
 test('only a release/ branch may edit CHANGELOG.md', () => {
   assert.equal(directEdit(['changelog.d/x.md'], 'feat/x'), null);
   assert.equal(directEdit(['CHANGELOG.md'], 'release/0.4.0'), null);
-  assert.match(directEdit(['CHANGELOG.md', 'a.mjs'], 'feat/x'), /add a fragment in changelog\.d\//);
+  // A string here (assert.match fails the test on null).
+  assert.match(
+    /** @type {string} */ (directEdit(['CHANGELOG.md', 'a.mjs'], 'feat/x')),
+    /add a fragment in changelog\.d\//
+  );
 });

@@ -45,6 +45,10 @@ test(
   },
   () => {
     const dir = mkdtempSync(join(tmpdir(), 'pxsig-pack-manifest-'));
+    /**
+     * @param {string[]} args
+     * @param {string} cwd
+     */
     const npm = (args, cwd) =>
       spawnSync('npm', args, { cwd, encoding: 'utf8', shell: process.platform === 'win32' });
     try {

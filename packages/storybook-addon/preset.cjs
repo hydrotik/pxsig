@@ -14,8 +14,17 @@
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+/** @typedef {import('./types.js').PresetOptions} PresetOptions */
+/** @typedef {import('./types.js').ServerFile} ServerFile */
+/** @typedef {import('./types.js').WorkspaceFile} WorkspaceFile */
+/** @typedef {import('./types.js').SnapshotDeps} SnapshotDeps */
+/** @typedef {import('./types.js').StaticDir} StaticDir */
 
-/** The workspace root above Storybook's config dir: a pxsig.workspace.json, else a pxsig.config.json. */
+/**
+ * The workspace root above Storybook's config dir: a pxsig.workspace.json, else a pxsig.config.json.
+ * @param {string} start
+ * @returns {string | null}
+ */
 function workspaceOf(start) {
   let dir = path.resolve(start);
   let config = null;
@@ -29,6 +38,10 @@ function workspaceOf(start) {
   }
 }
 
+/**
+ * @param {string} p
+ * @returns {unknown}
+ */
 const readJson = (p) => {
   try {
     return JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -37,21 +50,34 @@ const readJson = (p) => {
   }
 };
 
+/** @param {PresetOptions | undefined} options */
 function servers(options) {
+  /** @type {string[]} */
   const out = [];
   if (options?.server) out.push(String(options.server).replace(/\/$/, ''));
   const ws = options?.configDir ? workspaceOf(options.configDir) : null;
   if (ws) {
-    const running = readJson(path.join(ws, 'node_modules', '.cache', 'pxsig', 'server.json'));
+    // Written by `pxsig serve` (its address for this workspace).
+    const running = /** @type {ServerFile | null} */ (
+      readJson(path.join(ws, 'node_modules', '.cache', 'pxsig', 'server.json'))
+    );
     if (running?.url) out.push(running.url);
-    const port = readJson(path.join(ws, 'pxsig.workspace.json'))?.server?.port;
+    // The workspace file, as far as the port: pxsig validates it when it reads it.
+    const port = /** @type {WorkspaceFile | null} */ (
+      readJson(path.join(ws, 'pxsig.workspace.json'))
+    )?.server?.port;
     if (port) out.push(`http://127.0.0.1:${port}`);
   }
   out.push('http://127.0.0.1:6070');
   return [...new Set(out)];
 }
 
-/** The workspace's own pxsig CLI: `node_modules/pxsig` from Storybook's config dir up to the workspace. */
+/**
+ * The workspace's own pxsig CLI: `node_modules/pxsig` from Storybook's config dir up to the workspace.
+ * @param {string} configDir
+ * @param {string} ws
+ * @returns {string | null}
+ */
 function pxsigCli(configDir, ws) {
   let dir = path.resolve(configDir);
   for (;;) {
@@ -63,23 +89,34 @@ function pxsigCli(configDir, ws) {
   }
 }
 
-/** Write the snapshot for a build; its folder, or null (with the reason on stderr). */
+/**
+ * Write the snapshot for a build; its folder, or null (with the reason on stderr).
+ * @param {PresetOptions} options
+ * @param {SnapshotDeps} [deps]
+ * @returns {string | null}
+ */
 function writeSnapshot(options, { run = spawnSync, warn = console.warn } = {}) {
   const ws = options?.configDir ? workspaceOf(options.configDir) : null;
-  const bin = ws ? pxsigCli(options.configDir, ws) : null;
+  // ws is set only when options.configDir is.
+  const bin = ws ? pxsigCli(/** @type {string} */ (options.configDir), ws) : null;
   if (!bin) {
     warn('pxsig: no snapshot in this build (pxsig is not installed in this workspace)');
     return null;
   }
-  const dir = path.join(ws, 'node_modules', '.cache', 'pxsig', 'storybook');
+  // bin is found only inside a workspace: ws is set from here on (the casts below).
+  const dir = path.join(/** @type {string} */ (ws), 'node_modules', '.cache', 'pxsig', 'storybook');
   const file = path.join(dir, 'pxsig-snapshot.json');
   fs.rmSync(file, { force: true });
-  const r = run(process.execPath, [bin, 'snapshot', '--out', file, '--workspace', ws], {
-    cwd: ws,
-    encoding: 'utf8',
-    timeout: 120_000,
-    env: { ...process.env, PXSIG_FORMAT: 'plain' },
-  });
+  const r = run(
+    process.execPath,
+    [bin, 'snapshot', '--out', file, '--workspace', /** @type {string} */ (ws)],
+    {
+      cwd: /** @type {string} */ (ws),
+      encoding: 'utf8',
+      timeout: 120_000,
+      env: { ...process.env, PXSIG_FORMAT: 'plain' },
+    }
+  );
   if (r.status !== 0 || !fs.existsSync(file)) {
     const why = String(r.stderr || r.stdout || r.error?.message || `exit ${r.status}`)
       .trim()
@@ -95,7 +132,14 @@ function writeSnapshot(options, { run = spawnSync, warn = console.warn } = {}) {
  * `storybook build` (not `storybook dev`): the snapshot's folder joins the static dirs. Storybook
  * may ask for the static dirs more than once in a build; the snapshot is made once.
  */
+/** @type {string | null | undefined} */
 let made;
+/**
+ * @param {StaticDir[]} [dirs]
+ * @param {PresetOptions} [options]
+ * @param {SnapshotDeps} [deps]
+ * @returns {Promise<StaticDir[]>}
+ */
 async function staticDirs(dirs = [], options = {}, deps) {
   if (options.configType !== 'PRODUCTION' || options.snapshot === false) return dirs;
   if (deps || made === undefined) made = writeSnapshot(options, deps);
@@ -104,7 +148,13 @@ async function staticDirs(dirs = [], options = {}, deps) {
 
 module.exports = {
   staticDirs,
-  managerEntries: (entry = []) => [...entry, path.join(__dirname, 'manager.mjs')],
-  managerHead: (head, options) =>
+  managerEntries: (/** @type {string[]} */ entry = []) => [
+    ...entry,
+    path.join(__dirname, 'manager.mjs'),
+  ],
+  managerHead: (
+    /** @type {string | undefined} */ head,
+    /** @type {PresetOptions | undefined} */ options
+  ) =>
     `${head ?? ''}<script>window.__PXSIG__=${JSON.stringify({ servers: servers(options) })}</script>`,
 };
