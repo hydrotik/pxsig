@@ -19,24 +19,37 @@ import { pathToFileURL } from 'node:url';
 /** Keys a published package.json leaves out. */
 export const DEV_ONLY = ['scripts', 'devDependencies'];
 
-/** The manifest as published: the same object without DEV_ONLY keys, key order kept. */
+/**
+ * The manifest as published: the same object without DEV_ONLY keys, key order kept.
+ * @param {Record<string, unknown>} pj
+ */
 export const publishedManifest = (pj) =>
   Object.fromEntries(Object.entries(pj).filter(([k]) => !DEV_ONLY.includes(k)));
 
-/** The DEV_ONLY keys a manifest still has. */
+/**
+ * The DEV_ONLY keys a manifest still has.
+ * @param {Record<string, unknown>} pj
+ */
 export const devOnlyKeys = (pj) => DEV_ONLY.filter((k) => k in pj);
 
+/** @param {string} dir */
 function rewrite(dir) {
   const f = join(dir, 'package.json');
-  const pj = JSON.parse(readFileSync(f, 'utf8'));
+  // A package.json is a JSON object.
+  const pj = /** @type {Record<string, unknown>} */ (JSON.parse(readFileSync(f, 'utf8')));
   writeFileSync(f, `${JSON.stringify(publishedManifest(pj), null, 2)}\n`);
   return devOnlyKeys(pj);
 }
 
+/**
+ * @param {string} tgz
+ * @returns {Record<string, unknown>}
+ */
 function packedManifest(tgz) {
   const r = spawnSync('tar', ['-xzOf', tgz, 'package/package.json'], { encoding: 'utf8' });
   if (r.status !== 0) throw new Error(`${tgz}: no package/package.json (${r.stderr.trim()})`);
-  return JSON.parse(r.stdout);
+  // The packed package.json: a JSON object.
+  return /** @type {Record<string, unknown>} */ (JSON.parse(r.stdout));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

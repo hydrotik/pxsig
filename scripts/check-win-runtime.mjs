@@ -13,9 +13,13 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-/** The Visual C++ runtime DLLs named in a binary (lower case, sorted, once each). */
+/**
+ * The Visual C++ runtime DLLs named in a binary (lower case, sorted, once each).
+ * @param {Uint8Array} bytes
+ */
 export function vcRuntimeImports(bytes) {
   const text = Buffer.from(bytes).toString('latin1');
+  /** @type {Set<string>} */
   const found = new Set();
   for (const m of text.matchAll(/(?:vcruntime|msvcp|concrt|vccorlib)\d+(?:_\w+)?\.dll/gi))
     found.add(m[0].toLowerCase());

@@ -42,6 +42,10 @@ import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+/** @import { SpawnSyncReturns, StdioOptions } from 'node:child_process' */
+/** @import { BaselineAnswer, BuildStamp, DashboardCheckAnswer, DoctorAnswer, Example, ExampleCheckJson, GapsAnswer, ProjectsAnswer } from './types-release.js' */
+/** @typedef {{ must?: boolean, allow?: (number | null)[], stdio?: StdioOptions, env?: NodeJS.ProcessEnv, shell?: boolean }} ShOpts */
+
 const repo = fileURLToPath(new URL('..', import.meta.url));
 const cli = join(repo, 'packages', 'pxsig', 'bin', 'pxsig.mjs');
 const bin =
@@ -51,12 +55,14 @@ if (!existsSync(bin))
   throw new Error(`build the Rust binary first: cargo build --release (looked for ${bin})`);
 const which = process.argv[2];
 
-const log = (m) => console.log(`[examples] ${m}`);
+const log = (/** @type {string} */ m) => console.log(`[examples] ${m}`);
 let failures = 0;
+/** @type {(ok: unknown, what: string) => void} */
 const expect = (ok, what) => {
   console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${what}`);
   if (!ok) failures++;
 };
+/** @type {NodeJS.ProcessEnv} */
 const env = {
   ...process.env,
   PXSIG_BIN: bin,
@@ -64,6 +70,7 @@ const env = {
   PXSIG_NO_DELEGATE: '1',
   CI: '1',
 };
+/** @type {(cmd: string, args: string[], cwd: string, opts?: ShOpts) => SpawnSyncReturns<string>} */
 const sh = (cmd, args, cwd, opts = {}) => {
   const r = spawnSync(cmd, args, {
     cwd,
@@ -76,6 +83,7 @@ const sh = (cmd, args, cwd, opts = {}) => {
     throw new Error(`${cmd} ${args.join(' ')} → ${r.status}\n${r.stdout}\n${r.stderr}`);
   return r;
 };
+/** @type {(args: string[], cwd: string) => SpawnSyncReturns<string>} */
 const pxsig = (args, cwd) => sh(process.execPath, [cli, ...args], cwd, { must: false });
 // Warn-mode runs write a readiness line in the machine's state folder: point it at a temp folder.
 // Playwright finds its browsers under the same folders, so its own path stays where they are.
@@ -87,6 +95,7 @@ const browsers =
     : process.platform === 'darwin'
       ? join(homedir(), 'Library', 'Caches', 'ms-playwright')
       : join(process.env.XDG_CACHE_HOME || join(homedir(), '.cache'), 'ms-playwright'));
+/** @type {(args: string[], cwd: string, extra?: NodeJS.ProcessEnv) => SpawnSyncReturns<string>} */
 const pxsigIn = (args, cwd, extra = {}) =>
   sh(process.execPath, [cli, ...args], cwd, {
     must: false,
@@ -100,20 +109,25 @@ const pxsigIn = (args, cwd, extra = {}) =>
       ...extra,
     },
   });
-const tail = (r) =>
+const tail = (/** @type {SpawnSyncReturns<string>} */ r) =>
   `\n${r.stdout.split('\n').slice(-15).join('\n')}\n${r.stderr.split('\n').slice(-15).join('\n')}`;
 // pnpm is a .cmd shim on Windows, which Node starts only through a shell. This is the test
 // harness on a CI runner; pxsig itself never starts a shell (docs/platforms.md).
+/** @type {(args: string[], cwd: string, opts?: ShOpts) => SpawnSyncReturns<string>} */
 const pnpm = (args, cwd, opts = {}) =>
   process.platform === 'win32'
     ? sh('pnpm.cmd', args, cwd, { ...opts, shell: true })
     : sh('pnpm', args, cwd, opts);
 
-const rootPackageManager = JSON.parse(
-  readFileSync(join(repo, 'package.json'), 'utf8')
+// The repository's package.json.
+const rootPackageManager = /** @type {{ packageManager?: string }} */ (
+  JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8'))
 ).packageManager;
 
-/** Copy an example, rewriting `link:` dependencies to this checkout's packages. */
+/**
+ * Copy an example, rewriting `link:` dependencies to this checkout's packages.
+ * @param {string} name
+ */
 function stage(name) {
   // On the checkout's drive: Storybook names a cache folder after the path from the example to a
   // linked package, which across Windows drives contains "D:" and cannot be created.
@@ -122,16 +136,20 @@ function stage(name) {
     recursive: true,
     filter: (p) => !/node_modules|storybook-static|\.pxsig|__pxsig__/.test(p),
   });
-  const walk = (d) => {
+  const walk = (/** @type {string} */ d) => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const p = join(d, e.name);
       if (e.isDirectory() && e.name !== 'node_modules') walk(p);
       else if (e.name === 'package.json') {
-        const pj = JSON.parse(readFileSync(p, 'utf8'));
+        // An example's package.json: dependency tables and `packageManager` are read.
+        const pj =
+          /** @type {Record<string, Record<string, string> | undefined> & { packageManager?: string }} */ (
+            JSON.parse(readFileSync(p, 'utf8'))
+          );
         for (const k of ['dependencies', 'devDependencies'])
           for (const [dep, v] of Object.entries(pj[k] ?? {}))
             if (String(v).startsWith('link:'))
-              pj[k][dep] =
+              /** @type {Record<string, string>} */ (pj[k])[dep] =
                 `link:${join(repo, 'packages', dep === 'pxsig' ? 'pxsig' : dep.replace('@pxsig/', ''))}`;
         // The staged copy is outside the checkout, so Corepack would fetch the newest pnpm (12 fails
         // on ignored build scripts): pin the repository's own.
@@ -147,6 +165,8 @@ function stage(name) {
 /**
  * Serve a storybook-static folder on a free port, in a child process (this script blocks on
  * spawnSync while pxsig renders, so an in-process server could not answer).
+ * @param {string} root
+ * @returns {Promise<{ port: number, close: () => boolean }>}
  */
 function serveStatic(root) {
   const code = `
@@ -173,6 +193,10 @@ function serveStatic(root) {
 /**
  * Write baselines from the latest renders: what approving every NEW entry does. `withEnv`: each
  * baseline records its row's render environment from check.json, as approving in the dashboard does.
+ * @param {string} dir
+ * @param {string} project
+ * @param {{ withEnv?: boolean }} [opts]
+ * @returns {BaselineAnswer}
  */
 function baselineAll(dir, project, { withEnv = false } = {}) {
   let envArg = '';
@@ -195,20 +219,39 @@ function baselineAll(dir, project, { withEnv = false } = {}) {
     const { spawnSync } = await import('node:child_process');
     const r = spawnSync(P.rustBin, ['baseline', '--manifest', run, '--png-dir', P.store.latest, '--root', P.workspaceRoot, '--json'${envArg}], { encoding: 'utf8' });
     process.stdout.write(r.stdout); process.exit(r.status);`;
-  return JSON.parse(sh(process.execPath, ['--input-type=module', '-e', code], dir).stdout);
+  // The engine's `baseline --json` answer, printed by the script above.
+  return /** @type {BaselineAnswer} */ (
+    JSON.parse(sh(process.execPath, ['--input-type=module', '-e', code], dir).stdout)
+  );
 }
 
+// check.json, as the check just run wrote it.
+/** @type {(dir: string, project: string) => ExampleCheckJson} */
 const checkJson = (dir, project) =>
-  JSON.parse(
-    readFileSync(join(dir, ...projectStore(dir, project), 'reports', 'check.json'), 'utf8')
+  /** @type {ExampleCheckJson} */ (
+    JSON.parse(
+      readFileSync(join(dir, ...projectStore(dir, project), 'reports', 'check.json'), 'utf8')
+    )
   );
+/**
+ * @param {string} dir
+ * @param {string} project
+ * @returns {string[]}
+ */
 function projectStore(dir, project) {
+  // The example's own pxsig.workspace.json: its `projects` map names every project run here.
   const ws = existsSync(join(dir, 'pxsig.workspace.json'))
-    ? JSON.parse(readFileSync(join(dir, 'pxsig.workspace.json'), 'utf8'))
+    ? /** @type {{ projects: Record<string, string> }} */ (
+        JSON.parse(readFileSync(join(dir, 'pxsig.workspace.json'), 'utf8'))
+      )
     : null;
   return ws ? [ws.projects[project], '.pxsig'] : ['.pxsig'];
 }
 
+/**
+ * @param {string} name
+ * @param {Example} example
+ */
 async function run(name, { projects, storybookDir, change }) {
   log(`${name}: staging`);
   const dir = stage(name);
@@ -293,7 +336,8 @@ async function run(name, { projects, storybookDir, change }) {
       if (name === 'single-package') warnSteps(dir, p, failed);
       const d = pxsig(['doctor', '--ci', '--project', p, '--json'], dir);
       expect(d.status === 0 || d.status === 1, `${p}: doctor --ci ran (exit ${d.status})`);
-      const doc = JSON.parse(d.stdout);
+      // `doctor --json`'s answer.
+      const doc = /** @type {DoctorAnswer} */ (JSON.parse(d.stdout));
       expect(
         !(doc.summary.bySeverity.error > 0),
         `${p}: no error-severity integrity codes (${doc.summary.headline})`
@@ -309,7 +353,10 @@ async function run(name, { projects, storybookDir, change }) {
         existsSync(join(dir, 'packages/ui/.pxsig/baselines')),
         'ui (package): baselines in the package store'
       );
-      const ps = JSON.parse(pxsig(['projects', '--json'], dir).stdout);
+      // `projects --json`'s answer.
+      const ps = /** @type {ProjectsAnswer} */ (
+        JSON.parse(pxsig(['projects', '--json'], dir).stdout)
+      );
       expect(
         ps.projects
           .map((x) => x.name)
@@ -324,7 +371,11 @@ async function run(name, { projects, storybookDir, change }) {
   log(`${name}: done (${dir})`);
 }
 
-/** The render environment end to end: same, then a forced font-probe difference, then strict. */
+/**
+ * The render environment end to end: same, then a forced font-probe difference, then strict.
+ * @param {string} dir
+ * @param {string} p
+ */
 function envSteps(dir, p) {
   const b = baselineAll(dir, p, { withEnv: true });
   expect(
@@ -344,7 +395,11 @@ function envSteps(dir, p) {
   const cfg = readFileSync(cfgPath, 'utf8');
   writeFileSync(
     cfgPath,
-    JSON.stringify({ ...JSON.parse(cfg), env: { fontProbe: ['Courier New'] } }, null, 2)
+    JSON.stringify(
+      { .../** @type {object} */ (JSON.parse(cfg)), env: { fontProbe: ['Courier New'] } },
+      null,
+      2
+    )
   );
   r = pxsig(['check', '--full', '--project', p, '--retries', '1'], dir);
   c = checkJson(dir, p);
@@ -359,7 +414,10 @@ function envSteps(dir, p) {
     c.summary.envMismatch === c.rows.length,
     `env: summary.envMismatch counts every entry (${c.summary.envMismatch})`
   );
-  const d = JSON.parse(pxsig(['doctor', '--project', p, '--json'], dir).stdout);
+  // `doctor --json`'s answer.
+  const d = /** @type {DoctorAnswer} */ (
+    JSON.parse(pxsig(['doctor', '--project', p, '--json'], dir).stdout)
+  );
   const finding = (d.setup ?? []).filter((x) => x.code === 'env-mismatch');
   expect(
     finding.length === 1 && finding[0].severity === 'warn',
@@ -377,7 +435,7 @@ function envSteps(dir, p) {
     cfgPath,
     JSON.stringify(
       {
-        ...JSON.parse(cfg),
+        .../** @type {object} */ (JSON.parse(cfg)),
         env: { fontProbe: ['Courier New'] },
         enforcement: { gates: { env: 'warn' } },
       },
@@ -396,13 +454,22 @@ function envSteps(dir, p) {
   writeFileSync(cfgPath, cfg);
 }
 
-/** Warn mode end to end, on the changed component's failing entries. */
+/**
+ * Warn mode end to end, on the changed component's failing entries.
+ * @param {string} dir
+ * @param {string} p
+ * @param {string[]} failing
+ */
 function warnSteps(dir, p, failing) {
   const cfgPath = join(dir, 'pxsig.config.json');
   const cfg = readFileSync(cfgPath, 'utf8');
   writeFileSync(
     cfgPath,
-    JSON.stringify({ ...JSON.parse(cfg), enforcement: { gates: { visual: 'warn' } } }, null, 2)
+    JSON.stringify(
+      { .../** @type {object} */ (JSON.parse(cfg)), enforcement: { gates: { visual: 'warn' } } },
+      null,
+      2
+    )
   );
   const store = join(dir, ...projectStore(dir, p), 'reports');
   let r = pxsigIn(['check', '--full', '--project', p, '--retries', '1'], dir);
@@ -461,7 +528,10 @@ function warnSteps(dir, p, failing) {
   writeFileSync(
     cfgPath,
     JSON.stringify(
-      { ...JSON.parse(cfg), enforcement: { gates: { visual: 'warn' }, advisoryExit: 78 } },
+      {
+        .../** @type {object} */ (JSON.parse(cfg)),
+        enforcement: { gates: { visual: 'warn' }, advisoryExit: 78 },
+      },
       null,
       2
     )
@@ -471,6 +541,7 @@ function warnSteps(dir, p, failing) {
   writeFileSync(cfgPath, cfg);
 }
 
+/** @type {Record<string, Example>} */
 const examples = {
   'single-package': {
     projects: ['example-single'],
@@ -509,7 +580,8 @@ function runCustomUi() {
     { stdio: 'inherit' }
   );
   let r = pxsig(['dashboard', 'gaps', '--json'], dir);
-  const g = JSON.parse(r.stdout || '{}');
+  // `dashboard gaps --json`'s answer.
+  const g = /** @type {GapsAnswer} */ (JSON.parse(r.stdout || '{}'));
   const missing = (g.rows ?? []).filter((x) => x.status === 'missing');
   expect(
     r.status === 0 && !g.problems?.length,
@@ -530,7 +602,10 @@ function runCustomUi() {
     !/type="module"/.test(readFileSync(join(dir, 'dashboard-build', 'index.html'), 'utf8')),
     'build: a classic script, so a static report opens from disk'
   );
-  const stamp = JSON.parse(readFileSync(join(dir, 'dashboard-build', 'pxsig-build.json'), 'utf8'));
+  // The stamp `dashboard build` wrote.
+  const stamp = /** @type {BuildStamp} */ (
+    JSON.parse(readFileSync(join(dir, 'dashboard-build', 'pxsig-build.json'), 'utf8'))
+  );
   expect(stamp.pxsig, 'build: stamped with the pxsig version, for serve');
   expect(
     stamp.contract && stamp.adapterContract === stamp.contract,
@@ -538,14 +613,17 @@ function runCustomUi() {
   );
   r = pxsig(['dashboard', 'gaps', '--json'], dir);
   expect(
-    JSON.parse(r.stdout).contract?.status === 'same',
+    // `dashboard gaps --json`'s answer.
+    /** @type {GapsAnswer} */ (JSON.parse(r.stdout)).contract?.status === 'same',
     'gaps: the adapter is written for this contract'
   );
   // Every feature on a design system other than the reference, from the shipped sample data.
   r = pxsig(['dashboard', 'check', '--build', 'dashboard-build', '--json'], dir);
+  /** @type {DashboardCheckAnswer} */
   let c = {};
   try {
-    c = JSON.parse(r.stdout || '{}');
+    // `dashboard check --json`'s answer.
+    c = /** @type {DashboardCheckAnswer} */ (JSON.parse(r.stdout || '{}'));
   } catch {
     c = {};
   }
@@ -554,7 +632,8 @@ function runCustomUi() {
     .filter((x) => !x.rendered)
     .map((x) => `${x.feature} #${x.index + 1} ${x.theme}: ${x.reason}`);
   expect(
-    r.status === 0 && s.screens > 0 && s.failed === 0,
+    // With no summary, `undefined > 0` is false: the check fails, as it should.
+    r.status === 0 && /** @type {number} */ (s.screens) > 0 && s.failed === 0,
     `check: ${s.rendered ?? 0} of ${s.screens ?? 0} screens rendered, both themes${r.status ? ` (exit ${r.status}${failed.length ? `: ${failed.join('; ')}` : ''}${r.stderr ? `, ${r.stderr.trim()}` : ''})` : ''}`
   );
   const out = join(dir, 'node_modules', '.cache', 'pxsig', 'dashboard-check');

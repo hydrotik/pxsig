@@ -39,16 +39,18 @@ import {
   SNAPSHOT_FILE,
   storyView,
 } from './snapshot-view.mjs';
+/** @import { CheckEvent, PanelState, ServerStatus, Snapshot, StatusLevel } from './types.js' */
 
 const ADDON = 'pxsig';
 const PANEL = `${ADDON}/panel`;
-const CANDIDATES = [
+// The localStorage value joins only when it is set: every candidate is a string.
+const CANDIDATES = /** @type {string[]} */ ([
   ...(typeof window !== 'undefined' && window.localStorage?.getItem('pxsig-server')
     ? [window.localStorage.getItem('pxsig-server')]
     : []),
   ...((typeof window !== 'undefined' && window.__PXSIG__?.servers) || []),
   'http://127.0.0.1:6070',
-];
+]);
 let SERVER = CANDIDATES[0];
 // A Storybook not served from this computer (a deployed one) makes no request to any pxsig server:
 // the panel reads the read-only snapshot its build wrote beside it (snapshot-view.mjs).
@@ -59,20 +61,25 @@ const MODE =
         hostname: window.location.hostname,
         override: window.localStorage?.getItem('pxsig-server') ?? null,
       });
-/** The first candidate that answers; kept until it stops answering. */
+/**
+ * The first candidate that answers; kept until it stops answering.
+ * @returns {Promise<ServerStatus>}
+ */
 async function status() {
   for (const url of [SERVER, ...CANDIDATES.filter((c) => c !== SERVER)]) {
     try {
       const r = await fetch(`${url}/__pxsig/status`, { signal: AbortSignal.timeout(1500) });
       if (!r.ok) continue;
       SERVER = url;
-      return await r.json();
+      // The pxsig server's `GET /__pxsig/status` answer (docs/server.md).
+      return /** @type {ServerStatus} */ (await r.json());
     } catch {
       // try the next candidate
     }
   }
   throw new Error('no pxsig server');
 }
+/** @type {Record<string, StatusLevel>} */
 const STATUS = {
   pass: 'success',
   drift: 'success',
@@ -84,9 +91,10 @@ const STATUS = {
   error: 'error',
   skipped: 'unknown',
 };
+/** @type {Record<string, StatusLevel>} */
 const SEV = { error: 'error', warn: 'warning', info: 'success' };
 const statusStore = experimental_getStatusStore(ADDON);
-const codesText = (codes) =>
+const codesText = (/** @type {Record<string, number> | undefined} */ codes) =>
   Object.entries(codes ?? {})
     .filter(([c]) => !['drift', 'ok'].includes(c))
     .map(([c, n]) => `${n} ${c}`)
@@ -94,6 +102,7 @@ const codesText = (codes) =>
 
 // One shared connection: the panel subscribes to the same events the status updater uses.
 const bus = new EventTarget();
+/** @type {PanelState} */
 let state = { up: false, running: false, stories: {}, integrity: {}, integritySummary: null };
 const emit = () => bus.dispatchEvent(new Event('change'));
 
@@ -109,6 +118,7 @@ addons.register(ADDON, () => {
         integrity: s.integrity ?? {},
         integritySummary: s.integritySummary ?? null,
       };
+      /** @type {Record<string, { status: StatusLevel, title: string, description: string }>} */
       const update = {};
       for (const [id, st] of Object.entries(s.stories)) {
         update[id] = {
@@ -144,6 +154,7 @@ addons.register(ADDON, () => {
     }
     emit();
   };
+  /** @type {EventSource | null} */
   let es = null;
   const connect = () => {
     try {
@@ -152,13 +163,15 @@ addons.register(ADDON, () => {
       es.addEventListener('data', refresh);
       es.addEventListener('review', refresh);
       es.addEventListener('integrity', refresh);
-      es.addEventListener('check', (e) => {
-        const d = JSON.parse(e.data);
+      es.addEventListener('check', (/** @type {MessageEvent<string>} */ e) => {
+        // The server's `check` event (docs/server.md).
+        const d = /** @type {CheckEvent} */ (JSON.parse(e.data));
         state = { ...state, running: d.state === 'running', last: d };
         emit();
       });
       es.onerror = () => {
-        es.close();
+        // The handler of the source just opened: es is that source.
+        /** @type {EventSource} */ (es).close();
         state = { ...state, up: false };
         emit();
         setTimeout(connect, 5000);
@@ -179,7 +192,8 @@ addons.register(ADDON, () => {
     render: ({ active }) =>
       React.createElement(
         AddonPanel,
-        { active: !!active },
+        // The panel goes in as createElement's third argument (React's types want it in props).
+        /** @type {{ active: boolean, children: React.ReactElement }} */ ({ active: !!active }),
         React.createElement(MODE === 'live' ? Panel : SnapshotPanel)
       ),
   });
@@ -193,14 +207,19 @@ function Panel() {
   const theme = useTheme();
   const mode = themeMode(theme);
   const colors = panelColors(theme);
+  /**
+   * @param {string} label
+   * @param {() => void} onClick
+   * @param {boolean} [disabled]
+   */
   const btn = (label, onClick, disabled) =>
     h('button', { type: 'button', onClick, disabled, style: buttonStyle(theme, disabled) }, label);
-  const [, force] = React.useReducer((n) => n + 1, 0);
+  const [, force] = React.useReducer((/** @type {number} */ n) => n + 1, 0);
   React.useEffect(() => {
     bus.addEventListener('change', force);
     return () => bus.removeEventListener('change', force);
   }, []);
-  const post = (body) =>
+  const post = (/** @type {{ story?: string, all?: boolean }} */ body) =>
     fetch(`${SERVER}/__pxsig/check`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -297,6 +316,7 @@ function Panel() {
 }
 
 /** The snapshot beside this Storybook, fetched once, when the panel first shows: null when absent. */
+/** @type {Promise<Snapshot | null> | null} */
 let snapshotLoad = null;
 const loadSnapshot = () =>
   (snapshotLoad ??= fetch(new URL(SNAPSHOT_FILE, document.baseURI), { cache: 'no-cache' })
@@ -307,11 +327,11 @@ const loadSnapshot = () =>
 function SnapshotPanel() {
   const { storyId } = useStorybookState();
   const colors = panelColors(useTheme());
-  const [snap, setSnap] = React.useState(undefined);
+  const [snap, setSnap] = React.useState(/** @type {Snapshot | null | undefined} */ (undefined));
   React.useEffect(() => {
-    loadSnapshot().then(setSnap);
+    void loadSnapshot().then(setSnap);
   }, []);
-  const box = (...children) =>
+  const box = (/** @type {React.ReactNode[]} */ ...children) =>
     h(
       'div',
       {
@@ -325,12 +345,17 @@ function SnapshotPanel() {
     return box(h('strong', null, t.title), h('div', null, t.body));
   }
   const view = storyView(snap, storyId);
+  /** @type {React.CSSProperties} */
   const cell = {
     padding: '4px 10px 4px 0',
     borderBottom: `1px solid ${colors.border}`,
     textAlign: 'left',
     verticalAlign: 'top',
   };
+  /**
+   * @param {[string, string][]} cols
+   * @param {Record<string, string | number>[]} rows
+   */
   const table = (cols, rows) =>
     h(
       'table',

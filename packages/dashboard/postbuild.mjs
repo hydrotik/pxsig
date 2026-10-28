@@ -1,9 +1,13 @@
+/// <reference types="node" />
 // A classic script (IIFE) also runs from file://, where module scripts are blocked.
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** Rewrites the built index.html in `outDir` to load the bundle as a classic script. */
+/**
+ * Rewrites the built index.html in `outDir` to load the bundle as a classic script.
+ * @param {string} outDir
+ */
 export function classicScript(outDir) {
   const index = path.join(outDir, 'index.html');
   writeFileSync(

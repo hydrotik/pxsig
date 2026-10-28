@@ -19,6 +19,7 @@ import { packagesIn } from '../packages/dashboard/src/ui/adapters/hydrotik/vite.
 
 const repo = fileURLToPath(new URL('..', import.meta.url));
 const tsc = createRequire(path.join(repo, 'package.json')).resolve('typescript/bin/tsc');
+/** @param {string} project */
 const run = (project) =>
   spawnSync(process.execPath, [tsc, '-p', project], { cwd: repo, stdio: 'inherit' }).status ?? 1;
 
@@ -36,6 +37,7 @@ if (!source)
   );
 else {
   const pkgs = packagesIn(source);
+  /** @param {string} name */
   const need = (name) =>
     pkgs[name] ??
     (() => {
@@ -49,6 +51,7 @@ else {
   ].find((d) => existsSync(path.join(d, 'react')));
   const cfgDir = path.join(repo, 'node_modules', '.cache', 'pxsig-typecheck');
   mkdirSync(cfgDir, { recursive: true });
+  /** @param {string} p */
   const rel = (p) => path.relative(cfgDir, p).split(path.sep).join('/');
   const config = {
     extends: rel(path.join(repo, 'tsconfig.json')),

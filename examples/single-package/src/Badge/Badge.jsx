@@ -1,4 +1,5 @@
 import React from 'react';
+/** @param {{ children?: import('react').ReactNode, tone?: 'neutral' | 'success' | 'danger' }} props */
 export function Badge({ children, tone = 'neutral' }) {
   const colours = { neutral: '#5b6170', success: '#1f7a43', danger: '#b42318' };
   return (

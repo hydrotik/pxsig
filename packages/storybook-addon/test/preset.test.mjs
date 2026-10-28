@@ -9,10 +9,14 @@ import { join } from 'node:path';
 import { after, test } from 'node:test';
 
 const { staticDirs } = createRequire(import.meta.url)('../preset.cjs');
+/** @type {string[]} */
 const made = [];
 after(() => made.forEach((d) => rmSync(d, { recursive: true, force: true })));
 
-/** A workspace with a Storybook config dir and, unless `pxsig` is false, a stand-in pxsig CLI. */
+/**
+ * A workspace with a Storybook config dir and, unless `pxsig` is false, a stand-in pxsig CLI.
+ * @param {{ pxsig?: string | false }} [opts]
+ */
 function workspace({ pxsig = 'ok' } = {}) {
   const ws = mkdtempSync(join(tmpdir(), 'pxsig-preset-'));
   made.push(ws);
@@ -34,8 +38,9 @@ writeFileSync(out, JSON.stringify({ format: 'pxsig-snapshot', version: 1, argv: 
   return { ws, configDir: join(ws, '.storybook') };
 }
 const quiet = () => {
+  /** @type {string[]} */
   const lines = [];
-  return { lines, warn: (l) => lines.push(l) };
+  return { lines, warn: (/** @type {string} */ l) => lines.push(l) };
 };
 
 test('storybook build: the snapshot joins the static dirs at the root', async () => {
@@ -67,7 +72,7 @@ test('storybook dev and `snapshot: false`: nothing added, nothing run', async ()
 });
 
 test('no pxsig, or a pxsig without the command: one warning, the build goes on', async () => {
-  for (const pxsig of [false, 'old']) {
+  for (const pxsig of /** @type {(string | false)[]} */ ([false, 'old'])) {
     const { configDir } = workspace({ pxsig });
     const q = quiet();
     assert.deepEqual(await staticDirs([], { configType: 'PRODUCTION', configDir }, q), []);

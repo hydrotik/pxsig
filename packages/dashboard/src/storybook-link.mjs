@@ -10,7 +10,7 @@
  *
  * @param {string} baseUrl Storybook's base URL.
  * @param {{ id: string, story?: string, mode?: string | null, state?: string | null, globals?: string | null }} row
- * @param {Record<string, { globals?: string }> | null | undefined} [modes] the report's `manifest.modes`
+ * @param {Record<string, { globals?: string }> | null} [modes] the report's `manifest.modes`
  * @returns {{ url: string, globals: string, state: string | null }}
  */
 export function storybookLink(baseUrl, row, modes) {

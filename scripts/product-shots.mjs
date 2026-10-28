@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+/// <reference lib="dom" />
+// (The DOM lib: `page.evaluate`'s callback runs in the page.)
 /**
  * product-shots.mjs — re-shoots the product screenshots in docs/product-shots/ from an example.
  *
@@ -43,12 +45,16 @@ const bin =
   join(repo, 'target', 'release', process.platform === 'win32' ? 'pxsig.exe' : 'pxsig');
 /** @type {(k: string, d: string | null) => string | null} */
 const arg = (k, d) => (process.argv.includes(k) ? process.argv[process.argv.indexOf(k) + 1] : d);
-const out = resolve(arg('--out', join(repo, 'docs', 'product-shots')));
+// With a string default, `arg` returns a string (or the flag's next argument, undefined at the end).
+const out = resolve(/** @type {string} */ (arg('--out', join(repo, 'docs', 'product-shots'))));
 const keep = process.argv.includes('--keep');
 if (!existsSync(bin)) throw new Error('build the Rust binary first: cargo build --release');
 if (!existsSync(join(repo, 'packages', 'pxsig', 'dist', 'dashboard', 'index.html')))
   throw new Error('build the dashboard first: pnpm build:dashboard');
-const { chromium } = createRequire(join(repo, 'packages', 'pxsig', 'package.json'))('playwright');
+// pxsig's own Playwright (its dependency), required from its package.
+const { chromium } = /** @type {import('./types-release.js').ShotsPlaywright} */ (
+  createRequire(join(repo, 'packages', 'pxsig', 'package.json'))('playwright')
+);
 
 /** The change the shots show, and the entry the inspector opens on. */
 const CHANGE = {
@@ -61,7 +67,7 @@ const ENTRY = 'components-button--primary';
 const INSPECTOR = { mode: 'side', boxes: true, highlight: true, tiles: false };
 const SIZE = { width: 1600, height: 1000 };
 
-const log = (m) => console.log(`[shots] ${m}`);
+const log = (/** @type {string} */ m) => console.log(`[shots] ${m}`);
 const env = {
   ...process.env,
   PXSIG_BIN: bin,
@@ -69,6 +75,12 @@ const env = {
   PXSIG_NO_DELEGATE: '1',
   CI: '1',
 };
+/**
+ * @param {string} cmd
+ * @param {string[]} args
+ * @param {string} cwd
+ * @param {{ allow?: (number | null)[], stdio?: import('node:child_process').StdioOptions }} [opts]
+ */
 const sh = (cmd, args, cwd, { allow = [0], ...opts } = {}) => {
   const r = spawnSync(cmd, args, {
     cwd,
@@ -81,21 +93,25 @@ const sh = (cmd, args, cwd, { allow = [0], ...opts } = {}) => {
     throw new Error(`${cmd} ${args.join(' ')} → ${r.status}\n${r.stdout ?? ''}\n${r.stderr ?? ''}`);
   return r;
 };
+/** @type {(args: string[], cwd: string, allow?: number[]) => import('node:child_process').SpawnSyncReturns<string>} */
 const pxsig = (args, cwd, allow) => sh(process.execPath, [cli, ...args], cwd, { allow });
+/** @type {() => Promise<number>} */
 const freePort = () =>
   new Promise((ok) => {
     const s = createServer().listen(0, '127.0.0.1', () => {
-      const { port } = s.address();
+      // Listening on a TCP port: the address is an AddressInfo.
+      const { port } = /** @type {import('node:net').AddressInfo} */ (s.address());
       s.close(() => ok(port));
     });
   });
 
-/** @type {import('node:child_process').ChildProcess | null} */
-let server = null;
+// Cast, not annotated: `prepare` assigns it, so it must not narrow to null here.
+let server = /** @type {import('node:child_process').ChildProcess | null} */ (null);
 let url = arg('--url', null);
 if (!url) url = await prepare();
 mkdirSync(out, { recursive: true });
 const browser = await chromium.launch();
+/** @type {string[]} */
 const shots = [];
 try {
   for (const theme of ['dark', 'light']) {
@@ -109,11 +125,11 @@ try {
       const ctx = await browser.newContext({
         viewport: SIZE,
         deviceScaleFactor: 2,
-        colorScheme: theme,
+        colorScheme: /** @type {'dark' | 'light'} */ (theme),
         reducedMotion: 'reduce',
       });
       await ctx.addInitScript(
-        (prefs) => localStorage.setItem('pxsig-inspector', prefs),
+        (/** @type {string} */ prefs) => localStorage.setItem('pxsig-inspector', prefs),
         JSON.stringify(INSPECTOR)
       );
       const page = await ctx.newPage();
@@ -144,11 +160,15 @@ async function prepare() {
     filter: (p) => !/node_modules|storybook-static|\.pxsig/.test(p),
   });
   const pjPath = join(dir, 'package.json');
-  const pj = JSON.parse(readFileSync(pjPath, 'utf8'));
+  // The example's package.json.
+  const pj = /** @type {Record<string, Record<string, string> | undefined>} */ (
+    JSON.parse(readFileSync(pjPath, 'utf8'))
+  );
   for (const k of ['dependencies', 'devDependencies'])
     for (const [dep, v] of Object.entries(pj[k] ?? {}))
       if (String(v).startsWith('link:'))
-        pj[k][dep] = `link:${join(repo, 'packages', dep.replace('@pxsig/', ''))}`;
+        /** @type {Record<string, string>} */ (pj[k])[dep] =
+          `link:${join(repo, 'packages', dep.replace('@pxsig/', ''))}`;
   writeFileSync(pjPath, JSON.stringify(pj, null, 2));
   log(`installing the example in ${dir}`);
   sh(
@@ -185,7 +205,10 @@ async function prepare() {
   writeFileSync(f, readFileSync(f, 'utf8').replace(CHANGE.from, CHANGE.to));
   build();
   pxsig(['check', '--full', '--retries', '1', ...static_], dir, [1]);
-  const rows = JSON.parse(readFileSync(join(dir, '.pxsig', 'reports', 'check.json'), 'utf8')).rows;
+  // check.json, as the check above wrote it.
+  const rows = /** @type {{ rows: import('../packages/pxsig/src/types.js').CheckRow[] }} */ (
+    JSON.parse(readFileSync(join(dir, '.pxsig', 'reports', 'check.json'), 'utf8'))
+  ).rows;
   log(
     `changed: ${rows
       .filter((r) => !r.pass)
@@ -200,7 +223,8 @@ async function prepare() {
     env,
     stdio: ['ignore', 'pipe', 'inherit'],
   });
-  server.stdout.on('data', () => {});
+  // stdout is 'pipe' (stdio above).
+  /** @type {import('node:stream').Readable} */ (server.stdout).on('data', () => {});
   const url = `http://127.0.0.1:${port}/report/`;
   for (let i = 0; ; i++) {
     if (i > 120) throw new Error(`the server did not answer at ${url}`);
@@ -215,11 +239,13 @@ async function prepare() {
 }
 
 // 4. Lossless compression, with whatever is on the PATH.
-const has = (t) => spawnSync(t, ['--help'], { stdio: 'ignore' }).error === undefined;
+const has = (/** @type {string} */ t) =>
+  spawnSync(t, ['--help'], { stdio: 'ignore' }).error === undefined;
 const raw = process.argv.includes('--raw');
 for (const file of shots) {
-  if (raw);
-  else if (has('oxipng'))
+  if (raw) {
+    // (no compression)
+  } else if (has('oxipng'))
     spawnSync('oxipng', ['-o', '4', '--strip', 'safe', file], { stdio: 'ignore' });
   else if (has('zopflipng')) spawnSync('zopflipng', ['-y', file, file], { stdio: 'ignore' });
   log(`${file.slice(repo.length)} · ${(statSync(file).size / 1024).toFixed(0)} KB`);

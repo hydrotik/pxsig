@@ -32,6 +32,9 @@ import {
   str,
   writeReport,
 } from './lib/research.mjs';
+/** @import { EngineMetrics, ScenariosReport } from './types.js' */
+/** @typedef {{ id: string, changed: boolean, m: EngineMetrics }} Scored */
+/** @typedef {{ falsePositives: number, of: number } | { caught: number, of: number }} RuleScore */
 
 const log = logger('calibrate');
 const flags = parseFlags();
@@ -43,7 +46,8 @@ const KS = nums(flags.ks, [1, 2, 3, 4]);
 const MIN_CELL = Number(flags['min-cell-px']) || null;
 const suite = str(flags.suite);
 const tag = suite ? `scenarios-${suite}` : 'scenarios';
-const scen = readReport(P, tag);
+// The report tools/scenarios.mjs wrote.
+const scen = /** @type {ScenariosReport | null} */ (readReport(P, tag));
 if (!scen)
   throw new Error(
     `no ${tag}.json in ${P.store.reports}: run tools/scenarios.mjs${suite ? ` --suite ${suite}` : ''} first`
@@ -55,28 +59,36 @@ const RULES = [
     name: 'default',
     label: 'ssim < 0.99 or changed > 2%',
     threshold: 12,
-    fails: (m) => m.ssim < 0.99 || m.changedCellsPct > 2,
+    fails: (/** @type {EngineMetrics} */ m) => m.ssim < 0.99 || m.changedCellsPct > 2,
   },
   ...KS.flatMap((k) =>
     THRESHOLDS.map((t) => ({
       name: `cells>=${k}@${t}`,
       label: `default, or ≥${k} cell(s) off by > ${t}`,
       threshold: t,
-      fails: (m) => m.ssim < 0.99 || m.changedCellsPct > 2 || m.changedCells >= k,
+      fails: (/** @type {EngineMetrics} */ m) =>
+        m.ssim < 0.99 || m.changedCellsPct > 2 || m.changedCells >= k,
     }))
   ),
 ];
 
 const ids = new Set(scen.scenarios[0].rows.filter((r) => !r.error).map((r) => r.id));
 // Per-entry gates and grids are dropped: every entry gets exactly the grid and gate under test.
-const entries = run.stories.filter((e) => ids.has(e.id)).map(({ gate, grid, ...e }) => e);
+const entries = run.stories
+  .filter((e) => ids.has(e.id))
+  .map(({ gate: _gate, grid: _grid, ...e }) => e);
 const scratch = freshDir(P, suite ? `calibrate-${suite}` : 'calibrate');
 const baseDir = join(scratch, 'base');
 baselineImages(P, entries, baseDir);
-const renderDir = (name) => join(P.store.root, 'renders', tag, name);
+const renderDir = (/** @type {string} */ name) => join(P.store.root, 'renders', tag, name);
 const eng = engine(P);
 const OPEN = { minSsim: 0, maxChangedPct: 100, minCells: 0, detail: false };
 
+/**
+ * @type {{ generatedAt: string, project: string, suite: unknown, minCellPx: number | null,
+ *   renders: number, grids: { grid: number, signatureBytes: number, msPerCompare: number,
+ *   rules: unknown[], best: string | null }[] }}
+ */
 const result = {
   generatedAt: new Date().toISOString(),
   project: P.name,
@@ -108,6 +120,7 @@ try {
     const sigBytes = statSync(join(scratch, `g${grid}`, `${entries[0].id}.pxsig.json`)).size;
     const t0 = performance.now();
     let compares = 0;
+    /** @type {Record<number, Record<string, Scored[]>>} */
     const metrics = {}; // metrics[T][scenario] = [{ id, changed, m }]
     const jobs = THRESHOLDS.includes(12) ? THRESHOLDS : [12, ...THRESHOLDS];
     await pool(
@@ -125,7 +138,17 @@ try {
         metrics[T] ??= {};
         metrics[T][sc.name] = sc.rows
           .filter((r) => !r.error && byId.get(r.id)?.metrics)
-          .map((r) => (compares++, { id: r.id, changed: r.changed, m: byId.get(r.id).metrics }));
+          // The filter above kept the rows whose result has metrics.
+          .map(
+            (r) => (
+              compares++,
+              {
+                id: r.id,
+                changed: r.changed,
+                m: /** @type {{ metrics: EngineMetrics }} */ (byId.get(r.id)).metrics,
+              }
+            )
+          );
       }
     );
     const ms = performance.now() - t0;
@@ -133,6 +156,7 @@ try {
       let fp = 0;
       let caught = 0;
       let changed = 0;
+      /** @type {Record<string, RuleScore>} */
       const per = {};
       for (const sc of scen.scenarios) {
         const rows = metrics[rule.threshold][sc.name];
@@ -167,7 +191,8 @@ try {
       rules,
       best: admissible[0]?.name ?? null,
     });
-    const def = rules.find((r) => r.name === 'default');
+    // RULES starts with the default rule.
+    const def = /** @type {(typeof rules)[number]} */ (rules.find((r) => r.name === 'default'));
     const best = admissible[0];
     log(
       `grid ${String(grid).padStart(3)} · sig ${(sigBytes / 1024).toFixed(1).padStart(5)} KB · default ${def.caught}/${def.changed} fp ${def.falsePositives}` +

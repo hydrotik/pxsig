@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * smoke.mjs — run inside the pxsig image by .github/workflows/image.yml (not part of the image).
  *
@@ -10,14 +11,17 @@
  *
  * It loads the installed pxsig (/opt/pxsig/node_modules/pxsig), so it tests what the image ships.
  */
+/** @import { SmokeCaptureModule, SmokeEnvModule } from './types.js' */
 import { existsSync } from 'node:fs';
 
 const PXSIG = '/opt/pxsig/node_modules/pxsig/src/lib';
 const [cmd, ...argv] = process.argv.slice(2);
+/** @param {string} k */
 const opt = (k) => {
   const i = argv.indexOf(`--${k}`);
   return i >= 0 ? argv[i + 1] : null;
 };
+/** @param {string} m */
 const fail = (m) => {
   console.error(`smoke: ${m}`);
   process.exit(1);
@@ -30,14 +34,16 @@ if (!existsSync(`${PXSIG}/env.mjs`)) {
   process.exit(0);
 }
 
-const env = await import(`${PXSIG}/env.mjs`);
+// The image's pxsig, loaded by path: the shape smoke.mjs relies on (docker/types.d.ts).
+const env = /** @type {SmokeEnvModule} */ (await import(`${PXSIG}/env.mjs`));
 if (cmd === 'fonts') {
   console.log(env.systemFonts('linux') ?? '');
   process.exit(0);
 }
 if (cmd !== 'env') fail(`unknown command ${cmd}`);
 
-const { browserPool } = await import(`${PXSIG}/capture.mjs`);
+// As above: the image's capture module, by path.
+const { browserPool } = /** @type {SmokeCaptureModule} */ (await import(`${PXSIG}/capture.mjs`));
 const pool = browserPool(null);
 const want = { arch: opt('arch'), fonts: opt('fonts'), image: opt('image') };
 try {

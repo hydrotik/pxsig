@@ -24,6 +24,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validate } from './json-schema.mjs';
+/** @import { CatalogRecord, JsonSchema } from './types.js' */
 
 const repo = fileURLToPath(new URL('..', import.meta.url));
 export const CATALOG_DIR = join(repo, 'docs', 'ui', 'catalog');
@@ -33,20 +34,30 @@ const FILES = [
 ];
 const ORIGIN = /github\.com[:/]hydrotik\/hydrotik(\.git)?$/;
 
-/** The catalog text with each record's `context` path removed, in the generator's own format. */
+/**
+ * The catalog text with each record's `context` path removed, in the generator's own format.
+ * @param {string} text
+ */
 export function withoutContext(text) {
-  const catalog = JSON.parse(text);
+  // hydrotik's catalog.json, which syncCatalog has checked against its schema first.
+  const catalog = /** @type {{ components: CatalogRecord[] }} */ (JSON.parse(text));
   for (const c of catalog.components) delete c.context;
   return `${JSON.stringify(catalog, null, 2)}\n`;
 }
 
-/** Copies the catalog from `from` into `to`; returns `{ ok, message }`. */
+/**
+ * Copies the catalog from `from` into `to`; returns `{ ok, message }`.
+ * @param {string} from
+ * @param {string} [to]
+ */
 export function syncCatalog(from, to = CATALOG_DIR) {
+  /** @param {string[]} args */
   const git = (...args) =>
     execFileSync('git', ['-C', from, ...args], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
     }).trim();
+  /** @param {string} message */
   const refuse = (message) => ({ ok: false, message });
   if (!existsSync(from)) return refuse(`${from}: no such directory`);
   let origin;
@@ -68,7 +79,8 @@ export function syncCatalog(from, to = CATALOG_DIR) {
       `${from}: ${commit.slice(0, 7)} is on no remote branch; push it first, so the copy names a commit others can see`
     );
   const texts = FILES.map(([src]) => readFileSync(join(from, src), 'utf8'));
-  const schema = JSON.parse(texts[1]);
+  // The catalog's JSON Schema; validate() reports any keyword it does not support.
+  const schema = /** @type {JsonSchema} */ (JSON.parse(texts[1]));
   const errors = validate(schema, JSON.parse(texts[0]));
   if (errors.length)
     return refuse(`${FILES[0][0]} does not pass its schema:\n${errors.slice(0, 20).join('\n')}`);

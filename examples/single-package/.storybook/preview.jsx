@@ -6,7 +6,7 @@ export default {
   },
   initialGlobals: { theme: 'light' },
   decorators: [
-    (Story, ctx) => (
+    (Story, /** @type {{ globals: { theme?: string } }} */ ctx) => (
       <div
         data-theme={ctx.globals.theme}
         style={{
