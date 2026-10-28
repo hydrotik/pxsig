@@ -40,6 +40,8 @@ import {
 } from '../src/lib/repair.mjs';
 import { writeFileSync } from 'node:fs';
 import { fixture, hashSignatures, hashTree, hasRust, rustBin } from './fixture.mjs';
+/** @import { IndexStory } from '../src/types.js' */
+/** @import { DoneStep, IntegrityCode, RegisterResult } from '../src/types/t3.js' */
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -76,7 +78,8 @@ test('static scan finds every exported story, skips comments, and keeps the impo
   assert.ok(ids.includes('components-delta--a-11-y'));
   assert.ok(!ids.some((id) => id.endsWith('--commented')));
   assert.equal(
-    scanStories(ctx).find((s) => s.id === 'components-alpha--default').importPath,
+    /** @type {IndexStory} */ (scanStories(ctx).find((s) => s.id === 'components-alpha--default'))
+      .importPath,
     'src/components/Alpha/Alpha.stories.tsx'
   );
 });
@@ -162,7 +165,8 @@ test('every status code is detected, with a severity and a reason', async () => 
   const seen = new Set(
     led.entries.flatMap((x) => x.issues.map((i) => i.code)).concat(led.entries.map((x) => x.status))
   );
-  for (const code of Object.keys(CODES)) assert.ok(seen.has(code), `fixture covers ${code}`);
+  for (const code of /** @type {IntegrityCode[]} */ (Object.keys(CODES)))
+    assert.ok(seen.has(code), `fixture covers ${code}`);
   for (const x of led.entries)
     for (const i of x.issues) assert.ok(i.reason && i.severity, `${x.id} ${i.code}`);
 });
@@ -408,7 +412,7 @@ test('register survives a story whose parameters cannot be read, and logs an ado
   });
   assert.deepEqual(res.steps[0].added, [back], 'the readable story is registered');
   assert.deepEqual(
-    res.steps[0].failed.map((x) => x.id),
+    /** @type {DoneStep & RegisterResult} */ (res.steps[0]).failed.map((x) => x.id),
     [f.ids.unregistered]
   );
   assert.match(res.steps[0].result, /1 failed, 1 existing signatures adopted/);
