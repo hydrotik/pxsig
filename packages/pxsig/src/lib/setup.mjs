@@ -30,6 +30,7 @@ import { expandEntries, harvestParameters } from './manifest.mjs';
 import { CONFIG_FILE, entryConfig, SetupError, WORKSPACE_FILE, runManifest } from './workspace.mjs';
 import { toPosix } from './paths.mjs';
 import { appendLine, writeJson } from './files.mjs';
+/** @import { Project } from '../types.js' */
 
 const readJson = (p, fallback = null) => {
   try {
@@ -85,6 +86,7 @@ const layoutOf = (cfg, workspaceRoot) =>
  * Set a package up: its config (unless one exists), its store and, in a monorepo, its entry in
  * the workspace file. A colocated project also gets `*.psig binary diff=psig` in the root
  * `.gitattributes` (the workspace's, else its own). Returns what it wrote.
+ * @param {{ dir: string, name?: string | null, label?: string | null, srcRoot?: string, storybookUrl?: string | null, storybookConfigDir?: string | null, workspaceRoot?: string | null, layout?: string | null }} opts
  */
 export function initProject({
   dir,
@@ -169,6 +171,8 @@ function suiteOptions(P, suite) {
 /**
  * Build (or rebuild) a manifest from the running Storybook. Existing entries keep their baseline
  * path; new ones get the layout's path and no baseline. Returns { manifest, added, removed, skipped }.
+ * @param {Project} P
+ * @param {{ suite?: string | null, write?: boolean }} [opts]
  */
 export async function buildManifest(P, { suite = null, write = true } = {}) {
   const ctx = resolveContext(P, { manifestPath: P.manifestPath(suite) });
@@ -196,7 +200,7 @@ export async function buildManifest(P, { suite = null, write = true } = {}) {
   const list = stories.map((s) => ({
     id: s.id,
     importPath: s.importPath,
-    sigFor: (key) => known.get(key)?.sig ?? P.sigFor(key, s.importPath),
+    sigFor: (/** @type {string} */ key) => known.get(key)?.sig ?? P.sigFor(key, s.importPath),
   }));
   const { entries, skipped } = expandEntries(entryConfig(P), list, params, suiteOptions(P, suite));
   const ids = new Set(entries.map((e) => e.id));

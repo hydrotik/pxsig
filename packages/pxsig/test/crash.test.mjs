@@ -28,6 +28,7 @@ import {
 import { applyRepairs, planRepairs } from '../src/lib/repair.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, rustBin } from './fixture.mjs';
+/** @import { LockState } from '../src/types.js' */
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const cli = join(src, '..', 'bin', 'pxsig.mjs');
@@ -51,7 +52,10 @@ test('a whole-file write that fails leaves the old file, and no temp file', () =
   const p = join(dir, 'check.json');
   writeJson(p, { rows: [1] });
   // A value writeSync cannot take fails after the temp file is open, as a full disk would.
-  assert.throws(() => writeAtomic(p, Symbol('no space')));
+  // Deliberately a value of the wrong type: writeSync throws on it.
+  assert.throws(() =>
+    writeAtomic(p, /** @type {string} */ (/** @type {unknown} */ (Symbol('no space'))))
+  );
   assert.deepEqual(JSON.parse(readFileSync(p, 'utf8')), { rows: [1] });
   assert.deepEqual(readdirSync(dir), ['check.json']);
 });
@@ -224,7 +228,8 @@ test('a live holder with a quiet heartbeat is not taken over automatically; a pe
         heartbeatAt: quietSince,
       })
     );
-    const held = readLock(P);
+    // The test just wrote the lock.
+    const held = /** @type {LockState} */ (readLock(P));
     assert.equal(held.stale, false);
     assert.equal(held.quiet, true);
     assert.throws(
@@ -249,7 +254,7 @@ test('a live holder with a quiet heartbeat is not taken over automatically; a pe
         command: 'pxsig serve',
       })
     );
-    assert.equal(readLock(P).quiet, false);
+    assert.equal(/** @type {LockState} */ (readLock(P)).quiet, false);
     assert.throws(() => acquireLock(P, { holder: 'test' }), LockError);
   } finally {
     s.kill();

@@ -27,6 +27,7 @@ import { pathToFileURL } from 'node:url';
 import { PNG } from 'pngjs';
 import { dashboardSource } from './dashboard.mjs';
 import { axeScript, injectAxe, launchBrowser } from './lib/capture.mjs';
+/** @import { Browser } from 'playwright' */
 import { buildDirFor, STAMP } from './lib/dashboard-dir.mjs';
 import { PXSIG_VERSION } from './lib/workspace.mjs';
 import { prebuiltDashboardDir } from './report.mjs';
@@ -526,6 +527,7 @@ export async function dashboardCheck(
     rmSync(join(outDir, f), { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
 
+  /** @type {Browser | null} */
   let browser = given;
   if (!browser) {
     try {

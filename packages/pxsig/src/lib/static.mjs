@@ -10,7 +10,12 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';
 import { fetchStoryIndex } from './integrity.mjs';
+/** @import { AddressInfo } from 'node:net' */
+/** @import { StaticServer } from '../types.js' */
+/** What `fetchStoryIndex` (lib/integrity.mjs) found. */
+/** @typedef {Awaited<ReturnType<typeof fetchStoryIndex>>} StoryIndexProbe */
 
+/** @type {Record<string, string>} */
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -32,17 +37,29 @@ const TYPES = {
   '.wasm': 'application/wasm',
 };
 
-/** Does `dir` hold a Storybook build? */
+/**
+ * Does `dir` hold a Storybook build?
+ * @param {string | null | undefined} dir
+ */
 export const isStorybookBuild = (dir) =>
   !!dir && existsSync(join(dir, 'index.json')) && existsSync(join(dir, 'iframe.html'));
 
-/** Serve `dir` read-only on 127.0.0.1 (port 0 = a free one). Resolves to { url, port, close }. */
+/**
+ * Serve `dir` read-only on 127.0.0.1 (port 0 = a free one). Resolves to { url, port, close }.
+ * @param {string} dir
+ * @param {{ port?: number }} [opts]
+ * @returns {Promise<StaticServer>}
+ */
 export function serveStaticDir(dir, { port = 0 } = {}) {
   const root = resolve(dir);
   const server = createServer((req, res) => {
     let file;
     try {
-      file = resolve(root, `.${decodeURIComponent(new URL(req.url, 'http://x').pathname)}`);
+      // A request the server is handling always has a URL (node:http types it optional for clients).
+      file = resolve(
+        root,
+        `.${decodeURIComponent(new URL(/** @type {string} */ (req.url), 'http://x').pathname)}`
+      );
     } catch {
       return res.writeHead(400).end();
     }
@@ -59,7 +76,8 @@ export function serveStaticDir(dir, { port = 0 } = {}) {
   return new Promise((ok, fail) => {
     server.once('error', fail);
     server.listen(port, '127.0.0.1', () => {
-      const p = server.address().port;
+      // Listening on a TCP port: `address()` is an AddressInfo.
+      const p = /** @type {AddressInfo} */ (server.address()).port;
       server.unref();
       ok({
         url: `http://127.0.0.1:${p}`,
@@ -76,6 +94,9 @@ export function serveStaticDir(dir, { port = 0 } = {}) {
  * caller's setup error), or `{ url, served: true, close }` after serving `storybook.staticDir`.
  * On success with a served build, `P.storybook.url` is rewritten to the served address, so the
  * run manifest and every renderer use it.
+ * @param {{ storybook: { url: string, staticDir: string | null } }} P
+ * @param {{ log?: (message: string) => void, fetchImpl?: typeof fetch }} [opts]
+ * @returns {Promise<{ url: string, served: false, index: StoryIndexProbe } | { url: string, served: true, close: () => Promise<void>, index: StoryIndexProbe }>}
  */
 export async function ensureStorybook(P, { log = () => {}, fetchImpl } = {}) {
   const idx = await fetchStoryIndex(P.storybook.url, { timeoutMs: 3000, fetchImpl });

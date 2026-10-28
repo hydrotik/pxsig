@@ -17,13 +17,20 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { dirname } from 'node:path';
 import { spawnSync } from './lib/spawn.mjs';
 import { browserFile, PXSIG_VERSION, resolvePeer } from './lib/workspace.mjs';
+/** @import { Flags, PeerBase, Project } from './types.js' */
+/** What a docker call returns (`dockerRunner`, or a stand-in). */
+/** @typedef {{ status: number | null, stdout: string, stderr: string, missing?: boolean, error?: Error | null }} DockerResult */
 
 export const IMAGE_REPO = 'ghcr.io/hydrotik/pxsig';
 const SUBS = ['start', 'stop', 'status'];
 
 const setupError = (m) => Object.assign(new Error(m), { exit: 2 });
 
-/** `docker <args>` through lib/spawn.mjs: `{ status, stdout, stderr, missing }`. */
+/**
+ * `docker <args>` through lib/spawn.mjs: `{ status, stdout, stderr, missing }`.
+ * @param {string[]} args
+ * @param {Parameters<typeof spawnSync>[2]} [opts] spawn options (lib/spawn.mjs)
+ */
 export function dockerRunner(args, opts = {}) {
   const r = spawnSync('docker', args, { encoding: 'utf8', ...opts });
   return {
@@ -55,7 +62,10 @@ const mm = (v) =>
     .slice(0, 2)
     .join('.');
 
-/** The Playwright version this project resolves, or null. */
+/**
+ * The Playwright version this project resolves, or null.
+ * @param {PeerBase} P
+ */
 export function projectPlaywright(P) {
   if (!P) return null;
   try {
@@ -71,6 +81,7 @@ export function projectPlaywright(P) {
 export const defaultImage = (playwright) =>
   playwright ? `${IMAGE_REPO}:${PXSIG_VERSION}-pw${playwright}` : null;
 
+/** @param {string} root */
 export function readRecord(root) {
   const f = browserFile(root);
   try {
@@ -87,11 +98,13 @@ function running(docker, rec) {
   return r.stdout.trim() === 'true';
 }
 
+/** @param {number} ms */
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Run the subcommand. `root`: the workspace root (browser.json lives there). `P`: the project, for
  * its Playwright version (optional). Returns `{ blocks, data, exit }`; throws `{ exit: 2 }` errors.
+ * @param {{ sub?: string, flags?: Flags, root?: string | null, P?: Project | null, docker?: (args: string[], opts?: object) => DockerResult, waitMs?: number, CMD?: string }} opts
  */
 export async function browserCommand({
   sub = 'status',
@@ -235,7 +248,8 @@ export async function browserCommand({
     throw setupError(
       `docker run ${image} failed${run.stderr.trim() ? `: ${run.stderr.trim().split('\n').pop()}` : ''}`
     );
-  const container = run.stdout.trim().split('\n').pop();
+  // `split` returns at least one element, so `pop` returns a string.
+  const container = /** @type {string} */ (run.stdout.trim().split('\n').pop());
   // Ready when the server says it listens.
   const until = Date.now() + waitMs;
   let ready = false;

@@ -20,6 +20,7 @@ import { collectEnv } from '../src/lib/env.mjs';
 import { readToken } from '../src/lib/guard.mjs';
 import { openProject, PXSIG_VERSION, satisfies } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin } from './fixture.mjs';
+/** @import { PsigHeader } from '../src/types.js' */
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const EMAIL = 'pii-probe@example.invalid';
@@ -273,7 +274,8 @@ test(
     );
     const { readHeader } = await import('../src/lib/psig.mjs');
     assert.equal(
-      readHeader(f.sig(f.ids.changed)).env?.id,
+      // The approval just wrote it.
+      /** @type {PsigHeader} */ (readHeader(f.sig(f.ids.changed))).env?.id,
       renderEnv.id,
       'the approved baseline records the render environment, scanned below'
     );

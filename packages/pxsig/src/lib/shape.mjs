@@ -18,7 +18,14 @@ const SHAPE_PX = 20;
 const DILATE = 2;
 const INK_TOLERANCE = 24; // summed RGB distance from the background
 
-/** `src` is a path or PNG bytes (a `.psig`'s image section). */
+/** An image's ink: 1 where a pixel differs from the background, row by row. */
+/** @typedef {{ w: number, h: number, m: Uint8Array }} Ink */
+
+/**
+ * `src` is a path or PNG bytes (a `.psig`'s image section).
+ * @param {string | Buffer} src
+ * @returns {Ink}
+ */
 function ink(src) {
   const img = PNG.sync.read(Buffer.isBuffer(src) ? src : readFileSync(src));
   const { width: w, height: h, data } = img;
@@ -35,6 +42,7 @@ function ink(src) {
   return { w, h, m };
 }
 
+/** @param {Ink} ink */
 function dilate({ w, h, m }) {
   const out = new Uint8Array(w * h);
   for (let y = 0; y < h; y++)
@@ -50,7 +58,12 @@ function dilate({ w, h, m }) {
   return out;
 }
 
-/** `base` and `latest` are paths or PNG bytes. → { kind: 'colour' | 'shape', reason, added, removed, inkPx, shapePct } */
+/**
+ * `base` and `latest` are paths or PNG bytes. → { kind: 'colour' | 'shape', reason, added, removed, inkPx, shapePct }
+ * @param {string | Buffer} base
+ * @param {string | Buffer} latest
+ * @returns {{ kind: 'colour' | 'shape', reason: string, added: number | null, removed: number | null, inkPx: number | null, shapePct: number | null }}
+ */
 export function classify(base, latest) {
   const a = ink(base);
   const b = ink(latest);

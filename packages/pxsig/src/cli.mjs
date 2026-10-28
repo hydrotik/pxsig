@@ -170,11 +170,15 @@ const run = (name, args = {}) =>
   tools
     .find((t) => t.name === `pxsig_${name}`)
     .run({ ...(current ? { project: current } : {}), ...args });
+/** @typedef {ReturnType<typeof ctxOf>} ProjectContext */
+/** @type {Map<string, ProjectContext>} */
 const ctxCache = new Map();
+/** @returns {ProjectContext} */
 const ctx = () => {
   const k = current ?? '';
   if (!ctxCache.has(k)) ctxCache.set(k, ctxOf(current));
-  return ctxCache.get(k);
+  // Set just above when it was missing.
+  return /** @type {ProjectContext} */ (ctxCache.get(k));
 };
 const list = (v) =>
   typeof v === 'string'
@@ -1331,7 +1335,8 @@ const commands = {
     const bad = only.filter((a) => !ACTIONS.includes(a));
     if (bad.length) fail(`unknown repair action(s): ${bad.join(', ')} (${ACTIONS.join(', ')})`);
     const failOn = flags['fail-on'] ?? (flags.ci ? 'error' : 'warn');
-    if (!['error', 'warn', 'info'].includes(failOn)) fail('--fail-on takes error, warn or info');
+    if (!(/** @type {unknown[]} */ (['error', 'warn', 'info']).includes(failOn)))
+      fail('--fail-on takes error, warn or info');
     // Repairs write the store: one project, and the store lock (or the server that holds it).
     return overProjects(
       () => doctorOne({ repair, only, failOn }),

@@ -28,22 +28,33 @@ import {
 } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { dirname } from 'node:path';
+/** @import { TornLine } from '../types.js' */
 
-/** Test-only: stop here as a crash would (exit 97), when PXSIG_FAULT names this point. */
+/**
+ * Test-only: stop here as a crash would (exit 97), when PXSIG_FAULT names this point.
+ * @param {string} point
+ */
 export function fault(point) {
   if (process.env.NODE_ENV === 'test' && process.env.PXSIG_FAULT === point) process.exit(97);
 }
 
+/** @param {number} ms */
 const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 
-/** Write `data` to `path` whole: temp file, fsync, rename (retried while Windows holds the file). */
+/**
+ * Write `data` to `path` whole: temp file, fsync, rename (retried while Windows holds the file).
+ * @param {string} path
+ * @param {string | NodeJS.ArrayBufferView} data
+ * @returns {string} `path`
+ */
 export function writeAtomic(path, data) {
   mkdirSync(dirname(path), { recursive: true });
   const tmp = `${path}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
     const fd = openSync(tmp, 'w');
     try {
-      writeSync(fd, data);
+      // node:fs types writeSync as two overloads, text or bytes; one call takes either.
+      writeSync(fd, /** @type {string} */ (data));
       fsyncSync(fd);
     } finally {
       closeSync(fd);
@@ -54,7 +65,15 @@ export function writeAtomic(path, data) {
         return path;
       } catch (e) {
         // Windows refuses a rename while another process (a virus scanner, an editor) has the file open.
-        if (i >= 4 || !['EPERM', 'EBUSY', 'EACCES'].includes(e.code)) throw e;
+        if (
+          i >= 4 ||
+          !(
+            /** @type {(string | undefined)[]} */ (['EPERM', 'EBUSY', 'EACCES']).includes(
+              /** @type {NodeJS.ErrnoException} */ (e).code
+            )
+          )
+        )
+          throw e;
         sleep(50 * (i + 1));
       }
     }
@@ -64,11 +83,19 @@ export function writeAtomic(path, data) {
   }
 }
 
-/** A JSON record, written whole. */
+/**
+ * A JSON record, written whole.
+ * @param {string} path
+ * @param {unknown} value
+ * @param {{ pretty?: boolean }} [opts]
+ */
 export const writeJson = (path, value, { pretty = false } = {}) =>
   writeAtomic(path, `${JSON.stringify(value, null, pretty ? 2 : 0)}\n`);
 
-/** Does the file end mid-line (a write cut short)? */
+/**
+ * Does the file end mid-line (a write cut short)?
+ * @param {number} fd
+ */
 function endsTorn(fd) {
   const { size } = fstatSync(fd);
   if (!size) return false;
@@ -77,7 +104,11 @@ function endsTorn(fd) {
   return b[0] !== 0x0a;
 }
 
-/** Add one line to a log in one write; `line` is a string or a value to JSON-encode. */
+/**
+ * Add one line to a log in one write; `line` is a string or a value to JSON-encode.
+ * @param {string} path
+ * @param {unknown} line
+ */
 export function appendLine(path, line) {
   mkdirSync(dirname(path), { recursive: true });
   const text = `${typeof line === 'string' ? line.replace(/\n+$/, '') : JSON.stringify(line)}\n`;
@@ -94,12 +125,18 @@ export function appendLine(path, line) {
   }
 }
 
-/** `{ lines, torn }`: the parsed lines, and `{ line, text }` for each one that is cut or broken. */
+/**
+ * `{ lines, torn }`: the parsed lines, and `{ line, text }` for each one that is cut or broken.
+ * @param {string} path
+ * @returns {{ lines: unknown[], torn: TornLine[] }}
+ */
 export function readLines(path) {
   if (!existsSync(path)) return { lines: [], torn: [] };
   const raw = readFileSync(path, 'utf8');
   const parts = raw.split('\n');
+  /** @type {unknown[]} */
   const lines = [];
+  /** @type {TornLine[]} */
   const torn = [];
   parts.forEach((text, i) => {
     if (!text.trim()) return;
@@ -114,7 +151,11 @@ export function readLines(path) {
   return { lines, torn };
 }
 
-/** Rewrite a log with only its complete lines (what `doctor --repair --only log-torn` does). */
+/**
+ * Rewrite a log with only its complete lines (what `doctor --repair --only log-torn` does).
+ * @param {string} path
+ * @returns {number} how many lines were dropped
+ */
 export function dropTorn(path) {
   const { torn } = readLines(path);
   if (!torn.length) return 0;

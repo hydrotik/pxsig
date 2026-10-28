@@ -36,6 +36,8 @@ import { chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:
 import { dirname, join } from 'node:path';
 import { windowsTokenDir } from './machine.mjs';
 import { serverFile } from './workspace.mjs';
+/** @import { IncomingHttpHeaders } from 'node:http' */
+/** @import { Authorization, Tokens } from '../types.js' */
 
 export const TOKEN_HEADER = 'x-pxsig-token';
 
@@ -67,6 +69,10 @@ export const newToken = () => randomBytes(32).toString('hex');
 /**
  * The token file for the server at `url` (one per port: a second server on another port has its
  * own); `kind` is `cli` or `mcp`.
+ * @param {string} root
+ * @param {string} url
+ * @param {string} [kind]
+ * @param {string} [platform]
  */
 export const tokenFile = (root, url, kind = 'cli', platform = process.platform) =>
   join(
@@ -74,6 +80,12 @@ export const tokenFile = (root, url, kind = 'cli', platform = process.platform) 
     `serve-${new URL(url).port || '80'}${kind === 'cli' ? '' : `.${kind}`}.token`
   );
 
+/**
+ * @param {string} root
+ * @param {string} url
+ * @param {string} token
+ * @param {string} [kind]
+ */
 export function writeToken(root, url, token, kind = 'cli') {
   const file = tokenFile(root, url, kind);
   mkdirSync(dirname(file), { recursive: true });
@@ -82,6 +94,12 @@ export function writeToken(root, url, token, kind = 'cli') {
   return file;
 }
 
+/**
+ * @param {string} root
+ * @param {string} url
+ * @param {string} [kind]
+ * @returns {string | null}
+ */
 export function readToken(root, url, kind = 'cli') {
   try {
     return readFileSync(tokenFile(root, url, kind), 'utf8').trim() || null;
@@ -90,13 +108,23 @@ export function readToken(root, url, kind = 'cli') {
   }
 }
 
+/**
+ * @param {string} root
+ * @param {string} url
+ * @param {string} token
+ * @param {string} [kind]
+ */
 export function removeToken(root, url, token, kind = 'cli') {
   if (readToken(root, url, kind) === token) rmSync(tokenFile(root, url, kind), { force: true });
 }
 
 const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]']);
 
-/** A Host header naming this server on a loopback name (or none: HTTP/1.0). */
+/**
+ * A Host header naming this server on a loopback name (or none: HTTP/1.0).
+ * @param {string | null | undefined} host
+ * @param {number} port
+ */
 export function loopbackHost(host, port) {
   if (!host) return true;
   const m = String(host)
@@ -105,6 +133,10 @@ export function loopbackHost(host, port) {
   return !!m && LOOPBACK.has(m[1]) && Number(m[2] ?? 80) === port;
 }
 
+/**
+ * @param {string | string[] | null | undefined} a
+ * @param {string | string[] | null | undefined} b
+ */
 const same = (a, b) => {
   if (!a || !b) return false;
   const x = Buffer.from(String(a));
@@ -112,10 +144,18 @@ const same = (a, b) => {
   return x.length === y.length && timingSafeEqual(x, y);
 };
 
-/** The dashboard link's cookie for the server on `port` (cookies are per host, not per port). */
+/**
+ * The dashboard link's cookie for the server on `port` (cookies are per host, not per port).
+ * @param {number | null} port
+ */
 export const linkCookie = (port) => `pxsig_link_${port}`;
 
-/** One cookie's value from a Cookie header, or null. */
+/**
+ * One cookie's value from a Cookie header, or null.
+ * @param {string | null | undefined} header
+ * @param {string} name
+ * @returns {string | null}
+ */
 export function cookieValue(header, name) {
   for (const part of String(header ?? '').split(';')) {
     const i = part.indexOf('=');
@@ -124,7 +164,11 @@ export function cookieValue(header, name) {
   return null;
 }
 
-/** The `Set-Cookie` value for a dashboard link `session` (no Max-Age: it ends with the browser too). */
+/**
+ * The `Set-Cookie` value for a dashboard link `session` (no Max-Age: it ends with the browser too).
+ * @param {number | null} port
+ * @param {string} session
+ */
 export const linkSetCookie = (port, session) =>
   `${linkCookie(port)}=${session}; HttpOnly; SameSite=Strict; Path=/`;
 
@@ -135,14 +179,22 @@ export const TICKET_MS = 2 * 60 * 1000;
  * a restart ends them all. `mint` makes a ticket; `redeem` uses it once, within TICKET_MS.
  */
 export class Links {
+  /** @type {Map<string, number>} ticket → when it expires (ms) */
   #tickets = new Map();
+  /** @type {Set<string>} */
   #sessions = new Set();
+  /** @param {number} [now] */
   mint(now = Date.now()) {
     for (const [t, until] of this.#tickets) if (until < now) this.#tickets.delete(t);
     const t = newToken();
     this.#tickets.set(t, now + TICKET_MS);
     return t;
   }
+  /**
+   * @param {unknown} ticket
+   * @param {number} [now]
+   * @returns {string | null}
+   */
   redeem(ticket, now = Date.now()) {
     if (typeof ticket !== 'string') return null;
     const until = this.#tickets.get(ticket);
@@ -152,6 +204,7 @@ export class Links {
     this.#sessions.add(s);
     return s;
   }
+  /** @param {unknown} session */
   has(session) {
     return typeof session === 'string' && this.#sessions.has(session);
   }
@@ -163,6 +216,8 @@ export class Links {
  * `{ cli, mcp }`; `links` the server's Links and `port` its port (the dashboard link's cookie);
  * `ownOrigin` is `http://<host header>` (already checked to be loopback); `allowedOrigins` the
  * Storybook origins.
+ * @param {{ action: string, headers: IncomingHttpHeaders, tokens: Tokens, links?: Links | null, port?: number | null, ownOrigin: string, allowedOrigins: Set<string> }} req
+ * @returns {Authorization}
  */
 export function authorize({
   action,
@@ -188,15 +243,27 @@ export function authorize({
   return { ok: false, status: 403, error: NEEDS_PERSON };
 }
 
-/** `pxsig serve --link` asking the running server for a ticket: the CLI's token, never a browser. */
+/**
+ * `pxsig serve --link` asking the running server for a ticket: the CLI's token, never a browser.
+ * @param {IncomingHttpHeaders} headers
+ * @param {Tokens} tokens
+ */
 export const mayMintTicket = (headers, tokens) =>
   !(headers.origin || headers['sec-fetch-site']) && same(headers[TOKEN_HEADER], tokens.cli);
 
-/** A browser page trading a ticket (`POST /__pxsig/session`): from this server's own page only. */
+/**
+ * A browser page trading a ticket (`POST /__pxsig/session`): from this server's own page only.
+ * @param {IncomingHttpHeaders} headers
+ * @param {string} ownOrigin
+ */
 export const sameOriginPage = (headers, ownOrigin) =>
   headers['sec-fetch-site'] === 'same-origin' && (!headers.origin || headers.origin === ownOrigin);
 
-/** Why a write is refused on its origin alone, or null (the token is `authorize`'s). */
+/**
+ * Why a write is refused on its origin alone, or null (the token is `authorize`'s).
+ * @param {{ action: string, headers: IncomingHttpHeaders, ownOrigin: string, allowedOrigins: Set<string> }} req
+ * @returns {{ status: number, error: string } | null}
+ */
 function refuseWrite({ action, headers, ownOrigin, allowedOrigins }) {
   const decision = DECISIONS.has(action);
   const origin = headers.origin;
@@ -212,6 +279,7 @@ function refuseWrite({ action, headers, ownOrigin, allowedOrigins }) {
 /**
  * Headers on every dashboard page: what it may load (its own scripts and data, images it draws),
  * who may frame it (this server and the projects' Storybooks), and no content sniffing.
+ * @param {Iterable<string>} allowedOrigins
  */
 export const pageHeaders = (allowedOrigins) => ({
   'content-security-policy': [

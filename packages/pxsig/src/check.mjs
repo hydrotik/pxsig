@@ -97,6 +97,7 @@ import { writeSarif } from './lib/sarif.mjs';
 
 const { flags } = parseArgs(process.argv.slice(2));
 const str = (k) => strFlag(flags, k);
+/** @type {(m: string, code?: number) => never} */
 const die = (m, code = 2) => (console.error(`[check] ${m}`), process.exit(code));
 let P;
 try {
@@ -732,7 +733,12 @@ if (outName === 'check' && !suite) {
   }
 }
 lock.release();
-appendReadiness(P, enf, gated, { source: 'check', suite, counts: checkCounts(out) });
+// `enf` is null only under --update, which exited above.
+appendReadiness(P, /** @type {NonNullable<typeof enf>} */ (enf), gated, {
+  source: 'check',
+  suite,
+  counts: checkCounts(out),
+});
 const last = lastLine(enf, gated, enf.configured.length ? readinessTally(P) : null);
 if (last) console.log(`[pxsig] ${last}`);
 process.exit(gated.exit);
@@ -789,7 +795,11 @@ async function viaServer(url, ids, stories = []) {
   for (const r of failed.slice(0, 20))
     console.log(`  CHANGED ${r.id.padEnd(60)} ${r.error ?? (r.reasons ?? []).join('; ')}`);
   const gated = outcome(enf, checkFindings(rows));
-  appendReadiness(P, enf, gated, { source: 'check', counts: checkCounts(rows) });
+  // `enf` is null only under --update, which never hands the run to a server.
+  appendReadiness(P, /** @type {NonNullable<typeof enf>} */ (enf), gated, {
+    source: 'check',
+    counts: checkCounts(rows),
+  });
   const last = lastLine(enf, gated, enf.configured.length ? readinessTally(P) : null);
   if (last) console.log(`[pxsig] ${last}`);
   process.exit(gated.exit);

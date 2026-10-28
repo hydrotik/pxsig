@@ -29,6 +29,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readImage } from './lib/psig.mjs';
 import { PXSIG_VERSION, engineVersion, openProject } from './lib/workspace.mjs';
+/** @import { Project } from './types.js' */
 
 const here = dirname(fileURLToPath(import.meta.url));
 /**
@@ -109,6 +110,8 @@ export function uiContractVersion() {
 /**
  * One project's dashboard data. `base` is the URL prefix of the project's files: `/p/<name>/`
  * when served, `./` for a static report.
+ * @param {Project} P
+ * @param {{ base?: string }} [opts]
  */
 export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/` } = {}) {
   const manifest = readJsonFile(P.manifestPath()) ?? { stories: [] };
@@ -160,7 +163,11 @@ export function pageWithData(data) {
   );
 }
 
-/** Write a static report for one project into `out`: the app, the data and the images it shows. */
+/**
+ * Write a static report for one project into `out`: the app, the data and the images it shows.
+ * @param {Project} P
+ * @param {string} out
+ */
 export function writeStaticReport(P, out) {
   if (!existsSync(join(dashboardDir, 'index.html')))
     throw new Error(`the dashboard is not built (${dashboardDir})`);

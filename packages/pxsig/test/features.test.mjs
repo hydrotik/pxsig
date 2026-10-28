@@ -26,6 +26,7 @@ import { acquireLock, lockPath, readLock } from '../src/lib/lock.mjs';
 import { ensureGitattributes, initProject } from '../src/lib/setup.mjs';
 import { findWorkspace, loadProject, openProject, resolveModes } from '../src/lib/workspace.mjs';
 import { CHECKER, fixture, hasRust, rustBin } from './fixture.mjs';
+/** @import { ApprovalLine, LockState } from '../src/types.js' */
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
 const env = {};
@@ -173,7 +174,8 @@ test('store lock: one holder; a dead holder is stale and taken over', () => {
   });
   const P = openProject({ cwd: root, env });
   const l = acquireLock(P, { holder: 'test' });
-  assert.equal(readLock(P).pid, process.pid);
+  // Taken just above.
+  assert.equal(/** @type {LockState} */ (readLock(P)).pid, process.pid);
   l.release();
   assert.equal(readLock(P), null);
   // A live process holds it: refused, naming the holder.
@@ -200,7 +202,7 @@ test('store lock: one holder; a dead holder is stale and taken over', () => {
     lockPath(P),
     JSON.stringify({ pid: 2 ** 22 + 12345, startedAt: new Date().toISOString(), holder: 'check' })
   );
-  assert.equal(readLock(P).stale, true);
+  assert.equal(/** @type {LockState} */ (readLock(P)).stale, true);
   acquireLock(P, { holder: 'test' }).release();
 });
 
@@ -628,8 +630,9 @@ test(
         'undo restored the previous baseline, byte for byte'
       );
       const log = readLog({ store: { approvals: join(f.px, 'approvals.ndjson') } });
-      assert.equal(log.at(-1).via, 'undo');
-      assert.match(log.at(-1).batch, /-undo$/);
+      // The undo just logged a line.
+      assert.equal(/** @type {ApprovalLine} */ (log.at(-1)).via, 'undo');
+      assert.match(/** @type {ApprovalLine} */ (log.at(-1)).batch, /-undo$/);
     } finally {
       proc.kill();
     }
@@ -881,7 +884,8 @@ test('storybook.staticDir: when storybook.url does not answer, the build is serv
     assert.equal((await fetch(`${sb.url}/iframe.html`)).status, 200);
     assert.equal((await fetch(`${sb.url}/../pxsig.config.json`)).status, 404);
   } finally {
-    await sb.close();
+    // `served` is true (asserted first): a served build has `close`.
+    await /** @type {{ close: () => Promise<void> }} */ (sb).close();
   }
   // No build in the folder: nothing served, the caller reports Storybook unreachable.
   const empty = tree({

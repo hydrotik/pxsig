@@ -23,6 +23,7 @@ import { dirname, join } from 'node:path';
 import { readLog, sha256, stamp, who } from './approvals.mjs';
 import { appendLine, readLines, writeJson } from './files.mjs';
 import { relPath } from './paths.mjs';
+/** @import { Project } from '../types.js' */
 
 export const CLASSES = ['prunable', 'still-fires', 'stale', 'not-covered'];
 export const PRUNE_RULE = /^[\w.-]{1,80}$/;
@@ -36,9 +37,13 @@ const readJson = (p, fallback) => {
   }
 };
 
+/** @param {Pick<Project, 'store'>} P */
 export const decisionsPath = (P) => join(dirname(P.store.a11y), 'a11y-decisions.ndjson');
 
-/** The check reports: check.json (suite null) and each check-<suite>.json, with their rows. */
+/**
+ * The check reports: check.json (suite null) and each check-<suite>.json, with their rows.
+ * @param {Project} P
+ */
 export function readReports(P) {
   const out = [];
   const dir = P.store.reports;
@@ -65,10 +70,16 @@ function latestBy(lines, actions = null) {
   return out;
 }
 
-/** The last accept, unaccept, undo or prune of each entry (a11y-decisions.ndjson). */
+/**
+ * The last accept, unaccept, undo or prune of each entry (a11y-decisions.ndjson).
+ * @param {Project} P
+ */
 export const decisionTimes = (P) =>
   latestBy(readLines(decisionsPath(P)).lines, new Set(['accept', 'unaccept', 'undo', 'prune']));
-/** The last approval-log line of each entry (approve, undo, adopt, check --update: each rewrites its accepted list). */
+/**
+ * The last approval-log line of each entry (approve, undo, adopt, check --update: each rewrites its accepted list).
+ * @param {Project} P
+ */
 export const approvalTimes = (P) => latestBy(readLog(P));
 
 /** Why a row says nothing about the rules, or null when axe ran on it. */
@@ -198,7 +209,10 @@ export function coverCommands(items, cmd = 'pxsig') {
   return out;
 }
 
-/** The plan: every rule classified, the prunable ones grouped per entry, pinned to a11y.json. */
+/**
+ * The plan: every rule classified, the prunable ones grouped per entry, pinned to a11y.json.
+ * @param {Project} P
+ */
 export function buildPlan(
   P,
   { stale, modeOf, only = null, component = null, mode = null, cmd = 'pxsig' }
@@ -284,6 +298,7 @@ export function checkPlan(plan) {
  * Remove a plan's prunable rules. Refuses the whole plan (status 409) when a11y.json changed since
  * it was made. `lockCheck` runs before the writes (fencing: a lock taken over writes nothing).
  * Returns `{ batch, entries, rules, lines }`.
+ * @param {Project} P
  */
 export function applyPrune(
   P,
