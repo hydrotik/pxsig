@@ -192,7 +192,8 @@ licence outside `deny.toml`'s `allow` list fails; adding one is a decision for t
   `node scripts/changelog.mjs check --since origin/main` pass.
 - Update the docs in `docs/` when a command, flag, config key, file format or default changes, and
   add a fragment in `changelog.d/` ([changelog.d/README.md](changelog.d/README.md)); `CHANGELOG.md`
-  itself changes only in a release.
+  itself changes only in a release. A change to shipped code with no fragment fails CI unless a
+  commit message body has the line `Changelog: none` (a refactor or a test, nothing a user notices).
 - **Formats are contracts.** Spec v1 records, the `.psig` container, integrity status codes and
   exit codes change only with a version bump and a migration path. Status codes are only ever
   added, never renamed.

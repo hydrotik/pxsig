@@ -4,7 +4,9 @@
  *
  *   node scripts/changelog.mjs check [--since <ref>]   # every fragment is well formed; with --since,
  *                                                     # also: the branch does not edit CHANGELOG.md
- *                                                     # (only a release/ branch may)
+ *                                                     # (only a release/ branch may), and a branch
+ *                                                     # that changes shipped code adds a fragment or
+ *                                                     # says `Changelog: none` in a commit body
  *   node scripts/changelog.mjs preview                 # the Unreleased section the next release gets
  *   node scripts/changelog.mjs release <x.y.z> [--date YYYY-MM-DD]
  *                                                     # merge Unreleased and every fragment into a
@@ -174,16 +176,50 @@ export function directEdit(changed, branch) {
   return `CHANGELOG.md is edited on "${branch}": add a fragment in ${DIR}/ instead (only a release/ branch changes CHANGELOG.md, with \`node scripts/changelog.mjs release <version>\`)`;
 }
 
+/** Shipped code: a change here is one a user may notice, so it comes with a fragment. */
+export const SHIPPED = [
+  /^packages\/[^/]+\/src\//,
+  /^packages\/storybook-addon\/[^/]+\.(mjs|cjs)$/,
+  /^crates\/[^/]+\/src\//,
+];
+/** A commit body line that says a change needs no fragment (a refactor, a test). */
+export const NO_FRAGMENT = /^Changelog: none\s*$/m;
+
+/**
+ * Why this branch needs a fragment it does not add, or null: it changes shipped code, adds or
+ * edits no `changelog.d/<topic>.md`, and no commit message has the line `Changelog: none`.
+ * @param {string[]} changed the branch's changed files
+ * @param {string[]} fragments the fragments it added or modified
+ * @param {string[]} messages its commit messages
+ * @param {string} branch
+ */
+export function missingFragment(changed, fragments, messages, branch) {
+  if (branch.startsWith('release/')) return null;
+  const code = changed.filter((f) => SHIPPED.some((re) => re.test(f)));
+  if (!code.length) return null;
+  if (fragments.some((f) => f.startsWith(`${DIR}/`) && f !== `${DIR}/README.md`)) return null;
+  if (messages.some((m) => NO_FRAGMENT.test(m))) return null;
+  return `shipped code changed (${code.slice(0, 3).join(', ')}${code.length > 3 ? `, +${code.length - 3} more` : ''}) with no fragment in ${DIR}/: add one (${DIR}/README.md), or, when a user cannot notice the change (a refactor, a test), put the line "Changelog: none" in a commit message body`;
+}
+
 /** @param {string} ref */
-function changedSince(ref) {
-  let base = ref;
+function baseOf(ref) {
   try {
-    base = git('merge-base', ref, 'HEAD');
+    return git('merge-base', ref, 'HEAD');
   } catch {
     // a shallow clone (CI): compare with the ref itself, which on a pull request is the base branch
+    return ref;
   }
-  return git('diff', '--name-only', base, 'HEAD').split('\n').filter(Boolean);
 }
+
+/**
+ * @param {string} base
+ * @param {string[]} extra more `git diff` arguments
+ */
+const changedSince = (base, ...extra) =>
+  git('diff', '--name-only', ...extra, base, 'HEAD')
+    .split('\n')
+    .filter(Boolean);
 
 /**
  * @param {string[]} args
@@ -219,8 +255,14 @@ function run(args) {
     const since = flag(args, '--since');
     if (since) {
       const branch = process.env.GITHUB_HEAD_REF || git('rev-parse', '--abbrev-ref', 'HEAD');
-      const why = directEdit(changedSince(since), branch);
+      const base = baseOf(since);
+      const changed = changedSince(base);
+      const why = directEdit(changed, branch);
       if (why) problems.push(why);
+      const messages = git('log', '--format=%B%x00', `${base}..HEAD`).split('\0');
+      const added = changedSince(base, '--diff-filter=AM', '--', DIR);
+      const missing = missingFragment(changed, added, messages, branch);
+      if (missing) problems.push(missing);
     }
     if (problems.length) fail(problems);
     return console.log(`[changelog] ok · ${fragments.length} fragment(s)`);

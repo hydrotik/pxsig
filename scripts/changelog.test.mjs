@@ -5,6 +5,7 @@ import {
   HEADINGS,
   directEdit,
   merge,
+  missingFragment,
   parseFragment,
   release,
   splitChangelog,
@@ -82,5 +83,44 @@ test('only a release/ branch may edit CHANGELOG.md', () => {
   assert.match(
     /** @type {string} */ (directEdit(['CHANGELOG.md', 'a.mjs'], 'feat/x')),
     /add a fragment in changelog\.d\//
+  );
+});
+
+test('a branch that changes shipped code adds a fragment, or says "Changelog: none"', () => {
+  const code = ['packages/pxsig/src/cli.mjs', 'docs/cli.md'];
+  // A string here (assert.match fails the test on null).
+  assert.match(
+    /** @type {string} */ (missingFragment(code, [], ['fix(cli): x\n\nWhy.\n'], 'fix/x')),
+    /packages\/pxsig\/src\/cli\.mjs\) with no fragment in changelog\.d\//
+  );
+  for (const f of [
+    'crates/pxsig-core/src/compare.rs',
+    'packages/storybook-addon/manager.mjs',
+    'packages/dashboard/src/App.tsx',
+  ])
+    assert.ok(missingFragment([f], [], [], 'feat/x'), f);
+  assert.equal(missingFragment(code, ['changelog.d/cli-fix.md'], [], 'fix/x'), null);
+  assert.ok(
+    missingFragment(code, ['changelog.d/README.md'], [], 'fix/x'),
+    'README is not a fragment'
+  );
+  assert.equal(missingFragment(code, [], ['refactor: y\n\nChangelog: none\n'], 'fix/x'), null);
+  assert.ok(missingFragment(code, [], ['refactor: y\n\nChangelog: none, really\n'], 'fix/x'));
+  assert.equal(missingFragment(code, [], [], 'release/0.6.0'), null);
+  // Not shipped code: tests, scripts, docs, the addon's tests and config.
+  assert.equal(
+    missingFragment(
+      [
+        'packages/pxsig/test/a.test.mjs',
+        'scripts/x.mjs',
+        'docs/a.md',
+        'packages/storybook-addon/test/a.test.mjs',
+        'crates/pxsig-cli/Cargo.toml',
+      ],
+      [],
+      [],
+      'chore/x'
+    ),
+    null
   );
 });
