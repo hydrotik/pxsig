@@ -30,8 +30,16 @@ import { expandEntries, harvestParameters } from './manifest.mjs';
 import { CONFIG_FILE, entryConfig, SetupError, WORKSPACE_FILE, runManifest } from './workspace.mjs';
 import { toPosix } from './paths.mjs';
 import { appendLine, writeJson } from './files.mjs';
-/** @import { Project } from '../types.js' */
+/** @import { ManifestEntry, Project, WorkspaceFile } from '../types.js' */
+/** @import { BuiltManifest, DescribedConfig, EngineVerdict, InitConfig, LegacyManifest, MigrateManifest, MigratePlan, MigrateVerify } from '../types/t6.js' */
 
+/**
+ * A JSON file, or `fallback` when it is missing or does not parse. Callers name the shape of the
+ * file they read.
+ * @param {string} p
+ * @param {unknown} [fallback]
+ * @returns {unknown}
+ */
 const readJson = (p, fallback = null) => {
   try {
     return JSON.parse(readFileSync(p, 'utf8'));
@@ -61,6 +69,8 @@ export const PSIG_ATTRIBUTE = '*.psig binary diff=psig';
 /**
  * Make sure `<root>/.gitattributes` marks `*.psig` binary with the `psig` diff driver. Appends the
  * line when no line already sets attributes for `*.psig`; idempotent. Returns the path when it wrote.
+ * @param {string} root
+ * @returns {string | null}
  */
 export function ensureGitattributes(root) {
   const p = join(root, '.gitattributes');
@@ -74,11 +84,19 @@ export function ensureGitattributes(root) {
   return p;
 }
 
-/** The layout a project resolves to, from its config and the workspace defaults. */
+/**
+ * The layout a project resolves to, from its config and the workspace defaults.
+ * @param {InitConfig} cfg
+ * @param {string | null} workspaceRoot
+ * @returns {string}
+ */
 const layoutOf = (cfg, workspaceRoot) =>
   cfg.store?.layout ??
   (workspaceRoot
-    ? readJson(join(workspaceRoot, WORKSPACE_FILE), {})?.defaults?.store?.layout
+    ? // the workspace file, as written: its defaults are a project config layer
+      /** @type {WorkspaceFile & { defaults?: InitConfig }} */ (
+        readJson(join(workspaceRoot, WORKSPACE_FILE), {})
+      )?.defaults?.store?.layout
     : null) ??
   'package';
 
@@ -87,6 +105,7 @@ const layoutOf = (cfg, workspaceRoot) =>
  * the workspace file. A colocated project also gets `*.psig binary diff=psig` in the root
  * `.gitattributes` (the workspace's, else its own). Returns what it wrote.
  * @param {{ dir: string, name?: string | null, label?: string | null, srcRoot?: string, storybookUrl?: string | null, storybookConfigDir?: string | null, workspaceRoot?: string | null, layout?: string | null }} opts
+ * @returns {string[]}
  */
 export function initProject({
   dir,
@@ -98,6 +117,7 @@ export function initProject({
   workspaceRoot = null,
   layout = null,
 }) {
+  /** @type {string[]} */
   const wrote = [];
   const configPath = join(dir, CONFIG_FILE);
   if (layout && !['package', 'colocated'].includes(layout))
@@ -105,6 +125,7 @@ export function initProject({
   if (label != null && (!label.trim() || label.trim().length > 60))
     throw new SetupError('--label must be text of 1 to 60 characters');
   if (!existsSync(configPath)) {
+    /** @type {InitConfig} */
     const cfg = {
       version: 1,
       ...(name ? { name } : {}),
@@ -120,7 +141,8 @@ export function initProject({
     writeJson(configPath, cfg, { pretty: true });
     wrote.push(configPath);
   }
-  const cfg = readJson(configPath, {});
+  // the project's config, as written (by this function or by hand)
+  const cfg = /** @type {InitConfig} */ (readJson(configPath, {}));
   const store = resolve(dir, cfg.store?.dir ?? '.pxsig');
   mkdirSync(store, { recursive: true });
   for (const [file, text] of [
@@ -135,7 +157,7 @@ export function initProject({
   }
   if (workspaceRoot && resolve(workspaceRoot) !== resolve(dir)) {
     const wsFile = join(workspaceRoot, WORKSPACE_FILE);
-    const ws = readJson(wsFile, { version: 1, projects: {} });
+    const ws = /** @type {WorkspaceFile} */ (readJson(wsFile, { version: 1, projects: {} }));
     const rel = toPosix(relative(workspaceRoot, dir));
     if (!Object.values(ws.projects ?? {}).includes(rel)) {
       const key = cfg.name ?? name ?? basename(dir);
@@ -153,7 +175,12 @@ export function initProject({
   return wrote;
 }
 
-/** A suite's entry options: `{ modes: [...] }` means exactly those modes. */
+/**
+ * A suite's entry options: `{ modes: [...] }` means exactly those modes.
+ * @param {Project} P
+ * @param {string | null} suite
+ * @returns {{ addModes?: string[], modes?: string[] }}
+ */
 function suiteOptions(P, suite) {
   if (!suite) return {};
   const s = P.config.suites?.[suite];
@@ -173,6 +200,7 @@ function suiteOptions(P, suite) {
  * path; new ones get the layout's path and no baseline. Returns { manifest, added, removed, skipped }.
  * @param {Project} P
  * @param {{ suite?: string | null, write?: boolean }} [opts]
+ * @returns {Promise<BuiltManifest>}
  */
 export async function buildManifest(P, { suite = null, write = true } = {}) {
   const ctx = resolveContext(P, { manifestPath: P.manifestPath(suite) });
@@ -195,7 +223,10 @@ export async function buildManifest(P, { suite = null, write = true } = {}) {
     P.storybook.url,
     stories.map((s) => s.id)
   );
-  const before = readJson(ctx.manifestPath, { stories: [] });
+  // the manifest pxsig wrote last time, if any
+  const before = /** @type {{ stories?: ManifestEntry[] }} */ (
+    readJson(ctx.manifestPath, { stories: [] })
+  );
   const known = new Map((before.stories ?? []).map((e) => [e.id, e]));
   const list = stories.map((s) => ({
     id: s.id,
@@ -221,7 +252,11 @@ export async function buildManifest(P, { suite = null, write = true } = {}) {
   };
 }
 
-/** The resolved config, with the files it came from and, per key, the layer that set it. */
+/**
+ * The resolved config, with the files it came from and, per key, the layer that set it.
+ * @param {Project} P
+ * @returns {DescribedConfig}
+ */
 export function describeConfig(P) {
   return {
     sources: P.configSources,
@@ -245,7 +280,11 @@ export function describeConfig(P) {
 
 // --- migration from the pre-0.2 layout -----------------------------------------------------------------
 
-/** The pre-0.2 layout's manifests (main and per suite), under the legacy folder's `js/`. */
+/**
+ * The pre-0.2 layout's manifests (main and per suite), under the legacy folder's `js/`.
+ * @param {string} from
+ * @returns {{ suite: string | null, path: string }[]}
+ */
 function legacyManifests(from) {
   const dir = join(from, 'js');
   if (!existsSync(join(dir, 'pxsig.manifest.json')))
@@ -260,6 +299,7 @@ function legacyManifests(from) {
 }
 
 /** Per-entry fields a manifest keeps; the settings the old manifest repeated come from config now. */
+/** @type {(keyof ManifestEntry)[]} */
 const ENTRY_KEYS = [
   'id',
   'story',
@@ -281,26 +321,51 @@ const ENTRY_KEYS = [
   'play',
   'a11y',
 ];
+/**
+ * @param {ManifestEntry} e
+ * @returns {ManifestEntry} a legacy entry's manifest keys (the old pxsig wrote every required one)
+ */
 const pick = (e) =>
-  Object.fromEntries(ENTRY_KEYS.filter((k) => e[k] !== undefined).map((k) => [k, e[k]]));
+  /** @type {ManifestEntry} */ (
+    /** @type {unknown} */ (
+      Object.fromEntries(ENTRY_KEYS.filter((k) => e[k] !== undefined).map((k) => [k, e[k]]))
+    )
+  );
 
 /**
  * Plan (and with `apply`, run) the move of a legacy store into the project's store. The legacy
  * folder is only read. `verify` re-checks the legacy renders against old and new baselines with
  * the Rust engine and requires identical results.
+ * @param {Project} P
+ * @param {{ from?: string, apply?: boolean, verify?: boolean, log?: (message: string) => void }} [opts]
+ * @returns {MigratePlan}
  */
 export function migrateLegacy(P, { from, apply = false, verify = true, log = () => {} } = {}) {
-  from = resolve(from);
+  // The CLI always passes `from`; without it, resolve throws as before.
+  from = resolve(/** @type {string} */ (from));
   const manifests = legacyManifests(from);
-  const plan = { from, to: P.store.root, manifests: [], pack: [], copies: [], problems: [] };
+  // `summary` is set below, before either return.
+  const plan = /** @type {MigratePlan} */ (
+    /** @type {Partial<MigratePlan>} */ ({
+      from,
+      to: P.store.root,
+      manifests: [],
+      pack: [],
+      copies: [],
+      problems: [],
+    })
+  );
+  /** @type {Map<string, string>} */
   const outOf = new Map();
   for (const m of manifests) {
-    const old = readJson(m.path);
+    // a manifest the pre-0.2 pxsig wrote (checked on the next line)
+    const old = /** @type {LegacyManifest | null} */ (readJson(m.path));
     if (!old?.stories) {
       plan.problems.push(`${m.path} is not a manifest`);
       continue;
     }
     const target = P.manifestPath(m.suite);
+    /** @type {ManifestEntry[]} */
     const stories = [];
     for (const e of old.stories) {
       const sigOld = resolve(P.workspaceRoot, e.sig);
@@ -340,6 +405,7 @@ export function migrateLegacy(P, { from, apply = false, verify = true, log = () 
       const img = join(from, '.renders', 'base', `${item.entry.id}.png`);
       if (existsSync(img)) item.image = img;
     }
+  /** @type {[string, string][]} */
   const files = [
     ['.baselines/a11y.json', P.store.a11y],
     ['.reports/review.json', join(P.store.reports, 'review.json')],
@@ -379,7 +445,8 @@ export function migrateLegacy(P, { from, apply = false, verify = true, log = () 
     maxBuffer: 64 * 1024 * 1024,
   });
   if (r.status !== 0) throw new SetupError(`pxsig pack failed: ${r.stderr || r.stdout}`);
-  plan.packed = JSON.parse(r.stdout).summary;
+  // the engine's `pack --json` report
+  plan.packed = /** @type {{ summary?: unknown }} */ (JSON.parse(r.stdout)).summary;
   for (const m of plan.manifests) writeJsonAtomic(m.to, m.manifest, { pretty: true });
   for (const c of plan.copies) {
     mkdirSync(dirname(c.to), { recursive: true });
@@ -417,18 +484,33 @@ export function migrateLegacy(P, { from, apply = false, verify = true, log = () 
 /**
  * Check the legacy latest renders against the old baselines and the new ones, with the same
  * engine, gate and settings. Every entry must get the same verdict, metrics and detail result.
+ * @param {Project} P
+ * @param {{ manifests: MigrateManifest[] }} plan
+ * @param {string} from
+ * @param {(message: string) => void} [log]
+ * @returns {MigrateVerify[]}
  */
 export function verifyMigration(P, plan, from, log = () => {}) {
   const renders = join(from, '.renders', 'latest');
+  /** @type {MigrateVerify[]} */
   const out = [];
   for (const m of plan.manifests) {
     const scratch = join(P.store.reports, '.migrate-verify', m.suite ?? 'main');
     mkdirSync(scratch, { recursive: true });
     const oldRun = join(scratch, 'old.json');
     const newRun = join(scratch, 'new.json');
-    const oldManifest = { ...m.manifest, stories: readJson(m.from).stories };
+    // the legacy manifest `migrateLegacy` read (it has `stories`)
+    const oldManifest = {
+      ...m.manifest,
+      stories: /** @type {Required<LegacyManifest>} */ (readJson(m.from)).stories,
+    };
     writeFileSync(oldRun, JSON.stringify(runManifest(P, oldManifest)));
     writeFileSync(newRun, JSON.stringify(runManifest(P, m.manifest)));
+    /**
+     * @param {string} manifest
+     * @param {string} dir
+     * @returns {Map<string, EngineVerdict>}
+     */
     const check = (manifest, dir) => {
       const r = spawnSync(
         P.rustBin,
@@ -448,13 +530,20 @@ export function verifyMigration(P, plan, from, log = () => {}) {
       );
       if (r.status === 2)
         throw new SetupError(`verification check failed: ${r.stderr || r.stdout}`);
-      return new Map(JSON.parse(r.stdout).results.map((x) => [x.id, x]));
+      // the engine's `check --json` report
+      return new Map(
+        /** @type {{ results: EngineVerdict[] }} */ (JSON.parse(r.stdout)).results.map((x) => [
+          x.id,
+          x,
+        ])
+      );
     };
     log(
       `verifying ${m.entries} entries${m.suite ? ` (suite ${m.suite})` : ''} against ${toPosix(relative(P.workspaceRoot, renders))}`
     );
     const a = check(oldRun, join(scratch, 'old'));
     const b = check(newRun, join(scratch, 'new'));
+    /** @param {EngineVerdict | undefined} x */
     const key = (x) => JSON.stringify([x?.pass, x?.metrics, x?.detail, x?.error ? 'error' : null]);
     const differ = [...a.keys()].filter((id) => key(a.get(id)) !== key(b.get(id)));
     out.push({

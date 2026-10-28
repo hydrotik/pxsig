@@ -56,11 +56,17 @@ import {
   speaks,
 } from './lib/enforcement.mjs';
 
+/** @import { Readable } from 'node:stream' */
+/** @import { LockError } from './lib/lock.mjs' */
+/** @import { A11yResult, A11yViolation, CheckRow, LockState, ManifestEntry } from './types.js' */
+/** @import { A11yArgs, AffectedArgs, AffectedResult, BriefEntry, CheckArgs, CheckToolResult, CheckReport, DoctorArgs, DoctorOptions, EntryArgs, HelpArgs, HistoryArgs, HistoryLine, ListArgs, McpContent, ProjectArg, PrunePlanOptions, ReportRow, ReviewArgs, ReviewFile, RpcRequest, ServerCheckReply, ServerStatusReply, StaleArgs } from './types/t6.js' */
+
 const here = dirname(fileURLToPath(import.meta.url));
 
 /**
  * One project's paths, for a tool call. Throws (with the project names) when the workspace has
  * several projects and none was named.
+ * @param {string | null} [project]
  */
 function ctxOf(project) {
   const P = openProject({ project: project ?? null });
@@ -82,12 +88,20 @@ const PROJECT = {
   description:
     'Project name (pxsig_projects lists them). Optional when the workspace has one project.',
 };
-const VERSION = JSON.parse(
-  readFileSync(new URL('../package.json', import.meta.url), 'utf8')
+// pxsig's own package.json
+const VERSION = /** @type {{ version: string }} */ (
+  JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 ).version;
 // MCP results larger than this lose the image and keep its path.
 const MAX_IMAGE_BYTES = 1_500_000;
 
+/**
+ * A JSON file, or `fallback` when it is missing or does not parse. Callers name the shape of the
+ * file they read (each is one pxsig writes).
+ * @param {string} p
+ * @param {unknown} fallback
+ * @returns {unknown}
+ */
 const readJson = (p, fallback) => {
   try {
     return JSON.parse(readFileSync(p, 'utf8'));
@@ -95,11 +109,17 @@ const readJson = (p, fallback) => {
     return fallback;
   }
 };
+/** @param {...string} a */
 const log = (...a) => process.stderr.write(`[pxsig-mcp] ${a.join(' ')}\n`);
 
 // --- state ------------------------------------------------------------------------------------
 
-/** One entry's state, as the dashboard and the Storybook addon compute it: a review decision wins. */
+/**
+ * One entry's state, as the dashboard and the Storybook addon compute it: a review decision wins.
+ * @param {ReportRow} row
+ * @param {ReviewFile} review
+ * @returns {string}
+ */
 function stateOf(row, review) {
   const rv = review[row.id]?.state;
   if (rv) return rv;
@@ -114,20 +134,30 @@ const PROBLEMS = new Set(['changed', 'new', 'error', 'flaky', 'rejected']);
 
 /** @param {ProjectContext} C */
 function load(C) {
-  const check = readJson(C.checkPath, null);
+  const check = /** @type {CheckReport | null} */ (readJson(C.checkPath, null));
   if (!check)
     throw new Error(
       `no report at ${relPath(C.root, C.checkPath)}: run a check first (pxsig check, or the pxsig_check tool)`
     );
-  const review = readJson(C.reviewPath, {});
-  const a11yReview = readJson(join(dirname(C.reviewPath), 'a11y-review.json'), {});
+  const review = /** @type {ReviewFile} */ (readJson(C.reviewPath, {}));
+  const a11yReview = /** @type {ReviewFile} */ (
+    readJson(join(dirname(C.reviewPath), 'a11y-review.json'), {})
+  );
   const updated = statSync(C.checkPath).mtime;
   return { check, review, a11yReview, updated };
 }
 
-/** Component name of an entry id: the story title's last segment (`components-hovercard--x` → `hovercard`). */
+/**
+ * Component name of an entry id: the story title's last segment (`components-hovercard--x` → `hovercard`).
+ * @param {string} id
+ */
 const componentOf = (id) => id.split('--')[0].split('-').slice(-1)[0];
 
+/**
+ * @param {ReportRow} row
+ * @param {ReviewFile} review
+ * @returns {BriefEntry}
+ */
 function brief(row, review) {
   return {
     id: row.id,
@@ -146,6 +176,14 @@ function brief(row, review) {
 
 // --- the server (serve.mjs), when it is up ------------------------------------------------------
 
+/**
+ * A request to the pxsig server; resolves with its JSON answer.
+ * @template [T=Record<string, unknown>] The answer's shape for this route (docs/server.md).
+ * @param {{ serverUrl: string }} C
+ * @param {string} path
+ * @param {{ method?: string, body?: Record<string, unknown>, headers?: Record<string, string>, timeout?: number }} [opts]
+ * @returns {Promise<T>}
+ */
 async function http(C, path, { method = 'GET', body, headers, timeout = 2000 } = {}) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeout);
@@ -159,15 +197,18 @@ async function http(C, path, { method = 'GET', body, headers, timeout = 2000 } =
           : undefined,
       body: body ? JSON.stringify(body) : undefined,
     });
-    const json = await res.json().catch(() => ({}));
+    // The pxsig server answers JSON; an error answer carries `error`.
+    const json = /** @type {T & { error?: string }} */ (await res.json().catch(() => ({})));
     if (!res.ok) throw new Error(json.error ?? `${method} ${path}: HTTP ${res.status}`);
     return json;
   } finally {
     clearTimeout(t);
   }
 }
+/** @param {ProjectContext} C */
 async function server(C) {
   try {
+    /** @type {ServerStatusReply} */
     const s = await http(C, '/__pxsig/status', { timeout: 1500 });
     return { up: true, running: s.running, queued: s.queued, dashboard: s.dashboard };
   } catch {
@@ -180,10 +221,14 @@ async function server(C) {
 /**
  * @param {ProjectContext} C
  * @param {{ files?: string[], since?: string, manifestPath?: string }} opts
+ * @returns {AffectedResult}
  */
 function affected(C, { files, since, manifestPath }) {
   if (!existsSync(C.rustBin)) throw new Error(`the pxsig binary is missing: ${C.rustBin}`);
-  const how = files?.length ? ['--files', files.join(',')] : ['--since', since];
+  // Callers pass files or since.
+  const how = files?.length
+    ? ['--files', files.join(',')]
+    : ['--since', /** @type {string} */ (since)];
   const run = writeRunManifest(C.P, manifestPath).path;
   const r = spawnSync(
     C.rustBin,
@@ -195,7 +240,8 @@ function affected(C, { files, since, manifestPath }) {
     }
   );
   if (r.status !== 0) throw new Error(`pxsig affected failed: ${r.stderr || r.stdout}`);
-  return JSON.parse(r.stdout);
+  // the engine's `affected --json`
+  return /** @type {AffectedResult} */ (JSON.parse(r.stdout));
 }
 
 /**
@@ -212,12 +258,30 @@ function sourceRoots(C) {
 
 /**
  * Source files edited after `when` (tests excluded), with their edit times.
+ * @overload
+ * @param {ProjectContext} C
+ * @param {Date} when
+ * @param {{ withTimes: true }} opts
+ * @returns {{ file: string, mtime: Date }[]}
+ */
+/**
+ * Source files edited after `when` (tests excluded).
+ * @overload
+ * @param {ProjectContext} C
+ * @param {Date} when
+ * @param {{ withTimes?: false }} [opts]
+ * @returns {string[]}
+ */
+/**
  * @param {ProjectContext} C
  * @param {Date} when
  * @param {{ withTimes?: boolean }} [opts]
+ * @returns {string[] | { file: string, mtime: Date }[]}
  */
 function editedSince(C, when, { withTimes = false } = {}) {
+  /** @type {(string | { file: string, mtime: Date })[]} */
   const out = [];
+  /** @param {string} dir */
   const walk = (dir) => {
     for (const name of readdirSync(dir, { withFileTypes: true })) {
       if (name.name.startsWith('.') || name.name === 'node_modules' || name.name === '__pxsig__')
@@ -232,20 +296,34 @@ function editedSince(C, when, { withTimes = false } = {}) {
     }
   };
   for (const root of sourceRoots(C)) walk(root);
-  return withTimes ? out.sort((a, b) => (a.file < b.file ? -1 : 1)) : out.sort();
+  // With withTimes every item is an object, else every item is a path.
+  return withTimes
+    ? /** @type {{ file: string, mtime: Date }[]} */ (out).sort((a, b) =>
+        a.file < b.file ? -1 : 1
+      )
+    : /** @type {string[]} */ (out).sort();
 }
 
-/** When an entry's latest render was written, or null. */
+/**
+ * When an entry's latest render was written, or null.
+ * @param {ProjectContext} C
+ * @param {string} id
+ */
 function renderedAt(C, id) {
   const p = imagePath(C, 'current', id);
   // No manifest entry: existsSync(null) is false, so null, as before typing.
   return existsSync(/** @type {string} */ (p)) ? statSync(/** @type {string} */ (p)).mtime : null;
 }
 
-/** Width × height from a PNG's IHDR, without decoding it. */
+/**
+ * Width × height from a PNG's IHDR, without decoding it.
+ * @param {string | null} p
+ * @returns {[number, number] | null}
+ */
 function pngSize(p) {
   try {
-    const b = readFileSync(p).subarray(16, 24);
+    // No path (no manifest entry): readFileSync throws, so null, as before typing.
+    const b = readFileSync(/** @type {string} */ (p)).subarray(16, 24);
     return [b.readUInt32BE(0), b.readUInt32BE(4)];
   } catch {
     return null;
@@ -257,14 +335,19 @@ function pngSize(p) {
  * field exists), else the latest history run that included it, else the report's
  * full-check time. Render file times are not used: a run can rewrite the PNGs
  * without updating the report.
+ * @param {ProjectContext} C
+ * @param {CheckReport} check
+ * @returns {Map<string, { at: Date, source: string }>}
  */
 function verdictTimes(C, check) {
+  /** @type {Map<string, Date>} */
   const fromHistory = new Map();
   if (existsSync(C.historyPath))
     for (const line of readFileSync(C.historyPath, 'utf8').split('\n')) {
       if (!line.trim()) continue;
       try {
-        const h = JSON.parse(line);
+        // a line the engine appended (a torn one throws here)
+        const h = /** @type {HistoryLine} */ (JSON.parse(line));
         for (const id of Object.keys(h.rows ?? {})) fromHistory.set(id, new Date(h.at));
       } catch {
         /* a torn line from a concurrent writer */
@@ -272,12 +355,14 @@ function verdictTimes(C, check) {
     }
   const full = new Date(check.generatedAt);
   return new Map(
-    check.rows.map((r) => {
-      if (r.checkedAt) return [r.id, { at: new Date(r.checkedAt), source: 'row' }];
-      const h = fromHistory.get(r.id);
-      if (h && h > full) return [r.id, { at: h, source: 'history' }];
-      return [r.id, { at: full, source: 'full check' }];
-    })
+    check.rows.map(
+      /** @returns {[string, { at: Date, source: string }]} */ (r) => {
+        if (r.checkedAt) return [r.id, { at: new Date(r.checkedAt), source: 'row' }];
+        const h = fromHistory.get(r.id);
+        if (h && h > full) return [r.id, { at: h, source: 'history' }];
+        return [r.id, { at: full, source: 'full check' }];
+      }
+    )
   );
 }
 
@@ -287,12 +372,17 @@ function verdictTimes(C, check) {
  * and `inconsistent` (the row's pixel size differs from the render on disk). `manifestPath` traces
  * a suite's report against its own manifest. Above `maxFiles` edited files, `tooMany` is set and
  * nothing is traced.
+ * @param {ProjectContext} C
+ * @param {CheckReport} check
+ * @param {{ maxFiles?: number, manifestPath?: string }} [opts]
  */
 function staleness(C, check, { maxFiles = 400, manifestPath } = {}) {
   const times = verdictTimes(C, check);
+  /** @type {Record<string, number>} */
   const sources = {};
   for (const t of times.values()) sources[t.source] = (sources[t.source] ?? 0) + 1;
   const oldest = new Date(Math.min(...[...times.values()].map((t) => t.at.getTime())));
+  /** @type {{ id: string, row: string, render: string }[]} */
   const inconsistent = [];
   for (const r of check.rows) {
     if (!r.pixels?.width) continue;
@@ -318,9 +408,12 @@ function staleness(C, check, { maxFiles = 400, manifestPath } = {}) {
       tooMany: edited.length,
     };
   // id → the latest edit among files that affect it.
+  /** @type {Map<string, Date>} */
   const lastEdit = new Map();
+  /** @type {Map<string, string>} */
   const culprit = new Map();
   for (const { file, mtime } of edited) {
+    /** @type {string[]} */
     let ids;
     try {
       const a = affected(C, { files: [file], manifestPath });
@@ -329,14 +422,21 @@ function staleness(C, check, { maxFiles = 400, manifestPath } = {}) {
       continue;
     }
     for (const id of ids)
-      if (!lastEdit.has(id) || mtime > lastEdit.get(id)) {
+      // has(id) is checked first: get(id) is a Date.
+      if (!lastEdit.has(id) || mtime > /** @type {Date} */ (lastEdit.get(id))) {
         lastEdit.set(id, mtime);
         culprit.set(id, file);
       }
   }
   const stale = check.rows
-    .filter((r) => lastEdit.has(r.id) && times.get(r.id).at < lastEdit.get(r.id))
-    .map((r) => ({ id: r.id, editedAfter: culprit.get(r.id) }));
+    // Every row has a verdict time, and lastEdit.has(r.id) is checked first.
+    .filter(
+      (r) =>
+        lastEdit.has(r.id) &&
+        /** @type {{ at: Date }} */ (times.get(r.id)).at < /** @type {Date} */ (lastEdit.get(r.id))
+    )
+    // culprit is set with lastEdit
+    .map((r) => ({ id: r.id, editedAfter: /** @type {string} */ (culprit.get(r.id)) }));
   return {
     stale,
     inconsistent,
@@ -350,17 +450,21 @@ function staleness(C, check, { maxFiles = 400, manifestPath } = {}) {
 /**
  * `pxsig a11y --prune` and `pxsig_a11y { prune_plan }`: every accepted axe rule classified
  * (lib/prune.mjs), with staleness from the same test as pxsig_stale, per report.
+ * @param {PrunePlanOptions} [opts]
  */
 async function prunePlan({ project, component, mode, only, cmd = 'pxsig', maxFiles = 400 } = {}) {
   const C = ctxOf(project);
+  /** @type {Map<string, string | null>} */
   const modes = new Map();
   const suites = new Set(Object.keys(C.P.config?.suites ?? {}));
   for (const f of existsSync(C.P.store.root) ? readdirSync(C.P.store.root) : [])
     if (/^manifest\.(.+)\.json$/.test(f)) suites.add(f.slice(9, -5));
   for (const suite of [null, ...suites])
-    for (const e of readJson(C.P.manifestPath(suite), { stories: [] }).stories ?? [])
+    for (const e of /** @type {{ stories?: ManifestEntry[] }} */ (
+      readJson(C.P.manifestPath(suite), { stories: [] })
+    ).stories ?? [])
       if (!modes.has(e.id)) modes.set(e.id, e.mode ?? null);
-  /** @param {{ suite: string | null, path: string, file: string, check: unknown }} rep a report (lib/prune.mjs `readReports`) */
+  /** @param {{ suite: string | null, path: string, file: string, check: { rows: CheckRow[], generatedAt?: string } }} rep a report (lib/prune.mjs `readReports`) */
   const stale = (rep) => {
     const mp = C.P.manifestPath(rep.suite);
     if (!existsSync(mp))
@@ -370,9 +474,13 @@ async function prunePlan({ project, component, mode, only, cmd = 'pxsig', maxFil
       };
     let st;
     try {
-      st = staleness(C, rep.check, { maxFiles, manifestPath: mp });
+      // a check.json pxsig wrote: it has generatedAt, and its rows are report rows
+      st = staleness(C, /** @type {CheckReport} */ (rep.check), { maxFiles, manifestPath: mp });
     } catch (e) {
-      return { ids: new Map(), unknown: `staleness could not be traced (${e.message})` };
+      return {
+        ids: new Map(),
+        unknown: `staleness could not be traced (${/** @type {Error} */ (e).message})`,
+      };
     }
     if (st.tooMany)
       return {
@@ -384,9 +492,12 @@ async function prunePlan({ project, component, mode, only, cmd = 'pxsig', maxFil
       if (!ids.has(x.id)) ids.set(x.id, `its render (${x.render}, the row says ${x.row})`);
     return { ids, unknown: null };
   };
-  return buildPlan(C.P, {
+  // buildPlan's options as lib/prune.mjs takes them (its untyped `= null` defaults read as null only)
+  return /** @type {(P: import('./types.js').Project, options: { stale: typeof stale, modeOf: (id: string) => string | null, only?: string[], component?: string, mode?: string, cmd?: string }) => ReturnType<typeof buildPlan>} */ (
+    buildPlan
+  )(C.P, {
     stale,
-    modeOf: (id) => modes.get(id) ?? null,
+    modeOf: (/** @type {string} */ id) => modes.get(id) ?? null,
     only,
     component,
     mode,
@@ -406,7 +517,8 @@ async function prunePlan({ project, component, mode, only, cmd = 'pxsig', maxFil
 function imagePath(C, kind, id) {
   if (kind === 'current') return join(C.P.store.latest, `${id}.png`);
   if (kind === 'diff') return join(C.P.store.diffLatest, `${id}.diff.png`);
-  const e = (readJson(C.P.manifestPath(), { stories: [] }).stories ?? []).find((x) => x.id === id);
+  const e = (/** @type {{ stories?: ManifestEntry[] }} */
+  (readJson(C.P.manifestPath(), { stories: [] })).stories ?? []).find((x) => x.id === id);
   return e ? resolve(C.root, e.sig) : null;
 }
 
@@ -430,12 +542,18 @@ export function imageOf(C, kind, id) {
 // --- tools ---------------------------------------------------------------------------------------
 
 const ID_RE = /^[a-z0-9-]+--[a-z0-9-]+(__[a-z0-9-]+)?(@[a-z0-9-]+)?$/;
+/**
+ * A text content item: a string as is, anything else as indented JSON.
+ * @param {unknown} v
+ * @returns {McpContent}
+ */
 const text = (v) => ({
   type: 'text',
   text: typeof v === 'string' ? v : JSON.stringify(v, null, 2),
 });
 
-const tools = [
+// A const array: each tool keeps its literal name, so types/t6.d.ts can name a tool's result.
+const tools = /** @type {const} */ ([
   {
     name: 'pxsig_projects',
     description:
@@ -448,8 +566,13 @@ const tools = [
         projects: ws.projects.map((ref) => {
           try {
             const C = ctxOf(ref.name);
-            const m = readJson(C.P.manifestPath(), { stories: [] });
-            const led = readJson(join(C.P.store.reports, 'integrity.json'), null);
+            const m = /** @type {{ stories?: unknown[] }} */ (
+              readJson(C.P.manifestPath(), { stories: [] })
+            );
+            // the ledger pxsig doctor wrote (docs/integrity.md)
+            const led = /** @type {{ summary?: { headline?: string } } | null} */ (
+              readJson(join(C.P.store.reports, 'integrity.json'), null)
+            );
             return {
               name: ref.name,
               root: relPath(ws.root, ref.dir) || '.',
@@ -458,7 +581,7 @@ const tools = [
               integrity: led?.summary?.headline ?? null,
             };
           } catch (e) {
-            return { name: ref.name, error: e.message };
+            return { name: ref.name, error: /** @type {Error} */ (e).message };
           }
         }),
       };
@@ -469,10 +592,13 @@ const tools = [
     description:
       "Overview of the visual-regression state: when the report was last written, counts per state (pass, drift, changed, error, flaky, approved, rejected), accessibility totals, the components with the most changed entries, whether the pxsig server is up or busy, design-system files edited since the report (entries the report does not cover yet), the render environment (how many entries' baselines came from a different one), and warn mode (`enforcement`: each gate's setting from the committed config; no tool can change it). Start here.",
     inputSchema: { type: 'object', properties: { project: PROJECT }, additionalProperties: false },
+    /** @param {ProjectArg} [args] */
     async run({ project } = {}) {
       const C = ctxOf(project);
       const { check, review, updated } = load(C);
+      /** @type {Record<string, number>} */
       const counts = {};
+      /** @type {Record<string, number>} */
       const byComponent = {};
       let a11yViolations = 0;
       let a11yNew = 0;
@@ -485,6 +611,7 @@ const tools = [
         a11yNew += r.a11y?.new ?? 0;
       }
       const edited = editedSince(C, updated);
+      /** @type {{ editedFiles: string[], moreFiles?: number, affectedEntries?: number, hint?: string, error?: string } | null} */
       let stale = null;
       if (edited.length) {
         try {
@@ -496,7 +623,7 @@ const tools = [
             hint: 'pxsig_check { changed_files } re-checks just these',
           };
         } catch (e) {
-          stale = { editedFiles: edited.slice(0, 40), error: e.message };
+          stale = { editedFiles: edited.slice(0, 40), error: /** @type {Error} */ (e).message };
         }
       }
       return {
@@ -517,9 +644,10 @@ const tools = [
         approvals: { level: C.P.config?.approvals?.level ?? 'standard' },
         // The environment of the last renders, and how many entries' baselines came from another one.
         env: {
-          current: [...new Set(check.rows.map((r) => r.env).filter(Boolean))].map(
-            (id) => check.envs?.[id] ?? { id }
-          ),
+          // filter(Boolean) keeps the env ids
+          current: [
+            ...new Set(/** @type {string[]} */ (check.rows.map((r) => r.env).filter(Boolean))),
+          ].map((id) => check.envs?.[id] ?? { id }),
           mismatched: check.summary?.envMismatch ?? 0,
         },
         ...warnMode(C),
@@ -561,6 +689,7 @@ const tools = [
       },
       additionalProperties: false,
     },
+    /** @param {ListArgs} args */
     async run({ project, state = 'problems', component, mode, limit = 50 }) {
       const { check, review } = load(ctxOf(project));
       const rows = check.rows.filter((r) => {
@@ -600,6 +729,7 @@ const tools = [
       required: ['id'],
       additionalProperties: false,
     },
+    /** @param {EntryArgs} args */
     async run({ project, id, images = ['baseline', 'current', 'diff'] }) {
       if (!ID_RE.test(id)) throw new Error(`bad id: ${id}`);
       const C = ctxOf(project);
@@ -614,6 +744,7 @@ const tools = [
           `no entry ${id}${near.length ? `; entries of that component: ${near.join(', ')}` : ''}`
         );
       }
+      /** @type {McpContent[]} */
       const content = [
         text({
           ...brief(row, review),
@@ -682,6 +813,7 @@ const tools = [
       },
       additionalProperties: false,
     },
+    /** @param {A11yArgs} args */
     async run({ project, only_new = false, component, limit = 50, prune_plan = false, mode, ids }) {
       if (prune_plan) {
         const plan = await prunePlan({ project, component, mode, only: ids });
@@ -699,12 +831,18 @@ const tools = [
         };
       }
       const { check, a11yReview } = load(ctxOf(project));
+      /** @type {Record<string, number>} */
       const byRule = {};
-      const rows = check.rows.filter(
-        (r) =>
-          (only_new ? r.a11y?.new : r.a11y?.violations?.length) &&
-          (!component || r.id.includes(component.toLowerCase()))
-      );
+      // Every row kept has violations: a row with new ones has them (new counts those not on the
+      // accepted list).
+      const rows =
+        /** @type {(ReportRow & { a11y: A11yResult & { violations: A11yViolation[] } })[]} */ (
+          check.rows.filter(
+            (r) =>
+              (only_new ? r.a11y?.new : r.a11y?.violations?.length) &&
+              (!component || r.id.includes(component.toLowerCase()))
+          )
+        );
       for (const r of rows)
         for (const v of r.a11y.violations) byRule[v.id ?? v] = (byRule[v.id ?? v] ?? 0) + 1;
       return {
@@ -732,6 +870,7 @@ const tools = [
       },
       additionalProperties: false,
     },
+    /** @param {AffectedArgs} args */
     async run({ project, files, since }) {
       if (!files?.length && !since) throw new Error('give files or since');
       const a = affected(ctxOf(project), { files, since });
@@ -767,6 +906,7 @@ const tools = [
       },
       additionalProperties: false,
     },
+    /** @param {StaleArgs} args */
     async run({ project, limit = 200, max_files = 400 }) {
       const C = ctxOf(project);
       const { check } = load(C);
@@ -781,6 +921,7 @@ const tools = [
         };
       const { stale, inconsistent, sources, filesTraced } = st;
       const oldest = st.oldest;
+      /** @type {Record<string, number>} */
       const byFile = {};
       for (const x of stale) byFile[x.editedAfter] = (byFile[x.editedAfter] ?? 0) + 1;
       const ids = [...new Set([...stale.map((x) => x.id), ...inconsistent.map((x) => x.id)])];
@@ -817,6 +958,10 @@ const tools = [
       },
       additionalProperties: false,
     },
+    /**
+     * @param {CheckArgs} args
+     * @returns {Promise<CheckToolResult>}
+     */
     async run({
       project,
       ids = [],
@@ -836,6 +981,7 @@ const tools = [
       const t0 = Date.now();
       if (srv.up) {
         // Registering a new story reads its parameters in a browser first: allow for that.
+        /** @type {ServerCheckReply} */
         const res = await http(C, '/__pxsig/check', {
           method: 'POST',
           body: { project: C.P.name, ids: [...sel], stories, all, via: 'mcp' },
@@ -857,6 +1003,7 @@ const tools = [
         // Wait for the queue to drain.
         for (;;) {
           await new Promise((r) => setTimeout(r, 1500));
+          /** @type {ServerStatusReply | null} */
           const s = await http(C, '/__pxsig/status', { timeout: 5000 }).catch(() => null);
           if (s && !s.running && !s.queued) break;
           if (Date.now() - t0 > timeout_s * 1000)
@@ -871,11 +1018,13 @@ const tools = [
       const args = [join(here, 'check.mjs'), '--project', C.P.name, '--retries', '1'];
       // Ids and stories together (both name entries to --only; new ones are registered there).
       if (sel.size || stories.length) args.push('--only', [...sel, ...stories].join(','));
+      /** @type {{ code: number | null, log: string }} */
       const out = await new Promise((ok) => {
         const p = spawn(process.execPath, args, { cwd: C.root, stdio: ['ignore', 'pipe', 'pipe'] });
         let log = '';
-        p.stdout.on('data', (d) => (log += d));
-        p.stderr.on('data', (d) => (log += d));
+        // stdio is ['ignore', 'pipe', 'pipe']: stdout and stderr are streams.
+        /** @type {Readable} */ (p.stdout).on('data', (/** @type {Buffer} */ d) => (log += d));
+        /** @type {Readable} */ (p.stderr).on('data', (/** @type {Buffer} */ d) => (log += d));
         const kill = setTimeout(() => p.kill(), timeout_s * 1000);
         p.on('exit', (code) => {
           clearTimeout(kill);
@@ -886,7 +1035,12 @@ const tools = [
       const want = new Set(
         load(C)
           .check.rows.filter(
-            (r) => all || sel.has(r.id) || stories.includes(r.story) || sel.has(r.story)
+            // A row without a story matches by id only (includes / has of undefined are false).
+            (r) =>
+              all ||
+              sel.has(r.id) ||
+              stories.includes(/** @type {string} */ (r.story)) ||
+              sel.has(/** @type {string} */ (r.story))
           )
           .map((r) => r.id)
       );
@@ -919,6 +1073,7 @@ const tools = [
       required: ['action', 'ids', 'confirm'],
       additionalProperties: false,
     },
+    /** @param {ReviewArgs} args */
     async run({ project, action, ids, confirm }) {
       if (!AGENT_DECISIONS.has(action))
         throw new Error(
@@ -939,8 +1094,10 @@ const tools = [
         throw new Error(
           `no MCP token from the pxsig server at ${C.serverUrl} (it writes one when it starts): restart pxsig serve with this version`
         );
+      /** @type {{ id: string, entry: unknown }[]} */
       const done = [];
       for (const id of ids) {
+        /** @type {{ entry?: unknown }} */
         const r = await http(C, `/__pxsig/${action}`, {
           method: 'POST',
           body: { project: C.P.name, id },
@@ -990,6 +1147,7 @@ const tools = [
       },
       additionalProperties: false,
     },
+    /** @param {DoctorArgs} args */
     async run({
       project,
       component,
@@ -1016,6 +1174,7 @@ const tools = [
       const C = ctxOf(project);
       const held = readLock(C.P);
       if (held && !held.stale && held.holder === 'serve' && !held.foreign) {
+        /** @type {{ plan?: unknown, applied?: unknown }} */
         const body = await http({ ...C, serverUrl: held.url ?? C.serverUrl }, '/__pxsig/repair', {
           method: 'POST',
           body: { project: C.P.name, apply: true, only, stale },
@@ -1035,8 +1194,9 @@ const tools = [
           command: 'pxsig mcp: pxsig_doctor repair apply',
         });
       } catch (e) {
+        // acquireLock throws a LockError, which carries the lock it found (null: none)
         throw new Error(
-          `${e.lock ? describeLock(C.P, e.lock) : e.message}: the repair did not run`
+          `${/** @type {LockError} */ (e).lock ? describeLock(C.P, /** @type {LockState} */ (/** @type {LockError} */ (e).lock)) : /** @type {Error} */ (e).message}: the repair did not run`
         );
       }
       try {
@@ -1070,6 +1230,7 @@ const tools = [
       },
       additionalProperties: false,
     },
+    /** @param {HelpArgs} [args] */
     async run({ name } = {}) {
       if (!name) return { names: helpNames() };
       const found = lookup(String(name).trim().split(/\s+/));
@@ -1089,13 +1250,15 @@ const tools = [
       properties: { project: PROJECT, limit: { type: 'number', default: 10 } },
       additionalProperties: false,
     },
+    /** @param {HistoryArgs} args */
     async run({ project, limit = 10 }) {
       const C = ctxOf(project);
       if (!existsSync(C.historyPath)) return { runs: [] };
       const lines = readFileSync(C.historyPath, 'utf8').trim().split('\n').slice(-limit);
       return {
         runs: lines.map((l) => {
-          const h = JSON.parse(l);
+          // a line the engine appended
+          const h = /** @type {HistoryLine} */ (JSON.parse(l));
           const rows = Object.entries(h.rows ?? {});
           return {
             at: h.at,
@@ -1111,11 +1274,15 @@ const tools = [
       };
     },
   },
-];
+]);
+
+/** @typedef {ReturnType<typeof filterLedger>['components'][number]} ViewComponent */
+/** @typedef {ReturnType<typeof filterLedger>['entries'][number]} ViewEntry */
 
 /**
  * The doctor: reconcile, write the ledger, and (optionally) plan or apply the safe repairs.
  * Shared by `pxsig_doctor` and `pxsig doctor`; the CLI adds the TTY-only prune itself.
+ * @param {DoctorOptions} [opts]
  */
 async function doctor({
   project,
@@ -1137,6 +1304,7 @@ async function doctor({
   let ledger = await reconcile(ctx, { offline });
   writeLedger(ctx, ledger);
   const settings = readSettings();
+  /** @type {{ project: string, ledgerPath: string, machine: { settings: string, setUp: boolean, tokens: string }, agent: ReturnType<typeof detectAgent>, plan?: ReturnType<typeof planRepairs>, applied?: Awaited<ReturnType<typeof applyRepairs>>['steps'] }} */
   const out = {
     project: C.P.name,
     ledgerPath: relPath(C.root, ledgerPath(ctx)),
@@ -1160,15 +1328,23 @@ async function doctor({
     }
   }
   const view = filterLedger(ledger, { component, status });
+  /** @type {Record<string, number>} */
   const sev = { error: 0, warn: 1, info: 2 };
   const focus = component || status;
   const comps = view.components
-    .filter((c) => focus || c.severity !== 'info')
-    .sort((a, b) => sev[a.severity] - sev[b.severity] || (a.component < b.component ? -1 : 1));
-  const ents = view.entries
-    .filter((x) => focus || x.severity !== 'info')
+    .filter((/** @type {ViewComponent} */ c) => focus || c.severity !== 'info')
     .sort(
-      (a, b) => sev[a.severity] - sev[b.severity] || CODES[a.status].rank - CODES[b.status].rank
+      (/** @type {ViewComponent} */ a, /** @type {ViewComponent} */ b) =>
+        sev[a.severity] - sev[b.severity] || (a.component < b.component ? -1 : 1)
+    );
+  const ents = view.entries
+    .filter((/** @type {ViewEntry} */ x) => focus || x.severity !== 'info')
+    .sort(
+      (/** @type {ViewEntry} */ a, /** @type {ViewEntry} */ b) =>
+        sev[a.severity] - sev[b.severity] ||
+        // every status is one of CODES (lib/integrity.mjs)
+        /** @type {Record<string, { rank: number }>} */ (CODES)[a.status].rank -
+          /** @type {Record<string, { rank: number }>} */ (CODES)[b.status].rank
     );
   return {
     schemaVersion: ledger.schemaVersion,
@@ -1184,25 +1360,41 @@ async function doctor({
     entries: {
       total: ents.length,
       shown: Math.min(ents.length, limit),
-      list: ents.slice(0, limit).map((x) => ({
+      list: ents.slice(0, limit).map((/** @type {ViewEntry} */ x) => ({
         id: x.id,
         component: x.component,
         status: x.status,
         severity: x.severity,
-        issues: x.issues.map(({ code, severity, reason }) => ({ code, severity, reason })),
+        issues: x.issues.map(
+          (/** @type {ViewEntry['issues'][number]} */ { code, severity, reason }) => ({
+            code,
+            severity,
+            reason,
+          })
+        ),
       })),
     },
     ...out,
   };
 }
 
+/**
+ * The states and problems of the rows `ids` names, after a re-check.
+ * @param {ProjectContext} C
+ * @param {Set<string>} ids
+ * @param {string} via
+ * @param {number} t0
+ * @returns {CheckToolResult}
+ */
 function summarizeIds(C, ids, via, t0) {
   const { check, review } = load(C);
   const rows = check.rows.filter((r) => ids.has(r.id));
+  /** @type {Record<string, number>} */
   const counts = {};
   for (const r of rows) counts[stateOf(r, review)] = (counts[stateOf(r, review)] ?? 0) + 1;
   // Warn mode: the gates as the committed config sets them (no tool can lower one), and whether
   // these rows would fail a run. Only when warn mode applies (configured, or the quiet a11y gate fired).
+  /** @type {{ enforcement?: Record<string, unknown>, wouldFail?: boolean }} */
   let warn = {};
   try {
     const enf = resolveEnforcement(C.P, { flags: {} });
@@ -1219,7 +1411,7 @@ function summarizeIds(C, ids, via, t0) {
         wouldFail: out.wouldFail,
       };
   } catch (e) {
-    warn = { enforcement: { error: e.message } };
+    warn = { enforcement: { error: /** @type {Error} */ (e).message } };
   }
   const a11yNew = rows.filter((r) => (r.a11y?.new ?? 0) > 0).length;
   return {
@@ -1236,7 +1428,11 @@ function summarizeIds(C, ids, via, t0) {
   };
 }
 
-/** `pxsig_status.enforcement`, when the config sets warn mode: each gate, warnUntil, the readiness tally. */
+/**
+ * `pxsig_status.enforcement`, when the config sets warn mode: each gate, warnUntil, the readiness tally.
+ * @param {ProjectContext} C
+ * @returns {{ enforcement?: { gates?: ReturnType<typeof resolveEnforcement>['gates'], warned?: string[], warnUntil?: string | null, daysLeft?: number | null, readiness?: ReturnType<typeof readinessTally>, error?: string } }}
+ */
 function warnMode(C) {
   if (C.P.config?.enforcement == null) return {};
   try {
@@ -1251,14 +1447,16 @@ function warnMode(C) {
       },
     };
   } catch (e) {
-    return { enforcement: { error: e.message } };
+    return { enforcement: { error: /** @type {Error} */ (e).message } };
   }
 }
 
 // --- MCP over stdio ---------------------------------------------------------------------------------
 
+/** @param {{ id: RpcRequest['id'], result?: unknown, error?: { code: number, message: string } }} msg */
 const send = (msg) => process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', ...msg })}\n`);
 
+/** @param {RpcRequest} msg */
 async function handle(msg) {
   const { id, method, params } = msg;
   if (id === undefined) return; // notifications: initialized, cancelled
@@ -1291,16 +1489,24 @@ async function handle(msg) {
       if (!tool)
         return send({ id, error: { code: -32602, message: `unknown tool ${params?.name}` } });
       try {
-        const out = await tool.run(params.arguments ?? {});
-        const content = out?.content ?? [text(out)];
+        // The client's arguments go to the tool as they came, unchecked: an MCP client sends the
+        // shape the tool's inputSchema names. `params` is set: a tool was found by its name.
+        const out = await /** @type {(args: object) => Promise<unknown>} */ (tool.run)(
+          /** @type {NonNullable<RpcRequest['params']>} */ (params).arguments ?? {}
+        );
+        // pxsig_entry answers with its own content; every other tool, with data
+        const content = /** @type {{ content?: unknown }} */ (out)?.content ?? [text(out)];
         return send({ id, result: { content } });
       } catch (e) {
-        return send({ id, result: { content: [text(`Error: ${e.message}`)], isError: true } });
+        return send({
+          id,
+          result: { content: [text(`Error: ${/** @type {Error} */ (e).message}`)], isError: true },
+        });
       }
     }
     send({ id, error: { code: -32601, message: `method not found: ${method}` } });
   } catch (e) {
-    send({ id, error: { code: -32603, message: e.message } });
+    send({ id, error: { code: -32603, message: /** @type {Error} */ (e).message } });
   }
 }
 
@@ -1310,9 +1516,12 @@ const isMain = process.argv[1] && realpathSync(process.argv[1]) === fileURLToPat
 if (isMain) {
   createInterface({ input: process.stdin }).on('line', (line) => {
     if (!line.trim()) return;
+    /** @type {RpcRequest} */
     let msg;
     try {
-      msg = JSON.parse(line);
+      // A client's JSON-RPC message, an object. A bare `null` throws in handle and stops the
+      // server (reported, not changed).
+      msg = /** @type {RpcRequest} */ (JSON.parse(line));
     } catch {
       return send({ id: null, error: { code: -32700, message: 'parse error' } });
     }
@@ -1322,6 +1531,6 @@ if (isMain) {
     const ws = findWorkspace({});
     log(`ready · workspace ${ws.root} · projects ${ws.projects.map((p) => p.name).join(', ')}`);
   } catch (e) {
-    log(`ready · no workspace here yet (${e.message})`);
+    log(`ready · no workspace here yet (${/** @type {Error} */ (e).message})`);
   }
 }

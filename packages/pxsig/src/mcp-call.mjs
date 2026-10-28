@@ -17,6 +17,9 @@ import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
+/** @import { Readable, Writable } from 'node:stream' */
+/** @import { McpToolResult, McpToolsList, RpcReply } from './types/t6.js' */
+
 const here = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
 const imgIdx = argv.indexOf('--images-to');
@@ -26,18 +29,31 @@ const [tool, rawArgs] = argv;
 const proc = spawn(process.execPath, [join(here, 'mcp.mjs')], {
   stdio: ['pipe', 'pipe', 'inherit'],
 });
+/** @type {Map<number, (msg: RpcReply<unknown>) => void>} */
 const pending = new Map();
 let seq = 0;
-createInterface({ input: proc.stdout }).on('line', (line) => {
-  const msg = JSON.parse(line);
+// stdio is ['pipe', 'pipe', …]: the child's stdin and stdout are streams.
+createInterface({ input: /** @type {Readable} */ (proc.stdout) }).on('line', (line) => {
+  // A line from pxsig's own MCP server (src/mcp.mjs): one JSON-RPC reply.
+  const msg = /** @type {RpcReply<unknown>} */ (JSON.parse(line));
   pending.get(msg.id)?.(msg);
   pending.delete(msg.id);
 });
+/**
+ * Send one request; resolves with the server's reply.
+ * @template R The result's shape for `method` (docs/mcp.md).
+ * @param {string} method
+ * @param {Record<string, unknown>} params
+ * @returns {Promise<RpcReply<R>>}
+ */
 const call = (method, params) =>
   new Promise((ok) => {
     const id = ++seq;
-    pending.set(id, ok);
-    proc.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id, method, params })}\n`);
+    // The reply to `id` is the reply to this method: its result has the shape R.
+    pending.set(id, /** @type {(msg: RpcReply<unknown>) => void} */ (ok));
+    /** @type {Writable} */ (proc.stdin).write(
+      `${JSON.stringify({ jsonrpc: '2.0', id, method, params })}\n`
+    );
   });
 
 const init = await call('initialize', {
@@ -46,13 +62,17 @@ const init = await call('initialize', {
   clientInfo: { name: 'mcp-call', version: '0' },
 });
 if (init.error) throw new Error(init.error.message);
-proc.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' })}\n`);
+/** @type {Writable} */ (proc.stdin).write(
+  `${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' })}\n`
+);
 
 let code = 0;
 if (!tool) {
+  /** @type {RpcReply<McpToolsList>} */
   const res = await call('tools/list', {});
   for (const t of res.result.tools) console.log(`${t.name}\n  ${t.description}\n`);
 } else {
+  /** @type {RpcReply<McpToolResult>} */
   const res = await call('tools/call', {
     name: tool,
     arguments: rawArgs ? JSON.parse(rawArgs) : {},
