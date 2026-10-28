@@ -22,7 +22,7 @@ repository = "https://github.com/hydrotik/pxsig"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 base64 = "0.23"
-sha2 = "0.10"
+sha2 = "0.11"
 png = "0.17"
 rayon = "1"
 clap = { version = "4", features = ["derive", "env"] }
