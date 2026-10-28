@@ -95,7 +95,7 @@ export async function approveCommand({
   const run = (name, a = {}) =>
     // `pxsig_${name}` is one of the tools; ToolOutputs says what is read of its result.
     /** @type {{ run: (args: object) => Promise<ToolOutputs[N]> }} */ (
-      tools.find((t) => t.name === `pxsig_${name}`)
+      /** @type {unknown} */ (tools.find((t) => t.name === `pxsig_${name}`))
     ).run({ project: P.name, ...a });
   // The manifest is pxsig's own (`pxsig index` writes it).
   const manifest = /** @type {Manifest} */ (JSON.parse(readFileSync(P.manifestPath(), 'utf8')));

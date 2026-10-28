@@ -230,7 +230,8 @@ test("the MCP's pxsig_help gives the same data, read-only", async () => {
   assert.deepEqual(await t.run({ name: 'approve verify' }), {
     kind: 'command',
     name: 'approve verify',
-    entry: commands.approve.subcommands.verify,
+    // approve has subcommands.
+    entry: /** @type {Record<string, unknown>} */ (commands.approve.subcommands).verify,
   });
   await assert.rejects(t.run({ name: 'nope' }), /nearest/);
 });

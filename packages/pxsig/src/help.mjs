@@ -8,15 +8,30 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+/** @import { Block, Cell, HelpCommandEntry, HelpFlag, HelpFound, HelpSetting, HelpSource } from './types/t6.js' */
+
 const dir = fileURLToPath(new URL('./help/', import.meta.url));
+/**
+ * One of pxsig's own help files, parsed.
+ * @param {string} f
+ * @returns {unknown}
+ */
 const json = (f) => JSON.parse(readFileSync(join(dir, f), 'utf8'));
 
+/** @type {HelpSource | null} */
 let cache = null;
-/** `{ global, commands, settings, topics }`, read once. */
+/**
+ * `{ global, commands, settings, topics }`, read once.
+ * @returns {HelpSource}
+ */
 export function helpSource() {
   if (cache) return cache;
-  const { global, commands } = json('commands.json');
-  const { settings } = json('settings.json');
+  // The package's own help files, in the shape types/t6.d.ts describes (test/help.test.mjs reads them).
+  const { global, commands } = /** @type {Pick<HelpSource, 'global' | 'commands'>} */ (
+    json('commands.json')
+  );
+  const { settings } = /** @type {Pick<HelpSource, 'settings'>} */ (json('settings.json'));
+  /** @type {Record<string, string>} */
   const topics = {};
   const td = join(dir, 'topics');
   if (existsSync(td))
@@ -27,7 +42,10 @@ export function helpSource() {
   return (cache = { global, commands, settings, topics });
 }
 
-/** Every name `help` answers to: commands, `command sub`, topics and settings. */
+/**
+ * Every name `help` answers to: commands, `command sub`, topics and settings.
+ * @returns {string[]}
+ */
 export function helpNames() {
   const { commands, settings, topics } = helpSource();
   const out = [];
@@ -38,9 +56,17 @@ export function helpNames() {
   return [...new Set([...out, 'global', ...Object.keys(topics), ...Object.keys(settings)])];
 }
 
-/** Edit distance, for "did not find x; nearest: …". */
+/**
+ * Edit distance, for "did not find x; nearest: …".
+ * @param {string} a
+ * @param {string} b
+ * @returns {number}
+ */
 function distance(a, b) {
-  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [
+    i,
+    .../** @type {number[]} */ (Array(b.length)).fill(0),
+  ]);
   for (let j = 1; j <= b.length; j++) d[0][j] = j;
   for (let i = 1; i <= a.length; i++)
     for (let j = 1; j <= b.length; j++)
@@ -52,6 +78,12 @@ function distance(a, b) {
   return d[a.length][b.length];
 }
 
+/**
+ * The `n` help names nearest to `name`.
+ * @param {string} name
+ * @param {number} [n]
+ * @returns {string[]}
+ */
 export function nearestNames(name, n = 5) {
   const q = name.toLowerCase();
   return helpNames()
@@ -71,6 +103,8 @@ export function nearestNames(name, n = 5) {
  * The entry for `words` (`['check']`, `['approve', 'apply']`, `['approvals']`, `['gate.threshold']`):
  * `{ kind: 'command' | 'topic' | 'setting', name, entry, topic? }`, or null. A name that is both a
  * command and a topic (`dashboard`) is the command, with the topic attached.
+ * @param {readonly (string | undefined)[]} words
+ * @returns {HelpFound | null}
  */
 export function lookup(words) {
   const { commands, settings, topics } = helpSource();
@@ -86,7 +120,8 @@ export function lookup(words) {
   }
   const cmd = commands[first];
   if (cmd) {
-    const sub = second && cmd.subcommands?.[second];
+    // An empty second word ('') would make `sub` '' and the entry ''; reported, not changed.
+    const sub = /** @type {HelpCommandEntry | undefined} */ (second && cmd.subcommands?.[second]);
     if (second && !sub) return null;
     return {
       kind: 'command',
@@ -102,24 +137,37 @@ export function lookup(words) {
   return null;
 }
 
+/** @param {HelpFlag} f */
 const flagName = (f) => `--${f.name}${f.value ? ` <${f.value}>` : ''}`;
 
-/** lib/term.mjs blocks for a lookup result. */
+/**
+ * lib/term.mjs blocks for a lookup result.
+ * @param {HelpFound} found
+ * @param {string} [CMD]
+ * @returns {Block[]}
+ */
 export function helpBlocks(found, CMD = 'pxsig') {
-  const { entry, name } = found;
+  // `entry` is read only after the topic case returns: a setting's keys in the setting case, a
+  // command's below it (lookup pairs each kind with its entry).
+  const { entry, name } = /** @type {HelpFound & { entry: HelpCommandEntry & HelpSetting }} */ (
+    found
+  );
   if (found.kind === 'topic') return [{ text: found.topic }];
   if (found.kind === 'setting') {
+    /** @type {[string, Cell][]} */
     const kv = [
       ['File', entry.file],
       ['Meaning', entry.meaning],
     ];
-    if (entry.values) kv.push(['Values', entry.values.join(', ')]);
+    // Two settings write `values` as one string, and this throws for them (reported, not fixed).
+    if (entry.values) kv.push(['Values', /** @type {string[]} */ (entry.values).join(', ')]);
     if (entry.default != null) kv.push(['Default', entry.default]);
     if (entry.operation) kv.push(['Effect', entry.operation]);
     if (entry.flag) kv.push(['Flag', entry.flag]);
     if (entry.env) kv.push(['Environment', entry.env]);
     return [{ h: name, sub: 'setting' }, { kv }];
   }
+  /** @type {Block[]} */
   const blocks = [{ h: `${CMD} ${name}`, sub: entry.summary }, { list: entry.usage }];
   if (entry.subcommands)
     blocks.push(
@@ -182,7 +230,10 @@ export function helpBlocks(found, CMD = 'pxsig') {
   return blocks;
 }
 
-/** What `--json` and the MCP return. */
+/**
+ * What `--json` and the MCP return.
+ * @param {HelpFound} found
+ */
 export const helpData = (found) => ({
   kind: found.kind,
   name: found.name,

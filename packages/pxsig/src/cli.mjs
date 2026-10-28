@@ -132,6 +132,9 @@ import {
 } from './lib/enforcement.mjs';
 import { writeSarif } from './lib/sarif.mjs';
 
+/** @import { LockHandle, Manifest } from './types.js' */
+/** @import { BriefEntry, Block, Cell, CheckReport, CliError, ConfigValue, DoctorResult, EngineMetrics, EntryDetail, Finding, ServerStatusReply, Rendered, StyledCell, ToolInput, ToolName, ToolOutput } from './types/t6.js' */
+
 // --- args --------------------------------------------------------------------------------------
 const { positional, flags } = parseArgs(process.argv.slice(2));
 const format = pickFormat(flags);
@@ -167,10 +170,20 @@ const project =
   typeof flags.project === 'string' ? flags.project : (process.env.PXSIG_PROJECT ?? undefined);
 /** The project a call is about: `name` in a multi-project loop, else --project / the current folder. */
 let current = project;
+/**
+ * Run the MCP tool `pxsig_<name>` in-process, on the current project.
+ * @template {ToolName} N
+ * @param {N} name
+ * @param {Partial<NonNullable<ToolInput<N>>>} [args]
+ * @returns {Promise<ToolOutput<N>>}
+ */
 const run = (name, args = {}) =>
-  tools
-    .find((t) => t.name === `pxsig_${name}`)
-    .run({ ...(current ? { project: current } : {}), ...args });
+  // `pxsig_${name}` is one of the tools: ToolOutput<N> is what its run resolves with.
+  /** @type {Promise<ToolOutput<N>>} */ (
+    /** @type {{ run: (args: object) => Promise<unknown> }} */ (
+      tools.find((t) => t.name === `pxsig_${name}`)
+    ).run({ ...(current ? { project: current } : {}), ...args })
+  );
 /** @typedef {ReturnType<typeof ctxOf>} ProjectContext */
 /** @type {Map<string, ProjectContext>} */
 const ctxCache = new Map();
@@ -181,6 +194,11 @@ const ctx = () => {
   // Set just above when it was missing.
   return /** @type {ProjectContext} */ (ctxCache.get(k));
 };
+/**
+ * A comma-separated flag's values; none for a bare flag or none given.
+ * @param {unknown} v
+ * @returns {string[]}
+ */
 const list = (v) =>
   typeof v === 'string'
     ? v
@@ -188,12 +206,19 @@ const list = (v) =>
         .map((s) => s.trim())
         .filter(Boolean)
     : [];
+/** @param {string} id */
 const inspectUrl = (id) => {
   const C = ctx();
   return `${C.serverUrl}/report/?project=${encodeURIComponent(C.P.name)}#inspect=${encodeURIComponent(id)}`;
 };
+/**
+ * @param {string} id
+ * @returns {StyledCell}
+ */
 const idCell = (id) => ({ text: id, url: inspectUrl(id), noLinkInPlain: true });
+/** @param {number | null | undefined} n */
 const pct = (n) => (n == null ? '' : `${n}%`);
+/** @type {(msg: string, code?: number) => never} */
 const fail = (msg, code = 2) => {
   if (format === 'json') process.stdout.write(JSON.stringify({ error: msg }) + '\n');
   else process.stderr.write(`pxsig: ${msg}\n`);
@@ -203,6 +228,7 @@ const fail = (msg, code = 2) => {
 /**
  * The projects a read command covers: --project, else every project with --all, else the project
  * holding the current folder, else every project.
+ * @returns {string[]}
  */
 function readTargets() {
   if (project) return [project];
@@ -212,8 +238,14 @@ function readTargets() {
   return ref ? [ref.name] : ws.projects.map((p) => p.name);
 }
 
-/** Tag a project's blocks: a heading, and a Project column in front of every table. */
+/**
+ * Tag a project's blocks: a heading, and a Project column in front of every table.
+ * @param {string} name
+ * @param {Block[]} blocks
+ * @returns {Block[]}
+ */
 function forProject(name, blocks) {
+  /** @type {Block[]} */
   const out = [];
   for (const b of blocks) {
     if (b?.h && out.length === 0) out.push({ ...b, h: `${b.h} · ${name}` });
@@ -227,8 +259,14 @@ function forProject(name, blocks) {
       });
     else if (b?.list)
       out.push({
+        // A list item is text or a styled cell.
         list: b.list.map((x) =>
-          typeof x === 'string' ? `${name}: ${x}` : { ...x, text: `${name}: ${x.text}` }
+          typeof x === 'string'
+            ? `${name}: ${x}`
+            : {
+                .../** @type {StyledCell} */ (x),
+                text: `${name}: ${/** @type {StyledCell} */ (x).text}`,
+              }
         ),
       });
     else out.push(b);
@@ -240,6 +278,8 @@ function forProject(name, blocks) {
  * Run a read command's renderer for each target project. A renderer returns { blocks, data, exit }.
  * One project: printed as before. Several: one document, each project's rows tagged with its name,
  * JSON as { projects: [{ project, …data }] }, and the worst exit code.
+ * @param {() => Promise<Rendered>} render
+ * @param {string[]} [names]
  */
 async function overProjects(render, names = readTargets()) {
   if (names.length === 1) {
@@ -251,7 +291,9 @@ async function overProjects(render, names = readTargets()) {
   }
   /** @type {Block[]} */
   const blocks = [];
+  /** @type {object[]} */
   const data = [];
+  /** @type {{ exit: number, advisory?: boolean }[]} */
   const exits = [];
   for (const name of names) {
     current = name;
@@ -261,8 +303,8 @@ async function overProjects(render, names = readTargets()) {
       data.push({ project: name, ...r.data });
       exits.push({ exit: r.exit ?? 0, advisory: !!r.advisory });
     } catch (e) {
-      blocks.push({ h: name }, { note: e.message, tone: 'bad' });
-      data.push({ project: name, error: e.message });
+      blocks.push({ h: name }, { note: /** @type {Error} */ (e).message, tone: 'bad' });
+      data.push({ project: name, error: /** @type {Error} */ (e).message });
       exits.push({ exit: 2 });
     }
   }
@@ -271,7 +313,10 @@ async function overProjects(render, names = readTargets()) {
   process.exit(combineExits(exits));
 }
 
-/** Write commands need exactly one project. */
+/**
+ * Write commands need exactly one project.
+ * @returns {string}
+ */
 function oneProject() {
   if (project) return project;
   const ws = findWorkspace({});
@@ -287,6 +332,10 @@ function oneProject() {
  * Warn mode for a gated command (lib/enforcement.mjs): `found` is what each gate would fail on.
  * Returns the exit, the ADVISORY lead and last lines as blocks to put around the output, and the
  * `enforcement` data, and appends the readiness line when a gate is on warn by config.
+ * @param {Finding[]} found
+ * @param {string} source
+ * @param {Record<string, number>} [counts]
+ * @returns {{ exit: number, advisory: boolean, lead: Block[], last: Block[], data: object }}
  */
 function gate(found, source, counts = {}) {
   const P = ctx().P;
@@ -331,11 +380,12 @@ async function a11yPrune() {
     });
   } catch (e) {
     spin.done(/** @type {Error} */ (e).message, false);
-    fail(e.message, 2);
+    fail(/** @type {Error} */ (e).message, 2);
   }
   const c = plan.counts;
   const n = c.prunable;
   spin.done(`${n} prunable of ${plan.items.length} accepted rules`);
+  /** @type {Block[]} */
   const blocks = [
     {
       h: dry ? 'Accessibility prune (dry run)' : 'Accessibility prune',
@@ -374,6 +424,7 @@ async function a11yPrune() {
         moreHint: 'every rule, with why, in --json',
       },
     });
+  /** @type {[string, string][]} */
   const next = plan.cover.map((x) => [
     x.command,
     `${x.entries} entries ${x.class === 'stale' ? 'checked before a later edit or decision' : 'with no row where axe ran'}: check them, then prune again`,
@@ -396,6 +447,7 @@ async function a11yPrune() {
   const batch = newBatch('prune');
   const P = ctx().P;
   const held = readLock(P);
+  /** @type {{ rules: number, entries: number } | undefined} */
   let r;
   if (held && !held.stale && held.holder === 'serve' && !held.foreign) {
     // The server holds the store: it writes, and the dashboard hears of it.
@@ -418,8 +470,15 @@ async function a11yPrune() {
         batch,
         reason,
       }),
-    }).catch((e) => ({ ok: false, status: 0, json: async () => ({ error: e.message }) }));
-    const body = await res.json().catch(() => ({}));
+    }).catch((e) => ({
+      ok: false,
+      status: 0,
+      json: async () => ({ error: /** @type {Error} */ (e).message }),
+    }));
+    // The server's answer: the prune's counts, or `error`.
+    const body = /** @type {{ rules: number, entries: number, error?: string }} */ (
+      await res.json().catch(() => ({}))
+    );
     if (!res.ok)
       fail(
         `the server refused the prune: ${body.error ?? `HTTP ${res.status}`}`,
@@ -427,23 +486,36 @@ async function a11yPrune() {
       );
     r = body;
   } else {
+    /** @type {LockHandle | undefined} */
     let lock;
+    /** @type {(Error & { exit?: number, status?: number }) | null} */
     let err = null;
     try {
       lock = await takeLock(P, { holder: 'a11y --prune' });
-      r = applyPrune(P, plan, { batch, reason, via: 'cli', lockCheck: () => lock.check() });
+      // `lock` is set on the line above, before the prune can call this.
+      r = applyPrune(P, plan, {
+        batch,
+        reason,
+        via: 'cli',
+        lockCheck: () => /** @type {LockHandle} */ (lock).check(),
+      });
     } catch (e) {
-      err = e;
+      // what takeLock and applyPrune throw: an Error, some with an exit code or an HTTP status
+      err = /** @type {Error & { exit?: number, status?: number }} */ (e);
     } finally {
       lock?.release();
     }
     // A plan made stale by a decision since is refused whole: plan again (exit 1, as a wrong phrase).
     if (err) fail(err.message, err.exit ?? (err.status === 409 ? 1 : 2));
   }
+  // `r` is set in both branches above; a failure has exited.
   emit(
     format,
     [
-      { h: 'Pruned', sub: `${r.rules} rules from ${r.entries} entries` },
+      {
+        h: 'Pruned',
+        sub: `${/** @type {{ rules: number }} */ (r).rules} rules from ${/** @type {{ entries: number }} */ (r).entries} entries`,
+      },
       {
         kv: [
           ['Batch', batch],
@@ -452,11 +524,20 @@ async function a11yPrune() {
       },
       { next: [[`${CMD} a11y`, 'the violations, against the shorter lists'], ...next] },
     ],
-    { batch, entries: r.entries, rules: r.rules }
+    {
+      batch,
+      entries: /** @type {{ entries: number }} */ (r).entries,
+      rules: /** @type {{ rules: number }} */ (r).rules,
+    }
   );
 }
 
-/** The entries table every listing shares. */
+/**
+ * The entries table every listing shares.
+ * @param {BriefEntry[]} entries
+ * @param {{ more?: number }} [opts]
+ * @returns {Block}
+ */
 function entryTable(entries, { more = 0 } = {}) {
   return {
     table: {
@@ -480,11 +561,18 @@ function entryTable(entries, { more = 0 } = {}) {
   };
 }
 
-/** One project's doctor: reconcile (and plan or apply repairs), as blocks. */
+/**
+ * One project's doctor: reconcile (and plan or apply repairs), as blocks.
+ * @param {{ repair: 'none' | 'plan' | 'apply', only: string[], failOn: string }} opts
+ * @returns {Promise<Rendered>}
+ */
 async function doctorOne({ repair, only, failOn }) {
   const spin = progress(format, repair === 'apply' ? 'repairing' : 'reconciling');
+  /** @type {Awaited<ReturnType<typeof doctor>> | undefined} */
   let r;
+  /** @type {LockHandle | null} */
   let lock = null;
+  /** @type {string | null} */
   let viaServer = null;
   if (repair === 'apply') {
     const P = ctx().P;
@@ -505,7 +593,7 @@ async function doctorOne({ repair, only, failOn }) {
         lock.check();
       } catch (e) {
         spin.done(/** @type {Error} */ (e).message, false);
-        fail(e.message, e.exit ?? 2);
+        fail(/** @type {Error} */ (e).message, /** @type {CliError} */ (e).exit ?? 2);
       }
   }
   try {
@@ -521,7 +609,11 @@ async function doctorOne({ repair, only, failOn }) {
           stale: !!flags.stale,
         }),
       });
-      const body = await res.json().catch(() => ({}));
+      // `POST /__pxsig/repair`'s answer (docs/server.md): the plan and the result, or `error`.
+      const body =
+        /** @type {{ plan?: DoctorResult['plan'], applied?: DoctorResult['applied'], error?: string }} */ (
+          await res.json().catch(() => ({}))
+        );
       if (!res.ok)
         throw new Error(body.error ?? `the server refused the repair (HTTP ${res.status})`);
       r = {
@@ -570,13 +662,18 @@ async function doctorOne({ repair, only, failOn }) {
       });
   } catch (e) {
     spin.done(/** @type {Error} */ (e).message, false);
-    fail(e.message, 2);
+    fail(/** @type {Error} */ (e).message, 2);
   } finally {
     lock?.release();
   }
   const sm = r.summary;
   spin.done(sm.headline, sm.status !== 'attention');
   const ix = r.sources.storyIndex;
+  /**
+   * @param {string} code
+   * @param {string} severity
+   * @returns {StyledCell}
+   */
   const sevCell = (code, severity) => ({
     text: `${severity === 'error' ? '✗' : severity === 'warn' ? '◆' : code === 'ok' ? '✓' : '·'} ${code}`,
     color:
@@ -588,11 +685,17 @@ async function doctorOne({ repair, only, failOn }) {
             ? 'green'
             : 'gray',
   });
+  /** @param {Record<string, number>} counts every key is a status code */
   const issueText = (counts) =>
     Object.entries(counts)
-      .sort((a, b) => CODES[a[0]].rank - CODES[b[0]].rank)
+      .sort(
+        (a, b) =>
+          /** @type {Record<string, { rank: number }>} */ (CODES)[a[0]].rank -
+          /** @type {Record<string, { rank: number }>} */ (CODES)[b[0]].rank
+      )
       .map(([c, n]) => `${n} ${c}`)
       .join(', ');
+  /** @type {Block[]} */
   const blocks = [
     {
       h: 'pxsig doctor',
@@ -602,10 +705,12 @@ async function doctorOne({ repair, only, failOn }) {
       note: sm.headline,
       tone: sm.status === 'attention' ? 'bad' : sm.status === 'warnings' ? 'warn' : 'ok',
     },
-    ...r.setup.map((x) => ({
-      note: `setup: ${x.code} — ${x.reason}`,
-      tone: x.severity === 'error' ? 'bad' : 'warn',
-    })),
+    ...r.setup.map(
+      /** @returns {Block} */ (x) => ({
+        note: `setup: ${x.code} — ${x.reason}`,
+        tone: x.severity === 'error' ? 'bad' : 'warn',
+      })
+    ),
     {
       kv: [
         [
@@ -629,7 +734,7 @@ async function doctorOne({ repair, only, failOn }) {
         ],
         ['Ledger', r.ledgerPath],
         ...(r.machine
-          ? [
+          ? /** @type {[string, Cell][]} */ ([
               [
                 'Settings',
                 r.machine.setUp
@@ -637,7 +742,7 @@ async function doctorOne({ repair, only, failOn }) {
                   : { text: `${r.machine.settings} (not set up)`, color: 'gray' },
               ],
               ['Token files', r.machine.tokens],
-            ]
+            ])
           : []),
         [
           'Running under',
@@ -652,7 +757,7 @@ async function doctorOne({ repair, only, failOn }) {
               ? [['Enforcement', describeEnforcement(enf)]]
               : [];
           } catch (e) {
-            return [['Enforcement', { text: e.message, color: 'red' }]];
+            return [['Enforcement', { text: /** @type {Error} */ (e).message, color: 'red' }]];
           }
         })(),
       ],
@@ -670,12 +775,14 @@ async function doctorOne({ repair, only, failOn }) {
           { key: 'n', label: 'Entries', right: true },
           { key: 'why', label: 'Issues' },
         ],
-        rows: r.components.list.map((c) => ({
-          st: sevCell(c.status, c.severity),
-          c: c.component,
-          n: c.entries,
-          why: issueText(c.counts),
-        })),
+        rows: r.components.list.map(
+          (/** @type {DoctorResult['components']['list'][number]} */ c) => ({
+            st: sevCell(c.status, c.severity),
+            c: c.component,
+            n: c.entries,
+            why: issueText(c.counts),
+          })
+        ),
         more: r.components.total - r.components.shown,
         moreHint: 'raise --limit',
       },
@@ -683,12 +790,18 @@ async function doctorOne({ repair, only, failOn }) {
   } else blocks.push({ note: 'Every component is clean.', tone: 'ok' });
   if (
     r.entries.total &&
-    (flags.component || flags.status || r.entries.list.some((x) => x.severity === 'error'))
+    (flags.component ||
+      flags.status ||
+      r.entries.list.some(
+        (/** @type {DoctorResult['entries']['list'][number]} */ x) => x.severity === 'error'
+      ))
   ) {
     const list =
       flags.component || flags.status
         ? r.entries.list
-        : r.entries.list.filter((x) => x.severity === 'error');
+        : r.entries.list.filter(
+            (/** @type {DoctorResult['entries']['list'][number]} */ x) => x.severity === 'error'
+          );
     blocks.push({ h: 'Entries' });
     blocks.push({
       table: {
@@ -697,10 +810,14 @@ async function doctorOne({ repair, only, failOn }) {
           { key: 'id', label: 'Entry' },
           { key: 'why', label: 'Why' },
         ],
-        rows: list.map((x) => ({
+        rows: list.map((/** @type {DoctorResult['entries']['list'][number]} */ x) => ({
           st: sevCell(x.status, x.severity),
           id: x.id,
-          why: x.issues.find((i) => i.code === x.status)?.reason ?? '',
+          why:
+            x.issues.find(
+              (/** @type {DoctorResult['entries']['list'][number]['issues'][number]} */ i) =>
+                i.code === x.status
+            )?.reason ?? '',
         })),
         more: (flags.component || flags.status ? r.entries.total : list.length) - list.length,
         moreHint: 'filter with --component / --status, or raise --limit',
@@ -738,6 +855,7 @@ async function doctorOne({ repair, only, failOn }) {
       blocks.push({ list: r.plan.manual.map((m) => `${m.count} ${m.code} — ${m.what}`) });
     }
   }
+  /** @type {[string, string][]} */
   const next = [];
   if (repair === 'none' && sm.status !== 'clean')
     next.push([`${CMD} doctor --repair`, 'the safe repairs, as a dry-run plan']);
@@ -758,6 +876,7 @@ async function doctorOne({ repair, only, failOn }) {
     warn: sm.bySeverity.warn,
     info: sm.infoFindings ?? 0,
   };
+  /** @type {Record<string, number>} */
   const rank = { error: 0, warn: 1, info: 2 };
   const over = Object.entries(findings)
     .filter(([k]) => rank[k] <= rank[failOn])
@@ -819,7 +938,8 @@ async function serveLink() {
   } catch {
     fail(`the pxsig server at ${url} does not answer: start it with \`${CMD} serve\``);
   }
-  const body = await r.json().catch(() => ({}));
+  // `POST /__pxsig/ticket`'s answer: the link, or `error`
+  const body = /** @type {{ link?: string, error?: string }} */ (await r.json().catch(() => ({})));
   if (!r.ok)
     fail(
       `the pxsig server at ${url} refused: ${body.error ?? r.status} (restart \`${CMD} serve\` with this version)`
@@ -847,7 +967,12 @@ const commands = {
       const counts = order
         .filter((k) => s.counts[k])
         .map((k) => ({ ...stateCell(k), text: `${stateCell(k).text} ${s.counts[k]}` }));
-      const age = Math.round((Date.now() - new Date(s.reportUpdated)) / 60000);
+      // A Date subtracts as its time value.
+      const age = Math.round(
+        (Date.now() - /** @type {number} */ (/** @type {unknown} */ (new Date(s.reportUpdated)))) /
+          60000
+      );
+      /** @type {Block[]} */
       const blocks = [
         {
           h: 'pxsig',
@@ -876,8 +1001,11 @@ const commands = {
               (() => {
                 const L = (() => {
                   try {
-                    return JSON.parse(
-                      readFileSync(join(ctx().P.store.reports, 'integrity.json'), 'utf8')
+                    // the ledger pxsig doctor wrote (docs/integrity.md)
+                    return /** @type {{ summary: { headline: string, status: string } }} */ (
+                      JSON.parse(
+                        readFileSync(join(ctx().P.store.reports, 'integrity.json'), 'utf8')
+                      )
                     );
                   } catch {
                     return null;
@@ -901,7 +1029,7 @@ const commands = {
                   [
                     'Warn mode',
                     {
-                      text: `${s.enforcement.warned.join(', ')}${s.enforcement.warnUntil ? ` until ${s.enforcement.warnUntil}` : ''}${s.enforcement.readiness ? ` · would-fail runs ${s.enforcement.readiness.wouldFail} of ${s.enforcement.readiness.runs}${s.enforcement.readiness.main ? ` (${s.enforcement.readiness.main.branch} ${s.enforcement.readiness.main.wouldFail} of ${s.enforcement.readiness.main.runs})` : ''}` : ''}`,
+                      text: `${s.enforcement.warned.join(', ')}${s.enforcement.warnUntil ? ` until ${s.enforcement.warnUntil}` : ''}${s.enforcement.readiness ? ` · would-fail runs ${s.enforcement.readiness.wouldFail} of ${s.enforcement.readiness.runs}${s.enforcement.readiness.main ? ` (${String(s.enforcement.readiness.main.branch)} ${s.enforcement.readiness.main.wouldFail} of ${s.enforcement.readiness.main.runs})` : ''}` : ''}`,
                       color: 'yellow',
                     },
                   ],
@@ -932,6 +1060,7 @@ const commands = {
           },
         });
       }
+      /** @type {[string, string][]} */
       const next = [];
       if (s.stale)
         next.push([
@@ -946,8 +1075,13 @@ const commands = {
 
   stale: () =>
     overProjects(async () => {
-      const s = await run('stale', { limit: Number(flags.limit) || 200 });
+      // BUG (reported, not changed): the `tooMany` answer has none of these keys, so `bad` is NaN
+      // and the command reports every result fresh, exit 0.
+      const s = /** @type {Extract<ToolOutput<'stale'>, { of: number }>} */ (
+        await run('stale', { limit: Number(flags.limit) || 200 })
+      );
       const bad = s.stale + s.inconsistent;
+      /** @type {Block[]} */
       const blocks = [
         { h: 'Freshness', sub: `${s.of} entries` },
         {
@@ -996,7 +1130,15 @@ const commands = {
     overProjects(async () => {
       const state = rest[0] ?? flags.state ?? 'problems';
       const limit = Number(flags.limit) || 30;
-      const s = await run('list', { state, component: flags.component, mode: flags.mode, limit });
+      // BUG (reported, not changed): a bare --component (or --mode, --state) is `true`, not text:
+      // the tool's toLowerCase then throws, or nothing matches.
+      const s = await run('list', {
+        state,
+        component: /** @type {string | undefined} */ (flags.component),
+        mode: /** @type {string | undefined} */ (flags.mode),
+        limit,
+      });
+      /** @type {Block[]} */
       const blocks = [
         {
           h: `Entries: ${state}`,
@@ -1023,9 +1165,14 @@ const commands = {
     const id = rest[0] ?? fail('usage: entry <id>');
     const kinds = list(flags.images).length ? list(flags.images) : ['baseline', 'current', 'diff'];
     // Ask the tool for no images: the CLI shows paths (or inlines files) itself.
-    const res = await run('entry', { id, images: [] }).catch((e) => fail(e.message));
-    const e = JSON.parse(res.content[0].text);
-    const m = e.metrics ?? {};
+    const res = await run('entry', { id, images: [] }).catch((e) =>
+      fail(/** @type {Error} */ (e).message)
+    );
+    // pxsig_entry's first item is the entry's JSON text
+    const e = /** @type {EntryDetail} */ (
+      JSON.parse(/** @type {{ text: string }} */ (res.content[0]).text)
+    );
+    const m = /** @type {Partial<EngineMetrics>} */ (e.metrics ?? {});
     const regions = e.pixels?.regions ?? [];
     const images = kinds.map((k) => {
       const { bytes, where } = imageOf(ctx(), k, id);
@@ -1036,6 +1183,7 @@ const commands = {
         data: bytes && format === 'pretty' ? bytes : null,
       };
     });
+    /** @type {Block[]} */
     const blocks = [
       { h: id, sub: [e.mode, e.interaction].filter(Boolean).join(' · ') },
       {
@@ -1052,7 +1200,8 @@ const commands = {
               ? { text: e.a11y.violations.map((v) => v.id ?? v).join(', '), color: 'red' }
               : 'clean',
           ],
-          ['Review', e.review?.decision ?? 'none'],
+          // BUG (reported, not changed): a review decision's key is `state`, so this is always 'none'.
+          ['Review', /** @type {string | undefined} */ (e.review?.decision) ?? 'none'],
           ['Checked', e.checkedAt ?? '—'],
           ['Dashboard', { text: inspectUrl(id), url: inspectUrl(id) }],
         ],
@@ -1112,9 +1261,12 @@ const commands = {
     // The server queue is the only progress signal; poll it for the spinner's text.
     const poll = setInterval(async () => {
       try {
-        const s = await (
-          await fetch(`${ctx().serverUrl}/__pxsig/status`, { signal: AbortSignal.timeout(1000) })
-        ).json();
+        // the server's status answer
+        const s = /** @type {ServerStatusReply} */ (
+          await (
+            await fetch(`${ctx().serverUrl}/__pxsig/status`, { signal: AbortSignal.timeout(1000) })
+          ).json()
+        );
         spin.update(s.running ? `checking · ${s.queued ?? 0} queued` : 'checking');
       } catch {}
     }, 700);
@@ -1127,7 +1279,9 @@ const commands = {
       process.exit(2);
     }
     clearInterval(poll);
-    if (r.timedOut) return (spin.done('still running', false), fail(r.note, 2));
+    // a timed-out answer carries its note
+    if (r.timedOut)
+      return (spin.done('still running', false), fail(/** @type {string} */ (r.note), 2));
     const problems = r.problems ?? [];
     const errs = problems.filter((p) => p.state === 'error');
     spin.done(`checked ${r.checked ?? 0} entries via ${r.via ?? '—'}`, !errs.length);
@@ -1135,6 +1289,7 @@ const commands = {
       ...stateCell(k),
       text: `${stateCell(k).text} ${n}`,
     }));
+    /** @type {Block[]} */
     const blocks = [
       { h: 'Check', sub: `${r.checked ?? 0} entries · ${r.seconds ?? '?'} s · ${r.via ?? ''}` },
       { kv: [['States', counts.length ? counts : 'nothing selected']] },
@@ -1162,6 +1317,7 @@ const commands = {
         tone: ledger.summary.status === 'attention' ? 'bad' : 'ok',
       });
     } catch {}
+    /** @type {[string, string][]} */
     const next = [];
     if (problems.length) next.push([`${CMD} entry ${problems[0].id}`, 'see what changed']);
     if (ledger?.summary.status === 'attention')
@@ -1206,6 +1362,7 @@ const commands = {
     if (!rest.length && !since) fail('usage: affected <files…> | --since <ref>');
     const files = rest.map((f) => relPath(ctx().root, resolve(f)));
     const r = await run('affected', since ? { since } : { files });
+    /** @type {Block[]} */
     const blocks = [{ h: 'Affected', sub: `${r.entries} entries · ${r.reason}` }];
     // The fail-safe: what the selection cannot trace selects every entry. Each `outside` path is a
     // candidate for affects.ignore (docs/ci.md, "How selection decides").
@@ -1241,9 +1398,11 @@ const commands = {
           note: 'Map a bundler alias with affects.aliases, or accept the file with affects.unresolved.',
         }
       );
-    if (r.remote?.length)
+    // BUG (reported, not changed): pxsig_affected answers `remote` as a count, which has no length,
+    // so this note never shows.
+    if (/** @type {unknown[] | undefined} */ (/** @type {unknown} */ (r.remote))?.length)
       blocks.push({
-        note: `${r.remote.length} remote URLs are not followed (a full check covers them).`,
+        note: `${/** @type {unknown[]} */ (/** @type {unknown} */ (r.remote)).length} remote URLs are not followed (a full check covers them).`,
       });
     if (r.entries)
       blocks.push({
@@ -1261,20 +1420,29 @@ const commands = {
     flags.prune
       ? a11yPrune()
       : overProjects(async () => {
-          const r = await run('a11y', {
-            component: flags.component,
-            only_new: !!flags.new,
-            limit: Number(flags.limit) || 50,
-          });
+          // Without prune_plan the tool lists violations. A bare --component is `true` (see list).
+          const r = /** @type {Extract<ToolOutput<'a11y'>, { byRule: unknown }>} */ (
+            await run('a11y', {
+              component: /** @type {string | undefined} */ (flags.component),
+              only_new: !!flags.new,
+              limit: Number(flags.limit) || 50,
+            })
+          );
           const rules = Object.entries(r.byRule ?? {}).sort((a, b) => b[1] - a[1]);
+          /** @type {Block[]} */
           const blocks = [
             { h: flags.new ? 'New a11y violations' : 'a11y', sub: `${r.entries} entries` },
           ];
           // --sarif: the new violations of the last report, for SARIF viewers (decision 96).
           if (typeof flags.sarif === 'string') {
             const C = ctx();
-            const report = JSON.parse(readFileSync(join(C.P.store.reports, 'check.json'), 'utf8'));
-            const manifest = JSON.parse(readFileSync(C.P.manifestPath(), 'utf8'));
+            // the report and the manifest pxsig wrote
+            const report = /** @type {CheckReport} */ (
+              JSON.parse(readFileSync(join(C.P.store.reports, 'check.json'), 'utf8'))
+            );
+            const manifest = /** @type {Manifest} */ (
+              JSON.parse(readFileSync(C.P.manifestPath(), 'utf8'))
+            );
             const n = writeSarif(
               resolve(flags.sarif),
               report.rows.filter(
@@ -1307,6 +1475,7 @@ const commands = {
   history: () =>
     overProjects(async () => {
       const r = await run('history', { limit: Number(flags.limit) || 10 });
+      /** @type {Block[]} */
       const blocks = [
         { h: 'History', sub: `last ${r.runs.length} runs` },
         {
@@ -1348,7 +1517,8 @@ const commands = {
       fail('--fail-on takes error, warn or info');
     // Repairs write the store: one project, and the store lock (or the server that holds it).
     return overProjects(
-      () => doctorOne({ repair, only, failOn }),
+      // failOn is one of the three: checked just above
+      () => doctorOne({ repair, only, failOn: /** @type {string} */ (failOn) }),
       repair === 'apply' ? [oneProject()] : undefined
     );
   },
@@ -1405,6 +1575,10 @@ const commands = {
     } catch {
       // no workspace above: a single-package project
     }
+    /**
+     * @param {string} k
+     * @returns {string | null}
+     */
     const s = (k) => (typeof flags[k] === 'string' ? flags[k] : null);
     // The dashboard title: --label, else asked once of a person at a terminal setting up a new
     // config (Enter keeps the name). An existing config is never edited: its label is changed there.
@@ -1450,12 +1624,13 @@ const commands = {
     const P = openProject({ project: oneProject() });
     const d = describeConfig(P);
     // Warn mode, when the config sets it: each gate's setting, the layer that set it, the days left.
+    /** @type {(ReturnType<typeof resolveEnforcement> & { error?: undefined }) | (Partial<ReturnType<typeof resolveEnforcement>> & { error: string }) | null} */
     let enf = null;
     if (P.config.enforcement != null)
       try {
         enf = resolveEnforcement(P, { flags });
       } catch (e) {
-        enf = { error: e.message };
+        enf = { error: /** @type {Error} */ (e).message };
       }
     if (enf)
       d.enforcement = enf.error
@@ -1468,8 +1643,19 @@ const commands = {
             advisoryExit: enf.advisoryExit,
           };
     if (format === 'json') return process.stdout.write(`${JSON.stringify(d, null, 2)}\n`);
-    const get = (o, k) => k.split('.').reduce((v, x) => (v == null ? v : v[x]), o);
+    /**
+     * The value at a dotted path of a config.
+     * @param {ConfigValue} o
+     * @param {string} k
+     * @returns {ConfigValue}
+     */
+    const get = (o, k) =>
+      k
+        .split('.')
+        .reduce((v, x) => (v == null ? v : /** @type {Record<string, ConfigValue>} */ (v)[x]), o);
+    /** @param {ConfigValue} v */
     const show = (v) => (v == null ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v));
+    /** @param {string | null | undefined} p */
     const rel = (p) => (p ? relPath(process.cwd(), p) || '.' : '—');
     const rows = Object.keys(d.sources)
       .sort()
@@ -1530,14 +1716,17 @@ const commands = {
                       { key: 'v', label: 'Setting' },
                       { key: 'from', label: 'Set by' },
                     ],
-                    rows: Object.entries(enf.gates).map(([g, v]) => ({
-                      g,
-                      v: {
-                        text: v,
-                        color: v === 'warn' ? 'yellow' : v === 'off' ? 'gray' : undefined,
-                      },
-                      from: enf.layers[g],
-                    })),
+                    // not the error case (an error's message is never empty): gates and layers are set
+                    rows: Object.entries(/** @type {Record<string, string>} */ (enf.gates)).map(
+                      ([g, v]) => ({
+                        g,
+                        v: {
+                          text: v,
+                          color: v === 'warn' ? 'yellow' : v === 'off' ? 'gray' : undefined,
+                        },
+                        from: /** @type {Record<string, string>} */ (enf.layers)[g],
+                      })
+                    ),
                   },
                 },
               ]
@@ -1559,7 +1748,7 @@ const commands = {
       r = await buildManifest(P, { suite: typeof flags.suite === 'string' ? flags.suite : null });
     } catch (e) {
       spin.done(/** @type {Error} */ (e).message, false);
-      fail(e.message, 2);
+      fail(/** @type {Error} */ (e).message, 2);
     } finally {
       if (sb.served) await sb.close();
     }
@@ -1591,7 +1780,8 @@ const commands = {
     // `kill <pid>` (a process manager, a script) stops the server too, not only this wrapper: an
     // orphaned server kept its port, its store lock and its record in server.json. Ctrl+C reaches
     // the whole process group by itself.
-    for (const sig of ['SIGTERM', 'SIGHUP']) process.on(sig, () => child.kill(sig));
+    for (const sig of /** @type {NodeJS.Signals[]} */ (['SIGTERM', 'SIGHUP']))
+      process.on(sig, () => child.kill(sig));
   },
 
   mcp() {
@@ -1656,7 +1846,7 @@ const commands = {
         lock = await takeLock(P, { holder: 'migrate' });
         lock.check();
       } catch (e) {
-        fail(e.message, e.exit ?? 2);
+        fail(/** @type {Error} */ (e).message, /** @type {CliError} */ (e).exit ?? 2);
       }
     let plan;
     try {
@@ -1669,6 +1859,7 @@ const commands = {
     } finally {
       lock?.release();
     }
+    /** @type {Block[]} */
     const blocks = [
       {
         h: flags.apply ? 'Migrated' : 'Migration plan (dry run)',
@@ -1719,7 +1910,7 @@ const commands = {
         CMD,
       });
     } catch (e) {
-      fail(e.message, e.exit ?? 2);
+      fail(/** @type {Error} */ (e).message, /** @type {CliError} */ (e).exit ?? 2);
     }
     emit(format, r.blocks, r.data);
     process.exit(r.exit);
@@ -1739,7 +1930,7 @@ const commands = {
     try {
       r = await browserCommand({ sub: rest[0] ?? 'status', flags, root, P, CMD });
     } catch (e) {
-      fail(e.message, e.exit ?? 2);
+      fail(/** @type {Error} */ (e).message, /** @type {CliError} */ (e).exit ?? 2);
     }
     emit(format, r.blocks, r.data);
     process.exit(r.exit);
@@ -1762,8 +1953,10 @@ const commands = {
         );
       return emit(format, helpBlocks(found, CMD), helpData(found));
     }
-    const doc = readFileSync(new URL(import.meta.url), 'utf8')
-      .match(/\/\*\*([\s\S]*?)\*\//)[1]
+    // This file opens with its header comment.
+    const doc = /** @type {RegExpMatchArray} */ (
+      readFileSync(new URL(import.meta.url), 'utf8').match(/\/\*\*([\s\S]*?)\*\//)
+    )[1]
       .replace(/^ \* ?/gm, '')
       .trim();
     process.stdout.write(doc + '\n');
@@ -1771,12 +1964,13 @@ const commands = {
 };
 
 if (flags.help || command === '--help') commands.help();
-else if (!commands[command])
+else if (!(/** @type {Record<string, (() => unknown) | undefined>} */ (commands)[command]))
   fail(`unknown command "${command}" — try: ${Object.keys(commands).join(', ')}`);
 else
   try {
-    await commands[command]();
+    // checked on the line above: `command` names one
+    await /** @type {Record<string, () => unknown>} */ (commands)[command]();
   } catch (e) {
     // Setup errors (no workspace, no project, unreadable config) and anything unexpected: exit 2.
-    fail(e.message, 2);
+    fail(/** @type {Error} */ (e).message, 2);
   }

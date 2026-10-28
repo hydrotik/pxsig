@@ -22,9 +22,16 @@ import { ASSISTANTS, assistant, SCRIPT } from './lib/assistants.mjs';
 import { findWorkspace } from './lib/workspace.mjs';
 import { toPosix } from './lib/paths.mjs';
 
+/** @import { Assistant } from './types.js' */
+/** @import { Block, SetupFile } from './types/t6.js' */
+
 const STEPS = ['assistant'];
 
-/** The repository the recipes point at: the workspace root, else the current folder. */
+/**
+ * The repository the recipes point at: the workspace root, else the current folder.
+ * @param {string} [cwd]
+ * @returns {string}
+ */
 export function setupRoot(cwd = process.cwd()) {
   try {
     return findWorkspace({ cwd }).root;
@@ -41,7 +48,7 @@ export function setupRoot(cwd = process.cwd()) {
 /**
  * @param {{ step?: string | null, flags?: import('./types.js').Flags, root?: string,
  *   person?: boolean, ask?: ((q: string) => Promise<string>) | null,
- *   show?: ((blocks: import('./types/t2.js').Block[]) => void) | null, CMD?: string }} opts
+ *   show?: ((blocks: Block[]) => void) | null, CMD?: string }} opts
  */
 export async function setupCommand({
   step = null,
@@ -52,6 +59,7 @@ export async function setupCommand({
   show = null,
   CMD = 'pxsig',
 }) {
+  /** @param {string} m */
   const usage = (m) => Object.assign(new Error(m), { exit: 2 });
   const named = step && !STEPS.includes(step) ? step : null;
   if (named && !assistant(named))
@@ -87,7 +95,8 @@ export async function setupCommand({
   }
   if (!id) {
     const lines = ASSISTANTS.map((a, i) => `  ${String(i + 1).padStart(2)}. ${a.label}`).join('\n');
-    const answer = await ask(
+    // Only a person gets here (`print` is set otherwise), and the CLI passes `ask` with one.
+    const answer = await /** @type {(q: string) => Promise<string>} */ (ask)(
       `Which coding assistant is used here?\n${lines}\nType 1–${ASSISTANTS.length}: `
     );
     const n = Number(answer);
@@ -96,21 +105,35 @@ export async function setupCommand({
     id = ASSISTANTS[n - 1].id;
   }
 
-  const a = assistant(id);
+  // `id` is a known assistant: a named one was checked above, a typed number picked from the list.
+  const a = /** @type {Assistant} */ (assistant(id));
   const repo = toPosix(root);
   const mcp = a.mcp(repo);
+  /** @type {SetupFile[]} */
   const files = [];
   if (mcp)
-    files.push({ role: 'mcp', file: mcp.file, scope: mcp.scope, lang: mcp.lang, text: mcp.text });
+    // Each file's state is set in the loop below, before anything reads it.
+    files.push(
+      /** @type {SetupFile} */ ({
+        role: 'mcp',
+        file: mcp.file,
+        scope: mcp.scope,
+        lang: mcp.lang,
+        text: mcp.text,
+      })
+    );
   if (a.instructions)
-    files.push({
-      role: 'instructions',
-      file: a.instructions.file,
-      scope: 'project',
-      lang: 'text',
-      text: a.instructions.text,
-    });
+    files.push(
+      /** @type {SetupFile} */ ({
+        role: 'instructions',
+        file: a.instructions.file,
+        scope: 'project',
+        lang: 'text',
+        text: a.instructions.text,
+      })
+    );
 
+  /** @type {Block[]} */
   const blocks = [
     {
       h: `pxsig setup · ${a.label}`,
@@ -131,7 +154,8 @@ export async function setupCommand({
     f.state =
       f.scope === 'user'
         ? 'home folder: add by hand'
-        : existsSync(path)
+        : // a project file: `path` is set
+          existsSync(/** @type {string} */ (path))
           ? 'exists: add the block by hand'
           : 'absent';
     blocks.push({
@@ -142,12 +166,16 @@ export async function setupCommand({
   if (a.policy) blocks.push({ kv: [['Managed machines', a.policy]] });
   if (a.notes.length) blocks.push({ list: a.notes });
 
+  /** @type {string[]} */
   const wrote = [];
   const asking = !print && files.some((f) => f.state === 'absent');
   if (asking && show) show(blocks.splice(0));
   for (const f of files) {
     if (print || f.state !== 'absent') continue;
-    const yes = /^y(es)?$/i.test(await ask(`Create ${f.file}? [y/N] `));
+    // `asking` needs a person (`!print`), who comes with `ask`.
+    const yes = /^y(es)?$/i.test(
+      await /** @type {(q: string) => Promise<string>} */ (ask)(`Create ${f.file}? [y/N] `)
+    );
     if (!yes) {
       f.state = 'declined';
       continue;
@@ -159,7 +187,7 @@ export async function setupCommand({
       f.state = 'written';
       wrote.push(f.file);
     } catch (e) {
-      if (e.code !== 'EEXIST') throw e;
+      if (/** @type {NodeJS.ErrnoException} */ (e).code !== 'EEXIST') throw e;
       f.state = 'exists: add the block by hand';
     }
   }
