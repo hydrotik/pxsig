@@ -29,11 +29,26 @@ test('valid parameters shape the entries', () => {
   assert.equal(entries[0].a11y, false);
 });
 
+test('null cancels an inherited value, and grid 0 leaves the adaptive grid on', () => {
+  const { entries } = expand({ delay: null, target: null, grid: 0 });
+  assert.equal(entries[0].delay, undefined);
+  assert.equal(entries[0].grid, undefined);
+});
+
+test('a state with no action is still an entry (it waits and captures)', () => {
+  const { entries } = expand({ states: [{ name: 'loaded', waitFor: '[data-ready]' }] });
+  assert.deepEqual(
+    entries.map((e) => e.id),
+    ['a-b--c', 'a-b--c__loaded']
+  );
+});
+
 test('a bad parameters.pxsig value is a setup error naming the story and the field', () => {
   for (const [pxsig, field] of /** @type {[unknown, string][]} */ ([
     [{ addModes: 7 }, 'addModes'],
     [{ modes: 'dark' }, 'modes'],
     [{ states: [{ action: 'hover' }] }, 'states'],
+    [{ states: [{ name: 'hover', action: 7 }] }, 'states'],
     [{ states: { name: 'hover' } }, 'states'],
     [{ grid: '96' }, 'grid'],
     [{ ignore: '.live' }, 'ignore'],

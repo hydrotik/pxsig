@@ -120,12 +120,15 @@ const CHECKS = /** @type {Record<string, [(v: unknown) => boolean, string]>} */ 
       Array.isArray(v) &&
       v.every(
         (/** @type {unknown} */ st) =>
-          isObj(st) && typeof st.name === 'string' && typeof st.action === 'string'
+          isObj(st) &&
+          typeof st.name === 'string' &&
+          (st.action === undefined || typeof st.action === 'string')
       ),
-    'an array of { name, action } objects',
+    'an array of { name, action? } objects',
   ],
   viewport: [(v) => Array.isArray(v) && v.length === 2 && v.every(isPositive), '[width, height]'],
-  grid: [isPositive, 'a positive number'],
+  // 0 leaves the adaptive grid on, as it always has.
+  grid: [(v) => typeof v === 'number' && Number.isFinite(v) && v >= 0, 'a positive number'],
   gate: [isObj, 'an object'],
   detail: [(v) => typeof v === 'boolean', 'true or false'],
   ignore: [isStrings, 'an array of selectors'],
@@ -148,7 +151,8 @@ function checkParameters(id, px) {
   if (!isObj(px)) throw new SetupError(`story "${id}": parameters.pxsig must be an object`);
   for (const [field, [ok, what]] of Object.entries(CHECKS)) {
     const v = px[field];
-    if (v !== undefined && !ok(v))
+    // null is absent, as the fallbacks below read it: a story can cancel an inherited value.
+    if (v != null && !ok(v))
       throw new SetupError(`story "${id}": parameters.pxsig.${field} must be ${what}`);
   }
   return px;
