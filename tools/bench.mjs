@@ -36,6 +36,7 @@ import {
   scratchManifest,
   writeReport,
 } from './lib/research.mjs';
+/** @import { BenchReport, EngineBaseline } from './types.js' */
 
 const log = logger('bench');
 const flags = parseFlags();
@@ -49,6 +50,7 @@ if (!entries.length)
   throw new Error(`no latest renders with baselines in ${pngDir}: run \`pxsig check\` first`);
 const N = entries.length;
 const scratch = freshDir(P, 'bench');
+/** @type {BenchReport} */
 const out = {
   generatedAt: new Date().toISOString(),
   project: P.name,
@@ -78,17 +80,21 @@ const threads = [1, 2, 4, 8, cpus().length].filter(
 );
 out.check = { rust: {} };
 for (const t of threads) {
+  /** @type {number[]} */
   const internal = [];
+  /** @type {number[]} */
   const wall = [];
   for (let i = 0; i < RUNS; i++) {
     const r = rust(P, ['-j', String(t), ...checkArgs]);
-    internal.push(r.out.summary.elapsedMs);
+    // `check --json` prints a summary with the engine's own time.
+    internal.push(/** @type {EngineBaseline} */ (r.out).summary.elapsedMs);
     wall.push(r.wallMs);
   }
   out.check.rust[t] = { internalMs: median(internal), wallMs: median(wall) };
 }
 log(
-  `check ${N}: ${threads.map((t) => `${t}t ${out.check.rust[t].wallMs.toFixed(0)} ms`).join(' · ')} (process wall)`
+  // out.check: set above, before the loop.
+  `check ${N}: ${threads.map((t) => `${t}t ${/** @type {NonNullable<BenchReport['check']>} */ (out.check).rust[t].wallMs.toFixed(0)} ms`).join(' · ')} (process wall)`
 );
 
 // --- batch capture (scratch signatures; the committed ones are never touched) --------------------
@@ -99,7 +105,9 @@ const capManifest = scratchManifest(
   entries,
   (e) => `sig/${e.id}.psig`
 );
+/** @type {number[]} */
 const capWall = [];
+/** @type {number[]} */
 const capInternal = [];
 for (let i = 0; i < RUNS; i++) {
   const r = rust(P, [
@@ -113,7 +121,8 @@ for (let i = 0; i < RUNS; i++) {
     '--json',
   ]);
   capWall.push(r.wallMs);
-  capInternal.push(r.out.summary.elapsedMs);
+  // `baseline --json` prints a summary with the engine's own time.
+  capInternal.push(/** @type {EngineBaseline} */ (r.out).summary.elapsedMs);
 }
 out.capture = { rustWallMs: median(capWall), rustInternalMs: median(capInternal) };
 log(
@@ -122,6 +131,7 @@ log(
 
 // --- per call: CLI process vs daemon request ------------------------------------------------------
 const sample = entries.slice(0, 30);
+/** @type {number[]} */
 const cli = [];
 for (const e of sample)
   cli.push(
@@ -129,6 +139,7 @@ for (const e of sample)
       .wallMs
   );
 const eng = engine(P);
+/** @type {number[]} */
 const serve = [];
 try {
   await eng.call('ping');
@@ -149,6 +160,10 @@ log(
 );
 
 // --- memory ----------------------------------------------------------------------------------------
+/**
+ * @param {string} cmd
+ * @param {string[]} args
+ */
 function peakRss(cmd, args) {
   const mac = platform() === 'darwin';
   const r = spawnSync('/usr/bin/time', [mac ? '-l' : '-v', cmd, ...args], {

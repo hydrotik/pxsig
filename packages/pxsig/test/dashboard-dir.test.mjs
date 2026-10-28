@@ -10,13 +10,21 @@ import { fileURLToPath } from 'node:url';
 import { buildDirFor, chooseDashboard, STAMP } from '../src/lib/dashboard-dir.mjs';
 import { fixture, hasRust, rustBin } from './fixture.mjs';
 
+/** @typedef {{ name: string, dir: string, configPath: string }} DirProject */
+
+/** @type {string} */
 let root;
 const prebuilt = '/prebuilt/dashboard';
 const VERSION = '9.9.9';
 beforeEach(() => (root = mkdtempSync(join(tmpdir(), 'pxsig-dash-'))));
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-/** A project folder with a pxsig.config.json (and an adapter folder when `ui` is a path). */
+/**
+ * A project folder with a pxsig.config.json (and an adapter folder when `ui` is a path).
+ * @param {string} name
+ * @param {string} [ui]
+ * @returns {DirProject}
+ */
 function project(name, ui) {
   const dir = join(root, name);
   mkdirSync(dir, { recursive: true });
@@ -27,7 +35,11 @@ function project(name, ui) {
   }
   return { name, dir, configPath: join(dir, 'pxsig.config.json') };
 }
-/** A build in the default folder, `ageMs` ago, stamped with `version`. */
+/**
+ * A build in the default folder, `ageMs` ago, stamped with `version`.
+ * @param {DirProject} p
+ * @param {{ version?: string, ageMs?: number, stamp?: boolean }} [opts]
+ */
 function built(p, { version = VERSION, ageMs = 0, stamp = true } = {}) {
   const out = buildDirFor(p.dir);
   mkdirSync(out, { recursive: true });
@@ -39,7 +51,15 @@ function built(p, { version = VERSION, ageMs = 0, stamp = true } = {}) {
     );
   return out;
 }
+/**
+ * @param {string} file
+ * @param {number} at
+ */
 const touch = (file, at) => utimesSync(file, at / 1000, at / 1000);
+/**
+ * @param {DirProject[]} projects
+ * @param {Record<string, string | undefined>} [env]
+ */
 const choose = (projects, env = {}) =>
   chooseDashboard({ projects, prebuilt, version: VERSION, root, env });
 
@@ -63,14 +83,19 @@ test('dashboard.ui with a current build: that build', () => {
   const r = choose([p]);
   assert.equal(r.source, 'adapter');
   assert.equal(r.dir, out);
-  assert.match(r.note, /built with the UI adapter \.\/pxsig-ui/);
+  assert.match(
+    // This branch always writes a note.
+    /** @type {string} */ (r.note),
+    /built with the UI adapter \.\/pxsig-ui/
+  );
 });
 
 test('dashboard.ui without a build: the prebuilt dashboard and the command to run', () => {
   const r = choose([project('a', './pxsig-ui')]);
   assert.equal(r.dir, prebuilt);
   assert.match(
-    r.note,
+    // This branch always writes a note.
+    /** @type {string} */ (r.note),
     /has no build yet: run `pxsig dashboard build` in a\. Serving the prebuilt dashboard\./
   );
 });
@@ -81,7 +106,11 @@ test('an adapter edited after its build: stale, so the prebuilt dashboard and th
   touch(join(p.dir, 'pxsig-ui', 'index.tsx'), Date.now());
   const r = choose([p]);
   assert.equal(r.dir, prebuilt);
-  assert.match(r.note, /changed after its last build: run `pxsig dashboard build` in a/);
+  assert.match(
+    // This branch always writes a note.
+    /** @type {string} */ (r.note),
+    /changed after its last build: run `pxsig dashboard build` in a/
+  );
 });
 
 test('a build for another major UI contract is not served; the same major is', () => {
@@ -95,12 +124,17 @@ test('a build for another major UI contract is not served; the same major is', (
     join(out, STAMP),
     JSON.stringify({ pxsig: VERSION, contract: '1.2.0', builtAt: Date.now() })
   );
+  /** @param {string | null} contract */
   const at = (contract) =>
     chooseDashboard({ projects: [p], prebuilt, version: VERSION, contract, root, env: {} });
   assert.equal(at('1.4.0').dir, out);
   const r = at('2.0.0');
   assert.equal(r.dir, prebuilt);
-  assert.match(r.note, /is for UI contract 1\.2\.0 \(this pxsig has 2\.0\.0\): update the adapter/);
+  assert.match(
+    // This branch always writes a note.
+    /** @type {string} */ (r.note),
+    /is for UI contract 1\.2\.0 \(this pxsig has 2\.0\.0\): update the adapter/
+  );
   assert.equal(at(null).dir, out, 'no contract known: judged as before');
 });
 
@@ -110,7 +144,11 @@ test('a build from another pxsig version is stale', () => {
   built(p, { version: '0.0.1' });
   const r = choose([p]);
   assert.equal(r.dir, prebuilt);
-  assert.match(r.note, /from pxsig 0\.0\.1 \(this is 9\.9\.9\)/);
+  assert.match(
+    // This branch always writes a note.
+    /** @type {string} */ (r.note),
+    /from pxsig 0\.0\.1 \(this is 9\.9\.9\)/
+  );
 });
 
 test('a build without a stamp is judged by its index.html', () => {
@@ -124,7 +162,11 @@ test('a build without a stamp is judged by its index.html', () => {
 test('projects naming different adapters: the prebuilt dashboard and why', () => {
   const r = choose([project('a', './ui-a'), project('b', './ui-b'), project('c')]);
   assert.equal(r.dir, prebuilt);
-  assert.match(r.note, /different UI adapters \(a: \.\/ui-a, b: \.\/ui-b\)/);
+  assert.match(
+    // This branch always writes a note.
+    /** @type {string} */ (r.note),
+    /different UI adapters \(a: \.\/ui-a, b: \.\/ui-b\)/
+  );
 });
 
 test('a built-in adapter by name: staleness from its folder', () => {
@@ -153,13 +195,19 @@ test('a built-in adapter by name: staleness from its folder', () => {
 const serveJs = fileURLToPath(new URL('../src/serve.mjs', import.meta.url));
 const PXSIG = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
+/**
+ * @param {string} repo
+ * @param {(io: { log: string, get: (p: string) => Promise<Response> }) => Promise<void>} run
+ */
 async function serving(repo, run) {
   const port = await new Promise((ok) => {
     const s = createServer().listen(0, '127.0.0.1', () => {
-      const p = s.address().port;
+      // Listening on TCP: the address is an AddressInfo.
+      const p = /** @type {import('node:net').AddressInfo} */ (s.address()).port;
       s.close(() => ok(p));
     });
   });
+  /** @type {NodeJS.ProcessEnv} */
   const env = { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' };
   delete env.PXSIG_DASHBOARD_DIR;
   const proc = spawn(process.execPath, [serveJs, '--port', String(port), '--no-open'], {
@@ -168,14 +216,16 @@ async function serving(repo, run) {
   });
   let log = '';
   try {
-    await new Promise((ok, fail) => {
-      const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-      proc.stdout.on(
-        'data',
-        (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok()))
-      );
-      proc.stderr.on('data', (d) => (log += d));
-    });
+    await /** @type {Promise<void>} */ (
+      new Promise((ok, fail) => {
+        const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+        proc.stdout.on(
+          'data',
+          (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok()))
+        );
+        proc.stderr.on('data', (d) => (log += d));
+      })
+    );
     await run({ log, get: (p) => fetch(`http://127.0.0.1:${port}${p}`) });
   } finally {
     proc.kill();

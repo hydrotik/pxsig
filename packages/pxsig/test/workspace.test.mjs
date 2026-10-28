@@ -14,9 +14,11 @@ import {
   unlistedConfigs,
   workspaceProblems,
 } from '../src/lib/workspace.mjs';
-/** @import { ManifestEntry } from '../src/types.js' */
+/** @import { ManifestEntry, ProjectRef } from '../src/types.js' */
 
+/** @type {NodeJS.ProcessEnv} */
 const env = {};
+/** @param {Record<string, unknown>} files */
 const tree = (files) => {
   const root = mkdtempSync(join(tmpdir(), 'pxsig-ws-'));
   mkdirSync(join(root, '.git'));
@@ -60,9 +62,19 @@ test('monorepo: workspace file, project by name, by path, by cwd; ambiguity refu
   });
   const ws = findWorkspace({ cwd: join(root, 'packages', 'ds', 'src'), env });
   assert.equal(ws.root, root);
-  assert.equal(pickProject(ws, { cwd: join(root, 'packages', 'ds', 'src') }).name, 'ds');
-  assert.equal(pickProject(ws, { project: 'app', cwd: root }).name, 'app');
-  assert.equal(pickProject(ws, { project: 'apps/web', cwd: root }).name, 'app');
+  // Each of these picks a project (a null fails the test at `.name`).
+  assert.equal(
+    /** @type {ProjectRef} */ (pickProject(ws, { cwd: join(root, 'packages', 'ds', 'src') })).name,
+    'ds'
+  );
+  assert.equal(
+    /** @type {ProjectRef} */ (pickProject(ws, { project: 'app', cwd: root })).name,
+    'app'
+  );
+  assert.equal(
+    /** @type {ProjectRef} */ (pickProject(ws, { project: 'apps/web', cwd: root })).name,
+    'app'
+  );
   assert.equal(pickProject(ws, { cwd: root }), null);
   assert.throws(() => openProject({ cwd: root, env }), /choose one with --project/);
   assert.throws(() => pickProject(ws, { project: 'nope', cwd: root }), /no project "nope"/);

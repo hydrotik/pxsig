@@ -23,6 +23,8 @@ import { buildDirFor, STAMP } from './lib/dashboard-dir.mjs';
 import { PXSIG_VERSION } from './lib/workspace.mjs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+/** @import { Flags } from './types.js' */
+/** @import { DashboardBuildConfig, DashboardPostbuild, DashboardUiTools, GapsReport, PackageExports } from './types/t4.js' */
 
 const pkg = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const NEEDS = [
@@ -50,22 +52,43 @@ export function dashboardSource() {
   );
 }
 
+/** @type {(dir: string, file: string) => Promise<unknown>} */
 const load = (dir, file) => import(pathToFileURL(join(dir, file)).href);
 
-/** The adapter in force (--ui, else dashboard.ui in ./pxsig.config.json); a name or a path. */
+/**
+ * The adapter in force (--ui, else dashboard.ui in ./pxsig.config.json); a name or a path.
+ * @param {Flags} flags
+ * @param {string} cwd
+ */
 async function adapterOf(flags, cwd) {
-  const { resolveAdapter } = await load(dashboardSource(), 'build-config.mjs');
+  // The dashboard source's own module (packages/dashboard/build-config.mjs).
+  const { resolveAdapter } = /** @type {DashboardBuildConfig} */ (
+    await load(dashboardSource(), 'build-config.mjs')
+  );
   return resolveAdapter({ adapter: typeof flags.ui === 'string' ? flags.ui : undefined, cwd });
 }
 
+/**
+ * @param {Flags} flags
+ * @param {string} [cwd]
+ * @returns {Promise<{ report: GapsReport, text: string }>}
+ */
 export async function gaps(flags, cwd = process.cwd()) {
   const src = dashboardSource();
   const ui = await adapterOf(flags, cwd);
-  const { buildManifest, gapsOf, gapsText } = await load(src, 'ui-tools.mjs');
+  // The dashboard source's own module (packages/dashboard/ui-tools.mjs).
+  const { buildManifest, gapsOf, gapsText } = /** @type {DashboardUiTools} */ (
+    await load(src, 'ui-tools.mjs')
+  );
   const report = gapsOf({ adapterFile: ui.file, manifest: buildManifest() });
   return { report, text: gapsText(report) };
 }
 
+/**
+ * @param {Flags} flags
+ * @param {string} [cwd]
+ * @param {(m: string) => unknown} [log]
+ */
 export async function build(
   flags,
   cwd = process.cwd(),
@@ -73,8 +96,13 @@ export async function build(
 ) {
   const src = dashboardSource();
   const ui = await adapterOf(flags, cwd);
-  const { dashboardConfig, packageDir } = await load(src, 'build-config.mjs');
-  const { contractStatus, readConformance } = await load(src, 'ui-tools.mjs');
+  // The dashboard source's own modules (packages/dashboard).
+  const { dashboardConfig, packageDir } = /** @type {DashboardBuildConfig} */ (
+    await load(src, 'build-config.mjs')
+  );
+  const { contractStatus, readConformance } = /** @type {DashboardUiTools} */ (
+    await load(src, 'ui-tools.mjs')
+  );
   const contract = contractStatus(readConformance(ui.dir)?.contract ?? '1.0.0');
   if (contract.status === 'older-major')
     throw new Error(
@@ -87,23 +115,42 @@ export async function build(
       `pxsig dashboard build runs Vite from this project and needs: ${missing.join(', ')}. Install them as devDependencies (e.g. pnpm add -D ${missing.join(' ')}).`
     );
   // The package's ESM entry (its `import` export), so Vite's CJS shim and its warning stay out.
+  /** @type {(n: string) => Promise<unknown>} */
   const imp = (n) => {
-    const dir = packageDir(n, [cwd]);
+    // Every NEEDS package was found just above.
+    const dir = /** @type {string} */ (packageDir(n, [cwd]));
+    // The package's own package.json: the keys that name its entry.
     const {
       exports: ex,
       module: mod,
       main,
-    } = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+    } = /** @type {{ exports?: PackageExports | Record<string, PackageExports>, module?: string, main?: string }} */ (
+      JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
+    );
+    /** @type {(e: PackageExports) => string | null | undefined} */
     const pick = (e) =>
       typeof e === 'string' ? e : e && (pick(e.import) ?? pick(e.default) ?? pick(e.node));
     const entry =
-      pick(ex?.['.'] ?? (typeof ex === 'string' ? ex : null)) ?? mod ?? main ?? 'index.js';
+      // A string `exports` has no '.' key: undefined there, and the string itself after it.
+      pick(
+        /** @type {Record<string, PackageExports> | null | undefined} */ (ex)?.['.'] ??
+          (typeof ex === 'string' ? ex : null)
+      ) ??
+      mod ??
+      main ??
+      'index.js';
     return import(pathToFileURL(join(dir, entry)).href);
   };
-  const vite = await imp('vite');
-  const react = (await imp('@vitejs/plugin-react')).default;
-  const { vanillaExtractPlugin } = await imp('@vanilla-extract/vite-plugin');
-  const { classicScript } = await load(src, 'postbuild.mjs');
+  // Vite's `build`, @vitejs/plugin-react's default export, the vanilla-extract plugin: passed on
+  // to dashboardConfig and Vite as they are.
+  const vite = /** @type {{ build(config: Record<string, unknown>): Promise<unknown> }} */ (
+    await imp('vite')
+  );
+  const react = /** @type {{ default: unknown }} */ (await imp('@vitejs/plugin-react')).default;
+  const { vanillaExtractPlugin } = /** @type {{ vanillaExtractPlugin: unknown }} */ (
+    await imp('@vanilla-extract/vite-plugin')
+  );
+  const { classicScript } = /** @type {DashboardPostbuild} */ (await load(src, 'postbuild.mjs'));
   // The default folder is where `pxsig serve` looks for this project's build.
   const outDir = typeof flags.out === 'string' ? resolve(cwd, flags.out) : buildDirFor(cwd);
   log(
@@ -128,7 +175,13 @@ export async function build(
   return { outDir, adapter: ui.name, fromConfig: ui.from === 'pxsig.config.json dashboard.ui' };
 }
 
-/** The CLI entry: `pxsig dashboard <build | gaps>`. Returns an exit code. */
+/**
+ * The CLI entry: `pxsig dashboard <build | gaps>`. Returns an exit code.
+ * @param {string | undefined} sub
+ * @param {Flags} flags
+ * @param {{ emit?: (s: string) => unknown }} [opts]
+ * @returns {Promise<number>}
+ */
 export async function dashboardCommand(
   sub,
   flags,

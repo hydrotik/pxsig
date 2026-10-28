@@ -12,14 +12,21 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 
-/** Where `pxsig dashboard build` writes by default, for the project in `dir`. */
+/**
+ * Where `pxsig dashboard build` writes by default, for the project in `dir`.
+ * @param {string} dir
+ */
 export const buildDirFor = (dir) => join(dir, 'node_modules', '.cache', 'pxsig', 'dashboard');
 /** What a build records beside its index.html. */
 export const STAMP = 'pxsig-build.json';
 
 const BUILTIN = /^[a-z0-9][a-z0-9-]*$/;
 
-/** The newest modification time under a file or folder (node_modules and dot folders skipped). */
+/**
+ * The newest modification time under a file or folder (node_modules and dot folders skipped).
+ * @param {string} p
+ * @returns {number}
+ */
 export function newestMtime(p) {
   if (!existsSync(p)) return 0;
   const st = statSync(p);
@@ -32,6 +39,11 @@ export function newestMtime(p) {
   return newest;
 }
 
+/**
+ * The UI adapter a project's config names (`dashboard.ui`), or null.
+ * @param {{ configPath: string }} project
+ * @returns {string | null}
+ */
 function uiOf(project) {
   try {
     const ui = JSON.parse(readFileSync(project.configPath, 'utf8'))?.dashboard?.ui;
@@ -67,9 +79,14 @@ export function chooseDashboard({
       source: 'env',
       note: `dashboard: ${env.PXSIG_DASHBOARD_DIR} (PXSIG_DASHBOARD_DIR)`,
     };
-  const asking = projects.map((p) => ({ p, ui: uiOf(p) })).filter((x) => x.ui);
+  // The filter keeps only the projects whose config names an adapter: `ui` is a string.
+  const asking =
+    /** @type {{ p: { name: string, dir: string, configPath: string }, ui: string }[]} */ (
+      projects.map((p) => ({ p, ui: uiOf(p) })).filter((x) => x.ui)
+    );
   if (!asking.length) return { dir: prebuilt, source: 'prebuilt', note: null };
-  const rel = (p) => relative(root, p) || '.';
+  const rel = (/** @type {string} */ p) => relative(root, p) || '.';
+  /** @param {{ p: { dir: string }, ui: string }} x */
   const adapterPath = ({ p, ui }) => (BUILTIN.test(ui) ? `builtin:${ui}` : resolve(p.dir, ui));
   const distinct = [...new Set(asking.map(adapterPath))];
   if (distinct.length > 1)

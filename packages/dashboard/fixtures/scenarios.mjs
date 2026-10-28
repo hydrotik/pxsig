@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * scenarios.mjs — sample data for the dashboard: what `/__pxsig/data` would return, as named
  * scenarios. The flows tests (test/flows.test.mjs) and `pxsig dashboard check` share it, so every
@@ -5,12 +6,24 @@
  *
  * Neutral names (`demo`, `ui-button--…`) and fixed timestamps: two runs give the same JSON. No
  * project data, no store, no images (the check generates its images at run time).
+ *
+ * @typedef {{ code: string, severity: string, reason: string }} FixtureIssue
+ * @typedef {{ id: string, story: string, mode: string, state: string | null, pass: boolean, metrics: Record<string, number> | null, reasons: string[], checkedAt: string, error?: string, [key: string]: unknown }} FixtureRow
+ *   a check row; `extra` may set any other field
+ */
+
+/**
+ * `T` with the keys `K` also allowed to be null (the `empty` scenario has no check and no ledger).
+ * @template T
+ * @template {keyof T} K
+ * @typedef {Omit<T, K> & { [P in K]: T[P] | null }} Nullable
  */
 
 export const AT = '2026-10-24T10:00:00.000Z';
 
 // --- builders -----------------------------------------------------------------------------------
 
+/** @param {string} id @param {Record<string, unknown>} [extra] @returns {FixtureRow} */
 export const row = (id, extra = {}) => ({
   id,
   story: id.replace(/(__[^@]+)?(@.+)?$/, ''),
@@ -28,6 +41,7 @@ export const changed = {
   metrics: { ssim: 0.8, changedCells: 12, changedCellsPct: 3, grid: 64 },
   reasons: ['ssim 0.8 < min 0.99'],
 };
+/** @param {string} id @param {FixtureIssue[]} [issues] */
 export const entry = (id, issues = []) => ({
   id,
   story: id.replace(/(__[^@]+)?(@.+)?$/, ''),
@@ -44,12 +58,14 @@ export const entry = (id, issues = []) => ({
     latestRender: true,
   },
 });
+/** @param {string} component @param {string} id @param {FixtureIssue[]} [issues] */
 export const inComponent = (component, id, issues) => ({ ...entry(id, issues), component });
 export const stale = {
   code: 'stale',
   severity: 'warn',
   reason: 'src/x.tsx edited after the verdict',
 };
+/** @param {number} n */
 export const history = (n) =>
   Array.from({ length: n }, (_, i) => ({
     at: `2026-10-2${i}T10:00:00.000Z`,
@@ -57,8 +73,12 @@ export const history = (n) =>
     failedIds: [],
   }));
 
-/** The served data for these rows and ledger entries. */
+/**
+ * The served data for these rows and ledger entries.
+ * @param {{ rows: FixtureRow[], entries: ReturnType<typeof entry>[], summary?: Record<string, number> }} o
+ */
 export function data({ rows, entries, summary = {} }) {
+  /** @type {Record<string, number>} */
   const byCode = {};
   for (const x of entries) for (const i of x.issues) byCode[i.code] = (byCode[i.code] ?? 0) + 1;
   const err = entries.filter((x) => x.severity === 'error').length;
@@ -94,8 +114,8 @@ export function data({ rows, entries, summary = {} }) {
       rows,
     },
     detailCalibration: null,
-    bench: null,
-    history: [],
+    bench: /** @type {typeof bench | null} */ (null),
+    history: /** @type {ReturnType<typeof history>} */ ([]),
     review: {},
     a11yReview: {},
     storybook: { baseUrl: 'http://127.0.0.1:1' },
@@ -133,12 +153,16 @@ export function data({ rows, entries, summary = {} }) {
   };
 }
 
-/** Entries spread over components (`Name:index`), the ledger's components counted from them. */
+/**
+ * Entries spread over components (`Name:index`), the ledger's components counted from them.
+ * @param {ReturnType<typeof data>} d
+ */
 export function spread(d) {
   const L = d.integrity;
   const names = [...new Set(L.entries.map((x) => x.component))];
   L.components = names.map((component) => {
     const es = L.entries.filter((x) => x.component === component);
+    /** @type {Record<string, number>} */
     const counts = {};
     for (const x of es) for (const i of x.issues) counts[i.code] = (counts[i.code] ?? 0) + 1;
     const severity = es.some((x) => x.severity === 'error')
@@ -156,7 +180,8 @@ export function spread(d) {
     };
   });
   const by = { error: 0, warn: 0, info: 0 };
-  for (const c of L.components) by[c.severity]++;
+  // Every component's severity is one of these three (set just above, and in data()).
+  for (const c of L.components) by[/** @type {keyof typeof by} */ (c.severity)]++;
   L.summary.components = L.components.length;
   L.summary.componentsBySeverity = by;
   L.summary.status = by.error ? 'attention' : by.warn ? 'warnings' : 'clean';
@@ -318,7 +343,9 @@ export const SCENARIOS = {
     return d;
   },
   empty() {
-    const d = data({ rows: [], entries: [] });
+    const d = /** @type {Nullable<ReturnType<typeof data>, 'check' | 'integrity'>} */ (
+      data({ rows: [], entries: [] })
+    );
     d.check = null;
     d.integrity = null;
     return d;
@@ -335,8 +362,12 @@ export const LOAD_ERROR = 'the report could not be read (sample)';
 
 export const scenarioNames = () => [...Object.keys(SCENARIOS), ...SERVER_STATES];
 
-/** The projects `/__pxsig/projects` lists for a scenario. */
+/**
+ * The projects `/__pxsig/projects` lists for a scenario.
+ * @param {string} name
+ */
 export function projectsOf(name) {
+  /** @param {string} n @param {number} entries */
   const one = (n, entries) => ({
     name: n,
     root: n === 'demo' ? '.' : `packages/${n}`,
@@ -350,10 +381,16 @@ export function projectsOf(name) {
     : [one('demo', entries)];
 }
 
-/** The data for a scenario name (the server states use `clean`). */
+/**
+ * The data for a scenario name (the server states use `clean`).
+ * @param {string} name
+ */
 export function scenarioData(name) {
   if (SERVER_STATES.includes(name)) return SCENARIOS.clean();
-  const f = SCENARIOS[name];
+  // A name not in SCENARIOS is undefined here and reported below.
+  const f = /** @type {Partial<Record<string, (typeof SCENARIOS)[keyof typeof SCENARIOS]>>} */ (
+    SCENARIOS
+  )[name];
   if (!f)
     throw new Error(`unknown dashboard scenario "${name}" (known: ${scenarioNames().join(', ')})`);
   return f();

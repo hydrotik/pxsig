@@ -20,6 +20,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { countWarnings, lowered, regressions, total } from './lib/lint-ratchet.mjs';
+/** @import { Counts, OxlintDiagnostic, RatchetBaseline } from './types.js' */
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const baselinePath = join(repoRoot, 'scripts', 'lint-warnings-baseline.json');
@@ -32,6 +33,7 @@ const oxlint = join(
   'oxlint'
 );
 
+/** @type {string} */
 let raw;
 try {
   raw = execFileSync(process.execPath, [oxlint, '--type-aware', '--format', 'json'], {
@@ -42,13 +44,18 @@ try {
   });
 } catch (err) {
   // oxlint exits non-zero when there are errors; the JSON is still on stdout.
-  raw = err.stdout;
+  // execFileSync's error, with encoding 'utf8': its stdout is a string.
+  raw = /** @type {{ stdout: string }} */ (err).stdout;
 }
-const current = countWarnings(JSON.parse(raw).diagnostics);
+// oxlint's --format json output: { diagnostics: [...] }.
+const current = countWarnings(
+  /** @type {{ diagnostics: OxlintDiagnostic[] }} */ (JSON.parse(raw)).diagnostics
+);
 
 const DESCRIPTION =
   'oxlint warnings per file and rule. A file may not gain a warning; lower with ' +
   '`node scripts/check-lint-warnings.mjs --update` after fixing some. See scripts/check-lint-warnings.mjs.';
+/** @param {Counts} counts */
 const write = (counts) =>
   writeFileSync(
     baselinePath,
@@ -61,7 +68,9 @@ if (init || !existsSync(baselinePath)) {
   process.exit(0);
 }
 
-const baseline = JSON.parse(readFileSync(baselinePath, 'utf8')).files;
+// The baseline this script writes (`write` above).
+const baseline = /** @type {RatchetBaseline} */ (JSON.parse(readFileSync(baselinePath, 'utf8')))
+  .files;
 const worse = regressions(baseline, current);
 if (worse.length) {
   for (const r of worse) {

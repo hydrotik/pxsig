@@ -26,10 +26,13 @@ import { acquireLock, lockPath, readLock } from '../src/lib/lock.mjs';
 import { ensureGitattributes, initProject } from '../src/lib/setup.mjs';
 import { findWorkspace, loadProject, openProject, resolveModes } from '../src/lib/workspace.mjs';
 import { CHECKER, fixture, hasRust, rustBin } from './fixture.mjs';
-/** @import { ApprovalLine, LockState } from '../src/types.js' */
+/** @import { ApprovalLine, LockState, ManifestEntry, Project } from '../src/types.js' */
+/** @import { AddressInfo } from 'node:net' */
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
+/** @type {NodeJS.ProcessEnv} */
 const env = {};
+/** @param {Record<string, unknown>} files */
 const tree = (files) => {
   const root = mkdtempSync(join(tmpdir(), 'pxsig-feat-'));
   mkdirSync(join(root, '.git'));
@@ -42,6 +45,11 @@ const tree = (files) => {
   }
   return root;
 };
+/**
+ * @param {string[]} args
+ * @param {string} cwd
+ * @param {NodeJS.ProcessEnv} [extra]
+ */
 const node = (args, cwd, extra = {}) =>
   spawnSync(process.execPath, args, {
     cwd,
@@ -56,6 +64,11 @@ const node = (args, cwd, extra = {}) =>
       ...extra,
     },
   });
+/**
+ * @param {string[]} args
+ * @param {string} cwd
+ * @param {NodeJS.ProcessEnv} [extra]
+ */
 const cli = (args, cwd, extra) => node([join(src, 'cli.mjs'), ...args], cwd, extra);
 
 // --- config layers -------------------------------------------------------------------------------------------
@@ -212,6 +225,7 @@ test(
   async () => {
     const f = fixture();
     const ids = [f.ids.ok, f.ids.drift];
+    /** @type {{ ids: string[], project: string }[]} */
     const posted = [];
     const srv = createServer((req, res) => {
       let body = '';
@@ -235,8 +249,9 @@ test(
             .end(JSON.stringify({ running: false, queued: 0 }));
       });
     });
-    await new Promise((r) => srv.listen(0, '127.0.0.1', r));
-    const url = `http://127.0.0.1:${srv.address().port}`;
+    await /** @type {Promise<void>} */ (new Promise((r) => srv.listen(0, '127.0.0.1', r)));
+    // Listening on TCP: the address is an AddressInfo.
+    const url = `http://127.0.0.1:${/** @type {AddressInfo} */ (srv.address()).port}`;
     writeFileSync(
       join(f.px, 'reports', '.lock'),
       JSON.stringify({
@@ -270,6 +285,10 @@ test(
 // --- CLI over several projects ----------------------------------------------------------------------------
 
 function twoProjects() {
+  /**
+   * @param {string} id
+   * @param {boolean} pass
+   */
   const row = (id, pass) => ({
     id,
     story: id,
@@ -279,6 +298,10 @@ function twoProjects() {
     reasons: pass ? [] : ['gate'],
     checkedAt: new Date().toISOString(),
   });
+  /**
+   * @param {string} name
+   * @param {string[]} ids
+   */
   const proj = (name, ids) => ({
     [`packages/${name}/pxsig.config.json`]: { storybook: { url: 'http://127.0.0.1:1' } },
     [`packages/${name}/.pxsig/manifest.json`]: {
@@ -307,8 +330,14 @@ test('read commands cover every project when none is chosen; rows carry the proj
   const r = cli(['list', 'all', '--json'], root);
   assert.equal(r.status, 0, r.stderr);
   const d = JSON.parse(r.stdout);
-  assert.deepEqual(d.projects.map((p) => p.project).sort(), ['forms', 'ui']);
-  assert.equal(d.projects.find((p) => p.project === 'ui').total, 2);
+  assert.deepEqual(d.projects.map((/** @type {{ project: string }} */ p) => p.project).sort(), [
+    'forms',
+    'ui',
+  ]);
+  assert.equal(
+    d.projects.find((/** @type {{ project: string }} */ p) => p.project === 'ui').total,
+    2
+  );
   const md = cli(['list', '--markdown', 'all'], root);
   assert.equal(md.status, 0, md.stderr);
   assert.match(md.stdout, /\| Project \| State \| Entry \|/);
@@ -342,7 +371,9 @@ test('write commands refuse without a project; report errors exit 2', () => {
 
 // --- doctor --fail-on info, check --since rows -----------------------------------------------------------------
 
+/** @param {{ quiet?: boolean }} [opts] */
 function cleanProject({ quiet = false } = {}) {
+  /** @param {string} id */
   const fake = (id) => {
     const header = Buffer.from(
       JSON.stringify({
@@ -442,17 +473,19 @@ test(
     const r = node([join(src, 'check.mjs'), '--changed', 'src/elsewhere/Unrelated.ts'], f.repo);
     assert.equal(r.status, 0, r.stdout + r.stderr);
     const rows = new Map(
-      JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8')).rows.map((x) => [
-        x.id,
-        x,
-      ])
+      JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8')).rows.map(
+        (/** @type {{ id: string }} */ x) => [x.id, x]
+      )
     );
     assert.equal(rows.get(f.ids.never).unaffected, true);
     assert.equal(rows.get(f.ids.never).note, 'skipped-unaffected');
     assert.equal(rows.get(f.ids.ok).inherited, true, 'a previous verdict is still carried forward');
     assert.ok(!rows.get(f.ids.unbaselined).unaffected, 'no baseline: not ok-but-unverified');
     const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
-    const never = led.entries.find((x) => x.id === f.ids.never);
+    // The ledger lists every manifest entry: `never` is there.
+    const never = /** @type {NonNullable<ReturnType<typeof led.entries.find>>} */ (
+      led.entries.find((x) => x.id === f.ids.never)
+    );
     assert.ok(!never.issues.some((i) => i.code === 'never-checked'), JSON.stringify(never.issues));
     assert.ok(never.issues.some((i) => i.code === 'skipped-unaffected'));
     assert.ok(!existsSync(join(f.px, 'reports', '.lock')), 'the lock is released');
@@ -463,6 +496,7 @@ test(
 
 test('approve plan --new plans first baselines: blocked unless named or --first-baselines', () => {
   const f = fixture({ withSigs: false });
+  /** @param {string[]} extra */
   const plan = (extra) =>
     JSON.parse(
       cli(
@@ -479,17 +513,22 @@ test('approve plan --new plans first baselines: blocked unless named or --first-
       ).stdout
     );
   const p1 = plan([]);
-  const e1 = p1.entries.find((e) => e.id === f.ids.unbaselined);
+  const e1 = p1.entries.find((/** @type {{ id: string }} */ e) => e.id === f.ids.unbaselined);
   assert.equal(e1.status, 'blocked');
   assert.equal(e1.kind, 'shape');
   assert.match(e1.why, /first baseline.*--first-baselines/);
-  assert.ok(!p1.entries.some((e) => e.id === f.ids.ok), 'only NEW entries');
-  const e2 = plan(['--first-baselines']).entries.find((e) => e.id === f.ids.unbaselined);
+  assert.ok(
+    !p1.entries.some((/** @type {{ id: string }} */ e) => e.id === f.ids.ok),
+    'only NEW entries'
+  );
+  const e2 = plan(['--first-baselines']).entries.find(
+    (/** @type {{ id: string }} */ e) => e.id === f.ids.unbaselined
+  );
   assert.equal(e2.status, 'ok');
   assert.equal(e2.first, true);
   assert.equal(e2.baseSha, null);
   const e3 = plan(['--allow-shape', f.ids.unbaselined]).entries.find(
-    (e) => e.id === f.ids.unbaselined
+    (/** @type {{ id: string }} */ e) => e.id === f.ids.unbaselined
   );
   assert.equal(e3.status, 'ok');
   // apply stays a person's job
@@ -501,6 +540,7 @@ test('approve plan --new plans first baselines: blocked unless named or --first-
 test('approve undo restores from git when the local snapshot is gone, only on a matching sha256', () => {
   const root = tree({ 'pxsig.config.json': { name: 'g' } });
   rmSync(join(root, '.git'), { recursive: true });
+  /** @param {...string} a */
   const git = (...a) =>
     spawnSync(
       'git',
@@ -512,6 +552,7 @@ test('approve undo restores from git when the local snapshot is gone, only on a 
   const ids = ['a-b--one', 'a-b--two', 'a-b--new'];
   const entries = ids.map((id) => ({ id, sig: `.pxsig/baselines/B/${id}.psig` }));
   const manifest = { stories: entries };
+  /** @param {string} id */
   const file = (id) => join(root, `.pxsig/baselines/B/${id}.psig`);
   mkdirSync(dirname(file(ids[0])), { recursive: true });
   writeFileSync(file(ids[0]), 'v1-one');
@@ -529,6 +570,7 @@ test('approve undo restores from git when the local snapshot is gone, only on a 
   // Another machine: no history/ folder. One log line's `before` does not match any commit.
   rmSync(P.store.history, { recursive: true, force: true });
   const log = readLog(P);
+  /** @param {string} s */
   const sha = (s) => createHash('sha256').update(s).digest('hex');
   assert.equal(log[0].before, sha('v1-one'));
   assert.ok(log[0].gitHead, 'the git HEAD is logged');
@@ -539,7 +581,8 @@ test('approve undo restores from git when the local snapshot is gone, only on a 
   assert.deepEqual(res.restored, [ids[0]]);
   assert.equal(readFileSync(file(ids[0]), 'utf8'), 'v1-one');
   assert.deepEqual(
-    res.refused.map((r) => r.id),
+    // undo's `refused`: [{ id, why }] (its doc comment).
+    /** @type {{ id: string }[]} */ (res.refused).map((r) => r.id),
     [ids[1]]
   );
   assert.equal(readFileSync(file(ids[1]), 'utf8'), `v2-${ids[1]}`, 'a refused entry is left alone');
@@ -553,6 +596,7 @@ test('undo with ids restores only those entries of a batch (the dashboard undoes
   const ids = ['a-b--one', 'a-b--two', 'a-b--first'];
   const entries = ids.map((id) => ({ id, sig: `.pxsig/baselines/B/${id}.psig` }));
   const manifest = { stories: entries };
+  /** @param {string} id */
   const file = (id) => join(root, `.pxsig/baselines/B/${id}.psig`);
   mkdirSync(dirname(file(ids[0])), { recursive: true });
   writeFileSync(file(ids[0]), 'v1-one');
@@ -562,7 +606,11 @@ test('undo with ids restores only those entries of a batch (the dashboard undoes
     writeFileSync(file(e.id), `v2-${e.id}`);
     record(P, e, { batch: 'b3', via: 'test', before });
   }
-  const one = undo(P, manifest, 'b3', { git: false, ids: [ids[0]] });
+  // undo's `ids` defaults to null; it takes entry ids.
+  const one =
+    /** @type {(P: Project, manifest: { stories: { id: string, sig: string }[] }, batch: string, opts?: { git?: boolean, ids?: string[] | null }) => ReturnType<typeof undo>} */ (
+      undo
+    )(P, manifest, 'b3', { git: false, ids: [ids[0]] });
   assert.deepEqual(one.restored, [ids[0]]);
   assert.equal(readFileSync(file(ids[0]), 'utf8'), 'v1-one');
   assert.equal(
@@ -570,7 +618,10 @@ test('undo with ids restores only those entries of a batch (the dashboard undoes
     `v2-${ids[1]}`,
     'the rest of the batch is left alone'
   );
-  const first = undo(P, manifest, 'b3', { git: false, ids: [ids[2]] });
+  const first =
+    /** @type {(P: Project, manifest: { stories: { id: string, sig: string }[] }, batch: string, opts?: { git?: boolean, ids?: string[] | null }) => ReturnType<typeof undo>} */ (
+      undo
+    )(P, manifest, 'b3', { git: false, ids: [ids[2]] });
   assert.deepEqual(first.removed, [ids[2]], 'a first baseline goes to trash/');
   assert.ok(!existsSync(file(ids[2])));
   assert.ok(existsSync(file(ids[1])));
@@ -582,11 +633,16 @@ test(
   async () => {
     const f = fixture();
     const id = f.ids.unrecoverable;
-    const file = join(f.repo, f.manifest.stories.find((e) => e.id === id).sig);
+    // The fixture's manifest holds that id.
+    const file = join(
+      f.repo,
+      /** @type {ManifestEntry} */ (f.manifest.stories.find((e) => e.id === id)).sig
+    );
     const original = readFileSync(file);
     const port = await new Promise((ok) => {
       const s = createServer().listen(0, '127.0.0.1', () => {
-        const p = s.address().port;
+        // Listening on TCP: the address is an AddressInfo.
+        const p = /** @type {AddressInfo} */ (s.address()).port;
         s.close(() => ok(p));
       });
     });
@@ -596,21 +652,25 @@ test(
       { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
     );
     try {
-      await new Promise((ok, fail) => {
-        let log = '';
-        const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-        proc.stdout.on(
-          'data',
-          (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok()))
-        );
-        proc.stderr.on('data', (d) => (log += d));
-      });
+      await /** @type {Promise<void>} */ (
+        new Promise((ok, fail) => {
+          let log = '';
+          const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+          proc.stdout.on(
+            'data',
+            (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok()))
+          );
+          proc.stderr.on('data', (d) => (log += d));
+        })
+      );
+      /** @param {string} action */
       const post = async (action) => {
         const r = await fetch(`http://127.0.0.1:${port}/__pxsig/${action}`, {
           method: 'POST',
           headers: {
             'content-type': 'application/json',
-            'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`),
+            // The server wrote its token when it started.
+            'x-pxsig-token': /** @type {string} */ (readToken(f.repo, `http://127.0.0.1:${port}`)),
           },
           body: JSON.stringify({ id }),
         });
@@ -645,11 +705,15 @@ test(
   async () => {
     const f = fixture();
     const id = f.ids.unrecoverable;
-    const file = join(f.repo, f.manifest.stories.find((e) => e.id === id).sig);
+    // The fixture's manifest holds that id.
+    const file = join(
+      f.repo,
+      /** @type {ManifestEntry} */ (f.manifest.stories.find((e) => e.id === id)).sig
+    );
     const original = readFileSync(file);
     const checkFile = join(f.px, 'reports', 'check.json');
     const report = JSON.parse(readFileSync(checkFile, 'utf8'));
-    report.rows = report.rows.map((r) =>
+    report.rows = report.rows.map((/** @type {{ id: string }} */ r) =>
       r.id === id
         ? {
             ...r,
@@ -662,7 +726,8 @@ test(
     writeFileSync(checkFile, JSON.stringify(report));
     const port = await new Promise((ok) => {
       const s = createServer().listen(0, '127.0.0.1', () => {
-        const p = s.address().port;
+        // Listening on TCP: the address is an AddressInfo.
+        const p = /** @type {AddressInfo} */ (s.address()).port;
         s.close(() => ok(p));
       });
     });
@@ -672,24 +737,28 @@ test(
       { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
     );
     try {
-      await new Promise((ok, fail) => {
-        let log = '';
-        const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-        proc.stdout.on(
-          'data',
-          (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok()))
-        );
-        proc.stderr.on('data', (d) => (log += d));
-      });
+      await /** @type {Promise<void>} */ (
+        new Promise((ok, fail) => {
+          let log = '';
+          const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+          proc.stdout.on(
+            'data',
+            (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok()))
+          );
+          proc.stderr.on('data', (d) => (log += d));
+        })
+      );
       const r = await fetch(`http://127.0.0.1:${port}/__pxsig/approve`, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`),
+          // The server wrote its token when it started.
+          'x-pxsig-token': /** @type {string} */ (readToken(f.repo, `http://127.0.0.1:${port}`)),
         },
         body: JSON.stringify({ id }),
       });
-      const body = await r.json();
+      // The server's error answer: { error }.
+      const body = /** @type {{ error: string }} */ (await r.json());
       assert.equal(r.status, 409, JSON.stringify(body));
       assert.match(body.error, /did not render/);
       assert.deepEqual(readFileSync(file), original, 'the baseline is untouched');
@@ -707,7 +776,7 @@ test(
     const id = f.ids.a11y;
     const checkPath = join(f.px, 'reports', 'check.json');
     const check = JSON.parse(readFileSync(checkPath, 'utf8'));
-    const row = check.rows.find((r) => r.id === id);
+    const row = check.rows.find((/** @type {{ id: string }} */ r) => r.id === id);
     row.a11y = {
       violations: [
         { id: 'color-contrast', impact: 'serious', help: 'x', nodes: 1, targets: [] },
@@ -721,7 +790,8 @@ test(
     writeFileSync(a11yPath, JSON.stringify({ [id]: ['aria-hidden-focus'] }));
     const port = await new Promise((ok) => {
       const s = createServer().listen(0, '127.0.0.1', () => {
-        const p = s.address().port;
+        // Listening on TCP: the address is an AddressInfo.
+        const p = /** @type {AddressInfo} */ (s.address()).port;
         s.close(() => ok(p));
       });
     });
@@ -731,21 +801,25 @@ test(
       { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
     );
     try {
-      await new Promise((ok, fail) => {
-        let log = '';
-        const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-        proc.stdout.on(
-          'data',
-          (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok()))
-        );
-        proc.stderr.on('data', (d) => (log += d));
-      });
+      await /** @type {Promise<void>} */ (
+        new Promise((ok, fail) => {
+          let log = '';
+          const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+          proc.stdout.on(
+            'data',
+            (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok()))
+          );
+          proc.stderr.on('data', (d) => (log += d));
+        })
+      );
+      /** @param {string} action */
       const post = async (action) => {
         const r = await fetch(`http://127.0.0.1:${port}/__pxsig/${action}`, {
           method: 'POST',
           headers: {
             'content-type': 'application/json',
-            'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`),
+            // The server wrote its token when it started.
+            'x-pxsig-token': /** @type {string} */ (readToken(f.repo, `http://127.0.0.1:${port}`)),
           },
           body: JSON.stringify({ id }),
         });
@@ -786,19 +860,23 @@ test(
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`),
+          // The server wrote its token when it started.
+          'x-pxsig-token': /** @type {string} */ (readToken(f.repo, `http://127.0.0.1:${port}`)),
         },
         body: JSON.stringify({ id, rule: 'aria-hidden-focus' }),
       });
       assert.equal(r.status, 200);
       assert.deepEqual(JSON.parse(readFileSync(a11yPath, 'utf8'))[id], []);
-      const row2 = JSON.parse(readFileSync(checkPath, 'utf8')).rows.find((x) => x.id === id);
+      const row2 = JSON.parse(readFileSync(checkPath, 'utf8')).rows.find(
+        (/** @type {{ id: string }} */ x) => x.id === id
+      );
       assert.equal(row2.a11y.new, 2);
       const again = await fetch(`http://127.0.0.1:${port}/__pxsig/a11y-unaccept`, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`),
+          // The server wrote its token when it started.
+          'x-pxsig-token': /** @type {string} */ (readToken(f.repo, `http://127.0.0.1:${port}`)),
         },
         body: JSON.stringify({ id, rule: 'aria-hidden-focus' }),
       });
@@ -836,7 +914,13 @@ test('init with the colocated layout adds *.psig binary diff=psig to the root .g
   assert.match(text, /^\*\.psig binary diff=psig$/m);
   assert.equal(ensureGitattributes(root), null, 'idempotent');
   initProject({ dir: join(root, 'packages/forms'), workspaceRoot: root, layout: 'colocated' });
-  assert.equal(readFileSync(join(root, '.gitattributes'), 'utf8').match(/\*\.psig/g).length, 1);
+  // The first init wrote the line (asserted above): a match.
+  assert.equal(
+    /** @type {RegExpMatchArray} */ (
+      readFileSync(join(root, '.gitattributes'), 'utf8').match(/\*\.psig/g)
+    ).length,
+    1
+  );
   assert.equal(
     JSON.parse(readFileSync(join(root, 'packages/forms/pxsig.config.json'), 'utf8')).store.layout,
     'colocated'
@@ -878,6 +962,7 @@ test('storybook.staticDir: when storybook.url does not answer, the build is serv
     assert.equal(P.storybook.url, sb.url);
     assert.equal(sb.index.healthy, true);
     assert.deepEqual(
+      // A healthy index (asserted above) lists its stories.
       sb.index.stories.map((s) => s.id),
       ['a--b']
     );
@@ -895,8 +980,11 @@ test('storybook.staticDir: when storybook.url does not answer, the build is serv
 });
 
 test('one version: the npm package, the MCP server and the Rust workspace agree', () => {
-  const cargo = readFileSync(new URL('../../../Cargo.toml', import.meta.url), 'utf8').match(
-    /\[workspace\.package\][^[]*?version\s*=\s*"([^"]+)"/
+  // Cargo.toml has a [workspace.package] version: a match.
+  const cargo = /** @type {RegExpMatchArray} */ (
+    readFileSync(new URL('../../../Cargo.toml', import.meta.url), 'utf8').match(
+      /\[workspace\.package\][^[]*?version\s*=\s*"([^"]+)"/
+    )
   )[1];
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
   assert.equal(pkg, cargo);

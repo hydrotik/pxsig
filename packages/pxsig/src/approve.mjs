@@ -59,7 +59,8 @@ import {
   reportBlock,
   resolveOrExit,
 } from './lib/enforcement.mjs';
-/** @import { Flags, Project } from './types.js' */
+/** @import { Flags, LockHandle, Manifest, ManifestEntry, Project } from './types.js' */
+/** @import { UndoResult, VerifyResult } from './types/t2.js' */
 
 const PLAN_MAX_AGE_H = 24;
 
@@ -72,7 +73,8 @@ const PLAN_MAX_AGE_H = 24;
 
 /**
  * `pxsig approve <sub>`: plan, apply, list, undo, verify. The CLI passes its context.
- * @param {{ sub: string | undefined, args: string[], flags: Flags, format: string, tools: typeof import('./mcp.mjs').tools, project: Project, serverUrl: string, CMD: string, fail: (message: string, code?: number) => void }} opts
+ * `fail` prints the message and exits: it never returns.
+ * @param {{ sub: string | undefined, args: string[], flags: Flags, format: string, tools: typeof import('./mcp.mjs').tools, project: Project, serverUrl: string, CMD: string, fail: (message: string, code?: number) => never }} opts
  */
 export async function approveCommand({
   sub,
@@ -93,12 +95,15 @@ export async function approveCommand({
   const run = (name, a = {}) =>
     // `pxsig_${name}` is one of the tools; ToolOutputs says what is read of its result.
     /** @type {{ run: (args: object) => Promise<ToolOutputs[N]> }} */ (
-      tools.find((t) => t.name === `pxsig_${name}`)
+      /** @type {unknown} */ (tools.find((t) => t.name === `pxsig_${name}`))
     ).run({ project: P.name, ...a });
-  const manifest = JSON.parse(readFileSync(P.manifestPath(), 'utf8'));
+  // The manifest is pxsig's own (`pxsig index` writes it).
+  const manifest = /** @type {Manifest} */ (JSON.parse(readFileSync(P.manifestPath(), 'utf8')));
   const byId = new Map(manifest.stories.map((e) => [e.id, e]));
   const planPath = join(P.store.reports, 'approval-plan.json');
+  /** @param {string} p */
   const rel = (p) => relPath(P.workspaceRoot, p);
+  /** @param {string} what */
   const needHuman = (what) => {
     if (humanAtTerminal()) return;
     fail(
@@ -118,8 +123,11 @@ export async function approveCommand({
     for (const e of manifest.stories)
       if (!state.has(e.id) && !existsSync(paths(P, e).sig) && existsSync(paths(P, e).latestPng))
         state.set(e.id, 'new');
+    /** @param {string} id */
     const isNew = (id) =>
-      state.get(id) === 'new' || (byId.has(id) && !existsSync(paths(P, byId.get(id)).sig));
+      state.get(id) === 'new' ||
+      // `byId.has(id)` just before.
+      (byId.has(id) && !existsSync(paths(P, /** @type {ManifestEntry} */ (byId.get(id))).sig));
     let ids = args;
     if (flags.component)
       ids = all
@@ -211,6 +219,7 @@ export async function approveCommand({
       entries,
     };
     writeJson(planPath, plan, { pretty: true });
+    /** @param {string} k */
     const n = (k) => entries.filter((e) => e.kind === k).length;
     emit(
       format,
@@ -252,18 +261,18 @@ export async function approveCommand({
           next: [
             ...(entries.some((e) => e.kind === 'shape' && e.status === 'blocked')
               ? [
-                  [
+                  /** @type {[string, string]} */ ([
                     `${CMD} entry <id>`,
                     'look at each blocked shape change; re-plan with --allow-shape <ids> for the intended ones',
-                  ],
+                  ]),
                 ]
               : []),
             ...(ok.length
               ? [
-                  [
+                  /** @type {[string, string]} */ ([
                     `${CMD} approve apply`,
                     `a person, in a terminal: approve the ${ok.length} ready entries`,
-                  ],
+                  ]),
                 ]
               : []),
           ],
@@ -278,7 +287,10 @@ export async function approveCommand({
     needHuman('approve apply');
     const file = args[0] ?? planPath;
     if (!existsSync(file)) fail(`no plan at ${rel(file)}: run \`${CMD} approve plan\` first`);
-    const plan = JSON.parse(readFileSync(file, 'utf8'));
+    // A plan `approve plan` wrote (the hashes below refuse one that does not match the store).
+    const plan = /** @type {{ createdAt: string, reason: string, entries: PlanEntry[] }} */ (
+      JSON.parse(readFileSync(file, 'utf8'))
+    );
     const ageH = (Date.now() - Date.parse(plan.createdAt)) / 3.6e6;
     if (ageH > PLAN_MAX_AGE_H)
       fail(`the plan is ${ageH.toFixed(0)} h old (max ${PLAN_MAX_AGE_H}): plan again`);
@@ -286,7 +298,8 @@ export async function approveCommand({
     if (!ok.length) fail('the plan has no ready entries');
     // Pin: what is approved must be byte-for-byte what was planned.
     const drifted = ok.filter((e) => {
-      const p = paths(P, byId.get(e.id));
+      // An id the manifest no longer has fails here (a TypeError): see the report.
+      const p = paths(P, /** @type {ManifestEntry} */ (byId.get(e.id)));
       return sha256(p.latestPng) !== e.latestSha || sha256(p.sig) !== e.baseSha;
     });
     if (drifted.length)
@@ -296,12 +309,20 @@ export async function approveCommand({
           .map((e) => e.id)
           .join(', ')}…): plan again`
       );
-    const status = await fetch(`${serverUrl}/__pxsig/status`, { signal: AbortSignal.timeout(3000) })
-      .then((r) => r.json())
-      .catch(() => null);
+    // The server's status (docs/server.md): only these two keys are read.
+    const status = /** @type {{ running?: unknown, queued?: unknown } | null} */ (
+      await fetch(`${serverUrl}/__pxsig/status`, { signal: AbortSignal.timeout(3000) })
+        .then((r) => r.json())
+        .catch(() => null)
+    );
     if (!status)
       fail(`the pxsig server is not running (${serverUrl}): start it with \`${CMD} serve\``);
-    if (status.running || status.queued) fail('a check is running: wait for it, then plan again');
+    // `fail` exits when there is no status (TypeScript cannot see that through a parameter).
+    if (
+      /** @type {NonNullable<typeof status>} */ (status).running ||
+      /** @type {NonNullable<typeof status>} */ (status).queued
+    )
+      fail('a check is running: wait for it, then plan again');
     // The server refuses decisions without its token (lib/guard.mjs); this path read it only after
     // the person-at-a-terminal check above.
     const token = readToken(P.workspaceRoot, serverUrl);
@@ -328,7 +349,11 @@ export async function approveCommand({
     for (const e of ok) {
       const r = await fetch(`${serverUrl}/__pxsig/approve`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', [TOKEN_HEADER]: token },
+        // `fail` above exits when there is no token.
+        headers: {
+          'content-type': 'application/json',
+          [TOKEN_HEADER]: /** @type {string} */ (token),
+        },
         body: JSON.stringify({
           project: P.name,
           id: e.id,
@@ -340,7 +365,8 @@ export async function approveCommand({
       });
       if (!r.ok) {
         spin.done(
-          `stopped at ${e.id}: ${(await r.json().catch(() => ({}))).error ?? r.status}`,
+          // The server's refusal (docs/server.md): `{ error }`.
+          `stopped at ${e.id}: ${/** @type {{ error?: string }} */ (await r.json().catch(() => ({}))).error ?? r.status}`,
           false
         );
         fail(`approved ${done} of ${ok.length}; undo with \`${CMD} approve undo ${batch}\``, 1);
@@ -378,6 +404,7 @@ export async function approveCommand({
     const trace = flags.trace ? traceLog(P) : null;
     if (flags.trace && !trace)
       fail('approve log --trace needs the approval log in a git repository', 2);
+    /** @type {Map<string, { commits: Set<string>, prs: Set<string> }>} */
     const where = new Map();
     for (const t of trace ?? []) {
       const w = where.get(t.batch) ?? { commits: new Set(), prs: new Set() };
@@ -385,6 +412,7 @@ export async function approveCommand({
       if (t.pr) w.prs.add(`#${t.pr}`);
       where.set(t.batch, w);
     }
+    /** @type {Map<string, { batch: string, at: string, by?: string | null, via: string, reason?: string | null, n: number, commit?: string, pr?: string }>} */
     const batches = new Map();
     for (const l of log) {
       const b = batches.get(l.batch) ?? {
@@ -452,44 +480,58 @@ export async function approveCommand({
       lock = await takeLock(P, { holder: 'approve undo' });
       lock.check();
     } catch (e) {
-      fail(`${e.message}. Undo writes baselines, so it needs the store to itself.`, e.exit ?? 2);
+      // takeLock throws Errors: a LockError (with `exit` when it needs a person), or the fs error.
+      fail(
+        `${/** @type {Error} */ (e).message}. Undo writes baselines, so it needs the store to itself.`,
+        /** @type {{ exit?: number }} */ (e).exit ?? 2
+      );
     }
     const before = new Map(manifest.stories.map((e) => [e.id, sha256(paths(P, e).sig)]));
     let res;
     try {
       res = undoBatch(P, manifest, batch);
     } catch (e) {
-      lock.release();
-      fail(e.message, 2);
+      /** @type {LockHandle} */ (lock).release();
+      // undo throws Errors (no snapshot, no log line, an fs error).
+      fail(/** @type {Error} */ (e).message, 2);
     }
-    for (const id of [...res.restored, ...res.removed])
-      record(P, byId.get(id), {
+    // `fail` exits (it never returns), which TypeScript cannot see through a destructured
+    // parameter: past the two `try`s, `lock` and `res` are set, and the casts say so.
+    for (const id of [
+      .../** @type {UndoResult} */ (res).restored,
+      .../** @type {UndoResult} */ (res).removed,
+    ])
+      // Ids undo restored or removed come from the manifest (`undo` refuses any other).
+      record(P, /** @type {ManifestEntry} */ (byId.get(id)), {
         batch: `${batch}-undo`,
         via: 'undo',
-        reason: `undo ${batch}${res.source === 'git' ? ' (from git)' : ''}`,
+        reason: `undo ${batch}${/** @type {UndoResult} */ (res).source === 'git' ? ' (from git)' : ''}`,
         before: before.get(id) ?? null,
       });
-    lock.release();
-    if (res.restored.length) await run('check', { ids: res.restored }).catch(() => null);
+    /** @type {LockHandle} */ (lock).release();
+    if (/** @type {UndoResult} */ (res).restored.length)
+      await run('check', { ids: /** @type {UndoResult} */ (res).restored }).catch(() => null);
     emit(
       format,
       [
         {
           h: 'Restored',
-          sub: `${res.restored.length} baselines from ${batch} (${res.source === 'git' ? 'git history' : 'local snapshot'})${res.removed.length ? ` · ${res.removed.length} first baselines moved to trash/` : ''}`,
+          sub: `${/** @type {UndoResult} */ (res).restored.length} baselines from ${batch} (${/** @type {UndoResult} */ (res).source === 'git' ? 'git history' : 'local snapshot'})${/** @type {UndoResult} */ (res).removed.length ? ` · ${/** @type {UndoResult} */ (res).removed.length} first baselines moved to trash/` : ''}`,
         },
-        res.refused.length
+        /** @type {UndoResult} */ (res).refused.length
           ? { h: 'Refused' }
           : {
-              note: res.restored.length
+              note: /** @type {UndoResult} */ (res).restored.length
                 ? 'Re-checked against the restored baselines.'
                 : 'Nothing to re-check.',
             },
-        res.refused.length ? { list: res.refused.map((r) => `${r.id} — ${r.why}`) } : {},
+        /** @type {UndoResult} */ (res).refused.length
+          ? { list: /** @type {UndoResult} */ (res).refused.map((r) => `${r.id} — ${r.why}`) }
+          : {},
       ],
       res
     );
-    if (res.refused.length) process.exit(1);
+    if (/** @type {UndoResult} */ (res).refused.length) process.exit(1);
     return;
   }
 
@@ -504,15 +546,26 @@ export async function approveCommand({
       : typeof flags.suite === 'string'
         ? [flags.suite]
         : [''];
+    /** @param {string} s */
     const suiteArg = (s) => (s ? ` --suite ${s}` : '');
+    /**
+     * @param {string} s
+     * @returns {Manifest | null}
+     */
     const load = (s) => {
       const path = P.manifestPath(s || null);
-      return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null;
+      // A manifest is pxsig's own (`pxsig index` writes it).
+      return existsSync(path)
+        ? /** @type {Manifest} */ (JSON.parse(readFileSync(path, 'utf8')))
+        : null;
     };
 
     if (flags.adopt) {
       needHuman('approve verify --adopt');
-      const sets = suites.map((s) => [s, load(s)]).filter(([, m]) => m);
+      // The filter drops the suites with no manifest.
+      const sets = /** @type {[string, Manifest][]} */ (
+        suites.map((s) => [s, load(s)]).filter(([, m]) => m)
+      );
       const n = sets.reduce((k, [, m]) => k + m.stories.length, 0);
       const drifted = sets.reduce((k, [, m]) => k + verify(P, m).mismatched.length, 0);
       const typed = await ask(
@@ -522,7 +575,8 @@ export async function approveCommand({
       try {
         (await takeLock(P, { holder: 'approve verify --adopt' })).check();
       } catch (e) {
-        fail(e.message, e.exit ?? 2);
+        // takeLock throws Errors: a LockError (with `exit` when it needs a person), or the fs error.
+        fail(/** @type {Error} */ (e).message, /** @type {{ exit?: number }} */ (e).exit ?? 2);
       }
       const batch = newBatch('adopt');
       for (const [, m] of sets)
@@ -544,7 +598,9 @@ export async function approveCommand({
     // Strict by default (decision 6.1h): a baseline with no log line fails. --no-strict reports it only.
     const strict = !flags['no-strict'];
     const enf = resolveOrExit(P, { flags }, (m, code) => fail(m, code));
+    /** @type {(VerifyResult & { suite: string })[]} */
     const results = [];
+    /** @type {string[]} */
     const notCommitted = [];
     for (const s of suites) {
       const m = load(s);
@@ -558,6 +614,7 @@ export async function approveCommand({
       );
     // --since: the log at the merge base must be a byte prefix of today's (append-only). With no
     // merge base this gate cannot verify, and that is a failure here.
+    /** @type {{ since: string, base: string | null, why?: string, rewritten?: boolean, appended?: number } | null} */
     let range = null;
     if (typeof flags.since === 'string') {
       const mb = mergeBase(P.store.root, flags.since);
@@ -573,7 +630,15 @@ export async function approveCommand({
         };
       }
     }
-    const sum = (k) => results.reduce((n, r) => n + (Array.isArray(r[k]) ? r[k].length : r[k]), 0);
+    /** @param {'mismatched' | 'untracked'} k */
+    const sum = (k) =>
+      results.reduce(
+        (n, r) =>
+          n +
+          // `mismatched` is a list, `untracked` a count.
+          (Array.isArray(r[k]) ? /** @type {unknown[]} */ (r[k]).length : r[k]),
+        0
+      );
     const bad = sum('mismatched');
     const untracked = sum('untracked');
     const interrupted = results.flatMap((r) => r.interrupted);
@@ -582,6 +647,7 @@ export async function approveCommand({
     const logged = Math.max(...results.map((r) => r.logged));
     const failUntracked = strict && untracked > 0;
     const rangeBad = range && (!range.base || range.rewritten);
+    /** @param {{ suite: string }} r */
     const adoptCmd = (r) => `${CMD} approve verify --adopt${suiteArg(r.suite)}`;
     const missing = results.filter((r) => r.untracked);
     // Warn mode: only the untracked baselines can be warned; the rest fails in every mode (10.4).
@@ -611,7 +677,10 @@ export async function approveCommand({
               gate: null,
               exit: 1,
               count: 1,
-              what: range.base ? 'rewritten log' : 'range without a merge base',
+              // `rangeBad` is only true with a range.
+              what: /** @type {NonNullable<typeof range>} */ (range).base
+                ? 'rewritten log'
+                : 'range without a merge base',
             },
           ]
         : []),

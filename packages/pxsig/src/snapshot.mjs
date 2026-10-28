@@ -16,23 +16,28 @@ import { join, relative } from 'node:path';
 import { readLog, traceLog } from './lib/approvals.mjs';
 import { readHeader } from './lib/psig.mjs';
 import { PXSIG_VERSION } from './lib/workspace.mjs';
-/** @import { Project } from './types.js' */
+/** @import { ApprovalLine, Manifest, ManifestEntry, Project } from './types.js' */
+/** @import { PartialEnv, ProjectSnapshot, Snapshot, SnapshotHistoryRow, SnapshotStory, TraceRow } from './types/t4.js' */
 
 export const SNAPSHOT_FORMAT = 'pxsig-snapshot';
 export const SNAPSHOT_VERSION = 1;
 
-const git = (dir, ...args) => {
+const git = (/** @type {string} */ dir, /** @type {string[]} */ ...args) => {
   const r = spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8' });
   return r.status === 0 ? r.stdout.trim() : null;
 };
 
 /** What a log line records, without who or how: an approval, an undo, a starting point. */
+/** @type {Record<string, string>} */
 const EVENT = { undo: 'undone', adopt: 'adopted', migrate: 'migrated' };
-const eventOf = (l) => EVENT[l.via] ?? (l.before == null ? 'first baseline' : 'approved');
+const eventOf = (/** @type {ApprovalLine} */ l) =>
+  EVENT[l.via] ?? (l.before == null ? 'first baseline' : 'approved');
 /** The reason a person gave; a migration's is the old file path pxsig wrote, not a reason. */
-const reasonOf = (l) => (l.via === 'migrate' ? null : (l.reason ?? null));
+const reasonOf = (/** @type {ApprovalLine} */ l) =>
+  l.via === 'migrate' ? null : (l.reason ?? null);
 
-const readJson = (p) => {
+/** @returns {unknown} */
+const readJson = (/** @type {string} */ p) => {
   try {
     return JSON.parse(readFileSync(p, 'utf8'));
   } catch {
@@ -40,26 +45,40 @@ const readJson = (p) => {
   }
 };
 
-/** Every committed manifest of a project: `manifest.json` and each suite's `manifest.<suite>.json`. */
+/**
+ * Every committed manifest of a project: `manifest.json` and each suite's `manifest.<suite>.json`.
+ * @param {Project} P
+ * @returns {ManifestEntry[]}
+ */
 function manifestEntries(P) {
+  /** @type {string[]} */
   let files = [];
   try {
     files = readdirSync(P.store.root).filter((f) => /^manifest(\.[^.]+)?\.json$/.test(f));
   } catch {
     return [];
   }
+  /** @type {Map<string, ManifestEntry>} */
   const seen = new Map();
   for (const f of files.sort())
-    for (const e of readJson(join(P.store.root, f))?.stories ?? [])
+    // A manifest pxsig wrote (docs/spec.md section 6).
+    for (const e of /** @type {Manifest | null} */ (readJson(join(P.store.root, f)))?.stories ?? [])
       if (e?.id && !seen.has(e.id)) seen.set(e.id, e);
   return [...seen.values()];
 }
 
-/** The environment a baseline was rendered in, reduced to what a reader recognises. */
+/**
+ * The environment a baseline was rendered in, reduced to what a reader recognises.
+ * @param {PartialEnv | null | undefined} env an env record (lib/env.mjs), or as much of one as an
+ *   older header has
+ */
 export function envSummary(env) {
   if (!env) return null;
   const major = String(env.browser?.version ?? '').split('.')[0];
-  const image = env.container?.image ? String(env.container.image).split('/').at(-1) : null;
+  // `split` returns at least one element, so `at(-1)` is a string.
+  const image = env.container?.image
+    ? /** @type {string} */ (String(env.container.image).split('/').at(-1))
+    : null;
   return {
     browser: [env.browser?.name, major].filter(Boolean).join(' ') || null,
     os: [env.os?.platform, env.os?.arch].filter(Boolean).join(' ') || null,
@@ -67,19 +86,34 @@ export function envSummary(env) {
   };
 }
 
-/** Accepted axe rules per entry id (`a11y.json` maps an id to rule ids, or to `{ id }`). */
+/**
+ * Accepted axe rules per entry id (`a11y.json` maps an id to rule ids, or to `{ id }`).
+ * @param {Project} P
+ */
 function a11yRules(P) {
-  const a = readJson(P.store.a11y) ?? {};
+  // a11y.json, as pxsig writes it: an object.
+  const a = /** @type {Record<string, unknown>} */ (readJson(P.store.a11y) ?? {});
+  /** @type {Record<string, string[]>} */
   const out = {};
   for (const [id, list] of Object.entries(a))
     if (Array.isArray(list))
       out[id] = [
-        ...new Set(list.map((x) => (typeof x === 'string' ? x : x?.id)).filter(Boolean)),
+        ...new Set(
+          // Rule ids or `{ id }`; filter(Boolean) drops the ones without an id.
+          /** @type {string[]} */ (
+            /** @type {(string | { id?: string } | null)[]} */ (list)
+              .map((x) => (typeof x === 'string' ? x : x?.id))
+              .filter(Boolean)
+          )
+        ),
       ].sort();
   return out;
 }
 
-/** Whether the store's committed files have changes git does not have yet. */
+/**
+ * Whether the store's committed files have changes git does not have yet.
+ * @param {Project} P
+ */
 function storeUncommitted(P) {
   const paths = [relative(P.workspaceRoot, P.store.root) || '.'];
   if (P.store.layout === 'colocated')
@@ -92,21 +126,27 @@ function storeUncommitted(P) {
  * One project's stories: each entry's baseline, last log line, environment and a11y, and the history.
  * @param {Project} P
  * @param {{ shallow?: boolean }} [opts]
+ * @returns {ProjectSnapshot}
  */
 export function projectSnapshot(P, { shallow = false } = {}) {
   const log = readLog(P);
   // Where each line came in (commit, PR), matched by batch, id and time. In a shallow clone, blame credits every
   // line to the one commit there is: no PR is better than a wrong one.
-  const key = (l) => `${l.batch}\n${l.id}\n${l.at}`;
+  const key = (/** @type {{ batch: string, id: string, at: string }} */ l) =>
+    `${l.batch}\n${l.id}\n${l.at}`;
+  /** @type {Map<string, TraceRow>} */
   const trace = new Map((shallow ? null : traceLog(P))?.map((t) => [key(t), t]) ?? []);
-  const where = (l) => {
+  const where = (/** @type {ApprovalLine} */ l) => {
     const t = trace.get(key(l));
     return t ? { pr: t.pr ?? null, commit: t.commit } : null;
   };
+  /** @type {Map<string, { l: ApprovalLine }>} */
   const lastById = new Map();
   for (const l of log) lastById.set(l.id, { l });
   const a11y = a11yRules(P);
+  /** @type {Record<string, SnapshotStory>} */
   const stories = {};
+  /** @type {Map<string, string>} */
   const storyOf = new Map();
   for (const e of manifestEntries(P)) {
     const story = e.story ?? e.id.split(/__|@/)[0];
@@ -134,6 +174,7 @@ export function projectSnapshot(P, { shallow = false } = {}) {
     });
   }
   // History: one row per batch per story, newest first.
+  /** @type {Map<string, { story: string, row: SnapshotHistoryRow }>} */
   const rows = new Map();
   for (const l of log) {
     const story = storyOf.get(l.id);
@@ -141,7 +182,9 @@ export function projectSnapshot(P, { shallow = false } = {}) {
     const key = `${story}\n${l.batch}\n${eventOf(l)}`;
     const row = rows.get(key);
     if (row) {
-      row.entries++;
+      // This counts on the wrapper, not on `row.row`: the history row keeps `entries: 1` (reported,
+      // left as it ships; the wrapper's `entries` becomes NaN and is never read).
+      /** @type {{ entries: number }} */ (/** @type {unknown} */ (row)).entries++;
       continue;
     }
     rows.set(key, {
@@ -167,11 +210,13 @@ export function projectSnapshot(P, { shallow = false } = {}) {
  * The snapshot of several projects (already opened), with the commit it was made from.
  * @param {Project[]} projects
  * @param {{ now?: Date }} [opts]
+ * @returns {Snapshot}
  */
 export function buildSnapshot(projects, { now = new Date() } = {}) {
   const root = projects[0]?.workspaceRoot ?? process.cwd();
   const inGit = git(root, 'rev-parse', '--is-inside-work-tree') === 'true';
   const shallow = inGit && git(root, 'rev-parse', '--is-shallow-repository') === 'true';
+  /** @type {Snapshot} */
   const out = {
     format: SNAPSHOT_FORMAT,
     version: SNAPSHOT_VERSION,
@@ -190,7 +235,10 @@ export function buildSnapshot(projects, { now = new Date() } = {}) {
   return out;
 }
 
-/** Counts for the command's summary line. */
+/**
+ * Counts for the command's summary line.
+ * @param {Snapshot} s
+ */
 export function snapshotCounts(s) {
   let stories = 0;
   let entries = 0;

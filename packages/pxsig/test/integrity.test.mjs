@@ -40,11 +40,33 @@ import {
 } from '../src/lib/repair.mjs';
 import { writeFileSync } from 'node:fs';
 import { fixture, hashSignatures, hashTree, hasRust, rustBin } from './fixture.mjs';
+/** @import { IndexStory } from '../src/types.js' */
+/** @import { DoneStep, Harvest, IntegrityCode, RegisterResult } from '../src/types/t3.js' */
 
 const here = dirname(fileURLToPath(import.meta.url));
 
+/** @import { SpawnSyncOptionsWithStringEncoding } from 'node:child_process' */
+/** @import { ManifestEntry } from '../src/types.js' */
+/**
+ * The ledger as lib/integrity.mjs builds it.
+ * @typedef {Awaited<ReturnType<typeof reconcile>>} Ledger
+ * @typedef {Ledger['entries'][number]} LedgerEntry
+ * @typedef {LedgerEntry['issues'][number]} LedgerIssue
+ * @typedef {Ledger['components'][number]} LedgerComponent
+ */
+// Casts below: an id, code or component the fixture holds, so the lookup finds it (a miss fails
+// the test at the next read, as it did untyped).
+
+/**
+ * @param {Ledger} ledger
+ * @param {string} id
+ */
 const codesOf = (ledger, id) =>
   ledger.entries.find((x) => x.id === id)?.issues.map((i) => i.code) ?? null;
+/**
+ * @param {Ledger} ledger
+ * @param {string} id
+ */
 const statusOf = (ledger, id) => ledger.entries.find((x) => x.id === id)?.status ?? null;
 
 // --- Storybook id rules + the static index ------------------------------------------------------------
@@ -76,7 +98,8 @@ test('static scan finds every exported story, skips comments, and keeps the impo
   assert.ok(ids.includes('components-delta--a-11-y'));
   assert.ok(!ids.some((id) => id.endsWith('--commented')));
   assert.equal(
-    scanStories(ctx).find((s) => s.id === 'components-alpha--default').importPath,
+    /** @type {IndexStory} */ (scanStories(ctx).find((s) => s.id === 'components-alpha--default'))
+      .importPath,
     'src/components/Alpha/Alpha.stories.tsx'
   );
 });
@@ -90,6 +113,7 @@ test('a broken Storybook index is reachable but not healthy; an unreachable one 
   const broken = await fetchStoryIndex('http://sb', { fetchImpl: errPage });
   assert.equal(broken.reachable, true);
   assert.equal(broken.healthy, false);
+  // An unhealthy index carries its error.
   assert.match(broken.error, /Unable to index files/);
   const okFetch = async () =>
     new Response(
@@ -108,8 +132,9 @@ test('a broken Storybook index is reachable but not healthy; an unreachable one 
       })
     );
   const good = await fetchStoryIndex('http://sb', { fetchImpl: okFetch });
+  // A healthy index carries its stories.
   assert.deepEqual(
-    good.stories.map((s) => s.id),
+    /** @type {{ stories: { id: string }[] }} */ (good).stories.map((s) => s.id),
     ['x--y']
   );
   const { ctx } = fixture({ withSigs: false });
@@ -135,34 +160,43 @@ test('every status code is detected, with a severity and a reason', async () => 
   assert.equal(statusOf(led, ids.error), 'render-error');
   assert.equal(statusOf(led, ids.stale), 'stale');
   assert.match(
-    led.entries.find((x) => x.id === ids.stale).issues[0].reason,
+    /** @type {LedgerEntry} */ (led.entries.find((x) => x.id === ids.stale)).issues[0].reason,
     /Beta\.stories\.tsx edited/
   );
   assert.deepEqual(codesOf(led, ids.restorable), ['missing-baseline-image']);
   assert.equal(statusOf(led, ids.never), 'never-checked');
   assert.match(
-    led.entries.find((x) => x.id === ids.never).issues.find((i) => i.code === 'never-checked')
-      .reason,
+    /** @type {LedgerIssue} */ (
+      /** @type {LedgerEntry} */ (led.entries.find((x) => x.id === ids.never)).issues.find(
+        (i) => i.code === 'never-checked'
+      )
+    ).reason,
     /added after the last full check|absent from the last report/
   );
-  assert.ok(codesOf(led, ids.never).includes('missing-baseline-image'));
+  assert.ok(/** @type {string[]} */ (codesOf(led, ids.never)).includes('missing-baseline-image'));
   assert.equal(statusOf(led, ids.noRender), 'missing-render');
   assert.equal(statusOf(led, ids.unbaselined), 'unbaselined');
-  assert.ok(codesOf(led, ids.a11y).includes('a11y-new'));
+  assert.ok(/** @type {string[]} */ (codesOf(led, ids.a11y)).includes('a11y-new'));
   assert.equal(statusOf(led, ids.gone), 'orphaned', 'a manifest entry whose story left the index');
   assert.equal(
     statusOf(led, 'components-old--x'),
     'orphaned',
     'a signature + base image with no manifest entry'
   );
-  assert.deepEqual(led.entries.find((x) => x.id === 'components-old--x').orphanFiles.length, 1);
+  assert.deepEqual(
+    /** @type {LedgerEntry & { orphanFiles: string[] }} */ (
+      led.entries.find((x) => x.id === 'components-old--x')
+    ).orphanFiles.length,
+    1
+  );
   assert.equal(statusOf(led, ids.unregistered), 'unregistered');
   assert.equal(statusOf(led, 'internal-helpers--default'), 'excluded');
   // Every code has a stable severity; every issue carries a reason.
   const seen = new Set(
     led.entries.flatMap((x) => x.issues.map((i) => i.code)).concat(led.entries.map((x) => x.status))
   );
-  for (const code of Object.keys(CODES)) assert.ok(seen.has(code), `fixture covers ${code}`);
+  for (const code of /** @type {IntegrityCode[]} */ (Object.keys(CODES)))
+    assert.ok(seen.has(code), `fixture covers ${code}`);
   for (const x of led.entries)
     for (const i of x.issues) assert.ok(i.reason && i.severity, `${x.id} ${i.code}`);
 });
@@ -170,10 +204,16 @@ test('every status code is detected, with a severity and a reason', async () => 
 test('roll-ups per component and overall; the headline names the error codes', async () => {
   const f = fixture({ withSigs: false });
   const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
-  const gamma = led.components.find((c) => c.component === 'components/Gamma');
+  const gamma = /** @type {LedgerComponent} */ (
+    led.components.find((c) => c.component === 'components/Gamma')
+  );
   assert.equal(gamma.severity, 'error');
   assert.equal(gamma.counts['missing-baseline-image'], 3);
-  assert.equal(led.components.find((c) => c.component === 'components/Alpha').severity, 'info');
+  assert.equal(
+    /** @type {LedgerComponent} */ (led.components.find((c) => c.component === 'components/Alpha'))
+      .severity,
+    'info'
+  );
   assert.equal(led.summary.status, 'attention');
   assert.match(led.summary.headline, /components with errors: .*1 unregistered story/);
   assert.equal(led.schemaVersion, 1);
@@ -185,12 +225,14 @@ test('roll-ups per component and overall; the headline names the error codes', a
   ]);
   // Filtering for a view.
   assert.ok(
-    filterLedger(led, { status: 'stale' }).entries.every((x) =>
+    filterLedger(led, { status: 'stale' }).entries.every((/** @type {LedgerEntry} */ x) =>
       x.issues.some((i) => i.code === 'stale')
     )
   );
   assert.ok(
-    filterLedger(led, { component: 'gamma' }).components.every((c) => /Gamma/.test(c.component))
+    filterLedger(led, { component: 'gamma' }).components.every((/** @type {LedgerComponent} */ c) =>
+      /Gamma/.test(c.component)
+    )
   );
 });
 
@@ -198,8 +240,9 @@ test('the ledger is deterministic: same inputs, same entries', async () => {
   const f = fixture({ withSigs: false });
   const a = await reconcile(f.ctx, { index: f.index, affected: f.affected, now: 0 });
   const b = await reconcile(f.ctx, { index: f.index, affected: f.affected, now: 0 });
-  delete a.elapsedMs;
-  delete b.elapsedMs;
+  // Partial: the timing is the one key that differs between runs.
+  delete (/** @type {Partial<Ledger>} */ (a).elapsedMs);
+  delete (/** @type {Partial<Ledger>} */ (b).elapsedMs);
   assert.deepEqual(a, b);
   writeLedger(f.ctx, a);
   assert.equal(
@@ -214,8 +257,13 @@ test('severity overrides and config switches', async () => {
   f.ctx.integrity.requireBaselineImages = false;
   f.ctx.integrity.staleAfterSourceChange = false;
   const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
-  assert.equal(led.entries.find((x) => x.id === f.ids.unbaselined).severity, 'error');
-  assert.ok(!codesOf(led, f.ids.restorable).includes('missing-baseline-image'));
+  assert.equal(
+    /** @type {LedgerEntry} */ (led.entries.find((x) => x.id === f.ids.unbaselined)).severity,
+    'error'
+  );
+  assert.ok(
+    !(/** @type {string[]} */ (codesOf(led, f.ids.restorable)).includes('missing-baseline-image'))
+  );
   assert.notEqual(statusOf(led, f.ids.stale), 'stale');
   assert.deepEqual(primaryOf([]), { code: 'ok', severity: 'info' });
 });
@@ -261,8 +309,13 @@ test('the plan orders register → recheck → restore, lists what needs a perso
   );
   // Without a healthy Storybook, register is blocked (parameters are read from it).
   const offline = await reconcile(f.ctx, { offline: true, affected: f.affected });
+  // Offline, the plan has a blocked register step.
   assert.match(
-    planRepairs(offline).steps.find((s) => s.action === 'register').blocked,
+    /** @type {string} */ (
+      /** @type {{ blocked: string | null }} */ (
+        planRepairs(offline).steps.find((s) => s.action === 'register')
+      ).blocked
+    ),
     /healthy Storybook/
   );
 });
@@ -275,7 +328,7 @@ test('register adds new stories without signatures, keeps existing entries, back
     f.ctx,
     [{ id: f.ids.unregistered, importPath: 'src/components/Gamma/Gamma.stories.tsx' }],
     {
-      harvest: async (ids) =>
+      harvest: async (/** @type {string[]} */ ids) =>
         Object.fromEntries(
           ids.map((id) => [
             id,
@@ -291,11 +344,15 @@ test('register adds new stories without signatures, keeps existing entries, back
   assert.deepEqual(r.added, [f.ids.unregistered, `${f.ids.unregistered}__open`]);
   const after = JSON.parse(readFileSync(f.ctx.manifestPath, 'utf8'));
   assert.deepEqual(
-    after.stories.filter((e) => before.stories.some((b) => b.id === e.id)),
+    after.stories.filter((/** @type {ManifestEntry} */ e) =>
+      before.stories.some((/** @type {ManifestEntry} */ b) => b.id === e.id)
+    ),
     before.stories,
     'existing entries untouched'
   );
-  const at = after.stories.findIndex((e) => e.id === f.ids.unregistered);
+  const at = after.stories.findIndex(
+    (/** @type {ManifestEntry} */ e) => e.id === f.ids.unregistered
+  );
   assert.equal(
     after.stories[at - 1].importPath,
     'src/components/Gamma/Gamma.stories.tsx',
@@ -306,7 +363,8 @@ test('register adds new stories without signatures, keeps existing entries, back
     `.pxsig/baselines/components/Gamma/${f.ids.unregistered}.psig`
   );
   assert.ok(!existsSync(join(f.repo, after.stories[at].sig)), 'no signature created');
-  assert.ok(existsSync(join(f.repo, r.backup)));
+  // register backs up the manifest it changed.
+  assert.ok(existsSync(join(f.repo, /** @type {string} */ (r.backup))));
   assert.equal(hashTree(join(f.px, 'baselines')), baselines);
   const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
   assert.equal(statusOf(led, f.ids.unregistered), 'unbaselined', 'now NEW, waiting for a person');
@@ -317,13 +375,14 @@ test('one repair run registers a new story and renders its entries; the count is
   const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
   const plan = planRepairs(led, { server: { up: true }, only: ['register', 'recheck'] });
   const checkPath = join(f.px, 'reports', 'check.json');
+  /** @type {string[]} */
   const asked = [];
   const res = await applyRepairs(f.ctx, plan, {
     by: 't',
     via: 't',
     reconcileOpts: { index: f.index, affected: f.affected },
     hooks: {
-      harvest: async (ids) =>
+      harvest: async (/** @type {string[]} */ ids) =>
         Object.fromEntries(
           ids.map((id) => [
             id,
@@ -331,13 +390,13 @@ test('one repair run registers a new story and renders its entries; the count is
           ])
         ),
       // A stand-in for the server queue: records a fresh row for all but the first id.
-      recheck: async (ids) => {
+      recheck: async (/** @type {string[]} */ ids) => {
         asked.push(...ids);
         const check = JSON.parse(readFileSync(checkPath, 'utf8'));
         const now = new Date().toISOString();
         for (const id of ids.slice(1))
           check.rows = [
-            ...check.rows.filter((r) => r.id !== id),
+            ...check.rows.filter((/** @type {{ id: string }} */ r) => r.id !== id),
             { id, story: id, pass: false, new: true, checkedAt: now },
           ];
         writeFileSync(checkPath, JSON.stringify(check));
@@ -349,7 +408,9 @@ test('one repair run registers a new story and renders its entries; the count is
     asked.includes(f.ids.unregistered) && asked.includes(`${f.ids.unregistered}__open`),
     'the registered entries are rendered in the same run'
   );
-  const rc = res.steps.find((s) => s.action === 'recheck');
+  const rc = /** @type {DoneStep & { recorded: number }} */ (
+    res.steps.find((s) => s.action === 'recheck')
+  );
   assert.equal(rc.recorded, asked.length - 1);
   assert.match(rc.result, new RegExp(`^${asked.length - 1} of ${asked.length} entries re-checked`));
 });
@@ -397,18 +458,26 @@ test('register survives a story whose parameters cannot be read, and logs an ado
     via: 't',
     reconcileOpts: { index, affected: f.affected },
     hooks: {
-      harvest: async (ids) =>
-        Object.fromEntries(
-          ids.map((id) => [
-            id,
-            id === f.ids.unregistered ? { error: 'loadStory threw' } : { pxsig: {}, tags: [] },
-          ])
-        ),
+      // A stand-in: a story that failed to load answers with `error` only, which repair reads first.
+      harvest: /** @type {Harvest} */ (
+        async (/** @type {string[]} */ ids) =>
+          Object.fromEntries(
+            ids.map((id) => [
+              id,
+              id === f.ids.unregistered ? { error: 'loadStory threw' } : { pxsig: {}, tags: [] },
+            ])
+          )
+      ),
     },
   });
-  assert.deepEqual(res.steps[0].added, [back], 'the readable story is registered');
+  // The register step's result (lib/repair.mjs).
   assert.deepEqual(
-    res.steps[0].failed.map((x) => x.id),
+    /** @type {DoneStep & RegisterResult} */ (res.steps[0]).added,
+    [back],
+    'the readable story is registered'
+  );
+  assert.deepEqual(
+    /** @type {DoneStep & RegisterResult} */ (res.steps[0]).failed.map((x) => x.id),
     [f.ids.unregistered]
   );
   assert.match(res.steps[0].result, /1 failed, 1 existing signatures adopted/);
@@ -431,7 +500,8 @@ test('register survives a story whose parameters cannot be read, and logs an ado
 
 test('registerNamed registers a named story that is not in the manifest, or says why not', async () => {
   const f = fixture({ withSigs: false });
-  const harvest = async (ids) => Object.fromEntries(ids.map((id) => [id, { pxsig: {}, tags: [] }]));
+  const harvest = async (/** @type {string[]} */ ids) =>
+    Object.fromEntries(ids.map((id) => [id, { pxsig: {}, tags: [] }]));
   const r = await registerNamed(
     f.ctx,
     [
@@ -517,8 +587,18 @@ test(
       log.every((l) => l.by === 'test' && l.at && l.why && l.action === 'restore-baseline-image')
     );
     const after = await reconcile(f.ctx, { index: f.index, affected: f.affected });
-    assert.ok(!codesOf(after, f.ids.restorable).includes('missing-baseline-image'));
-    assert.ok(codesOf(after, f.ids.unrecoverable).includes('missing-baseline-image'));
+    assert.ok(
+      !(
+        /** @type {string[]} */ (codesOf(after, f.ids.restorable)).includes(
+          'missing-baseline-image'
+        )
+      )
+    );
+    assert.ok(
+      /** @type {string[]} */ (codesOf(after, f.ids.unrecoverable)).includes(
+        'missing-baseline-image'
+      )
+    );
   }
 );
 
@@ -528,7 +608,7 @@ test(
   async () => {
     const f = fixture();
     const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
-    const x = led.entries.find((e) => e.id === f.ids.restorable);
+    const x = /** @type {LedgerEntry} */ (led.entries.find((e) => e.id === f.ids.restorable));
     x.issues.push({ code: 'stale', severity: 'warn', reason: 'test' });
     const [r] = restoreBaselineImages(f.ctx, led, [f.ids.restorable], { by: 't', via: 't' });
     assert.equal(r.result, 'blocked');
@@ -547,14 +627,17 @@ test(
       server: { up: true },
       only: ['register', 'recheck', 'restore-baseline-image'],
     });
+    /** @type {string[]} */
     const rechecked = [];
     const res = await applyRepairs(f.ctx, plan, {
       by: 'tester',
       via: 'test',
       reconcileOpts: { index: f.index, affected: f.affected },
       hooks: {
-        recheck: async (ids) => (rechecked.push(...ids), { via: 'stub' }),
-        harvest: async (ids) => Object.fromEntries(ids.map((id) => [id, { pxsig: {}, tags: [] }])),
+        recheck: async (/** @type {string[]} */ ids) =>
+          (rechecked.push(...ids), { via: 'stub' }),
+        harvest: async (/** @type {string[]} */ ids) =>
+          Object.fromEntries(ids.map((id) => [id, { pxsig: {}, tags: [] }])),
       },
     });
     assert.deepEqual(
@@ -599,7 +682,9 @@ test('prune needs confirmation, moves orphans to trash/ and deletes nothing', as
   for (const m of r.moved) assert.ok(existsSync(join(f.repo, m.to)), `${m.from} kept in trash/`);
   assert.deepEqual(r.droppedEntries, [f.ids.gone]);
   assert.ok(
-    !JSON.parse(readFileSync(f.ctx.manifestPath, 'utf8')).stories.some((e) => e.id === f.ids.gone)
+    !JSON.parse(readFileSync(f.ctx.manifestPath, 'utf8')).stories.some(
+      (/** @type {ManifestEntry} */ e) => e.id === f.ids.gone
+    )
   );
 });
 
@@ -630,6 +715,7 @@ test('pxsig doctor CLI contract: --json document, filters, usage errors, prune r
   const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
   writeLedger(f.ctx, led);
   const cli = join(here, '..', 'src', 'cli.mjs');
+  /** @type {SpawnSyncOptionsWithStringEncoding} */
   const opts = {
     cwd: f.repo,
     encoding: 'utf8',
@@ -643,8 +729,12 @@ test('pxsig doctor CLI contract: --json document, filters, usage errors, prune r
   const doc = JSON.parse(r.stdout);
   assert.equal(doc.schemaVersion, 1);
   assert.ok(doc.summary && doc.components && doc.entries);
-  assert.ok(doc.entries.list.every((x) => x.issues.some((i) => i.code === 'never-checked')));
-  assert.ok([0, 1].includes(r.status));
+  assert.ok(
+    doc.entries.list.every((/** @type {LedgerEntry} */ x) =>
+      x.issues.some((i) => i.code === 'never-checked')
+    )
+  );
+  assert.ok(/** @type {(number | null)[]} */ ([0, 1]).includes(r.status));
   const usage = spawnSync(process.execPath, [cli, 'doctor', '--repair', '--only', 'nope'], opts);
   assert.equal(usage.status, 2);
   const prune = spawnSync(
@@ -655,8 +745,13 @@ test('pxsig doctor CLI contract: --json document, filters, usage errors, prune r
   assert.equal(prune.status, 3, 'prune is refused when piped');
 });
 
+/** @typedef {{ document?: unknown, window?: unknown }} StubGlobals */
 test('the render sentinel recognises Storybook error pages, the Vite overlay and wrong stories', () => {
   let removed = false;
+  /**
+   * @param {string[]} classes
+   * @param {{ msg?: string, current?: string, overlay?: string | null, preview?: boolean, phase?: string, children?: number }} [opts]
+   */
   const page = (
     classes,
     {
@@ -675,10 +770,11 @@ test('the render sentinel recognises Storybook error pages, the Vite overlay and
         : {
             remove: () => (removed = true),
             shadowRoot: {
-              querySelector: (q) => (q === '.message-body' ? { textContent: overlay } : null),
+              querySelector: (/** @type {string} */ q) =>
+                q === '.message-body' ? { textContent: overlay } : null,
             },
           };
-    const query = (q) =>
+    const query = (/** @type {string} */ q) =>
       q === 'vite-error-overlay' && !removed
         ? overlayEl
         : q === '#error-message'
@@ -686,11 +782,12 @@ test('the render sentinel recognises Storybook error pages, the Vite overlay and
           : q === '#storybook-root'
             ? { childElementCount: children }
             : null;
-    globalThis.document = {
-      body: { classList: { contains: (c) => classes.includes(c) } },
+    // Stand-ins with only what storybookSentinel reads from the page.
+    /** @type {StubGlobals} */ (globalThis).document = {
+      body: { classList: { contains: (/** @type {string} */ c) => classes.includes(c) } },
       querySelector: query,
     };
-    globalThis.window = preview
+    /** @type {StubGlobals} */ (globalThis).window = preview
       ? { __STORYBOOK_PREVIEW__: { currentRender: { id: current, phase } } }
       : {};
   };
@@ -700,9 +797,9 @@ test('the render sentinel recognises Storybook error pages, the Vite overlay and
     page(['sb-show-errordisplay'], { msg: 'Unable to index files:\n- ./X.stories.tsx' });
     assert.equal(storybookSentinel('a--b'), 'Storybook error page: Unable to index files:');
     page(['sb-show-nopreview']);
-    assert.match(storybookSentinel('a--b'), /no preview/);
+    assert.match(/** @type {string} */ (storybookSentinel('a--b')), /no preview/);
     page(['sb-show-main'], { current: 'c--d' });
-    assert.match(storybookSentinel('a--b'), /rendered c--d, not a--b/);
+    assert.match(/** @type {string} */ (storybookSentinel('a--b')), /rendered c--d, not a--b/);
     // A module that failed to load: Vite's overlay over an empty root, and no preview at all.
     page(['sb-show-main'], {
       overlay: 'Failed to resolve import "./X.stories.tsx"\n  at …',
@@ -713,7 +810,7 @@ test('the render sentinel recognises Storybook error pages, the Vite overlay and
       'Vite error overlay: Failed to resolve import "./X.stories.tsx"'
     );
     page(['sb-show-main'], { preview: false });
-    assert.match(storybookSentinel('a--b'), /preview did not start/);
+    assert.match(/** @type {string} */ (storybookSentinel('a--b')), /preview did not start/);
     // Another page's error, broadcast over Vite's socket, over a story that rendered: not this
     // story's error, and the overlay is taken off the page.
     page(['sb-show-main'], {
@@ -729,13 +826,13 @@ test('the render sentinel recognises Storybook error pages, the Vite overlay and
       children: 0,
     });
     assert.match(
-      storybookSentinel('a--b'),
+      /** @type {string} */ (storybookSentinel('a--b')),
       /Vite error overlay/,
       'an empty root under an overlay did not render'
     );
   } finally {
-    delete globalThis.document;
-    delete globalThis.window;
+    delete (/** @type {StubGlobals} */ (globalThis).document);
+    delete (/** @type {StubGlobals} */ (globalThis).window);
   }
 });
 
@@ -745,12 +842,18 @@ test('a .pxsig.json baseline is legacy-format (warn), not a missing image; unaff
   const f = fixture({ withSigs: false });
   const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
   assert.deepEqual(codesOf(led, f.ids.legacy), ['legacy-format']);
-  const legacy = led.entries.find((x) => x.id === f.ids.legacy).issues[0];
+  // A legacy-format issue carries a hint.
+  const legacy = /** @type {LedgerIssue & { hint: string }} */ (
+    /** @type {LedgerEntry} */ (led.entries.find((x) => x.id === f.ids.legacy)).issues[0]
+  );
   assert.equal(legacy.severity, 'warn');
   assert.match(legacy.hint, /doctor --repair|migrate|pack/);
   assert.deepEqual(codesOf(led, f.ids.quiet), ['skipped-unaffected']);
   assert.equal(statusOf(led, f.ids.quiet), 'skipped-unaffected');
-  assert.equal(led.entries.find((x) => x.id === f.ids.quiet).severity, 'info');
+  assert.equal(
+    /** @type {LedgerEntry} */ (led.entries.find((x) => x.id === f.ids.quiet)).severity,
+    'info'
+  );
 });
 
 test(
@@ -769,7 +872,7 @@ test(
     });
     assert.match(res.steps[0].result, /1 converted/);
     const entry = JSON.parse(readFileSync(f.ctx.manifestPath, 'utf8')).stories.find(
-      (e) => e.id === f.ids.legacy
+      (/** @type {ManifestEntry} */ e) => e.id === f.ids.legacy
     );
     assert.match(entry.sig, /\.psig$/);
     const psig = join(f.repo, entry.sig);

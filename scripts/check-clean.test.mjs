@@ -25,7 +25,11 @@ test('product shots are allowed: images up to the size guard, and Markdown', () 
   ])
     assert.equal(fileProblem(f, 500 * 1024), null, f);
   assert.equal(fileProblem('docs/product-shots/edge.png', SHOT_MAX_BYTES), null);
-  assert.match(fileProblem('docs/product-shots/big.png', SHOT_MAX_BYTES + 1), /over 1\.5 MB/);
+  // A string here (assert.match fails the test on null).
+  assert.match(
+    /** @type {string} */ (fileProblem('docs/product-shots/big.png', SHOT_MAX_BYTES + 1)),
+    /over 1\.5 MB/
+  );
 });
 
 test('nothing else goes into docs/product-shots/', () => {

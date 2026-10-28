@@ -11,7 +11,9 @@ import {
   prText,
   storyView,
 } from '../snapshot-view.mjs';
+/** @import { Snapshot, StoryView } from '../types.js' */
 
+/** @type {Snapshot} */
 const snap = {
   format: 'pxsig-snapshot',
   version: 1,
@@ -97,7 +99,8 @@ test('a snapshot is used only when it is one, of a version this panel reads', ()
 });
 
 test('the story view: coverage per mode and state, then history', () => {
-  const v = storyView(snap, 'components-tabs--default');
+  // The story is in the snapshot above.
+  const v = /** @type {StoryView} */ (storyView(snap, 'components-tabs--default'));
   assert.deepEqual(v.entries[0], {
     mode: 'dark',
     baseline: 'yes',

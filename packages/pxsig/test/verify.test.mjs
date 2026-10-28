@@ -17,6 +17,7 @@ import {
 } from '../src/lib/approvals.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin } from './fixture.mjs';
+/** @import { ManifestEntry } from '../src/types.js' */
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
 // A person's name and email on every commit: nothing pxsig prints may contain them.
@@ -26,15 +27,27 @@ const AUTHOR = {
   GIT_COMMITTER_NAME: 'Secret Person',
   GIT_COMMITTER_EMAIL: 'secret@example.com',
 };
+/**
+ * @param {string} cwd
+ * @param {string[]} args
+ */
 const git = (cwd, ...args) => {
   const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, ...AUTHOR } });
   return { ok: r.status === 0, out: (r.stdout ?? '').trim(), err: r.stderr };
 };
+/**
+ * @param {string} cwd
+ * @param {string[]} args
+ */
 const must = (cwd, ...args) => {
   const r = git(cwd, ...args);
   assert.ok(r.ok, `git ${args.join(' ')}: ${r.err}`);
   return r.out;
 };
+/**
+ * @param {string} repo
+ * @param {string[]} args
+ */
 const cli = (repo, args) =>
   spawnSync(process.execPath, [join(src, 'cli.mjs'), ...args], {
     cwd: repo,
@@ -89,7 +102,10 @@ test(
     const d = JSON.parse(cli(f.repo, ['doctor', '--json', '--offline']).stdout);
     const setup = (d.projects?.[0] ?? d).setup ?? [];
     assert.ok(
-      setup.some((x) => x.code === 'verify-unlogged' && x.severity === 'warn'),
+      setup.some(
+        (/** @type {{ code: string, severity: string }} */ x) =>
+          x.code === 'verify-unlogged' && x.severity === 'warn'
+      ),
       JSON.stringify(setup)
     );
   }
@@ -101,7 +117,8 @@ test(
   () => {
     const f = repoFixture();
     must(f.repo, 'checkout', '-q', '-b', 'pr');
-    const e = f.manifest.stories.find((x) => x.id === f.ids.ok);
+    // The fixture's manifest lists ids.ok.
+    const e = /** @type {ManifestEntry} */ (f.manifest.stories.find((x) => x.id === f.ids.ok));
     record(f.P, e, { batch: 'b1-dashboard', via: 'dashboard', reason: 'a new look', before: null });
     must(f.repo, 'commit', '-q', '-am', 'approve');
     let r = cli(f.repo, ['approve', 'verify', '--since', 'main', '--json']);
@@ -163,6 +180,7 @@ test(
       agents: { copilot: 1 },
     });
     const dir = mkdtempSync(join(tmpdir(), 'pxsig-summary-'));
+    /** @param {Record<string, unknown> | null} approvals */
     const md = (approvals) => {
       writeFileSync(
         join(dir, 'check.json'),
@@ -242,7 +260,9 @@ test(
     });
     const r = cli(f.repo, ['approve', 'log', '--trace', '--json']);
     assert.equal(r.status, 0, r.stdout + r.stderr);
-    const rows = new Map(JSON.parse(r.stdout).map((b) => [b.batch, b]));
+    const rows = new Map(
+      JSON.parse(r.stdout).map((/** @type {{ batch: string }} */ b) => [b.batch, b])
+    );
     assert.equal(rows.get('b3-dashboard').pr, '#12');
     assert.match(rows.get('b3-dashboard').commit, /^[0-9a-f]{12}$/);
     assert.equal(rows.get('b4-cli').commit, 'not committed');
@@ -259,7 +279,8 @@ test(
   { skip: !hasRust && 'Rust binary not built' },
   () => {
     const f = repoFixture();
-    const e = f.manifest.stories.find((x) => x.id === f.ids.ok);
+    // The fixture's manifest lists ids.ok.
+    const e = /** @type {ManifestEntry} */ (f.manifest.stories.find((x) => x.id === f.ids.ok));
     const sig = join(f.repo, e.sig);
     must(f.repo, 'checkout', '-q', '-b', 'other');
     appendFileSync(sig, Buffer.from([1, 2, 3]));
@@ -280,7 +301,8 @@ test(
     const d = JSON.parse(cli(f.repo, ['doctor', '--json', '--offline']).stdout);
     assert.ok(
       ((d.projects?.[0] ?? d).setup ?? []).some(
-        (x) => x.code === 'store-conflict' && x.severity === 'error'
+        (/** @type {{ code: string, severity: string }} */ x) =>
+          x.code === 'store-conflict' && x.severity === 'error'
       )
     );
   }

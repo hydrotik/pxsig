@@ -34,11 +34,21 @@ import {
   scratchManifest,
   writeReport,
 } from './lib/research.mjs';
+/** @import { ManifestEntry } from '../packages/pxsig/src/types.js' */
+/** @import { DetailSweep, MovedTile, ScenariosReport } from './types.js' */
+/**
+ * @typedef {{ key: string, suite: string, scenario: string, kind: 'regression' | 'noise',
+ *   changed: boolean, id: string }} Item
+ * @typedef {{ name: string, grid: number, minCellPx: number | null }} Policy
+ * @typedef {{ policy: Policy, T: number, S: number, P: number, k: number, dk: number, bd: number,
+ *   de: number }} Combination
+ */
 
 const log = logger('calibrate-gate');
 const flags = parseFlags();
 const { P, run } = project(flags);
 const GRID = Number(flags.grid) || run.grid || 64;
+/** @type {Policy[]} */
 const POLICIES = [
   { name: `grid ${GRID}`, grid: GRID, minCellPx: null },
   ...nums(flags['min-cells-px'], [4, 6, 8]).map((c) => ({
@@ -65,12 +75,17 @@ if (!tags.length)
   throw new Error(`no scenario reports in ${P.store.reports}: run tools/scenarios.mjs first`);
 const scratch = freshDir(P, 'calibrate-gate');
 const baseDir = join(scratch, 'base');
+/** @type {Item[]} */
 const items = []; // { key, suite, scenario, kind, changed, id }
+/** @type {{ tag: string, rep: ScenariosReport, entries: Omit<ManifestEntry, 'gate' | 'grid'>[] }[]} */
 const suites = [];
 for (const tag of tags) {
-  const rep = readReport(P, tag);
+  // A report tools/scenarios.mjs wrote: `tag` is one listed in the reports folder above.
+  const rep = /** @type {ScenariosReport} */ (readReport(P, tag));
   const ids = new Set(rep.scenarios[0].rows.filter((r) => !r.error).map((r) => r.id));
-  const entries = run.stories.filter((e) => ids.has(e.id)).map(({ gate, grid, ...e }) => e);
+  const entries = run.stories
+    .filter((e) => ids.has(e.id))
+    .map(({ gate: _gate, grid: _grid, ...e }) => e);
   baselineImages(P, entries, baseDir);
   suites.push({ tag, rep, entries });
   for (const sc of rep.scenarios)
@@ -85,9 +100,11 @@ for (const tag of tags) {
           id: r.id,
         });
 }
-const renderOf = (x) => join(P.store.root, 'renders', x.suite, x.scenario, `${x.id}.png`);
+const renderOf = (/** @type {Item} */ x) =>
+  join(P.store.root, 'renders', x.suite, x.scenario, `${x.id}.png`);
 
 // --- whole-image metrics per policy and threshold (Rust) ----------------------------------------
+/** @type {Record<string, Record<number, Record<string, { ssim: number, cells: number, pct: number }>>>} */
 const metrics = {}; // metrics[policy][T][key] = { ssim, cells, pct }
 const eng = engine(P);
 try {
@@ -146,7 +163,11 @@ const build = {
   tile: 16,
   block: 4,
   selEnergy: 10,
-  ...(flags['detail-build'] ? JSON.parse(flags['detail-build']) : {}),
+  // `--detail-build`: a JSON object of build keys (tools/README.md). JSON.parse reads its argument
+  // as a string either way.
+  ...(flags['detail-build']
+    ? /** @type {Record<string, number>} */ (JSON.parse(String(flags['detail-build'])))
+    : {}),
 };
 const sweepIn = join(scratch, 'sweep.json');
 writeFileSync(
@@ -157,7 +178,10 @@ writeFileSync(
   })
 );
 const sweep = new Map(
-  rust(P, ['detail-sweep', '--input', sweepIn]).out.rows.map((r) => [r.key, r.builds[0].moved])
+  // `detail-sweep` prints its rows as DetailSweep; one build was asked for.
+  /** @type {DetailSweep} */ (rust(P, ['detail-sweep', '--input', sweepIn]).out).rows.map(
+    (r) => /** @type {[string, MovedTile[]]} */ ([r.key, r.builds[0].moved])
+  )
 );
 const rustMs = performance.now() - t0;
 
@@ -177,16 +201,19 @@ const tiles = new Map(
 );
 const noise = items.filter((x) => x.kind === 'noise');
 const regs = items.filter((x) => x.kind === 'regression' && x.changed);
-const failsWith = (c) => (x) => {
+const failsWith = (/** @type {Combination} */ c) => (/** @type {Item} */ x) => {
   const m = metrics[c.policy.name][c.T][x.key];
   if (!m) return false;
   return (
     m.ssim < c.S ||
     m.pct > c.P ||
     m.cells >= c.k ||
-    (c.dk !== Infinity && tiles.get(x.key)[`${c.bd}|${c.de}`] >= c.dk)
+    // `tiles` has an entry for every item.
+    (c.dk !== Infinity &&
+      /** @type {Record<string, number>} */ (tiles.get(x.key))[`${c.bd}|${c.de}`] >= c.dk)
   );
 };
+/** @type {(Combination & { caught: number, margin: number }) | null} */
 let best = null;
 let evaluated = 0;
 let admissible = 0;
@@ -220,6 +247,7 @@ for (const policy of POLICIES)
                   best = { ...c, caught, margin };
               }
 
+/** @type {Record<string, { kind: Item['kind'], caught: number, of: number, fp: number }>} */
 const per = {};
 if (best) {
   const fails = failsWith(best);
@@ -292,7 +320,10 @@ log(
 );
 if (!gate) log('  no zero-false-positive gate');
 else {
-  log(`  best: ${JSON.stringify(gate)} → ${best.caught}/${regs.length}`);
+  // `gate` is set only when `best` is.
+  log(
+    `  best: ${JSON.stringify(gate)} → ${/** @type {NonNullable<typeof best>} */ (best).caught}/${regs.length}`
+  );
   for (const [n, p] of Object.entries(per))
     if (p.kind === 'regression') log(`    ${n.padEnd(36)} ${p.caught}/${p.of}`);
 }

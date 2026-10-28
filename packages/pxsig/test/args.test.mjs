@@ -8,7 +8,9 @@ import { knownFlags, parseArgs, unknownFlagLines, unknownFlags } from '../src/li
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, '..');
+/** @param {string} text */
 const flagsIn = (text) => new Set([...text.matchAll(/--([a-z][a-z0-9-]+)/g)].map((m) => m[1]));
+/** @param {Iterable<string>} names */
 const missing = (names) => [...names].filter((n) => !knownFlags().has(n)).sort();
 
 test('a misspelled flag is reported with the closest known one and the word it took', () => {
@@ -45,6 +47,7 @@ test('every flag the help topics and `pxsig --help` name is known', () => {
 });
 
 test('pxsig --version and pxsig version: the CLI, the engine it would run and the UI contract', () => {
+  /** @param {string[]} args */
   const run = (...args) =>
     spawnSync(process.execPath, [join(pkg, 'bin', 'pxsig.mjs'), ...args], {
       encoding: 'utf8',

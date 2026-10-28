@@ -160,7 +160,8 @@ export function gpuClass(renderer) {
  */
 export const PROBE_PAGE = ({ families, text, sizes }) => {
   const c = document.createElement('canvas');
-  const g = c.getContext('2d');
+  // A new canvas's first getContext('2d') gives a context in every browser Playwright drives.
+  const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
   /** @type {Record<string, number[]>} */
   const widths = {};
   for (const f of families) {
@@ -169,13 +170,17 @@ export const PROBE_PAGE = ({ families, text, sizes }) => {
       return Math.round(g.measureText(text).width * 1000) / 1000;
     });
   }
+  /** @type {string | null} */
   let renderer = null;
   try {
     const gl = document.createElement('canvas').getContext('webgl');
     if (gl) {
       const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      // Both parameters are a string (WebGL, WEBGL_debug_renderer_info).
       renderer =
-        (ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) ?? '';
+        /** @type {string | null} */ (
+          ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)
+        ) ?? '';
     }
   } catch {
     renderer = null;

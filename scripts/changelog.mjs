@@ -19,6 +19,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+/** @import { Fragment } from './types.js' */
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 export const DIR = 'changelog.d';
@@ -36,10 +37,18 @@ export const HEADINGS = [
 ];
 const NAME = /^[a-z0-9][a-z0-9.-]*\.md$/;
 
-/** `{ sections: Map<heading, text>, problems: string[] }` for one fragment's text. */
+/**
+ * `{ sections: Map<heading, text>, problems: string[] }` for one fragment's text.
+ * @param {string} text
+ * @param {string} [label]
+ * @returns {Fragment}
+ */
 export function parseFragment(text, label = 'fragment') {
+  /** @type {Map<string, string>} */
   const sections = new Map();
+  /** @type {string[]} */
   const problems = [];
+  /** @type {string | null} */
   let heading = null;
   text.split(/\r?\n/).forEach((line, i) => {
     const h = /^###\s+(.+?)\s*$/.exec(line);
@@ -73,7 +82,10 @@ export function parseFragment(text, label = 'fragment') {
   return { sections, problems };
 }
 
-/** Where the Unreleased section starts and ends in CHANGELOG.md, and its sections. */
+/**
+ * Where the Unreleased section starts and ends in CHANGELOG.md, and its sections.
+ * @param {string} text
+ */
 export function splitChangelog(text) {
   const start = text.indexOf('\n## Unreleased');
   if (start < 0) throw new Error('CHANGELOG.md has no "## Unreleased" section');
@@ -87,11 +99,18 @@ export function splitChangelog(text) {
   };
 }
 
-/** An empty Unreleased is fine; anything else follows the fragment rules. */
+/**
+ * An empty Unreleased is fine; anything else follows the fragment rules.
+ * @param {Fragment} u
+ */
 const unreleasedProblems = (u) => u.problems.filter((p) => !/: empty \(/.test(p));
 
-/** Sections of Unreleased and the fragments, merged in HEADINGS order, as Markdown. */
+/**
+ * Sections of Unreleased and the fragments, merged in HEADINGS order, as Markdown.
+ * @param {Map<string, string>[]} parts
+ */
 export function merge(parts) {
+  /** @type {string[]} */
   const out = [];
   for (const h of HEADINGS) {
     const bodies = parts.map((p) => p.get(h)).filter(Boolean);
@@ -100,7 +119,13 @@ export function merge(parts) {
   return out.join('\n');
 }
 
-/** CHANGELOG.md after a release: an empty Unreleased, then the new version's section. */
+/**
+ * CHANGELOG.md after a release: an empty Unreleased, then the new version's section.
+ * @param {string} changelog
+ * @param {{ sections: Map<string, string> }[]} fragments
+ * @param {string} version
+ * @param {string} date
+ */
 export function release(changelog, fragments, version, date) {
   const { head, unreleased, tail } = splitChangelog(changelog);
   const bad = unreleasedProblems(unreleased);
@@ -118,7 +143,9 @@ function fragmentFiles(dir = join(root, DIR)) {
 }
 
 function readFragments() {
+  /** @type {string[]} */
   const problems = [];
+  /** @type {{ name: string, sections: Map<string, string> }[]} */
   const fragments = [];
   for (const n of fragmentFiles()) {
     const label = `${DIR}/${n}`;
@@ -133,15 +160,21 @@ function readFragments() {
   return { fragments, problems };
 }
 
+/** @param {string[]} a */
 const git = (...a) => execFileSync('git', a, { cwd: root, encoding: 'utf8' }).trim();
 
-/** Why this branch may not carry its CHANGELOG.md edit, or null. */
+/**
+ * Why this branch may not carry its CHANGELOG.md edit, or null.
+ * @param {string[]} changed
+ * @param {string} branch
+ */
 export function directEdit(changed, branch) {
   if (!changed.includes('CHANGELOG.md')) return null;
   if (/^release\//.test(branch)) return null;
   return `CHANGELOG.md is edited on "${branch}": add a fragment in ${DIR}/ instead (only a release/ branch changes CHANGELOG.md, with \`node scripts/changelog.mjs release <version>\`)`;
 }
 
+/** @param {string} ref */
 function changedSince(ref) {
   let base = ref;
   try {
@@ -152,17 +185,26 @@ function changedSince(ref) {
   return git('diff', '--name-only', base, 'HEAD').split('\n').filter(Boolean);
 }
 
+/**
+ * @param {string[]} args
+ * @param {string} k
+ */
 function flag(args, k) {
   const i = args.indexOf(k);
   return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : null;
 }
 
+/**
+ * @param {string[]} problems
+ * @returns {never}
+ */
 function fail(problems) {
   console.error(`[changelog] ${problems.length} problem(s):`);
   for (const p of problems) console.error(`  ${p}`);
   process.exit(1);
 }
 
+/** @param {string[]} args */
 function run(args) {
   const [command] = args;
   const path = join(root, 'CHANGELOG.md');
@@ -171,7 +213,8 @@ function run(args) {
     try {
       problems.push(...unreleasedProblems(splitChangelog(readFileSync(path, 'utf8')).unreleased));
     } catch (e) {
-      problems.push(e.message);
+      // splitChangelog throws an Error; readFileSync a Node system error (an Error too).
+      problems.push(/** @type {Error} */ (e).message);
     }
     const since = flag(args, '--since');
     if (since) {
@@ -203,7 +246,8 @@ function run(args) {
     try {
       next = release(readFileSync(path, 'utf8'), fragments, version, date);
     } catch (e) {
-      fail(e.message.split('\n'));
+      // release() throws an Error; readFileSync a Node system error (an Error too).
+      fail(/** @type {Error} */ (e).message.split('\n'));
     }
     writeFileSync(path, next);
     for (const f of fragments) unlinkSync(join(root, DIR, f.name));

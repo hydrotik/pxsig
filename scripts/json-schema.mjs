@@ -5,6 +5,7 @@
  * maxLength, pattern, if/then/else, not. Annotations ($schema, $id, title, description, format) are
  * ignored; any other keyword is an error, so a schema never passes by being misread.
  */
+/** @import { JsonSchema } from './types.js' */
 const ANNOTATIONS = new Set([
   '$schema',
   '$id',
@@ -35,20 +36,32 @@ const KNOWN = new Set([
   'not',
 ]);
 
+/** @param {unknown} v */
 const typeOf = (v) =>
   v === null ? 'null' : Array.isArray(v) ? 'array' : Number.isInteger(v) ? 'integer' : typeof v;
+/**
+ * @param {unknown} v
+ * @param {string} t
+ */
 const isType = (v, t) => t === typeOf(v) || (t === 'number' && typeof v === 'number');
 
-/** The errors of `data` against `schema`, as `<path> <message>` strings; empty when it passes. */
+/**
+ * The errors of `data` against `schema`, as `<path> <message>` strings; empty when it passes.
+ * @param {JsonSchema} schema
+ * @param {unknown} data
+ * @param {string} [at]
+ * @returns {string[]}
+ */
 export function validate(schema, data, at = '') {
   if (schema === true) return [];
   if (schema === false) return [`${at || '/'} is not allowed`];
+  /** @type {string[]} */
   const errs = [];
   const here = at || '/';
   for (const k of Object.keys(schema))
     if (!KNOWN.has(k)) errs.push(`${here} schema keyword "${k}" is not supported`);
   if (schema.type !== undefined) {
-    const types = [].concat(schema.type);
+    const types = /** @type {string[]} */ ([]).concat(schema.type);
     if (!types.some((t) => isType(data, t)))
       return [...errs, `${here} must be ${types.join(' or ')}`];
   }
@@ -67,15 +80,24 @@ export function validate(schema, data, at = '') {
   if (Array.isArray(data)) {
     if (schema.minItems !== undefined && data.length < schema.minItems)
       errs.push(`${here} must have at least ${schema.minItems} items`);
-    if (schema.uniqueItems && new Set(data.map((x) => JSON.stringify(x))).size !== data.length)
+    // Array.isArray narrows `unknown` to any[]: its items are unknown.
+    if (
+      schema.uniqueItems &&
+      new Set(/** @type {unknown[]} */ (data).map((x) => JSON.stringify(x))).size !== data.length
+    )
       errs.push(`${here} must have unique items`);
     if (schema.items !== undefined)
-      data.forEach((x, i) => errs.push(...validate(schema.items, x, `${at}/${i}`)));
+      /** @type {unknown[]} */ (data).forEach((x, i) =>
+        // Checked on the line above; the callback does not keep the narrowing.
+        errs.push(...validate(/** @type {JsonSchema} */ (schema.items), x, `${at}/${i}`))
+      );
   }
   if (typeOf(data) === 'object') {
+    // typeOf: a non-null, non-array object.
     for (const r of schema.required ?? [])
-      if (!(r in data)) errs.push(`${here} must have required property '${r}'`);
-    for (const [k, v] of Object.entries(data)) {
+      if (!(r in /** @type {object} */ (data)))
+        errs.push(`${here} must have required property '${r}'`);
+    for (const [k, v] of Object.entries(/** @type {Record<string, unknown>} */ (data))) {
       const path = `${at}/${k}`;
       if (schema.propertyNames) errs.push(...validate(schema.propertyNames, k, `${path} (name)`));
       if (schema.properties && k in schema.properties)

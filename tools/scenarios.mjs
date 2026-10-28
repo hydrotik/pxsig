@@ -49,12 +49,18 @@ import {
   trimDir,
   writeReport,
 } from './lib/research.mjs';
+/** @import { ManifestEntry, Project } from '../packages/pxsig/src/types.js' */
+/**
+ * @import { EngineCheck, EngineCheckResult, RenderResult, Scenario, ScenarioOut, ScenarioSuite,
+ *   ScenariosFile, ScenariosReport } from './types.js'
+ */
 
 const log = logger('scenarios');
 
 /**
  * Built-in scenarios: plain CSS, so they apply to any Storybook. `{target}` is the project's
  * capture target (capture.target, `#storybook-root` by default).
+ * @type {Scenario[]}
  */
 export const DEFAULT_SCENARIOS = [
   {
@@ -165,15 +171,22 @@ export const DEFAULT_SCENARIOS = [
  * hashed names vanilla-extract emits): a literal, `{ scale: n }` or `{ mix: colour, amount: pct }`
  * (lib/capture.mjs `applyTokenOverrides`). A suite's `stories` is a regex over story ids; it renders
  * every matching entry (no sampling) with the base scenarios plus its own.
+ * @param {Record<string, string | true>} flags
+ * @param {Project} P
  */
 function loadScenarios(flags, P) {
   const file = str(flags.scenarios);
-  const cfg = file ? JSON.parse(readFileSync(resolve(file), 'utf8')) : {};
+  // The researcher's scenarios file, in the format above (it is not validated).
+  /** @type {ScenariosFile} */
+  const cfg = file
+    ? /** @type {ScenariosFile} */ (JSON.parse(readFileSync(resolve(file), 'utf8')))
+    : {};
   const base = cfg.replace ? [] : DEFAULT_SCENARIOS;
   const own = cfg.scenarios ?? [];
   let all = [...base.filter((s) => !own.some((o) => o.name === s.name)), ...own];
   if (!all.some((s) => s.name === 'control')) all.unshift(DEFAULT_SCENARIOS[0]);
   const suiteName = str(flags.suite);
+  /** @type {ScenarioSuite | null | undefined} */
   let suite = null;
   if (suiteName) {
     suite = cfg.suites?.[suiteName];
@@ -188,15 +201,24 @@ function loadScenarios(flags, P) {
         );
   if (Object.keys(P.modes).length < 2) all = all.filter((s) => !s.modeSwap);
   const target = P.config.capture.target ?? '#storybook-root';
-  const fill = (s) => (s ? s.replaceAll('{target}', target) : s);
+  const fill = (/** @type {string | undefined} */ s) => (s ? s.replaceAll('{target}', target) : s);
   return {
     suiteName,
     suite,
-    all: all.map((s) => ({ ...s, css: fill(s.css), change: fill(s.change) })),
+    // `change` is a string, so `fill` returns one.
+    all: all.map((s) => ({
+      ...s,
+      css: fill(s.css),
+      change: /** @type {string} */ (fill(s.change)),
+    })),
   };
 }
 
-/** The mode an entry is swapped to: the next one in the project's mode list. */
+/**
+ * The mode an entry is swapped to: the next one in the project's mode list.
+ * @param {Project} P
+ * @param {ManifestEntry} e
+ */
 function swapMode(P, e) {
   const names = Object.keys(P.modes);
   const other = names[(names.indexOf(e.mode) + 1) % names.length];
@@ -230,10 +252,12 @@ async function main() {
 
   const browser = flags.rescore ? null : browserPool(P);
   const eng = engine(P);
+  /** @type {ScenarioOut[]} */
   const out = [];
   try {
     for (const sc of scenarios) {
       const dir = join(renderRoot, sc.name);
+      /** @type {RenderResult[]} */
       let results;
       let wallMs = 0;
       if (flags.rescore) {
@@ -274,38 +298,45 @@ async function main() {
       // Rust: the shipped gate (with artifacts for the inspector), then the whole-image signature alone.
       const diffDir = join(diffRoot, sc.name);
       rmSync(diffDir, { recursive: true, force: true });
-      const shipped = rust(P, [
-        'check',
-        '--manifest',
-        manifest,
-        '--png-dir',
-        dir,
-        '--root',
-        P.workspaceRoot,
-        '--json',
-        '--out-dir',
-        diffDir,
-        '--artifacts',
-        'all',
-      ]).out;
-      const whole = rust(P, [
-        'check',
-        '--manifest',
-        manifest,
-        '--png-dir',
-        dir,
-        '--root',
-        P.workspaceRoot,
-        '--json',
-        '--artifacts',
-        'none',
-        '--no-detail',
-      ]).out;
+      // `check --json` prints EngineCheck.
+      const shipped = /** @type {EngineCheck} */ (
+        rust(P, [
+          'check',
+          '--manifest',
+          manifest,
+          '--png-dir',
+          dir,
+          '--root',
+          P.workspaceRoot,
+          '--json',
+          '--out-dir',
+          diffDir,
+          '--artifacts',
+          'all',
+        ]).out
+      );
+      const whole = /** @type {EngineCheck} */ (
+        rust(P, [
+          'check',
+          '--manifest',
+          manifest,
+          '--png-dir',
+          dir,
+          '--root',
+          P.workspaceRoot,
+          '--json',
+          '--artifacts',
+          'none',
+          '--no-detail',
+        ]).out
+      );
+      /** @type {Map<string, EngineCheckResult>} */
       const byId = new Map(shipped.results.map((x) => [x.id, x]));
+      /** @type {Map<string, EngineCheckResult>} */
       const wholeById = new Map(whole.results.map((x) => [x.id, x]));
 
       // Changed pixels: against the control render (the control: against the baseline image).
-      const ref = (id) =>
+      const ref = (/** @type {string} */ id) =>
         sc.name === 'control'
           ? join(baseDir, `${id}.png`)
           : join(renderRoot, 'control', `${id}.png`);
@@ -343,7 +374,7 @@ async function main() {
         renderWallMs: Math.round(wallMs),
         rustEngineMs: Math.round(shipped.summary?.elapsedMs ?? 0),
       };
-      const { modeSwap, ...meta } = sc;
+      const { modeSwap: _modeSwap, ...meta } = sc;
       out.push({ ...meta, summary, rows });
       const line =
         sc.kind === 'regression'
@@ -359,7 +390,8 @@ async function main() {
   }
 
   // --only re-runs a subset: keep the other scenarios from the previous report.
-  const prev = only ? readReport(P, tag) : null;
+  // The report this tool wrote before.
+  const prev = only ? /** @type {ScenariosReport | null} */ (readReport(P, tag)) : null;
   const scenariosOut = prev
     ? all
         .map(
@@ -377,7 +409,12 @@ async function main() {
       detail: run.detail ? (run.gate?.detail ?? true) : false,
     },
     suite: suiteName
-      ? { name: suiteName, title: suite.title ?? suiteName, pattern: String(suite.stories) }
+      ? // loadScenarios returns a suite whenever it returns a suite name.
+        {
+          name: suiteName,
+          title: /** @type {ScenarioSuite} */ (suite).title ?? suiteName,
+          pattern: String(/** @type {ScenarioSuite} */ (suite).stories),
+        }
       : null,
     sample: { every: suite ? 1 : Number(flags.every) || 1, stories: entries.length, concurrency },
     renders: relative(P.workspaceRoot, renderRoot),
@@ -386,7 +423,8 @@ async function main() {
   log(`wrote ${writeReport(P, tag, report)}`);
 }
 
-main().catch((e) => {
+// What main throws: an Error (its own, the file system's, JSON.parse's).
+main().catch((/** @type {Error} */ e) => {
   console.error(`[scenarios] ${e.message}`);
   process.exitCode = 2;
 });

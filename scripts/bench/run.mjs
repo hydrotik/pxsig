@@ -33,17 +33,23 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { generateStore } from './generate-store.mjs';
 
+/** @import { BenchBaseline, Step, StepTimes, Verdict } from './types.js' */
+
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..', '..');
 const cli = join(root, 'packages', 'pxsig', 'bin', 'pxsig.mjs');
 const report = join(root, 'packages', 'pxsig', 'src', 'report.mjs');
 const workspace = join(root, 'packages', 'pxsig', 'src', 'lib', 'workspace.mjs');
 
-/** Milliseconds. `plan` has no fixed budget: only the 50% rule against the last release. */
+/**
+ * Milliseconds. `plan` has no fixed budget: only the 50% rule against the last release.
+ * @type {Record<Step, number | null>}
+ */
 export const BUDGETS = { affected: 2000, list: 3000, doctor: 3000, plan: null, data: 2000 };
 /** Under this, a 50% rise is noise on a shared runner, not a regression (sub-second steps). */
 export const SLACK_MS = 100;
 
+/** @type {Record<Step, string[] | null>} */
 const STEPS = {
   affected: ['affected', '--since', 'HEAD~1', '--json'],
   list: ['list', '--json'],
@@ -59,6 +65,7 @@ const STEPS = {
   data: null,
 };
 // Exit codes that are a result, not a failure: doctor 1 = findings (the synthetic edit makes some).
+/** @type {Record<Step, (number | null)[]>} */
 const OK = { affected: [0], list: [0], doctor: [0, 1], plan: [0, 1], data: [0] };
 
 const dataScript = `
@@ -68,6 +75,11 @@ const body = JSON.stringify(buildData(openProject({ cwd: process.cwd() })));
 process.stdout.write(String(body.length));
 `;
 
+/**
+ * @param {Step} step
+ * @param {string} dir
+ * @param {NodeJS.ProcessEnv} env
+ */
 function once(step, dir, env) {
   const args = STEPS[step] ? [cli, ...STEPS[step]] : ['--input-type=module', '-e', dataScript];
   const t0 = process.hrtime.bigint();
@@ -85,25 +97,35 @@ function once(step, dir, env) {
   return ms;
 }
 
-const median = (xs) => {
+const median = (/** @type {number[]} */ xs) => {
   const s = [...xs].sort((a, b) => a - b);
   return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
 };
 
-/** Each step's verdict against its budget and the baseline for this OS. */
+/**
+ * Each step's verdict against its budget and the baseline for this OS.
+ * @param {StepTimes} times
+ * @param {StepTimes | null | undefined} base
+ * @returns {Verdict[]}
+ */
 export function judge(times, base) {
-  return Object.entries(times).map(([step, ms]) => {
+  // `Object.entries` widens the keys: they are StepTimes' own, steps.
+  return /** @type {[Step, number][]} */ (Object.entries(times)).map(([step, ms]) => {
     const budget = BUDGETS[step];
     const was = base?.[step] ?? null;
     const limit = was == null ? null : Math.max(was * 1.5, was + SLACK_MS);
     const why = [];
     if (budget != null && ms > budget) why.push(`over the ${budget} ms budget`);
     if (limit != null && ms > limit)
-      why.push(`more than 50% over the last release (${Math.round(was)} ms)`);
+      // A limit only exists with a baseline time.
+      why.push(
+        `more than 50% over the last release (${Math.round(/** @type {number} */ (was))} ms)`
+      );
     return { step, ms, budget, was, limit, fail: why.length > 0, why };
   });
 }
 
+/** @type {(args: string[], name: string) => string | undefined} */
 const flag = (args, name) => {
   const i = args.indexOf(name);
   return i >= 0 ? args[i + 1] : undefined;
@@ -115,8 +137,9 @@ async function main() {
   const given = flag(args, '--dir');
   const dir = given ? resolve(given) : mkdtempSync(join(tmpdir(), 'pxsig-bench-'));
   const env = { ...process.env };
-  const version = JSON.parse(
-    readFileSync(join(root, 'packages', 'pxsig', 'package.json'), 'utf8')
+  // pxsig's package.json.
+  const version = /** @type {{ version: string }} */ (
+    JSON.parse(readFileSync(join(root, 'packages', 'pxsig', 'package.json'), 'utf8'))
   ).version;
   try {
     let store = null;
@@ -127,16 +150,19 @@ async function main() {
         `[bench] store: ${store.entries} entries + ${store.matrix} matrix, ${store.renders} renders, ${store.storyFiles} story files (${Date.now() - t0} ms)`
       );
     }
+    /** @type {StepTimes} */
     const times = {};
-    for (const step of Object.keys(STEPS)) {
+    // STEPS' own keys: the steps.
+    for (const step of /** @type {Step[]} */ (Object.keys(STEPS))) {
       once(step, dir, env);
       const xs = Array.from({ length: runs }, () => once(step, dir, env));
       times[step] = Math.round(median(xs));
     }
     const os = platform();
     const baselinePath = join(here, 'baseline.json');
+    // baseline.json, as a release commits it (an earlier --out).
     const baseline = existsSync(baselinePath)
-      ? JSON.parse(readFileSync(baselinePath, 'utf8'))
+      ? /** @type {BenchBaseline} */ (JSON.parse(readFileSync(baselinePath, 'utf8')))
       : null;
     const base = baseline?.times?.[os] ?? null;
     const verdicts = judge(times, base);
@@ -147,7 +173,8 @@ async function main() {
     const table = [
       `### pxsig scale benchmark (${os}, node ${process.version}, pxsig ${version})`,
       '',
-      `Median of ${runs} runs, in ms. Baseline: ${base ? `pxsig ${baseline.pxsig}` : `none for ${os} yet (budgets only)`}.`,
+      // `base` comes from `baseline`: set only when it is.
+      `Median of ${runs} runs, in ms. Baseline: ${base ? `pxsig ${/** @type {BenchBaseline} */ (baseline).pxsig}` : `none for ${os} yet (budgets only)`}.`,
       '',
       '| Step | Median | Budget | Last release | Result |',
       '| --- | --- | --- | --- | --- |',

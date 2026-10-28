@@ -13,6 +13,10 @@ import { fixture, hasRust, png, rustBin } from './fixture.mjs';
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
 const { repo, sig } = fixture({ withSigs: hasRust });
+/**
+ * @param {string[]} args
+ * @param {Record<string, string>} [env]
+ */
 const node = (args, env = {}) =>
   spawnSync(process.execPath, args, {
     cwd: repo,
@@ -21,6 +25,12 @@ const node = (args, env = {}) =>
   });
 
 // A light page with a dark "thumb" at x0, and the same thumb moved, recoloured, or on a bigger page.
+/**
+ * @param {number} w
+ * @param {number} h
+ * @param {number} x0
+ * @param {number[]} [ink]
+ */
 const page = (w, h, x0, ink = [30, 40, 60]) =>
   png(w, h, (x, y) => (x >= x0 && x < x0 + 24 && y >= 20 && y < 44 ? ink : [245, 245, 245]));
 const OFF = page(96, 64, 12);

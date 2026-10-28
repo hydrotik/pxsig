@@ -94,11 +94,14 @@ import {
   resolveOrExit,
 } from './lib/enforcement.mjs';
 import { writeSarif } from './lib/sarif.mjs';
+/** @import { CheckRow, EnvRecord, ManifestEntry, Project } from './types.js' */
+/** @import { A11yBaseline, AffectedResult, BaselineResult, CheckReport, EngineCheckOutput, EngineCheckRow, QueuedCheck, ServerStatus, TrimResult } from './types/t4.js' */
 
 const { flags } = parseArgs(process.argv.slice(2));
-const str = (k) => strFlag(flags, k);
+const str = (/** @type {string} */ k) => strFlag(flags, k);
 /** @type {(m: string, code?: number) => never} */
 const die = (m, code = 2) => (console.error(`[check] ${m}`), process.exit(code));
+/** @type {Project} */
 let P;
 try {
   P = openProject({
@@ -107,7 +110,8 @@ try {
     flags: flagLayer(flags),
   });
 } catch (e) {
-  die(e.message);
+  // openProject throws an Error (a SetupError) that says what is wrong.
+  die(/** @type {Error} */ (e).message);
 }
 const rustBin = P.rustBin;
 const reports = P.store.reports;
@@ -119,14 +123,15 @@ let run;
 try {
   run = writeRunManifest(P, manifestPath);
 } catch (e) {
-  die(e.message);
+  // writeRunManifest throws an Error that says what is wrong.
+  die(/** @type {Error} */ (e).message);
 }
 const runPath = run.path;
 const manifest = run.manifest;
 const pngDir = P.store.latest;
 const diffDir = P.store.diffLatest;
 const a11yBaselinePath = P.store.a11y;
-const rel = (p) => relPath(P.workspaceRoot, p);
+const rel = (/** @type {string} */ p) => relPath(P.workspaceRoot, p);
 // A suite run keeps its own report, so the main report stays intact.
 const outName = str('out') ?? (suite ? `check-${suite}` : 'check');
 // --kind / --reason (with --update) are written on every log line: `--kind environment` re-takes
@@ -160,6 +165,10 @@ if (!existsSync(rustBin))
   );
 mkdirSync(reports, { recursive: true });
 
+/**
+ * @param {string[]} args
+ * @param {{ allowFail?: boolean }} [opts]
+ */
 const rust = (args, { allowFail = true } = {}) => {
   const t = performance.now();
   const r = spawnSync(rustBin, args, {
@@ -183,12 +192,18 @@ const modes = str('modes')?.split(',');
 if (modes) entries = entries.filter((e) => modes.includes(e.mode ?? manifest.defaultMode));
 const only = str('only')?.split(',');
 if (only) entries = entries.filter((e) => only.includes(e.id) || only.includes(e.story));
+/** @type {AffectedResult | null} */
 let affected = null;
+/** @type {Set<string> | null} */
 let affectedIds = null;
 if (str('since') || str('changed')) {
-  const how = str('changed') ? ['--files', str('changed')] : ['--since', str('since')];
+  // Whichever flag the condition just found set.
+  const how = /** @type {string[]} */ (
+    str('changed') ? ['--files', str('changed')] : ['--since', str('since')]
+  );
   const r = rust(['affected', '--manifest', runPath, '--root', P.workspaceRoot, ...how, '--json']);
-  affected = JSON.parse(r.out);
+  // `pxsig affected --json` (docs/cli.md).
+  affected = /** @type {AffectedResult} */ (JSON.parse(r.out));
   const ids = new Set(affected.ids);
   affectedIds = ids;
   console.log(
@@ -230,15 +245,17 @@ let lock;
 try {
   lock = await takeLock(P, { holder: flags.update ? 'check --update' : 'check' });
 } catch (e) {
-  console.error(`[check] ${e.message}`);
-  process.exit(e.exit ?? 2);
+  // takeLock throws an Error with the exit code to take (`exit`) when another writer holds the store.
+  console.error(`[check] ${/** @type {Error & { exit?: number }} */ (e).message}`);
+  process.exit(/** @type {Error & { exit?: number }} */ (e).exit ?? 2);
 }
 /** Before each batch of store writes: stop if the lock was taken over meanwhile. */
 const fence = () => {
   try {
     lock.check();
   } catch (e) {
-    die(e.message);
+    // `check` throws an Error saying who took the lock over.
+    die(/** @type {Error} */ (e).message);
   }
 };
 
@@ -264,7 +281,7 @@ if (unregistered.length) {
   const ctx = resolveContext(P, { manifestPath });
   const reg = await registerNamed(ctx, unregistered, {
     index: await loadStoryIndex(ctx, { live: sbIndex }),
-    harvest: (ids) => harvestParameters(P, manifest.baseUrl, ids),
+    harvest: (/** @type {string[]} */ ids) => harvestParameters(P, manifest.baseUrl, ids),
     via: 'check',
   });
   for (const x of reg.skipped) console.log(`[check] not checked: ${x.name}: ${x.why}`);
@@ -277,7 +294,9 @@ if (unregistered.length) {
       if (
         reg.added.includes(e.id) &&
         (!modes || modes.includes(e.mode ?? manifest.defaultMode)) &&
-        (only.includes(e.id) || only.includes(e.story))
+        // `unregistered` holds --only names, so --only is set here.
+        (/** @type {string[]} */ (only).includes(e.id) ||
+          /** @type {string[]} */ (only).includes(e.story))
       ) {
         entries.push(e);
         selected.add(e.id);
@@ -291,6 +310,7 @@ if (unregistered.length) {
 const envCfg = envConfig(P.config);
 const pool = browserPool(P);
 const engineVersion = (rust(['--version']).out.match(/(\d+\.\d+\.\d+\S*)/) ?? [])[1] ?? null;
+/** @type {Record<string, EnvRecord>} */
 const current = entries.length
   ? await pool.envs(
       entries.map((e) => e.browser ?? 'chromium'),
@@ -339,7 +359,7 @@ const sbErrors = results.filter((r) => r.error?.startsWith(STORYBOOK_ERROR));
 if (storybookBroken(sbErrors.length, results.length)) {
   await pool.close();
   die(
-    `setup error: ${sbErrors.length} of ${results.length} renders hit Storybook's error page (${sbErrors[0].error.slice(STORYBOOK_ERROR.length).trim()}). Nothing was recorded.`
+    `setup error: ${sbErrors.length} of ${results.length} renders hit Storybook's error page (${/** @type {string} */ (sbErrors[0].error).slice(STORYBOOK_ERROR.length).trim()}). Nothing was recorded.`
   );
 }
 const render = new Map(results.map((r) => [r.id, r]));
@@ -349,10 +369,13 @@ writeFileSync(onlyFile, JSON.stringify([...selected]));
 const trimArgs = manifest.trim
   ? ['--pad', String(manifest.trim.pad ?? 16), '--tolerance', String(manifest.trim.tolerance ?? 8)]
   : null;
-const trimDir = (dir, ids) => {
+const trimDir = (/** @type {string} */ dir, /** @type {(string | undefined)[]} */ ids) => {
   if (!trimArgs || !ids.length) return null;
   writeFileSync(onlyFile, JSON.stringify(ids));
-  const r = JSON.parse(rust(['trim', dir, '--only', `@${onlyFile}`, '--json', ...trimArgs]).out);
+  // `pxsig trim --json`.
+  const r = /** @type {TrimResult} */ (
+    JSON.parse(rust(['trim', dir, '--only', `@${onlyFile}`, '--json', ...trimArgs]).out)
+  );
   writeFileSync(onlyFile, JSON.stringify([...selected]));
   return r;
 };
@@ -387,7 +410,8 @@ if (flags.update) {
       id,
       snapshot(
         P,
-        entries.find((e) => e.id === id),
+        // `ok` holds ids of entries this run rendered.
+        /** @type {ManifestEntry} */ (entries.find((e) => e.id === id)),
         batch
       ).before,
     ])
@@ -402,7 +426,13 @@ if (flags.update) {
       byId: Object.fromEntries(
         entries
           .filter((e) => ok.includes(e.id))
-          .map((e) => [e.id, current[e.browser ?? 'chromium']?.id])
+          .map(
+            (e) =>
+              /** @type {[string, string | undefined]} */ ([
+                e.id,
+                current[e.browser ?? 'chromium']?.id,
+              ])
+          )
           .filter(([, v]) => v)
       ),
     })
@@ -422,11 +452,13 @@ if (flags.update) {
     '--json',
   ]);
   rmSync(envFile, { force: true });
-  const res = JSON.parse(b.out);
+  // `pxsig baseline --json`.
+  const res = /** @type {BaselineResult} */ (JSON.parse(b.out));
   for (const id of ok)
     record(
       P,
-      entries.find((e) => e.id === id),
+      // `ok` holds ids of `entries`.
+      /** @type {{ id: string, sig: string }} */ (entries.find((e) => e.id === id)),
       {
         batch,
         via: 'check-update',
@@ -436,11 +468,14 @@ if (flags.update) {
       }
     );
   if (kind !== 'environment') {
+    // a11y.json, as pxsig writes it.
     const a11yBase = existsSync(a11yBaselinePath)
-      ? JSON.parse(readFileSync(a11yBaselinePath, 'utf8'))
+      ? /** @type {A11yBaseline} */ (JSON.parse(readFileSync(a11yBaselinePath, 'utf8')))
       : {};
     for (const r of results)
-      if (r.a11y?.violations) a11yBase[r.id] = r.a11y.violations.map((v) => v.id).sort();
+      if (r.a11y?.violations)
+        // renderStories gives every result its entry's id.
+        a11yBase[/** @type {string} */ (r.id)] = r.a11y.violations.map((v) => v.id).sort();
     writeJson(a11yBaselinePath, a11yBase, { pretty: true });
   }
   await pool.close();
@@ -452,7 +487,11 @@ if (flags.update) {
 }
 
 // --- 3. check (Rust) ------------------------------------------------------------------------
-const checkArgs = (dir, out, extra = []) => [
+const checkArgs = (
+  /** @type {string} */ dir,
+  /** @type {string} */ out,
+  /** @type {string[]} */ extra = []
+) => [
   'check',
   '--manifest',
   runPath,
@@ -469,13 +508,16 @@ const checkArgs = (dir, out, extra = []) => [
 ];
 // Warn mode chosen in config: the history line records the gates and whether the run would fail.
 const enfFile = join(reports, '.enforcement.json');
+/** @type {string[]} */
 const historyEnf = [];
 if (enf?.configured.length) {
+  // a11y.json, as pxsig writes it.
   const base = existsSync(a11yBaselinePath)
-    ? JSON.parse(readFileSync(a11yBaselinePath, 'utf8'))
+    ? /** @type {A11yBaseline} */ (JSON.parse(readFileSync(a11yBaselinePath, 'utf8')))
     : {};
   const a11yNew = results.filter((r) =>
-    r.a11y?.violations?.some((v) => !(base[r.id] ?? []).includes(v.id))
+    // renderStories gives every result its entry's id.
+    r.a11y?.violations?.some((v) => !(base[/** @type {string} */ (r.id)] ?? []).includes(v.id))
   ).length;
   writeFileSync(enfFile, JSON.stringify({ gates: enf.gates, a11yNew }));
   historyEnf.push('--enforcement', `@${enfFile}`);
@@ -492,7 +534,9 @@ let rc = entries.length
     )
   : { out: '{"summary":{"elapsedMs":0},"results":[]}', ms: 0 };
 rmSync(enfFile, { force: true });
-const rustRes = JSON.parse(rc.out);
+// `pxsig check --json` (or the empty result above).
+const rustRes = /** @type {EngineCheckOutput} */ (JSON.parse(rc.out));
+/** @type {Map<string, EngineCheckRow>} */
 const rows = new Map(rustRes.results.map((r) => [r.id, r]));
 console.log(
   `[check] Rust check: ${rustRes.results.length} entries, ${rustRes.summary.failed ?? 0} failed, ${rustRes.summary.cached ?? 0} cached · ${rustRes.summary.elapsedMs.toFixed(0)} ms engine (${rc.ms.toFixed(0)} ms process)`
@@ -523,10 +567,14 @@ for (let attempt = 1; attempt <= retries; attempt++) {
     again.results.filter((r) => r.png).map((r) => r.id)
   );
   writeFileSync(onlyFile, JSON.stringify(failing));
-  const res = JSON.parse(rust(checkArgs(dir, join(P.store.diffs, 'retry')), {}).out);
+  // `pxsig check --json`, for the failing ids only.
+  const res = /** @type {EngineCheckOutput} */ (
+    JSON.parse(rust(checkArgs(dir, join(P.store.diffs, 'retry')), {}).out)
+  );
   for (const r of res.results)
     if (r.pass === true) {
-      const row = rows.get(r.id);
+      // The retry checked only ids taken from `rows`.
+      const row = /** @type {EngineCheckRow} */ (rows.get(r.id));
       row.flaky = true;
       row.retry = { attempt, metrics: r.metrics };
     }
@@ -539,14 +587,17 @@ await pool.close();
 writeFileSync(onlyFile, JSON.stringify([...selected]));
 
 // --- 5. a11y: new violations against the a11y baseline ------------------------------------------
+// a11y.json, as pxsig writes it.
 const a11yBase = existsSync(a11yBaselinePath)
-  ? JSON.parse(readFileSync(a11yBaselinePath, 'utf8'))
+  ? /** @type {A11yBaseline} */ (JSON.parse(readFileSync(a11yBaselinePath, 'utf8')))
   : null;
 
 // --- 6. report -------------------------------------------------------------------------------------------
+// The last check.json this check (or the server) wrote.
 const previous = existsSync(join(reports, `${outName}.json`))
-  ? JSON.parse(readFileSync(join(reports, `${outName}.json`), 'utf8'))
+  ? /** @type {CheckReport} */ (JSON.parse(readFileSync(join(reports, `${outName}.json`), 'utf8')))
   : null;
+/** @type {Map<string, CheckRow>} */
 const prevRows = new Map((previous?.rows ?? []).map((r) => [r.id, r]));
 // Every environment a row names (this run's, its baselines', carried rows'), by id.
 const envs = { ...(previous?.envs ?? {}), ...(rustRes.baselineEnvs ?? {}), ...byId(current) };
@@ -650,8 +701,9 @@ if (envRefused)
     count: envRefused.count,
     what: 'baselines from a different environment (--strict-env)',
   });
-const gated = outcome(enf, found);
-const enforcement = reportBlock(enf, gated);
+// `enf` is null only under --update, which exited above.
+const gated = outcome(/** @type {NonNullable<typeof enf>} */ (enf), found);
+const enforcement = reportBlock(/** @type {NonNullable<typeof enf>} */ (enf), gated);
 const report = {
   generatedAt: now,
   fullCheckAt,
@@ -729,7 +781,8 @@ if (outName === 'check' && !suite) {
       `[check] ${oneLine(ledger)}${ledger.summary.status === 'attention' ? ` → pxsig doctor --project ${P.name}` : ''}`
     );
   } catch (e) {
-    console.error(`[check] integrity: not computed (${e.message})`);
+    // reconcile and its reads throw an Error.
+    console.error(`[check] integrity: not computed (${/** @type {Error} */ (e).message})`);
   }
 }
 lock.release();
@@ -739,7 +792,11 @@ appendReadiness(P, /** @type {NonNullable<typeof enf>} */ (enf), gated, {
   suite,
   counts: checkCounts(out),
 });
-const last = lastLine(enf, gated, enf.configured.length ? readinessTally(P) : null);
+const last = lastLine(
+  /** @type {NonNullable<typeof enf>} */ (enf),
+  gated,
+  /** @type {NonNullable<typeof enf>} */ (enf).configured.length ? readinessTally(P) : null
+);
 if (last) console.log(`[pxsig] ${last}`);
 process.exit(gated.exit);
 
@@ -752,21 +809,31 @@ function gitHead() {
 /**
  * The server holds this store: queue the selection there, wait for its queue to drain, and report
  * the rows it wrote. Exits with the check's code.
+ * @param {string} url
+ * @param {string[]} ids
+ * @param {string[]} [stories]
  */
 async function viaServer(url, ids, stories = []) {
   console.log(
     `[check] the pxsig server at ${url} holds this store: queueing ${ids.length} entries there${stories.length ? ` (and registering ${stories.length} new)` : ''}`
   );
-  const post = await fetch(`${url}/__pxsig/check`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ project: P.name, ids, stories, via: 'check' }),
-  }).catch((e) => ({ ok: false, statusText: e.message }));
+  // A Response, or (the server did not answer) this stand-in without a status.
+  const post = /** @type {Response | { ok: false, status?: undefined, statusText: string }} */ (
+    await fetch(`${url}/__pxsig/check`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ project: P.name, ids, stories, via: 'check' }),
+    }).catch(
+      // fetch rejects with an Error (a TypeError) when the server does not answer.
+      (/** @type {Error} */ e) => ({ ok: false, statusText: e.message })
+    )
+  );
   if (!post.ok)
     die(
       `the server holding the store did not take the check (${post.status ?? ''} ${post.statusText ?? ''}); stop it or try again`
     );
-  const answer = await post.json().catch(() => ({}));
+  // The server's answer to POST /__pxsig/check (docs/server.md).
+  const answer = /** @type {QueuedCheck} */ (await post.json().catch(() => ({})));
   for (const x of answer.skipped ?? []) console.log(`[check] not checked: ${x.name}: ${x.why}`);
   if (answer.registered?.length)
     console.log(
@@ -777,15 +844,21 @@ async function viaServer(url, ids, stories = []) {
   const t0 = Date.now();
   for (;;) {
     await new Promise((r) => setTimeout(r, 1000));
-    const s = await fetch(`${url}/__pxsig/status`, { signal: AbortSignal.timeout(5000) })
-      .then((r) => r.json())
-      .catch(() => null);
+    // GET /__pxsig/status (docs/server.md), or null when the server does not answer.
+    const s = /** @type {ServerStatus | null} */ (
+      await fetch(`${url}/__pxsig/status`, { signal: AbortSignal.timeout(5000) })
+        .then((r) => r.json())
+        .catch(() => null)
+    );
     if (!s) die('the server went away during the check');
     if (!s.running && !s.queued) break;
     if (Date.now() - t0 > (Number(flags['timeout-s']) || 1800) * 1000)
       die('timed out waiting for the server queue');
   }
-  const report = JSON.parse(readFileSync(join(reports, 'check.json'), 'utf8'));
+  // check.json, as the server wrote it.
+  const report = /** @type {CheckReport} */ (
+    JSON.parse(readFileSync(join(reports, 'check.json'), 'utf8'))
+  );
   const want = new Set(ids);
   const rows = report.rows.filter((r) => want.has(r.id));
   const failed = rows.filter((r) => !r.pass);
@@ -794,13 +867,17 @@ async function viaServer(url, ids, stories = []) {
   );
   for (const r of failed.slice(0, 20))
     console.log(`  CHANGED ${r.id.padEnd(60)} ${r.error ?? (r.reasons ?? []).join('; ')}`);
-  const gated = outcome(enf, checkFindings(rows));
   // `enf` is null only under --update, which never hands the run to a server.
+  const gated = outcome(/** @type {NonNullable<typeof enf>} */ (enf), checkFindings(rows));
   appendReadiness(P, /** @type {NonNullable<typeof enf>} */ (enf), gated, {
     source: 'check',
     counts: checkCounts(rows),
   });
-  const last = lastLine(enf, gated, enf.configured.length ? readinessTally(P) : null);
+  const last = lastLine(
+    /** @type {NonNullable<typeof enf>} */ (enf),
+    gated,
+    /** @type {NonNullable<typeof enf>} */ (enf).configured.length ? readinessTally(P) : null
+  );
   if (last) console.log(`[pxsig] ${last}`);
   process.exit(gated.exit);
 }

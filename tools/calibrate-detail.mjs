@@ -32,12 +32,25 @@ import {
   scratchManifest,
   writeReport,
 } from './lib/research.mjs';
+/** @import { DetailBuild, DetailSweep, EngineCheckResult, ScenariosReport } from './types.js' */
+/**
+ * @typedef {{ suite: string, scenario: string, kind: 'regression' | 'noise', changed: boolean,
+ *   sigCaught: boolean }} Verdict
+ * @typedef {{ kind: 'regression' | 'noise' | undefined, caught: number, sigCaught: number,
+ *   of: number, fp: number }} Per
+ * @typedef {{ build: DetailBuild, k: number, T: number, E: number | null, fp: number,
+ *   caught: number, changed: number, detailOnly: number, avgRecordBytes: number,
+ *   per: Record<string, Per> }} Candidate
+ */
 
 const log = logger('calibrate-detail');
 const flags = parseFlags();
 const { P, run } = project(flags);
+/** @type {DetailBuild[]} */
 const BUILDS = flags.builds
-  ? JSON.parse(flags.builds)
+  ? // `--builds`: a JSON list of detail builds (tools/README.md). JSON.parse reads its argument
+    // as a string either way.
+    /** @type {DetailBuild[]} */ (JSON.parse(String(flags.builds)))
   : [
       { tile: 16, block: 4, selEnergy: 4 },
       { tile: 16, block: 4, selEnergy: 6 },
@@ -59,14 +72,19 @@ if (!tags.length)
   throw new Error(`no scenario reports in ${P.store.reports}: run tools/scenarios.mjs first`);
 const scratch = freshDir(P, 'calibrate-detail');
 const baseDir = join(scratch, 'base');
+/** @type {{ key: string, base: string, cur: string }[]} */
 const pairs = [];
+/** @type {Map<string, Verdict>} */
 const verdict = new Map(); // key → { suite, scenario, kind, changed, sigCaught }
 const eng = engine(P);
 try {
   for (const tag of tags) {
-    const rep = readReport(P, tag);
+    // A report tools/scenarios.mjs wrote: `tag` is one listed in the reports folder above.
+    const rep = /** @type {ScenariosReport} */ (readReport(P, tag));
     const ids = new Set(rep.scenarios[0].rows.filter((r) => !r.error).map((r) => r.id));
-    const entries = run.stories.filter((e) => ids.has(e.id)).map(({ gate, grid, ...e }) => e);
+    const entries = run.stories
+      .filter((e) => ids.has(e.id))
+      .map(({ gate: _gate, grid: _grid, ...e }) => e);
     baselineImages(P, entries, baseDir);
     const manifest = scratchManifest(
       P,
@@ -95,6 +113,7 @@ try {
         artifacts: 'none',
         gate: sigGate,
       });
+      /** @type {Map<string, EngineCheckResult>} */
       const byId = new Map(out.results.map((r) => [r.id, r]));
       for (const row of sc.rows) {
         const r = byId.get(row.id);
@@ -117,9 +136,11 @@ try {
 const sweepIn = join(scratch, 'sweep.json');
 writeFileSync(sweepIn, JSON.stringify({ pairs, builds: BUILDS }));
 const tSweep = performance.now();
-const sweep = rust(P, ['detail-sweep', '--input', sweepIn]).out;
+// `detail-sweep` prints its rows as DetailSweep.
+const sweep = /** @type {DetailSweep} */ (rust(P, ['detail-sweep', '--input', sweepIn]).out);
 const sweepMs = performance.now() - tSweep;
 
+/** @type {Candidate[]} */
 const candidates = [];
 BUILDS.forEach((build, bi) => {
   const rows = sweep.rows.map((r) => ({ key: r.key, ...verdict.get(r.key), b: r.builds[bi] }));
@@ -131,6 +152,7 @@ BUILDS.forEach((build, bi) => {
         let caught = 0;
         let changed = 0;
         let detailOnly = 0;
+        /** @type {Record<string, Per>} */
         const per = {};
         for (const r of rows) {
           const moved = r.b.moved.filter(([bd, rise]) => bd > T || rise > E).length;
@@ -168,6 +190,7 @@ for (const v of verdict.values()) {
   else if (v.changed) (sigOnly.changed++, (sigOnly.caught += v.sigCaught ? 1 : 0));
 }
 // Per-suite optimum: what a story-level gate (parameters.pxsig.gate) could buy one family.
+/** @type {Record<string, unknown>} */
 const perSuite = {};
 for (const tag of tags) {
   const scoped = candidates.map((c) => {
@@ -207,7 +230,7 @@ const result = {
   sigOnly,
   best,
   perSuite,
-  topAdmissible: admissible.slice(0, 15).map(({ per, ...c }) => c),
+  topAdmissible: admissible.slice(0, 15).map(({ per: _per, ...c }) => c),
   builds: BUILDS,
 };
 log(`${pairs.length} renders · sweep ${(sweepMs / 1000).toFixed(2)} s in Rust`);

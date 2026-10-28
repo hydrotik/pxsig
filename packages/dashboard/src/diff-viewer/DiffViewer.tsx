@@ -430,7 +430,7 @@ function Viewport({ label, className, style, keyboard = true, render, children }
     onPointerDown: (e) => {
       if (e.button !== 0) return;
       drag.current = { x: e.clientX, y: e.clientY, tx: c.view.current.tx, ty: c.view.current.ty };
-      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+      e.currentTarget.setPointerCapture?.(e.pointerId);
       setGrabbing(true);
     },
     onPointerUp: () => {

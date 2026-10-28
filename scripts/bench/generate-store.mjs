@@ -34,6 +34,8 @@ import { deflateSync } from 'node:zlib';
 import { storyNameFromExport, toId } from '../../packages/pxsig/src/lib/integrity.mjs';
 import { rustBinary } from '../../packages/pxsig/src/lib/workspace.mjs';
 
+/** @import { BenchEntry, GeneratedStore, PsigTemplate } from './types.js' */
+
 export const SIZE = {
   components: 168, // story files, one per component folder
   stories: 537, // main manifest: × 2 modes = 1,074 entries
@@ -73,6 +75,7 @@ const RULES = [
 ];
 
 /** mulberry32: small, seeded, the same sequence on every OS. */
+/** @param {number} seed */
 function rng(seed) {
   let a = seed >>> 0;
   return () => {
@@ -90,11 +93,13 @@ const CRC = Array.from({ length: 256 }, (_, n) => {
   for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
   return c >>> 0;
 });
+/** @param {Buffer} buf */
 const crc32 = (buf) => {
   let c = 0xffffffff;
   for (const b of buf) c = CRC[(c ^ b) & 0xff] ^ (c >>> 8);
   return (c ^ 0xffffffff) >>> 0;
 };
+/** @type {(type: string, data: Buffer) => Buffer} */
 const chunk = (type, data) => {
   const len = Buffer.alloc(4);
   len.writeUInt32BE(data.length);
@@ -103,6 +108,11 @@ const chunk = (type, data) => {
   crc.writeUInt32BE(crc32(td));
   return Buffer.concat([len, td, crc]);
 };
+/**
+ * @param {number} w
+ * @param {number} h
+ * @param {(x: number, y: number) => number[]} px
+ */
 function png(w, h, px) {
   const raw = Buffer.alloc((w * 4 + 1) * h);
   for (let y = 0; y < h; y++)
@@ -130,13 +140,18 @@ const CHANGED = png(128, 128, (x, y) =>
       : [40, 60, 90]
 );
 
-const sha = (buf) => createHash('sha256').update(buf).digest('hex');
+const sha = (/** @type {Buffer} */ buf) => createHash('sha256').update(buf).digest('hex');
 
 /** One real `.psig` from the engine, split so each entry's copy only changes the header's id. */
+/**
+ * @param {string} bin
+ * @param {string} scratch
+ * @returns {PsigTemplate}
+ */
 function template(bin, scratch) {
   const pngPath = join(scratch, 't.png');
   writeFileSync(pngPath, IMAGE);
-  const run = (args) => {
+  const run = (/** @type {string[]} */ args) => {
     const r = spawnSync(bin, args, { encoding: 'utf8' });
     if (r.status !== 0) throw new Error(`${bin} ${args[0]}: ${r.stderr || r.error?.message}`);
   };
@@ -154,10 +169,18 @@ function template(bin, scratch) {
   const buf = readFileSync(join(scratch, 't.psig'));
   const len = buf.readUInt32LE(6);
   return {
-    header: JSON.parse(buf.subarray(10, 10 + len).toString('utf8')),
+    // The engine's own header JSON (spec section 5).
+    header: /** @type {PsigTemplate['header']} */ (
+      JSON.parse(buf.subarray(10, 10 + len).toString('utf8'))
+    ),
     body: buf.subarray(10 + len),
   };
 }
+/**
+ * @param {PsigTemplate} t
+ * @param {string} id
+ * @param {unknown} [createdAt]
+ */
 function psig(t, id, createdAt = t.header.record?.createdAt) {
   const header = Buffer.from(
     JSON.stringify({ ...t.header, entry: { id }, record: { ...t.header.record, createdAt } })
@@ -171,6 +194,7 @@ function psig(t, id, createdAt = t.header.record?.createdAt) {
 
 // No background gc or maintenance: a detached `git gc --auto` still writing .git made removing the
 // store fail with ENOTEMPTY on macOS.
+/** @type {(cwd: string, ...args: string[]) => string} */
 const git = (cwd, ...args) => {
   const r = spawnSync('git', ['-c', 'gc.auto=0', '-c', 'maintenance.auto=false', ...args], {
     cwd,
@@ -192,6 +216,9 @@ const git = (cwd, ...args) => {
 /**
  * Write the project into `dir` (created; must not exist or be empty). Returns what the runner
  * needs: the counts and a few ids.
+ * @param {string} dir
+ * @param {{ seed?: number, bin?: string }} [opts]
+ * @returns {GeneratedStore}
  */
 export function generateStore(dir, { seed = 1, bin = process.env.PXSIG_BIN || rustBinary() } = {}) {
   if (!existsSync(bin))
@@ -199,8 +226,9 @@ export function generateStore(dir, { seed = 1, bin = process.env.PXSIG_BIN || ru
       `the pxsig engine is missing (${bin}): cargo build --release, or set PXSIG_BIN`
     );
   const rand = rng(seed);
-  const pick = (n) => Math.floor(rand() * n);
+  const pick = (/** @type {number} */ n) => Math.floor(rand() * n);
   mkdirSync(dir, { recursive: true });
+  /** @type {(rel: string, data: string | Buffer) => void} */
   const w = (rel, data) => {
     const p = join(dir, rel);
     mkdirSync(dirname(p), { recursive: true });
@@ -241,7 +269,9 @@ export function generateStore(dir, { seed = 1, bin = process.env.PXSIG_BIN || ru
     while (per[k] >= VARIANTS.length) k = (k + 1) % names.length;
     per[k]++;
   }
+  /** @type {BenchEntry[]} */
   const main = [];
+  /** @type {BenchEntry[]} */
   const matrix = [];
   let matrixLeft = SIZE.matrixStories;
   names.forEach((name, i) => {
@@ -275,6 +305,7 @@ export function generateStore(dir, { seed = 1, bin = process.env.PXSIG_BIN || ru
     );
     for (const v of variants) {
       const story = toId(title, storyNameFromExport(v));
+      /** @type {(mode: string, def: boolean) => BenchEntry} */
       const entry = (mode, def) => ({
         id: def ? story : `${story}@${mode}`,
         story,
@@ -339,16 +370,19 @@ export function generateStore(dir, { seed = 1, bin = process.env.PXSIG_BIN || ru
     )
   );
   w('.pxsig/.gitattributes', '*.psig binary\n');
+  /** @type {Record<string, string>} */
   const after = {};
   for (const e of all) {
     const buf = psig(t, e.id);
     w(e.sig, buf);
     after[e.id] = sha(buf);
   }
+  /** @type {Set<string>} */
   const changed = new Set();
   while (changed.size < SIZE.changed) changed.add(main[pick(main.length)].id);
   for (const e of all) w(`.pxsig/renders/latest/${e.id}.png`, changed.has(e.id) ? CHANGED : IMAGE);
   // The log: one line per entry, then re-approvals; `after` of an entry's last line is its bytes.
+  /** @type {object[]} */
   const lines = [];
   const at0 = Date.parse('2026-10-18T00:00:00Z');
   all.forEach((e, i) =>
@@ -381,6 +415,7 @@ export function generateStore(dir, { seed = 1, bin = process.env.PXSIG_BIN || ru
     });
   }
   w('.pxsig/approvals.ndjson', lines.map((l) => JSON.stringify(l)).join('\n') + '\n');
+  /** @type {Record<string, string[]>} */
   const a11y = {};
   for (const e of all) a11y[e.id] = [];
   for (let k = 0; k < SIZE.a11yAccepted; k++)
@@ -389,7 +424,7 @@ export function generateStore(dir, { seed = 1, bin = process.env.PXSIG_BIN || ru
 
   // --- reports ----------------------------------------------------------------------------------
   const checkedAt = new Date(Date.now() - 60_000).toISOString();
-  const row = (e) => {
+  const row = (/** @type {BenchEntry} */ e) => {
     const bad = changed.has(e.id);
     return {
       id: e.id,
@@ -433,6 +468,7 @@ export function generateStore(dir, { seed = 1, bin = process.env.PXSIG_BIN || ru
       },
     };
   };
+  /** @param {BenchEntry[]} entries @param {string} [suite] */
   const report = (entries, suite) => ({
     generatedAt: checkedAt,
     project: 'bench',
@@ -454,6 +490,7 @@ export function generateStore(dir, { seed = 1, bin = process.env.PXSIG_BIN || ru
   });
   w('.pxsig/reports/check.json', JSON.stringify(report(main)));
   w('.pxsig/reports/check-matrix.json', JSON.stringify(report(matrix, 'matrix')));
+  /** @type {string[]} */
   const hist = [];
   for (let k = 0; k < SIZE.historyRuns; k++)
     hist.push(
@@ -501,6 +538,7 @@ export function generateStore(dir, { seed = 1, bin = process.env.PXSIG_BIN || ru
   // Sources and renders predate the verdicts, except this pull request's two edits: `doctor` then
   // sees what a project looks like an hour after a full check, not 1,074 stale verdicts.
   const old = new Date(Date.now() - 3_600_000);
+  /** @param {string} d */
   const age = (d) => {
     for (const n of readdirSync(d)) {
       const p = join(d, n);

@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { countWarnings, lowered, regressions, total } from './lib/lint-ratchet.mjs';
 
+/**
+ * @param {string} filename
+ * @param {string} code
+ */
 const d = (filename, code, severity = 'warning') => ({ filename, code, severity });
 
 test('counts warnings per file and rule, ignoring errors, with forward slashes', () => {

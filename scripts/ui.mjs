@@ -49,6 +49,7 @@ if ((cmd === 'docs' || cmd === 'check') && (major < 22 || (major === 22 && minor
   );
   process.exit(2);
 }
+/** @param {string} n */
 const flag = (n) => {
   const i = args.indexOf(`--${n}`);
   return i >= 0 ? args[i + 1] : undefined;
@@ -86,6 +87,7 @@ try {
         console.log(`[ui] contract-lock.json already records contract ${now.version}`);
         process.exit(0);
       }
+      /** @type {string[]} */
       const bad = [];
       if (compareVersions(now.version, lock.version) <= 0)
         bad.push(`CONTRACT_VERSION (${now.version}) must be above the locked ${lock.version}`);
@@ -115,6 +117,7 @@ try {
     process.exit(2);
   }
 } catch (e) {
-  console.error(e.message);
+  // ui-tools and build-config throw Errors; the fs calls Node system errors (Errors too).
+  console.error(/** @type {Error} */ (e).message);
   process.exit(1);
 }

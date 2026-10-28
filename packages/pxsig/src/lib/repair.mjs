@@ -39,7 +39,17 @@ import { appendLine, dropTorn } from './files.mjs';
 import { stamp } from './approvals.mjs';
 import { relPath } from './paths.mjs';
 /** @import { IntegrityContext } from './integrity.mjs' */
+/** @import { IndexStory, StoryRef } from '../types.js' */
+/**
+ * @import {
+ *   ApplyOptions, DoneStep, NamedIndex, EntryRepairResult, GateOutcome, GateResult, GateRow, Harvest, IntegrityCode,
+ *   IntegrityManifest, IntegrityReport, IntegrityRow, Ledger, LedgerEntry, ManifestLedgerEntry, ManualItem, PlanOptions, PruneResult,
+ *   ReconcileOptions, RecheckResult, RegisterResult, RepairAction, RepairActor, RepairHooks,
+ *   RepairLogLine, RepairPlan, RepairStep, ServerStatus, StoryToRegister
+ * } from '../types/t3.js'
+ */
 
+/** @type {RepairAction[]} */
 export const ACTIONS = [
   'register',
   'recheck',
@@ -48,14 +58,24 @@ export const ACTIONS = [
   'prune',
   'log-torn',
 ];
-/** What a repair re-checks: entries with no usable verdict or render. */
+/**
+ * What a repair re-checks: entries with no usable verdict or render.
+ * @type {IntegrityCode[]}
+ */
 const RECHECK_CODES = ['never-checked', 'missing-render', 'render-error'];
-/** Stale verdicts are re-checked only where a later step needs a fresh render, or when asked. */
+/**
+ * Stale verdicts are re-checked only where a later step needs a fresh render, or when asked.
+ * @type {IntegrityCode[]}
+ */
 const NEEDS_FRESH_RENDER = ['missing-baseline-image', 'legacy-format'];
 
 // --- the write guard ------------------------------------------------------------------------------------
 
-/** Refuse any write that could touch a signature or the baselines folder. */
+/**
+ * Refuse any write that could touch a signature or the baselines folder.
+ * @param {IntegrityContext} ctx
+ * @param {string} path
+ */
 export function guardWrite(ctx, path) {
   const abs = resolve(path);
   const baselines = resolve(ctx.dirs.baselines) + sep;
@@ -71,37 +91,57 @@ export function guardWrite(ctx, path) {
   return abs;
 }
 
-/** Who ran a repair, for its log: nobody unless `approvals.identity: "git-email"` (decision 81). */
+/**
+ * Who ran a repair, for its log: nobody unless `approvals.identity: "git-email"` (decision 81).
+ * @param {IntegrityContext} ctx
+ * @returns {string | null}
+ */
 export function who(ctx) {
   if (ctx.config?.approvals?.identity !== 'git-email') return null;
   const r = spawnSync('git', ['-C', ctx.repoRoot, 'config', 'user.email'], { encoding: 'utf8' });
   return r.stdout?.trim() || process.env.USER || process.env.USERNAME || 'unknown';
 }
 
+/**
+ * @param {IntegrityContext} ctx
+ * @param {RepairLogLine} line
+ */
 export function logRepair(ctx, line) {
   const p = guardWrite(ctx, repairLogPath(ctx));
   mkdirSync(dirname(p), { recursive: true });
-  const full = stamp({ schemaVersion: SCHEMA_VERSION, at: new Date().toISOString(), ...line });
+  // stamp (lib/approvals.mjs) returns the line with `by` only when set, `agent`, and `pxsig`.
+  const full = /** @type {Record<string, unknown>} */ (
+    stamp({ schemaVersion: SCHEMA_VERSION, at: new Date().toISOString(), ...line })
+  );
   appendLine(p, full);
   return full;
 }
 
 // --- plan -------------------------------------------------------------------------------------------------
 
+/**
+ * @param {Ledger} ledger
+ * @param {IntegrityCode[]} codes
+ */
 const idsWith = (ledger, codes) =>
   ledger.entries.filter((x) => x.issues.some((i) => codes.includes(i.code)));
 
 /**
  * The repair plan for a ledger: ordered steps, each with the entries it covers, why, and — when
  * it cannot run here — why it is blocked. `only` limits to some actions; `prune` adds the prune step.
+ * @param {Ledger} ledger
+ * @param {PlanOptions} [opts]
+ * @returns {RepairPlan}
  */
 export function planRepairs(ledger, { only, prune = false, server = null, stale = false } = {}) {
   // prune and log-torn change the store's own records: planned only when asked for by name.
+  /** @param {RepairAction} a */
   const want = (a) =>
     (!only || only.includes(a)) &&
     (a !== 'prune' || prune) &&
     (a !== 'log-torn' || !!only?.includes('log-torn'));
   const sb = ledger.sources.storyIndex;
+  /** @type {RepairStep[]} */
   const steps = [];
   const unregistered = idsWith(ledger, ['unregistered']);
   if (unregistered.length && want('register'))
@@ -118,6 +158,7 @@ export function planRepairs(ledger, { only, prune = false, server = null, stale 
     });
   // A stale verdict is a warning: re-checking hundreds of them is not a repair of the errors.
   // They are re-checked here only when a later step gates on a fresh render, or when asked.
+  /** @param {LedgerEntry} x */
   const needsRender = (x) =>
     x.issues.some((i) => RECHECK_CODES.includes(i.code)) ||
     (x.issues.some((i) => i.code === 'stale') &&
@@ -127,6 +168,7 @@ export function planRepairs(ledger, { only, prune = false, server = null, stale 
     (x) => x.files && needsRender(x) && !x.issues.some((i) => i.code === 'orphaned')
   );
   if ((recheck.length || (unregistered.length && want('register'))) && want('recheck')) {
+    /** @type {Record<string, number>} */
     const why = {};
     for (const x of recheck)
       for (const i of x.issues)
@@ -179,6 +221,7 @@ export function planRepairs(ledger, { only, prune = false, server = null, stale 
       blocked: null,
       needsPerson: true,
     });
+  /** @type {ManualItem[]} */
   const manual = [];
   if (torn && !want('log-torn'))
     manual.push({
@@ -187,7 +230,7 @@ export function planRepairs(ledger, { only, prune = false, server = null, stale 
       what: 'report only: `pxsig doctor --repair --only log-torn --apply` (a person at a terminal) removes them',
       sample: [],
     });
-  for (const [code, what] of [
+  for (const [code, what] of /** @type {[IntegrityCode, string][]} */ ([
     ['changed', 'review in the dashboard (A approves, R rejects)'],
     ...(stale
       ? []
@@ -200,7 +243,7 @@ export function planRepairs(ledger, { only, prune = false, server = null, stale 
     ['flaky', 're-check, then review if it keeps failing'],
     ['unbaselined', 'NEW: approve its first render in the dashboard'],
     ['a11y-new', 'fix the violation or accept it into the a11y baseline'],
-  ]) {
+  ])) {
     const xs = idsWith(ledger, [code]);
     if (xs.length)
       manual.push({ code, count: xs.length, what, sample: xs.slice(0, 5).map((x) => x.id) });
@@ -228,11 +271,15 @@ export function planRepairs(ledger, { only, prune = false, server = null, stale 
  * entries go after the last entry of their story file. The previous manifest is kept in
  * `<store>/reports/manifest-history/`. Baselines are never created: new entries are unbaselined.
  * @param {IntegrityContext} ctx
+ * @param {StoryToRegister[]} stories
+ * @param {{ harvest: Harvest }} hooks
+ * @returns {Promise<RegisterResult>}
  */
 export async function registerStories(ctx, stories, { harvest }) {
   const { expandEntries } = await import('./manifest.mjs');
   const { entryConfig } = await import('./workspace.mjs');
-  const manifest = readJson(ctx.manifestPath, null);
+  // The manifest `pxsig manifest` wrote (docs/spec.md section 6).
+  const manifest = /** @type {IntegrityManifest} */ (readJson(ctx.manifestPath, null));
   const have = new Set(manifest.stories.map((e) => e.story ?? e.id));
   const asked = stories.filter((s) => !have.has(s.id));
   if (!asked.length) return { added: [], skipped: [], failed: [], adoptedSignatures: [] };
@@ -243,6 +290,7 @@ export async function registerStories(ctx, stories, { harvest }) {
     .map((s) => ({ id: s.id, why: `could not read parameters: ${params[s.id].error}` }));
   const todo = asked.filter((s) => !params[s.id]?.error);
   if (!todo.length) return { added: [], skipped: [], failed, adoptedSignatures: [] };
+  /** @type {StoryRef[]} */
   const list = todo.map((s) => ({
     id: s.id,
     importPath: s.importPath,
@@ -283,14 +331,27 @@ export async function registerStories(ctx, stories, { harvest }) {
   };
 }
 
-/** The entry ids of `story` among `ids` (`<story>`, `<story>__<state>`, `<story>@<mode>`). */
+/**
+ * The entry ids of `story` among `ids` (`<story>`, `<story>__<state>`, `<story>@<mode>`).
+ * @param {string[]} ids
+ * @param {string} story
+ */
 export const entriesOfStory = (ids, story) =>
   ids.filter((e) => e === story || e.startsWith(`${story}__`) || e.startsWith(`${story}@`));
 
-/** The story id an entry id belongs to: `<story>[__<state>][@<mode>]` → `<story>`. */
+/**
+ * The story id an entry id belongs to: `<story>[__<state>][@<mode>]` → `<story>`.
+ * @param {unknown} id
+ */
 export const storyOfEntry = (id) => String(id).replace(/(__[^@]+)?(@.+)?$/, '');
 
-/** Log a register run: one line per story, plus one per adopted signature and per failure. */
+/**
+ * Log a register run: one line per story, plus one per adopted signature and per failure.
+ * @param {IntegrityContext} ctx
+ * @param {RegisterResult} r
+ * @param {string[]} storyIds
+ * @param {RepairActor & { why?: string }} actor
+ */
 function logRegister(
   ctx,
   r,
@@ -349,12 +410,16 @@ function logRegister(
  * it). Never writes a signature: the entries arrive NEW, for a person to approve.
  * Returns { added: entry ids, stories: story ids registered, skipped: [{ name, why }] }.
  * @param {IntegrityContext} ctx
+ * @param {Iterable<string>} names
+ * @param {{ index?: NamedIndex | null, harvest: Harvest, by?: string | null, via?: string }} opts
  * @returns {Promise<{ added: string[], stories: string[], skipped: { name: string, why: string }[], adoptedSignatures?: string[] }>}
  */
 export async function registerNamed(ctx, names, { index, harvest, by = who(ctx), via = 'check' }) {
-  const manifest = readJson(ctx.manifestPath, null);
+  // The manifest `pxsig manifest` wrote (docs/spec.md section 6).
+  const manifest = /** @type {IntegrityManifest} */ (readJson(ctx.manifestPath, null));
   const entryIds = new Set(manifest.stories.map((e) => e.id));
   const storyIds = new Set(manifest.stories.map((e) => e.story ?? e.id));
+  /** @type {{ name: string, why: string }[]} */
   const skipped = [];
   /** @type {Map<string, string[]>} */
   const want = new Map(); // story id → names asking for it
@@ -398,7 +463,11 @@ export async function registerNamed(ctx, names, { index, harvest, by = who(ctx),
   if (!want.size) return { added: [], stories: [], skipped };
   const r = await registerStories(
     ctx,
-    [...want.keys()].map((id) => ({ id, importPath: byId.get(id).importPath })),
+    // Every story in `want` was found in the index (`s` above).
+    [...want.keys()].map((id) => ({
+      id,
+      importPath: /** @type {IndexStory} */ (byId.get(id)).importPath,
+    })),
     { harvest }
   );
   logRegister(ctx, r, [...want.keys()], {
@@ -433,6 +502,7 @@ export async function registerNamed(ctx, names, { index, harvest, by = who(ctx),
  * Fresh Rust check of the latest renders against their signatures (no cache, no history), with
  * every artifact written to a scratch folder. Returns id → { pass, metrics, reasons, error, reconstructed }.
  * @param {IntegrityContext} ctx
+ * @param {string[]} ids
  */
 export function gateLatest(ctx, ids) {
   if (!existsSync(ctx.rustBin))
@@ -464,8 +534,10 @@ export function gateLatest(ctx, ids) {
     { cwd: ctx.repoRoot, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 }
   );
   if (r.status === 2 || !r.stdout) throw new Error(`pxsig check failed: ${r.stderr || r.stdout}`);
+  /** @type {Map<string, GateResult>} */
   const out = new Map();
-  for (const row of JSON.parse(r.stdout).results) {
+  // The engine's `check --json` answer (docs/spec.md section 4).
+  for (const row of /** @type {{ results: GateRow[] }} */ (JSON.parse(r.stdout)).results) {
     const rec = join(scratch, 'out', `${row.id}.baseline.png`);
     out.set(row.id, {
       pass: row.pass === true,
@@ -478,9 +550,17 @@ export function gateLatest(ctx, ids) {
   return { results: out, scratch };
 }
 
+/**
+ * @param {IntegrityContext} ctx
+ * @param {Ledger} ledger
+ * @param {string[]} ids
+ * @param {RepairActor} actor
+ */
 export function restoreBaselineImages(ctx, ledger, ids, { by, via }) {
   const byId = new Map(ledger.entries.map((x) => [x.id, x]));
+  /** @type {EntryRepairResult[]} */
   const results = [];
+  /** @type {string[]} */
   const candidates = [];
   for (const id of ids) {
     const x = byId.get(id);
@@ -505,9 +585,14 @@ export function restoreBaselineImages(ctx, ledger, ids, { by, via }) {
   if (candidates.length) {
     const { results: gate, scratch } = gateLatest(ctx, candidates);
     for (const id of candidates) {
+      /** @type {GateOutcome} */
       const g = gate.get(id) ?? { pass: false, error: 'no gate result' };
       const latest = join(ctx.dirs.latest, `${id}.png`);
-      const psig = resolve(ctx.repoRoot, byId.get(id).files.sig);
+      // A candidate is a manifest entry (checked above): it has files.
+      const psig = resolve(
+        ctx.repoRoot,
+        /** @type {ManifestLedgerEntry} */ (byId.get(id)).files.sig
+      );
       if (g.pass) {
         // Rust adds the image without touching the record; it refuses a .psig that has one.
         const a = spawnSync(ctx.rustBin, ['attach', psig, latest, '--json'], { encoding: 'utf8' });
@@ -541,8 +626,9 @@ export function restoreBaselineImages(ctx, ledger, ids, { by, via }) {
           result: 'unrecoverable: changed',
           why:
             g.error ??
-            (g.reasons[0]
-              ? `latest render fails the gate: ${g.reasons[0]}`
+            // The stand-in carries an error: only a gate result gets here.
+            (/** @type {GateResult} */ (g).reasons[0]
+              ? `latest render fails the gate: ${/** @type {GateResult} */ (g).reasons[0]}`
               : 'latest render fails the gate'),
           gate: { pass: false, ssim: g.metrics?.ssim ?? null },
           fallback: fallback ? relative(ctx.repoRoot, fallback) : null,
@@ -568,9 +654,17 @@ export function restoreBaselineImages(ctx, ledger, ids, { by, via }) {
 
 // --- convert-legacy: .pxsig.json → .psig, the gate decides -------------------------------------------
 
+/**
+ * @param {IntegrityContext} ctx
+ * @param {Ledger} ledger
+ * @param {string[]} ids
+ * @param {RepairActor} actor
+ */
 export function convertLegacy(ctx, ledger, ids, { by, via }) {
   const byId = new Map(ledger.entries.map((x) => [x.id, x]));
+  /** @type {EntryRepairResult[]} */
   const results = [];
+  /** @type {string[]} */
   const candidates = [];
   for (const id of ids) {
     const x = byId.get(id);
@@ -585,13 +679,16 @@ export function convertLegacy(ctx, ledger, ids, { by, via }) {
       results.push({ id, result: 'blocked', why: 'the latest render is stale: re-check first' });
     else candidates.push(id);
   }
+  /** @type {Map<string, string>} */
   const moved = new Map();
   if (candidates.length) {
     const { results: gate, scratch } = gateLatest(ctx, candidates);
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     for (const id of candidates) {
+      /** @type {GateOutcome} */
       const g = gate.get(id) ?? { pass: false, error: 'no gate result' };
-      const x = byId.get(id);
+      // A candidate is a manifest entry (checked above): it has files.
+      const x = /** @type {ManifestLedgerEntry} */ (byId.get(id));
       const from = resolve(ctx.repoRoot, x.files.sig);
       const toRel = x.files.sig.replace(/\.pxsig\.json$/, '.psig');
       const to = resolve(ctx.repoRoot, toRel);
@@ -601,7 +698,8 @@ export function convertLegacy(ctx, ledger, ids, { by, via }) {
           result: 'unrecoverable: changed',
           why:
             g.error ??
-            `latest render fails the gate${g.reasons[0] ? `: ${g.reasons[0]}` : ''}: review it before converting`,
+            // The stand-in carries an error: only a gate result gets here.
+            `latest render fails the gate${/** @type {GateResult} */ (g).reasons[0] ? `: ${/** @type {GateResult} */ (g).reasons[0]}` : ''}: review it before converting`,
         });
         continue;
       }
@@ -646,7 +744,8 @@ export function convertLegacy(ctx, ledger, ids, { by, via }) {
     rmSync(scratch, { recursive: true, force: true });
   }
   if (moved.size) {
-    const manifest = readJson(ctx.manifestPath, null);
+    // The manifest `pxsig manifest` wrote (docs/spec.md section 6).
+    const manifest = /** @type {IntegrityManifest} */ (readJson(ctx.manifestPath, null));
     const backupDir = guardWrite(ctx, join(ctx.dirs.reports, 'manifest-history'));
     mkdirSync(backupDir, { recursive: true });
     copyFileSync(
@@ -682,11 +781,20 @@ export function convertLegacy(ctx, ledger, ids, { by, via }) {
 
 // --- prune: move, never delete ---------------------------------------------------------------------
 
+/**
+ * @param {IntegrityContext} ctx
+ * @param {Ledger} ledger
+ * @param {string[]} ids
+ * @param {RepairActor} actor
+ * @returns {PruneResult}
+ */
 export function pruneOrphans(ctx, ledger, ids, { by, via }) {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const trash = join(ctx.dirs.trash, stamp);
   const byId = new Map(ledger.entries.map((x) => [x.id, x]));
+  /** @type {PruneResult['moved']} */
   const moved = [];
+  /** @type {Set<string>} */
   const dropEntries = new Set();
   for (const id of ids) {
     const x = byId.get(id);
@@ -707,7 +815,8 @@ export function pruneOrphans(ctx, ledger, ids, { by, via }) {
     }
   }
   if (dropEntries.size) {
-    const manifest = readJson(ctx.manifestPath, null);
+    // The manifest `pxsig manifest` wrote (docs/spec.md section 6).
+    const manifest = /** @type {IntegrityManifest} */ (readJson(ctx.manifestPath, null));
     mkdirSync(join(trash, 'manifest'), { recursive: true });
     copyFileSync(ctx.manifestPath, join(trash, 'manifest', 'manifest.json'));
     writeJsonAtomic(
@@ -741,17 +850,26 @@ export function pruneOrphans(ctx, ledger, ids, { by, via }) {
 
 // --- default hooks: the running server when it is up, else check.mjs / Playwright ----------------------
 
+/**
+ * @param {string | null | undefined} serverUrl
+ * @returns {Promise<ServerStatus>}
+ */
 export async function serverStatus(serverUrl) {
   try {
     const r = await fetch(`${serverUrl}/__pxsig/status`, { signal: AbortSignal.timeout(1500) });
-    const s = await r.json();
+    // The server's status answer (docs/server.md, GET /__pxsig/status).
+    const s = /** @type {{ running?: unknown, queued?: number }} */ (await r.json());
     return { up: true, running: !!s.running, queued: s.queued ?? 0 };
   } catch {
     return { up: false };
   }
 }
 
-/** @param {IntegrityContext} ctx */
+/**
+ * @param {IntegrityContext} ctx
+ * @param {{ serverUrl?: string | null, timeoutMs?: number }} [opts]
+ * @returns {RepairHooks}
+ */
 export function defaultHooks(ctx, { serverUrl, timeoutMs = 15 * 60_000 } = {}) {
   return {
     async recheck(ids) {
@@ -772,6 +890,7 @@ export function defaultHooks(ctx, { serverUrl, timeoutMs = 15 * 60_000 } = {}) {
         }
         return { via: 'server' };
       }
+      /** @type {{ code: number | null, log: string }} */
       const r = await new Promise((ok) => {
         const checkJs = join(dirname(fileURLToPath(import.meta.url)), '..', 'check.mjs');
         const p = spawn(
@@ -780,8 +899,15 @@ export function defaultHooks(ctx, { serverUrl, timeoutMs = 15 * 60_000 } = {}) {
           { cwd: ctx.repoRoot, stdio: ['ignore', 'pipe', 'pipe'] }
         );
         let log = '';
-        p.stdout.on('data', (d) => (log += d));
-        p.stderr.on('data', (d) => (log += d));
+        // stdio[1] and stdio[2] are 'pipe': both are streams.
+        /** @type {import('node:stream').Readable} */ (p.stdout).on(
+          'data',
+          (/** @type {Buffer} */ d) => (log += d)
+        );
+        /** @type {import('node:stream').Readable} */ (p.stderr).on(
+          'data',
+          (/** @type {Buffer} */ d) => (log += d)
+        );
         p.on('exit', (code) => ok({ code, log }));
       });
       if (r.code === 2)
@@ -802,13 +928,19 @@ export function defaultHooks(ctx, { serverUrl, timeoutMs = 15 * 60_000 } = {}) {
  * steps so each acts on fresh facts. `hooks`: { recheck(ids), harvest(ids), confirmPrune(n) }.
  * Returns { steps: [{ action, result }], ledger } with the ledger after the repairs.
  * @param {IntegrityContext} ctx
+ * @param {RepairPlan} plan
+ * @param {ApplyOptions} [opts]
+ * @returns {Promise<{ steps: DoneStep[], ledger: Ledger }>}
  */
 export async function applyRepairs(
   ctx,
   plan,
-  { hooks, via = 'cli', by = who(ctx), reconcileOpts = {} } = {}
+  // Every caller passes `hooks`; without them a step that calls one throws, as it always has.
+  { hooks, via = 'cli', by = who(ctx), reconcileOpts = {} } = /** @type {ApplyOptions} */ ({})
 ) {
+  /** @type {DoneStep[]} */
   const done = [];
+  /** @type {Ledger | null} */
   let ledger = null;
   const fresh = async () => (ledger = await reconcile(ctx, reconcileOpts));
   // A copy: register appends the entries it adds to the re-check step (or adds one).
@@ -834,8 +966,10 @@ export async function applyRepairs(
       );
       const r = await registerStories(
         ctx,
-        idx.map((x) => ({ id: x.id, importPath: x.importPath })),
-        { harvest: hooks.harvest }
+        // An unregistered story's entry carries its importPath (reconcile).
+        idx.map((x) => ({ id: x.id, importPath: /** @type {string} */ (x.importPath) })),
+        // A plan with a register step comes with `harvest` (defaultHooks, for every caller).
+        { harvest: /** @type {Harvest} */ (hooks.harvest) }
       );
       logRegister(ctx, r, step.ids, { by, via });
       const notes = [
@@ -865,19 +999,27 @@ export async function applyRepairs(
       if (!step.ids.length) continue;
       const readRows = () =>
         new Map(
-          (readJson(join(ctx.dirs.reports, 'check.json'), null)?.rows ?? []).map((x) => [x.id, x])
+          // check.json, pxsig's own report (lib/rows.mjs).
+          (/** @type {IntegrityReport | null} */
+          (readJson(join(ctx.dirs.reports, 'check.json'), null))?.rows ?? []).map((x) => [x.id, x])
         );
       const before = readRows();
+      /** @type {RecheckResult} */
       let r;
       try {
-        r = await hooks.recheck(step.ids);
+        // A plan with a re-check step comes with `recheck` (defaultHooks, for every caller).
+        r = await /** @type {RepairHooks['recheck']} */ (hooks.recheck)(step.ids);
       } catch (e) {
-        r = { via: 'server', error: e.message };
+        // A re-check fails with an Error (defaultHooks throws them; fetch rejects with them).
+        r = { via: 'server', error: /** @type {Error} */ (e).message };
       }
       // Count what the re-check actually recorded, not what it was asked to do.
       const rows = readRows();
       const recorded = step.ids.filter(
-        (id) => rows.get(id)?.checkedAt && rows.get(id).checkedAt !== before.get(id)?.checkedAt
+        // The row was found on the left of &&.
+        (id) =>
+          rows.get(id)?.checkedAt &&
+          /** @type {IntegrityRow} */ (rows.get(id)).checkedAt !== before.get(id)?.checkedAt
       );
       const errors = recorded.filter((id) => rows.get(id)?.error).length;
       const result = r.error
@@ -901,6 +1043,7 @@ export async function applyRepairs(
       });
     } else if (step.action === 'restore-baseline-image') {
       const res = restoreBaselineImages(ctx, await fresh(), step.ids, { by, via });
+      /** @param {string} k */
       const n = (k) => res.filter((r) => r.result === k).length;
       done.push({
         action: step.action,
@@ -909,6 +1052,7 @@ export async function applyRepairs(
       });
     } else if (step.action === 'convert-legacy') {
       const res = convertLegacy(ctx, await fresh(), step.ids, { by, via });
+      /** @param {string} k */
       const n = (k) => res.filter((r) => r.result === k).length;
       done.push({
         action: step.action,

@@ -5,6 +5,8 @@
  *
  * oxfmt exits non-zero when every file handed to it is excluded by its own ignore rules, and
  * lint-staged can put an ignored file alone in a chunk, so they are filtered out here first.
+ *
+ * @param {string} file
  */
 const isOxfmtIgnored = (file) => {
   const p = file.replace(/\\/g, '/');
@@ -30,16 +32,20 @@ const isOxfmtIgnored = (file) => {
   );
 };
 
-/** Quote with forward slashes so the command is safe under the sh-based git hook. */
+/**
+ * Quote with forward slashes so the command is safe under the sh-based git hook.
+ * @param {string} f
+ */
 const quote = (f) => `"${f.replace(/\\/g, '/')}"`;
 
+/** @param {string[]} files */
 const oxfmt = (files) => {
   const targets = files.filter((f) => !isOxfmtIgnored(f));
   return targets.length ? [`pnpm exec oxfmt ${targets.map(quote).join(' ')}`] : [];
 };
 
 export default {
-  '*.{ts,tsx,js,jsx,mjs,cjs}': (files) => [
+  '*.{ts,tsx,js,jsx,mjs,cjs}': (/** @type {string[]} */ files) => [
     `pnpm exec oxlint --type-aware ${files.map(quote).join(' ')}`,
     ...oxfmt(files),
   ],

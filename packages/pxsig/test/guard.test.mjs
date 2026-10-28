@@ -35,6 +35,21 @@ import {
 } from '../src/lib/guard.mjs';
 import { fixture, hasRust, rustBin } from './fixture.mjs';
 
+/** @import { IncomingHttpHeaders, OutgoingHttpHeaders } from 'node:http' */
+/** @import { AddressInfo } from 'node:net' */
+/** @import { CheckRow, ManifestEntry } from '../src/types.js' */
+/**
+ * @typedef {ReturnType<typeof fixture>} Fixture
+ * @typedef {{ status: number, error: string, code?: string }} Refusal
+ * A server answer's JSON, as far as these tests read it: flat strings (`link`, `error`, `code`;
+ * docs/server.md).
+ * @typedef {Record<string, string>} Answer
+ * @typedef {{ status: number | undefined, headers: IncomingHttpHeaders, text: string, json: () => Answer }} RawResponse
+ * An MCP tool result (docs/mcp.md).
+ * @typedef {{ isError?: boolean, content: { text: string }[] }} ToolResult
+ * @typedef {{ port: number, url: string, log: () => string, stop: () => Promise<unknown> }} Server
+ */
+
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 
 // --- the rules ------------------------------------------------------------------------------------
@@ -50,7 +65,12 @@ const dashboard = {
   'sec-fetch-site': 'same-origin',
   cookie: `other=1; ${linkCookie(6070)}=${session}`,
 };
-/** null when allowed, else the refusal; `via` of an allowed decision through `viaOf`. */
+/**
+ * null when allowed, else the refusal; `via` of an allowed decision through `viaOf`.
+ * @param {string} action
+ * @param {IncomingHttpHeaders} headers
+ * @returns {Refusal | null}
+ */
 const refuse = (action, headers) => {
   const a = authorize({
     action,
@@ -63,6 +83,10 @@ const refuse = (action, headers) => {
   });
   return a.ok ? null : { status: a.status, error: a.error, ...(a.code ? { code: a.code } : {}) };
 };
+/**
+ * @param {string} action
+ * @param {IncomingHttpHeaders} headers
+ */
 const viaOf = (action, headers) =>
   authorize({
     action,
@@ -175,14 +199,28 @@ test("the MCP's token rejects and clears rejections, nothing that approves or ac
 });
 
 test('a decision from another origin is refused even with the token; a Storybook may only ask for checks', () => {
-  assert.equal(refuse('approve', { ...dashboard, origin: 'http://evil.example' }).status, 403);
+  // Each `.status` read is on a refusal (a null fails the test there).
   assert.equal(
-    refuse('approve', { ...dashboard, origin: 'http://localhost:6006' }).status,
+    /** @type {Refusal} */ (refuse('approve', { ...dashboard, origin: 'http://evil.example' }))
+      .status,
+    403
+  );
+  assert.equal(
+    /** @type {Refusal} */ (refuse('approve', { ...dashboard, origin: 'http://localhost:6006' }))
+      .status,
     403,
     'not from the Storybook either'
   );
-  assert.equal(refuse('approve', { ...dashboard, 'sec-fetch-site': 'cross-site' }).status, 403);
-  assert.equal(refuse('approve', { ...dashboard, 'sec-fetch-site': 'same-site' }).status, 403);
+  assert.equal(
+    /** @type {Refusal} */ (refuse('approve', { ...dashboard, 'sec-fetch-site': 'cross-site' }))
+      .status,
+    403
+  );
+  assert.equal(
+    /** @type {Refusal} */ (refuse('approve', { ...dashboard, 'sec-fetch-site': 'same-site' }))
+      .status,
+    403
+  );
   assert.equal(
     refuse('check', { origin: 'http://localhost:6006', 'sec-fetch-site': 'cross-site' }),
     null,
@@ -190,13 +228,20 @@ test('a decision from another origin is refused even with the token; a Storybook
   );
   assert.equal(refuse('check', {}), null, 'the CLI and the MCP');
   assert.equal(refuse('repair', {}), null);
-  assert.equal(refuse('check', { origin: 'http://evil.example' }).status, 403);
   assert.equal(
-    refuse('check', { 'sec-fetch-site': 'cross-site' }).status,
+    /** @type {Refusal} */ (refuse('check', { origin: 'http://evil.example' })).status,
+    403
+  );
+  assert.equal(
+    /** @type {Refusal} */ (refuse('check', { 'sec-fetch-site': 'cross-site' })).status,
     403,
     'a page on another site, Origin or not'
   );
-  assert.equal(refuse('check', { origin: 'null' }).status, 403, 'a sandboxed frame');
+  assert.equal(
+    /** @type {Refusal} */ (refuse('check', { origin: 'null' })).status,
+    403,
+    'a sandboxed frame'
+  );
 });
 
 test('loopback hosts only, on this port', () => {
@@ -215,14 +260,22 @@ test('loopback hosts only, on this port', () => {
 // --- the server -----------------------------------------------------------------------------------
 
 const freePort = () =>
-  new Promise((ok) => {
-    const s = createServer().listen(0, '127.0.0.1', () => {
-      const p = s.address().port;
-      s.close(() => ok(p));
-    });
-  });
+  /** @type {Promise<number>} */ (
+    new Promise((ok) => {
+      const s = createServer().listen(0, '127.0.0.1', () => {
+        // A TCP listener: its address is an AddressInfo.
+        const p = /** @type {AddressInfo} */ (s.address()).port;
+        s.close(() => ok(p));
+      });
+    })
+  );
 
-/** A raw request (fetch will not send every header a browser does, Host among them). */
+/**
+ * A raw request (fetch will not send every header a browser does, Host among them).
+ * @param {number} port
+ * @param {{ method?: string, path: string, headers?: OutgoingHttpHeaders, body?: unknown }} req
+ * @returns {Promise<RawResponse>}
+ */
 const raw = (port, { method = 'GET', path, headers = {}, body }) =>
   new Promise((ok, fail) => {
     const data = body === undefined ? undefined : JSON.stringify(body);
@@ -261,7 +314,11 @@ const dashboardDir = () => {
   return dash;
 };
 
-/** The cookie a page opened with a fresh dashboard link gets (as `pxsig serve --link`, then the page). */
+/**
+ * The cookie a page opened with a fresh dashboard link gets (as `pxsig serve --link`, then the page).
+ * @param {Server} S
+ * @param {string} cliToken
+ */
 async function dashboardCookie(S, cliToken) {
   const link = (
     await raw(S.port, {
@@ -277,9 +334,15 @@ async function dashboardCookie(S, cliToken) {
     headers: { origin: S.url, 'sec-fetch-site': 'same-origin' },
     body: { ticket },
   });
-  return r.headers['set-cookie'][0].split(';')[0];
+  // A traded ticket answers with its cookie.
+  return /** @type {string[]} */ (r.headers['set-cookie'])[0].split(';')[0];
 }
 
+/**
+ * @param {Fixture} f
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {Promise<Server>}
+ */
 async function serve(f, env = {}) {
   const port = await freePort();
   const proc = spawn(
@@ -299,10 +362,12 @@ async function serve(f, env = {}) {
   let log = '';
   proc.stdout.on('data', (d) => (log += d));
   proc.stderr.on('data', (d) => (log += d));
-  await new Promise((ok, fail) => {
-    const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-    proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
-  });
+  await /** @type {Promise<void>} */ (
+    new Promise((ok, fail) => {
+      const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+      proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
+    })
+  );
   const exited = new Promise((ok) => proc.on('exit', ok));
   return {
     port,
@@ -318,11 +383,16 @@ test(
   async () => {
     const f = fixture();
     const id = f.ids.changed;
-    const sig = join(f.repo, f.manifest.stories.find((e) => e.id === id).sig);
+    // The fixture's manifest holds this id.
+    const sig = join(
+      f.repo,
+      /** @type {ManifestEntry} */ (f.manifest.stories.find((e) => e.id === id)).sig
+    );
     const original = readFileSync(sig);
     const S = await serve(f);
     try {
-      const token = readToken(f.repo, S.url);
+      // The server writes its tokens before it prints its URL (serve() waits for that line).
+      const token = /** @type {string} */ (readToken(f.repo, S.url));
       assert.match(token, /^[0-9a-f]{64}$/);
       if (process.platform !== 'win32')
         assert.equal(
@@ -416,8 +486,15 @@ test(
           `no token in the page (${JSON.stringify(headers)})`
         );
         assert.ok(!page.text.includes(token), "never the CLI's");
-        assert.match(page.headers['content-security-policy'], /script-src 'self'/);
-        assert.match(page.headers['content-security-policy'], /frame-ancestors 'self' /);
+        // A page always carries its CSP (lib/guard.mjs pageHeaders).
+        assert.match(
+          /** @type {string} */ (page.headers['content-security-policy']),
+          /script-src 'self'/
+        );
+        assert.match(
+          /** @type {string} */ (page.headers['content-security-policy']),
+          /frame-ancestors 'self' /
+        );
         assert.equal(page.headers['x-content-type-options'], 'nosniff');
       }
       // A tab without the dashboard link is told how to get it.
@@ -449,7 +526,10 @@ test(
         headers: { 'x-pxsig-token': token },
       });
       assert.equal(minted.status, 200, minted.text);
-      const ticket = minted.json().link.match(/#ticket=([0-9a-f]{64})$/)[1];
+      // The server mints a 64-hex ticket into the link (docs/server.md).
+      const ticket = /** @type {RegExpMatchArray} */ (
+        minted.json().link.match(/#ticket=([0-9a-f]{64})$/)
+      )[1];
       assert.ok(minted.json().link.startsWith(`${S.url}/report/#ticket=`));
       // Only the dashboard's own page trades it, once.
       assert.equal(
@@ -476,7 +556,8 @@ test(
         body: { ticket },
       });
       assert.equal(traded.status, 200, traded.text);
-      const setCookie = traded.headers['set-cookie'][0];
+      // A traded ticket answers with its cookie.
+      const setCookie = /** @type {string[]} */ (traded.headers['set-cookie'])[0];
       assert.match(
         setCookie,
         new RegExp(`^pxsig_link_${S.port}=[0-9a-f]{64}; HttpOnly; SameSite=Strict; Path=/$`)
@@ -541,11 +622,15 @@ test(
       assert.equal(log().at(-1).via, 'cli');
 
       // The MCP's token: no approving; it may reject and clear a rejection, never a person's approval.
-      const mcpToken = readToken(f.repo, S.url, 'mcp');
+      const mcpToken = /** @type {string} */ (readToken(f.repo, S.url, 'mcp'));
       assert.match(mcpToken, /^[0-9a-f]{64}$/);
       assert.ok(mcpToken !== token);
       if (process.platform !== 'win32')
         assert.equal(statSync(tokenFile(f.repo, S.url, 'mcp')).mode & 0o777, 0o600);
+      /**
+       * @param {string} action
+       * @param {unknown} body
+       */
       const mcp = (action, body) =>
         raw(S.port, {
           method: 'POST',
@@ -586,7 +671,7 @@ test(
     const id = f.ids.a11y;
     const checkPath = join(f.px, 'reports', 'check.json');
     const check = JSON.parse(readFileSync(checkPath, 'utf8'));
-    check.rows.find((r) => r.id === id).a11y = {
+    check.rows.find((/** @type {CheckRow} */ r) => r.id === id).a11y = {
       violations: [{ id: 'color-contrast', impact: 'serious', help: 'x', nodes: 1, targets: [] }],
       new: 1,
       baseline: [],
@@ -598,6 +683,7 @@ test(
       stdio: ['pipe', 'pipe', 'ignore'],
       env: { ...process.env, PXSIG_URL: S.url, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' },
     });
+    /** @type {Map<number, (m: { result: ToolResult }) => void>} */
     const replies = new Map();
     let buf = '';
     mcp.stdout.on('data', (d) => {
@@ -608,10 +694,15 @@ test(
       }
     });
     let seq = 0;
+    /**
+     * @param {string} name
+     * @param {unknown} args
+     * @returns {Promise<ToolResult>}
+     */
     const call = (name, args) =>
       new Promise((ok) => {
         const n = ++seq;
-        replies.set(n, (m) => ok(m.result));
+        replies.set(n, (/** @type {{ result: ToolResult }} */ m) => ok(m.result));
         mcp.stdin.write(
           `${JSON.stringify({ jsonrpc: '2.0', id: n, method: 'tools/call', params: { name, arguments: args } })}\n`
         );
@@ -622,7 +713,8 @@ test(
       const av = () => JSON.parse(readFileSync(join(f.px, 'reports', 'a11y-review.json'), 'utf8'));
       assert.deepEqual([av()[id].state, av()[id].via], ['rejected', 'mcp']);
       // A person accepts in the dashboard (a page opened with the dashboard link); the MCP may not clear that.
-      const cookie = await dashboardCookie(S, readToken(f.repo, S.url));
+      // The server wrote its token before it printed its URL.
+      const cookie = await dashboardCookie(S, /** @type {string} */ (readToken(f.repo, S.url)));
       assert.equal(
         (
           await raw(S.port, {

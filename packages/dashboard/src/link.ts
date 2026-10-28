@@ -55,10 +55,24 @@ async function post(
     headers: { 'content-type': 'application/json' },
     body,
   });
-  return { ok: r.ok, status: r.status, body: await r.json().catch(() => ({})) };
+  // The server's JSON answer to a decision (server.md); a body that is not JSON reads as {}.
+  return {
+    ok: r.ok,
+    status: r.status,
+    body: await (r.json() as Promise<Answer>).catch(() => ({})),
+  };
 }
 
 type Result = Awaited<ReturnType<typeof post>>;
+
+/**
+ * A message between the panel and the small window. Both handlers check the origin (this one) and
+ * the source window (the one they opened, or their opener) first, so it is one pxsig posted.
+ */
+type DecideMessage =
+  | { type?: string; id?: string; path?: string; body?: string; result?: Result }
+  | null
+  | undefined;
 
 /** A decision through this server's own small window; resolves with what the server answered. */
 function throughWindow(path: string, body: string): Promise<Result> {
@@ -80,12 +94,13 @@ function throughWindow(path: string, body: string): Promise<Result> {
       clearTimeout(timer);
       fn();
     };
-    const onMessage = (e: MessageEvent) => {
+    const onMessage = (e: MessageEvent<DecideMessage>) => {
       if (e.origin !== location.origin || e.source !== w) return;
       if (e.data?.type === 'pxsig-decide-ready')
         w.postMessage({ type: 'pxsig-decide', id, path, body }, location.origin);
       else if (e.data?.type === 'pxsig-decide-result' && e.data.id === id)
-        done(() => resolve(e.data.result));
+        // A result message carries the result (the small window's side below).
+        done(() => resolve((e.data as { result: Result }).result));
     };
     window.addEventListener('message', onMessage);
     const timer = setTimeout(
@@ -120,7 +135,7 @@ export function runDecideWindow(
     onState('no-opener');
     return () => {};
   }
-  const onMessage = async (e: MessageEvent) => {
+  const onMessage = async (e: MessageEvent<DecideMessage>) => {
     if (e.origin !== location.origin || e.source !== opener || e.data?.type !== 'pxsig-decide')
       return;
     window.removeEventListener('message', onMessage);

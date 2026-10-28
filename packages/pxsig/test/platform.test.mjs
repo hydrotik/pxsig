@@ -24,28 +24,51 @@ import {
 } from '../src/lib/portability.mjs';
 import { initProject } from '../src/lib/setup.mjs';
 import { fixture, hasRust, rustBin } from './fixture.mjs';
+/** @import { AddressInfo } from 'node:net' */
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const tmp = () => mkdtempSync(join(tmpdir(), 'pxsig-platform-'));
 
 test('paths Windows cannot check out are named', () => {
+  // In assert.match below, a null (no problem) fails the match on its own: the casts lose nothing.
   for (const ok of [
     '.pxsig/baselines/components/Button/components-button--default.psig',
     'a/b.c/d.psig',
   ])
     assert.equal(windowsPathProblem(ok), null, ok);
-  assert.match(windowsPathProblem('.pxsig/baselines/con/x.psig'), /reserved/);
-  assert.match(windowsPathProblem('.pxsig/baselines/x/NUL.psig'), /reserved/);
-  assert.match(windowsPathProblem('.pxsig/baselines/x/com1.psig'), /reserved/);
+  assert.match(
+    /** @type {string} */ (windowsPathProblem('.pxsig/baselines/con/x.psig')),
+    /reserved/
+  );
+  assert.match(
+    /** @type {string} */ (windowsPathProblem('.pxsig/baselines/x/NUL.psig')),
+    /reserved/
+  );
+  assert.match(
+    /** @type {string} */ (windowsPathProblem('.pxsig/baselines/x/com1.psig')),
+    /reserved/
+  );
   assert.equal(
     windowsPathProblem('.pxsig/baselines/console/x.psig'),
     null,
     'only the exact device names'
   );
-  assert.match(windowsPathProblem('.pxsig/baselines/x./a.psig'), /dot or a space/);
-  assert.match(windowsPathProblem('.pxsig/baselines/x /a.psig'), /dot or a space/);
-  assert.match(windowsPathProblem('.pxsig/baselines/a:b/c.psig'), /character/);
-  assert.match(windowsPathProblem(`.pxsig/${'a'.repeat(MAX_PATH)}.psig`), /characters/);
+  assert.match(
+    /** @type {string} */ (windowsPathProblem('.pxsig/baselines/x./a.psig')),
+    /dot or a space/
+  );
+  assert.match(
+    /** @type {string} */ (windowsPathProblem('.pxsig/baselines/x /a.psig')),
+    /dot or a space/
+  );
+  assert.match(
+    /** @type {string} */ (windowsPathProblem('.pxsig/baselines/a:b/c.psig')),
+    /character/
+  );
+  assert.match(
+    /** @type {string} */ (windowsPathProblem(`.pxsig/${'a'.repeat(MAX_PATH)}.psig`)),
+    /characters/
+  );
 });
 
 test('paths that differ only in case are pairs', () => {
@@ -87,7 +110,8 @@ test('CRLF text records and unportable baselines become warnings, never errors',
   ]);
   assert.ok(problems.every((p) => p.severity === 'warn'));
   assert.match(
-    problems.find((p) => p.code === 'line-endings').reason,
+    // Asserted just above: one problem is line-endings.
+    /** @type {{ reason: string }} */ (problems.find((p) => p.code === 'line-endings')).reason,
     /^manifest\.json checked out with CRLF/
   );
   assert.deepEqual(
@@ -129,13 +153,17 @@ test('a new store keeps its records LF and its baselines binary', () => {
 });
 
 const freePort = () =>
-  new Promise((ok) => {
-    const s = createServer().listen(0, '127.0.0.1', () => {
-      const p = s.address().port;
-      s.close(() => ok(p));
-    });
-  });
+  /** @type {Promise<number>} */ (
+    new Promise((ok) => {
+      const s = createServer().listen(0, '127.0.0.1', () => {
+        // Listening on TCP: the address is an AddressInfo.
+        const p = /** @type {AddressInfo} */ (s.address()).port;
+        s.close(() => ok(p));
+      });
+    })
+  );
 
+/** @param {string} repo */
 async function startServe(repo) {
   const port = await freePort();
   const proc = spawn(
@@ -146,11 +174,13 @@ async function startServe(repo) {
   let log = '';
   proc.stdout.on('data', (d) => (log += d));
   proc.stderr.on('data', (d) => (log += d));
-  await new Promise((ok, fail) => {
-    const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-    proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
-    proc.on('exit', (c) => (clearTimeout(t), fail(new Error(`server exited ${c}:\n${log}`))));
-  });
+  await /** @type {Promise<void>} */ (
+    new Promise((ok, fail) => {
+      const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+      proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
+      proc.on('exit', (c) => (clearTimeout(t), fail(new Error(`server exited ${c}:\n${log}`))));
+    })
+  );
   const exited = new Promise((ok) => proc.on('exit', (code, signal) => ok({ code, signal })));
   return { proc, exited, log: () => log };
 }

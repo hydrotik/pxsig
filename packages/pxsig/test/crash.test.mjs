@@ -28,16 +28,24 @@ import {
 import { applyRepairs, planRepairs } from '../src/lib/repair.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, rustBin } from './fixture.mjs';
-/** @import { LockState } from '../src/types.js' */
+/** @import { LockState, ManifestEntry } from '../src/types.js' */
+/** @typedef {ReturnType<typeof fixture>} Fixture */
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const cli = join(src, '..', 'bin', 'pxsig.mjs');
+/** @param {string} p */
 const url = (p) => JSON.stringify(pathToFileURL(join(src, p)).href);
 const tmp = () => mkdtempSync(join(tmpdir(), 'pxsig-crash-'));
+/** @param {Fixture} f */
 const project = (f) => openProject({ cwd: f.repo, env: { PXSIG_BIN: rustBin } });
 const env = { ...process.env, PXSIG_WORKSPACE: '', PXSIG_NO_DELEGATE: '1', PXSIG_BIN: rustBin };
 
-/** Run `code` (an ES module body) in a child with PXSIG_FAULT set; returns its exit status. */
+/**
+ * Run `code` (an ES module body) in a child with PXSIG_FAULT set; returns its exit status.
+ * @param {string} point
+ * @param {string} code
+ * @param {string} [cwd]
+ */
 function crashAt(point, code, cwd) {
   const r = spawnSync(process.execPath, ['--input-type=module', '-e', code], {
     cwd,
@@ -90,10 +98,15 @@ test('the fault hook only fires under NODE_ENV=test', () => {
   assert.equal(normal.status, 0, normal.stderr);
 });
 
-/** A fixture project whose entry `id` has a logged approval (as a real one would). */
+/**
+ * A fixture project whose entry `id` has a logged approval (as a real one would).
+ * @param {Fixture} f
+ * @param {string} id
+ */
 function approved(f, id) {
   const P = project(f);
-  const e = f.manifest.stories.find((s) => s.id === id);
+  // `id` is one of the fixture's manifest ids.
+  const e = /** @type {ManifestEntry} */ (f.manifest.stories.find((s) => s.id === id));
   record(P, e, { batch: 'b0-dashboard', via: 'dashboard', before: null });
   return { P, e };
 }
@@ -158,7 +171,8 @@ test('a torn approval line: verify does not fail on it, doctor warns, and the re
     encoding: 'utf8',
     env,
   });
-  assert.ok([0, 1].includes(v.status), v.stderr);
+  // No signal ends the child, so it has a status.
+  assert.ok([0, 1].includes(/** @type {number} */ (v.status)), v.stderr);
   assert.equal(JSON.parse(v.stdout).torn, 1);
   const ledger = await reconcile(f.ctx, { index: f.index, affected: f.affected });
   const torn = ledger.setup.find((x) => x.code === 'log-torn');
@@ -239,7 +253,11 @@ test('a live holder with a quiet heartbeat is not taken over automatically; a pe
         /heartbeat stopped .* a person at a terminal can take it over/.test(e.message)
     );
     // Not at a terminal (this test): the take-over needs a person.
-    await assert.rejects(takeLock(P, { holder: 'test' }), (e) => e.exit === 3);
+    await assert.rejects(
+      takeLock(P, { holder: 'test' }),
+      // takeLock rejects with an Error carrying the exit code.
+      (e) => /** @type {{ exit?: number }} */ (e).exit === 3
+    );
     const mine = acquireLock(P, { holder: 'test', takeOver: 'aaaaaaaaaaaaaaaa' });
     assert.equal(JSON.parse(readFileSync(lockPath(P), 'utf8')).generation, 4);
     mine.release();
@@ -277,7 +295,8 @@ test('a holder whose lock was taken over stops before its next write', () => {
 test('snapshot then record leaves a clean trail (the normal order)', () => {
   const f = fixture();
   const P = project(f);
-  const e = f.manifest.stories.find((s) => s.id === f.ids.ok);
+  // The fixture's manifest has ids.ok.
+  const e = /** @type {ManifestEntry} */ (f.manifest.stories.find((s) => s.id === f.ids.ok));
   const { before } = snapshot(P, e, 'b2-cli');
   writeFileSync(f.sig(e.id), 'approved bytes');
   record(P, e, { batch: 'b2-cli', via: 'cli', before });

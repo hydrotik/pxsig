@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { applyTokenOverrides, injectAxe } from '../src/lib/capture.mjs';
+/** @import { Page } from 'playwright' */
 
 const require = createRequire(import.meta.url);
 // Playwright and a Chromium it can launch (CI installs the browser after this suite runs).
@@ -32,8 +33,14 @@ test('capture.mjs evaluates no code from strings', () => {
   assert.doesNotMatch(capture, /new Function\(|\beval\(/);
 });
 
+/**
+ * @template T
+ * @param {string} html
+ * @param {(page: Page) => Promise<T>} fn
+ */
 async function withPage(html, fn) {
-  const browser = await pw.chromium.launch();
+  // Every test that calls this is skipped when Playwright is missing (`pw` null).
+  const browser = await /** @type {NonNullable<typeof pw>} */ (pw).chromium.launch();
   try {
     const page = await browser.newPage();
     await page.setContent(html);
@@ -56,6 +63,7 @@ test(
         radius: '0px',
         unknown: 'x',
       });
+      /** @param {string} v */
       const get = (v) =>
         page.evaluate(
           (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
@@ -82,7 +90,8 @@ test(
     const html = '<style>:root{--x__a:1px}</style>';
     const out = await withPage(html, async (page) => {
       await page.evaluate(applyTokenOverrides, { x: 'fn:window.ran = true; return "9px"' });
-      return page.evaluate(() => window.ran === true);
+      // What the string would have set, had it run.
+      return page.evaluate(() => /** @type {Window & { ran?: boolean }} */ (window).ran === true);
     });
     assert.equal(out, false);
   }
@@ -97,10 +106,13 @@ test(
       await injectAxe(page, axeSrc);
       await injectAxe(page, axeSrc);
       const scripts = await page.evaluate(() => document.querySelectorAll('script').length);
+      // injectAxe added axe-core just above.
       const ids = await page.evaluate(async () =>
-        (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map(
-          (v) => v.id
-        )
+        (
+          await /** @type {NonNullable<Window['axe']>} */ (window.axe).run(document, {
+            resultTypes: ['violations'],
+          })
+        ).violations.map((v) => v.id)
       );
       return { scripts, ids };
     });

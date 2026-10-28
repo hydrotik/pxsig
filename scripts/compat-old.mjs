@@ -18,22 +18,28 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 
+/** @import { ApprovalLine, CheckRow, CheckSummary, Project } from '../packages/pxsig/src/types.js' */
+
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 const version = process.argv[2] ?? '0.3.2';
+/** @type {(m: string) => never} */
 const fail = (m) => (console.error(`[compat] FAIL ${m}`), process.exit(1));
-const ok = (m) => console.log(`  ok   ${m}`);
+const ok = (/** @type {string} */ m) => console.log(`  ok   ${m}`);
 
-const { fixture } = await import(
-  pathToFileURL(join(repoRoot, 'packages/pxsig/test/fixture.mjs')).href
+const { fixture } = /** @type {typeof import('../packages/pxsig/test/fixture.mjs')} */ (
+  await import(pathToFileURL(join(repoRoot, 'packages/pxsig/test/fixture.mjs')).href)
 );
-const { record } = await import(
-  pathToFileURL(join(repoRoot, 'packages/pxsig/src/lib/approvals.mjs')).href
-);
-const { openProject, PXSIG_VERSION, writeRunManifest } = await import(
-  pathToFileURL(join(repoRoot, 'packages/pxsig/src/lib/workspace.mjs')).href
-);
-const { readHeader } = await import(
-  pathToFileURL(join(repoRoot, 'packages/pxsig/src/lib/psig.mjs')).href
+// `record`'s options, as approvals.mjs reads them (its own JSDoc does not give them yet).
+const { record } =
+  /** @type {{ record: (P: Project, entry: { id: string, sig: string }, opts: { batch: string, via: string, before: string | null }) => ApprovalLine }} */ (
+    await import(pathToFileURL(join(repoRoot, 'packages/pxsig/src/lib/approvals.mjs')).href)
+  );
+const { openProject, PXSIG_VERSION, writeRunManifest } =
+  /** @type {typeof import('../packages/pxsig/src/lib/workspace.mjs')} */ (
+    await import(pathToFileURL(join(repoRoot, 'packages/pxsig/src/lib/workspace.mjs')).href)
+  );
+const { readHeader } = /** @type {typeof import('../packages/pxsig/src/lib/psig.mjs')} */ (
+  await import(pathToFileURL(join(repoRoot, 'packages/pxsig/src/lib/psig.mjs')).href)
 );
 
 // A store as this pxsig writes it: baselines that record their render environment, every baseline
@@ -78,10 +84,16 @@ const b = spawnSync(
 );
 if (b.status !== 0 || readHeader(f.sig(f.ids.ok))?.env?.id !== env.id)
   fail(`baselines with env were not written: ${b.stderr}`);
-const report = JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8'));
+// check.json, as this checkout's pxsig wrote it.
+const report =
+  /** @type {{ envs?: Record<string, unknown>, rows: CheckRow[], summary: CheckSummary & { envMismatch?: number } }} */ (
+    JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8'))
+  );
 report.envs = { [env.id]: env };
 report.rows = report.rows.map((r) =>
-  withEnv.includes(r.id) ? { ...r, env: env.id, baselineEnv: env.id, envMatch: 'same' } : r
+  withEnv.includes(r.id)
+    ? { ...r, env: env.id, baselineEnv: env.id, envMatch: /** @type {const} */ ('same') }
+    : r
 );
 report.summary = { ...report.summary, envMismatch: 0 };
 writeFileSync(join(f.px, 'reports', 'check.json'), JSON.stringify(report));
@@ -91,7 +103,8 @@ for (const e of f.manifest.stories.filter((x) => !x.sig.endsWith('.pxsig.json'))
 const lines = readFileSync(join(f.px, 'approvals.ndjson'), 'utf8')
   .trim()
   .split('\n')
-  .map((l) => JSON.parse(l));
+  // approvals.ndjson, as `record` just wrote it.
+  .map((l) => /** @type {ApprovalLine} */ (JSON.parse(l)));
 if (!lines.every((l) => l.pxsig === PXSIG_VERSION && !('by' in l)))
   fail('this pxsig wrote lines without its version, or with `by`');
 ok(`${lines.length} approval lines written by pxsig ${PXSIG_VERSION} (no by)`);
@@ -105,7 +118,7 @@ const inst = spawnSync(
   { cwd: old, encoding: 'utf8', shell: process.platform === 'win32' }
 );
 if (inst.status !== 0) fail(`npm install pxsig@${version}: ${inst.stderr}`);
-const run = (args) =>
+const run = (/** @type {string[]} */ args) =>
   spawnSync(
     process.execPath,
     [join(old, 'node_modules', 'pxsig', 'bin', 'pxsig.mjs'), ...args, '--json'],
@@ -117,9 +130,11 @@ const run = (args) =>
   );
 
 let r = run(['approve', 'verify']);
+/** @type {{ mismatched?: unknown[], logged?: number }} */
 let v;
 try {
-  v = JSON.parse(r.stdout);
+  // `approve verify --json`'s answer (the old pxsig's: these are the keys read).
+  v = /** @type {{ mismatched?: unknown[], logged?: number }} */ (JSON.parse(r.stdout));
 } catch {
   fail(
     `pxsig ${version} approve verify printed no JSON (exit ${r.status}):\n${r.stdout}${r.stderr}`

@@ -20,7 +20,14 @@ import { collectEnv } from '../src/lib/env.mjs';
 import { readToken } from '../src/lib/guard.mjs';
 import { openProject, PXSIG_VERSION, satisfies } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin } from './fixture.mjs';
-/** @import { PsigHeader } from '../src/types.js' */
+/** @import { IncomingHttpHeaders } from 'node:http' */
+/** @import { AddressInfo } from 'node:net' */
+/** @import { EnvBrowser, ManifestEntry, PsigHeader } from '../src/types.js' */
+/** @typedef {ReturnType<typeof fixture>} Fixture */
+/**
+ * @typedef {{ status: number | undefined, headers: IncomingHttpHeaders, text: string, json: () => Record<string, string> }} RawAnswer
+ *   `json()`: the one JSON answer read here (the ticket) is a flat object of strings.
+ */
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const EMAIL = 'pii-probe@example.invalid';
@@ -35,11 +42,16 @@ function gitFixture() {
   return f;
 }
 
+/** @param {Fixture} f */
 const lines = (f) =>
   readFileSync(join(f.px, 'approvals.ndjson'), 'utf8')
     .trim()
     .split('\n')
     .map((l) => JSON.parse(l));
+/**
+ * @param {Fixture} f
+ * @param {Record<string, unknown>} patch
+ */
 const setConfig = (f, patch) => {
   const p = join(f.repo, 'pxsig.config.json');
   writeFileSync(p, JSON.stringify({ ...JSON.parse(readFileSync(p, 'utf8')), ...patch }, null, 2));
@@ -50,7 +62,8 @@ test(
   { skip: !git && 'no git' },
   () => {
     const f = gitFixture();
-    const entry = f.manifest.stories.find((e) => e.id === f.ids.ok);
+    // The fixture's manifest lists ids.ok.
+    const entry = /** @type {ManifestEntry} */ (f.manifest.stories.find((e) => e.id === f.ids.ok));
     let P = openProject({ cwd: f.repo, env: { PXSIG_BIN: rustBin } });
     record(P, entry, { batch: 'b1', via: 'cli', before: snapshot(P, entry, 'b1').before });
     assert.equal(lines(f).at(-1).by, undefined);
@@ -98,43 +111,56 @@ test('requires: a range this pxsig reads, and refuses outside', () => {
 // --- the server's write paths, then a scan of everything a repository would commit ------------------
 
 const freePort = () =>
-  new Promise((ok) => {
-    const s = createServer().listen(0, '127.0.0.1', () => {
-      const p = s.address().port;
-      s.close(() => ok(p));
-    });
-  });
+  /** @type {Promise<number>} */ (
+    new Promise((ok) => {
+      const s = createServer().listen(0, '127.0.0.1', () => {
+        // Listening on TCP: the address is an AddressInfo.
+        const p = /** @type {AddressInfo} */ (s.address()).port;
+        s.close(() => ok(p));
+      });
+    })
+  );
 
+/**
+ * @param {number} port
+ * @param {{ method?: string, path: string, headers?: Record<string, string>, body?: unknown }} request
+ */
 const raw = (port, { method = 'GET', path, headers = {}, body }) =>
-  new Promise((ok, fail) => {
-    const data = body === undefined ? undefined : JSON.stringify(body);
-    const req = request(
-      {
-        host: '127.0.0.1',
-        port,
-        method,
-        path,
-        headers: {
-          ...(data
-            ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(data) }
-            : {}),
-          ...headers,
+  /** @type {Promise<RawAnswer>} */ (
+    new Promise((ok, fail) => {
+      const data = body === undefined ? undefined : JSON.stringify(body);
+      const req = request(
+        {
+          host: '127.0.0.1',
+          port,
+          method,
+          path,
+          headers: {
+            ...(data
+              ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(data) }
+              : {}),
+            ...headers,
+          },
         },
-      },
-      (res) => {
-        let s = '';
-        res.on('data', (c) => (s += c));
-        res.on('end', () =>
-          ok({ status: res.statusCode, headers: res.headers, text: s, json: () => JSON.parse(s) })
-        );
-      }
-    );
-    req.on('error', fail);
-    req.end(data);
-  });
+        (res) => {
+          let s = '';
+          res.on('data', (c) => (s += c));
+          res.on('end', () =>
+            ok({ status: res.statusCode, headers: res.headers, text: s, json: () => JSON.parse(s) })
+          );
+        }
+      );
+      req.on('error', fail);
+      req.end(data);
+    })
+  );
 
-/** Files a repository commits from the store and the project: everything but run output. */
+/**
+ * Files a repository commits from the store and the project: everything but run output.
+ * @param {Fixture} f
+ */
 function committed(f) {
+  /** @type {string[]} */
   const out = [];
   const skip = new Set([
     '.git',
@@ -146,6 +172,7 @@ function committed(f) {
     'history',
     'trash',
   ]);
+  /** @param {string} d */
   const walk = (d) => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       if (skip.has(e.name)) continue;
@@ -167,6 +194,11 @@ test(
     // row the server approves below: it goes into the committed baseline's header.
     const probe = {
       setContent: async () => {},
+      /**
+       * The env probe passes `{ families }` to the font-width probe (lib/env.mjs).
+       * @param {unknown} _fn
+       * @param {{ families?: string[] }} [a]
+       */
       evaluate: async (_fn, a) =>
         a?.families
           ? {
@@ -183,11 +215,16 @@ test(
       browserType: () => ({ name: () => 'chromium' }),
       newContext: async () => ({ newPage: async () => probe, close: async () => {} }),
     };
-    const renderEnv = await collectEnv(browser, { pxsig: PXSIG_VERSION });
+    // The stand-in answers only the evaluate calls collectEnv makes (see the probe above).
+    const renderEnv = await collectEnv(/** @type {EnvBrowser} */ (browser), {
+      pxsig: PXSIG_VERSION,
+    });
     const checkPath = join(f.px, 'reports', 'check.json');
     const check = JSON.parse(readFileSync(checkPath, 'utf8'));
     check.envs = { [renderEnv.id]: renderEnv };
-    check.rows = check.rows.map((r) => (r.id === f.ids.changed ? { ...r, env: renderEnv.id } : r));
+    check.rows = check.rows.map((/** @type {{ id: string }} */ r) =>
+      r.id === f.ids.changed ? { ...r, env: renderEnv.id } : r
+    );
     writeFileSync(checkPath, JSON.stringify(check));
     const port = await freePort();
     const dash = mkdtempSync(join(tmpdir(), 'pxsig-dash-'));
@@ -206,14 +243,17 @@ test(
     let log = '';
     proc.stdout.on('data', (d) => (log += d));
     proc.stderr.on('data', (d) => (log += d));
-    await new Promise((ok, fail) => {
-      const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-      proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
-    });
+    await /** @type {Promise<void>} */ (
+      new Promise((ok, fail) => {
+        const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+        proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
+      })
+    );
     const url = `http://127.0.0.1:${port}`;
     const exited = new Promise((ok) => proc.on('exit', ok));
     try {
-      const token = readToken(f.repo, url);
+      // The server writes its token before it prints the dashboard URL awaited above.
+      const token = /** @type {string} */ (readToken(f.repo, url));
       // `pxsig approve apply` (the CLI's token) and the dashboard (the dashboard link's cookie).
       assert.equal(
         (
@@ -234,14 +274,17 @@ test(
         })
       ).json().link;
       const tab = { origin: url, 'sec-fetch-site': 'same-origin' };
-      const cookie = (
-        await raw(port, {
-          method: 'POST',
-          path: '/__pxsig/session',
-          headers: tab,
-          body: { ticket: link.split('#ticket=')[1] },
-        })
-      ).headers['set-cookie'][0].split(';')[0];
+      // The session answer sets the cookie.
+      const cookie = /** @type {string[]} */ (
+        (
+          await raw(port, {
+            method: 'POST',
+            path: '/__pxsig/session',
+            headers: tab,
+            body: { ticket: link.split('#ticket=')[1] },
+          })
+        ).headers['set-cookie']
+      )[0].split(';')[0];
       assert.equal(
         (
           await raw(port, {
@@ -300,7 +343,8 @@ test(
   { skip: !git && 'no git' },
   async () => {
     const f = gitFixture();
-    const entry = f.manifest.stories.find((e) => e.id === f.ids.ok);
+    // The fixture's manifest lists ids.ok.
+    const entry = /** @type {ManifestEntry} */ (f.manifest.stories.find((e) => e.id === f.ids.ok));
     const P = openProject({ cwd: f.repo, env: { PXSIG_BIN: rustBin } });
     record(P, entry, { batch: 'b1', via: 'cli', before: null });
     const { verify } = await import('../src/lib/approvals.mjs');

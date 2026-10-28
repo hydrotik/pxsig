@@ -14,6 +14,7 @@ import { initProject } from '../src/lib/setup.mjs';
 import { openProject, PXSIG_VERSION } from '../src/lib/workspace.mjs';
 
 const cli = fileURLToPath(new URL('../bin/pxsig.mjs', import.meta.url));
+/** @param {Record<string, unknown>} files */
 const tree = (files) => {
   const root = mkdtempSync(join(tmpdir(), 'pxsig-label-'));
   mkdirSync(join(root, '.git'));
@@ -23,7 +24,12 @@ const tree = (files) => {
   }
   return root;
 };
+/** @param {string} dir */
 const config = (dir) => JSON.parse(readFileSync(join(dir, 'pxsig.config.json'), 'utf8'));
+/**
+ * @param {string[]} args
+ * @param {string} cwd
+ */
 const run = (args, cwd) =>
   spawnSync(process.execPath, [cli, ...args], {
     cwd,
@@ -79,7 +85,8 @@ test('a project with a bad label does not load; a good one reaches the dashboard
   const d = buildData(P);
   assert.equal(d.label, 'Hydrotik');
   assert.equal(d.versions.pxsig, PXSIG_VERSION);
-  assert.match(d.versions.contract, /^\d+\.\d+\.\d+$/);
+  // A source checkout has the contract lock, so the version is a string here.
+  assert.match(/** @type {string} */ (d.versions.contract), /^\d+\.\d+\.\d+$/);
   // Without a label the data carries the name, so the title reads as before.
   assert.equal(
     buildData(openProject({ cwd: tree({ 'pxsig.config.json': { version: 1, name: 'ui' } }) }))
