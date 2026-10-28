@@ -133,7 +133,10 @@ export async function waitMarkupStable(page, sel) {
         const html = [...document.querySelectorAll(q)].map((s) => s.innerHTML).join('|');
         const w = window;
         if (w.__pxsigMarkup === html) w.__pxsigStable = (w.__pxsigStable ?? 0) + 1;
-        else ((w.__pxsigMarkup = html), (w.__pxsigStable = 0));
+        else {
+          w.__pxsigMarkup = html;
+          w.__pxsigStable = 0;
+        }
         return w.__pxsigStable >= 3;
       },
       sel,

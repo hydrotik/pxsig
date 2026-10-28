@@ -311,7 +311,10 @@ function rust(method, params) {
       const msg = /** @type {EngineReply} */ (JSON.parse(line));
       const p = pending.get(msg.id);
       pending.delete(msg.id);
-      if (p) msg.error ? p.reject(new Error(msg.error)) : p.resolve(msg.result);
+      if (p) {
+        if (msg.error) p.reject(new Error(msg.error));
+        else p.resolve(msg.result);
+      }
     });
     proc.on('exit', (code) => {
       for (const p of pending.values()) p.reject(new Error(`pxsig serve exited (${code})`));
