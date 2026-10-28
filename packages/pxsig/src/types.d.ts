@@ -1,7 +1,7 @@
 /**
  * types.d.ts — the shapes pxsig's JavaScript passes around, for its JSDoc (`checkJs`) and for
  * `oxlint --type-aware`. Types only: nothing here runs. A module imports what it needs with
- * `/** @import { Workspace } from '../types.d.ts' *\/`.
+ * `/** @import { Workspace } from '../types.js' *\/`.
  *
  * The file formats themselves (manifest, `.psig`, approval log, reports) are specified in
  * docs/spec.md; a shape here follows that document, never the other way round. Each section

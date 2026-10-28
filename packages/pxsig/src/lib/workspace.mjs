@@ -15,7 +15,7 @@
  * the workspace root; a CLI flag: the current folder); `$workspace/` makes one relative to the
  * workspace root anywhere. `pxsig config` shows which layer set each key.
  */
-/** @import { ProjectRef, Workspace } from '../types.d.ts' */
+/** @import { ProjectRef, Workspace } from '../types.js' */
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';

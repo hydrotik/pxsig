@@ -1,6 +1,6 @@
 {
   "$description": "tsc errors (checkJs, strict) per file and code in the JavaScript. A file may not gain one; lower with `node scripts/check-types.mjs --update` after fixing some. The goal is an empty file. See scripts/check-types.mjs.",
-  "total": 3904,
+  "total": 3903,
   "files": {
     "packages/dashboard/build-config.mjs": {
       "TS2339": 5,
@@ -276,7 +276,6 @@
       "TS2322": 3,
       "TS2339": 31,
       "TS2345": 2,
-      "TS2846": 1,
       "TS7005": 1,
       "TS7006": 70,
       "TS7019": 1,
