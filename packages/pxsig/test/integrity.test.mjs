@@ -104,6 +104,14 @@ test('static scan finds every exported story, skips comments, and keeps the impo
   );
 });
 
+test('an index whose entries are null is a broken index', async () => {
+  const nullEntries = async () => new Response(JSON.stringify({ v: 5, entries: null }));
+  const r = await fetchStoryIndex('http://sb', { fetchImpl: nullEntries });
+  assert.equal(r.reachable, true);
+  assert.equal(r.healthy, false);
+  assert.match(/** @type {{ error: string }} */ (r).error, /^broken index \(HTTP 200\)/);
+});
+
 test('a broken Storybook index is reachable but not healthy; an unreachable one falls back to the static scan', async () => {
   const errPage = async () =>
     new Response(

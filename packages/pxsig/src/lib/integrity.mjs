@@ -367,7 +367,7 @@ export async function fetchStoryIndex(
   } catch {
     /* not JSON: an error page */
   }
-  if (!res.ok || !json || typeof json.entries !== 'object') {
+  if (!res.ok || !json || typeof json.entries !== 'object' || json.entries === null) {
     const msg = body
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
