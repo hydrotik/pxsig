@@ -27,20 +27,17 @@ const baselinePath = join(repo, 'scripts', 'type-errors-baseline.json');
 const tsc = createRequire(join(repo, 'package.json')).resolve('typescript/bin/tsc');
 
 /**
- * tsc's `--pretty false` lines as diagnostics: `path(line,col): error TS1234: message`, paths
- * relative to the project folder; returned repo-relative with forward slashes.
+ * tsc's `--pretty false` lines as diagnostics: `path(line,col): error TS1234: message`. tsc prints
+ * paths relative to where it runs (the repository root, here); returned with forward slashes.
  * @param {string} out
- * @param {string} project repo-relative project folder
  */
-export function parseTsc(out, project) {
+export function parseTsc(out) {
   /** @type {{ filename: string, code: string, at: string }[]} */
   const found = [];
   for (const line of out.split(/\r?\n/)) {
     const m = /^(.+?)\((\d+),(\d+)\): error (TS\d+):/.exec(line);
     if (!m) continue;
-    const filename = relative(repo, resolve(repo, project, m[1]))
-      .split('\\')
-      .join('/');
+    const filename = relative(repo, resolve(repo, m[1])).split('\\').join('/');
     found.push({ filename, code: m[4], at: `${m[2]}:${m[3]}` });
   }
   return found;
@@ -56,7 +53,7 @@ function current() {
       [tsc, '-p', join(project, 'tsconfig.json'), '--pretty', 'false'],
       { cwd: repo, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 }
     );
-    for (const d of parseTsc(`${r.stdout}${r.stderr}`, project)) {
+    for (const d of parseTsc(`${r.stdout}${r.stderr}`)) {
       const key = `${d.filename}:${d.at}:${d.code}`;
       if (seen.has(key)) continue;
       seen.add(key);

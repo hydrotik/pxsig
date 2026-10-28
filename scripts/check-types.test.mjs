@@ -3,14 +3,14 @@ import { test } from 'node:test';
 import { countDiagnostics } from './lib/lint-ratchet.mjs';
 import { parseTsc } from './check-types.mjs';
 
-test("tsc's lines become repo-relative diagnostics; other lines are ignored", () => {
+test("tsc's lines (relative to the repository root, where it runs) become diagnostics", () => {
   const out = [
-    "src/lib/a.mjs(3,7): error TS7006: Parameter 'x' implicitly has an 'any' type.",
-    '../../scripts/b.mjs(10,1): error TS2339: Property y does not exist.',
+    "packages/pxsig/src/lib/a.mjs(3,7): error TS7006: Parameter 'x' implicitly has an 'any' type.",
+    'scripts\\b.mjs(10,1): error TS2339: Property y does not exist.',
     '  continuation line',
     'Found 2 errors.',
   ].join('\n');
-  const d = parseTsc(out, 'packages/pxsig');
+  const d = parseTsc(out);
   assert.deepEqual(
     d.map((x) => [x.filename, x.code, x.at]),
     [
