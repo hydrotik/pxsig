@@ -246,7 +246,7 @@ if (opts.optionalDeps) {
   }
   pkg.version = opts.version;
   if (!pkg.repository && repository) pkg.repository = repository;
-  const deps = { ...(pkg.optionalDependencies ?? {}) };
+  const deps = { ...pkg.optionalDependencies };
   for (const p of plan) deps[p.name] = opts.version;
   pkg.optionalDependencies = Object.fromEntries(
     Object.entries(deps).sort(([a], [b]) => a.localeCompare(b))

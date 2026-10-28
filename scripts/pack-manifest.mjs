@@ -64,9 +64,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   for (const t of targets) {
     if (check) {
       const left = devOnlyKeys(packedManifest(t));
-      if (left.length)
-        (failed++, console.error(`[pack-manifest] ${t}: still has ${left.join(', ')}`));
-      else console.log(`[pack-manifest] ${t}: ok`);
+      if (left.length) {
+        failed++;
+        console.error(`[pack-manifest] ${t}: still has ${left.join(', ')}`);
+      } else console.log(`[pack-manifest] ${t}: ok`);
     } else {
       const removed = rewrite(t);
       console.log(

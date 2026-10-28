@@ -170,7 +170,7 @@ const git = (...a) => execFileSync('git', a, { cwd: root, encoding: 'utf8' }).tr
  */
 export function directEdit(changed, branch) {
   if (!changed.includes('CHANGELOG.md')) return null;
-  if (/^release\//.test(branch)) return null;
+  if (branch.startsWith('release/')) return null;
   return `CHANGELOG.md is edited on "${branch}": add a fragment in ${DIR}/ instead (only a release/ branch changes CHANGELOG.md, with \`node scripts/changelog.mjs release <version>\`)`;
 }
 

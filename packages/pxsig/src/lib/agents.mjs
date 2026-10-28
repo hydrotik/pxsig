@@ -42,7 +42,11 @@ export const MARKERS = [
   {
     vars: ['AI_AGENT'],
     name: (v) =>
-      /^github_copilot/.test(v) ? 'copilot' : /^claude-code/.test(v) ? 'claude-code' : clean(v),
+      v.startsWith('github_copilot')
+        ? 'copilot'
+        : v.startsWith('claude-code')
+          ? 'claude-code'
+          : clean(v),
   },
   // VS Code agent mode keeps COPILOT_AGENT for back-compat; Copilot CLI sets COPILOT_CLI and, on
   // shell-tool commands, COPILOT_AGENT_SESSION_ID (npm @github/copilot@1.0.60).

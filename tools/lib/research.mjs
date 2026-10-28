@@ -199,7 +199,7 @@ export function engine(P) {
  * @returns {Promise<R[]>}
  */
 export async function pool(items, n, fn) {
-  const out = /** @type {R[]} */ (new Array(items.length));
+  const out = /** @type {R[]} */ (Array.from({ length: items.length }));
   let i = 0;
   await Promise.all(
     Array.from({ length: Math.min(n, items.length) }, async () => {

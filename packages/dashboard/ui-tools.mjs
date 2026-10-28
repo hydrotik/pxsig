@@ -423,7 +423,7 @@ export function sourceFiles(dir = srcDir, skip = []) {
       const rel = path.relative(dir, p).split(path.sep).join('/');
       if (e.isDirectory()) {
         if (!skip.some((s) => rel === s || rel.startsWith(`${s}/`))) walk(p);
-      } else if (/\.(tsx?|jsx?|mjs)$/.test(e.name) && !/\.d\.ts$/.test(e.name)) out.push(rel);
+      } else if (/\.(tsx?|jsx?|mjs)$/.test(e.name) && !e.name.endsWith('.d.ts')) out.push(rel);
     }
   };
   walk(dir);

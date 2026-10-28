@@ -419,16 +419,21 @@ export function compareEnv(base, cur, ignore = []) {
     if (f === 'browser.version') {
       // `browser.version`: a version string, or missing.
       /** @typedef {string | null | undefined} Version */
-      if (major(/** @type {Version} */ (a)) !== major(/** @type {Version} */ (b)))
-        (diff.push(f), (isMajor = true));
-      else if ((a ?? null) !== (b ?? null)) diff.push(f);
+      if (major(/** @type {Version} */ (a)) !== major(/** @type {Version} */ (b))) {
+        diff.push(f);
+        isMajor = true;
+      } else if ((a ?? null) !== (b ?? null)) diff.push(f);
       continue;
     }
     if (f === 'fonts.probe') {
       // `fonts.probe` is `{ digest, families }` (or missing).
       /** @typedef {{ digest?: string } | null | undefined} Probe */
-      if ((/** @type {Probe} */ (a)?.digest ?? null) !== (/** @type {Probe} */ (b)?.digest ?? null))
-        (diff.push(f), (isMajor = true));
+      if (
+        (/** @type {Probe} */ (a)?.digest ?? null) !== (/** @type {Probe} */ (b)?.digest ?? null)
+      ) {
+        diff.push(f);
+        isMajor = true;
+      }
       continue;
     }
     if (canonical(a ?? null) !== canonical(b ?? null)) {

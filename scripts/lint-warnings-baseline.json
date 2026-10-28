@@ -1,9 +1,8 @@
 {
   "$description": "oxlint warnings per file and rule. A file may not gain a warning; lower with `node scripts/check-lint-warnings.mjs --update` after fixing some. See scripts/check-lint-warnings.mjs.",
-  "total": 301,
+  "total": 244,
   "files": {
     "packages/dashboard/src/App.tsx": {
-      "eslint(no-unused-vars)": 1,
       "jsx-a11y(prefer-tag-over-role)": 1,
       "react(refs)": 1,
       "react(set-state-in-effect)": 3
@@ -53,90 +52,27 @@
     "packages/dashboard/src/views/Scenarios.tsx": {
       "jsx-a11y(prefer-tag-over-role)": 1
     },
-    "packages/dashboard/ui-tools.mjs": {
-      "unicorn(prefer-string-starts-ends-with)": 1
-    },
-    "packages/pxsig/src/approve.mjs": {
-      "eslint(no-unused-vars)": 3
-    },
-    "packages/pxsig/src/check.mjs": {
-      "unicorn(no-useless-fallback-in-spread)": 2
-    },
     "packages/pxsig/src/cli.mjs": {
-      "eslint(no-unused-vars)": 2,
       "typescript(require-await)": 1
-    },
-    "packages/pxsig/src/dashboard-check.mjs": {
-      "unicorn(no-new-array)": 1
-    },
-    "packages/pxsig/src/lib/agents.mjs": {
-      "unicorn(prefer-string-starts-ends-with)": 2
     },
     "packages/pxsig/src/lib/approvals.mjs": {
       "unicorn(prefer-string-starts-ends-with)": 1
     },
     "packages/pxsig/src/lib/capture.mjs": {
-      "eslint(no-unused-expressions)": 1,
-      "typescript(require-await)": 1,
-      "unicorn(no-new-array)": 1
-    },
-    "packages/pxsig/src/lib/dashboard-dir.mjs": {
-      "typescript(no-unsafe-assignment)": 3,
-      "typescript(no-unsafe-call)": 1,
-      "typescript(no-unsafe-member-access)": 9
-    },
-    "packages/pxsig/src/lib/env.mjs": {
-      "eslint(no-unused-expressions)": 2
-    },
-    "packages/pxsig/src/lib/integrity.mjs": {
-      "eslint(no-unused-expressions)": 1,
-      "eslint(no-unused-vars)": 1,
-      "unicorn(no-useless-fallback-in-spread)": 2,
-      "unicorn(prefer-string-starts-ends-with)": 1
+      "typescript(require-await)": 1
     },
     "packages/pxsig/src/lib/portability.mjs": {
       "eslint(no-control-regex)": 1
     },
-    "packages/pxsig/src/lib/repair.mjs": {
-      "eslint(no-unused-vars)": 1
-    },
-    "packages/pxsig/src/lib/rows.mjs": {
-      "unicorn(prefer-string-starts-ends-with)": 1
-    },
-    "packages/pxsig/src/lib/setup.mjs": {
-      "eslint(no-unused-vars)": 2
-    },
     "packages/pxsig/src/lib/spawn.mjs": {
       "typescript(no-unnecessary-type-assertion)": 1
-    },
-    "packages/pxsig/src/lib/term.mjs": {
-      "typescript(no-misused-spread)": 1
-    },
-    "packages/pxsig/src/lib/workspace.mjs": {
-      "eslint(no-unused-expressions)": 1
     },
     "packages/pxsig/src/mcp.mjs": {
       "typescript(require-await)": 8,
       "unicorn(no-invalid-fetch-options)": 1
     },
-    "packages/pxsig/src/serve.mjs": {
-      "eslint(no-unused-expressions)": 1,
-      "eslint(no-unused-vars)": 1,
-      "typescript(no-useless-default-assignment)": 1,
-      "unicorn(no-useless-fallback-in-spread)": 3
-    },
     "packages/pxsig/test/cli.test.mjs": {
       "eslint(no-control-regex)": 1
-    },
-    "packages/pxsig/test/dashboard.test.mjs": {
-      "unicorn(prefer-string-starts-ends-with)": 1
-    },
-    "packages/pxsig/test/help.test.mjs": {
-      "typescript(require-array-sort-compare)": 1,
-      "unicorn(prefer-string-starts-ends-with)": 1
-    },
-    "packages/pxsig/test/integrity.test.mjs": {
-      "eslint(no-unused-vars)": 1
     },
     "packages/pxsig/test/ui-catalog.test.mjs": {
       "unicorn(no-thenable)": 1
@@ -146,21 +82,6 @@
     },
     "scripts/bench/run.mjs": {
       "typescript(require-await)": 1
-    },
-    "scripts/changelog.mjs": {
-      "unicorn(prefer-string-starts-ends-with)": 1
-    },
-    "scripts/make-platform-packages.mjs": {
-      "unicorn(no-useless-fallback-in-spread)": 1
-    },
-    "scripts/pack-manifest.mjs": {
-      "eslint(no-unused-expressions)": 1
-    },
-    "tools/calibrate-detail.mjs": {
-      "eslint(no-unused-expressions)": 3
-    },
-    "tools/lib/research.mjs": {
-      "unicorn(no-new-array)": 1
     }
   }
 }

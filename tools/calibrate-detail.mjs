@@ -174,12 +174,18 @@ BUILDS.forEach((build, bi) => {
           per[name] ??= { kind: r.kind, caught: 0, sigCaught: 0, of: 0, fp: 0 };
           if (r.kind === 'noise') {
             per[name].of++;
-            if (fails) (fp++, per[name].fp++);
+            if (fails) {
+              fp++;
+              per[name].fp++;
+            }
           } else if (r.changed) {
             changed++;
             per[name].of++;
             if (r.sigCaught) per[name].sigCaught++;
-            if (fails) (caught++, per[name].caught++);
+            if (fails) {
+              caught++;
+              per[name].caught++;
+            }
             if (fails && !r.sigCaught) detailOnly++;
           }
         }
@@ -200,7 +206,10 @@ BUILDS.forEach((build, bi) => {
 const sigOnly = { caught: 0, changed: 0, fp: 0 };
 for (const v of verdict.values()) {
   if (v.kind === 'noise') sigOnly.fp += v.sigCaught ? 1 : 0;
-  else if (v.changed) (sigOnly.changed++, (sigOnly.caught += v.sigCaught ? 1 : 0));
+  else if (v.changed) {
+    sigOnly.changed++;
+    sigOnly.caught += v.sigCaught ? 1 : 0;
+  }
 }
 // Per-suite optimum: what a story-level gate (parameters.pxsig.gate) could buy one family.
 /** @type {Record<string, unknown>} */

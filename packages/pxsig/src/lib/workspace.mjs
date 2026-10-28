@@ -499,10 +499,10 @@ function anchorPaths(ws, layer, base) {
   for (const key of PATH_KEYS) {
     const [a, b] = key.split('.');
     // With `b`, the condition checked that `out[a]` is an object.
-    if (b ? isObj(out[a]) && out[a][b] != null : out[a] != null)
-      b
-        ? (/** @type {Obj} */ (out[a])[b] = fix(/** @type {Obj} */ (out[a])[b]))
-        : (out[a] = fix(out[a]));
+    if (b ? isObj(out[a]) && out[a][b] != null : out[a] != null) {
+      if (b) /** @type {Obj} */ (out[a])[b] = fix(/** @type {Obj} */ (out[a])[b]);
+      else out[a] = fix(out[a]);
+    }
   }
   if (isObj(out.affects) && Array.isArray(out.affects.extra))
     out.affects.extra = out.affects.extra.map(fix);

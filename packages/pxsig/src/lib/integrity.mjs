@@ -223,8 +223,8 @@ export function resolveContext(P, { manifestPath } = {}) {
   /** @type {IntegritySettings} */
   const integrity = {
     ...DEFAULT_INTEGRITY,
-    ...(P.config.integrity ?? {}),
-    severity: { ...(P.config.integrity?.severity ?? {}) },
+    ...P.config.integrity,
+    severity: { ...P.config.integrity?.severity },
   };
   return {
     project: P,
@@ -896,7 +896,7 @@ export async function reconcile(ctx, opts = {}) {
         );
       if (row && !neverChecked && !unverified) {
         const rv = review[e.id]?.state ?? null;
-        const unbaselinedRow = row.new || /^no baseline sig/.test(String(row.error ?? ''));
+        const unbaselinedRow = row.new || String(row.error ?? '').startsWith('no baseline sig');
         if (row.error && !unbaselinedRow)
           issues.push(issue(ctx, 'render-error', String(row.error).split('\n')[0].slice(0, 300)));
         else if (row.flaky)
@@ -1252,10 +1252,10 @@ function neverCheckedReason({ report, reportAt, manifestMtime, sigAt, latestAt, 
 /**
  * Baselines no approval line covers: a warning before strict `approve verify` fails a pull request on them.
  * @param {string[]} ids
- * @param {IntegrityContext} ctx
+ * @param {IntegrityContext} _ctx
  * @returns {LedgerSetup[]}
  */
-function unloggedProblems(ids, ctx) {
+function unloggedProblems(ids, _ctx) {
   if (!ids.length) return [];
   return [
     {

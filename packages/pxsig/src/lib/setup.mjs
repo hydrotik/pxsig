@@ -23,7 +23,7 @@ import {
   readFileSync,
   writeFileSync,
 } from 'node:fs';
-import { basename, dirname, join, relative, resolve, sep } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { sha256 } from './approvals.mjs';
 import { componentOf, loadStoryIndex, resolveContext, writeJsonAtomic } from './integrity.mjs';
 import { expandEntries, harvestParameters } from './manifest.mjs';
@@ -508,10 +508,10 @@ export function verifyMigration(P, plan, from, log = () => {}) {
     writeFileSync(newRun, JSON.stringify(runManifest(P, m.manifest)));
     /**
      * @param {string} manifest
-     * @param {string} dir
+     * @param {string} _dir
      * @returns {Map<string, EngineVerdict>}
      */
-    const check = (manifest, dir) => {
+    const check = (manifest, _dir) => {
       const r = spawnSync(
         P.rustBin,
         [

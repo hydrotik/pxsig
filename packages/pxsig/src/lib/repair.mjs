@@ -941,9 +941,7 @@ export async function applyRepairs(
 ) {
   /** @type {DoneStep[]} */
   const done = [];
-  /** @type {Ledger | null} */
-  let ledger = null;
-  const fresh = async () => (ledger = await reconcile(ctx, reconcileOpts));
+  const fresh = async () => await reconcile(ctx, reconcileOpts);
   // A copy: register appends the entries it adds to the re-check step (or adds one).
   const steps = plan.steps.map((s) => ({ ...s, ids: [...s.ids] }));
   for (let k = 0; k < steps.length; k++) {

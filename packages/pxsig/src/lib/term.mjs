@@ -131,7 +131,7 @@ export const STATES = {
 // oxlint-disable-next-line no-control-regex -- matching ANSI escapes is the point
 const ANSI_RE = /\x1b\[[0-9;]*m|\x1b\]8;;[^\x1b]*\x1b\\/g;
 /** @param {unknown} s */
-const width = (s) => [...String(s).replace(ANSI_RE, '')].length;
+const width = (s) => Array.from(String(s).replace(ANSI_RE, '')).length;
 /**
  * @param {string} s
  * @param {number} n

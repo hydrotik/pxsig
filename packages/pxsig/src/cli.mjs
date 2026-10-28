@@ -1921,8 +1921,11 @@ const commands = {
           [`${CMD} migrate --from ${from} --apply`, 'run it (the legacy folder is only read)'],
         ],
       });
-    const { pack, manifests, ...json } = plan;
-    emit(format, blocks, { ...json, manifests: manifests.map(({ manifest, ...m }) => m) });
+    const { pack: _pack, manifests, ...json } = plan;
+    emit(format, blocks, {
+      ...json,
+      manifests: manifests.map(({ manifest: _manifest, ...m }) => m),
+    });
     if (plan.problems.length || plan.verify?.some((v) => v.differ)) process.exit(1);
   },
 

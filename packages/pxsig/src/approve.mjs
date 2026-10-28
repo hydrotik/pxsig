@@ -803,10 +803,12 @@ export async function approveCommand({
       ],
       {
         strict,
-        suites: results.map(({ untrackedIds, ...r }) => r),
+        suites: results.map(({ untrackedIds: _untrackedIds, ...r }) => r),
         notCommitted,
         range,
-        ...(results.length === 1 ? (({ untrackedIds, suite, ...r }) => r)(results[0]) : {}),
+        ...(results.length === 1
+          ? (({ untrackedIds: _untrackedIds, suite: _suite, ...r }) => r)(results[0])
+          : {}),
         ...(reportBlock(enf, gated) ? { enforcement: reportBlock(enf, gated) } : {}),
       }
     );

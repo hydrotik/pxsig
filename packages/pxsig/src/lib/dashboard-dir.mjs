@@ -46,7 +46,10 @@ export function newestMtime(p) {
  */
 function uiOf(project) {
   try {
-    const ui = JSON.parse(readFileSync(project.configPath, 'utf8'))?.dashboard?.ui;
+    // The config file's JSON, read only through optional chaining; `ui` is checked below.
+    const ui = /** @type {{ dashboard?: { ui?: unknown } } | null} */ (
+      JSON.parse(readFileSync(project.configPath, 'utf8'))
+    )?.dashboard?.ui;
     return typeof ui === 'string' && ui ? ui : null;
   } catch {
     return null;
@@ -105,9 +108,13 @@ export function chooseDashboard({
       source: 'prebuilt',
       note: `dashboard: ${where} has no build yet: ${command}. Serving the prebuilt dashboard.`,
     };
+  /** @type {{ builtAt?: number, pxsig?: string, contract?: string } | null} */
   let stamp = null;
   try {
-    stamp = JSON.parse(readFileSync(join(out, STAMP), 'utf8'));
+    // pxsig-build.json, as `pxsig dashboard build` writes it.
+    stamp = /** @type {{ builtAt?: number, pxsig?: string, contract?: string } | null} */ (
+      JSON.parse(readFileSync(join(out, STAMP), 'utf8'))
+    );
   } catch {
     // a build from before stamps, or a hand-made folder: judged by its index.html
   }
