@@ -7,12 +7,11 @@
 all-features = true
 
 [advisories]
-# A vulnerability (and an unsound crate) fails. cargo-deny 0.20 has no "warn" level for
-# unmaintained crates (a scope that fails, or "none", which skips them): "none", so an unmaintained
-# notice never blocks a pull request; `cargo deny check advisories` with `unmaintained = "all"`
-# lists them. A yanked crate warns (the default).
+# A vulnerability, an unsound crate and an unmaintained crate anywhere in the tree fail ("all":
+# owner decision 2026-10-28; none today). A yanked crate warns (the default). To accept one,
+# add an ignore entry below with the reason and a date to look again (CONTRIBUTING.md).
 version = 2
-unmaintained = "none"
+unmaintained = "all"
 ignore = [
   # { id = "RUSTSEC-0000-0000", reason = "why it does not apply, and until when (YYYY-MM-DD)" },
 ]
