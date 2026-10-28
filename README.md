@@ -134,6 +134,7 @@ include it (see [packages/dashboard/README.md](packages/dashboard/README.md)).
 | The dashboard on your own design system: the UI contract and how to build an adapter   | [docs/ui/build-adapter.md](docs/ui/build-adapter.md), [docs/ui/features.md](docs/ui/features.md) |
 | MCP server                                                                             | [docs/mcp.md](docs/mcp.md)                                                                       |
 | Coding assistants: markers, the instruction not to approve, MCP recipes, `pxsig setup` | [docs/agents.md](docs/agents.md)                                                                 |
+| How pxsig works across a team: what is shared, the workflow, deployed Storybooks       | [docs/team.md](docs/team.md)                                                                     |
 | Storybook addon                                                                        | [docs/storybook.md](docs/storybook.md)                                                           |
 | Continuous integration                                                                 | [docs/ci.md](docs/ci.md)                                                                         |
 | The container image: the same renders on every machine                                 | [docs/container.md](docs/container.md)                                                           |

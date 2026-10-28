@@ -176,7 +176,8 @@ test('the top bar: the title is the label (else the project), the versions on ho
   {
     const { page, errors } = await open(plain);
     try {
-      const h1 = page.getByRole('heading', { level: 1 });
+      // The top bar's heading: the loading page has its own (read, not drawn) until the data is in.
+      const h1 = page.locator('nav').getByRole('heading', { level: 1 });
       await h1.waitFor();
       assert.equal(await h1.innerText(), 'pxsig · demo', 'no label: the project name, as before');
       const m = await modesBeside(page);
@@ -200,7 +201,8 @@ test('the top bar: the title is the label (else the project), the versions on ho
   {
     const { page, errors } = await open(labelled);
     try {
-      const h1 = page.getByRole('heading', { level: 1 });
+      // The top bar's heading: the loading page has its own (read, not drawn) until the data is in.
+      const h1 = page.locator('nav').getByRole('heading', { level: 1 });
       await h1.waitFor();
       assert.equal(await h1.innerText(), 'pxsig · Hydrotik');
       // The plain example adapter has no Tooltip: the fallback puts the text in the native title.

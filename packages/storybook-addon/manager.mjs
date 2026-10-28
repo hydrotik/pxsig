@@ -10,6 +10,9 @@
  * - statuses come from `/__pxsig/status` and refresh on the server's event stream,
  *   so `pxsig serve --watch` re-checks an edited component and the dots update live.
  * - one server can hold several projects; the server works out which one owns a story.
+ * - on a Storybook not served from this computer (deployed to dev, UAT, pre-prod) none of the
+ *   above: no request to any pxsig server, no sidebar dots; the panel shows the read-only snapshot
+ *   `storybook build` wrote beside it (`pxsig-snapshot.json`, see preset.cjs), or says there is none.
  *
  * Status mapping: pass / drift / approved → success · changed / flaky / new → warning (needs review:
  * an expected change is not a failure) · rejected / error → error · unaffected → unknown.
@@ -28,6 +31,14 @@ import {
 import { AddonPanel } from 'storybook/internal/components';
 import { useTheme } from 'storybook/theming';
 import { buttonStyle, dashboardUrl, panelColors, themeMode } from './panel-style.mjs';
+import {
+  headerText,
+  noSnapshotText,
+  panelMode,
+  parseSnapshot,
+  SNAPSHOT_FILE,
+  storyView,
+} from './snapshot-view.mjs';
 
 const ADDON = 'pxsig';
 const PANEL = `${ADDON}/panel`;
@@ -39,6 +50,15 @@ const CANDIDATES = [
   'http://127.0.0.1:6070',
 ];
 let SERVER = CANDIDATES[0];
+// A Storybook not served from this computer (a deployed one) makes no request to any pxsig server:
+// the panel reads the read-only snapshot its build wrote beside it (snapshot-view.mjs).
+const MODE =
+  typeof window === 'undefined'
+    ? 'live'
+    : panelMode({
+        hostname: window.location.hostname,
+        override: window.localStorage?.getItem('pxsig-server') ?? null,
+      });
 /** The first candidate that answers; kept until it stops answering. */
 async function status() {
   for (const url of [SERVER, ...CANDIDATES.filter((c) => c !== SERVER)]) {
@@ -147,15 +167,21 @@ addons.register(ADDON, () => {
       setTimeout(connect, 5000);
     }
   };
-  refresh();
-  connect();
+  if (MODE === 'live') {
+    refresh();
+    connect();
+  }
 
   addons.add(PANEL, {
     type: types.PANEL,
     title: 'PXSIG: Visual regression',
     paramKey: 'pxsig',
     render: ({ active }) =>
-      React.createElement(AddonPanel, { active: !!active }, React.createElement(Panel)),
+      React.createElement(
+        AddonPanel,
+        { active: !!active },
+        React.createElement(MODE === 'live' ? Panel : SnapshotPanel)
+      ),
   });
 });
 
@@ -267,5 +293,97 @@ function Panel() {
       src: dashboardUrl(SERVER, { embed: 1, story: storyId }, mode),
       style: { flex: 1, minHeight: 0, border: 0, width: '100%' },
     })
+  );
+}
+
+/** The snapshot beside this Storybook, fetched once, when the panel first shows: null when absent. */
+let snapshotLoad = null;
+const loadSnapshot = () =>
+  (snapshotLoad ??= fetch(new URL(SNAPSHOT_FILE, document.baseURI), { cache: 'no-cache' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then(parseSnapshot)
+    .catch(() => null));
+
+function SnapshotPanel() {
+  const { storyId } = useStorybookState();
+  const colors = panelColors(useTheme());
+  const [snap, setSnap] = React.useState(undefined);
+  React.useEffect(() => {
+    loadSnapshot().then(setSnap);
+  }, []);
+  const box = (...children) =>
+    h(
+      'div',
+      {
+        style: { padding: 16, fontSize: 13, lineHeight: 1.6, color: colors.text, overflow: 'auto' },
+      },
+      ...children
+    );
+  if (snap === undefined) return box(h('span', { style: { opacity: 0.7 } }, 'Loading…'));
+  if (!snap) {
+    const t = noSnapshotText(window.location.host);
+    return box(h('strong', null, t.title), h('div', null, t.body));
+  }
+  const view = storyView(snap, storyId);
+  const cell = {
+    padding: '4px 10px 4px 0',
+    borderBottom: `1px solid ${colors.border}`,
+    textAlign: 'left',
+    verticalAlign: 'top',
+  };
+  const table = (cols, rows) =>
+    h(
+      'table',
+      { style: { borderCollapse: 'collapse', width: '100%', fontSize: 12, marginBottom: 16 } },
+      h(
+        'thead',
+        null,
+        h(
+          'tr',
+          null,
+          ...cols.map(([, label]) => h('th', { style: { ...cell, fontWeight: 600 } }, label))
+        )
+      ),
+      h(
+        'tbody',
+        null,
+        ...rows.map((r) =>
+          h('tr', null, ...cols.map(([k]) => h('td', { style: cell }, String(r[k] ?? ''))))
+        )
+      )
+    );
+  return box(
+    h('div', { style: { fontSize: 12, opacity: 0.7, marginBottom: 12 } }, headerText(snap)),
+    ...(view
+      ? [
+          h('strong', null, 'Coverage'),
+          table(
+            [
+              ['mode', 'Mode'],
+              ['baseline', 'Baseline'],
+              ['last', 'Last change'],
+              ['pr', 'PR'],
+              ['change', 'Change'],
+              ['env', 'Environment'],
+              ['a11y', 'Accessibility'],
+            ],
+            view.entries
+          ),
+          h('strong', null, 'History'),
+          view.history.length
+            ? table(
+                [
+                  ['at', 'Date'],
+                  ['event', 'Event'],
+                  ['pr', 'PR'],
+                  ['change', 'Change'],
+                  ['reason', 'Reason'],
+                  ['entries', 'Entries'],
+                ],
+                view.history
+              )
+            : h('div', null, 'Nothing logged.'),
+        ]
+      : [h('div', null, 'No visual baseline for this story.')])
   );
 }

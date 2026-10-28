@@ -25,9 +25,10 @@ With options:
 addons: [{ name: '@pxsig/storybook-addon', options: { server: 'http://127.0.0.1:6070' } }],
 ```
 
-| Option   | Meaning                                                                      |
-| -------- | ---------------------------------------------------------------------------- |
-| `server` | The pxsig server's URL. Only needed when the server is not found on its own. |
+| Option     | Meaning                                                                                         |
+| ---------- | ----------------------------------------------------------------------------------------------- |
+| `server`   | The pxsig server's URL. Only needed when the server is not found on its own.                    |
+| `snapshot` | `false`: `storybook build` writes no `pxsig-snapshot.json` ([below](#on-a-deployed-storybook)). |
 
 The addon needs Storybook 9 or later (the examples in this repository use Storybook 10). Its
 manager code imports `storybook/manager-api` and `storybook/internal/components` from your
@@ -93,6 +94,24 @@ dashboard open in Storybook's light or dark mode (`?theme=` on the dashboard URL
 the mode the dashboard remembers).
 
 When the server is not running, the panel says so and shows the command to start it.
+
+## On a deployed Storybook
+
+The live panel is for a Storybook served from this computer (`localhost`, `127.0.0.1`, `[::1]`).
+On any other address (a Storybook deployed to dev, UAT or pre-prod) the addon makes no request to
+any pxsig server, shows no sidebar dots, and its panel is read-only: the snapshot `storybook
+build` wrote into the build as `pxsig-snapshot.json`, from the committed store at that commit
+([team.md](team.md#a-deployed-storybook)). Without one, the panel says pxsig runs on a
+developer's own computer and makes no connection. A `pxsig-server` key in the browser's
+`localStorage` still forces the live panel.
+
+`storybook build` runs the workspace's own pxsig for the snapshot (`pxsig snapshot`, a few
+seconds). Without pxsig installed, or when the command fails, the build prints one warning and
+goes on without the file. To leave it out:
+
+```ts
+addons: [{ name: '@pxsig/storybook-addon', options: { snapshot: false } }],
+```
 
 ## Several projects
 

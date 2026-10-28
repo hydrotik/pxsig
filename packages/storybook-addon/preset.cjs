@@ -5,7 +5,13 @@
  * The manager page learns where the pxsig server is: the `server` option, else the address the
  * running server wrote for this workspace (node_modules/.cache/pxsig/server.json), else the
  * workspace's configured port. The panel probes them in that order.
+ *
+ * On `storybook build` it also writes `pxsig-snapshot.json` into the build (the workspace's own
+ * `pxsig snapshot`): what a deployed Storybook's panel shows, since no pxsig server is reachable
+ * there. Option `snapshot: false` leaves it out. The snapshot never fails a build: without pxsig,
+ * or when the command fails, one warning line and no file.
  */
+const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -45,7 +51,59 @@ function servers(options) {
   return [...new Set(out)];
 }
 
+/** The workspace's own pxsig CLI: `node_modules/pxsig` from Storybook's config dir up to the workspace. */
+function pxsigCli(configDir, ws) {
+  let dir = path.resolve(configDir);
+  for (;;) {
+    const bin = path.join(dir, 'node_modules', 'pxsig', 'bin', 'pxsig.mjs');
+    if (fs.existsSync(bin)) return bin;
+    const up = path.dirname(dir);
+    if (dir === path.resolve(ws) || up === dir) return null;
+    dir = up;
+  }
+}
+
+/** Write the snapshot for a build; its folder, or null (with the reason on stderr). */
+function writeSnapshot(options, { run = spawnSync, warn = console.warn } = {}) {
+  const ws = options?.configDir ? workspaceOf(options.configDir) : null;
+  const bin = ws ? pxsigCli(options.configDir, ws) : null;
+  if (!bin) {
+    warn('pxsig: no snapshot in this build (pxsig is not installed in this workspace)');
+    return null;
+  }
+  const dir = path.join(ws, 'node_modules', '.cache', 'pxsig', 'storybook');
+  const file = path.join(dir, 'pxsig-snapshot.json');
+  fs.rmSync(file, { force: true });
+  const r = run(process.execPath, [bin, 'snapshot', '--out', file, '--workspace', ws], {
+    cwd: ws,
+    encoding: 'utf8',
+    timeout: 120_000,
+    env: { ...process.env, PXSIG_FORMAT: 'plain' },
+  });
+  if (r.status !== 0 || !fs.existsSync(file)) {
+    const why = String(r.stderr || r.stdout || r.error?.message || `exit ${r.status}`)
+      .trim()
+      .split('\n')
+      .at(-1);
+    warn(`pxsig: no snapshot in this build (${why})`);
+    return null;
+  }
+  return dir;
+}
+
+/**
+ * `storybook build` (not `storybook dev`): the snapshot's folder joins the static dirs. Storybook
+ * may ask for the static dirs more than once in a build; the snapshot is made once.
+ */
+let made;
+async function staticDirs(dirs = [], options = {}, deps) {
+  if (options.configType !== 'PRODUCTION' || options.snapshot === false) return dirs;
+  if (deps || made === undefined) made = writeSnapshot(options, deps);
+  return made ? [...dirs, { from: made, to: '/' }] : dirs;
+}
+
 module.exports = {
+  staticDirs,
   managerEntries: (entry = []) => [...entry, path.join(__dirname, 'manager.mjs')],
   managerHead: (head, options) =>
     `${head ?? ''}<script>window.__PXSIG__=${JSON.stringify({ servers: servers(options) })}</script>`,
