@@ -34,8 +34,8 @@ export function Stories({
 }: {
   data: Data;
   filter: string;
-  setFilter(f: string): void;
-  onOpen(row: Row, list: Row[]): void;
+  setFilter: (f: string) => void;
+  onOpen: (row: Row, list: Row[]) => void;
 }) {
   const [q, setQ] = React.useState('');
   const [grouped, setGrouped] = React.useState(true);

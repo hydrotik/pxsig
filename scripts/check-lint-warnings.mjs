@@ -34,7 +34,7 @@ const oxlint = join(
 
 let raw;
 try {
-  raw = execFileSync(process.execPath, [oxlint, '--format', 'json'], {
+  raw = execFileSync(process.execPath, [oxlint, '--type-aware', '--format', 'json'], {
     cwd: repoRoot,
     encoding: 'utf8',
     maxBuffer: 256 * 1024 * 1024,

@@ -15,6 +15,7 @@
  * the workspace root; a CLI flag: the current folder); `$workspace/` makes one relative to the
  * workspace root anywhere. `pxsig config` shows which layer set each key.
  */
+/** @import { ProjectRef, Workspace } from '../types.js' */
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
@@ -173,6 +174,11 @@ function packageName(dir) {
 /**
  * Which project a command means. An explicit name or path wins; else the project that contains
  * `cwd`; else the only project. Returns null when several fit and none was named.
+ */
+/**
+ * @param {Workspace} ws
+ * @param {{ project?: string | null, cwd?: string }} [opts]
+ * @returns {ProjectRef | null}
  */
 export function pickProject(ws, { project = null, cwd = process.cwd() } = {}) {
   if (project) {
@@ -705,7 +711,8 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
       a11y: join(store, 'a11y.json'),
     },
     /** The committed manifest: `manifest.json`, or `manifest.<suite>.json` for a suite. */
-    manifestPath: (suite = null) => join(store, suite ? `manifest.${suite}.json` : 'manifest.json'),
+    manifestPath: (/** @type {string | null} */ suite = null) =>
+      join(store, suite ? `manifest.${suite}.json` : 'manifest.json'),
     /** Workspace-relative baseline path for an entry, by layout. */
     sigFor(id, importPath) {
       const comp = componentOfImport(P, importPath);

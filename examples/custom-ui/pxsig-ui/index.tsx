@@ -68,11 +68,16 @@ export const TopNav = ({ label, brand, className, children }: C.TopNavProps) => 
 export const NavList = ({ children }: C.NavListProps) => (
   <ul>{React.Children.map(children, (c) => (c ? <li>{c}</li> : null))}</ul>
 );
+/** A link's text for its accessible name: the dashboard passes the label as text. */
+const textOf = (node: React.ReactNode): string =>
+  React.Children.toArray(node)
+    .map((c) => (typeof c === 'string' || typeof c === 'number' ? String(c) : ''))
+    .join('');
 export const NavLink = ({ href, active, count, countLabel, children }: C.NavLinkProps) => (
   <a
     href={href}
     aria-current={active ? 'page' : undefined}
-    aria-label={count ? `${String(children)}, ${countLabel ?? count}` : undefined}
+    aria-label={count ? `${textOf(children)}, ${countLabel ?? count}` : undefined}
   >
     {children}
     {count ? <span className="plain-badge"> {count > 99 ? '99+' : count}</span> : null}

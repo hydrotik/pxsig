@@ -415,15 +415,15 @@ export function useData(): { data: Data | null; error: string | null; live: bool
       fetchData()
         .then((d) => alive && (setData(d), setError(null)))
         .catch((e) => alive && !window.PXSIG && setError(String(e.message ?? e)));
-    load();
+    void load();
     let es: EventSource | null = null;
     // Events name their project; another project's results don't concern this page.
     const mine = (e: MessageEvent) => {
       try {
         const p = JSON.parse(e.data)?.project;
-        if (!p || !currentProject || p === currentProject) load();
+        if (!p || !currentProject || p === currentProject) void load();
       } catch {
-        load();
+        void load();
       }
     };
     try {

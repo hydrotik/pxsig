@@ -52,6 +52,7 @@ const pxsig = (args, env = {}, cwd = repo) =>
     },
   });
 
+/** @type {[Record<string, string>, string][]} */
 const ROWS = [
   [{ PXSIG_AGENT: '1' }, 'agent'],
   [{ PXSIG_AGENT: 'my-bot' }, 'my-bot'],

@@ -41,6 +41,7 @@ const cli = join(repo, 'packages', 'pxsig', 'bin', 'pxsig.mjs');
 const bin =
   process.env.PXSIG_BIN ??
   join(repo, 'target', 'release', process.platform === 'win32' ? 'pxsig.exe' : 'pxsig');
+/** @type {(k: string, d: string | null) => string | null} */
 const arg = (k, d) => (process.argv.includes(k) ? process.argv[process.argv.indexOf(k) + 1] : d);
 const out = resolve(arg('--out', join(repo, 'docs', 'product-shots')));
 const keep = process.argv.includes('--keep');
@@ -89,6 +90,7 @@ const freePort = () =>
     });
   });
 
+/** @type {import('node:child_process').ChildProcess | null} */
 let server = null;
 let url = arg('--url', null);
 if (!url) url = await prepare();
@@ -128,7 +130,7 @@ try {
   }
 } finally {
   await browser.close();
-  if (server && keep) log(`server left running at ${url} (pid ${server.pid})`);
+  if (server && keep) log(`server left running at ${url} (pid ${String(server.pid)})`);
   else server?.kill();
 }
 

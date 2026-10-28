@@ -25,7 +25,7 @@ export function StoryCard({
   data: Data;
   row: Row;
   scenario: { tag: string; name: string } | null;
-  onOpen(): void;
+  onOpen: () => void;
 }) {
   const p = pathsFor(data, row.id, scenario);
   const m = row.metrics;
@@ -166,7 +166,7 @@ export function StoryGrid({
   data: Data;
   rows: Row[];
   scenario: { tag: string; name: string } | null;
-  onOpen(row: Row, list: Row[]): void;
+  onOpen: (row: Row, list: Row[]) => void;
   page?: number;
   grouped?: boolean;
 }) {

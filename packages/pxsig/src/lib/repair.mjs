@@ -781,7 +781,7 @@ export function defaultHooks(ctx, { serverUrl, timeoutMs = 15 * 60_000 } = {}) {
         throw new Error(`check.mjs setup error: ${r.log.split('\n').slice(-5).join(' ')}`);
       return { via: 'check.mjs' };
     },
-    async harvest(ids) {
+    harvest: async (ids) => {
       const { harvestParameters } = await import('./manifest.mjs');
       return harvestParameters(ctx.project, ctx.config.baseUrl, ids);
     },

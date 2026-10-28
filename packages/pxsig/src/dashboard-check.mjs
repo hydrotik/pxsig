@@ -246,7 +246,7 @@ const describe = (t) =>
 export function screenUrl(base, screen, theme) {
   const q = new URLSearchParams(screen.query ?? '');
   q.set('theme', theme);
-  return `${base}/report/?${q}${screen.hash ?? ''}`;
+  return `${base}/report/?${q.toString()}${screen.hash ?? ''}`;
 }
 
 /** Render one screen in one theme; never throws (a failure is the result). */

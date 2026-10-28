@@ -28,7 +28,7 @@ export function Scenarios({
   onOpen,
 }: {
   data: Data;
-  onOpen(row: Row, list: Row[], scenario: { tag: string; name: string }): void;
+  onOpen: (row: Row, list: Row[], scenario: { tag: string; name: string }) => void;
 }) {
   const all = data.scenarioSuites ?? {};
   const suites = suiteKeys(all);

@@ -15,10 +15,17 @@
  * @param {{ filename: string, code: string, severity: string }[]} diagnostics
  */
 export function countWarnings(diagnostics) {
+  return countDiagnostics(diagnostics.filter((d) => d.severity === 'warning'));
+}
+
+/**
+ * `{ file: { code: count } }` for any diagnostics (scripts/check-types.mjs passes tsc's errors).
+ * @param {{ filename: string, code: string }[]} diagnostics
+ */
+export function countDiagnostics(diagnostics) {
   /** @type {Record<string, Record<string, number>>} */
   const counts = {};
   for (const d of diagnostics) {
-    if (d.severity !== 'warning') continue;
     const file = d.filename.replace(/\\/g, '/');
     counts[file] ??= {};
     counts[file][d.code] = (counts[file][d.code] ?? 0) + 1;

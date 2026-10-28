@@ -9,6 +9,8 @@ import { tokens as v } from './tokens';
 import { t } from '../copy';
 
 type F<K extends keyof ComponentProps> = (props: ComponentProps[K]) => React.ReactElement | null;
+/** A table or chart cell: the primitive a column's field or a series' key names. */
+type Cell = string | number | boolean | null | undefined;
 
 const border = `1px solid ${v.color.border}`;
 const control: React.CSSProperties = {
@@ -132,8 +134,9 @@ function DataTableFallback<T>({
   const [sort, setSort] = React.useState<{ id: string; dir: 1 | -1 } | null>(null);
   const [page, setPage] = React.useState(0);
   const size = paginate === false ? Infinity : 50;
+  // A column's field names a primitive value of the row (contract: DataTable columns).
   const text = (r: T, field?: string) =>
-    field ? String((r as Record<string, unknown>)[field] ?? '') : '';
+    field ? String((r as Record<string, Cell>)[field] ?? '') : '';
   let shown = q
     ? rows.filter((r) =>
         columns.some((c) => text(r, c.field).toLowerCase().includes(q.toLowerCase()))
@@ -536,7 +539,9 @@ const Chart: F<'Chart'> = ({ data, series, x, format = String, className }) => (
                 key={s.key}
                 style={{ textAlign: 'end', paddingInline: v.space['2'], fontFamily: v.font.mono }}
               >
-                {typeof d[s.key] === 'number' ? format(d[s.key] as number) : String(d[s.key] ?? '')}
+                {typeof d[s.key] === 'number'
+                  ? format(d[s.key] as number)
+                  : String((d[s.key] as Cell) ?? '')}
               </td>
             ))}
           </tr>

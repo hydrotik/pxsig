@@ -38,6 +38,11 @@ export function setupRoot(cwd = process.cwd()) {
  * the typed line; `show(blocks)` prints the recipe before the questions about writing it. Returns
  * `{ blocks, data, exit }` (the blocks still to print); throws `{ exit: 2 }` errors for bad usage.
  */
+/**
+ * @param {{ step?: string | null, flags?: import('./types.js').Flags, root?: string,
+ *   person?: boolean, ask?: ((q: string) => Promise<string>) | null,
+ *   show?: ((text: string) => void) | null, CMD?: string }} opts
+ */
 export async function setupCommand({
   step = null,
   flags = {},

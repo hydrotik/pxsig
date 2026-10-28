@@ -40,7 +40,7 @@ const oxfmt = (files) => {
 
 export default {
   '*.{ts,tsx,js,jsx,mjs,cjs}': (files) => [
-    `pnpm exec oxlint ${files.map(quote).join(' ')}`,
+    `pnpm exec oxlint --type-aware ${files.map(quote).join(' ')}`,
     ...oxfmt(files),
   ],
   '*.{json,md,yaml,yml,css,html}': oxfmt,

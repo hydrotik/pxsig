@@ -95,9 +95,9 @@ export function CoverageDetails({
   onBusy,
 }: {
   data: Data;
-  go(tab: string): void;
-  startReview?(kind: Queue): void;
-  onBusy?(busy: boolean): void;
+  go: (tab: string) => void;
+  startReview?: (kind: Queue) => void;
+  onBusy?: (busy: boolean) => void;
 }) {
   const L = data.integrity;
   const [busy, setBusy] = React.useState(false);
@@ -196,8 +196,8 @@ export function IntegrityBanner({
   errorsShownElsewhere,
 }: {
   data: Data;
-  go(tab: string): void;
-  startReview?(kind: Queue): void;
+  go: (tab: string) => void;
+  startReview?: (kind: Queue) => void;
   errorsShownElsewhere?: boolean;
 }) {
   const L = data.integrity;
@@ -237,7 +237,7 @@ export function Integrity({
   focus,
 }: {
   data: Data;
-  onOpen(row: Row, list: Row[]): void;
+  onOpen: (row: Row, list: Row[]) => void;
   focus?: CoverageFocus | null;
 }) {
   const L = data.integrity;

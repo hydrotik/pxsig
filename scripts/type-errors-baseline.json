@@ -1,0 +1,768 @@
+{
+  "$description": "tsc errors (checkJs, strict) per file and code in the JavaScript. A file may not gain one; lower with `node scripts/check-types.mjs --update` after fixing some. The goal is an empty file. See scripts/check-types.mjs.",
+  "total": 3903,
+  "files": {
+    "packages/dashboard/build-config.mjs": {
+      "TS2339": 5,
+      "TS7006": 3,
+      "TS7031": 1,
+      "TS8032": 4
+    },
+    "packages/dashboard/fixtures/scenarios.mjs": {
+      "TS2322": 3,
+      "TS7006": 22,
+      "TS7031": 2,
+      "TS7053": 6
+    },
+    "packages/dashboard/src/ui/adapters/hydrotik/vite.mjs": {
+      "TS7006": 2,
+      "TS7053": 2
+    },
+    "packages/dashboard/ui-tools.mjs": {
+      "TS18046": 1,
+      "TS2339": 2,
+      "TS2345": 2,
+      "TS7005": 2,
+      "TS7006": 43,
+      "TS7031": 15,
+      "TS7034": 2,
+      "TS7053": 11
+    },
+    "packages/pxsig/src/approve.mjs": {
+      "TS18046": 7,
+      "TS18047": 1,
+      "TS18048": 16,
+      "TS2322": 3,
+      "TS2339": 7,
+      "TS2353": 1,
+      "TS2571": 1,
+      "TS7005": 2,
+      "TS7006": 26,
+      "TS7031": 9,
+      "TS7034": 2
+    },
+    "packages/pxsig/src/browser.mjs": {
+      "TS2339": 8,
+      "TS2353": 4,
+      "TS7006": 11,
+      "TS7031": 1,
+      "TS7053": 3
+    },
+    "packages/pxsig/src/check.mjs": {
+      "TS18046": 8,
+      "TS18047": 2,
+      "TS18048": 22,
+      "TS2322": 6,
+      "TS2339": 15,
+      "TS2345": 4,
+      "TS2353": 3,
+      "TS7005": 11,
+      "TS7006": 41,
+      "TS7031": 1,
+      "TS7034": 1,
+      "TS7053": 5
+    },
+    "packages/pxsig/src/cli.mjs": {
+      "TS18046": 33,
+      "TS18047": 1,
+      "TS18048": 69,
+      "TS2322": 11,
+      "TS2339": 211,
+      "TS2345": 12,
+      "TS2353": 35,
+      "TS2363": 1,
+      "TS2531": 1,
+      "TS2532": 1,
+      "TS2554": 1,
+      "TS2700": 1,
+      "TS2769": 1,
+      "TS7005": 2,
+      "TS7006": 56,
+      "TS7031": 3,
+      "TS7034": 2,
+      "TS7053": 12
+    },
+    "packages/pxsig/src/dashboard-check.mjs": {
+      "TS18046": 3,
+      "TS18047": 1,
+      "TS2304": 1,
+      "TS2322": 2,
+      "TS2339": 15,
+      "TS2345": 1,
+      "TS2531": 1,
+      "TS2584": 5,
+      "TS2769": 1,
+      "TS7005": 7,
+      "TS7006": 58,
+      "TS7016": 1,
+      "TS7031": 9,
+      "TS7034": 3,
+      "TS7053": 1
+    },
+    "packages/pxsig/src/dashboard.mjs": {
+      "TS7006": 12,
+      "TS7023": 1
+    },
+    "packages/pxsig/src/help.mjs": {
+      "TS2345": 3,
+      "TS2353": 4,
+      "TS7005": 1,
+      "TS7006": 11,
+      "TS7034": 1,
+      "TS7053": 1
+    },
+    "packages/pxsig/src/lib/agents.mjs": {
+      "TS7006": 7
+    },
+    "packages/pxsig/src/lib/approvals.mjs": {
+      "TS2339": 2,
+      "TS2345": 8,
+      "TS7005": 2,
+      "TS7006": 44,
+      "TS7019": 1,
+      "TS7031": 4,
+      "TS7034": 2,
+      "TS7053": 2
+    },
+    "packages/pxsig/src/lib/args.mjs": {
+      "TS7005": 1,
+      "TS7006": 8,
+      "TS7031": 3,
+      "TS7034": 1,
+      "TS7053": 2
+    },
+    "packages/pxsig/src/lib/assistants.mjs": {
+      "TS7006": 7
+    },
+    "packages/pxsig/src/lib/capture.mjs": {
+      "TS18046": 1,
+      "TS2304": 16,
+      "TS2322": 1,
+      "TS2339": 14,
+      "TS2532": 1,
+      "TS2584": 19,
+      "TS7005": 4,
+      "TS7006": 38,
+      "TS7031": 1,
+      "TS7034": 2,
+      "TS7053": 1
+    },
+    "packages/pxsig/src/lib/dashboard-dir.mjs": {
+      "TS2345": 3,
+      "TS7006": 4,
+      "TS7031": 2
+    },
+    "packages/pxsig/src/lib/enforcement.mjs": {
+      "TS18046": 1,
+      "TS2339": 16,
+      "TS2554": 1,
+      "TS7006": 61,
+      "TS7031": 6,
+      "TS7053": 22
+    },
+    "packages/pxsig/src/lib/env.mjs": {
+      "TS2304": 2,
+      "TS2339": 7,
+      "TS2584": 4,
+      "TS7006": 37,
+      "TS7023": 1,
+      "TS7024": 1,
+      "TS7031": 8,
+      "TS7053": 3
+    },
+    "packages/pxsig/src/lib/files.mjs": {
+      "TS18046": 1,
+      "TS7005": 2,
+      "TS7006": 11,
+      "TS7034": 2
+    },
+    "packages/pxsig/src/lib/guard.mjs": {
+      "TS2339": 1,
+      "TS7006": 26,
+      "TS7031": 9
+    },
+    "packages/pxsig/src/lib/integrity.mjs": {
+      "TS18046": 2,
+      "TS18047": 2,
+      "TS2339": 11,
+      "TS2345": 3,
+      "TS2353": 1,
+      "TS2769": 1,
+      "TS7005": 5,
+      "TS7006": 99,
+      "TS7031": 6,
+      "TS7034": 4,
+      "TS7053": 10
+    },
+    "packages/pxsig/src/lib/lock.mjs": {
+      "TS18046": 2,
+      "TS2339": 1,
+      "TS7006": 16
+    },
+    "packages/pxsig/src/lib/machine.mjs": {
+      "TS7006": 12
+    },
+    "packages/pxsig/src/lib/manifest.mjs": {
+      "TS2304": 1,
+      "TS2339": 5,
+      "TS7006": 13,
+      "TS7053": 2
+    },
+    "packages/pxsig/src/lib/paths.mjs": {
+      "TS7006": 3
+    },
+    "packages/pxsig/src/lib/portability.mjs": {
+      "TS7006": 7,
+      "TS7031": 3
+    },
+    "packages/pxsig/src/lib/prune.mjs": {
+      "TS2339": 4,
+      "TS2345": 1,
+      "TS2554": 1,
+      "TS7006": 35,
+      "TS7031": 7
+    },
+    "packages/pxsig/src/lib/psig.mjs": {
+      "TS7006": 6
+    },
+    "packages/pxsig/src/lib/repair.mjs": {
+      "TS18046": 3,
+      "TS18047": 2,
+      "TS2339": 4,
+      "TS2345": 1,
+      "TS7006": 84,
+      "TS7031": 11,
+      "TS7053": 2
+    },
+    "packages/pxsig/src/lib/rows.mjs": {
+      "TS7006": 30
+    },
+    "packages/pxsig/src/lib/sarif.mjs": {
+      "TS7006": 5,
+      "TS7053": 1
+    },
+    "packages/pxsig/src/lib/setup.mjs": {
+      "TS2339": 26,
+      "TS2345": 9,
+      "TS2551": 1,
+      "TS2554": 2,
+      "TS7005": 1,
+      "TS7006": 24,
+      "TS7031": 1
+    },
+    "packages/pxsig/src/lib/shape.mjs": {
+      "TS7006": 3,
+      "TS7016": 1,
+      "TS7031": 3
+    },
+    "packages/pxsig/src/lib/static.mjs": {
+      "TS2339": 2,
+      "TS2345": 1,
+      "TS2531": 1,
+      "TS2554": 2,
+      "TS2810": 1,
+      "TS7006": 3,
+      "TS7053": 1
+    },
+    "packages/pxsig/src/lib/term.mjs": {
+      "TS2339": 9,
+      "TS7006": 37,
+      "TS7023": 2,
+      "TS7031": 6,
+      "TS7053": 4
+    },
+    "packages/pxsig/src/lib/workspace.mjs": {
+      "TS18046": 4,
+      "TS2322": 3,
+      "TS2339": 31,
+      "TS2345": 2,
+      "TS7005": 1,
+      "TS7006": 70,
+      "TS7019": 1,
+      "TS7022": 2,
+      "TS7023": 1,
+      "TS7034": 1,
+      "TS7053": 23
+    },
+    "packages/pxsig/src/mcp-call.mjs": {
+      "TS18047": 2,
+      "TS2769": 1,
+      "TS7006": 2
+    },
+    "packages/pxsig/src/mcp.mjs": {
+      "TS18046": 24,
+      "TS18047": 2,
+      "TS2322": 1,
+      "TS2339": 20,
+      "TS2345": 6,
+      "TS2353": 12,
+      "TS2554": 1,
+      "TS2769": 1,
+      "TS7005": 2,
+      "TS7006": 71,
+      "TS7019": 1,
+      "TS7031": 33,
+      "TS7034": 1,
+      "TS7053": 19
+    },
+    "packages/pxsig/src/report.mjs": {
+      "TS18046": 1,
+      "TS2322": 2,
+      "TS7006": 14,
+      "TS7053": 1
+    },
+    "packages/pxsig/src/serve.mjs": {
+      "TS18046": 14,
+      "TS18047": 1,
+      "TS2322": 8,
+      "TS2339": 36,
+      "TS2345": 3,
+      "TS2353": 4,
+      "TS2531": 4,
+      "TS2554": 1,
+      "TS2698": 1,
+      "TS2722": 1,
+      "TS2769": 2,
+      "TS7005": 17,
+      "TS7006": 126,
+      "TS7034": 6,
+      "TS7053": 9
+    },
+    "packages/pxsig/src/setup.mjs": {
+      "TS18046": 1,
+      "TS18047": 13,
+      "TS2339": 8,
+      "TS2345": 3,
+      "TS2353": 7,
+      "TS2721": 2,
+      "TS7006": 1
+    },
+    "packages/pxsig/src/snapshot.mjs": {
+      "TS7006": 15,
+      "TS7019": 1,
+      "TS7053": 6
+    },
+    "packages/pxsig/test/agents.test.mjs": {
+      "TS18047": 2,
+      "TS18048": 1,
+      "TS2345": 1,
+      "TS2532": 1,
+      "TS7005": 2,
+      "TS7006": 3,
+      "TS7019": 1,
+      "TS7034": 2,
+      "TS7053": 3
+    },
+    "packages/pxsig/test/approve.test.mjs": {
+      "TS2345": 1,
+      "TS7006": 6
+    },
+    "packages/pxsig/test/args.test.mjs": {
+      "TS7006": 2,
+      "TS7019": 1
+    },
+    "packages/pxsig/test/capture-page.test.mjs": {
+      "TS18047": 1,
+      "TS2304": 3,
+      "TS2584": 3,
+      "TS7006": 8
+    },
+    "packages/pxsig/test/cli.test.mjs": {
+      "TS7006": 2
+    },
+    "packages/pxsig/test/container.test.mjs": {
+      "TS18046": 15,
+      "TS18048": 4,
+      "TS2322": 19,
+      "TS2339": 3,
+      "TS7005": 2,
+      "TS7006": 10,
+      "TS7034": 2
+    },
+    "packages/pxsig/test/crash.test.mjs": {
+      "TS18046": 1,
+      "TS18048": 2,
+      "TS2322": 1,
+      "TS2345": 4,
+      "TS2353": 7,
+      "TS7006": 8
+    },
+    "packages/pxsig/test/dashboard-dir.test.mjs": {
+      "TS2339": 2,
+      "TS2345": 6,
+      "TS2531": 1,
+      "TS2810": 1,
+      "TS7005": 8,
+      "TS7006": 10,
+      "TS7031": 3,
+      "TS7034": 1
+    },
+    "packages/pxsig/test/dashboard.test.mjs": {
+      "TS7006": 9
+    },
+    "packages/pxsig/test/enforcement.test.mjs": {
+      "TS18046": 5,
+      "TS18047": 7,
+      "TS2322": 3,
+      "TS2339": 19,
+      "TS2345": 8,
+      "TS2353": 9,
+      "TS2531": 2,
+      "TS2532": 2,
+      "TS2559": 2,
+      "TS7006": 5,
+      "TS7019": 2,
+      "TS7053": 1
+    },
+    "packages/pxsig/test/env.test.mjs": {
+      "TS18048": 3,
+      "TS2322": 9,
+      "TS2339": 26,
+      "TS2345": 1,
+      "TS2531": 2,
+      "TS2769": 1,
+      "TS2810": 1,
+      "TS7006": 16,
+      "TS7053": 4
+    },
+    "packages/pxsig/test/features.test.mjs": {
+      "TS18046": 1,
+      "TS18048": 4,
+      "TS2322": 20,
+      "TS2339": 7,
+      "TS2345": 2,
+      "TS2353": 3,
+      "TS2531": 6,
+      "TS2532": 2,
+      "TS2769": 1,
+      "TS2810": 3,
+      "TS7005": 2,
+      "TS7006": 30,
+      "TS7019": 1,
+      "TS7034": 1,
+      "TS7053": 4
+    },
+    "packages/pxsig/test/fixture.mjs": {
+      "TS7006": 29,
+      "TS7031": 1,
+      "TS7053": 1
+    },
+    "packages/pxsig/test/gate.test.mjs": {
+      "TS7006": 5
+    },
+    "packages/pxsig/test/guard.test.mjs": {
+      "TS2322": 4,
+      "TS2339": 1,
+      "TS2345": 11,
+      "TS2531": 8,
+      "TS2532": 1,
+      "TS2810": 1,
+      "TS7006": 14,
+      "TS7031": 2
+    },
+    "packages/pxsig/test/help.test.mjs": {
+      "TS18048": 3,
+      "TS2339": 1,
+      "TS2531": 4,
+      "TS2554": 3,
+      "TS7005": 2,
+      "TS7006": 10,
+      "TS7019": 1,
+      "TS7034": 2
+    },
+    "packages/pxsig/test/integrity.test.mjs": {
+      "TS18048": 6,
+      "TS2322": 9,
+      "TS2339": 4,
+      "TS2345": 8,
+      "TS2353": 10,
+      "TS2532": 8,
+      "TS2769": 3,
+      "TS2790": 2,
+      "TS7005": 3,
+      "TS7006": 35,
+      "TS7017": 4,
+      "TS7034": 2
+    },
+    "packages/pxsig/test/label.test.mjs": {
+      "TS2322": 2,
+      "TS7006": 4
+    },
+    "packages/pxsig/test/machine.test.mjs": {
+      "TS2345": 1
+    },
+    "packages/pxsig/test/mcp.test.mjs": {
+      "TS7005": 3,
+      "TS7006": 10,
+      "TS7034": 1
+    },
+    "packages/pxsig/test/pii.test.mjs": {
+      "TS2339": 4,
+      "TS2345": 5,
+      "TS2531": 1,
+      "TS2810": 1,
+      "TS7005": 1,
+      "TS7006": 10,
+      "TS7031": 2,
+      "TS7034": 1
+    },
+    "packages/pxsig/test/platform.test.mjs": {
+      "TS2339": 1,
+      "TS2345": 7,
+      "TS2531": 1,
+      "TS2532": 1,
+      "TS2810": 1,
+      "TS7006": 1
+    },
+    "packages/pxsig/test/prune.test.mjs": {
+      "TS18046": 3,
+      "TS2322": 1,
+      "TS2339": 1,
+      "TS2345": 2,
+      "TS2353": 2,
+      "TS2531": 1,
+      "TS2810": 1,
+      "TS7005": 1,
+      "TS7006": 10,
+      "TS7031": 2,
+      "TS7034": 1,
+      "TS7053": 1
+    },
+    "packages/pxsig/test/selection.test.mjs": {
+      "TS18047": 3,
+      "TS2532": 1,
+      "TS7006": 11
+    },
+    "packages/pxsig/test/server-flow.test.mjs": {
+      "TS18046": 10,
+      "TS18047": 1,
+      "TS2322": 1,
+      "TS2339": 3,
+      "TS2345": 1,
+      "TS2531": 2,
+      "TS2571": 1,
+      "TS2769": 1,
+      "TS2810": 2,
+      "TS7005": 1,
+      "TS7006": 20,
+      "TS7034": 1
+    },
+    "packages/pxsig/test/snapshot.test.mjs": {
+      "TS2322": 4,
+      "TS2532": 1,
+      "TS7005": 1,
+      "TS7006": 7,
+      "TS7019": 1,
+      "TS7034": 1,
+      "TS7053": 1
+    },
+    "packages/pxsig/test/spawn.test.mjs": {
+      "TS2345": 3,
+      "TS7005": 1,
+      "TS7006": 1,
+      "TS7034": 1
+    },
+    "packages/pxsig/test/ui-catalog.test.mjs": {
+      "TS2307": 1,
+      "TS7006": 6,
+      "TS7019": 1
+    },
+    "packages/pxsig/test/upgrade.test.mjs": {
+      "TS2345": 2,
+      "TS2353": 1,
+      "TS7006": 3,
+      "TS7019": 1
+    },
+    "packages/pxsig/test/verify.test.mjs": {
+      "TS18048": 2,
+      "TS2322": 5,
+      "TS7006": 8,
+      "TS7019": 2
+    },
+    "packages/pxsig/test/workspace.test.mjs": {
+      "TS2322": 16,
+      "TS2339": 3,
+      "TS2531": 3,
+      "TS7006": 1
+    },
+    "packages/storybook-addon/manager.mjs": {
+      "TS2322": 1,
+      "TS2339": 1,
+      "TS2345": 1,
+      "TS2353": 1,
+      "TS2769": 1,
+      "TS7005": 1,
+      "TS7006": 10,
+      "TS7019": 1,
+      "TS7031": 2,
+      "TS7034": 1,
+      "TS7053": 10
+    },
+    "packages/storybook-addon/panel-style.mjs": {
+      "TS7006": 6
+    },
+    "packages/storybook-addon/preset.cjs": {
+      "TS2339": 2,
+      "TS2345": 1,
+      "TS2769": 1,
+      "TS7005": 2,
+      "TS7006": 11,
+      "TS7034": 1
+    },
+    "packages/storybook-addon/snapshot-view.mjs": {
+      "TS7006": 12,
+      "TS7031": 1
+    },
+    "packages/storybook-addon/test/preset.test.mjs": {
+      "TS2322": 1,
+      "TS7005": 2,
+      "TS7006": 1,
+      "TS7034": 2
+    },
+    "packages/storybook-addon/test/snapshot-view.test.mjs": {
+      "TS18047": 8,
+      "TS2322": 1
+    },
+    "scripts/bench/generate-store.mjs": {
+      "TS7005": 9,
+      "TS7006": 29,
+      "TS7019": 1,
+      "TS7034": 2,
+      "TS7053": 9
+    },
+    "scripts/bench/run.mjs": {
+      "TS7006": 8,
+      "TS7053": 5
+    },
+    "scripts/changelog.mjs": {
+      "TS18046": 2,
+      "TS2345": 1,
+      "TS7005": 2,
+      "TS7006": 20,
+      "TS7019": 1,
+      "TS7034": 1
+    },
+    "scripts/changelog.test.mjs": {
+      "TS2345": 1,
+      "TS7006": 1
+    },
+    "scripts/check-clean.mjs": {
+      "TS7005": 1,
+      "TS7006": 7,
+      "TS7019": 1,
+      "TS7034": 1
+    },
+    "scripts/check-clean.test.mjs": {
+      "TS2345": 1
+    },
+    "scripts/check-lint-warnings.mjs": {
+      "TS18046": 1,
+      "TS7006": 1
+    },
+    "scripts/check-win-runtime.mjs": {
+      "TS7006": 1
+    },
+    "scripts/check-win-runtime.test.mjs": {
+      "TS7019": 1
+    },
+    "scripts/compat-old.mjs": {
+      "TS7006": 5
+    },
+    "scripts/examples-test.mjs": {
+      "TS2339": 5,
+      "TS7006": 51,
+      "TS7031": 3
+    },
+    "scripts/json-schema.mjs": {
+      "TS7005": 1,
+      "TS7006": 6,
+      "TS7022": 1,
+      "TS7023": 1
+    },
+    "scripts/lib/lint-ratchet.mjs": {
+      "TS7006": 6
+    },
+    "scripts/lint-ratchet.test.mjs": {
+      "TS7006": 2
+    },
+    "scripts/make-platform-packages.mjs": {
+      "TS18046": 1,
+      "TS2339": 24,
+      "TS7006": 8,
+      "TS7053": 7
+    },
+    "scripts/pack-manifest.mjs": {
+      "TS7006": 4
+    },
+    "scripts/pack-manifest.test.mjs": {
+      "TS7006": 2
+    },
+    "scripts/product-shots.mjs": {
+      "TS1313": 1,
+      "TS18047": 1,
+      "TS2339": 2,
+      "TS2345": 2,
+      "TS2353": 2,
+      "TS2584": 1,
+      "TS7006": 11
+    },
+    "scripts/release-files.mjs": {
+      "TS18046": 1,
+      "TS7006": 6
+    },
+    "scripts/sync-catalog.mjs": {
+      "TS7006": 3,
+      "TS7019": 1
+    },
+    "scripts/typecheck.mjs": {
+      "TS7006": 3,
+      "TS7053": 1
+    },
+    "scripts/ui.mjs": {
+      "TS18046": 1,
+      "TS7006": 1,
+      "TS7053": 1
+    },
+    "tools/bench.mjs": {
+      "TS2339": 17,
+      "TS7006": 5,
+      "TS7053": 1
+    },
+    "tools/calibrate-detail.mjs": {
+      "TS2339": 2,
+      "TS7005": 2,
+      "TS7006": 10,
+      "TS7031": 4,
+      "TS7034": 1,
+      "TS7053": 7
+    },
+    "tools/calibrate-gate.mjs": {
+      "TS18047": 1,
+      "TS2339": 2,
+      "TS2532": 1,
+      "TS7006": 11,
+      "TS7031": 6,
+      "TS7053": 12
+    },
+    "tools/calibrate.mjs": {
+      "TS2339": 4,
+      "TS2345": 1,
+      "TS7006": 17,
+      "TS7031": 4,
+      "TS7053": 6
+    },
+    "tools/lib/research.mjs": {
+      "TS2339": 2,
+      "TS7006": 43,
+      "TS7019": 1,
+      "TS7053": 1
+    },
+    "tools/scenarios.mjs": {
+      "TS2339": 7,
+      "TS2345": 1,
+      "TS7005": 1,
+      "TS7006": 23,
+      "TS7034": 1
+    }
+  }
+}

@@ -27,7 +27,7 @@ function readMode(): ThemeMode {
 
 interface ThemeModeValue {
   mode: ThemeMode;
-  setMode(mode: ThemeMode): void;
+  setMode: (mode: ThemeMode) => void;
 }
 const ThemeModeContext = React.createContext<ThemeModeValue>({
   mode: DEFAULT_MODE,

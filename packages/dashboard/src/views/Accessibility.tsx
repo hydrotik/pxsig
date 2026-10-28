@@ -34,8 +34,8 @@ export function Accessibility({
   startReview,
 }: {
   data: Data;
-  onOpen(row: Row, list: Row[]): void;
-  startReview(kind: Queue): void;
+  onOpen: (row: Row, list: Row[]) => void;
+  startReview: (kind: Queue) => void;
 }) {
   const rows = (data.check?.rows ?? []).filter((r) => r.a11y?.violations);
   const rules = React.useMemo(() => {
