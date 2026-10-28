@@ -1,6 +1,6 @@
 {
   "$description": "oxlint warnings per file and rule. A file may not gain a warning; lower with `node scripts/check-lint-warnings.mjs --update` after fixing some. See scripts/check-lint-warnings.mjs.",
-  "total": 11314,
+  "total": 8740,
   "files": {
     "docker/smoke.mjs": {
       "typescript(no-unsafe-assignment)": 9,
@@ -142,48 +142,48 @@
     },
     "packages/pxsig/src/approve.mjs": {
       "eslint(no-unused-vars)": 3,
-      "typescript(no-unsafe-argument)": 18,
-      "typescript(no-unsafe-assignment)": 56,
-      "typescript(no-unsafe-call)": 55,
-      "typescript(no-unsafe-member-access)": 151,
-      "typescript(no-unsafe-return)": 22
+      "typescript(no-unsafe-argument)": 13,
+      "typescript(no-unsafe-assignment)": 24,
+      "typescript(no-unsafe-call)": 17,
+      "typescript(no-unsafe-member-access)": 76,
+      "typescript(no-unsafe-return)": 13
     },
     "packages/pxsig/src/browser.mjs": {
-      "typescript(no-unsafe-argument)": 3,
-      "typescript(no-unsafe-assignment)": 18,
-      "typescript(no-unsafe-call)": 11,
-      "typescript(no-unsafe-member-access)": 39,
+      "typescript(no-unsafe-argument)": 2,
+      "typescript(no-unsafe-assignment)": 16,
+      "typescript(no-unsafe-call)": 8,
+      "typescript(no-unsafe-member-access)": 34,
       "typescript(no-unsafe-return)": 3
     },
     "packages/pxsig/src/check.mjs": {
-      "typescript(no-unsafe-argument)": 31,
-      "typescript(no-unsafe-assignment)": 61,
-      "typescript(no-unsafe-call)": 49,
-      "typescript(no-unsafe-member-access)": 213,
-      "typescript(no-unsafe-return)": 21,
+      "typescript(no-unsafe-argument)": 26,
+      "typescript(no-unsafe-assignment)": 35,
+      "typescript(no-unsafe-call)": 27,
+      "typescript(no-unsafe-member-access)": 130,
+      "typescript(no-unsafe-return)": 13,
       "unicorn(no-useless-fallback-in-spread)": 2
     },
     "packages/pxsig/src/cli.mjs": {
       "eslint(no-unused-vars)": 2,
-      "typescript(no-unsafe-argument)": 35,
-      "typescript(no-unsafe-assignment)": 174,
-      "typescript(no-unsafe-call)": 67,
-      "typescript(no-unsafe-member-access)": 287,
-      "typescript(no-unsafe-return)": 27,
+      "typescript(no-unsafe-argument)": 26,
+      "typescript(no-unsafe-assignment)": 98,
+      "typescript(no-unsafe-call)": 63,
+      "typescript(no-unsafe-member-access)": 256,
+      "typescript(no-unsafe-return)": 14,
       "typescript(require-await)": 1
     },
     "packages/pxsig/src/dashboard-check.mjs": {
       "typescript(no-unsafe-argument)": 24,
-      "typescript(no-unsafe-assignment)": 91,
-      "typescript(no-unsafe-call)": 80,
-      "typescript(no-unsafe-member-access)": 226,
-      "typescript(no-unsafe-return)": 15,
+      "typescript(no-unsafe-assignment)": 82,
+      "typescript(no-unsafe-call)": 74,
+      "typescript(no-unsafe-member-access)": 212,
+      "typescript(no-unsafe-return)": 14,
       "typescript(require-await)": 1,
       "unicorn(no-new-array)": 1
     },
     "packages/pxsig/src/dashboard.mjs": {
       "typescript(no-unsafe-argument)": 8,
-      "typescript(no-unsafe-assignment)": 33,
+      "typescript(no-unsafe-assignment)": 32,
       "typescript(no-unsafe-call)": 11,
       "typescript(no-unsafe-member-access)": 39,
       "typescript(no-unsafe-return)": 2
@@ -196,37 +196,23 @@
       "typescript(no-unsafe-return)": 5
     },
     "packages/pxsig/src/lib/agents.mjs": {
-      "typescript(no-unsafe-argument)": 2,
-      "typescript(no-unsafe-member-access)": 7,
       "unicorn(prefer-string-starts-ends-with)": 2
     },
     "packages/pxsig/src/lib/approvals.mjs": {
-      "typescript(no-unsafe-argument)": 44,
-      "typescript(no-unsafe-assignment)": 40,
-      "typescript(no-unsafe-call)": 9,
-      "typescript(no-unsafe-member-access)": 74,
-      "typescript(no-unsafe-return)": 9,
+      "typescript(no-unsafe-argument)": 40,
+      "typescript(no-unsafe-assignment)": 38,
+      "typescript(no-unsafe-call)": 7,
+      "typescript(no-unsafe-member-access)": 58,
+      "typescript(no-unsafe-return)": 7,
       "typescript(require-array-sort-compare)": 1,
       "unicorn(prefer-string-starts-ends-with)": 1
     },
-    "packages/pxsig/src/lib/args.mjs": {
-      "typescript(no-unsafe-argument)": 4,
-      "typescript(no-unsafe-assignment)": 19,
-      "typescript(no-unsafe-call)": 14,
-      "typescript(no-unsafe-member-access)": 48,
-      "typescript(no-unsafe-return)": 5
-    },
-    "packages/pxsig/src/lib/assistants.mjs": {
-      "typescript(no-unsafe-assignment)": 1,
-      "typescript(no-unsafe-call)": 3,
-      "typescript(no-unsafe-member-access)": 3
-    },
     "packages/pxsig/src/lib/capture.mjs": {
       "eslint(no-unused-expressions)": 1,
-      "typescript(no-unsafe-argument)": 18,
-      "typescript(no-unsafe-assignment)": 76,
+      "typescript(no-unsafe-argument)": 17,
+      "typescript(no-unsafe-assignment)": 69,
       "typescript(no-unsafe-call)": 102,
-      "typescript(no-unsafe-member-access)": 224,
+      "typescript(no-unsafe-member-access)": 216,
       "typescript(no-unsafe-return)": 21,
       "typescript(require-await)": 2,
       "unicorn(no-new-array)": 1
@@ -238,136 +224,62 @@
       "typescript(no-unsafe-member-access)": 11
     },
     "packages/pxsig/src/lib/enforcement.mjs": {
-      "typescript(no-unsafe-argument)": 24,
-      "typescript(no-unsafe-assignment)": 64,
+      "typescript(no-unsafe-argument)": 23,
+      "typescript(no-unsafe-assignment)": 59,
       "typescript(no-unsafe-call)": 37,
-      "typescript(no-unsafe-member-access)": 190,
+      "typescript(no-unsafe-member-access)": 181,
       "typescript(no-unsafe-return)": 18,
       "typescript(require-array-sort-compare)": 1
     },
     "packages/pxsig/src/lib/env.mjs": {
       "eslint(no-unused-expressions)": 2,
-      "typescript(no-unsafe-argument)": 9,
-      "typescript(no-unsafe-assignment)": 51,
-      "typescript(no-unsafe-call)": 34,
-      "typescript(no-unsafe-member-access)": 109,
-      "typescript(no-unsafe-return)": 10
-    },
-    "packages/pxsig/src/lib/files.mjs": {
-      "typescript(no-unsafe-argument)": 12,
-      "typescript(no-unsafe-member-access)": 1,
-      "typescript(no-unsafe-return)": 3
-    },
-    "packages/pxsig/src/lib/guard.mjs": {
-      "typescript(no-unsafe-argument)": 4,
-      "typescript(no-unsafe-assignment)": 10,
-      "typescript(no-unsafe-call)": 2,
+      "typescript(no-unsafe-assignment)": 6,
+      "typescript(no-unsafe-call)": 10,
       "typescript(no-unsafe-member-access)": 16
     },
     "packages/pxsig/src/lib/integrity.mjs": {
       "eslint(no-unused-expressions)": 1,
       "eslint(no-unused-vars)": 1,
       "typescript(no-unsafe-argument)": 96,
-      "typescript(no-unsafe-assignment)": 178,
-      "typescript(no-unsafe-call)": 68,
-      "typescript(no-unsafe-member-access)": 434,
-      "typescript(no-unsafe-return)": 31,
+      "typescript(no-unsafe-assignment)": 143,
+      "typescript(no-unsafe-call)": 63,
+      "typescript(no-unsafe-member-access)": 403,
+      "typescript(no-unsafe-return)": 25,
       "unicorn(no-useless-fallback-in-spread)": 2,
       "unicorn(prefer-string-starts-ends-with)": 1
     },
-    "packages/pxsig/src/lib/lock.mjs": {
-      "typescript(no-unsafe-argument)": 9,
-      "typescript(no-unsafe-assignment)": 7,
-      "typescript(no-unsafe-call)": 1,
-      "typescript(no-unsafe-member-access)": 41,
-      "typescript(no-unsafe-return)": 5
-    },
-    "packages/pxsig/src/lib/machine.mjs": {
-      "typescript(no-unsafe-argument)": 6,
-      "typescript(no-unsafe-assignment)": 2,
-      "typescript(no-unsafe-call)": 1,
-      "typescript(no-unsafe-member-access)": 1,
-      "typescript(no-unsafe-return)": 1
-    },
-    "packages/pxsig/src/lib/manifest.mjs": {
-      "typescript(no-unsafe-argument)": 3,
-      "typescript(no-unsafe-assignment)": 39,
-      "typescript(no-unsafe-call)": 11,
-      "typescript(no-unsafe-member-access)": 69,
-      "typescript(no-unsafe-return)": 2
-    },
-    "packages/pxsig/src/lib/paths.mjs": {
-      "typescript(no-unsafe-argument)": 2,
-      "typescript(no-unsafe-call)": 2,
-      "typescript(no-unsafe-member-access)": 2,
-      "typescript(no-unsafe-return)": 2
-    },
     "packages/pxsig/src/lib/portability.mjs": {
-      "eslint(no-control-regex)": 1,
-      "typescript(no-unsafe-argument)": 7,
-      "typescript(no-unsafe-assignment)": 3,
-      "typescript(no-unsafe-call)": 5,
-      "typescript(no-unsafe-member-access)": 8,
-      "typescript(no-unsafe-return)": 3
+      "eslint(no-control-regex)": 1
     },
     "packages/pxsig/src/lib/prune.mjs": {
-      "typescript(no-unsafe-argument)": 13,
-      "typescript(no-unsafe-assignment)": 60,
+      "typescript(no-unsafe-argument)": 7,
+      "typescript(no-unsafe-assignment)": 55,
       "typescript(no-unsafe-call)": 29,
-      "typescript(no-unsafe-member-access)": 114,
+      "typescript(no-unsafe-member-access)": 99,
       "typescript(no-unsafe-return)": 11,
       "typescript(require-array-sort-compare)": 3
     },
-    "packages/pxsig/src/lib/psig.mjs": {
-      "typescript(no-unsafe-argument)": 3,
-      "typescript(no-unsafe-assignment)": 1,
-      "typescript(no-unsafe-call)": 1,
-      "typescript(no-unsafe-member-access)": 6,
-      "typescript(no-unsafe-return)": 1
-    },
     "packages/pxsig/src/lib/repair.mjs": {
       "eslint(no-unused-vars)": 1,
-      "typescript(no-unsafe-argument)": 62,
-      "typescript(no-unsafe-assignment)": 166,
-      "typescript(no-unsafe-call)": 72,
-      "typescript(no-unsafe-member-access)": 327,
-      "typescript(no-unsafe-return)": 36
+      "typescript(no-unsafe-argument)": 59,
+      "typescript(no-unsafe-assignment)": 157,
+      "typescript(no-unsafe-call)": 69,
+      "typescript(no-unsafe-member-access)": 294,
+      "typescript(no-unsafe-return)": 34
     },
     "packages/pxsig/src/lib/rows.mjs": {
-      "typescript(no-unsafe-argument)": 3,
-      "typescript(no-unsafe-assignment)": 32,
-      "typescript(no-unsafe-call)": 18,
-      "typescript(no-unsafe-member-access)": 88,
-      "typescript(no-unsafe-return)": 13,
       "unicorn(prefer-string-starts-ends-with)": 1
-    },
-    "packages/pxsig/src/lib/sarif.mjs": {
-      "typescript(no-unsafe-argument)": 2,
-      "typescript(no-unsafe-assignment)": 13,
-      "typescript(no-unsafe-call)": 2,
-      "typescript(no-unsafe-member-access)": 23
     },
     "packages/pxsig/src/lib/setup.mjs": {
       "eslint(no-unused-vars)": 2,
-      "typescript(no-unsafe-argument)": 52,
-      "typescript(no-unsafe-assignment)": 57,
-      "typescript(no-unsafe-call)": 16,
-      "typescript(no-unsafe-member-access)": 121,
-      "typescript(no-unsafe-return)": 6
-    },
-    "packages/pxsig/src/lib/shape.mjs": {
-      "typescript(no-unsafe-argument)": 1,
-      "typescript(no-unsafe-assignment)": 4,
-      "typescript(no-unsafe-call)": 1,
-      "typescript(no-unsafe-member-access)": 8
+      "typescript(no-unsafe-argument)": 50,
+      "typescript(no-unsafe-assignment)": 45,
+      "typescript(no-unsafe-call)": 6,
+      "typescript(no-unsafe-member-access)": 102,
+      "typescript(no-unsafe-return)": 5
     },
     "packages/pxsig/src/lib/spawn.mjs": {
       "typescript(no-unnecessary-type-assertion)": 1
-    },
-    "packages/pxsig/src/lib/static.mjs": {
-      "typescript(no-unsafe-argument)": 3,
-      "typescript(no-unsafe-assignment)": 13,
-      "typescript(no-unsafe-member-access)": 12
     },
     "packages/pxsig/src/lib/term.mjs": {
       "typescript(no-misused-spread)": 1,
@@ -378,12 +290,7 @@
       "typescript(no-unsafe-return)": 6
     },
     "packages/pxsig/src/lib/workspace.mjs": {
-      "eslint(no-unused-expressions)": 1,
-      "typescript(no-unsafe-argument)": 85,
-      "typescript(no-unsafe-assignment)": 104,
-      "typescript(no-unsafe-call)": 25,
-      "typescript(no-unsafe-member-access)": 188,
-      "typescript(no-unsafe-return)": 28
+      "eslint(no-unused-expressions)": 1
     },
     "packages/pxsig/src/mcp-call.mjs": {
       "typescript(no-unsafe-argument)": 2,
@@ -392,50 +299,48 @@
       "typescript(no-unsafe-member-access)": 18
     },
     "packages/pxsig/src/mcp.mjs": {
-      "typescript(no-unsafe-argument)": 44,
-      "typescript(no-unsafe-assignment)": 226,
-      "typescript(no-unsafe-call)": 58,
-      "typescript(no-unsafe-member-access)": 305,
-      "typescript(no-unsafe-return)": 26,
+      "typescript(no-unsafe-argument)": 38,
+      "typescript(no-unsafe-assignment)": 201,
+      "typescript(no-unsafe-call)": 54,
+      "typescript(no-unsafe-member-access)": 268,
+      "typescript(no-unsafe-return)": 24,
       "typescript(require-array-sort-compare)": 1,
       "typescript(require-await)": 8,
       "unicorn(no-invalid-fetch-options)": 1
     },
     "packages/pxsig/src/report.mjs": {
-      "typescript(no-unsafe-argument)": 25,
-      "typescript(no-unsafe-assignment)": 21,
-      "typescript(no-unsafe-call)": 3,
-      "typescript(no-unsafe-member-access)": 29,
+      "typescript(no-unsafe-argument)": 13,
+      "typescript(no-unsafe-assignment)": 16,
+      "typescript(no-unsafe-call)": 1,
+      "typescript(no-unsafe-member-access)": 15,
       "typescript(no-unsafe-return)": 4
     },
     "packages/pxsig/src/serve.mjs": {
       "eslint(no-unused-expressions)": 1,
       "eslint(no-unused-vars)": 1,
-      "typescript(no-unsafe-argument)": 61,
-      "typescript(no-unsafe-assignment)": 241,
-      "typescript(no-unsafe-call)": 103,
-      "typescript(no-unsafe-member-access)": 608,
-      "typescript(no-unsafe-return)": 45,
+      "typescript(no-unsafe-argument)": 58,
+      "typescript(no-unsafe-assignment)": 145,
+      "typescript(no-unsafe-call)": 71,
+      "typescript(no-unsafe-member-access)": 292,
+      "typescript(no-unsafe-return)": 28,
       "typescript(no-useless-default-assignment)": 1,
-      "typescript(require-await)": 1,
       "unicorn(no-useless-fallback-in-spread)": 3
     },
     "packages/pxsig/src/setup.mjs": {
-      "typescript(no-unsafe-argument)": 3,
-      "typescript(no-unsafe-assignment)": 5,
+      "typescript(no-unsafe-argument)": 1,
+      "typescript(no-unsafe-assignment)": 1,
       "typescript(no-unsafe-return)": 1
     },
     "packages/pxsig/src/snapshot.mjs": {
-      "typescript(no-unsafe-argument)": 14,
-      "typescript(no-unsafe-assignment)": 30,
+      "typescript(no-unsafe-argument)": 13,
+      "typescript(no-unsafe-assignment)": 24,
       "typescript(no-unsafe-call)": 4,
-      "typescript(no-unsafe-member-access)": 72,
+      "typescript(no-unsafe-member-access)": 61,
       "typescript(no-unsafe-return)": 5,
       "typescript(require-array-sort-compare)": 1
     },
     "packages/pxsig/test/agents.test.mjs": {
-      "typescript(no-misused-spread)": 1,
-      "typescript(require-array-sort-compare)": 1
+      "typescript(no-misused-spread)": 1
     },
     "packages/pxsig/test/args.test.mjs": {
       "typescript(require-array-sort-compare)": 1
