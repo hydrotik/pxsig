@@ -74,6 +74,7 @@ function readFlags() {
     /strFlag\(flags,\s*['"]([\w-]+)['"]/g,
     /\bs\(\s*'([\w-]+)'\)/g,
   ];
+  /** @type {Set<string>} */
   const out = new Set();
   for (const f of files) {
     const s = src(f);
