@@ -27,6 +27,7 @@ import { stamp } from '../src/lib/approvals.mjs';
 import { humanAtTerminal, pickFormat, whyNotPerson } from '../src/lib/term.mjs';
 import { setupCommand } from '../src/setup.mjs';
 import { fixture, rustBin } from './fixture.mjs';
+/** @import { DetectedAgent } from '../src/types.js' */
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = join(pkg, '..', '..');
@@ -38,6 +39,11 @@ const bare = () =>
   Object.fromEntries(
     Object.entries(process.env).filter(([k]) => !MARKER_VARS.includes(k) && k !== 'CI')
   );
+/**
+ * @param {string[]} args
+ * @param {Record<string, string>} [env]
+ * @param {string} [cwd]
+ */
 const pxsig = (args, env = {}, cwd = repo) =>
   spawnSync(process.execPath, [cli, ...args], {
     cwd,
@@ -104,7 +110,10 @@ test('editor variables, empty values and another AGENT are not markers', () => {
 });
 
 test('a marker value is cleaned before it is printed or logged', () => {
-  const a = detectAgent({ PXSIG_AGENT: 'x y/$(z)\n' + 'q'.repeat(80) });
+  // PXSIG_AGENT is a marker, so an agent is detected.
+  const a = /** @type {DetectedAgent} */ (
+    detectAgent({ PXSIG_AGENT: 'x y/$(z)\n' + 'q'.repeat(80) })
+  );
   assert.match(a.name, /^[\w.-]{1,64}$/);
   assert.match(a.value, /^[\w.-]{1,64}$/);
 });
@@ -116,7 +125,8 @@ test('a real terminal under a marker is not a person; the reason names the assis
   for (const [env, name] of ROWS) {
     assert.equal(humanAtTerminal({ e: env, ...tty }), false, name);
     assert.match(
-      whyNotPerson({ e: env, ...tty }),
+      // A null (a person) fails the match on its own.
+      /** @type {string} */ (whyNotPerson({ e: env, ...tty })),
       new RegExp(`^refused under ${name} \\(${Object.keys(env)[0]}=`)
     );
   }
@@ -207,9 +217,14 @@ test('doctor shows the marker this shell carries, or none', () => {
 
 // --- pxsig setup ---------------------------------------------------------------------------------
 
-/** Every file under `dir`, relative, with its bytes. */
+/**
+ * Every file under `dir`, relative, with its bytes.
+ * @param {string} dir
+ */
 const tree = (dir) => {
+  /** @type {Record<string, string>} */
   const out = {};
+  /** @param {string} d */
   const walk = (d) => {
     for (const n of readdirSync(d)) {
       const p = join(d, n);
@@ -221,6 +236,7 @@ const tree = (dir) => {
   return out;
 };
 const tmp = () => mkdtempSync(join(tmpdir(), 'pxsig-setup-'));
+/** @param {string[]} a */
 const answers =
   (...a) =>
   async () =>
@@ -248,7 +264,8 @@ test('setup --print, CI and assistants: the recipe, no question, nothing written
   }
   const list = await setupCommand({ root: tmp(), person: false });
   assert.deepEqual(
-    list.data.assistants.map((x) => x.id),
+    // Without an assistant named, setup lists them.
+    /** @type {{ id: string }[]} */ (list.data.assistants).map((x) => x.id),
     ASSISTANTS.map((x) => x.id)
   );
   const r = pxsig(['setup', '--assistant', 'vscode'], { CLAUDECODE: '1' }, tmp());
@@ -262,6 +279,7 @@ test('setup --print, CI and assistants: the recipe, no question, nothing written
 
 test('setup writes each project file only on a yes, only when absent, and only in the repository', async () => {
   const root = tmp();
+  /** @type {{ text?: string }[]} */
   const shown = [];
   // Asked: which assistant (3 = Claude Code), then one yes per absent file.
   const r = await setupCommand({
@@ -296,7 +314,11 @@ test('setup writes each project file only on a yes, only when absent, and only i
     '# Mine\n',
     'an existing file is never edited'
   );
-  assert.match(again.data.files.find((x) => x.file === 'CLAUDE.md').state, /exists/);
+  // CLAUDE.md is one of claude-code's files.
+  assert.match(
+    /** @type {{ state: string }} */ (again.data.files.find((x) => x.file === 'CLAUDE.md')).state,
+    /exists/
+  );
 
   // A no writes nothing; a user-scope file (Windsurf) is never offered.
   const other = tmp();
@@ -308,6 +330,7 @@ test('setup writes each project file only on a yes, only when absent, and only i
   });
   assert.deepEqual(no.data.wrote, []);
   assert.deepEqual(tree(other), {});
+  /** @type {string[]} */
   const asked = [];
   const ws = await setupCommand({
     root: other,

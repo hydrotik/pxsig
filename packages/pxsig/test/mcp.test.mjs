@@ -20,16 +20,38 @@ import { fixture, rustBin } from './fixture.mjs';
 const here = dirname(fileURLToPath(import.meta.url));
 const { repo } = fixture({ withSigs: false });
 
+/**
+ * The replies the tests read, as the MCP server (src/mcp.mjs) writes them: each test reads only
+ * the keys of the method it calls.
+ * @typedef {{ type: string, text: string, data: string }} Content
+ * @typedef {{ name: string, inputSchema: { type: string, properties: Record<string, { enum?: string[] }> }, run?: unknown }} Tool
+ * @typedef {{ isError?: boolean, content: Content[] }} ToolResult
+ * @typedef {ToolResult & { protocolVersion: string, capabilities: { tools?: unknown }, serverInfo: { name: string }, instructions: string, tools: Tool[] }} RpcResult
+ * @typedef {{ id: number, result: RpcResult, error: { code: number, message: string } }} RpcReply
+ */
+
+/** @type {import('node:child_process').ChildProcessByStdio<import('node:stream').Writable, import('node:stream').Readable, null>} */
 let proc;
+/** @type {Map<number, (reply: RpcReply) => void>} */
 const pending = new Map();
 let seq = 0;
+/**
+ * @param {string} method
+ * @param {unknown} params
+ * @returns {Promise<RpcReply>}
+ */
 const rpc = (method, params) =>
   new Promise((ok) => {
     const id = ++seq;
     pending.set(id, ok);
     proc.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id, method, params })}\n`);
   });
+/**
+ * @param {string} name
+ * @param {Record<string, unknown>} [args]
+ */
 const call = async (name, args = {}) => (await rpc('tools/call', { name, arguments: args })).result;
+/** @param {{ content: Content[] }} result */
 const json = (result) => JSON.parse(result.content[0].text);
 
 before(() => {
@@ -39,7 +61,8 @@ before(() => {
     env: { ...process.env, PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin },
   });
   createInterface({ input: proc.stdout }).on('line', (line) => {
-    const msg = JSON.parse(line);
+    // A JSON-RPC reply the server wrote: one object per line.
+    const msg = /** @type {RpcReply} */ (JSON.parse(line));
     pending.get(msg.id)?.(msg);
     pending.delete(msg.id);
   });
@@ -109,7 +132,8 @@ test('review refuses without confirm: true, before touching the server', async (
 
 test("review offers rejections only: approving and accepting are a person's, even with confirm", async () => {
   const list = await rpc('tools/list', {});
-  const tool = list.result.tools.find((x) => x.name === 'pxsig_review');
+  // The test needs the tool listed: a missing one throws on the next line, as before.
+  const tool = /** @type {Tool} */ (list.result.tools.find((x) => x.name === 'pxsig_review'));
   assert.deepEqual(tool.inputSchema.properties.action.enum, [
     'reject',
     'unreview',
@@ -162,7 +186,7 @@ test('list filters by state and component', async () => {
   const all = json(await call('pxsig_list', { state: 'all', limit: 5000 }));
   const beta = json(await call('pxsig_list', { state: 'all', component: 'beta', limit: 5000 }));
   assert.ok(beta.total > 0 && beta.total < all.total);
-  assert.ok(beta.entries.every((e) => e.id.includes('beta')));
+  assert.ok(beta.entries.every((/** @type {{ id: string }} */ e) => e.id.includes('beta')));
 });
 
 test('entry returns text then inline PNGs', async () => {
@@ -177,7 +201,7 @@ test('entry returns text then inline PNGs', async () => {
 test('projects lists the workspace; an unknown project is an error naming the projects', async () => {
   const p = json(await call('pxsig_projects'));
   assert.deepEqual(
-    p.projects.map((x) => x.name),
+    p.projects.map((/** @type {{ name: string }} */ x) => x.name),
     ['fixture']
   );
   const r = await call('pxsig_status', { project: 'nope' });
@@ -223,7 +247,7 @@ test('pxsig_a11y prune_plan lists accepted rules by class and writes nothing', a
     const r = json(await call('pxsig_a11y', { prune_plan: true }));
     assert.deepEqual(r.counts, { prunable: 1, 'still-fires': 1, stale: 0, 'not-covered': 0 });
     assert.deepEqual(
-      r.prunable.map((p) => [p.id, p.rules]),
+      r.prunable.map((/** @type {{ id: string, rules: string[] }} */ p) => [p.id, p.rules]),
       [['components-alpha--default', ['region']]]
     );
     assert.match(r.hint, /a person removes these with `pxsig a11y --prune` in a terminal/);

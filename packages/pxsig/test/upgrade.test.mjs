@@ -47,6 +47,10 @@ function oldStore() {
   return { f, P };
 }
 
+/**
+ * @param {{ repo: string }} f
+ * @param {string[]} args
+ */
 const run = (f, ...args) =>
   spawnSync(process.execPath, [cli, ...args], { cwd: f.repo, encoding: 'utf8', env });
 
@@ -64,11 +68,18 @@ test('the read commands take a 0.3.2 store as it is', () => {
     ['config'],
   ]) {
     const r = run(f, ...args, '--json');
-    assert.ok([0, 1].includes(r.status), `${args.join(' ')} → ${r.status}\n${r.stderr}`);
+    assert.ok(
+      /** @type {(number | null)[]} */ ([0, 1]).includes(r.status),
+      `${args.join(' ')} → ${r.status}\n${r.stderr}`
+    );
     assert.doesNotThrow(() => JSON.parse(r.stdout), `${args.join(' ')} prints JSON`);
   }
   const log = JSON.parse(run(f, 'approve', 'log', '--json').stdout);
-  assert.deepEqual(log.map((b) => b.via).sort(), ['cli', 'dashboard', 'migrate']);
+  assert.deepEqual(log.map((/** @type {{ via: string }} */ b) => b.via).sort(), [
+    'cli',
+    'dashboard',
+    'migrate',
+  ]);
 });
 
 test('a 0.3.2 lock (no heartbeat) left by a process that is gone is taken over as before', () => {
@@ -93,11 +104,17 @@ test('a 0.4.0 report (no render environment) reads as it is: the environment is 
     ['entry', 'components-beta--default'],
   ]) {
     const r = run(f, ...args, '--json');
-    assert.ok([0, 1].includes(r.status), `${args.join(' ')} → ${r.status}\n${r.stderr}`);
+    assert.ok(
+      /** @type {(number | null)[]} */ ([0, 1]).includes(r.status),
+      `${args.join(' ')} → ${r.status}\n${r.stderr}`
+    );
     assert.doesNotThrow(() => JSON.parse(r.stdout), `${args.join(' ')} prints JSON`);
   }
   const doctor = JSON.parse(run(f, 'doctor', '--offline', '--json').stdout);
-  assert.ok(!doctor.setup.some((s) => s.code === 'env-mismatch'), 'no environment finding');
+  assert.ok(
+    !doctor.setup.some((/** @type {{ code: string }} */ s) => s.code === 'env-mismatch'),
+    'no environment finding'
+  );
   const md = spawnSync(
     rustBin,
     ['report', '--input', join(P.store.reports, 'check.json'), '--format', 'markdown'],

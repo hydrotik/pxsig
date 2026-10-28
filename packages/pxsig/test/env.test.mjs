@@ -31,12 +31,18 @@ import { readHeader } from '../src/lib/psig.mjs';
 import { readToken } from '../src/lib/guard.mjs';
 import { engineProblems, openProject, writeRunManifest } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin } from './fixture.mjs';
-/** @import { EnvFields, EnvRecord, PsigHeader } from '../src/types.js' */
+/** @import { EnvBrowser, EnvFields, EnvRecord, PsigHeader } from '../src/types.js' */
+/** @typedef {ReturnType<typeof fixture>} Fixture */
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 
-/** A complete env, as collectEnv writes one; `over` replaces parts. */
+/**
+ * A complete env, as collectEnv writes one; `over` replaces parts.
+ * @param {Record<string, unknown>} [over]
+ * @returns {EnvRecord}
+ */
 function env(over = {}) {
+  /** @type {EnvFields & Record<string, unknown>} */
   const e = {
     v: 1,
     browser: { name: 'chromium', version: '141.0.7390.37', channel: null, launchArgs: [] },
@@ -73,8 +79,9 @@ function env(over = {}) {
       v && typeof v === 'object' && !Array.isArray(v) && e[k] && typeof e[k] === 'object'
         ? { ...e[k], ...v }
         : v;
+  // The defaults are a complete env and `over` replaces parts of it with parts of the same shape.
   e.id = envId(e);
-  return e;
+  return /** @type {EnvRecord} */ (e);
 }
 
 test('compare classes, from a table of pairs', () => {
@@ -192,13 +199,22 @@ test('the GPU becomes a class; the renderer string is never kept', () => {
   assert.equal(gpuClass(null), 'none');
 });
 
-/** A Playwright Browser stand-in: the probe page answers with fixed facts. */
+/**
+ * A Playwright Browser stand-in: the probe page answers with fixed facts.
+ * @param {{ renderer?: string }} [opts]
+ */
 function stubBrowser({
   renderer = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)',
 } = {}) {
   let closed = 0;
   const page = {
     setContent: async () => {},
+    /**
+     * collectEnv evaluates PROBE_PAGE with its `{ families, text, sizes }`.
+     * @template A
+     * @param {(arg: A) => unknown} fn
+     * @param {A & { families?: string[] }} [arg]
+     */
     evaluate: async (fn, arg) =>
       arg?.families
         ? {
@@ -213,6 +229,7 @@ function stubBrowser({
   return {
     version: () => '141.0.7390.37',
     browserType: () => ({ name: () => 'chromium' }),
+    /** @param {Parameters<EnvBrowser['newContext']>[0]} opts */
     newContext: async (opts) => {
       assert.equal(opts.deviceScaleFactor, 1);
       assert.equal(opts.reducedMotion, 'reduce');
@@ -316,7 +333,10 @@ test('integrity: one env-mismatch setup warning, never a per-entry code, and doc
   };
   writeFileSync(reportPath, JSON.stringify(report));
   const after = await reconcile(f.ctx, { index: f.index, affected: f.affected });
-  const s = after.setup.find((x) => x.code === 'env-mismatch');
+  // The summary now counts a mismatch, so the finding is there (the assertions below fail otherwise).
+  const s = /** @type {{ severity: string, reason: string, count?: number }} */ (
+    after.setup.find((x) => x.code === 'env-mismatch')
+  );
   assert.equal(s.severity, 'warn');
   assert.equal(s.count, 3);
   assert.match(
@@ -343,7 +363,12 @@ test('an engine older than the CLI is a warning; the same or newer is not', () =
 
 // --- with the Rust engine: baselines that record an env -----------------------------------------------
 
-/** Write baselines for `ids` from the fixture's latest renders, recording `e` as their env. */
+/**
+ * Write baselines for `ids` from the fixture's latest renders, recording `e` as their env.
+ * @param {Fixture} f
+ * @param {string[]} ids
+ * @param {EnvRecord} e
+ */
 function baselineWithEnv(f, ids, e) {
   const P = openProject({ cwd: f.repo, env: { PXSIG_BIN: rustBin } });
   const run = writeRunManifest(P).path;
@@ -415,13 +440,14 @@ test(
     const checkPath = join(f.px, 'reports', 'check.json');
     const check = JSON.parse(readFileSync(checkPath, 'utf8'));
     check.envs = { [renderEnv.id]: renderEnv };
-    check.rows = check.rows.map((r) =>
+    check.rows = check.rows.map((/** @type {{ id: string }} */ r) =>
       r.id === id ? { ...r, env: renderEnv.id, baselineEnv: null, envMatch: 'unknown' } : r
     );
     writeFileSync(checkPath, JSON.stringify(check));
     const port = await new Promise((ok) => {
       const s = createServer().listen(0, '127.0.0.1', () => {
-        const p = s.address().port;
+        // Listening on TCP: the address is an AddressInfo.
+        const p = /** @type {import('node:net').AddressInfo} */ (s.address()).port;
         s.close(() => ok(p));
       });
     });
@@ -434,14 +460,20 @@ test(
     proc.stdout.on('data', (d) => (log += d));
     proc.stderr.on('data', (d) => (log += d));
     try {
-      await new Promise((ok, fail) => {
-        const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-        proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
-      });
+      await /** @type {Promise<void>} */ (
+        new Promise((ok, fail) => {
+          const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+          proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
+        })
+      );
       const base = `http://127.0.0.1:${port}`;
       const r = await fetch(`${base}/__pxsig/approve`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-pxsig-token': readToken(f.repo, base) },
+        headers: {
+          'content-type': 'application/json',
+          // The server wrote its token before it printed its URL.
+          'x-pxsig-token': /** @type {string} */ (readToken(f.repo, base)),
+        },
         body: JSON.stringify({ id }),
       });
       assert.equal(r.status, 200, await r.text());
@@ -452,7 +484,11 @@ test(
       const other = f.ids.drift;
       const r2 = await fetch(`${base}/__pxsig/approve`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-pxsig-token': readToken(f.repo, base) },
+        headers: {
+          'content-type': 'application/json',
+          // The server wrote its token before it printed its URL.
+          'x-pxsig-token': /** @type {string} */ (readToken(f.repo, base)),
+        },
         body: JSON.stringify({ id: other }),
       });
       assert.equal(r2.status, 200, await r2.text());
@@ -475,13 +511,17 @@ try {
 }
 const needs = !hasRust ? 'Rust binary not built' : !chromium ? 'no Chromium' : false;
 
-/** A stand-in Storybook with one story: a block on white. */
+/**
+ * A stand-in Storybook with one story: a block on white.
+ * @param {{ id: string, title: string, name: string, importPath: string }} story
+ */
 async function fakeStorybook(story) {
   const html = `<!doctype html><html><head><style>body{margin:0;background:#fff}#storybook-root>div{inline-size:96px;block-size:64px;background:#2a4a7a}</style></head>
 <body class="sb-show-main"><div id="storybook-root"><div></div></div>
 <script>window.__STORYBOOK_PREVIEW__ = { storeInitializationPromise: Promise.resolve(), currentRender: { id: ${JSON.stringify(story.id)}, phase: 'finished' } };</script></body></html>`;
   const server = createServer((req, res) => {
-    const u = new URL(req.url, 'http://x');
+    // A request to an http server always has a url.
+    const u = new URL(/** @type {string} */ (req.url), 'http://x');
     if (u.pathname === '/index.json') {
       res.writeHead(200, { 'content-type': 'application/json' });
       return res.end(
@@ -504,8 +544,12 @@ async function fakeStorybook(story) {
       return res.writeHead(200, { 'content-type': 'text/html' }).end(html);
     res.writeHead(404).end();
   });
-  await new Promise((ok) => server.listen(0, '127.0.0.1', ok));
-  return { url: `http://127.0.0.1:${server.address().port}`, close: () => server.close() };
+  await /** @type {Promise<void>} */ (new Promise((ok) => server.listen(0, '127.0.0.1', ok)));
+  // Listening on TCP: the address is an AddressInfo.
+  return {
+    url: `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (server.address()).port}`,
+    close: () => server.close(),
+  };
 }
 
 test(
@@ -530,6 +574,11 @@ test(
       )
     );
     // Asynchronous: the stand-in Storybook answers from this process.
+    /**
+     * @param {string[]} [args]
+     * @param {string} [strictVar]
+     * @returns {Promise<{ status: number | null, stdout: string, stderr: string }>}
+     */
     const check = (args = [], strictVar = '') =>
       new Promise((ok) => {
         const p = spawn(
@@ -556,7 +605,7 @@ test(
       // First run: the fixture's baseline has no env (unknown, never a warning).
       let r = await check();
       let rep = report();
-      let row = rep.rows.find((x) => x.id === id);
+      let row = rep.rows.find((/** @type {{ id: string }} */ x) => x.id === id);
       assert.equal(row.envMatch, 'unknown', r.stdout + r.stderr);
       assert.ok(rep.envs[row.env], 'check.json carries the env the row names');
       assert.equal(rep.envs[row.env].browser.name, 'chromium');
@@ -570,7 +619,7 @@ test(
       });
       r = await check();
       rep = report();
-      row = rep.rows.find((x) => x.id === id);
+      row = rep.rows.find((/** @type {{ id: string }} */ x) => x.id === id);
       assert.equal(r.status, 0, `the render matches: a warning only\n${r.stdout}${r.stderr}`);
       assert.equal(row.envMatch, 'mismatch');
       assert.deepEqual(row.envDiff, ['browser.version']);
@@ -611,7 +660,7 @@ test(
       );
       r = await check();
       assert.equal(
-        report().rows.find((x) => x.id === id).envMatch,
+        report().rows.find((/** @type {{ id: string }} */ x) => x.id === id).envMatch,
         'same',
         'an ignored field is not compared'
       );

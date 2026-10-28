@@ -8,6 +8,10 @@ import { fixture, rustBin } from './fixture.mjs';
 
 const cli = fileURLToPath(new URL('../src/cli.mjs', import.meta.url));
 const { repo } = fixture({ withSigs: false });
+/**
+ * @param {string[]} args
+ * @param {Record<string, string>} [env]
+ */
 const run = (args, env = {}) =>
   spawnSync(process.execPath, [cli, ...args], {
     cwd: repo,
@@ -59,7 +63,7 @@ test('entry names where each image lives; the baseline is inside its .psig', () 
 test('projects and config describe the workspace', () => {
   const p = JSON.parse(run(['projects', '--json']).stdout);
   assert.deepEqual(
-    p.projects.map((x) => x.name),
+    p.projects.map((/** @type {{ name: string }} */ x) => x.name),
     ['fixture']
   );
   const c = JSON.parse(run(['config', '--json']).stdout);

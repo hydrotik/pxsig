@@ -86,6 +86,12 @@ export function snapshot(P, entry, batch) {
   return { before: sha256(p.sig) };
 }
 
+/**
+ * Append one approval line for an entry whose baseline was just written, and return the line.
+ * @param P
+ * @param entry
+ * @param {{ batch: string, via: string, reason?: string | null, before?: string | null, kind?: string | null, person?: boolean }} options
+ */
 export function record(P, entry, { batch, via, reason = null, before, kind = null, person }) {
   const p = paths(P, entry);
   fault('after-psig');

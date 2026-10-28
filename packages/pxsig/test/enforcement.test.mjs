@@ -38,7 +38,20 @@ import { fixture, hasRust, rustBin } from './fixture.mjs';
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
 
-/** A stand-in project: just what resolveEnforcement reads. */
+/** @import { ManifestEntry } from '../src/types.js' */
+
+/**
+ * What `resolveEnforcement` returns, with its per-gate maps (gate → mode, gate → layer) read by
+ * gate name: it fills them for every gate in GATES.
+ * @typedef {Record<string, string> & Record<'visual' | 'a11y' | 'verify' | 'env' | 'doctor' | 'stale', string>} PerGate
+ * @typedef {Omit<ReturnType<typeof resolveEnforcement>, 'gates' | 'layers'> & { gates: PerGate, layers: PerGate }} Enforcement
+ */
+
+/**
+ * A stand-in project: just what resolveEnforcement reads.
+ * @param {Record<string, unknown> | undefined} enforcement
+ * @param {Record<string, string>} [sources]
+ */
 const proj = (enforcement, sources = {}) => ({
   name: 'p',
   workspaceRoot: tmpdir(),
@@ -47,10 +60,11 @@ const proj = (enforcement, sources = {}) => ({
 });
 const person = { human: () => true };
 const robot = { human: () => false, why: () => 'refused in CI (CI is set)' };
+/** @param {string} iso */
 const at = (iso) => new Date(iso);
 
 test('the built-in defaults: every gate enforced, the a11y gate on a quiet warn', () => {
-  const e = resolveEnforcement(proj(undefined), { env: {} });
+  const e = /** @type {Enforcement} */ (resolveEnforcement(proj(undefined), { env: {} }));
   assert.deepEqual(e.gates, {
     visual: 'enforce',
     a11y: 'warn',
@@ -71,23 +85,32 @@ test('resolution: committed config lowers, --warn needs a person, anything can r
     'enforcement.default': 'project config',
     'enforcement.gates.verify': 'project config',
   };
-  let e = resolveEnforcement(proj(cfg, src), { env: {} });
+  let e = /** @type {Enforcement} */ (resolveEnforcement(proj(cfg, src), { env: {} }));
   assert.equal(e.gates.visual, 'warn');
   assert.equal(e.gates.verify, 'enforce', 'a gate key beats default');
   assert.equal(e.gates.a11y, 'warn');
   assert.equal(e.layers.a11y, 'built-in', '`default` never sets the a11y gate');
   assert.equal(
-    resolveEnforcement(proj({ default: 'enforce' }, { 'enforcement.default': 'project config' }), {
-      env: {},
-    }).gates.a11y,
+    /** @type {Enforcement} */ (
+      resolveEnforcement(
+        proj({ default: 'enforce' }, { 'enforcement.default': 'project config' }),
+        {
+          env: {},
+        }
+      )
+    ).gates.a11y,
     'warn'
   );
   assert.equal(e.layers.visual, 'project config');
   // --enforce raises, always.
-  e = resolveEnforcement(proj(cfg, src), { env: {}, flags: { enforce: 'visual' } });
+  e = /** @type {Enforcement} */ (
+    resolveEnforcement(proj(cfg, src), { env: {}, flags: { enforce: 'visual' } })
+  );
   assert.equal(e.gates.visual, 'enforce');
   assert.equal(e.layers.visual, '--enforce');
-  e = resolveEnforcement(proj(cfg, src), { env: { PXSIG_ENFORCEMENT: 'enforce' } });
+  e = /** @type {Enforcement} */ (
+    resolveEnforcement(proj(cfg, src), { env: { PXSIG_ENFORCEMENT: 'enforce' } })
+  );
   assert.ok(
     GATES.every((g) => e.gates[g] === 'enforce'),
     'PXSIG_ENFORCEMENT=enforce raises every gate'
@@ -95,27 +118,32 @@ test('resolution: committed config lowers, --warn needs a person, anything can r
   // The variable can never lower one.
   assert.throws(
     () => resolveEnforcement(proj(undefined), { env: { PXSIG_ENFORCEMENT: 'warn' } }),
-    (x) => x.exit === 2 && /refused/.test(x.message)
+    (/** @type {Error & { exit?: number }} */ x) => x.exit === 2 && /refused/.test(x.message)
   );
   assert.throws(
     () => resolveEnforcement(proj(undefined), { env: { PXSIG_ENFORCEMENT: 'loose' } }),
-    (x) => x.exit === 2
+    (/** @type {Error & { exit?: number }} */ x) => x.exit === 2
   );
   // --warn: a person at a terminal only; CI, assistants and pipes are refused with exit 3.
   assert.throws(
     () => resolveEnforcement(proj(undefined), { env: {}, flags: { warn: true }, ...robot }),
-    (x) => x.exit === 3 && /person at a terminal/.test(x.message)
+    (/** @type {Error & { exit?: number }} */ x) =>
+      x.exit === 3 && /person at a terminal/.test(x.message)
   );
-  e = resolveEnforcement(proj(undefined), { env: {}, flags: { warn: 'visual,doctor' }, ...person });
+  e = /** @type {Enforcement} */ (
+    resolveEnforcement(proj(undefined), { env: {}, flags: { warn: 'visual,doctor' }, ...person })
+  );
   assert.equal(e.gates.visual, 'warn');
   assert.equal(e.layers.visual, '--warn');
   assert.deepEqual(e.configured.sort(), ['doctor', 'visual']);
   // A raise beats a person's lower in the same run.
-  e = resolveEnforcement(proj(undefined), {
-    env: { PXSIG_ENFORCEMENT: 'enforce' },
-    flags: { warn: true },
-    ...person,
-  });
+  e = /** @type {Enforcement} */ (
+    resolveEnforcement(proj(undefined), {
+      env: { PXSIG_ENFORCEMENT: 'enforce' },
+      flags: { warn: true },
+      ...person,
+    })
+  );
   assert.equal(e.gates.visual, 'enforce');
   assert.throws(
     () => resolveEnforcement(proj(undefined), { env: {}, flags: { enforce: 'pixels' } }),
@@ -140,7 +168,7 @@ test('an unknown gate or value in the config is a setup error when the project l
   // The workspace file's defaults and the project's own config: the layer is recorded per gate.
   writeFileSync(cfgPath, JSON.stringify({ ...base, enforcement: { gates: { visual: 'warn' } } }));
   const P = openProject({ cwd: f.repo });
-  const e = resolveEnforcement(P, { env: {} });
+  const e = /** @type {Enforcement} */ (resolveEnforcement(P, { env: {} }));
   assert.equal(e.layers.visual, 'project config');
   assert.equal(e.gates.visual, 'warn');
 });
@@ -207,7 +235,13 @@ test('the quiet a11y default says nothing unless a new violation appears (decisi
     e,
     checkFindings([{ id: 'a', pass: true, a11y: { violations: [], new: 0 } }])
   );
-  assert.equal(speaks(e, clean), false);
+  // speaks' `out` defaults to null; it takes an outcome.
+  assert.equal(
+    /** @type {(enf: ReturnType<typeof resolveEnforcement>, out?: ReturnType<typeof outcome> | null) => boolean} */ (
+      speaks
+    )(e, clean),
+    false
+  );
   assert.equal(reportBlock(e, clean), null, 'no check.json key');
   assert.equal(lastLine(e, clean), null, 'no line');
   assert.equal(
@@ -225,14 +259,21 @@ test('the quiet a11y default says nothing unless a new violation appears (decisi
       },
     ])
   );
-  assert.equal(speaks(e, fired), true);
+  assert.equal(
+    /** @type {(enf: ReturnType<typeof resolveEnforcement>, out?: ReturnType<typeof outcome> | null) => boolean} */ (
+      speaks
+    )(e, fired),
+    true
+  );
   assert.equal(fired.exit, 0);
   assert.match(
-    lastLine(e, fired),
+    // A quiet gate that would fail speaks: a line.
+    /** @type {string} */ (lastLine(e, fired)),
     /^ADVISORY: would have failed \(exit 1\): 1 entry with new a11y violations\. Not blocking\.$/
   );
   assert.deepEqual(
-    reportBlock(e, fired).configured,
+    // It speaks (above): a block.
+    /** @type {NonNullable<ReturnType<typeof reportBlock>>} */ (reportBlock(e, fired)).configured,
     [],
     'the summary.md lead says "warn by default"'
   );
@@ -261,7 +302,10 @@ test('the lead and last lines, and the per-gate-set contexts (decision R1)', () 
     { gate: 'a11y', exit: 0, count: 0, what: 'x' },
   ]);
   assert.equal(
-    lastLine(e, o, { runs: 31, wouldFail: 4, main: { branch: 'main', runs: 9, wouldFail: 0 } }),
+    // lastLine's `tally` defaults to null; it takes readinessTally's result.
+    /** @type {(enf: ReturnType<typeof resolveEnforcement>, out: ReturnType<typeof outcome>, tally?: { runs: number, wouldFail: number, main: { branch: string, runs: number, wouldFail: number } | null } | null) => string | null} */ (
+      lastLine
+    )(e, o, { runs: 31, wouldFail: 4, main: { branch: 'main', runs: 9, wouldFail: 0 } }),
     'ADVISORY: would have failed (exit 1): 3 changed, 1 new. Not blocking. Would-fail runs: 4 of 31 (main 0 of 9).'
   );
   assert.equal(
@@ -273,22 +317,28 @@ test('the lead and last lines, and the per-gate-set contexts (decision R1)', () 
     proj({ gates: { verify: 'warn' } }, { 'enforcement.gates.verify': 'project config' }),
     { env: {} }
   );
-  const r = reportBlock(
-    mixed,
-    outcome(mixed, [
-      { gate: 'visual', exit: 0, count: 0, what: 'changed' },
-      { gate: 'a11y', exit: 1, count: 1, what: 'entry' },
-    ])
+  // The a11y gate would fail: it speaks, so a block.
+  const r = /** @type {NonNullable<ReturnType<typeof reportBlock>>} */ (
+    reportBlock(
+      mixed,
+      outcome(mixed, [
+        { gate: 'visual', exit: 0, count: 0, what: 'changed' },
+        { gate: 'a11y', exit: 1, count: 1, what: 'entry' },
+      ])
+    )
   );
   assert.deepEqual(r.contexts, { enforce: ['visual'], advisory: ['a11y'] });
   assert.match(
-    leadLine(
-      resolveEnforcement(
-        proj(
-          { gates: { doctor: 'warn' }, advisoryExit: 78 },
-          { 'enforcement.gates.doctor': 'project config' }
-        ),
-        { env: {} }
+    // Configured warn: a lead line.
+    /** @type {string} */ (
+      leadLine(
+        resolveEnforcement(
+          proj(
+            { gates: { doctor: 'warn' }, advisoryExit: 78 },
+            { 'enforcement.gates.doctor': 'project config' }
+          ),
+          { env: {} }
+        )
       )
     ),
     /a failure in it exits 78\.$/
@@ -299,12 +349,16 @@ test('warnUntil: announced from noticeDays before, enforced after it, then said 
   const cfg = { gates: { visual: 'warn' }, warnUntil: '2026-12-31', noticeDays: 14 };
   const sources = { 'enforcement.gates.visual': 'project config' };
   const P = proj(cfg, sources);
-  let e = resolveEnforcement(P, { env: {}, now: at('2026-11-01T12:00:00Z') });
+  let e = /** @type {Enforcement} */ (
+    resolveEnforcement(P, { env: {}, now: at('2026-11-01T12:00:00Z') })
+  );
   assert.deepEqual(
     enforcementProblems(e).map((x) => x.code),
     ['enforcement-warn']
   );
-  e = resolveEnforcement(P, { env: {}, now: at('2026-12-26T12:00:00Z') });
+  e = /** @type {Enforcement} */ (
+    resolveEnforcement(P, { env: {}, now: at('2026-12-26T12:00:00Z') })
+  );
   assert.equal(e.ending, true);
   assert.equal(e.daysLeft, 6);
   assert.deepEqual(
@@ -314,20 +368,27 @@ test('warnUntil: announced from noticeDays before, enforced after it, then said 
       ['enforcement-ending', 'warn'],
     ]
   );
-  assert.match(leadLine(e), /until 2026-12-31, enforced in 6 days/);
+  // Configured warn (and, below, just expired): a lead line.
+  assert.match(/** @type {string} */ (leadLine(e)), /until 2026-12-31, enforced in 6 days/);
   // The end of that day in UTC is still warn; the next instant is enforced, with no commit.
   assert.equal(
-    resolveEnforcement(P, { env: {}, now: at('2026-12-31T23:59:59Z') }).gates.visual,
+    /** @type {Enforcement} */ (resolveEnforcement(P, { env: {}, now: at('2026-12-31T23:59:59Z') }))
+      .gates.visual,
     'warn'
   );
-  e = resolveEnforcement(P, { env: {}, now: at('2027-01-02T00:00:00Z') });
+  e = /** @type {Enforcement} */ (
+    resolveEnforcement(P, { env: {}, now: at('2027-01-02T00:00:00Z') })
+  );
   assert.equal(e.gates.visual, 'enforce');
   assert.equal(e.layers.visual, 'warnUntil');
   assert.deepEqual(
     enforcementProblems(e).map((x) => x.code),
     ['enforcement-expired']
   );
-  assert.match(leadLine(e), /warn mode ended on 2026-12-31; visual is enforced again/);
+  assert.match(
+    /** @type {string} */ (leadLine(e)),
+    /warn mode ended on 2026-12-31; visual is enforced again/
+  );
   assert.equal(outcome(e, [{ gate: 'visual', exit: 1, count: 1, what: 'changed' }]).exit, 1);
   assert.deepEqual(
     enforcementProblems(resolveEnforcement(P, { env: {}, now: at('2027-02-01T00:00:00Z') })),
@@ -336,12 +397,14 @@ test('warnUntil: announced from noticeDays before, enforced after it, then said 
   );
   // A person's --warn after the date still lowers it for one local run.
   assert.equal(
-    resolveEnforcement(P, {
-      env: {},
-      now: at('2027-01-02T00:00:00Z'),
-      flags: { warn: 'visual' },
-      ...person,
-    }).gates.visual,
+    /** @type {Enforcement} */ (
+      resolveEnforcement(P, {
+        env: {},
+        now: at('2027-01-02T00:00:00Z'),
+        flags: { warn: 'visual' },
+        ...person,
+      })
+    ).gates.visual,
     'warn'
   );
 });
@@ -353,6 +416,10 @@ test('the readiness tally: one line per configured-warn run, shared by every wor
     home,
   };
   const repo = mkdtempSync(join(tmpdir(), 'pxsig-ready-'));
+  /**
+   * @param {string} cwd
+   * @param {...string} a
+   */
   const g = (cwd, ...a) =>
     spawnSync('git', a, {
       cwd,
@@ -382,10 +449,13 @@ test('the readiness tally: one line per configured-warn run, shared by every wor
   );
   const fail = outcome(e, [{ gate: 'visual', exit: 1, count: 2, what: 'changed' }]);
   const pass = outcome(e, [{ gate: 'visual', exit: 0, count: 0, what: 'changed' }]);
-  const line = appendReadiness(P, e, fail, { source: 'check', counts: { changed: 2 }, opts });
+  // Configured warn: a readiness line, in a git repository (so it has a sha).
+  const line = /** @type {NonNullable<ReturnType<typeof appendReadiness>>} */ (
+    appendReadiness(P, e, fail, { source: 'check', counts: { changed: 2 }, opts })
+  );
   assert.equal(line.branch, 'main');
   assert.equal(line.wouldFail, true);
-  assert.match(line.sha, /^[0-9a-f]{40}$/);
+  assert.match(/** @type {string} */ (line.sha), /^[0-9a-f]{40}$/);
   appendReadiness(W, e, pass, { source: 'check', opts });
   assert.equal(readinessPath(P, opts), readinessPath(W, opts));
   assert.ok(
@@ -393,7 +463,10 @@ test('the readiness tally: one line per configured-warn run, shared by every wor
       process.platform === 'darwin' ? join(home, 'Library') : join(home, 'state', 'pxsig')
     )
   );
-  const t = readinessTally(P, { opts });
+  // Lines were written above: a tally.
+  const t = /** @type {NonNullable<ReturnType<typeof readinessTally>>} */ (
+    readinessTally(P, { opts })
+  );
   assert.equal(t.runs, 2);
   assert.equal(t.wouldFail, 1);
   assert.deepEqual(t.main, { branch: 'main', runs: 1, wouldFail: 1 });
@@ -405,7 +478,11 @@ test('the readiness tally: one line per configured-warn run, shared by every wor
     `${JSON.stringify({ at: '2020-01-01T00:00:00Z', project: 'p', gates: ['visual'], wouldFail: true })}\n`
   );
   appendReadiness(P, e, pass, { source: 'check', opts });
-  assert.equal(readinessTally(P, { opts }).runs, 3);
+  assert.equal(
+    /** @type {NonNullable<ReturnType<typeof readinessTally>>} */ (readinessTally(P, { opts }))
+      .runs,
+    3
+  );
   rmSync(home, { recursive: true, force: true });
 });
 
@@ -455,7 +532,12 @@ test('--sarif: only the new violations, as SARIF 2.1.0 at the story file', () =>
   const r = run.results[0];
   assert.equal(r.ruleId, 'color-contrast');
   assert.equal(r.level, 'error');
-  assert.equal(r.locations[0].physicalLocation.artifactLocation.uri, 'src/A/A.stories.tsx');
+  // The entry has an importPath: the result has a physical location.
+  assert.equal(
+    /** @type {{ artifactLocation: { uri: string } }} */ (r.locations[0].physicalLocation)
+      .artifactLocation.uri,
+    'src/A/A.stories.tsx'
+  );
   assert.equal(r.locations[0].logicalLocations[0].name, 'a--x');
   assert.ok(r.message.text.startsWith('a--x: Elements must meet contrast'));
 });
@@ -468,13 +550,20 @@ const AUTHOR = {
   GIT_COMMITTER_NAME: 'Secret Person',
   GIT_COMMITTER_EMAIL: 'secret@example.com',
 };
+/**
+ * @param {string} cwd
+ * @param {...string} args
+ */
 const must = (cwd, ...args) => {
   const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, ...AUTHOR } });
   assert.equal(r.status, 0, `git ${args.join(' ')}: ${r.stderr}`);
   return r.stdout.trim();
 };
 
-/** The fixture as a git repository, its baselines logged unless `log` is false, with `enforcement`. */
+/**
+ * The fixture as a git repository, its baselines logged unless `log` is false, with `enforcement`.
+ * @param {{ log?: boolean, enforcement?: Record<string, unknown> }} [opts]
+ */
 function repoFixture({ log = true, enforcement } = {}) {
   const f = fixture({ withSigs: true });
   rmSync(join(f.repo, '.git'), { recursive: true, force: true });
@@ -494,6 +583,10 @@ function repoFixture({ log = true, enforcement } = {}) {
   must(f.repo, 'add', '-A');
   must(f.repo, 'commit', '-q', '-m', 'base');
   const home = mkdtempSync(join(tmpdir(), 'pxsig-home-'));
+  /**
+   * @param {string[]} args
+   * @param {NodeJS.ProcessEnv} [env]
+   */
   const cli = (args, env = {}) =>
     spawnSync(process.execPath, [join(src, 'cli.mjs'), ...args], {
       cwd: f.repo,
@@ -543,7 +636,8 @@ test(
     const P = f.P;
     for (const e of f.manifest.stories)
       record(P, e, { batch: 'b1-cli', via: 'cli', reason: 'adopted for the test', before: null });
-    const sig = join(f.repo, g.get(f.ids.ok).sig);
+    // The fixture's manifest holds the `ok` entry.
+    const sig = join(f.repo, /** @type {ManifestEntry} */ (g.get(f.ids.ok)).sig);
     writeFileSync(sig, Buffer.concat([readFileSync(sig), Buffer.from('x')]));
     r = f.cli(['approve', 'verify']);
     assert.equal(r.status, 1, r.stdout + r.stderr);

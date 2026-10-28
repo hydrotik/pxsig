@@ -24,8 +24,13 @@ test('the list, per OS', () => {
   for (const p of ['ps', 'osascript', 'open']) assert.equal(refused(p, 'darwin'), null, p);
   for (const p of ['ps', 'xdg-open', 'fc-list']) assert.equal(refused(p, 'linux'), null, p);
   for (const p of ['ps', 'osascript', 'open', 'xdg-open', 'fc-list'])
-    assert.match(refused(p, 'win32'), /does not start/, `${p} on Windows`);
-  assert.match(refused('fc-list', 'darwin'), /does not start/, 'fc-list is Linux only');
+    // A null (not refused) fails assert.match on its own, so the cast loses nothing.
+    assert.match(/** @type {string} */ (refused(p, 'win32')), /does not start/, `${p} on Windows`);
+  assert.match(
+    /** @type {string} */ (refused('fc-list', 'darwin')),
+    /does not start/,
+    'fc-list is Linux only'
+  );
 });
 
 test('never a shell or a system tool', () => {
@@ -46,13 +51,20 @@ test('never a shell or a system tool', () => {
       'npx',
       'curl',
     ])
-      assert.match(refused(p, os), /Programs pxsig starts/, `${p} on ${os}`);
+      // As above: a null fails assert.match itself.
+      assert.match(
+        /** @type {string} */ (refused(p, os)),
+        /Programs pxsig starts/,
+        `${p} on ${os}`
+      );
   assert.throws(() => spawnSync('git', ['--version'], { shell: true }), /does not start a shell/);
   assert.throws(() => spawnSync('cmd.exe', ['/c', 'echo']), /does not start "cmd\.exe"/);
 });
 
 test('every start goes through lib/spawn.mjs', () => {
+  /** @type {string[]} */
   const offenders = [];
+  /** @param {string} d */
   const walk = (d) => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const p = join(d, e.name);
