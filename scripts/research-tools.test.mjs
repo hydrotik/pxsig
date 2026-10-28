@@ -38,3 +38,15 @@ for (const tool of ['calibrate-gate', 'calibrate-detail'])
     assert.match(r.stderr, new RegExp(`^\\[${tool}\\] .*scenarios\\.json`, 'm'));
     assert.doesNotMatch(r.stderr, /TypeError/);
   });
+
+test('calibrate-detail: --builds without a value is a usage error, exit 2', () => {
+  const r = run('tools/calibrate-detail.mjs', ['--builds'], project());
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stderr, /^usage: node tools\/calibrate-detail\.mjs/m);
+});
+
+test('calibrate-gate: --detail-build without a value is a usage error, exit 2', () => {
+  const r = run('tools/calibrate-gate.mjs', ['--detail-build'], project());
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stderr, /^usage: node tools\/calibrate-gate\.mjs/m);
+});

@@ -46,6 +46,13 @@ import {
 
 const log = logger('calibrate-gate');
 const flags = parseFlags();
+if (flags['detail-build'] === true) {
+  // A bare `--detail-build` (no JSON after it) would parse as `true`.
+  console.error(
+    "usage: node tools/calibrate-gate.mjs [--project name] [--workspace dir] [--grid 64] [--min-cells-px 4,6,8] [--detail-build '<JSON object>']"
+  );
+  process.exit(2);
+}
 const { P, run } = project(flags);
 const GRID = Number(flags.grid) || run.grid || 64;
 /** @type {Policy[]} */

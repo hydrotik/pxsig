@@ -45,6 +45,13 @@ import {
 
 const log = logger('calibrate-detail');
 const flags = parseFlags();
+if (flags.builds === true) {
+  // A bare `--builds` (no JSON after it) would parse as `true`.
+  console.error(
+    "usage: node tools/calibrate-detail.mjs [--project name] [--workspace dir] [--builds '<JSON list of detail builds>']"
+  );
+  process.exit(2);
+}
 const { P, run } = project(flags);
 /** @type {DetailBuild[]} */
 const BUILDS = flags.builds
