@@ -86,6 +86,18 @@ gets an inline `oxlint-disable-next-line <rule> -- <reason>`, not a higher basel
 commit-msg hook checks the subject against `commitlint.config.cjs`: `<type>(<scope>): <subject>`,
 lower case after the scope, at most 100 characters. Never skip them with `--no-verify`.
 
+## File size
+
+A source or test file (`.js .mjs .cjs .jsx .ts .tsx .rs`, tests, stories and scripts included) has
+at most 5,000 tokens: bytes / 4 of the file as staged. The files already over the limit are listed
+at their recorded sizes in `scripts/file-size-baseline.json`, and none of them may grow. The
+pre-commit hook runs `node scripts/check-file-size.mjs --staged` after lint-staged, and CI's clean
+job runs `--all`. When a change would grow a file over the limit, keep the file from growing, or
+first move one self-contained part out in its own commit; the hook's message gives the steps. After
+a file shrinks, lower the baseline in its own commit: `node scripts/check-file-size.mjs --update`
+(it never raises an entry). A generated or vendored file goes in the baseline's `exempt` map with
+its reason, in its own commit. The script is the same file in pxsig and hydrotik.
+
 ## What never goes into this repository
 
 This repository holds source, schemas, tests and documentation. `scripts/check-clean.mjs` fails
@@ -189,7 +201,8 @@ licence outside `deny.toml`'s `allow` list fails; adding one is a decision for t
 
 - One change per pull request, with a description of what changed and why.
 - Tests for new behaviour and for bug fixes.
-- `pnpm test`, `pnpm lint`, `pnpm lint:ratchet`, `node scripts/check-clean.mjs` and
+- `pnpm test`, `pnpm lint`, `pnpm lint:ratchet`, `node scripts/check-file-size.mjs --all`,
+  `node scripts/check-clean.mjs` and
   `node scripts/changelog.mjs check --since origin/main` pass.
 - Update the docs in `docs/` when a command, flag, config key, file format or default changes, and
   add a fragment in `changelog.d/` ([changelog.d/README.md](changelog.d/README.md)); `CHANGELOG.md`
