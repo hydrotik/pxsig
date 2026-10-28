@@ -125,6 +125,31 @@ test('every manifest entry, with its baseline, last log line and commit', skip, 
   assert.equal(story.history[0].entries, story.entries.length);
 });
 
+test('a story with several entries counts each of them in its batch', skip, () => {
+  const f = fixture({ withSigs: true });
+  made.push(f.repo);
+  rmSync(join(f.repo, '.git'), { recursive: true, force: true });
+  must(f.repo, 'init', '-q', '-b', 'main');
+  must(f.repo, 'config', 'commit.gpgsign', 'false');
+  // The ok story in a second mode: two entries of one story, approved in one batch.
+  // `ok` is a fixture id, so it is in the manifest.
+  const ok = /** @type {ManifestEntry} */ (f.manifest.stories.find((e) => e.id === f.ids.ok));
+  /** @type {ManifestEntry} */
+  const light = { ...ok, id: `${ok.id}@light`, mode: 'light' };
+  f.manifest.stories.push(light);
+  writeFileSync(join(f.px, 'manifest.json'), JSON.stringify(f.manifest, null, 2));
+  const P = open(f.repo);
+  for (const e of [ok, light])
+    record(P, e, { batch: 'b0-cli', via: 'cli', reason: 'first baselines', before: null });
+  record(P, light, { batch: 'b1-cli', via: 'cli', reason: 'light only', before: null });
+  must(f.repo, 'add', '-A');
+  must(f.repo, 'commit', '-q', '-m', 'base');
+  const story = buildSnapshot([P]).projects[P.name].stories[ok.story];
+  assert.equal(story.entries.length, 2);
+  const byReason = Object.fromEntries(story.history.map((h) => [h.reason, h.entries]));
+  assert.deepEqual(byReason, { 'first baselines': 2, 'light only': 1 });
+});
+
 test('no person, no route: no `by`, no `via`, no author name or email', skip, () => {
   const f = repoFixture();
   // A line from a team on `approvals.identity: "git-email"`, as pxsig wrote before 0.4.0.

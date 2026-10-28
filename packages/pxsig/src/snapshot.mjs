@@ -182,9 +182,7 @@ export function projectSnapshot(P, { shallow = false } = {}) {
     const key = `${story}\n${l.batch}\n${eventOf(l)}`;
     const row = rows.get(key);
     if (row) {
-      // This counts on the wrapper, not on `row.row`: the history row keeps `entries: 1` (reported,
-      // left as it ships; the wrapper's `entries` becomes NaN and is never read).
-      /** @type {{ entries: number }} */ (/** @type {unknown} */ (row)).entries++;
+      row.row.entries++;
       continue;
     }
     rows.set(key, {
