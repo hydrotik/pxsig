@@ -79,10 +79,15 @@ export interface BuildStamp {
 }
 
 /** One screen of `pxsig dashboard check --json`. */
-export type DashboardScreen = { feature: string; index: number; theme: string } & (
-  | { rendered: true; reason: null }
-  | { rendered: false; reason: string }
-);
+export type DashboardScreen = {
+  feature: string;
+  index: number;
+  theme: string;
+  /** How long the screen took, landmark wait included. */
+  ms?: number;
+  /** Page errors seen while it rendered. */
+  errors?: string[];
+} & ({ rendered: true; reason: null } | { rendered: false; reason: string });
 
 /** `pxsig dashboard check --json`: the keys read. */
 export interface DashboardCheckAnswer {

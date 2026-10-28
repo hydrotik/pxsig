@@ -622,9 +622,16 @@ test('the Storybook panel decides through a small window of the server, which cl
   });
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const posts = [];
+  // What the framed page asked the server and what it was answered: on Windows this test once
+  // timed out with the Approve button never shown (a hang, not a slow runner: it passes in ~1 s
+  // there). If it happens again, the failure says which request was left unanswered.
+  const asked = [];
+  const pageErrors = [];
+  context.on('weberror', (e) => pageErrors.push(String(e.error().message).split('\n')[0]));
   await context.route('**/__pxsig/**', async (route) => {
     const req = route.request();
     const name = new URL(req.url()).pathname.replace('/__pxsig/', '');
+    asked.push(`${req.method()} ${name}`);
     if (name === 'events')
       return route.fulfill({
         status: 200,
@@ -656,7 +663,19 @@ test('the Storybook panel decides through a small window of the server, which cl
   try {
     await host.goto(`http://localhost:${storybook.address().port}/`);
     const panel = host.frameLocator('#panel');
-    await panel.getByRole('button', { name: 'Approve', exact: true }).waitFor();
+    try {
+      await panel.getByRole('button', { name: 'Approve', exact: true }).waitFor();
+    } catch (e) {
+      const frame = host.frames().find((f) => f !== host.mainFrame());
+      const text = await frame
+        ?.evaluate(() => document.body?.innerText.slice(0, 200) ?? '')
+        .catch((err) => `(unreadable: ${String(err)})`);
+      throw new Error(
+        `${String(e)}\nframe: ${frame?.url() ?? '(none)'}\nframe text: ${JSON.stringify(text)}\n` +
+          `routed: ${asked.join(', ') || '(none)'}\npage errors: ${pageErrors.join(' | ') || '(none)'}`,
+        { cause: e }
+      );
+    }
     const opened = context.waitForEvent('page');
     await panel.getByRole('button', { name: 'Approve', exact: true }).click();
     const win = await opened;
