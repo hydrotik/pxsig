@@ -86,6 +86,11 @@ export function snapshot(P, entry, batch) {
   return { before: sha256(p.sig) };
 }
 
+/**
+ * @param P
+ * @param entry
+ * @param {{ batch: string, via: string, reason?: string | null, before?: string | null, kind?: string | null, person?: boolean }} opts
+ */
 export function record(P, entry, { batch, via, reason = null, before, kind = null, person }) {
   const p = paths(P, entry);
   fault('after-psig');
