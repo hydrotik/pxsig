@@ -252,6 +252,32 @@ test(
 );
 
 test(
+  'a check queued behind a running one, whose manifest stopped loading, reports why',
+  { skip: needs },
+  async () => {
+    const f = fixture();
+    const sb = await fakeStorybook(f.index.stories);
+    const S = await serve(f, { storybook: sb.url });
+    try {
+      assert.equal((await S.post('check', { ids: [f.ids.ok, f.ids.drift] })).status, 202);
+      // While that check runs, the manifest becomes unreadable; the next check is queued behind it.
+      writeFileSync(join(f.px, 'manifest.json'), '{ not json');
+      const r = await S.post('check', { ids: [f.ids.changed] });
+      assert.deepEqual(r.body.queued, [f.ids.changed], 'queued while the first check ran');
+      await S.idle();
+      assert.match(
+        S.log(),
+        /check failed: setup error: the manifest did not load — .*Nothing was rendered/
+      );
+      assert.doesNotMatch(S.log(), /missing string param|Storybook is not reachable/);
+    } finally {
+      S.stop();
+      sb.close();
+    }
+  }
+);
+
+test(
   'a repair whose re-check could not run says so, and the dashboard hears why',
   { skip: !hasRust && 'Rust binary not built' },
   async () => {

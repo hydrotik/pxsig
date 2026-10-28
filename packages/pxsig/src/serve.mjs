@@ -800,6 +800,15 @@ async function runChecks(S) {
     broadcast('check', { project: S.name, state: 'running', ids });
     try {
       S.reload();
+      // The manifest stopped loading since these ids were queued: say why, render nothing.
+      // Rejected rather than thrown: it lands after `S.running` is set, so `finally` clears it.
+      if (!S.runPath)
+        await Promise.reject(
+          Object.assign(
+            new Error(`setup error: the manifest did not load — ${S.error}. Nothing was rendered.`),
+            { setup: true }
+          )
+        );
       const manifest = S.manifest;
       const entries = manifest.stories.filter((e) => ids.includes(e.id));
       // Guard: a broken Storybook index makes every render its error page. Refuse, record nothing.
