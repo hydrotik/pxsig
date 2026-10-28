@@ -111,6 +111,13 @@ test('workspace defaults: paths resolve against the workspace root; provenance n
   assert.equal(s.modes, 'defaults');
 });
 
+test('the workspace schema describes defaults paths as the code resolves them: from the workspace root', () => {
+  const schema = JSON.parse(readFileSync(join(src, '..', 'schema', 'workspace.json'), 'utf8'));
+  const text = schema.properties.defaults.description;
+  assert.match(text, /relative to the workspace root/);
+  assert.doesNotMatch(text, /project folder/);
+});
+
 test('pxsig config shows the layer of every key, and config flags are the top layer', () => {
   const root = tree({ 'pxsig.config.json': { name: 'one', grid: 96 }, 'src/a.ts': '' });
   const c = JSON.parse(

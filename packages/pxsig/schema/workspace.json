@@ -15,7 +15,7 @@
     },
     "defaults": {
       "$ref": "project.json",
-      "description": "Project config keys applied under each project's own config. Paths here resolve relative to each project folder; use \"$workspace/\" for shared paths."
+      "description": "Project config keys applied under each project's own config. Paths here resolve relative to the workspace root (the folder of pxsig.workspace.json), like every path in this file; \"$workspace/\" works here too."
     },
     "requires": {
       "type": "string",
