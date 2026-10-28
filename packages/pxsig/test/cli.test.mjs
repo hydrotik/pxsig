@@ -125,3 +125,18 @@ test('affected notes the remote URLs it does not follow', () => {
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /1 remote URLs are not followed \(a full check covers them\)\./);
 });
+
+test('a bare --component, --mode or --state is a usage error naming the flag (exit 2)', () => {
+  for (const args of [
+    ['list', '--component'],
+    ['list', '--mode'],
+    ['list', '--state'],
+    ['list', 'all', '--component', '--limit', '3'],
+    ['a11y', '--component'],
+  ]) {
+    const r = run(args);
+    const flag = /** @type {string} */ (args.find((a) => /^--(component|mode|state)$/.test(a)));
+    assert.equal(r.status, 2, `${args.join(' ')}: ${r.stdout}${r.stderr}`);
+    assert.match(r.stderr, new RegExp(`^pxsig: usage: ${flag} needs a value`), args.join(' '));
+  }
+});
