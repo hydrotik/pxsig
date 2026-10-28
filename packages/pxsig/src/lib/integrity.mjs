@@ -1252,10 +1252,10 @@ function neverCheckedReason({ report, reportAt, manifestMtime, sigAt, latestAt, 
 /**
  * Baselines no approval line covers: a warning before strict `approve verify` fails a pull request on them.
  * @param {string[]} ids
- * @param {IntegrityContext} ctx
+ * @param {IntegrityContext} _ctx
  * @returns {LedgerSetup[]}
  */
-function unloggedProblems(ids, ctx) {
+function unloggedProblems(ids, _ctx) {
   if (!ids.length) return [];
   return [
     {

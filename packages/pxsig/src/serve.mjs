@@ -722,7 +722,7 @@ async function review(S, action, id, meta = {}) {
       );
     delete rv[id];
     updateCheckRows(S, (r) =>
-      r.id === id && r.approved ? (({ approved, ...rest }) => rest)(r) : null
+      r.id === id && r.approved ? (({ approved: _approved, ...rest }) => rest)(r) : null
     );
   } else throw httpError(404, 'unknown action');
   S.quietUntil = Date.now() + 800;

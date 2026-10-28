@@ -20,7 +20,6 @@ import {
   loadStoryIndex,
   primaryOf,
   reconcile,
-  resolveContext,
   rustAffected,
   sanitize,
   scanStories,

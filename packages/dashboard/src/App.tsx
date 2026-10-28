@@ -262,7 +262,6 @@ export function App() {
   if (!data) return <Placeholder text={t('app.loading')} />;
   if (params.get('embed')) return <Embed data={data} story={params.get('story') ?? ''} />;
 
-  const rows = data.check?.rows ?? [];
   const todo = rowsWithPending(data).filter((r) =>
     ['changed', 'new'].includes(statusOf(r, data.review))
   ).length;
