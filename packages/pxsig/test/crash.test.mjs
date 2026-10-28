@@ -292,6 +292,20 @@ test('a holder whose lock was taken over stops before its next write', () => {
   assert.ok(existsSync(lockPath(P)), "release leaves the new holder's lock alone");
 });
 
+test('a holder whose lock file became unreadable says so, naming the file', () => {
+  const P = project(fixture());
+  const l = acquireLock(P, { holder: 'test' });
+  writeFileSync(lockPath(P), '{ not json');
+  assert.throws(
+    () => l.check(),
+    (/** @type {Error} */ e) =>
+      /lock taken over by an unreadable lock file \(.*reports\/\.lock\): nothing more was written/.test(
+        e.message
+      ) && !/undefined/.test(e.message)
+  );
+  l.release();
+});
+
 test('snapshot then record leaves a clean trail (the normal order)', () => {
   const f = fixture();
   const P = project(f);

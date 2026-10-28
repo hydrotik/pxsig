@@ -223,6 +223,13 @@ const fail = (msg, code = 2) => {
   else process.stderr.write(`pxsig: ${msg}\n`);
   process.exit(code);
 };
+/**
+ * A flag that takes a value, given bare (`--component` alone is `true`), is a usage error.
+ * @param {string[]} names
+ */
+const needValues = (names) => {
+  for (const n of names) if (flags[n] === true) fail(`usage: --${n} needs a value`);
+};
 
 /**
  * The projects a read command covers: --project, else every project with --all, else the project
@@ -1071,11 +1078,38 @@ const commands = {
 
   stale: () =>
     overProjects(async () => {
-      // BUG (reported, not changed): the `tooMany` answer has none of these keys, so `bad` is NaN
-      // and the command reports every result fresh, exit 0.
-      const s = /** @type {Extract<ToolOutput<'stale'>, { of: number }>} */ (
-        await run('stale', { limit: Number(flags.limit) || 200 })
-      );
+      const answer = await run('stale', { limit: Number(flags.limit) || 200 });
+      // Too many edits to trace one by one: freshness is unknown, so not clean.
+      if ('tooMany' in answer && answer.tooMany) {
+        const g = gate(
+          [
+            {
+              gate: 'stale',
+              exit: 1,
+              count: answer.tooMany,
+              what: 'source files edited since the oldest verdict, too many to trace',
+            },
+          ],
+          'stale',
+          { tooMany: answer.tooMany }
+        );
+        return {
+          blocks: [
+            ...g.lead,
+            { h: 'Freshness', sub: 'not traced' },
+            {
+              note: `${answer.tooMany} source files edited since the oldest verdict (${answer.oldestVerdict ?? 'unknown'}): too many to trace one by one`,
+              tone: 'warn',
+            },
+            { next: [[`${CMD} check --all`, 're-check every entry']] },
+            ...g.last,
+          ],
+          data: { ...answer, ...g.data },
+          exit: g.exit,
+          advisory: g.advisory,
+        };
+      }
+      const s = /** @type {Extract<ToolOutput<'stale'>, { of: number }>} */ (answer);
       const bad = s.stale + s.inconsistent;
       /** @type {Block[]} */
       const blocks = [
@@ -1122,12 +1156,11 @@ const commands = {
       };
     }),
 
-  list: () =>
-    overProjects(async () => {
+  list: () => {
+    needValues(['component', 'mode', 'state']);
+    return overProjects(async () => {
       const state = rest[0] ?? flags.state ?? 'problems';
       const limit = Number(flags.limit) || 30;
-      // BUG (reported, not changed): a bare --component (or --mode, --state) is `true`, not text:
-      // the tool's toLowerCase then throws, or nothing matches.
       const s = await run('list', {
         state,
         component: /** @type {string | undefined} */ (flags.component),
@@ -1154,7 +1187,8 @@ const commands = {
           ],
         });
       return { blocks, data: s };
-    }),
+    });
+  },
 
   async entry() {
     current = oneProject();
@@ -1196,8 +1230,7 @@ const commands = {
               ? { text: e.a11y.violations.map((v) => v.id ?? v).join(', '), color: 'red' }
               : 'clean',
           ],
-          // BUG (reported, not changed): a review decision's key is `state`, so this is always 'none'.
-          ['Review', /** @type {string | undefined} */ (e.review?.decision) ?? 'none'],
+          ['Review', e.review?.state ?? 'none'],
           ['Checked', e.checkedAt ?? '—'],
           ['Dashboard', { text: inspectUrl(id), url: inspectUrl(id) }],
         ],
@@ -1394,11 +1427,10 @@ const commands = {
           note: 'Map a bundler alias with affects.aliases, or accept the file with affects.unresolved.',
         }
       );
-    // BUG (reported, not changed): pxsig_affected answers `remote` as a count, which has no length,
-    // so this note never shows.
-    if (/** @type {unknown[] | undefined} */ (/** @type {unknown} */ (r.remote))?.length)
+    // pxsig_affected answers `remote` as a count.
+    if (r.remote > 0)
       blocks.push({
-        note: `${/** @type {unknown[]} */ (/** @type {unknown} */ (r.remote)).length} remote URLs are not followed (a full check covers them).`,
+        note: `${r.remote} remote URLs are not followed (a full check covers them).`,
       });
     if (r.entries)
       blocks.push({
@@ -1412,61 +1444,62 @@ const commands = {
     emit(format, blocks, r);
   },
 
-  a11y: () =>
-    flags.prune
-      ? a11yPrune()
-      : overProjects(async () => {
-          // Without prune_plan the tool lists violations. A bare --component is `true` (see list).
-          const r = /** @type {Extract<ToolOutput<'a11y'>, { byRule: unknown }>} */ (
-            await run('a11y', {
-              component: /** @type {string | undefined} */ (flags.component),
-              only_new: !!flags.new,
-              limit: Number(flags.limit) || 50,
-            })
-          );
-          const rules = Object.entries(r.byRule ?? {}).sort((a, b) => b[1] - a[1]);
-          /** @type {Block[]} */
-          const blocks = [
-            { h: flags.new ? 'New a11y violations' : 'a11y', sub: `${r.entries} entries` },
-          ];
-          // --sarif: the new violations of the last report, for SARIF viewers (decision 96).
-          if (typeof flags.sarif === 'string') {
-            const C = ctx();
-            // the report and the manifest pxsig wrote
-            const report = /** @type {CheckReport} */ (
-              JSON.parse(readFileSync(join(C.P.store.reports, 'check.json'), 'utf8'))
-            );
-            const manifest = /** @type {Manifest} */ (
-              JSON.parse(readFileSync(C.P.manifestPath(), 'utf8'))
-            );
-            const n = writeSarif(
-              resolve(flags.sarif),
-              report.rows.filter(
-                (x) => !flags.component || x.id.includes(String(flags.component).toLowerCase())
-              ),
-              { entries: new Map(manifest.stories.map((e) => [e.id, e])) }
-            );
-            blocks.push({ note: `${n} new violations written to ${flags.sarif} (SARIF 2.1.0)` });
-          }
-          if (!r.entries) blocks.push({ note: 'No violations.', tone: 'ok' });
-          else {
-            blocks.push({
-              table: {
-                cols: [
-                  { key: 'rule', label: 'Rule' },
-                  { key: 'n', label: 'Entries', right: true },
-                ],
-                rows: rules.map(([rule, n]) => ({ rule, n })),
-              },
-            });
-            blocks.push({
-              list: r.list.map((e) => ({
-                text: `${e.id} — ${(e.violations ?? []).map((v) => v.id ?? v).join(', ')}`,
-              })),
-            });
-          }
-          return { blocks, data: r };
-        }),
+  a11y: () => {
+    if (flags.prune) return a11yPrune();
+    needValues(['component']);
+    return overProjects(async () => {
+      // Without prune_plan the tool lists violations.
+      const r = /** @type {Extract<ToolOutput<'a11y'>, { byRule: unknown }>} */ (
+        await run('a11y', {
+          component: /** @type {string | undefined} */ (flags.component),
+          only_new: !!flags.new,
+          limit: Number(flags.limit) || 50,
+        })
+      );
+      const rules = Object.entries(r.byRule ?? {}).sort((a, b) => b[1] - a[1]);
+      /** @type {Block[]} */
+      const blocks = [
+        { h: flags.new ? 'New a11y violations' : 'a11y', sub: `${r.entries} entries` },
+      ];
+      // --sarif: the new violations of the last report, for SARIF viewers (decision 96).
+      if (typeof flags.sarif === 'string') {
+        const C = ctx();
+        // the report and the manifest pxsig wrote
+        const report = /** @type {CheckReport} */ (
+          JSON.parse(readFileSync(join(C.P.store.reports, 'check.json'), 'utf8'))
+        );
+        const manifest = /** @type {Manifest} */ (
+          JSON.parse(readFileSync(C.P.manifestPath(), 'utf8'))
+        );
+        const n = writeSarif(
+          resolve(flags.sarif),
+          report.rows.filter(
+            (x) => !flags.component || x.id.includes(String(flags.component).toLowerCase())
+          ),
+          { entries: new Map(manifest.stories.map((e) => [e.id, e])) }
+        );
+        blocks.push({ note: `${n} new violations written to ${flags.sarif} (SARIF 2.1.0)` });
+      }
+      if (!r.entries) blocks.push({ note: 'No violations.', tone: 'ok' });
+      else {
+        blocks.push({
+          table: {
+            cols: [
+              { key: 'rule', label: 'Rule' },
+              { key: 'n', label: 'Entries', right: true },
+            ],
+            rows: rules.map(([rule, n]) => ({ rule, n })),
+          },
+        });
+        blocks.push({
+          list: r.list.map((e) => ({
+            text: `${e.id} — ${(e.violations ?? []).map((v) => v.id ?? v).join(', ')}`,
+          })),
+        });
+      }
+      return { blocks, data: r };
+    });
+  },
 
   history: () =>
     overProjects(async () => {

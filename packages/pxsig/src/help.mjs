@@ -120,8 +120,8 @@ export function lookup(words) {
   }
   const cmd = commands[first];
   if (cmd) {
-    // An empty second word ('') would make `sub` '' and the entry ''; reported, not changed.
-    const sub = /** @type {HelpCommandEntry | undefined} */ (second && cmd.subcommands?.[second]);
+    // An empty second word ('') is no subcommand, as when there is none.
+    const sub = second ? cmd.subcommands?.[second] : undefined;
     if (second && !sub) return null;
     return {
       kind: 'command',
@@ -159,8 +159,9 @@ export function helpBlocks(found, CMD = 'pxsig') {
       ['File', entry.file],
       ['Meaning', entry.meaning],
     ];
-    // Two settings write `values` as one string, and this throws for them (reported, not fixed).
-    if (entry.values) kv.push(['Values', /** @type {string[]} */ (entry.values).join(', ')]);
+    // Most settings list their values; a few write them as one string.
+    if (entry.values)
+      kv.push(['Values', Array.isArray(entry.values) ? entry.values.join(', ') : entry.values]);
     if (entry.default != null) kv.push(['Default', entry.default]);
     if (entry.operation) kv.push(['Effect', entry.operation]);
     if (entry.flag) kv.push(['Flag', entry.flag]);

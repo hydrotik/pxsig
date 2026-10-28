@@ -325,6 +325,66 @@ function twoProjects() {
   });
 }
 
+test(
+  'the server: a story two projects share is answered for the project asked about',
+  { skip: !hasRust && 'Rust binary not built' },
+  async () => {
+    /** @param {string} name */
+    const proj = (name) => ({
+      [`packages/${name}/pxsig.config.json`]: { storybook: { url: 'http://127.0.0.1:1' } },
+      [`packages/${name}/.pxsig/manifest.json`]: {
+        version: 2,
+        stories: [
+          {
+            id: 'shared-story--a',
+            story: 'shared-story--a',
+            sig: `packages/${name}/.pxsig/baselines/shared-story--a.psig`,
+          },
+        ],
+      },
+    });
+    const root = tree({
+      'pxsig.workspace.json': { projects: { ui: 'packages/ui', forms: 'packages/forms' } },
+      ...proj('ui'),
+      ...proj('forms'),
+    });
+    const port = await new Promise((ok) => {
+      const s = createServer().listen(0, '127.0.0.1', () => {
+        // Listening on TCP: the address is an AddressInfo.
+        const p = /** @type {AddressInfo} */ (s.address()).port;
+        s.close(() => ok(p));
+      });
+    });
+    const proc = spawn(
+      process.execPath,
+      [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
+      { cwd: root, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
+    );
+    try {
+      await /** @type {Promise<void>} */ (
+        new Promise((ok, fail) => {
+          let log = '';
+          const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+          proc.stdout.on(
+            'data',
+            (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok()))
+          );
+          proc.stderr.on('data', (d) => (log += d));
+        })
+      );
+      for (const project of ['ui', 'forms']) {
+        const r = await fetch(
+          `http://127.0.0.1:${port}/__pxsig/integrity?project=${project}&story=shared-story--a`
+        );
+        assert.equal(r.status, 200);
+        assert.equal(/** @type {{ project: string }} */ (await r.json()).project, project);
+      }
+    } finally {
+      proc.kill();
+    }
+  }
+);
+
 test('read commands cover every project when none is chosen; rows carry the project', () => {
   const root = twoProjects();
   const r = cli(['list', 'all', '--json'], root);

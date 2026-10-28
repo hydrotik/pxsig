@@ -193,3 +193,15 @@ test('affects: the source folders of runtime workspace dependencies, found throu
     'dev-only dependencies do not affect renders'
   );
 });
+
+test('a project folder that is not a string is a setup error naming the project', () => {
+  const root = tree({ 'pxsig.workspace.json': { projects: { ui: 'packages/ui', docs: 42 } } });
+  assert.throws(
+    () => findWorkspace({ cwd: root, env }),
+    (/** @type {Error & { setup?: boolean }} */ e) =>
+      e.setup === true &&
+      /pxsig\.workspace\.json: the folder of project "docs" must be a string \(a path from the workspace root\)/.test(
+        e.message
+      )
+  );
+});

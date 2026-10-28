@@ -133,7 +133,7 @@
       "effects": ["reads-only"],
       "exits": {
         "0": "No stale verdicts, or warn mode: the stale gate is on warn (advisoryExit, default 0)",
-        "1": "Stale verdicts found",
+        "1": "Stale verdicts found, or too many edits since the oldest verdict to trace",
         "2": "Usage or setup error"
       },
       "examples": [
@@ -628,7 +628,7 @@
           ]
         },
         "apply": {
-          "summary": "A person at a terminal applies the plan through the server, after typing APPROVE <n> ENTRIES. Refused when any render changed since planning.",
+          "summary": "A person at a terminal applies the plan through the server, after typing APPROVE <n> ENTRIES. Refused when any render changed since planning or an entry is no longer in the manifest.",
           "usage": ["pxsig approve apply [plan]"],
           "effects": ["writes-baselines", "needs-a-person"],
           "exits": {

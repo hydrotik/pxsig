@@ -90,6 +90,9 @@ export function alive(pid) {
   }
 }
 
+/** `why` of a lock file that cannot be parsed. */
+const UNREADABLE = 'unreadable lock file';
+
 /**
  * The current lock, with `stale` and `why` when it is not live. Null when there is none.
  * @param {LockProject} P
@@ -104,7 +107,7 @@ export function readLock(P) {
     // The lock file a pxsig process wrote (acquireLock); an older one may lack keys.
     l = /** @type {Partial<LockBody>} */ (JSON.parse(readFileSync(p, 'utf8')));
   } catch {
-    return { stale: true, why: 'unreadable lock file' };
+    return { stale: true, why: UNREADABLE };
   }
   const beat = Date.parse(l.heartbeatAt ?? '');
   if (Number.isFinite(beat)) l.heartbeatAgeMs = Math.max(0, Date.now() - beat);
@@ -127,6 +130,9 @@ const ago = (ms) => (ms < 90_000 ? `${Math.round(ms / 1000)} s` : `${Math.round(
  * @param {LockState} l
  */
 export function describeLock(P, l) {
+  // readLock could not parse the file: it names no holder.
+  if (l.why === UNREADABLE)
+    return `an unreadable lock file (${relPath(P.workspaceRoot, lockPath(P))})`;
   const what =
     l.holder === 'serve'
       ? `the pxsig server${l.url ? ` at ${l.url}` : ''}`

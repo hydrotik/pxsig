@@ -69,6 +69,46 @@ before(() => {
 });
 after(() => proc.kill());
 
+test('a line that is not a JSON-RPC object is an invalid request, and the server keeps serving', async () => {
+  const own = spawn(process.execPath, [join(here, '..', 'src', 'mcp.mjs')], {
+    cwd: repo,
+    stdio: ['pipe', 'pipe', 'ignore'],
+    env: { ...process.env, PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin },
+  });
+  try {
+    /** @type {{ id: unknown, result?: unknown, error?: { code: number } }[]} */
+    const replies = [];
+    /** @type {Map<number, (reply: unknown) => void>} */
+    const waiting = new Map();
+    /** @type {(e: Error) => void} */
+    let died = () => {};
+    const exited = new Promise((_, fail) => (died = fail));
+    own.on('exit', (code) => died(new Error(`the server exited (${code})`)));
+    createInterface({ input: own.stdout }).on('line', (line) => {
+      const msg = JSON.parse(line);
+      replies.push(msg);
+      waiting.get(msg.id)?.(msg);
+    });
+    /** @param {number} id */
+    const ping = (id) => {
+      const answered = new Promise((ok) => waiting.set(id, ok));
+      own.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id, method: 'ping' })}\n`);
+      return Promise.race([answered, exited]);
+    };
+    const bad = ['null', '5', '[]', '"x"', 'true'];
+    for (const line of bad) own.stdin.write(`${line}\n`);
+    await ping(1);
+    // A later message, in a later tick: the server is still up.
+    await new Promise((r) => setTimeout(r, 200));
+    await ping(2);
+    const invalid = replies.filter((r) => r.id === null);
+    assert.equal(invalid.length, bad.length);
+    for (const r of invalid) assert.equal(r.error?.code, -32600);
+  } finally {
+    own.kill();
+  }
+});
+
 test('initialize echoes the protocol version and declares tools', async () => {
   const res = await rpc('initialize', {
     protocolVersion: '2025-06-18',
