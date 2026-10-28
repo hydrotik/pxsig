@@ -1420,11 +1420,10 @@ const commands = {
           note: 'Map a bundler alias with affects.aliases, or accept the file with affects.unresolved.',
         }
       );
-    // BUG (reported, not changed): pxsig_affected answers `remote` as a count, which has no length,
-    // so this note never shows.
-    if (/** @type {unknown[] | undefined} */ (/** @type {unknown} */ (r.remote))?.length)
+    // pxsig_affected answers `remote` as a count.
+    if (r.remote > 0)
       blocks.push({
-        note: `${/** @type {unknown[]} */ (/** @type {unknown} */ (r.remote)).length} remote URLs are not followed (a full check covers them).`,
+        note: `${r.remote} remote URLs are not followed (a full check covers them).`,
       });
     if (r.entries)
       blocks.push({

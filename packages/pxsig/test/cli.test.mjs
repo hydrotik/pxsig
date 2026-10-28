@@ -1,7 +1,7 @@
 // The CLI's output contract: piped output is clean Markdown, --json is one JSON document, and the
 // exit codes hold. Runs in a fixture project; no server or Storybook needed.
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -111,4 +111,17 @@ test('entry shows the review decision on the current result', () => {
   });
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /Review\W+rejected/);
+});
+
+test('affected notes the remote URLs it does not follow', () => {
+  const own = fixture({ withSigs: false }).repo;
+  const file = 'src/components/Alpha/Alpha.stories.tsx';
+  appendFileSync(join(own, file), "\nimport 'https://cdn.example.com/a.js';\n");
+  const r = spawnSync(process.execPath, [cli, 'affected', file], {
+    cwd: own,
+    encoding: 'utf8',
+    env: { ...process.env, PXSIG_FORMAT: '', PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin },
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /1 remote URLs are not followed \(a full check covers them\)\./);
 });
