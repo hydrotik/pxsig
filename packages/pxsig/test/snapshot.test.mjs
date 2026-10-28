@@ -4,15 +4,14 @@
 // Fixture projects in real git repositories.
 import { spawnSync } from 'node:child_process';
 import { strict as assert } from 'node:assert';
-import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { appendFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { record } from '../src/lib/approvals.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { buildSnapshot, envSummary, SNAPSHOT_FORMAT } from '../src/snapshot.mjs';
-import { fixture, hasRust, rustBin } from './fixture.mjs';
+import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 
 /** @import { ManifestEntry } from '../src/types.js' */
 /**
@@ -50,7 +49,7 @@ const cli = (repo, args) =>
     cwd: repo,
     encoding: 'utf8',
     env: {
-      ...process.env,
+      ...testEnv(testHome),
       PXSIG_FORMAT: '',
       PXSIG_URL: 'http://127.0.0.1:1',
       PXSIG_BIN: rustBin,
@@ -65,7 +64,7 @@ const made = [];
 after(() => made.forEach((d) => rmSync(d, { recursive: true, force: true })));
 /** @param {string} prefix */
 const tmp = (prefix) => {
-  const d = mkdtempSync(join(tmpdir(), prefix));
+  const d = tempDir(prefix);
   made.push(d);
   return d;
 };

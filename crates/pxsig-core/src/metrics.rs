@@ -77,3 +77,49 @@ pub fn edge_diff_pct(a: &[f64], b: &[f64], grid: usize) -> f64 {
     let sum: f64 = ea.iter().zip(eb.iter()).map(|(x, y)| (x - y).abs()).sum();
     (sum / ea.len() as f64 / max) * 100.0
 }
+
+#[cfg(test)]
+mod golden {
+    use super::*;
+
+    fn grids(grid: usize) -> (Vec<f64>, Vec<f64>) {
+        let a: Vec<f64> = (0..grid * grid).map(|i| ((i * 37) % 256) as f64).collect();
+        let b: Vec<f64> = a
+            .iter()
+            .enumerate()
+            .map(|(i, v)| if i % 5 == 0 { 255.0 - v } else { *v })
+            .collect();
+        (a, b)
+    }
+
+    /// (grid, ssim, edge delta, Sobel magnitude of cell 0), recorded from the engine as it is.
+    /// Grid 4 is below the 8-cell window; 33 leaves a column no window covers.
+    const GOLDEN: [(usize, f64, f64, f64); 4] = [
+        (4, 0.4715797147118954, 15.790413401109587, 610.2196325914138),
+        (
+            8,
+            0.5687230003300919,
+            15.516134716311713,
+            217.95412361320444,
+        ),
+        (16, 0.580636430405843, 15.608048876030582, 352.5677239907249),
+        (33, 0.6038166420207886, 14.617780119378809, 801.77802414384),
+    ];
+
+    #[test]
+    fn ssim_and_edge_give_the_recorded_numbers() {
+        for (g, want_ssim, want_edge, want_sobel) in GOLDEN {
+            let (a, b) = grids(g);
+            let s = ssim(&a, &b, g);
+            let e = edge_diff_pct(&a, &b, g);
+            assert!((s - want_ssim).abs() < 1e-9, "grid {g}: ssim {s}");
+            assert!((e - want_edge).abs() < 1e-9, "grid {g}: edge {e}");
+            assert!(
+                (sobel(&a, g)[0] - want_sobel).abs() < 1e-9,
+                "grid {g}: sobel"
+            );
+            assert_eq!(ssim(&a, &a, g), 1.0, "grid {g}: a grid against itself");
+            assert_eq!(edge_diff_pct(&a, &a, g), 0.0);
+        }
+    }
+}

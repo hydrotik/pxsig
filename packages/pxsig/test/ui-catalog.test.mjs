@@ -4,13 +4,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validate } from '../../../scripts/json-schema.mjs';
 import { syncCatalog, withoutContext } from '../../../scripts/sync-catalog.mjs';
+import { copyTree, tempDir } from './fixture.mjs';
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const dir = join(repo, 'docs', 'ui', 'catalog');
@@ -35,12 +35,12 @@ test('the copy passes its schema, carries no context paths, and names the commit
 
 test('the installed package exports the catalog as pxsig/ui/catalog/hydrotik.json', () => {
   // Lay the package out as npm installs it: prepack copies docs/ui into the package's docs/ui.
-  const root = mkdtempSync(join(tmpdir(), 'pxsig-catalog-'));
+  const root = tempDir('catalog');
   try {
     const pkg = join(root, 'node_modules', 'pxsig');
     mkdirSync(pkg, { recursive: true });
-    cpSync(join(repo, 'packages', 'pxsig', 'package.json'), join(pkg, 'package.json'));
-    cpSync(join(repo, 'docs', 'ui'), join(pkg, 'docs', 'ui'), { recursive: true });
+    copyFileSync(join(repo, 'packages', 'pxsig', 'package.json'), join(pkg, 'package.json'));
+    copyTree(join(repo, 'docs', 'ui'), join(pkg, 'docs', 'ui'));
     const require = createRequire(join(root, 'index.js'));
     const catalog = require('pxsig/ui/catalog/hydrotik.json');
     assert.ok(catalog.components.length > 100);
@@ -161,7 +161,7 @@ test('the schema check reports what it finds, and rejects keywords it does not k
 });
 
 test('sync-catalog refuses an unknown, dirty or unpushed checkout, and copies a good one', () => {
-  const root = mkdtempSync(join(tmpdir(), 'pxsig-sync-'));
+  const root = tempDir('sync');
   const src = join(root, 'hydrotik');
   const out = join(root, 'out');
   /** @param {string[]} args */
@@ -175,7 +175,10 @@ test('sync-catalog refuses an unknown, dirty or unpushed checkout, and copies a 
     const withContext = read('hydrotik.catalog.json');
     withContext.components[0].context = 'docs/x.llm-context.md';
     writeFileSync(join(src, 'docs/llm/catalog.json'), `${JSON.stringify(withContext, null, 2)}\n`);
-    cpSync(join(dir, 'hydrotik.catalog.schema.json'), join(src, 'docs/llm/catalog.schema.json'));
+    copyFileSync(
+      join(dir, 'hydrotik.catalog.schema.json'),
+      join(src, 'docs/llm/catalog.schema.json')
+    );
     assert.match(syncCatalog(src, out).message, /not a git checkout/);
     git('init', '-q');
     git('add', '.');

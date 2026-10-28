@@ -6,9 +6,8 @@
  */
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer, request } from 'node:http';
-import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -23,7 +22,7 @@ import {
   prunePhrase,
 } from '../src/lib/prune.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
-import { fixture, hasRust, rustBin } from './fixture.mjs';
+import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 
 /** @import { AddressInfo } from 'node:net' */
 /** @import { CheckRow } from '../src/types.js' */
@@ -325,7 +324,7 @@ test('the confirmation is the exact phrase; anything else confirms nothing', asy
  */
 const cli = (f, args, env = {}) => {
   /** @type {NodeJS.ProcessEnv} */
-  const base = { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' };
+  const base = { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' };
   for (const k of Object.keys(base))
     if (
       /^(CLAUDE|AI_AGENT|CODEX|COPILOT|GEMINI|CURSOR|CLINE|ROO|AMP|OPENCODE|PXSIG_AGENT|AGENT$|CI$)/.test(
@@ -414,14 +413,19 @@ const raw = (port, { method = 'POST', path, headers = {}, body }) =>
 /** @param {Fixture} f */
 async function serve(f) {
   const port = await freePort();
-  const dash = mkdtempSync(join(tmpdir(), 'pxsig-dash-'));
+  const dash = tempDir('dash');
   writeFileSync(join(dash, 'index.html'), '<!doctype html><title>pxsig</title>');
   const proc = spawn(
     process.execPath,
     [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
     {
       cwd: f.repo,
-      env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '', PXSIG_DASHBOARD_DIR: dash },
+      env: {
+        ...testEnv(testHome),
+        PXSIG_BIN: rustBin,
+        PXSIG_WORKSPACE: '',
+        PXSIG_DASHBOARD_DIR: dash,
+      },
     }
   );
   let log = '';

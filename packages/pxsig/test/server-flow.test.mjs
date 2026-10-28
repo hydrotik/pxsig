@@ -133,7 +133,7 @@ async function serve(f, { storybook, bin = rustBin } = {}) {
   const proc = spawn(
     process.execPath,
     [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-    { cwd: f.repo, env: { ...process.env, PXSIG_BIN: bin, PXSIG_WORKSPACE: '' } }
+    { cwd: f.repo, env: { ...f.env, PXSIG_BIN: bin, PXSIG_WORKSPACE: '' } }
   );
   let log = '';
   proc.stdout.on('data', (d) => (log += d));
@@ -480,7 +480,7 @@ test(
             '--retries',
             '0',
           ],
-          { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
+          { cwd: f.repo, env: { ...f.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
         );
         let log = '';
         p.stdout.on('data', (d) => (log += d));
@@ -552,7 +552,7 @@ test(
     const proc = spawn(
       process.execPath,
       [join(src, '..', 'bin', 'pxsig.mjs'), 'serve', '--port', String(port), '--no-open'],
-      { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
+      { cwd: f.repo, env: { ...f.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
     );
     let log = '';
     proc.stdout.on('data', (d) => (log += d));

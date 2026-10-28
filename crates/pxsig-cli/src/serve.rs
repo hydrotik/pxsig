@@ -150,7 +150,14 @@ fn dispatch(method: &str, p: &Value) -> Result<Value> {
 pub fn run() -> Result<u8> {
     let stdin = std::io::stdin();
     let mut stdout = std::io::stdout().lock();
-    for line in stdin.lock().lines() {
+    serve_lines(stdin.lock(), &mut stdout)?;
+    Ok(0)
+}
+
+/// The loop: one answer per non-blank request line, until `input` ends. A request that fails
+/// (bad JSON, an unknown method, a missing param) answers `{error}` and the loop goes on.
+fn serve_lines(input: impl BufRead, out: &mut impl Write) -> Result<()> {
+    for line in input.lines() {
         let line = line.context("reading stdin")?;
         if line.trim().is_empty() {
             continue;
@@ -168,8 +175,60 @@ pub fn run() -> Result<u8> {
             }
             Err(e) => json!({ "id": null, "error": format!("bad request: {e}") }),
         };
-        writeln!(stdout, "{resp}")?;
-        stdout.flush()?;
+        writeln!(out, "{resp}")?;
+        out.flush()?;
     }
-    Ok(0)
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Feed `lines` to the loop; every answer, parsed.
+    fn answers(lines: &[&str]) -> Vec<Value> {
+        let mut out = Vec::new();
+        serve_lines(lines.join("\n").as_bytes(), &mut out).unwrap();
+        String::from_utf8(out)
+            .unwrap()
+            .lines()
+            .map(|l| serde_json::from_str(l).unwrap())
+            .collect()
+    }
+
+    #[test]
+    fn a_bad_request_answers_an_error_and_the_loop_keeps_running() {
+        let a = answers(&[
+            r#"{"id":1,"method":"nope","params":{}}"#,
+            r#"{"id":2,"method":"compare","params":{}}"#,
+            r#"{"id":3,"method":"trim"}"#,
+            "{not json",
+            "",
+            "   ",
+            r#"{"id":4,"params":{}}"#,
+            r#"{"id":5,"method":"ping"}"#,
+        ]);
+        // Blank lines get no answer; every other line gets exactly one, in order.
+        assert_eq!(a.len(), 6, "{a:?}");
+        assert_eq!(a[0], json!({ "id": 1, "error": "unknown method `nope`" }));
+        assert_eq!(
+            a[1],
+            json!({ "id": 2, "error": "missing string param `sig`" })
+        );
+        assert_eq!(
+            a[2],
+            json!({ "id": 3, "error": "missing string param `dir`" })
+        );
+        assert_eq!(a[3]["id"], Value::Null);
+        assert!(
+            a[3]["error"].as_str().unwrap().starts_with("bad request: "),
+            "{}",
+            a[3]
+        );
+        assert_eq!(a[4], json!({ "id": 4, "error": "unknown method ``" }));
+        // After all of that, the loop still answers.
+        assert_eq!(a[5]["id"], 5);
+        assert_eq!(a[5]["result"]["pong"], true);
+        assert!(a[5]["error"].is_null());
+    }
 }

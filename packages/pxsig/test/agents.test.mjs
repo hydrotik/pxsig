@@ -9,15 +9,7 @@
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import {
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -26,7 +18,7 @@ import { ASSISTANTS, SNIPPET } from '../src/lib/assistants.mjs';
 import { stamp } from '../src/lib/approvals.mjs';
 import { humanAtTerminal, pickFormat, whyNotPerson } from '../src/lib/term.mjs';
 import { setupCommand } from '../src/setup.mjs';
-import { fixture, rustBin } from './fixture.mjs';
+import { fixture, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 /** @import { DetectedAgent } from '../src/types.js' */
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -37,7 +29,7 @@ const cli = join(pkg, 'bin', 'pxsig.mjs');
 const MARKER_VARS = MARKERS.flatMap((m) => m.vars);
 const bare = () =>
   Object.fromEntries(
-    Object.entries(process.env).filter(([k]) => !MARKER_VARS.includes(k) && k !== 'CI')
+    Object.entries(testEnv(testHome)).filter(([k]) => !MARKER_VARS.includes(k) && k !== 'CI')
   );
 /**
  * @param {string[]} args
@@ -235,7 +227,7 @@ const tree = (dir) => {
   walk(dir);
   return out;
 };
-const tmp = () => mkdtempSync(join(tmpdir(), 'pxsig-setup-'));
+const tmp = () => tempDir('setup');
 /** @param {string[]} a */
 const answers =
   (...a) =>

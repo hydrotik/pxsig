@@ -6,8 +6,7 @@
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -19,9 +18,9 @@ import {
   windowsTokenDir,
   writeSettings,
 } from '../src/lib/machine.mjs';
-import { fixture } from './fixture.mjs';
+import { fixture, tempDir, testEnv, testHome } from './fixture.mjs';
 
-const tmp = () => mkdtempSync(join(tmpdir(), 'pxsig-machine-'));
+const tmp = () => tempDir('machine');
 
 test('one folder per machine, never the roaming profile', () => {
   assert.equal(
@@ -101,7 +100,7 @@ test("pxsig doctor names this machine's settings and token folder", () => {
     cwd: f.repo,
     encoding: 'utf8',
     env: {
-      ...process.env,
+      ...testEnv(testHome),
       PXSIG_WORKSPACE: '',
       PXSIG_NO_DELEGATE: '1',
       XDG_CONFIG_HOME: cfg,

@@ -9,9 +9,9 @@
  */
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer, request } from 'node:http';
-import { homedir, hostname, tmpdir, userInfo } from 'node:os';
+import { homedir, hostname, userInfo } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -19,7 +19,7 @@ import { record, snapshot } from '../src/lib/approvals.mjs';
 import { collectEnv } from '../src/lib/env.mjs';
 import { readToken } from '../src/lib/guard.mjs';
 import { openProject, PXSIG_VERSION, satisfies } from '../src/lib/workspace.mjs';
-import { fixture, hasRust, rustBin } from './fixture.mjs';
+import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 /** @import { IncomingHttpHeaders } from 'node:http' */
 /** @import { AddressInfo } from 'node:net' */
 /** @import { EnvBrowser, ManifestEntry, PsigHeader } from '../src/types.js' */
@@ -93,7 +93,7 @@ test('requires: a range this pxsig reads, and refuses outside', () => {
   assert.equal(satisfies('0.6.0', '>=0.4.0 <0.6.0'), false);
   assert.equal(satisfies('0.3.2', '0.3.2 || >=0.4.0'), true);
   assert.equal(satisfies('0.4.0', '^0.4'), null, 'a range form it does not read');
-  const ws = mkdtempSync(join(tmpdir(), 'pxsig-requires-'));
+  const ws = tempDir('requires');
   writeFileSync(
     join(ws, 'pxsig.workspace.json'),
     JSON.stringify({ version: 1, requires: '>=99.0.0', projects: {} })
@@ -102,7 +102,7 @@ test('requires: a range this pxsig reads, and refuses outside', () => {
   const r = spawnSync(process.execPath, [cli, 'projects', '--json'], {
     cwd: ws,
     encoding: 'utf8',
-    env: { ...process.env, PXSIG_WORKSPACE: '', PXSIG_NO_DELEGATE: '1' },
+    env: { ...testEnv(testHome), PXSIG_WORKSPACE: '', PXSIG_NO_DELEGATE: '1' },
   });
   assert.equal(r.status, 2, r.stdout + r.stderr);
   assert.match(r.stderr + r.stdout, /requires pxsig >=99\.0\.0; this is pxsig/);
@@ -227,7 +227,7 @@ test(
     );
     writeFileSync(checkPath, JSON.stringify(check));
     const port = await freePort();
-    const dash = mkdtempSync(join(tmpdir(), 'pxsig-dash-'));
+    const dash = tempDir('dash');
     writeFileSync(
       join(dash, 'index.html'),
       '<!doctype html><html><head><title>pxsig</title></head><body></body></html>'
@@ -237,7 +237,12 @@ test(
       [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
       {
         cwd: f.repo,
-        env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '', PXSIG_DASHBOARD_DIR: dash },
+        env: {
+          ...testEnv(testHome),
+          PXSIG_BIN: rustBin,
+          PXSIG_WORKSPACE: '',
+          PXSIG_DASHBOARD_DIR: dash,
+        },
       }
     );
     let log = '';

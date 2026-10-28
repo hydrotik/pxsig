@@ -2,7 +2,7 @@
 // in a person's hands. Synthetic images and a fixture project; needs no server or Storybook.
 import { spawnSync } from 'node:child_process';
 import { strict as assert } from 'node:assert';
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -10,7 +10,7 @@ import { detectAgent } from '../src/lib/agents.mjs';
 import { paths, readLog, record, sha256, snapshot, undo, verify } from '../src/lib/approvals.mjs';
 import { classify } from '../src/lib/shape.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
-import { fixture, hashTree, hasRust, png, rustBin } from './fixture.mjs';
+import { fixture, hashTree, hasRust, png, rustBin, testEnv, testHome } from './fixture.mjs';
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
 const { repo, sig } = fixture({ withSigs: hasRust });
@@ -22,7 +22,7 @@ const node = (args, env = {}) =>
   spawnSync(process.execPath, args, {
     cwd: repo,
     encoding: 'utf8',
-    env: { ...process.env, PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin, ...env },
+    env: { ...testEnv(testHome), PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin, ...env },
   });
 
 // A light page with a dark "thumb" at x0, and the same thumb moved, recoloured, or on a bigger page.
@@ -101,7 +101,7 @@ test(
     const original = readFileSync(sig(id));
     // approve: snapshot the old baseline, write the new one, log it
     const { before } = snapshot(P, entry, 'b1');
-    cpSync(sig('components-alpha--with-icon'), sig(id));
+    copyFileSync(sig('components-alpha--with-icon'), sig(id));
     record(P, entry, { batch: 'b1', via: 'test', before });
     assert.equal(readLog(P).length, 1);
     assert.deepEqual(verify(P, manifest).mismatched, []);
@@ -154,7 +154,7 @@ test('approve apply refuses a plan naming an entry the manifest no longer has, w
   writeFileSync(preload, 'process.stdin.isTTY = true;\nprocess.stdout.isTTY = true;\n');
   /** @type {Record<string, string | undefined>} */
   const env = {
-    ...process.env,
+    ...testEnv(testHome),
     PXSIG_URL: 'http://127.0.0.1:1',
     PXSIG_BIN: rustBin,
     PXSIG_FORMAT: 'plain',

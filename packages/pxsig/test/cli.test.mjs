@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { fixture, rustBin } from './fixture.mjs';
+import { fixture, rustBin, testEnv, testHome } from './fixture.mjs';
 
 const cli = fileURLToPath(new URL('../src/cli.mjs', import.meta.url));
 const { repo } = fixture({ withSigs: false });
@@ -19,7 +19,7 @@ const run = (args, env = {}) =>
     cwd: repo,
     encoding: 'utf8',
     env: {
-      ...process.env,
+      ...testEnv(testHome),
       PXSIG_FORMAT: '',
       PXSIG_URL: 'http://127.0.0.1:1',
       PXSIG_BIN: rustBin,
@@ -90,7 +90,12 @@ test('stale with too many edits to trace says so and is not clean (exit 1)', () 
   const r = spawnSync(process.execPath, [cli, 'stale'], {
     cwd: own,
     encoding: 'utf8',
-    env: { ...process.env, PXSIG_FORMAT: '', PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin },
+    env: {
+      ...testEnv(testHome),
+      PXSIG_FORMAT: '',
+      PXSIG_URL: 'http://127.0.0.1:1',
+      PXSIG_BIN: rustBin,
+    },
   });
   assert.equal(r.status, 1, r.stdout + r.stderr);
   assert.match(r.stdout, /\d+ source files edited since the oldest verdict .*too many to trace/);
@@ -107,7 +112,12 @@ test('entry shows the review decision on the current result', () => {
   const r = spawnSync(process.execPath, [cli, 'entry', id], {
     cwd: own,
     encoding: 'utf8',
-    env: { ...process.env, PXSIG_FORMAT: '', PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin },
+    env: {
+      ...testEnv(testHome),
+      PXSIG_FORMAT: '',
+      PXSIG_URL: 'http://127.0.0.1:1',
+      PXSIG_BIN: rustBin,
+    },
   });
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /Review\W+rejected/);
@@ -120,7 +130,12 @@ test('affected notes the remote URLs it does not follow', () => {
   const r = spawnSync(process.execPath, [cli, 'affected', file], {
     cwd: own,
     encoding: 'utf8',
-    env: { ...process.env, PXSIG_FORMAT: '', PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin },
+    env: {
+      ...testEnv(testHome),
+      PXSIG_FORMAT: '',
+      PXSIG_URL: 'http://127.0.0.1:1',
+      PXSIG_BIN: rustBin,
+    },
   });
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /1 remote URLs are not followed \(a full check covers them\)\./);

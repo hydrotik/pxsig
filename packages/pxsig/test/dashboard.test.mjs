@@ -2,11 +2,11 @@
 // (it needs Vite and a design system); scripts/examples-test.mjs builds the plain example.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { tempDir, testEnv, testHome } from './fixture.mjs';
 
 const cli = fileURLToPath(new URL('../bin/pxsig.mjs', import.meta.url));
 /**
@@ -17,7 +17,7 @@ const pxsig = (args, cwd) =>
   spawnSync(process.execPath, [cli, ...args], {
     cwd,
     encoding: 'utf8',
-    env: { ...process.env, PXSIG_FORMAT: 'plain', PXSIG_UI_ADAPTER: '' },
+    env: { ...testEnv(testHome), PXSIG_FORMAT: 'plain', PXSIG_UI_ADAPTER: '' },
   });
 
 test('gaps: the reference adapter covers every contract component', () => {
@@ -46,7 +46,7 @@ test('an unknown adapter name or path fails at once, naming what it looked for',
 });
 
 test('gaps: dashboard.ui in pxsig.config.json; a missing required component is a problem', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'pxsig-ui-'));
+  const dir = tempDir('ui');
   try {
     mkdirSync(join(dir, 'ui'));
     writeFileSync(join(dir, 'pxsig.config.json'), JSON.stringify({ dashboard: { ui: './ui' } }));
@@ -83,7 +83,7 @@ test('gaps: dashboard.ui in pxsig.config.json; a missing required component is a
 test("gaps and build compare the adapter's contract version with this pxsig's", () => {
   const r = pxsig(['dashboard', 'gaps', '--ui', 'hydrotik', '--json']);
   assert.equal(JSON.parse(r.stdout).contract.status, 'same');
-  const dir = mkdtempSync(join(tmpdir(), 'pxsig-ui-'));
+  const dir = tempDir('ui');
   try {
     mkdirSync(join(dir, 'ui'));
     writeFileSync(

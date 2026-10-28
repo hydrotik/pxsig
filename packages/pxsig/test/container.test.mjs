@@ -9,15 +9,7 @@
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -34,7 +26,7 @@ import {
   PXSIG_VERSION,
   resolvePeer,
 } from '../src/lib/workspace.mjs';
-import { fixture } from './fixture.mjs';
+import { fixture, tempDir, testEnv, testHome } from './fixture.mjs';
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), '..');
 const cli = join(pkg, 'bin', 'pxsig.mjs');
@@ -44,7 +36,7 @@ const cli = join(pkg, 'bin', 'pxsig.mjs');
  * @param {string} version
  */
 function fakePlaywright(version) {
-  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'pxsig-pw-')));
+  const dir = realpathSync(tempDir('pw'));
   writeFileSync(
     join(dir, 'package.json'),
     JSON.stringify({ name: 'playwright', version, main: 'index.js' })
@@ -267,7 +259,7 @@ test("a remote browser's environment: its OS from the page, its image from the r
 });
 
 test('browserRecord reads browser.json only for the endpoint it recorded', () => {
-  const root = mkdtempSync(join(tmpdir(), 'pxsig-ws-'));
+  const root = tempDir('ws');
   mkdirSync(dirname(browserFile(root)), { recursive: true });
   writeFileSync(browserFile(root), JSON.stringify({ ws: 'ws://127.0.0.1:3000/', image: 'img' }));
   // Written just above for this endpoint.
@@ -333,7 +325,7 @@ function fakeDocker({
 }
 
 test('pxsig browser: status with nothing recorded never starts docker; start, status and stop against a stand-in docker', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'pxsig-ws-'));
+  const root = tempDir('ws');
   const d = fakeDocker();
   const s0 = await browserCommand({ sub: 'status', root, docker: d.docker });
   assert.equal(s0.exit, 0);
@@ -398,7 +390,7 @@ test('pxsig browser: status with nothing recorded never starts docker; start, st
 });
 
 test('pxsig browser: no docker CLI, or no daemon, is a setup error (exit 2); bad usage too', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'pxsig-ws-'));
+  const root = tempDir('ws');
   await assert.rejects(
     browserCommand({
       sub: 'start',
@@ -458,7 +450,7 @@ test('pxsig browser from the CLI, with no docker on PATH: status exits 0, start 
   const f = fixture({ withSigs: false });
   // No PATH entry holds docker (Windows spells the variable Path: drop every spelling).
   const env = Object.fromEntries(
-    Object.entries(process.env).filter(([k]) => k.toUpperCase() !== 'PATH')
+    Object.entries(testEnv(testHome)).filter(([k]) => k.toUpperCase() !== 'PATH')
   );
   Object.assign(env, {
     PATH: join(f.repo, 'no-such-bin'),
@@ -493,7 +485,7 @@ test('image-mismatch: inside the image, a Playwright or a pxsig other than the p
     playwright: '1.58.2',
   });
   assert.equal(parseImageTag('ghcr.io/hydrotik/pxsig'), null);
-  const ws = mkdtempSync(join(tmpdir(), 'pxsig-ws-'));
+  const ws = tempDir('ws');
   mkdirSync(join(ws, 'node_modules', 'pxsig'), { recursive: true });
   writeFileSync(
     join(ws, 'node_modules', 'pxsig', 'package.json'),

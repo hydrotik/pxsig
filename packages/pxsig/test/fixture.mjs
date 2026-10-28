@@ -7,18 +7,20 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import {
-  cpSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
+  rmSync,
   statSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
+import { after } from 'node:test';
 import { deflateSync } from 'node:zlib';
 import { resolveContext, scanStories } from '../src/lib/integrity.mjs';
 import { readHeader, readSection } from '../src/lib/psig.mjs';
@@ -28,6 +30,120 @@ import { openProject, rustBinary } from '../src/lib/workspace.mjs';
 
 export const rustBin = rustBinary();
 export const hasRust = existsSync(rustBin);
+
+// --- temp folders and the environment a spawned pxsig sees ------------------------------------------
+/**
+ * Every temp folder's name has a space and a non-ASCII letter, so each OS runs the suite on paths like
+ * a real profile's (`C:\Users\José Núñez\…`).
+ */
+export const TEMP_PREFIX = 'pxsig dir é-';
+
+/** @type {string[]} */
+const made = [];
+/** @param {string} dir */
+const remove = (dir) => {
+  try {
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  } catch (e) {
+    // A folder a stray child still holds (Windows): left in the temp folder, said, not a failure.
+    process.stderr.write(`could not remove ${dir}: ${String(e)}\n`);
+  }
+};
+// The folders made without a test context (at a file's top level): removed when the file's tests end.
+// Each test file is its own process, so this runs once per file.
+after(() => {
+  for (const dir of made.splice(0)) remove(dir);
+});
+
+/**
+ * A new temp folder, removed after `t` (or after the file's tests, without one).
+ * @param {string} [name] a word in the folder name, for a reader of a failure
+ * @param {{ after: (fn: () => void) => void }} [t] the test context
+ */
+export function tempDir(name = 'tmp', t) {
+  const dir = mkdtempSync(join(tmpdir(), `${TEMP_PREFIX}${name}-`));
+  if (t) t.after(() => remove(dir));
+  else made.push(dir);
+  return dir;
+}
+
+/**
+ * Copy a folder, recursively. Not `fs.cpSync`: on Windows, Node 22's native cpSync mishandles a
+ * non-ASCII path (a recursive copy lands somewhere else without an error; a file copied over an
+ * existing one throws ", The operation completed successfully."), and every temp folder here has
+ * an `é`. For one file, use `copyFileSync`.
+ * @param {string} from
+ * @param {string} to
+ */
+export function copyTree(from, to) {
+  mkdirSync(to, { recursive: true });
+  for (const d of readdirSync(from, { withFileTypes: true })) {
+    const a = join(from, d.name);
+    const b = join(to, d.name);
+    if (d.isDirectory()) copyTree(a, b);
+    else copyFileSync(a, b);
+  }
+}
+
+/**
+ * Where Playwright finds its browsers for this user (its own default), so a process whose home
+ * folder is moved still finds the Chromium `playwright install` put there.
+ */
+function playwrightBrowsers() {
+  if (process.env.PLAYWRIGHT_BROWSERS_PATH) return process.env.PLAYWRIGHT_BROWSERS_PATH;
+  const home = homedir();
+  if (process.platform === 'win32')
+    return join(process.env.LOCALAPPDATA || join(home, 'AppData', 'Local'), 'ms-playwright');
+  if (process.platform === 'darwin') return join(home, 'Library', 'Caches', 'ms-playwright');
+  return join(process.env.XDG_CACHE_HOME || join(home, '.cache'), 'ms-playwright');
+}
+const BROWSERS = playwrightBrowsers();
+
+/** The per-user folders pxsig reads (lib/machine.mjs), and where each goes under a test's home. */
+const HOME_VARS = /** @type {const} */ ([
+  ['HOME', ''],
+  ['USERPROFILE', ''],
+  ['LOCALAPPDATA', 'AppData/Local'],
+  ['XDG_CONFIG_HOME', '.config'],
+  ['XDG_STATE_HOME', '.local/state'],
+]);
+/**
+ * @param {string} home
+ * @returns {Record<string, string>}
+ */
+const homeVars = (home) => ({
+  ...Object.fromEntries(
+    HOME_VARS.map(([k, sub]) => [k, sub ? join(home, ...sub.split('/')) : home])
+  ),
+  PLAYWRIGHT_BROWSERS_PATH: BROWSERS,
+});
+
+/**
+ * This test file's home folder. The test process uses it too (set below), so what a test reads in
+ * process (`readToken`, `readSettings`) is what the pxsig it started wrote: on Windows the server's
+ * token files live under `%LOCALAPPDATA%`, not beside the project.
+ */
+export const testHome = tempDir('home');
+Object.assign(process.env, homeVars(testHome));
+
+/**
+ * This process's environment for a spawned pxsig (the CLI, `pxsig serve`, the MCP server), with
+ * every per-user folder under `home`: the server's tokens, state and settings land there, never in
+ * the real `%LOCALAPPDATA%\pxsig` or `~/.local/state/pxsig`. `extra` is laid over the result.
+ * @param {string} home a temp folder: `testHome`, unless a test needs its own (`tempDir`)
+ * @param {Record<string, string | undefined>} [extra]
+ * @returns {Record<string, string | undefined>}
+ */
+export function testEnv(home, extra = {}) {
+  /** @type {Set<string>} */
+  const names = new Set(HOME_VARS.map(([k]) => k));
+  // Windows names are case-insensitive: drop `LocalAppData` too, so only the value set here remains.
+  /** @type {Record<string, string | undefined>} */
+  const env = Object.fromEntries(
+    Object.entries(process.env).filter(([k]) => !names.has(k.toUpperCase()))
+  );
+  return Object.assign(env, homeVars(home), extra);
+}
 
 // --- PNG fixtures (no dependencies) -----------------------------------------------------------------
 const CRC = Array.from({ length: 256 }, (_, n) => {
@@ -125,15 +241,17 @@ function fakePsig(id, { image }) {
 }
 
 /**
- * repo/  (a single-package project: the workspace is the project)
+ * repo/  (a single-package project: the workspace is the project; its path has a space and an `é`)
  *   pxsig.config.json
  *   src/components/{Alpha,Beta,Gamma,Delta}/*.stories.tsx, src/internal/Helpers/Helpers.stories.tsx
  *   .pxsig/{manifest.json, baselines/, renders/latest, reports/, a11y.json}
  *   node_modules/@storybook/react (a stub, so the stories' package import resolves)
- * @param {{ withSigs?: boolean }} [opts]
+ * Also `env`, `testEnv(testHome)`: what a spawned pxsig is given.
+ * @param {{ withSigs?: boolean, t?: { after: (fn: () => void) => void } }} [opts] `t`: remove the
+ *   folders after that test (otherwise after the file's tests)
  */
-export function fixture({ withSigs = hasRust } = {}) {
-  const repo = mkdtempSync(join(tmpdir(), 'pxsig-integrity-'));
+export function fixture({ withSigs = hasRust, t: context } = {}) {
+  const repo = tempDir('repo', context);
   mkdirSync(join(repo, '.git'));
   const px = join(repo, '.pxsig');
   /**
@@ -246,7 +364,7 @@ export function fixture({ withSigs = hasRust } = {}) {
         );
         assert.equal(r.status, 0, r.stderr);
         mkdirSync(dirname(sig(id)), { recursive: true });
-        if (id === ids.legacy) cpSync(json, sig(id));
+        if (id === ids.legacy) copyFileSync(json, sig(id));
         else {
           const args = ['pack', json, '--out', sig(id), '--entry', JSON.stringify({ id })];
           if (!noImage.includes(id)) args.push('--image', join(repo, '.tmp', `${id}.png`));
@@ -339,7 +457,8 @@ export function fixture({ withSigs = hasRust } = {}) {
   /** @param {string} id */
   const hasBaseImage = (id) =>
     readHeader(sig(id))?.sections?.some((x) => x.name === 'image') ?? false;
-  return { repo, px, ctx, ids, index, affected, latest, sig, manifest, hasBaseImage };
+  const env = testEnv(testHome);
+  return { repo, env, px, ctx, ids, index, affected, latest, sig, manifest, hasBaseImage };
 }
 
 /**

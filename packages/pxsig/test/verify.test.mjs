@@ -3,8 +3,8 @@
 // names), and store files a merge left conflicted. Fixture projects in real git repositories.
 import { spawnSync } from 'node:child_process';
 import { strict as assert } from 'node:assert';
-import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { homedir, tmpdir } from 'node:os';
+import { appendFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -16,7 +16,7 @@ import {
   record,
 } from '../src/lib/approvals.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
-import { fixture, hasRust, rustBin } from './fixture.mjs';
+import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 /** @import { ManifestEntry } from '../src/types.js' */
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
@@ -53,7 +53,7 @@ const cli = (repo, args) =>
     cwd: repo,
     encoding: 'utf8',
     env: {
-      ...process.env,
+      ...testEnv(testHome),
       PXSIG_FORMAT: '',
       PXSIG_URL: 'http://127.0.0.1:1',
       PXSIG_BIN: rustBin,
@@ -179,7 +179,7 @@ test(
       other: 0,
       agents: { copilot: 1 },
     });
-    const dir = mkdtempSync(join(tmpdir(), 'pxsig-summary-'));
+    const dir = tempDir('summary');
     /** @param {Record<string, unknown> | null} approvals */
     const md = (approvals) => {
       writeFileSync(
@@ -293,7 +293,7 @@ test(
     const r = spawnSync(process.execPath, [join(src, 'check.mjs'), '--full'], {
       cwd: f.repo,
       encoding: 'utf8',
-      env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_URL: 'http://127.0.0.1:1' },
+      env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_URL: 'http://127.0.0.1:1' },
     });
     assert.equal(r.status, 2, r.stdout + r.stderr);
     assert.match(r.stderr, /store files are conflicted/);

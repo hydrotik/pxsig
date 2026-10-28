@@ -4,19 +4,19 @@
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { buildData } from '../src/report.mjs';
 import { initProject } from '../src/lib/setup.mjs';
 import { openProject, PXSIG_VERSION } from '../src/lib/workspace.mjs';
+import { tempDir, testEnv, testHome } from './fixture.mjs';
 
 const cli = fileURLToPath(new URL('../bin/pxsig.mjs', import.meta.url));
 /** @param {Record<string, unknown>} files */
 const tree = (files) => {
-  const root = mkdtempSync(join(tmpdir(), 'pxsig-label-'));
+  const root = tempDir('label');
   mkdirSync(join(root, '.git'));
   for (const [p, v] of Object.entries(files)) {
     mkdirSync(dirname(join(root, p)), { recursive: true });
@@ -36,7 +36,7 @@ const run = (args, cwd) =>
     encoding: 'utf8',
     timeout: 20_000,
     env: {
-      ...process.env,
+      ...testEnv(testHome),
       PXSIG_FORMAT: 'plain',
       PXSIG_WORKSPACE: '',
       PXSIG_PROJECT: '',

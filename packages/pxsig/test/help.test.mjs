@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from '../src/lib/args.mjs';
 import { helpNames, helpSource, lookup } from '../src/help.mjs';
 import { tools } from '../src/mcp.mjs';
+import { testEnv, testHome } from './fixture.mjs';
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = join(pkg, '..', '..');
@@ -37,7 +38,7 @@ const cli = join(pkg, 'bin', 'pxsig.mjs');
 const pxsig = (args) =>
   spawnSync(process.execPath, [cli, ...args], {
     encoding: 'utf8',
-    env: { ...process.env, PXSIG_FORMAT: 'plain', PXSIG_NO_DELEGATE: '1' },
+    env: { ...testEnv(testHome), PXSIG_FORMAT: 'plain', PXSIG_NO_DELEGATE: '1' },
   });
 
 /** Every entry's flags: global, each command's and each subcommand's. */
