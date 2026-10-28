@@ -5,7 +5,7 @@ import { strict as assert } from 'node:assert';
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { detectAgent } from '../src/lib/agents.mjs';
 import { paths, readLog, record, sha256, snapshot, undo, verify } from '../src/lib/approvals.mjs';
 import { classify } from '../src/lib/shape.mjs';
@@ -149,7 +149,7 @@ test('approve apply refuses a plan naming an entry the manifest no longer has, w
   mkdirSync(P.store.reports, { recursive: true });
   const planFile = join(P.store.reports, 'stale-plan.json');
   writeFileSync(planFile, JSON.stringify(plan));
-  // A person at a terminal: TTYs (a preload), no CI and no assistant markers.
+  // A person at a terminal: TTYs (a preload, as a file URL for Windows), no CI and no assistant markers.
   const preload = join(repo, 'tty-preload.mjs');
   writeFileSync(preload, 'process.stdin.isTTY = true;\nprocess.stdout.isTTY = true;\n');
   /** @type {Record<string, string | undefined>} */
@@ -164,7 +164,7 @@ test('approve apply refuses a plan naming an entry the manifest no longer has, w
   const before = { store: hashTree(P.store.root), log: readLog(P).length };
   const r = spawnSync(
     process.execPath,
-    ['--import', preload, join(src, 'cli.mjs'), 'approve', 'apply', planFile],
+    ['--import', pathToFileURL(preload).href, join(src, 'cli.mjs'), 'approve', 'apply', planFile],
     {
       cwd: repo,
       encoding: 'utf8',
