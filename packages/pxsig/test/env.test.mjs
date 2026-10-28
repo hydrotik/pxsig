@@ -324,7 +324,10 @@ test('integrity: one env-mismatch setup warning, never a per-entry code, and doc
     /3 entries were rendered in a different environment than their baseline \(browser\.version 141→142, fonts\.probe: Inter\)/
   );
   assert.ok(
-    !after.entries.some((x) => x.issues.some((i) => i.code === 'env-mismatch')),
+    // A setup code: the test checks no entry carries it, which the types already say.
+    !after.entries.some((x) =>
+      x.issues.some((i) => /** @type {string} */ (i.code) === 'env-mismatch')
+    ),
     'no entry carries the code'
   );
   assert.deepEqual(

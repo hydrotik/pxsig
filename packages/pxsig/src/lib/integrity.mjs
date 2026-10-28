@@ -32,7 +32,15 @@ import { workspaceProblems } from './workspace.mjs';
 import { toPosix } from './paths.mjs';
 import { portabilityProblems } from './portability.mjs';
 import { readLines, writeJson } from './files.mjs';
-/** @import { ApprovalLine, Project, StoryIndex, TornLine } from '../types.js' */
+/** @import { ApprovalLine, EnvSummary, IndexStory, Project, StoryIndex, TornLine } from '../types.js' */
+/**
+ * @import {
+ *   CodeInfo, EditedFile, FetchLike, FetchedIndex, IntegrityCode, IntegrityManifest, IntegrityReport,
+ *   IntegrityRow, IntegritySettings, Issue, IssueExtra, Ledger, LedgerComponent, LedgerEntry,
+ *   LedgerFilter, LedgerSetup, LedgerSummary, ReconcileOptions, ReviewFile, RustAffected, ServeAnswer,
+ *   Severity, Staleness, StorybookIndexEntry, StorybookIndexJson, Tracer
+ * } from '../types/t3.js'
+ */
 import { conflictedStoreFiles } from './approvals.mjs';
 import { enforcementProblems, readinessTally, resolveEnforcement } from './enforcement.mjs';
 
@@ -41,6 +49,7 @@ export const SCHEMA_VERSION = 1;
 /**
  * Status codes. Stable and machine-readable: never renamed, only added to.
  * `rank` orders codes within a severity when picking an entry's primary status.
+ * @type {Record<IntegrityCode, CodeInfo>}
  */
 export const CODES = {
   unregistered: {
@@ -135,9 +144,12 @@ export const CODES = {
     help: 'Covered, rendered, checked, fresh and passing.',
   },
 };
+/** @type {Severity[]} */
 export const SEVERITIES = ['error', 'warn', 'info'];
+/** @param {Severity} s */
 const sevRank = (s) => SEVERITIES.indexOf(s);
 
+/** @type {IntegritySettings} */
 export const DEFAULT_INTEGRITY = {
   requireBaselineImages: true,
   staleAfterSourceChange: true,
@@ -155,6 +167,13 @@ export const DEFAULT_INTEGRITY = {
 
 // --- small utilities ------------------------------------------------------------------------------
 
+/**
+ * A JSON file, or `fallback` when it is missing or does not parse. The value is unchecked: the
+ * caller says what it holds.
+ * @param {string} p
+ * @param {unknown} [fallback]
+ * @returns {unknown}
+ */
 export const readJson = (p, fallback = null) => {
   try {
     return JSON.parse(readFileSync(p, 'utf8'));
@@ -162,6 +181,7 @@ export const readJson = (p, fallback = null) => {
     return fallback;
   }
 };
+/** @param {string} p */
 const mtime = (p) => {
   try {
     return statSync(p).mtimeMs;
@@ -169,9 +189,12 @@ const mtime = (p) => {
     return null;
   }
 };
+/** @param {number | null | undefined} ms */
 const iso = (ms) => (ms == null ? null : new Date(ms).toISOString());
+/** @param {string} p */
 export const sha256File = (p) =>
   existsSync(p) ? createHash('sha256').update(readFileSync(p)).digest('hex') : null;
+/** @param {string} p */
 const isPsig = (p) => p.endsWith('.psig');
 
 /**
@@ -195,7 +218,9 @@ export const writeJsonAtomic = (path, value, opts) => writeJson(path, value, opt
  */
 export function resolveContext(P, { manifestPath } = {}) {
   if (!P?.store) throw new Error('resolveContext: a resolved project is required');
+  /** @param {string} abs */
   const ws = (abs) => toPosix(relative(P.workspaceRoot, abs));
+  /** @type {IntegritySettings} */
   const integrity = {
     ...DEFAULT_INTEGRITY,
     ...(P.config.integrity ?? {}),
@@ -230,12 +255,17 @@ export function resolveContext(P, { manifestPath } = {}) {
   };
 }
 
+/** @param {IntegrityContext} ctx */
 export const ledgerPath = (ctx) => join(ctx.dirs.reports, 'integrity.json');
+/** @param {IntegrityContext} ctx */
 export const repairLogPath = (ctx) => join(ctx.dirs.reports, 'repairs.ndjson');
 
 // --- Storybook ids (the rules of @storybook/csf) -----------------------------------------------------
 
-/** Storybook's `sanitize`: lower-case, punctuation and spaces → '-', runs collapsed, ends trimmed. */
+/**
+ * Storybook's `sanitize`: lower-case, punctuation and spaces → '-', runs collapsed, ends trimmed.
+ * @param {unknown} s
+ */
 export const sanitize = (s) =>
   String(s)
     .toLowerCase()
@@ -244,7 +274,10 @@ export const sanitize = (s) =>
     .replace(/^-+/, '')
     .replace(/-+$/, '');
 
-/** lodash `startCase`, as Storybook's `storyNameFromExport` uses it: `Virtualised100K` → `Virtualised 100 K`. */
+/**
+ * lodash `startCase`, as Storybook's `storyNameFromExport` uses it: `Virtualised100K` → `Virtualised 100 K`.
+ * @param {unknown} key
+ */
 export const storyNameFromExport = (key) =>
   String(key)
     .replace(/([a-z\d])([A-Z])/g, '$1 $2')
@@ -256,12 +289,20 @@ export const storyNameFromExport = (key) =>
     .map((w) => w[0].toUpperCase() + w.slice(1))
     .join(' ');
 
-/** Storybook's `toId(kind, name)`. */
+/**
+ * Storybook's `toId(kind, name)`.
+ * @param {unknown} title
+ * @param {unknown} name
+ */
 export const toId = (title, name) => `${sanitize(title)}--${sanitize(name)}`;
 
 // --- the story index ------------------------------------------------------------------------------
 
-/** Normalise an index.json importPath (relative to the Storybook config dir) to repo-relative. */
+/**
+ * Normalise an index.json importPath (relative to the Storybook config dir) to repo-relative.
+ * @param {IntegrityContext} ctx
+ * @param {string} p
+ */
 export function normaliseImportPath(ctx, p) {
   if (!p) return p;
   if (ctx.config.storybookDir)
@@ -272,6 +313,7 @@ export function normaliseImportPath(ctx, p) {
     : toPosix(relative(ctx.repoRoot, resolve(ctx.repoRoot, p)));
 }
 
+/** @param {IntegrityContext} ctx */
 const scopeRe = (ctx) =>
   new RegExp(
     ctx.config.importPathPattern ??
@@ -280,6 +322,8 @@ const scopeRe = (ctx) =>
 
 /**
  * The storied folder (component) an importPath belongs to, or null when outside scope.
+ * @param {IntegrityContext} ctx
+ * @param {string | null | undefined} importPath
  * @returns {string | null}
  */
 export function componentOf(ctx, importPath) {
@@ -293,6 +337,9 @@ export function componentOf(ctx, importPath) {
  * Fetch `<baseUrl>/index.json`. `reachable` = something answered; `healthy` = it is a v4/v5
  * index with entries. Storybook answers a broken build (e.g. "Unable to index files") with an
  * error, which is not an index: callers must not render against it.
+ * @param {unknown} baseUrl
+ * @param {{ timeoutMs?: number, fetchImpl?: FetchLike }} [opts]
+ * @returns {Promise<FetchedIndex>}
  */
 export async function fetchStoryIndex(
   baseUrl,
@@ -307,13 +354,16 @@ export async function fetchStoryIndex(
       url,
       reachable: false,
       healthy: false,
-      error: `unreachable: ${e.cause?.code ?? e.message}`,
+      // fetch rejects with an Error: a TypeError with the socket error as `cause`, or an AbortError.
+      error: `unreachable: ${/** @type {Error & { cause?: { code?: string } }} */ (e).cause?.code ?? /** @type {Error} */ (e).message}`,
     };
   }
   const body = await res.text().catch(() => '');
+  /** @type {StorybookIndexJson | null} */
   let json = null;
   try {
-    json = JSON.parse(body);
+    // Any JSON value: only `entries` is read, and it is checked next.
+    json = /** @type {StorybookIndexJson | null} */ (JSON.parse(body));
   } catch {
     /* not JSON: an error page */
   }
@@ -331,7 +381,8 @@ export async function fetchStoryIndex(
       error: `broken index (HTTP ${res.status}): ${msg || 'not a story index'}`,
     };
   }
-  const stories = Object.values(json.entries)
+  // A v4/v5 index: `entries` holds its story and docs records.
+  const stories = Object.values(/** @type {Record<string, StorybookIndexEntry>} */ (json.entries))
     .filter((e) => e.type === 'story')
     .map((e) => ({
       id: e.id,
@@ -343,7 +394,10 @@ export async function fetchStoryIndex(
   return { url, reachable: true, healthy: true, version: json.v ?? null, stories };
 }
 
-/** Strip comments so a commented-out `export const` is not a story. */
+/**
+ * Strip comments so a commented-out `export const` is not a story.
+ * @param {string} src
+ */
 const stripComments = (src) =>
   src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:\\])\/\/.*$/gm, '$1');
 
@@ -351,11 +405,15 @@ const stripComments = (src) =>
  * Static fallback: scan `*.stories.{tsx,ts,jsx,js}` under srcRoot. Title from the default export's
  * meta (`title: '…'`), else inferred from the path; story ids by Storybook's rules
  * (`toId(title, storyNameFromExport(exportName))`).
+ * @param {IntegrityContext} ctx
+ * @returns {IndexStory[]}
  */
 export function scanStories(ctx) {
   const root = resolve(ctx.repoRoot, ctx.srcRoot);
+  /** @type {IndexStory[]} */
   const out = [];
   if (!existsSync(root)) return out;
+  /** @param {string} dir */
   const walk = (dir) => {
     for (const d of readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
       a.name.localeCompare(b.name)
@@ -398,10 +456,13 @@ export function scanStories(ctx) {
 
 /**
  * The story index to reconcile against: live when healthy, else the static scan.
+ * @param {IntegrityContext} ctx
+ * @param {{ fetchImpl?: FetchLike, offline?: boolean, live?: FetchedIndex | null }} [opts]
  * @returns {Promise<StoryIndex>}
  */
 export async function loadStoryIndex(ctx, { fetchImpl, offline = false, live } = {}) {
   const baseUrl = ctx.config.baseUrl ?? 'http://localhost:6006';
+  /** @type {FetchedIndex} */
   const res =
     live ??
     (offline
@@ -432,6 +493,7 @@ export async function loadStoryIndex(ctx, { fetchImpl, offline = false, live } =
 
 // --- staleness: which sources changed after each verdict? -----------------------------------------------
 
+/** @param {IntegrityContext} ctx */
 function sourceRoots(ctx) {
   const roots = process.env.PXSIG_SOURCES?.split(',') ??
     ctx.integrity.sourceRoots ?? [
@@ -441,9 +503,15 @@ function sourceRoots(ctx) {
   return [...new Set(roots)].map((r) => resolve(ctx.repoRoot, r)).filter((r) => existsSync(r));
 }
 
-/** Source files modified after `sinceMs` (tests, build output and dot-folders skipped). */
+/**
+ * Source files modified after `sinceMs` (tests, build output and dot-folders skipped).
+ * @param {IntegrityContext} ctx
+ * @param {number} sinceMs
+ */
 export function editedFilesSince(ctx, sinceMs) {
+  /** @type {EditedFile[]} */
   const out = [];
+  /** @param {string} dir */
   const walk = (dir) => {
     let list;
     try {
@@ -476,6 +544,8 @@ export function editedFilesSince(ctx, sinceMs) {
 /**
  * The Rust import graph over one long-lived `pxsig serve`: `affected(file)` → entry ids.
  * Returns null when the binary is not built (callers fall back to the folder rule).
+ * @param {IntegrityContext} ctx
+ * @returns {RustAffected | null}
  */
 export function rustAffected(ctx) {
   if (!existsSync(ctx.rustBin)) return null;
@@ -483,20 +553,28 @@ export function rustAffected(ctx) {
     cwd: ctx.repoRoot,
     stdio: ['pipe', 'pipe', 'ignore'],
   });
+  /** @type {Map<number, { resolve: (r: ServeAnswer['result']) => void, reject: (e: Error) => void }>} */
   const pending = new Map();
   let seq = 0;
+  /** @type {Error | null} */
   let dead = null;
-  createInterface({ input: proc.stdout }).on('line', (line) => {
-    let msg;
-    try {
-      msg = JSON.parse(line);
-    } catch {
-      return;
+  // stdio[1] is 'pipe': stdout is a stream.
+  createInterface({ input: /** @type {import('node:stream').Readable} */ (proc.stdout) }).on(
+    'line',
+    (line) => {
+      /** @type {ServeAnswer} */
+      let msg;
+      try {
+        // The engine's own answer line (`pxsig serve`, one JSON object per line).
+        msg = /** @type {ServeAnswer} */ (JSON.parse(line));
+      } catch {
+        return;
+      }
+      const p = pending.get(msg.id);
+      pending.delete(msg.id);
+      if (p) msg.error ? p.reject(new Error(msg.error)) : p.resolve(msg.result);
     }
-    const p = pending.get(msg.id);
-    pending.delete(msg.id);
-    if (p) msg.error ? p.reject(new Error(msg.error)) : p.resolve(msg.result);
-  });
+  );
   proc.on('error', (e) => (dead = e));
   proc.on('exit', (code) => {
     dead ??= new Error(`pxsig serve exited (${code})`);
@@ -509,24 +587,32 @@ export function rustAffected(ctx) {
       const id = ++seq;
       return new Promise((ok, fail) => {
         pending.set(id, { resolve: (r) => ok(r.traced ?? r.ids ?? []), reject: fail });
-        proc.stdin.write(
+        // stdio[0] is 'pipe': stdin is a stream.
+        /** @type {import('node:stream').Writable} */ (proc.stdin).write(
           `${JSON.stringify({ id, method: 'affected', params: { manifest: ctx.manifestPath, root: ctx.repoRoot, files: [file] } })}\n`
         );
       });
     },
-    close: () => proc.stdin.end(),
+    close: () => /** @type {import('node:stream').Writable} */ (proc.stdin).end(),
   };
 }
 
 // --- the reconciler ---------------------------------------------------------------------------------
 
+/**
+ * @param {string} dir
+ * @param {RegExp} re
+ */
 function listFiles(dir, re) {
   if (!existsSync(dir)) return [];
   return readdirSync(dir).filter((n) => re.test(n));
 }
 
+/** @param {IntegrityContext} ctx */
 function sigFilesOnDisk(ctx) {
+  /** @type {string[]} */
   const out = [];
+  /** @param {string} dir */
   const walk = (dir) => {
     if (!existsSync(dir)) return;
     for (const d of readdirSync(dir, { withFileTypes: true })) {
@@ -539,6 +625,7 @@ function sigFilesOnDisk(ctx) {
   if (ctx.pixelsRoot) walk(resolve(ctx.repoRoot, ctx.pixelsRoot));
   else {
     const src = resolve(ctx.repoRoot, ctx.srcRoot);
+    /** @param {string} dir */
     const find = (dir) => {
       if (!existsSync(dir)) return;
       for (const d of readdirSync(dir, { withFileTypes: true })) {
@@ -553,11 +640,22 @@ function sigFilesOnDisk(ctx) {
   return out;
 }
 
+/**
+ * @param {IntegrityContext} ctx
+ * @param {string} abs
+ */
 const sigComponent = (ctx, abs) => {
   if (ctx.pixelsRoot) return toPosix(dirname(relative(resolve(ctx.repoRoot, ctx.pixelsRoot), abs)));
   return toPosix(dirname(dirname(relative(resolve(ctx.repoRoot, ctx.srcRoot), abs))));
 };
 
+/**
+ * @param {IntegrityContext} ctx
+ * @param {IntegrityCode} code
+ * @param {string} reason
+ * @param {IssueExtra} [extra]
+ * @returns {Issue}
+ */
 const issue = (ctx, code, reason, extra = {}) => ({
   code,
   severity: ctx.integrity.severity[code] ?? CODES[code].severity,
@@ -565,11 +663,19 @@ const issue = (ctx, code, reason, extra = {}) => ({
   ...extra,
 });
 
-/** Most severe first, then by code rank: the order issues are listed in. */
+/**
+ * Most severe first, then by code rank: the order issues are listed in.
+ * @param {{ code: IntegrityCode, severity: Severity }} a
+ * @param {{ code: IntegrityCode, severity: Severity }} b
+ */
 const byGravity = (a, b) =>
   sevRank(a.severity) - sevRank(b.severity) || CODES[a.code].rank - CODES[b.code].rank;
 
-/** The primary status of a list of issues: the most severe, then the lowest rank. */
+/**
+ * The primary status of a list of issues: the most severe, then the lowest rank.
+ * @param {readonly { code: IntegrityCode, severity: Severity }[]} issues
+ * @returns {{ code: IntegrityCode, severity: Severity }}
+ */
 export function primaryOf(issues) {
   if (!issues.length) return { code: 'ok', severity: 'info' };
   const top = [...issues].sort(byGravity)[0];
@@ -582,22 +688,30 @@ export function primaryOf(issues) {
  *   offline    do not fetch the Storybook index (static scan only)
  *   affected   async (file) → ids  (else a short-lived Rust engine, else the folder rule)
  *   now        clock override for tests
+ * @param {IntegrityContext} ctx
+ * @param {ReconcileOptions} [opts]
+ * @returns {Promise<Ledger>}
  */
 export async function reconcile(ctx, opts = {}) {
   const t0 = performance.now();
-  const manifest = readJson(ctx.manifestPath, null);
+  // The manifest `pxsig manifest` wrote (docs/spec.md section 6); checked on the next line.
+  const manifest = /** @type {IntegrityManifest | null} */ (readJson(ctx.manifestPath, null));
   if (!manifest?.stories)
     throw Object.assign(new Error(`no readable manifest at ${ctx.manifestPath}`), { setup: true });
   const index =
     opts.index ?? (await loadStoryIndex(ctx, { offline: opts.offline, fetchImpl: opts.fetchImpl }));
   const reportPath = join(ctx.dirs.reports, 'check.json');
-  const report = readJson(reportPath, null);
-  const review = readJson(join(ctx.dirs.reports, 'review.json'), {}) ?? {};
-  const a11yBase = readJson(ctx.files.a11y, null);
+  // pxsig's own records: check.json (lib/rows.mjs), review.json (the server), a11y.json.
+  const report = /** @type {IntegrityReport | null} */ (readJson(reportPath, null));
+  const review = /** @type {ReviewFile} */ (
+    readJson(join(ctx.dirs.reports, 'review.json'), {}) ?? {}
+  );
+  const a11yBase = /** @type {Record<string, unknown> | null} */ (readJson(ctx.files.a11y, null));
   // The approval log is pxsig's own (lib/approvals.mjs): every complete line is an ApprovalLine.
   const { lines: approvals, torn } = /** @type {{ lines: ApprovalLine[], torn: TornLine[] }} */ (
     readLines(ctx.files.approvals)
   );
+  /** @type {Map<string, ApprovalLine>} */
   const lastApproval = new Map();
   for (const a of approvals) lastApproval.set(a.id, a);
   const rows = new Map((report?.rows ?? []).map((r) => [r.id, r]));
@@ -609,6 +723,7 @@ export async function reconcile(ctx, opts = {}) {
       : null;
   const manifestMtime = mtime(ctx.manifestPath);
   const nonVisual = new Set(ctx.config.nonVisual ?? []);
+  /** @param {string | null} component */
   const isNonVisual = (component) => component != null && nonVisual.has(component.split('/')[0]);
 
   const indexIds = new Map(index.stories.map((s) => [s.id, s]));
@@ -621,18 +736,24 @@ export async function reconcile(ctx, opts = {}) {
       listFiles(ctx.dirs.diff, /\.baseline\.png$/).map((n) => n.slice(0, -13))
     ),
   };
+  /** @param {string} p */
   const rel = (p) => toPosix(relative(ctx.repoRoot, p));
 
   // --- verdict times + staleness --------------------------------------------------------------------
+  /** @param {IntegrityRow | null} row */
   const verdictAt = (row) => (row?.checkedAt ? Date.parse(row.checkedAt) : reportAt);
+  /** @type {Map<string, EditedFile>} */
   const staleBy = new Map(); // id → { file, mtime }
+  /** @type {Staleness} */
   let staleness = { method: 'off', filesTraced: 0 };
   if (ctx.integrity.staleAfterSourceChange && rows.size) {
     const oldest = Math.min(...[...rows.values()].map(verdictAt).filter((t) => t != null));
     const edited = Number.isFinite(oldest) ? editedFilesSince(ctx, oldest) : [];
     staleness = { method: 'none-edited', filesTraced: edited.length };
     if (edited.length) {
+      /** @type {RustAffected | null} */
       let engine = null;
+      /** @type {Tracer | null | undefined} */
       const tracer =
         opts.affected ??
         (edited.length <= ctx.integrity.maxTracedFiles
@@ -645,7 +766,10 @@ export async function reconcile(ctx, opts = {}) {
           lists.forEach((ids, i) => {
             if (!ids) return;
             for (const id of ids)
-              if (!staleBy.has(id) || staleBy.get(id).mtime < edited[i].mtime)
+              if (
+                !staleBy.has(id) ||
+                /** @type {EditedFile} */ (staleBy.get(id)).mtime < edited[i].mtime
+              )
                 staleBy.set(id, edited[i]);
           });
         } finally {
@@ -657,16 +781,23 @@ export async function reconcile(ctx, opts = {}) {
           const folder = e.importPath ? dirname(e.importPath) + '/' : null;
           for (const f of edited)
             if (folder && (f.file === e.importPath || f.file.startsWith(folder)))
-              if (!staleBy.has(e.id) || staleBy.get(e.id).mtime < f.mtime) staleBy.set(e.id, f);
+              if (
+                !staleBy.has(e.id) ||
+                /** @type {EditedFile} */ (staleBy.get(e.id)).mtime < f.mtime
+              )
+                staleBy.set(e.id, f);
         }
       }
     }
   }
 
   // --- per entry --------------------------------------------------------------------------------------
+  /** @type {LedgerEntry[]} */
   const entries = [];
+  /** @type {Set<string>} */
   const sigPaths = new Set();
   // Baselines with no approval log line: `approve verify` fails on them (strict by default, 0.4.0).
+  /** @type {string[]} */
   const unlogged = [];
   for (const e of manifest.stories) {
     const story = e.story ?? e.id;
@@ -684,6 +815,7 @@ export async function reconcile(ctx, opts = {}) {
     const row = rows.get(e.id) ?? null;
     const latestAt = has.latest ? mtime(join(ctx.dirs.latest, `${e.id}.png`)) : null;
     const vAt = row ? verdictAt(row) : null;
+    /** @type {Issue[]} */
     const issues = [];
     if (isNonVisual(component))
       issues.push(
@@ -851,13 +983,15 @@ export async function reconcile(ctx, opts = {}) {
   for (const s of index.stories) {
     const component = componentOf(ctx, s.importPath);
     if (component == null || manifestStories.has(s.id)) continue;
+    /** @type {Issue[]} */
     const issues = [];
     if (isNonVisual(component))
       issues.push(
         issue(ctx, 'excluded', `folder "${component.split('/')[0]}" is listed in config.nonVisual`)
       );
     else if (skippedStories.has(s.id))
-      issues.push(issue(ctx, 'excluded', skippedStories.get(s.id)));
+      // Checked on the line before.
+      issues.push(issue(ctx, 'excluded', /** @type {string} */ (skippedStories.get(s.id))));
     else if ((s.tags ?? []).includes('no-pxsig'))
       issues.push(issue(ctx, 'excluded', "tag 'no-pxsig'"));
     else
@@ -895,11 +1029,18 @@ export async function reconcile(ctx, opts = {}) {
   const known = new Set(manifest.stories.map((e) => e.id));
   const siblings = siblingManifests(ctx);
   for (const p of siblings)
-    for (const e of readJson(p, { stories: [] }).stories ?? []) {
+    // A suite manifest `pxsig manifest` wrote, like the main one.
+    for (const e of /** @type {IntegrityManifest} */ (readJson(p, { stories: [] })).stories ?? []) {
       known.add(e.id);
       if (e.sig) sigPaths.add(resolve(ctx.repoRoot, e.sig));
     }
+  /** @type {Map<string, { id: string, component: string, files: string[] }>} */
   const orphans = new Map();
+  /**
+   * @param {string} id
+   * @param {string} component
+   * @param {string} file
+   */
   const addOrphan = (id, component, file) => {
     const o = orphans.get(id) ?? { id, component, files: [] };
     o.files.push(file);
@@ -908,10 +1049,8 @@ export async function reconcile(ctx, opts = {}) {
   for (const p of sigFilesOnDisk(ctx))
     if (!sigPaths.has(p))
       addOrphan(
-        p
-          .split(sep)
-          .pop()
-          .replace(/\.(psig|pxsig\.json)$/, ''),
+        // split always returns at least one part.
+        /** @type {string} */ (p.split(sep).pop()).replace(/\.(psig|pxsig\.json)$/, ''),
         sigComponent(ctx, p),
         rel(p)
       );
@@ -956,6 +1095,12 @@ export async function reconcile(ctx, opts = {}) {
   );
 
   // --- roll-ups -------------------------------------------------------------------------------------------
+  /**
+   * @type {Map<string, {
+   *   component: string, entries: number, stories: Set<string>,
+   *   counts: Partial<Record<IntegrityCode, number>>, issues: Issue[]
+   * }>}
+   */
   const byComp = new Map();
   for (const x of entries) {
     const c = byComp.get(x.component) ?? {
@@ -1055,7 +1200,10 @@ export async function reconcile(ctx, opts = {}) {
   };
 }
 
-/** Other manifests whose baselines are not orphans: config.integrity.manifests, else `manifest.<suite>.json` beside the main one. */
+/**
+ * Other manifests whose baselines are not orphans: config.integrity.manifests, else `manifest.<suite>.json` beside the main one.
+ * @param {IntegrityContext} ctx
+ */
 export function siblingManifests(ctx) {
   if (Array.isArray(ctx.integrity.manifests))
     return ctx.integrity.manifests
@@ -1069,6 +1217,12 @@ export function siblingManifests(ctx) {
     .map((n) => join(dir, n));
 }
 
+/**
+ * @param {{
+ *   report: IntegrityReport | null, reportAt: number | null, manifestMtime: number | null,
+ *   sigAt: number | null, latestAt: number | null, row: IntegrityRow | null
+ * }} facts
+ */
 function neverCheckedReason({ report, reportAt, manifestMtime, sigAt, latestAt, row }) {
   if (!report) return 'no report yet (reports/check.json is missing): run a full check';
   if (row?.skipped) return 'carried forward by a partial check with no earlier result to carry';
@@ -1091,7 +1245,12 @@ function neverCheckedReason({ report, reportAt, manifestMtime, sigAt, latestAt, 
   return parts.join('; ');
 }
 
-/** Baselines no approval line covers: a warning before strict `approve verify` fails a pull request on them. */
+/**
+ * Baselines no approval line covers: a warning before strict `approve verify` fails a pull request on them.
+ * @param {string[]} ids
+ * @param {IntegrityContext} ctx
+ * @returns {LedgerSetup[]}
+ */
 function unloggedProblems(ids, ctx) {
   if (!ids.length) return [];
   return [
@@ -1108,12 +1267,16 @@ function unloggedProblems(ids, ctx) {
  * Renders made in a different environment than their baseline (lib/env.mjs): one setup-level
  * warning, never a per-entry code, so story cards and `doctor`'s exit stay as they are (decision 1.1).
  * `integrity.severity['env-mismatch']` overrides the severity.
+ * @param {IntegrityReport | null} report
+ * @param {IntegrityContext} ctx
+ * @returns {LedgerSetup[]}
  */
 function envProblems(report, ctx) {
   const n = report?.summary?.envMismatch ?? 0;
   if (!n) return [];
-  const fields = report.summary.envFields?.length
-    ? ` (${report.summary.envFields.join(', ')})`
+  // A count was read from report.summary on the line before: both are there.
+  const fields = /** @type {{ summary: Partial<EnvSummary> }} */ (report).summary.envFields?.length
+    ? ` (${/** @type {{ summary: { envFields: string[] } }} */ (report).summary.envFields.join(', ')})`
     : '';
   const severity = ctx.integrity?.severity?.['env-mismatch'] ?? 'warn';
   return [
@@ -1131,6 +1294,8 @@ function envProblems(report, ctx) {
  * when the committed config chose warn for a gate. The quiet built-in a11y default adds nothing
  * (decision 88). A config this process cannot resolve (PXSIG_ENFORCEMENT=warn) adds nothing here:
  * the gated commands refuse it themselves.
+ * @param {IntegrityContext} ctx
+ * @returns {LedgerSetup[]}
  */
 function warnModeProblems(ctx) {
   if (!ctx.project) return [];
@@ -1145,7 +1310,11 @@ function warnModeProblems(ctx) {
   );
 }
 
-/** Store files a merge or rebase left conflicted (decision 97). */
+/**
+ * Store files a merge or rebase left conflicted (decision 97).
+ * @param {IntegrityContext} ctx
+ * @returns {LedgerSetup[]}
+ */
 function conflictProblems(ctx) {
   if (!ctx.project) return [];
   const files = conflictedStoreFiles(ctx.project);
@@ -1160,7 +1329,12 @@ function conflictProblems(ctx) {
   ];
 }
 
-/** A log line a crash cut short: left out of every reading, removed only by a person. */
+/**
+ * A log line a crash cut short: left out of every reading, removed only by a person.
+ * @param {string} file
+ * @param {TornLine[]} torn
+ * @returns {LedgerSetup[]}
+ */
 function tornProblems(file, torn) {
   if (!torn.length) return [];
   return [
@@ -1173,10 +1347,20 @@ function tornProblems(file, torn) {
   ];
 }
 
+/**
+ * @param {StoryIndex} index
+ * @returns {LedgerSetup[]}
+ */
 function setupProblems(index) {
+  /** @type {LedgerSetup[]} */
   const out = [];
   if (index.storybook?.reachable && !index.storybook.healthy)
-    out.push({ code: 'storybook-index-broken', severity: 'error', reason: index.storybook.error });
+    out.push({
+      code: 'storybook-index-broken',
+      severity: 'error',
+      // An unhealthy index that answered always carries its error (fetchStoryIndex).
+      reason: /** @type {string} */ (index.storybook.error),
+    });
   else if (!index.storybook?.reachable && index.source === 'static')
     out.push({
       code: 'storybook-unreachable',
@@ -1186,6 +1370,7 @@ function setupProblems(index) {
   return out;
 }
 
+/** @type {Partial<Record<string, [string, string]>>} */
 const PLURAL = {
   unregistered: ['unregistered story', 'unregistered stories'],
   'render-error': ['render error', 'render errors'],
@@ -1204,14 +1389,26 @@ const PLURAL = {
   stale: ['stale verdict', 'stale verdicts'],
   'a11y-new': ['entry with new a11y violations', 'entries with new a11y violations'],
 };
+/**
+ * @param {string} code
+ * @param {number} n
+ */
 export const phrase = (code, n) => `${n} ${(PLURAL[code] ?? [code, code])[n === 1 ? 0 : 1]}`;
 
 /** Info-severity statuses that are not findings: `doctor --fail-on info` never fails on these. */
 export const BENIGN_INFO = new Set(['ok', 'excluded', 'drift']);
 
+/**
+ * @param {LedgerEntry[]} entries
+ * @param {LedgerComponent[]} components
+ * @returns {LedgerSummary}
+ */
 export function summarise(entries, components) {
+  /** @type {Partial<Record<IntegrityCode, number>>} */
   const byCode = {};
+  /** @type {Partial<Record<IntegrityCode, number>>} */
   const byStatus = {};
+  /** @type {Record<Severity, number>} */
   const bySeverity = { error: 0, warn: 0, info: 0 };
   for (const x of entries) {
     byStatus[x.status] = (byStatus[x.status] ?? 0) + 1;
@@ -1220,7 +1417,7 @@ export function summarise(entries, components) {
   }
   const errComps = components.filter((c) => c.severity === 'error');
   const warnComps = components.filter((c) => c.severity === 'warn');
-  const errCodes = Object.keys(CODES).filter(
+  const errCodes = /** @type {IntegrityCode[]} */ (Object.keys(CODES)).filter(
     (c) =>
       byCode[c] && entries.some((x) => x.issues.some((i) => i.code === c && i.severity === 'error'))
   );
@@ -1247,16 +1444,25 @@ export function summarise(entries, components) {
   };
 }
 
-/** Write the ledger atomically; returns its path. */
+/**
+ * Write the ledger atomically; returns its path.
+ * @param {IntegrityContext} ctx
+ * @param {Ledger} ledger
+ */
 export function writeLedger(ctx, ledger) {
   const p = ledgerPath(ctx);
   writeJsonAtomic(p, ledger);
   return p;
 }
 
-/** Filter a ledger for a view (doctor --component / --status, the addon, MCP). */
+/**
+ * Filter a ledger for a view (doctor --component / --status, the addon, MCP).
+ * @param {Ledger} ledger
+ * @param {LedgerFilter} [view]
+ */
 export function filterLedger(ledger, { component, status, severity } = {}) {
   const c = component?.toLowerCase();
+  /** @param {string} name */
   const matchC = (name) => !c || name.toLowerCase().includes(c);
   const codes = status ? new Set(String(status).split(',')) : null;
   const sev = severity ? sevRank(severity) : null;
@@ -1270,6 +1476,9 @@ export function filterLedger(ledger, { component, status, severity } = {}) {
   return { components: ledger.components.filter((x) => names.has(x.component)), entries };
 }
 
-/** One line, for check.mjs and the CLI: "integrity: No issues" / "integrity: 3 components with errors: …". */
+/**
+ * One line, for check.mjs and the CLI: "integrity: No issues" / "integrity: 3 components with errors: …".
+ * @param {Ledger} ledger
+ */
 export const oneLine = (ledger) =>
   `integrity: ${ledger.summary.headline}${ledger.setup.length ? ` · setup: ${ledger.setup.map((s) => s.code).join(', ')}` : ''}`;

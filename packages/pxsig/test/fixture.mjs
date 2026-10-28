@@ -21,6 +21,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { resolveContext, scanStories } from '../src/lib/integrity.mjs';
+/** @import { StoryIndex } from '../src/types.js' */
 import { readHeader, readSection } from '../src/lib/psig.mjs';
 import { openProject, rustBinary } from '../src/lib/workspace.mjs';
 
@@ -283,6 +284,7 @@ export function fixture({ withSigs = hasRust } = {}) {
   const P = openProject({ cwd: repo, env: { PXSIG_BIN: rustBin } });
   const ctx = resolveContext(P);
   // The live index: every story on disk except the renamed one (static scan gives the same set).
+  /** @type {StoryIndex} */
   const index = {
     source: 'storybook',
     storybook: { url: 'http://test/index.json', reachable: true, healthy: true },
