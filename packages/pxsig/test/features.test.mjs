@@ -7,7 +7,6 @@ import { createHash } from 'node:crypto';
 import {
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   rmSync,
   symlinkSync,
@@ -25,7 +24,7 @@ import { editedFilesSince, reconcile, resolveContext } from '../src/lib/integrit
 import { acquireLock, lockPath, readLock } from '../src/lib/lock.mjs';
 import { ensureGitattributes, initProject } from '../src/lib/setup.mjs';
 import { findWorkspace, loadProject, openProject, resolveModes } from '../src/lib/workspace.mjs';
-import { CHECKER, fixture, hasRust, rustBin } from './fixture.mjs';
+import { CHECKER, fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 /** @import { ApprovalLine, LockState, ManifestEntry, Project } from '../src/types.js' */
 /** @import { AddressInfo } from 'node:net' */
 
@@ -34,7 +33,7 @@ const src = fileURLToPath(new URL('../src/', import.meta.url));
 const env = {};
 /** @param {Record<string, unknown>} files */
 const tree = (files) => {
-  const root = mkdtempSync(join(tmpdir(), 'pxsig-feat-'));
+  const root = tempDir('feat');
   mkdirSync(join(root, '.git'));
   for (const [p, v] of Object.entries(files)) {
     mkdirSync(dirname(join(root, p)), { recursive: true });
@@ -55,7 +54,7 @@ const node = (args, cwd, extra = {}) =>
     cwd,
     encoding: 'utf8',
     env: {
-      ...process.env,
+      ...testEnv(testHome),
       PXSIG_FORMAT: '',
       PXSIG_URL: 'http://127.0.0.1:1',
       PXSIG_BIN: rustBin,
@@ -271,7 +270,7 @@ test(
     const out = await new Promise((ok) => {
       const p = spawn(process.execPath, [join(src, 'check.mjs'), '--only', ids.join(',')], {
         cwd: f.repo,
-        env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' },
+        env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' },
       });
       let log = '';
       p.stdout.on('data', (d) => (log += d));
@@ -365,7 +364,7 @@ test(
     const proc = spawn(
       process.execPath,
       [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-      { cwd: root, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
+      { cwd: root, env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
     );
     try {
       await /** @type {Promise<void>} */ (
@@ -716,7 +715,7 @@ test(
     const proc = spawn(
       process.execPath,
       [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-      { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
+      { cwd: f.repo, env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
     );
     try {
       await /** @type {Promise<void>} */ (
@@ -801,7 +800,7 @@ test(
     const proc = spawn(
       process.execPath,
       [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-      { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
+      { cwd: f.repo, env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
     );
     try {
       await /** @type {Promise<void>} */ (
@@ -865,7 +864,7 @@ test(
     const proc = spawn(
       process.execPath,
       [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-      { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
+      { cwd: f.repo, env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
     );
     try {
       await /** @type {Promise<void>} */ (

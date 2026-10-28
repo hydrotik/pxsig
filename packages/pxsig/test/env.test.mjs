@@ -30,7 +30,7 @@ import { reconcile } from '../src/lib/integrity.mjs';
 import { readHeader } from '../src/lib/psig.mjs';
 import { readToken } from '../src/lib/guard.mjs';
 import { engineProblems, openProject, writeRunManifest } from '../src/lib/workspace.mjs';
-import { fixture, hasRust, rustBin } from './fixture.mjs';
+import { fixture, hasRust, rustBin, testEnv, testHome } from './fixture.mjs';
 /** @import { EnvBrowser, EnvFields, EnvRecord, PsigHeader } from '../src/types.js' */
 /** @typedef {ReturnType<typeof fixture>} Fixture */
 
@@ -457,7 +457,7 @@ test(
     const proc = spawn(
       process.execPath,
       [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-      { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
+      { cwd: f.repo, env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
     );
     let log = '';
     proc.stdout.on('data', (d) => (log += d));
@@ -590,7 +590,7 @@ test(
           {
             cwd: f.repo,
             env: {
-              ...process.env,
+              ...testEnv(testHome),
               PXSIG_BIN: rustBin,
               PXSIG_WORKSPACE: '',
               PXSIG_STRICT_ENV: strictVar,

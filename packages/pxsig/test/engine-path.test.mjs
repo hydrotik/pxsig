@@ -6,12 +6,13 @@
  *   node --test packages/pxsig/test/engine-path.test.mjs
  */
 import assert from 'node:assert/strict';
-import { cpSync, mkdirSync, mkdtempSync } from 'node:fs';
+import { cpSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, sep } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { rustBinary } from '../src/lib/workspace.mjs';
+import { tempDir } from './fixture.mjs';
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), '..');
 const exe = process.platform === 'win32' ? 'pxsig.exe' : 'pxsig';
@@ -21,7 +22,7 @@ test('PXSIG_BIN wins', () => {
 });
 
 test("an installed pxsig without its platform package names that package, not the project's target/", async () => {
-  const project = mkdtempSync(join(tmpdir(), 'pxsig-engine-'));
+  const project = tempDir('engine');
   const installed = join(project, 'node_modules', 'pxsig');
   mkdirSync(installed, { recursive: true });
   cpSync(join(pkg, 'src'), join(installed, 'src'), { recursive: true });

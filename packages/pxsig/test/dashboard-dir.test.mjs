@@ -1,14 +1,13 @@
 // Which dashboard `pxsig serve` serves (lib/dashboard-dir.mjs): every branch, on folders built here.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { buildDirFor, chooseDashboard, STAMP } from '../src/lib/dashboard-dir.mjs';
-import { fixture, hasRust, rustBin } from './fixture.mjs';
+import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 
 /** @typedef {{ name: string, dir: string, configPath: string }} DirProject */
 
@@ -16,7 +15,7 @@ import { fixture, hasRust, rustBin } from './fixture.mjs';
 let root;
 const prebuilt = '/prebuilt/dashboard';
 const VERSION = '9.9.9';
-beforeEach(() => (root = mkdtempSync(join(tmpdir(), 'pxsig-dash-'))));
+beforeEach(() => (root = tempDir('dash')));
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
 /**
@@ -208,7 +207,7 @@ async function serving(repo, run) {
     });
   });
   /** @type {NodeJS.ProcessEnv} */
-  const env = { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' };
+  const env = { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' };
   delete env.PXSIG_DASHBOARD_DIR;
   const proc = spawn(process.execPath, [serveJs, '--port', String(port), '--no-open'], {
     cwd: repo,

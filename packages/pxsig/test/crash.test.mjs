@@ -9,8 +9,8 @@
  */
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { hostname, tmpdir } from 'node:os';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { hostname } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -27,7 +27,7 @@ import {
 } from '../src/lib/lock.mjs';
 import { applyRepairs, planRepairs } from '../src/lib/repair.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
-import { fixture, rustBin } from './fixture.mjs';
+import { fixture, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 /** @import { LockState, ManifestEntry } from '../src/types.js' */
 /** @typedef {ReturnType<typeof fixture>} Fixture */
 
@@ -35,10 +35,15 @@ const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const cli = join(src, '..', 'bin', 'pxsig.mjs');
 /** @param {string} p */
 const url = (p) => JSON.stringify(pathToFileURL(join(src, p)).href);
-const tmp = () => mkdtempSync(join(tmpdir(), 'pxsig-crash-'));
+const tmp = () => tempDir('crash');
 /** @param {Fixture} f */
 const project = (f) => openProject({ cwd: f.repo, env: { PXSIG_BIN: rustBin } });
-const env = { ...process.env, PXSIG_WORKSPACE: '', PXSIG_NO_DELEGATE: '1', PXSIG_BIN: rustBin };
+const env = {
+  ...testEnv(testHome),
+  PXSIG_WORKSPACE: '',
+  PXSIG_NO_DELEGATE: '1',
+  PXSIG_BIN: rustBin,
+};
 
 /**
  * Run `code` (an ES module body) in a child with PXSIG_FAULT set; returns its exit status.

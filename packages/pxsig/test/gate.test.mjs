@@ -2,17 +2,16 @@
 // environment > the project config (manifest gate) > defaults. Synthetic PNGs, a temp folder.
 import { spawnSync } from 'node:child_process';
 import { strict as assert } from 'node:assert';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { BROKEN, CHECKER, hasRust, rustBin } from './fixture.mjs';
+import { BROKEN, CHECKER, hasRust, rustBin, tempDir } from './fixture.mjs';
 
 const lenient = { threshold: 255, minSsim: 0, maxChangedPct: 100, minCells: 100000, detail: false };
 const strict = { threshold: 4, minSsim: 0.999, maxChangedPct: 0, minCells: 1, detail: false };
 
 function setup() {
-  const dir = mkdtempSync(join(tmpdir(), 'pxsig-gate-'));
+  const dir = tempDir('gate');
   mkdirSync(join(dir, 'base'));
   mkdirSync(join(dir, 'cur'));
   for (const id of ['plain', 'pinned']) {

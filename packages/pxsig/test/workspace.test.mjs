@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import {
@@ -14,13 +13,14 @@ import {
   unlistedConfigs,
   workspaceProblems,
 } from '../src/lib/workspace.mjs';
+import { tempDir } from './fixture.mjs';
 /** @import { ManifestEntry, ProjectRef } from '../src/types.js' */
 
 /** @type {NodeJS.ProcessEnv} */
 const env = {};
 /** @param {Record<string, unknown>} files */
 const tree = (files) => {
-  const root = mkdtempSync(join(tmpdir(), 'pxsig-ws-'));
+  const root = tempDir('ws');
   mkdirSync(join(root, '.git'));
   for (const [p, v] of Object.entries(files)) {
     mkdirSync(join(root, p, '..'), { recursive: true });

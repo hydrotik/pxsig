@@ -15,7 +15,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { acquireLock, readLock } from '../src/lib/lock.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
-import { fixture, rustBin } from './fixture.mjs';
+import { fixture, rustBin, testEnv, testHome } from './fixture.mjs';
 /** @import { LockState } from '../src/types.js' */
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -23,7 +23,7 @@ const old = join(here, 'fixtures', 'store-0.3.2');
 const v04 = join(here, 'fixtures', 'store-0.4.0');
 const cli = join(here, '..', 'bin', 'pxsig.mjs');
 const env = {
-  ...process.env,
+  ...testEnv(testHome),
   PXSIG_WORKSPACE: '',
   PXSIG_NO_DELEGATE: '1',
   PXSIG_BIN: rustBin,

@@ -10,9 +10,8 @@
  */
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { createServer, request } from 'node:http';
-import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -33,7 +32,7 @@ import {
   TICKET_MS,
   tokenFile,
 } from '../src/lib/guard.mjs';
-import { fixture, hasRust, rustBin } from './fixture.mjs';
+import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 
 /** @import { IncomingHttpHeaders, OutgoingHttpHeaders } from 'node:http' */
 /** @import { AddressInfo } from 'node:net' */
@@ -306,7 +305,7 @@ const raw = (port, { method = 'GET', path, headers = {}, body }) =>
 
 /** A stand-in dashboard build (the real one may not be built where the tests run). */
 const dashboardDir = () => {
-  const dash = mkdtempSync(join(tmpdir(), 'pxsig-dash-'));
+  const dash = tempDir('dash');
   writeFileSync(
     join(dash, 'index.html'),
     '<!doctype html><html><head><title>pxsig</title></head><body></body></html>'
@@ -351,7 +350,7 @@ async function serve(f, env = {}) {
     {
       cwd: f.repo,
       env: {
-        ...process.env,
+        ...testEnv(testHome),
         PXSIG_BIN: rustBin,
         PXSIG_WORKSPACE: '',
         PXSIG_DASHBOARD_DIR: dashboardDir(),
@@ -681,7 +680,7 @@ test(
     const mcp = spawn(process.execPath, [join(src, 'mcp.mjs')], {
       cwd: f.repo,
       stdio: ['pipe', 'pipe', 'ignore'],
-      env: { ...process.env, PXSIG_URL: S.url, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' },
+      env: { ...testEnv(testHome), PXSIG_URL: S.url, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' },
     });
     /** @type {Map<number, (m: { result: ToolResult }) => void>} */
     const replies = new Map();

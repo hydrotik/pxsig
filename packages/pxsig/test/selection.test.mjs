@@ -3,8 +3,7 @@
 // only the gates use it (watch and staleness trace). Temp folders only; no Storybook, no server.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +14,7 @@ import {
   openProject,
   writeRunManifest,
 } from '../src/lib/workspace.mjs';
-import { fixture, hasRust, rustBin } from './fixture.mjs';
+import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 /** @import { ManifestEntry } from '../src/types.js' */
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
@@ -28,7 +27,7 @@ const cli = (args, cwd) =>
     cwd,
     encoding: 'utf8',
     env: {
-      ...process.env,
+      ...testEnv(testHome),
       PXSIG_FORMAT: '',
       PXSIG_URL: 'http://127.0.0.1:1',
       PXSIG_BIN: rustBin,
@@ -38,7 +37,7 @@ const cli = (args, cwd) =>
   });
 /** @param {Record<string, unknown>} files */
 const tree = (files) => {
-  const root = mkdtempSync(join(tmpdir(), 'pxsig-sel-'));
+  const root = tempDir('sel');
   mkdirSync(join(root, '.git'));
   for (const [p, v] of Object.entries(files)) {
     mkdirSync(dirname(join(root, p)), { recursive: true });
@@ -194,7 +193,7 @@ test(
   'summary.md names the fail-safe path only when it fired',
   { skip: !hasRust && 'Rust binary not built' },
   () => {
-    const dir = mkdtempSync(join(tmpdir(), 'pxsig-sel-report-'));
+    const dir = tempDir('sel-report');
     /** @param {Record<string, unknown>} summary */
     const md = (summary) => {
       writeFileSync(

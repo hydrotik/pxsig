@@ -8,9 +8,8 @@
  */
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -23,11 +22,11 @@ import {
   windowsPathProblem,
 } from '../src/lib/portability.mjs';
 import { initProject } from '../src/lib/setup.mjs';
-import { fixture, hasRust, rustBin } from './fixture.mjs';
+import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 /** @import { AddressInfo } from 'node:net' */
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
-const tmp = () => mkdtempSync(join(tmpdir(), 'pxsig-platform-'));
+const tmp = () => tempDir('platform');
 
 test('paths Windows cannot check out are named', () => {
   // In assert.match below, a null (no problem) fails the match on its own: the casts lose nothing.
@@ -169,7 +168,7 @@ async function startServe(repo) {
   const proc = spawn(
     process.execPath,
     [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-    { cwd: repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
+    { cwd: repo, env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
   );
   let log = '';
   proc.stdout.on('data', (d) => (log += d));

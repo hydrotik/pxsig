@@ -15,7 +15,7 @@ import { createInterface } from 'node:readline';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { fixture, rustBin } from './fixture.mjs';
+import { fixture, rustBin, testEnv, testHome } from './fixture.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const { repo } = fixture({ withSigs: false });
@@ -58,7 +58,7 @@ before(() => {
   proc = spawn(process.execPath, [join(here, '..', 'src', 'mcp.mjs')], {
     cwd: repo,
     stdio: ['pipe', 'pipe', 'ignore'],
-    env: { ...process.env, PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin },
+    env: { ...testEnv(testHome), PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin },
   });
   createInterface({ input: proc.stdout }).on('line', (line) => {
     // A JSON-RPC reply the server wrote: one object per line.
@@ -73,7 +73,7 @@ test('a line that is not a JSON-RPC object is an invalid request, and the server
   const own = spawn(process.execPath, [join(here, '..', 'src', 'mcp.mjs')], {
     cwd: repo,
     stdio: ['pipe', 'pipe', 'ignore'],
-    env: { ...process.env, PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin },
+    env: { ...testEnv(testHome), PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin },
   });
   try {
     /** @type {{ id: unknown, result?: unknown, error?: { code: number } }[]} */

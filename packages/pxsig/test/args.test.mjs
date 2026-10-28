@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { knownFlags, parseArgs, unknownFlagLines, unknownFlags } from '../src/lib/args.mjs';
+import { testEnv, testHome } from './fixture.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, '..');
@@ -42,6 +43,7 @@ test('every flag the help topics and `pxsig --help` name is known', () => {
     assert.deepEqual(missing(flagsIn(readFileSync(join(topics, f), 'utf8'))), [], f);
   const help = spawnSync(process.execPath, [join(pkg, 'bin', 'pxsig.mjs'), '--help'], {
     encoding: 'utf8',
+    env: testEnv(testHome),
   });
   assert.deepEqual(missing(flagsIn(help.stdout)), [], 'pxsig --help');
 });
@@ -51,7 +53,7 @@ test('pxsig --version and pxsig version: the CLI, the engine it would run and th
   const run = (...args) =>
     spawnSync(process.execPath, [join(pkg, 'bin', 'pxsig.mjs'), ...args], {
       encoding: 'utf8',
-      env: { ...process.env, PXSIG_BIN: join(here, 'no-such-engine') },
+      env: { ...testEnv(testHome), PXSIG_BIN: join(here, 'no-such-engine') },
     });
   const { version } = JSON.parse(readFileSync(join(pkg, 'package.json'), 'utf8'));
   const text = run('--version');

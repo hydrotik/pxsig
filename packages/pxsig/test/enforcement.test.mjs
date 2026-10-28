@@ -3,14 +3,7 @@
 // the setup codes, SARIF, and the gated commands end to end on fixture projects.
 import { spawnSync } from 'node:child_process';
 import { strict as assert } from 'node:assert';
-import {
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-  existsSync,
-  appendFileSync,
-} from 'node:fs';
+import { readFileSync, rmSync, writeFileSync, existsSync, appendFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -34,7 +27,7 @@ import { repoKey } from '../src/lib/machine.mjs';
 import { sarifLog } from '../src/lib/sarif.mjs';
 import { record } from '../src/lib/approvals.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
-import { fixture, hasRust, rustBin } from './fixture.mjs';
+import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
 
@@ -388,12 +381,12 @@ test('warnUntil: announced from noticeDays before, enforced after it, then said 
 });
 
 test('the readiness tally: one line per configured-warn run, shared by every worktree, kept 90 days', () => {
-  const home = mkdtempSync(join(tmpdir(), 'pxsig-home-'));
+  const home = tempDir('home');
   const opts = {
     env: { XDG_STATE_HOME: join(home, 'state'), LOCALAPPDATA: join(home, 'state') },
     home,
   };
-  const repo = mkdtempSync(join(tmpdir(), 'pxsig-ready-'));
+  const repo = tempDir('ready');
   /**
    * @param {string} cwd
    * @param {...string} a
@@ -412,8 +405,9 @@ test('the readiness tally: one line per configured-warn run, shared by every wor
     });
   g(repo, 'init', '-q', '-b', 'main');
   g(repo, 'commit', '-q', '--allow-empty', '-m', 'x');
-  const wt = `${repo}-wt`;
-  g(repo, 'worktree', 'add', '-q', wt);
+  const wt = join(tempDir('wt'), 'checkout');
+  // A branch name of its own: git would name it after the folder, and a space is not allowed in one.
+  g(repo, 'worktree', 'add', '-q', '-b', 'wt', wt);
   assert.equal(
     repoKey(repo, opts),
     repoKey(wt, opts),
@@ -560,7 +554,7 @@ function repoFixture({ log = true, enforcement } = {}) {
       record(P, e, { batch: 'b0-cli', via: 'cli', reason: 'first baselines', before: null });
   must(f.repo, 'add', '-A');
   must(f.repo, 'commit', '-q', '-m', 'base');
-  const home = mkdtempSync(join(tmpdir(), 'pxsig-home-'));
+  const home = tempDir('home');
   /**
    * @param {string[]} args
    * @param {NodeJS.ProcessEnv} [env]
@@ -571,7 +565,7 @@ function repoFixture({ log = true, enforcement } = {}) {
       encoding: 'utf8',
       // Readiness lines land in this test's own home, never the machine's.
       env: {
-        ...process.env,
+        ...testEnv(testHome),
         HOME: home,
         USERPROFILE: home,
         XDG_STATE_HOME: join(home, 'state'),

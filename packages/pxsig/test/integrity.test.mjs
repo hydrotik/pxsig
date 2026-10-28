@@ -39,7 +39,15 @@ import {
   restoreBaselineImages,
 } from '../src/lib/repair.mjs';
 import { writeFileSync } from 'node:fs';
-import { fixture, hashSignatures, hashTree, hasRust, rustBin } from './fixture.mjs';
+import {
+  fixture,
+  hashSignatures,
+  hashTree,
+  hasRust,
+  rustBin,
+  testEnv,
+  testHome,
+} from './fixture.mjs';
 /** @import { IndexStory } from '../src/types.js' */
 /** @import { DoneStep, Harvest, IntegrityCode, RegisterResult } from '../src/types/t3.js' */
 
@@ -807,7 +815,7 @@ test('pxsig doctor CLI contract: --json document, filters, usage errors, prune r
   const opts = {
     cwd: f.repo,
     encoding: 'utf8',
-    env: { ...process.env, PXSIG_FORMAT: '', PXSIG_BIN: rustBin },
+    env: { ...testEnv(testHome), PXSIG_FORMAT: '', PXSIG_BIN: rustBin },
   };
   const r = spawnSync(
     process.execPath,
