@@ -628,7 +628,7 @@
           ]
         },
         "apply": {
-          "summary": "A person at a terminal applies the plan through the server, after typing APPROVE <n> ENTRIES. Refused when any render changed since planning.",
+          "summary": "A person at a terminal applies the plan through the server, after typing APPROVE <n> ENTRIES. Refused when any render changed since planning or an entry is no longer in the manifest.",
           "usage": ["pxsig approve apply [plan]"],
           "effects": ["writes-baselines", "needs-a-person"],
           "exits": {

@@ -2,14 +2,15 @@
 // in a person's hands. Synthetic images and a fixture project; needs no server or Storybook.
 import { spawnSync } from 'node:child_process';
 import { strict as assert } from 'node:assert';
-import { cpSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { readLog, record, snapshot, undo, verify } from '../src/lib/approvals.mjs';
+import { detectAgent } from '../src/lib/agents.mjs';
+import { paths, readLog, record, sha256, snapshot, undo, verify } from '../src/lib/approvals.mjs';
 import { classify } from '../src/lib/shape.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
-import { fixture, hasRust, png, rustBin } from './fixture.mjs';
+import { fixture, hashTree, hasRust, png, rustBin } from './fixture.mjs';
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
 const { repo, sig } = fixture({ withSigs: hasRust });
@@ -113,3 +114,71 @@ test(
     assert.ok(existsSync(join(P.store.history, 'b1', `${id}.psig`)));
   }
 );
+
+test('approve apply refuses a plan naming an entry the manifest no longer has, writing nothing', () => {
+  const P = openProject({ cwd: repo, env: { PXSIG_BIN: rustBin } });
+  const real = {
+    id: 'components-alpha--default',
+    sig: `.pxsig/baselines/components/Alpha/components-alpha--default.psig`,
+  };
+  const p = paths(P, real);
+  const plan = {
+    version: 1,
+    createdAt: new Date().toISOString(),
+    project: P.name,
+    reason: 'a plan made before the story was removed',
+    entries: [
+      {
+        id: real.id,
+        status: 'ok',
+        why: '',
+        kind: 'colour',
+        latestSha: sha256(p.latestPng),
+        baseSha: sha256(p.sig),
+      },
+      {
+        id: 'components-gone--default',
+        status: 'ok',
+        why: '',
+        kind: 'colour',
+        latestSha: 'x',
+        baseSha: 'x',
+      },
+    ],
+  };
+  mkdirSync(P.store.reports, { recursive: true });
+  const planFile = join(P.store.reports, 'stale-plan.json');
+  writeFileSync(planFile, JSON.stringify(plan));
+  // A person at a terminal: TTYs (a preload), no CI and no assistant markers.
+  const preload = join(repo, 'tty-preload.mjs');
+  writeFileSync(preload, 'process.stdin.isTTY = true;\nprocess.stdout.isTTY = true;\n');
+  /** @type {Record<string, string | undefined>} */
+  const env = {
+    ...process.env,
+    PXSIG_URL: 'http://127.0.0.1:1',
+    PXSIG_BIN: rustBin,
+    PXSIG_FORMAT: 'plain',
+  };
+  delete env.CI;
+  for (let a = detectAgent(env); a; a = detectAgent(env)) delete env[a.variable];
+  const before = { store: hashTree(P.store.root), log: readLog(P).length };
+  const r = spawnSync(
+    process.execPath,
+    ['--import', preload, join(src, 'cli.mjs'), 'approve', 'apply', planFile],
+    {
+      cwd: repo,
+      encoding: 'utf8',
+      input: '',
+      timeout: 20_000,
+      env,
+    }
+  );
+  assert.equal(r.status, 2, `${r.stdout}${r.stderr}`);
+  assert.match(
+    r.stderr,
+    /1 planned entries are no longer in the manifest: components-gone--default: plan again/
+  );
+  assert.doesNotMatch(r.stderr, /TypeError/);
+  assert.equal(hashTree(P.store.root), before.store, 'nothing in the store changed');
+  assert.equal(readLog(P).length, before.log, 'no approval log line');
+});

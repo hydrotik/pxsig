@@ -296,9 +296,18 @@ export async function approveCommand({
       fail(`the plan is ${ageH.toFixed(0)} h old (max ${PLAN_MAX_AGE_H}): plan again`);
     const ok = plan.entries.filter((e) => e.status === 'ok');
     if (!ok.length) fail('the plan has no ready entries');
+    // An entry the manifest no longer has (its story was removed or renamed since planning).
+    const missing = ok.filter((e) => !byId.has(e.id));
+    if (missing.length)
+      fail(
+        `${missing.length} planned entries are no longer in the manifest: ${missing
+          .slice(0, 3)
+          .map((e) => e.id)
+          .join(', ')}${missing.length > 3 ? '…' : ''}: plan again`
+      );
     // Pin: what is approved must be byte-for-byte what was planned.
     const drifted = ok.filter((e) => {
-      // An id the manifest no longer has fails here (a TypeError): see the report.
+      // Every id is in the manifest: checked just above.
       const p = paths(P, /** @type {ManifestEntry} */ (byId.get(e.id)));
       return sha256(p.latestPng) !== e.latestSha || sha256(p.sig) !== e.baseSha;
     });
