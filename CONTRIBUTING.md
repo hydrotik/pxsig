@@ -7,18 +7,26 @@ Thank you for helping. This file covers setting up, testing and what a pull requ
 You need:
 
 - Node.js 22.18 or later to work on the repository (`pnpm ui:check` and `pnpm ui:docs` read TypeScript
-  with Node's type stripping). The published `pxsig` package needs Node.js 22 or later.
+  with Node's type stripping). `.nvmrc` names it, so `nvm use` (or fnm, or Volta) picks it up; CI
+  runs the latest 22.x. The published `pxsig` package needs Node.js 22 or later.
 - pnpm 10 (the version is pinned in `package.json`; `corepack enable` picks it up)
-- Rust 1.99.0, with cargo: `rust-toolchain.toml` pins it and rustup installs it. A Rust that is
-  not managed by rustup (Homebrew's, for one) ignores the pin; put the rustup toolchain first on
-  `PATH`.
+- Rust 1.99.0, with cargo: `rust-toolchain.toml` pins it and rustup installs it, and
+  `rust-version` in `Cargo.toml` declares it. A Rust that is not managed by rustup (Homebrew's, for
+  one) ignores the pin; put the rustup toolchain first on `PATH`.
 
 ```bash
 git clone https://github.com/hydrotik/pxsig
 cd pxsig
 pnpm install
 cargo build --release          # target/release/pxsig, which the CLI finds in a source checkout
+pnpm --filter pxsig exec playwright install chromium
 ```
+
+The last line downloads Playwright's Chromium. The tests that render (the render environment, the
+server flows, the capture helpers) need it and the engine binary from `cargo build --release`;
+without either, those tests are skipped, with the reason (`no Chromium`, `Rust binary not built`)
+in the output. A skip is not a pass, so CI installs both before the suite. On Linux, add `--with-deps` the first time, for the system libraries Chromium
+needs.
 
 Run the CLI from the clone:
 
@@ -33,15 +41,27 @@ To try a change against a real project, link the package into that project
 ## Tests
 
 ```bash
-cargo test                     # the engine and the binary
-pnpm -r test                   # every package (node --test)
-pnpm test                      # both
-node scripts/check-clean.mjs   # what must never be committed (below)
-node scripts/bench/run.mjs     # the scale benchmark (docs/benchmark.md); CI runs it nightly
+pnpm test                                  # all of the below, in this order
+cargo test --workspace --locked            # the engine and the binary
+pnpm -r test                               # every package (node --test)
+node --test scripts/*.test.mjs             # the repository's own scripts (release, changelog, clean)
+```
+
+One suite at a time:
+
+```bash
+pnpm --filter pxsig test                   # the CLI, the server, the MCP server, the help pages
+pnpm --filter @pxsig/storybook-addon test  # the addon
+pnpm --filter @pxsig/dashboard test        # the dashboard's flows against a mocked server
+node --test packages/pxsig/test/help.test.mjs   # one file
+node scripts/examples-test.mjs             # the examples, end to end (CI's Examples job)
+node scripts/check-clean.mjs               # what must never be committed (below)
+node scripts/bench/run.mjs                 # the scale benchmark (docs/benchmark.md); CI runs it nightly
 ```
 
 The Node tests build their fixtures (stories, manifests, PNGs) in temporary folders. Add tests the
-same way: synthesise what you need in code.
+same way: synthesise what you need in code. They find the engine at `target/release/pxsig`, or at
+`PXSIG_BIN` when it is set.
 
 ## Lint and format
 
@@ -125,11 +145,45 @@ pnpm ui:gaps     # the reference adapter's conformance
 pnpm typecheck   # tsc over the dashboard and the plain example; with PXSIG_DS_SOURCE, the reference adapter too
 ```
 
+## Changelog fragments
+
+A pull request that changes something a user can notice adds a fragment under `changelog.d/`
+([changelog.d/README.md](changelog.d/README.md)) instead of editing `CHANGELOG.md`, which changes
+only in a release. `node scripts/changelog.mjs check --since origin/main` fails a branch that
+changes shipped code (`packages/*/src`, the addon's `.mjs`/`.cjs` files, `crates/*/src`) and adds
+no fragment. A refactor or a test-only change that users cannot notice says so instead: put a line
+`Changelog: none` in the body of one of the branch's commits.
+
+## CI job names
+
+The jobs in `.github/workflows/ci.yml` are required checks, matched by their exact names (with
+their matrix legs: eleven in all). Renaming, adding or removing a job, or changing its `name:`,
+leaves a required check waiting forever and blocks every pull request. New checks go in as steps
+inside an existing job. Every third-party action is pinned by its full commit SHA, with a
+`# vX.Y.Z` comment.
+
+## Dependency advisories
+
+CI checks the dependencies against public advisory databases: `cargo deny --locked check`
+(`deny.toml`: advisories, licences, sources) in the Rust job on Linux, and
+`pnpm audit --prod --audit-level high` (only what ships to users) in the clean job. Both read the
+database over the network, so a new advisory can fail a pull request that did not touch a
+dependency. That is intended. The fix is one of:
+
+- **an update** of the affected dependency, in its own commit; or
+- **an ignore entry with a reason and a date**: in `deny.toml` (`[advisories] ignore`, whose
+  entries take a `reason`) for a crate, or in `pnpm.auditConfig` in `package.json` for an npm
+  package (JSON has no comments: the reason and the date go in the commit that adds it). The reason
+  says why the advisory does not apply or what the fix is waiting on; the date says when to look
+  again.
+
+Advisories for development tooling arrive as Dependabot pull requests instead of failing CI.
+
 ## Pull requests
 
 - One change per pull request, with a description of what changed and why.
 - Tests for new behaviour and for bug fixes.
-- `cargo test`, `pnpm -r test`, `pnpm lint`, `pnpm lint:ratchet`, `node scripts/check-clean.mjs` and
+- `pnpm test`, `pnpm lint`, `pnpm lint:ratchet`, `node scripts/check-clean.mjs` and
   `node scripts/changelog.mjs check --since origin/main` pass.
 - Update the docs in `docs/` when a command, flag, config key, file format or default changes, and
   add a fragment in `changelog.d/` ([changelog.d/README.md](changelog.d/README.md)); `CHANGELOG.md`

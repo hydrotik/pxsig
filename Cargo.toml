@@ -11,6 +11,9 @@ members = ["crates/pxsig-core", "crates/pxsig-cli"]
 [workspace.package]
 version = "0.5.1"
 edition = "2021"
+# The toolchain CI builds and tests with (rust-toolchain.toml). Only that one is tested, so it is the
+# version declared; an older Rust may build, but nothing checks it.
+rust-version = "1.99"
 license = "MIT"
 authors = ["Donovan Adams (Hydrotik LLC)"]
 repository = "https://github.com/hydrotik/pxsig"
