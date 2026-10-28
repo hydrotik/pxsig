@@ -93,3 +93,68 @@ fn hex(bytes: &[u8]) -> String {
         s
     })
 }
+
+#[cfg(test)]
+mod golden {
+    use super::*;
+
+    /// A `w×h` RGBA pattern with every channel and alpha varying, so rounding and the alpha
+    /// flattening both show.
+    fn pattern(w: usize, h: usize) -> Vec<u8> {
+        let mut d = vec![0u8; w * h * 4];
+        for y in 0..h {
+            for x in 0..w {
+                let i = (y * w + x) * 4;
+                d[i] = ((x * 7 + y * 3) % 256) as u8;
+                d[i + 1] = ((x * 2 + y * 11) % 256) as u8;
+                d[i + 2] = ((x * y) % 256) as u8;
+                d[i + 3] = (255 - (x + y) % 128) as u8;
+            }
+        }
+        d
+    }
+
+    #[test]
+    fn downsample_127_by_65_to_16() {
+        let d = downsample(&pattern(127, 65), 127, 65, 16);
+        assert_eq!(d.len(), 16 * 16 * 3);
+        assert_eq!(&d[..12], &[29, 27, 9, 86, 48, 27, 143, 69, 45, 197, 90, 63]);
+        assert_eq!(&d[d.len() - 6..], &[226, 164, 143, 102, 180, 140]);
+        assert_eq!(d.iter().map(|&x| u64::from(x)).sum::<u64>(), 120901);
+        let s = signature_of(&pattern(127, 65), 127, 65, 16);
+        assert_eq!(
+            s.sha256,
+            "5c3d7d15bf1b19670de0c52d72726027d69494712e643bcc4ea7da8b8ad5ed03"
+        );
+        assert_eq!(s.ahash, "1e72871cfc8d3cf0");
+        assert_eq!(s.dhash, "fef096b4b5a529e8");
+        assert_eq!((s.src_width, s.src_height, s.grid), (127, 65, 16));
+    }
+
+    #[test]
+    fn downsample_1_by_1() {
+        // Half-transparent (α 128) over white: c·α + 255·(1−α), rounded.
+        let one = [10u8, 20, 30, 128];
+        assert_eq!(downsample(&one, 1, 1, 1), [132, 137, 142]);
+        // A grid larger than the image repeats the one pixel in every cell.
+        assert_eq!(downsample(&one, 1, 1, 4), [132, 137, 142].repeat(16));
+        let s = signature_of(&one, 1, 1, 8);
+        assert_eq!(
+            s.sha256,
+            "fcf77dc95796288a4c29bcfb7b1859f100e1f3cfe4b3f87c701ae38bc33b46d8"
+        );
+        assert_eq!(s.ahash, "ffffffffffffffff");
+        assert_eq!(s.dhash, "0000000000000000");
+    }
+
+    #[test]
+    fn encode_sig_and_decode_sig_round_trip() {
+        let sig = downsample(&pattern(127, 65), 127, 65, 16);
+        let b64 = encode_sig(&sig);
+        assert_eq!(decode_sig(&b64).unwrap(), sig);
+        assert_eq!(encode_sig(&[]), "");
+        assert_eq!(encode_sig(&[132, 137, 142]), "hImO");
+        assert_eq!(decode_sig("hImO").unwrap(), [132, 137, 142]);
+        assert!(decode_sig("not base64!").is_err());
+    }
+}
