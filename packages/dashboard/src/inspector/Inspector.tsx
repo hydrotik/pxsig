@@ -111,10 +111,10 @@ export function Inspector({
 }: {
   data: Data;
   target: InspectTarget | null;
-  onNavigate(t: InspectTarget): void;
-  onClose(): void;
+  onNavigate: (t: InspectTarget) => void;
+  onClose: () => void;
   /** Leave the inspector for a tab (and filter): the session summary's next steps. */
-  onGo?(tab: string, filter?: string): void;
+  onGo?: (tab: string, filter?: string) => void;
   embedded?: boolean;
 }) {
   const prefs = React.useMemo(loadPrefs, []);
@@ -164,7 +164,7 @@ export function Inspector({
     let alive = true;
     setLoaded(null);
     setRegion(-1);
-    Promise.all([loadImg(p.before), loadImg(p.after), loadImg(p.heat)]).then(([a, b, h]) => {
+    void Promise.all([loadImg(p.before), loadImg(p.after), loadImg(p.heat)]).then(([a, b, h]) => {
       if (!alive) return;
       // A new entry has only its latest render; anything else needs both.
       if (!b || (!a && !row?.new)) return setLoaded('missing');
@@ -181,7 +181,7 @@ export function Inspector({
       const files = [p.before, p.after, p.baseSig, p.curSig, p.heat, p.page, p.record].filter(
         Boolean
       ) as string[];
-      Promise.all(
+      void Promise.all(
         files.map((f) =>
           fetch(f, { method: 'HEAD' })
             .then(

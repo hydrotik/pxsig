@@ -97,7 +97,7 @@ export function Diagnostics({
   onOpen,
 }: {
   data: Data;
-  onOpen(row: Row, list: Row[], scenario: { tag: string; name: string }): void;
+  onOpen: (row: Row, list: Row[], scenario: { tag: string; name: string }) => void;
 }) {
   const sections = diagnosticsOf(data);
   const [picked, setPicked] = React.useState<Section | null>(null);

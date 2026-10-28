@@ -526,6 +526,7 @@ test('every page the dashboard can open on has one main region and one level-one
     await page.goto(`${base}/report/${search}`);
     return page;
   };
+  /** @type {[what: string, search: string, answer: unknown, shows: string][]} */
   const cases = [
     ['loading', '', 'never', 'Loading…'],
     ['a failed load', '', 500, 'Report data failed to load'],

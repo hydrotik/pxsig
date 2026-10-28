@@ -1,0 +1,16 @@
+{
+  "//": "The base for the Node packages' own tsconfig.json (pxsig, the Storybook addon, scripts, tools): their JavaScript, typed with JSDoc and checked by tsc (checkJs) and by oxlint --type-aware. Nothing is emitted; the published files are the .mjs as written. scripts/check-types.mjs runs each and holds the error count per file to scripts/type-errors-baseline.json.",
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": ["node"]
+  }
+}

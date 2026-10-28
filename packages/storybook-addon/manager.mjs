@@ -168,7 +168,7 @@ addons.register(ADDON, () => {
     }
   };
   if (MODE === 'live') {
-    refresh();
+    void refresh();
     connect();
   }
 

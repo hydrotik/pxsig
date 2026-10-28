@@ -57,10 +57,10 @@ export interface Probe {
 }
 /** Imperative view changes (Root's `actionsRef`). Each waits until the viewport has a size. */
 export interface DiffViewerActions {
-  fit(): void;
-  zoomBy(factor: number): void;
-  zoomTo(zoom: number): void;
-  focus(region: DiffRegion): void;
+  fit: () => void;
+  zoomBy: (factor: number) => void;
+  zoomTo: (zoom: number) => void;
+  focus: (region: DiffRegion) => void;
 }
 
 type ClassName<S> = string | ((state: S) => string | undefined);
@@ -115,12 +115,12 @@ function createStore() {
   const subs = new Set<() => void>();
   return {
     get: () => snap,
-    set(patch: Partial<typeof snap>) {
+    set: (patch: Partial<typeof snap>) => {
       if (Object.entries(patch).every(([k, v]) => snap[k as keyof typeof snap] === v)) return;
       snap = { ...snap, ...patch };
       subs.forEach((f) => f());
     },
-    subscribe(f: () => void) {
+    subscribe: (f: () => void) => {
       subs.add(f);
       return () => subs.delete(f);
     },
@@ -133,21 +133,21 @@ interface Ctx {
   baseline: Source | null;
   latest: Source | null;
   mode: DiffMode;
-  setMode(m: DiffMode): void;
+  setMode: (m: DiffMode) => void;
   modes: readonly DiffMode[];
   split: number;
-  setSplit(v: number): void;
+  setSplit: (v: number) => void;
   activeRegion: number;
-  setActiveRegion(i: number): void;
+  setActiveRegion: (i: number) => void;
   store: ReturnType<typeof createStore>;
   actions: DiffViewerActions;
   /** The Viewport element registers itself here. */
   viewportRef: React.MutableRefObject<HTMLElement | null>;
   view: React.MutableRefObject<{ z: number; tx: number; ty: number }>;
-  place(): void;
-  zoomAround(z: number, cx: number, cy: number): void;
-  probeAt(clientX: number, clientY: number, pane: HTMLElement): void;
-  clearProbe(): void;
+  place: () => void;
+  zoomAround: (z: number, cx: number, cy: number) => void;
+  probeAt: (clientX: number, clientY: number, pane: HTMLElement) => void;
+  clearProbe: () => void;
   pending: React.MutableRefObject<(() => void) | null>;
 }
 const DiffViewerContext = React.createContext<Ctx | null>(null);
@@ -719,7 +719,7 @@ function ProbePart({ children }: { children: (probe: Probe | null) => React.Reac
 export interface ModeGroupState {
   mode: DiffMode;
   modes: readonly DiffMode[];
-  setMode(mode: DiffMode): void;
+  setMode: (mode: DiffMode) => void;
 }
 export interface ModeGroupProps {
   label: string;
@@ -781,10 +781,10 @@ function ModeGroup({ label, labels, className, itemClassName, render }: ModeGrou
 
 export interface ZoomState {
   zoom: number;
-  zoomIn(): void;
-  zoomOut(): void;
-  fit(): void;
-  actual(): void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  fit: () => void;
+  actual: () => void;
 }
 export interface ZoomControlsProps {
   /** Accessible names and visible text. */

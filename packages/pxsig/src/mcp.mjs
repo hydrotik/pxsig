@@ -1249,7 +1249,15 @@ async function handle(msg) {
     }
     if (method === 'ping') return send({ id, result: {} });
     if (method === 'tools/list')
-      return send({ id, result: { tools: tools.map(({ run, ...t }) => t) } });
+      return send({
+        id,
+        // Every field of a tool but its handler.
+        result: {
+          tools: tools.map((t) =>
+            Object.fromEntries(Object.entries(t).filter(([k]) => k !== 'run'))
+          ),
+        },
+      });
     if (method === 'tools/call') {
       const tool = tools.find((t) => t.name === params?.name);
       if (!tool)
@@ -1280,7 +1288,7 @@ if (isMain) {
     } catch {
       return send({ id: null, error: { code: -32700, message: 'parse error' } });
     }
-    handle(msg);
+    void handle(msg);
   });
   try {
     const ws = findWorkspace({});

@@ -36,7 +36,7 @@ const row = (id, extra = {}) => ({
   a11y: { violations: [], new: 0 },
   ...extra,
 });
-const report = (rows, suite = null) => ({
+const report = (rows, /** @type {string | null} */ suite = null) => ({
   suite,
   file: suite ? `.pxsig/reports/check-${suite}.json` : '.pxsig/reports/check.json',
   check: { generatedAt: at(0), rows },

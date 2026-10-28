@@ -3,6 +3,9 @@
  * typecheck.mjs — `pnpm typecheck`: tsc --noEmit over the dashboard (contract, runtime, fallbacks,
  * views, inspector, diff viewer), its test harness and the plain example adapter (tsconfig.json).
  *
+ * Then the JavaScript (pxsig, the Storybook addon, scripts, tools): scripts/check-types.mjs, whose
+ * error count per file may only go down (scripts/type-errors-baseline.json).
+ *
  * With PXSIG_DS_SOURCE set (a checkout of the reference adapter's design system), it also checks
  * the reference adapter against that design system's sources and React types; without it, that
  * step is skipped and says so (CI has no checkout).
@@ -85,4 +88,9 @@ else {
   );
   status ||= s;
 }
+const js = spawnSync(process.execPath, [path.join(repo, 'scripts', 'check-types.mjs')], {
+  cwd: repo,
+  stdio: 'inherit',
+}).status;
+status ||= js ?? 1;
 process.exit(status);

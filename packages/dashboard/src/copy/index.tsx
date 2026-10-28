@@ -61,7 +61,7 @@ function message(key: string, count: unknown): string {
   return (typeof count === 'number' ? m[plurals.select(count)] : undefined) ?? m.other;
 }
 
-const show = (v: unknown) => (typeof v === 'number' ? numbers.format(v) : String(v ?? ''));
+const show = (v: Vars[string]) => (typeof v === 'number' ? numbers.format(v) : String(v ?? ''));
 
 /** A message as text. */
 export function t(key: CopyKey, vars: Vars = {}): string {

@@ -14,11 +14,10 @@
     "isolatedModules": true,
     "allowImportingTsExtensions": true,
     "types": [],
-    "baseUrl": ".",
     "paths": {
-      "@ui": ["packages/dashboard/src/ui/index.ts"],
-      "pxsig/dashboard": ["packages/dashboard/src/ui/contract.ts"],
-      "pxsig/diff-viewer": ["packages/dashboard/src/diff-viewer/index.ts"]
+      "@ui": ["./packages/dashboard/src/ui/index.ts"],
+      "pxsig/dashboard": ["./packages/dashboard/src/ui/contract.ts"],
+      "pxsig/diff-viewer": ["./packages/dashboard/src/diff-viewer/index.ts"]
     }
   },
   "include": ["packages/dashboard/src", "packages/dashboard/test/harness", "examples/custom-ui/pxsig-ui", "types"],

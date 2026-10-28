@@ -23,7 +23,7 @@ interface Item {
   count: number;
   detail: string;
   action: CopyKey;
-  open(): void;
+  open: () => void;
 }
 
 /** "dark 9 · light 3": a count split by mode, when there is more than one. */
@@ -43,7 +43,7 @@ interface ErrorRow {
   kind: string;
   name: string;
   detail: string;
-  open(): void;
+  open: () => void;
 }
 
 /**
@@ -60,8 +60,8 @@ function ErrorsCard({
 }: {
   data: Data;
   renderErrors: Row[];
-  go(tab: string, filter?: string): void;
-  startReview(kind: Queue): void;
+  go: (tab: string, filter?: string) => void;
+  startReview: (kind: Queue) => void;
 }) {
   const L = data.integrity;
   const coverage = coverageHasErrors(L);
@@ -176,8 +176,8 @@ export function Overview({
   startReview,
 }: {
   data: Data;
-  go(tab: string, filter?: string): void;
-  startReview(kind: Queue): void;
+  go: (tab: string, filter?: string) => void;
+  startReview: (kind: Queue) => void;
 }) {
   // With the server, a queue opens straight into the inspector; a static report lists it instead.
   const review = (kind: Queue) => (served ? startReview(kind) : go('stories', kind));

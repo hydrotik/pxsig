@@ -487,7 +487,7 @@ export function rustAffected(ctx) {
     pending.clear();
   });
   return {
-    affected(file) {
+    affected: (file) => {
       if (dead) return Promise.reject(dead);
       const id = ++seq;
       return new Promise((ok, fail) => {

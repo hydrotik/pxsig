@@ -15,20 +15,31 @@
  */
 import * as cp from 'node:child_process';
 
+/** @type {Record<string, string[]>} */
 const BY_OS = {
   darwin: ['git', 'ps', 'osascript', 'open', 'docker'],
   linux: ['git', 'ps', 'xdg-open', 'fc-list', 'docker'],
   win32: ['git', 'docker'],
 };
 
-/** Why pxsig may not start `program` on `platform`, or null. */
+/**
+ * Why pxsig may not start `program` on `platform`, or null.
+ * @param {string} program
+ * @param {string} [platform]
+ * @returns {string | null}
+ */
 export function refused(program, platform = process.platform) {
   if (program === process.execPath) return null;
-  if (/^pxsig(\.exe)?$/i.test(program.split(/[\\/]/).pop())) return null; // the engine binary
+  if (/^pxsig(\.exe)?$/i.test(program.split(/[\\/]/).pop() ?? '')) return null; // the engine binary
   if ((BY_OS[platform] ?? ['git']).includes(program)) return null;
   return `pxsig does not start "${program}" on ${platform} (see "Programs pxsig starts" in docs/platforms.md)`;
 }
 
+/**
+ * @param {string} program
+ * @param {readonly string[]} args
+ * @param {{ shell?: unknown }} [opts]
+ */
 function check(program, args, opts = {}) {
   const why = refused(program);
   if (why) throw new Error(why);
@@ -40,18 +51,50 @@ function check(program, args, opts = {}) {
     );
 }
 
-/** A start a policy blocked (AppLocker, WDAC, a sandbox) names the list instead of failing bare. */
+/**
+ * A start a policy blocked (AppLocker, WDAC, a sandbox) names the list instead of failing bare.
+ * @template {Error | null | undefined} E
+ * @param {string} program
+ * @param {E} e
+ * @returns {E}
+ */
 function explain(program, e) {
-  if (e && ['EACCES', 'EPERM'].includes(e.code))
-    e.message = `${program} could not start (${e.code}): it may be blocked on this machine. What pxsig starts and why: "Programs pxsig starts" in docs/platforms.md`;
+  const code = /** @type {NodeJS.ErrnoException | null | undefined} */ (e)?.code;
+  if (e && code && ['EACCES', 'EPERM'].includes(code))
+    e.message = `${program} could not start (${code}): it may be blocked on this machine. What pxsig starts and why: "Programs pxsig starts" in docs/platforms.md`;
   return e;
 }
 
+/**
+ * @param {string} program
+ * @param {readonly string[]} [args]
+ * @param {cp.SpawnOptions} [opts]
+ * @returns {cp.ChildProcess}
+ */
 export function spawn(program, args = [], opts = {}) {
   check(program, args, opts);
   return cp.spawn(program, args, opts);
 }
 
+/**
+ * @overload
+ * @param {string} program
+ * @param {readonly string[]} args
+ * @param {cp.SpawnSyncOptionsWithStringEncoding} opts
+ * @returns {cp.SpawnSyncReturns<string>}
+ */
+/**
+ * @overload
+ * @param {string} program
+ * @param {readonly string[]} [args]
+ * @param {cp.SpawnSyncOptions} [opts]
+ * @returns {cp.SpawnSyncReturns<string | Buffer>}
+ */
+/**
+ * @param {string} program
+ * @param {readonly string[]} [args]
+ * @param {cp.SpawnSyncOptions} [opts]
+ */
 export function spawnSync(program, args = [], opts = {}) {
   check(program, args, opts);
   const r = cp.spawnSync(program, args, opts);
@@ -59,6 +102,13 @@ export function spawnSync(program, args = [], opts = {}) {
   return r;
 }
 
+/**
+ * @param {string} program
+ * @param {readonly string[]} [args]
+ * @param {cp.ExecFileOptions | ((err: Error | null, stdout: string | Buffer, stderr: string | Buffer) => void)} [opts]
+ * @param {(err: Error | null, stdout: string | Buffer, stderr: string | Buffer) => void} [done]
+ * @returns {cp.ChildProcess}
+ */
 export function execFile(program, args = [], opts = {}, done = () => {}) {
   if (typeof opts === 'function') [opts, done] = [{}, opts];
   check(program, args, opts);

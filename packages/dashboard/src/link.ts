@@ -43,10 +43,13 @@ if (typeof window !== 'undefined')
 /** In a frame (the Storybook panel): the dashboard link's cookie is not sent there. */
 const framed = () => typeof window !== 'undefined' && window.top !== window.self;
 
+/** The server's answer to a decision: its fields, and on a refusal `error` and `code` (server.md). */
+type Answer = Record<string, unknown> & { error?: string; code?: string };
+
 async function post(
   path: string,
   body: string
-): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
+): Promise<{ ok: boolean; status: number; body: Answer }> {
   const r = await fetch(path, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

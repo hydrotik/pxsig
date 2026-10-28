@@ -48,9 +48,9 @@ export function StaleHeatmap({
   onViewAll,
 }: {
   data: Data;
-  onSelect(component: string): void;
+  onSelect: (component: string) => void;
   limit?: number;
-  onViewAll?(): void;
+  onViewAll?: () => void;
 }) {
   const L = data.integrity;
   if (!L) return null;

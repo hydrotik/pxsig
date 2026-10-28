@@ -339,14 +339,14 @@ test(
       );
 
       // curl -X POST, as an agent would: refused, nothing written.
-      for (const [action, body] of [
+      for (const [action, body] of /** @type {[string, object][]} */ ([
         ['approve', { id }],
         ['approve-story', { story: id }],
         ['reject', { id }],
         ['unreview', { id }],
         ['a11y-accept', { id }],
         ['a11y-unaccept', { id, rule: 'x' }],
-      ]) {
+      ])) {
         const r = await raw(S.port, { method: 'POST', path: `/__pxsig/${action}`, body });
         assert.equal(r.status, 403, `${action}: ${r.text}`);
         assert.equal(r.json().error, NEEDS_PERSON);

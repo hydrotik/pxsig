@@ -749,7 +749,7 @@ async function runChecks(S) {
     } finally {
       S.running = null;
       S.checking = null;
-      if (S.queued.size) runChecks(S);
+      if (S.queued.size) void runChecks(S);
       else scheduleIntegrity(S, 'check', 0);
     }
   })();
@@ -900,7 +900,7 @@ async function enqueue(S, body) {
   for (const e of S.manifest.stories) if (body.all || stories.has(e.story ?? e.id)) ids.add(e.id);
   const queued = [...ids].filter((id) => S.manifest.stories.some((e) => e.id === id));
   queued.forEach((id) => S.queued.add(id));
-  runChecks(S);
+  void runChecks(S);
   if (registered.added.length) scheduleIntegrity(S, 'registered', 0);
   return { queued, registered: registered.added, skipped: registered.skipped };
 }
@@ -1552,4 +1552,4 @@ for (const S of states.values()) {
   }
 }
 listen(wantPort);
-for (const S of states.values()) runIntegrity(S, 'startup');
+for (const S of states.values()) void runIntegrity(S, 'startup');
