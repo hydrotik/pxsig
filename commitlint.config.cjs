@@ -14,6 +14,13 @@
 
 module.exports = {
   extends: ['@commitlint/config-conventional'],
+  // Dependabot's update commits (.github/dependabot.yml): it writes "Bump x from a to b" with a
+  // capital B and has no option to change that. Matched narrowly: its `chore(deps…)` prefix, the
+  // "Bump" subject and the `updated-dependencies:` block it puts in every body.
+  ignores: [
+    (message) =>
+      /^chore\(deps(-dev)?\): Bump /.test(message) && /^updated-dependencies:$/m.test(message),
+  ],
   rules: {
     // `release: X.Y.Z` is the release commit (docs/releasing.md); `chore` is everything else.
     'type-enum': [
