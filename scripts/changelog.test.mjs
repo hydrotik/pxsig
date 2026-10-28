@@ -1,10 +1,15 @@
 // changelog.mjs: what a fragment may hold, how a release merges them, and the CHANGELOG.md guard.
 import { strict as assert } from 'node:assert';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import {
   HEADINGS,
   directEdit,
   merge,
+  changedSince,
   missingFragment,
   parseFragment,
   release,
@@ -123,4 +128,45 @@ test('a branch that changes shipped code adds a fragment, or says "Changelog: no
     ),
     null
   );
+});
+
+test('changedSince finds a fragment a branch adds, against its base (the git call itself)', () => {
+  // A throwaway repository: `git init` installs no hooks.
+  const dir = mkdtempSync(join(tmpdir(), 'changelog-since-'));
+  try {
+    /** @param {string[]} a */
+    const git = (...a) =>
+      execFileSync('git', a, {
+        cwd: dir,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: 't',
+          GIT_AUTHOR_EMAIL: 't@t',
+          GIT_COMMITTER_NAME: 't',
+          GIT_COMMITTER_EMAIL: 't@t',
+        },
+      }).trim();
+    git('init', '-q', '-b', 'main');
+    git('config', 'commit.gpgsign', 'false');
+    mkdirSync(join(dir, 'changelog.d'));
+    writeFileSync(join(dir, 'changelog.d', 'README.md'), 'readme\n');
+    git('add', '-A');
+    git('commit', '-q', '-m', 'base');
+    const base = git('rev-parse', 'HEAD');
+    mkdirSync(join(dir, 'crates', 'x', 'src'), { recursive: true });
+    writeFileSync(join(dir, 'crates', 'x', 'src', 'io.rs'), 'fn main() {}\n');
+    writeFileSync(join(dir, 'changelog.d', 'png.md'), '### Changed\n\n- x\n');
+    git('add', '-A');
+    git('commit', '-q', '-m', 'change');
+    assert.deepEqual(changedSince(base, {}, dir).sort(), [
+      'changelog.d/png.md',
+      'crates/x/src/io.rs',
+    ]);
+    assert.deepEqual(changedSince(base, { filter: 'AM', paths: ['changelog.d'] }, dir), [
+      'changelog.d/png.md',
+    ]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
