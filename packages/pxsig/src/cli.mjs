@@ -24,6 +24,9 @@
  *   browser start [--image tag] [--port 3000] | stop | status
  *                               Playwright's browser in the pxsig container image, for --browser <ws>
  *                               (the only commands that start docker; docs/container.md)
+ *   snapshot [--out file] [--project a,b]
+ *                               a read-only summary of the committed store, for a deployed Storybook
+ *                               (the addon writes it into `storybook build`; docs/team.md)
  *   cat <file.psig> [--image out.png]
  *                               a baseline's header (git's textconv for *.psig), or its image
  *   migrate --from <dir> [--apply] [--no-verify]
@@ -77,7 +80,7 @@
  * Per-entry approve / reject stays in the dashboard and Storybook panel, where a person sees the images.
  */
 import { spawn, spawnSync } from './lib/spawn.mjs';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { approveCommand } from './approve.mjs';
@@ -1588,6 +1591,38 @@ const commands = {
       stdio: 'inherit',
     });
     process.exit(r.status ?? 2);
+  },
+
+  async snapshot() {
+    // Reads only the committed store and git: every project by default, as a Storybook may hold several.
+    const { buildSnapshot, snapshotCounts } = await import('./snapshot.mjs');
+    const ws = findWorkspace({});
+    const names = project ? list(project) : ws.projects.map((p) => p.name);
+    const unknown = names.filter((n) => !ws.projects.some((p) => p.name === n));
+    if (unknown.length)
+      fail(
+        `no project ${unknown.join(', ')} in this workspace (${ws.projects.map((p) => p.name).join(', ')})`
+      );
+    const snap = buildSnapshot(names.map((name) => openProject({ project: name })));
+    if (typeof flags.out !== 'string')
+      return void process.stdout.write(`${JSON.stringify(snap)}\n`);
+    const out = resolve(flags.out);
+    mkdirSync(dirname(out), { recursive: true });
+    writeFileSync(out, `${JSON.stringify(snap)}\n`);
+    const n = snapshotCounts(snap);
+    emit(
+      format,
+      [
+        {
+          note: `snapshot: ${n.stories} stories, ${n.entries} entries, ${n.projects} project${n.projects === 1 ? '' : 's'} → ${relPath(process.cwd(), out)}`,
+          tone: 'ok',
+        },
+        ...(snap.shallow
+          ? [{ note: 'shallow clone: no PR is shown (fetch with fetch-depth: 0)', tone: 'warn' }]
+          : []),
+      ],
+      { out, commit: snap.commit, shallow: snap.shallow, uncommitted: snap.uncommitted, ...n }
+    );
   },
 
   cat() {

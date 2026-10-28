@@ -994,6 +994,30 @@
       ],
       "seeAlso": ["ci"]
     },
+    "snapshot": {
+      "summary": "A read-only summary of the committed store, for a Storybook deployed to a shared server: each entry's baseline, last approval (date, PR, commit, colour or shape, reason), render environment and accepted a11y rules, and each story's history. Never who approved or how.",
+      "usage": ["pxsig snapshot [--out file] [--project a,b]"],
+      "flags": [
+        {
+          "name": "out",
+          "value": "file",
+          "default": "stdout",
+          "meaning": "Where to write it. The Storybook addon writes it into `storybook build` output as `pxsig-snapshot.json`."
+        }
+      ],
+      "effects": ["reads-only"],
+      "exits": {
+        "0": "Written",
+        "2": "Usage or setup error"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig snapshot --out storybook-static/pxsig-snapshot.json",
+          "shows": "The summary a deployed Storybook's pxsig panel reads"
+        }
+      ],
+      "seeAlso": ["approve", "report"]
+    },
     "dashboard": {
       "summary": "The dashboard on this project's design system, through a UI adapter.",
       "usage": ["pxsig dashboard build|gaps|check"],

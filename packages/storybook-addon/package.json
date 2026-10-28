@@ -1,7 +1,7 @@
 {
   "name": "@pxsig/storybook-addon",
   "version": "0.5.1",
-  "description": "pxsig in Storybook: a visual-regression panel and sidebar statuses, fed by the pxsig server.",
+  "description": "pxsig in Storybook: a visual-regression panel and sidebar statuses, fed by the pxsig server; on a deployed Storybook, a read-only snapshot.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -21,6 +21,7 @@
     "preset.cjs",
     "manager.mjs",
     "panel-style.mjs",
+    "snapshot-view.mjs",
     "README.md"
   ],
   "peerDependencies": {
