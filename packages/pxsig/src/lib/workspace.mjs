@@ -181,6 +181,10 @@ export function findWorkspace({ cwd = process.cwd(), workspace = null, env = pro
       );
   }
   const projects = Object.entries(ws.projects).map(([name, rel]) => {
+    if (typeof rel !== 'string')
+      throw new SetupError(
+        `${file}: the folder of project "${name}" must be a string (a path from the workspace root)`
+      );
     const dir = resolve(root, rel);
     return { name, dir, configPath: join(dir, CONFIG_FILE) };
   });
