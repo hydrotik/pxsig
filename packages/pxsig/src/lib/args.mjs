@@ -7,6 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+/** @import { Flags, HelpCommands, UnknownFlag } from '../types.js' */
 
 export const BOOLEAN_FLAGS = new Set([
   'json',
@@ -38,8 +39,15 @@ export const BOOLEAN_FLAGS = new Set([
   'strict',
 ]);
 
+/**
+ * @param {string[]} argv
+ * @param {{ booleans?: Set<string> }} [opts]
+ * @returns {{ positional: string[], flags: Flags }}
+ */
 export function parseArgs(argv, { booleans = BOOLEAN_FLAGS } = {}) {
+  /** @type {string[]} */
   const positional = [];
+  /** @type {Flags} */
   const flags = {};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -66,13 +74,18 @@ export function parseArgs(argv, { booleans = BOOLEAN_FLAGS } = {}) {
  * help/commands.json, which test/help.test.mjs keeps equal to the flags the CLI reads. A flag
  * outside it is a typo or another tool's flag: the CLI says so and goes on (`unknownFlags`).
  */
+/** @type {Set<string> | null} */
 let known = null;
+/** @returns {Set<string>} */
 export function knownFlags() {
   if (!known) {
-    const { global, commands } = JSON.parse(
-      readFileSync(
-        join(dirname(fileURLToPath(import.meta.url)), '..', 'help', 'commands.json'),
-        'utf8'
+    // help/commands.json ships with pxsig and test/help.test.mjs checks its shape.
+    const { global, commands } = /** @type {HelpCommands} */ (
+      JSON.parse(
+        readFileSync(
+          join(dirname(fileURLToPath(import.meta.url)), '..', 'help', 'commands.json'),
+          'utf8'
+        )
       )
     );
     const entries = [
@@ -84,7 +97,12 @@ export function knownFlags() {
   return known;
 }
 
-/** The edit distance between two short strings: insertions, deletions, substitutions and swaps of two neighbours. */
+/**
+ * The edit distance between two short strings: insertions, deletions, substitutions and swaps of two neighbours.
+ * @param {string} a
+ * @param {string} b
+ * @returns {number}
+ */
 function distance(a, b) {
   const d = Array.from({ length: a.length + 1 }, (_, i) =>
     Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
@@ -106,9 +124,12 @@ function distance(a, b) {
  * The flags in `argv` that no command knows, each with the closest known flag (within two edits,
  * one for a name of four letters or fewer)
  * and the word it took as its value, if any (a misspelled boolean takes the next word).
- * @returns {{ name: string, suggestion: string | null, took: string | null }[]}
+ * @param {string[]} argv
+ * @param {{ known?: Set<string>, booleans?: Set<string> }} [opts]
+ * @returns {UnknownFlag[]}
  */
 export function unknownFlags(argv, { known = knownFlags(), booleans = BOOLEAN_FLAGS } = {}) {
+  /** @type {UnknownFlag[]} */
   const out = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -120,6 +141,7 @@ export function unknownFlags(argv, { known = knownFlags(), booleans = BOOLEAN_FL
         ? argv[++i]
         : null;
     if (known.has(name)) continue;
+    /** @type {string | null} */
     let suggestion = null;
     // Two edits for a longer name, one for a short one (`--x` is not a typo of `--ci`).
     let best = name.length > 4 ? 3 : 2;
@@ -132,13 +154,21 @@ export function unknownFlags(argv, { known = knownFlags(), booleans = BOOLEAN_FL
   return out;
 }
 
-/** One line per unknown flag, for stderr. */
+/**
+ * One line per unknown flag, for stderr.
+ * @param {UnknownFlag[]} unknown
+ */
 export const unknownFlagLines = (unknown) =>
   unknown.map(
     ({ name, suggestion, took }) =>
       `pxsig: unknown flag --${name}, ignored${suggestion ? ` (did you mean --${suggestion}?)` : ''}${took != null ? `; it took "${took}" as its value` : ''}`
   );
 
-/** A flag's string value, or null (absent, or given without a value). */
+/**
+ * A flag's string value, or null (absent, or given without a value).
+ * @param {Flags} flags
+ * @param {string} k
+ * @returns {string | null}
+ */
 export const strFlag = (flags, k) =>
   typeof flags[k] === 'string' && flags[k] !== '' ? flags[k] : null;

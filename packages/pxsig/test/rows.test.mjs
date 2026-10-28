@@ -22,7 +22,8 @@ test('a render error carries no comparison of the image it left behind, and is n
   );
   assert.equal(row.pass, false);
   assert.equal(row.changed, false);
-  assert.match(row.error, /Vite error overlay/);
+  // A row with an error: `match` fails the test on anything else.
+  assert.match(/** @type {string} */ (row.error), /Vite error overlay/);
   assert.equal(row.metrics, undefined, 'the stale metrics are dropped');
   assert.equal(row.reasons, undefined);
 });
@@ -36,7 +37,7 @@ test('an engine error (identical renders across many entries) is not a change ei
     manifest
   );
   assert.equal(row.changed, false);
-  assert.match(row.error, /identical render/);
+  assert.match(/** @type {string} */ (row.error), /identical render/);
 });
 
 test('a new entry and a real change are still reviewable', () => {

@@ -28,6 +28,9 @@ import { join } from 'node:path';
 import { repoStateDir } from './machine.mjs';
 import { spawnSync } from './spawn.mjs';
 import { humanAtTerminal, whyNotPerson } from './term.mjs';
+/** @import { MachineOptions, Project } from '../types.js' */
+/** Which machine's state folder (tests point it elsewhere); lib/machine.mjs `repoStateDir`. */
+/** @typedef {MachineOptions & { git?: (cwd: string, args: string[]) => string }} StateOptions */
 
 export const GATES = ['visual', 'a11y', 'verify', 'env', 'doctor', 'stale'];
 const DAY = 86_400_000;
@@ -348,7 +351,11 @@ export function enforcementProblems(enf, tally = null) {
 const KEEP_LINES = 5000;
 const KEEP_DAYS = 90;
 
-/** `<stateDir>/readiness.ndjson` for this project's repository. */
+/**
+ * `<stateDir>/readiness.ndjson` for this project's repository.
+ * @param {Pick<Project, 'workspaceRoot'>} P
+ * @param {StateOptions} [opts]
+ */
 export const readinessPath = (P, opts) =>
   join(repoStateDir(P.workspaceRoot, opts), 'readiness.ndjson');
 
@@ -361,6 +368,10 @@ const gitOut = (cwd, args) => {
  * Append one readiness line, when a configured gate is on warn (never for the quiet built-in a11y
  * default, decision 88). Keeps the last 5,000 lines per project and gate set, and 90 days (R26).
  * A write failure is one warning on stderr and never changes the exit code.
+ * @param {Pick<Project, 'workspaceRoot' | 'name'>} P
+ * @param {ReturnType<typeof resolveEnforcement>} enf
+ * @param {ReturnType<typeof outcome>} out
+ * @param {{ source?: string, suite?: string | null, counts?: Record<string, number>, now?: Date, opts?: StateOptions }} [extra]
  */
 export function appendReadiness(
   P,
@@ -442,6 +453,8 @@ function trimReadiness(path, now) {
 /**
  * The tally for this project: runs and would-fail runs over the kept lines, and separately on the
  * default branch (`main` or `master`). Null when there are none.
+ * @param {Pick<Project, 'workspaceRoot' | 'name'>} P
+ * @param {{ opts?: StateOptions, branchNames?: string[] }} [extra]
  */
 export function readinessTally(P, { opts, branchNames = ['main', 'master'] } = {}) {
   const lines = readReadiness(readinessPath(P, opts)).filter((l) => l.project === P.name);
@@ -458,7 +471,10 @@ export function readinessTally(P, { opts, branchNames = ['main', 'master'] } = {
   };
 }
 
-/** For the CLIs: resolve, or print the refusal and exit with its code. */
+/**
+ * For the CLIs: resolve, or print the refusal and exit with its code.
+ * @param {(message: string, code?: number) => unknown} [print]
+ */
 export function resolveOrExit(P, opts, print = (m) => process.stderr.write(`pxsig: ${m}\n`)) {
   try {
     return resolveEnforcement(P, opts);

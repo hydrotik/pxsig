@@ -32,6 +32,7 @@ import { workspaceProblems } from './workspace.mjs';
 import { toPosix } from './paths.mjs';
 import { portabilityProblems } from './portability.mjs';
 import { readLines, writeJson } from './files.mjs';
+/** @import { ApprovalLine, Project, StoryIndex, TornLine } from '../types.js' */
 import { conflictedStoreFiles } from './approvals.mjs';
 import { enforcementProblems, readinessTally, resolveEnforcement } from './enforcement.mjs';
 
@@ -173,14 +174,24 @@ export const sha256File = (p) =>
   existsSync(p) ? createHash('sha256').update(readFileSync(p)).digest('hex') : null;
 const isPsig = (p) => p.endsWith('.psig');
 
-/** Atomic JSON write (tmp + rename): a reader never sees half a file. */
+/**
+ * Atomic JSON write (tmp + rename): a reader never sees half a file.
+ * @param {string} path
+ * @param {unknown} value
+ * @param {{ pretty?: boolean }} [opts]
+ */
 export const writeJsonAtomic = (path, value, opts) => writeJson(path, value, opts);
 
 // --- context: every path comes from config, nothing hard-coded --------------------------------------
 
+/** What `resolveContext` returns: the paths and settings every integrity step reads. */
+/** @typedef {ReturnType<typeof resolveContext>} IntegrityContext */
+
 /**
  * The integrity context for a resolved project (lib/workspace.mjs `loadProject`). Every path
  * comes from the project and its store; nothing is assumed about where pxsig is installed.
+ * @param {Project} P
+ * @param {{ manifestPath?: string }} [opts]
  */
 export function resolveContext(P, { manifestPath } = {}) {
   if (!P?.store) throw new Error('resolveContext: a resolved project is required');
@@ -267,7 +278,10 @@ const scopeRe = (ctx) =>
       `${ctx.srcRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/(.+)/[^/]+\\.stories\\.[jt]sx?$`
   );
 
-/** The storied folder (component) an importPath belongs to, or null when outside scope. */
+/**
+ * The storied folder (component) an importPath belongs to, or null when outside scope.
+ * @returns {string | null}
+ */
 export function componentOf(ctx, importPath) {
   if (!importPath) return null;
   const m = importPath.match(scopeRe(ctx));
@@ -382,7 +396,10 @@ export function scanStories(ctx) {
   return out;
 }
 
-/** The story index to reconcile against: live when healthy, else the static scan. */
+/**
+ * The story index to reconcile against: live when healthy, else the static scan.
+ * @returns {Promise<StoryIndex>}
+ */
 export async function loadStoryIndex(ctx, { fetchImpl, offline = false, live } = {}) {
   const baseUrl = ctx.config.baseUrl ?? 'http://localhost:6006';
   const res =
@@ -577,7 +594,10 @@ export async function reconcile(ctx, opts = {}) {
   const report = readJson(reportPath, null);
   const review = readJson(join(ctx.dirs.reports, 'review.json'), {}) ?? {};
   const a11yBase = readJson(ctx.files.a11y, null);
-  const { lines: approvals, torn } = readLines(ctx.files.approvals);
+  // The approval log is pxsig's own (lib/approvals.mjs): every complete line is an ApprovalLine.
+  const { lines: approvals, torn } = /** @type {{ lines: ApprovalLine[], torn: TornLine[] }} */ (
+    readLines(ctx.files.approvals)
+  );
   const lastApproval = new Map();
   for (const a of approvals) lastApproval.set(a.id, a);
   const rows = new Map((report?.rows ?? []).map((r) => [r.id, r]));

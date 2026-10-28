@@ -75,6 +75,8 @@ function ctxOf(project) {
     serverUrl: P.serverUrl(),
   };
 }
+/** What `ctxOf` returns: a project and the paths the tools read. */
+/** @typedef {ReturnType<typeof ctxOf>} ProjectContext */
 const PROJECT = {
   type: 'string',
   description:
@@ -110,6 +112,7 @@ function stateOf(row, review) {
 }
 const PROBLEMS = new Set(['changed', 'new', 'error', 'flaky', 'rejected']);
 
+/** @param {ProjectContext} C */
 function load(C) {
   const check = readJson(C.checkPath, null);
   if (!check)
@@ -174,6 +177,10 @@ async function server(C) {
 
 // --- the Rust engine: which entries can a set of files affect? ----------------------------------
 
+/**
+ * @param {ProjectContext} C
+ * @param {{ files?: string[], since?: string, manifestPath?: string }} opts
+ */
 function affected(C, { files, since, manifestPath }) {
   if (!existsSync(C.rustBin)) throw new Error(`the pxsig binary is missing: ${C.rustBin}`);
   const how = files?.length ? ['--files', files.join(',')] : ['--since', since];
@@ -191,7 +198,10 @@ function affected(C, { files, since, manifestPath }) {
   return JSON.parse(r.stdout);
 }
 
-/** Sources whose edits can change a render: the project's srcRoot plus its `affects` folders. */
+/**
+ * Sources whose edits can change a render: the project's srcRoot plus its `affects` folders.
+ * @param {ProjectContext} C
+ */
 function sourceRoots(C) {
   const roots = [
     C.P.srcRoot,
@@ -200,7 +210,12 @@ function sourceRoots(C) {
   return [...new Set(roots)].filter((r) => existsSync(r) && statSync(r).isDirectory());
 }
 
-/** Source files edited after `when` (tests excluded), with their edit times. */
+/**
+ * Source files edited after `when` (tests excluded), with their edit times.
+ * @param {ProjectContext} C
+ * @param {Date} when
+ * @param {{ withTimes?: boolean }} [opts]
+ */
 function editedSince(C, when, { withTimes = false } = {}) {
   const out = [];
   const walk = (dir) => {
@@ -223,7 +238,8 @@ function editedSince(C, when, { withTimes = false } = {}) {
 /** When an entry's latest render was written, or null. */
 function renderedAt(C, id) {
   const p = imagePath(C, 'current', id);
-  return existsSync(p) ? statSync(p).mtime : null;
+  // No manifest entry: existsSync(null) is false, so null, as before typing.
+  return existsSync(/** @type {string} */ (p)) ? statSync(/** @type {string} */ (p)).mtime : null;
 }
 
 /** Width × height from a PNG's IHDR, without decoding it. */
@@ -344,6 +360,7 @@ async function prunePlan({ project, component, mode, only, cmd = 'pxsig', maxFil
   for (const suite of [null, ...suites])
     for (const e of readJson(C.P.manifestPath(suite), { stories: [] }).stories ?? [])
       if (!modes.has(e.id)) modes.set(e.id, e.mode ?? null);
+  /** @param {{ suite: string | null, path: string, file: string, check: unknown }} rep a report (lib/prune.mjs `readReports`) */
   const stale = (rep) => {
     const mp = C.P.manifestPath(rep.suite);
     if (!existsSync(mp))
@@ -379,7 +396,13 @@ async function prunePlan({ project, component, mode, only, cmd = 'pxsig', maxFil
 
 // --- images --------------------------------------------------------------------------------------
 
-/** Where an image lives: the latest render and the diff are files; the baseline is in the .psig. */
+/**
+ * Where an image lives: the latest render and the diff are files; the baseline is in the .psig.
+ * @param {ProjectContext} C
+ * @param {string} kind
+ * @param {string} id
+ * @returns {string | null}
+ */
 function imagePath(C, kind, id) {
   if (kind === 'current') return join(C.P.store.latest, `${id}.png`);
   if (kind === 'diff') return join(C.P.store.diffLatest, `${id}.diff.png`);
@@ -387,7 +410,12 @@ function imagePath(C, kind, id) {
   return e ? resolve(C.root, e.sig) : null;
 }
 
-/** An image's bytes and where they came from, or null. */
+/**
+ * An image's bytes and where they came from, or null.
+ * @param {ProjectContext} C
+ * @param {string} kind
+ * @param {string} id
+ */
 export function imageOf(C, kind, id) {
   const p = imagePath(C, kind, id);
   if (!p || !existsSync(p))

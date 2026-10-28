@@ -11,6 +11,8 @@
  * exist; `user` files are in the person's home folder, and pxsig only prints them (decision 9.6).
  */
 
+/** @import { Assistant } from '../types.js' */
+
 /** The instruction for the assistant (decision 80), word for word in the docs and `pxsig help agents`. */
 export const SNIPPET = `pxsig (visual baselines): never approve or accept pxsig baselines and never call
 /__pxsig/approve. Ask the person to review changes in the pxsig dashboard. To build pxsig's
@@ -20,14 +22,18 @@ dashboard on our design system, follow node_modules/pxsig/docs/ui/build-adapter.
 /** The script every recipe runs, relative to the repository. */
 export const SCRIPT = 'node_modules/pxsig/bin/pxsig.mjs';
 
+/** @param {unknown} v */
 const json = (v) => JSON.stringify(v, null, 2) + '\n';
+/** @param {string} repo */
 const abs = (repo) => `${repo.replace(/\\/g, '/').replace(/\/$/, '')}/${SCRIPT}`;
+/** @param {string} file */
 const instruction = (file) => ({ file, text: `${SNIPPET}` });
 
 /**
  * `id`: the name `--assistant` takes. `mcp(repo)`: `{ file, scope, lang, text }` or null (no MCP).
  * `instructions`: the file the snippet goes in. `policy`: what can turn the server off on a managed
  * machine. `notes`: printed after the recipe.
+ * @type {Assistant[]}
  */
 export const ASSISTANTS = [
   {
@@ -227,4 +233,5 @@ export const ASSISTANTS = [
   { id: 'none', label: 'None', mcp: () => null, instructions: null, policy: null, notes: [] },
 ];
 
+/** @param {string} id */
 export const assistant = (id) => ASSISTANTS.find((a) => a.id === id) ?? null;

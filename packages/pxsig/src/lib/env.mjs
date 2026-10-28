@@ -18,6 +18,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import * as os from 'node:os';
 import { spawnSync } from './spawn.mjs';
 import { readHeader } from './psig.mjs';
+/** @import { CheckRow, Config, EnvBrowser, EnvComparison, EnvFields, EnvProbe, EnvRecord, EnvSettings, EnvSummary, EnvTier, ManifestEntry, RemoteBrowser } from '../types.js' */
 
 export const ENV_VERSION = 1;
 
@@ -35,6 +36,7 @@ const PROBE_SIZES = [12, 16, 32];
 /**
  * Every compared field, in report order: its path and its tier. `browser.version` is major on its
  * first number and minor on the rest; `fonts.probe` names the families that differ.
+ * @type {[string, EnvTier][]}
  */
 export const FIELDS = [
   ['browser.name', 'major'],
@@ -64,22 +66,47 @@ export const FIELDS = [
 ];
 export const FIELD_NAMES = FIELDS.map(([f]) => f);
 
-const get = (o, path) => path.split('.').reduce((v, k) => (v == null ? undefined : v[k]), o);
+/** A value read out of a parsed env (JSON). */
+/** @typedef {string | number | boolean | object | null | undefined} EnvValue */
+/**
+ * The value at a dotted path, or undefined.
+ * @param {unknown} o
+ * @param {string} path
+ * @returns {EnvValue}
+ */
+const get = (o, path) =>
+  path.split('.').reduce(
+    (/** @type {EnvValue} */ v, k) =>
+      // Indexing a primitive (a string field) reads undefined or a character, as before typing.
+      v == null ? undefined : /** @type {Record<string, EnvValue>} */ (v)[k],
+    /** @type {EnvValue} */ (o)
+  );
+/** @param {string} s */
 const sha = (s) => createHash('sha256').update(s).digest('hex');
+/** @param {string | null | undefined} v a version */
 const major = (v) => String(v ?? '').split('.')[0];
 
-/** JSON with sorted keys at every level, so equal objects hash equal. */
+/**
+ * JSON with sorted keys at every level, so equal objects hash equal.
+ * @param {unknown} v
+ * @returns {string}
+ */
 export function canonical(v) {
   if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
   if (v && typeof v === 'object')
     return `{${Object.keys(v)
       .sort()
-      .map((k) => `${JSON.stringify(k)}:${canonical(v[k])}`)
+      .map(
+        (k) => `${JSON.stringify(k)}:${canonical(/** @type {Record<string, unknown>} */ (v)[k])}`
+      )
       .join(',')}}`;
   return JSON.stringify(v ?? null);
 }
 
-/** The major fields only: what `id` is computed over. */
+/**
+ * The major fields only: what `id` is computed over.
+ * @param {EnvFields} env
+ */
 export function majorView(env) {
   return {
     browser: {
@@ -91,19 +118,30 @@ export function majorView(env) {
     os: { platform: env.os?.platform ?? null, arch: env.os?.arch ?? null },
     fonts: { probe: env.fonts?.probe?.digest ?? null },
     render: Object.fromEntries(
-      ['dpr', 'gpu', 'colorGamut', 'timezone', 'locale', 'reducedMotion'].map((k) => [
-        k,
-        env.render?.[k] ?? null,
-      ])
+      /** @type {(keyof EnvRecord['render'])[]} */ ([
+        'dpr',
+        'gpu',
+        'colorGamut',
+        'timezone',
+        'locale',
+        'reducedMotion',
+      ]).map((k) => [k, env.render?.[k] ?? null])
     ),
     capture: { pipeline: env.capture?.pipeline ?? null },
   };
 }
 
-/** First 16 hex of sha256 over the canonical JSON of the major fields. */
+/**
+ * First 16 hex of sha256 over the canonical JSON of the major fields.
+ * @param {EnvFields} env
+ */
 export const envId = (env) => sha(canonical(majorView(env))).slice(0, 16);
 
-/** The GPU renderer string reduced to a class; the string itself (it names the machine model) is never kept. */
+/**
+ * The GPU renderer string reduced to a class; the string itself (it names the machine model) is never kept.
+ * @param {string | null | undefined} renderer
+ * @returns {string}
+ */
 export function gpuClass(renderer) {
   if (renderer === null) return 'none';
   const s = String(renderer ?? '');
@@ -115,10 +153,15 @@ export function gpuClass(renderer) {
   return 'masked';
 }
 
-/** Runs in the probe page: canvas text widths per family and size, WebGL renderer, gamut, Intl. */
+/**
+ * Runs in the probe page: canvas text widths per family and size, WebGL renderer, gamut, Intl.
+ * @param {{ families: string[], text: string, sizes: number[] }} input
+ * @returns {EnvProbe}
+ */
 export const PROBE_PAGE = ({ families, text, sizes }) => {
   const c = document.createElement('canvas');
   const g = c.getContext('2d');
+  /** @type {Record<string, number[]>} */
   const widths = {};
   for (const f of families) {
     widths[f] = sizes.map((px) => {
@@ -156,6 +199,8 @@ export const PROBE_PAGE = ({ families, text, sizes }) => {
 /**
  * A remote browser's OS from its page (`navigator.platform`): `Linux x86_64`, `Linux aarch64`,
  * `MacIntel`, `Win32`. Release and distro are not visible from a page, so they stay null.
+ * @param {string | null | undefined} platform
+ * @returns {EnvRecord['os']}
  */
 export function osFromProbe(platform) {
   const p = String(platform ?? '');
@@ -171,7 +216,11 @@ export function osFromProbe(platform) {
   return { platform: null, arch: null, release: null, distro: null };
 }
 
-/** `/etc/os-release` PRETTY_NAME on Linux, `os.version()` elsewhere. */
+/**
+ * `/etc/os-release` PRETTY_NAME on Linux, `os.version()` elsewhere.
+ * @param {string} platform
+ * @returns {string | null}
+ */
 function distro(platform) {
   if (platform === 'linux') {
     try {
@@ -192,6 +241,8 @@ function distro(platform) {
 /**
  * sha256 of sorted `fc-list : family style` where fontconfig exists (Linux, the container); else
  * null. The image workflow writes the same digest to the image label `io.pxsig.fonts`.
+ * @param {string} [platform]
+ * @returns {string | null}
  */
 export function systemFonts(platform = os.platform()) {
   if (platform !== 'linux') return null;
@@ -211,11 +262,18 @@ export function systemFonts(platform = os.platform()) {
   }
 }
 
-/** `version` of the Playwright package pxsig resolved, or null. */
+/**
+ * `version` of the Playwright package pxsig resolved, or null.
+ * @param {() => string | null | undefined} resolvePkg
+ * @returns {string | null}
+ */
 export function playwrightVersion(resolvePkg) {
   try {
     const p = resolvePkg();
-    return p && existsSync(p) ? (JSON.parse(readFileSync(p, 'utf8')).version ?? null) : null;
+    return p && existsSync(p)
+      ? // Playwright's package.json: its `version` is a string.
+        (/** @type {{ version?: string }} */ (JSON.parse(readFileSync(p, 'utf8'))).version ?? null)
+      : null;
   } catch {
     return null;
   }
@@ -225,6 +283,9 @@ export function playwrightVersion(resolvePkg) {
  * The environment of one launched browser. `browser` is a Playwright Browser; `type` the engine
  * name; `channel` the channel it launched with. The probe page is a fresh context with the
  * capture settings (DPR 1, reduced motion), closed before returning.
+ * @param {EnvBrowser} browser
+ * @param {{ type?: string, channel?: string | null, launchArgs?: string[], fontProbe?: string[], playwright?: string | null, pxsig?: string | null, engine?: string | null, remote?: RemoteBrowser | null, env?: NodeJS.ProcessEnv }} [opts]
+ * @returns {Promise<EnvRecord>}
  */
 export async function collectEnv(
   browser,
@@ -246,6 +307,7 @@ export async function collectEnv(
     deviceScaleFactor: 1,
     reducedMotion: 'reduce',
   });
+  /** @type {EnvProbe} */
   let probe;
   try {
     const page = await ctx.newPage();
@@ -253,7 +315,10 @@ export async function collectEnv(
       '<!doctype html><html><head><meta charset="utf-8"></head><body></body></html>'
     );
     await page.evaluate(() => (document.fonts ? document.fonts.ready : null)).catch(() => {});
-    probe = await page.evaluate(PROBE_PAGE, { families, text: PROBE_TEXT, sizes: PROBE_SIZES });
+    // What PROBE_PAGE returned, serialised back from the page.
+    probe = /** @type {EnvProbe} */ (
+      await page.evaluate(PROBE_PAGE, { families, text: PROBE_TEXT, sizes: PROBE_SIZES })
+    );
   } finally {
     await ctx.close().catch(() => {});
   }
@@ -276,6 +341,7 @@ export async function collectEnv(
           digest: env.PXSIG_IMAGE_DIGEST || null,
         }
       : null;
+  /** @type {EnvFields} */
   const out = {
     v: ENV_VERSION,
     browser: {
@@ -307,10 +373,16 @@ export async function collectEnv(
     node: process.version,
   };
   out.id = envId(out);
-  return out;
+  // `id` is set just above.
+  return /** @type {EnvRecord} */ (out);
 }
 
-/** The font families whose probe digests differ (both sides' families). */
+/**
+ * The font families whose probe digests differ (both sides' families).
+ * @param {EnvFields | null | undefined} a
+ * @param {EnvFields | null | undefined} b
+ * @returns {string[]}
+ */
 export function fontFamiliesDiffering(a, b) {
   const fa = a?.fonts?.probe?.families ?? {};
   const fb = b?.fonts?.probe?.families ?? {};
@@ -323,11 +395,16 @@ export function fontFamiliesDiffering(a, b) {
  * Compare a baseline's env with a render's. Returns `{ match, diff, fonts? }`: `diff` lists the
  * differing fields (only when not `same`), `fonts` the font families when `fonts.probe` differs.
  * `ignore` (config `env.ignore`) leaves fields out of the comparison.
+ * @param {EnvFields | null | undefined} base
+ * @param {EnvFields | null | undefined} cur
+ * @param {string[]} [ignore]
+ * @returns {EnvComparison}
  */
 export function compareEnv(base, cur, ignore = []) {
   if (!base || typeof base !== 'object') return { match: 'unknown' };
   if (!cur || typeof cur !== 'object') return { match: 'unknown' };
   const skip = new Set(ignore);
+  /** @type {string[]} */
   const diff = [];
   let isMajor = false;
   for (const [f, tier] of FIELDS) {
@@ -335,12 +412,18 @@ export function compareEnv(base, cur, ignore = []) {
     const a = get(base, f);
     const b = get(cur, f);
     if (f === 'browser.version') {
-      if (major(a) !== major(b)) (diff.push(f), (isMajor = true));
+      // `browser.version`: a version string, or missing.
+      /** @typedef {string | null | undefined} Version */
+      if (major(/** @type {Version} */ (a)) !== major(/** @type {Version} */ (b)))
+        (diff.push(f), (isMajor = true));
       else if ((a ?? null) !== (b ?? null)) diff.push(f);
       continue;
     }
     if (f === 'fonts.probe') {
-      if ((a?.digest ?? null) !== (b?.digest ?? null)) (diff.push(f), (isMajor = true));
+      // `fonts.probe` is `{ digest, families }` (or missing).
+      /** @typedef {{ digest?: string } | null | undefined} Probe */
+      if ((/** @type {Probe} */ (a)?.digest ?? null) !== (/** @type {Probe} */ (b)?.digest ?? null))
+        (diff.push(f), (isMajor = true));
       continue;
     }
     if (canonical(a ?? null) !== canonical(b ?? null)) {
@@ -353,9 +436,17 @@ export function compareEnv(base, cur, ignore = []) {
   return { match: isMajor ? 'mismatch' : 'compatible', diff, ...(fonts?.length ? { fonts } : {}) };
 }
 
-/** "browser.version 141→142", "fonts.probe: Inter", "render.gpu angle-metal→swiftshader". */
+/**
+ * "browser.version 141→142", "fonts.probe: Inter", "render.gpu angle-metal→swiftshader".
+ * @param {EnvFields | null | undefined} base
+ * @param {EnvFields | null | undefined} cur
+ * @param {{ diff?: string[], fonts?: string[] }} cmp
+ * @param {{ majorOnly?: boolean }} [opts]
+ * @returns {string[]}
+ */
 export function describeDiff(base, cur, cmp, { majorOnly = true } = {}) {
   const tier = Object.fromEntries(FIELDS);
+  /** @param {EnvValue} v */
   const show = (v) =>
     v == null
       ? 'none'
@@ -371,7 +462,8 @@ export function describeDiff(base, cur, cmp, { majorOnly = true } = {}) {
     .map((f) => {
       if (f === 'fonts.probe') return `fonts.probe: ${(cmp.fonts ?? []).join(', ') || 'changed'}`;
       if (f === 'browser.version')
-        return `browser.version ${major(get(base, f)) || '?'}→${major(get(cur, f)) || '?'}`;
+        // `browser.version`: a version string, or missing.
+        return `browser.version ${major(/** @type {string | null | undefined} */ (get(base, f))) || '?'}→${major(/** @type {string | null | undefined} */ (get(cur, f))) || '?'}`;
       return `${f} ${show(get(base, f))}→${show(get(cur, f))}`;
     });
 }
@@ -379,6 +471,9 @@ export function describeDiff(base, cur, cmp, { majorOnly = true } = {}) {
 /**
  * Fills a checked row's env fields from the run's env (by its browser) and the engine's
  * `baselineEnv` id: `env`, `baselineEnv`, `envMatch`, `envDiff` (and `envFonts`) when not `same`.
+ * @param {CheckRow} row
+ * @param {{ current?: Record<string, EnvFields> | null, envs?: Record<string, EnvFields> | null, ignore?: string[] }} opts
+ * @returns {CheckRow}
  */
 export function annotateRow(row, { current, envs, ignore = [] }) {
   if (!row || row.skipped) return row;
@@ -400,16 +495,25 @@ export function annotateRow(row, { current, envs, ignore = [] }) {
 /**
  * `summary.envMismatch` (checked rows whose baseline came from a different environment) and
  * `summary.envFields` (what differs, described, across those rows).
+ * @param {CheckRow[]} rows
+ * @param {Record<string, EnvFields>} [envs]
+ * @returns {EnvSummary}
  */
 export function envSummary(rows, envs = {}) {
   const mism = rows.filter((r) => !r.skipped && r.envMatch === 'mismatch');
+  /** @type {string[]} */
   const fields = [];
   const seen = new Set();
   for (const r of mism) {
-    for (const d of describeDiff(envs[r.baselineEnv], envs[r.env], {
-      diff: r.envDiff,
-      fonts: r.envFonts,
-    })) {
+    // A row without an id looks up `envs[undefined]`: no env, as before typing.
+    for (const d of describeDiff(
+      envs[/** @type {string} */ (r.baselineEnv)],
+      envs[/** @type {string} */ (r.env)],
+      {
+        diff: r.envDiff,
+        fonts: r.envFonts,
+      }
+    )) {
       const key = d.split(/[ :]/)[0] + (d.startsWith('fonts.probe') ? d : '');
       if (seen.has(key)) continue;
       seen.add(key);
@@ -419,7 +523,11 @@ export function envSummary(rows, envs = {}) {
   return { envMismatch: mism.length, ...(mism.length ? { envFields: fields.slice(0, 8) } : {}) };
 }
 
-/** The `[check] env:` line, or null when nothing mismatches. */
+/**
+ * The `[check] env:` line, or null when nothing mismatches.
+ * @param {Partial<EnvSummary> | null | undefined} summary
+ * @param {number} checked
+ */
 export function envLine(summary, checked) {
   if (!summary?.envMismatch) return null;
   const what = summary.envFields?.length ? ` (${summary.envFields.join(', ')})` : '';
@@ -429,10 +537,19 @@ export function envLine(summary, checked) {
 /**
  * `--strict-env`: the selected baselines whose env is `mismatch` against the current env of
  * their browser. `unknown` (no env recorded) never counts. Returns `{ count, fields, ids }`.
+ * @template {Pick<ManifestEntry, 'id'> & { browser?: string }} E
+ * @param {E[]} entries
+ * @param {(e: E) => string} sigPath
+ * @param {Record<string, EnvFields | undefined>} current
+ * @param {string[]} [ignore]
+ * @returns {{ count: number, fields: string[], ids: string[] }}
  */
 export function strictEnvCheck(entries, sigPath, current, ignore = []) {
+  /** @type {string[]} */
   const bad = [];
+  /** @type {Set<string>} */
   const fields = new Set();
+  /** @type {Set<string>} */
   const fonts = new Set();
   for (const e of entries) {
     const cur = current[e.browser ?? 'chromium'];
@@ -451,14 +568,22 @@ export function strictEnvCheck(entries, sigPath, current, ignore = []) {
   return { count: bad.length, fields: list, ids: bad };
 }
 
-/** The project's `env` settings with their defaults. */
+/**
+ * The project's `env` settings with their defaults.
+ * @param {Pick<Config, 'env'> | null | undefined} config
+ * @returns {EnvSettings}
+ */
 export const envConfig = (config) => ({
   ignore: Array.isArray(config?.env?.ignore) ? config.env.ignore : [],
   fontProbe: Array.isArray(config?.env?.fontProbe) ? config.env.fontProbe : [],
   strict: config?.env?.strict === true,
 });
 
-/** `{ <envId>: env }` for the run's environments (`{ chromium: env, … }`). */
+/**
+ * `{ <envId>: env }` for the run's environments (`{ chromium: env, … }`).
+ * @param {Record<string, EnvRecord> | null | undefined} current
+ * @returns {Record<string, EnvRecord>}
+ */
 export const byId = (current) =>
   Object.fromEntries(
     Object.values(current ?? {})
@@ -466,6 +591,9 @@ export const byId = (current) =>
       .map((e) => [e.id, e])
   );
 
-/** Whether `PXSIG_STRICT_ENV` asks for strict mode. */
+/**
+ * Whether `PXSIG_STRICT_ENV` asks for strict mode.
+ * @param {NodeJS.ProcessEnv} [env]
+ */
 export const strictFromEnv = (env = process.env) =>
   /^(1|true|yes)$/i.test(env.PXSIG_STRICT_ENV ?? '');

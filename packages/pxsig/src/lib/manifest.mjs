@@ -32,8 +32,17 @@
  * so existing baselines keep their names.
  */
 import { launchBrowser } from './capture.mjs';
+/** @import { Browser } from 'playwright' */
+/** @import { EntryConfig, ManifestEntry, Mode, ManifestSkipped, Project, StoryParameters, StoryPxsigParameters, StorybookPreviewWindow, StoryRef } from '../types.js' */
 
-/** Read parameters.pxsig, tags and play presence for every story id. */
+/**
+ * Read parameters.pxsig, tags and play presence for every story id.
+ * @param {Project} project
+ * @param {string} baseUrl
+ * @param {string[]} ids
+ * @param {{ browser?: Browser }} [opts]
+ * @returns {Promise<Record<string, StoryParameters>>}
+ */
 export async function harvestParameters(project, baseUrl, ids, { browser: given } = {}) {
   const browser = given ?? (await launchBrowser(project));
   try {
@@ -42,10 +51,12 @@ export async function harvestParameters(project, baseUrl, ids, { browser: given 
       waitUntil: 'networkidle',
       timeout: 60000,
     });
-    return await page.evaluate(async (list) => {
-      const pv = window.__STORYBOOK_PREVIEW__;
+    return await page.evaluate(async (/** @type {string[]} */ list) => {
+      // Runs in the story page: Storybook's preview is on its window.
+      const pv = /** @type {StorybookPreviewWindow} */ (window).__STORYBOOK_PREVIEW__;
       await pv.storeInitializationPromise;
       const store = pv.storyStoreValue;
+      /** @type {Record<string, StoryParameters>} */
       const out = {};
       for (let i = 0; i < list.length; i += 32) {
         await Promise.all(
@@ -54,12 +65,20 @@ export async function harvestParameters(project, baseUrl, ids, { browser: given 
               const s = await store.loadStory({ storyId: id });
               // JSON round-trip drops functions; pxsig parameters are plain data.
               out[id] = {
-                pxsig: JSON.parse(JSON.stringify(s.parameters?.pxsig ?? {})),
+                // The story's own `parameters.pxsig`, in the shape the header above documents.
+                pxsig: /** @type {StoryPxsigParameters} */ (
+                  JSON.parse(JSON.stringify(s.parameters?.pxsig ?? {}))
+                ),
                 tags: s.tags ?? [],
                 play: !!s.playFunction,
               };
             } catch (e) {
-              out[id] = { pxsig: {}, tags: [], play: false, error: String(e?.message ?? e) };
+              out[id] = {
+                pxsig: {},
+                tags: [],
+                play: false,
+                error: String(/** @type {Error | undefined} */ (e)?.message ?? e),
+              };
             }
           })
         );
@@ -71,6 +90,12 @@ export async function harvestParameters(project, baseUrl, ids, { browser: given 
   }
 }
 
+/**
+ * @param {string} id
+ * @param {string | null | undefined} state
+ * @param {string | null | undefined} mode
+ * @param {string | null | undefined} defaultMode
+ */
 const keyOf = (id, state, mode, defaultMode) =>
   `${id}${state ? `__${state}` : ''}${mode && mode !== defaultMode ? `@${mode}` : ''}`;
 
@@ -79,16 +104,25 @@ const keyOf = (id, state, mode, defaultMode) =>
  * stories: [{ id, importPath, sigFor(key) }]; params: harvestParameters output.
  * Options: `modes` keeps only these modes; `addModes` adds modes to every story
  * (e.g. a cross-browser or mobile matrix run).
+ * @param {EntryConfig} config
+ * @param {StoryRef[]} stories
+ * @param {Record<string, StoryParameters>} params
+ * @param {{ modes?: string[], addModes?: string[] }} [opts]
+ * @returns {{ entries: ManifestEntry[], skipped: ManifestSkipped[], defaultMode: string }}
  */
 export function expandEntries(config, stories, params, opts = {}) {
+  /** @type {Record<string, Mode>} */
   const modes = config.modes ?? {
     dark: { globals: config.globals ?? '', colorScheme: config.colorScheme ?? 'dark' },
   };
   const defaultMode = config.defaultMode ?? Object.keys(modes)[0];
   const byDefault = config.modesByDefault ?? [defaultMode];
+  /** @type {ManifestEntry[]} */
   const entries = [];
+  /** @type {ManifestSkipped[]} */
   const skipped = [];
   for (const s of stories) {
+    /** @type {StoryParameters} */
     const p = params[s.id] ?? { pxsig: {}, tags: [] };
     const px = p.pxsig ?? {};
     if (px.disable || p.tags?.includes('no-pxsig')) {
@@ -102,7 +136,8 @@ export function expandEntries(config, stories, params, opts = {}) {
       ? px.modes
       : [...byDefault, ...(px.addModes ?? []), ...(opts.addModes ?? [])];
     list = [...new Set(list)].filter((m) => modes[m]);
-    if (opts.modes) list = list.filter((m) => opts.modes.includes(m));
+    // `opts.modes` was checked just before.
+    if (opts.modes) list = list.filter((m) => /** @type {string[]} */ (opts.modes).includes(m));
     const states = [null, ...(Array.isArray(px.states) ? px.states : [])];
     for (const mode of list) {
       const md = modes[mode];

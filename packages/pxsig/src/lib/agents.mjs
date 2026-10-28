@@ -12,16 +12,26 @@
  * Nothing here starts a program or reads a file: the environment is the only input.
  */
 
-/** The name a value may contribute: letters, digits, dot, dash and underscore, at most 64. */
+/** @import { AgentMarker, DetectedAgent } from '../types.js' */
+
+/**
+ * The name a value may contribute: letters, digits, dot, dash and underscore, at most 64.
+ * @param {unknown} v
+ */
 const clean = (v) =>
   String(v)
     .replace(/[^\w.-]/g, '_')
     .slice(0, 64);
+/**
+ * @param {NodeJS.ProcessEnv} env
+ * @param {string} k
+ */
 const set = (env, k) => env[k] != null && env[k] !== '';
 
 /**
  * In order; the first row that matches names the assistant. `name` is a string, or a function of
  * the matching value. Each row's source, read on 2026-10-25, is listed in docs/agents.md#sources.
+ * @type {AgentMarker[]}
  */
 export const MARKERS = [
   // pxsig's own: set it in any shell an assistant uses.
@@ -77,12 +87,15 @@ export const NOT_MARKERS = [
 /**
  * The assistant this environment names: `{ name, variable, value }`, or null. `value` is cleaned
  * the same way as a name, so it is safe to print and to log.
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {DetectedAgent | null}
  */
 export function detectAgent(env = process.env) {
   for (const row of MARKERS)
     for (const k of row.vars) {
       if (!set(env, k)) continue;
-      const v = env[k];
+      // `set` saw a value: neither undefined nor empty.
+      const v = /** @type {string} */ (env[k]);
       if (row.when && !row.when(v)) continue;
       return {
         name: typeof row.name === 'function' ? row.name(v) : row.name,
@@ -93,8 +106,14 @@ export function detectAgent(env = process.env) {
   return null;
 }
 
-/** The assistant's name, or null. */
+/**
+ * The assistant's name, or null.
+ * @param {NodeJS.ProcessEnv} [env]
+ */
 export const agentName = (env = process.env) => detectAgent(env)?.name ?? null;
 
-/** "copilot (AI_AGENT=github_copilot_vscode_agent)", for refusals and `doctor`. */
+/**
+ * "copilot (AI_AGENT=github_copilot_vscode_agent)", for refusals and `doctor`.
+ * @param {DetectedAgent | null | undefined} a
+ */
 export const describeAgent = (a) => (a ? `${a.name} (${a.variable}=${a.value})` : null);

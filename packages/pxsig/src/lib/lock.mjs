@@ -36,7 +36,12 @@ import { join } from 'node:path';
 import { writeAtomic } from './files.mjs';
 import { relPath } from './paths.mjs';
 import { ask, humanAtTerminal, whyNotPerson } from './term.mjs';
+/** @import { LockBody, LockHandle, LockOptions, LockState } from '../types.js' */
 
+/** The store paths `lockPath` and `acquireLock` read: a Project, or its store and workspace. */
+/** @typedef {{ workspaceRoot: string, store: { root: string, reports: string } }} LockProject */
+
+/** @param {LockProject} P */
 export const lockPath = (P) => join(P.store.reports, '.lock');
 
 export const HEARTBEAT_MS = 5000;
@@ -44,6 +49,10 @@ export const HEARTBEAT_MS = 5000;
 export const QUIET_MS = 10 * 60 * 1000;
 
 export class LockError extends Error {
+  /**
+   * @param {string} message
+   * @param {LockState | null} held
+   */
   constructor(message, held) {
     super(message);
     this.lock = held;
@@ -51,7 +60,11 @@ export class LockError extends Error {
   }
 }
 
-/** When `pid` started (ms), where the platform can say; null when unknown. */
+/**
+ * When `pid` started (ms), where the platform can say; null when unknown.
+ * @param {number} pid
+ * @returns {number | null}
+ */
 function processStart(pid) {
   if (process.platform === 'win32') return null;
   const r = spawnSync('ps', ['-o', 'lstart=', '-p', String(pid)], {
@@ -62,24 +75,34 @@ function processStart(pid) {
   return Number.isFinite(t) ? t : null;
 }
 
-/** Is this pid a live process (any owner)? */
+/**
+ * Is this pid a live process (any owner)?
+ * @param {number | undefined} pid
+ */
 export function alive(pid) {
-  if (!Number.isInteger(pid) || pid <= 0) return false;
+  // Past `Number.isInteger`, `pid` is a number.
+  if (!Number.isInteger(pid) || /** @type {number} */ (pid) <= 0) return false;
   try {
-    process.kill(pid, 0);
+    process.kill(/** @type {number} */ (pid), 0);
     return true;
   } catch (e) {
-    return e.code === 'EPERM';
+    return /** @type {NodeJS.ErrnoException} */ (e).code === 'EPERM';
   }
 }
 
-/** The current lock, with `stale` and `why` when it is not live. Null when there is none. */
+/**
+ * The current lock, with `stale` and `why` when it is not live. Null when there is none.
+ * @param {LockProject} P
+ * @returns {LockState | null}
+ */
 export function readLock(P) {
   const p = lockPath(P);
   if (!existsSync(p)) return null;
+  /** @type {Partial<LockBody> & { heartbeatAgeMs?: number }} */
   let l;
   try {
-    l = JSON.parse(readFileSync(p, 'utf8'));
+    // The lock file a pxsig process wrote (acquireLock); an older one may lack keys.
+    l = /** @type {Partial<LockBody>} */ (JSON.parse(readFileSync(p, 'utf8')));
   } catch {
     return { stale: true, why: 'unreadable lock file' };
   }
@@ -87,16 +110,22 @@ export function readLock(P) {
   if (Number.isFinite(beat)) l.heartbeatAgeMs = Math.max(0, Date.now() - beat);
   if (l.host && l.host !== hostname()) return { ...l, stale: false, foreign: true };
   if (!alive(l.pid)) return { ...l, stale: true, why: `process ${l.pid} is gone` };
-  const started = processStart(l.pid);
+  // `alive` holds only for a positive integer pid.
+  const started = processStart(/** @type {number} */ (l.pid));
   // `lstart` has one-second resolution: allow a little slack before calling the pid reused.
   if (started != null && l.startedAt && started > Date.parse(l.startedAt) + 2000)
     return { ...l, stale: true, why: `pid ${l.pid} now belongs to a newer process` };
   return { ...l, stale: false, quiet: l.heartbeatAgeMs != null && l.heartbeatAgeMs > QUIET_MS };
 }
 
+/** @param {number} ms */
 const ago = (ms) => (ms < 90_000 ? `${Math.round(ms / 1000)} s` : `${Math.round(ms / 60_000)} min`);
 
-/** A sentence naming who holds a lock. */
+/**
+ * A sentence naming who holds a lock.
+ * @param {LockProject} P
+ * @param {LockState} l
+ */
 export function describeLock(P, l) {
   const what =
     l.holder === 'serve'
@@ -111,6 +140,9 @@ export function describeLock(P, l) {
  * holds it. A stale lock is replaced; `takeOver` (the nonce `takeLock` showed a person) replaces a
  * quiet one. The lock is released by `release` and on process exit; a process killed outright
  * leaves its lock behind, which the next taker finds stale (its pid is gone).
+ * @param {LockProject} P
+ * @param {LockOptions} [opts]
+ * @returns {LockHandle}
  */
 export function acquireLock(
   P,
@@ -119,6 +151,7 @@ export function acquireLock(
   const p = lockPath(P);
   mkdirSync(P.store.reports, { recursive: true });
   const now = () => new Date().toISOString();
+  /** @type {LockBody} */
   const body = {
     pid: process.pid,
     startedAt: now(),
@@ -137,7 +170,11 @@ export function acquireLock(
       closeSync(fd);
       const ours = () => {
         try {
-          return JSON.parse(readFileSync(p, 'utf8')).nonce === body.nonce;
+          // The lock file a pxsig process wrote.
+          return (
+            /** @type {Partial<LockBody>} */ (JSON.parse(readFileSync(p, 'utf8'))).nonce ===
+            body.nonce
+          );
         } catch {
           return false;
         }
@@ -180,14 +217,15 @@ export function acquireLock(
         },
       };
     } catch (e) {
-      if (e.code !== 'EEXIST') throw e;
+      if (/** @type {NodeJS.ErrnoException} */ (e).code !== 'EEXIST') throw e;
       const held = readLock(P);
       if (held && !held.stale) {
         if (held.pid === process.pid && held.host === hostname())
           return { release: () => {}, update: () => {}, check: () => {}, reentrant: true };
         if (!(takeOver && held.quiet && held.nonce === takeOver)) {
+          // A quiet lock has a heartbeat age (readLock sets `quiet` from it).
           const quiet = held.quiet
-            ? `; its heartbeat stopped ${ago(held.heartbeatAgeMs)} ago, so a person at a terminal can take it over`
+            ? `; its heartbeat stopped ${ago(/** @type {number} */ (held.heartbeatAgeMs))} ago, so a person at a terminal can take it over`
             : '';
           throw new LockError(
             `${describeLock(P, held)}: wait for it to finish${held.holder === 'serve' ? ', or stop the server' : ''}${quiet}`,
@@ -206,6 +244,9 @@ export function acquireLock(
  * `acquireLock` for a command a person runs. When a live holder has been quiet for 10 minutes, a
  * person at a terminal may take the lock over by typing a phrase; anyone else gets the LockError,
  * with `exit` 3 (it needs a person) or 1 (not confirmed).
+ * @param {LockProject} P
+ * @param {LockOptions} [opts]
+ * @returns {Promise<LockHandle>}
  */
 export async function takeLock(P, opts) {
   try {
@@ -227,7 +268,14 @@ export async function takeLock(P, opts) {
   }
 }
 
-/** Run `fn` holding the lock; always releases it. */
+/**
+ * Run `fn` holding the lock; always releases it.
+ * @template T
+ * @param {LockProject} P
+ * @param {LockOptions} opts
+ * @param {(lock: LockHandle) => T | Promise<T>} fn
+ * @returns {Promise<T>}
+ */
 export async function withLock(P, opts, fn) {
   const l = acquireLock(P, opts);
   try {

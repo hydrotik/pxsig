@@ -38,6 +38,7 @@ import {
 import { appendLine, dropTorn } from './files.mjs';
 import { stamp } from './approvals.mjs';
 import { relPath } from './paths.mjs';
+/** @import { IntegrityContext } from './integrity.mjs' */
 
 export const ACTIONS = [
   'register',
@@ -226,6 +227,7 @@ export function planRepairs(ledger, { only, prune = false, server = null, stale 
  * Add stories to the manifest. Existing entries are untouched (same objects, same order); new
  * entries go after the last entry of their story file. The previous manifest is kept in
  * `<store>/reports/manifest-history/`. Baselines are never created: new entries are unbaselined.
+ * @param {IntegrityContext} ctx
  */
 export async function registerStories(ctx, stories, { harvest }) {
   const { expandEntries } = await import('./manifest.mjs');
@@ -346,12 +348,15 @@ function logRegister(
  * ids; `index` is a loadStoryIndex() result. Needs a healthy Storybook (parameters are read from
  * it). Never writes a signature: the entries arrive NEW, for a person to approve.
  * Returns { added: entry ids, stories: story ids registered, skipped: [{ name, why }] }.
+ * @param {IntegrityContext} ctx
+ * @returns {Promise<{ added: string[], stories: string[], skipped: { name: string, why: string }[], adoptedSignatures?: string[] }>}
  */
 export async function registerNamed(ctx, names, { index, harvest, by = who(ctx), via = 'check' }) {
   const manifest = readJson(ctx.manifestPath, null);
   const entryIds = new Set(manifest.stories.map((e) => e.id));
   const storyIds = new Set(manifest.stories.map((e) => e.story ?? e.id));
   const skipped = [];
+  /** @type {Map<string, string[]>} */
   const want = new Map(); // story id → names asking for it
   const nonVisual = new Set(ctx.config.nonVisual ?? []);
   const excludedBy = new Map((manifest.skipped ?? []).map((s) => [s.id, s.reason]));
@@ -427,6 +432,7 @@ export async function registerNamed(ctx, names, { index, harvest, by = who(ctx),
 /**
  * Fresh Rust check of the latest renders against their signatures (no cache, no history), with
  * every artifact written to a scratch folder. Returns id → { pass, metrics, reasons, error, reconstructed }.
+ * @param {IntegrityContext} ctx
  */
 export function gateLatest(ctx, ids) {
   if (!existsSync(ctx.rustBin))
@@ -745,6 +751,7 @@ export async function serverStatus(serverUrl) {
   }
 }
 
+/** @param {IntegrityContext} ctx */
 export function defaultHooks(ctx, { serverUrl, timeoutMs = 15 * 60_000 } = {}) {
   return {
     async recheck(ids) {
@@ -781,7 +788,7 @@ export function defaultHooks(ctx, { serverUrl, timeoutMs = 15 * 60_000 } = {}) {
         throw new Error(`check.mjs setup error: ${r.log.split('\n').slice(-5).join(' ')}`);
       return { via: 'check.mjs' };
     },
-    harvest: async (ids) => {
+    harvest: async (/** @type {string[]} */ ids) => {
       const { harvestParameters } = await import('./manifest.mjs');
       return harvestParameters(ctx.project, ctx.config.baseUrl, ids);
     },
@@ -794,6 +801,7 @@ export function defaultHooks(ctx, { serverUrl, timeoutMs = 15 * 60_000 } = {}) {
  * Run a plan's steps in order (register → recheck → restore → prune), re-reconciling between
  * steps so each acts on fresh facts. `hooks`: { recheck(ids), harvest(ids), confirmPrune(n) }.
  * Returns { steps: [{ action, result }], ledger } with the ledger after the repairs.
+ * @param {IntegrityContext} ctx
  */
 export async function applyRepairs(
   ctx,

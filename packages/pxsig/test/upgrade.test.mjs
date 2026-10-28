@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { acquireLock, readLock } from '../src/lib/lock.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, rustBin } from './fixture.mjs';
+/** @import { LockState } from '../src/types.js' */
 
 const here = dirname(fileURLToPath(import.meta.url));
 const old = join(here, 'fixtures', 'store-0.3.2');
@@ -72,7 +73,8 @@ test('the read commands take a 0.3.2 store as it is', () => {
 
 test('a 0.3.2 lock (no heartbeat) left by a process that is gone is taken over as before', () => {
   const { P } = oldStore();
-  const held = readLock(P);
+  // oldStore() wrote a lock.
+  const held = /** @type {LockState} */ (readLock(P));
   assert.equal(held.stale, true);
   assert.equal(held.quiet, undefined, 'judged by its process, not a heartbeat it never had');
   const l = acquireLock(P, { holder: 'test' });

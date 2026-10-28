@@ -59,9 +59,21 @@ import {
   reportBlock,
   resolveOrExit,
 } from './lib/enforcement.mjs';
+/** @import { Flags, Project } from './types.js' */
 
 const PLAN_MAX_AGE_H = 24;
 
+/** What this file reads of each MCP tool's result, by tool. */
+/** @typedef {{ list: { entries: { id: string, state: string }[] }, stale: { ids: string[] }, check: unknown }} ToolOutputs */
+/**
+ * One entry of an approval plan (`approval-plan.json`).
+ * @typedef {{ id: string, status: string, why: string, state?: string, latestSha?: string | null, baseSha?: string | null, kind?: string, shape?: string, shapePct?: number | null, first?: true }} PlanEntry
+ */
+
+/**
+ * `pxsig approve <sub>`: plan, apply, list, undo, verify. The CLI passes its context.
+ * @param {{ sub: string | undefined, args: string[], flags: Flags, format: string, tools: typeof import('./mcp.mjs').tools, project: Project, serverUrl: string, CMD: string, fail: (message: string, code?: number) => void }} opts
+ */
 export async function approveCommand({
   sub,
   args,
@@ -73,8 +85,16 @@ export async function approveCommand({
   CMD,
   fail,
 }) {
+  /**
+   * @template {keyof ToolOutputs} N
+   * @param {N} name
+   * @param {Record<string, unknown>} [a]
+   */
   const run = (name, a = {}) =>
-    tools.find((t) => t.name === `pxsig_${name}`).run({ project: P.name, ...a });
+    // `pxsig_${name}` is one of the tools; ToolOutputs says what is read of its result.
+    /** @type {{ run: (args: object) => Promise<ToolOutputs[N]> }} */ (
+      tools.find((t) => t.name === `pxsig_${name}`)
+    ).run({ project: P.name, ...a });
   const manifest = JSON.parse(readFileSync(P.manifestPath(), 'utf8'));
   const byId = new Map(manifest.stories.map((e) => [e.id, e]));
   const planPath = join(P.store.reports, 'approval-plan.json');
@@ -127,8 +147,13 @@ export async function approveCommand({
         ? flags['allow-shape'].split(',').map((s) => s.trim())
         : []
     );
-    const stale = new Set((await run('stale', { limit: 100000 }).catch(() => ({}))).ids ?? []);
+    const stale = new Set(
+      // The fallback `{}` has no ids.
+      /** @type {{ ids?: string[] }} */ (await run('stale', { limit: 100000 }).catch(() => ({})))
+        .ids ?? []
+    );
     const spin = progress(format, `classifying ${ids.length} entries`);
+    /** @type {PlanEntry[]} */
     const entries = [];
     for (const id of ids) {
       const e = byId.get(id);
@@ -148,6 +173,7 @@ export async function approveCommand({
       else if (stale.has(id))
         entries.push({ ...base, status: 'blocked', why: 'verdict is stale: re-check first' });
       else {
+        /** @type {{ kind: string, reason: string, shapePct?: number | null }} */
         const c = baseImg
           ? classify(baseImg, p.latestPng)
           : {

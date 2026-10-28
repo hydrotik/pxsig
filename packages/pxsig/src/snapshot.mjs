@@ -16,6 +16,7 @@ import { join, relative } from 'node:path';
 import { readLog, traceLog } from './lib/approvals.mjs';
 import { readHeader } from './lib/psig.mjs';
 import { PXSIG_VERSION } from './lib/workspace.mjs';
+/** @import { Project } from './types.js' */
 
 export const SNAPSHOT_FORMAT = 'pxsig-snapshot';
 export const SNAPSHOT_VERSION = 1;
@@ -87,7 +88,11 @@ function storeUncommitted(P) {
   return out == null ? false : out.length > 0;
 }
 
-/** One project's stories: each entry's baseline, last log line, environment and a11y, and the history. */
+/**
+ * One project's stories: each entry's baseline, last log line, environment and a11y, and the history.
+ * @param {Project} P
+ * @param {{ shallow?: boolean }} [opts]
+ */
 export function projectSnapshot(P, { shallow = false } = {}) {
   const log = readLog(P);
   // Where each line came in (commit, PR), matched by batch, id and time. In a shallow clone, blame credits every
@@ -158,7 +163,11 @@ export function projectSnapshot(P, { shallow = false } = {}) {
   return { label: P.label ?? null, stories, uncommitted: storeUncommitted(P) };
 }
 
-/** The snapshot of several projects (already opened), with the commit it was made from. */
+/**
+ * The snapshot of several projects (already opened), with the commit it was made from.
+ * @param {Project[]} projects
+ * @param {{ now?: Date }} [opts]
+ */
 export function buildSnapshot(projects, { now = new Date() } = {}) {
   const root = projects[0]?.workspaceRoot ?? process.cwd();
   const inGit = git(root, 'rev-parse', '--is-inside-work-tree') === 'true';

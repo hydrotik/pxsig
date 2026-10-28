@@ -3,8 +3,19 @@
  * and serve.mjs (on-demand re-checks from the dashboard, the addon and watch
  * mode), so every producer writes the same shape into <store>/reports/check.json.
  */
+/** @import { CheckRow, CheckSummary, EngineResult, ManifestEntry, RenderResult } from '../types.js' */
 
-/** Merge the Rust verdict, the render (error, timing, axe) and the a11y baseline. */
+/**
+ * Merge the Rust verdict, the render (error, timing, axe) and the a11y baseline. Of the entry it
+ * reads `id`, and the rest with fallbacks.
+ * @param {Pick<ManifestEntry, 'id'> & Partial<ManifestEntry>} e
+ * @param {EngineResult | null | undefined} rust
+ * @param {RenderResult | null | undefined} render
+ * @param {Record<string, string[]> | null | undefined} a11yBase entry id → its accepted rule ids
+ * @param {{ defaultMode?: string }} manifest
+ * @param {unknown} [js]
+ * @returns {CheckRow}
+ */
 export function buildRow(e, rust, render, a11yBase, manifest, js) {
   const r = rust ?? {};
   const rr = render ?? {};
@@ -47,7 +58,13 @@ export function buildRow(e, rust, render, a11yBase, manifest, js) {
   };
 }
 
-export function summarize(rows, extra = {}) {
+/**
+ * @template {Record<string, unknown>} [X={}]
+ * @param {CheckRow[]} rows
+ * @param {X} [extra] keys the caller adds to the summary; the default `{}` adds none
+ * @returns {CheckSummary & X}
+ */
+export function summarize(rows, extra = /** @type {X} */ ({})) {
   const checked = rows.filter((r) => !r.skipped);
   return {
     entries: rows.length,
@@ -76,6 +93,9 @@ export function summarize(rows, extra = {}) {
  * branch would otherwise linger in check.json as a stale "new" or failing row that nothing can
  * re-check or approve. An empty manifest drops nothing (it means "not loaded", not "no stories").
  * Returns the ids dropped; `check.rows` and `check.summary` are updated in place.
+ * @param {{ rows?: CheckRow[], summary?: Record<string, unknown> } | null | undefined} check
+ * @param {{ stories?: { id: string }[] } | null | undefined} manifest
+ * @returns {string[]}
  */
 export function dropStaleRows(check, manifest) {
   const known = new Set((manifest?.stories ?? []).map((e) => e.id));
@@ -93,5 +113,7 @@ export function dropStaleRows(check, manifest) {
  * nothing is recorded) rather than a few stories failing (recorded as render errors). Three or
  * more, and at least half the renders: one or two failing stories are their own errors, so a
  * story checked alone that throws is recorded, not dropped as a setup error.
+ * @param {number} errors
+ * @param {number} total
  */
 export const storybookBroken = (errors, total) => errors >= Math.max(3, total / 2);

@@ -135,6 +135,40 @@ import { fileURLToPath } from 'node:url';
 import { relPath } from './lib/paths.mjs';
 import { appendLine, writeJson } from './lib/files.mjs';
 import { applyPrune } from './lib/prune.mjs';
+/** The server listens on a TCP port, so `server.address()` is an AddressInfo wherever it is read. */
+/** @import { AddressInfo } from 'node:net' */
+/** @import { IntegrityContext } from './lib/integrity.mjs' */
+/** @import { LockHandle, ManifestEntry, Project, RunManifest, Workspace } from './types.js' */
+/** The integrity ledger (lib/integrity.mjs `reconcile`). */
+/** @typedef {Awaited<ReturnType<typeof reconcile>>} IntegrityLedger */
+/**
+ * Everything the server keeps for one project (`openState`).
+ * @typedef {object} ProjectState
+ * @property {Project} P
+ * @property {string} name
+ * @property {string} reviewPath
+ * @property {string} a11yReviewPath
+ * @property {string} checkPath
+ * @property {IntegrityContext} ctx
+ * @property {string | null} runPath the run manifest, or null when none could be written
+ * @property {Pick<RunManifest, 'stories'> & Partial<RunManifest>} manifest the run manifest (only `stories` when it failed)
+ * @property {IntegrityLedger | null} integrity
+ * @property {NodeJS.Timeout | null} integrityTimer
+ * @property {boolean} integrityRunning
+ * @property {Promise<unknown>} [integrityDone]
+ * @property {Set<string>} queued
+ * @property {Set<string> | null} [checking]
+ * @property {Promise<void> | null} running
+ * @property {ReturnType<typeof applyRepairs> | null} repairing
+ * @property {number} runs check runs started
+ * @property {{ seq: number, error: string, setup: boolean, ids: number, at: string } | null} lastFailure
+ * @property {number} quietUntil
+ * @property {LockHandle | null} lock
+ * @property {string | null} lockWait why the store lock is not held yet
+ * @property {string} [error] why the run manifest could not be written
+ * @property {() => void} reload
+ * @property {(file: string) => Promise<string[]>} affected
+ */
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -143,6 +177,7 @@ const { flags } = parseArgs(process.argv.slice(2));
 if (flags.debug)
   process.env.PXSIG_DEBUG = [process.env.PXSIG_DEBUG, 'spawn'].filter(Boolean).join(',');
 const str = (k) => strFlag(flags, k);
+/** @type {Workspace} */
 let ws;
 try {
   ws = findWorkspace({ workspace: str('workspace') });
@@ -205,7 +240,11 @@ const httpError = (status, message) => Object.assign(new Error(message), { statu
 const TOKENS = { cli: newToken(), mcp: newToken() };
 // The dashboard link's tickets and cookies (lib/guard.mjs): in memory, so a restart ends them.
 const links = new Links();
-/** The dashboard link: the dashboard (on `tab`) with a fresh one-time ticket in its fragment. */
+/**
+ * The dashboard link: the dashboard (on `tab`) with a fresh one-time ticket in its fragment.
+ * @param {string} base
+ * @param {string | boolean | null} [tab]
+ */
 const dashboardLink = (base, tab = null) =>
   `${base}#${tab ? `tab=${encodeURIComponent(tab)}&` : ''}ticket=${links.mint()}`;
 /** An agent clears its own kind of decision only: never a person's approval or accept. */
@@ -262,6 +301,7 @@ let pool = null;
 /** Everything the server keeps for one project. */
 function openState(ref) {
   const P = loadProject(ws, ref, { flags: flagLayer(flags) });
+  /** @type {Omit<ProjectState, 'reload' | 'affected'> & Partial<Pick<ProjectState, 'reload' | 'affected'>>} */
   const S = {
     P,
     name: P.name,
@@ -310,9 +350,11 @@ function openState(ref) {
         )
       : Promise.resolve([]);
   mkdirSync(P.store.reports, { recursive: true });
-  return S;
+  // `reload` and `affected` are both set above.
+  return /** @type {ProjectState} */ (S);
 }
 
+/** @type {Map<string, ProjectState>} */
 const states = new Map();
 for (const ref of ws.projects) {
   if (only && !only.includes(ref.name)) continue;
@@ -350,6 +392,7 @@ function stateFor({ project, id, story } = {}) {
 }
 
 // --- review --------------------------------------------------------------------------------
+/** @param {ProjectState} S */
 function updateCheckRows(S, mut, fresh = new Map(), timing = null, envs = null) {
   const check = readJson(S.checkPath, null) ?? {
     generatedAt: new Date().toISOString(),
@@ -396,6 +439,7 @@ function updateCheckRows(S, mut, fresh = new Map(), timing = null, envs = null) 
 /**
  * Drops check rows for entries no longer in the manifest (a story removed on another branch), on
  * start and whenever the manifest is reloaded. Only with the store lock and a manifest that loaded.
+ * @param {ProjectState} S
  */
 function pruneStaleRows(S) {
   if (!S.lock || !S.runPath) return;
@@ -411,7 +455,10 @@ function pruneStaleRows(S) {
   broadcast('data', { project: S.name });
 }
 
-/** Writes for a project need its store lock (held for the server's life once taken). */
+/**
+ * Writes for a project need its store lock (held for the server's life once taken).
+ * @param {ProjectState} S
+ */
 function needLock(S) {
   if (S.lock) {
     try {
@@ -431,7 +478,10 @@ function needLock(S) {
   );
 }
 
-/** Take a project's store lock now, or keep trying every 2 s while another process holds it. */
+/**
+ * Take a project's store lock now, or keep trying every 2 s while another process holds it.
+ * @param {ProjectState} S
+ */
 function takeLock(S) {
   try {
     S.lock = acquireLock(S.P, { holder: 'serve', command: 'pxsig serve' });
@@ -455,6 +505,7 @@ function takeLock(S) {
   }
 }
 
+/** @param {ProjectState} S */
 async function approve(S, id, meta = {}) {
   needLock(S);
   const { P, manifest } = S;
@@ -516,6 +567,7 @@ async function approve(S, id, meta = {}) {
  * Undo one approval made through the server: restore that entry's previous baseline from the
  * batch snapshot (a first baseline goes to trash/), put its a11y baseline back, and log it like
  * `pxsig approve undo`. Refuses, changing nothing, when the baseline was rewritten since.
+ * @param {ProjectState} S
  */
 function unapprove(S, id, entry, via = 'dashboard') {
   const { P, manifest } = S;
@@ -541,6 +593,7 @@ function unapprove(S, id, entry, via = 'dashboard') {
   }
 }
 
+/** @param {ProjectState} S */
 async function review(S, action, id, meta = {}) {
   needLock(S);
   const rv = readJson(S.reviewPath, {});
@@ -572,6 +625,7 @@ async function review(S, action, id, meta = {}) {
  * Approve every entry of one story that waits for a decision (each mode and state), in one batch:
  * a person's single click in the dashboard. Entries that passed, did not render, were rejected or
  * are already approved are left out, with why. Each approval is logged and undone like any other.
+ * @param {ProjectState} S
  */
 async function approveStory(S, story, meta = {}) {
   needLock(S);
@@ -615,6 +669,7 @@ async function approveStory(S, story, meta = {}) {
 }
 
 // --- on-demand checks (dashboard, addon, watch) ----------------------------------------------
+/** @param {ProjectState} S */
 async function runChecks(S) {
   if (S.running || !S.queued.size) return S.running;
   const ids = [...S.queued];
@@ -765,6 +820,7 @@ const a11yLog = (P, line) =>
   appendLine(join(dirname(P.store.a11y), 'a11y-decisions.ndjson'), stamp(line));
 const writeA11y = (P, base) => writeJson(P.store.a11y, base, { pretty: true });
 
+/** @param {ProjectState} S */
 function a11yReview(S, action, id, meta = {}) {
   needLock(S);
   const { P, manifest } = S;
@@ -839,6 +895,7 @@ function a11yReview(S, action, id, meta = {}) {
  * `pxsig a11y --prune` through the server that holds the store (lib/prune.mjs): the person
  * confirmed the plan at the terminal; the plan is pinned to a11y.json, so a decision made since
  * refuses it whole. The dashboard reloads its data.
+ * @param {ProjectState} S
  */
 function a11yPrune(S, body, via) {
   needLock(S);
@@ -863,6 +920,7 @@ function a11yPrune(S, body, via) {
  * Queue a check. Names (ids or stories) the manifest does not have are registered first when
  * Storybook is healthy (NEW entries, no signature), so checking a new story is one request;
  * anything that cannot be registered comes back in `skipped`, with why.
+ * @param {ProjectState} S
  */
 async function enqueue(S, body) {
   needLock(S);
@@ -972,6 +1030,7 @@ function storyIntegrity() {
 }
 
 // --- integrity: always on ------------------------------------------------------------------------
+/** @param {ProjectState} S */
 async function runIntegrity(S, why) {
   if (S.integrityRunning || S.running) return scheduleIntegrity(S, why, 1500);
   S.integrityRunning = true;
@@ -1000,8 +1059,10 @@ async function runIntegrity(S, why) {
     done();
   }
 }
+/** @param {ProjectState} S */
 function scheduleIntegrity(S, why, ms = 1500) {
-  clearTimeout(S.integrityTimer);
+  // clearTimeout(null) does nothing, as clearTimeout(undefined) does.
+  clearTimeout(/** @type {NodeJS.Timeout | undefined} */ (S.integrityTimer));
   S.integrityTimer = setTimeout(() => runIntegrity(S, why), ms);
 }
 const watchFor = (dir, onChange, filter = () => true) => {
@@ -1034,7 +1095,10 @@ for (const S of states.values()) {
   );
 }
 
-/** Safe repairs, as the dashboard's button asks: plan, or apply (never prune, never approve). */
+/**
+ * Safe repairs, as the dashboard's button asks: plan, or apply (never prune, never approve).
+ * @param {ProjectState} S
+ */
 async function repair(S, { apply = false, only: onlySteps, stale = false } = {}) {
   const ledger = await reconcile(S.ctx, { affected: S.affected });
   const plan = planRepairs(ledger, {
@@ -1191,21 +1255,25 @@ async function api(req, res, action, q) {
     return json(res, 200, {
       served: true,
       projects: projectsList(),
-      running: [...states.values()].some((S) => S.running),
+      // Truthiness only: is a check (a promise) running. The parameter's type says so.
+      running: [...states.values()].some((/** @type {{ running: unknown }} */ S) => S.running),
       queued: [...states.values()].reduce((n, S) => n + S.queued.size, 0),
-      repairing: [...states.values()].some((S) => S.repairing),
+      repairing: [...states.values()].some(
+        (/** @type {{ repairing: unknown }} */ S) => S.repairing
+      ),
       review: Object.assign({}, ...[...states.values()].map((S) => readJson(S.reviewPath, {}))),
       stories: statuses(),
       integrity: storyIntegrity(),
       integritySummary: Object.fromEntries(
         [...states.values()]
           .filter((S) => S.integrity)
+          // Filtered just above to the projects with a ledger.
           .map((S) => [
             S.name,
             {
-              ...S.integrity.summary,
-              setup: S.integrity.setup,
-              generatedAt: S.integrity.generatedAt,
+              .../** @type {IntegrityLedger} */ (S.integrity).summary,
+              setup: /** @type {IntegrityLedger} */ (S.integrity).setup,
+              generatedAt: /** @type {IntegrityLedger} */ (S.integrity).generatedAt,
             },
           ])
       ),
@@ -1248,7 +1316,10 @@ async function api(req, res, action, q) {
         error:
           'this dashboard link was used or is older than two minutes: run `pxsig serve --link` in a terminal for a new one',
       });
-    res.setHeader('set-cookie', linkSetCookie(server.address().port, session));
+    res.setHeader(
+      'set-cookie',
+      linkSetCookie(/** @type {AddressInfo} */ (server.address()).port, session)
+    );
     return json(res, 200, { ok: true });
   }
   // `pxsig serve --link` (a person at a terminal, with the CLI's token) asks for a fresh link.
@@ -1263,7 +1334,7 @@ async function api(req, res, action, q) {
     headers: req.headers,
     tokens: TOKENS,
     links,
-    port: server.address().port,
+    port: /** @type {AddressInfo} */ (server.address()).port,
     ownOrigin: `http://${req.headers.host}`,
     allowedOrigins,
   });
@@ -1382,7 +1453,7 @@ function projectFile(req, res, name, rest) {
 const server = createServer(async (req, res) => {
   try {
     // A Host that is not loopback is a DNS-rebinding page posing as same-origin.
-    if (!loopbackHost(req.headers.host, server.address().port))
+    if (!loopbackHost(req.headers.host, /** @type {AddressInfo} */ (server.address()).port))
       return json(res, 403, { error: 'unknown host' });
     cors(req, res);
     if (req.method === 'OPTIONS') return res.writeHead(204).end();
@@ -1468,7 +1539,7 @@ function listen(port, tries = 10) {
   };
   const onListening = () => {
     server.off('error', onError);
-    url = `http://127.0.0.1:${server.address().port}`;
+    url = `http://127.0.0.1:${/** @type {AddressInfo} */ (server.address()).port}`;
     // The CLI, the MCP and the addon find the server through this file: a second server (on
     // another port, read-only beside the one holding the stores) leaves a live server's record.
     const recorded = readJson(info, null);

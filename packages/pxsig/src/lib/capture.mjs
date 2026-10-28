@@ -12,6 +12,10 @@ import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { browserFile, resolvePeer, SetupError } from './workspace.mjs';
 import { collectEnv, playwrightVersion } from './env.mjs';
+/** @import { Browser } from 'playwright' */
+/** @import { EnvRecord, PeerBase, Project } from '../types.js' */
+/** A Browser with what pxsig records on it: the channel it launched with, the server it connected to. */
+/** @typedef {Browser & { __pxsigChannel?: string | null, __pxsigRemote?: string }} PxsigBrowser */
 
 export { CAPTURE_PIPELINE } from './env.mjs';
 
@@ -138,12 +142,22 @@ export const FREEZE_CSS =
   // reaches a screenshot.
   'vite-error-overlay{display:none!important}';
 
-/** Playwright, resolved the way the project would resolve it (see lib/workspace.mjs). */
+/**
+ * Playwright, resolved the way the project would resolve it (see lib/workspace.mjs).
+ * @param {PeerBase} project
+ */
 async function playwright(project) {
   const pw = await import(pathToFileURL(resolvePeer(project, 'playwright')).href);
   return pw.chromium ? pw : pw.default;
 }
 
+/**
+ * Launch Chromium from the project's Playwright: the given channel, else the bundled build, then
+ * Chrome, then Edge.
+ * @param {PeerBase} project
+ * @param {string} [channel]
+ * @returns {Promise<PxsigBrowser>}
+ */
 export async function launchBrowser(project, channel) {
   const chromium = (await playwright(project)).chromium;
   let lastErr;
@@ -181,7 +195,10 @@ export async function connectBrowser(pw, endpoint, type = 'chromium') {
   }
 }
 
-/** What `pxsig browser start` recorded for `endpoint` (image, digest), or null. */
+/**
+ * What `pxsig browser start` recorded for `endpoint` (image, digest), or null.
+ * @param {PeerBase} project
+ */
 export function browserRecord(project, endpoint) {
   const f = project?.workspaceRoot ? browserFile(project.workspaceRoot) : null;
   try {
@@ -197,6 +214,7 @@ export function browserRecord(project, endpoint) {
  * `env(type)` is that browser's render environment (lib/env.mjs), collected once per launch.
  * With `endpoint` (`capture.browserEndpoint`, `--browser`, `PXSIG_BROWSER_WS`) every engine is
  * connected to that browser server instead; without it, launching is exactly as before.
+ * @param {Project | null} project
  */
 export function browserPool(
   project,
@@ -228,12 +246,18 @@ export function browserPool(
         );
       return envs.get(type);
     },
-    /** The environments of every browser type in `types`: `{ chromium: env, … }`. */
+    /**
+     * The environments of every browser type in `types`: `{ chromium: env, … }`.
+     * @param {Iterable<string>} types
+     * @returns {Promise<Record<string, EnvRecord>>}
+     */
     async envs(types, opts = {}) {
+      /** @type {Record<string, EnvRecord>} */
       const out = {};
       for (const t of new Set(types)) out[t] = await this.env(t, opts);
       return out;
     },
+    /** @returns {Promise<PxsigBrowser>} */
     get(type = 'chromium') {
       if (!open.has(type))
         open.set(
@@ -244,7 +268,8 @@ export function browserPool(
               ? launchBrowser(project)
               : lib().then((p) => p[type].launch())
         );
-      return open.get(type);
+      // Set just above when it was missing.
+      return /** @type {Promise<PxsigBrowser>} */ (open.get(type));
     },
     async close() {
       for (const [k, b] of open) if (!(k in given)) await (await b).close().catch(() => {});
@@ -254,6 +279,7 @@ export function browserPool(
 
 /** axe-core's browser bundle, resolved like Playwright, injected per page for the a11y pass. */
 let axeSource = null;
+/** @param {PeerBase} project */
 export function axeScript(project) {
   if (axeSource != null) return axeSource;
   try {

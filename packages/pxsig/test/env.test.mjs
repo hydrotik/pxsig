@@ -31,6 +31,7 @@ import { readHeader } from '../src/lib/psig.mjs';
 import { readToken } from '../src/lib/guard.mjs';
 import { engineProblems, openProject, writeRunManifest } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin } from './fixture.mjs';
+/** @import { EnvFields, EnvRecord, PsigHeader } from '../src/types.js' */
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 
@@ -78,6 +79,7 @@ function env(over = {}) {
 
 test('compare classes, from a table of pairs', () => {
   const base = env();
+  /** @type {[EnvFields, string, string[] | undefined][]} */
   const cases = [
     [env(), 'same', undefined],
     [
@@ -379,9 +381,14 @@ test(
     const f = fixture();
     const old = env({ browser: { version: '139.0.1' } });
     baselineWithEnv(f, [f.ids.ok], old);
-    assert.equal(readHeader(f.sig(f.ids.ok)).env.id, old.id, 'the header records the env');
+    // Both baselines were just written (`baselineWithEnv` names only the first).
     assert.equal(
-      readHeader(f.sig(f.ids.drift)).env,
+      /** @type {{ env: EnvRecord }} */ (readHeader(f.sig(f.ids.ok))).env.id,
+      old.id,
+      'the header records the env'
+    );
+    assert.equal(
+      /** @type {PsigHeader} */ (readHeader(f.sig(f.ids.drift))).env,
       undefined,
       'an entry the plan does not name gets none'
     );
@@ -438,7 +445,8 @@ test(
         body: JSON.stringify({ id }),
       });
       assert.equal(r.status, 200, await r.text());
-      const h = readHeader(f.sig(id));
+      // The approve just wrote it.
+      const h = /** @type {PsigHeader} */ (readHeader(f.sig(id)));
       assert.deepEqual(h.env, renderEnv, "the row's env, as the check recorded it");
       // A row without env (a report from before 0.5) writes a baseline without env.
       const other = f.ids.drift;
@@ -448,7 +456,7 @@ test(
         body: JSON.stringify({ id: other }),
       });
       assert.equal(r2.status, 200, await r2.text());
-      assert.equal(readHeader(f.sig(other)).env, undefined);
+      assert.equal(/** @type {PsigHeader} */ (readHeader(f.sig(other))).env, undefined);
     } finally {
       proc.kill();
     }

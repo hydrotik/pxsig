@@ -14,6 +14,7 @@ import {
   unlistedConfigs,
   workspaceProblems,
 } from '../src/lib/workspace.mjs';
+/** @import { ManifestEntry } from '../src/types.js' */
 
 const env = {};
 const tree = (files) => {
@@ -121,7 +122,8 @@ test('mode inheritance and the run manifest', () => {
   const P = openProject({ cwd: root, env });
   assert.deepEqual(P.modes.mobile.viewport, [390, 844]);
   assert.equal(P.modes.mobile.colorScheme, 'dark');
-  const m = runManifest(P, { stories: [{ id: 'a' }] });
+  // Only the entries' passing through matters here, not their keys.
+  const m = runManifest(P, { stories: [/** @type {ManifestEntry} */ ({ id: 'a' })] });
   assert.equal(m.defaultMode, 'dark');
   assert.equal(m.colorScheme, 'dark');
   assert.equal(m.stories.length, 1);

@@ -34,10 +34,12 @@ import { basename, dirname, join, relative, resolve } from 'node:path';
 import { appendLine, fault, readLines, writeAtomic } from './files.mjs';
 import { agentName } from './agents.mjs';
 import { PXSIG_VERSION } from './workspace.mjs';
+/** @import { ApprovalLine, Config, Project, TornLine } from '../types.js' */
 
 export const sha256 = (path) =>
   existsSync(path) ? createHash('sha256').update(readFileSync(path)).digest('hex') : null;
 
+/** @returns {{ latestPng: string, sig: string, log: string, history: string }} */
 export function paths(P, entry) {
   return {
     latestPng: join(P.store.latest, `${entry.id}.png`),
@@ -53,6 +55,7 @@ const git = (root, ...args) =>
  * Who approved, for the log: nobody by default (decision 81). The commit that adds a line, and the
  * pull request that merges it, already say who; pxsig keeps no personal data. A team that wants the
  * git email on every line sets `approvals.identity: "git-email"`.
+ * @param {Pick<Config, 'approvals'> | null} [config]
  */
 export const who = (root, config = null) =>
   config?.approvals?.identity === 'git-email'
@@ -106,10 +109,18 @@ export function record(P, entry, { batch, via, reason = null, before, kind = nul
   return line;
 }
 
-/** The logged approvals; a torn line (a write cut short by a crash) is left out: see `tornLines`. */
-export const readLog = (P) => readLines(P.store.approvals).lines;
+/**
+ * The logged approvals; a torn line (a write cut short by a crash) is left out: see `tornLines`.
+ * The log is pxsig's own (`record`, `pxsig migrate`), so every complete line is an ApprovalLine.
+ * @param {{ store: { approvals: string } }} P
+ * @returns {ApprovalLine[]}
+ */
+export const readLog = (P) => /** @type {ApprovalLine[]} */ (readLines(P.store.approvals).lines);
 
-/** Lines of the approval log a crash cut short, `{ line, text }` (integrity code `log-torn`). */
+/**
+ * Lines of the approval log a crash cut short, `{ line, text }` (integrity code `log-torn`).
+ * @param {{ store: { approvals: string } }} P
+ */
 export const tornLines = (P) => readLines(P.store.approvals).torn;
 
 const sha256Bytes = (b) => createHash('sha256').update(b).digest('hex');
@@ -137,6 +148,7 @@ function candidateRevs(file, gitHead) {
  * Restore every entry a batch approved (or only `ids` of them) to the baseline it replaced. Returns
  * `{ restored: [id], removed: [id], refused: [{ id, why }], source }`; `source` is `history` (the
  * local snapshot) or `git`. With neither available for an entry, it is refused, never guessed.
+ * @param {Project} P
  */
 export function undo(P, manifest, batch, { git = true, ids: only = null } = {}) {
   const keep = (id) => !only || only.includes(id);
@@ -250,8 +262,12 @@ export const olderThanThis = (v) => {
   return a < x || (a === x && b < y);
 };
 
+/** @param {Project} P */
 export function verify(P, manifest) {
-  const { lines, torn } = readLines(P.store.approvals);
+  // The approval log is pxsig's own: every complete line is an ApprovalLine.
+  const { lines, torn } = /** @type {{ lines: ApprovalLine[], torn: TornLine[] }} */ (
+    readLines(P.store.approvals)
+  );
   const last = new Map();
   const batchesWithLine = new Set();
   for (const l of lines) {
