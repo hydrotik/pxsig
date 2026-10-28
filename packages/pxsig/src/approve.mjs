@@ -328,7 +328,11 @@ export async function approveCommand({
     for (const e of ok) {
       const r = await fetch(`${serverUrl}/__pxsig/approve`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', [TOKEN_HEADER]: token },
+        // Checked above: `fail` exits when there is none.
+        headers: {
+          'content-type': 'application/json',
+          [TOKEN_HEADER]: /** @type {string} */ (token),
+        },
         body: JSON.stringify({
           project: P.name,
           id: e.id,

@@ -686,11 +686,12 @@ test('the render sentinel recognises Storybook error pages, the Vite overlay and
           : q === '#storybook-root'
             ? { childElementCount: children }
             : null;
-    globalThis.document = {
+    // A stand-in page: only what storybookSentinel reads.
+    /** @type {{ document?: unknown }} */ (globalThis).document = {
       body: { classList: { contains: (c) => classes.includes(c) } },
       querySelector: query,
     };
-    globalThis.window = preview
+    /** @type {{ window?: unknown }} */ (globalThis).window = preview
       ? { __STORYBOOK_PREVIEW__: { currentRender: { id: current, phase } } }
       : {};
   };
@@ -734,8 +735,8 @@ test('the render sentinel recognises Storybook error pages, the Vite overlay and
       'an empty root under an overlay did not render'
     );
   } finally {
-    delete globalThis.document;
-    delete globalThis.window;
+    delete (/** @type {{ document?: unknown }} */ (globalThis).document);
+    delete (/** @type {{ window?: unknown }} */ (globalThis).window);
   }
 });
 

@@ -18,18 +18,18 @@ import { dirname } from 'node:path';
 import { spawnSync } from './lib/spawn.mjs';
 import { browserFile, PXSIG_VERSION, resolvePeer } from './lib/workspace.mjs';
 /** @import { Flags, PeerBase, Project } from './types.js' */
-/** What a docker call returns (`dockerRunner`, or a stand-in). */
-/** @typedef {{ status: number | null, stdout: string, stderr: string, missing?: boolean, error?: Error | null }} DockerResult */
+/** @import { Block, BrowserRecordFile, Docker, DockerResult } from './types/t4.js' */
 
 export const IMAGE_REPO = 'ghcr.io/hydrotik/pxsig';
 const SUBS = ['start', 'stop', 'status'];
 
-const setupError = (m) => Object.assign(new Error(m), { exit: 2 });
+const setupError = (/** @type {string} */ m) => Object.assign(new Error(m), { exit: 2 });
 
 /**
  * `docker <args>` through lib/spawn.mjs: `{ status, stdout, stderr, missing }`.
  * @param {string[]} args
  * @param {Parameters<typeof spawnSync>[2]} [opts] spawn options (lib/spawn.mjs)
+ * @returns {DockerResult}
  */
 export function dockerRunner(args, opts = {}) {
   const r = spawnSync('docker', args, { encoding: 'utf8', ...opts });
@@ -37,12 +37,16 @@ export function dockerRunner(args, opts = {}) {
     status: r.status,
     stdout: String(r.stdout ?? ''),
     stderr: String(r.stderr ?? ''),
-    missing: r.error?.code === 'ENOENT',
+    // A spawn error carries the errno code (ENOENT: no such program).
+    missing: /** @type {{ code?: unknown } | undefined} */ (r.error)?.code === 'ENOENT',
     error: r.error ?? null,
   };
 }
 
-/** The docker CLI answers and its daemon runs, else a setup error naming which is missing. */
+/**
+ * The docker CLI answers and its daemon runs, else a setup error naming which is missing.
+ * @param {Docker} docker
+ */
 function needDocker(docker) {
   const r = docker(['version', '--format', '{{.Server.Version}}']);
   if (r.missing)
@@ -56,7 +60,7 @@ function needDocker(docker) {
     );
 }
 
-const mm = (v) =>
+const mm = (/** @type {string | null | undefined} */ v) =>
   String(v ?? '')
     .split('.')
     .slice(0, 2)
@@ -65,12 +69,16 @@ const mm = (v) =>
 /**
  * The Playwright version this project resolves, or null.
  * @param {PeerBase} P
+ * @returns {string | null}
  */
 export function projectPlaywright(P) {
   if (!P) return null;
   try {
     return (
-      JSON.parse(readFileSync(resolvePeer(P, 'playwright/package.json'), 'utf8')).version ?? null
+      // Playwright's package.json: its `version` is a string.
+      /** @type {{ version?: string }} */ (
+        JSON.parse(readFileSync(resolvePeer(P, 'playwright/package.json'), 'utf8'))
+      ).version ?? null
     );
   } catch {
     return null;
@@ -78,20 +86,30 @@ export function projectPlaywright(P) {
 }
 
 /** The image for this pxsig and the project's Playwright: `ghcr.io/hydrotik/pxsig:<pxsig>-pw<playwright>`. */
-export const defaultImage = (playwright) =>
+export const defaultImage = (/** @type {string | null} */ playwright) =>
   playwright ? `${IMAGE_REPO}:${PXSIG_VERSION}-pw${playwright}` : null;
 
-/** @param {string} root */
+/**
+ * @param {string} root
+ * @returns {BrowserRecordFile | null}
+ */
 export function readRecord(root) {
   const f = browserFile(root);
   try {
-    return existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null;
+    // browser.json, as `start` below wrote it.
+    return existsSync(f)
+      ? /** @type {BrowserRecordFile | null} */ (JSON.parse(readFileSync(f, 'utf8')))
+      : null;
   } catch {
     return null;
   }
 }
 
-/** Is the recorded container running? (false when docker does not know it.) */
+/**
+ * Is the recorded container running? (false when docker does not know it.)
+ * @param {Docker} docker
+ * @param {{ container: string }} rec
+ */
 function running(docker, rec) {
   const r = docker(['inspect', '--format', '{{.State.Running}}', rec.container]);
   if (r.status !== 0) return false;
@@ -104,7 +122,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 /**
  * Run the subcommand. `root`: the workspace root (browser.json lives there). `P`: the project, for
  * its Playwright version (optional). Returns `{ blocks, data, exit }`; throws `{ exit: 2 }` errors.
- * @param {{ sub?: string, flags?: Flags, root?: string | null, P?: Project | null, docker?: (args: string[], opts?: object) => DockerResult, waitMs?: number, CMD?: string }} opts
+ * @param {{ sub?: string, flags?: Flags, root?: string | null, P?: Project | null, docker?: Docker, waitMs?: number, CMD?: string }} opts
  */
 export async function browserCommand({
   sub = 'status',
@@ -139,6 +157,7 @@ export async function browserCommand({
       };
     needDocker(docker);
     const up = running(docker, rec);
+    /** @type {Block[]} */
     const blocks = [
       { h: 'Browser', sub: up ? 'running' : 'stopped' },
       {
@@ -276,18 +295,22 @@ export async function browserCommand({
     '{{json .RepoDigests}}|{{json .Config.Labels}}',
     image,
   ]);
+  /** @type {string | null} */
   let digest = null;
+  /** @type {Record<string, string>} */
   let labels = {};
   try {
     const [d, l] = insp.stdout.trim().split('|');
-    const digests = JSON.parse(d) ?? [];
+    // docker's `{{json .RepoDigests}}`: an array of strings (null when there are none).
+    const digests = /** @type {string[] | null} */ (JSON.parse(d)) ?? [];
     digest =
       (
         digests.find((x) => x.startsWith(`${image.split(':')[0].split('@')[0]}@`)) ??
         digests[0] ??
         ''
       ).split('@')[1] ?? null;
-    labels = JSON.parse(l) ?? {};
+    // `{{json .Config.Labels}}`: label → value (null when there are none).
+    labels = /** @type {Record<string, string> | null} */ (JSON.parse(l)) ?? {};
   } catch {
     // a locally built image has no digest: recorded as unknown
   }
@@ -306,6 +329,7 @@ export async function browserCommand({
   };
   mkdirSync(dirname(browserFile(root)), { recursive: true });
   writeFileSync(browserFile(root), JSON.stringify(record, null, 2) + '\n');
+  /** @type {Block[]} */
   const blocks = [
     { h: 'Browser', sub: 'started' },
     {

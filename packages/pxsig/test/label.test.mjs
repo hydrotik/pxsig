@@ -79,7 +79,8 @@ test('a project with a bad label does not load; a good one reaches the dashboard
   const d = buildData(P);
   assert.equal(d.label, 'Hydrotik');
   assert.equal(d.versions.pxsig, PXSIG_VERSION);
-  assert.match(d.versions.contract, /^\d+\.\d+\.\d+$/);
+  // A source checkout has the contract lock, so the version is a string here.
+  assert.match(/** @type {string} */ (d.versions.contract), /^\d+\.\d+\.\d+$/);
   // Without a label the data carries the name, so the title reads as before.
   assert.equal(
     buildData(openProject({ cwd: tree({ 'pxsig.config.json': { version: 1, name: 'ui' } }) }))

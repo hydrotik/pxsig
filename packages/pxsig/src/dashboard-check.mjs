@@ -27,7 +27,11 @@ import { pathToFileURL } from 'node:url';
 import { PNG } from 'pngjs';
 import { dashboardSource } from './dashboard.mjs';
 import { axeScript, injectAxe, launchBrowser } from './lib/capture.mjs';
-/** @import { Browser } from 'playwright' */
+/** @import { Browser, Page } from 'playwright' */
+/** @import { ServerResponse } from 'node:http' */
+/** @import { AddressInfo } from 'node:net' */
+/** @import { Flags } from './types.js' */
+/** @import { CheckPost, DashboardBuildConfig, DashboardCheckReport, DashboardFixtures, DashboardUiTools, SampleImages, ScenarioServer, Screen, ScreenCapture, ScreenCatalogue, ScreenFeature, ScreenResult, ScreenTarget, ScreenViolation, UiAdapter } from './types/t4.js' */
 import { buildDirFor, STAMP } from './lib/dashboard-dir.mjs';
 import { PXSIG_VERSION } from './lib/workspace.mjs';
 import { prebuiltDashboardDir } from './report.mjs';
@@ -43,13 +47,15 @@ const LANDMARK_MS = 10_000;
 const FREEZE =
   '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}';
 
+/** @type {(dir: string, file: string) => Promise<unknown>} */
 const load = (dir, file) => import(pathToFileURL(join(dir, file)).href);
 /** A path for messages: relative to `cwd` when it is inside it, else absolute. */
-const shown = (cwd, p) => {
+const shown = (/** @type {string} */ cwd, /** @type {string} */ p) => {
   const r = relative(cwd, p);
   return r && !r.startsWith('..') ? r : p;
 };
-const readJson = (f) => {
+/** @returns {unknown} */
+const readJson = (/** @type {string} */ f) => {
   try {
     return JSON.parse(readFileSync(f, 'utf8'));
   } catch {
@@ -57,7 +63,10 @@ const readJson = (f) => {
   }
 };
 
-/** A built dashboard folder: index.html with the data placeholder, and its assets. */
+/**
+ * A built dashboard folder: index.html with the data placeholder, and its assets.
+ * @param {string | null | undefined} dir
+ */
 export function isDashboardBuild(dir) {
   if (!dir || !existsSync(join(dir, 'index.html')) || !existsSync(join(dir, 'assets')))
     return false;
@@ -69,9 +78,13 @@ export function isDashboardBuild(dir) {
 /**
  * The sample images: a card with a button, and the same card with the button moved, so the
  * inspector shows a baseline, a render and a diff with a real change in it.
+ * @returns {SampleImages}
  */
 function sampleImages(width = 320, height = 200) {
-  const draw = (dx, paint) => {
+  const draw = (
+    /** @type {number} */ dx,
+    /** @type {(x: number, y: number, dx: number) => number[]} */ paint
+  ) => {
     const p = new PNG({ width, height });
     for (let y = 0; y < height; y++)
       for (let x = 0; x < width; x++) {
@@ -84,7 +97,7 @@ function sampleImages(width = 320, height = 200) {
       }
     return p;
   };
-  const scene = (x, y, dx) => {
+  const scene = (/** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ dx) => {
     const card = x >= 20 && x < width - 20 && y >= 20 && y < height - 20;
     const button = x >= 60 + dx && x < 180 + dx && y >= 120 && y < 152;
     return button ? [56, 112, 224] : card ? [236, 238, 242] : [200, 204, 212];
@@ -106,6 +119,7 @@ function sampleImages(width = 320, height = 200) {
   };
 }
 
+/** @type {Record<string, string>} */
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript',
@@ -120,21 +134,29 @@ const TYPES = {
 /**
  * A server for one build and one scenario: the build under /report/, /__pxsig/ from the scenario,
  * images under /p/demo/. `posts` records every POST; none reaches anything that writes.
+ * @param {{ dir: string, scenario: string, fixtures: DashboardFixtures, images: SampleImages, posts: CheckPost[] }} opts
+ * @returns {Promise<ScenarioServer>}
  */
 export function scenarioServer({ dir, scenario, fixtures, images, posts }) {
+  /** @type {Set<ServerResponse>} */
   const open = new Set();
   const server = createServer((req, res) => {
     open.add(res);
     res.on('close', () => open.delete(res));
-    const u = new URL(req.url, 'http://x');
-    const send = (status, type, body) =>
-      res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }).end(body);
+    // A request the server received always has its url.
+    const u = new URL(/** @type {string} */ (req.url), 'http://x');
+    const send = (
+      /** @type {number} */ status,
+      /** @type {string} */ type,
+      /** @type {string | Buffer} */ body
+    ) => res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }).end(body);
     if (u.pathname.startsWith('/__pxsig/')) {
       const name = u.pathname.slice('/__pxsig/'.length);
       if (req.method === 'POST') {
         let body = '';
-        req.on('data', (c) => (body += c));
+        req.on('data', (/** @type {Buffer} */ c) => (body += c));
         req.on('end', () => {
+          /** @type {unknown} */
           let parsed = null;
           try {
             parsed = JSON.parse(body || 'null');
@@ -158,7 +180,12 @@ export function scenarioServer({ dir, scenario, fixtures, images, posts }) {
         try {
           return send(200, 'application/json', JSON.stringify(fixtures.scenarioData(scenario)));
         } catch (e) {
-          return send(500, 'application/json', JSON.stringify({ error: e.message }));
+          // scenarioData throws an Error for an unknown scenario.
+          return send(
+            500,
+            'application/json',
+            JSON.stringify({ error: /** @type {Error} */ (e).message })
+          );
         }
       }
       if (name === 'projects')
@@ -218,11 +245,12 @@ export function scenarioServer({ dir, scenario, fixtures, images, posts }) {
     }
     send(200, TYPES[extname(file)] ?? 'application/octet-stream', readFileSync(file));
   });
-  return new Promise((ok, fail) => {
+  return new Promise((/** @type {(s: ScenarioServer) => void} */ ok, fail) => {
     server.once('error', fail);
     server.listen(0, '127.0.0.1', () =>
       ok({
-        base: `http://127.0.0.1:${server.address().port}`,
+        // Listening on a TCP port: the address is an AddressInfo.
+        base: `http://127.0.0.1:${/** @type {AddressInfo} */ (server.address()).port}`,
         close: () => {
           for (const r of open) r.destroy();
           server.close();
@@ -232,25 +260,44 @@ export function scenarioServer({ dir, scenario, fixtures, images, posts }) {
   });
 }
 
-/** A screen's target: `{ role, name?, exact? }` or `{ text, exact? }`. */
+/**
+ * A screen's target: `{ role, name?, exact? }` or `{ text, exact? }`.
+ * @param {Page} page
+ * @param {ScreenTarget} t
+ */
 function locate(page, t) {
   if (t.role)
     return page
-      .getByRole(t.role, { ...(t.name != null ? { name: t.name } : {}), exact: t.exact ?? false })
+      .getByRole(
+        // screens.json names an ARIA role.
+        /** @type {Parameters<Page['getByRole']>[0]} */ (t.role),
+        { ...(t.name != null ? { name: t.name } : {}), exact: t.exact ?? false }
+      )
       .first();
-  return page.getByText(t.text, { exact: t.exact ?? false }).first();
+  // A target without a role has its text (screens.json).
+  return page.getByText(/** @type {string} */ (t.text), { exact: t.exact ?? false }).first();
 }
-const describe = (t) =>
+const describe = (/** @type {ScreenTarget} */ t) =>
   t.role ? `${t.role}${t.name != null ? ` "${t.name}"` : ''}` : `text "${t.text}"`;
 
-/** The page address for a screen in a theme: its query (with the theme) and hash. */
+/**
+ * The page address for a screen in a theme: its query (with the theme) and hash.
+ * @param {string} base
+ * @param {Screen} screen
+ * @param {string} theme
+ */
 export function screenUrl(base, screen, theme) {
   const q = new URLSearchParams(screen.query ?? '');
   q.set('theme', theme);
   return `${base}/report/?${q.toString()}${screen.hash ?? ''}`;
 }
 
-/** Render one screen in one theme; never throws (a failure is the result). */
+/**
+ * Render one screen in one theme; never throws (a failure is the result).
+ * @param {Browser} browser
+ * @param {{ url: string, screen: Screen, shot: string, axe: string, initScript?: string | null }} opts
+ * @returns {Promise<ScreenCapture>}
+ */
 async function capture(browser, { url, screen, shot, axe, initScript = null }) {
   const started = Date.now();
   const context = await browser.newContext({
@@ -258,6 +305,7 @@ async function capture(browser, { url, screen, shot, axe, initScript = null }) {
     reducedMotion: 'reduce',
     colorScheme: url.includes('theme=light') ? 'light' : 'dark',
   });
+  /** @type {string[]} */
   const errors = [];
   try {
     await context.addInitScript((css) => {
@@ -290,11 +338,15 @@ async function capture(browser, { url, screen, shot, axe, initScript = null }) {
     await page.evaluate(() => document.fonts?.ready);
     mkdirSync(dirname(shot), { recursive: true });
     await page.screenshot({ path: shot });
+    /** @type {ScreenViolation[]} */
     let violations = [];
     if (axe) {
       await injectAxe(page, axe);
       violations = await page.evaluate(async () => {
-        const r = await window.axe.run(document, { resultTypes: ['violations'] });
+        // injectAxe added axe-core to this page just above.
+        const r = await /** @type {NonNullable<Window['axe']>} */ (window.axe).run(document, {
+          resultTypes: ['violations'],
+        });
         return r.violations.map((v) => ({
           id: v.id,
           impact: v.impact ?? null,
@@ -314,7 +366,8 @@ async function capture(browser, { url, screen, shot, axe, initScript = null }) {
   } catch (e) {
     return {
       rendered: false,
-      reason: String(e.message ?? e).split('\n')[0],
+      // Playwright rejects with an Error; anything else is shown as itself.
+      reason: String(/** @type {{ message?: string }} */ (e).message ?? e).split('\n')[0],
       errors,
       axe: [],
       ms: Date.now() - started,
@@ -324,9 +377,17 @@ async function capture(browser, { url, screen, shot, axe, initScript = null }) {
   }
 }
 
-/** Run `fn` over `items`, `n` at a time, keeping the order of the results. */
+/**
+ * Run `fn` over `items`, `n` at a time, keeping the order of the results.
+ * @template T, R
+ * @param {T[]} items
+ * @param {number} n
+ * @param {(item: T, i: number) => Promise<R>} fn
+ * @returns {Promise<R[]>}
+ */
 async function pool(items, n, fn) {
-  const out = new Array(items.length);
+  // One slot per item, each filled by the runner that takes it.
+  const out = /** @type {R[]} */ (new Array(items.length));
   let next = 0;
   await Promise.all(
     Array.from({ length: Math.min(n, items.length) }, async () => {
@@ -339,13 +400,24 @@ async function pool(items, n, fn) {
   return out;
 }
 
-const esc = (s) =>
+const esc = (/** @type {string | number | null | undefined} */ s) =>
   String(s ?? '').replace(
     /[&<>"']/g,
-    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+    (c) =>
+      // `c` is one of the five characters the pattern matches.
+      /** @type {Record<string, string>} */ ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+      })[c]
   );
 
-/** summary.md: the counts, then every screen that failed or has axe violations. */
+/**
+ * summary.md: the counts, then every screen that failed or has axe violations.
+ * @param {DashboardCheckReport} report
+ */
 export function summaryMarkdown(report) {
   const s = report.summary;
   const lines = [
@@ -380,11 +452,15 @@ export function summaryMarkdown(report) {
   return `${lines.join('\n')}\n`;
 }
 
-/** index.html: each screen on the adapter beside the reference, grouped by feature. */
+/**
+ * index.html: each screen on the adapter beside the reference, grouped by feature.
+ * @param {DashboardCheckReport} report
+ */
 export function galleryHtml(report) {
+  /** @type {Map<string, ScreenResult[]>} */
   const groups = new Map();
   for (const x of report.screens) groups.set(x.feature, [...(groups.get(x.feature) ?? []), x]);
-  const img = (src, alt) =>
+  const img = (/** @type {string | null} */ src, /** @type {string} */ alt) =>
     src
       ? `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy">`
       : `<p class="none">${esc(alt)}</p>`;
@@ -420,6 +496,10 @@ ${sections.join('\n')}
 /**
  * Run the check. Returns `{ code, report, outDir }`; throws CheckSetupError for exit 2.
  * `browser` (tests) skips the launch.
+ * @param {Flags} [flags]
+ * @param {string} [cwd]
+ * @param {{ log?: (m: string) => unknown, browser?: Browser | null, concurrency?: number, catalogue?: ScreenCatalogue | null, initScript?: string | null }} [opts]
+ * @returns {Promise<{ code: number, report: DashboardCheckReport, outDir: string }>}
  */
 export async function dashboardCheck(
   flags = {},
@@ -433,8 +513,11 @@ export async function dashboardCheck(
   } = {}
 ) {
   const src = dashboardSource();
-  const fixtures = await load(src, 'fixtures/scenarios.mjs');
-  const catalogue = givenCatalogue ?? readJson(join(src, 'fixtures', 'screens.json'));
+  // The dashboard source's own modules and files (packages/dashboard).
+  const fixtures = /** @type {DashboardFixtures} */ (await load(src, 'fixtures/scenarios.mjs'));
+  const catalogue =
+    givenCatalogue ??
+    /** @type {ScreenCatalogue | null} */ (readJson(join(src, 'fixtures', 'screens.json')));
   if (!catalogue?.features?.length)
     throw new CheckSetupError(
       `the dashboard's screen list is missing (${join(src, 'fixtures', 'screens.json')})`
@@ -463,14 +546,18 @@ export async function dashboardCheck(
     );
 
   // The adapter, for the contract version and the components it leaves to fallbacks.
-  const { resolveAdapter } = await load(src, 'build-config.mjs');
-  const { contractStatus, gapsOf, buildManifest, readConformance } = await load(
-    src,
-    'ui-tools.mjs'
+  const { resolveAdapter } = /** @type {DashboardBuildConfig} */ (
+    await load(src, 'build-config.mjs')
   );
+  const { contractStatus, gapsOf, buildManifest, readConformance } =
+    /** @type {DashboardUiTools} */ (await load(src, 'ui-tools.mjs'));
   // --ui, else the adapter the build's stamp names (`pxsig dashboard build` records it), else the
   // project's dashboard.ui. Without any of them the fallbacks column stays empty.
-  const stamp = readJson(join(build, STAMP));
+  // pxsig-build.json, as `pxsig dashboard build` writes it.
+  const stamp = /** @type {{ adapter?: string, adapterContract?: string } | null} */ (
+    readJson(join(build, STAMP))
+  );
+  /** @type {UiAdapter | null} */
   let ui = null;
   try {
     const spec =
@@ -479,7 +566,9 @@ export async function dashboardCheck(
         : stamp?.adapter && existsSync(stamp.adapter)
           ? stamp.adapter
           : undefined;
-    const { from } = (await load(src, 'build-config.mjs')).adapterSpec({ adapter: spec, cwd });
+    const { from } = /** @type {DashboardBuildConfig} */ (
+      await load(src, 'build-config.mjs')
+    ).adapterSpec({ adapter: spec, cwd });
     if (from !== 'default') ui = resolveAdapter({ adapter: spec, cwd });
   } catch {
     ui = null;
@@ -498,6 +587,7 @@ export async function dashboardCheck(
 
   const refDir =
     typeof flags.reference === 'string' ? resolve(cwd, flags.reference) : prebuiltDashboardDir;
+  /** @type {DashboardCheckReport['reference']} */
   const reference = { dir: refDir, used: false, note: null };
   if (resolve(refDir) === resolve(build))
     reference.note = 'the build checked is the reference itself';
@@ -534,20 +624,24 @@ export async function dashboardCheck(
       browser = await launchBrowser({ root: cwd, workspaceRoot: cwd });
     } catch (e) {
       throw new CheckSetupError(
-        `no Chromium for the check (${String(e.message ?? e).split('\n')[0]}): install it with \`npx playwright install chromium\``
+        `no Chromium for the check (${String(/** @type {{ message?: string }} */ (e).message ?? e).split('\n')[0]}): install it with \`npx playwright install chromium\``
       );
     }
   }
   const axe = axeScript({ root: cwd, workspaceRoot: cwd });
   const images = sampleImages();
+  /** @type {CheckPost[]} */
   const posts = [];
+  /** @type {Map<string, Promise<ScenarioServer>>} */
   const servers = new Map();
-  const serverFor = async (dir, scenario) => {
+  const serverFor = async (/** @type {string} */ dir, /** @type {string} */ scenario) => {
     const k = `${dir}\n${scenario}`;
     if (!servers.has(k)) servers.set(k, scenarioServer({ dir, scenario, fixtures, images, posts }));
-    return servers.get(k);
+    // Set on the line above when it was missing.
+    return /** @type {Promise<ScenarioServer>} */ (servers.get(k));
   };
 
+  /** @type {{ f: ScreenFeature, screen: Screen, index: number, theme: string }[]} */
   const jobs = [];
   for (const f of features)
     f.screens.forEach((screen, index) => {
@@ -556,7 +650,9 @@ export async function dashboardCheck(
   log(
     `[dashboard] checking ${jobs.length} screens (${features.length} features × ${themes.join(', ')}) on ${shown(cwd, build)}${reference.used ? ', beside the reference' : ''}`
   );
-  const name = (j) => `${j.f.id}__${j.index + 1}__${j.theme}.png`;
+  const name = (/** @type {{ f: ScreenFeature, index: number, theme: string }} */ j) =>
+    `${j.f.id}__${j.index + 1}__${j.theme}.png`;
+  /** @type {ScreenResult[]} */
   let screens;
   try {
     screens = await pool(jobs, concurrency, async (j) => {

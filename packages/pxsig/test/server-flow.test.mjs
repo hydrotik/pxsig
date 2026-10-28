@@ -116,7 +116,8 @@ async function serve(f, { storybook } = {}) {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-pxsig-token': readToken(f.repo, base),
+        // The server under test wrote its token when it started.
+        'x-pxsig-token': /** @type {string} */ (readToken(f.repo, base)),
         ...headers,
       },
       body: JSON.stringify(body),
@@ -222,7 +223,12 @@ test(
       const es = await fetch(`${S.base}/__pxsig/events`, { signal: ctl.signal });
       (async () => {
         const dec = new TextDecoder();
-        for await (const chunk of es.body) events.push(dec.decode(chunk));
+        // Node's fetch body is a web ReadableStream, which is async-iterable (the DOM lib's type
+        // says so only with DOM.AsyncIterable).
+        for await (const chunk of /** @type {AsyncIterable<Uint8Array>} */ (
+          /** @type {unknown} */ (es.body)
+        ))
+          events.push(dec.decode(chunk));
       })().catch(() => {});
       const r = await S.post('repair', { apply: true, only: ['recheck'] });
       assert.equal(r.status, 200, JSON.stringify(r.body));

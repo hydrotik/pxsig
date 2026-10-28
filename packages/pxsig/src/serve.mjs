@@ -717,7 +717,7 @@ async function runChecks(S) {
       if (storybookBroken(sbErrors.length, results.length))
         throw Object.assign(
           new Error(
-            `setup error: ${sbErrors.length} of ${results.length} renders hit Storybook's error page (${sbErrors[0].error.slice(STORYBOOK_ERROR.length).trim()}). Nothing was recorded.`
+            `setup error: ${sbErrors.length} of ${results.length} renders hit Storybook's error page (${/** @type {string} */ (sbErrors[0].error).slice(STORYBOOK_ERROR.length).trim()}). Nothing was recorded.`
           ),
           { setup: true }
         );
