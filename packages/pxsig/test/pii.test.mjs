@@ -50,7 +50,10 @@ test(
   { skip: !git && 'no git' },
   () => {
     const f = gitFixture();
-    const entry = f.manifest.stories.find((e) => e.id === f.ids.ok);
+    // The fixture has this entry.
+    const entry = /** @type {{ id: string, sig: string }} */ (
+      f.manifest.stories.find((e) => e.id === f.ids.ok)
+    );
     let P = openProject({ cwd: f.repo, env: { PXSIG_BIN: rustBin } });
     record(P, entry, { batch: 'b1', via: 'cli', before: snapshot(P, entry, 'b1').before });
     assert.equal(lines(f).at(-1).by, undefined);
@@ -300,7 +303,10 @@ test(
   { skip: !git && 'no git' },
   async () => {
     const f = gitFixture();
-    const entry = f.manifest.stories.find((e) => e.id === f.ids.ok);
+    // The fixture has this entry.
+    const entry = /** @type {{ id: string, sig: string }} */ (
+      f.manifest.stories.find((e) => e.id === f.ids.ok)
+    );
     const P = openProject({ cwd: f.repo, env: { PXSIG_BIN: rustBin } });
     record(P, entry, { batch: 'b1', via: 'cli', before: null });
     const { verify } = await import('../src/lib/approvals.mjs');

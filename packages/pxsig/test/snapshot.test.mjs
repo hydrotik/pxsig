@@ -119,7 +119,10 @@ test('the PR that merged an approval, from the merge subject', skip, () => {
   must(f.repo, 'switch', '-q', '-c', 'feat/x');
   record(
     f.P,
-    f.manifest.stories.find((e) => e.id === f.ids.changed),
+    // The fixture has this entry.
+    /** @type {{ id: string, sig: string }} */ (
+      f.manifest.stories.find((e) => e.id === f.ids.changed)
+    ),
     {
       batch: 'b1-cli',
       via: 'cli',
@@ -154,7 +157,10 @@ test('uncommitted log lines: no commit, and the snapshot says the store has chan
   const f = repoFixture();
   record(
     f.P,
-    f.manifest.stories.find((e) => e.id === f.ids.drift),
+    // The fixture has this entry.
+    /** @type {{ id: string, sig: string }} */ (
+      f.manifest.stories.find((e) => e.id === f.ids.drift)
+    ),
     {
       batch: 'b2-cli',
       via: 'cli',

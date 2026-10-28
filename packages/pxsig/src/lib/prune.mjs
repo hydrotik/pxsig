@@ -23,15 +23,23 @@ import { dirname, join } from 'node:path';
 import { readLog, sha256, stamp, who } from './approvals.mjs';
 import { appendLine, readLines, writeJson } from './files.mjs';
 import { relPath } from './paths.mjs';
-/** @import { Project } from '../types.js' */
+/** @import { A11yResult, A11yViolation, CheckRow, Project } from '../types.js' */
+/** @import { ApplyPruneOptions, BuildPlanOptions, CheckedPruneEntry, ClassifyOptions, CoverCommand, PlanInput, PruneClass, PruneEntry, PruneEvidence, PruneItem, PruneLine, PrunePlan, PruneReport, PruneReportRef, PruneResult, PruneStale, TimedLine } from '../types/t2.js' */
 
+/** @type {PruneClass[]} */
 export const CLASSES = ['prunable', 'still-fires', 'stale', 'not-covered'];
 export const PRUNE_RULE = /^[\w.-]{1,80}$/;
 export const PRUNE_ID = /^[a-z0-9-]+--[a-z0-9-]+(__[a-z0-9-]+)?(@[a-z0-9-]+)?$/;
 
+/**
+ * A JSON file, or `fallback` when it is missing or does not parse.
+ * @param {string} p
+ * @param {unknown} fallback
+ * @returns {unknown}
+ */
 const readJson = (p, fallback) => {
   try {
-    return JSON.parse(readFileSync(p, 'utf8'));
+    return /** @type {unknown} */ (JSON.parse(readFileSync(p, 'utf8')));
   } catch {
     return fallback;
   }
@@ -43,8 +51,10 @@ export const decisionsPath = (P) => join(dirname(P.store.a11y), 'a11y-decisions.
 /**
  * The check reports: check.json (suite null) and each check-<suite>.json, with their rows.
  * @param {Project} P
+ * @returns {PruneReport[]}
  */
 export function readReports(P) {
+  /** @type {{ suite: string | null, path: string }[]} */
   const out = [];
   const dir = P.store.reports;
   const main = join(dir, 'check.json');
@@ -54,17 +64,30 @@ export function readReports(P) {
       const m = name.match(/^check-(.+)\.json$/);
       if (m) out.push({ suite: m[1], path: join(dir, name) });
     }
-  return out
-    .map((r) => ({ ...r, file: relPath(P.workspaceRoot, r.path), check: readJson(r.path, null) }))
-    .filter((r) => Array.isArray(r.check?.rows));
+  // The reports are pxsig's own (check.json, check-<suite>.json): the filter keeps those with rows.
+  return /** @type {PruneReport[]} */ (
+    out
+      .map((r) => ({
+        ...r,
+        file: relPath(P.workspaceRoot, r.path),
+        check: /** @type {{ rows?: unknown } | null} */ (readJson(r.path, null)),
+      }))
+      .filter((r) => Array.isArray(r.check?.rows))
+  );
 }
 
-/** id → the time of its latest line in a log (`actions`: only those actions), as milliseconds. */
+/**
+ * id → the time of its latest line in a log (`actions`: only those actions), as milliseconds.
+ * @param {readonly TimedLine[]} lines
+ * @param {ReadonlySet<unknown> | null} [actions]
+ */
 function latestBy(lines, actions = null) {
+  /** @type {Map<string, number>} */
   const out = new Map();
   for (const l of lines) {
     if (typeof l?.id !== 'string' || (actions && !actions.has(l.action))) continue;
-    const t = Date.parse(l.at);
+    // An ISO time; anything else parses to NaN and is skipped.
+    const t = Date.parse(/** @type {string} */ (l.at));
     if (Number.isFinite(t) && t > (out.get(l.id) ?? -Infinity)) out.set(l.id, t);
   }
   return out;
@@ -75,14 +98,21 @@ function latestBy(lines, actions = null) {
  * @param {Project} P
  */
 export const decisionTimes = (P) =>
-  latestBy(readLines(decisionsPath(P)).lines, new Set(['accept', 'unaccept', 'undo', 'prune']));
+  latestBy(
+    // a11y-decisions.ndjson is pxsig's own: every line that parses is an object.
+    /** @type {TimedLine[]} */ (readLines(decisionsPath(P)).lines),
+    new Set(['accept', 'unaccept', 'undo', 'prune'])
+  );
 /**
  * The last approval-log line of each entry (approve, undo, adopt, check --update: each rewrites its accepted list).
  * @param {Project} P
  */
 export const approvalTimes = (P) => latestBy(readLog(P));
 
-/** Why a row says nothing about the rules, or null when axe ran on it. */
+/**
+ * Why a row says nothing about the rules, or null when axe ran on it.
+ * @param {CheckRow} row
+ */
 function notCovered(row) {
   if (row.skipped) return 'left out of its last run';
   if (row.error) return 'its render failed';
@@ -91,12 +121,16 @@ function notCovered(row) {
   return null;
 }
 
+/** @param {number} t */
 const iso = (t) => new Date(t).toISOString();
 
 /**
  * Classify every accepted rule. `stale(report)` → `{ ids: Map id → why, unknown: why | null }` for
  * that report's rows (unknown: staleness could not be traced, so every row of it counts as stale).
  * Filters: `only` (ids), `component` (id substring), `mode`.
+ * @template {PruneReportRef} R
+ * @param {ClassifyOptions<R>} options
+ * @returns {PruneItem[]}
  */
 export function classify({
   accepted,
@@ -109,13 +143,19 @@ export function classify({
   component = null,
   mode = null,
 }) {
+  /** @type {PruneItem[]} */
   const items = [];
+  /** @type {Map<string, { row: CheckRow, rep: R }[]>} */
   const rowsById = new Map();
   for (const rep of reports)
     for (const row of rep.check.rows) {
       if (typeof row?.id !== 'string') continue;
       if (!rowsById.has(row.id)) rowsById.set(row.id, []);
-      rowsById.get(row.id).push({ row, rep });
+      // Set just above when it was missing.
+      /** @type {{ row: CheckRow, rep: R }[]} */ (rowsById.get(row.id)).push({
+        row,
+        rep,
+      });
     }
   const staleOf = new Map(reports.map((rep) => [rep, stale(rep)]));
   for (const id of Object.keys(accepted).sort()) {
@@ -126,6 +166,11 @@ export function classify({
     const candidates = rowsById.get(id) ?? [];
     const entryMode = modeOf(id) ?? candidates[0]?.row.mode ?? null;
     if (mode && entryMode !== mode) continue;
+    /**
+     * @param {PruneClass} cls
+     * @param {string} why
+     * @param {PruneEvidence} [ev]
+     */
     const add = (cls, why, ev = {}) => {
       for (const rule of [...rules].sort())
         items.push({ id, rule, class: cls, why, mode: entryMode, ...ev });
@@ -134,12 +179,18 @@ export function classify({
     if (!usable.length) {
       add(
         'not-covered',
-        candidates.length ? notCovered(candidates[0].row) : 'no report has a row for it',
+        // No candidate is usable, so `notCovered` names why for the first.
+        candidates.length
+          ? /** @type {string} */ (notCovered(candidates[0].row))
+          : 'no report has a row for it',
         { suite: candidates[0]?.rep.suite ?? null }
       );
       continue;
     }
-    const at = (c) => Date.parse(c.row.checkedAt ?? c.rep.check.generatedAt) || 0;
+    /** @param {{ row: CheckRow, rep: R }} c */
+    const at = (c) =>
+      // Neither time: Date.parse(undefined) is NaN, read as 0.
+      Date.parse(/** @type {string} */ (c.row.checkedAt ?? c.rep.check.generatedAt)) || 0;
     const best = usable.reduce((a, b) => (at(b) > at(a) ? b : a));
     const checkedAt = at(best);
     const ev = {
@@ -147,20 +198,27 @@ export function classify({
       checkedAt: checkedAt ? iso(checkedAt) : null,
       suite: best.rep.suite,
     };
-    const st = staleOf.get(best.rep);
+    // Every report has an entry: staleOf maps them all.
+    const st = /** @type {PruneStale} */ (staleOf.get(best.rep));
     let why = null;
     if (!checkedAt) why = 'the row has no check time';
     else if ((decided.get(id) ?? -Infinity) >= checkedAt)
-      why = `accessibility decision at ${iso(decided.get(id))}, after this check`;
+      // Found just above.
+      why = `accessibility decision at ${iso(/** @type {number} */ (decided.get(id)))}, after this check`;
     else if ((approved.get(id) ?? -Infinity) >= checkedAt)
-      why = `approved at ${iso(approved.get(id))}, after this check`;
+      why = `approved at ${iso(/** @type {number} */ (approved.get(id)))}, after this check`;
     else if (st.unknown) why = st.unknown;
     else if (st.ids.has(id)) why = `${st.ids.get(id)} changed after this check`;
     if (why) {
       add('stale', why, ev);
       continue;
     }
-    const firing = new Set(best.row.a11y.violations.map((v) => v?.id ?? v));
+    // `usable` rows have violations: `notCovered` checked it.
+    const firing = new Set(
+      /** @type {A11yResult & { violations: A11yViolation[] }} */ (best.row.a11y).violations.map(
+        (v) => v?.id ?? v
+      )
+    );
     for (const rule of [...rules].sort())
       items.push(
         firing.has(rule)
@@ -178,15 +236,23 @@ export function classify({
   return items;
 }
 
-/** What would make the rules that are not prunable decidable: one command per suite and class. */
+/**
+ * What would make the rules that are not prunable decidable: one command per suite and class.
+ * @param {readonly { id: string, class: string, suite?: string | null }[]} items
+ * @param {string} [cmd]
+ */
 export function coverCommands(items, cmd = 'pxsig') {
+  /** @type {CoverCommand[]} */
   const out = [];
+  /** @param {string} cls */
   const group = (cls) => {
+    /** @type {Map<string, Set<string>>} */
     const by = new Map();
     for (const x of items.filter((i) => i.class === cls)) {
       const k = x.suite ?? '';
       if (!by.has(k)) by.set(k, new Set());
-      by.get(k).add(x.id);
+      // Set just above when it was missing.
+      /** @type {Set<string>} */ (by.get(k)).add(x.id);
     }
     return by;
   };
@@ -212,12 +278,15 @@ export function coverCommands(items, cmd = 'pxsig') {
 /**
  * The plan: every rule classified, the prunable ones grouped per entry, pinned to a11y.json.
  * @param {Project} P
+ * @param {BuildPlanOptions} options
+ * @returns {PrunePlan}
  */
 export function buildPlan(
   P,
   { stale, modeOf, only = null, component = null, mode = null, cmd = 'pxsig' }
 ) {
-  const accepted = readJson(P.store.a11y, {});
+  // a11y.json is pxsig's own: entry id → accepted rule ids.
+  const accepted = /** @type {Record<string, string[]>} */ (readJson(P.store.a11y, {}));
   const reports = readReports(P);
   const items = classify({
     accepted,
@@ -233,6 +302,7 @@ export function buildPlan(
   const counts = Object.fromEntries(
     CLASSES.map((c) => [c, items.filter((i) => i.class === c).length])
   );
+  /** @type {Map<string, Omit<PruneEntry, 'after'>>} */
   const byId = new Map();
   for (const x of items.filter((i) => i.class === 'prunable')) {
     if (!byId.has(x.id))
@@ -242,7 +312,8 @@ export function buildPlan(
         rules: [],
         evidence: { report: x.report, checkedAt: x.checkedAt },
       });
-    byId.get(x.id).rules.push(x.rule);
+    // Set just above when it was missing.
+    /** @type {Omit<PruneEntry, 'after'>} */ (byId.get(x.id)).rules.push(x.rule);
   }
   const prune = [...byId.values()].map((p) => ({
     ...p,
@@ -263,10 +334,17 @@ export function buildPlan(
   };
 }
 
-/** The phrase a person types to remove `n` rules. */
+/**
+ * The phrase a person types to remove `n` rules.
+ * @param {number} n
+ */
 export const prunePhrase = (n) => `PRUNE ${n} RULES`;
 
-/** Ask for the phrase (`ask` prints a question, resolves with the typed line); true only on an exact match. */
+/**
+ * Ask for the phrase (`ask` prints a question, resolves with the typed line); true only on an exact match.
+ * @param {Pick<PrunePlan, 'prune'>} plan
+ * @param {(question: string) => Promise<string>} ask
+ */
 export async function confirmPrune(plan, ask) {
   const n = plan.prune.reduce((k, p) => k + p.rules.length, 0);
   const phrase = prunePhrase(n);
@@ -277,19 +355,24 @@ export async function confirmPrune(plan, ask) {
   );
 }
 
-/** Check a plan's shape before applying it (a plan the server receives is the CLI's). */
+/**
+ * Check a plan's shape before applying it (a plan the server receives is the CLI's).
+ * @param {PlanInput | null | undefined} plan any value: each key is checked here
+ */
 export function checkPlan(plan) {
   if (!plan || typeof plan !== 'object') return 'no plan';
   if (plan.a11ySha !== null && !/^[0-9a-f]{64}$/.test(String(plan.a11ySha))) return 'bad a11ySha';
   if (!Array.isArray(plan.prune) || !plan.prune.length) return 'nothing to prune';
-  for (const p of plan.prune) {
+  // An array (checked above) of anything: each item is checked here.
+  for (const p of /** @type {{ id?: unknown, rules?: unknown }[]} */ (plan.prune)) {
     if (!PRUNE_ID.test(String(p?.id))) return `bad id ${String(p?.id).slice(0, 80)}`;
     if (
       !Array.isArray(p.rules) ||
       !p.rules.length ||
       !p.rules.every((r) => PRUNE_RULE.test(String(r)))
     )
-      return `bad rules for ${p.id}`;
+      // PRUNE_ID matched it above.
+      return `bad rules for ${/** @type {string} */ (p.id)}`;
   }
   return null;
 }
@@ -299,6 +382,9 @@ export function checkPlan(plan) {
  * it was made. `lockCheck` runs before the writes (fencing: a lock taken over writes nothing).
  * Returns `{ batch, entries, rules, lines }`.
  * @param {Project} P
+ * @param {PlanInput | null | undefined} plan checked by `checkPlan` first
+ * @param {ApplyPruneOptions} [options]
+ * @returns {PruneResult}
  */
 export function applyPrune(
   P,
@@ -307,18 +393,22 @@ export function applyPrune(
 ) {
   const bad = checkPlan(plan);
   if (bad) throw Object.assign(new Error(`a11y --prune: ${bad}`), { status: 400 });
-  if (sha256(P.store.a11y) !== plan.a11ySha)
+  // `checkPlan` passed: an object.
+  if (sha256(P.store.a11y) !== /** @type {PlanInput} */ (plan).a11ySha)
     throw Object.assign(
       new Error(
         `${relPath(P.workspaceRoot, P.store.a11y)} changed since this plan (a decision was made): run the prune again`
       ),
       { status: 409 }
     );
-  const base = readJson(P.store.a11y, {});
+  // a11y.json is pxsig's own: entry id → accepted rule ids.
+  const base = /** @type {Record<string, string[]>} */ (readJson(P.store.a11y, {}));
   const at = new Date().toISOString();
   const by = who(P.workspaceRoot, P.config);
+  /** @type {PruneLine[]} */
   const lines = [];
-  for (const p of plan.prune) {
+  // `checkPlan` passed: ids and rules have their shape.
+  for (const p of /** @type {CheckedPruneEntry[]} */ (/** @type {PlanInput} */ (plan).prune)) {
     const before = Array.isArray(base[p.id]) ? base[p.id] : [];
     const rules = p.rules.filter((r) => before.includes(r));
     if (!rules.length) continue;
@@ -349,7 +439,8 @@ export function applyPrune(
     rep.check.rows = rep.check.rows.map((r) => {
       if (!now.has(r.id) || !Array.isArray(r.a11y?.violations)) return r;
       touched = true;
-      const after = now.get(r.id);
+      // `now.has(r.id)` above.
+      const after = /** @type {string[]} */ (now.get(r.id));
       return {
         ...r,
         a11y: {

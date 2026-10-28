@@ -523,9 +523,9 @@ async function approve(S, id, meta = {}) {
       409,
       `${id} did not render (${current.error}); fix it and re-check before approving`
     );
-  const batch = meta.batch ?? newBatch(meta.via ?? 'dashboard');
+  const batch = meta.batch ?? newBatch(/** @type {string} */ (meta.via ?? 'dashboard'));
   // No baseline yet (a NEW entry): nothing to snapshot, `before` is null and undo removes the file.
-  const { before } = snapshot(P, e, batch);
+  const { before } = snapshot(P, e, /** @type {string} */ (batch));
   // A .psig output carries the render itself as the baseline image, and the environment of that
   // render (the row's, from the check that made it), never this server's or the approver's.
   const report = readJson(S.checkPath, { rows: [] });
@@ -574,7 +574,11 @@ function unapprove(S, id, entry, via = 'dashboard') {
   const e = manifest.stories.find((s) => s.id === id);
   if (!e) throw httpError(404, `unknown entry ${id}`);
   const before = sha256(paths(P, e).sig);
-  const res = undo(P, manifest, entry.batch, { git: false, ids: [id] });
+  // An approved review entry names its batch (checked by the caller).
+  const res = undo(P, manifest, /** @type {string} */ (entry.batch), {
+    git: false,
+    ids: [id],
+  });
   if (res.refused.length) throw httpError(409, `cannot undo ${id}: ${res.refused[0].why}`);
   if (!res.restored.length && !res.removed.length)
     throw httpError(409, `cannot undo ${id}: nothing in batch ${entry.batch} to restore`);
@@ -634,7 +638,7 @@ async function approveStory(S, story, meta = {}) {
   if (!entries.length) throw httpError(404, `unknown story ${story}`);
   const rows = new Map(readJson(S.checkPath, { rows: [] }).rows.map((r) => [r.id, r]));
   const rv = readJson(S.reviewPath, {});
-  const batch = meta.batch ?? newBatch(meta.via ?? 'dashboard');
+  const batch = meta.batch ?? newBatch(/** @type {string} */ (meta.via ?? 'dashboard'));
   const approved = [];
   const skipped = [];
   for (const e of entries) {
@@ -902,7 +906,8 @@ function a11yPrune(S, body, via) {
   const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : null);
   const batch = s(body.batch, 80)?.replace(/[^\w.-]/g, '') || newBatch('prune');
   // Errors carry their status (400 a bad plan, 409 a11y.json changed since it was made).
-  const r = applyPrune(S.P, body.plan, {
+  // `applyPrune` checks the plan (`checkPlan`).
+  const r = applyPrune(S.P, /** @type {import('./types/t2.js').PlanInput} */ (body.plan), {
     batch,
     reason: s(body.reason, 500),
     via,

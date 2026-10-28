@@ -18,12 +18,16 @@
 import { pathToFileURL } from 'node:url';
 import { describeAgent, detectAgent } from './agents.mjs';
 
+/** @import { Flags } from '../types.js' */
+/** @import { Block, Cell, Format, ImageItem, Painter, Progress, Style, StyledCell, TerminalOptions } from '../types/t2.js' */
+
 const env = process.env;
 
 /**
  * A person at a real terminal: stdin and stdout are TTYs and nothing says CI or an assistant
  * (lib/agents.mjs). Baseline writes in bulk require this. A TTY alone says nothing about who types:
  * several assistants run commands in a real terminal, so the markers are checked too.
+ * @param {TerminalOptions} [options]
  */
 export const humanAtTerminal = ({
   e = env,
@@ -35,6 +39,7 @@ export const humanAtTerminal = ({
  * Why `humanAtTerminal()` is false, for a refusal: "refused under copilot (AI_AGENT=…)", "refused
  * in CI (CI is set)", "refused: output is piped" or "refused: input is not a terminal". Null when it
  * is true.
+ * @param {TerminalOptions} [options]
  */
 export function whyNotPerson({
   e = env,
@@ -49,7 +54,10 @@ export function whyNotPerson({
   return null;
 }
 
-/** Ask a question on the terminal; resolves with the typed line. */
+/**
+ * Ask a question on the terminal; resolves with the typed line.
+ * @param {string} question
+ */
 export async function ask(question) {
   const { createInterface } = await import('node:readline/promises');
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -60,6 +68,11 @@ export async function ask(question) {
   }
 }
 
+/**
+ * @param {Flags} [flags]
+ * @param {{ e?: NodeJS.ProcessEnv, tty?: boolean }} [options]
+ * @returns {Format}
+ */
 export function pickFormat(flags = {}, { e = env, tty = process.stdout.isTTY } = {}) {
   if (flags.json) return 'json';
   if (flags.plain || flags.markdown) return 'plain';
@@ -69,10 +82,12 @@ export function pickFormat(flags = {}, { e = env, tty = process.stdout.isTTY } =
   return tty && !e.CI && !detectAgent(e) ? 'pretty' : 'plain';
 }
 
+/** @param {string} format */
 const colorOn = (format) => format === 'pretty' && !('NO_COLOR' in env) && env.FORCE_COLOR !== '0';
 
 // --- styling ------------------------------------------------------------------------------------
 
+/** @type {Record<Style, [number, number]>} */
 const SGR = {
   bold: [1, 22],
   dim: [2, 22],
@@ -84,17 +99,24 @@ const SGR = {
   cyan: [36, 39],
   gray: [90, 39],
 };
+/**
+ * @param {string} format
+ * @returns {Painter}
+ */
 export function painter(format) {
   const on = colorOn(format);
-  const p = {};
+  const p = /** @type {Painter} */ ({}); // filled below: every style, then link
   for (const [k, [a, b]] of Object.entries(SGR))
-    p[k] = (s) => (on ? `\x1b[${a}m${s}\x1b[${b}m` : String(s));
+    p[/** @type {Style} */ (k)] = (/** @type {string | number} */ s) =>
+      on ? `\x1b[${a}m${s}\x1b[${b}m` : String(s);
   // OSC 8 hyperlink: terminals that support it make the text clickable; others print the text.
-  p.link = (text, url) => (on && url ? `\x1b]8;;${url}\x1b\\${text}\x1b]8;;\x1b\\` : String(text));
+  p.link = (/** @type {string | number} */ text, /** @type {string | null | undefined} */ url) =>
+    on && url ? `\x1b]8;;${url}\x1b\\${text}\x1b]8;;\x1b\\` : String(text);
   return p;
 }
 
 /** Entry states, with the colour and symbol a person scans for. */
+/** @type {Record<string, { sym: string, color: Style }>} */
 export const STATES = {
   pass: { sym: '✓', color: 'green' },
   drift: { sym: '≈', color: 'green' },
@@ -108,11 +130,17 @@ export const STATES = {
 
 // oxlint-disable-next-line no-control-regex -- matching ANSI escapes is the point
 const ANSI_RE = /\x1b\[[0-9;]*m|\x1b\]8;;[^\x1b]*\x1b\\/g;
+/** @param {unknown} s */
 const width = (s) => [...String(s).replace(ANSI_RE, '')].length;
+/**
+ * @param {string} s
+ * @param {number} n
+ */
 const pad = (s, n, right = false) => {
   const fill = ' '.repeat(Math.max(0, n - width(s)));
   return right ? fill + s : s + fill;
 };
+/** @param {string} s */
 const mdCell = (s) =>
   String(s ?? '')
     .replace(/\|/g, '\\|')
@@ -130,23 +158,34 @@ const mdCell = (s) =>
  *   { next: [[command, why], ...] }
  *   { images: [{ label, path }] }
  * Cell values may be { text, color?, url? } for styled cells.
+ * @param {Block[]} blocks
+ * @param {Painter} p
  */
 function renderPretty(blocks, p) {
+  /** @type {string[]} */
   const out = [];
+  /**
+   * @param {Cell} v
+   * @returns {string}
+   */
   const cell = (v) => {
     if (Array.isArray(v)) return v.map(cell).join('   ');
     if (v && typeof v === 'object') {
       const t = v.url ? p.link(v.text, v.url) : String(v.text);
-      return v.color ? p[v.color](t) : t;
+      // A cell's colour names one of the styles.
+      return v.color ? p[/** @type {Style} */ (v.color)](t) : t;
     }
     return String(v ?? '');
   };
+  /** @type {Partial<Record<string, (s: string) => string>>} */
   const tone = { ok: p.green, warn: p.yellow, bad: p.red };
   for (const b of blocks) {
     if (b.h) out.push('', `${p.bold(b.h)}${b.sub ? `  ${p.gray(b.sub)}` : ''}`);
     else if (b.kv) {
       const w = Math.max(...b.kv.map(([k]) => width(k)));
-      for (const [k, v] of b.kv) out.push(`  ${p.gray(pad(k, w))}  ${cell(v)}`);
+      // A kv row is `[label, value]`.
+      for (const [k, v] of /** @type {[string, Cell][]} */ (b.kv))
+        out.push(`  ${p.gray(pad(k, w))}  ${cell(v)}`);
     } else if (b.table) {
       const { cols, rows, more } = b.table;
       if (!rows.length) continue;
@@ -164,7 +203,8 @@ function renderPretty(blocks, p) {
       if (more)
         out.push(p.gray(`  … ${more} more${b.table.moreHint ? ` (${b.table.moreHint})` : ''}`));
     } else if (b.list) for (const t of b.list) out.push(`  ${p.gray('•')} ${cell(t)}`);
-    else if (b.note) out.push(`  ${(tone[b.tone] ?? p.gray)(b.note)}`);
+    // A block without a tone indexes `tone` with undefined: no entry, so gray.
+    else if (b.note) out.push(`  ${(tone[/** @type {string} */ (b.tone)] ?? p.gray)(b.note)}`);
     else if (b.next?.length) {
       out.push('', p.bold(b.title ?? 'Next'));
       const w = Math.max(...b.next.map(([c]) => width(c)));
@@ -175,8 +215,14 @@ function renderPretty(blocks, p) {
   return out.join('\n').replace(/^\n/, '') + '\n';
 }
 
+/** @param {Block[]} blocks */
 function renderMarkdown(blocks) {
+  /** @type {string[]} */
   const out = [];
+  /**
+   * @param {Cell} v
+   * @returns {string}
+   */
   const cell = (v) => {
     if (Array.isArray(v)) return v.map(cell).join(' · ');
     if (v && typeof v === 'object')
@@ -189,7 +235,9 @@ function renderMarkdown(blocks) {
       out.push(`${first ? '##' : '###'} ${b.h}${b.sub ? ` — ${b.sub}` : ''}`, '');
       first = false;
     } else if (b.kv) {
-      for (const [k, v] of b.kv) out.push(`- **${k}:** ${cell(v)}`);
+      // A kv row is `[label, value]`.
+      for (const [k, v] of /** @type {[string, Cell][]} */ (b.kv))
+        out.push(`- **${k}:** ${cell(v)}`);
       out.push('');
     } else if (b.table) {
       const { cols, rows, more } = b.table;
@@ -217,7 +265,11 @@ function renderMarkdown(blocks) {
   return out.join('\n').trimEnd() + '\n';
 }
 
-/** iTerm2 inline images (also WezTerm); elsewhere a clickable file path. */
+/**
+ * iTerm2 inline images (also WezTerm); elsewhere a clickable file path.
+ * @param {ImageItem} image
+ * @param {Painter} p
+ */
 function inlineImage({ label, path, data, missing }, p) {
   const prog = env.TERM_PROGRAM ?? '';
   const inline =
@@ -232,14 +284,24 @@ function inlineImage({ label, path, data, missing }, p) {
   ];
 }
 
-/** Print a document. `data` is what --json prints. */
+/**
+ * Print a document. `data` is what --json prints.
+ * @param {string} format
+ * @param {Block[]} blocks
+ * @param {unknown} [data]
+ */
 export function emit(format, blocks, data) {
   if (format === 'json') process.stdout.write(JSON.stringify(data ?? blocks, null, 2) + '\n');
   else if (format === 'pretty') process.stdout.write(renderPretty(blocks, painter(format)));
   else process.stdout.write(renderMarkdown(blocks));
 }
 
-/** A spinner on stderr in pretty mode; in plain / json mode one line at start and one at the end. */
+/**
+ * A spinner on stderr in pretty mode; in plain / json mode one line at start and one at the end.
+ * @param {string} format
+ * @param {string} label
+ * @returns {Progress}
+ */
 export function progress(format, label) {
   const p = painter(format);
   const t0 = Date.now();
@@ -248,7 +310,8 @@ export function progress(format, label) {
     if (format === 'plain') process.stderr.write(`${label}…\n`);
     return {
       update() {},
-      done: (msg) => format === 'plain' && process.stderr.write(`${msg ?? label} (${secs()})\n`),
+      done: (/** @type {string | null | undefined} */ msg) =>
+        format === 'plain' && process.stderr.write(`${msg ?? label} (${secs()})\n`),
     };
   }
   const frames = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏';
@@ -261,8 +324,8 @@ export function progress(format, label) {
   const timer = setInterval(draw, 80);
   draw();
   return {
-    update: (t) => (text = t),
-    done: (msg, ok = true) => {
+    update: (/** @type {string} */ t) => (text = t),
+    done: (/** @type {string | null | undefined} */ msg, ok = true) => {
       clearInterval(timer);
       process.stderr.write(
         `\r\x1b[2K${ok ? p.green('✓') : p.red('✗')} ${msg ?? label} ${p.gray(secs())}\n`
@@ -271,7 +334,11 @@ export function progress(format, label) {
   };
 }
 
-/** A state cell: symbol + name, coloured in pretty mode, plain words in Markdown. */
+/**
+ * A state cell: symbol + name, coloured in pretty mode, plain words in Markdown.
+ * @param {string} st
+ * @returns {StyledCell}
+ */
 export const stateCell = (st) => ({
   text: `${STATES[st]?.sym ?? '?'} ${st}`,
   color: STATES[st]?.color,

@@ -41,7 +41,7 @@ export function setupRoot(cwd = process.cwd()) {
 /**
  * @param {{ step?: string | null, flags?: import('./types.js').Flags, root?: string,
  *   person?: boolean, ask?: ((q: string) => Promise<string>) | null,
- *   show?: ((text: string) => void) | null, CMD?: string }} opts
+ *   show?: ((blocks: import('./types/t2.js').Block[]) => void) | null, CMD?: string }} opts
  */
 export async function setupCommand({
   step = null,

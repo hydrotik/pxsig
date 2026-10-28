@@ -35,11 +35,20 @@ import { appendLine, fault, readLines, writeAtomic } from './files.mjs';
 import { agentName } from './agents.mjs';
 import { PXSIG_VERSION } from './workspace.mjs';
 /** @import { ApprovalLine, Config, Project, TornLine } from '../types.js' */
+/** @import { Appended, ApprovalProject, EntryPaths, Interrupted, MergeBase, Mismatch, RecordOptions, Refusal, Route, RouteCounts, TraceRow, UndoResult, VerifyResult } from '../types/t2.js' */
 
+/**
+ * A file's sha256, or null when it does not exist.
+ * @param {string} path
+ */
 export const sha256 = (path) =>
   existsSync(path) ? createHash('sha256').update(readFileSync(path)).digest('hex') : null;
 
-/** @returns {{ latestPng: string, sig: string, log: string, history: string }} */
+/**
+ * @param {ApprovalProject} P
+ * @param {EntryPaths} entry
+ * @returns {{ latestPng: string, sig: string, log: string, history: string }}
+ */
 export function paths(P, entry) {
   return {
     latestPng: join(P.store.latest, `${entry.id}.png`),
@@ -49,12 +58,17 @@ export function paths(P, entry) {
   };
 }
 
+/**
+ * @param {string} root
+ * @param {string[]} args
+ */
 const git = (root, ...args) =>
   spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' }).stdout?.trim() ?? '';
 /**
  * Who approved, for the log: nobody by default (decision 81). The commit that adds a line, and the
  * pull request that merges it, already say who; pxsig keeps no personal data. A team that wants the
  * git email on every line sets `approvals.identity: "git-email"`.
+ * @param {string} root
  * @param {Pick<Config, 'approvals'> | null} [config]
  */
 export const who = (root, config = null) =>
@@ -67,16 +81,29 @@ export const who = (root, config = null) =>
  * assistant's name, never a person's. A decision a person made through the dashboard link or the CLI
  * carries none: the CLI refuses under a marker, so a server started under an assistant would
  * otherwise mark a person's decisions with the assistant that started it.
+ * @type {ReadonlySet<string | undefined>}
  */
 export const PERSON_VIA = new Set(['dashboard', 'cli']);
+/**
+ * @template {{ via?: string, by?: unknown }} L
+ * @param {L} line
+ * @param {NodeJS.ProcessEnv} [env]
+ * @param {{ person?: boolean }} [options]
+ */
 export const stamp = (line, env = process.env, { person = PERSON_VIA.has(line.via) } = {}) => {
   const { by, ...rest } = line;
   const agent = person ? null : agentName(env);
   return { ...rest, ...(by ? { by } : {}), ...(agent ? { agent } : {}), pxsig: PXSIG_VERSION };
 };
+/** @param {string} via */
 export const newBatch = (via) => `${new Date().toISOString().replace(/[:.]/g, '-')}-${via}`;
 
-/** Copy the current baseline aside before it is overwritten. */
+/**
+ * Copy the current baseline aside before it is overwritten.
+ * @param {ApprovalProject} P
+ * @param {EntryPaths} entry
+ * @param {string} batch
+ */
 export function snapshot(P, entry, batch) {
   const p = paths(P, entry);
   const dir = join(p.history, batch);
@@ -86,6 +113,11 @@ export function snapshot(P, entry, batch) {
   return { before: sha256(p.sig) };
 }
 
+/**
+ * @param {ApprovalProject & Pick<Project, 'config'>} P
+ * @param {EntryPaths} entry
+ * @param {RecordOptions} options
+ */
 export function record(P, entry, { batch, via, reason = null, before, kind = null, person }) {
   const p = paths(P, entry);
   fault('after-psig');
@@ -123,17 +155,28 @@ export const readLog = (P) => /** @type {ApprovalLine[]} */ (readLines(P.store.a
  */
 export const tornLines = (P) => readLines(P.store.approvals).torn;
 
+/** @param {Buffer} b */
 const sha256Bytes = (b) => createHash('sha256').update(b).digest('hex');
 
-/** A file's bytes at a git revision, or null. Works from the file's own folder (any repo root). */
+/**
+ * A file's bytes at a git revision, or null. Works from the file's own folder (any repo root).
+ * @param {string} file
+ * @param {string} rev
+ * @returns {Buffer | null}
+ */
 function gitShow(file, rev) {
   const r = spawnSync('git', ['-C', dirname(file), 'show', `${rev}:./${basename(file)}`], {
     maxBuffer: 256 * 1024 * 1024,
   });
-  return r.status === 0 ? r.stdout : null;
+  // No `encoding`: Node returns stdout as a Buffer.
+  return r.status === 0 ? /** @type {Buffer} */ (r.stdout) : null;
 }
 
-/** Revisions to look for the pre-approval bytes in: the recorded HEAD first, then the file's history. */
+/**
+ * Revisions to look for the pre-approval bytes in: the recorded HEAD first, then the file's history.
+ * @param {string} file
+ * @param {string | null | undefined} gitHead
+ */
 function candidateRevs(file, gitHead) {
   const r = spawnSync(
     'git',
@@ -149,8 +192,13 @@ function candidateRevs(file, gitHead) {
  * `{ restored: [id], removed: [id], refused: [{ id, why }], source }`; `source` is `history` (the
  * local snapshot) or `git`. With neither available for an entry, it is refused, never guessed.
  * @param {Project} P
+ * @param {{ stories: readonly EntryPaths[] }} manifest
+ * @param {string} batch
+ * @param {{ git?: boolean, ids?: string[] | null }} [options]
+ * @returns {UndoResult}
  */
 export function undo(P, manifest, batch, { git = true, ids: only = null } = {}) {
+  /** @param {string} id */
   const keep = (id) => !only || only.includes(id);
   const lines = readLog(P).filter((l) => l.batch === batch && keep(l.id));
   const dir = join(P.store.history, batch);
@@ -159,8 +207,13 @@ export function undo(P, manifest, batch, { git = true, ids: only = null } = {}) 
     throw new Error(`no snapshot and no approvals logged for batch ${batch}`);
   if (!local && !git) throw new Error(`no snapshot for batch ${batch} on this machine`);
   const byId = new Map(manifest.stories.map((s) => [s.id, s]));
+  /** @type {UndoResult} */
   const out = { restored: [], removed: [], refused: [], source: local ? 'history' : 'git' };
   const trashDir = join(P.store.trash, `undo-${batch}`);
+  /**
+   * @param {string} file
+   * @param {string} id
+   */
   const toTrash = (file, id) => {
     const dest = join(trashDir, relative(P.workspaceRoot, file));
     mkdirSync(dirname(dest), { recursive: true });
@@ -168,8 +221,10 @@ export function undo(P, manifest, batch, { git = true, ids: only = null } = {}) 
     out.removed.push(id);
   };
   // The first line per id is the one that holds the pre-batch state.
+  /** @type {Map<string, ApprovalLine>} */
   const first = new Map();
   for (const l of lines) if (!first.has(l.id)) first.set(l.id, l);
+  /** @type {Set<string>} */
   const snaps = local
     ? new Set(
         readdirSync(dir)
@@ -226,7 +281,10 @@ export function undo(P, manifest, batch, { git = true, ids: only = null } = {}) 
   return out;
 }
 
-/** When a batch started, from its name (`newBatch`: an ISO time with `-` for `:` and `.`); else null. */
+/**
+ * When a batch started, from its name (`newBatch`: an ISO time with `-` for `:` and `.`); else null.
+ * @param {string} batch
+ */
 function batchTime(batch) {
   const m = /^(\d{4}-\d\d-\d\dT\d\d)-(\d\d)-(\d\d)-(\d{3})Z/.exec(batch);
   return m ? Date.parse(`${m[1]}:${m[2]}:${m[3]}.${m[4]}Z`) : null;
@@ -236,6 +294,10 @@ function batchTime(batch) {
  * The batch whose approval of `id` was cut short: it started after the entry's last log line, its
  * snapshot holds the bytes that line logged, and it logged no line for the entry. Null when no
  * snapshot on this machine says so.
+ * @param {ApprovalProject} P
+ * @param {string} id
+ * @param {ApprovalLine} last
+ * @param {Set<string>} batchesWithLine
  */
 function interruptedBatch(P, id, last, batchesWithLine) {
   const logged = last?.after;
@@ -255,6 +317,7 @@ function interruptedBatch(P, id, last, batchesWithLine) {
  * (`mismatched`), or by an approval a crash cut short before its log line (`interrupted`).
  */
 /** A log line's pxsig older than this one (major.minor), or written before lines named theirs. */
+/** @param {string | null | undefined} v */
 export const olderThanThis = (v) => {
   if (!v) return true;
   const [a, b] = String(v).split('.').map(Number);
@@ -262,20 +325,29 @@ export const olderThanThis = (v) => {
   return a < x || (a === x && b < y);
 };
 
-/** @param {Project} P */
+/**
+ * @param {ApprovalProject} P
+ * @param {{ stories: readonly EntryPaths[] }} manifest
+ * @returns {VerifyResult}
+ */
 export function verify(P, manifest) {
   // The approval log is pxsig's own: every complete line is an ApprovalLine.
   const { lines, torn } = /** @type {{ lines: ApprovalLine[], torn: TornLine[] }} */ (
     readLines(P.store.approvals)
   );
+  /** @type {Map<string, ApprovalLine>} */
   const last = new Map();
+  /** @type {Set<string>} */
   const batchesWithLine = new Set();
   for (const l of lines) {
     last.set(l.id, l);
     batchesWithLine.add(`${l.batch}\0${l.id}`);
   }
+  /** @type {string[]} */
   const untracked = [];
+  /** @type {Mismatch[]} */
   const mismatched = [];
+  /** @type {Interrupted[]} */
   const interrupted = [];
   for (const e of manifest.stories) {
     const l = last.get(e.id);
@@ -321,6 +393,9 @@ export function verify(P, manifest) {
 /**
  * The merge base of `ref` and HEAD, read from `dir`'s repository: `{ base }`, `{ base: null }` when
  * there is none (a shallow clone), or `{ error }` when `ref` is not a commit there.
+ * @param {string} dir
+ * @param {string} ref
+ * @returns {MergeBase}
  */
 export function mergeBase(dir, ref) {
   const ok = spawnSync('git', ['-C', dir, 'rev-parse', '--verify', '--quiet', `${ref}^{commit}`], {
@@ -343,6 +418,9 @@ export function mergeBase(dir, ref) {
 /**
  * The approval log lines added since `base`: the log there must be a byte prefix of today's (the
  * log is append-only). `{ rewritten: true }` when it is not.
+ * @param {{ store: { approvals: string } }} P
+ * @param {string} base
+ * @returns {Appended}
  */
 export function appendedSince(P, base) {
   const file = P.store.approvals;
@@ -350,11 +428,13 @@ export function appendedSince(P, base) {
   const before = gitShow(file, base) ?? Buffer.alloc(0);
   if (now.length < before.length || !now.subarray(0, before.length).equals(before))
     return { rewritten: true, lines: [] };
+  /** @type {ApprovalLine[]} */
   const lines = [];
   for (const t of now.subarray(before.length).toString('utf8').split('\n')) {
     if (!t.trim()) continue;
     try {
-      lines.push(JSON.parse(t));
+      // The log is pxsig's own (`record`, `pxsig migrate`): a complete line is an ApprovalLine.
+      lines.push(/** @type {ApprovalLine} */ (JSON.parse(t)));
     } catch {
       // a torn line: `verify` reports it
     }
@@ -362,7 +442,11 @@ export function appendedSince(P, base) {
   return { rewritten: false, lines };
 }
 
-/** How a log line's approval was made, for the PR summary (decision 80). */
+/**
+ * How a log line's approval was made, for the PR summary (decision 80).
+ * @param {Pick<ApprovalLine, 'via' | 'reason'>} l
+ * @returns {Route}
+ */
 export function route(l) {
   if (l.via === 'dashboard' || (l.via === 'undo' && /\(dashboard\)$/.test(l.reason ?? '')))
     return 'dashboard';
@@ -374,10 +458,14 @@ export function route(l) {
 /**
  * The baselines a range of log lines changed, counted by how each was last approved, and the
  * assistant markers on them (decision 80). Names no person: lines carry none by default (81).
+ * @param {readonly (Pick<ApprovalLine, 'via'> & Partial<ApprovalLine> | null | undefined)[]} lines
+ * @returns {RouteCounts}
  */
 export function changedByRoute(lines) {
+  /** @type {Map<string, Pick<ApprovalLine, 'via'> & Partial<ApprovalLine>>} */
   const last = new Map();
   for (const l of lines) if (l?.id) last.set(l.id, l);
+  /** @type {RouteCounts} */
   const out = { total: last.size, dashboard: 0, terminal: 0, mcp: 0, other: 0, agents: {} };
   for (const l of last.values()) {
     out[route(l)]++;
@@ -387,6 +475,7 @@ export function changedByRoute(lines) {
 }
 
 /** The pull request a commit came in by: GitHub's merge subject, GitLab's "See merge request", or a squash's "(#12)". */
+/** @param {string} text */
 const prOf = (text) => {
   const m =
     /Merge pull request #(\d+)/.exec(text) ??
@@ -400,6 +489,8 @@ const prOf = (text) => {
  * (`git blame`) and the pull request that merged that commit (the first merge on HEAD's
  * first-parent line after it, or the commit's own squash subject). Reads git only and returns no
  * author, email or other name: git and the forge hold who. Null when the log is not in git.
+ * @param {{ store: { approvals: string } }} P
+ * @returns {TraceRow[] | null}
  */
 export function traceLog(P) {
   const file = P.store.approvals;
@@ -410,6 +501,7 @@ export function traceLog(P) {
     maxBuffer: 256 * 1024 * 1024,
   });
   if (blame.status !== 0) return null;
+  /** @type {(string | null)[]} */
   const commitOf = [];
   let sha = null;
   for (const row of blame.stdout.split('\n')) {
@@ -431,7 +523,12 @@ export function traceLog(P) {
       .split('\n')
       .filter(Boolean)
   );
+  /** @type {Map<string, number | null>} */
   const prs = new Map();
+  /**
+   * @param {string} c
+   * @returns {number | null}
+   */
   const pr = (c) => {
     if (!prs.has(c)) {
       const own =
@@ -454,16 +551,20 @@ export function traceLog(P) {
       }
       prs.set(c, prOf(merge) ?? prOf(own));
     }
-    return prs.get(c);
+    // Set just above when it was missing.
+    return /** @type {number | null} */ (prs.get(c));
   };
+  /** @type {TraceRow[]} */
   const out = [];
   readFileSync(file, 'utf8')
     .split('\n')
     .forEach((text, i) => {
       if (!text.trim()) return;
+      /** @type {ApprovalLine} */
       let l;
       try {
-        l = JSON.parse(text);
+        // The log is pxsig's own: a line that parses is an ApprovalLine.
+        l = /** @type {ApprovalLine} */ (JSON.parse(text));
       } catch {
         return;
       }
@@ -484,6 +585,7 @@ export function traceLog(P) {
 /**
  * Store files and baselines (any `.psig`, for the colocated layout) git lists as conflicted
  * (`git ls-files -u`): a merge or rebase left them half-done. Workspace-relative.
+ * @param {ApprovalProject} P
  */
 export function conflictedStoreFiles(P) {
   // Run from the workspace root without --full-name: git prints paths relative to it.
@@ -494,6 +596,7 @@ export function conflictedStoreFiles(P) {
     { encoding: 'utf8' }
   );
   if (r.status !== 0) return [];
+  /** @type {Set<string>} */
   const files = new Set();
   for (const rec of r.stdout.split('\0')) {
     const tab = rec.indexOf('\t');

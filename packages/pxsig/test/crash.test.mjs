@@ -277,7 +277,10 @@ test('a holder whose lock was taken over stops before its next write', () => {
 test('snapshot then record leaves a clean trail (the normal order)', () => {
   const f = fixture();
   const P = project(f);
-  const e = f.manifest.stories.find((s) => s.id === f.ids.ok);
+  // The fixture has this entry.
+  const e = /** @type {{ id: string, sig: string }} */ (
+    f.manifest.stories.find((s) => s.id === f.ids.ok)
+  );
   const { before } = snapshot(P, e, 'b2-cli');
   writeFileSync(f.sig(e.id), 'approved bytes');
   record(P, e, { batch: 'b2-cli', via: 'cli', before });
