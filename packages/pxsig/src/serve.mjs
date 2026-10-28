@@ -833,11 +833,7 @@ async function runChecks(S) {
         entries.map((e) => e.browser ?? 'chromium'),
         { fontProbe: envCfg.fontProbe, pxsig: PXSIG_VERSION, engine: engineVersion }
       );
-      const {
-        results,
-        wallMs,
-        reloads = 0,
-      } = await renderStories(pool, entries, P.store.latest, {
+      const { results, wallMs, reloads } = await renderStories(pool, entries, P.store.latest, {
         ...manifest,
         concurrency,
         project: P,
