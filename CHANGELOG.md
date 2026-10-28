@@ -5,6 +5,121 @@ semantic versioning.
 
 ## Unreleased
 
+## 0.6.0 - 2026-10-28
+
+The deployed-Storybook and hardening release. A Storybook deployed to a shared environment shows
+each story's committed baseline and history from a read-only snapshot (`pxsig snapshot`), and its
+panel no longer tries to reach a server on each viewer's computer. Bad input that used to crash a
+command (a story parameter of the wrong type, an approval plan that names a removed entry, a
+broken lock file, a malformed engine or MCP line) is now refused with a message that names it.
+The engine moves to `png` 0.18 with pixel-identical decoding, and the prebuilt dashboard is built
+with Vite 8; `pxsig dashboard build` works on Vite 6, 7 and 8. Read **Behaviour changes** first:
+`storybook build` writes the snapshot, `pxsig manifest` checks `parameters.pxsig`, and `pxsig stale`
+fails when too many files were edited to trace. An unknown flag still prints a warning, as in
+0.5.1: making it an error is not part of this release.
+
+### Behaviour changes
+
+- **The Storybook panel connects only on a Storybook served from this computer.** On any other
+  address (a Storybook deployed to dev, UAT or pre-prod) it no longer polls `127.0.0.1:6070` on
+  each viewer's computer, which could never connect there and could make the browser ask about
+  local network access; it shows the read-only snapshot below, or says there is none. A
+  `pxsig-server` key in `localStorage` still forces the live panel.
+- **`storybook build` with the addon writes `pxsig-snapshot.json` into the build** and takes a
+  few seconds longer. Option `snapshot: false` leaves it out. It never fails a build.
+- **`pxsig manifest` checks each story's `parameters.pxsig`.** A key with a value of the wrong
+  type (`grid: '96'`, `ignore: '.live'`, `addModes: 7`, a state with no `name`) is a setup error
+  (exit 2) that names the story and the key, as a bad value in `pxsig.config.json` is. Before, it
+  crashed the command with a TypeError or went into the manifest as written. A repair that
+  registers the story reports the same error. Fix the parameter the message names.
+- **`pxsig stale` fails when too many files were edited to trace.** Above the number of edited
+  files it traces one by one, it used to print "Every result is newer than the edits that can
+  change it." and exit 0. It now says how many source files were edited since the oldest verdict,
+  names `pxsig check --all`, and exits 1 (`advisoryExit` on warn), as for stale verdicts.
+- **`pxsig list` and `pxsig a11y` refuse a flag given without its value.** A bare `--component`,
+  `--mode` or `--state` used to stop with "toLowerCase is not a function" or match nothing. It now
+  exits 2 with "usage: --component needs a value" (naming the flag).
+
+### Added
+
+- **`pxsig snapshot`**: a read-only summary of the committed store for a deployed Storybook: each
+  entry's baseline, last change (date, pull request, commit, colour or shape, reason), render
+  environment and accepted axe rules, and each story's history. It reads the store and git only,
+  and never carries who approved, how, file paths or images. In a shallow clone it shows no pull
+  request rather than a wrong one.
+- **A deployed Storybook's panel shows that snapshot** for the current story, matched to the
+  commit the Storybook was built from.
+
+### Changed
+
+- **The engine reads and writes PNG with `png` 0.18** (was 0.17). Decoding is pixel-identical (checked
+  on 1,741 images: every render, diff and heat image in a real store, and every colour type and bit
+  depth), so signatures, comparisons and verdicts do not change. PNG files the engine writes from
+  now on (a trimmed render, a diff image) hold the same pixels but compress to different bytes.
+- **The prebuilt dashboard is built with Vite 8.** The bundle in the `pxsig` package
+  (`dist/dashboard`) now comes from Vite 8 (Rolldown) instead of Vite 6. It has the same features
+  and renders the same screens; it still runs as a classic script, so a static report opens from
+  disk.
+- **`pxsig dashboard build` works on Vite 6, 7 and 8.** It uses the project's own Vite as before.
+  On Vite 8 the build no longer warns about `inlineDynamicImports`, and `PXSIG_DASHBOARD_MINIFY=1`
+  uses that Vite's own minifier (Oxc on 8, esbuild before).
+
+### Fixed
+
+- **`pxsig serve` clears a project's load error once its manifest loads again.** The project list
+  (`GET /__pxsig/projects`, the dashboard) kept showing the old error after a later reload worked.
+- **`pxsig serve` skips an engine output line that is not a JSON object.** A `null` line, a number
+  or text that is not JSON used to stop the server (and, in the affected-files lookup, leave the
+  request waiting forever); such a line is now ignored and the next answer is read as usual.
+- **The workspace schema describes `defaults` paths correctly.** Its description said a path in
+  `defaults` resolves against each project's folder; pxsig resolves it against the workspace root,
+  as `docs/configuration.md` says. Editors that show the schema now say the workspace root.
+- **`pxsig approve apply` refuses a plan with an entry the manifest no longer has.** It used to
+  stop with "Cannot read properties of undefined". It now refuses the whole plan before writing
+  anything: "<n> planned entries are no longer in the manifest: <ids>: plan again" (exit 2).
+- **A project folder in `pxsig.workspace.json` that is not a string** is a setup error naming the
+  file and the project, instead of Node's "The "paths[1]" argument must be of type string".
+- **A command whose lock file became unreadable** says "lock taken over by an unreadable lock file
+  (<path>)" instead of "`pxsig undefined` (pid undefined, since undefined)".
+- **`GET /__pxsig/integrity?project=<p>&story=<id>`** answers with the project asked about when
+  two projects share the story, not the first of them.
+- **`pxsig serve`: a check queued while the manifest became unreadable** reports "the manifest did
+  not load — <why>" instead of "Storybook is not reachable".
+- **A Storybook index whose `entries` is null** is reported as a broken index instead of throwing.
+- **`pxsig serve`: an engine reply with neither a result nor an error** fails that request instead
+  of an uncaught exception.
+- **`pxsig help approvals.identity` and `pxsig help approvals.level`** print their pages instead of
+  "entry.values.join is not a function".
+- **`pxsig help check ''`** prints the `check` page; an empty subcommand word is ignored.
+- **`pxsig entry <id>`** shows the review decision (approved, rejected) instead of always `none`.
+- **`pxsig affected`** notes the remote URLs it does not follow when a changed file imports one.
+- **The MCP server answers a line that is not a JSON-RPC object** (`null`, a number, a string, an
+  array) with the Invalid Request error (-32600) and keeps serving; `null` used to stop it.
+
+### Documentation
+
+- **`docs/team.md`: how pxsig works across a team.** What is shared and what stays on each
+  machine, the workflow from check to merge, where pxsig runs in each environment, and why.
+- **Which browser renders.** `docs/platforms.md` and `pxsig help platforms` now say what pxsig
+  has always done: when Playwright's Chromium is missing, it launches the installed Google Chrome,
+  then Microsoft Edge, and the channel is part of the render environment. A test ties both pages
+  to the code's list.
+- **Troubleshooting.** `docs/troubleshooting.md` and a new `pxsig help troubleshooting` topic: one
+  entry per error pxsig prints (Storybook not reachable, no manifest, no Chromium, a different
+  Storybook on the port, a locked store, `needs-dashboard-link`, a program blocked by policy, a
+  JSON file with a byte order mark), each with its cause and fix. A test checks that every quoted
+  error text is in the code.
+- **Architecture.** `docs/architecture.md` lists the modules added since 0.4: the render
+  environment, warn mode, SARIF, the browser container, `pxsig dashboard check`, the addon's
+  snapshot view and the JSDoc types.
+- **Contributing.** `CONTRIBUTING.md` covers installing Playwright's Chromium (the tests that
+  render skip without it), running each suite, changelog fragments and `Changelog: none`, why CI
+  job names never change, and how a dependency advisory is handled. The repository pins Node.js
+  in `.nvmrc` and declares `rust-version` in `Cargo.toml`; `pnpm test` at the root runs every
+  suite.
+- `docs/ui/build-adapter.md` names the Vite versions `pxsig dashboard build` supports, and the
+  Node.js version Vite 8 needs.
+
 ## 0.5.1 - 2026-10-27
 
 The Windows and review release. The Windows engine no longer needs the Visual C++ Redistributable,
