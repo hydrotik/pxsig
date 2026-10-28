@@ -67,6 +67,9 @@ jobs:
       - run: node --test scripts/check-links.test.mjs
       # The required checks a release tag needs (release.yml): the list matches this file's jobs.
       - run: node --test scripts/required-checks.test.mjs
+      # Source and test files: at most 5,000 tokens, and one already over may not grow
+      # (scripts/file-size-baseline.json; the pre-commit hook checks the staged files).
+      - run: node scripts/check-file-size.mjs --all && node --test scripts/check-file-size.test.mjs
       - if: github.event_name == 'pull_request'
         run: git fetch --no-tags --depth=1 origin "$GITHUB_BASE_REF" && node scripts/changelog.mjs check --since FETCH_HEAD
       # The dashboard's UI contract: no design-system import outside the adapters; the manifest,
