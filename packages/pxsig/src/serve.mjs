@@ -138,7 +138,18 @@ import { applyPrune } from './lib/prune.mjs';
 /** The server listens on a TCP port, so `server.address()` is an AddressInfo wherever it is read. */
 /** @import { AddressInfo } from 'node:net' */
 /** @import { IntegrityContext } from './lib/integrity.mjs' */
-/** @import { LockHandle, ManifestEntry, Project, RunManifest, Workspace } from './types.js' */
+/**
+ * @import { CheckRow, EnvRecord, LockHandle, ManifestEntry, Project, ProjectRef, RunManifest,
+ *   Workspace } from './types.js'
+ */
+/** @import { IncomingMessage, ServerResponse } from 'node:http' */
+/** @import { Readable, Writable } from 'node:stream' */
+/**
+ * @import { A11yBaseline, A11yReviewFile, A11yRow, CheckReport, CheckTiming, DecisionMeta, Engine,
+ *   EngineMethod, EngineMethods, EnginePending, EngineReply, Enqueued, HttpError, ProjectQuery,
+ *   RequestBody, ReviewEntry, ReviewFile, ServerRecord, SetupError, StoryIntegrity, StoryStatus
+ * } from './types/t5.js'
+ */
 /** The integrity ledger (lib/integrity.mjs `reconcile`). */
 /** @typedef {Awaited<ReturnType<typeof reconcile>>} IntegrityLedger */
 /**
@@ -176,13 +187,15 @@ const { flags } = parseArgs(process.argv.slice(2));
 // Children inherit it, so the engine and checks the server starts are printed too.
 if (flags.debug)
   process.env.PXSIG_DEBUG = [process.env.PXSIG_DEBUG, 'spawn'].filter(Boolean).join(',');
+/** @param {string} k */
 const str = (k) => strFlag(flags, k);
 /** @type {Workspace} */
 let ws;
 try {
   ws = findWorkspace({ workspace: str('workspace') });
 } catch (e) {
-  console.error(`[serve] ${e.message}`);
+  // findWorkspace throws Errors (a missing or malformed workspace file).
+  console.error(`[serve] ${/** @type {Error} */ (e).message}`);
   process.exit(2);
 }
 const wantPort = Number(flags.port) || ws.server?.port || 6070;
@@ -191,6 +204,7 @@ const only = str('project')?.split(',');
 // The dashboard: PXSIG_DASHBOARD_DIR, else a project's own build for its UI adapter (dashboard.ui)
 // when it is current, else the prebuilt one. Serve never builds: it says which command does.
 {
+  /** @param {string} name */
   const builtinDir = (name) => {
     for (const d of [join(here, '..', 'dashboard'), join(here, '..', '..', 'dashboard')])
       if (existsSync(join(d, 'src', 'ui', 'adapters', name)))
@@ -212,6 +226,7 @@ const only = str('project')?.split(',');
   if (dash.note) console.log(`[serve] ${dash.note}`);
 }
 
+/** @type {Record<string, string>} */
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -225,6 +240,14 @@ const TYPES = {
   '.md': 'text/markdown; charset=utf-8',
   '.xml': 'application/xml; charset=utf-8',
 };
+/**
+ * A JSON file, or `fallback` when it is missing or does not parse. Every file the server reads this
+ * way is one pxsig writes (check.json, review.json, a11y-review.json, a11y.json, integrity.json,
+ * server.json), so a caller casts the result to that file's shape.
+ * @param {string} p
+ * @param {unknown} fallback
+ * @returns {unknown}
+ */
 const readJson = (p, fallback) => {
   try {
     return JSON.parse(readFileSync(p, 'utf8'));
@@ -232,6 +255,11 @@ const readJson = (p, fallback) => {
     return fallback;
   }
 };
+/**
+ * @param {number} status
+ * @param {string} message
+ * @returns {HttpError}
+ */
 const httpError = (status, message) => Object.assign(new Error(message), { status });
 /**
  * Decisions need one of these (lib/guard.mjs): the dashboard page's, the CLI's, or the MCP's
@@ -247,7 +275,11 @@ const links = new Links();
  */
 const dashboardLink = (base, tab = null) =>
   `${base}#${tab ? `tab=${encodeURIComponent(tab)}&` : ''}ticket=${links.mint()}`;
-/** An agent clears its own kind of decision only: never a person's approval or accept. */
+/**
+ * An agent clears its own kind of decision only: never a person's approval or accept.
+ * @param {DecisionMeta} meta
+ * @param {string | undefined} state
+ */
 const agentMayClear = (meta, state) => {
   if (meta.via === 'mcp' && (state === 'approved' || state === 'accepted'))
     throw httpError(
@@ -258,14 +290,25 @@ const agentMayClear = (meta, state) => {
 
 // --- the Rust engine, kept running --------------------------------------------------
 const rustBin = rustBinary();
+/** @type {Engine | null} */
 let engine = null;
+/**
+ * One call to the engine: its answer's `result`, or a rejection with its `error`.
+ * @template {EngineMethod} M
+ * @param {M} method
+ * @param {EngineMethods[M]['params']} params
+ * @returns {Promise<EngineMethods[M]['result']>}
+ */
 function rust(method, params) {
   if (!engine) {
     const proc = spawn(rustBin, ['serve'], { cwd: ws.root, stdio: ['pipe', 'pipe', 'inherit'] });
+    /** @type {Map<number | null, EnginePending>} */
     const pending = new Map();
     let seq = 0;
-    createInterface({ input: proc.stdout }).on('line', (line) => {
-      const msg = JSON.parse(line);
+    // stdin and stdout are pipes (`stdio` above), so neither is null.
+    createInterface({ input: /** @type {Readable} */ (proc.stdout) }).on('line', (line) => {
+      // The engine writes one JSON object per line (crates/pxsig-cli/src/serve.rs).
+      const msg = /** @type {EngineReply} */ (JSON.parse(line));
       const p = pending.get(msg.id);
       pending.delete(msg.id);
       if (p) msg.error ? p.reject(new Error(msg.error)) : p.resolve(msg.result);
@@ -279,7 +322,10 @@ function rust(method, params) {
         const id = ++seq;
         return new Promise((ok, fail) => {
           pending.set(id, { resolve: ok, reject: fail });
-          proc.stdin.write(`${JSON.stringify({ id, method: m, params: prm })}\n`);
+          // A pipe (`stdio` above), so not null.
+          /** @type {Writable} */ (proc.stdin).write(
+            `${JSON.stringify({ id, method: m, params: prm })}\n`
+          );
         });
       },
       kill: () => proc.kill(),
@@ -289,16 +335,25 @@ function rust(method, params) {
 }
 
 // --- live updates -------------------------------------------------------------------------
+/** @type {Set<ServerResponse>} */
 const clients = new Set();
+/**
+ * @param {string} event
+ * @param {Record<string, unknown>} [data]
+ */
 const broadcast = (event, data = {}) => {
   for (const res of clients) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 };
 
 // --- one browser pool for every project ----------------------------------------------------
+/** @type {ReturnType<typeof browserPool> | null} */
 let pool = null;
 
 // --- projects --------------------------------------------------------------------------------
-/** Everything the server keeps for one project. */
+/**
+ * Everything the server keeps for one project.
+ * @param {ProjectRef} ref
+ */
 function openState(ref) {
   const P = loadProject(ws, ref, { flags: flagLayer(flags) });
   /** @type {Omit<ProjectState, 'reload' | 'affected'> & Partial<Pick<ProjectState, 'reload' | 'affected'>>} */
@@ -337,11 +392,15 @@ function openState(ref) {
     } catch (e) {
       S.manifest = { stories: [] };
       S.runPath = null;
-      S.error = e.message;
+      // writeRunManifest throws Errors (an unreadable manifest, a bad config).
+      S.error = /** @type {Error} */ (e).message;
     }
   };
   S.reload();
-  S.integrity = readJson(join(P.store.reports, 'integrity.json'), null);
+  // integrity.json is the ledger writeLedger wrote.
+  S.integrity = /** @type {IntegrityLedger | null} */ (
+    readJson(join(P.store.reports, 'integrity.json'), null)
+  );
   // Staleness traces edits (never the gates' fail-safe: decision 6.1f).
   S.affected = (file) =>
     S.runPath
@@ -361,13 +420,15 @@ for (const ref of ws.projects) {
   try {
     states.set(ref.name, openState(ref));
   } catch (e) {
-    console.error(`[serve] project ${ref.name}: ${e.message}`);
+    // loadProject throws Errors (a missing or invalid config).
+    console.error(`[serve] project ${ref.name}: ${/** @type {Error} */ (e).message}`);
   }
 }
 if (!states.size) {
   console.error('[serve] no project could be opened');
   process.exit(2);
 }
+/** @type {Set<string>} */
 const allowedOrigins = new Set();
 for (const S of states.values()) {
   const o = new URL(S.P.storybook.url).origin;
@@ -375,14 +436,24 @@ for (const S of states.values()) {
   allowedOrigins.add(o.replace('localhost', '127.0.0.1'));
 }
 
-/** The project a request means: named, or the only one, or the one owning the id / story. */
+/**
+ * The project a request means: named, or the only one, or the one owning the id / story.
+ * @param {ProjectQuery} [query] from the request: any JSON value, compared as it is
+ * @returns {ProjectState}
+ */
 function stateFor({ project, id, story } = {}) {
   if (project) {
-    const S = states.get(project);
+    // Every name in `states` is a string: any other value misses, as an unknown name does.
+    const S = states.get(/** @type {string} */ (project));
     if (!S)
-      throw httpError(404, `no project "${project}" (projects: ${[...states.keys()].join(', ')})`);
+      throw httpError(
+        404,
+        // A template prints any value as String() does; only a string can name a project.
+        `no project "${/** @type {string} */ (project)}" (projects: ${[...states.keys()].join(', ')})`
+      );
     return S;
   }
+  // One project: the map's only value.
   if (states.size === 1) return [...states.values()][0];
   const owners = [...states.values()].filter((S) =>
     S.manifest.stories.some((e) => (id && e.id === id) || (story && (e.story ?? e.id) === story))
@@ -392,9 +463,17 @@ function stateFor({ project, id, story } = {}) {
 }
 
 // --- review --------------------------------------------------------------------------------
-/** @param {ProjectState} S */
+/**
+ * Rewrite check.json's rows with `mut` (null keeps a row), add `fresh` rows it lacks, recount.
+ * @param {ProjectState} S
+ * @param {(row: CheckRow) => CheckRow | null | undefined} mut
+ * @param {Map<string, CheckRow>} [fresh]
+ * @param {CheckTiming | null} [timing]
+ * @param {Record<string, EnvRecord> | null} [envs]
+ */
 function updateCheckRows(S, mut, fresh = new Map(), timing = null, envs = null) {
-  const check = readJson(S.checkPath, null) ?? {
+  // check.json is this server's (or a CLI check's) own file.
+  const check = /** @type {CheckReport | null} */ (readJson(S.checkPath, null)) ?? {
     generatedAt: new Date().toISOString(),
     project: S.name,
     summary: {},
@@ -443,7 +522,7 @@ function updateCheckRows(S, mut, fresh = new Map(), timing = null, envs = null) 
  */
 function pruneStaleRows(S) {
   if (!S.lock || !S.runPath) return;
-  const check = readJson(S.checkPath, null);
+  const check = /** @type {CheckReport | null} */ (readJson(S.checkPath, null));
   if (!check) return;
   const dropped = dropStaleRows(check, S.manifest);
   if (!dropped.length) return;
@@ -505,7 +584,11 @@ function takeLock(S) {
   }
 }
 
-/** @param {ProjectState} S */
+/**
+ * @param {ProjectState} S
+ * @param {string} id
+ * @param {DecisionMeta} [meta]
+ */
 async function approve(S, id, meta = {}) {
   needLock(S);
   const { P, manifest } = S;
@@ -517,7 +600,10 @@ async function approve(S, id, meta = {}) {
   if (S.checking?.has(id) || S.queued.has(id))
     throw httpError(409, `${id} is being re-checked; approve it once the check finishes`);
   // A render that failed (an error page, a timeout) left the previous image behind, not this story.
-  const current = readJson(S.checkPath, { rows: [] }).rows.find((r) => r.id === id);
+  // check.json is pxsig's own file (the fallback has its `rows`).
+  const current = /** @type {CheckReport} */ (readJson(S.checkPath, { rows: [] })).rows.find(
+    (r) => r.id === id
+  );
   if (current?.error)
     throw httpError(
       409,
@@ -528,7 +614,7 @@ async function approve(S, id, meta = {}) {
   const { before } = snapshot(P, e, /** @type {string} */ (batch));
   // A .psig output carries the render itself as the baseline image, and the environment of that
   // render (the row's, from the check that made it), never this server's or the approver's.
-  const report = readJson(S.checkPath, { rows: [] });
+  const report = /** @type {CheckReport} */ (readJson(S.checkPath, { rows: [] }));
   const renderEnv = current?.env ? (report.envs?.[current.env] ?? null) : null;
   const res = await rust('capture', {
     png: latest,
@@ -540,10 +626,14 @@ async function approve(S, id, meta = {}) {
     ...(renderEnv ? { env: renderEnv } : {}),
   });
   // The a11y baseline follows the approved render; the old list is kept so an undo can put it back.
-  const row = readJson(S.checkPath, { rows: [] }).rows.find((r) => r.id === id);
+  const row = /** @type {CheckReport} */ (readJson(S.checkPath, { rows: [] })).rows.find(
+    (r) => r.id === id
+  );
+  /** @type {string[] | null | undefined} */
   let a11yBefore;
   if (row?.a11y?.violations) {
-    const base = readJson(P.store.a11y, {});
+    // a11y.json is pxsig's own file: entry id → accepted rule ids.
+    const base = /** @type {A11yBaseline} */ (readJson(P.store.a11y, {}));
     a11yBefore = base[id] ?? null;
     base[id] = row.a11y.violations.map((v) => v.id).sort();
     writeJson(P.store.a11y, base, { pretty: true });
@@ -568,6 +658,9 @@ async function approve(S, id, meta = {}) {
  * batch snapshot (a first baseline goes to trash/), put its a11y baseline back, and log it like
  * `pxsig approve undo`. Refuses, changing nothing, when the baseline was rewritten since.
  * @param {ProjectState} S
+ * @param {string} id
+ * @param {ReviewEntry & { batch: string }} entry the approval's review.json entry
+ * @param {string} [via]
  */
 function unapprove(S, id, entry, via = 'dashboard') {
   const { P, manifest } = S;
@@ -590,29 +683,44 @@ function unapprove(S, id, entry, via = 'dashboard') {
     person: PERSON_VIA.has(via),
   });
   if ('a11yBefore' in entry) {
-    const base = readJson(P.store.a11y, {});
+    const base = /** @type {A11yBaseline} */ (readJson(P.store.a11y, {}));
     if (entry.a11yBefore == null) delete base[id];
     else base[id] = entry.a11yBefore;
     writeJson(P.store.a11y, base, { pretty: true });
   }
 }
 
-/** @param {ProjectState} S */
+/**
+ * @param {ProjectState} S
+ * @param {string} action `approve`, `reject` or `unreview`
+ * @param {string} id
+ * @param {DecisionMeta} [meta]
+ */
 async function review(S, action, id, meta = {}) {
   needLock(S);
-  const rv = readJson(S.reviewPath, {});
+  // review.json is this server's own file.
+  const rv = /** @type {ReviewFile} */ (readJson(S.reviewPath, {}));
   if (action === 'approve') {
     rv[id] = { state: 'approved', at: new Date().toISOString(), ...(await approve(S, id, meta)) };
     // The report says so too, so its counts (failed, changed) agree with the review.
     updateCheckRows(S, (r) =>
-      r.id === id ? { ...r, approved: { at: rv[id].at, batch: rv[id].batch } } : null
+      r.id === id
+        ? // `approve` just above set the batch.
+          { ...r, approved: { at: rv[id].at, batch: /** @type {string} */ (rv[id].batch) } }
+        : null
     );
   } else if (action === 'reject')
     rv[id] = { state: 'rejected', at: new Date().toISOString(), via: meta.via ?? 'dashboard' };
   else if (action === 'unreview') {
     agentMayClear(meta, rv[id]?.state);
     if (rv[id]?.state === 'approved' && rv[id].batch)
-      unapprove(S, id, rv[id], meta.via ?? 'dashboard');
+      // An approval with its batch: checked just above.
+      unapprove(
+        S,
+        id,
+        /** @type {ReviewEntry & { batch: string }} */ (rv[id]),
+        meta.via ?? 'dashboard'
+      );
     delete rv[id];
     updateCheckRows(S, (r) =>
       r.id === id && r.approved ? (({ approved, ...rest }) => rest)(r) : null
@@ -630,16 +738,22 @@ async function review(S, action, id, meta = {}) {
  * a person's single click in the dashboard. Entries that passed, did not render, were rejected or
  * are already approved are left out, with why. Each approval is logged and undone like any other.
  * @param {ProjectState} S
+ * @param {string} story
+ * @param {DecisionMeta} [meta]
  */
 async function approveStory(S, story, meta = {}) {
   needLock(S);
   if (!S.running) S.reload();
   const entries = S.manifest.stories.filter((e) => (e.story ?? e.id) === story);
   if (!entries.length) throw httpError(404, `unknown story ${story}`);
-  const rows = new Map(readJson(S.checkPath, { rows: [] }).rows.map((r) => [r.id, r]));
-  const rv = readJson(S.reviewPath, {});
-  const batch = meta.batch ?? newBatch(/** @type {string} */ (meta.via ?? 'dashboard'));
+  const rows = new Map(
+    /** @type {CheckReport} */ (readJson(S.checkPath, { rows: [] })).rows.map((r) => [r.id, r])
+  );
+  const rv = /** @type {ReviewFile} */ (readJson(S.reviewPath, {}));
+  const batch = meta.batch ?? newBatch(meta.via ?? 'dashboard');
+  /** @type {string[]} */
   const approved = [];
+  /** @type {{ id: string, why: string }[]} */
   const skipped = [];
   for (const e of entries) {
     const r = rows.get(e.id);
@@ -663,7 +777,8 @@ async function approveStory(S, story, meta = {}) {
       await review(S, 'approve', e.id, { ...meta, batch });
       approved.push(e.id);
     } catch (err) {
-      skipped.push({ id: e.id, why: err.message });
+      // review throws Errors (httpError, or the engine's).
+      skipped.push({ id: e.id, why: /** @type {Error} */ (err).message });
     }
   }
   console.log(
@@ -748,11 +863,11 @@ async function runChecks(S) {
         );
       const rustRows = new Map(res.results.map((r) => [r.id, r]));
       const renders = new Map(results.map((r) => [r.id, r]));
-      const a11yBase = readJson(P.store.a11y, null);
-      const rv = readJson(S.reviewPath, {});
+      const a11yBase = /** @type {A11yBaseline | null} */ (readJson(P.store.a11y, null));
+      const rv = /** @type {ReviewFile} */ (readJson(S.reviewPath, {}));
       for (const id of ids) delete rv[id]; // a fresh verdict replaces a decision on the old one
       writeJson(S.reviewPath, rv, { pretty: true });
-      const av = readJson(S.a11yReviewPath, {});
+      const av = /** @type {A11yReviewFile} */ (readJson(S.a11yReviewPath, {}));
       for (const id of ids) delete av[id];
       writeJson(S.a11yReviewPath, av, { pretty: true });
       const envs = { ...(res.baselineEnvs ?? {}), ...byId(current) };
@@ -790,11 +905,12 @@ async function runChecks(S) {
       });
       broadcast('data', { project: S.name });
     } catch (e) {
-      console.error(`[serve] ${S.name}: check failed: ${e.message}`);
+      // What a check throws is an Error: a setup error carries `setup`.
+      console.error(`[serve] ${S.name}: check failed: ${/** @type {SetupError} */ (e).message}`);
       S.lastFailure = {
         seq,
-        error: e.message,
-        setup: !!e.setup,
+        error: /** @type {SetupError} */ (e).message,
+        setup: !!(/** @type {SetupError} */ (e).setup),
         ids: ids.length,
         at: new Date().toISOString(),
       };
@@ -802,8 +918,8 @@ async function runChecks(S) {
         project: S.name,
         state: 'error',
         ids,
-        error: e.message,
-        setup: !!e.setup,
+        error: /** @type {SetupError} */ (e).message,
+        setup: !!(/** @type {SetupError} */ (e).setup),
       });
     } finally {
       S.running = null;
@@ -820,22 +936,38 @@ async function runChecks(S) {
 // accepted list (<store>/a11y.json); rejecting marks them for a fix. Both last until the next
 // check of the entry, like review.json. Every accept and undo is logged beside a11y.json.
 
+/**
+ * @param {Project} P
+ * @param {Record<string, unknown> & { via: string }} line
+ */
 const a11yLog = (P, line) =>
   appendLine(join(dirname(P.store.a11y), 'a11y-decisions.ndjson'), stamp(line));
+/**
+ * @param {Project} P
+ * @param {A11yBaseline} base
+ */
 const writeA11y = (P, base) => writeJson(P.store.a11y, base, { pretty: true });
 
-/** @param {ProjectState} S */
+/**
+ * @param {ProjectState} S
+ * @param {string} action `a11y-accept`, `a11y-reject`, `a11y-unaccept` or `a11y-unreview`
+ * @param {string} id
+ * @param {DecisionMeta} [meta]
+ */
 function a11yReview(S, action, id, meta = {}) {
   needLock(S);
   const { P, manifest } = S;
   if (!manifest.stories.some((e) => e.id === id)) throw httpError(404, `unknown entry ${id}`);
-  const av = readJson(S.a11yReviewPath, {});
-  const base = readJson(P.store.a11y, {});
+  // a11y-review.json and a11y.json are pxsig's own files.
+  const av = /** @type {A11yReviewFile} */ (readJson(S.a11yReviewPath, {}));
+  const base = /** @type {A11yBaseline} */ (readJson(P.store.a11y, {}));
   const at = new Date().toISOString();
   const by = who(P.workspaceRoot, P.config);
   const via = meta.via ?? 'dashboard';
   if (action === 'a11y-accept') {
-    const row = readJson(S.checkPath, { rows: [] }).rows.find((r) => r.id === id);
+    const row = /** @type {CheckReport} */ (readJson(S.checkPath, { rows: [] })).rows.find(
+      (r) => r.id === id
+    );
     if (!row?.a11y?.violations)
       throw httpError(409, `no accessibility results for ${id}; run a check`);
     const before = base[id] ?? null;
@@ -900,9 +1032,15 @@ function a11yReview(S, action, id, meta = {}) {
  * confirmed the plan at the terminal; the plan is pinned to a11y.json, so a decision made since
  * refuses it whole. The dashboard reloads its data.
  * @param {ProjectState} S
+ * @param {RequestBody} body `{ plan, batch, reason? }`
+ * @param {string} via how it reached the server (lib/guard.mjs `authorize`)
  */
 function a11yPrune(S, body, via) {
   needLock(S);
+  /**
+   * @param {unknown} v
+   * @param {number} max
+   */
   const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : null);
   const batch = s(body.batch, 80)?.replace(/[^\w.-]/g, '') || newBatch('prune');
   // Errors carry their status (400 a bad plan, 409 a11y.json changed since it was made).
@@ -926,21 +1064,27 @@ function a11yPrune(S, body, via) {
  * Storybook is healthy (NEW entries, no signature), so checking a new story is one request;
  * anything that cannot be registered comes back in `skipped`, with why.
  * @param {ProjectState} S
+ * @param {RequestBody} body `{ ids?, story?, stories?, all?, via? }`
+ * @returns {Promise<Enqueued>}
  */
 async function enqueue(S, body) {
   needLock(S);
   // Select against the manifest on disk: entries added since the server started (or since the
   // last check) would otherwise be dropped as unknown. A running check keeps the one it started with.
   if (!S.running) S.reload();
-  const asked = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []);
+  /** @param {unknown} v */
+  const asked = (v) =>
+    Array.isArray(v) ? v.filter((/** @type {unknown} */ x) => typeof x === 'string') : [];
   const ids = new Set(asked(body.ids));
   const stories = new Set([
     ...asked(body.stories),
     ...(typeof body.story === 'string' ? [body.story] : []),
   ]);
+  /** @param {string} name */
   const known = (name) =>
     S.manifest.stories.some((e) => e.id === name || (e.story ?? e.id) === name);
   const unknown = [...new Set([...ids, ...stories])].filter((n) => !known(n));
+  /** @type {Awaited<ReturnType<typeof registerNamed>>} */
   let registered = { added: [], stories: [], skipped: [] };
   if (unknown.length && !body.all) {
     const index = await loadStoryIndex(S.ctx);
@@ -970,7 +1114,9 @@ async function enqueue(S, body) {
 
 /** Per-story status for the addon's sidebar, across every project (story ids are per Storybook). */
 function statuses() {
+  /** @type {Record<string, StoryStatus>} */
   const out = {};
+  /** @type {Record<string, number>} */
   const rank = {
     error: 5,
     changed: 4,
@@ -982,10 +1128,15 @@ function statuses() {
     skipped: 0,
   };
   for (const S of states.values()) {
-    const check = readJson(S.checkPath, { rows: [] });
-    const rv = readJson(S.reviewPath, {});
+    const check = /** @type {CheckReport} */ (readJson(S.checkPath, { rows: [] }));
+    const rv = /** @type {ReviewFile} */ (readJson(S.reviewPath, {}));
     for (const r of check.rows) {
-      const s = (out[r.story] ??= { status: 'pass', project: S.name, entries: [] });
+      // Every row buildRow writes names its story (lib/rows.mjs).
+      const s = (out[/** @type {string} */ (r.story)] ??= {
+        status: 'pass',
+        project: S.name,
+        entries: [],
+      });
       const st =
         rv[r.id]?.state ??
         (r.skipped
@@ -995,7 +1146,9 @@ function statuses() {
             : r.flaky
               ? 'flaky'
               : r.pass
-                ? r.metrics && r.metrics.ssim < 1
+                ? // check.json's `metrics` (docs/spec.md section 4): the engine's numbers.
+                  /** @type {{ ssim: number } | undefined} */ (r.metrics) &&
+                  /** @type {{ ssim: number }} */ (r.metrics).ssim < 1
                   ? 'drift'
                   : 'pass'
                 : 'changed');
@@ -1003,7 +1156,7 @@ function statuses() {
         id: r.id,
         mode: r.mode,
         state: st,
-        ssim: r.metrics?.ssim ?? null,
+        ssim: /** @type {{ ssim?: number } | undefined} */ (r.metrics)?.ssim ?? null,
         reasons: r.reasons ?? [],
       });
       if ((rank[st] ?? 0) > (rank[s.status] ?? 0)) s.status = st;
@@ -1014,18 +1167,20 @@ function statuses() {
 
 /** Per-story integrity for the addon: the worst status of the story's entries, with their codes. */
 function storyIntegrity() {
+  /** @type {Record<string, StoryIntegrity | undefined>} */
   const out = {};
+  /** @type {Record<string, number>} */
   const sev = { error: 0, warn: 1, info: 2 };
   for (const S of states.values()) {
     if (!S.integrity) continue;
     for (const x of S.integrity.entries) {
-      const s = (out[x.story] ??= {
+      const s = (out[x.story] ??= /** @type {StoryIntegrity} */ ({
         status: 'ok',
         severity: 'info',
         project: S.name,
         component: x.component,
         codes: {},
-      });
+      }));
       for (const i of x.issues) s.codes[i.code] = (s.codes[i.code] ?? 0) + 1;
       if (sev[x.severity] < sev[s.severity] || (x.severity === s.severity && s.status === 'ok'))
         Object.assign(s, { status: x.status, severity: x.severity });
@@ -1035,10 +1190,14 @@ function storyIntegrity() {
 }
 
 // --- integrity: always on ------------------------------------------------------------------------
-/** @param {ProjectState} S */
+/**
+ * @param {ProjectState} S
+ * @param {string} why
+ */
 async function runIntegrity(S, why) {
   if (S.integrityRunning || S.running) return scheduleIntegrity(S, why, 1500);
   S.integrityRunning = true;
+  /** @type {((value?: unknown) => void) | undefined} */
   let done;
   S.integrityDone = new Promise((r) => (done = r));
   try {
@@ -1058,18 +1217,29 @@ async function runIntegrity(S, why) {
       console.log(`[serve] ${S.name}: ${oneLine(ledger)} (${why}, ${ledger.elapsedMs} ms)`);
     broadcast('integrity', { project: S.name, summary: ledger.summary, setup: ledger.setup });
   } catch (e) {
-    console.error(`[serve] ${S.name}: integrity failed: ${e.message}`);
+    // reconcile throws Errors (no readable manifest, an engine error).
+    console.error(`[serve] ${S.name}: integrity failed: ${/** @type {Error} */ (e).message}`);
   } finally {
     S.integrityRunning = false;
-    done();
+    // Set by the promise's executor, which runs at once.
+    /** @type {(value?: unknown) => void} */ (done)();
   }
 }
-/** @param {ProjectState} S */
+/**
+ * @param {ProjectState} S
+ * @param {string} why
+ * @param {number} [ms]
+ */
 function scheduleIntegrity(S, why, ms = 1500) {
   // clearTimeout(null) does nothing, as clearTimeout(undefined) does.
   clearTimeout(/** @type {NodeJS.Timeout | undefined} */ (S.integrityTimer));
   S.integrityTimer = setTimeout(() => runIntegrity(S, why), ms);
 }
+/**
+ * @param {string} dir
+ * @param {(file: string) => void} onChange
+ * @param {(file: string) => boolean} [filter]
+ */
 const watchFor = (dir, onChange, filter = () => true) => {
   if (!existsSync(dir)) return;
   try {
@@ -1078,22 +1248,28 @@ const watchFor = (dir, onChange, filter = () => true) => {
       onChange(file);
     });
   } catch (e) {
-    console.error(`[serve] cannot watch ${relPath(ws.root, dir)}: ${e.message}`);
+    // fs.watch throws Errors (no recursive watch on this platform, too many watchers).
+    console.error(
+      `[serve] cannot watch ${relPath(ws.root, dir)}: ${/** @type {Error} */ (e).message}`
+    );
   }
 };
 for (const S of states.values()) {
   const { P } = S;
+  /** @param {string} why */
   const later = (why) => () => scheduleIntegrity(S, why);
   watchFor(P.srcRoot, later('source changed'), (f) => /\.(tsx?|jsx?|mjs|css|json|mdx)$/.test(f));
   watchFor(P.store.baselines, later('baselines changed'));
   watchFor(join(P.store.root, 'renders'), later('renders changed'), (f) => f.startsWith('latest'));
   watchFor(P.store.root, later('manifest changed'), (f) => /^manifest(\..+)?\.json$/.test(f));
+  /** @type {NodeJS.Timeout | null} */
   let dataTimer = null;
   watchFor(
     P.store.reports,
     (file) => {
       if (Date.now() < S.quietUntil || file.startsWith('.run')) return;
-      clearTimeout(dataTimer);
+      // clearTimeout(null) does nothing, as clearTimeout(undefined) does.
+      clearTimeout(/** @type {NodeJS.Timeout | undefined} */ (dataTimer));
       dataTimer = setTimeout(() => broadcast('data', { project: S.name }), 300);
     },
     (f) => /\.(nd)?json$/.test(f)
@@ -1103,11 +1279,14 @@ for (const S of states.values()) {
 /**
  * Safe repairs, as the dashboard's button asks: plan, or apply (never prune, never approve).
  * @param {ProjectState} S
+ * @param {{ apply?: boolean, only?: unknown, stale?: boolean }} [opts] `only`: the request's, any JSON value
  */
 async function repair(S, { apply = false, only: onlySteps, stale = false } = {}) {
   const ledger = await reconcile(S.ctx, { affected: S.affected });
   const plan = planRepairs(ledger, {
-    only: Array.isArray(onlySteps) ? onlySteps.filter((a) => a !== 'prune') : undefined,
+    only: Array.isArray(onlySteps)
+      ? onlySteps.filter((/** @type {unknown} */ a) => a !== 'prune')
+      : undefined,
     prune: false,
     server: { up: true },
     stale,
@@ -1118,6 +1297,7 @@ async function repair(S, { apply = false, only: onlySteps, stale = false } = {})
   const hooks = {
     ...defaultHooks(S.ctx, { serverUrl: url }),
     // Re-checks go through this server's own queue (warm browsers), then wait for it to drain.
+    /** @param {string[]} ids */
     async recheck(ids) {
       const from = S.runs;
       await enqueue(S, { ids });
@@ -1156,13 +1336,16 @@ async function repair(S, { apply = false, only: onlySteps, stale = false } = {})
 if (flags.watch) {
   for (const S of states.values()) {
     const src = S.P.srcRoot;
+    /** @type {Set<string>} */
     const changed = new Set();
+    /** @type {NodeJS.Timeout | null} */
     let t = null;
     watchFor(
       src,
       (file) => {
         changed.add(relPath(ws.root, join(src, file)));
-        clearTimeout(t);
+        // clearTimeout(null) does nothing, as clearTimeout(undefined) does.
+        clearTimeout(/** @type {NodeJS.Timeout | undefined} */ (t));
         // Give Storybook's dev server a moment to rebuild before we render.
         t = setTimeout(async () => {
           const files = [...changed];
@@ -1183,7 +1366,8 @@ if (flags.watch) {
             broadcast('watch', { project: S.name, files, ids: ids.length });
             if (ids.length) await enqueue(S, { ids });
           } catch (e) {
-            console.error(`[serve] ${S.name}: watch: ${e.message}`);
+            // The engine's and enqueue's errors are Errors.
+            console.error(`[serve] ${S.name}: watch: ${/** @type {Error} */ (e).message}`);
           }
         }, 900);
       },
@@ -1196,6 +1380,10 @@ if (flags.watch) {
 }
 
 // --- http ----------------------------------------------------------------------------------------
+/**
+ * @param {IncomingMessage} req
+ * @param {ServerResponse} res
+ */
 const cors = (req, res) => {
   const o = req.headers.origin;
   if (o && allowedOrigins.has(o)) {
@@ -1206,6 +1394,11 @@ const cors = (req, res) => {
     res.setHeader('vary', 'origin');
   }
 };
+/**
+ * @param {ServerResponse} res
+ * @param {number} status
+ * @param {unknown} body
+ */
 const json = (res, status, body) => {
   res.writeHead(status, {
     'content-type': TYPES['.json'],
@@ -1214,18 +1407,25 @@ const json = (res, status, body) => {
   });
   res.end(JSON.stringify(body));
 };
+/**
+ * The request's JSON body (`{}` when empty); a body that does not parse rejects with status 400.
+ * @param {IncomingMessage} req
+ * @returns {Promise<RequestBody>}
+ */
 const readBody = (req) =>
   new Promise((ok, fail) => {
     let s = '';
-    req.on('data', (c) => {
+    req.on('data', (/** @type {Buffer} */ c) => {
       s += c;
       if (s.length > 1e6) req.destroy();
     });
     req.on('end', () => {
       try {
-        ok(s ? JSON.parse(s) : {});
+        // Whatever the client sent: every key is checked where it is read.
+        ok(s ? /** @type {RequestBody} */ (JSON.parse(s)) : {});
       } catch (e) {
-        fail(Object.assign(e, { status: 400 }));
+        // JSON.parse throws a SyntaxError.
+        fail(Object.assign(/** @type {SyntaxError} */ (e), { status: 400 }));
       }
     });
   });
@@ -1242,6 +1442,13 @@ const projectsList = () =>
     locked: S.lock ? 'held' : S.lockWait,
   }));
 
+/**
+ * `/__pxsig/<action>`.
+ * @param {IncomingMessage} req
+ * @param {ServerResponse} res
+ * @param {string} action
+ * @param {URLSearchParams} q
+ */
 async function api(req, res, action, q) {
   if (action === 'events') {
     res.writeHead(200, {
@@ -1266,7 +1473,13 @@ async function api(req, res, action, q) {
       repairing: [...states.values()].some(
         (/** @type {{ repairing: unknown }} */ S) => S.repairing
       ),
-      review: Object.assign({}, ...[...states.values()].map((S) => readJson(S.reviewPath, {}))),
+      // Every project's review.json (this server's own files), merged.
+      review: /** @type {ReviewFile} */ (
+        Object.assign(
+          {},
+          ...[...states.values()].map((S) => /** @type {ReviewFile} */ (readJson(S.reviewPath, {})))
+        )
+      ),
       stories: statuses(),
       integrity: storyIntegrity(),
       integritySummary: Object.fromEntries(
@@ -1299,7 +1512,11 @@ async function api(req, res, action, q) {
         return json(res, 200, {
           project: S.name,
           story,
-          ...(storyIntegrity()[story] ?? { status: 'unknown' }),
+          // The story's status across projects: its `project` (the first project with an entry of
+          // that story) comes after the one above, so it wins.
+          .../** @type {Partial<StoryIntegrity>} */ (
+            storyIntegrity()[story] ?? { status: 'unknown' }
+          ),
           entries: S.integrity.entries.filter((x) => x.story === story),
         });
       const f =
@@ -1372,11 +1589,20 @@ async function api(req, res, action, q) {
       await repair(S, { apply: body.apply === true, only: body.only, stale: body.stale === true })
     );
   if (action === 'a11y-prune')
-    return json(res, 200, { ok: true, project: S.name, ...a11yPrune(S, body, auth.via) });
+    // A decision (lib/guard.mjs DECISIONS): `authorize` let it through only with its `via` set.
+    return json(res, 200, {
+      ok: true,
+      project: S.name,
+      ...a11yPrune(S, body, /** @type {string} */ (auth.via)),
+    });
   if (action === 'approve-story') {
     const { story } = body;
     if (typeof story !== 'string' || !/^[a-z0-9-]+--[a-z0-9-]+$/.test(story))
       return json(res, 400, { error: 'bad story' });
+    /**
+     * @param {unknown} v
+     * @param {number} max
+     */
     const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : undefined);
     // `via` is how the decision reached the server (the token it carried), never the body's word.
     return json(res, 200, {
@@ -1388,6 +1614,10 @@ async function api(req, res, action, q) {
   const { id } = body;
   if (typeof id !== 'string' || !/^[a-z0-9-]+--[a-z0-9-]+(__[a-z0-9-]+)?(@[a-z0-9-]+)?$/.test(id))
     return json(res, 400, { error: 'bad id' });
+  /**
+   * @param {unknown} v
+   * @param {number} max
+   */
   const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : undefined);
   const meta = {
     batch: s(body.batch, 80)?.replace(/[^\w.-]/g, ''),
@@ -1406,6 +1636,11 @@ async function api(req, res, action, q) {
   json(res, 200, { ok: true, project: S.name, id, entry: await review(S, action, id, meta) });
 }
 
+/**
+ * @param {IncomingMessage} req
+ * @param {ServerResponse} res
+ * @param {string} file
+ */
 const sendFile = (req, res, file) => {
   const st = statSync(file);
   res.writeHead(200, {
@@ -1418,13 +1653,24 @@ const sendFile = (req, res, file) => {
   if (req.method === 'HEAD') return res.end();
   createReadStream(file).pipe(res);
 };
+/**
+ * @param {string} root
+ * @param {string} file
+ */
 const inside = (root, file) => file === root || file.startsWith(root + sep);
 
-/** /p/<project>/… : a project's renders, diffs, baseline images (out of the .psig) and headers. */
+/**
+ * /p/<project>/… : a project's renders, diffs, baseline images (out of the .psig) and headers.
+ * @param {IncomingMessage} req
+ * @param {ServerResponse} res
+ * @param {string} name
+ * @param {string} rest
+ */
 function projectFile(req, res, name, rest) {
   const S = states.get(name);
   if (!S) return json(res, 404, { error: `no project "${name}"` });
   const { P } = S;
+  /** @param {string} id */
   const entryOf = (id) => S.manifest.stories.find((e) => e.id === id);
   let m = rest.match(/^renders\/base\/(.+)\.png$/);
   if (m) {
@@ -1462,7 +1708,8 @@ const server = createServer(async (req, res) => {
       return json(res, 403, { error: 'unknown host' });
     cors(req, res);
     if (req.method === 'OPTIONS') return res.writeHead(204).end();
-    const u = new URL(req.url, 'http://localhost');
+    // A request the server received always has its URL (only a client's request lacks one).
+    const u = new URL(/** @type {string} */ (req.url), 'http://localhost');
     const path = decodeURIComponent(u.pathname);
     if (path === '/') return res.writeHead(302, { location: '/report/' }).end();
     if (path.startsWith('/__pxsig/')) return await api(req, res, path.slice(9), u.searchParams);
@@ -1497,11 +1744,16 @@ const server = createServer(async (req, res) => {
     }
     return json(res, 404, { error: 'not found' });
   } catch (e) {
-    if (!res.headersSent) json(res, e.status || 500, { error: e.message });
+    // What the handlers throw is an Error, an httpError carrying its status.
+    if (!res.headersSent)
+      json(res, /** @type {HttpError} */ (e).status || 500, {
+        error: /** @type {HttpError} */ (e).message,
+      });
   }
 });
 
 // --- open (or reuse) a browser tab ---------------------------------------------------------------
+/** @param {string} target */
 function openBrowser(target) {
   // Windows: no program is started to open a link (it would take a shell); the link is printed.
   if (process.platform === 'win32') return console.log('[serve] open the link above in a browser');
@@ -1527,15 +1779,22 @@ function openBrowser(target) {
     end if
     return "none"`;
   execFile('osascript', ['-e', script], (err, out) => {
-    if (!err && out.trim() === 'reused')
+    // No `encoding` option: Node's default, utf8, makes `out` a string.
+    if (!err && /** @type {string} */ (out).trim() === 'reused')
       return console.log('[serve] reloaded the open dashboard tab');
     execFile('open', [target], () => {});
   });
 }
 
+/** @type {string | null} */
 let url = null;
 const info = serverFile(ws.root);
+/**
+ * @param {number} port
+ * @param {number} [tries]
+ */
 function listen(port, tries = 10) {
+  /** @param {NodeJS.ErrnoException} e */
   const onError = (e) => {
     server.off('listening', onListening);
     if (e.code === 'EADDRINUSE' && tries > 0) return listen(port + 1, tries - 1);
@@ -1547,7 +1806,8 @@ function listen(port, tries = 10) {
     url = `http://127.0.0.1:${/** @type {AddressInfo} */ (server.address()).port}`;
     // The CLI, the MCP and the addon find the server through this file: a second server (on
     // another port, read-only beside the one holding the stores) leaves a live server's record.
-    const recorded = readJson(info, null);
+    // server.json is what a pxsig server wrote.
+    const recorded = /** @type {ServerRecord | null} */ (readJson(info, null));
     if (recorded?.pid && recorded.pid !== process.pid && alive(recorded.pid))
       console.log(
         `[serve] ${relPath(ws.root, info)} names the running server at ${recorded.url} (pid ${recorded.pid}): left as it is`
@@ -1602,7 +1862,7 @@ const shutdown = async () => {
     removeToken(ws.root, url, TOKENS.mcp, 'mcp');
   }
   try {
-    if (readJson(info, {}).pid === process.pid) rmSync(info);
+    if (/** @type {Partial<ServerRecord>} */ (readJson(info, {})).pid === process.pid) rmSync(info);
   } catch {
     // already gone
   }
