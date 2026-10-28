@@ -62,6 +62,9 @@ jobs:
       # Cargo.toml, Cargo.lock and every package.json carry the same version (docs/releasing.md).
       - run: node scripts/check-versions.mjs
       - run: node --test scripts/check-versions.test.mjs
+      # Every relative link and #anchor in the tracked Markdown resolves.
+      - run: node scripts/check-links.mjs
+      - run: node --test scripts/check-links.test.mjs
       # The required checks a release tag needs (release.yml): the list matches this file's jobs.
       - run: node --test scripts/required-checks.test.mjs
       - if: github.event_name == 'pull_request'

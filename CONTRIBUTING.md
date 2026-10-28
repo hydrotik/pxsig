@@ -56,6 +56,7 @@ pnpm --filter @pxsig/dashboard test        # the dashboard's flows against a moc
 node --test packages/pxsig/test/help.test.mjs   # one file
 node scripts/examples-test.mjs             # the examples, end to end (CI's Examples job)
 node scripts/check-clean.mjs               # what must never be committed (below)
+node scripts/check-links.mjs               # every relative link and #anchor in the Markdown resolves
 node scripts/bench/run.mjs                 # the scale benchmark (docs/benchmark.md); CI runs it nightly
 ```
 
