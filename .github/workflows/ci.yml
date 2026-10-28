@@ -45,6 +45,9 @@ jobs:
       - run: node --test scripts/changelog.test.mjs
       # The release's raw binaries and SHA256SUMS (release.yml, pack job).
       - run: node --test scripts/release-files.test.mjs
+      # The per-platform engine packages (names, os/cpu, layout, pxsig's optionalDependencies);
+      # the examples job installs one of them from its tarball (scripts/install-smoke.mjs).
+      - run: node --test scripts/make-platform-packages.test.mjs
       # The Windows engine's runtime check (the check itself runs on the built .exe: rust job, release).
       - run: node --test scripts/check-win-runtime.test.mjs
       - if: github.event_name == 'pull_request'
@@ -143,6 +146,11 @@ jobs:
       # System libraries are a Linux concern; macOS and Windows runners need only the browser.
       - run: pnpm --filter pxsig exec playwright install ${{ runner.os == 'Linux' && '--with-deps' || '' }} chromium
       - run: node scripts/examples-test.mjs
+      # pxsig as a user installs it: the release's scripts pack pxsig and this OS's platform package
+      # (0.0.0-ci), npm installs both into a folder whose path has a space, and with no PXSIG_BIN
+      # the engine resolves from the platform package; `doctor --ci` under PXSIG_DEBUG=spawn starts
+      # only node, git and that engine. On Windows, the closest stand-in for a locked-down machine.
+      - run: node scripts/install-smoke.mjs
 
   compat:
     name: Older pxsig on this store
