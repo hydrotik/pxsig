@@ -1509,13 +1509,13 @@ async function api(req, res, action, q) {
       const story = q.get('story');
       if (story)
         return json(res, 200, {
-          project: S.name,
           story,
-          // The story's status across projects: its `project` (the first project with an entry of
-          // that story) comes after the one above, so it wins.
+          // The story's status across projects. Its `project` (the first project with an entry of
+          // that story) is overridden: the answer is about the project asked about.
           .../** @type {Partial<StoryIntegrity>} */ (
             storyIntegrity()[story] ?? { status: 'unknown' }
           ),
+          project: S.name,
           entries: S.integrity.entries.filter((x) => x.story === story),
         });
       const f =
