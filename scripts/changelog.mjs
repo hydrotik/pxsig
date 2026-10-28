@@ -213,11 +213,26 @@ function baseOf(ref) {
 }
 
 /**
+ * The files changed between `base` and HEAD. The revisions go before `--`: after it, git reads
+ * them as paths (the diff is then the working tree's, empty in CI).
  * @param {string} base
- * @param {string[]} extra more `git diff` arguments
+ * @param {{ filter?: string, paths?: string[] }} [opts] `--diff-filter` letters; limit to these paths
+ * @param {string} [cwd]
  */
-const changedSince = (base, ...extra) =>
-  git('diff', '--name-only', ...extra, base, 'HEAD')
+export const changedSince = (base, { filter, paths } = {}, cwd = root) =>
+  execFileSync(
+    'git',
+    [
+      'diff',
+      '--name-only',
+      ...(filter ? [`--diff-filter=${filter}`] : []),
+      base,
+      'HEAD',
+      ...(paths ? ['--', ...paths] : []),
+    ],
+    { cwd, encoding: 'utf8' }
+  )
+    .trim()
     .split('\n')
     .filter(Boolean);
 
@@ -260,7 +275,7 @@ function run(args) {
       const why = directEdit(changed, branch);
       if (why) problems.push(why);
       const messages = git('log', '--format=%B%x00', `${base}..HEAD`).split('\0');
-      const added = changedSince(base, '--diff-filter=AM', '--', DIR);
+      const added = changedSince(base, { filter: 'AM', paths: [DIR] });
       const missing = missingFragment(changed, added, messages, branch);
       if (missing) problems.push(missing);
     }
