@@ -2,7 +2,7 @@
 // in a person's hands. Synthetic images and a fixture project; needs no server or Storybook.
 import { spawnSync } from 'node:child_process';
 import { strict as assert } from 'node:assert';
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -101,7 +101,7 @@ test(
     const original = readFileSync(sig(id));
     // approve: snapshot the old baseline, write the new one, log it
     const { before } = snapshot(P, entry, 'b1');
-    cpSync(sig('components-alpha--with-icon'), sig(id));
+    copyFileSync(sig('components-alpha--with-icon'), sig(id));
     record(P, entry, { batch: 'b1', via: 'test', before });
     assert.equal(readLog(P).length, 1);
     assert.deepEqual(verify(P, manifest).mismatched, []);

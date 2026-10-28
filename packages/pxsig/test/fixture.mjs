@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import {
-  cpSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -65,6 +65,24 @@ export function tempDir(name = 'tmp', t) {
   if (t) t.after(() => remove(dir));
   else made.push(dir);
   return dir;
+}
+
+/**
+ * Copy a folder, recursively. Not `fs.cpSync`: on Windows, Node 22's native cpSync mishandles a
+ * non-ASCII path (a recursive copy lands somewhere else without an error; a file copied over an
+ * existing one throws ", The operation completed successfully."), and every temp folder here has
+ * an `é`. For one file, use `copyFileSync`.
+ * @param {string} from
+ * @param {string} to
+ */
+export function copyTree(from, to) {
+  mkdirSync(to, { recursive: true });
+  for (const d of readdirSync(from, { withFileTypes: true })) {
+    const a = join(from, d.name);
+    const b = join(to, d.name);
+    if (d.isDirectory()) copyTree(a, b);
+    else copyFileSync(a, b);
+  }
 }
 
 /**
@@ -346,7 +364,7 @@ export function fixture({ withSigs = hasRust, t: context } = {}) {
         );
         assert.equal(r.status, 0, r.stderr);
         mkdirSync(dirname(sig(id)), { recursive: true });
-        if (id === ids.legacy) cpSync(json, sig(id));
+        if (id === ids.legacy) copyFileSync(json, sig(id));
         else {
           const args = ['pack', json, '--out', sig(id), '--entry', JSON.stringify({ id })];
           if (!noImage.includes(id)) args.push('--image', join(repo, '.tmp', `${id}.png`));
