@@ -101,7 +101,10 @@ test(
   () => {
     const f = repoFixture();
     must(f.repo, 'checkout', '-q', '-b', 'pr');
-    const e = f.manifest.stories.find((x) => x.id === f.ids.ok);
+    // The fixture has this entry.
+    const e = /** @type {{ id: string, sig: string }} */ (
+      f.manifest.stories.find((x) => x.id === f.ids.ok)
+    );
     record(f.P, e, { batch: 'b1-dashboard', via: 'dashboard', reason: 'a new look', before: null });
     must(f.repo, 'commit', '-q', '-am', 'approve');
     let r = cli(f.repo, ['approve', 'verify', '--since', 'main', '--json']);

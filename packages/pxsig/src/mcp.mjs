@@ -1205,8 +1205,11 @@ function summarizeIds(C, ids, via, t0) {
   // these rows would fail a run. Only when warn mode applies (configured, or the quiet a11y gate fired).
   let warn = {};
   try {
-    const enf = resolveEnforcement(C.P, { flags: {} });
-    const out = outcome(enf, checkFindings(rows));
+    const enf = resolveEnforcement(/** @type {import('./types.js').Project} */ (C.P), {
+      flags: {},
+    });
+    // check.json's rows (pxsig's own).
+    const out = outcome(enf, checkFindings(/** @type {import('./types.js').CheckRow[]} */ (rows)));
     if (speaks(enf, out))
       warn = {
         enforcement: {
@@ -1240,14 +1243,18 @@ function summarizeIds(C, ids, via, t0) {
 function warnMode(C) {
   if (C.P.config?.enforcement == null) return {};
   try {
-    const enf = resolveEnforcement(C.P, { flags: {} });
+    const enf = resolveEnforcement(/** @type {import('./types.js').Project} */ (C.P), {
+      flags: {},
+    });
     return {
       enforcement: {
         gates: enf.gates,
         warned: enf.configured,
         warnUntil: enf.warnUntil,
         ...(enf.ending ? { daysLeft: enf.daysLeft } : {}),
-        readiness: enf.configured.length ? readinessTally(C.P) : null,
+        readiness: enf.configured.length
+          ? readinessTally(/** @type {import('./types.js').Project} */ (C.P))
+          : null,
       },
     };
   } catch (e) {

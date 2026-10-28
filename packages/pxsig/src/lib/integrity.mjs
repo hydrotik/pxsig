@@ -1301,13 +1301,18 @@ function warnModeProblems(ctx) {
   if (!ctx.project) return [];
   let enf;
   try {
-    enf = resolveEnforcement(ctx.project, { flags: {} });
+    enf = resolveEnforcement(/** @type {import('../types.js').Project} */ (ctx.project), {
+      flags: {},
+    });
   } catch {
     return [];
   }
-  return enforcementProblems(enf, enf.configured.length ? readinessTally(ctx.project) : null).map(
-    (x) => ({ ...x, severity: ctx.integrity?.severity?.[x.code] ?? x.severity })
-  );
+  return enforcementProblems(
+    enf,
+    enf.configured.length
+      ? readinessTally(/** @type {import('../types.js').Project} */ (ctx.project))
+      : null
+  ).map((x) => ({ ...x, severity: ctx.integrity?.severity?.[x.code] ?? x.severity }));
 }
 
 /**
@@ -1317,7 +1322,7 @@ function warnModeProblems(ctx) {
  */
 function conflictProblems(ctx) {
   if (!ctx.project) return [];
-  const files = conflictedStoreFiles(ctx.project);
+  const files = conflictedStoreFiles(/** @type {import('../types.js').Project} */ (ctx.project));
   if (!files.length) return [];
   return [
     {

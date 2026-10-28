@@ -399,8 +399,9 @@ export function migrateLegacy(P, { from, apply = false, verify = true, log = () 
       reason: `moved from ${toPosix(relative(P.workspaceRoot, x.sig))}`,
       kind: null,
       gitHead: null,
-      before: sha256(x.sig),
-      after: sha256(x.out),
+      // Each item of `plan.pack` names the old baseline and the new one.
+      before: sha256(/** @type {string} */ (x.sig)),
+      after: sha256(/** @type {string} */ (x.out)),
     })
   );
   for (const l of lines) appendLine(P.store.approvals, l);

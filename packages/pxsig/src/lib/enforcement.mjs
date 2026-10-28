@@ -28,14 +28,17 @@ import { join } from 'node:path';
 import { repoStateDir } from './machine.mjs';
 import { spawnSync } from './spawn.mjs';
 import { humanAtTerminal, whyNotPerson } from './term.mjs';
-/** @import { MachineOptions, Project } from '../types.js' */
+/** @import { CheckRow, Config, Flags, MachineOptions, Project, SetupProblem } from '../types.js' */
+/** @import { Enforcement, EnforcementOptions, EnforcementProject, EnforcementReport, Finding, GateName, GateSetting, Outcome, ReadinessLine, ReadinessTally, TallyCounts } from '../types/t2.js' */
 /** Which machine's state folder (tests point it elsewhere); lib/machine.mjs `repoStateDir`. */
 /** @typedef {MachineOptions & { git?: (cwd: string, args: string[]) => string }} StateOptions */
 
+/** @type {GateName[]} */
 export const GATES = ['visual', 'a11y', 'verify', 'env', 'doctor', 'stale'];
 const DAY = 86_400_000;
 /** The layers that count as "configured": reviewed config, or a person's `--warn` for this run. */
 const CONFIGURED = new Set(['project config', 'workspace defaults', '--warn']);
+/** @type {Record<string, string>} */
 const LAYER_LABEL = {
   'project config': 'pxsig.config.json',
   'workspace defaults': 'the workspace defaults',
@@ -44,15 +47,25 @@ const LAYER_LABEL = {
 };
 
 export class EnforcementError extends Error {
+  /**
+   * @param {string} message
+   * @param {number} [exit] the process exit code: 2 a setup error, 3 a person-only refusal
+   */
   constructor(message, exit = 2) {
     super(message);
     this.exit = exit;
   }
 }
 
-/** Validate a merged `enforcement` object; throws with the problem (a setup error at load). */
+/**
+ * Validate a merged `enforcement` object; throws with the problem (a setup error at load).
+ * @param {{ default?: unknown, gates?: unknown, warnUntil?: unknown, noticeDays?: unknown, advisoryExit?: unknown } | null | undefined} e
+ *   the config as read: any value, checked here
+ * @param {string} [where]
+ */
 export function checkEnforcementConfig(e, where = 'enforcement') {
   if (e == null) return;
+  /** @type {(m: string) => never} */
   const bad = (m) => {
     throw new EnforcementError(`${where}: ${m}`);
   };
@@ -60,15 +73,18 @@ export function checkEnforcementConfig(e, where = 'enforcement') {
   for (const k of Object.keys(e))
     if (!['default', 'gates', 'warnUntil', 'noticeDays', 'advisoryExit'].includes(k))
       bad(`unknown key "${k}" (default, gates, warnUntil, noticeDays, advisoryExit)`);
-  if (e.default != null && !['enforce', 'warn'].includes(e.default))
+  if (e.default != null && !(/** @type {unknown[]} */ (['enforce', 'warn']).includes(e.default)))
     bad(`default must be "enforce" or "warn"`);
   if (e.gates != null) {
     if (typeof e.gates !== 'object' || Array.isArray(e.gates))
       bad('gates must map a gate to enforce or warn');
-    for (const [g, v] of Object.entries(e.gates)) {
-      if (!GATES.includes(g)) bad(`unknown gate "${g}" (gates: ${GATES.join(', ')})`);
+    // An object: checked just above.
+    for (const [g, v] of Object.entries(/** @type {Record<string, unknown>} */ (e.gates))) {
+      if (!(/** @type {string[]} */ (GATES).includes(g)))
+        bad(`unknown gate "${g}" (gates: ${GATES.join(', ')})`);
       const ok = g === 'a11y' ? ['enforce', 'warn', 'off'] : ['enforce', 'warn'];
-      if (!ok.includes(v)) bad(`gates.${g} must be ${ok.map((x) => `"${x}"`).join(' or ')}`);
+      if (!(/** @type {unknown[]} */ (ok).includes(v)))
+        bad(`gates.${g} must be ${ok.map((x) => `"${x}"`).join(' or ')}`);
     }
   }
   if (
@@ -78,13 +94,19 @@ export function checkEnforcementConfig(e, where = 'enforcement') {
       Number.isNaN(Date.parse(`${e.warnUntil}T00:00:00Z`)))
   )
     bad('warnUntil must be a date, YYYY-MM-DD');
-  if (e.noticeDays != null && !(Number.isInteger(e.noticeDays) && e.noticeDays >= 0))
+  // `Number.isInteger` is true only for a number.
+  if (
+    e.noticeDays != null &&
+    !(Number.isInteger(e.noticeDays) && /** @type {number} */ (e.noticeDays) >= 0)
+  )
     bad('noticeDays must be a whole number of days, 0 or more');
   if (
     e.advisoryExit != null &&
     !(
       Number.isInteger(e.advisoryExit) &&
-      (e.advisoryExit === 0 || (e.advisoryExit >= 10 && e.advisoryExit <= 125))
+      (e.advisoryExit === 0 ||
+        (/** @type {number} */ (e.advisoryExit) >= 10 &&
+          /** @type {number} */ (e.advisoryExit) <= 125))
     )
   )
     bad(
@@ -92,7 +114,12 @@ export function checkEnforcementConfig(e, where = 'enforcement') {
     );
 }
 
-/** `--warn` / `--enforce` → the gates they name: `true` (no value) is every gate. */
+/**
+ * `--warn` / `--enforce` → the gates they name: `true` (no value) is every gate.
+ * @param {Flags[string]} v
+ * @param {string} name
+ * @returns {string[] | null}
+ */
 function flagGates(v, name) {
   if (v == null || v === false) return null;
   const list =
@@ -103,7 +130,7 @@ function flagGates(v, name) {
           .map((s) => s.trim())
           .filter(Boolean);
   for (const g of list)
-    if (!GATES.includes(g))
+    if (!(/** @type {string[]} */ (GATES).includes(g)))
       throw new EnforcementError(`--${name}: unknown gate "${g}" (gates: ${GATES.join(', ')})`);
   return list;
 }
@@ -112,6 +139,9 @@ function flagGates(v, name) {
  * Each gate's setting for this run, and the layer that decided it.
  * `P` is an opened project (`config.enforcement`, `configSources`). Throws an `EnforcementError`
  * (exit 3 for `--warn` without a person, 2 for anything else not allowed).
+ * @param {EnforcementProject} P
+ * @param {EnforcementOptions} [options]
+ * @returns {Enforcement}
  */
 export function resolveEnforcement(
   P,
@@ -123,11 +153,14 @@ export function resolveEnforcement(
     now = new Date(),
   } = {}
 ) {
+  /** @type {NonNullable<Config['enforcement']>} */
   const e = P.config?.enforcement ?? {};
   const src = P.configSources ?? {};
   const present = P.config?.enforcement != null;
   const def = e.default ?? 'enforce';
+  /** @type {Record<string, GateSetting>} */
   const gates = {};
+  /** @type {Record<string, string>} */
   const layers = {};
   for (const g of GATES) {
     if (e.gates?.[g] != null) {
@@ -149,6 +182,7 @@ export function resolveEnforcement(
   const advisoryExit = e.advisoryExit ?? 0;
   const end = warnUntil ? Date.parse(`${warnUntil}T23:59:59.999Z`) : null;
   const t = now.getTime();
+  /** @type {string[]} */
   const expired = [];
   if (end != null && t > end)
     for (const g of GATES)
@@ -218,6 +252,9 @@ export function resolveEnforcement(
  * that would fail (exit > 0); `gate: null` marks a failure no setting can warn (a verify mismatch).
  * A failure in an enforced gate exits as today (the worst code wins); when every failure came from
  * warned gates, the run exits `advisoryExit`.
+ * @param {Pick<Enforcement, 'gates' | 'configured' | 'advisoryExit'>} enf
+ * @param {readonly Finding[]} found
+ * @returns {Outcome}
  */
 export function outcome(enf, found) {
   const failing = found.filter((f) => f.exit > 0 && !(f.gate && enf.gates[f.gate] === 'off'));
@@ -228,10 +265,12 @@ export function outcome(enf, found) {
   // gates a team chose to warn.
   const exit = enforced.length
     ? Math.max(...enforced.map((f) => f.exit))
-    : advisory.some((f) => enf.configured.includes(f.gate))
+    : // An advisory finding has a gate: `f.gate &&` above.
+      advisory.some((f) => enf.configured.includes(/** @type {string} */ (f.gate)))
       ? enf.advisoryExit
       : 0;
-  const ran = [...new Set(found.map((f) => f.gate).filter(Boolean))];
+  // `filter(Boolean)` leaves the named gates.
+  const ran = [...new Set(/** @type {string[]} */ (found.map((f) => f.gate).filter(Boolean)))];
   return {
     exit,
     wouldExit,
@@ -239,18 +278,26 @@ export function outcome(enf, found) {
     advisory: !enforced.length && advisory.length > 0,
     reasons: advisory.map(({ gate, count, what }) => ({ gate, count, what })),
     enforcedFailures: enforced.map(({ gate, count, what }) => ({ gate, count, what })),
-    warnedFailing: [...new Set(advisory.map((f) => f.gate))],
+    warnedFailing: [...new Set(advisory.map((f) => /** @type {string} */ (f.gate)))],
     ran,
   };
 }
 
-/** Whether this run says anything about warn mode: configured warn, or a quiet gate that would fail. */
+/**
+ * Whether this run says anything about warn mode: configured warn, or a quiet gate that would fail.
+ * @param {Pick<Enforcement, 'configured' | 'expired' | 'quiet'>} enf
+ * @param {Pick<Outcome, 'warnedFailing'> | null} [out]
+ */
 export const speaks = (enf, out = null) =>
   enf.configured.length > 0 ||
   enf.expired.length > 0 ||
   Boolean(out?.warnedFailing?.some((g) => enf.quiet.includes(g)));
 
-/** The gates a lead line names, with where they came from. */
+/**
+ * The gates a lead line names, with where they came from.
+ * @param {Enforcement} enf
+ * @param {string[]} [gates]
+ */
 function warnedText(enf, gates = enf.configured) {
   const from = [...new Set(gates.map((g) => LAYER_LABEL[enf.layers[g]] ?? enf.layers[g]))].join(
     ', '
@@ -262,7 +309,10 @@ function warnedText(enf, gates = enf.configured) {
   return `${gates.join(', ')} (${from}${until})`;
 }
 
-/** The first line of a gated command under configured warn, or null. */
+/**
+ * The first line of a gated command under configured warn, or null.
+ * @param {Enforcement} enf
+ */
 export function leadLine(enf) {
   if (!enf.configured.length)
     return enf.expired.length
@@ -274,7 +324,12 @@ export function leadLine(enf) {
   return `ADVISORY: warn mode for ${warnedText(enf)}. Failures are reported; ${exit}.`;
 }
 
-/** The last line: what would have happened, and the readiness tally when there is one. */
+/**
+ * The last line: what would have happened, and the readiness tally when there is one.
+ * @param {Enforcement} enf
+ * @param {Outcome} out
+ * @param {TallyCounts | null} [tally]
+ */
 export function lastLine(enf, out, tally = null) {
   if (!speaks(enf, out)) return null;
   const counts = out.reasons.map((r) => `${r.count} ${r.what}`).join(', ');
@@ -287,7 +342,12 @@ export function lastLine(enf, out, tally = null) {
   return `ADVISORY: would have passed.${t}`;
 }
 
-/** The `enforcement` key of `check.json`, or null when nothing about warn mode applies. */
+/**
+ * The `enforcement` key of `check.json`, or null when nothing about warn mode applies.
+ * @param {Enforcement} enf
+ * @param {Outcome} out
+ * @returns {EnforcementReport | null}
+ */
 export function reportBlock(enf, out) {
   if (!speaks(enf, out)) return null;
   const enforce = out.ran.filter((g) => enf.gates[g] === 'enforce');
@@ -308,7 +368,10 @@ export function reportBlock(enf, out) {
   };
 }
 
-/** The enforcement row for `pxsig doctor` and `pxsig config`: "visual warn until … · others enforce". */
+/**
+ * The enforcement row for `pxsig doctor` and `pxsig config`: "visual warn until … · others enforce".
+ * @param {Enforcement} enf
+ */
 export function describeEnforcement(enf) {
   const parts = GATES.filter((g) => enf.gates[g] !== 'enforce').map(
     (g) =>
@@ -321,8 +384,11 @@ export function describeEnforcement(enf) {
  * Setup-level codes (never per entry, so story cards and `doctor`'s exit stay as they are):
  * `enforcement-warn` (info), `enforcement-ending` (warn, within noticeDays of warnUntil),
  * `enforcement-expired` (info, for noticeDays after). Built-in quiet gates produce none.
+ * @param {Enforcement} enf
+ * @param {TallyCounts | null} [tally]
  */
 export function enforcementProblems(enf, tally = null) {
+  /** @type {SetupProblem[]} */
   const out = [];
   const t = tally?.runs ? ` Would-fail runs: ${tally.wouldFail} of the last ${tally.runs}.` : '';
   if (enf.configured.length)
@@ -359,6 +425,10 @@ const KEEP_DAYS = 90;
 export const readinessPath = (P, opts) =>
   join(repoStateDir(P.workspaceRoot, opts), 'readiness.ndjson');
 
+/**
+ * @param {string} cwd
+ * @param {string[]} args
+ */
 const gitOut = (cwd, args) => {
   const r = spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8' });
   return r.status === 0 ? r.stdout.trim() : null;
@@ -383,6 +453,7 @@ export function appendReadiness(
   const sha = gitOut(P.workspaceRoot, ['rev-parse', 'HEAD']);
   let branch = gitOut(P.workspaceRoot, ['rev-parse', '--abbrev-ref', 'HEAD']);
   if (branch === 'HEAD') branch = null;
+  /** @type {ReadinessLine} */
   const line = {
     at: now.toISOString(),
     project: P.name,
@@ -403,35 +474,49 @@ export function appendReadiness(
     return line;
   } catch (e) {
     process.stderr.write(
-      `[pxsig] warn mode: the readiness tally was not written (${e.message}); the run's result is unchanged\n`
+      `[pxsig] warn mode: the readiness tally was not written (${/** @type {Error} */ (e).message}); the run's result is unchanged\n`
     );
     return null;
   }
 }
 
+/**
+ * The readiness lines, a line that does not parse left out. The file is pxsig's own
+ * (`appendReadiness`), so every line that parses is a ReadinessLine.
+ * @param {string} path
+ * @returns {ReadinessLine[]}
+ */
 function readReadiness(path) {
   try {
-    return readFileSync(path, 'utf8')
-      .split('\n')
-      .filter(Boolean)
-      .map((l) => {
-        try {
-          return JSON.parse(l);
-        } catch {
-          return null;
-        }
-      })
-      .filter(Boolean);
+    return /** @type {ReadinessLine[]} */ (
+      readFileSync(path, 'utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map((l) => {
+          try {
+            return /** @type {ReadinessLine} */ (JSON.parse(l));
+          } catch {
+            return null;
+          }
+        })
+        .filter(Boolean)
+    );
   } catch {
     return [];
   }
 }
 
+/**
+ * @param {string} path
+ * @param {Date} now
+ */
 function trimReadiness(path, now) {
   const lines = readReadiness(path);
   const cutoff = now.getTime() - KEEP_DAYS * DAY;
   const fresh = lines.filter((l) => Date.parse(l.at) >= cutoff);
+  /** @type {Map<string, number>} */
   const seen = new Map();
+  /** @type {ReadinessLine[]} */
   const keep = [];
   for (let i = fresh.length - 1; i >= 0; i--) {
     const k = `${fresh[i].project}\n${[...(fresh[i].gates ?? [])].sort().join(',')}`;
@@ -455,13 +540,21 @@ function trimReadiness(path, now) {
  * default branch (`main` or `master`). Null when there are none.
  * @param {Pick<Project, 'workspaceRoot' | 'name'>} P
  * @param {{ opts?: StateOptions, branchNames?: string[] }} [extra]
+ * @returns {ReadinessTally | null}
  */
 export function readinessTally(P, { opts, branchNames = ['main', 'master'] } = {}) {
   const lines = readReadiness(readinessPath(P, opts)).filter((l) => l.project === P.name);
   if (!lines.length) return null;
+  /** @param {ReadinessLine[]} ls */
   const wf = (ls) => ls.filter((l) => l.wouldFail).length;
   const main = branchNames
-    .map((b) => [b, lines.filter((l) => l.branch === b)])
+    .map(
+      /**
+       * @param {string} b
+       * @returns {[string, ReadinessLine[]]}
+       */
+      (b) => [b, lines.filter((l) => l.branch === b)]
+    )
     .find(([, ls]) => ls.length);
   return {
     runs: lines.length,
@@ -473,6 +566,8 @@ export function readinessTally(P, { opts, branchNames = ['main', 'master'] } = {
 
 /**
  * For the CLIs: resolve, or print the refusal and exit with its code.
+ * @param {EnforcementProject} P
+ * @param {EnforcementOptions} opts
  * @param {(message: string, code?: number) => unknown} [print]
  */
 export function resolveOrExit(P, opts, print = (m) => process.stderr.write(`pxsig: ${m}\n`)) {
@@ -485,7 +580,10 @@ export function resolveOrExit(P, opts, print = (m) => process.stderr.write(`pxsi
   }
 }
 
-/** Combine several projects' exits: a real failure beats an advisory exit (worst code wins). */
+/**
+ * Combine several projects' exits: a real failure beats an advisory exit (worst code wins).
+ * @param {readonly { exit?: number, advisory?: boolean }[]} results
+ */
 export function combineExits(results) {
   const real = results.filter((r) => !r.advisory).map((r) => r.exit ?? 0);
   const worst = Math.max(0, ...real);
@@ -496,6 +594,8 @@ export function combineExits(results) {
 /**
  * What a check's rows would fail on, per gate: the visual gate by kind (changed, new, render
  * errors), the a11y gate as the entries with new violations. Rows skipped or approved count for none.
+ * @param {readonly CheckRow[]} rows
+ * @returns {Finding[]}
  */
 export function checkFindings(rows) {
   const checked = rows.filter((r) => !r.skipped);
@@ -503,6 +603,7 @@ export function checkFindings(rows) {
   const errors = failing.filter((r) => r.error).length;
   const fresh = failing.filter((r) => !r.error && r.new).length;
   const changed = failing.filter((r) => !r.error && !r.new).length;
+  /** @type {Finding[]} */
   const found = [];
   if (changed) found.push({ gate: 'visual', exit: 1, count: changed, what: 'changed' });
   if (fresh) found.push({ gate: 'visual', exit: 1, count: fresh, what: 'new' });
@@ -524,8 +625,12 @@ export function checkFindings(rows) {
   return found;
 }
 
-/** The readiness counts of a check (decision 10.7's fields). */
+/**
+ * The readiness counts of a check (decision 10.7's fields).
+ * @param {readonly CheckRow[]} rows
+ */
 export function checkCounts(rows) {
+  /** @param {string} what */
   const by = (what) =>
     checkFindings(rows)
       .filter((f) => f.what.startsWith(what))

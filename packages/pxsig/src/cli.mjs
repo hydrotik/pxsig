@@ -116,6 +116,7 @@ import {
 import { relPath } from './lib/paths.mjs';
 import { applyPrune, confirmPrune } from './lib/prune.mjs';
 import { newBatch } from './lib/approvals.mjs';
+/** @import { Block, Finding } from './types/t2.js' */
 import { describeAgent } from './lib/agents.mjs';
 import {
   appendReadiness,
@@ -244,9 +245,11 @@ async function overProjects(render, names = readTargets()) {
   if (names.length === 1) {
     current = names[0];
     const r = await render();
-    emit(format, r.blocks, r.data);
+    // A render returns term.mjs blocks.
+    emit(format, /** @type {Block[]} */ (r.blocks), r.data);
     process.exit(r.exit ?? 0);
   }
+  /** @type {Block[]} */
   const blocks = [];
   const data = [];
   const exits = [];
@@ -288,7 +291,8 @@ function oneProject() {
 function gate(found, source, counts = {}) {
   const P = ctx().P;
   const enf = resolveOrExit(P, { flags }, (m, code) => fail(m, code));
-  const out = outcome(enf, found);
+  // Each caller passes what its gates would fail on.
+  const out = outcome(enf, /** @type {Finding[]} */ (found));
   appendReadiness(P, enf, out, { source, counts });
   const lead = leadLine(enf);
   const last = lastLine(enf, out, enf.configured.length ? readinessTally(P) : null);
@@ -326,7 +330,7 @@ async function a11yPrune() {
       cmd: CMD,
     });
   } catch (e) {
-    spin.done(e.message, false);
+    spin.done(/** @type {Error} */ (e).message, false);
     fail(e.message, 2);
   }
   const c = plan.counts;
@@ -461,7 +465,7 @@ function entryTable(entries, { more = 0 } = {}) {
       ],
       moreHint: 'raise --limit',
       rows: entries.map((e) => ({
-        state: stateCell(e.state),
+        state: stateCell(/** @type {string} */ (e.state)),
         id: idCell(e.id),
         ssim: e.ssim ?? '',
         cells: pct(e.changedCellsPct),
@@ -496,7 +500,7 @@ async function doctorOne({ repair, only, failOn }) {
         lock = await takeLock(P, { holder: 'doctor --repair' });
         lock.check();
       } catch (e) {
-        spin.done(e.message, false);
+        spin.done(/** @type {Error} */ (e).message, false);
         fail(e.message, e.exit ?? 2);
       }
   }
@@ -561,7 +565,7 @@ async function doctorOne({ repair, only, failOn }) {
           : null,
       });
   } catch (e) {
-    spin.done(e.message, false);
+    spin.done(/** @type {Error} */ (e).message, false);
     fail(e.message, 2);
   } finally {
     lock?.release();
@@ -1031,7 +1035,7 @@ const commands = {
       { h: id, sub: [e.mode, e.interaction].filter(Boolean).join(' · ') },
       {
         kv: [
-          ['State', stateCell(e.state)],
+          ['State', stateCell(/** @type {string} */ (e.state))],
           ['SSIM', `${m.ssim ?? '—'}  (gate ${e.reasons?.length ? 'tripped' : 'held'})`],
           [
             'Changed',
@@ -1114,7 +1118,7 @@ const commands = {
       r = await run('check', args);
     } catch (e) {
       clearInterval(poll);
-      spin.done(e.message, false);
+      spin.done(/** @type {Error} */ (e).message, false);
       process.exit(2);
     }
     clearInterval(poll);
@@ -1549,7 +1553,7 @@ const commands = {
     try {
       r = await buildManifest(P, { suite: typeof flags.suite === 'string' ? flags.suite : null });
     } catch (e) {
-      spin.done(e.message, false);
+      spin.done(/** @type {Error} */ (e).message, false);
       fail(e.message, 2);
     } finally {
       if (sb.served) await sb.close();
