@@ -851,7 +851,7 @@ export function pruneOrphans(ctx, ledger, ids, { by, via }) {
 // --- default hooks: the running server when it is up, else check.mjs / Playwright ----------------------
 
 /**
- * @param {string | undefined} serverUrl
+ * @param {string | null | undefined} serverUrl
  * @returns {Promise<ServerStatus>}
  */
 export async function serverStatus(serverUrl) {
@@ -867,7 +867,7 @@ export async function serverStatus(serverUrl) {
 
 /**
  * @param {IntegrityContext} ctx
- * @param {{ serverUrl?: string, timeoutMs?: number }} [opts]
+ * @param {{ serverUrl?: string | null, timeoutMs?: number }} [opts]
  * @returns {RepairHooks}
  */
 export function defaultHooks(ctx, { serverUrl, timeoutMs = 15 * 60_000 } = {}) {

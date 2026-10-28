@@ -1,5 +1,6 @@
 // The component catalog copied from hydrotik (docs/ui/catalog/): it passes its schema, the package
 // exports it, it agrees with the reference adapter, and the sync script refuses what it should.
+/// <reference path="./types.d.ts" />
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -13,10 +14,12 @@ import { syncCatalog, withoutContext } from '../../../scripts/sync-catalog.mjs';
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const dir = join(repo, 'docs', 'ui', 'catalog');
+/** @param {string} f */
 const read = (f) => JSON.parse(readFileSync(join(dir, f), 'utf8'));
 const ADAPTER = 'packages/dashboard/src/ui/adapters/hydrotik/index.tsx';
 /** Exports of the design system's root entry that are not components. */
 const NON_COMPONENTS = new Set(['Icons', 'BrandIcons']);
+/** @typedef {{ usedBy?: string[], pxsigParts: string[] }} CatalogFamily A catalog record, as far as these tests read it. */
 
 test('the copy passes its schema, carries no context paths, and names the commit it came from', () => {
   const text = readFileSync(join(dir, 'hydrotik.catalog.json'), 'utf8');
@@ -52,8 +55,12 @@ test('the installed package exports the catalog as pxsig/ui/catalog/hydrotik.jso
   }
 });
 
-/** Every design-system export the adapter uses: `<ns>.<Name>` of a namespace import, and named imports. */
+/**
+ * Every design-system export the adapter uses: `<ns>.<Name>` of a namespace import, and named imports.
+ * @param {string} source
+ */
 function adapterNames(source) {
+  /** @type {Set<string>} */
   const names = new Set();
   for (const m of source.matchAll(
     /import\s+\*\s+as\s+(\w+)\s+from\s+['"]@hydrotik\/design-system['"]/g
@@ -75,8 +82,9 @@ function adapterNames(source) {
 
 test("the catalog's pxsigParts are what the reference adapter imports", () => {
   const used = adapterNames(readFileSync(join(repo, ADAPTER), 'utf8'));
-  const families = read('hydrotik.catalog.json').components.filter((c) =>
-    c.usedBy?.includes('pxsig')
+  /** @type {CatalogFamily[]} */
+  const families = read('hydrotik.catalog.json').components.filter(
+    (/** @type {CatalogFamily} */ c) => c.usedBy?.includes('pxsig')
   );
   const listed = families.flatMap((c) => c.pxsigParts).sort();
   const missing = used.filter((n) => !listed.includes(n));
@@ -152,6 +160,7 @@ test('sync-catalog refuses an unknown, dirty or unpushed checkout, and copies a 
   const root = mkdtempSync(join(tmpdir(), 'pxsig-sync-'));
   const src = join(root, 'hydrotik');
   const out = join(root, 'out');
+  /** @param {string[]} args */
   const git = (...args) =>
     execFileSync('git', ['-C', src, '-c', 'user.email=t@t', '-c', 'user.name=t', ...args], {
       encoding: 'utf8',

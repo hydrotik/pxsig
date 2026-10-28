@@ -14,6 +14,16 @@ import { openProject } from '../src/lib/workspace.mjs';
 import { buildSnapshot, envSummary, SNAPSHOT_FORMAT } from '../src/snapshot.mjs';
 import { fixture, hasRust, rustBin } from './fixture.mjs';
 
+/** @import { ManifestEntry } from '../src/types.js' */
+/**
+ * The snapshot's keys these tests read (src/snapshot.mjs builds it; its `projects` infers as `{}`).
+ * `approved` is non-null here: repoFixture logs every entry, so every entry read has a log line.
+ * @typedef {{ at: string | null, event: string, pr: number | null, commit: string | null, kind: string | null, reason: string | null }} SnapApproval
+ * @typedef {{ id: string, baseline: boolean, approved: SnapApproval, a11y: string[] }} SnapEntry
+ * @typedef {{ entries: SnapEntry[], history: { entries: number }[] }} SnapStory
+ * @typedef {import('../src/types/t4.js').Snapshot} Snapshot
+ */
+
 const src = fileURLToPath(new URL('../src/', import.meta.url));
 // A person's name and email on every commit: the snapshot may contain neither.
 const AUTHOR = {
@@ -22,11 +32,19 @@ const AUTHOR = {
   GIT_COMMITTER_NAME: 'Secret Person',
   GIT_COMMITTER_EMAIL: 'secret@example.com',
 };
+/**
+ * @param {string} cwd
+ * @param {...string} args
+ */
 const must = (cwd, ...args) => {
   const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, ...AUTHOR } });
   assert.equal(r.status, 0, `git ${args.join(' ')}: ${r.stderr}`);
   return (r.stdout ?? '').trim();
 };
+/**
+ * @param {string} repo
+ * @param {string[]} args
+ */
 const cli = (repo, args) =>
   spawnSync(process.execPath, [join(src, 'cli.mjs'), ...args], {
     cwd: repo,
@@ -42,13 +60,16 @@ const cli = (repo, args) =>
     },
   });
 // Every folder a test makes, removed when the file's tests end.
+/** @type {string[]} */
 const made = [];
 after(() => made.forEach((d) => rmSync(d, { recursive: true, force: true })));
+/** @param {string} prefix */
 const tmp = (prefix) => {
   const d = mkdtempSync(join(tmpdir(), prefix));
   made.push(d);
   return d;
 };
+/** @param {string} repo */
 const open = (repo) => openProject({ cwd: repo, env: { PXSIG_BIN: rustBin } });
 const skip = { skip: !hasRust && 'Rust binary not built' };
 
@@ -67,11 +88,18 @@ function repoFixture() {
   must(f.repo, 'commit', '-q', '-m', 'base');
   return { ...f, P };
 }
+/**
+ * @param {Snapshot} snap
+ * @param {string} id
+ */
 const entryOf = (snap, id) =>
-  Object.values(snap.projects)
-    .flatMap((p) => Object.values(p.stories))
-    .flatMap((s) => s.entries)
-    .find((e) => e.id === id);
+  // An id the fixture put in the manifest: a missing one fails the test at its next read.
+  /** @type {SnapEntry} */ (
+    Object.values(snap.projects)
+      .flatMap((p) => Object.values(p.stories))
+      .flatMap((s) => s.entries)
+      .find((e) => e.id === id)
+  );
 
 test('every manifest entry, with its baseline, last log line and commit', skip, () => {
   const f = repoFixture();
@@ -90,7 +118,9 @@ test('every manifest entry, with its baseline, last log line and commit', skip, 
   assert.equal(ok.approved.commit, snap.commit, 'committed on main directly: its own commit');
   assert.equal(ok.approved.pr, null, 'no merge, no PR subject: no PR');
   // History: one row per batch per story, counting the story's entries in it.
-  const story = stories[f.manifest.stories.find((e) => e.id === f.ids.ok).story];
+  // `ok` is a fixture id, so it is in the manifest.
+  const story =
+    stories[/** @type {ManifestEntry} */ (f.manifest.stories.find((e) => e.id === f.ids.ok)).story];
   assert.equal(story.history.length, 1);
   assert.equal(story.history[0].entries, story.entries.length);
 });

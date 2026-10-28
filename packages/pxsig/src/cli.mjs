@@ -116,7 +116,6 @@ import {
 import { relPath } from './lib/paths.mjs';
 import { applyPrune, confirmPrune } from './lib/prune.mjs';
 import { newBatch } from './lib/approvals.mjs';
-/** @import { Block, Finding } from './types/t2.js' */
 import { describeAgent } from './lib/agents.mjs';
 import {
   appendReadiness,
@@ -285,8 +284,7 @@ async function overProjects(render, names = readTargets()) {
   if (names.length === 1) {
     current = names[0];
     const r = await render();
-    // A render returns term.mjs blocks.
-    emit(format, /** @type {Block[]} */ (r.blocks), r.data);
+    emit(format, r.blocks, r.data);
     process.exit(r.exit ?? 0);
   }
   /** @type {Block[]} */
@@ -340,8 +338,7 @@ function oneProject() {
 function gate(found, source, counts = {}) {
   const P = ctx().P;
   const enf = resolveOrExit(P, { flags }, (m, code) => fail(m, code));
-  // Each caller passes what its gates would fail on.
-  const out = outcome(enf, /** @type {Finding[]} */ (found));
+  const out = outcome(enf, found);
   appendReadiness(P, enf, out, { source, counts });
   const lead = leadLine(enf);
   const last = lastLine(enf, out, enf.configured.length ? readinessTally(P) : null);
@@ -462,7 +459,7 @@ async function a11yPrune() {
       // Checked above: `fail` exits when there is none.
       headers: {
         'content-type': 'application/json',
-        [TOKEN_HEADER]: /** @type {string} */ (token),
+        [TOKEN_HEADER]: token,
       },
       body: JSON.stringify({
         project: P.name,
@@ -550,7 +547,7 @@ function entryTable(entries, { more = 0 } = {}) {
       ],
       moreHint: 'raise --limit',
       rows: entries.map((e) => ({
-        state: stateCell(/** @type {string} */ (e.state)),
+        state: stateCell(e.state),
         id: idCell(e.id),
         ssim: e.ssim ?? '',
         cells: pct(e.changedCellsPct),
@@ -932,8 +929,7 @@ async function serveLink() {
   try {
     r = await fetch(`${url}/__pxsig/ticket`, {
       method: 'POST',
-      // Checked above: `fail` exits when there is none.
-      headers: { [TOKEN_HEADER]: /** @type {string} */ (token) },
+      headers: { [TOKEN_HEADER]: token },
     });
   } catch {
     fail(`the pxsig server at ${url} does not answer: start it with \`${CMD} serve\``);
@@ -1188,7 +1184,7 @@ const commands = {
       { h: id, sub: [e.mode, e.interaction].filter(Boolean).join(' · ') },
       {
         kv: [
-          ['State', stateCell(/** @type {string} */ (e.state))],
+          ['State', stateCell(e.state)],
           ['SSIM', `${m.ssim ?? '—'}  (gate ${e.reasons?.length ? 'tripped' : 'held'})`],
           [
             'Changed',

@@ -135,10 +135,7 @@ export function projectSnapshot(P, { shallow = false } = {}) {
   const key = (/** @type {{ batch: string, id: string, at: string }} */ l) =>
     `${l.batch}\n${l.id}\n${l.at}`;
   /** @type {Map<string, TraceRow>} */
-  const trace = new Map(
-    // traceLog's rows (lib/approvals.mjs), or null when the log is not in git.
-    /** @type {TraceRow[] | null} */ (shallow ? null : traceLog(P))?.map((t) => [key(t), t]) ?? []
-  );
+  const trace = new Map((shallow ? null : traceLog(P))?.map((t) => [key(t), t]) ?? []);
   const where = (/** @type {ApprovalLine} */ l) => {
     const t = trace.get(key(l));
     return t ? { pr: t.pr ?? null, commit: t.commit } : null;

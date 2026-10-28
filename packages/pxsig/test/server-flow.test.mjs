@@ -20,6 +20,19 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { readToken } from '../src/lib/guard.mjs';
 import { CHECKER, fixture, hasRust, rustBin } from './fixture.mjs';
+/** @import { IndexStory } from '../src/types.js' */
+/** @typedef {ReturnType<typeof fixture>} Fixture */
+/**
+ * The keys of the server's POST answers these tests read; each answer has those of its action
+ * (docs/server.md).
+ * @typedef {{
+ *   registered: string[],
+ *   queued: string[],
+ *   skipped: { name?: string, id?: string, why: string }[],
+ *   applied: { action: string, result: string }[],
+ *   approved: string[],
+ * }} PostAnswer
+ */
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 
@@ -34,10 +47,12 @@ try {
 }
 const needs = !hasRust ? 'Rust binary not built' : !chromium ? 'no Chromium' : false;
 
+/** @returns {Promise<number>} */
 const freePort = () =>
   new Promise((ok) => {
     const s = createServer().listen(0, '127.0.0.1', () => {
-      const p = s.address().port;
+      // Listening on TCP: the address is an AddressInfo.
+      const p = /** @type {import('node:net').AddressInfo} */ (s.address()).port;
       s.close(() => ok(p));
     });
   });
@@ -46,8 +61,10 @@ const freePort = () =>
  * A stand-in Storybook: `/index.json` lists `stories`; `/iframe.html?id=` renders a block, or
  * Storybook's error display for an id containing "broken". The preview object answers what
  * pxsig reads: `storyStoreValue.loadStory` (parameters) and `currentRender` (render finished).
+ * @param {IndexStory[]} stories
  */
 async function fakeStorybook(stories) {
+  /** @param {string} id */
   const page = (id) => {
     const broken = id.includes('broken');
     return `<!doctype html><html><head><style>body{margin:0;background:#fff}#storybook-root>div{inline-size:96px;block-size:64px;background:#2a4a7a}</style></head>
@@ -56,7 +73,8 @@ async function fakeStorybook(stories) {
   storyStoreValue: { loadStory: async ({ storyId }) => { if (storyId.includes('unreadable')) throw new Error('loadStory threw'); return { parameters: { pxsig: {} }, tags: [], playFunction: null }; } } };</script></body></html>`;
   };
   const server = createServer((req, res) => {
-    const u = new URL(req.url, 'http://x');
+    // A request to an http server always has a url.
+    const u = new URL(/** @type {string} */ (req.url), 'http://x');
     if (u.pathname === '/index.json') {
       res.writeHead(200, { 'content-type': 'application/json' });
       return res.end(
@@ -84,11 +102,19 @@ async function fakeStorybook(stories) {
     }
     res.writeHead(404).end();
   });
-  await new Promise((ok) => server.listen(0, '127.0.0.1', ok));
-  return { url: `http://127.0.0.1:${server.address().port}`, close: () => server.close() };
+  await /** @type {Promise<void>} */ (new Promise((ok) => server.listen(0, '127.0.0.1', ok)));
+  // Listening on TCP: the address is an AddressInfo.
+  return {
+    url: `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (server.address()).port}`,
+    close: () => server.close(),
+  };
 }
 
-/** Start `pxsig serve` on a fixture; `storybook` overrides the config's storybook.url. */
+/**
+ * Start `pxsig serve` on a fixture; `storybook` overrides the config's storybook.url.
+ * @param {Fixture} f
+ * @param {{ storybook?: string }} [opts]
+ */
 async function serve(f, { storybook } = {}) {
   if (storybook) {
     const cfgPath = join(f.repo, 'pxsig.config.json');
@@ -104,29 +130,40 @@ async function serve(f, { storybook } = {}) {
   let log = '';
   proc.stdout.on('data', (d) => (log += d));
   proc.stderr.on('data', (d) => (log += d));
-  await new Promise((ok, fail) => {
-    const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-    const on = () => /dashboard →/.test(log) && (clearTimeout(t), ok());
-    proc.stdout.on('data', on);
-  });
+  await /** @type {Promise<void>} */ (
+    new Promise((ok, fail) => {
+      const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+      const on = () => /dashboard →/.test(log) && (clearTimeout(t), ok());
+      proc.stdout.on('data', on);
+    })
+  );
   const base = `http://127.0.0.1:${port}`;
   // As the dashboard posts: with the server's token (`headers` adds or overrides, e.g. no token).
+  /**
+   * @param {string} action
+   * @param {unknown} body
+   * @param {Record<string, string>} [headers]
+   */
   const post = async (action, body, headers = {}) => {
     const r = await fetch(`${base}/__pxsig/${action}`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        // The server under test wrote its token when it started.
+        // The server wrote its token before it printed its URL.
         'x-pxsig-token': /** @type {string} */ (readToken(f.repo, base)),
         ...headers,
       },
       body: JSON.stringify(body),
     });
-    return { status: r.status, body: await r.json() };
+    // The server answers JSON (docs/server.md).
+    return { status: r.status, body: /** @type {PostAnswer} */ (await r.json()) };
   };
   const idle = async () => {
     for (let i = 0; i < 600; i++) {
-      const s = await (await fetch(`${base}/__pxsig/status`)).json();
+      // GET /__pxsig/status answers JSON (docs/server.md).
+      const s = /** @type {{ running?: unknown, queued?: unknown, repairing?: unknown }} */ (
+        await (await fetch(`${base}/__pxsig/status`)).json()
+      );
       if (!s.running && !s.queued && !s.repairing) return;
       await new Promise((r) => setTimeout(r, 100));
     }
@@ -135,6 +172,7 @@ async function serve(f, { storybook } = {}) {
   return { base, port, post, idle, log: () => log, stop: () => proc.kill() };
 }
 
+/** @param {Fixture} f */
 const rowsOf = (f) => JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8')).rows;
 
 test(
@@ -158,10 +196,12 @@ test(
       assert.match(r.body.skipped[0].why, /not in the manifest or the Storybook story index/);
       await S.idle();
       const manifest = JSON.parse(readFileSync(join(f.px, 'manifest.json'), 'utf8'));
-      const e = manifest.stories.find((x) => x.id === f.ids.unregistered);
+      const e = manifest.stories.find(
+        (/** @type {{ id: string }} */ x) => x.id === f.ids.unregistered
+      );
       assert.ok(e, 'registered in the manifest');
       assert.ok(!existsSync(join(f.repo, e.sig)), 'registering never writes a signature');
-      const row = rowsOf(f).find((x) => x.id === f.ids.unregistered);
+      const row = rowsOf(f).find((/** @type {{ id: string }} */ x) => x.id === f.ids.unregistered);
       assert.ok(row, `rendered and recorded:\n${S.log()}`);
       assert.equal(row.new, true, 'NEW: waiting for a person to approve its first render');
       const log = readFileSync(join(f.px, 'reports', 'repairs.ndjson'), 'utf8')
@@ -188,11 +228,11 @@ test(
     const sb = await fakeStorybook(f.index.stories);
     const S = await serve(f, { storybook: sb.url });
     try {
-      const before = rowsOf(f).find((x) => x.id === f.ids.error);
+      const before = rowsOf(f).find((/** @type {{ id: string }} */ x) => x.id === f.ids.error);
       const r = await S.post('check', { ids: [f.ids.error] });
       assert.equal(r.status, 202);
       await S.idle();
-      const row = rowsOf(f).find((x) => x.id === f.ids.error);
+      const row = rowsOf(f).find((/** @type {{ id: string }} */ x) => x.id === f.ids.error);
       assert.notEqual(row.checkedAt, before.checkedAt, `recorded:\n${S.log()}`);
       assert.match(row.error, /^storybook-error: Storybook error page: Story threw/);
       const report = JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8'));
@@ -217,22 +257,25 @@ test(
   async () => {
     const f = fixture();
     const S = await serve(f); // storybook.url does not answer
+    /** @type {string[]} */
     const events = [];
     const ctl = new AbortController();
     try {
       const es = await fetch(`${S.base}/__pxsig/events`, { signal: ctl.signal });
       (async () => {
         const dec = new TextDecoder();
-        // Node's fetch body is a web ReadableStream, which is async-iterable (the DOM lib's type
-        // says so only with DOM.AsyncIterable).
-        for await (const chunk of /** @type {AsyncIterable<Uint8Array>} */ (
-          /** @type {unknown} */ (es.body)
+        // A 200 event stream has a body.
+        for await (const chunk of /** @type {import('node:stream/web').ReadableStream<Uint8Array>} */ (
+          es.body
         ))
           events.push(dec.decode(chunk));
       })().catch(() => {});
       const r = await S.post('repair', { apply: true, only: ['recheck'] });
       assert.equal(r.status, 200, JSON.stringify(r.body));
-      const rc = r.body.applied.find((x) => x.action === 'recheck');
+      // `only: ['recheck']` plans that step, so it is among the applied ones.
+      const rc = /** @type {{ action: string, result: string }} */ (
+        r.body.applied.find((x) => x.action === 'recheck')
+      );
       assert.match(rc.result, /^not re-checked: setup error: Storybook is not reachable/);
       assert.match(events.join(''), /event: check\ndata: \{"project":"fixture","state":"error"/);
     } finally {
@@ -251,7 +294,7 @@ test(
     // A second mode of the same story, also changed; and a third that passes.
     const manifestPath = join(f.px, 'manifest.json');
     const m = JSON.parse(readFileSync(manifestPath, 'utf8'));
-    const base = m.stories.find((e) => e.id === story);
+    const base = m.stories.find((/** @type {{ id: string }} */ e) => e.id === story);
     m.stories.push(
       {
         ...base,
@@ -271,7 +314,7 @@ test(
     writeFileSync(join(f.px, 'renders', 'latest', `${story}__hover.png`), CHECKER);
     const checkPath = join(f.px, 'reports', 'check.json');
     const check = JSON.parse(readFileSync(checkPath, 'utf8'));
-    const row = check.rows.find((r) => r.id === story);
+    const row = check.rows.find((/** @type {{ id: string }} */ r) => r.id === story);
     check.rows.push(
       { ...row, id: `${story}@light`, mode: 'light', pass: false, new: true, reasons: ['new'] },
       {
@@ -299,17 +342,24 @@ test(
         'the first baseline of the new mode'
       );
       const after = JSON.parse(readFileSync(checkPath, 'utf8'));
-      assert.ok(after.rows.find((x) => x.id === story).approved, 'the row says it was approved');
+      assert.ok(
+        after.rows.find((/** @type {{ id: string }} */ x) => x.id === story).approved,
+        'the row says it was approved'
+      );
       assert.equal(after.summary.approved, 2);
       assert.equal(
         after.summary.failed,
-        check.rows.filter((y) => !y.skipped && !y.pass).length - 2,
+        check.rows.filter(
+          (/** @type {{ skipped?: boolean, pass?: boolean }} */ y) => !y.skipped && !y.pass
+        ).length - 2,
         'approved rows no longer count as failed'
       );
       // Undo one: its row is back to waiting.
       assert.equal((await S.post('unreview', { id: story })).status, 200);
       assert.equal(
-        JSON.parse(readFileSync(checkPath, 'utf8')).rows.find((x) => x.id === story).approved,
+        JSON.parse(readFileSync(checkPath, 'utf8')).rows.find(
+          (/** @type {{ id: string }} */ x) => x.id === story
+        ).approved,
         undefined
       );
       assert.equal((await S.post('approve-story', { story: 'Bad Story' })).status, 400);
@@ -359,10 +409,10 @@ test(
         /not checked: components-nope--missing: not in the manifest or the Storybook story index/
       );
       assert.equal(out.code, 1, 'a NEW entry fails the check until it is approved');
-      const row = rowsOf(f).find((x) => x.id === f.ids.unregistered);
+      const row = rowsOf(f).find((/** @type {{ id: string }} */ x) => x.id === f.ids.unregistered);
       assert.equal(row?.new, true);
       const e = JSON.parse(readFileSync(join(f.px, 'manifest.json'), 'utf8')).stories.find(
-        (x) => x.id === f.ids.unregistered
+        (/** @type {{ id: string }} */ x) => x.id === f.ids.unregistered
       );
       assert.ok(!existsSync(join(f.repo, e.sig)), 'no signature');
     } finally {
@@ -390,7 +440,8 @@ test(
     try {
       const r = await fetch(`${S.base}/__pxsig/integrity?fresh=1`);
       assert.equal(r.status, 200, 'the ledger is computed and served from memory');
-      assert.ok((await r.json()).entries.length);
+      // GET /__pxsig/integrity answers the ledger as JSON.
+      assert.ok(/** @type {{ entries: unknown[] }} */ (await r.json()).entries.length);
       assert.deepEqual(
         readdirSync(reports).sort(),
         before,
@@ -421,10 +472,12 @@ test(
     );
     let log = '';
     proc.stdout.on('data', (d) => (log += d));
-    await new Promise((ok, fail) => {
-      const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-      proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
-    });
+    await /** @type {Promise<void>} */ (
+      new Promise((ok, fail) => {
+        const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+        proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
+      })
+    );
     assert.equal((await fetch(`http://127.0.0.1:${port}/__pxsig/status`)).status, 200);
     const exited = new Promise((ok) => proc.on('exit', ok));
     proc.kill('SIGTERM');

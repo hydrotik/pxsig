@@ -609,9 +609,9 @@ async function approve(S, id, meta = {}) {
       409,
       `${id} did not render (${current.error}); fix it and re-check before approving`
     );
-  const batch = meta.batch ?? newBatch(/** @type {string} */ (meta.via ?? 'dashboard'));
+  const batch = meta.batch ?? newBatch(meta.via ?? 'dashboard');
   // No baseline yet (a NEW entry): nothing to snapshot, `before` is null and undo removes the file.
-  const { before } = snapshot(P, e, /** @type {string} */ (batch));
+  const { before } = snapshot(P, e, batch);
   // A .psig output carries the render itself as the baseline image, and the environment of that
   // render (the row's, from the check that made it), never this server's or the approver's.
   const report = /** @type {CheckReport} */ (readJson(S.checkPath, { rows: [] }));
@@ -667,8 +667,7 @@ function unapprove(S, id, entry, via = 'dashboard') {
   const e = manifest.stories.find((s) => s.id === id);
   if (!e) throw httpError(404, `unknown entry ${id}`);
   const before = sha256(paths(P, e).sig);
-  // An approved review entry names its batch (checked by the caller).
-  const res = undo(P, manifest, /** @type {string} */ (entry.batch), {
+  const res = undo(P, manifest, entry.batch, {
     git: false,
     ids: [id],
   });

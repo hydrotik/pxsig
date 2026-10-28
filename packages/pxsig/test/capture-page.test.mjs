@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { applyTokenOverrides, injectAxe } from '../src/lib/capture.mjs';
+/** @import { Page } from 'playwright' */
 
 const require = createRequire(import.meta.url);
 // Playwright and a Chromium it can launch (CI installs the browser after this suite runs).
@@ -32,8 +33,14 @@ test('capture.mjs evaluates no code from strings', () => {
   assert.doesNotMatch(capture, /new Function\(|\beval\(/);
 });
 
+/**
+ * @template T
+ * @param {string} html
+ * @param {(page: Page) => Promise<T>} fn
+ */
 async function withPage(html, fn) {
-  const browser = await pw.chromium.launch();
+  // Every test that calls this is skipped when Playwright is missing (`pw` null).
+  const browser = await /** @type {NonNullable<typeof pw>} */ (pw).chromium.launch();
   try {
     const page = await browser.newPage();
     await page.setContent(html);
@@ -56,6 +63,7 @@ test(
         radius: '0px',
         unknown: 'x',
       });
+      /** @param {string} v */
       const get = (v) =>
         page.evaluate(
           (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(),

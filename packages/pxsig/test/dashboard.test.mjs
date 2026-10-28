@@ -9,6 +9,10 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const cli = fileURLToPath(new URL('../bin/pxsig.mjs', import.meta.url));
+/**
+ * @param {string[]} args
+ * @param {string} [cwd]
+ */
 const pxsig = (args, cwd) =>
   spawnSync(process.execPath, [cli, ...args], {
     cwd,
@@ -23,11 +27,11 @@ test('gaps: the reference adapter covers every contract component', () => {
   assert.deepEqual(g.problems, []);
   assert.ok(g.rows.length >= 40);
   assert.deepEqual(
-    g.rows.filter((x) => !['full', 'bespoke'].includes(x.status)),
+    g.rows.filter((/** @type {{ status: string }} */ x) => !['full', 'bespoke'].includes(x.status)),
     []
   );
   assert.ok(
-    g.rows.every((x) => x.usedBy.length),
+    g.rows.every((/** @type {{ usedBy: string[] }} */ x) => x.usedBy.length),
     'every contract component is used somewhere'
   );
 });
@@ -60,12 +64,14 @@ test('gaps: dashboard.ui in pxsig.config.json; a missing required component is a
     const r = pxsig(['dashboard', 'gaps', '--json'], dir);
     assert.equal(r.status, 1);
     const g = JSON.parse(r.stdout);
-    const by = Object.fromEntries(g.rows.map((x) => [x.name, x]));
+    const by = Object.fromEntries(g.rows.map((/** @type {{ name: string }} */ x) => [x.name, x]));
     assert.equal(by.Button.status, 'partial');
     assert.equal(by.Kbd.status, 'full', 'exported and undeclared counts as full');
     assert.equal(by.Chart.status, 'missing', 'declared but not exported');
     assert.match(by.DataTable.note, /fallback/);
-    assert.ok(g.problems.some((p) => /Select is required and missing/.test(p)));
+    assert.ok(
+      g.problems.some((/** @type {string} */ p) => /Select is required and missing/.test(p))
+    );
     const text = pxsig(['dashboard', 'gaps'], dir).stdout;
     assert.match(text, /UI adapter "tiny"/);
     assert.match(text, /\n {2}TopNav \(required\) · the build fails without it/);
@@ -84,6 +90,7 @@ test("gaps and build compare the adapter's contract version with this pxsig's", 
       join(dir, 'ui', 'index.tsx'),
       "export const name = 'old';\nexport const tokens = {};\n"
     );
+    /** @param {string} contract */
     const conformance = (contract) =>
       writeFileSync(
         join(dir, 'ui', 'conformance.json'),
@@ -93,7 +100,7 @@ test("gaps and build compare the adapter's contract version with this pxsig's", 
     const old = JSON.parse(pxsig(['dashboard', 'gaps', '--ui', './ui', '--json'], dir).stdout);
     assert.equal(old.contract.status, 'older-major');
     assert.ok(
-      old.problems.some((p) =>
+      old.problems.some((/** @type {string} */ p) =>
         /^contract: written for contract 0\.1\.0; this pxsig has 1\.1\.0, a major change/.test(p)
       ),
       old.problems.join('\n')
@@ -109,7 +116,7 @@ test("gaps and build compare the adapter's contract version with this pxsig's", 
     const newer = JSON.parse(pxsig(['dashboard', 'gaps', '--ui', './ui', '--json'], dir).stdout);
     assert.equal(newer.contract.status, 'newer');
     assert.ok(
-      !newer.problems.some((p) => p.startsWith('contract:')),
+      !newer.problems.some((/** @type {string} */ p) => p.startsWith('contract:')),
       'a newer adapter is a note, not a problem'
     );
     assert.match(

@@ -655,8 +655,7 @@ const checked = out.filter((r) => !r.skipped);
 // The approval log lines this range added (decision 80): `--since` only, where a merge base is known.
 const approvalsInRange = (() => {
   if (!affected?.mergeBase) return null;
-  // Checked just above.
-  const a = appendedSince(P, /** @type {string} */ (affected.mergeBase));
+  const a = appendedSince(P, affected.mergeBase);
   if (a.rewritten) return { rewritten: true };
   const c = changedByRoute(a.lines);
   return c.total ? c : null;
@@ -869,13 +868,10 @@ async function viaServer(url, ids, stories = []) {
   for (const r of failed.slice(0, 20))
     console.log(`  CHANGED ${r.id.padEnd(60)} ${r.error ?? (r.reasons ?? []).join('; ')}`);
   // `enf` is null only under --update, which never hands the run to a server.
-  const gated = outcome(
-    /** @type {NonNullable<typeof enf>} */ (enf),
-    checkFindings(/** @type {import('./types.js').CheckRow[]} */ (rows))
-  );
+  const gated = outcome(/** @type {NonNullable<typeof enf>} */ (enf), checkFindings(rows));
   appendReadiness(P, /** @type {NonNullable<typeof enf>} */ (enf), gated, {
     source: 'check',
-    counts: checkCounts(/** @type {import('./types.js').CheckRow[]} */ (rows)),
+    counts: checkCounts(rows),
   });
   const last = lastLine(
     /** @type {NonNullable<typeof enf>} */ (enf),

@@ -25,9 +25,22 @@ import {
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin } from './fixture.mjs';
 
+/** @import { AddressInfo } from 'node:net' */
+/** @import { CheckRow } from '../src/types.js' */
+/**
+ * @typedef {ReturnType<typeof fixture>} Fixture
+ * A server answer's JSON (docs/server.md): read here only through deepEqual.
+ * @typedef {Record<string, unknown>} Answer
+ */
+
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const T0 = Date.parse('2026-10-20T10:00:00Z');
+/** @param {number} min */
 const at = (min) => new Date(T0 + min * 60_000).toISOString();
+/**
+ * @param {string} id
+ * @param {Partial<CheckRow>} [extra]
+ */
 const row = (id, extra = {}) => ({
   id,
   mode: 'dark',
@@ -36,6 +49,7 @@ const row = (id, extra = {}) => ({
   a11y: { violations: [], new: 0 },
   ...extra,
 });
+/** @param {CheckRow[]} rows */
 const report = (rows, /** @type {string | null} */ suite = null) => ({
   suite,
   file: suite ? `.pxsig/reports/check-${suite}.json` : '.pxsig/reports/check.json',
@@ -165,6 +179,7 @@ test('filters: --component, --mode and --only', () => {
     'components-x--a@light': ['r'],
     'components-y--b': ['r'],
   };
+  /** @param {{ component?: string, mode?: string, only?: string[] }} o */
   const ids = (o) =>
     classify({
       accepted,
@@ -209,6 +224,7 @@ function project() {
   const plan = buildPlan(P, { stale: fresh, modeOf: () => 'dark' });
   return { f, P, plan };
 }
+/** @param {Fixture} f */
 const decisions = (f) =>
   existsSync(join(f.px, 'a11y-decisions.ndjson'))
     ? readFileSync(join(f.px, 'a11y-decisions.ndjson'), 'utf8')
@@ -227,7 +243,8 @@ test('the plan groups the prunable rules per entry and pins a11y.json', () => {
       [f.ids.a11y, ['label'], ['color-contrast']],
     ]
   );
-  assert.match(plan.a11ySha, /^[0-9a-f]{64}$/);
+  // a11y.json exists (project() writes it), so its sha256 is a string.
+  assert.match(/** @type {string} */ (plan.a11ySha), /^[0-9a-f]{64}$/);
   assert.equal(checkPlan(plan), null);
 });
 
@@ -270,7 +287,7 @@ test('applying writes a11y.json, one log line per entry (no name, no agent), and
     assert.equal(l.evidence.report, '.pxsig/reports/check.json');
   }
   const row = JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8')).rows.find(
-    (x) => x.id === f.ids.a11y
+    (/** @type {CheckRow} */ x) => x.id === f.ids.a11y
   );
   assert.deepEqual(row.a11y.baseline, ['color-contrast']);
 });
@@ -283,11 +300,12 @@ test('a decision made after planning refuses the whole plan; a bad plan is refus
   );
   assert.throws(
     () => applyPrune(P, plan, { batch: 'b' }),
-    (e) => e.status === 409 && /changed since this plan/.test(e.message)
+    (/** @type {Error & { status?: number }} */ e) =>
+      e.status === 409 && /changed since this plan/.test(e.message)
   );
   assert.throws(
     () => applyPrune(P, { ...plan, prune: [{ id: '../x', rules: ['r'] }] }, { batch: 'b' }),
-    (e) => e.status === 400
+    (/** @type {Error & { status?: number }} */ e) => e.status === 400
   );
   assert.deepEqual(decisions(f), []);
 });
@@ -300,7 +318,13 @@ test('the confirmation is the exact phrase; anything else confirms nothing', asy
   assert.equal(await confirmPrune(plan, async () => 'PRUNE 2 RULES'), false);
 });
 
+/**
+ * @param {Fixture} f
+ * @param {string[]} args
+ * @param {NodeJS.ProcessEnv} [env]
+ */
 const cli = (f, args, env = {}) => {
+  /** @type {NodeJS.ProcessEnv} */
   const base = { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' };
   for (const k of Object.keys(base))
     if (
@@ -330,11 +354,11 @@ test(
       stale: 0,
       'not-covered': 1,
     });
-    for (const [env, why] of [
+    for (const [env, why] of /** @type {[NodeJS.ProcessEnv, RegExp][]} */ ([
       [{}, /refused: output is piped/],
       [{ CI: '1' }, /refused in CI/],
       [{ PXSIG_AGENT: '1' }, /refused under agent \(PXSIG_AGENT=1\)/],
-    ]) {
+    ])) {
       const r = cli(f, ['a11y', '--prune'], env);
       assert.equal(r.status, 3, r.stderr);
       assert.match(r.stderr, why);
@@ -347,12 +371,20 @@ test(
 // --- through the server ------------------------------------------------------------------------
 
 const freePort = () =>
-  new Promise((ok) => {
-    const s = createServer().listen(0, '127.0.0.1', () => {
-      const p = s.address().port;
-      s.close(() => ok(p));
-    });
-  });
+  /** @type {Promise<number>} */ (
+    new Promise((ok) => {
+      const s = createServer().listen(0, '127.0.0.1', () => {
+        // A TCP listener: its address is an AddressInfo.
+        const p = /** @type {AddressInfo} */ (s.address()).port;
+        s.close(() => ok(p));
+      });
+    })
+  );
+/**
+ * @param {number} port
+ * @param {{ method?: string, path: string, headers?: Record<string, string>, body?: unknown }} req
+ * @returns {Promise<{ status: number | undefined, text: string, json: () => Answer }>}
+ */
 const raw = (port, { method = 'POST', path, headers = {}, body }) =>
   new Promise((ok, fail) => {
     const data = body === undefined ? undefined : JSON.stringify(body);
@@ -379,6 +411,7 @@ const raw = (port, { method = 'POST', path, headers = {}, body }) =>
     req.end(data);
   });
 
+/** @param {Fixture} f */
 async function serve(f) {
   const port = await freePort();
   const dash = mkdtempSync(join(tmpdir(), 'pxsig-dash-'));
@@ -394,10 +427,12 @@ async function serve(f) {
   let log = '';
   proc.stdout.on('data', (d) => (log += d));
   proc.stderr.on('data', (d) => (log += d));
-  await new Promise((ok, fail) => {
-    const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-    proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
-  });
+  await /** @type {Promise<void>} */ (
+    new Promise((ok, fail) => {
+      const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
+      proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
+    })
+  );
   const exited = new Promise((ok) => proc.on('exit', ok));
   return { port, url: `http://127.0.0.1:${port}`, stop: () => (proc.kill('SIGTERM'), exited) };
 }
@@ -408,6 +443,7 @@ test(
   async () => {
     const { f, plan } = project();
     const S = await serve(f);
+    /** @type {string[]} */
     const events = [];
     const sse = request({ host: '127.0.0.1', port: S.port, path: '/__pxsig/events' }, (res) =>
       res.on('data', (c) => events.push(String(c)))
@@ -420,8 +456,9 @@ test(
         batch: 'b-srv',
         reason: 'fixed',
       };
-      const cliToken = readToken(f.repo, S.url);
-      const mcpToken = readToken(f.repo, S.url, 'mcp');
+      // The server writes both tokens before it prints its URL (serve() waits for that line).
+      const cliToken = /** @type {string} */ (readToken(f.repo, S.url));
+      const mcpToken = /** @type {string} */ (readToken(f.repo, S.url, 'mcp'));
       assert.equal(
         (await raw(S.port, { path: '/__pxsig/a11y-prune', body })).status,
         403,

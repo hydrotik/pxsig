@@ -47,6 +47,11 @@ function setup() {
   return dir;
 }
 
+/**
+ * @param {string} dir
+ * @param {string[]} [extra]
+ * @param {Record<string, string>} [env]
+ */
 const check = (dir, extra = [], env = {}) => {
   const clean = Object.fromEntries(
     Object.entries(process.env).filter(
@@ -71,15 +76,20 @@ const check = (dir, extra = [], env = {}) => {
     { encoding: 'utf8', env: { ...clean, ...env } }
   );
   assert.ok(r.status === 0 || r.status === 1, r.stderr);
-  return Object.fromEntries(JSON.parse(r.stdout).results.map((x) => [x.id, x]));
+  return Object.fromEntries(
+    JSON.parse(r.stdout).results.map((/** @type {{ id: string }} */ x) => [x.id, x])
+  );
 };
 
+/** @typedef {{ threshold: number, minSsim: number, maxChangedPct: number, minCells: number }} GateValues */
+/** @param {GateValues} g */
 const envOf = (g) => ({
   PXSIG_THRESHOLD: String(g.threshold),
   PXSIG_MIN_SSIM: String(g.minSsim),
   PXSIG_MAX_CHANGED_PCT: String(g.maxChangedPct),
   PXSIG_MIN_CELLS: String(g.minCells),
 });
+/** @param {GateValues} g */
 const flagsOf = (g) => [
   '--threshold',
   String(g.threshold),

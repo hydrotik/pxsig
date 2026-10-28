@@ -16,8 +16,13 @@ import {
   writeRunManifest,
 } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin } from './fixture.mjs';
+/** @import { ManifestEntry } from '../src/types.js' */
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
+/**
+ * @param {string[]} args
+ * @param {string} cwd
+ */
 const cli = (args, cwd) =>
   spawnSync(process.execPath, [join(src, 'cli.mjs'), ...args], {
     cwd,
@@ -31,6 +36,7 @@ const cli = (args, cwd) =>
       PXSIG_PROJECT: '',
     },
   });
+/** @param {Record<string, unknown>} files */
 const tree = (files) => {
   const root = mkdtempSync(join(tmpdir(), 'pxsig-sel-'));
   mkdirSync(join(root, '.git'));
@@ -40,6 +46,11 @@ const tree = (files) => {
   }
   return root;
 };
+/**
+ * @param {string} repo
+ * @param {string} run
+ * @param {string[]} files
+ */
 const affected = (repo, run, files) => {
   const r = spawnSync(
     rustBin,
@@ -49,6 +60,10 @@ const affected = (repo, run, files) => {
   assert.equal(r.status, 0, r.stderr);
   return JSON.parse(r.stdout);
 };
+/**
+ * @param {{ files: { path: string, class: string }[] }} a
+ * @param {string} path
+ */
 const classOf = (a, path) => a.files.find((f) => f.path === path)?.class;
 
 test('affects.ignore is anchored like affects.extra, plus $repo/', () => {
@@ -127,7 +142,9 @@ test(
   () => {
     const f = fixture({ withSigs: false });
     const run = writeRunManifest(openProject({ cwd: f.repo, env: { PXSIG_BIN: rustBin } })).path;
-    const sig = f.manifest.stories.find((e) => e.id === f.ids.ok).sig;
+    // The fixture's manifest lists ids.ok.
+    const sig = /** @type {ManifestEntry} */ (f.manifest.stories.find((e) => e.id === f.ids.ok))
+      .sig;
     let a = affected(f.repo, run, [sig]);
     assert.deepEqual(
       [classOf(a, sig), a.ids, a.baselines, a.all],
@@ -178,6 +195,7 @@ test(
   { skip: !hasRust && 'Rust binary not built' },
   () => {
     const dir = mkdtempSync(join(tmpdir(), 'pxsig-sel-report-'));
+    /** @param {Record<string, unknown>} summary */
     const md = (summary) => {
       writeFileSync(
         join(dir, 'check.json'),
@@ -230,7 +248,10 @@ test(
   { skip: !hasRust && 'Rust binary not built' },
   async () => {
     const f = fixture({ withSigs: false });
-    const engine = rustAffected(f.ctx);
+    // The test is skipped without the binary, so the engine is there.
+    const engine = /** @type {NonNullable<ReturnType<typeof rustAffected>>} */ (
+      rustAffected(f.ctx)
+    );
     try {
       assert.deepEqual(
         await engine.affected('README.md'),
@@ -310,7 +331,14 @@ test(
     let a = affected(f.repo, run(), ['src/components/Alpha/alpha.json']);
     assert.deepEqual([classOf(a, 'src/components/Alpha/alpha.json'), a.all], ['graph', false]);
     assert.deepEqual(
-      a.unresolved.map((u) => [u.file, u.spec, u.accepted, u.selects]),
+      a.unresolved.map(
+        (/** @type {{ file: string, spec: string, accepted: boolean, selects: string }} */ u) => [
+          u.file,
+          u.spec,
+          u.accepted,
+          u.selects,
+        ]
+      ),
       [[alpha, 'virtual:status', false, 'entries']]
     );
     const r = cli(['affected', 'src/components/Alpha/alpha.json'], f.repo);

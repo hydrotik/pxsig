@@ -21,9 +21,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { resolveContext, scanStories } from '../src/lib/integrity.mjs';
-/** @import { StoryIndex } from '../src/types.js' */
 import { readHeader, readSection } from '../src/lib/psig.mjs';
 import { openProject, rustBinary } from '../src/lib/workspace.mjs';
+
+/** @import { Manifest, ManifestEntry, StoryIndex, CheckRow } from '../src/types.js' */
 
 export const rustBin = rustBinary();
 export const hasRust = existsSync(rustBin);
@@ -34,11 +35,16 @@ const CRC = Array.from({ length: 256 }, (_, n) => {
   for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
   return c >>> 0;
 });
+/** @param {Buffer} buf */
 const crc32 = (buf) => {
   let c = 0xffffffff;
   for (const b of buf) c = CRC[(c ^ b) & 0xff] ^ (c >>> 8);
   return (c ^ 0xffffffff) >>> 0;
 };
+/**
+ * @param {string} type
+ * @param {Buffer} data
+ */
 const chunk = (type, data) => {
   const len = Buffer.alloc(4);
   len.writeUInt32BE(data.length);
@@ -47,7 +53,12 @@ const chunk = (type, data) => {
   crc.writeUInt32BE(crc32(td));
   return Buffer.concat([len, td, crc]);
 };
-/** A w×h RGBA PNG; `px(x, y)` → [r, g, b]. */
+/**
+ * A w×h RGBA PNG; `px(x, y)` → [r, g, b].
+ * @param {number} w
+ * @param {number} h
+ * @param {(x: number, y: number) => number[]} px
+ */
 export function png(w, h, px) {
   const raw = Buffer.alloc((w * 4 + 1) * h);
   for (let y = 0; y < h; y++) {
@@ -80,10 +91,18 @@ export const BROKEN = png(128, 128, (x, y) =>
 );
 
 // --- fixture repo -----------------------------------------------------------------------------------------
+/**
+ * @param {string} title
+ * @param {string[]} exports
+ */
 export const STORY = (title, exports) =>
   `import type { Meta, StoryObj } from '@storybook/react';\nconst meta = { title: '${title}', component: () => null } satisfies Meta;\nexport default meta;\ntype Story = StoryObj<typeof meta>;\n${exports.map((e) => `export const ${e}: Story = {};`).join('\n')}\n// export const Commented: Story = {};\n`;
 
-/** A `.psig` with a header only, for tests that don't run the Rust engine (`hasImage` reads headers). */
+/**
+ * A `.psig` with a header only, for tests that don't run the Rust engine (`hasImage` reads headers).
+ * @param {string} id
+ * @param {{ image: boolean }} opts
+ */
 function fakePsig(id, { image }) {
   const header = Buffer.from(
     JSON.stringify({
@@ -111,11 +130,16 @@ function fakePsig(id, { image }) {
  *   src/components/{Alpha,Beta,Gamma,Delta}/*.stories.tsx, src/internal/Helpers/Helpers.stories.tsx
  *   .pxsig/{manifest.json, baselines/, renders/latest, reports/, a11y.json}
  *   node_modules/@storybook/react (a stub, so the stories' package import resolves)
+ * @param {{ withSigs?: boolean }} [opts]
  */
 export function fixture({ withSigs = hasRust } = {}) {
   const repo = mkdtempSync(join(tmpdir(), 'pxsig-integrity-'));
   mkdirSync(join(repo, '.git'));
   const px = join(repo, '.pxsig');
+  /**
+   * @param {string} p
+   * @param {string | Buffer} data
+   */
   const w = (p, data) => (mkdirSync(dirname(p), { recursive: true }), writeFileSync(p, data));
   // Installed, as in a real project: the stories' one package import resolves (external).
   w(join(repo, 'node_modules/@storybook/react/package.json'), '{"name":"@storybook/react"}');
@@ -149,6 +173,11 @@ export function fixture({ withSigs = hasRust } = {}) {
     integrity: { renderSkewMs: 60_000 },
   };
   w(join(repo, 'pxsig.config.json'), JSON.stringify(config, null, 2));
+  /**
+   * @param {string} id
+   * @param {string} folder
+   * @returns {ManifestEntry}
+   */
   const entry = (id, folder) => ({
     id,
     story: id,
@@ -180,13 +209,19 @@ export function fixture({ withSigs = hasRust } = {}) {
     gone: 'components-omega--renamed',
     unregistered: 'components-gamma--new-one',
   };
+  /** @param {string} id */
   const folder = (id) =>
-    ({ alpha: 'Alpha', beta: 'Beta', gamma: 'Gamma', delta: 'Delta', omega: 'Omega' })[
-      id.split('--')[0].split('-')[1]
-    ];
+    /** @type {Record<string, string>} */ ({
+      alpha: 'Alpha',
+      beta: 'Beta',
+      gamma: 'Gamma',
+      delta: 'Delta',
+      omega: 'Omega',
+    })[id.split('--')[0].split('-')[1]];
   const manifestIds = Object.entries(ids)
     .filter(([k]) => k !== 'unregistered')
     .map(([, id]) => id);
+  /** @type {Manifest} */
   const manifest = {
     version: 2,
     project: 'fixture',
@@ -194,7 +229,9 @@ export function fixture({ withSigs = hasRust } = {}) {
     stories: manifestIds.map((id) => entry(id, folder(id))),
   };
   w(join(px, 'manifest.json'), JSON.stringify(manifest, null, 2));
+  /** @param {string} id */
   const latest = (id) => join(px, 'renders', 'latest', `${id}.png`);
+  /** @param {string} id */
   const sig = (id) => join(repo, entry(id, folder(id)).sig);
   const noImage = [ids.restorable, ids.unrecoverable, ids.never];
   for (const id of manifestIds) {
@@ -233,6 +270,11 @@ export function fixture({ withSigs = hasRust } = {}) {
   // The report: one row per checked entry; `never` and `unbaselined` are absent.
   const now = Date.now();
   const at = new Date(now).toISOString();
+  /**
+   * @param {string} id
+   * @param {Partial<CheckRow>} [extra]
+   * @returns {CheckRow}
+   */
   const row = (id, extra = {}) => ({
     id,
     story: id,
@@ -291,16 +333,22 @@ export function fixture({ withSigs = hasRust } = {}) {
     stories: scanStories(ctx),
   };
   // Import graph stand-in: a story file affects the entries of its own stories.
+  /** @param {string} file */
   const affected = async (file) =>
     manifest.stories.filter((e) => e.importPath === file).map((e) => e.id);
+  /** @param {string} id */
   const hasBaseImage = (id) =>
     readHeader(sig(id))?.sections?.some((x) => x.name === 'image') ?? false;
   return { repo, px, ctx, ids, index, affected, latest, sig, manifest, hasBaseImage };
 }
 
-/** Every signature section in the store, hashed: repairs may add images, never change a signature. */
+/**
+ * Every signature section in the store, hashed: repairs may add images, never change a signature.
+ * @param {string} dir
+ */
 export const hashSignatures = (dir) => {
   const h = createHash('sha256');
+  /** @param {string} d */
   const walk = (d) => {
     if (!existsSync(d)) return;
     for (const n of readdirSync(d).sort()) {
@@ -315,8 +363,10 @@ export const hashSignatures = (dir) => {
   walk(dir);
   return h.digest('hex');
 };
+/** @param {string} dir */
 export const hashTree = (dir) => {
   const h = createHash('sha256');
+  /** @param {string} d */
   const walk = (d) => {
     if (!existsSync(d)) return;
     for (const n of readdirSync(d).sort()) {

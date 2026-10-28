@@ -1397,11 +1397,10 @@ function summarizeIds(C, ids, via, t0) {
   /** @type {{ enforcement?: Record<string, unknown>, wouldFail?: boolean }} */
   let warn = {};
   try {
-    const enf = resolveEnforcement(/** @type {import('./types.js').Project} */ (C.P), {
+    const enf = resolveEnforcement(C.P, {
       flags: {},
     });
-    // check.json's rows (pxsig's own).
-    const out = outcome(enf, checkFindings(/** @type {import('./types.js').CheckRow[]} */ (rows)));
+    const out = outcome(enf, checkFindings(rows));
     if (speaks(enf, out))
       warn = {
         enforcement: {
@@ -1439,7 +1438,7 @@ function summarizeIds(C, ids, via, t0) {
 function warnMode(C) {
   if (C.P.config?.enforcement == null) return {};
   try {
-    const enf = resolveEnforcement(/** @type {import('./types.js').Project} */ (C.P), {
+    const enf = resolveEnforcement(C.P, {
       flags: {},
     });
     return {
@@ -1448,9 +1447,7 @@ function warnMode(C) {
         warned: enf.configured,
         warnUntil: enf.warnUntil,
         ...(enf.ending ? { daysLeft: enf.daysLeft } : {}),
-        readiness: enf.configured.length
-          ? readinessTally(/** @type {import('./types.js').Project} */ (C.P))
-          : null,
+        readiness: enf.configured.length ? readinessTally(C.P) : null,
       },
     };
   } catch (e) {

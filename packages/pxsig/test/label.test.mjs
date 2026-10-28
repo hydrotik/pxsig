@@ -14,6 +14,7 @@ import { initProject } from '../src/lib/setup.mjs';
 import { openProject, PXSIG_VERSION } from '../src/lib/workspace.mjs';
 
 const cli = fileURLToPath(new URL('../bin/pxsig.mjs', import.meta.url));
+/** @param {Record<string, unknown>} files */
 const tree = (files) => {
   const root = mkdtempSync(join(tmpdir(), 'pxsig-label-'));
   mkdirSync(join(root, '.git'));
@@ -23,7 +24,12 @@ const tree = (files) => {
   }
   return root;
 };
+/** @param {string} dir */
 const config = (dir) => JSON.parse(readFileSync(join(dir, 'pxsig.config.json'), 'utf8'));
+/**
+ * @param {string[]} args
+ * @param {string} cwd
+ */
 const run = (args, cwd) =>
   spawnSync(process.execPath, [cli, ...args], {
     cwd,

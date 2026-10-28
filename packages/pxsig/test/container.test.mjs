@@ -39,7 +39,10 @@ import { fixture } from './fixture.mjs';
 const pkg = join(dirname(fileURLToPath(import.meta.url)), '..');
 const cli = join(pkg, 'bin', 'pxsig.mjs');
 
-/** A Playwright package folder with only a package.json and an entry. */
+/**
+ * A Playwright package folder with only a package.json and an entry.
+ * @param {string} version
+ */
 function fakePlaywright(version) {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'pxsig-pw-')));
   writeFileSync(
@@ -94,22 +97,33 @@ test('--browser and PXSIG_BROWSER_WS set capture.browserEndpoint; the flag wins'
   assert.equal(flag.config.capture.browserEndpoint, 'ws://flag/');
 });
 
-/** A stand-in Playwright whose engines record how they were opened. */
+/**
+ * A stand-in Playwright whose engines record how they were opened.
+ * @param {{ fail?: string | null }} [opts]
+ */
 function stubPlaywright({ fail = null } = {}) {
+  /** @type {unknown[][]} */
   const calls = [];
+  /** @param {string} type */
   const browser = (type) => ({
     type,
     version: () => '145.0.1',
     browserType: () => ({ name: () => type }),
     close: async () => calls.push(['close', type]),
   });
+  /** @param {string} type */
   const engine = (type) => ({
+    /**
+     * @param {string} ws
+     * @param {unknown} opts
+     */
     connect: async (ws, opts) => {
       calls.push(['connect', type, ws, opts]);
       if (fail) throw new Error(fail);
       return browser(type);
     },
-    launch: async (opts) => (calls.push(['launch', type, opts]), browser(type)),
+    launch: async (/** @type {unknown} */ opts) =>
+      (calls.push(['launch', type, opts]), browser(type)),
   });
   return {
     calls,
@@ -126,7 +140,11 @@ function stubPlaywright({ fail = null } = {}) {
 
 test('with an endpoint, every engine connects to it (localhost exposed, the engine in a header); without one, nothing changes', async () => {
   const { calls, pw } = stubPlaywright();
-  const pool = browserPool(null, {}, { endpoint: 'ws://127.0.0.1:3000/', pw });
+  // browserPool's `pw` defaults to null; it takes a Playwright module (here a stand-in).
+  const pool =
+    /** @type {(project: null, given: {}, opts: { endpoint?: string | null, pw?: unknown }) => ReturnType<typeof browserPool>} */ (
+      browserPool
+    )(null, {}, { endpoint: 'ws://127.0.0.1:3000/', pw });
   const c = await pool.get('chromium');
   await pool.get('firefox');
   assert.equal(c.__pxsigRemote, 'ws://127.0.0.1:3000/');
@@ -149,7 +167,10 @@ test('with an endpoint, every engine connects to it (localhost exposed, the engi
   await pool.close();
 
   const local = stubPlaywright();
-  const p2 = browserPool(null, {}, { endpoint: null, pw: local.pw });
+  const p2 =
+    /** @type {(project: null, given: {}, opts: { endpoint?: string | null, pw?: unknown }) => ReturnType<typeof browserPool>} */ (
+      browserPool
+    )(null, {}, { endpoint: null, pw: local.pw });
   await p2.get('webkit');
   assert.deepEqual(
     local.calls.map((x) => x[0]),
@@ -163,16 +184,19 @@ test('a browser server that cannot be used is a setup error naming the endpoint'
   const { pw } = stubPlaywright({
     fail: 'browserType.connect: WebSocket error: connect ECONNREFUSED 127.0.0.1:3000\nCall log: …',
   });
-  await assert.rejects(connectBrowser(pw, 'ws://127.0.0.1:3000/', 'chromium'), (e) => {
-    assert.equal(e.constructor.name, 'SetupError');
-    assert.match(
-      e.message,
-      /cannot use the browser server at ws:\/\/127\.0\.0\.1:3000\/ \(chromium\): browserType\.connect: WebSocket error: connect ECONNREFUSED/
-    );
-    assert.match(e.message, /pxsig browser status/);
-    assert.ok(!e.message.includes('Call log'), 'one line');
-    return true;
-  });
+  await assert.rejects(
+    connectBrowser(pw, 'ws://127.0.0.1:3000/', 'chromium'),
+    (/** @type {Error} */ e) => {
+      assert.equal(e.constructor.name, 'SetupError');
+      assert.match(
+        e.message,
+        /cannot use the browser server at ws:\/\/127\.0\.0\.1:3000\/ \(chromium\): browserType\.connect: WebSocket error: connect ECONNREFUSED/
+      );
+      assert.match(e.message, /pxsig browser status/);
+      assert.ok(!e.message.includes('Call log'), 'one line');
+      return true;
+    }
+  );
 });
 
 test("a remote browser's environment: its OS from the page, its image from the record, never this machine's fonts", async () => {
@@ -193,10 +217,21 @@ test("a remote browser's environment: its OS from the page, its image from the r
   assert.deepEqual(osFromProbe(null), { platform: null, arch: null, release: null, distro: null });
   const page = {
     setContent: async () => {},
+    /**
+     * The probe page's `evaluate`: only the font probe (`{ families }`) answers.
+     * @template A
+     * @param {(arg: A) => unknown} fn
+     * @param {A} [arg]
+     */
     evaluate: async (fn, arg) =>
-      arg?.families
+      /** @type {{ families?: string[] } | undefined} */ (arg)?.families
         ? {
-            widths: Object.fromEntries(arg.families.map((f) => [f, [10, 13.333, 26.667]])),
+            widths: Object.fromEntries(
+              // The condition above: `families` is set.
+              /** @type {string[]} */ (/** @type {{ families?: string[] }} */ (arg).families).map(
+                (f) => [f, [10, 13.333, 26.667]]
+              )
+            ),
             renderer: 'Google SwiftShader',
             colorGamut: 'srgb',
             timezone: 'UTC',
@@ -257,8 +292,10 @@ function fakeDocker({
   },
   ready = true,
 } = {}) {
+  /** @type {string[][]} */
   const calls = [];
   let up = false;
+  /** @param {string[]} args */
   const docker = (args) => {
     calls.push(args);
     if (missing)
@@ -311,7 +348,11 @@ test('pxsig browser: status with nothing recorded never starts docker; start, st
     docker: d.docker,
   });
   assert.equal(r.exit, 0);
-  const run = d.calls.find((a) => a[0] === 'run');
+  // `start` ran `docker run` (r.exit is 0 above): the call is there.
+  // (Through unknown: the deepEqual above narrowed `d.calls` to an empty array.)
+  const run = /** @type {string[]} */ (
+    /** @type {unknown} */ (d.calls.find((a) => a[0] === 'run'))
+  );
   assert.deepEqual(
     run.slice(run.indexOf('-p'), run.indexOf('-p') + 2),
     ['-p', '127.0.0.1:3123:3000'],
@@ -365,7 +406,8 @@ test('pxsig browser: no docker CLI, or no daemon, is a setup error (exit 2); bad
       root,
       docker: fakeDocker({ missing: true }).docker,
     }),
-    (e) => e.exit === 2 && /docker CLI is not installed/.test(e.message)
+    (/** @type {Error & { exit?: number }} */ e) =>
+      e.exit === 2 && /docker CLI is not installed/.test(e.message)
   );
   await assert.rejects(
     browserCommand({
@@ -374,7 +416,8 @@ test('pxsig browser: no docker CLI, or no daemon, is a setup error (exit 2); bad
       root,
       docker: fakeDocker({ daemon: false }).docker,
     }),
-    (e) => e.exit === 2 && /daemon is not answering/.test(e.message)
+    (/** @type {Error & { exit?: number }} */ e) =>
+      e.exit === 2 && /daemon is not answering/.test(e.message)
   );
   await assert.rejects(
     browserCommand({
@@ -383,11 +426,11 @@ test('pxsig browser: no docker CLI, or no daemon, is a setup error (exit 2); bad
       root,
       docker: fakeDocker().docker,
     }),
-    (e) => e.exit === 2 && /--port/.test(e.message)
+    (/** @type {Error & { exit?: number }} */ e) => e.exit === 2 && /--port/.test(e.message)
   );
   await assert.rejects(
     browserCommand({ sub: 'nope', root }),
-    (e) => e.exit === 2 && /usage/.test(e.message)
+    (/** @type {Error & { exit?: number }} */ e) => e.exit === 2 && /usage/.test(e.message)
   );
   await assert.rejects(
     browserCommand({
@@ -397,7 +440,7 @@ test('pxsig browser: no docker CLI, or no daemon, is a setup error (exit 2); bad
       docker: fakeDocker({ ready: false }).docker,
       waitMs: 50,
     }),
-    (e) => e.exit === 2 && /did not start/.test(e.message)
+    (/** @type {Error & { exit?: number }} */ e) => e.exit === 2 && /did not start/.test(e.message)
   );
   // A record, and docker gone: status and stop say so (exit 2).
   mkdirSync(dirname(browserFile(root)), { recursive: true });
@@ -407,7 +450,7 @@ test('pxsig browser: no docker CLI, or no daemon, is a setup error (exit 2); bad
   );
   await assert.rejects(
     browserCommand({ sub: 'status', root, docker: fakeDocker({ missing: true }).docker }),
-    (e) => e.exit === 2
+    (/** @type {Error & { exit?: number }} */ e) => e.exit === 2
   );
 });
 

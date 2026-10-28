@@ -18,10 +18,22 @@ import { tools } from '../src/mcp.mjs';
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = join(pkg, '..', '..');
+/**
+ * help/*.json as these tests read it.
+ * @typedef {{ name: string, readBy?: string }} HelpFlag
+ * @typedef {{ cmd: string, shows: string }} HelpExample
+ * @typedef {{ flags?: HelpFlag[], examples?: HelpExample[], subcommands?: Record<string, HelpEntry> }} HelpEntry
+ * @typedef {{ properties?: Record<string, SchemaNode>, $ref?: string, $defs?: Record<string, SchemaNode> }} SchemaNode
+ */
+
+/** @param {...string} p */
 const read = (...p) => readFileSync(join(...p), 'utf8').replace(/\r\n/g, '\n');
+/** @param {string} f */
 const src = (f) => read(pkg, 'src', f);
+/** @type {{ global: HelpEntry & { flags: HelpFlag[] }, commands: Record<string, HelpEntry>, settings: Record<string, unknown>, topics: Record<string, string> }} */
 const { global, commands, settings, topics } = helpSource();
 const cli = join(pkg, 'bin', 'pxsig.mjs');
+/** @param {string[]} args */
 const pxsig = (args) =>
   spawnSync(process.execPath, [cli, ...args], {
     encoding: 'utf8',
@@ -71,7 +83,10 @@ function readFlags() {
 }
 
 test('every command the CLI dispatches has an entry, and no other', () => {
-  const block = src('cli.mjs').match(/\nconst commands = \{\n([\s\S]*?)\n\};\n/)[1];
+  // cli.mjs has the block (the test fails on a TypeError otherwise).
+  const block = /** @type {RegExpMatchArray} */ (
+    src('cli.mjs').match(/\nconst commands = \{\n([\s\S]*?)\n\};\n/)
+  )[1];
   const names = [...block.matchAll(/^ {2}(?:async )?([a-z0-9]+)(?:\(\) \{|: )/gm)].map((m) => m[1]);
   assert.deepEqual(names.sort(), Object.keys(commands).sort());
 });
@@ -92,7 +107,12 @@ test('every flag the CLI reads has an entry, and every entry names a flag someth
 });
 
 test('every config key has a setting entry, and no other', () => {
+  /** @type {string[]} */
   const keys = [];
+  /**
+   * @param {SchemaNode} s
+   * @param {string} p
+   */
   const walk = (s, p) => {
     for (const [k, v] of Object.entries(s.properties ?? {})) {
       if (k === '$schema') continue;
@@ -100,9 +120,12 @@ test('every config key has a setting entry, and no other', () => {
       keys.push(key);
       // Follow this file's own definitions; a $ref to another file (workspace defaults → project) is that file's keys.
       const ref = v.$ref?.startsWith('#/$defs/') ? v.$ref.split('/').pop() : null;
-      if (!v.$ref || ref) walk(ref ? root.$defs[ref] : v, key);
+      // A local $ref names one of the schema's own $defs.
+      if (!v.$ref || ref)
+        walk(ref ? /** @type {Record<string, SchemaNode>} */ (root.$defs)[ref] : v, key);
     }
   };
+  /** @type {SchemaNode} */
   let root;
   for (const f of ['project.json', 'workspace.json']) {
     root = JSON.parse(read(pkg, 'schema', f));
@@ -127,6 +150,7 @@ test('docs/cli.md names every command and flag; docs/configuration.md every sett
   const conf = read(repo, 'docs', 'configuration.md');
   const keys = Object.keys(settings);
   // A nested key may be written whole (`store.dir`) or by its last part in its section's table.
+  /** @param {string} k */
   const named = (k) => conf.includes(`\`${k}\``) || conf.includes(`\`${k.split('.').pop()}\``);
   for (const k of keys)
     assert.ok(
@@ -136,6 +160,7 @@ test('docs/cli.md names every command and flag; docs/configuration.md every sett
 });
 
 test('every example is a command with flags it takes', () => {
+  /** @param {string} cmd */
   const split = (cmd) => [...cmd.matchAll(/"([^"]*)"|(\S+)/g)].map((m) => m[1] ?? m[2]);
   const globals = new Set(global.flags.map((f) => f.name));
   for (const [name, c] of Object.entries(commands))
@@ -156,7 +181,8 @@ test('every example is a command with flags it takes', () => {
 });
 
 test("cli.mjs's header lists the same commands", () => {
-  const header = src('cli.mjs').match(/\/\*\*([\s\S]*?)\*\//)[1];
+  // cli.mjs opens with its header comment.
+  const header = /** @type {RegExpMatchArray} */ (src('cli.mjs').match(/\/\*\*([\s\S]*?)\*\//))[1];
   const listed = new Set(
     [...header.matchAll(/^ \* {3}([a-z0-9]+)\b/gm)].map((m) => m[1]).filter((c) => c !== 'pxsig')
   );
@@ -172,7 +198,10 @@ test("the dashboard's Commands rows are examples here, word for word", () => {
   const tsx = read(repo, 'packages', 'dashboard', 'src', 'views', 'Help.tsx');
   const copy = JSON.parse(read(repo, 'packages', 'dashboard', 'src', 'copy', 'en.json'));
   const rows = [
-    ...tsx.match(/const COMMANDS[^=]*= \[([\s\S]*?)\];/)[1].matchAll(/\['([^']+)', '([^']+)'\]/g),
+    // Help.tsx has the COMMANDS table.
+    .../** @type {RegExpMatchArray} */ (
+      tsx.match(/const COMMANDS[^=]*= \[([\s\S]*?)\];/)
+    )[1].matchAll(/\['([^']+)', '([^']+)'\]/g),
   ];
   assert.ok(rows.length >= 5);
   const examples = new Map(
@@ -186,8 +215,8 @@ test("the dashboard's Commands rows are examples here, word for word", () => {
 
 test('pxsig --help and pxsig help print the header, as before', () => {
   const header =
-    src('cli.mjs')
-      .match(/\/\*\*([\s\S]*?)\*\//)[1]
+    // cli.mjs opens with its header comment.
+    /** @type {RegExpMatchArray} */ (src('cli.mjs').match(/\/\*\*([\s\S]*?)\*\//))[1]
       .replace(/^ \* ?/gm, '')
       .trim() + '\n';
   assert.equal(pxsig(['--help']).stdout.replace(/\r\n/g, '\n'), header);
@@ -225,13 +254,16 @@ test('every topic and every setting is reachable by name', () => {
 });
 
 test("the MCP's pxsig_help gives the same data, read-only", async () => {
-  const t = tools.find((x) => x.name === 'pxsig_help');
+  // pxsig_help is one of the tools; its run takes `{ name? }` and lists the names without one.
+  const t = /** @type {{ run: (args: { name?: string }) => Promise<{ names: string[] }> }} */ (
+    tools.find((x) => x.name === 'pxsig_help')
+  );
   assert.ok((await t.run({})).names.includes('check'));
   assert.deepEqual(await t.run({ name: 'approve verify' }), {
     kind: 'command',
     name: 'approve verify',
     // approve has subcommands.
-    entry: /** @type {Record<string, unknown>} */ (commands.approve.subcommands).verify,
+    entry: /** @type {Record<string, HelpEntry>} */ (commands.approve.subcommands).verify,
   });
   await assert.rejects(t.run({ name: 'nope' }), /nearest/);
 });
