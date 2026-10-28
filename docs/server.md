@@ -18,7 +18,8 @@ Approving a baseline or re-checking a story then costs one render.
 | `--workspace <dir>` | The workspace root, instead of walking up from the current folder.                                                                                                                                                              |
 | `--debug`           | Print every program the server starts, with its arguments, on stderr (see [platforms.md](platforms.md#programs-pxsig-starts)).                                                                                                  |
 
-The server binds to `127.0.0.1` only. On start it writes
+The server binds to `127.0.0.1` only: it is each developer's own, never deployed
+([team.md](team.md)). On start it writes
 `<workspace>/node_modules/.cache/pxsig/server.json` (`url`, `pid`, `startedAt`, `projects`), so the
 CLI, the MCP server and the Storybook addon find it on whatever port it got. It removes the file
 on exit. A second server started beside a running one (another port) leaves the file naming the

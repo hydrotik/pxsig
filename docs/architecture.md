@@ -12,11 +12,12 @@
 | Server          | `packages/pxsig/src/serve.mjs`                        | Dashboard, HTTP API, event stream, review, on-demand checks, watch mode, integrity for every project.                                                         |
 | MCP server      | `packages/pxsig/src/mcp.mjs`                          | The tools, over stdio.                                                                                                                                        |
 | Integrity       | `packages/pxsig/src/lib/integrity.mjs`, `repair.mjs`  | The ledger, and the safe repairs.                                                                                                                             |
-| Approvals       | `packages/pxsig/src/lib/approvals.mjs`, `approve.mjs` | Snapshot, log, undo, verify; the guarded bulk approval.                                                                                                       |
+| Approvals       | `packages/pxsig/src/lib/approvals.mjs`, `approve.mjs` | History copy, log, undo, verify; the guarded bulk approval.                                                                                                   |
+| Store snapshot  | `packages/pxsig/src/snapshot.mjs`                     | `pxsig snapshot`: the committed store and git as one read-only JSON file, for a deployed Storybook ([team.md](team.md)).                                      |
 | Engine          | `crates/pxsig-core`                                   | Signatures, metrics, gate, detail channel, pixel diff, trim, the `.psig` container. Pure: no filesystem access, no clock.                                     |
 | Engine binary   | `crates/pxsig-cli`                                    | Batch commands over a manifest on a thread pool, the import graph, reports, and a long-lived stdio mode for the server.                                       |
 | Dashboard       | `packages/dashboard`                                  | The React app the server and `pxsig report` serve.                                                                                                            |
-| Storybook addon | `packages/storybook-addon`                            | Panel and sidebar statuses, fed by the server.                                                                                                                |
+| Storybook addon | `packages/storybook-addon`                            | Panel and sidebar statuses, fed by the server; on a deployed Storybook, the read-only snapshot its build carries.                                             |
 
 ## Data flow
 
