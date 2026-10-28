@@ -253,6 +253,15 @@ test('every topic and every setting is reachable by name', () => {
   assert.ok(helpNames().includes('approve verify'));
 });
 
+test('a setting whose values are one string has its page', () => {
+  for (const k of ['approvals.identity', 'approvals.level']) {
+    const r = pxsig(['help', k]);
+    assert.equal(r.status, 0, `${k}: ${r.stderr}`);
+    assert.match(r.stdout, new RegExp(`^## ${k.replace('.', '\\.')}[\\s\\S]*Values`), k);
+  }
+  assert.match(pxsig(['help', 'approvals.identity']).stdout, /none \| git-email/);
+});
+
 test("the MCP's pxsig_help gives the same data, read-only", async () => {
   // pxsig_help is one of the tools; its run takes `{ name? }` and lists the names without one.
   const t = /** @type {{ run: (args: { name?: string }) => Promise<{ names: string[] }> }} */ (

@@ -159,8 +159,9 @@ export function helpBlocks(found, CMD = 'pxsig') {
       ['File', entry.file],
       ['Meaning', entry.meaning],
     ];
-    // Two settings write `values` as one string, and this throws for them (reported, not fixed).
-    if (entry.values) kv.push(['Values', /** @type {string[]} */ (entry.values).join(', ')]);
+    // Most settings list their values; a few write them as one string.
+    if (entry.values)
+      kv.push(['Values', Array.isArray(entry.values) ? entry.values.join(', ') : entry.values]);
     if (entry.default != null) kv.push(['Default', entry.default]);
     if (entry.operation) kv.push(['Effect', entry.operation]);
     if (entry.flag) kv.push(['Flag', entry.flag]);
