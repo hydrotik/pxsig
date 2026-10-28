@@ -8,22 +8,22 @@ pxsig runs on macOS, Linux and Windows, and CI tests every pull request on all t
 This is the whole list. pxsig starts programs through one module (`packages/pxsig/src/lib/spawn.mjs`),
 which refuses any program not listed here; a test fails if code anywhere else starts a process.
 
-| Program                                                                         | OS                                       | When                                                                                                                  | Why                                                                                                                                  | To avoid it                                           |
-| ------------------------------------------------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| `node` (the one running pxsig)                                                  | all                                      | `pxsig serve`, `check`, `mcp`, `report`, repairs; `storybook build` with the addon (`pxsig snapshot`, no shell)       | pxsig runs its own parts as child processes                                                                                          | —                                                     |
-| `pxsig` (the engine binary from `@pxsig/cli-<platform>-<arch>`, or `PXSIG_BIN`) | all                                      | checks, baselines, `affected`, `cat`, the server's engine                                                             | signatures and comparisons are computed in Rust                                                                                      | —                                                     |
-| `git`                                                                           | all                                      | `approve` (the commit an approval was made on, the log's history), `snapshot`, repairs, `doctor` (`.psig` attributes) | reading the repository's history and attributes                                                                                      | —                                                     |
-| `ps`                                                                            | macOS, Linux                             | taking over a store lock                                                                                              | the lock holder's start time, so a reused process id is not mistaken for the holder                                                  | —                                                     |
-| `osascript`, then `open`                                                        | macOS                                    | `pxsig serve`, once at start                                                                                          | reuse an open Chrome tab on the dashboard, else open it in the default browser (macOS asks once whether Terminal may control Chrome) | `--no-open`                                           |
-| `xdg-open`                                                                      | Linux                                    | `pxsig serve`, once at start                                                                                          | open the dashboard in the default browser                                                                                            | `--no-open`                                           |
-| `fc-list : family style`                                                        | Linux, only when fontconfig is installed | once per browser launch in a check or `pxsig serve`                                                                   | a sha256 of the installed font list for the render environment (`fonts.system`, informational); the list itself is not kept          | — (absent: the field is `null`)                       |
-| `docker`                                                                        | all                                      | only `pxsig browser start`, `stop` and `status`                                                                       | run, stop and inspect the browser container ([container.md](container.md))                                                           | do not run those commands; nothing else starts Docker |
-| Chromium, from Playwright                                                       | all                                      | rendering stories                                                                                                     | Playwright starts its own browser; pxsig asks it to                                                                                  | —                                                     |
+| Program                                                                                         | OS                                       | When                                                                                                                  | Why                                                                                                                                  | To avoid it                                           |
+| ----------------------------------------------------------------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| `node` (the one running pxsig)                                                                  | all                                      | `pxsig serve`, `check`, `mcp`, `report`, repairs; `storybook build` with the addon (`pxsig snapshot`, no shell)       | pxsig runs its own parts as child processes                                                                                          | —                                                     |
+| `pxsig` (the engine binary from `@pxsig/cli-<platform>-<arch>`, or `PXSIG_BIN`)                 | all                                      | checks, baselines, `affected`, `cat`, the server's engine                                                             | signatures and comparisons are computed in Rust                                                                                      | —                                                     |
+| `git`                                                                                           | all                                      | `approve` (the commit an approval was made on, the log's history), `snapshot`, repairs, `doctor` (`.psig` attributes) | reading the repository's history and attributes                                                                                      | —                                                     |
+| `ps`                                                                                            | macOS, Linux                             | taking over a store lock                                                                                              | the lock holder's start time, so a reused process id is not mistaken for the holder                                                  | —                                                     |
+| `osascript`, then `open`                                                                        | macOS                                    | `pxsig serve`, once at start                                                                                          | reuse an open Chrome tab on the dashboard, else open it in the default browser (macOS asks once whether Terminal may control Chrome) | `--no-open`                                           |
+| `xdg-open`                                                                                      | Linux                                    | `pxsig serve`, once at start                                                                                          | open the dashboard in the default browser                                                                                            | `--no-open`                                           |
+| `fc-list : family style`                                                                        | Linux, only when fontconfig is installed | once per browser launch in a check or `pxsig serve`                                                                   | a sha256 of the installed font list for the render environment (`fonts.system`, informational); the list itself is not kept          | — (absent: the field is `null`)                       |
+| `docker`                                                                                        | all                                      | only `pxsig browser start`, `stop` and `status`                                                                       | run, stop and inspect the browser container ([container.md](container.md))                                                           | do not run those commands; nothing else starts Docker |
+| Chromium, from Playwright; when it is missing, the installed Google Chrome, then Microsoft Edge | all                                      | rendering stories                                                                                                     | Playwright starts the browser; pxsig asks it to ([which browser](#which-browser-renders))                                            | —                                                     |
 
 pxsig never starts a shell (`cmd.exe`, PowerShell, `sh`) or a system tool (`icacls`, `whoami`,
 `rundll32`, `reg`, `schtasks`), and on Windows it starts nothing besides `node`, the engine, `git`
-and Playwright's browser (and `docker`, only when someone runs `pxsig browser`): `pxsig serve`
-prints the dashboard link, which the terminal makes clickable.
+and the browser Playwright launches (and `docker`, only when someone runs `pxsig browser`):
+`pxsig serve` prints the dashboard link, which the terminal makes clickable.
 
 - **See every start:** `pxsig serve --debug` (or `PXSIG_DEBUG=spawn` for any command) prints each
   program and its arguments on stderr, as it starts it.
@@ -32,6 +32,29 @@ prints the dashboard link, which the terminal makes clickable.
 - **The Windows engine needs nothing installed besides Windows** (from 0.5.1): it links the C
   runtime statically, so no Visual C++ Redistributable (`VCRUNTIME140.dll`). CI and the release
   check every built `pxsig.exe` for it (`scripts/check-win-runtime.mjs`).
+
+## Which browser renders
+
+Stories render in Chromium, launched by the project's Playwright. pxsig tries, in this order, and
+uses the first that starts:
+
+| Order | Browser                                          | Playwright channel |
+| ----- | ------------------------------------------------ | ------------------ |
+| 1     | Playwright's own Chromium (`playwright install`) | none               |
+| 2     | Google Chrome, installed on the machine          | `chrome`           |
+| 3     | Microsoft Edge, installed on the machine         | `msedge`           |
+
+- The fallback applies to the `chromium` engine only; a mode with `browser: "firefox"` or
+  `"webkit"` launches that engine and nothing else.
+- The channel a render used is part of its render environment (`browser.channel`, a major field;
+  [configuration.md](configuration.md#env)): a render from Chrome or Edge, checked against a
+  baseline that recorded Playwright's Chromium, reports `env-mismatch`.
+- When none of the three starts, the error is the last one Playwright gave, which names Edge
+  ([troubleshooting.md](troubleshooting.md#no-chromium)).
+- With a browser endpoint (`pxsig browser start`, `--browser <ws>`, `PXSIG_BROWSER_WS`,
+  `capture.browserEndpoint`), nothing is launched on this machine; the container's browser renders.
+- These browsers are started by Playwright, not through `spawn.mjs`, so `PXSIG_DEBUG=spawn` does
+  not print them.
 
 ## The container image
 

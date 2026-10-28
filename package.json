@@ -10,7 +10,7 @@
   "scripts": {
     "build:rust": "cargo build --release",
     "build:dashboard": "pnpm --filter @pxsig/dashboard build",
-    "test": "cargo test --workspace && pnpm --filter pxsig test",
+    "test": "cargo test --workspace --locked && pnpm -r test && node --test scripts/*.test.mjs",
     "test:examples": "node scripts/examples-test.mjs",
     "check:clean": "node scripts/check-clean.mjs && node --test scripts/check-clean.test.mjs",
     "changelog:check": "node scripts/changelog.mjs check --since origin/main && node --test scripts/changelog.test.mjs",

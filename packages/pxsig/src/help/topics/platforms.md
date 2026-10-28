@@ -5,8 +5,8 @@ pxsig runs on macOS, Linux and Windows; CI tests every pull request on all three
 **Programs pxsig starts:** `node`, the engine binary, `git` on every OS; `ps` on macOS and Linux;
 `osascript` and `open` on macOS and `xdg-open` on Linux, to open the dashboard; `fc-list` on Linux
 when fontconfig is installed (a digest of the installed fonts); `docker` on every OS, only for
-`pxsig browser start`, `stop` and `status`; and Playwright's browser. Nothing else, and never a
-shell: on Windows `pxsig serve` prints the dashboard link
+`pxsig browser start`, `stop` and `status`; and the browser Playwright launches. Nothing else, and
+never a shell: on Windows `pxsig serve` prints the dashboard link
 instead of opening it. `pxsig serve --debug` (or `PXSIG_DEBUG=spawn`) prints every program as it
 starts it.
 
@@ -19,5 +19,12 @@ both paths.
 **Paths and line endings:** every path pxsig prints or records uses `/`. New stores get
 `.gitattributes` that keep records LF and baselines binary; `pxsig doctor` warns about
 `line-endings` and `path-portability`.
+
+**Which browser renders:** Playwright's own Chromium; when it is missing, the installed Google
+Chrome (channel `chrome`), then Microsoft Edge (channel `msedge`); the first that starts. Only for
+the `chromium` engine, and never with a browser endpoint (`pxsig browser start`). The channel is
+part of the render environment (`browser.channel`), so a render from Chrome or Edge against a
+baseline from Playwright's Chromium reports `env-mismatch`. When none starts, the error is
+Playwright's last one, which names Edge: `pxsig help troubleshooting`.
 
 See docs/platforms.md.

@@ -91,7 +91,8 @@ Alone (or `pxsig --help`), the command list. With a name, one page:
 - **a command or subcommand** (`pxsig help check`, `pxsig help approve apply`): usage, flags with
   their defaults and the setting or variable each overrides, exit codes, what it changes (reads
   only, writes the store, writes baselines, needs a person), examples;
-- **a topic**: `agents`, `approvals`, `catalog`, `exit-codes`, `platforms`, `dashboard`, `ci`;
+- **a topic**: `agents`, `approvals`, `catalog`, `exit-codes`, `platforms`, `troubleshooting`,
+  `dashboard`, `ci`;
 - **a setting** (`pxsig help gate.threshold`): its file, meaning, values, default, and what it
   changes day to day;
 - `global`: the options every command takes.
