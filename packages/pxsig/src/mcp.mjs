@@ -1520,15 +1520,16 @@ const isMain = process.argv[1] && realpathSync(process.argv[1]) === fileURLToPat
 if (isMain) {
   createInterface({ input: process.stdin }).on('line', (line) => {
     if (!line.trim()) return;
-    /** @type {RpcRequest} */
+    /** @type {unknown} */
     let msg;
     try {
-      // A client's JSON-RPC message, an object. A bare `null` throws in handle and stops the
-      // server (reported, not changed).
-      msg = /** @type {RpcRequest} */ (JSON.parse(line));
+      msg = JSON.parse(line);
     } catch {
       return send({ id: null, error: { code: -32700, message: 'parse error' } });
     }
+    // A JSON-RPC request is an object: null, a number, a string or an array is not one.
+    if (typeof msg !== 'object' || msg === null || Array.isArray(msg))
+      return send({ id: null, error: { code: -32600, message: 'invalid request' } });
     void handle(msg);
   });
   try {
