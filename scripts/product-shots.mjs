@@ -44,8 +44,18 @@ const bin =
   process.env.PXSIG_BIN ??
   join(repo, 'target', 'release', process.platform === 'win32' ? 'pxsig.exe' : 'pxsig');
 /** @type {(k: string, d: string | null) => string | null} */
-const arg = (k, d) => (process.argv.includes(k) ? process.argv[process.argv.indexOf(k) + 1] : d);
-// With a string default, `arg` returns a string (or the flag's next argument, undefined at the end).
+const arg = (k, d) => {
+  if (!process.argv.includes(k)) return d;
+  const v = process.argv[process.argv.indexOf(k) + 1];
+  if (v == null || v.startsWith('--')) {
+    console.error(
+      'usage: node scripts/product-shots.mjs [--out <dir>] [--keep] [--url <url>] [--raw]'
+    );
+    process.exit(2);
+  }
+  return v;
+};
+// With a string default, `arg` returns a string.
 const out = resolve(/** @type {string} */ (arg('--out', join(repo, 'docs', 'product-shots'))));
 const keep = process.argv.includes('--keep');
 if (!existsSync(bin)) throw new Error('build the Rust binary first: cargo build --release');

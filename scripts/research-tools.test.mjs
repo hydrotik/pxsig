@@ -1,4 +1,4 @@
-// tools/calibrate-*.mjs on bad input: a clear message, never a TypeError.
+// tools/calibrate-*.mjs and scripts/product-shots.mjs on bad input: a clear message, never a TypeError.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
@@ -49,4 +49,10 @@ test('calibrate-gate: --detail-build without a value is a usage error, exit 2', 
   const r = run('tools/calibrate-gate.mjs', ['--detail-build'], project());
   assert.equal(r.status, 2, r.stderr);
   assert.match(r.stderr, /^usage: node tools\/calibrate-gate\.mjs/m);
+});
+
+test('product-shots: --out without a value is a usage error, exit 2', () => {
+  const r = run('scripts/product-shots.mjs', ['--out']);
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stderr, /^usage: node scripts\/product-shots\.mjs/m);
 });
