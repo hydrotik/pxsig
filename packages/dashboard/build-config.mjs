@@ -130,6 +130,8 @@ export function packageDir(name, fromDirs) {
  * @param {string} [o.root]          the dashboard source folder (default: this one)
  * @param {boolean} [o.minify]       minify the bundle; default false (readable output that a reviewer
  *                                   can audit), true when PXSIG_DASHBOARD_MINIFY=1
+ * @param {string} [o.viteVersion]   the `version` the caller's vite exports; from 8 (Rolldown) an IIFE
+ *                                   is one chunk already, so `inlineDynamicImports` is left out
  */
 export async function dashboardConfig({
   adapter,
@@ -140,6 +142,7 @@ export async function dashboardConfig({
   vanillaExtractPlugin,
   root = here,
   minify = process.env.PXSIG_DASHBOARD_MINIFY === '1',
+  viteVersion,
 }) {
   const ui = resolveAdapter({ adapter, cwd });
   const extraFile = path.join(ui.dir, 'vite.mjs');
@@ -211,14 +214,15 @@ export async function dashboardConfig({
     build: {
       outDir,
       emptyOutDir: true,
-      // Unminified by default, so the bundle that ships in the npm package reads as code.
-      minify: minify ? 'esbuild' : false,
+      // Unminified by default, so the bundle that ships in the npm package reads as code. When on,
+      // each vite's own minifier: esbuild up to 7, Oxc from 8 (where esbuild is an optional peer).
+      minify,
       chunkSizeWarningLimit: 4000,
       modulePreload: false,
       rollupOptions: {
         output: {
           format: 'iife',
-          inlineDynamicImports: true,
+          ...(Number(viteVersion?.split('.')[0]) >= 8 ? {} : { inlineDynamicImports: true }),
           entryFileNames: 'assets/app.js',
           assetFileNames: 'assets/[name][extname]',
         },

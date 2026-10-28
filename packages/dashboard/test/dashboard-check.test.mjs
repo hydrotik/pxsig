@@ -34,7 +34,7 @@ let reference = null;
 
 /** Build an adapter folder with the dashboard's own Vite setup, as flows.test.mjs does. */
 async function buildWith(adapterDir, outDir) {
-  const { build } = await import('vite');
+  const { build, version } = await import('vite');
   const react = (await import('@vitejs/plugin-react')).default;
   const { vanillaExtractPlugin } = await import('@vanilla-extract/vite-plugin');
   const { dashboardConfig } = await import('../build-config.mjs');
@@ -46,6 +46,7 @@ async function buildWith(adapterDir, outDir) {
     resolveFrom: [dashboard],
     react,
     vanillaExtractPlugin,
+    viteVersion: version,
   });
   await build({ ...config, configFile: false, logLevel: 'silent' });
   classicScript(outDir);

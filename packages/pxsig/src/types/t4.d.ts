@@ -315,6 +315,7 @@ export interface DashboardBuildConfig {
     react: unknown;
     vanillaExtractPlugin: unknown;
     root?: string;
+    viteVersion?: string;
   }) => Promise<Record<string, unknown>>;
 }
 

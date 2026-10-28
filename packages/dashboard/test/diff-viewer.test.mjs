@@ -31,7 +31,7 @@ before(async () => {
     skip = `no Chromium (${String(e.message).split('\n')[0]})`;
     return;
   }
-  const { build } = await import('vite');
+  const { build, version } = await import('vite');
   const react = (await import('@vitejs/plugin-react')).default;
   out = mkdtempSync(path.join(tmpdir(), 'pxsig-dv-'));
   await build({
@@ -45,7 +45,12 @@ before(async () => {
       emptyOutDir: true,
       minify: false,
       rollupOptions: {
-        output: { format: 'iife', inlineDynamicImports: true, entryFileNames: 'app.js' },
+        output: {
+          format: 'iife',
+          // From vite 8 (Rolldown) an IIFE is one chunk already; the option only warns there.
+          ...(Number(version.split('.')[0]) >= 8 ? {} : { inlineDynamicImports: true }),
+          entryFileNames: 'app.js',
+        },
       },
     },
   });

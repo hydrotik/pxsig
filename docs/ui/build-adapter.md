@@ -52,7 +52,9 @@ command to run; it never builds by itself. `PXSIG_DASHBOARD_DIR` overrides both.
 1. Create a folder in your project, for example `pxsig-ui/`, with an `index.tsx`.
 2. Name it in the project's `pxsig.config.json`: `{ "dashboard": { "ui": "./pxsig-ui" } }`.
 3. Install the build's tools as devDependencies: `vite`, `@vitejs/plugin-react`,
-   `@vanilla-extract/vite-plugin`, `react`, `react-dom`.
+   `@vanilla-extract/vite-plugin`, `react`, `react-dom`. Vite 6, 7 or 8 works, with the
+   `@vitejs/plugin-react` major that supports it (6 for Vite 8). Vite 8 needs Node.js 20.19+ or
+   22.12+.
 4. The module's named exports are:
    - `name`: a short name for reports.
    - `tokens`: a `TokenMap`, a CSS value for every token (see [Tokens](#tokens)).

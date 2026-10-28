@@ -36,6 +36,13 @@ updates:
       # The types follow the Node.js pxsig supports (engines, .nvmrc: 22), not the newest Node.
       - dependency-name: '@types/node'
         update-types: ['version-update:semver-major']
+      # Vite is pinned by the root package.json's pnpm.overrides, so a major bump of the dashboard's
+      # specifier alone changes nothing. A new Vite major (with its @vitejs/plugin-react) is taken
+      # by hand: the overrides, build-config.mjs and the Vite range users build with.
+      - dependency-name: vite
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@vitejs/plugin-react'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: cargo
     directory: /

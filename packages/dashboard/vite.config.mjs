@@ -12,6 +12,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
+import { version as viteVersion } from 'vite';
 import { vanillaExtractPlugin } from '@vanilla-extract/vite-plugin';
 import { dashboardConfig } from './build-config.mjs';
 
@@ -26,4 +27,5 @@ export default () =>
     resolveFrom: [here],
     react,
     vanillaExtractPlugin,
+    viteVersion,
   });
