@@ -82,8 +82,8 @@ export function Performance({ data }: { data: Data }) {
       ? [
           {
             label: t('diagnostics.performance.perCall'),
-            value: `${callMs(cli!)} → ${callMs(serve!)}`,
-            unit: fmt.x(cli! / serve!),
+            value: `${callMs(cli)} → ${callMs(serve)}`,
+            unit: fmt.x(cli / serve),
           },
         ]
       : []),
@@ -232,8 +232,8 @@ export function Performance({ data }: { data: Data }) {
           <CardContent>
             <HBars
               data={[
-                { way: t('diagnostics.performance.cli'), ms: Number(cli!.toFixed(2)) },
-                { way: t('diagnostics.performance.server'), ms: Number(serve!.toFixed(2)) },
+                { way: t('diagnostics.performance.cli'), ms: Number(cli.toFixed(2)) },
+                { way: t('diagnostics.performance.server'), ms: Number(serve.toFixed(2)) },
               ]}
               category="way"
               series={[{ key: 'ms', label: t('diagnostics.performance.perCallSeries') }]}

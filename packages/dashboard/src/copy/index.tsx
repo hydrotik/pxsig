@@ -81,11 +81,7 @@ export function tx(key: CopyKey, vars: Record<string, React.ReactNode>): React.R
   return parts.map((p, i) =>
     i % 2 ? (
       <React.Fragment key={i}>
-        {p in vars
-          ? typeof vars[p] === 'number'
-            ? numbers.format(vars[p] as number)
-            : vars[p]
-          : `{${p}}`}
+        {p in vars ? (typeof vars[p] === 'number' ? numbers.format(vars[p]) : vars[p]) : `{${p}}`}
       </React.Fragment>
     ) : (
       p

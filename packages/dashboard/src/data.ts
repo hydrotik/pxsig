@@ -179,6 +179,29 @@ export interface CalibrationReport {
     best: string | null;
   }[];
 }
+/** One detail-gate rule at one detail build (tools/calibrate-detail.mjs, without its `per`). */
+export interface DetailCandidate {
+  build: { tile: number; block: number; selEnergy: number };
+  k: number;
+  T: number;
+  /** null: no rise limit (Infinity in the sweep). */
+  E: number | null;
+  fp: number;
+  caught: number;
+  changed: number;
+  detailOnly: number;
+  avgRecordBytes: number;
+}
+/** calibration-detail.json (tools/calibrate-detail.mjs): the fields the dashboard reads. */
+export interface DetailCalibrationReport {
+  generatedAt: string;
+  project?: string;
+  renders: number;
+  sweepMs: number;
+  sigOnly: { caught: number; changed: number; fp: number };
+  best: DetailCandidate | null;
+  topAdmissible: DetailCandidate[];
+}
 /** tools/bench.mjs. Every section is optional: a partial or older run may lack any of them. */
 export interface BenchReport {
   generatedAt: string;
@@ -279,8 +302,10 @@ export interface Data {
   scenarioSuites?: Record<string, ScenarioReport>;
   /** calibration[-<suite>].json, keyed the same way (the gate and detail calibrations excluded). */
   calibrationSuites?: Record<string, CalibrationReport>;
-  gateCalibration?: any;
-  detailCalibration: any;
+  /** calibration-gate.json (tools/calibrate-gate.mjs); the dashboard does not read it. */
+  gateCalibration?: unknown;
+  /** null when the report has no calibration-detail.json. */
+  detailCalibration: DetailCalibrationReport | null;
   bench: BenchReport | null;
   history: HistoryRun[];
   review: Record<string, ReviewEntry>;
@@ -363,12 +388,19 @@ export function normalizeData(d: Data): Data {
   };
 }
 
+/** A refused request's answer: `error` says why (server.md). */
+type Refusal = { error?: string };
+
 async function fetchData(): Promise<Data> {
   const r = await fetch(`/__pxsig/data${scope()}`, { cache: 'no-store' });
-  const body = await r.json().catch(() => ({}));
+  // The report data, or `error` on a refusal (server.md); a body that is not JSON reads as {}.
+  const body = await (r.json() as Promise<Partial<Data> & Refusal>).catch(
+    (): Partial<Data> & Refusal => ({})
+  );
   if (!r.ok) throw new Error(body.error ?? `HTTP ${r.status}`);
   currentProject = body.project ?? currentProject;
-  return normalizeData(body);
+  // An ok answer is the report data; normalizeData fills in what an older or partial one lacks.
+  return normalizeData(body as Data);
 }
 
 export interface ProjectInfo {
@@ -386,7 +418,7 @@ export function useProjects(): ProjectInfo[] {
   React.useEffect(() => {
     if (!served) return;
     fetch('/__pxsig/projects', { cache: 'no-store' })
-      .then((r) => r.json())
+      .then((r) => r.json() as Promise<{ projects?: ProjectInfo[] }>)
       .then((b) => setList(b.projects ?? []))
       .catch(() => {});
   }, []);
@@ -414,13 +446,17 @@ export function useData(): { data: Data | null; error: string | null; live: bool
     const load = () =>
       fetchData()
         .then((d) => alive && (setData(d), setError(null)))
-        .catch((e) => alive && !window.PXSIG && setError(String(e.message ?? e)));
+        .catch(
+          // fetchData rejects with an Error (its own, fetch's or normalizeData's).
+          (e: Error) => alive && !window.PXSIG && setError(String(e.message ?? e))
+        );
     void load();
     let es: EventSource | null = null;
     // Events name their project; another project's results don't concern this page.
-    const mine = (e: MessageEvent) => {
+    // An event's data is the JSON object the server broadcast (serve.mjs), naming its project.
+    const mine = (e: MessageEvent<string>) => {
       try {
-        const p = JSON.parse(e.data)?.project;
+        const p = (JSON.parse(e.data) as { project?: string } | null)?.project;
         if (!p || !currentProject || p === currentProject) void load();
       } catch {
         void load();
@@ -433,9 +469,9 @@ export function useData(): { data: Data | null; error: string | null; live: bool
       es.addEventListener('review', mine);
       es.addEventListener('integrity', mine);
       // Check runs: shown while they run, and their errors (Storybook down) reach the page.
-      es.addEventListener('check', (e: MessageEvent) => {
+      es.addEventListener('check', (e: MessageEvent<string>) => {
         try {
-          const d = JSON.parse(e.data);
+          const d = JSON.parse(e.data) as CheckEvent;
           if (!d?.project || !currentProject || d.project === currentProject) noteCheck(d);
         } catch {
           /* not ours */
@@ -472,6 +508,13 @@ export async function a11yAction(
   await decide(`/__pxsig/a11y-${action}`, withProject(rule ? { id, rule } : { id }));
 }
 
+/** `POST /__pxsig/check`'s answer, or a refusal (server.md). */
+type RecheckAnswer = Refusal & {
+  queued?: string[];
+  registered?: string[];
+  skipped?: { name: string; why: string }[];
+};
+
 /** Queue entries (or stories) for a re-check on the server. Never writes a baseline. */
 export async function recheck(
   ids: string[]
@@ -481,7 +524,8 @@ export async function recheck(
     headers: { 'content-type': 'application/json' },
     body: withProject({ ids }),
   });
-  const body = await r.json().catch(() => ({}));
+  // The server's answer (server.md); a body that is not JSON reads as {}.
+  const body = await (r.json() as Promise<RecheckAnswer>).catch((): RecheckAnswer => ({}));
   if (!r.ok) throw new Error(body.error || r.statusText);
   return { queued: body.queued ?? [], registered: body.registered, skipped: body.skipped };
 }
@@ -513,6 +557,14 @@ const setActivity = (next: CheckActivity) => {
   activity = next;
   for (const l of listeners) l();
 };
+/** A `check` event's data (serve.mjs broadcasts an object). */
+type CheckEvent = {
+  project?: string;
+  state?: string;
+  ids?: string[];
+  error?: string;
+  setup?: boolean;
+};
 function noteCheck(d: { state?: string; ids?: string[]; error?: string; setup?: boolean }) {
   if (d.state === 'running') setActivity({ ...activity, running: d.ids ?? [] });
   else if (d.state === 'done') setActivity({ running: null, error: null });
@@ -528,17 +580,24 @@ export function useCheckActivity(): CheckActivity {
   );
 }
 
-/** Run the safe repairs on the server (never writes signatures, never approves, never prunes). */
-export async function repairSafe(): Promise<{
+/** `POST /__pxsig/repair`'s answer (server.md). */
+type RepairAnswer = {
   applied?: { action: string; result: string }[];
   plan: { steps: { action: string; ids: string[] }[] };
-}> {
+};
+
+/** Run the safe repairs on the server (never writes signatures, never approves, never prunes). */
+export async function repairSafe(): Promise<RepairAnswer> {
   const r = await fetch('/__pxsig/repair', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: withProject({ apply: true }),
   });
-  const body = await r.json().catch(() => ({}));
+  // The repair's answer, or a refusal; a body that is not JSON reads as {} (as before, returned
+  // as it is when the answer was ok).
+  const body = await (r.json() as Promise<RepairAnswer & Refusal>).catch(
+    () => ({}) as RepairAnswer & Refusal
+  );
   if (!r.ok) throw new Error(body.error || r.statusText);
   return body;
 }
