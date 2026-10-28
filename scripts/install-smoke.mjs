@@ -23,7 +23,6 @@
 import { spawnSync } from 'node:child_process';
 import {
   copyFileSync,
-  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -38,6 +37,7 @@ import { homedir, tmpdir } from 'node:os';
 import { basename, dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
+import { copyTree } from './lib/copy-tree.mjs';
 
 /** @import { SpawnSyncReturns } from 'node:child_process' */
 /** @typedef {{ cwd?: string, env?: NodeJS.ProcessEnv, must?: boolean }} RunOpts */
@@ -126,8 +126,7 @@ try {
   copyFileSync(engine, join(artifacts, `pxsig-${id}`, exe));
   const stage = join(tmp, 'stage');
   runScript('sync-dashboard-source.mjs', []);
-  cpSync(join(repo, 'packages', 'pxsig'), join(stage, 'pxsig'), {
-    recursive: true,
+  copyTree(join(repo, 'packages', 'pxsig'), join(stage, 'pxsig'), {
     filter: (p) => !p.split(/[\\/]/).includes('node_modules'),
   });
   runScript('make-platform-packages.mjs', [

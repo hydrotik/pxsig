@@ -5,15 +5,7 @@
  * outside --out. Skips when no Chromium is available (PXSIG_CHROMIUM names an executable).
  */
 import assert from 'node:assert/strict';
-import {
-  cpSync,
-  existsSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -21,6 +13,7 @@ import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { scenarioData, scenarioNames } from '../fixtures/scenarios.mjs';
 import { screenProblems } from '../ui-tools.mjs';
+import { copyTree } from '../../../scripts/lib/copy-tree.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dashboard = path.dirname(here);
@@ -74,10 +67,10 @@ before(async () => {
   // The reference column: the same build in another folder (the prebuilt one needs the private
   // design system, so the test stands in for it).
   reference = path.join(tmp, 'reference');
-  cpSync(good, reference, { recursive: true });
+  copyTree(good, reference);
   // A broken adapter: its Card throws, so every screen with a card fails.
   const brokenUi = path.join(tmp, 'broken-ui');
-  cpSync(path.join(repo, 'examples/custom-ui/pxsig-ui'), brokenUi, { recursive: true });
+  copyTree(path.join(repo, 'examples/custom-ui/pxsig-ui'), brokenUi);
   const index = path.join(brokenUi, 'index.tsx');
   const text = readFileSync(index, 'utf8');
   const marked = text.replace(/export (const|function) Card\b/, (m) => `${m}__Unused`);
@@ -238,7 +231,7 @@ test('setup problems: no build, a placeholder reference, unknown themes and feat
     /--only names no feature/
   );
   const placeholder = path.join(tmp, 'placeholder');
-  cpSync(good, placeholder, { recursive: true });
+  copyTree(good, placeholder);
   writeFileSync(
     path.join(placeholder, 'index.html'),
     '<!doctype html><title>pxsig</title><p>Placeholder dashboard from a release dry run.</p>'

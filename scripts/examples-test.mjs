@@ -31,7 +31,6 @@
 import { spawn, spawnSync } from 'node:child_process';
 import {
   appendFileSync,
-  cpSync,
   existsSync,
   mkdtempSync,
   readFileSync,
@@ -41,6 +40,7 @@ import {
 import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { copyTree } from './lib/copy-tree.mjs';
 
 /** @import { SpawnSyncReturns, StdioOptions } from 'node:child_process' */
 /** @import { BaselineAnswer, BuildStamp, DashboardCheckAnswer, DoctorAnswer, Example, ExampleCheckJson, GapsAnswer, ProjectsAnswer } from './types-release.js' */
@@ -132,8 +132,7 @@ function stage(name) {
   // On the checkout's drive: Storybook names a cache folder after the path from the example to a
   // linked package, which across Windows drives contains "D:" and cannot be created.
   const dir = mkdtempSync(join(process.env.RUNNER_TEMP || tmpdir(), `pxsig-example-${name}-`));
-  cpSync(join(repo, 'examples', name), dir, {
-    recursive: true,
+  copyTree(join(repo, 'examples', name), dir, {
     filter: (p) => !/node_modules|storybook-static|\.pxsig|__pxsig__/.test(p),
   });
   const walk = (/** @type {string} */ d) => {

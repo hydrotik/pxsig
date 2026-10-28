@@ -4,11 +4,12 @@
  * design-system import appears outside src/ui/adapters/.
  */
 import assert from 'node:assert/strict';
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { copyTree } from '../../../scripts/lib/copy-tree.mjs';
 
 const dashboard = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const repo = path.resolve(dashboard, '..', '..');
@@ -18,12 +19,11 @@ async function check(edit = () => {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'pxsig-ui-check-'));
   try {
     const d = path.join(root, 'packages', 'dashboard');
-    cpSync(dashboard, d, {
-      recursive: true,
+    copyTree(dashboard, d, {
       filter: (p) =>
         !p.includes(`${path.sep}node_modules`) && !p.includes(`${path.sep}test${path.sep}`),
     });
-    cpSync(path.join(repo, 'docs', 'ui'), path.join(root, 'docs', 'ui'), { recursive: true });
+    copyTree(path.join(repo, 'docs', 'ui'), path.join(root, 'docs', 'ui'));
     const file = (rel) => path.join(d, rel);
     edit({
       read: (rel) => readFileSync(file(rel), 'utf8'),
