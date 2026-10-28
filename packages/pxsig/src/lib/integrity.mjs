@@ -896,7 +896,7 @@ export async function reconcile(ctx, opts = {}) {
         );
       if (row && !neverChecked && !unverified) {
         const rv = review[e.id]?.state ?? null;
-        const unbaselinedRow = row.new || /^no baseline sig/.test(String(row.error ?? ''));
+        const unbaselinedRow = row.new || String(row.error ?? '').startsWith('no baseline sig');
         if (row.error && !unbaselinedRow)
           issues.push(issue(ctx, 'render-error', String(row.error).split('\n')[0].slice(0, 300)));
         else if (row.flaky)

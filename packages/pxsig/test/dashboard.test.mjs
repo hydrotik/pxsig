@@ -101,7 +101,7 @@ test("gaps and build compare the adapter's contract version with this pxsig's", 
     assert.equal(old.contract.status, 'older-major');
     assert.ok(
       old.problems.some((/** @type {string} */ p) =>
-        /^contract: written for contract 0\.1\.0; this pxsig has 1\.1\.0, a major change/.test(p)
+        p.startsWith('contract: written for contract 0.1.0; this pxsig has 1.1.0, a major change')
       ),
       old.problems.join('\n')
     );

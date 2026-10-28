@@ -30,7 +30,7 @@ export function buildRow(e, rust, render, a11yBase, manifest, js) {
     : null;
   // No signature yet (a story added since the last approval): rendered fine, nothing to compare
   // with. Not an error — a NEW entry waiting for a person to approve its first render.
-  const isNew = !rr.error && /^no baseline sig/.test(String(r.error ?? ''));
+  const isNew = !rr.error && String(r.error ?? '').startsWith('no baseline sig');
   return {
     // A render that failed leaves the previous image on disk; its comparison describes a story
     // that did not render this time, so a render error carries no metrics and is not "changed".
