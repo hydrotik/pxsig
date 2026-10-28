@@ -53,6 +53,9 @@ jobs:
       - run: node --test scripts/make-platform-packages.test.mjs
       # The Windows engine's runtime check (the check itself runs on the built .exe: rust job, release).
       - run: node --test scripts/check-win-runtime.test.mjs
+      # Cargo.toml, Cargo.lock and every package.json carry the same version (docs/releasing.md).
+      - run: node scripts/check-versions.mjs
+      - run: node --test scripts/check-versions.test.mjs
       - if: github.event_name == 'pull_request'
         run: git fetch --no-tags --depth=1 origin "$GITHUB_BASE_REF" && node scripts/changelog.mjs check --since FETCH_HEAD
       # The dashboard's UI contract: no design-system import outside the adapters; the manifest,
