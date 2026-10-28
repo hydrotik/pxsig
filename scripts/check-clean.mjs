@@ -15,6 +15,7 @@
  *   - anything under `.local/`: the maintainer's private notes and reference material (git-ignored)
  *   - absolute home-directory paths
  *   - paths from a consuming repository's package layout (configured below: `forbiddenPaths`)
+ *   - merge conflict markers: a line starting with seven `<`, `=` or `>` and then a space or its end
  *   - a denylist of names that must not appear, matched case-sensitively on word boundaries. The
  *     list is never committed or uploaded (it would publish the names). It is read from, in order:
  *     PXSIG_CLEAN_TERMS (comma-separated), `~/.config/pxsig/clean-terms` (or $XDG_CONFIG_HOME),
@@ -71,6 +72,22 @@ export function fileProblem(f, size = 0) {
   if (FORBIDDEN_FILES.some((re) => re.test(f)))
     return 'this kind of file stays out of the repository';
   return null;
+}
+
+/** A line a merge left unresolved: `<<<<<<< ours`, `=======`, `>>>>>>> theirs`. */
+export const CONFLICT = /^(<{7}|={7}|>{7})( |$)/;
+
+/**
+ * The 1-based line numbers of merge conflict markers in a file's text.
+ * @param {string} text
+ */
+export function conflictLines(text) {
+  /** @type {number[]} */
+  const out = [];
+  text.split('\n').forEach((line, i) => {
+    if (CONFLICT.test(line.replace(/\r$/, ''))) out.push(i + 1);
+  });
+  return out;
 }
 
 const forbiddenPaths = [/\bpackages\/hy-[a-z]/, /\bapps\/hy-[a-z]/];
@@ -175,6 +192,7 @@ function run() {
     text.split('\n').forEach((line, i) => {
       const at = `${f}:${i + 1}`;
       if (HOME.test(line)) problems.push(`${at}: absolute home path`);
+      if (CONFLICT.test(line.replace(/\r$/, ''))) problems.push(`${at}: merge conflict marker`);
       for (const re of forbiddenPaths)
         if (re.test(line))
           problems.push(`${at}: a consuming repository's package path (${re.source})`);

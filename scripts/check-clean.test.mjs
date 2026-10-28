@@ -1,7 +1,7 @@
 // What check-clean lets into the repository: images only as product shots, and only small ones.
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { SHOT_MAX_BYTES, fileProblem } from './check-clean.mjs';
+import { SHOT_MAX_BYTES, conflictLines, fileProblem } from './check-clean.mjs';
 
 test('images are forbidden outside docs/product-shots/', () => {
   for (const f of [
@@ -55,4 +55,23 @@ test('the other rules still hold', () => {
   assert.ok(fileProblem('docs/product-shots/.local/a.png'));
   assert.ok(fileProblem('examples/x/.pxsig/baselines/a.psig'));
   assert.equal(fileProblem('docs/cli.md'), null);
+});
+
+test('merge conflict markers are found at the start of a line, nowhere else', () => {
+  const [ours, mid, theirs] = ['<', '=', '>'].map((c) => c.repeat(7));
+  const text = [
+    'a',
+    `${ours} HEAD`,
+    'b',
+    mid,
+    'c',
+    `${theirs} feature\r`,
+    `  ${ours} indented`,
+    `${'='.repeat(8)}`,
+    `${mid}x`,
+    'Title',
+    '===',
+  ].join('\n');
+  assert.deepEqual(conflictLines(text), [2, 4, 6]);
+  assert.deepEqual(conflictLines('no markers\n'), []);
 });
