@@ -154,6 +154,10 @@ test('the schema check reports what it finds, and rejects keywords it does not k
   assert.match(validate(schema.properties.c, { s: 'active', why: 'x' }).join(), /must not match/);
   assert.match(validate({ $ref: '#/x' }, {}).join(), /keyword "\$ref" is not supported/);
   assert.match(validate({ type: ['string', 'null'] }, 3).join(), /must be string or null/);
+  assert.equal(
+    validate({ enum: ['a', { k: 1 }, 2, null] }, 'b').join(),
+    '/ must be one of a, {"k":1}, 2, null'
+  );
 });
 
 test('sync-catalog refuses an unknown, dirty or unpushed checkout, and copies a good one', () => {

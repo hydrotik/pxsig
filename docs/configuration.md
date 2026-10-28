@@ -413,6 +413,10 @@ Each item in `states`:
 | `waitFor`  | Selector to wait for after the action.                                                  |
 | `fullPage` | Capture the viewport instead of the target, for popups rendered outside the story root. |
 
+A key above with a value of the wrong type (`grid: '96'`, `ignore: '.live'`, a state with no `name`)
+is a setup error (exit 2) that names the story and the key, in `pxsig manifest` and when a repair
+registers the story.
+
 ## Renders
 
 Every render uses a fixed viewport at device scale 1, reduced motion, a stylesheet that turns

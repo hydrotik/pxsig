@@ -32,6 +32,7 @@
  * so existing baselines keep their names.
  */
 import { launchBrowser } from './capture.mjs';
+import { SetupError } from './workspace.mjs';
 /** @import { Browser } from 'playwright' */
 /** @import { EntryConfig, ManifestEntry, Mode, ManifestSkipped, Project, StoryParameters, StoryPxsigParameters, StorybookPreviewWindow, StoryRef } from '../types.js' */
 
@@ -100,10 +101,69 @@ const keyOf = (id, state, mode, defaultMode) =>
   `${id}${state ? `__${state}` : ''}${mode && mode !== defaultMode ? `@${mode}` : ''}`;
 
 /**
+ * @param {unknown} v
+ * @returns {v is Record<string, unknown>}
+ */
+const isObj = (v) => v != null && typeof v === 'object' && !Array.isArray(v);
+/** @param {unknown} v */
+const isStrings = (v) => Array.isArray(v) && v.every((x) => typeof x === 'string');
+/** @param {unknown} v */
+const isPositive = (v) => typeof v === 'number' && Number.isFinite(v) && v > 0;
+
+/** Each field expandEntries reads: the check and what the field must be. */
+const CHECKS = /** @type {Record<string, [(v: unknown) => boolean, string]>} */ ({
+  disable: [(v) => typeof v === 'boolean', 'true or false'],
+  modes: [isStrings, 'an array of mode names'],
+  addModes: [isStrings, 'an array of mode names'],
+  states: [
+    (v) =>
+      Array.isArray(v) &&
+      v.every(
+        (/** @type {unknown} */ st) =>
+          isObj(st) &&
+          typeof st.name === 'string' &&
+          (st.action === undefined || typeof st.action === 'string')
+      ),
+    'an array of { name, action? } objects',
+  ],
+  viewport: [(v) => Array.isArray(v) && v.length === 2 && v.every(isPositive), '[width, height]'],
+  // 0 leaves the adaptive grid on, as it always has.
+  grid: [(v) => typeof v === 'number' && Number.isFinite(v) && v >= 0, 'a positive number'],
+  gate: [isObj, 'an object'],
+  detail: [(v) => typeof v === 'boolean', 'true or false'],
+  ignore: [isStrings, 'an array of selectors'],
+  delay: [
+    (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0,
+    'a number of ms, 0 or more',
+  ],
+  target: [(v) => typeof v === 'string', 'a selector'],
+  a11y: [(v) => typeof v === 'boolean', 'true or false'],
+});
+
+/**
+ * A story's `parameters.pxsig` is user data: a value of the wrong type is a setup error that names
+ * the story and the field, like a bad value in pxsig.config.json.
+ * @param {string} id
+ * @param {unknown} px
+ * @returns {StoryPxsigParameters}
+ */
+function checkParameters(id, px) {
+  if (!isObj(px)) throw new SetupError(`story "${id}": parameters.pxsig must be an object`);
+  for (const [field, [ok, what]] of Object.entries(CHECKS)) {
+    const v = px[field];
+    // null is absent, as the fallbacks below read it: a story can cancel an inherited value.
+    if (v != null && !ok(v))
+      throw new SetupError(`story "${id}": parameters.pxsig.${field} must be ${what}`);
+  }
+  return px;
+}
+
+/**
  * Expand stories into manifest entries.
  * stories: [{ id, importPath, sigFor(key) }]; params: harvestParameters output.
  * Options: `modes` keeps only these modes; `addModes` adds modes to every story
- * (e.g. a cross-browser or mobile matrix run).
+ * (e.g. a cross-browser or mobile matrix run). A story's `parameters.pxsig` field of the wrong
+ * type throws a SetupError naming the story and the field.
  * @param {EntryConfig} config
  * @param {StoryRef[]} stories
  * @param {Record<string, StoryParameters>} params
@@ -124,7 +184,7 @@ export function expandEntries(config, stories, params, opts = {}) {
   for (const s of stories) {
     /** @type {StoryParameters} */
     const p = params[s.id] ?? { pxsig: {}, tags: [] };
-    const px = p.pxsig ?? {};
+    const px = checkParameters(s.id, p.pxsig ?? {});
     if (px.disable || p.tags?.includes('no-pxsig')) {
       skipped.push({
         id: s.id,

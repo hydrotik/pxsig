@@ -728,6 +728,26 @@ test('prune needs confirmation, moves orphans to trash/ and deletes nothing', as
   );
 });
 
+test('applyRepairs without hooks: prune is not confirmed, a register or re-check step says what is missing', async () => {
+  const f = fixture({ withSigs: false });
+  const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
+  const pruned = await applyRepairs(f.ctx, planRepairs(led, { only: ['prune'], prune: true }));
+  assert.match(pruned.steps[0].result, /not confirmed/);
+  const reconcileOpts = { index: f.index, affected: f.affected };
+  await assert.rejects(
+    applyRepairs(f.ctx, planRepairs(led, { server: { up: true }, only: ['register'] }), {
+      reconcileOpts,
+    }),
+    /a register step needs hooks\.harvest/
+  );
+  await assert.rejects(
+    applyRepairs(f.ctx, planRepairs(led, { server: { up: true }, only: ['recheck'] }), {
+      reconcileOpts,
+    }),
+    /a recheck step needs hooks\.recheck/
+  );
+});
+
 test('the write guard refuses baselines and the baselines folder', () => {
   const f = fixture({ withSigs: false });
   assert.throws(

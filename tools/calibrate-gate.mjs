@@ -46,6 +46,13 @@ import {
 
 const log = logger('calibrate-gate');
 const flags = parseFlags();
+if (flags['detail-build'] === true) {
+  // A bare `--detail-build` (no JSON after it) would parse as `true`.
+  console.error(
+    "usage: node tools/calibrate-gate.mjs [--project name] [--workspace dir] [--grid 64] [--min-cells-px 4,6,8] [--detail-build '<JSON object>']"
+  );
+  process.exit(2);
+}
 const { P, run } = project(flags);
 const GRID = Number(flags.grid) || run.grid || 64;
 /** @type {Policy[]} */
@@ -81,7 +88,13 @@ const items = []; // { key, suite, scenario, kind, changed, id }
 const suites = [];
 for (const tag of tags) {
   // A report tools/scenarios.mjs wrote: `tag` is one listed in the reports folder above.
-  const rep = /** @type {ScenariosReport} */ (readReport(P, tag));
+  const rep = /** @type {ScenariosReport | null} */ (readReport(P, tag));
+  if (!Array.isArray(rep?.scenarios) || !rep.scenarios.length) {
+    console.error(
+      `[calibrate-gate] ${join(P.store.reports, `${tag}.json`)} is not a scenarios report: run tools/scenarios.mjs again`
+    );
+    process.exit(1);
+  }
   const ids = new Set(rep.scenarios[0].rows.filter((r) => !r.error).map((r) => r.id));
   const entries = run.stories
     .filter((e) => ids.has(e.id))

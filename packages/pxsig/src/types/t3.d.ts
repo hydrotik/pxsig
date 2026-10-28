@@ -457,8 +457,8 @@ export interface PruneResult {
 
 /** `applyRepairs` options. */
 export interface ApplyOptions {
-  /** Each step calls only its own hooks: a plan without a register step needs no `harvest`. */
-  hooks: Partial<RepairHooks>;
+  /** Each step calls only its own hooks: a plan without a register step needs no `harvest`; none confirms nothing. */
+  hooks?: Partial<RepairHooks>;
   via?: string;
   by?: string | null;
   reconcileOpts?: ReconcileOptions;

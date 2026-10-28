@@ -172,8 +172,8 @@ function renderPretty(blocks, p) {
     if (Array.isArray(v)) return v.map(cell).join('   ');
     if (v && typeof v === 'object') {
       const t = v.url ? p.link(v.text, v.url) : String(v.text);
-      // A cell's colour names one of the styles.
-      return v.color ? p[/** @type {Style} */ (v.color)](t) : t;
+      // A cell's colour names one of the styles; any other name prints the text without colour.
+      return v.color && Object.hasOwn(SGR, v.color) ? p[/** @type {Style} */ (v.color)](t) : t;
     }
     return String(v ?? '');
   };

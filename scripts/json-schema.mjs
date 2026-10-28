@@ -66,7 +66,9 @@ export function validate(schema, data, at = '') {
       return [...errs, `${here} must be ${types.join(' or ')}`];
   }
   if (schema.enum && !schema.enum.some((e) => JSON.stringify(e) === JSON.stringify(data)))
-    errs.push(`${here} must be one of ${schema.enum.join(', ')}`);
+    errs.push(
+      `${here} must be one of ${schema.enum.map((e) => (typeof e === 'string' ? e : JSON.stringify(e))).join(', ')}`
+    );
   if ('const' in schema && JSON.stringify(schema.const) !== JSON.stringify(data))
     errs.push(`${here} must be ${JSON.stringify(schema.const)}`);
   if (typeof data === 'string') {
