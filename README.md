@@ -144,7 +144,8 @@ include it (see [packages/dashboard/README.md](packages/dashboard/README.md)).
 | Moving a pre-0.2 store                                                                 | [docs/migrating.md](docs/migrating.md)                                                           |
 | Architecture                                                                           | [docs/architecture.md](docs/architecture.md)                                                     |
 | Design decisions                                                                       | [docs/decisions.md](docs/decisions.md)                                                           |
-| macOS, Linux and Windows: the programs pxsig starts, paths, line endings               | [docs/platforms.md](docs/platforms.md)                                                           |
+| macOS, Linux and Windows: the programs pxsig starts, the browser, paths, line endings  | [docs/platforms.md](docs/platforms.md)                                                           |
+| Errors pxsig prints, their causes and fixes                                            | [docs/troubleshooting.md](docs/troubleshooting.md)                                               |
 | Releases: platform binaries, npm packages, the dashboard build                         | [docs/releasing.md](docs/releasing.md)                                                           |
 | Research tools: scenarios, calibration, benchmarks                                     | [tools/README.md](tools/README.md)                                                               |
 
