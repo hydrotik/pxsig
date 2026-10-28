@@ -8,9 +8,15 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels its older run; runs on main always finish.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   clean:
     name: Clean repository
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -22,6 +28,9 @@ jobs:
           node-version: 22 # latest 22.x; ui:check needs 22.18+ and says so below that
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Known advisories (high and critical) in what ships to consumers: production dependencies
+      # only; dev tooling is updated through Dependabot instead (CONTRIBUTING.md, dependency scans).
+      - run: pnpm audit --prod --audit-level high
       # oxlint (.oxlintrc.json): an error fails; a warning may not be added to any file
       # (scripts/lint-warnings-baseline.json). sherif: the workspace's package.json files agree.
       - run: pnpm lint
@@ -50,6 +59,14 @@ jobs:
       - run: node --test scripts/make-platform-packages.test.mjs
       # The Windows engine's runtime check (the check itself runs on the built .exe: rust job, release).
       - run: node --test scripts/check-win-runtime.test.mjs
+      # Cargo.toml, Cargo.lock and every package.json carry the same version (docs/releasing.md).
+      - run: node scripts/check-versions.mjs
+      - run: node --test scripts/check-versions.test.mjs
+      # Every relative link and #anchor in the tracked Markdown resolves.
+      - run: node scripts/check-links.mjs
+      - run: node --test scripts/check-links.test.mjs
+      # The required checks a release tag needs (release.yml): the list matches this file's jobs.
+      - run: node --test scripts/required-checks.test.mjs
       - if: github.event_name == 'pull_request'
         run: git fetch --no-tags --depth=1 origin "$GITHUB_BASE_REF" && node scripts/changelog.mjs check --since FETCH_HEAD
       # The dashboard's UI contract: no design-system import outside the adapters; the manifest,
@@ -58,6 +75,7 @@ jobs:
 
   rust:
     name: Rust (${{ matrix.os }})
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -75,6 +93,13 @@ jobs:
         run: cargo fmt --all --check
       - if: runner.os == 'Linux'
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      # Advisories, licences, duplicate crates and sources of the engine's crates (deny.toml).
+      - if: runner.os == 'Linux'
+        uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
+        with:
+          tool: cargo-deny@0.20.2
+      - if: runner.os == 'Linux'
+        run: cargo deny --locked check
       - run: cargo build --release --locked
       # The engine runs on a Windows machine without the Visual C++ Redistributable (crt-static).
       - if: runner.os == 'Windows'
@@ -87,6 +112,7 @@ jobs:
 
   node:
     name: Node (${{ matrix.os }})
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -123,6 +149,7 @@ jobs:
 
   examples:
     name: Examples (end to end) (${{ matrix.os }})
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -154,6 +181,7 @@ jobs:
 
   compat:
     name: Older pxsig on this store
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     needs: rust
     steps:

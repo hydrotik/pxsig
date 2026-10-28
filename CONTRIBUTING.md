@@ -56,6 +56,7 @@ pnpm --filter @pxsig/dashboard test        # the dashboard's flows against a moc
 node --test packages/pxsig/test/help.test.mjs   # one file
 node scripts/examples-test.mjs             # the examples, end to end (CI's Examples job)
 node scripts/check-clean.mjs               # what must never be committed (below)
+node scripts/check-links.mjs               # every relative link and #anchor in the Markdown resolves
 node scripts/bench/run.mjs                 # the scale benchmark (docs/benchmark.md); CI runs it nightly
 ```
 
@@ -162,7 +163,11 @@ leaves a required check waiting forever and blocks every pull request. New check
 inside an existing job. Every third-party action is pinned by its full commit SHA, with a
 `# vX.Y.Z` comment.
 
-## Dependency advisories
+## Dependencies
+
+Dependabot (`.github/dependabot.yml`) opens update pull requests every Monday for the GitHub
+Actions, the pnpm workspace (grouped as `dev` and `prod`) and the Rust workspace. They go through
+the same checks as any other pull request.
 
 CI checks the dependencies against public advisory databases: `cargo deny --locked check`
 (`deny.toml`: advisories, licences, sources) in the Rust job on Linux, and
@@ -172,12 +177,13 @@ dependency. That is intended. The fix is one of:
 
 - **an update** of the affected dependency, in its own commit; or
 - **an ignore entry with a reason and a date**: in `deny.toml` (`[advisories] ignore`, whose
-  entries take a `reason`) for a crate, or in `pnpm.auditConfig` in `package.json` for an npm
-  package (JSON has no comments: the reason and the date go in the commit that adds it). The reason
-  says why the advisory does not apply or what the fix is waiting on; the date says when to look
-  again.
+  entries take a `reason`) for a crate, or in `pnpm.auditConfig.ignoreGhsas` in the root
+  `package.json` for an npm package (JSON has no comments: the reason and the date go in the commit
+  that adds it). The reason says why the advisory does not apply or what the fix is waiting on; the
+  date says when to look again.
 
-Advisories for development tooling arrive as Dependabot pull requests instead of failing CI.
+Advisories for development tooling arrive as Dependabot pull requests instead of failing CI. A
+licence outside `deny.toml`'s `allow` list fails; adding one is a decision for the owner.
 
 ## Pull requests
 
@@ -187,7 +193,8 @@ Advisories for development tooling arrive as Dependabot pull requests instead of
   `node scripts/changelog.mjs check --since origin/main` pass.
 - Update the docs in `docs/` when a command, flag, config key, file format or default changes, and
   add a fragment in `changelog.d/` ([changelog.d/README.md](changelog.d/README.md)); `CHANGELOG.md`
-  itself changes only in a release.
+  itself changes only in a release. A change to shipped code with no fragment fails CI unless a
+  commit message body has the line `Changelog: none` (a refactor or a test, nothing a user notices).
 - **Formats are contracts.** Spec v1 records, the `.psig` container, integrity status codes and
   exit codes change only with a version bump and a migration path. Status codes are only ever
   added, never renamed.

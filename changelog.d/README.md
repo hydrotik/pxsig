@@ -17,5 +17,10 @@ Every pull request that changes something a user can notice adds one file here i
 - **Short summary.** What changed, why, and what a user does about it.
 ```
 
+A pull request that changes shipped code (`packages/*/src/`, the Storybook addon's own
+`packages/storybook-addon/*.mjs` and `*.cjs`, `crates/*/src/`) must add a fragment. When a user
+cannot notice the change (a refactor, a test), put the line `Changelog: none` in one of its commit
+message bodies instead; `node scripts/changelog.mjs check --since origin/main` checks this.
+
 `node scripts/changelog.mjs check` validates the fragments (CI runs it); `node scripts/changelog.mjs
 preview` prints the next release's section.

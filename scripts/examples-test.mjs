@@ -630,7 +630,12 @@ function runCustomUi() {
   const s = c.summary ?? {};
   const failed = (c.screens ?? [])
     .filter((x) => !x.rendered)
-    .map((x) => `${x.feature} #${x.index + 1} ${x.theme}: ${x.reason}`);
+    // How long it waited and any page error: a landmark missing after a hang reads differently from
+    // one missing after a slow render (shell.top-bar #1 failed once on windows-latest, cause unknown).
+    .map(
+      (x) =>
+        `${x.feature} #${x.index + 1} ${x.theme}: ${x.reason} (${x.ms ?? '?'} ms${x.errors?.length ? `, page errors: ${x.errors.join(' | ')}` : ''})`
+    );
   expect(
     // With no summary, `undefined > 0` is false: the check fails, as it should.
     r.status === 0 && /** @type {number} */ (s.screens) > 0 && s.failed === 0,

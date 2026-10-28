@@ -1,0 +1,40 @@
+# Dependency updates: GitHub Actions, the pnpm workspace and the Rust workspace, weekly on Monday.
+# Each pull request goes through the same required checks as any other (ci.yml). Commit subjects
+# are `chore(deps): …` (commitlint.config.cjs). Security updates and alerts are switched on in the
+# repository settings (Code security), not here.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: npm # pnpm: Dependabot reads pnpm-lock.yaml
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      dev:
+        dependency-type: development
+      prod:
+        dependency-type: production
+
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
