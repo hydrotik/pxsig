@@ -407,7 +407,11 @@ async function a11yPrune() {
       );
     const res = await fetch(`${url}/__pxsig/a11y-prune`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', [TOKEN_HEADER]: token },
+      // Checked above: `fail` exits when there is none.
+      headers: {
+        'content-type': 'application/json',
+        [TOKEN_HEADER]: /** @type {string} */ (token),
+      },
       body: JSON.stringify({
         project: P.name,
         plan: { a11ySha: plan.a11ySha, prune: plan.prune },
@@ -809,7 +813,8 @@ async function serveLink() {
   try {
     r = await fetch(`${url}/__pxsig/ticket`, {
       method: 'POST',
-      headers: { [TOKEN_HEADER]: token },
+      // Checked above: `fail` exits when there is none.
+      headers: { [TOKEN_HEADER]: /** @type {string} */ (token) },
     });
   } catch {
     fail(`the pxsig server at ${url} does not answer: start it with \`${CMD} serve\``);

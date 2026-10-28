@@ -21,6 +21,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+/** @import { BrowserRecordFile, PlaywrightLib } from '../src/types/t4.js' */
 import { browserCommand, defaultImage } from '../src/browser.mjs';
 import { browserPool, browserRecord, connectBrowser } from '../src/lib/capture.mjs';
 import { collectEnv, osFromProbe } from '../src/lib/env.mjs';
@@ -112,7 +113,14 @@ function stubPlaywright({ fail = null } = {}) {
   });
   return {
     calls,
-    pw: { chromium: engine('chromium'), firefox: engine('firefox'), webkit: engine('webkit') },
+    // A stand-in: only what lib/capture.mjs calls, answering with stand-in browsers.
+    pw: /** @type {PlaywrightLib} */ (
+      /** @type {unknown} */ ({
+        chromium: engine('chromium'),
+        firefox: engine('firefox'),
+        webkit: engine('webkit'),
+      })
+    ),
   };
 }
 
@@ -227,7 +235,13 @@ test('browserRecord reads browser.json only for the endpoint it recorded', () =>
   const root = mkdtempSync(join(tmpdir(), 'pxsig-ws-'));
   mkdirSync(dirname(browserFile(root)), { recursive: true });
   writeFileSync(browserFile(root), JSON.stringify({ ws: 'ws://127.0.0.1:3000/', image: 'img' }));
-  assert.equal(browserRecord({ workspaceRoot: root }, 'ws://127.0.0.1:3000/').image, 'img');
+  // Written just above for this endpoint.
+  assert.equal(
+    /** @type {BrowserRecordFile} */ (
+      browserRecord({ workspaceRoot: root }, 'ws://127.0.0.1:3000/')
+    ).image,
+    'img'
+  );
   assert.equal(browserRecord({ workspaceRoot: root }, 'ws://127.0.0.1:4000/'), null);
   assert.equal(browserRecord(null, 'ws://127.0.0.1:3000/'), null);
 });

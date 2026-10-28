@@ -12,10 +12,10 @@ import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { browserFile, resolvePeer, SetupError } from './workspace.mjs';
 import { collectEnv, playwrightVersion } from './env.mjs';
-/** @import { Browser } from 'playwright' */
-/** @import { EnvRecord, PeerBase, Project } from '../types.js' */
-/** A Browser with what pxsig records on it: the channel it launched with, the server it connected to. */
-/** @typedef {Browser & { __pxsigChannel?: string | null, __pxsigRemote?: string }} PxsigBrowser */
+/** @import { BrowserContext, Page, PageScreenshotOptions } from 'playwright' */
+/** @import { EnvRecord, PeerBase, Project, RenderResult } from '../types.js' */
+/** @import { BrowserName, BrowserRecordFile, BrowserSource, PlaywrightLib, PxsigBrowser, RenderEntry, RenderOptions, RenderOutput, StorybookPreview, TokenValue } from '../types/t4.js' */
+/** @typedef {NonNullable<Window['axe']>} Axe */
 
 export { CAPTURE_PIPELINE } from './env.mjs';
 
@@ -36,7 +36,7 @@ export const STORYBOOK_ERROR = 'storybook-error:';
  * threw, or "Unable to index files"), its no-preview screen, or a different story than the one
  * asked for.
  */
-export const storybookSentinel = (arg) => {
+export const storybookSentinel = (/** @type {string | { id: string, root?: string }} */ arg) => {
   const { id, root = '#storybook-root' } = typeof arg === 'string' ? { id: arg } : arg;
   const b = document.body;
   const pv = window.__STORYBOOK_PREVIEW__;
@@ -48,7 +48,8 @@ export const storybookSentinel = (arg) => {
     const cur = pv?.currentRender;
     const rendered =
       cur?.id === id &&
-      ['finished', 'completed'].includes(cur.phase) &&
+      // `phase` may be missing: then it is not one of these.
+      /** @type {(string | undefined)[]} */ (['finished', 'completed']).includes(cur.phase) &&
       (document.querySelector(root)?.childElementCount ?? 0) > 0;
     if (rendered) overlay.remove();
     else {
@@ -78,6 +79,9 @@ export const storybookSentinel = (arg) => {
  * Wait until the geometry under `sel` (every element's box, plus the body's portal
  * count) is unchanged for 300 ms, and at least `minMs` has passed. Polls every
  * 100 ms, gives up after 8 s.
+ * @param {Page} page
+ * @param {string} sel
+ * @param {{ minMs?: number }} [opts]
  */
 export async function waitLayoutStable(page, sel, { minMs = 0 } = {}) {
   const t0 = Date.now();
@@ -100,7 +104,8 @@ export async function waitLayoutStable(page, sel, { minMs = 0 } = {}) {
           window.__pxStableSince = now;
           return false;
         }
-        return now - window.__pxStableSince >= 300;
+        // Set with the signature, which this poll found unchanged.
+        return now - /** @type {number} */ (window.__pxStableSince) >= 300;
       },
       sel,
       { polling: 100, timeout: 8000 }
@@ -114,6 +119,8 @@ export async function waitLayoutStable(page, sel, { minMs = 0 } = {}) {
  * Wait until the markup under `sel` is unchanged across three polls 150 ms apart (up to 8 s).
  * For content animated by JS on its own clock (a chart library's entry animation), which the
  * freeze stylesheet cannot stop; a fixed delay stretches under load when pages share the CPU.
+ * @param {Page} page
+ * @param {string} sel
  */
 export async function waitMarkupStable(page, sel) {
   await page.evaluate(() => {
@@ -145,9 +152,13 @@ export const FREEZE_CSS =
 /**
  * Playwright, resolved the way the project would resolve it (see lib/workspace.mjs).
  * @param {PeerBase} project
+ * @returns {Promise<PlaywrightLib>}
  */
 async function playwright(project) {
-  const pw = await import(pathToFileURL(resolvePeer(project, 'playwright')).href);
+  // The playwright module: its engines at the top, or under `default` (CommonJS interop).
+  const pw = /** @type {PlaywrightLib & { default: PlaywrightLib }} */ (
+    await import(pathToFileURL(resolvePeer(project, 'playwright')).href)
+  );
   return pw.chromium ? pw : pw.default;
 }
 
@@ -163,7 +174,8 @@ export async function launchBrowser(project, channel) {
   let lastErr;
   for (const ch of channel ? [channel] : [undefined, 'chrome', 'msedge']) {
     try {
-      const b = await chromium.launch(ch ? { channel: ch } : {});
+      // A Browser; the keys pxsig adds are optional.
+      const b = /** @type {PxsigBrowser} */ (await chromium.launch(ch ? { channel: ch } : {}));
       // The channel it launched with is part of the render environment (lib/env.mjs).
       b.__pxsigChannel = ch ?? null;
       return b;
@@ -178,17 +190,24 @@ export async function launchBrowser(project, channel) {
  * Connect to a Playwright browser server (`pxsig browser start`, `playwright run-server`) instead of
  * launching. One endpoint serves every engine, picked by the `x-playwright-browser` header;
  * `exposeNetwork: '<loopback>'` lets that browser reach this machine's localhost (Storybook).
+ * @param {PlaywrightLib} pw
+ * @param {string} endpoint
+ * @param {BrowserName} [type]
+ * @returns {Promise<PxsigBrowser>}
  */
 export async function connectBrowser(pw, endpoint, type = 'chromium') {
   try {
-    const b = await pw[type].connect(endpoint, {
-      exposeNetwork: '<loopback>',
-      headers: { 'x-playwright-browser': type },
-    });
+    // A Browser; the keys pxsig adds are optional.
+    const b = /** @type {PxsigBrowser} */ (
+      await pw[type].connect(endpoint, {
+        exposeNetwork: '<loopback>',
+        headers: { 'x-playwright-browser': type },
+      })
+    );
     b.__pxsigRemote = endpoint;
     return b;
   } catch (e) {
-    const why = String(e?.message ?? e).split('\n')[0];
+    const why = String(/** @type {Error | undefined} */ (e)?.message ?? e).split('\n')[0];
     throw new SetupError(
       `cannot use the browser server at ${endpoint} (${type}): ${why}. Is it running (pxsig browser status), and is this project's Playwright the server's major.minor?`
     );
@@ -198,11 +217,17 @@ export async function connectBrowser(pw, endpoint, type = 'chromium') {
 /**
  * What `pxsig browser start` recorded for `endpoint` (image, digest), or null.
  * @param {PeerBase} project
+ * @param {string} endpoint
+ * @returns {BrowserRecordFile | null}
  */
 export function browserRecord(project, endpoint) {
   const f = project?.workspaceRoot ? browserFile(project.workspaceRoot) : null;
   try {
-    const r = f && existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null;
+    // browser.json, as `pxsig browser start` wrote it.
+    const r =
+      f && existsSync(f)
+        ? /** @type {BrowserRecordFile | null} */ (JSON.parse(readFileSync(f, 'utf8')))
+        : null;
     return r && r.ws === endpoint ? r : null;
   } catch {
     return null;
@@ -215,6 +240,8 @@ export function browserRecord(project, endpoint) {
  * With `endpoint` (`capture.browserEndpoint`, `--browser`, `PXSIG_BROWSER_WS`) every engine is
  * connected to that browser server instead; without it, launching is exactly as before.
  * @param {Project | null} project
+ * @param {Record<string, PxsigBrowser>} [given]
+ * @param {{ endpoint?: string | null, pw?: PlaywrightLib | null }} [opts]
  */
 export function browserPool(
   project,
@@ -222,10 +249,16 @@ export function browserPool(
   { endpoint = project?.config?.capture?.browserEndpoint ?? null, pw = null } = {}
 ) {
   const open = new Map(Object.entries(given).map(([k, b]) => [k, Promise.resolve(b)]));
+  /** @type {Map<string, Promise<EnvRecord>>} */
   const envs = new Map();
   const lib = () => (pw ? Promise.resolve(pw) : playwright(project));
   return {
     endpoint,
+    /**
+     * @param {string} [type]
+     * @param {Parameters<typeof collectEnv>[1]} [opts]
+     * @returns {Promise<EnvRecord>}
+     */
     env(type = 'chromium', opts = {}) {
       if (!envs.has(type))
         envs.set(
@@ -244,11 +277,13 @@ export function browserPool(
             })
           )
         );
-      return envs.get(type);
+      // Set just above when it was missing.
+      return /** @type {Promise<EnvRecord>} */ (envs.get(type));
     },
     /**
      * The environments of every browser type in `types`: `{ chromium: env, … }`.
      * @param {Iterable<string>} types
+     * @param {Parameters<typeof collectEnv>[1]} [opts]
      * @returns {Promise<Record<string, EnvRecord>>}
      */
     async envs(types, opts = {}) {
@@ -257,16 +292,20 @@ export function browserPool(
       for (const t of new Set(types)) out[t] = await this.env(t, opts);
       return out;
     },
-    /** @returns {Promise<PxsigBrowser>} */
+    /**
+     * `type` is an engine name: a manifest's `browser` (schema `$defs/mode`) or the default.
+     * @param {string} [type]
+     * @returns {Promise<PxsigBrowser>}
+     */
     get(type = 'chromium') {
       if (!open.has(type))
         open.set(
           type,
           endpoint
-            ? lib().then((p) => connectBrowser(p, endpoint, type))
+            ? lib().then((p) => connectBrowser(p, endpoint, /** @type {BrowserName} */ (type)))
             : type === 'chromium'
               ? launchBrowser(project)
-              : lib().then((p) => p[type].launch())
+              : lib().then((p) => p[/** @type {BrowserName} */ (type)].launch())
         );
       // Set just above when it was missing.
       return /** @type {Promise<PxsigBrowser>} */ (open.get(type));
@@ -278,8 +317,12 @@ export function browserPool(
 }
 
 /** axe-core's browser bundle, resolved like Playwright, injected per page for the a11y pass. */
+/** @type {string | null} */
 let axeSource = null;
-/** @param {PeerBase} project */
+/**
+ * @param {PeerBase} project
+ * @returns {string}
+ */
 export function axeScript(project) {
   if (axeSource != null) return axeSource;
   try {
@@ -300,8 +343,11 @@ export function axeScript(project) {
  * two fixed transforms of the current value: `{ scale: n }` multiplies its leading number (unit
  * kept), `{ mix: colour, amount: pct }` mixes it with a colour. Nothing is evaluated as code.
  * Runs in the page, through `page.evaluate`.
+ * @param {Record<string, TokenValue>} want
+ * @returns {number}
  */
 export function applyTokenOverrides(want) {
+  /** @type {Set<string>} */
   const names = new Set();
   for (const sheet of document.styleSheets) {
     let rules;
@@ -310,13 +356,14 @@ export function applyTokenOverrides(want) {
     } catch {
       continue;
     }
-    for (const r of rules)
+    // A style rule (and @page, @font-face …) has `style`; @media, @import and the like do not.
+    for (const r of /** @type {Iterable<CSSRule & { style?: CSSStyleDeclaration }>} */ (rules))
       if (r.style) for (const n of r.style) if (n.startsWith('--')) names.add(n);
   }
   const probe = getComputedStyle(
     document.querySelector('[data-theme]') || document.documentElement
   );
-  const next = (spec, current) => {
+  const next = (/** @type {TokenValue} */ spec, /** @type {string} */ current) => {
     if (spec && typeof spec === 'object') {
       if (typeof spec.scale === 'number') {
         const m = /^(-?[\d.]+)(.*)$/.exec(current);
@@ -328,6 +375,7 @@ export function applyTokenOverrides(want) {
     }
     return String(spec);
   };
+  /** @type {string[]} */
   const decls = [];
   for (const [path, spec] of Object.entries(want)) {
     for (const n of names) {
@@ -341,29 +389,41 @@ export function applyTokenOverrides(want) {
   return decls.length;
 }
 
-/** Load axe-core's bundle into the page once (a page is reused across stories). */
+/**
+ * Load axe-core's bundle into the page once (a page is reused across stories).
+ * @param {Page} page
+ * @param {string} src
+ */
 export async function injectAxe(page, src) {
   if (!(await page.evaluate(() => typeof window.axe !== 'undefined')))
     await page.addScriptTag({ content: src });
 }
 
-/** Ask the loaded preview to render another story; resolves false if it does not within 10 s. */
+/**
+ * Ask the loaded preview to render another story; resolves false if it does not within 10 s.
+ * @param {Page} page
+ * @param {string} storyId
+ * @returns {Promise<boolean>}
+ */
 async function switchStory(page, storyId) {
   return page
     .evaluate(
       (id) =>
-        new Promise((resolve) => {
+        new Promise((/** @type {(rendered: boolean) => void} */ resolve) => {
           const pv = window.__STORYBOOK_PREVIEW__;
           if (!pv?.channel) return resolve(false);
           if (pv.currentRender?.id === id) return resolve(true);
+          // `pv.channel` is checked above; Storybook keeps one channel for the page's life.
+          /** @typedef {NonNullable<StorybookPreview['channel']>} Channel */
           const timer = setTimeout(
-            () => (pv.channel.off('storyRendered', on), resolve(false)),
+            () =>
+              (/** @type {Channel} */ (pv.channel).off('storyRendered', on), resolve(false)),
             10000
           );
           const on = () => {
             if (pv.currentRender?.id !== id) return;
             clearTimeout(timer);
-            pv.channel.off('storyRendered', on);
+            /** @type {Channel} */ (pv.channel).off('storyRendered', on);
             resolve(true);
           };
           pv.channel.on('storyRendered', on);
@@ -374,11 +434,13 @@ async function switchStory(page, storyId) {
     .catch(() => false);
 }
 
+/** @param {Page} page */
 async function resetPage(page) {
   await page.mouse.move(0, 0).catch(() => {});
   await page
     .evaluate(() => {
-      document.activeElement?.blur?.();
+      // A focused element is an HTML, SVG or MathML element: each has `blur`.
+      /** @type {HTMLOrSVGElement | null} */ (document.activeElement)?.blur?.();
       window.scrollTo(0, 0);
     })
     .catch(() => {});
@@ -395,6 +457,11 @@ async function resetPage(page) {
  * opts: { baseUrl, globals, viewport, colorScheme, settleMs, target, waitFor, concurrency,
  *         css, tokens, a11y, project }
  * Returns [{ id, png, ms, error, a11y }] in input order plus wall-clock ms.
+ * @param {PxsigBrowser | BrowserSource} browser
+ * @param {RenderEntry[]} stories
+ * @param {string} outDir
+ * @param {RenderOptions} [opts]
+ * @returns {Promise<RenderOutput>}
  */
 export async function renderStories(browser, stories, outDir, opts = {}) {
   const {
@@ -413,11 +480,16 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
     waitFor = [],
   } = opts;
   let reloads = 0;
-  const pool = typeof browser?.get === 'function' ? browser : { get: async () => browser };
+  // A pool has `get`; a Browser does not.
+  const pool =
+    typeof (/** @type {Partial<BrowserSource>} */ (browser)?.get) === 'function'
+      ? /** @type {BrowserSource} */ (browser)
+      : { get: async () => /** @type {PxsigBrowser} */ (browser) };
   mkdirSync(outDir, { recursive: true });
-  const results = new Array(stories.length);
+  // One slot per entry, each filled by the worker that renders it.
+  const results = /** @type {RenderResult[]} */ (new Array(stories.length));
   const t0 = performance.now();
-  const cfgOf = (e) => {
+  const cfgOf = (/** @type {RenderEntry} */ e) => {
     const vp = e.viewport ?? viewport;
     return {
       browser: e.browser ?? 'chromium',
@@ -430,22 +502,28 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
   // stories on one page, switching in place, and reloads between files. Storybook's dev
   // server injects each component's CSS when it is first rendered, so letting a page carry
   // CSS from other files would make equal-specificity rules resolve by visit order.
-  const groupKey = (e) =>
+  const groupKey = (/** @type {RenderEntry} */ e) =>
     `${cfgOf(e).key}|${e.importPath ?? e.story ?? e.id}|${e.globals ?? globals}`;
+  /** @type {Map<string, number[]>} */
   const groups = new Map();
   stories.forEach((e, i) => {
     const k = groupKey(e);
     if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(i);
+    // Set on the line above when it was missing.
+    /** @type {number[]} */ (groups.get(k)).push(i);
   });
   const queue = [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, idx]) => idx);
   let next = 0;
   const axe = a11y && project ? axeScript(project) : '';
 
   async function worker() {
+    /** @type {BrowserContext | null} */
     let context = null;
-    let page = null;
+    // Opened before its first use: `ctxKey` starts null, so the first entry opens a context and page.
+    let page = /** @type {Page} */ (/** @type {unknown} */ (null));
+    /** @type {string | null} */
     let ctxKey = null;
+    /** @type {string | null} */
     let loadedGlobals = null;
     for (;;) {
       const g = next++;
@@ -466,7 +544,8 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
               viewport: { width: cfg.vp[0], height: cfg.vp[1] },
               deviceScaleFactor: 1,
               reducedMotion: 'reduce',
-              colorScheme: cfg.scheme,
+              // `light` or `dark` (schema `$defs/mode`).
+              colorScheme: /** @type {'light' | 'dark'} */ (cfg.scheme),
             });
             await context.addInitScript(() => {
               Math.random = () => 0.5;
@@ -492,9 +571,13 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             .waitForFunction(
               (id) =>
                 window.__STORYBOOK_PREVIEW__?.currentRender?.id === id &&
-                ['finished', 'completed', 'aborted', 'errored'].includes(
-                  window.__STORYBOOK_PREVIEW__.currentRender.phase
-                ),
+                // `phase` may be missing: then it is not one of these.
+                /** @type {(string | undefined)[]} */ ([
+                  'finished',
+                  'completed',
+                  'aborted',
+                  'errored',
+                ]).includes(window.__STORYBOOK_PREVIEW__.currentRender.phase),
               storyId,
               { timeout: e.play ? 20000 : 5000 }
             )
@@ -530,7 +613,8 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
               await loc.click({ button: 'right', timeout: 5000 });
             else if (it.action === 'press') {
               if (it.target) await loc.focus({ timeout: 5000 });
-              for (const k of [].concat(it.key ?? 'Tab')) await page.keyboard.press(k);
+              for (const k of /** @type {string[]} */ ([]).concat(it.key ?? 'Tab'))
+                await page.keyboard.press(k);
             }
             if (it.waitFor) await page.waitForSelector(it.waitFor, { timeout: 5000 });
             await page.waitForTimeout(it.settleMs ?? 150);
@@ -540,6 +624,7 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
           const el = await page.$(sel);
           const box = el ? await el.boundingBox() : null;
           const mask = (e.ignore ?? []).map((q) => page.locator(q));
+          /** @type {PageScreenshotOptions} */
           const shot = {
             animations: 'disabled',
             timeout: 10000,
@@ -557,9 +642,13 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
               .then(() =>
                 page.evaluate(
                   async ({ sel: root }) => {
-                    const r = await window.axe.run(document.querySelector(root) ?? document, {
-                      resultTypes: ['violations'],
-                    });
+                    // injectAxe added axe-core to this page just before.
+                    const r = await /** @type {Axe} */ (window.axe).run(
+                      document.querySelector(root) ?? document,
+                      {
+                        resultTypes: ['violations'],
+                      }
+                    );
                     return r.violations.map((v) => ({
                       id: v.id,
                       impact: v.impact,
@@ -572,7 +661,8 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
                 )
               )
               .then((violations) => ({ violations }))
-              .catch((err) => ({ error: String(err.message).split('\n')[0] }));
+              // Playwright rejects with an Error.
+              .catch((/** @type {Error} */ err) => ({ error: String(err.message).split('\n')[0] }));
           }
           results[i] = { id: e.id, png, ms: performance.now() - t, a11y: a11yRes };
           // Leave nothing behind for the next story on this page: pointer, focus, scroll.
@@ -582,7 +672,8 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             id: e.id,
             png: null,
             ms: performance.now() - t,
-            error: err.message.split('\n')[0],
+            // Playwright and the throws above reject with an Error.
+            error: /** @type {Error} */ (err).message.split('\n')[0],
           };
         }
       }

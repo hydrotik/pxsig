@@ -610,7 +610,8 @@ test(
           method: 'POST',
           headers: {
             'content-type': 'application/json',
-            'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`),
+            // The server under test wrote its token when it started.
+            'x-pxsig-token': /** @type {string} */ (readToken(f.repo, `http://127.0.0.1:${port}`)),
           },
           body: JSON.stringify({ id }),
         });
@@ -685,7 +686,8 @@ test(
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`),
+          // The server under test wrote its token when it started.
+          'x-pxsig-token': /** @type {string} */ (readToken(f.repo, `http://127.0.0.1:${port}`)),
         },
         body: JSON.stringify({ id }),
       });
@@ -745,7 +747,8 @@ test(
           method: 'POST',
           headers: {
             'content-type': 'application/json',
-            'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`),
+            // The server under test wrote its token when it started.
+            'x-pxsig-token': /** @type {string} */ (readToken(f.repo, `http://127.0.0.1:${port}`)),
           },
           body: JSON.stringify({ id }),
         });
@@ -786,7 +789,8 @@ test(
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`),
+          // The server under test wrote its token when it started.
+          'x-pxsig-token': /** @type {string} */ (readToken(f.repo, `http://127.0.0.1:${port}`)),
         },
         body: JSON.stringify({ id, rule: 'aria-hidden-focus' }),
       });
@@ -798,7 +802,8 @@ test(
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-pxsig-token': readToken(f.repo, `http://127.0.0.1:${port}`),
+          // The server under test wrote its token when it started.
+          'x-pxsig-token': /** @type {string} */ (readToken(f.repo, `http://127.0.0.1:${port}`)),
         },
         body: JSON.stringify({ id, rule: 'aria-hidden-focus' }),
       });

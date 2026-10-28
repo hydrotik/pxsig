@@ -1,4 +1,7 @@
 {
   "extends": "../../tsconfig.node.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"]
+  },
   "include": ["bin/**/*.mjs", "src/**/*.mjs", "src/**/*.d.ts", "test/**/*.mjs"]
 }

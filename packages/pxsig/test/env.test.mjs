@@ -444,7 +444,11 @@ test(
       const base = `http://127.0.0.1:${port}`;
       const r = await fetch(`${base}/__pxsig/approve`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-pxsig-token': readToken(f.repo, base) },
+        // The server under test wrote its token when it started.
+        headers: {
+          'content-type': 'application/json',
+          'x-pxsig-token': /** @type {string} */ (readToken(f.repo, base)),
+        },
         body: JSON.stringify({ id }),
       });
       assert.equal(r.status, 200, await r.text());
@@ -455,7 +459,11 @@ test(
       const other = f.ids.drift;
       const r2 = await fetch(`${base}/__pxsig/approve`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-pxsig-token': readToken(f.repo, base) },
+        // The server under test wrote its token when it started.
+        headers: {
+          'content-type': 'application/json',
+          'x-pxsig-token': /** @type {string} */ (readToken(f.repo, base)),
+        },
         body: JSON.stringify({ id: other }),
       });
       assert.equal(r2.status, 200, await r2.text());
