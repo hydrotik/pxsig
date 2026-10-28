@@ -100,6 +100,16 @@ jobs:
           tool: cargo-deny@0.20.2
       - if: runner.os == 'Linux'
         run: cargo deny --locked check
+      # Line coverage with a floor (Linux only): measured, then a floor 2 points below, raised only
+      # in its own chore commit. No coverage service.
+      - if: runner.os == 'Linux'
+        uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
+        with:
+          tool: cargo-llvm-cov@0.9.1
+      - if: runner.os == 'Linux'
+        run: |
+          rustup component add llvm-tools-preview
+          cargo llvm-cov --workspace --locked --summary-only --fail-under-lines 73
       - run: cargo build --release --locked
       # The engine runs on a Windows machine without the Visual C++ Redistributable (crt-static).
       - if: runner.os == 'Windows'
@@ -137,7 +147,23 @@ jobs:
       # capture helpers) skip without one, and a skip is not a pass.
       # System libraries are a Linux concern; macOS and Windows runners need only the browser.
       - run: pnpm --filter pxsig exec playwright install ${{ runner.os == 'Linux' && '--with-deps' || '' }} chromium
-      - run: pnpm --filter pxsig test
+      - if: runner.os != 'Linux'
+        run: pnpm --filter pxsig test
+      # On Linux, the same suite with coverage floors (packages/pxsig/package.json, test:coverage),
+      # and the table in the job summary. It counts code run in the test process only: a CLI or
+      # server a test starts is a subprocess and is not counted, so the figure understates.
+      - if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          status=0
+          pnpm --filter pxsig run test:coverage | tee coverage.txt || status=$?
+          {
+            echo '### pxsig coverage (test process only: CLI and server subprocesses are not counted)'
+            echo '```'
+            sed -n '/start of coverage report/,/end of coverage report/p' coverage.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
       - run: pnpm --filter @pxsig/storybook-addon test
       # The scale benchmark's generator and verdicts (the benchmark itself runs nightly: bench.yml).
       - run: node --test scripts/bench/run.test.mjs

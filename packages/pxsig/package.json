@@ -43,7 +43,8 @@
   ],
   "scripts": {
     "prepack": "node ../../scripts/sync-dashboard-source.mjs",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "test:coverage": "node --test --experimental-test-coverage \"--test-coverage-include=src/**\" --test-coverage-lines=85 --test-coverage-branches=74 --test-coverage-functions=82 test/*.test.mjs"
   },
   "dependencies": {
     "axe-core": "^4.10.0",
