@@ -81,7 +81,13 @@ const items = []; // { key, suite, scenario, kind, changed, id }
 const suites = [];
 for (const tag of tags) {
   // A report tools/scenarios.mjs wrote: `tag` is one listed in the reports folder above.
-  const rep = /** @type {ScenariosReport} */ (readReport(P, tag));
+  const rep = /** @type {ScenariosReport | null} */ (readReport(P, tag));
+  if (!Array.isArray(rep?.scenarios) || !rep.scenarios.length) {
+    console.error(
+      `[calibrate-gate] ${join(P.store.reports, `${tag}.json`)} is not a scenarios report: run tools/scenarios.mjs again`
+    );
+    process.exit(1);
+  }
   const ids = new Set(rep.scenarios[0].rows.filter((r) => !r.error).map((r) => r.id));
   const entries = run.stories
     .filter((e) => ids.has(e.id))
