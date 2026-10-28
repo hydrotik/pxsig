@@ -9,9 +9,10 @@
  *
  * Both targets are git-ignored. The prebuilt dashboard (dist/dashboard) is not touched.
  */
-import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { copyTree } from './lib/copy-tree.mjs';
 
 const repo = fileURLToPath(new URL('..', import.meta.url));
 const from = join(repo, 'packages', 'dashboard');
@@ -29,8 +30,8 @@ for (const f of [
   'ui-tools.mjs',
   'README.md',
 ])
-  cpSync(join(from, f), join(to, f), { recursive: true });
+  copyTree(join(from, f), join(to, f));
 const docs = join(repo, 'docs', 'ui');
 rmSync(join(pkg, 'docs'), { recursive: true, force: true });
-if (existsSync(docs)) cpSync(docs, join(pkg, 'docs', 'ui'), { recursive: true });
+if (existsSync(docs)) copyTree(docs, join(pkg, 'docs', 'ui'));
 console.log('[sync] dashboard source and docs/ui copied into packages/pxsig');

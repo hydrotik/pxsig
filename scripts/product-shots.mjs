@@ -24,7 +24,6 @@
  */
 import { spawn, spawnSync } from 'node:child_process';
 import {
-  cpSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -37,6 +36,7 @@ import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { copyTree } from './lib/copy-tree.mjs';
 
 const repo = fileURLToPath(new URL('..', import.meta.url));
 const cli = join(repo, 'packages', 'pxsig', 'bin', 'pxsig.mjs');
@@ -165,8 +165,7 @@ async function prepare() {
   // 1. A fresh copy of the example, linked to this checkout.
   const dir = join(repo, '.local', 'product-shots', 'single-package');
   rmSync(dir, { recursive: true, force: true });
-  cpSync(join(repo, 'examples', 'single-package'), dir, {
-    recursive: true,
+  copyTree(join(repo, 'examples', 'single-package'), dir, {
     filter: (p) => !/node_modules|storybook-static|\.pxsig/.test(p),
   });
   const pjPath = join(dir, 'package.json');
