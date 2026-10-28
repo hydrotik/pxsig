@@ -25,9 +25,9 @@ export function packagesIn(root) {
       const pj = path.join(dir, d.name, 'package.json');
       if (!d.isDirectory() || !existsSync(pj)) continue;
       try {
-        // A package.json: its `name` is the key.
-        out[/** @type {{ name: string }} */ (JSON.parse(readFileSync(pj, 'utf8'))).name] =
-          path.join(dir, d.name);
+        // A package.json: its `name` is the key; one with no name is not a package to alias.
+        const { name } = /** @type {{ name?: unknown }} */ (JSON.parse(readFileSync(pj, 'utf8')));
+        if (typeof name === 'string' && name) out[name] = path.join(dir, d.name);
       } catch {
         // not a package
       }
