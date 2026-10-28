@@ -35,7 +35,11 @@ pub fn decode_png_bytes(bytes: &[u8], path: &Path) -> Result<(Vec<u8>, usize, us
     let mut reader = decoder
         .read_info()
         .with_context(|| format!("decoding {}", path.display()))?;
-    let mut buf = vec![0; reader.output_buffer_size()];
+    // None when width × height × channels does not fit in memory (png 0.18).
+    let size = reader
+        .output_buffer_size()
+        .with_context(|| format!("decoding {}: image too large", path.display()))?;
+    let mut buf = vec![0; size];
     let info = reader
         .next_frame(&mut buf)
         .with_context(|| format!("decoding {}", path.display()))?;
