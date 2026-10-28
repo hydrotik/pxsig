@@ -162,7 +162,11 @@ leaves a required check waiting forever and blocks every pull request. New check
 inside an existing job. Every third-party action is pinned by its full commit SHA, with a
 `# vX.Y.Z` comment.
 
-## Dependency advisories
+## Dependencies
+
+Dependabot (`.github/dependabot.yml`) opens update pull requests every Monday for the GitHub
+Actions, the pnpm workspace (grouped as `dev` and `prod`) and the Rust workspace. They go through
+the same checks as any other pull request.
 
 CI checks the dependencies against public advisory databases: `cargo deny --locked check`
 (`deny.toml`: advisories, licences, sources) in the Rust job on Linux, and
@@ -172,12 +176,13 @@ dependency. That is intended. The fix is one of:
 
 - **an update** of the affected dependency, in its own commit; or
 - **an ignore entry with a reason and a date**: in `deny.toml` (`[advisories] ignore`, whose
-  entries take a `reason`) for a crate, or in `pnpm.auditConfig` in `package.json` for an npm
-  package (JSON has no comments: the reason and the date go in the commit that adds it). The reason
-  says why the advisory does not apply or what the fix is waiting on; the date says when to look
-  again.
+  entries take a `reason`) for a crate, or in `pnpm.auditConfig.ignoreGhsas` in the root
+  `package.json` for an npm package (JSON has no comments: the reason and the date go in the commit
+  that adds it). The reason says why the advisory does not apply or what the fix is waiting on; the
+  date says when to look again.
 
-Advisories for development tooling arrive as Dependabot pull requests instead of failing CI.
+Advisories for development tooling arrive as Dependabot pull requests instead of failing CI. A
+licence outside `deny.toml`'s `allow` list fails; adding one is a decision for the owner.
 
 ## Pull requests
 

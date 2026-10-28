@@ -1,0 +1,46 @@
+# cargo-deny (`cargo deny --locked check`): the crates compiled into the engine, from Cargo.lock.
+# CI runs it in the `rust` job, on Linux. It reads the RustSec advisory database over the network,
+# so a new advisory can fail an unrelated pull request: the fix is an update, or an entry in
+# `advisories.ignore` with the advisory id, a reason and the date (CONTRIBUTING.md).
+
+[graph]
+all-features = true
+
+[advisories]
+# A vulnerability (and an unsound crate) fails. cargo-deny 0.20 has no "warn" level for
+# unmaintained crates (a scope that fails, or "none", which skips them): "none", so an unmaintained
+# notice never blocks a pull request; `cargo deny check advisories` with `unmaintained = "all"`
+# lists them. A yanked crate warns (the default).
+version = 2
+unmaintained = "none"
+ignore = [
+  # { id = "RUSTSEC-0000-0000", reason = "why it does not apply, and until when (YYYY-MM-DD)" },
+]
+
+[licenses]
+version = 2
+# Every crate's licence must be one of these; anything else fails.
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Zlib",
+  "Unicode-3.0",
+]
+confidence-threshold = 0.9
+# The list is the policy, not what Cargo.lock happens to use today: an unused entry is fine.
+unused-allowed-license = "allow"
+
+[bans]
+# Two versions of one crate are reported, not failed.
+multiple-versions = "warn"
+
+[sources]
+# crates.io only: no git or other registries.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
