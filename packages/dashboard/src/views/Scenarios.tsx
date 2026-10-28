@@ -20,8 +20,13 @@ import { StoryGrid } from '../parts/StoryGrid';
 import { Cmd, t, tx } from '../copy';
 import * as s from '../dashboard.css';
 
-const asRow = (r: Scenario['rows'][number]): Row =>
-  ({ ...r, story: r.id, mode: 'dark', state: null, pass: r.pass ?? false }) as Row;
+const asRow = (r: Scenario['rows'][number]): Row => ({
+  ...r,
+  story: r.id,
+  mode: 'dark',
+  state: null,
+  pass: r.pass ?? false,
+});
 
 export function Scenarios({
   data,
@@ -46,7 +51,7 @@ export function Scenarios({
   if (!rep.scenarios?.length)
     return (
       <div className={s.empty}>
-        {t('diagnostics.scenario.emptySuite', { suite: suiteTitle(suite!, rep) })}
+        {t('diagnostics.scenario.emptySuite', { suite: suiteTitle(suite, rep) })}
       </div>
     );
   const tag = rep.suite ? `scenarios-${rep.suite.name}` : 'scenarios';
@@ -74,7 +79,7 @@ export function Scenarios({
           <Toolbar size="sm">
             <ToolbarStart>
               <SegmentedChoice
-                value={suite!}
+                value={suite}
                 onValueChange={(v) => (setSuite(v), setName(null))}
                 label={t('diagnostics.scenario.suite')}
                 options={suites.map((k) => ({ value: k, label: suiteTitle(k, all[k]) }))}
@@ -82,7 +87,7 @@ export function Scenarios({
             </ToolbarStart>
           </Toolbar>
         ) : (
-          <strong style={{ fontSize: '0.8125rem' }}>{suiteTitle(suite!, rep)}</strong>
+          <strong style={{ fontSize: '0.8125rem' }}>{suiteTitle(suite, rep)}</strong>
         )}
         <span className={s.muted}>
           {rep.suite

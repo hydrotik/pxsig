@@ -97,7 +97,7 @@ export const AppShell = ({ children }: C.AppShellProps) => <DS.AppShell>{childre
 
 export const AppMain = ({ ref, children }: C.AppMainProps) => (
   <DS.AppShellContent asChild>
-    <main ref={ref as React.Ref<HTMLElement>}>{children}</main>
+    <main ref={ref}>{children}</main>
   </DS.AppShellContent>
 );
 

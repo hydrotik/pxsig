@@ -4,7 +4,7 @@
  * conformance report lists every component that renders this way.
  */
 import React from 'react';
-import { type ComponentProps, heatStep } from './contract';
+import { type ComponentProps, type DataTableProps, heatStep } from './contract';
 import { tokens as v } from './tokens';
 import { t } from '../copy';
 
@@ -129,7 +129,7 @@ function DataTableFallback<T>({
   onRowClick,
   search,
   paginate,
-}: ComponentProps['DataTable'] & { rows: T[] }) {
+}: DataTableProps<T>) {
   const [q, setQ] = React.useState('');
   const [sort, setSort] = React.useState<{ id: string; dir: 1 | -1 } | null>(null);
   const [page, setPage] = React.useState(0);

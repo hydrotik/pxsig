@@ -58,9 +58,21 @@ export interface InspectTarget {
 const MODES: Mode[] = ['side', 'swipe', 'onion', 'diff', 'heat'];
 
 const PREFS_KEY = 'pxsig-inspector';
-const loadPrefs = () => {
+/** The inspector's view settings, as it saves them (below); any may be missing. */
+type Prefs = {
+  mode?: Mode;
+  split?: number;
+  onion?: number;
+  heat?: number;
+  tol?: number;
+  boxes?: boolean;
+  highlight?: boolean;
+  tiles?: boolean;
+};
+const loadPrefs = (): Prefs => {
   try {
-    return JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');
+    // What the inspector itself saved under PREFS_KEY.
+    return JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') as Prefs;
   } catch {
     return {};
   }

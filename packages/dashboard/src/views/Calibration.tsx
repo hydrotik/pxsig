@@ -117,7 +117,7 @@ export function Calibration({ data }: { data: Data }) {
           </CardHeader>
           <CardContent>
             <DataTable
-              rows={(d.topAdmissible as any[]).map((c: any, i: number): DetailRow => ({
+              rows={d.topAdmissible.map((c, i: number): DetailRow => ({
                 id: String(i),
                 build: `${c.build.tile}px / ${c.build.block}px / sel ${c.build.selEnergy}`,
                 rule: `≥${c.k} tiles, Δ>${c.T}, rise>${c.E ?? '∞'}`,
