@@ -96,3 +96,19 @@ test('stale with too many edits to trace says so and is not clean (exit 1)', () 
   assert.match(r.stdout, /\d+ source files edited since the oldest verdict .*too many to trace/);
   assert.doesNotMatch(r.stdout, /undefined|Every result is newer/);
 });
+
+test('entry shows the review decision on the current result', () => {
+  const own = fixture({ withSigs: false }).repo;
+  const id = 'components-alpha--default';
+  writeFileSync(
+    join(own, '.pxsig/reports/review.json'),
+    JSON.stringify({ [id]: { state: 'rejected', at: new Date().toISOString(), via: 'dashboard' } })
+  );
+  const r = spawnSync(process.execPath, [cli, 'entry', id], {
+    cwd: own,
+    encoding: 'utf8',
+    env: { ...process.env, PXSIG_FORMAT: '', PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin },
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /Review\W+rejected/);
+});

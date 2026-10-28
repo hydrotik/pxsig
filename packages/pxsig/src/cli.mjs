@@ -1223,8 +1223,7 @@ const commands = {
               ? { text: e.a11y.violations.map((v) => v.id ?? v).join(', '), color: 'red' }
               : 'clean',
           ],
-          // BUG (reported, not changed): a review decision's key is `state`, so this is always 'none'.
-          ['Review', /** @type {string | undefined} */ (e.review?.decision) ?? 'none'],
+          ['Review', e.review?.state ?? 'none'],
           ['Checked', e.checkedAt ?? '—'],
           ['Dashboard', { text: inspectUrl(id), url: inspectUrl(id) }],
         ],
