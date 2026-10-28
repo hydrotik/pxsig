@@ -935,8 +935,9 @@ export function defaultHooks(ctx, { serverUrl, timeoutMs = 15 * 60_000 } = {}) {
 export async function applyRepairs(
   ctx,
   plan,
-  // Every caller passes `hooks`; without them a step that calls one throws, as it always has.
-  { hooks, via = 'cli', by = who(ctx), reconcileOpts = {} } = /** @type {ApplyOptions} */ ({})
+  // Each step calls only its own hooks: without `confirmPrune` / `confirmTorn` nothing is confirmed;
+  // a register or re-check step without its hook throws, naming it (defaultHooks gives both).
+  { hooks = {}, via = 'cli', by = who(ctx), reconcileOpts = {} } = {}
 ) {
   /** @type {DoneStep[]} */
   const done = [];
@@ -961,6 +962,9 @@ export async function applyRepairs(
       continue;
     }
     if (step.action === 'register') {
+      if (!hooks.harvest)
+        throw new Error('applyRepairs: a register step needs hooks.harvest (see defaultHooks)');
+      const harvest = hooks.harvest;
       const idx = (await fresh()).entries.filter(
         (x) => step.ids.includes(x.id) && x.status === 'unregistered'
       );
@@ -968,8 +972,7 @@ export async function applyRepairs(
         ctx,
         // An unregistered story's entry carries its importPath (reconcile).
         idx.map((x) => ({ id: x.id, importPath: /** @type {string} */ (x.importPath) })),
-        // A plan with a register step comes with `harvest` (defaultHooks, for every caller).
-        { harvest: /** @type {Harvest} */ (hooks.harvest) }
+        { harvest }
       );
       logRegister(ctx, r, step.ids, { by, via });
       const notes = [
@@ -997,6 +1000,9 @@ export async function applyRepairs(
       }
     } else if (step.action === 'recheck') {
       if (!step.ids.length) continue;
+      if (!hooks.recheck)
+        throw new Error('applyRepairs: a recheck step needs hooks.recheck (see defaultHooks)');
+      const recheck = hooks.recheck;
       const readRows = () =>
         new Map(
           // check.json, pxsig's own report (lib/rows.mjs).
@@ -1007,8 +1013,7 @@ export async function applyRepairs(
       /** @type {RecheckResult} */
       let r;
       try {
-        // A plan with a re-check step comes with `recheck` (defaultHooks, for every caller).
-        r = await /** @type {RepairHooks['recheck']} */ (hooks.recheck)(step.ids);
+        r = await recheck(step.ids);
       } catch (e) {
         // A re-check fails with an Error (defaultHooks throws them; fetch rejects with them).
         r = { via: 'server', error: /** @type {Error} */ (e).message };
