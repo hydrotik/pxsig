@@ -12,7 +12,14 @@
  */
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import { hostname } from 'node:os';
 import { createServer } from 'node:http';
 import { dirname, join } from 'node:path';
@@ -111,11 +118,12 @@ async function fakeStorybook(stories) {
 }
 
 /**
- * Start `pxsig serve` on a fixture; `storybook` overrides the config's storybook.url.
+ * Start `pxsig serve` on a fixture; `storybook` overrides the config's storybook.url, `bin` the
+ * engine binary.
  * @param {Fixture} f
- * @param {{ storybook?: string }} [opts]
+ * @param {{ storybook?: string, bin?: string }} [opts]
  */
-async function serve(f, { storybook } = {}) {
+async function serve(f, { storybook, bin = rustBin } = {}) {
   if (storybook) {
     const cfgPath = join(f.repo, 'pxsig.config.json');
     const cfg = JSON.parse(readFileSync(cfgPath, 'utf8'));
@@ -125,7 +133,7 @@ async function serve(f, { storybook } = {}) {
   const proc = spawn(
     process.execPath,
     [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-    { cwd: f.repo, env: { ...process.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
+    { cwd: f.repo, env: { ...process.env, PXSIG_BIN: bin, PXSIG_WORKSPACE: '' } }
   );
   let log = '';
   proc.stdout.on('data', (d) => (log += d));
@@ -261,7 +269,9 @@ test(
     try {
       assert.equal((await S.post('check', { ids: [f.ids.ok, f.ids.drift] })).status, 202);
       // While that check runs, the manifest becomes unreadable; the next check is queued behind it.
-      writeFileSync(join(f.px, 'manifest.json'), '{ not json');
+      const manifestPath = join(f.px, 'manifest.json');
+      const good = readFileSync(manifestPath, 'utf8');
+      writeFileSync(manifestPath, '{ not json');
       const r = await S.post('check', { ids: [f.ids.changed] });
       assert.deepEqual(r.body.queued, [f.ids.changed], 'queued while the first check ran');
       await S.idle();
@@ -270,10 +280,58 @@ test(
         /check failed: setup error: the manifest did not load — .*Nothing was rendered/
       );
       assert.doesNotMatch(S.log(), /missing string param|Storybook is not reachable/);
+      // The manifest loads again: the next check's reload clears the project's error.
+      writeFileSync(manifestPath, good);
+      assert.equal((await S.post('check', { ids: [f.ids.ok] })).status, 202);
+      await S.idle();
+      // GET /__pxsig/projects answers JSON (docs/server.md).
+      const { projects } = /** @type {{ projects: { error: string | null }[] }} */ (
+        await (await fetch(`${S.base}/__pxsig/projects`)).json()
+      );
+      assert.equal(projects[0].error, null, 'an earlier load failure no longer shows');
     } finally {
       S.stop();
       sb.close();
     }
+  }
+);
+
+test(
+  'engine lines that are not a JSON object are skipped, and the server keeps answering',
+  {
+    skip: needs || (process.platform === 'win32' && 'the stand-in engine is a script'),
+    timeout: 120_000,
+  },
+  async (t) => {
+    const f = fixture();
+    // The real engine, behind a script (named as the engine is) that first writes lines that are
+    // not answers: `null`, a number, and text that is not JSON.
+    mkdirSync(join(f.repo, 'odd-engine'));
+    const bin = join(f.repo, 'odd-engine', 'pxsig');
+    writeFileSync(
+      bin,
+      `#!/usr/bin/env node
+const c = require('node:child_process').spawn(${JSON.stringify(rustBin)}, process.argv.slice(2), {
+  stdio: ['inherit', 'pipe', 'inherit'],
+});
+if (process.argv[2] === 'serve') process.stdout.write('null\\n42\\nnot json\\n');
+c.stdout.pipe(process.stdout);
+c.on('exit', (code) => process.exit(code ?? 1));
+`
+    );
+    chmodSync(bin, 0o755);
+    // After hooks, each registered as soon as its resource exists: they run however the test ends,
+    // even when the server stops before it is up.
+    const sb = await fakeStorybook(f.index.stories);
+    t.after(() => sb.close());
+    const S = await serve(f, { storybook: sb.url, bin });
+    t.after(() => S.stop());
+    const before = rowsOf(f).find((/** @type {{ id: string }} */ x) => x.id === f.ids.ok);
+    assert.equal((await S.post('check', { ids: [f.ids.ok] })).status, 202);
+    await S.idle();
+    const row = rowsOf(f).find((/** @type {{ id: string }} */ x) => x.id === f.ids.ok);
+    assert.notEqual(row.checkedAt, before.checkedAt, `recorded:\n${S.log()}`);
+    assert.doesNotMatch(S.log(), /TypeError|SyntaxError/);
   }
 );
 

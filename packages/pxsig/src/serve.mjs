@@ -307,8 +307,17 @@ function rust(method, params) {
     let seq = 0;
     // stdin and stdout are pipes (`stdio` above), so neither is null.
     createInterface({ input: /** @type {Readable} */ (proc.stdout) }).on('line', (line) => {
-      // The engine writes one JSON object per line (crates/pxsig-cli/src/serve.rs).
-      const msg = /** @type {EngineReply} */ (JSON.parse(line));
+      // The engine writes one JSON object per line (crates/pxsig-cli/src/serve.rs); any other line
+      // (not JSON, or JSON that is not an object) answers nothing and is skipped.
+      /** @type {unknown} */
+      let parsed;
+      try {
+        parsed = JSON.parse(line);
+      } catch {
+        return;
+      }
+      if (!parsed || typeof parsed !== 'object') return;
+      const msg = /** @type {EngineReply} */ (parsed);
       const p = pending.get(msg.id);
       pending.delete(msg.id);
       if (p) {
@@ -392,6 +401,8 @@ function openState(ref) {
       );
       S.runPath = r.path;
       S.manifest = r.manifest;
+      // Loaded: an earlier failure no longer applies.
+      delete S.error;
     } catch (e) {
       S.manifest = { stories: [] };
       S.runPath = null;
