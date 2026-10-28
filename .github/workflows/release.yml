@@ -31,14 +31,19 @@ jobs:
   verify:
     name: Verify versions
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: read # the tagged commit's check runs
     outputs:
       version: ${{ steps.v.outputs.version }}
       dist_tag: ${{ steps.v.outputs.dist_tag }}
       dry_run: ${{ steps.v.outputs.dry_run }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the tagged commit must be on origin/main
       - id: v
-        name: Tag, Cargo workspace and packages/pxsig/package.json must agree
+        name: Tag, Cargo workspace and every package.json must agree
         shell: bash
         env:
           DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
@@ -47,26 +52,37 @@ jobs:
           dry_run=false
           if [ "${DRY_RUN_INPUT}" = "true" ]; then dry_run=true; fi
           echo "dry_run=${dry_run}" >> "$GITHUB_OUTPUT"
-          cargo=$(awk '/^\[/{t=($0=="[workspace.package]")} t && /^version[ \t]*=/{gsub(/.*=[ \t]*"|".*/,""); print; exit}' Cargo.toml)
           npm=$(node -p "require('./packages/pxsig/package.json').version")
           if [ "${GITHUB_REF_TYPE}" = "tag" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
             tag="${GITHUB_REF_NAME#v}"
           elif [ "$dry_run" = true ]; then
-            # A dry run on a branch has no tag to check: the two version files must still agree.
-            echo "::notice::dry run on ${GITHUB_REF_TYPE} ${GITHUB_REF_NAME}: checking Cargo.toml against packages/pxsig/package.json only"
+            # A dry run on a branch has no tag to check: the version files must still agree.
+            echo "::notice::dry run on ${GITHUB_REF_TYPE} ${GITHUB_REF_NAME}: checking the version files against each other only"
             tag="$npm"
           else
             echo "::error::run this workflow on a tag ref vX.Y.Z, or pass dry_run (got ${GITHUB_REF_TYPE} ${GITHUB_REF_NAME})"
             exit 1
           fi
-          echo "tag=${tag} cargo=${cargo} packages/pxsig=${npm}"
-          if [ "$tag" != "$cargo" ] || [ "$tag" != "$npm" ]; then
-            echo "::error::version mismatch: tag ${tag}, Cargo.toml [workspace.package] ${cargo}, packages/pxsig/package.json ${npm}"
-            exit 1
-          fi
+          # Cargo.toml, Cargo.lock, packages/pxsig, packages/storybook-addon, packages/dashboard.
+          node scripts/check-versions.mjs --tag "v${tag}"
           if [[ "$tag" == *-* ]]; then dist_tag=next; else dist_tag=latest; fi
           echo "version=${tag}" >> "$GITHUB_OUTPUT"
           echo "dist_tag=${dist_tag}" >> "$GITHUB_OUTPUT"
+      # A tag publishes only a commit that main has and that passed every required check
+      # (scripts/required-checks.mjs, the one list of them). A dry run publishes nothing: skipped.
+      - name: The tagged commit is on main and passed the required checks
+        if: github.ref_type == 'tag' && steps.v.outputs.dry_run != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::${GITHUB_REF_NAME} (${GITHUB_SHA}) is not on origin/main: tag a commit that main has"
+            exit 1
+          fi
+          gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs" > "${RUNNER_TEMP}/check-runs.json"
+          node scripts/required-checks.mjs "${RUNNER_TEMP}/check-runs.json"
 
   test:
     name: Rust tests (linux-x64)

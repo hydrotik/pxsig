@@ -20,9 +20,9 @@ package's test suite (`test/features.test.mjs`) fails when the two files, or the
 disagree.
 
 `node scripts/check-versions.mjs` checks that they all agree (CI runs it on every pull request, so a
-missed bump shows before the tag). The workflow's first job fails the release if the tag (without
-the `v`), the Cargo workspace version and `packages/pxsig/package.json` differ. Bump them all in one
-commit, then tag that commit:
+missed bump shows before the tag), and the workflow's first job runs it with `--tag`, failing the
+release if the tag (without the `v`) differs from any of them. Bump them all in one commit, merge
+it, then tag that commit on `main`:
 
 ```bash
 git tag v0.2.0 && git push origin v0.2.0
@@ -49,7 +49,9 @@ changes first), with the entries already under Unreleased ahead of the fragments
 
 ## What the workflow does
 
-1. **verify**: checks the versions as above.
+1. **verify**: checks the versions as above. On a tag (not a dry run) it also checks that the
+   tagged commit is on `main` and that every required check passed on it (the 11 jobs of `ci.yml`,
+   listed once in `scripts/required-checks.mjs`, whose test compares the list with `ci.yml`).
 2. **test**: `cargo test --workspace` on linux-x64.
 3. **build**: `cargo build --release --locked --target <target> -p pxsig-cli` for each platform,
    uploaded as the artifact `pxsig-<platform>-<arch>`:
