@@ -143,6 +143,35 @@ require('node:readline')
   }
 );
 
+test(
+  'engine lines that are not a JSON object are skipped; the answer after them still arrives',
+  // Without the skip, the engine reader throws and the request never settles: fail, not hang.
+  { skip: process.platform === 'win32' && 'the stand-in engine is a script', timeout: 20_000 },
+  async (t) => {
+    const { ctx, repo } = fixture({ withSigs: false });
+    // A stand-in engine that writes `null` and a number before each answer (an error, to tell apart).
+    mkdirSync(join(repo, 'odd-engine'));
+    const bin = join(repo, 'odd-engine', 'pxsig');
+    writeFileSync(
+      bin,
+      `#!/usr/bin/env node
+require('node:readline')
+  .createInterface({ input: process.stdin })
+  .on('line', (l) =>
+    process.stdout.write('null\\n42\\n' + JSON.stringify({ id: JSON.parse(l).id, error: 'the real answer' }) + '\\n')
+  );
+`
+    );
+    chmodSync(bin, 0o755);
+    const r = /** @type {NonNullable<ReturnType<typeof rustAffected>>} */ (
+      rustAffected({ ...ctx, rustBin: bin })
+    );
+    // An after hook, not `finally`: it also runs when the test times out, so the engine stops.
+    t.after(() => r.close());
+    await assert.rejects(r.affected('src/components/Alpha/Alpha.stories.tsx'), /the real answer/);
+  }
+);
+
 test('a broken Storybook index is reachable but not healthy; an unreachable one falls back to the static scan', async () => {
   const errPage = async () =>
     new Response(

@@ -570,6 +570,8 @@ export function rustAffected(ctx) {
       } catch {
         return;
       }
+      // JSON that is not an object (`null`, a number) answers nothing either.
+      if (!msg || typeof msg !== 'object') return;
       const p = pending.get(msg.id);
       pending.delete(msg.id);
       if (!p) return;
