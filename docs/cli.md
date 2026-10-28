@@ -186,7 +186,8 @@ the dashboard, and the paths of its images. `--images baseline,current,diff` cho
 
 Verdicts that cannot be trusted as current: older than an edit to a file that can change the entry
 (traced through the import graph), or made on a render of a different size than the one on disk.
-Exit 1 when there are any (the stale gate: `advisoryExit` on [warn](#warn-mode)).
+Exit 1 when there are any, or when too many files were edited since the oldest verdict to trace
+them one by one (the stale gate: `advisoryExit` on [warn](#warn-mode)).
 
 ### `pxsig history [--limit 10]`
 

@@ -1,6 +1,8 @@
 // The CLI's output contract: piped output is clean Markdown, --json is one JSON document, and the
 // exit codes hold. Runs in a fixture project; no server or Storybook needed.
 import { spawnSync } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -76,4 +78,21 @@ test('usage errors exit 2', () => {
   assert.equal(run(['entry']).status, 2);
   assert.equal(run(['check']).status, 2);
   assert.equal(run(['migrate']).status, 2);
+});
+
+test('stale with too many edits to trace says so and is not clean (exit 1)', () => {
+  // Its own fixture: 450 edited sources is above the 400 the stale tool traces one by one.
+  const own = fixture({ withSigs: false }).repo;
+  const gen = join(own, 'src/components/Alpha/gen');
+  mkdirSync(gen, { recursive: true });
+  for (let i = 0; i < 450; i++)
+    writeFileSync(join(gen, `f${i}.ts`), `export const x${i} = ${i};\n`);
+  const r = spawnSync(process.execPath, [cli, 'stale'], {
+    cwd: own,
+    encoding: 'utf8',
+    env: { ...process.env, PXSIG_FORMAT: '', PXSIG_URL: 'http://127.0.0.1:1', PXSIG_BIN: rustBin },
+  });
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stdout, /\d+ source files edited since the oldest verdict .*too many to trace/);
+  assert.doesNotMatch(r.stdout, /undefined|Every result is newer/);
 });

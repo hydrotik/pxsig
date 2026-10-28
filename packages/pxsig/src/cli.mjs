@@ -1071,11 +1071,38 @@ const commands = {
 
   stale: () =>
     overProjects(async () => {
-      // BUG (reported, not changed): the `tooMany` answer has none of these keys, so `bad` is NaN
-      // and the command reports every result fresh, exit 0.
-      const s = /** @type {Extract<ToolOutput<'stale'>, { of: number }>} */ (
-        await run('stale', { limit: Number(flags.limit) || 200 })
-      );
+      const answer = await run('stale', { limit: Number(flags.limit) || 200 });
+      // Too many edits to trace one by one: freshness is unknown, so not clean.
+      if ('tooMany' in answer && answer.tooMany) {
+        const g = gate(
+          [
+            {
+              gate: 'stale',
+              exit: 1,
+              count: answer.tooMany,
+              what: 'source files edited since the oldest verdict, too many to trace',
+            },
+          ],
+          'stale',
+          { tooMany: answer.tooMany }
+        );
+        return {
+          blocks: [
+            ...g.lead,
+            { h: 'Freshness', sub: 'not traced' },
+            {
+              note: `${answer.tooMany} source files edited since the oldest verdict (${answer.oldestVerdict ?? 'unknown'}): too many to trace one by one`,
+              tone: 'warn',
+            },
+            { next: [[`${CMD} check --all`, 're-check every entry']] },
+            ...g.last,
+          ],
+          data: { ...answer, ...g.data },
+          exit: g.exit,
+          advisory: g.advisory,
+        };
+      }
+      const s = /** @type {Extract<ToolOutput<'stale'>, { of: number }>} */ (answer);
       const bad = s.stale + s.inconsistent;
       /** @type {Block[]} */
       const blocks = [

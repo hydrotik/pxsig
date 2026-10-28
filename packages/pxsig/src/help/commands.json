@@ -133,7 +133,7 @@
       "effects": ["reads-only"],
       "exits": {
         "0": "No stale verdicts, or warn mode: the stale gate is on warn (advisoryExit, default 0)",
-        "1": "Stale verdicts found",
+        "1": "Stale verdicts found, or too many edits since the oldest verdict to trace",
         "2": "Usage or setup error"
       },
       "examples": [
