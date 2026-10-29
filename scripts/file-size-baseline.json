@@ -3,7 +3,6 @@
   "limit": 5000,
   "exempt": {},
   "files": {
-    "crates/pxsig-cli/src/main.rs": 7170,
     "packages/dashboard/src/dashboard.css.ts": 5773,
     "packages/dashboard/src/data.ts": 6196,
     "packages/dashboard/src/diff-viewer/DiffViewer.tsx": 7453,
