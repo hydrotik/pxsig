@@ -26,7 +26,6 @@
     "packages/pxsig/src/lib/workspace.mjs": 10979,
     "packages/pxsig/src/mcp.mjs": 15103,
     "packages/pxsig/src/serve.mjs": 18751,
-    "packages/pxsig/src/types.d.ts": 6119,
-    "scripts/bench/generate-store.mjs": 5057
+    "packages/pxsig/src/types.d.ts": 6119
   }
 }
