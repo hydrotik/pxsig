@@ -32,7 +32,6 @@
     "packages/pxsig/src/types.d.ts": 6119,
     "packages/pxsig/test/enforcement.test.mjs": 6604,
     "packages/pxsig/test/env.test.mjs": 6265,
-    "packages/pxsig/test/features.test.mjs": 10153,
     "packages/pxsig/test/guard.test.mjs": 6709,
     "packages/pxsig/test/integrity.test.mjs": 9643,
     "packages/pxsig/test/server-flow.test.mjs": 5844,
