@@ -16,7 +16,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { countDiagnostics, lowered, regressions, total } from './lib/lint-ratchet.mjs';
 /** @import { RatchetBaseline } from './types.js' */
@@ -25,7 +25,11 @@ export const PROJECTS = ['packages/pxsig', 'packages/storybook-addon', 'scripts'
 
 const repo = fileURLToPath(new URL('..', import.meta.url));
 const baselinePath = join(repo, 'scripts', 'type-errors-baseline.json');
-const tsc = createRequire(join(repo, 'package.json')).resolve('typescript/bin/tsc');
+const tsPkg = createRequire(join(repo, 'package.json')).resolve('typescript/package.json');
+const tsc = join(
+  dirname(tsPkg),
+  /** @type {{ bin: { tsc: string } }} */ (JSON.parse(readFileSync(tsPkg, 'utf8'))).bin.tsc
+);
 
 /**
  * tsc's `--pretty false` lines as diagnostics: `path(line,col): error TS1234: message`. tsc prints

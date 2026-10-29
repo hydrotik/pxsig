@@ -48,6 +48,6 @@
     "oxlint-tsgolint": "7.0.2005",
     "publint": "^0.3.25",
     "sherif": "^1.13.0",
-    "typescript": "^5.9.3"
+    "typescript": "^7.0.2"
   }
 }

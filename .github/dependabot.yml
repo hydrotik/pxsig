@@ -43,6 +43,10 @@ updates:
         update-types: ['version-update:semver-major']
       - dependency-name: '@vitejs/plugin-react'
         update-types: ['version-update:semver-major']
+      # A TypeScript major changes what the type check reports and how its scripts find tsc
+      # (7 is a native compiler with an exports map), so it is taken by hand, through a design.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: cargo
     directory: /
