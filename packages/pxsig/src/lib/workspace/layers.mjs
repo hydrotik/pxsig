@@ -43,7 +43,10 @@ export const DEFAULTS = Object.freeze({
 /** @typedef {Record<string, unknown>} Obj */
 /** The CLI flags layer (`flagLayer`): config keys only. */
 /** @typedef {{ storybook?: { url?: string, staticDir?: string, configDir?: string }, grid?: number, minCellPx?: number, capture?: { settleMs?: number, browserEndpoint?: string } }} FlagLayer */
-/** @type {(v: unknown) => v is Obj} */
+/**
+ * @param {unknown} v
+ * @returns {v is Obj}
+ */
 export const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
 /**

@@ -9,7 +9,8 @@ You need:
 - Node.js 22.18 or later to work on the repository (`pnpm ui:check` and `pnpm ui:docs` read TypeScript
   with Node's type stripping). `.nvmrc` names it, so `nvm use` (or fnm, or Volta) picks it up; CI
   runs the latest 22.x. The published `pxsig` package needs Node.js 22 or later.
-- pnpm 10 (the version is pinned in `package.json`; `corepack enable` picks it up)
+- pnpm 10 (the version is pinned in `package.json`; `corepack enable` picks it up). TypeScript 7 is a
+  native compiler: `pnpm install` fetches the package for your platform.
 - Rust 1.99.0, with cargo: `rust-toolchain.toml` pins it and rustup installs it, and
   `rust-version` in `Cargo.toml` declares it. A Rust that is not managed by rustup (Homebrew's, for
   one) ignores the pin; put the rustup toolchain first on `PATH`.

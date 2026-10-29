@@ -9,3 +9,5 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+/** Font packages the design system imports for their CSS only. */
+declare module '@fontsource-variable/*';

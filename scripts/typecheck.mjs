@@ -11,14 +11,18 @@
  * step is skipped and says so (CI has no checkout).
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packagesIn } from '../packages/dashboard/src/ui/adapters/hydrotik/vite.mjs';
 
 const repo = fileURLToPath(new URL('..', import.meta.url));
-const tsc = createRequire(path.join(repo, 'package.json')).resolve('typescript/bin/tsc');
+const tsPkg = createRequire(path.join(repo, 'package.json')).resolve('typescript/package.json');
+const tsc = path.join(
+  path.dirname(tsPkg),
+  /** @type {{ bin: { tsc: string } }} */ (JSON.parse(readFileSync(tsPkg, 'utf8'))).bin.tsc
+);
 /** @param {string} project */
 const run = (project) =>
   spawnSync(process.execPath, [tsc, '-p', project], { cwd: repo, stdio: 'inherit' }).status ?? 1;
@@ -56,10 +60,9 @@ else {
   const config = {
     extends: rel(path.join(repo, 'tsconfig.json')),
     compilerOptions: {
-      baseUrl: rel(repo),
       paths: {
-        '@ui': ['packages/dashboard/src/ui/index.ts'],
-        'pxsig/dashboard': ['packages/dashboard/src/ui/contract.ts'],
+        '@ui': [rel(path.join(repo, 'packages/dashboard/src/ui/index.ts'))],
+        'pxsig/dashboard': [rel(path.join(repo, 'packages/dashboard/src/ui/contract.ts'))],
         '@hydrotik/design-system/chart': [path.join(ds, 'src/chart.ts')],
         '@hydrotik/design-system/fonts': [path.join(ds, 'src/fonts.ts')],
         '@hydrotik/design-system/styles': [path.join(ds, 'src/styles.ts')],
