@@ -64,7 +64,7 @@ function readFlags() {
     'dashboard.mjs',
     'dashboard-check.mjs',
     'browser.mjs',
-    'lib/workspace.mjs',
+    'lib/workspace/layers.mjs',
     'lib/term.mjs',
     'lib/enforcement.mjs',
   ];
