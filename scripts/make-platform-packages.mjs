@@ -12,7 +12,7 @@
  * layout `actions/download-artifact` produces for the release workflow's build artifacts.
  *
  * The `pxsig` package lists these as optionalDependencies, so a package manager installs only the
- * one matching the host. `rustBinary()` in packages/pxsig/src/lib/workspace.mjs resolves
+ * one matching the host. `rustBinary()` in packages/pxsig/src/lib/workspace/peers.mjs resolves
  * `@pxsig/cli-${process.platform}-${process.arch}/bin/${exe}`; the names and paths here must match.
  *
  * --write-optional-deps <package.json> sets `version` and adds or updates an exact-version

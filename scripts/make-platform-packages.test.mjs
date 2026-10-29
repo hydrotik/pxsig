@@ -66,8 +66,11 @@ test('every platform package is named, restricted and laid out as rustBinary() r
       assert.equal(readFileSync(bin, 'utf8'), `engine for ${id}\n`, `${id}: bin/${exeOf(id)}`);
       assert.ok(existsSync(join(out, `cli-${id}`, 'README.md')));
     }
-    // rustBinary() (packages/pxsig/src/lib/workspace.mjs) resolves the same name and path.
-    const workspace = readFileSync(join(repo, 'packages/pxsig/src/lib/workspace.mjs'), 'utf8');
+    // rustBinary() (packages/pxsig/src/lib/workspace/peers.mjs) resolves the same name and path.
+    const workspace = readFileSync(
+      join(repo, 'packages/pxsig/src/lib/workspace/peers.mjs'),
+      'utf8'
+    );
     assert.ok(
       workspace.includes('`@pxsig/cli-${process.platform}-${process.arch}/bin/${exe}`'),
       'rustBinary resolves @pxsig/cli-<platform>-<arch>/bin/<exe>'
