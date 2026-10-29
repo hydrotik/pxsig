@@ -3,7 +3,6 @@
   "limit": 5000,
   "exempt": {},
   "files": {
-    "crates/pxsig-cli/src/affected.rs": 16328,
     "crates/pxsig-cli/src/batch.rs": 8230,
     "crates/pxsig-cli/src/main.rs": 7170,
     "crates/pxsig-cli/src/resolve.rs": 9886,
