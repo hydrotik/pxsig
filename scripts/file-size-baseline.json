@@ -30,7 +30,6 @@
     "packages/pxsig/src/serve.mjs": 18751,
     "packages/pxsig/src/types.d.ts": 6119,
     "packages/pxsig/test/env.test.mjs": 6265,
-    "packages/pxsig/test/guard.test.mjs": 6709,
     "packages/pxsig/test/server-flow.test.mjs": 5844,
     "scripts/bench/generate-store.mjs": 5057
   }
