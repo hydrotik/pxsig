@@ -13,7 +13,6 @@
     "packages/dashboard/src/ui/contract.ts": 6115,
     "packages/dashboard/src/ui/fallbacks.tsx": 5057,
     "packages/dashboard/src/ui/features.ts": 6004,
-    "packages/dashboard/test/flows.test.mjs": 6651,
     "packages/dashboard/ui-tools.mjs": 9062,
     "packages/pxsig/src/approve.mjs": 8363,
     "packages/pxsig/src/check.mjs": 9179,
