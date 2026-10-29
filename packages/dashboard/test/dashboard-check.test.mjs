@@ -207,12 +207,14 @@ test('a decision is answered and recorded, nothing is written, and only --out ch
   );
   const after = tree(cwd).filter((f) => !f.startsWith('check-out'));
   assert.deepEqual(after, before, 'nothing written outside --out');
-  assert.equal(
-    readFileSync(
-      path.join(dashboard, '..', 'pxsig', 'src', 'dashboard-check.mjs'),
-      'utf8'
-    ).includes('child_process'),
-    false,
+  const src = path.join(dashboard, '..', 'pxsig', 'src');
+  const files = [
+    'dashboard-check.mjs',
+    ...readdirSync(path.join(src, 'dashboard-check')).map((f) => `dashboard-check/${f}`),
+  ];
+  assert.deepEqual(
+    files.filter((f) => readFileSync(path.join(src, f), 'utf8').includes('child_process')),
+    [],
     'starts no program itself (decision 91: Playwright launches the browser)'
   );
 });
