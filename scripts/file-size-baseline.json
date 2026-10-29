@@ -38,7 +38,6 @@
     "packages/pxsig/test/guard.test.mjs": 6709,
     "packages/pxsig/test/integrity.test.mjs": 9643,
     "packages/pxsig/test/server-flow.test.mjs": 5844,
-    "scripts/bench/generate-store.mjs": 5057,
-    "scripts/examples-test.mjs": 6825
+    "scripts/bench/generate-store.mjs": 5057
   }
 }
