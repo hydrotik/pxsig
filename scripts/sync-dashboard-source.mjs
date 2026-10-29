@@ -3,7 +3,8 @@
  * sync-dashboard-source.mjs — copies what `pxsig dashboard build | gaps` and adapter authors need
  * into the pxsig package before it is packed (its `prepack` script):
  *
- *   packages/dashboard/{src, fixtures, index.html, build-config.mjs, postbuild.mjs, ui-tools.mjs, README.md}
+ *   packages/dashboard/{src, fixtures, index.html, build-config.mjs, postbuild.mjs, ui-tools.mjs,
+ *                       ui-tools, README.md}
  *                                         → packages/pxsig/dashboard/
  *   docs/ui/                              → packages/pxsig/docs/ui/
  *
@@ -28,6 +29,7 @@ for (const f of [
   'build-config.mjs',
   'postbuild.mjs',
   'ui-tools.mjs',
+  'ui-tools',
   'README.md',
 ])
   copyTree(join(from, f), join(to, f));

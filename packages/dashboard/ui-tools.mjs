@@ -26,708 +26,90 @@
  * @typedef {{ id: string, section: string, title: string, purpose: string, states: Record<string, string>, interactions: { action: string, keys?: string }[], copy: string[], components: string[], files: string[], screens: FeatureScreen[] }} FeatureDef
  *   a FEATURES entry (src/ui/features.ts's `Feature`), as the checks below read it
  */
-import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { scenarioNames } from './fixtures/scenarios.mjs';
+import {
+  compareVersions,
+  contractDiff,
+  contractShape,
+  contractStatus,
+  lockFile,
+  lockFor,
+  lockProblems,
+  lockText,
+  readChanges,
+  readContract,
+  readContractVersion,
+  readLock,
+} from './ui-tools/contract.mjs';
+import {
+  featuresMarkdown,
+  readFeatures,
+  screenProblems,
+  screensFile,
+  screensText,
+  SECTION_TITLE,
+} from './ui-tools/features.mjs';
+import {
+  buildManifest,
+  exportsOf,
+  gapsOf,
+  gapsText,
+  manifestText,
+  readConformance,
+  sourceFiles,
+  STATUSES,
+  uiImports,
+} from './ui-tools/gaps.mjs';
+import {
+  buildPromptFile,
+  dashboardDir,
+  docsDir,
+  featuresMdFile,
+  manifestFile,
+  repoRoot,
+  srcDir,
+  uiDir,
+} from './ui-tools/paths.mjs';
 
-export const dashboardDir = path.dirname(fileURLToPath(import.meta.url));
-export const srcDir = path.join(dashboardDir, 'src');
-export const uiDir = path.join(srcDir, 'ui');
-export const manifestFile = path.join(uiDir, 'manifest.json');
-export const STATUSES = ['full', 'partial', 'bespoke', 'missing'];
-
-/**
- * CONTRACT from contract.ts: name → { group, required, role }, in declaration order.
- * @param {string} [file]
- * @returns {Contract}
- */
-export function readContract(file = path.join(uiDir, 'contract.ts')) {
-  const text = readFileSync(file, 'utf8');
-  const start = text.indexOf('export const CONTRACT = {');
-  const block = text.slice(start, text.indexOf('} as const satisfies', start));
-  /** @type {Contract} */
-  const out = {};
-  const re =
-    /^\s{2}(\w+): \{ group: '(\w+)', required: (true|false), role: (?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)") \},?$/gm;
-  for (const m of block.matchAll(re))
-    out[m[1]] = {
-      group: m[2],
-      required: m[3] === 'true',
-      role: (m[4] ?? m[5]).replace(/\\(.)/g, '$1'),
-    };
-  if (!Object.keys(out).length) throw new Error(`[pxsig ui] no CONTRACT table found in ${file}`);
-  return out;
-}
-
-// --- the contract's version and its lock (docs/ui/contract-changes.md) ----------------------------
-
-export const lockFile = path.join(uiDir, 'contract-lock.json');
-
-/**
- * CONTRACT_VERSION from contract.ts.
- * @param {string} [file]
- */
-export function readContractVersion(file = path.join(uiDir, 'contract.ts')) {
-  const m = readFileSync(file, 'utf8').match(
-    /^export const CONTRACT_VERSION = '(\d+\.\d+\.\d+)';$/m
-  );
-  if (!m) throw new Error(`[pxsig ui] no CONTRACT_VERSION in ${file}`);
-  return m[1];
-}
-
-/** @param {string} v */
-const parts = (v) =>
-  String(v)
-    .split('.')
-    .map((n) => Number(n) || 0);
-/**
- * -1, 0 or 1, as semver orders `a` and `b` (major.minor.patch only).
- * @param {string} a
- * @param {string} b
- */
-export function compareVersions(a, b) {
-  const [x, y] = [parts(a), parts(b)];
-  for (let i = 0; i < 3; i++)
-    if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) < (y[i] ?? 0) ? -1 : 1;
-  return 0;
-}
-/** @param {string} v */
-const major = (v) => parts(v)[0];
-
-/**
- * The names in a `NAME = [ 'a', 'b' ] as const` list.
- * @param {string} text
- * @param {string} name
- * @param {string} [quoteRe]
- */
-function listOf(text, name, quoteRe = '[\\w.-]+') {
-  const start = text.indexOf(`${name} = [`);
-  if (start < 0) return [];
-  return [
-    ...text
-      .slice(start, text.indexOf('] as const', start))
-      .matchAll(new RegExp(`^\\s*'(${quoteRe})'`, 'gm')),
-  ].map((m) => m[1]);
-}
-/**
- * The keys of a `NAME = { a: …, 'b-c': … } as const` object (empty for `{}`).
- * @param {string} text
- * @param {string} name
- */
-function defaultsOf(text, name) {
-  const start = text.indexOf(`${name} = {`);
-  if (start < 0) return [];
-  const body = text.slice(start + name.length + 4, text.indexOf('} as const', start));
-  return [...body.matchAll(/^\s*(?:'([\w.-]+)'|([\w]+)):/gm)].map((m) => m[1] ?? m[2]);
-}
-
-/**
- * Each exported interface or type in contract.ts, by name, as normalised text.
- * @param {string} text
- */
-function declarations(text) {
-  /** @type {Record<string, string>} */
-  const out = {};
-  for (const m of text.matchAll(/^export (?:interface|type) (\w+)[^\n]*$/gm)) {
-    const startAt = m.index;
-    let end = text.indexOf('\n', startAt);
-    if (/\{\s*$/.test(m[0])) end = text.indexOf('\n}', startAt) + 2;
-    out[m[1]] = text
-      .slice(startAt, end)
-      .replace(/\/\*\*[\s\S]*?\*\/|\/\/[^\n]*/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-  return out;
-}
-
-/**
- * The contract as data for the lock: each component's required flag and a hash of its props (its
- * props interface and the contract types that interface names), the token names and icon names,
- * and which tokens and icons have a default.
- * @param {{ contractFile?: string, tokensFile?: string }} [files]
- * @returns {ContractShape}
- */
-export function contractShape({
-  contractFile = path.join(uiDir, 'contract.ts'),
-  tokensFile = path.join(uiDir, 'tokens.ts'),
-} = {}) {
-  const text = readFileSync(contractFile, 'utf8');
-  const tokensText = readFileSync(tokensFile, 'utf8');
-  const decl = declarations(text);
-  const propsBlock = text.slice(
-    text.indexOf('export interface ComponentProps {'),
-    text.indexOf('\n}', text.indexOf('export interface ComponentProps {'))
-  );
-  const propsOf = Object.fromEntries(
-    [...propsBlock.matchAll(/^\s{2}(\w+): (\w+)/gm)].map((m) => [m[1], m[2]])
-  );
-  /** @param {string} iface */
-  const hashOf = (iface) => {
-    const own = decl[iface] ?? '';
-    const used = [...new Set([...own.matchAll(/\b([A-Z]\w+)\b/g)].map((m) => m[1]))]
-      .filter((n) => n !== iface && decl[n])
-      .sort();
-    return createHash('sha256')
-      .update([own, ...used.map((n) => decl[n])].join('\n'))
-      .digest('hex')
-      .slice(0, 16);
-  };
-  const contract = readContract(contractFile);
-  return {
-    version: readContractVersion(contractFile),
-    components: Object.fromEntries(
-      Object.entries(contract).map(([n, c]) => [
-        n,
-        { required: c.required, hash: hashOf(propsOf[n] ?? `${n}Props`) },
-      ])
-    ),
-    tokens: listOf(tokensText, 'TOKEN_NAMES'),
-    tokenDefaults: defaultsOf(tokensText, 'TOKEN_DEFAULTS'),
-    icons: listOf(text, 'ICON_NAMES'),
-    iconDefaults: defaultsOf(text, 'ICON_DEFAULTS'),
-  };
-}
-
-/**
- * @param {string} [file]
- * @returns {ContractLock | null}
- */
-export function readLock(file = lockFile) {
-  // contract-lock.json is written by lockText (`node scripts/ui.mjs lock`).
-  return existsSync(file)
-    ? /** @type {ContractLock} */ (JSON.parse(readFileSync(file, 'utf8')))
-    : null;
-}
-
-/**
- * How the contract changed since the lock: `{ major: [...], minor: [...] }`, each a sentence.
- * @param {ContractLock} lock
- * @param {ContractShape} now
- */
-export function contractDiff(lock, now) {
-  /** @type {string[]} */
-  const major = [];
-  /** @type {string[]} */
-  const minor = [];
-  for (const [n, c] of Object.entries(lock.components)) {
-    const k = now.components[n];
-    if (!k) major.push(`${n} was removed`);
-    else {
-      if (!c.required && k.required) major.push(`${n} became required`);
-      else if (c.required && !k.required) minor.push(`${n} became optional`);
-      if (c.hash !== k.hash)
-        minor.push(
-          `${n}'s props changed (a removed or re-meant prop is a major change: say which in the changes entry)`
-        );
-    }
-  }
-  for (const [n, k] of Object.entries(now.components))
-    if (!lock.components[n])
-      (k.required ? major : minor).push(`${n} was added${k.required ? ' as required' : ''}`);
-  for (const [kind, list, defaults] of /** @type {const} */ ([
-    ['token', 'tokens', 'tokenDefaults'],
-    ['icon', 'icons', 'iconDefaults'],
-  ])) {
-    for (const n of Object.keys(lock[list]))
-      if (!now[list].includes(n)) major.push(`the ${kind} ${n} was removed`);
-    for (const n of now[list])
-      if (!lock[list][n])
-        (now[defaults].includes(n) ? minor : major).push(
-          `the ${kind} ${n} was added${now[defaults].includes(n) ? ' with a default' : ' without a default'}`
-        );
-  }
-  return { major, minor };
-}
-
-/**
- * The lock for `now`, keeping when each token, icon and component first appeared.
- * @param {ContractShape} now
- * @param {ContractLock | null} [previous]
- * @returns {ContractLock}
- */
-export function lockFor(now, previous = null) {
-  /** @param {'tokens' | 'icons'} group @param {string} n @returns {LockMark} */
-  const since = (group, n) =>
-    // A mark is a version string, or an object with `since` (whose `since` is read first).
-    /** @type {{ since?: string } | undefined} */ (previous?.[group]?.[n])?.since ??
-    previous?.[group]?.[n] ??
-    now.version;
-  return {
-    $comment:
-      'GENERATED by `node scripts/ui.mjs lock` after a contract change, its version bump and its docs/ui/contract-changes.md entry. Do not edit.',
-    version: now.version,
-    components: Object.fromEntries(
-      Object.entries(now.components).map(([n, c]) => [
-        n,
-        {
-          required: c.required,
-          hash: c.hash,
-          since: previous?.components?.[n]?.since ?? now.version,
-        },
-      ])
-    ),
-    tokens: Object.fromEntries(now.tokens.map((n) => [n, since('tokens', n)])),
-    icons: Object.fromEntries(now.icons.map((n) => [n, since('icons', n)])),
-  };
-}
-/** @param {ContractLock} lock */
-export const lockText = (lock) => `${JSON.stringify(lock, null, 2)}\n`;
-
-/**
- * docs/ui/contract-changes.md: version → its section's text. In the repository it is under docs/ui/;
- * in the installed package, beside the dashboard source (sync-dashboard-source.mjs copies it there).
- * @param {string} [file]
- * @returns {Record<string, string>}
- */
-export function readChanges(
-  file = [
-    path.join(repoRoot, 'docs', 'ui', 'contract-changes.md'),
-    path.join(dashboardDir, '..', 'docs', 'ui', 'contract-changes.md'),
-  ].find(existsSync)
-) {
-  if (!file || !existsSync(file)) return {};
-  const text = readFileSync(file, 'utf8');
-  /** @type {Record<string, string>} */
-  const out = {};
-  const heads = [...text.matchAll(/^## (\d+\.\d+\.\d+)\b.*$/gm)];
-  heads.forEach(
-    (h, i) =>
-      (out[h[1]] = text.slice(h.index + h[0].length, heads[i + 1]?.index ?? text.length).trim())
-  );
-  return out;
-}
-
-/**
- * What `pnpm ui:check` says about the version and the lock: the lock matches the contract and its
- * version; a change since the lock needs a bump of the right size and a changes entry.
- * @param {{ lock: ContractLock | null, now: ContractShape, changes: Record<string, string> }} o
- */
-export function lockProblems({ lock, now, changes }) {
-  if (!lock) return ['src/ui/contract-lock.json is missing: run node scripts/ui.mjs lock'];
-  /** @type {string[]} */
-  const problems = [];
-  const { major: big, minor: small } = contractDiff(lock, now);
-  const changed = big.length || small.length;
-  if (!changes[now.version])
-    problems.push(
-      `docs/ui/contract-changes.md has no "## ${now.version}" section for the contract's version`
-    );
-  if (changed) {
-    const cmp = compareVersions(now.version, lock.version);
-    if (cmp <= 0)
-      problems.push(
-        `the contract changed since contract-lock.json (${[...big, ...small].join('; ')}) but CONTRACT_VERSION is still ${now.version}: bump it (${big.length ? 'major' : 'minor'}), add its entry to docs/ui/contract-changes.md, then run node scripts/ui.mjs lock`
-      );
-    else if (big.length && major(now.version) <= major(lock.version))
-      problems.push(
-        `${big.join('; ')}: a major change, but CONTRACT_VERSION went from ${lock.version} to ${now.version}`
-      );
-    else
-      problems.push(
-        `the contract changed (${[...big, ...small].join('; ')}): run node scripts/ui.mjs lock to record ${now.version}`
-      );
-  } else if (lock.version !== now.version)
-    problems.push(
-      `CONTRACT_VERSION is ${now.version} but contract-lock.json records ${lock.version} and nothing changed: put it back, or change the contract`
-    );
-  return problems;
-}
-
-/**
- * How an adapter's contract version (conformance.json `contract`; absent: 1.0.0) relates to this
- * one: `same`, `older-minor` (it works; newer optional parts fall back), `older-major` (it cannot be
- * built until it is updated: the migration notes say how) or `newer` (written for a later pxsig).
- * @param {string} [adapterVersion]
- * @param {{ lock?: ContractLock | null, changes?: Record<string, string> }} [o]
- * @returns {ContractStatus}
- */
-export function contractStatus(
-  adapterVersion = '1.0.0',
-  { lock = readLock(), changes = readChanges() } = {}
-) {
-  const current = lock?.version ?? readContractVersion();
-  const cmp = compareVersions(adapterVersion, current);
-  if (cmp === 0)
-    return {
-      adapter: adapterVersion,
-      current,
-      status: 'same',
-      line: `written for contract ${current}, the same as this pxsig`,
-    };
-  if (cmp > 0)
-    return {
-      adapter: adapterVersion,
-      current,
-      status: 'newer',
-      line: `written for contract ${adapterVersion}; this pxsig has ${current}: parts newer than ${current} are unused`,
-    };
-  /** @param {'components' | 'tokens' | 'icons'} group */
-  const newer = (group) =>
-    Object.entries(lock?.[group] ?? {})
-      .filter(
-        ([, v]) =>
-          // A mark is a version string or an object with `since` (LockMark; components have one).
-          compareVersions(
-            /** @type {string} */ (/** @type {{ since?: string }} */ (v).since ?? v),
-            adapterVersion
-          ) > 0
-      )
-      .map(([n]) => n);
-  if (major(adapterVersion) < major(current)) {
-    const notes = Object.keys(changes)
-      .filter(
-        (v) =>
-          major(v) > major(adapterVersion) &&
-          compareVersions(v, current) <= 0 &&
-          parts(v)[1] === 0 &&
-          parts(v)[2] === 0
-      )
-      .sort(compareVersions)
-      .map((v) => `${v}:\n${changes[v]}`);
-    return {
-      adapter: adapterVersion,
-      current,
-      status: 'older-major',
-      line: `written for contract ${adapterVersion}; this pxsig has ${current}, a major change: update the adapter (migration notes below), then set "contract": "${current}" in its conformance.json`,
-      notes,
-    };
-  }
-  const since = [
-    ...newer('components'),
-    ...newer('tokens').map((t) => `token ${t}`),
-    ...newer('icons').map((i) => `icon ${i}`),
-  ];
-  return {
-    adapter: adapterVersion,
-    current,
-    status: 'older-minor',
-    line: `written for contract ${adapterVersion}; this pxsig has ${current}${since.length ? `: these fall back to their defaults until the adapter maps them: ${since.join(', ')}` : ''}`,
-  };
-}
-
-/**
- * Every source file under a folder (posix-relative paths), skipping `skip` folders.
- * @param {string} [dir]
- * @param {string[]} [skip]
- */
-export function sourceFiles(dir = srcDir, skip = []) {
-  /** @type {string[]} */
-  const out = [];
-  /** @param {string} d */
-  const walk = (d) => {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      const p = path.join(d, e.name);
-      const rel = path.relative(dir, p).split(path.sep).join('/');
-      if (e.isDirectory()) {
-        if (!skip.some((s) => rel === s || rel.startsWith(`${s}/`))) walk(p);
-      } else if (/\.(tsx?|jsx?|mjs)$/.test(e.name) && !e.name.endsWith('.d.ts')) out.push(rel);
-    }
-  };
-  walk(dir);
-  return out.sort();
-}
-
-/**
- * The value names a file imports from `@ui` (type-only names excluded).
- * @param {string} text
- */
-export function uiImports(text) {
-  /** @type {Set<string>} */
-  const names = new Set();
-  for (const m of text.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]@ui['"]/g))
-    for (const part of m[1].split(',')) {
-      const p = part.trim();
-      if (!p || p.startsWith('type ')) continue;
-      names.add(p.split(/\s+as\s+/)[0].trim());
-    }
-  return [...names];
-}
-
-/**
- * The manifest: every contract component, its role, and the dashboard files that render it.
- * @returns {UiManifest}
- */
-export function buildManifest() {
-  const contract = readContract();
-  const used = Object.fromEntries(
-    Object.keys(contract).map((n) => [n, /** @type {string[]} */ ([])])
-  );
-  for (const f of sourceFiles(srcDir, ['ui']))
-    for (const n of uiImports(readFileSync(path.join(srcDir, f), 'utf8')))
-      if (used[n]) used[n].push(f.replace(/\.(tsx?|jsx?)$/, ''));
-  // UiRoot renders the adapter's UiProvider; the runtime is the only user.
-  used.UiProvider.push('ui/index (UiRoot)');
-  return {
-    $comment:
-      'GENERATED by `pnpm ui:manifest` from src/ui/contract.ts and the @ui imports. Do not edit.',
-    components: Object.fromEntries(
-      Object.entries(contract).map(([n, c]) => [n, { ...c, usedBy: used[n].sort() }])
-    ),
-  };
-}
-
-/** @param {UiManifest} [m] */
-export const manifestText = (m = buildManifest()) => `${JSON.stringify(m, null, 2)}\n`;
-
-/**
- * The names a module file exports (`export const|function|class X`, `export { A, B as C }`).
- * @param {string} file
- */
-export function exportsOf(file) {
-  const text = readFileSync(file, 'utf8');
-  /** @type {Set<string>} */
-  const names = new Set();
-  for (const m of text.matchAll(
-    /^export\s+(?:async\s+)?(?:const|let|var|function\*?|class)\s+(\w+)/gm
-  ))
-    names.add(m[1]);
-  for (const m of text.matchAll(/^export\s*\{([^}]*)\}/gm))
-    for (const part of m[1].split(',')) {
-      const p = part.trim().replace(/^type\s+/, '');
-      if (p) names.add((p.split(/\s+as\s+/)[1] ?? p).trim());
-    }
-  return names;
-}
-
-/**
- * An adapter's conformance file (conformance.json beside its module), or null.
- * @param {string} adapterDir
- * @returns {Conformance | null}
- */
-export function readConformance(adapterDir) {
-  const f = path.join(adapterDir, 'conformance.json');
-  if (!existsSync(f)) return null;
-  // The adapter's declaration as JSON (docs/ui/build-adapter.md); gapsOf checks each status.
-  return /** @type {Conformance} */ (JSON.parse(readFileSync(f, 'utf8')));
-}
-
-/**
- * The gaps of one adapter: per contract component, its declared status (conformance.json), whether
- * the module exports it, and the files it affects. A component neither declared nor exported is
- * `missing`; a required one missing is an error (the build fails on it).
- * @param {{ adapterFile: string, manifest?: UiManifest }} o
- * @returns {Gaps}
- */
-export function gapsOf({ adapterFile, manifest = buildManifest() }) {
-  const dir = path.dirname(adapterFile);
-  const conformance = readConformance(dir);
-  const exported = exportsOf(adapterFile);
-  /** @type {GapRow[]} */
-  const rows = [];
-  for (const [name, c] of Object.entries(manifest.components)) {
-    const declared = conformance?.components?.[name];
-    const has = exported.has(name);
-    let status = declared?.status ?? (has ? 'full' : 'missing');
-    /** @type {string[]} */
-    const notes = [];
-    if (declared?.note) notes.push(declared.note);
-    if (!has && status !== 'missing') {
-      notes.push(`declared ${status} but not exported`);
-      status = 'missing';
-    }
-    if (status === 'missing')
-      notes.push(
-        c.required
-          ? 'the build fails without it'
-          : 'renders the plain fallback (src/ui/fallbacks.tsx)'
-      );
-    rows.push({
-      name,
-      group: c.group,
-      required: c.required,
-      status,
-      note: notes.join('; '),
-      usedBy: c.usedBy,
-    });
-  }
-  /** @type {string[]} */
-  const problems = [];
-  if (!conformance) problems.push(`no conformance.json in ${dir}`);
-  else
-    for (const n of Object.keys(conformance.components ?? {}))
-      if (!manifest.components[n])
-        problems.push(`conformance.json lists "${n}", which is not in the contract`);
-  for (const r of rows)
-    if (!STATUSES.includes(r.status)) problems.push(`${r.name}: unknown status "${r.status}"`);
-  for (const r of rows)
-    if (r.required && r.status === 'missing') problems.push(`${r.name} is required and missing`);
-  for (const t of ['name', 'tokens'])
-    if (!exported.has(t)) problems.push(`the adapter module does not export \`${t}\``);
-  const contract = contractStatus(conformance?.contract ?? '1.0.0');
-  if (contract.status === 'older-major') problems.push(`contract: ${contract.line}`);
-  return { adapter: conformance?.adapter ?? path.basename(dir), contract, rows, problems };
-}
-
-/**
- * The gaps report as text: missing, partial and bespoke components, and what each affects.
- * @param {Gaps} gaps
- */
-export function gapsText({ adapter, contract, rows, problems }) {
-  /** @param {string} s */
-  const count = (s) => rows.filter((r) => r.status === s).length;
-  const lines = [
-    `UI adapter "${adapter}": ${rows.length} contract components · ${count('full')} full · ${count('bespoke')} bespoke · ${count('partial')} partial · ${count('missing')} missing`,
-  ];
-  if (contract)
-    lines.push(
-      `contract: ${contract.line}`,
-      ...(contract.notes ?? []).map((n) => n.replace(/^/gm, '  '))
-    );
-  for (const s of ['missing', 'partial', 'bespoke']) {
-    const rs = rows.filter((r) => r.status === s);
-    if (!rs.length) continue;
-    lines.push('', `${s}:`);
-    for (const r of rs)
-      lines.push(
-        `  ${r.name}${r.required ? ' (required)' : ''}${r.note ? ` · ${r.note}` : ''}`,
-        `    used by: ${r.usedBy.join(', ') || 'nothing yet'}`
-      );
-  }
-  if (problems.length) lines.push('', 'problems:', ...problems.map((p) => `  ${p}`));
-  return lines.join('\n');
-}
-
-// --- features, docs and the consistency check (pnpm ui:docs, pnpm ui:check) ----------------------
-
-export const repoRoot = path.resolve(dashboardDir, '..', '..');
-export const docsDir = path.join(repoRoot, 'docs', 'ui');
-export const featuresMdFile = path.join(docsDir, 'features.md');
-export const buildPromptFile = path.join(docsDir, 'build-adapter.md');
-
-/**
- * FEATURES from src/ui/features.ts (Node strips its type-only syntax).
- * @returns {Promise<FeatureDef[]>}
- */
-export async function readFeatures() {
-  try {
-    // features.ts declares FEATURES as `Feature[]` (checked by `pnpm typecheck`).
-    return /** @type {{ FEATURES: FeatureDef[] }} */ (
-      await import(`${pathToFileURL(path.join(uiDir, 'features.ts')).href}?t=${Date.now()}`)
-    ).FEATURES;
-  } catch (e) {
-    throw new Error(
-      // What a failed import throws: an Error (a syntax or resolution error).
-      `[pxsig ui] cannot read src/ui/features.ts (needs Node 22.18+ for type stripping): ${/** @type {Error} */ (e).message}`
-    );
-  }
-}
-
-const SECTION_TITLE = {
-  shell: 'Shell',
-  overview: 'Overview',
-  review: 'Review Stories',
-  coverage: 'Coverage',
-  a11y: 'Accessibility',
-  runs: 'Runs',
-  diagnostics: 'Diagnostics',
-  help: 'Help',
-  inspector: 'Inspector',
-  embed: 'Storybook panel',
+export {
+  compareVersions,
+  contractDiff,
+  contractShape,
+  contractStatus,
+  lockFile,
+  lockFor,
+  lockProblems,
+  lockText,
+  readChanges,
+  readContract,
+  readContractVersion,
+  readLock,
+};
+export { featuresMarkdown, readFeatures, screenProblems, screensFile, screensText };
+export {
+  buildManifest,
+  exportsOf,
+  gapsOf,
+  gapsText,
+  manifestText,
+  readConformance,
+  sourceFiles,
+  STATUSES,
+  uiImports,
+};
+export {
+  buildPromptFile,
+  dashboardDir,
+  docsDir,
+  featuresMdFile,
+  manifestFile,
+  repoRoot,
+  srcDir,
+  uiDir,
 };
 
-/**
- * docs/ui/features.md: the feature catalogue, generated from FEATURES.
- * @param {FeatureDef[]} features
- */
-export function featuresMarkdown(features) {
-  const out = [
-    '# Dashboard features',
-    '',
-    '<!-- GENERATED by `pnpm ui:docs` from packages/dashboard/src/ui/features.ts. Do not edit. -->',
-    '',
-    'Every feature of the pxsig dashboard: what it is for, the states it handles, how it is used, its copy keys',
-    '(`src/copy/en.json`) and the UI contract components it renders. An adapter that renders these components',
-    'well renders every feature; see [build-adapter.md](build-adapter.md).',
-    '',
-  ];
-  for (const section of Object.keys(SECTION_TITLE)) {
-    const fs = features.filter((f) => f.section === section);
-    if (!fs.length) continue;
-    // `section` is a key of SECTION_TITLE (the loop runs over its keys).
-    out.push(`## ${SECTION_TITLE[/** @type {keyof typeof SECTION_TITLE} */ (section)]}`, '');
-    for (const f of fs) {
-      out.push(`### ${f.title}`, '', `\`${f.id}\` · ${f.purpose}`, '');
-      const states = Object.entries(f.states);
-      if (states.length) out.push('States:', '', ...states.map(([k, v]) => `- **${k}**: ${v}`), '');
-      if (f.interactions.length)
-        out.push(
-          'Interactions:',
-          '',
-          ...f.interactions.map((i) => `- ${i.action}${i.keys ? ` (${i.keys})` : ''}`),
-          ''
-        );
-      out.push(
-        `Components: ${f.components.map((c) => `\`${c}\``).join(', ')}`,
-        '',
-        `Copy: ${f.copy.map((c) => `\`${c}\``).join(', ')}`,
-        '',
-        `Files: ${f.files.map((x) => `\`src/${x}\``).join(', ')}`,
-        ''
-      );
-    }
-  }
-  return `${out.join('\n').trimEnd()}\n`;
-}
-
-/** fixtures/screens.json: the screens `pxsig dashboard check` renders, generated from FEATURES. */
-export const screensFile = path.join(dashboardDir, 'fixtures', 'screens.json');
-/** @param {FeatureDef[]} features */
-export const screensText = (features) =>
-  `${JSON.stringify(
-    {
-      $comment:
-        'GENERATED by `pnpm ui:docs` from src/ui/features.ts: the screens `pxsig dashboard check` renders. Do not edit.',
-      features: features.map(({ id, section, title, purpose, states, components, screens }) => ({
-        id,
-        section,
-        title,
-        purpose,
-        states,
-        components,
-        screens,
-      })),
-    },
-    null,
-    2
-  )}\n`;
-
-/**
- * A feature's screens against the scenarios and its own states.
- * @param {FeatureDef} f
- * @param {string[]} [scenarios]
- */
-export function screenProblems(f, scenarios = scenarioNames()) {
-  const at = `feature ${f.id}`;
-  if (!Array.isArray(f.screens) || !f.screens.length)
-    return [
-      `${at}: no screens (pxsig dashboard check renders each feature from them: add one to src/ui/features.ts)`,
-    ];
-  /** @type {string[]} */
-  const problems = [];
-  f.screens.forEach((x, i) => {
-    const where = `${at}, screen ${i + 1}`;
-    if (!scenarios.includes(x.scenario))
-      problems.push(
-        `${where}: unknown scenario "${x.scenario}" (fixtures/scenarios.mjs has ${scenarios.join(', ')})`
-      );
-    if (x.state && !(x.state in (f.states ?? {})))
-      problems.push(`${where}: state "${x.state}" is not one of the feature's states`);
-    if (x.hash && !x.hash.startsWith('#'))
-      problems.push(`${where}: hash "${x.hash}" does not start with #`);
-    if (x.query?.startsWith('?'))
-      problems.push(`${where}: query "${x.query}" starts with ? (write it without)`);
-    /** @param {ScreenTarget | undefined} t */
-    const target = (t) => t && (typeof t.role === 'string' || typeof t.text === 'string');
-    if (!target(x.wait)) problems.push(`${where}: no landmark (wait: { role, name } or { text })`);
-    for (const a of x.actions ?? [])
-      if (!(a.click ? target(a.click) : typeof a.press === 'string'))
-        problems.push(`${where}: an action is neither { click: target } nor { press: key }`);
-  });
-  return problems;
-}
+// --- features, docs and the consistency check (pnpm ui:docs, pnpm ui:check) ----------------------
 
 /** @param {string} rel */
 const fileOf = (rel) =>
