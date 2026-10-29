@@ -44,10 +44,10 @@ test('the committed contract, docs and reference adapter agree', async () => {
 
 test('removing a documented feature fails', async () => {
   const problems = await check(({ read, write }) => {
-    const f = read('src/ui/features.ts');
+    const f = read('src/ui/features/review.ts');
     const start = f.indexOf("  {\n    id: 'runs.history',");
     const end = f.indexOf("  {\n    id: 'diagnostics.research',");
-    write('src/ui/features.ts', f.slice(0, start) + f.slice(end));
+    write('src/ui/features/review.ts', f.slice(0, start) + f.slice(end));
   });
   assert.ok(
     problems.includes('src/views/History.tsx belongs to no feature in src/ui/features.ts'),
