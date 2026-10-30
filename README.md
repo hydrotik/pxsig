@@ -119,7 +119,8 @@ node packages/pxsig/bin/pxsig.mjs --help
 From a source checkout, the CLI finds the binary in `target/release/`. To use a clone from another
 repository, link the package (`pnpm add -D link:<path-to-clone>/packages/pxsig`) and set
 `PXSIG_BIN` to the built binary. The dashboard ships prebuilt in the npm package; a clone does not
-include it (see [packages/dashboard/README.md](packages/dashboard/README.md)).
+include it, and `pnpm build:dashboard` builds it on the plain adapter (see
+[packages/dashboard/README.md](packages/dashboard/README.md)).
 
 ## Documentation
 

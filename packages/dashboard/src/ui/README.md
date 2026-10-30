@@ -14,6 +14,7 @@ ui:check` fails on a design-system import anywhere outside `adapters/`.
 | `features.ts`        | Every dashboard feature as data (docs/ui/features.md is generated from it).                                                                                  |
 | `manifest.json`      | Generated (`pnpm ui:manifest`): each contract component, its role, the files that render it.                                                                 |
 | `adapters/hydrotik/` | The reference adapter: `index.tsx`, `conformance.json`, and `vite.mjs` (its build settings).                                                                 |
+| `adapters/plain/`    | The plain adapter (semantic HTML, `theme.css`): the default build. `examples/custom-ui/pxsig-ui` is the same adapter written as a project's own.             |
 
 ## An adapter
 
@@ -29,7 +30,8 @@ The step-by-step instructions, one section per component, are in
 ## Building with one
 
 ```bash
-PXSIG_UI_ADAPTER=hydrotik pnpm build:dashboard          # a built-in adapter, by name (the default)
+pnpm build:dashboard                                    # plain; hydrotik when PXSIG_DS_SOURCE is set
+PXSIG_UI_ADAPTER=hydrotik pnpm build:dashboard          # a built-in adapter, by name
 PXSIG_UI_ADAPTER=./path/to/adapter pnpm build:dashboard # a module, by path
 pnpm ui:gaps                                            # what the adapter covers, and what it does not
 ```

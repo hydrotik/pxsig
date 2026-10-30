@@ -8,7 +8,8 @@
  *   node scripts/ui.mjs check             the contract, its docs and the reference adapter agree, and
  *                                         no design-system import sits outside src/ui/adapters/ (CI)
  *   node scripts/ui.mjs gaps [--ui x]     an adapter's gaps against the contract (default: the
- *                                         adapter the build would use: PXSIG_UI_ADAPTER, else hydrotik)
+ *                                         adapter the build would use: PXSIG_UI_ADAPTER, else hydrotik
+ *                                         when PXSIG_DS_SOURCE is set, else plain)
  *   node scripts/ui.mjs lock              record the contract in src/ui/contract-lock.json, after a
  *                                         change, its CONTRACT_VERSION bump and its changes entry;
  *                                         with PXSIG_DS_SOURCE set, `types` too

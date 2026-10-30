@@ -6,8 +6,10 @@
  *
  * The UI adapter is chosen once, at build time:
  *   1. `adapter` (the `--ui` flag), else PXSIG_UI_ADAPTER, else `dashboard.ui` in the
- *      pxsig.config.json of the working folder, else `hydrotik`;
- *   2. a bare name (`hydrotik`) is a built-in adapter under src/ui/adapters/<name>/; anything else
+ *      pxsig.config.json of the working folder, else `hydrotik` when PXSIG_DS_SOURCE is set (the
+ *      reference look, built from a checkout of its design system), else `plain`, which builds
+ *      anywhere (semantic HTML and one stylesheet);
+ *   2. a bare name (`plain`, `hydrotik`) is a built-in adapter under src/ui/adapters/<name>/; anything else
  *      is a path to an adapter module (a file, or a folder with an index.tsx / .ts / .jsx / .js);
  *   3. anything else fails the build at once, naming what it looked for.
  * Vite aliases `@ui-adapter` to the module. An adapter folder may carry a `vite.mjs` whose default
@@ -31,10 +33,12 @@ export const builtinAdapters = () =>
     ? readdirSync(builtins, { withFileTypes: true })
         .filter((d) => d.isDirectory())
         .map((d) => d.name)
+        .sort()
     : [];
 
 /**
- * The adapter spec in force, and where it came from.
+ * The adapter spec in force, and which rule picked it (`from`, reported by the build and
+ * `pxsig dashboard gaps`). The two defaults' `from` both start with "default".
  * @param {AdapterOptions} [opts]
  * @returns {{ spec: string, base: string, from: string }}
  */
@@ -54,7 +58,9 @@ export function adapterSpec({ adapter, cwd = process.cwd() } = {}) {
       // an unreadable config is reported by the commands that read it
     }
   }
-  return { spec: 'hydrotik', base: cwd, from: 'default' };
+  if (process.env.PXSIG_DS_SOURCE)
+    return { spec: 'hydrotik', base: cwd, from: 'default (PXSIG_DS_SOURCE is set)' };
+  return { spec: 'plain', base: cwd, from: 'default' };
 }
 
 /**

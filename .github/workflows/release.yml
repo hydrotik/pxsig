@@ -225,7 +225,8 @@ jobs:
           git -C "$ds" checkout -q --detach FETCH_HEAD
           (cd "$ds" && pnpm install --frozen-lockfile)
           pnpm install --frozen-lockfile
-          PXSIG_DS_SOURCE="$ds" pnpm --filter @pxsig/dashboard build
+          # The adapter is named, not left to the default: the release ships the reference look.
+          PXSIG_UI_ADAPTER=hydrotik PXSIG_DS_SOURCE="$ds" pnpm --filter @pxsig/dashboard build
           node -e 'const d = require("./packages/pxsig/dist/dashboard/BUILD.json").designSystem;
             if (d?.commit !== process.argv[1]) { console.error("::error::BUILD.json does not record design-system commit " + process.argv[1]); process.exit(1); }
             if (d.dirty) console.log("::warning::the design-system checkout had changes after pnpm install (BUILD.json: dirty)");' "${DS_REF}"

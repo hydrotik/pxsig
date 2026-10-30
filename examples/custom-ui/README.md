@@ -12,7 +12,9 @@ pnpm dashboard:check    # pxsig dashboard check: every screen on it, a gallery b
 pxsig serve             # serves that build while it is newer than pxsig-ui/
 ```
 
-`pxsig.config.json` names the adapter (`"dashboard": { "ui": "./pxsig-ui" }`). The adapter's types
+`pxsig.config.json` names the adapter (`"dashboard": { "ui": "./pxsig-ui" }`). pxsig also ships
+this adapter as the built-in `plain` (`--ui plain`, and the default when nothing names one); this
+copy shows how a project writes its own, importing the contract from `pxsig/dashboard`. The adapter's types
 come from `pxsig/dashboard`; the instructions for writing one, component by component, are in
 `node_modules/pxsig/docs/ui/build-adapter.md`.
 
