@@ -1,9 +1,9 @@
 name: bench
 
-# The scale benchmark (scripts/bench/run.mjs): pxsig's read paths on a synthetic store of
-# hydrotik's size, against the budgets of decision 100 and the last release's times. Nightly and
-# by hand; never on pull requests, so it adds nothing to a PR's wait. The same job re-runs ci.yml's
-# advisory checks, so an advisory published between pushes fails a nightly run.
+# The scale benchmark (scripts/bench/run.mjs): pxsig's read paths on a synthetic store of hydrotik's
+# size, against the budgets in docs/benchmark.md and the last release's times. Nightly and by hand;
+# never on pull requests, so it adds nothing to a PR's wait. The same job re-runs ci.yml's advisory
+# checks, so an advisory published between pushes fails a nightly run.
 on:
   schedule:
     - cron: '30 3 * * *'

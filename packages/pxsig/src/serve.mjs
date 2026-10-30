@@ -400,7 +400,7 @@ function openState(ref) {
   S.integrity = /** @type {IntegrityLedger | null} */ (
     readJson(join(P.store.reports, 'integrity.json'), null)
   );
-  // Staleness traces edits (never the gates' fail-safe: decision 6.1f).
+  // Staleness traces edits (never the gates' fail-safe: docs/ci.md).
   S.affected = (file) =>
     S.runPath
       ? rust('affected', { manifest: S.runPath, root: P.workspaceRoot, files: [file] }).then(
@@ -1357,7 +1357,7 @@ if (flags.watch) {
             if (!S.runPath) return;
             const a = await rust('affected', { manifest: S.runPath, root: ws.root, files });
             // Watch is not a gate: it re-checks what the edits trace to, and names what it cannot trace
-            // (the gates would check everything for those; decision 6.1f).
+            // (the gates would check everything for those; docs/ci.md).
             const ids = a.traced ?? a.ids;
             console.log(
               `[serve] ${S.name}: watch: ${files.join(', ')} → ${ids.length} entries (${a.failSafe?.length ? 'traced only' : a.reason})`

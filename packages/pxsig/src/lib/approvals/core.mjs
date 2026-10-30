@@ -37,9 +37,10 @@ export function paths(P, entry) {
 const git = (root, ...args) =>
   spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' }).stdout?.trim() ?? '';
 /**
- * Who approved, for the log: nobody by default (decision 81). The commit that adds a line, and the
- * pull request that merges it, already say who; pxsig keeps no personal data. A team that wants the
- * git email on every line sets `approvals.identity: "git-email"`.
+ * Who approved, for the log: nobody by default (`approvals.identity`, docs/configuration.md#keys).
+ * The commit that adds a line, and the pull request that merges it, already say who; pxsig keeps no
+ * personal data. A team that wants the git email on every line sets `approvals.identity:
+ * "git-email"`.
  * @param {string} root
  * @param {Pick<Config, 'approvals'> | null} [config]
  */
@@ -48,11 +49,12 @@ export const who = (root, config = null) =>
     ? git(root, 'config', 'user.email') || process.env.USER || 'unknown'
     : null;
 /**
- * A log line with `by` only when there is one, the pxsig version that wrote it (decision 92), and
- * `agent` when this process carries an assistant's marker (lib/agents.mjs; decision 80): the
- * assistant's name, never a person's. A decision a person made through the dashboard link or the CLI
- * carries none: the CLI refuses under a marker, so a server started under an assistant would
- * otherwise mark a person's decisions with the assistant that started it.
+ * A log line with `by` only when there is one, the pxsig version that wrote it, and `agent` when
+ * this process carries an assistant's marker (lib/agents.mjs;
+ * docs/agents.md#what-a-marker-changes): the assistant's name, never a person's. A decision a
+ * person made through the dashboard link or the CLI carries none: the CLI refuses under a marker,
+ * so a server started under an assistant would otherwise mark a person's decisions with the
+ * assistant that started it.
  * @type {ReadonlySet<string | undefined>}
  */
 export const PERSON_VIA = new Set(['dashboard', 'cli']);

@@ -1,5 +1,5 @@
 /**
- * setup.mjs — `pxsig setup`: the assistant step (decisions 9.6, 80, 93).
+ * setup.mjs — `pxsig setup`: the assistant step (docs/agents.md#recipes).
  *
  *   pxsig setup [<assistant>|assistant] [--assistant <name>] [--print]
  *

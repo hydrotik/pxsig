@@ -10,7 +10,7 @@
  * settings file means setup has not run; nothing depends on it existing.
  *
  * Per repository, beside it: `<stateDir>` (`repoStateDir`), state that belongs to a clone but not in
- * it (the warn-mode readiness tally). Every worktree of a clone shares one (ROBUSTNESS R7).
+ * it (the warn-mode readiness tally). Every worktree of a clone shares one.
  *
  *   macOS    ~/Library/Application Support/pxsig/<repo-key>/
  *   Linux    $XDG_STATE_HOME/pxsig/<repo-key>/ (default ~/.local/state/pxsig/<repo-key>/)

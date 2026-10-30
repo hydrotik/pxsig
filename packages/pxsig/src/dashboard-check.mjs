@@ -11,9 +11,9 @@
  *     report or store. The screens are fixtures/screens.json, generated from src/ui/features.ts.
  *   - Both builds are served on 127.0.0.1, on ephemeral ports, by a small server in this process
  *     that answers /__pxsig/ from the scenario. A POST is answered and recorded; nothing is written.
- *   - Playwright's Chromium (decision 91's list), 1280×900, reduced motion, the clock fixed and the
- *     caret hidden. For each screen and theme: load, run its actions, wait for its landmark, take a
- *     screenshot, run axe-core, and record page errors.
+ *   - Playwright's Chromium (docs/platforms.md#programs-pxsig-starts), 1280×900, reduced motion,
+ *     the clock fixed and the caret hidden. For each screen and theme: load, run its actions, wait
+ *     for its landmark, take a screenshot, run axe-core, and record page errors.
  *   - Writes only under --out (default node_modules/.cache/pxsig/dashboard-check): index.html (the
  *     gallery), report.json, summary.md and the screenshots.
  *

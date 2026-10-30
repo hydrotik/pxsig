@@ -1,5 +1,5 @@
 /**
- * agents.test.mjs — coding assistants (decisions 9.1, 9.6, 9.7, 80): one case per marker row, the
+ * agents.test.mjs — coding assistants (docs/agents.md): one case per marker row, the
  * editor variables that are not markers, refusals that name the assistant, plain output, `agent` on
  * log lines, `doctor`'s line, and `pxsig setup` (prints always; writes only on a yes and only what
  * is absent; never outside the repository). The recipes in docs/agents.md are the module's, word for

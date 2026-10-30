@@ -2,18 +2,19 @@
  * assistants.mjs — how each coding assistant starts pxsig's MCP server, and the sentence that tells
  * it not to approve. One table for `pxsig setup`, `docs/agents.md` and the tests.
  *
- * Every recipe starts the server with `node <repo>/node_modules/pxsig/bin/pxsig.mjs mcp` (decision
- * 9.7): no `npx` (it fetches from the registry when pxsig is not installed), no Windows `.cmd` shim
- * (a spawn without a shell fails on one), no network. A path is relative to the repository when the
- * client starts the server there, else `<repo>` is the repository's absolute path.
+ * Every recipe starts the server with `node <repo>/node_modules/pxsig/bin/pxsig.mjs mcp`
+ * (docs/agents.md#recipes): no `npx` (it fetches from the registry when pxsig is not installed), no
+ * Windows `.cmd` shim (a spawn without a shell fails on one), no network. A path is relative to the
+ * repository when the client starts the server there, else `<repo>` is the repository's absolute
+ * path.
  *
  * Files: `project` files are in the repository, and `pxsig setup` may create one when it does not
- * exist; `user` files are in the person's home folder, and pxsig only prints them (decision 9.6).
+ * exist; `user` files are in the person's home folder, and pxsig only prints them.
  */
 
 /** @import { Assistant } from '../types.js' */
 
-/** The instruction for the assistant (decision 80), word for word in the docs and `pxsig help agents`. */
+/** The instruction for the assistant, word for word in docs/agents.md and `pxsig help agents`. */
 export const SNIPPET = `pxsig (visual baselines): never approve or accept pxsig baselines and never call
 /__pxsig/approve. Ask the person to review changes in the pxsig dashboard.
 `;

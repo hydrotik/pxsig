@@ -10,7 +10,7 @@ import { DAY } from './resolve.mjs';
 /** Which machine's state folder (tests point it elsewhere); lib/machine.mjs `repoStateDir`. */
 /** @typedef {MachineOptions & { git?: (cwd: string, args: string[]) => string }} StateOptions */
 
-// --- the readiness tally (decision 10.7): one line per configured-warn run, outside the repository --------
+// --- the readiness tally (docs/configuration.md#enforcement): one line per configured-warn run ---
 
 const KEEP_LINES = 5000;
 const KEEP_DAYS = 90;
@@ -34,7 +34,7 @@ const gitOut = (cwd, args) => {
 
 /**
  * Append one readiness line, when a configured gate is on warn (never for the quiet built-in a11y
- * default, decision 88). Keeps the last 5,000 lines per project and gate set, and 90 days (R26).
+ * default). Keeps the last 5,000 lines per project and gate set, and 90 days.
  * A write failure is one warning on stderr and never changes the exit code.
  * @param {Pick<Project, 'workspaceRoot' | 'name'>} P
  * @param {ReturnType<typeof resolveEnforcement>} enf

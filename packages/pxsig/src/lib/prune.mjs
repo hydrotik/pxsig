@@ -8,7 +8,8 @@
  *   prunable     a row for the entry (check.json or any check-<suite>.json) where axe ran with no
  *                render error, checked after the entry's last accessibility decision and its last
  *                approval, not stale (the test `pxsig stale` uses), and the rule is not among its
- *                violations (PHASE-1 §5, evidence rules 1–4; no age limit, decision 5.3)
+ *                violations (evidence rules 1–4, no age limit:
+ *                docs/cli.md#pxsig-a11y---prune---dry-run---component-text---mode-m---only-id---reason-)
  *   still-fires  that row lists the rule
  *   stale        the row is older than a decision, an approval or an edit that can change it
  *   not-covered  no row where axe ran (never checked, `--no-a11y`, a render or axe error)

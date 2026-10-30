@@ -37,7 +37,8 @@ export function checkFindings(rows) {
 }
 
 /**
- * The readiness counts of a check (decision 10.7's fields).
+ * The readiness counts of a check (the readiness tally's fields,
+ * docs/configuration.md#enforcement).
  * @param {readonly CheckRow[]} rows
  */
 export function checkCounts(rows) {

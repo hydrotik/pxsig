@@ -1,7 +1,7 @@
 /**
- * pii.test.mjs — pxsig writes no personal data into what a repository commits (decision 82): no git
- * email, no user name, no host name, no home path. Approval lines carry the pxsig version that
- * wrote them (decision 92), and `by` only when a team asks for it (`approvals.identity`, decision 81).
+ * pii.test.mjs — pxsig writes no personal data into what a repository commits: no git email, no
+ * user name, no host name, no home path. Approval lines carry the pxsig version that wrote them,
+ * and `by` only when a team asks for it (`approvals.identity`, docs/configuration.md#keys).
  *
  *   node --test packages/pxsig/test/pii.test.mjs
  *

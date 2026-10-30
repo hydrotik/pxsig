@@ -9,19 +9,20 @@
  *
  *   visual   check rows not passing (changed, new, render error)
  *   a11y     new axe violations against a11y.json: `warn` by default, quiet unless one appears
- *            (decision 88); `off` restores the output from before the gate existed
+ *            (docs/configuration.md#enforcement); `off` restores the output from before the gate
+ *            existed
  *   verify   `approve verify`: only baselines with no log line (a mismatch or a rewritten log is
- *            never warned, decision 10.4)
+ *            never warned)
  *   env      `--strict-env`'s refusal: under warn the check renders and lists the mismatches
  *   doctor   findings at or above `--fail-on`
  *   stale    stale or inconsistent rows
  *
- * Setup errors (exit 2) and person-only refusals (exit 3) are never warned (decision 10.2).
+ * Setup errors (exit 2) and person-only refusals (exit 3) are never warned.
  *
- * Who can lower a gate to `warn` (decision 10.3): the committed config (`pxsig.config.json`, the
- * workspace file's `defaults`), or a person at a terminal with `--warn` for one run. Anything can
- * raise one to `enforce`: `--enforce`, `PXSIG_ENFORCEMENT=enforce`. CI variables, assistants and MCP
- * tools can only make a run stricter.
+ * Who can lower a gate to `warn` (docs/configuration.md#enforcement): the committed config
+ * (`pxsig.config.json`, the workspace file's `defaults`), or a person at a terminal with `--warn`
+ * for one run. Anything can raise one to `enforce`: `--enforce`, `PXSIG_ENFORCEMENT=enforce`. CI
+ * variables, assistants and MCP tools can only make a run stricter.
  */
 import { EnforcementError, resolveEnforcement } from './enforcement/resolve.mjs';
 /** @import { EnforcementOptions, EnforcementProject } from '../types/t2.js' */

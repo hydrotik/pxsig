@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * run.mjs — the scale benchmark (TEST-PLAN 3.5, decision 100): pxsig's read paths on a store of
+ * run.mjs — the scale benchmark (docs/benchmark.md): pxsig's read paths on a store of
  * hydrotik's size, against fixed budgets and the last release's times.
  *
  *   node scripts/bench/run.mjs [--runs 5] [--out results.json] [--keep] [--dir <existing store>]
@@ -15,10 +15,11 @@
  * One warm-up run, then the median of --runs. Prints a table, appends it to $GITHUB_STEP_SUMMARY
  * when set, writes the results (in baseline.json's shape) to --out.
  *
- * Fails (exit 1) when a median is over its budget (BUDGETS below, decision 100). More than 50% over
- * the time baseline.json records for this OS at the last release is a warning: the baseline is one
- * nightly sample, and shared runners differ by more than that from night to night. baseline.json is
- * refreshed at each release from the nightly run's `bench-results` artifact (docs/releasing.md).
+ * Fails (exit 1) when a median is over its budget (BUDGETS below; docs/benchmark.md#what-it-times).
+ * More than 50% over the time baseline.json records for this OS at the last release is a warning:
+ * the baseline is one nightly sample, and shared runners differ by more than that from night to
+ * night. baseline.json is refreshed at each release from the nightly run's `bench-results`
+ * artifact (docs/releasing.md).
  */
 import { spawnSync } from 'node:child_process';
 import {

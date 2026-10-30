@@ -130,16 +130,17 @@ export function resolveEnforcement(
       gates[g] = e.gates[g];
       layers[g] = src[`enforcement.gates.${g}`] ?? 'project config';
     } else if (e.default != null && g !== 'a11y') {
-      // `default` covers every gate but a11y, which keeps its own built-in default (decision 10.1).
+      // `default` covers every gate but a11y, which keeps its own built-in default.
       gates[g] = def;
       layers[g] = src['enforcement.default'] ?? 'project config';
     } else {
-      // The built-in defaults: every gate enforced, the a11y gate on warn (decision 10.1).
+      // The built-in defaults: every gate enforced, the a11y gate on warn
+      // (docs/configuration.md#enforcement).
       gates[g] = g === 'a11y' ? 'warn' : 'enforce';
       layers[g] = 'built-in';
     }
   }
-  // warnUntil: the committed promise ends warn for the configured gates (decision 10.6 (a)).
+  // warnUntil: the committed promise ends warn for the configured gates.
   const warnUntil = e.warnUntil ?? null;
   const noticeDays = e.noticeDays ?? 14;
   const advisoryExit = e.advisoryExit ?? 0;
@@ -156,7 +157,7 @@ export function resolveEnforcement(
       }
   const daysLeft = end != null && t <= end ? Math.max(0, Math.ceil((end - t) / DAY)) : null;
   const daysSince = end != null && t > end ? Math.floor((t - end) / DAY) : null;
-  // --warn: a person at a terminal may try warn for one local run (decision 10.3 (c)).
+  // --warn: a person at a terminal may try warn for one local run.
   const lower = flagGates(flags.warn, 'warn');
   if (lower) {
     if (!human())
@@ -224,7 +225,7 @@ export function outcome(enf, found) {
   const wouldExit = Math.max(0, ...failing.map((f) => f.exit));
   const enforced = failing.filter((f) => !f.gate || enf.gates[f.gate] === 'enforce');
   const advisory = failing.filter((f) => f.gate && enf.gates[f.gate] === 'warn');
-  // A quiet built-in gate (a11y) that would fail exits 0 (decision 88); advisoryExit is for the
+  // A quiet built-in gate (a11y) that would fail exits 0; advisoryExit is for the
   // gates a team chose to warn.
   const exit = enforced.length
     ? Math.max(...enforced.map((f) => f.exit))

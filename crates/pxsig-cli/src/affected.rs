@@ -18,7 +18,8 @@
 //! | 7 | `outside`: outside `srcRoot`, in the workspace | all (fail-safe) |
 //! | 7′ | `outside-workspace`: elsewhere in the repository | all (fail-safe) |
 //!
-//! `ids` includes the fail-safe; `traced` does not (watch and staleness use it, decision 6.1f).
+//! `ids` includes the fail-safe; `traced` does not (watch and staleness use it,
+//! docs/ci.md#how-selection-decides).
 //! Paths are workspace-relative with `/`; a path outside the workspace is `$repo/<repo path>`.
 
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -277,8 +278,9 @@ pub fn affected(root: &Path, m: &Manifest, ch: &Changes) -> Result<Value> {
         files_out.push(f);
     }
 
-    // Unresolved imports (decision 6.1d): on every run, the entries that reach the file holding one;
-    // all when that file is, or reaches, an affects-all file. `affects.unresolved` accepts them.
+    // Unresolved imports (docs/ci.md#how-selection-decides): on every run, the entries that reach
+    // the file holding one; all when that file is, or reaches, an affects-all file.
+    // `affects.unresolved` accepts them.
     let mut unresolved_out = Vec::new();
     let mut unresolved_ids: HashSet<String> = HashSet::new();
     for u in &g.unresolved {

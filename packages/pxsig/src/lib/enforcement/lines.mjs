@@ -91,7 +91,7 @@ export function reportBlock(enf, out) {
     wouldExit: out.wouldExit,
     exit: out.exit,
     reasons: out.reasons,
-    // Per gate set (decision R1): the enforce context carries these gates, the advisory one those.
+    // Per gate set: the enforce context carries these gates, the advisory one those.
     contexts: { enforce, advisory },
   };
 }

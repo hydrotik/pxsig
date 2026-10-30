@@ -188,7 +188,8 @@ export function checkCommands(cli) {
         );
       for (const [s, n] of Object.entries(r.otherSuites ?? {}))
         blocks.push({ note: `${n} changed entries are in suite ${s}: pxsig check --suite ${s}` });
-      // Unresolved imports add the entries that reach them to every run (decision 6.1d).
+      // Unresolved imports add the entries that reach them to every run
+      // (docs/ci.md#how-selection-decides).
       const costly = (r.unresolved ?? []).filter((u) => !u.accepted && u.selects !== 'none');
       if (costly.length)
         blocks.push(
@@ -240,7 +241,8 @@ export function checkCommands(cli) {
         const blocks = [
           { h: flags.new ? 'New a11y violations' : 'a11y', sub: `${r.entries} entries` },
         ];
-        // --sarif: the new violations of the last report, for SARIF viewers (decision 96).
+        // --sarif: the new violations of the last report, for SARIF viewers
+        // (docs/cli.md#pxsig-a11y---component-text---new---sarif-file---limit-50).
         if (typeof flags.sarif === 'string') {
           const C = ctx();
           // the report and the manifest pxsig wrote

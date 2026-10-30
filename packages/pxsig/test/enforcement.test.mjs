@@ -1,5 +1,5 @@
-// Warn mode (P13, PHASE-1 §10, 10a core): per-gate enforce | warn, who may lower a gate, the exit
-// a warned run takes, warnUntil, the quiet a11y default (decision 88), the readiness tally (R7, R26),
+// Warn mode (docs/configuration.md#enforcement): per-gate enforce | warn, who may lower a gate, the
+// exit a warned run takes, warnUntil, the quiet a11y default, the readiness tally,
 // the setup codes, SARIF, and the gated commands end to end on fixture projects.
 import { spawnSync } from 'node:child_process';
 import { strict as assert } from 'node:assert';
@@ -188,7 +188,7 @@ test('the exit: enforce 1, warn advisoryExit, a real failure always wins, the qu
   assert.equal(combineExits([{ exit: 0 }, { exit: 2 }, { exit: 1 }]), 2);
 });
 
-test('the quiet a11y default says nothing unless a new violation appears (decision 88)', () => {
+test('the quiet a11y default says nothing unless a new violation appears', () => {
   const e = resolveEnforcement(proj(undefined), { env: {} });
   const clean = outcome(
     e,
@@ -243,7 +243,7 @@ test('the quiet a11y default says nothing unless a new violation appears (decisi
   );
 });
 
-test('the lead and last lines, and the per-gate-set contexts (decision R1)', () => {
+test('the lead and last lines, and the per-gate-set contexts', () => {
   const e = resolveEnforcement(
     proj(
       { gates: { visual: 'warn' }, warnUntil: '2026-12-31' },
@@ -390,7 +390,7 @@ test('the readiness tally: one line per configured-warn run, shared by every wor
   assert.equal(
     repoKey(repo, opts),
     repoKey(wt, opts),
-    "a worktree shares its clone's state folder (R7)"
+    "a worktree shares its clone's state folder"
   );
   const P = { name: 'p', workspaceRoot: repo };
   const W = { name: 'p', workspaceRoot: wt };
