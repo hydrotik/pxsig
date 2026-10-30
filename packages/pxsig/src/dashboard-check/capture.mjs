@@ -16,6 +16,10 @@ export const LANDMARK_MS = 10_000;
 export const SETTLE_FRAMES = 6;
 /** …or this long, whichever comes first (a page that never stops moving is captured anyway). */
 export const SETTLE_MS = 2_000;
+/** Windows' WSAENOBUFS: the OS ran out of socket buffers while several screens loaded at once. */
+export const NO_BUFFER_SPACE = 'ERR_NO_BUFFER_SPACE';
+/** The pause before the one retry of a page load that failed with NO_BUFFER_SPACE. */
+export const RETRY_MS = 500;
 export const FREEZE =
   '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}';
 
@@ -49,6 +53,25 @@ export function settle(page) {
       }),
     { frames: SETTLE_FRAMES, cap: SETTLE_MS }
   );
+}
+
+/**
+ * Load `url`, retrying once after RETRY_MS when the load failed with NO_BUFFER_SPACE (not a page
+ * defect). Any other error, or a second failure, is thrown.
+ * @param {Pick<Page, 'goto'>} page
+ * @param {string} url
+ * @returns {Promise<typeof NO_BUFFER_SPACE | null>} what was retried, or null
+ */
+export async function load(page, url) {
+  try {
+    await page.goto(url, { waitUntil: 'load' });
+    return null;
+  } catch (e) {
+    if (!String(e).includes(`net::${NO_BUFFER_SPACE}`)) throw e;
+  }
+  await new Promise((r) => setTimeout(r, RETRY_MS));
+  await page.goto(url, { waitUntil: 'load' });
+  return NO_BUFFER_SPACE;
 }
 
 /**
@@ -86,6 +109,8 @@ export async function capture(browser, { url, screen, shot, axe, initScript = nu
   });
   /** @type {string[]} */
   const errors = [];
+  /** @type {typeof NO_BUFFER_SPACE | null} */
+  let retried = null;
   try {
     await context.addInitScript((css) => {
       document.addEventListener('DOMContentLoaded', () => {
@@ -98,7 +123,7 @@ export async function capture(browser, { url, screen, shot, axe, initScript = nu
     const page = await context.newPage();
     page.on('pageerror', (e) => errors.push(String(e.message ?? e).split('\n')[0]));
     await page.clock.setFixedTime(new Date(FIXED_TIME));
-    await page.goto(url, { waitUntil: 'load' });
+    retried = await load(page, url);
     for (const a of screen.actions ?? []) {
       if (a.click) await locate(page, a.click).click({ timeout: LANDMARK_MS });
       else if (a.press) await page.keyboard.press(a.press);
@@ -112,6 +137,7 @@ export async function capture(browser, { url, screen, shot, axe, initScript = nu
         errors,
         axe: [],
         ms: Date.now() - started,
+        ...(retried ? { retried } : {}),
       };
     }
     // The inspector marks its stage aria-busy until its images are drawn, analysed and fitted.
@@ -151,6 +177,7 @@ export async function capture(browser, { url, screen, shot, axe, initScript = nu
         axe: violations,
         ms: Date.now() - started,
         ...(settled ? {} : { settled: /** @type {const} */ (false) }),
+        ...(retried ? { retried } : {}),
       };
     return {
       rendered: true,
@@ -159,6 +186,7 @@ export async function capture(browser, { url, screen, shot, axe, initScript = nu
       axe: violations,
       ms: Date.now() - started,
       ...(settled ? {} : { settled: /** @type {const} */ (false) }),
+      ...(retried ? { retried } : {}),
     };
   } catch (e) {
     return {
@@ -168,6 +196,7 @@ export async function capture(browser, { url, screen, shot, axe, initScript = nu
       errors,
       axe: [],
       ms: Date.now() - started,
+      ...(retried ? { retried } : {}),
     };
   } finally {
     await context.close().catch(() => {});
