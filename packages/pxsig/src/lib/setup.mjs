@@ -13,7 +13,7 @@
  *
  * Nothing here approves anything or changes a signature: migration packs the same signature bytes.
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { componentOf, loadStoryIndex, resolveContext, writeJsonAtomic } from './integrity.mjs';
 import { expandEntries, harvestParameters } from './manifest.mjs';
@@ -53,10 +53,32 @@ const layoutOf = (cfg, workspaceRoot) =>
   'package';
 
 /**
+ * The Storybook folders `pxsig init` records when it finds them in the package: `.storybook/`
+ * (storybook.configDir) and a `storybook-static/` build folder (storybook.staticDir), both as
+ * paths relative to the package, as pxsig.config.json reads them. Null when absent.
+ * @param {string} dir
+ * @returns {{ configDir: string | null, staticDir: string | null }}
+ */
+export function detectStorybook(dir) {
+  /** @param {string} p */
+  const isDir = (p) => {
+    try {
+      return statSync(join(dir, p)).isDirectory();
+    } catch {
+      return false;
+    }
+  };
+  return {
+    configDir: isDir('.storybook') ? '.storybook' : null,
+    staticDir: isDir('storybook-static') ? 'storybook-static' : null,
+  };
+}
+
+/**
  * Set a package up: its config (unless one exists), its store and, in a monorepo, its entry in
  * the workspace file. A colocated project also gets `*.psig binary diff=psig` in the root
  * `.gitattributes` (the workspace's, else its own). Returns what it wrote.
- * @param {{ dir: string, name?: string | null, label?: string | null, srcRoot?: string, storybookUrl?: string | null, storybookConfigDir?: string | null, workspaceRoot?: string | null, layout?: string | null }} opts
+ * @param {{ dir: string, name?: string | null, label?: string | null, srcRoot?: string, storybookUrl?: string | null, storybookConfigDir?: string | null, storybookStaticDir?: string | null, workspaceRoot?: string | null, layout?: string | null }} opts
  * @returns {string[]}
  */
 export function initProject({
@@ -66,6 +88,7 @@ export function initProject({
   srcRoot = 'src',
   storybookUrl = null,
   storybookConfigDir = null,
+  storybookStaticDir = null,
   workspaceRoot = null,
   layout = null,
 }) {
@@ -84,10 +107,11 @@ export function initProject({
       ...(label?.trim() ? { label: label.trim() } : {}),
       srcRoot,
     };
-    if (storybookUrl || storybookConfigDir)
+    if (storybookUrl || storybookConfigDir || storybookStaticDir)
       cfg.storybook = {
         ...(storybookUrl ? { url: storybookUrl } : {}),
         ...(storybookConfigDir ? { configDir: storybookConfigDir } : {}),
+        ...(storybookStaticDir ? { staticDir: storybookStaticDir } : {}),
       };
     if (layout) cfg.store = { layout };
     writeJson(configPath, cfg, { pretty: true });

@@ -784,7 +784,7 @@
     "init": {
       "summary": "Set a package up: pxsig.config.json, its store and, in a monorepo, the workspace entry.",
       "usage": [
-        "pxsig init [dir] [--name x] [--label text] [--src src] [--storybook-url url] [--storybook-config dir] [--layout package|colocated]"
+        "pxsig init [dir] [--name x] [--label text] [--src src] [--storybook-url url] [--storybook-config dir] [--storybook-static dir] [--layout package|colocated]"
       ],
       "flags": [
         {
@@ -816,8 +816,14 @@
         {
           "name": "storybook-config",
           "value": "dir",
-          "meaning": "storybook.configDir.",
+          "meaning": "storybook.configDir. Without it, a new config records .storybook when the folder has one.",
           "setting": "storybook.configDir"
+        },
+        {
+          "name": "storybook-static",
+          "value": "dir",
+          "meaning": "storybook.staticDir: a Storybook build, served when nothing answers at storybook.url. Without it, a new config records storybook-static when the folder has one.",
+          "setting": "storybook.staticDir"
         },
         {
           "name": "layout",
@@ -836,6 +842,10 @@
         {
           "cmd": "pxsig init packages/ui --src src",
           "shows": "A new project and its store"
+        },
+        {
+          "cmd": "pxsig init --storybook-static storybook-static",
+          "shows": "A project checked against its Storybook build, with no Storybook running"
         }
       ],
       "seeAlso": ["manifest", "config"]

@@ -221,7 +221,7 @@ export interface InitConfig {
   name?: string;
   label?: string;
   srcRoot?: string;
-  storybook?: { url?: string; configDir?: string };
+  storybook?: { url?: string; configDir?: string; staticDir?: string };
   store?: { dir?: string; layout?: string };
 }
 

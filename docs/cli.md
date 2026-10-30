@@ -109,6 +109,18 @@ Set a package up. Writes `pxsig.config.json` (unless one exists), the store with
 `.gitignore` and `.gitattributes`, and, when a `pxsig.workspace.json` exists above the folder,
 the project's entry in it.
 
+A new config also records what init finds in the folder, and says so: `.storybook/` as
+`storybook.configDir`, and a `storybook-static/` build folder as `storybook.staticDir` (only when
+the folder exists). A flag for the same key wins. Paths in the config are relative to the package
+folder. With a `staticDir`, `manifest`, `check` and the server serve that build themselves when
+nothing answers at `storybook.url`, so no Storybook needs to be running:
+
+```sh
+npx storybook build                        # writes storybook-static/
+pxsig init --storybook-static storybook-static
+pxsig manifest && pxsig check --full
+```
+
 | Flag                            | Meaning                                                                                                                                                                                                                                                                                                       |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--name <name>`                 | Project name (default: the folder name).                                                                                                                                                                                                                                                                      |
@@ -116,6 +128,7 @@ the project's entry in it.
 | `--src <dir>`                   | `srcRoot` (default `src`).                                                                                                                                                                                                                                                                                    |
 | `--storybook-url <url>`         | `storybook.url`.                                                                                                                                                                                                                                                                                              |
 | `--storybook-config <dir>`      | `storybook.configDir`. `$workspace/` paths are kept as written.                                                                                                                                                                                                                                               |
+| `--storybook-static <dir>`      | `storybook.staticDir`: a Storybook build (`index.json` + `iframe.html`), served on a free port when nothing answers at `storybook.url`.                                                                                                                                                                       |
 | `--layout <package\|colocated>` | `store.layout`. With `colocated` (here or in the workspace defaults), init also adds `*.psig binary diff=psig` to the root `.gitattributes` (the workspace's, else the package's) if no line there sets attributes for `*.psig`.                                                                              |
 
 ### `pxsig projects`

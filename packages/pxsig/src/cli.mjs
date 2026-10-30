@@ -6,9 +6,11 @@
  *         [--storybook-url u] [--storybook-static dir] [--grid n] [--browser ws://…]   (config flags: the top layer)
  *
  *   projects                    the projects in this workspace, with their store and integrity
- *   init [dir] [--name x] [--src src] [--storybook-url url] [--storybook-config dir] [--layout colocated]
+ *   init [dir] [--name x] [--src src] [--storybook-url url] [--storybook-config dir]
+ *        [--storybook-static dir] [--layout colocated]
  *                               set a package up: pxsig.config.json, its store, the workspace entry
- *                               (colocated: also `*.psig binary diff=psig` in the root .gitattributes)
+ *                               (colocated: also `*.psig binary diff=psig` in the root .gitattributes);
+ *                               a new config records the folder's .storybook/ and storybook-static/
  *   config                      the resolved config of a project, and which layer set each key
  *   setup [assistant] [--assistant name] [--print]
  *                               the coding assistant's recipe: its MCP entry (the local install, no npx) and

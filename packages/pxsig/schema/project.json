@@ -139,7 +139,7 @@
         "staticDir": {
           "oneOf": [{ "$ref": "#/$defs/path" }, { "type": "null" }],
           "default": null,
-          "description": "Reserved. Not used yet."
+          "description": "A built Storybook (index.json + iframe.html), served on a free 127.0.0.1 port when nothing answers at storybook.url."
         }
       }
     },
