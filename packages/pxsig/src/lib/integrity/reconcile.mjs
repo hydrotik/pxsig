@@ -48,7 +48,10 @@ export async function reconcile(ctx, opts = {}) {
   // The manifest `pxsig manifest` wrote (docs/spec.md section 6); checked on the next line.
   const manifest = /** @type {IntegrityManifest | null} */ (readJson(ctx.manifestPath, null));
   if (!manifest?.stories)
-    throw Object.assign(new Error(`no readable manifest at ${ctx.manifestPath}`), { setup: true });
+    throw Object.assign(new Error(`no readable manifest at ${ctx.manifestPath}`), {
+      setup: true,
+      code: 'no-manifest',
+    });
   const index =
     opts.index ?? (await loadStoryIndex(ctx, { offline: opts.offline, fetchImpl: opts.fetchImpl }));
   const reportPath = join(ctx.dirs.reports, 'check.json');

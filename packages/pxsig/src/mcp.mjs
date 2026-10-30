@@ -90,7 +90,16 @@ async function handle(msg) {
       } catch (e) {
         return send({
           id,
-          result: { content: [text(`Error: ${/** @type {Error} */ (e).message}`)], isError: true },
+          // An error may carry data for the caller (pxsig_doctor's setup preflight): sent after it.
+          result: {
+            content: [
+              text(`Error: ${/** @type {Error} */ (e).message}`),
+              ...(/** @type {{ detail?: object }} */ (e).detail
+                ? [text(/** @type {{ detail: object }} */ (e).detail)]
+                : []),
+            ],
+            isError: true,
+          },
         });
       }
     }
