@@ -152,8 +152,12 @@ data and writes nothing.
 Rebuild the project's manifest from the running Storybook (or, when `storybook.url` does not
 answer, from the build in `storybook.staticDir`, served on a free port): every story under `srcRoot` times its
 modes times its interaction states, with `parameters.pxsig` read from the stories. Existing entries
-keep their baseline paths; new entries have none. Prints the counts of new, removed and skipped
-entries. `--suite` writes `manifest.<suite>.json`.
+keep their baseline paths; new entries have none. Prints where the stories came from (`from
+<storybook.url>/index.json`, or `from <staticDir> (served at …)`) and the counts of new, removed
+and skipped entries; `--json` has the same as `source: { url, staticDir }`. It warns, without
+changing the exit code, when `srcRoot` does not exist or when no story in the index is under the
+project (another package's Storybook on that port); `--json` lists them in `warnings`.
+`--suite` writes `manifest.<suite>.json`.
 
 ### `pxsig migrate --from <dir> [--apply] [--no-verify]`
 

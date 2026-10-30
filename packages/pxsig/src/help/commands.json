@@ -901,7 +901,7 @@
       "examples": [
         {
           "cmd": "pxsig manifest",
-          "shows": "The stories to check, with new and removed counts"
+          "shows": "The stories to check, the Storybook index they came from, new and removed counts"
         }
       ],
       "seeAlso": ["check"]

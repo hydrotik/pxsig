@@ -274,7 +274,12 @@ export function projectCommands(cli) {
       const sb = await ensureStorybook(P, {
         log: (m) => format !== 'json' && process.stderr.write(`[manifest] ${m}\n`),
       });
-      const spin = progress(format, 'reading stories from Storybook');
+      // Where the stories come from: the configured Storybook, or the static build served for it.
+      const staticDir = sb.served ? P.storybook.staticDir : null;
+      const from = staticDir
+        ? `${relPath(process.cwd(), staticDir) || '.'} (served at ${sb.url})`
+        : `${sb.url.replace(/\/$/, '')}/index.json`;
+      const spin = progress(format, `reading stories from ${from}`);
       let r;
       try {
         r = await buildManifest(P, { suite: typeof flags.suite === 'string' ? flags.suite : null });
@@ -290,7 +295,8 @@ export function projectCommands(cli) {
       emit(
         format,
         [
-          { h: 'Manifest', sub: relPath(process.cwd(), r.path) },
+          { h: 'Manifest', sub: `${relPath(process.cwd(), r.path)} · from ${from}` },
+          ...r.warnings.map((w) => ({ note: `warning: ${w}`, tone: 'warn' })),
           {
             kv: [
               ['Entries', String(r.manifest.stories.length)],
@@ -300,7 +306,14 @@ export function projectCommands(cli) {
             ],
           },
         ],
-        { path: r.path, added: r.added, removed: r.removed, skipped: r.skipped }
+        {
+          path: r.path,
+          source: { url: r.source, staticDir },
+          added: r.added,
+          removed: r.removed,
+          skipped: r.skipped,
+          warnings: r.warnings,
+        }
       );
     },
   };

@@ -233,6 +233,10 @@ export interface BuiltManifest {
   added: string[];
   removed: string[];
   skipped: ManifestSkipped[];
+  /** The story index it read: `<storybook.url>/index.json`. */
+  source: string;
+  /** A missing srcRoot, or no story under the project (`manifestWarnings`). */
+  warnings: string[];
 }
 
 /** What `describeConfig` returns (`pxsig config`). */
