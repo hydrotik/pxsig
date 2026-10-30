@@ -9,26 +9,27 @@ for anyone who does not use it: Docker is never required.
 
 | Tag                                      | Example                | Moves?                                                                   |
 | ---------------------------------------- | ---------------------- | ------------------------------------------------------------------------ |
-| `<pxsig>-pw<playwright>`                 | `0.5.0-pw1.58.2`       | never: a multi-arch manifest over the two below                          |
-| `<pxsig>-pw<playwright>-amd64`, `-arm64` | `0.5.0-pw1.58.2-amd64` | never                                                                    |
-| `<pxsig>-pw<playwright>-r<N>`            | `0.5.0-pw1.58.2-r2`    | never: a rebuild of the same pair, for example a base-image security fix |
+| `<pxsig>-pw<playwright>`                 | `0.6.0-pw1.58.2`       | never: a multi-arch manifest over the two below                          |
+| `<pxsig>-pw<playwright>-amd64`, `-arm64` | `0.6.0-pw1.58.2-amd64` | never                                                                    |
+| `<pxsig>-pw<playwright>-r<N>`            | `0.6.0-pw1.58.2-r2`    | never: a rebuild of the same pair, for example a base-image security fix |
 
 There is no `latest`. amd64 is the canonical architecture: approve baselines from amd64 renders.
 Pick the tag whose Playwright is the one in your lockfile, and pin it by digest:
 
 ```
-ghcr.io/hydrotik/pxsig:0.5.0-pw1.58.2@sha256:…
+ghcr.io/hydrotik/pxsig:0.6.0-pw1.58.2@sha256:…
 ```
 
 The image workflow's run summary prints each tag's digest. Every image is built by
 `.github/workflows/image.yml` from the pxsig release on npm and carries a provenance attestation:
 
 ```bash
-gh attestation verify oci://ghcr.io/hydrotik/pxsig:0.5.0-pw1.58.2 -R hydrotik/pxsig
+gh attestation verify oci://ghcr.io/hydrotik/pxsig:0.6.0-pw1.58.2 -R hydrotik/pxsig
 ```
 
 Images are built for the latest pxsig, for every Playwright minor from 1.58 on; images for older
-pairs stay published, unmaintained.
+pairs stay published, unmaintained. The first image is pxsig 0.5.1's: there is none for 0.5.0 or
+earlier.
 
 ## What is in it
 
@@ -45,7 +46,7 @@ pairs stay published, unmaintained.
 ## Mode (i): the whole check in the container
 
 ```bash
-docker run --rm -v "$PWD":/work -w /work ghcr.io/hydrotik/pxsig:0.5.0-pw1.58.2@sha256:… \
+docker run --rm -v "$PWD":/work -w /work ghcr.io/hydrotik/pxsig:0.6.0-pw1.58.2@sha256:… \
   pxsig check --full --project design-system --storybook-static apps/storybook/storybook-static
 ```
 
