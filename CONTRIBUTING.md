@@ -192,7 +192,9 @@ CI checks the dependencies against public advisory databases: `cargo deny --lock
 (`deny.toml`: advisories, licences, sources) in the Rust job on Linux, and
 `pnpm audit --prod --audit-level high` (only what ships to users) in the clean job. Both read the
 database over the network, so a new advisory can fail a pull request that did not touch a
-dependency. That is intended. The fix is one of:
+dependency. That is intended. The nightly benchmark workflow (`.github/workflows/bench.yml`) runs
+`pnpm audit --prod --audit-level high` and `cargo deny --locked check advisories` too, so an
+advisory published between pushes fails a nightly run. The fix is one of:
 
 - **an update** of the affected dependency, in its own commit; or
 - **an ignore entry with a reason and a date**: in `deny.toml` (`[advisories] ignore`, whose
@@ -200,6 +202,12 @@ dependency. That is intended. The fix is one of:
   `package.json` for an npm package (JSON has no comments: the reason and the date go in the commit
   that adds it). The reason says why the advisory does not apply or what the fix is waiting on; the
   date says when to look again.
+
+The root `package.json` carries `pnpm.overrides` for `vite` and `vite-node` (JSON has no comments,
+so the reason is here). `@vanilla-extract/compiler` depends on its own `vite` and `vite-node`
+(`^5 … ^8`, `^3.2.2 … ^6`); the overrides resolve both to the dashboard's Vite 8 line, so the
+dashboard builds with one Vite. Dependabot skips Vite majors for the same reason
+(`.github/dependabot.yml`): a new Vite major is taken by hand, overrides included.
 
 Advisories for development tooling arrive as Dependabot pull requests instead of failing CI. A
 licence outside `deny.toml`'s `allow` list fails; adding one is a decision for the owner.

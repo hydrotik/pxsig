@@ -19,3 +19,6 @@ rayon.workspace = true
 clap.workspace = true
 anyhow.workspace = true
 sha2.workspace = true
+
+[lints]
+workspace = true

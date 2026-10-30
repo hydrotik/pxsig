@@ -193,6 +193,8 @@ function manifest(p) {
     ...(repository ? { repository } : {}),
     os: [p.platform],
     cpu: [p.arch],
+    // The Linux binaries are built for *-unknown-linux-gnu: a musl host (Alpine) skips them.
+    ...(p.platform === 'linux' ? { libc: ['glibc'] } : {}),
     files: ['bin'],
     preferUnplugged: true,
   };

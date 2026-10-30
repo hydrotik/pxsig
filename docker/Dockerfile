@@ -26,9 +26,10 @@ RUN test -n "$PXSIG_VERSION" && test -n "$PLAYWRIGHT_VERSION"
 
 WORKDIR /opt/pxsig
 # npm installs the engine package for this architecture (pxsig's optional dependency). The engine
-# is linked as /opt/pxsig/engine/pxsig: pxsig starts it by that name (lib/spawn.mjs).
+# is linked as /opt/pxsig/engine/pxsig: pxsig starts it by that name (lib/spawn.mjs). No package
+# installed here has an install script (pxsig, its engine, axe-core, pngjs, playwright), so none run.
 RUN printf '{ "name": "pxsig-image", "private": true }\n' > package.json \
- && npm install --no-audit --no-fund --omit=dev "pxsig@${PXSIG_VERSION}" "playwright@${PLAYWRIGHT_VERSION}" \
+ && npm install --no-audit --no-fund --omit=dev --ignore-scripts "pxsig@${PXSIG_VERSION}" "playwright@${PLAYWRIGHT_VERSION}" \
  && npm cache clean --force \
  && arch="$( [ "$TARGETARCH" = arm64 ] && echo arm64 || echo x64 )" \
  && test -x "node_modules/@pxsig/cli-linux-${arch}/bin/pxsig" \

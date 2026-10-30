@@ -7,7 +7,8 @@ name: image
 # - After a release run of a pushed tag succeeds: one image per version in docker/playwright-versions.json.
 # - By hand: any published pxsig with any Playwright (a new Playwright for an existing pxsig), or a rebuild.
 # - Weekly: only reports a Playwright on npm that has no image yet. It builds nothing.
-# - Pull requests that change docker/ or this file: build and smoke-test on amd64; nothing is pushed.
+# - Pull requests that change the image or what its tests run: build, smoke-test and run the
+#   examples in it on amd64, as a release build does; nothing is pushed.
 #
 # Not in ci.yml: the required checks on main are ci.yml's; this workflow adds none.
 on:
@@ -33,6 +34,10 @@ on:
     paths:
       - 'docker/**'
       - '.github/workflows/image.yml'
+      # The in-image examples step runs these, as the release build does.
+      - 'scripts/examples-test.mjs'
+      - 'scripts/examples/**'
+      - 'pnpm-lock.yaml'
 
 permissions:
   contents: read
@@ -227,8 +232,9 @@ jobs:
           subject-digest: ${{ steps.m.outputs.digest }}
           push-to-registry: true
 
-  # A pull request that changes the image: build it and run the smoke test on amd64, with the latest
-  # pxsig on npm. Read-only: nothing is pushed or attested.
+  # A pull request that changes the image: build it, run the smoke test and the in-image examples
+  # on amd64 (the release build's checks), with the latest pxsig on npm. Read-only: nothing is
+  # pushed or attested.
   pr:
     name: Build and smoke-test (no push)
     if: github.event_name == 'pull_request'
@@ -249,6 +255,10 @@ jobs:
           docker run --rm pxsig-local sh -c '"$PXSIG_BIN" --version && playwright --version'
           docker run --rm -v "$PWD/docker:/smoke:ro" pxsig-local node /smoke/smoke.mjs env --arch x64 --fonts "$fonts" --image "$REPO:$pxsig-pw$pw"
           docker image inspect pxsig-local --format '{{json .Config.Labels}}' | jq .
+          # The examples end to end inside the image, as the release build runs them: its browsers,
+          # fonts and engine, the checkout's CLI (root, for the bind-mounted checkout and the pnpm install).
+          docker run --rm -u root -e CI=1 -v "$PWD:/repo" -w /repo pxsig-local bash -c \
+            'corepack enable pnpm && pnpm install --frozen-lockfile && node scripts/examples-test.mjs single-package'
 
   # Weekly: a Playwright release with no image for the latest pxsig. Reports; never builds.
   playwright-check:

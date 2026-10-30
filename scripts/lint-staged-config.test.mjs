@@ -24,3 +24,10 @@ test('oxlint gets every file it lints, and none it ignores', () => {
 test('nothing to lint or format runs nothing', () => {
   assert.deepEqual(code(['/r/packages/pxsig/dashboard/x.js']), []);
 });
+
+test('rustfmt formats the staged Rust files only, with the workspace edition', () => {
+  assert.equal(
+    config['*.rs'](['/r/crates/pxsig-core/src/lib.rs', 'C:\\r\\crates\\pxsig-cli\\src\\main.rs']),
+    'rustfmt --edition 2021 "/r/crates/pxsig-core/src/lib.rs" "C:/r/crates/pxsig-cli/src/main.rs"'
+  );
+});

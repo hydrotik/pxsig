@@ -18,6 +18,10 @@ license = "MIT"
 authors = ["Donovan Adams (Hydrotik LLC)"]
 repository = "https://github.com/hydrotik/pxsig"
 
+# Each crate opts in with `[lints] workspace = true`.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

@@ -74,5 +74,8 @@ export default {
     ...oxfmt(files),
   ],
   '*.{json,md,yaml,yml,css,html}': oxfmt,
-  '*.rs': () => 'cargo fmt --all',
+  // rustfmt on the staged files only (`cargo fmt --all` rewrote unstaged ones too). It still
+  // formats the out-of-line modules a staged file declares: skipping them is unstable rustfmt.
+  // The edition matches Cargo.toml's `workspace.package.edition`.
+  '*.rs': (/** @type {string[]} */ files) => `rustfmt --edition 2021 ${files.map(quote).join(' ')}`,
 };
