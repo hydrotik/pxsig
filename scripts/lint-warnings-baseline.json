@@ -1,6 +1,6 @@
 {
   "$description": "oxlint warnings per file and rule. A file may not gain a warning; lower with `node scripts/check-lint-warnings.mjs --update` after fixing some. See scripts/check-lint-warnings.mjs.",
-  "total": 244,
+  "total": 45,
   "files": {
     "packages/dashboard/src/App.tsx": {
       "jsx-a11y(prefer-tag-over-role)": 1,
@@ -21,14 +21,8 @@
     "packages/dashboard/src/parts/StoryGrid.tsx": {
       "react(set-state-in-effect)": 2
     },
-    "packages/dashboard/src/ui/adapters/hydrotik/heatmap.css.ts": {
-      "typescript(no-unsafe-return)": 1
-    },
     "packages/dashboard/src/ui/adapters/hydrotik/index.tsx": {
-      "jsx-a11y(prefer-tag-over-role)": 1,
-      "typescript(no-unsafe-assignment)": 52,
-      "typescript(no-unsafe-call)": 3,
-      "typescript(no-unsafe-member-access)": 143
+      "jsx-a11y(prefer-tag-over-role)": 1
     },
     "packages/dashboard/src/ui/fallbacks.tsx": {
       "jsx-a11y(anchor-has-content)": 1,

@@ -171,8 +171,10 @@ jobs:
       - run: pnpm --filter @pxsig/storybook-addon test
       # The scale benchmark's generator and verdicts (the benchmark itself runs nightly: bench.yml).
       - run: node --test scripts/bench/run.test.mjs
-      # tsc --noEmit: the dashboard, its test harness and the plain example adapter.
+      # tsc --noEmit: the dashboard, its test harness and both adapters (the reference adapter against
+      # its committed design-system declarations, which must cover every name it imports).
       - run: pnpm typecheck
+      - run: node --test scripts/hydrotik-types.test.mjs
       # The diff-viewer primitives in a browser (keyboard, ARIA, controlled state), and the
       # dashboard's review and repair flows against a mocked server.
       - run: pnpm --filter @pxsig/dashboard test

@@ -20,6 +20,7 @@
     "ui:docs": "node scripts/ui.mjs docs",
     "ui:check": "node scripts/ui.mjs check",
     "ui:lock": "node scripts/ui.mjs lock",
+    "ui:types": "node scripts/ui.mjs types",
     "typecheck": "node scripts/typecheck.mjs",
     "lint": "oxlint --type-aware",
     "lint:ratchet": "node scripts/check-lint-warnings.mjs && node --test scripts/lint-ratchet.test.mjs",

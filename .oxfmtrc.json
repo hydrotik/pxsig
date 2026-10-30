@@ -29,6 +29,7 @@
     "docs/ui/catalog/**",
     "packages/dashboard/src/ui/contract.ts",
     "packages/dashboard/src/ui/tokens.ts",
+    "packages/dashboard/src/ui/adapters/hydrotik/design-system.d.ts",
     "docs/agents.md"
   ]
 }

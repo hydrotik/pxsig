@@ -1,14 +1,17 @@
 #!/usr/bin/env node
 /**
  * typecheck.mjs — `pnpm typecheck`: tsc --noEmit over the dashboard (contract, runtime, fallbacks,
- * views, inspector, diff viewer), its test harness and the plain example adapter (tsconfig.json).
+ * views, inspector, diff viewer, the reference adapter), its test harness and the plain example
+ * adapter (tsconfig.json). The reference adapter is checked against the committed declarations of
+ * the design-system names it imports (adapters/hydrotik/design-system.d.ts, `ui.mjs types`).
  *
  * Then the JavaScript (pxsig, the Storybook addon, scripts, tools): scripts/check-types.mjs, whose
  * error count per file may only go down (scripts/type-errors-baseline.json).
  *
  * With PXSIG_DS_SOURCE set (a checkout of the reference adapter's design system), it also checks
- * the reference adapter against that design system's sources and React types; without it, that
- * step is skipped and says so (CI has no checkout).
+ * the reference adapter against that design system's sources and React types, and that the
+ * committed declarations match a fresh `ui.mjs types`; without it, that step is skipped and says
+ * so (CI has no checkout).
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
@@ -31,13 +34,13 @@ let status = run('tsconfig.json');
 console.log(
   status
     ? '[typecheck] dashboard: errors above'
-    : '[typecheck] dashboard, test harness, plain example adapter: ok'
+    : '[typecheck] dashboard, reference adapter (committed declarations), test harness, plain example adapter: ok'
 );
 
 const source = process.env.PXSIG_DS_SOURCE;
 if (!source)
   console.log(
-    '[typecheck] reference adapter: skipped (set PXSIG_DS_SOURCE to check it against its design system)'
+    '[typecheck] reference adapter against its design system: skipped (set PXSIG_DS_SOURCE to check it)'
   );
 else {
   const pkgs = packagesIn(source);
@@ -84,7 +87,10 @@ else {
       rel(path.join(repo, 'packages/dashboard/src/ui/adapters/hydrotik')),
       rel(path.join(repo, 'types')),
     ],
-    exclude: [],
+    // The design system itself stands in for its committed declarations here.
+    exclude: [
+      rel(path.join(repo, 'packages/dashboard/src/ui/adapters/hydrotik/design-system.d.ts')),
+    ],
   };
   const file = path.join(cfgDir, 'tsconfig.hydrotik.json');
   writeFileSync(file, JSON.stringify(config, null, 2));
@@ -93,6 +99,15 @@ else {
     s ? '[typecheck] reference adapter: errors above' : '[typecheck] reference adapter: ok'
   );
   status ||= s;
+  const fresh = spawnSync(
+    process.execPath,
+    [path.join(repo, 'scripts', 'ui.mjs'), 'types', '--check'],
+    {
+      cwd: repo,
+      stdio: 'inherit',
+    }
+  ).status;
+  status ||= fresh ?? 1;
 }
 const js = spawnSync(process.execPath, [path.join(repo, 'scripts', 'check-types.mjs')], {
   cwd: repo,

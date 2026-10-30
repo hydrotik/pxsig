@@ -10,11 +10,18 @@
  *   node scripts/ui.mjs gaps [--ui x]     an adapter's gaps against the contract (default: the
  *                                         adapter the build would use: PXSIG_UI_ADAPTER, else hydrotik)
  *   node scripts/ui.mjs lock              record the contract in src/ui/contract-lock.json, after a
- *                                         change, its CONTRACT_VERSION bump and its changes entry
+ *                                         change, its CONTRACT_VERSION bump and its changes entry;
+ *                                         with PXSIG_DS_SOURCE set, `types` too
+ *   node scripts/ui.mjs types [--check]   regenerate the reference adapter's design-system
+ *                                         declarations (adapters/hydrotik/design-system.d.ts) from
+ *                                         the built checkout PXSIG_DS_SOURCE names; --check fails
+ *                                         when the committed file differs instead of writing it
  *
  * Exit: 0 ok · 1 problems (a required component missing, a malformed conformance file).
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   buildManifest,
   checkAll,
@@ -38,8 +45,10 @@ import {
   screensText,
 } from '../packages/dashboard/ui-tools.mjs';
 import { resolveAdapter } from '../packages/dashboard/build-config.mjs';
+import { generate, typesFile } from './lib/hydrotik-types.mjs';
 
 const [cmd, ...args] = process.argv.slice(2);
+const repo = fileURLToPath(new URL('..', import.meta.url));
 
 // docs and check read src/ui/features.ts with Node's type stripping, on by default from 22.18.
 const [major, minor] = process.versions.node.split('.').map(Number);
@@ -55,8 +64,34 @@ const flag = (n) => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 
+/**
+ * Regenerate (or, with check, compare) the reference adapter's declarations. Returns whether the
+ * committed file is current.
+ * @param {{ check?: boolean }} [opts]
+ */
+async function types({ check = false } = {}) {
+  const source = process.env.PXSIG_DS_SOURCE;
+  if (!source) throw new Error('[ui] types needs PXSIG_DS_SOURCE: a built design-system checkout');
+  const scratch = path.join(repo, 'node_modules', '.cache', 'pxsig-ds-types');
+  const text = await generate(source, { scratch });
+  const current = existsSync(typesFile) && readFileSync(typesFile, 'utf8') === text;
+  const rel = path.relative(repo, typesFile).split(path.sep).join('/');
+  if (check)
+    console[current ? 'log' : 'error'](
+      `[ui] ${rel}: ${current ? 'current' : 'stale; run node scripts/ui.mjs types'}`
+    );
+  else if (!current) {
+    writeFileSync(typesFile, text);
+    console.log(`[ui] wrote ${rel}`);
+  } else console.log(`[ui] ${rel} already current`);
+  return current;
+}
+
 try {
-  if (cmd === 'manifest' || cmd === 'docs') {
+  if (cmd === 'types') {
+    const current = await types({ check: args.includes('--check') });
+    process.exit(!current && args.includes('--check') ? 1 : 0);
+  } else if (cmd === 'manifest' || cmd === 'docs') {
     writeFileSync(manifestFile, manifestText());
     console.log('[ui] wrote packages/dashboard/src/ui/manifest.json');
     if (cmd === 'docs') {
@@ -78,6 +113,8 @@ try {
       '[ui] ok · imports, manifest, feature catalogue, build prompt and reference adapter agree'
     );
   } else if (cmd === 'lock') {
+    if (process.env.PXSIG_DS_SOURCE) await types();
+    else console.log('[ui] types: skipped (set PXSIG_DS_SOURCE to refresh design-system.d.ts)');
     const now = contractShape();
     const lock = readLock();
     if (lock) {
@@ -112,7 +149,7 @@ try {
     process.exit(report.problems.length ? 1 : 0);
   } else {
     console.error(
-      'usage: node scripts/ui.mjs docs | manifest | check | lock | gaps [--ui <name or path>] [--json]'
+      'usage: node scripts/ui.mjs docs | manifest | check | lock | types [--check] | gaps [--ui <name or path>] [--json]'
     );
     process.exit(2);
   }
