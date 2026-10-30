@@ -186,7 +186,9 @@ CI checks the dependencies against public advisory databases: `cargo deny --lock
 (`deny.toml`: advisories, licences, sources) in the Rust job on Linux, and
 `pnpm audit --prod --audit-level high` (only what ships to users) in the clean job. Both read the
 database over the network, so a new advisory can fail a pull request that did not touch a
-dependency. That is intended. The fix is one of:
+dependency. That is intended. The nightly benchmark workflow (`.github/workflows/bench.yml`) runs
+`pnpm audit --prod --audit-level high` and `cargo deny --locked check advisories` too, so an
+advisory published between pushes fails a nightly run. The fix is one of:
 
 - **an update** of the affected dependency, in its own commit; or
 - **an ignore entry with a reason and a date**: in `deny.toml` (`[advisories] ignore`, whose

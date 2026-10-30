@@ -2,7 +2,8 @@ name: bench
 
 # The scale benchmark (scripts/bench/run.mjs): pxsig's read paths on a synthetic store of
 # hydrotik's size, against the budgets of decision 100 and the last release's times. Nightly and
-# by hand; never on pull requests, so it adds nothing to a PR's wait.
+# by hand; never on pull requests, so it adds nothing to a PR's wait. The same job re-runs ci.yml's
+# advisory checks, so an advisory published between pushes fails a nightly run.
 on:
   schedule:
     - cron: '30 3 * * *'
@@ -38,3 +39,14 @@ jobs:
           path: bench-results.json
           if-no-files-found: ignore
           retention-days: 30
+      # Advisories against the lockfiles, as ci.yml checks them on every push (CONTRIBUTING.md,
+      # Dependencies): production npm dependencies at high and above, and the engine's crates
+      # (deny.toml). They run whatever the benchmark's result, and fail the job on a finding.
+      - if: ${{ !cancelled() }}
+        run: pnpm audit --prod --audit-level high
+      - if: ${{ !cancelled() }}
+        uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
+        with:
+          tool: cargo-deny@0.20.2
+      - if: ${{ !cancelled() }}
+        run: cargo deny --locked check advisories
