@@ -56,7 +56,8 @@ export function dashboardSource() {
 const load = (dir, file) => import(pathToFileURL(join(dir, file)).href);
 
 /**
- * The adapter in force (--ui, else dashboard.ui in ./pxsig.config.json); a name or a path.
+ * The adapter in force (--ui, else PXSIG_UI_ADAPTER, else dashboard.ui in ./pxsig.config.json, else
+ * a default: build-config.mjs `adapterSpec`); a name or a path.
  * @param {Flags} flags
  * @param {string} cwd
  */
@@ -155,7 +156,7 @@ export async function build(
   // The default folder is where `pxsig serve` looks for this project's build.
   const outDir = typeof flags.out === 'string' ? resolve(cwd, flags.out) : buildDirFor(cwd);
   log(
-    `[dashboard] building with the "${ui.name}" adapter (${relative(cwd, ui.file) || ui.file}) into ${relative(cwd, outDir) || outDir}`
+    `[dashboard] building with the "${ui.name}" adapter (${relative(cwd, ui.file) || ui.file}; from ${ui.from}) into ${relative(cwd, outDir) || outDir}`
   );
   const config = await dashboardConfig({
     adapter: ui.file,

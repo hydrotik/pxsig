@@ -35,7 +35,7 @@ packages/dashboard/src/
 - **Build-time selection:** `PXSIG_UI_ADAPTER=<name>` or, in a consumer project,
   `pxsig.config.json` → `"dashboard": { "ui": "./pxsig-ui" }` (a path to an adapter module). Vite
   aliases `@ui-adapter` to it. An unknown name or path fails fast with a clear message. Default:
-  `hydrotik`.
+  `hydrotik` when `PXSIG_DS_SOURCE` is set, else the built-in `plain` adapter.
 - **Neutral names, minimal props.** Each contract component has a stable, minimal prop shape (only
   what the views pass) documented in `contract.ts`; the hydrotik adapter maps it to the real
   component. Generic names stay generic; domain names are neutral. Indicative groups (final list

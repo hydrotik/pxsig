@@ -19,6 +19,7 @@ Read, in `node_modules/pxsig/` (or `packages/dashboard/` in a clone of pxsig):
 | `dashboard/src/ui/tokens.ts`          | The neutral theme tokens your adapter must map.                                                                                                                                                                                 |
 | `docs/ui/features.md`                 | Every dashboard feature and the components it renders: what your components will be used for.                                                                                                                                   |
 | `dashboard/src/ui/adapters/hydrotik/` | The reference adapter: a worked mapping onto a real design system.                                                                                                                                                              |
+| `dashboard/src/ui/adapters/plain/`    | The plain adapter: semantic HTML and one stylesheet, the shape an adapter starts from. The default build when nothing names an adapter.                                                                                         |
 | `dashboard/src/ui/fallbacks.tsx`      | What each optional component looks like when you leave it out.                                                                                                                                                                  |
 | `docs/ui/catalog/`                    | The reference design system's components: what each does, which ones the reference adapter uses, and the equivalent in 11 other design systems. A starting point for the mapping questions below ([README](catalog/README.md)). |
 
@@ -43,6 +44,11 @@ pxsig dashboard gaps    # what the adapter covers so far
 pxsig dashboard build   # writes node_modules/.cache/pxsig/dashboard
 pxsig serve             # serves that build
 ```
+
+Which adapter a build uses, first match wins: `--ui`, then `PXSIG_UI_ADAPTER`, then `dashboard.ui`
+in `pxsig.config.json`, then `hydrotik` when `PXSIG_DS_SOURCE` is set (the reference look, compiled
+from a checkout of its design system), then `plain`. A bare name (`plain`, `hydrotik`) is a built-in
+adapter; anything else is a path. The build prints the adapter and the rule that picked it.
 
 `pxsig serve` uses the build while it is newer than every file in the adapter's folder and was made
 by the same pxsig version. Otherwise it serves the prebuilt dashboard and prints one line with the

@@ -1,7 +1,9 @@
 /**
- * The pxsig dashboard, built with a UI adapter chosen at build time (default: the reference
- * adapter on @hydrotik/design-system, which needs PXSIG_DS_SOURCE; see build-config.mjs):
+ * The pxsig dashboard, built with a UI adapter chosen at build time (see build-config.mjs). With
+ * nothing set it is the plain adapter; with PXSIG_DS_SOURCE set, the reference adapter on
+ * @hydrotik/design-system, compiled from that checkout:
  *
+ *   pnpm --filter @pxsig/dashboard build                                     # plain
  *   PXSIG_DS_SOURCE=/path/to/design-system-monorepo pnpm --filter @pxsig/dashboard build
  *   PXSIG_UI_ADAPTER=./path/to/adapter pnpm --filter @pxsig/dashboard build
  *

@@ -137,14 +137,17 @@ In examples and docs use neutral names: `packages/ui`, `apps/storybook`, `my-des
 ## The dashboard
 
 The dashboard is built from `packages/dashboard` into `packages/pxsig/dist/dashboard`, which is not
-committed. Building it needs a local checkout of its design system; see
+committed. With nothing set it builds on the built-in plain adapter; the reference look needs a local
+checkout of its design system (`PXSIG_DS_SOURCE`); see
 [packages/dashboard/README.md](packages/dashboard/README.md). Changes to the server, the data it
 serves (`packages/pxsig/src/report.mjs`) and the API are testable without a build.
 
 Views import components only from `@ui`, the UI contract (`packages/dashboard/src/ui/`). A new
 contract component needs its section in `docs/ui/build-adapter.md`, an entry in the reference
 adapter's `conformance.json` and a feature in `src/ui/features.ts` that renders it; a new feature
-needs its entry in `features.ts`.
+needs its entry in `features.ts`. The plain adapter (`src/ui/adapters/plain/`) and the example's
+copy (`examples/custom-ui/pxsig-ui/`) stay identical but for their contract import;
+`test/build-config.test.mjs` checks it.
 
 Any change to the contract (a component, a prop, a token, an icon) also bumps `CONTRACT_VERSION`
 in `contract.ts`, minor or major ([docs/ui/contract-changes.md](docs/ui/contract-changes.md) says
@@ -155,8 +158,8 @@ which), adds that version's section to `contract-changes.md`, keeps the referenc
 ```bash
 pnpm ui:docs     # regenerate src/ui/manifest.json and docs/ui/features.md
 pnpm ui:check    # what CI runs: no design-system import outside the adapters; code and docs agree
-pnpm ui:gaps     # the reference adapter's conformance
-pnpm typecheck   # tsc over the dashboard and both adapters; with PXSIG_DS_SOURCE, the reference adapter against the design system's sources too
+pnpm ui:gaps     # the conformance of the adapter a build would use (plain; hydrotik with PXSIG_DS_SOURCE)
+pnpm typecheck   # tsc over the dashboard and every adapter; with PXSIG_DS_SOURCE, the reference adapter against the design system's sources too
 ```
 
 The reference adapter is type-checked (and linted) in CI against

@@ -160,7 +160,7 @@ export async function dashboardCheck(
     const { from } = /** @type {DashboardBuildConfig} */ (
       await load(src, 'build-config.mjs')
     ).adapterSpec({ adapter: spec, cwd });
-    if (from !== 'default') ui = resolveAdapter({ adapter: spec, cwd });
+    if (!from.startsWith('default')) ui = resolveAdapter({ adapter: spec, cwd });
   } catch {
     ui = null;
   }

@@ -131,7 +131,9 @@ of these that is available, and fails with a message naming both if neither is:
 1. **The `PXSIG_DS_SOURCE` secret.** A git URL, credentials included, of the design-system
    monorepo. The job fetches the commit named by the `PXSIG_DS_REF` variable, which must be a
    full 40-character commit SHA (the job fails on a branch, a tag or an empty value), installs its
-   dependencies and runs `pnpm --filter @pxsig/dashboard build`.
+   dependencies and runs `pnpm --filter @pxsig/dashboard build` with `PXSIG_UI_ADAPTER=hydrotik`
+   and `PXSIG_DS_SOURCE` set. The adapter is named rather than left to the default, which without
+   `PXSIG_DS_SOURCE` is the plain adapter.
 2. **A release asset** named `pxsig-dashboard.tar.gz` on the GitHub release for the tag.
 
 There is no input that fetches a dashboard from any other URL. The job writes which source it used,
@@ -143,7 +145,8 @@ that this workflow packed it.
 For 2, build the dashboard locally and pack it:
 
 ```bash
-PXSIG_DS_SOURCE=<path to the design-system checkout> pnpm --filter @pxsig/dashboard build
+PXSIG_UI_ADAPTER=hydrotik PXSIG_DS_SOURCE=<path to the design-system checkout> \
+  pnpm --filter @pxsig/dashboard build
 COPYFILE_DISABLE=1 tar czf pxsig-dashboard.tar.gz -C packages/pxsig/dist dashboard
 ```
 
