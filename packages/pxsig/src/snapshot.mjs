@@ -11,10 +11,11 @@
  * the commit and the pull request say who, in the forge, for people who can open it.
  */
 import { spawnSync } from './lib/spawn.mjs';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { readLog, traceLog } from './lib/approvals.mjs';
 import { readHeader } from './lib/psig.mjs';
+import { readJson } from './lib/files.mjs';
 import { PXSIG_VERSION } from './lib/workspace.mjs';
 /** @import { ApprovalLine, Manifest, ManifestEntry, Project } from './types.js' */
 /** @import { PartialEnv, ProjectSnapshot, Snapshot, SnapshotHistoryRow, SnapshotStory, TraceRow } from './types/t4.js' */
@@ -35,15 +36,6 @@ const eventOf = (/** @type {ApprovalLine} */ l) =>
 /** The reason a person gave; a migration's is the old file path pxsig wrote, not a reason. */
 const reasonOf = (/** @type {ApprovalLine} */ l) =>
   l.via === 'migrate' ? null : (l.reason ?? null);
-
-/** @returns {unknown} */
-const readJson = (/** @type {string} */ p) => {
-  try {
-    return JSON.parse(readFileSync(p, 'utf8'));
-  } catch {
-    return null;
-  }
-};
 
 /**
  * Every committed manifest of a project: `manifest.json` and each suite's `manifest.<suite>.json`.

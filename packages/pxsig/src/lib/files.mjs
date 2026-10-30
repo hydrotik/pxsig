@@ -9,6 +9,9 @@
  *   is closed off first, so it can never swallow the new line.
  * - `readLines`: a log's complete lines; a line that does not parse, or a last line without its
  *   newline (a write cut short), is returned apart as `torn` (integrity code `log-torn`).
+ * - `readJsonFile` (throws) and `readJson` (a fallback instead): one JSON file. A UTF-8 byte order
+ *   mark (Windows Notepad writes one) is skipped; a UTF-16 file is refused with a message that
+ *   names the encoding.
  *
  * `fault(point)` exits at a named point when `PXSIG_FAULT` names it, and only under NODE_ENV=test:
  * the crash tests use it; it does nothing in a normal run.
@@ -91,6 +94,47 @@ export function writeAtomic(path, data) {
  */
 export const writeJson = (path, value, { pretty = false } = {}) =>
   writeAtomic(path, `${JSON.stringify(value, null, pretty ? 2 : 0)}\n`);
+
+/**
+ * The UTF-16 byte order a JSON file was saved in, or null. A BOM says so; without one, a JSON
+ * text starts with an ASCII character, so a zero byte beside it marks UTF-16.
+ * @param {Buffer} b
+ * @returns {'LE' | 'BE' | null}
+ */
+function utf16Of(b) {
+  if (b.length < 2) return null;
+  if ((b[0] === 0xff && b[1] === 0xfe) || (b[0] !== 0 && b[1] === 0)) return 'LE';
+  if ((b[0] === 0xfe && b[1] === 0xff) || (b[0] === 0 && b[1] !== 0)) return 'BE';
+  return null;
+}
+
+/**
+ * A JSON file's value. Throws when the file is missing, does not parse, or is UTF-16.
+ * @param {string} path
+ * @returns {unknown}
+ */
+export function readJsonFile(path) {
+  const b = readFileSync(path);
+  const order = utf16Of(b);
+  if (order) throw new Error(`${path} is UTF-16 ${order}; save it as UTF-8`);
+  const text = b.toString('utf8');
+  return JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
+}
+
+/**
+ * A JSON file's value, or `fallback` when it is missing, does not parse or is UTF-16. The value is
+ * unchecked: the caller says what it holds.
+ * @param {string} path
+ * @param {unknown} [fallback]
+ * @returns {unknown}
+ */
+export const readJson = (path, fallback = null) => {
+  try {
+    return readJsonFile(path);
+  } catch {
+    return fallback;
+  }
+};
 
 /**
  * Does the file end mid-line (a write cut short)?

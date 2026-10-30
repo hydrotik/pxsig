@@ -133,7 +133,7 @@ import {
 import { humanAtTerminal } from './lib/term.mjs';
 import { fileURLToPath } from 'node:url';
 import { relPath } from './lib/paths.mjs';
-import { appendLine, writeJson } from './lib/files.mjs';
+import { appendLine, readJson, writeJson } from './lib/files.mjs';
 import { applyPrune } from './lib/prune.mjs';
 /** The server listens on a TCP port, so `server.address()` is an AddressInfo wherever it is read. */
 /** @import { AddressInfo } from 'node:net' */
@@ -239,21 +239,6 @@ const TYPES = {
   '.log': 'text/plain; charset=utf-8',
   '.md': 'text/markdown; charset=utf-8',
   '.xml': 'application/xml; charset=utf-8',
-};
-/**
- * A JSON file, or `fallback` when it is missing or does not parse. Every file the server reads this
- * way is one pxsig writes (check.json, review.json, a11y-review.json, a11y.json, integrity.json,
- * server.json), so a caller casts the result to that file's shape.
- * @param {string} p
- * @param {unknown} fallback
- * @returns {unknown}
- */
-const readJson = (p, fallback) => {
-  try {
-    return JSON.parse(readFileSync(p, 'utf8'));
-  } catch {
-    return fallback;
-  }
 };
 /**
  * @param {number} status

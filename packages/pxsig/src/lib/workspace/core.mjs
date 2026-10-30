@@ -1,5 +1,5 @@
 /** The setup error every part of workspace.mjs throws, and the JSON reader that throws it. */
-import { readFileSync } from 'node:fs';
+import { readJsonFile as readJsonOrThrow } from '../files.mjs';
 
 /** A problem with the setup (no workspace, a bad config): commands exit 2 with its message. */
 export class SetupError extends Error {
@@ -15,13 +15,18 @@ export class SetupError extends Error {
 }
 
 /**
+ * A config or workspace file's JSON (a UTF-8 BOM is skipped), or a SetupError: missing, broken,
+ * or saved as UTF-16.
  * @param {string} path
  * @returns {unknown}
  */
 export function readJsonFile(path) {
   try {
-    return JSON.parse(readFileSync(path, 'utf8'));
+    return readJsonOrThrow(path);
   } catch (e) {
-    throw new SetupError(`${path} is not valid JSON: ${/** @type {Error} */ (e).message}`);
+    const { message } = /** @type {Error} */ (e);
+    throw new SetupError(
+      message.startsWith(path) ? message : `${path} is not valid JSON: ${message}`
+    );
   }
 }

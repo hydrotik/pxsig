@@ -11,6 +11,7 @@
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
+import { readJson } from './files.mjs';
 
 /**
  * Where `pxsig dashboard build` writes by default, for the project in `dir`.
@@ -45,15 +46,11 @@ export function newestMtime(p) {
  * @returns {string | null}
  */
 function uiOf(project) {
-  try {
-    // The config file's JSON, read only through optional chaining; `ui` is checked below.
-    const ui = /** @type {{ dashboard?: { ui?: unknown } } | null} */ (
-      JSON.parse(readFileSync(project.configPath, 'utf8'))
-    )?.dashboard?.ui;
-    return typeof ui === 'string' && ui ? ui : null;
-  } catch {
-    return null;
-  }
+  // The config file's JSON, read only through optional chaining; `ui` is checked below.
+  const ui = /** @type {{ dashboard?: { ui?: unknown } } | null} */ (
+    readJson(project.configPath, null)
+  )?.dashboard?.ui;
+  return typeof ui === 'string' && ui ? ui : null;
 }
 
 /**

@@ -5,7 +5,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
 import { toPosix } from '../paths.mjs';
-import { writeJson } from '../files.mjs';
+import { readJson, writeJson } from '../files.mjs';
 /** @import { Project } from '../../types.js' */
 /** @import { EditedFile, IntegritySettings, Ledger, RustAffected, ServeAnswer } from '../../types/t3.js' */
 
@@ -27,20 +27,8 @@ export const DEFAULT_INTEGRITY = {
 
 // --- small utilities ------------------------------------------------------------------------------
 
-/**
- * A JSON file, or `fallback` when it is missing or does not parse. The value is unchecked: the
- * caller says what it holds.
- * @param {string} p
- * @param {unknown} [fallback]
- * @returns {unknown}
- */
-export const readJson = (p, fallback = null) => {
-  try {
-    return JSON.parse(readFileSync(p, 'utf8'));
-  } catch {
-    return fallback;
-  }
-};
+/** The shared JSON reader (lib/files.mjs), here for integrity's own modules. */
+export { readJson };
 /** @param {string} p */
 export const mtime = (p) => {
   try {

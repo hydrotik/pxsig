@@ -3,11 +3,12 @@
  * reads, an entry's state and brief, the pxsig server over HTTP, and the MCP text content item.
  * Used by the tool groups beside it, the MCP server (mcp.mjs) and the CLI.
  */
-import { readFileSync, statSync } from 'node:fs';
+import { statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openProject } from '../lib/workspace.mjs';
 import { relPath } from '../lib/paths.mjs';
+import { readJson } from '../lib/files.mjs';
 
 /** @import { BriefEntry, CheckReport, McpContent, ReportRow, ReviewFile, ServerStatusReply } from '../types/t6.js' */
 
@@ -41,21 +42,6 @@ const PROJECT = {
 };
 // MCP results larger than this lose the image and keep its path.
 const MAX_IMAGE_BYTES = 1_500_000;
-
-/**
- * A JSON file, or `fallback` when it is missing or does not parse. Callers name the shape of the
- * file they read (each is one pxsig writes).
- * @param {string} p
- * @param {unknown} fallback
- * @returns {unknown}
- */
-const readJson = (p, fallback) => {
-  try {
-    return JSON.parse(readFileSync(p, 'utf8'));
-  } catch {
-    return fallback;
-  }
-};
 
 // --- state ------------------------------------------------------------------------------------
 
