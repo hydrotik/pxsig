@@ -54,9 +54,8 @@ test('every platform package is named, restricted and laid out as rustBinary() r
       assert.equal(m.version, '1.2.3');
       assert.deepEqual(m.os, [platform]);
       assert.deepEqual(m.cpu, [arch]);
-      // No libc: the Linux packages carry no `libc` restriction today (a change to it is a
-      // published-file change, decided on its own).
-      assert.equal(m.libc, undefined, `${id}: libc`);
+      // The Linux binaries are glibc builds (*-unknown-linux-gnu); other platforms have no libc.
+      assert.deepEqual(m.libc, platform === 'linux' ? ['glibc'] : undefined, `${id}: libc`);
       // The engine is found by path, not run through a `bin` link.
       assert.equal(m.bin, undefined, `${id}: bin`);
       assert.deepEqual(m.files, ['bin']);
