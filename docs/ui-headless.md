@@ -105,8 +105,9 @@ is, also design-system-free.
 
 ### 3. Shipping, without new packages
 
-- Subpath exports in `pxsig`: `pxsig/dashboard` (the contract types, for writing an adapter) and
-  `pxsig/diff-viewer`. No new npm packages.
+- Subpath exports in `pxsig`: `pxsig/dashboard` (the contract types, for writing an adapter; types
+  only, so loading it at run time throws) and `pxsig/diff-viewer` (TypeScript source for a bundler;
+  React is an optional peer). No new npm packages.
 - The dashboard's source (views, contract, diff viewer, the hydrotik adapter as the worked example)
   ships inside `pxsig`, so `pxsig dashboard build` can rebuild it against a consumer's adapter. The
   default prebuilt dashboard is unchanged.
