@@ -66,7 +66,7 @@ function readFlags() {
     'browser.mjs',
     'lib/workspace/layers.mjs',
     'lib/term.mjs',
-    'lib/enforcement.mjs',
+    'lib/enforcement/resolve.mjs',
   ];
   const pats = [
     /flags\.([a-zA-Z][\w]*)/g,
