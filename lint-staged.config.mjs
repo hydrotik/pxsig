@@ -33,10 +33,33 @@ const isOxfmtIgnored = (file) => {
 };
 
 /**
+ * Files oxlint will not lint. Keep in sync with `ignorePatterns` in .oxlintrc.json.
+ *
+ * oxlint exits non-zero ("No files found to lint") when every file handed to it is ignored, so a
+ * commit of only `.d.ts` files would always fail; they are filtered out here first, as for oxfmt.
+ *
+ * @param {string} file
+ */
+const isOxlintIgnored = (file) => {
+  const p = file.replace(/\\/g, '/');
+  return (
+    /(^|\/)(node_modules|dist|target|storybook-static)\//.test(p) ||
+    p.endsWith('.d.ts') ||
+    /(^|\/)packages\/(cli-[^/]+|pxsig\/dashboard|pxsig\/docs)\//.test(p)
+  );
+};
+
+/**
  * Quote with forward slashes so the command is safe under the sh-based git hook.
  * @param {string} f
  */
 const quote = (f) => `"${f.replace(/\\/g, '/')}"`;
+
+/** @param {string[]} files */
+const oxlint = (files) => {
+  const targets = files.filter((f) => !isOxlintIgnored(f));
+  return targets.length ? [`pnpm exec oxlint --type-aware ${targets.map(quote).join(' ')}`] : [];
+};
 
 /** @param {string[]} files */
 const oxfmt = (files) => {
@@ -46,7 +69,7 @@ const oxfmt = (files) => {
 
 export default {
   '*.{ts,tsx,js,jsx,mjs,cjs}': (/** @type {string[]} */ files) => [
-    `pnpm exec oxlint --type-aware ${files.map(quote).join(' ')}`,
+    ...oxlint(files),
     ...oxfmt(files),
   ],
   '*.{json,md,yaml,yml,css,html}': oxfmt,
