@@ -329,7 +329,7 @@ Components: `Dialog`, `DialogTitle`, `DialogDescription`, `StatusBadge`, `Segmen
 
 Copy: `inspector.review`, `inspector.nav`, `inspector.variant`, `inspector.contextLatest`, `inspector.contextScenario`, `inspector.withinGate`, `inspector.close`, `inspector.rejectedNote`
 
-Files: `src/inspector/Inspector`, `src/parts/StatusOf`
+Files: `src/inspector/Inspector`, `src/inspector/Header`, `src/inspector/controls`, `src/parts/StatusOf`
 
 ### Image stage
 
@@ -352,7 +352,7 @@ Components: `Toolbar`, `ToolbarStart`, `ToolbarEnd`, `SegmentedChoice`, `IconBut
 
 Copy: `inspector.modes`, `inspector.sliders`, `inspector.toggles`, `inspector.stage`, `inspector.keys`, `inspector.fit`, `inspector.actual`, `inspector.zoomIn`, `inspector.zoomOut`, `inspector.loading`, `inspector.missing`
 
-Files: `src/inspector/Inspector`, `src/inspector/Stage`
+Files: `src/inspector/Inspector`, `src/inspector/controls`, `src/inspector/Stage`
 
 ### Inspector details
 
@@ -372,7 +372,7 @@ Components: `KeyValueList`, `KeyValueItem`, `Badge`, `StatusBadge`, `Button`, `L
 
 Copy: `inspector.sections`, `inspector.pixel`, `inspector.changes`, `inspector.metrics`, `inspector.a11y`, `inspector.files`, `inspector.storybook`, `inspector.artifacts`
 
-Files: `src/inspector/Inspector`
+Files: `src/inspector/Inspector`, `src/inspector/side/PixelSection`, `src/inspector/side/ChangesSection`, `src/inspector/side/MetricsSection`, `src/inspector/side/A11ySection`, `src/inspector/side/FilesSection`
 
 ### Review session
 
@@ -391,7 +391,7 @@ Components: `Progress`, `Dialog`, `DialogTitle`, `KeyValueList`, `KeyValueItem`,
 
 Copy: `inspector.session`
 
-Files: `src/inspector/Inspector`
+Files: `src/inspector/Inspector`, `src/inspector/SessionSummary`
 
 ## Storybook panel
 
@@ -412,7 +412,7 @@ Components: `Switch`, `IconButton`, `SegmentedChoice`
 
 Copy: `app.embedEmpty`, `inspector.toggles.details`
 
-Files: `src/App`, `src/inspector/Inspector`
+Files: `src/App`, `src/inspector/Inspector`, `src/inspector/controls`, `src/inspector/side/ViewSection`
 
 ### Decision window
 

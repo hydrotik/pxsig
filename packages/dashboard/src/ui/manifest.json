@@ -63,7 +63,12 @@
       "role": "a command, or a link styled as one",
       "usedBy": [
         "App",
-        "inspector/Inspector",
+        "inspector/Header",
+        "inspector/SessionSummary",
+        "inspector/controls",
+        "inspector/side/A11ySection",
+        "inspector/side/FilesSection",
+        "inspector/side/PixelSection",
         "parts/StaleHeatmap",
         "parts/StoryGrid",
         "views/Accessibility",
@@ -77,7 +82,8 @@
       "role": "a square button with a glyph",
       "usedBy": [
         "App",
-        "inspector/Inspector"
+        "inspector/controls",
+        "inspector/side/ViewSection"
       ]
     },
     "Card": {
@@ -202,7 +208,7 @@
       "role": "a state: tone, icon and label",
       "usedBy": [
         "App",
-        "inspector/Inspector",
+        "inspector/side/A11ySection",
         "parts/StatusOf",
         "views/Accessibility",
         "views/Diagnostics",
@@ -215,7 +221,9 @@
       "role": "a short tag",
       "usedBy": [
         "App",
-        "inspector/Inspector",
+        "inspector/side/A11ySection",
+        "inspector/side/MetricsSection",
+        "inspector/side/PixelSection",
         "parts/StoryGrid",
         "views/Accessibility",
         "views/Integrity",
@@ -228,7 +236,7 @@
       "role": "a glyph from the closed set",
       "usedBy": [
         "App",
-        "inspector/Inspector",
+        "inspector/side/PixelSection",
         "parts/Affordance",
         "views/Help"
       ]
@@ -238,7 +246,8 @@
       "required": true,
       "role": "a modal dialog (the inspector)",
       "usedBy": [
-        "inspector/Inspector"
+        "inspector/Inspector",
+        "inspector/SessionSummary"
       ]
     },
     "DialogTitle": {
@@ -246,7 +255,8 @@
       "required": true,
       "role": "the dialog's accessible name",
       "usedBy": [
-        "inspector/Inspector"
+        "inspector/Inspector",
+        "inspector/SessionSummary"
       ]
     },
     "DialogDescription": {
@@ -262,7 +272,7 @@
       "required": false,
       "role": "one number on a range",
       "usedBy": [
-        "inspector/Inspector"
+        "inspector/controls"
       ]
     },
     "Switch": {
@@ -270,7 +280,8 @@
       "required": false,
       "role": "an on / off control",
       "usedBy": [
-        "inspector/Inspector"
+        "inspector/Inspector",
+        "inspector/controls"
       ]
     },
     "SegmentedChoice": {
@@ -278,7 +289,7 @@
       "required": false,
       "role": "one of a few visible options",
       "usedBy": [
-        "inspector/Inspector",
+        "inspector/controls",
         "views/Calibration",
         "views/Diagnostics",
         "views/Scenarios"
@@ -340,7 +351,8 @@
       "required": false,
       "role": "a command with a copy button",
       "usedBy": [
-        "inspector/Inspector"
+        "inspector/Inspector",
+        "inspector/SessionSummary"
       ]
     },
     "Kbd": {
@@ -348,7 +360,7 @@
       "required": false,
       "role": "a keyboard key",
       "usedBy": [
-        "inspector/Inspector"
+        "inspector/controls"
       ]
     },
     "Tooltip": {
@@ -364,7 +376,7 @@
       "required": false,
       "role": "a link, router-aware through render",
       "usedBy": [
-        "inspector/Inspector"
+        "inspector/side/FilesSection"
       ]
     },
     "Progress": {
@@ -381,7 +393,9 @@
       "required": false,
       "role": "label → value pairs",
       "usedBy": [
-        "inspector/Inspector",
+        "inspector/SessionSummary",
+        "inspector/side/ChangesSection",
+        "inspector/side/MetricsSection",
         "views/Diagnostics"
       ]
     },
@@ -390,7 +404,9 @@
       "required": false,
       "role": "one label → value pair",
       "usedBy": [
-        "inspector/Inspector",
+        "inspector/SessionSummary",
+        "inspector/side/ChangesSection",
+        "inspector/side/MetricsSection",
         "views/Diagnostics"
       ]
     },
