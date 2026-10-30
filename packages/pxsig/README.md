@@ -28,9 +28,18 @@ npx pxsig doctor            # what the check does not cover
 | `schema/workspace.json`, `schema/project.json` | JSON Schemas for `pxsig.workspace.json` and `pxsig.config.json`                         |
 | `dist/dashboard/`                              | The prebuilt dashboard (in the published package)                                       |
 
-Module exports: `pxsig/workspace` (the resolver) and `pxsig/psig` (read `.psig` headers and images).
+Module exports:
 
-Peer dependency: `playwright` 1.58 or later (the oldest version CI tests). The engine binary comes from a per-platform package
+| Export                                                             | Content                                                                                                                                                  |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pxsig/workspace`                                                  | The resolver: `openProject`, `findWorkspace`, `pickProject`, `loadProject` and `SetupError`                                                              |
+| `pxsig/psig`                                                       | Read `.psig` headers and images                                                                                                                          |
+| `pxsig/dashboard`                                                  | The dashboard's UI contract, types only (`import type * as C from 'pxsig/dashboard'`); loading it at run time throws                                     |
+| `pxsig/diff-viewer`                                                | The diff viewer's React parts as TypeScript source, for a bundler that compiles TypeScript and JSX (Vite, as `pxsig dashboard build` uses); not for Node |
+| `pxsig/ui/catalog/hydrotik.json`, `….schema.json`, `….source.json` | The reference design system's component catalog, its schema and its source commit                                                                        |
+
+Peer dependencies: `playwright` 1.58 or later (the oldest version CI tests); `react` 19 or later, optional, needed only by
+`pxsig/diff-viewer` and `pxsig dashboard build`. The engine binary comes from a per-platform package
 `@pxsig/cli-<platform>-<arch>` once published; `PXSIG_BIN` points at another build.
 
 ## Documentation

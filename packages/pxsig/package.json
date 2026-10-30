@@ -17,11 +17,11 @@
     "pxsig": "bin/pxsig.mjs"
   },
   "exports": {
-    "./workspace": "./src/lib/workspace.mjs",
+    "./workspace": "./src/public/workspace.mjs",
     "./psig": "./src/lib/psig.mjs",
     "./dashboard": {
       "types": "./dashboard/src/ui/contract.ts",
-      "default": "./dashboard/src/ui/contract.ts"
+      "default": "./src/public/dashboard.mjs"
     },
     "./diff-viewer": {
       "types": "./dashboard/src/diff-viewer/index.ts",
@@ -52,7 +52,13 @@
     "pngjs": "^7.0.0"
   },
   "peerDependencies": {
-    "playwright": ">=1.58"
+    "playwright": ">=1.58",
+    "react": ">=19"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "playwright": "^1.56.0"

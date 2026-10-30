@@ -22,7 +22,8 @@ Read, in `node_modules/pxsig/` (or `packages/dashboard/` in a clone of pxsig):
 | `dashboard/src/ui/fallbacks.tsx`      | What each optional component looks like when you leave it out.                                                                                                                                                                  |
 | `docs/ui/catalog/`                    | The reference design system's components: what each does, which ones the reference adapter uses, and the equivalent in 11 other design systems. A starting point for the mapping questions below ([README](catalog/README.md)). |
 
-The types are importable: `import type * as C from 'pxsig/dashboard'`.
+The types are importable: `import type * as C from 'pxsig/dashboard'`. That export is types only:
+loading it at run time throws.
 
 ## The shortest path
 
@@ -638,7 +639,8 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 ## Styling the diff viewer
 
 The inspector's image stage is built on `pxsig/diff-viewer`, unstyled parts that every adapter
-reuses unchanged. The dashboard styles it with the neutral tokens, so your `tokens` already colour
+reuses unchanged. The export is TypeScript source (React 19 or later), for a bundler that compiles
+TypeScript and JSX, such as the Vite build `pxsig dashboard build` runs; Node cannot load it. The dashboard styles it with the neutral tokens, so your `tokens` already colour
 it: `color.border` frames and separates the panes, `color.background` and `color.surfaceRaised`
 draw the transparency checker, `color.accent` the active region, the marker and the swipe line,
 `color.warning` region outlines, `color.danger` changed tiles, `color.focus` the stage's focus
