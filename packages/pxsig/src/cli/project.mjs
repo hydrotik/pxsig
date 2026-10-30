@@ -5,7 +5,7 @@ import { existsSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { approveCommand } from '../approve.mjs';
 import { tools } from '../tools/index.mjs';
-import { buildManifest, describeConfig, initProject } from '../lib/setup.mjs';
+import { buildManifest, describeConfig, detectStorybook, initProject } from '../lib/setup.mjs';
 import { CONFIG_FILE, findWorkspace, openProject } from '../lib/workspace.mjs';
 import { ask, emit, humanAtTerminal, progress, whyNotPerson } from '../lib/term.mjs';
 import { relPath } from '../lib/paths.mjs';
@@ -124,16 +124,29 @@ export function projectCommands(cli) {
         const name = s('name') ?? basename(dir);
         label = (await ask(`Title in the dashboard (Enter for ${name}): `)) || null;
       }
+      // A new config records the package's `.storybook/` and `storybook-static/` when the flags
+      // do not name them; an existing config is never edited.
+      const found = existsSync(join(dir, CONFIG_FILE))
+        ? { configDir: null, staticDir: null }
+        : detectStorybook(dir);
+      const configDir = s('storybook-config');
+      const staticDir = s('storybook-static');
+      const detected = {
+        configDir: configDir ? null : found.configDir,
+        staticDir: staticDir ? null : found.staticDir,
+      };
       const wrote = initProject({
         dir,
         name: s('name'),
         label,
         srcRoot: s('src') ?? 'src',
         storybookUrl: s('storybook-url'),
-        storybookConfigDir: s('storybook-config'),
+        storybookConfigDir: configDir ?? detected.configDir,
+        storybookStaticDir: staticDir ?? detected.staticDir,
         workspaceRoot: wsRoot,
         layout: s('layout'),
       });
+      const served = staticDir ?? detected.staticDir;
       emit(
         format,
         [
@@ -141,14 +154,29 @@ export function projectCommands(cli) {
           wrote.length
             ? { list: wrote.map((p) => relPath(process.cwd(), p) || p) }
             : { note: 'already set up: nothing written' },
+          ...(detected.configDir
+            ? [{ note: `found ${detected.configDir}/: recorded as storybook.configDir` }]
+            : []),
+          ...(detected.staticDir
+            ? [
+                {
+                  note: `found ${detected.staticDir}/: recorded as storybook.staticDir, served when nothing answers at storybook.url`,
+                },
+              ]
+            : []),
           {
             next: [
-              [`${CMD} manifest`, 'list the stories to check (Storybook must be running)'],
+              [
+                `${CMD} manifest`,
+                served
+                  ? `list the stories to check (the running Storybook, else the build in ${served})`
+                  : 'list the stories to check (Storybook must be running)',
+              ],
               [`${CMD} check --full`, 'render and check them'],
             ],
           },
         ],
-        { wrote }
+        { wrote, detected }
       );
     },
 
@@ -274,7 +302,12 @@ export function projectCommands(cli) {
       const sb = await ensureStorybook(P, {
         log: (m) => format !== 'json' && process.stderr.write(`[manifest] ${m}\n`),
       });
-      const spin = progress(format, 'reading stories from Storybook');
+      // Where the stories come from: the configured Storybook, or the static build served for it.
+      const staticDir = sb.served ? P.storybook.staticDir : null;
+      const from = staticDir
+        ? `${relPath(process.cwd(), staticDir) || '.'} (served at ${sb.url})`
+        : `${sb.url.replace(/\/$/, '')}/index.json`;
+      const spin = progress(format, `reading stories from ${from}`);
       let r;
       try {
         r = await buildManifest(P, { suite: typeof flags.suite === 'string' ? flags.suite : null });
@@ -290,7 +323,8 @@ export function projectCommands(cli) {
       emit(
         format,
         [
-          { h: 'Manifest', sub: relPath(process.cwd(), r.path) },
+          { h: 'Manifest', sub: `${relPath(process.cwd(), r.path)} · from ${from}` },
+          ...r.warnings.map((w) => ({ note: `warning: ${w}`, tone: 'warn' })),
           {
             kv: [
               ['Entries', String(r.manifest.stories.length)],
@@ -300,7 +334,14 @@ export function projectCommands(cli) {
             ],
           },
         ],
-        { path: r.path, added: r.added, removed: r.removed, skipped: r.skipped }
+        {
+          path: r.path,
+          source: { url: r.source, staticDir },
+          added: r.added,
+          removed: r.removed,
+          skipped: r.skipped,
+          warnings: r.warnings,
+        }
       );
     },
   };

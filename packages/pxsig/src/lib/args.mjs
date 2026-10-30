@@ -72,7 +72,7 @@ export function parseArgs(argv, { booleans = BOOLEAN_FLAGS } = {}) {
 /**
  * Every flag some pxsig command takes: the global ones and each command's and subcommand's in
  * help/commands.json, which test/help.test.mjs keeps equal to the flags the CLI reads. A flag
- * outside it is a typo or another tool's flag: the CLI says so and goes on (`unknownFlags`).
+ * outside it is a typo or another tool's flag: the CLI says so and exits 2 (`unknownFlags`).
  */
 /** @type {Set<string> | null} */
 let known = null;
@@ -163,7 +163,7 @@ export function unknownFlags(argv, { known = knownFlags(), booleans = BOOLEAN_FL
 export const unknownFlagLines = (unknown) =>
   unknown.map(
     ({ name, suggestion, took }) =>
-      `pxsig: unknown flag --${name}, ignored${suggestion ? ` (did you mean --${suggestion}?)` : ''}${took != null ? `; it took "${took}" as its value` : ''}`
+      `pxsig: unknown flag --${name}${suggestion ? ` (did you mean --${suggestion}?)` : ''}${took != null ? `; it took "${took}" as its value` : ''}`
   );
 
 /**

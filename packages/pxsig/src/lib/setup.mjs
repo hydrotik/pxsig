@@ -13,8 +13,8 @@
  *
  * Nothing here approves anything or changes a signature: migration packs the same signature bytes.
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { basename, join, relative, resolve } from 'node:path';
+import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { componentOf, loadStoryIndex, resolveContext, writeJsonAtomic } from './integrity.mjs';
 import { expandEntries, harvestParameters } from './manifest.mjs';
 import { CONFIG_FILE, entryConfig, SetupError, WORKSPACE_FILE } from './workspace.mjs';
@@ -53,10 +53,32 @@ const layoutOf = (cfg, workspaceRoot) =>
   'package';
 
 /**
+ * The Storybook folders `pxsig init` records when it finds them in the package: `.storybook/`
+ * (storybook.configDir) and a `storybook-static/` build folder (storybook.staticDir), both as
+ * paths relative to the package, as pxsig.config.json reads them. Null when absent.
+ * @param {string} dir
+ * @returns {{ configDir: string | null, staticDir: string | null }}
+ */
+export function detectStorybook(dir) {
+  /** @param {string} p */
+  const isDir = (p) => {
+    try {
+      return statSync(join(dir, p)).isDirectory();
+    } catch {
+      return false;
+    }
+  };
+  return {
+    configDir: isDir('.storybook') ? '.storybook' : null,
+    staticDir: isDir('storybook-static') ? 'storybook-static' : null,
+  };
+}
+
+/**
  * Set a package up: its config (unless one exists), its store and, in a monorepo, its entry in
  * the workspace file. A colocated project also gets `*.psig binary diff=psig` in the root
  * `.gitattributes` (the workspace's, else its own). Returns what it wrote.
- * @param {{ dir: string, name?: string | null, label?: string | null, srcRoot?: string, storybookUrl?: string | null, storybookConfigDir?: string | null, workspaceRoot?: string | null, layout?: string | null }} opts
+ * @param {{ dir: string, name?: string | null, label?: string | null, srcRoot?: string, storybookUrl?: string | null, storybookConfigDir?: string | null, storybookStaticDir?: string | null, workspaceRoot?: string | null, layout?: string | null }} opts
  * @returns {string[]}
  */
 export function initProject({
@@ -66,6 +88,7 @@ export function initProject({
   srcRoot = 'src',
   storybookUrl = null,
   storybookConfigDir = null,
+  storybookStaticDir = null,
   workspaceRoot = null,
   layout = null,
 }) {
@@ -84,10 +107,11 @@ export function initProject({
       ...(label?.trim() ? { label: label.trim() } : {}),
       srcRoot,
     };
-    if (storybookUrl || storybookConfigDir)
+    if (storybookUrl || storybookConfigDir || storybookStaticDir)
       cfg.storybook = {
         ...(storybookUrl ? { url: storybookUrl } : {}),
         ...(storybookConfigDir ? { configDir: storybookConfigDir } : {}),
+        ...(storybookStaticDir ? { staticDir: storybookStaticDir } : {}),
       };
     if (layout) cfg.store = { layout };
     writeJson(configPath, cfg, { pretty: true });
@@ -148,8 +172,37 @@ function suiteOptions(P, suite) {
 }
 
 /**
+ * What makes a manifest suspect without stopping it: a srcRoot that does not exist, or a Storybook
+ * none of whose stories is under the project (another package's Storybook answering on the port).
+ * `importPath`s are relative to the workspace root, as loadStoryIndex normalises them.
+ * @param {Project} P
+ * @param {{ importPath: string }[]} stories
+ * @param {string} from the index the stories came from
+ * @returns {string[]}
+ */
+export function manifestWarnings(P, stories, from) {
+  /** @param {string} abs */
+  const ws = (abs) => toPosix(relative(P.workspaceRoot, abs)) || '.';
+  /** @type {string[]} */
+  const warnings = [];
+  if (!existsSync(P.srcRoot))
+    warnings.push(`srcRoot ${ws(P.srcRoot)} does not exist (pxsig.config.json "srcRoot")`);
+  /** @param {string} p */
+  const inProject = (p) => {
+    const r = relative(P.root, resolve(P.workspaceRoot, p));
+    return r !== '' && !r.startsWith('..') && !isAbsolute(r);
+  };
+  if (stories.length && !stories.some((s) => inProject(s.importPath)))
+    warnings.push(
+      `none of the ${stories.length} stories in ${from} is under ${ws(P.root)}: is it this project's Storybook? (storybook.url, storybook.configDir)`
+    );
+  return warnings;
+}
+
+/**
  * Build (or rebuild) a manifest from the running Storybook. Existing entries keep their baseline
- * path; new ones get the layout's path and no baseline. Returns { manifest, added, removed, skipped }.
+ * path; new ones get the layout's path and no baseline. Returns { manifest, added, removed,
+ * skipped }, the index it read (`source`) and `manifestWarnings`.
  * @param {Project} P
  * @param {{ suite?: string | null, write?: boolean }} [opts]
  * @returns {Promise<BuiltManifest>}
@@ -161,6 +214,7 @@ export async function buildManifest(P, { suite = null, write = true } = {}) {
     throw new SetupError(
       `Storybook is needed to read each story's parameters: ${idx.storybook.error} (${idx.storybook.url})`
     );
+  const warnings = manifestWarnings(P, idx.stories, idx.storybook.url);
   const nonVisual = new Set(P.config.nonVisual ?? []);
   const stories = idx.stories.filter((s) => {
     const c = componentOf(ctx, s.importPath);
@@ -168,7 +222,10 @@ export async function buildManifest(P, { suite = null, write = true } = {}) {
   });
   if (!stories.length)
     throw new SetupError(
-      `no stories in ${toPosix(relative(P.workspaceRoot, P.srcRoot))} in the Storybook index (check srcRoot and storybook.configDir)`
+      [
+        `no stories in ${toPosix(relative(P.workspaceRoot, P.srcRoot))} in the Storybook index at ${idx.storybook.url} (check srcRoot and storybook.configDir)`,
+        ...warnings,
+      ].join('; ')
     );
   const params = await harvestParameters(
     P,
@@ -201,6 +258,8 @@ export async function buildManifest(P, { suite = null, write = true } = {}) {
     added: entries.filter((e) => !known.has(e.id)).map((e) => e.id),
     removed: [...known.keys()].filter((id) => !ids.has(id)),
     skipped,
+    source: idx.storybook.url,
+    warnings,
   };
 }
 

@@ -50,7 +50,7 @@ redraws, absolute image paths, and a "Next" section with the exact commands to r
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0              | OK                                                                                                                                                                                                                                     |
 | 1              | Problems found: changed entries (`check`), stale verdicts (`stale`), integrity issues (`doctor`), a migration that differs (`migrate`). Also a typed confirmation that did not match, or a plan a decision made stale: nothing written |
-| 2              | Usage or setup error: unknown command or project, no project chosen for a command that needs one, no manifest, Storybook unreachable or broken, missing binary, the store locked by another writer, a failed `report`                  |
+| 2              | Usage or setup error: unknown command, flag or project, no project chosen for a command that needs one, no manifest, Storybook unreachable or broken, missing binary, the store locked by another writer, a failed `report`            |
 | 3              | Needs a person at a terminal (below)                                                                                                                                                                                                   |
 | `advisoryExit` | Warn mode: only gates on `warn` would have failed. `0` by default, or 10 to 125 when the config sets `enforcement.advisoryExit` ([configuration.md](configuration.md#enforcement))                                                     |
 
@@ -111,6 +111,18 @@ Set a package up. Writes `pxsig.config.json` (unless one exists), the store with
 `.gitignore` and `.gitattributes`, and, when a `pxsig.workspace.json` exists above the folder,
 the project's entry in it.
 
+A new config also records what init finds in the folder, and says so: `.storybook/` as
+`storybook.configDir`, and a `storybook-static/` build folder as `storybook.staticDir` (only when
+the folder exists). A flag for the same key wins. Paths in the config are relative to the package
+folder. With a `staticDir`, `manifest`, `check` and the server serve that build themselves when
+nothing answers at `storybook.url`, so no Storybook needs to be running:
+
+```sh
+npx storybook build                        # writes storybook-static/
+pxsig init --storybook-static storybook-static
+pxsig manifest && pxsig check --full
+```
+
 | Flag                            | Meaning                                                                                                                                                                                                                                                                                                       |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--name <name>`                 | Project name (default: the folder name).                                                                                                                                                                                                                                                                      |
@@ -118,6 +130,7 @@ the project's entry in it.
 | `--src <dir>`                   | `srcRoot` (default `src`).                                                                                                                                                                                                                                                                                    |
 | `--storybook-url <url>`         | `storybook.url`.                                                                                                                                                                                                                                                                                              |
 | `--storybook-config <dir>`      | `storybook.configDir`. `$workspace/` paths are kept as written.                                                                                                                                                                                                                                               |
+| `--storybook-static <dir>`      | `storybook.staticDir`: a Storybook build (`index.json` + `iframe.html`), served on a free port when nothing answers at `storybook.url`.                                                                                                                                                                       |
 | `--layout <package\|colocated>` | `store.layout`. With `colocated` (here or in the workspace defaults), init also adds `*.psig binary diff=psig` to the root `.gitattributes` (the workspace's, else the package's) if no line there sets attributes for `*.psig`.                                                                              |
 
 ### `pxsig projects`
@@ -154,8 +167,12 @@ data and writes nothing.
 Rebuild the project's manifest from the running Storybook (or, when `storybook.url` does not
 answer, from the build in `storybook.staticDir`, served on a free port): every story under `srcRoot` times its
 modes times its interaction states, with `parameters.pxsig` read from the stories. Existing entries
-keep their baseline paths; new entries have none. Prints the counts of new, removed and skipped
-entries. `--suite` writes `manifest.<suite>.json`.
+keep their baseline paths; new entries have none. Prints where the stories came from (`from
+<storybook.url>/index.json`, or `from <staticDir> (served at …)`) and the counts of new, removed
+and skipped entries; `--json` has the same as `source: { url, staticDir }`. It warns, without
+changing the exit code, when `srcRoot` does not exist or when no story in the index is under the
+project (another package's Storybook on that port); `--json` lists them in `warnings`.
+`--suite` writes `manifest.<suite>.json`.
 
 ### `pxsig migrate --from <dir> [--apply] [--no-verify]`
 

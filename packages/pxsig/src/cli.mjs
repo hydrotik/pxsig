@@ -6,9 +6,11 @@
  *         [--storybook-url u] [--storybook-static dir] [--grid n] [--browser ws://…]   (config flags: the top layer)
  *
  *   projects                    the projects in this workspace, with their store and integrity
- *   init [dir] [--name x] [--src src] [--storybook-url url] [--storybook-config dir] [--layout colocated]
+ *   init [dir] [--name x] [--src src] [--storybook-url url] [--storybook-config dir]
+ *        [--storybook-static dir] [--layout colocated]
  *                               set a package up: pxsig.config.json, its store, the workspace entry
- *                               (colocated: also `*.psig binary diff=psig` in the root .gitattributes)
+ *                               (colocated: also `*.psig binary diff=psig` in the root .gitattributes);
+ *                               a new config records the folder's .storybook/ and storybook-static/
  *   config                      the resolved config of a project, and which layer set each key
  *   setup [assistant] [--assistant name] [--print]
  *                               the coding assistant's recipe: its MCP entry (the local install, no npx) and
@@ -71,7 +73,8 @@
  *
  * Same answers as the MCP server (it runs the same tool code in-process), rendered by lib/term.mjs:
  * a styled terminal view on a TTY, Markdown when piped (Claude Code, Codex, CI), JSON with --json.
- * Exit: 0 ok · 1 problems found (check / stale / doctor) · 2 usage or setup error · 3 needs a person at a terminal.
+ * Exit: 0 ok · 1 problems found (check / stale / doctor) · 2 usage or setup error (an unknown flag
+ * included) · 3 needs a person at a terminal.
  * Over several projects, the worst exit wins.
  * Warn mode (lib/enforcement.mjs): `check`, `doctor`, `stale` and `approve verify` take
  * `--enforce[=gate,…]` (anyone) and `--warn[=gate,…]` (a person at a terminal); a gate the committed
@@ -102,11 +105,16 @@ const { positional, flags } = parseArgs(process.argv.slice(2));
 const format = pickFormat(flags);
 const [command = 'status', ...rest] = positional;
 const CMD = process.env.PXSIG_CMD ?? 'pxsig';
-// A misspelled flag is ignored like any other unknown one, so say so on stderr. `cat` passes its
-// flags to the engine, which checks them itself.
-if (command !== 'cat')
-  for (const line of unknownFlagLines(unknownFlags(process.argv.slice(2))))
-    process.stderr.write(`${line}\n`);
+// A flag no command takes is a usage error (exit 2), with the nearest known flag: a misspelled
+// flag would otherwise change what runs without anyone noticing. `cat` passes its flags to the
+// engine, which checks them itself.
+if (command !== 'cat') {
+  const lines = unknownFlagLines(unknownFlags(process.argv.slice(2)));
+  if (lines.length) {
+    process.stderr.write(`${lines.join('\n')}\n`);
+    process.exit(2);
+  }
+}
 // `pxsig --version` / `pxsig version`: this CLI, the engine it would run and the UI contract.
 if (flags.version === true || command === 'version') {
   let engine = null;
