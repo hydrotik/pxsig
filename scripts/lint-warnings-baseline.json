@@ -32,9 +32,12 @@
     },
     "packages/dashboard/src/ui/fallbacks.tsx": {
       "jsx-a11y(anchor-has-content)": 1,
-      "jsx-a11y(control-has-associated-label)": 1,
-      "jsx-a11y(prefer-tag-over-role)": 2,
+      "jsx-a11y(prefer-tag-over-role)": 1,
       "jsx-a11y(role-has-required-aria-props)": 1
+    },
+    "packages/dashboard/src/ui/fallbacks/charts.tsx": {
+      "jsx-a11y(control-has-associated-label)": 1,
+      "jsx-a11y(prefer-tag-over-role)": 1
     },
     "packages/dashboard/src/ui/index.ts": {
       "react(no-children-prop)": 2
