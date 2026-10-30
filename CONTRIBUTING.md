@@ -195,6 +195,12 @@ dependency. That is intended. The fix is one of:
   that adds it). The reason says why the advisory does not apply or what the fix is waiting on; the
   date says when to look again.
 
+The root `package.json` carries `pnpm.overrides` for `vite` and `vite-node` (JSON has no comments,
+so the reason is here). `@vanilla-extract/compiler` depends on its own `vite` and `vite-node`
+(`^5 … ^8`, `^3.2.2 … ^6`); the overrides resolve both to the dashboard's Vite 8 line, so the
+dashboard builds with one Vite. Dependabot skips Vite majors for the same reason
+(`.github/dependabot.yml`): a new Vite major is taken by hand, overrides included.
+
 Advisories for development tooling arrive as Dependabot pull requests instead of failing CI. A
 licence outside `deny.toml`'s `allow` list fails; adding one is a decision for the owner.
 
