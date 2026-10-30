@@ -1,6 +1,6 @@
 // In-page helpers of lib/capture.mjs, in a real Chromium: no code is evaluated from data.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -24,10 +24,10 @@ const axeSrc = readFileSync(
   join(dirname(require.resolve('axe-core/package.json')), 'axe.min.js'),
   'utf8'
 );
-const capture = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'lib', 'capture.mjs'),
-  'utf8'
-);
+const lib = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'lib');
+const capture = ['capture.mjs', ...readdirSync(join(lib, 'capture')).map((f) => `capture/${f}`)]
+  .map((f) => readFileSync(join(lib, f), 'utf8'))
+  .join('\n');
 
 test('capture.mjs evaluates no code from strings', () => {
   assert.doesNotMatch(capture, /new Function\(|\beval\(/);
