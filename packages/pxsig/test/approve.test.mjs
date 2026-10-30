@@ -115,6 +115,37 @@ test(
   }
 );
 
+test(
+  'undo refuses a batch whose baseline was approved again later, until that batch is undone',
+  { skip: !hasRust && 'Rust binary not built' },
+  () => {
+    const P = openProject({ cwd: repo, env: { PXSIG_BIN: rustBin } });
+    const id = 'components-alpha--default';
+    const entry = { id, sig: `.pxsig/baselines/components/Alpha/${id}.psig` };
+    const manifest = { stories: [entry] };
+    const original = readFileSync(sig(id));
+    /** @param {string} batch @param {Buffer} bytes */
+    const approve = (batch, bytes) => {
+      const { before } = snapshot(P, entry, batch);
+      writeFileSync(sig(id), bytes);
+      record(P, entry, { batch, via: 'test', before });
+    };
+    const first = readFileSync(sig('components-alpha--with-icon'));
+    approve('c1', first);
+    approve('c2', Buffer.concat([first, Buffer.from([1])]));
+    // Undoing c1 now would silently revert c2's approval: refused, nothing written.
+    const r = undo(P, manifest, 'c1');
+    assert.deepEqual(r.restored, []);
+    assert.match(r.refused[0]?.why ?? '', /approved again in batch c2 after this one/);
+    assert.equal(sha256(sig(id)), readLog(P).at(-1)?.after);
+    // Once c2 is undone (and logged), c1 can be.
+    assert.deepEqual(undo(P, manifest, 'c2').restored, [id]);
+    record(P, entry, { batch: 'c2-undo', via: 'test', before: readLog(P).at(-1)?.after });
+    assert.deepEqual(undo(P, manifest, 'c1').restored, [id]);
+    assert.deepEqual(readFileSync(sig(id)), original);
+  }
+);
+
 test('approve apply refuses a plan naming an entry the manifest no longer has, writing nothing', () => {
   const P = openProject({ cwd: repo, env: { PXSIG_BIN: rustBin } });
   const real = {
