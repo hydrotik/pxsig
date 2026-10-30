@@ -53,6 +53,16 @@ export function summaryMarkdown(report) {
       '',
       ...moving.map((x) => `- \`${x.feature}\` #${x.index + 1} (${x.theme})`)
     );
+  const retried = report.screens.filter((x) => x.retried);
+  if (retried.length)
+    lines.push(
+      '',
+      '### Retried',
+      '',
+      'The page load failed with a Windows socket error (ERR_NO_BUFFER_SPACE) and was retried once.',
+      '',
+      ...retried.map((x) => `- \`${x.feature}\` #${x.index + 1} (${x.theme})`)
+    );
   const ax = report.screens.filter((x) => x.axe.length);
   if (ax.length)
     lines.push(

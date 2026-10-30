@@ -283,6 +283,7 @@ export async function dashboardCheck(
         fallbacks: gapRows ? j.f.components.filter((c) => fallback.has(c)) : null,
         ms: r.ms,
         ...(r.settled === false ? { settled: r.settled } : {}),
+        ...(r.retried ? { retried: r.retried } : {}),
         shot: r.rendered ? `shots/adapter/${name(j)}` : null,
         referenceShot,
       };
