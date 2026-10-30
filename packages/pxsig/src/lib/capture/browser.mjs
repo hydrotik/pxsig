@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { browserFile, resolvePeer, SetupError } from '../workspace.mjs';
 import { collectEnv, playwrightVersion } from '../env.mjs';
+import { axeVersion } from './page.mjs';
 /** @import { EnvRecord, PeerBase, Project } from '../../types.js' */
 /** @import { BrowserName, BrowserRecordFile, PlaywrightLib, PxsigBrowser } from '../../types/t4.js' */
 
@@ -127,6 +128,7 @@ export function browserPool(
               playwright: project
                 ? playwrightVersion(() => resolvePeer(project, 'playwright/package.json'))
                 : null,
+              axe: project ? axeVersion(project) : null,
               remote: b.__pxsigRemote
                 ? { endpoint: b.__pxsigRemote, record: browserRecord(project, b.__pxsigRemote) }
                 : null,

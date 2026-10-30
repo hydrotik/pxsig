@@ -12,7 +12,9 @@
 export { CAPTURE_PIPELINE } from './env.mjs';
 export {
   applyTokenOverrides,
+  axePackage,
   axeScript,
+  axeVersion,
   FREEZE_CSS,
   injectAxe,
   PAUSE_SVG,

@@ -39,6 +39,7 @@ export const FIELDS = [
   ['browser.channel', 'major'],
   ['browser.launchArgs', 'major'],
   ['playwright', 'minor'],
+  ['axe', 'minor'],
   ['os.platform', 'major'],
   ['os.arch', 'major'],
   ['os.release', 'minor'],

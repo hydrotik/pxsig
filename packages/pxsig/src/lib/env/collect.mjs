@@ -162,7 +162,7 @@ export function playwrightVersion(resolvePkg) {
  * name; `channel` the channel it launched with. The probe page is a fresh context with the
  * capture settings (DPR 1, reduced motion), closed before returning.
  * @param {EnvBrowser} browser
- * @param {{ type?: string, channel?: string | null, launchArgs?: string[], fontProbe?: string[], playwright?: string | null, pxsig?: string | null, engine?: string | null, remote?: RemoteBrowser | null, env?: NodeJS.ProcessEnv }} [opts]
+ * @param {{ type?: string, channel?: string | null, launchArgs?: string[], fontProbe?: string[], playwright?: string | null, axe?: string | null, pxsig?: string | null, engine?: string | null, remote?: RemoteBrowser | null, env?: NodeJS.ProcessEnv }} [opts]
  * @returns {Promise<EnvRecord>}
  */
 export async function collectEnv(
@@ -173,6 +173,7 @@ export async function collectEnv(
     launchArgs = [],
     fontProbe = [],
     playwright = null,
+    axe = null,
     pxsig = null,
     engine = null,
     remote = null,
@@ -229,6 +230,7 @@ export async function collectEnv(
       launchArgs,
     },
     playwright,
+    axe,
     os: remote
       ? osFromProbe(probe.platform)
       : { platform, arch: os.arch(), release: os.release(), distro: distro(platform) },
