@@ -352,9 +352,10 @@ jobs:
           set -euo pipefail
           out="$PWD/release-files"
           mkdir -p "$out"
-          # pxsig's prepack step (the dashboard sources and docs/ui) runs here, then the published
-          # manifests drop `scripts` and `devDependencies` (scripts/pack-manifest.mjs), so every
-          # package is packed with --ignore-scripts.
+          # pxsig's prepack step (the dashboard sources, docs/ui and LICENSE) runs here, then the
+          # published manifests drop `scripts` and `devDependencies` and get the root LICENSE
+          # (scripts/pack-manifest.mjs), so every package is packed with --ignore-scripts. The
+          # platform packages got theirs from make-platform-packages; --check requires it in each.
           node scripts/sync-dashboard-source.mjs
           node scripts/pack-manifest.mjs packages/pxsig packages/storybook-addon
           for dir in packages/cli-dist/cli-*/ packages/pxsig packages/storybook-addon; do

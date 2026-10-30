@@ -22,7 +22,8 @@
     "manager.mjs",
     "panel-style.mjs",
     "snapshot-view.mjs",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "peerDependencies": {
     "storybook": ">=10"

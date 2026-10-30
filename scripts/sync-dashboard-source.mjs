@@ -7,10 +7,11 @@
  *                       ui-tools, README.md}
  *                                         → packages/pxsig/dashboard/
  *   docs/ui/                              → packages/pxsig/docs/ui/
+ *   LICENSE                               → packages/pxsig/LICENSE
  *
- * Both targets are git-ignored. The prebuilt dashboard (dist/dashboard) is not touched.
+ * All three targets are git-ignored. The prebuilt dashboard (dist/dashboard) is not touched.
  */
-import { existsSync, mkdirSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { copyTree } from './lib/copy-tree.mjs';
@@ -36,4 +37,5 @@ for (const f of [
 const docs = join(repo, 'docs', 'ui');
 rmSync(join(pkg, 'docs'), { recursive: true, force: true });
 if (existsSync(docs)) copyTree(docs, join(pkg, 'docs', 'ui'));
-console.log('[sync] dashboard source and docs/ui copied into packages/pxsig');
+copyFileSync(join(repo, 'LICENSE'), join(pkg, 'LICENSE'));
+console.log('[sync] dashboard source, docs/ui and LICENSE copied into packages/pxsig');
