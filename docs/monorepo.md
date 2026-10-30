@@ -53,10 +53,13 @@ npx pxsig init
 ```
 
 Monorepo: create the workspace file first, then run `init` for each package. `init` adds the
-entry to the workspace file.
+entry to the workspace file. The workspace file, `pxsig.workspace.json` at the root, saved as UTF-8:
+
+```json
+{ "version": 1, "projects": {} }
+```
 
 ```bash
-echo '{ "version": 1, "projects": {} }' > pxsig.workspace.json
 npx pxsig init packages/ui --storybook-config '$workspace/apps/storybook/.storybook'
 npx pxsig init packages/charts --name charts --storybook-config '$workspace/apps/storybook/.storybook'
 ```

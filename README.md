@@ -84,10 +84,16 @@ diffs and reports out of git.
 Install pxsig once at the repository root, list the packages under test in
 `pxsig.workspace.json`, and give each package its own config and store.
 
+Create `pxsig.workspace.json` at the root, saved as UTF-8:
+
+```json
+{ "version": 1, "projects": {} }
+```
+
+Then, from the root:
+
 ```bash
 pnpm add -D -w pxsig playwright
-echo '{ "version": 1, "projects": {} }' > pxsig.workspace.json
-
 npx pxsig init packages/ui --storybook-config '$workspace/apps/storybook/.storybook'
 npx pxsig init packages/charts --storybook-config '$workspace/apps/storybook/.storybook'
 

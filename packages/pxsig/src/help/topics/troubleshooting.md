@@ -67,9 +67,9 @@ minutes), or run `pxsig serve --link` in a terminal.
 A policy (AppLocker, WDAC, a sandbox) or a missing execute permission refused a program pxsig
 starts. `pxsig help platforms` lists them all, with why; that list is what to allow.
 
-**A JSON file with a byte order mark**
+**A JSON file saved as UTF-16**
 
-> is not valid JSON
+> save it as UTF-8
 
-`pxsig.config.json` or `pxsig.workspace.json` starts with a BOM (U+FEFF), written by some Windows
-editors and by Windows PowerShell 5's `-Encoding UTF8`. Save it as UTF-8 without a BOM.
+`pxsig.config.json` or `pxsig.workspace.json` is UTF-16, written by Notepad's "Unicode" and by
+Windows PowerShell 5's `>`. Save it as UTF-8 (a byte order mark is fine).

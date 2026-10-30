@@ -120,14 +120,15 @@ the engine binary's execute permission (`chmod +x`).
 This one is pxsig's own refusal: the program is not on that list for this OS, so pxsig did not
 try. It points at a bug in pxsig; report it with the command that printed it.
 
-## A JSON file with a byte order mark
+## A JSON file saved as UTF-16
 
-> is not valid JSON
+> save it as UTF-8
 
-**Cause.** `pxsig.config.json` or `pxsig.workspace.json` starts with a byte order mark (the
-message then reads `Unexpected token`, followed by an invisible character, U+FEFF, in quotes).
-Some Windows editors write one, and so does Windows PowerShell 5 with `-Encoding UTF8`
-(`Set-Content`, `Out-File`). The same message with any other token means the file is not JSON.
+**Cause.** `pxsig.config.json` or `pxsig.workspace.json` was saved as UTF-16; the message names the
+file and the byte order (`LE` or `BE`). Windows Notepad's "Unicode" encoding writes UTF-16, and so
+does Windows PowerShell 5's `>` redirect (`echo '…' > pxsig.workspace.json`). A UTF-8 file with a
+byte order mark (Notepad's "UTF-8 with BOM", PowerShell 5's `-Encoding UTF8`) is fine: pxsig skips
+the mark.
 
-**Fix.** Save the file as UTF-8 without a BOM (in VS Code: "UTF-8", not "UTF-8 with BOM"; in
-PowerShell 7, `Set-Content -Encoding utf8NoBOM`).
+**Fix.** Save the file as UTF-8 (in VS Code: "Save with Encoding", "UTF-8"; in PowerShell,
+`Set-Content -Encoding utf8`), or create it in an editor.
