@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, before } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { load } from '../../pxsig/src/dashboard-check/capture.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dashboard = path.dirname(here);
@@ -125,6 +126,7 @@ export async function open(
     return route.fulfill({ status: 404, json: { error: 'not found' } });
   });
   await page.route('**/p/demo/**', (route) => route.fulfill({ status: 404, body: '' }));
-  await page.goto(`${base}/report/${hash}`);
+  // One retry on Windows' ERR_NO_BUFFER_SPACE, as `pxsig dashboard check` does.
+  await load(page, `${base}/report/${hash}`);
   return { page, posts, errors };
 }
