@@ -129,8 +129,9 @@ The dashboard compiles against a design system that is not public (see
 of these that is available, and fails with a message naming both if neither is:
 
 1. **The `PXSIG_DS_SOURCE` secret.** A git URL, credentials included, of the design-system
-   monorepo. The job clones it (optionally at the branch or tag in the `PXSIG_DS_REF` variable),
-   installs its dependencies and runs `pnpm --filter @pxsig/dashboard build`.
+   monorepo. The job fetches the commit named by the `PXSIG_DS_REF` variable, which must be a
+   full 40-character commit SHA (the job fails on a branch, a tag or an empty value), installs its
+   dependencies and runs `pnpm --filter @pxsig/dashboard build`.
 2. **A release asset** named `pxsig-dashboard.tar.gz` on the GitHub release for the tag.
 
 There is no input that fetches a dashboard from any other URL. The job writes which source it used,
@@ -148,6 +149,15 @@ COPYFILE_DISABLE=1 tar czf pxsig-dashboard.tar.gz -C packages/pxsig/dist dashboa
 
 The build is unminified unless `PXSIG_DASHBOARD_MINIFY=1` is set; a release ships it unminified so
 reviewers can read what runs (packages/dashboard/README.md).
+
+Every build writes `dashboard/BUILD.json` (`scripts/build-record.mjs`), which ships in the
+package: the adapter, the design-system commit with whether its checkout had changes and its
+`pnpm-lock.yaml` sha256, this repository's lockfile sha256, the Node version, the build time
+(`SOURCE_DATE_EPOCH` when set) and the third-party packages compiled into the bundle with their
+versions and licences. With the secret, the job checks that it names `PXSIG_DS_REF`; a release
+asset without it gets a warning. The pack job then appends those packages to `pxsig-npm.cdx.json`
+as bundled components (`scripts/bundle-sbom.mjs`, read from the module paths the unminified
+bundle keeps), so the npm SBOM covers the dashboard too.
 
 The tarball must contain only a top-level `dashboard/` folder with `index.html` in it; the job
 rejects anything else. (`COPYFILE_DISABLE=1` keeps macOS `._*` files out.)
