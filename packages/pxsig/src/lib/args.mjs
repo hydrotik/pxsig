@@ -98,12 +98,14 @@ export function knownFlags() {
 }
 
 /**
- * The edit distance between two short strings: insertions, deletions, substitutions and swaps of two neighbours.
+ * The edit distance between two short strings: insertions, deletions, substitutions and, unless
+ * `swaps` is false, swaps of two neighbours (`help` counts a swap as two edits).
  * @param {string} a
  * @param {string} b
+ * @param {{ swaps?: boolean }} [opts]
  * @returns {number}
  */
-function distance(a, b) {
+export function distance(a, b, { swaps = true } = {}) {
   const d = Array.from({ length: a.length + 1 }, (_, i) =>
     Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
   );
@@ -114,7 +116,7 @@ function distance(a, b) {
         d[i][j - 1] + 1,
         d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
       );
-      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
+      if (swaps && i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
         d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
     }
   return d[a.length][b.length];

@@ -9,6 +9,7 @@ import { readImage } from '../lib/psig.mjs';
 import { writeRunManifest } from '../lib/workspace.mjs';
 import { relPath } from '../lib/paths.mjs';
 import { buildPlan } from '../lib/prune.mjs';
+import { folders, sourceRoots } from '../lib/integrity/context.mjs';
 import { ctxOf, readJson } from './context.mjs';
 
 /** @import { CheckRow, ManifestEntry } from '../types.js' */
@@ -41,18 +42,6 @@ function affected(C, { files, since, manifestPath }) {
   if (r.status !== 0) throw new Error(`pxsig affected failed: ${r.stderr || r.stdout}`);
   // the engine's `affected --json`
   return /** @type {AffectedResult} */ (JSON.parse(r.stdout));
-}
-
-/**
- * Sources whose edits can change a render: the project's srcRoot plus its `affects` folders.
- * @param {ProjectContext} C
- */
-function sourceRoots(C) {
-  const roots = [
-    C.P.srcRoot,
-    ...C.P.affects.filter((a) => !/\.[a-z]+$/i.test(a)).map((a) => resolve(C.root, a)),
-  ];
-  return [...new Set(roots)].filter((r) => existsSync(r) && statSync(r).isDirectory());
 }
 
 /**
@@ -94,7 +83,8 @@ function editedSince(C, when, { withTimes = false } = {}) {
       }
     }
   };
-  for (const root of sourceRoots(C)) walk(root);
+  // The project's srcRoot plus its `affects` folders.
+  for (const root of sourceRoots(C.root, [C.P.srcRoot, ...folders(C.P.affects)])) walk(root);
   // With withTimes every item is an object, else every item is a path.
   return withTimes
     ? /** @type {{ file: string, mtime: Date }[]} */ (out).sort((a, b) =>
@@ -338,4 +328,4 @@ export function imageOf(C, kind, id) {
   };
 }
 
-export { affected, editedSince, prunePlan, renderedAt, sourceRoots, staleness, verdictTimes };
+export { affected, editedSince, prunePlan, renderedAt, staleness, verdictTimes };

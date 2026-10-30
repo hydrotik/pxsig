@@ -110,15 +110,20 @@ export const repairLogPath = (ctx) => join(ctx.dirs.reports, 'repairs.ndjson');
 
 // --- staleness: which sources changed after each verdict? -----------------------------------------------
 
-/** @param {IntegrityContext} ctx */
-function sourceRoots(ctx) {
-  const roots = process.env.PXSIG_SOURCES?.split(',') ??
-    ctx.integrity.sourceRoots ?? [
-      ctx.srcRoot,
-      ...(ctx.config.affectsAll ?? []).filter((p) => !/\.[a-z]+$/i.test(p)),
-    ];
-  return [...new Set(roots)].map((r) => resolve(ctx.repoRoot, r)).filter((r) => existsSync(r));
+/**
+ * The folders whose edits can change a render, resolved against `base`: each existing folder once.
+ * `roots` names them; an `affects` list goes through `folders` first, which drops its files.
+ * @param {string} base
+ * @param {string[]} roots
+ */
+export function sourceRoots(base, roots) {
+  return [...new Set(roots.map((r) => resolve(base, r)))].filter(
+    (r) => existsSync(r) && statSync(r).isDirectory()
+  );
 }
+
+/** The entries of an `affects` list that name a folder (no file extension). @param {string[]} list */
+export const folders = (list) => list.filter((p) => !/\.[a-z]+$/i.test(p));
 
 /**
  * Source files modified after `sinceMs` (tests, build output and dot-folders skipped).
@@ -154,7 +159,9 @@ export function editedFilesSince(ctx, sinceMs) {
       }
     }
   };
-  for (const r of sourceRoots(ctx)) walk(r);
+  const roots = process.env.PXSIG_SOURCES?.split(',') ??
+    ctx.integrity.sourceRoots ?? [ctx.srcRoot, ...folders(ctx.config.affectsAll ?? [])];
+  for (const r of sourceRoots(ctx.repoRoot, roots)) walk(r);
   return out.sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0));
 }
 
