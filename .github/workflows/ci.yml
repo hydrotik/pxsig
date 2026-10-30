@@ -176,6 +176,14 @@ jobs:
       # The diff-viewer primitives in a browser (keyboard, ARIA, controlled state), and the
       # dashboard's review and repair flows against a mocked server.
       - run: pnpm --filter @pxsig/dashboard test
+      # The pxsig suite again on Node 24, the container image's Node (engines: >=22.18). Linux
+      # only, and last: every step after this setup-node runs on 24.
+      - if: matrix.os == 'ubuntu-latest'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - if: matrix.os == 'ubuntu-latest'
+        run: node --version && pnpm --filter pxsig test
 
   examples:
     name: Examples (end to end) (${{ matrix.os }})
