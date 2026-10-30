@@ -15,7 +15,8 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { acquireLock, readLock } from '../src/lib/lock.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
-import { fixture, rustBin, testEnv, testHome } from './fixture.mjs';
+import { fixture, hasRust, rustBin, testEnv, testHome } from './fixture.mjs';
+import { skipUnless } from './strict.mjs';
 /** @import { LockState } from '../src/types.js' */
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -92,34 +93,38 @@ test('a 0.3.2 lock (no heartbeat) left by a process that is gone is taken over a
   l.release();
 });
 
-test('a 0.4.0 report (no render environment) reads as it is: the environment is unknown, nothing warns', () => {
-  const f = fixture();
-  const P = openProject({ cwd: f.repo, env: { PXSIG_BIN: rustBin } });
-  copyFileSync(join(v04, 'check.json'), join(P.store.reports, 'check.json'));
-  for (const args of [
-    ['status'],
-    ['list', 'all'],
-    ['doctor', '--offline'],
-    ['stale'],
-    ['entry', 'components-beta--default'],
-  ]) {
-    const r = run(f, ...args, '--json');
+test(
+  'a 0.4.0 report (no render environment) reads as it is: the environment is unknown, nothing warns',
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
+  () => {
+    const f = fixture();
+    const P = openProject({ cwd: f.repo, env: { PXSIG_BIN: rustBin } });
+    copyFileSync(join(v04, 'check.json'), join(P.store.reports, 'check.json'));
+    for (const args of [
+      ['status'],
+      ['list', 'all'],
+      ['doctor', '--offline'],
+      ['stale'],
+      ['entry', 'components-beta--default'],
+    ]) {
+      const r = run(f, ...args, '--json');
+      assert.ok(
+        /** @type {(number | null)[]} */ ([0, 1]).includes(r.status),
+        `${args.join(' ')} → ${r.status}\n${r.stderr}`
+      );
+      assert.doesNotThrow(() => JSON.parse(r.stdout), `${args.join(' ')} prints JSON`);
+    }
+    const doctor = JSON.parse(run(f, 'doctor', '--offline', '--json').stdout);
     assert.ok(
-      /** @type {(number | null)[]} */ ([0, 1]).includes(r.status),
-      `${args.join(' ')} → ${r.status}\n${r.stderr}`
+      !doctor.setup.some((/** @type {{ code: string }} */ s) => s.code === 'env-mismatch'),
+      'no environment finding'
     );
-    assert.doesNotThrow(() => JSON.parse(r.stdout), `${args.join(' ')} prints JSON`);
+    const md = spawnSync(
+      rustBin,
+      ['report', '--input', join(P.store.reports, 'check.json'), '--format', 'markdown'],
+      { encoding: 'utf8' }
+    );
+    assert.equal(md.status, 0, md.stderr);
+    assert.ok(!md.stdout.includes('Environment:'), 'summary.md has no environment line');
   }
-  const doctor = JSON.parse(run(f, 'doctor', '--offline', '--json').stdout);
-  assert.ok(
-    !doctor.setup.some((/** @type {{ code: string }} */ s) => s.code === 'env-mismatch'),
-    'no environment finding'
-  );
-  const md = spawnSync(
-    rustBin,
-    ['report', '--input', join(P.store.reports, 'check.json'), '--format', 'markdown'],
-    { encoding: 'utf8' }
-  );
-  assert.equal(md.status, 0, md.stderr);
-  assert.ok(!md.stdout.includes('Environment:'), 'summary.md has no environment line');
-});
+);

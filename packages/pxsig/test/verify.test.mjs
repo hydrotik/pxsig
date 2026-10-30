@@ -17,6 +17,7 @@ import {
 } from '../src/lib/approvals.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
+import { skipUnless } from './strict.mjs';
 /** @import { ManifestEntry } from '../src/types.js' */
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
@@ -81,7 +82,7 @@ function repoFixture({ log = true } = {}) {
 
 test(
   'approve verify is strict by default: a baseline with no log line fails, --no-strict reports it',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const f = repoFixture({ log: false });
     let r = cli(f.repo, ['approve', 'verify']);
@@ -113,7 +114,7 @@ test(
 
 test(
   'approve verify --since: the log may only be appended to',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const f = repoFixture();
     must(f.repo, 'checkout', '-q', '-b', 'pr');
@@ -141,7 +142,7 @@ test(
 
 test(
   'approve verify --suite and --all-suites; a suite not in the checkout is listed, not failed',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const f = repoFixture();
     const cfg = JSON.parse(readFileSync(join(f.repo, 'pxsig.config.json'), 'utf8'));
@@ -162,7 +163,7 @@ test(
 
 test(
   'the PR summary counts changed baselines by how they were approved, and names markers, not people',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const c = changedByRoute([
       { id: 'a', via: 'dashboard' },
@@ -231,7 +232,7 @@ test(
 
 test(
   'approve log --trace points at the commit and the pull request, and shows no names',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const f = repoFixture();
     must(f.repo, 'checkout', '-q', '-b', 'feature');
@@ -276,7 +277,7 @@ test(
 
 test(
   'a store file a merge left conflicted stops check and is a doctor setup error',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const f = repoFixture();
     // The fixture's manifest lists ids.ok.

@@ -20,12 +20,13 @@ import {
 } from '../src/lib/repair.mjs';
 import { fixture, hashSignatures, hasRust } from './fixture.mjs';
 import { codesOf, statusOf } from './integrity-helpers.mjs';
+import { skipUnless } from './strict.mjs';
 /** @import { ManifestEntry } from '../src/types.js' */
 /** @import { LedgerEntry } from './integrity-helpers.mjs' */
 
 test(
   'restore: only when the latest render passes the signature gate; otherwise flagged with the reconstruction',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const baselines = hashSignatures(join(f.px, 'baselines'));
@@ -79,7 +80,7 @@ test(
 
 test(
   'a stale render is not used to restore a baseline image',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
@@ -93,7 +94,7 @@ test(
 
 test(
   'applyRepairs runs every safe step, never touches signatures, and logs who/what/why',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const baselines = hashSignatures(join(f.px, 'baselines'));

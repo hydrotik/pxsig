@@ -11,6 +11,7 @@ import { paths, readLog, record, sha256, snapshot, undo, verify } from '../src/l
 import { classify } from '../src/lib/shape.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, hashTree, hasRust, png, rustBin, testEnv, testHome } from './fixture.mjs';
+import { skipUnless } from './strict.mjs';
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
 const { repo, sig } = fixture({ withSigs: hasRust });
@@ -92,7 +93,7 @@ test('check --kind and --reason go with --update; a kind is one short word', () 
 
 test(
   'snapshot + record + undo round-trip, and verify catches an out-of-band write',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const P = openProject({ cwd: repo, env: { PXSIG_BIN: rustBin } });
     const id = 'components-alpha--default';

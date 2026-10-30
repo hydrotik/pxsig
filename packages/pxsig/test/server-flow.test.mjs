@@ -17,6 +17,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { CHECKER, fixture, hasRust, rustBin } from './fixture.mjs';
 import { src, needs, fakeStorybook, serve, rowsOf } from './server-helpers.mjs';
+import { skipOn, skipUnless } from './strict.mjs';
 
 test(
   'checking a story that is not registered registers it and renders it in the same request; no signature is written',
@@ -134,7 +135,7 @@ test(
 test(
   'engine lines that are not a JSON object are skipped, and the server keeps answering',
   {
-    skip: needs || (process.platform === 'win32' && 'the stand-in engine is a script'),
+    skip: needs || skipOn('the stand-in engine is a script'),
     timeout: 120_000,
   },
   async (t) => {
@@ -172,7 +173,7 @@ c.on('exit', (code) => process.exit(code ?? 1));
 
 test(
   'a repair whose re-check could not run says so, and the dashboard hears why',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const S = await serve(f); // storybook.url does not answer
@@ -206,7 +207,7 @@ test(
 
 test(
   'approving a story approves each of its entries waiting for a decision, in one batch, and the report agrees',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const story = f.ids.changed;

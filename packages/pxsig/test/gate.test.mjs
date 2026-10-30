@@ -6,6 +6,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { BROKEN, CHECKER, hasRust, rustBin, tempDir } from './fixture.mjs';
+import { skipUnless } from './strict.mjs';
 
 const lenient = { threshold: 255, minSsim: 0, maxChangedPct: 100, minCells: 100000, detail: false };
 const strict = { threshold: 4, minSsim: 0.999, maxChangedPct: 0, minCells: 1, detail: false };
@@ -100,15 +101,19 @@ const flagsOf = (g) => [
   String(g.minCells),
 ];
 
-test('the project gate fails a real change', { skip: !hasRust && 'Rust binary not built' }, () => {
-  const r = check(setup());
-  assert.equal(r.plain.pass, false);
-  assert.equal(r.pinned.pass, false);
-});
+test(
+  'the project gate fails a real change',
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
+  () => {
+    const r = check(setup());
+    assert.equal(r.plain.pass, false);
+    assert.equal(r.pinned.pass, false);
+  }
+);
 
 test(
   'environment beats the project gate, but not a story gate',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const r = check(setup(), [], envOf(lenient));
     assert.equal(r.plain.pass, true);
@@ -120,7 +125,7 @@ test(
 
 test(
   'CLI flags beat the environment, but not a story gate',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const dir = setup();
     const r = check(dir, flagsOf(lenient), envOf(strict));

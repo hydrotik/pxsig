@@ -6,7 +6,8 @@ import { join } from 'node:path';
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { fixture, rustBin, testEnv, testHome } from './fixture.mjs';
+import { fixture, hasRust, rustBin, testEnv, testHome } from './fixture.mjs';
+import { skipUnless } from './strict.mjs';
 
 const cli = fileURLToPath(new URL('../src/cli.mjs', import.meta.url));
 const { repo } = fixture({ withSigs: false });
@@ -123,23 +124,27 @@ test('entry shows the review decision on the current result', () => {
   assert.match(r.stdout, /Review\W+rejected/);
 });
 
-test('affected notes the remote URLs it does not follow', () => {
-  const own = fixture({ withSigs: false }).repo;
-  const file = 'src/components/Alpha/Alpha.stories.tsx';
-  appendFileSync(join(own, file), "\nimport 'https://cdn.example.com/a.js';\n");
-  const r = spawnSync(process.execPath, [cli, 'affected', file], {
-    cwd: own,
-    encoding: 'utf8',
-    env: {
-      ...testEnv(testHome),
-      PXSIG_FORMAT: '',
-      PXSIG_URL: 'http://127.0.0.1:1',
-      PXSIG_BIN: rustBin,
-    },
-  });
-  assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, /1 remote URLs are not followed \(a full check covers them\)\./);
-});
+test(
+  'affected notes the remote URLs it does not follow',
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
+  () => {
+    const own = fixture({ withSigs: false }).repo;
+    const file = 'src/components/Alpha/Alpha.stories.tsx';
+    appendFileSync(join(own, file), "\nimport 'https://cdn.example.com/a.js';\n");
+    const r = spawnSync(process.execPath, [cli, 'affected', file], {
+      cwd: own,
+      encoding: 'utf8',
+      env: {
+        ...testEnv(testHome),
+        PXSIG_FORMAT: '',
+        PXSIG_URL: 'http://127.0.0.1:1',
+        PXSIG_BIN: rustBin,
+      },
+    });
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /1 remote URLs are not followed \(a full check covers them\)\./);
+  }
+);
 
 test('a bare --component, --mode or --state is a usage error naming the flag (exit 2)', () => {
   for (const args of [

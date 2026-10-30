@@ -15,6 +15,7 @@ import {
   writeRunManifest,
 } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
+import { skipUnless } from './strict.mjs';
 /** @import { ManifestEntry } from '../src/types.js' */
 
 const src = fileURLToPath(new URL('../src/', import.meta.url));
@@ -137,7 +138,7 @@ test('the run manifest carries the store, the ignore list, the workspace file an
 
 test(
   'baselines, records, the fail-safe and the ignore list, through the engine',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const f = fixture({ withSigs: false });
     const run = writeRunManifest(openProject({ cwd: f.repo, env: { PXSIG_BIN: rustBin } })).path;
@@ -191,7 +192,7 @@ test(
 
 test(
   'summary.md names the fail-safe path only when it fired',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const dir = tempDir('sel-report');
     /** @param {Record<string, unknown>} summary */
@@ -244,7 +245,7 @@ test(
 
 test(
   'the fail-safe is for the gates: staleness traces, `pxsig affected` explains',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture({ withSigs: false });
     // The test is skipped without the binary, so the engine is there.
@@ -316,7 +317,7 @@ test('affects.aliases and affects.unresolved: anchored, validated, shown by `pxs
 
 test(
   'non-code imports are followed, and an unresolved import is listed and checked on every run',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const f = fixture({ withSigs: false });
     const alpha = 'src/components/Alpha/Alpha.stories.tsx';

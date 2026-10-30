@@ -14,10 +14,11 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fixture, hasRust, rustBin } from './fixture.mjs';
 import { src, freePort, serve } from './server-helpers.mjs';
+import { skipUnless } from './strict.mjs';
 
 test(
   'a second server beside the lock holder writes nothing into the store, and leaves the running server on record',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const reports = join(f.px, 'reports');
@@ -55,7 +56,7 @@ test(
 
 test(
   'stopping `pxsig serve` with SIGTERM stops the server it started, not only the wrapper',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const port = await freePort();

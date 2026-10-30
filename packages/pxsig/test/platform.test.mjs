@@ -23,6 +23,7 @@ import {
 } from '../src/lib/portability.mjs';
 import { initProject } from '../src/lib/setup.mjs';
 import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
+import { skipUnless } from './strict.mjs';
 /** @import { AddressInfo } from 'node:net' */
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
@@ -125,7 +126,7 @@ test('CRLF text records and unportable baselines become warnings, never errors',
 
 test(
   'git not treating .psig as binary is a line-endings warning',
-  { skip: spawnSync('git', ['--version']).status !== 0 && 'no git' },
+  { skip: skipUnless(spawnSync('git', ['--version']).status === 0, 'no git') },
   () => {
     const root = tmp();
     spawnSync('git', ['init', '-q', root]);
@@ -186,7 +187,7 @@ async function startServe(repo) {
 
 test(
   'stopping pxsig serve gives the store lock back',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const lock = join(f.px, 'reports', '.lock');

@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { noChromium } from './flows-helpers.mjs';
 import { scenarioData, scenarioNames } from '../fixtures/scenarios.mjs';
 import { screenProblems } from '../ui-tools.mjs';
 import { copyTree } from '../../../scripts/lib/copy-tree.mjs';
@@ -60,7 +61,7 @@ before(async () => {
       process.env.PXSIG_CHROMIUM ? { executablePath: process.env.PXSIG_CHROMIUM } : {}
     );
   } catch (e) {
-    skip = `no Chromium (${String(e.message).split('\n')[0]})`;
+    skip = noChromium(e);
     return;
   }
   tmp = mkdtempSync(path.join(tmpdir(), 'pxsig-dashboard-check-'));

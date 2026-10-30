@@ -9,11 +9,12 @@ import { test } from 'node:test';
 import { readToken } from '../src/lib/guard.mjs';
 import { fixture, hasRust, rustBin, testEnv, testHome } from './fixture.mjs';
 import { src } from './features-helpers.mjs';
+import { skipUnless } from './strict.mjs';
 /** @import { AddressInfo } from 'node:net' */
 
 test(
   'the server: accepting a11y violations updates the accepted list; undo restores it; both are logged',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const id = f.ids.a11y;

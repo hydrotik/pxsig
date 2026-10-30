@@ -12,6 +12,7 @@ import { readToken } from '../src/lib/guard.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin, testEnv, testHome } from './fixture.mjs';
 import { src, env, tree, cli } from './features-helpers.mjs';
+import { skipUnless } from './strict.mjs';
 /** @import { ApprovalLine, ManifestEntry, Project } from '../src/types.js' */
 /** @import { AddressInfo } from 'node:net' */
 
@@ -152,7 +153,7 @@ test('undo with ids restores only those entries of a batch (the dashboard undoes
 
 test(
   'the server: undoing an approval restores the baseline it replaced, and logs the undo',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const id = f.ids.unrecoverable;
@@ -224,7 +225,7 @@ test(
 
 test(
   'the server refuses to approve an entry whose render failed, and leaves its baseline alone',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const id = f.ids.unrecoverable;

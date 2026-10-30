@@ -8,6 +8,7 @@ import { afterEach, beforeEach, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { buildDirFor, chooseDashboard, STAMP } from '../src/lib/dashboard-dir.mjs';
 import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
+import { skipUnless } from './strict.mjs';
 
 /** @typedef {{ name: string, dir: string, configPath: string }} DirProject */
 
@@ -233,7 +234,7 @@ async function serving(repo, run) {
 
 test(
   'serve: dashboard.ui without a build prints the command and serves the prebuilt dashboard',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const cfg = JSON.parse(readFileSync(join(f.repo, 'pxsig.config.json'), 'utf8'));
@@ -254,7 +255,7 @@ test(
 
 test(
   'serve: a current build for dashboard.ui is the dashboard it serves',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const cfg = JSON.parse(readFileSync(join(f.repo, 'pxsig.config.json'), 'utf8'));

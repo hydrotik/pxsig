@@ -18,6 +18,7 @@ import { readToken } from '../src/lib/guard.mjs';
 import { engineProblems, openProject, writeRunManifest } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin, testEnv, testHome } from './fixture.mjs';
 import { src, env, needs } from './env-helpers.mjs';
+import { skipUnless } from './strict.mjs';
 /** @import { EnvRecord, PsigHeader } from '../src/types.js' */
 /** @typedef {ReturnType<typeof fixture>} Fixture */
 
@@ -105,7 +106,7 @@ function baselineWithEnv(f, ids, e) {
 
 test(
   'strict mode: the selected baselines from a different environment, read from their headers',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const f = fixture();
     const old = env({ browser: { version: '139.0.1' } });
@@ -136,7 +137,7 @@ test(
 
 test(
   'approving in the dashboard writes the environment of the render being approved, from its row',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const id = f.ids.changed;

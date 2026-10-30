@@ -14,6 +14,7 @@ import { readSection } from '../src/lib/psig.mjs';
 import { applyRepairs, planRepairs } from '../src/lib/repair.mjs';
 import { fixture, hasRust, rustBin, testEnv, testHome } from './fixture.mjs';
 import { here, codesOf, statusOf } from './integrity-helpers.mjs';
+import { skipUnless } from './strict.mjs';
 /** @import { SpawnSyncOptionsWithStringEncoding } from 'node:child_process' */
 /** @import { ManifestEntry } from '../src/types.js' */
 /** @import { LedgerEntry, LedgerIssue } from './integrity-helpers.mjs' */
@@ -77,7 +78,7 @@ test('a .pxsig.json baseline is legacy-format (warn), not a missing image; unaff
 
 test(
   'convert-legacy packs a .pxsig.json into a .psig when the gate passes, with the same signature bytes',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const json = JSON.parse(readFileSync(f.sig(f.ids.legacy), 'utf8'));

@@ -28,6 +28,7 @@ import {
 import { writeFileSync } from 'node:fs';
 import { fixture } from './fixture.mjs';
 import { codesOf, statusOf } from './integrity-helpers.mjs';
+import { skipOn } from './strict.mjs';
 /** @import { Ledger, LedgerEntry, LedgerIssue, LedgerComponent } from './integrity-helpers.mjs' */
 /** @import { IndexStory } from '../src/types.js' */
 /** @import { IntegrityCode } from '../src/types/t3.js' */
@@ -77,7 +78,7 @@ test('an index whose entries are null is a broken index', async () => {
 
 test(
   'an engine reply with neither a result nor an error is an engine error',
-  { skip: process.platform === 'win32' && 'the stand-in engine is a script' },
+  { skip: skipOn('the stand-in engine is a script') },
   async () => {
     const { ctx, repo } = fixture({ withSigs: false });
     // A stand-in engine that answers every request with its id alone (named as the engine is).
@@ -109,7 +110,7 @@ require('node:readline')
 test(
   'engine lines that are not a JSON object are skipped; the answer after them still arrives',
   // Without the skip, the engine reader throws and the request never settles: fail, not hang.
-  { skip: process.platform === 'win32' && 'the stand-in engine is a script', timeout: 20_000 },
+  { skip: skipOn('the stand-in engine is a script'), timeout: 20_000 },
   async (t) => {
     const { ctx, repo } = fixture({ withSigs: false });
     // A stand-in engine that writes `null` and a number before each answer (an error, to tell apart).
