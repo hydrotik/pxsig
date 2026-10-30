@@ -389,6 +389,14 @@ Exit: 0 nothing at or above `--fail-on`, 1 findings at or above it (`advisoryExi
 gate on [warn](#warn-mode)), 2 a setup error or usage, 3 `--prune` or `log-torn` without a person
 at a terminal. The details list has an `Enforcement` row: each gate not enforced, and until when.
 
+Before a manifest exists (a fresh `pxsig init`), `doctor` prints a setup preflight instead: the
+engine binary and its version (as `pxsig --version` finds them), the Playwright package that
+resolves and its version, whether Playwright's Chromium is at its `executablePath()` (a file check;
+no browser starts), the configured `storybook.url` and `storybook.staticDir` (as config; nothing is
+fetched), and the assistant marker. Then the error once, and `pxsig manifest` as the next step;
+exit 2. With `--json`: `{ error, preflight: { engine, playwright, chromium, storybook, agent },
+next }`. The MCP tool `pxsig_doctor` answers the error with the same `{ preflight, next }`.
+
 ## Server, MCP, reports
 
 | Command                                                                                                                                      | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |

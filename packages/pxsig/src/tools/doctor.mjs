@@ -24,6 +24,7 @@ import {
   speaks,
 } from '../lib/enforcement.mjs';
 import { brief, ctxOf, load, PROBLEMS, stateOf } from './context.mjs';
+import { preflight } from './preflight.mjs';
 
 /** @import { CheckToolResult, DoctorOptions } from '../types/t6.js' */
 /** @import { ProjectContext } from './context.mjs' */
@@ -53,7 +54,18 @@ async function doctor({
   const C = ctxOf(project);
   const ctx = resolveContext(C.P);
   const serverUrl = C.serverUrl;
-  let ledger = await reconcile(ctx, { offline });
+  /** @type {Awaited<ReturnType<typeof reconcile>>} */
+  let ledger;
+  try {
+    ledger = await reconcile(ctx, { offline });
+  } catch (e) {
+    // Before a manifest exists: the setup preflight rides on the error (CLI and MCP print it).
+    if (/** @type {NodeJS.ErrnoException} */ (e).code === 'no-manifest')
+      Object.assign(/** @type {Error} */ (e), {
+        detail: { preflight: await preflight(C), next: 'pxsig manifest' },
+      });
+    throw e;
+  }
   writeLedger(ctx, ledger);
   const settings = readSettings();
   /** @type {{ project: string, ledgerPath: string, machine: { settings: string, setUp: boolean, tokens: string }, agent: ReturnType<typeof detectAgent>, plan?: ReturnType<typeof planRepairs>, applied?: Awaited<ReturnType<typeof applyRepairs>>['steps'] }} */

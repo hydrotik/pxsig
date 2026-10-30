@@ -568,7 +568,7 @@
       "exits": {
         "0": "Nothing at or above --fail-on, or warn mode: only the doctor gate on warn would have failed (advisoryExit, default 0)",
         "1": "Findings at or above --fail-on",
-        "2": "A setup error, or usage",
+        "2": "A setup error, or usage. Before a manifest exists: a setup preflight (engine, Playwright, Chromium present, Storybook config, assistant marker; nothing fetched or launched), the error, and next: pxsig manifest",
         "3": "--prune or log-torn without a person at a terminal"
       },
       "examples": [

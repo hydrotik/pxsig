@@ -7,6 +7,7 @@ import { CODES } from '../lib/integrity.mjs';
 import { describeLock, readLock, takeLock } from '../lib/lock.mjs';
 import { ask, progress, stateCell } from '../lib/term.mjs';
 import { describeAgent } from '../lib/agents.mjs';
+import { preflightReport } from './preflight.mjs';
 import {
   appendReadiness,
   describeEnforcement,
@@ -22,6 +23,7 @@ import {
 /** @import { LockHandle } from '../types.js' */
 /** @import { BriefEntry, Block, Cell, CliError, DoctorResult, Finding, Rendered, StyledCell } from '../types/t6.js' */
 /** @import { CliContext } from './context.mjs' */
+/** @import { Preflight } from '../tools/preflight.mjs' */
 
 /** @param {CliContext} cli */
 export function doctorParts(cli) {
@@ -184,6 +186,12 @@ export function doctorParts(cli) {
             : null,
         });
     } catch (e) {
+      const pf = /** @type {{ detail?: { preflight?: Preflight } }} */ (e).detail?.preflight;
+      // No manifest yet: the setup preflight, the error once, the next step (exit 2).
+      if (pf) {
+        spin.done('no manifest yet', false);
+        return preflightReport(/** @type {Error} */ (e).message, pf, CMD);
+      }
       spin.done(/** @type {Error} */ (e).message, false);
       fail(/** @type {Error} */ (e).message, 2);
     } finally {
