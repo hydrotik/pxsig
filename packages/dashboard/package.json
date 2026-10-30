@@ -6,7 +6,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "vite build --config vite.config.mjs && node postbuild.mjs",
+    "build": "vite build --config vite.config.mjs && node postbuild.mjs && node ../../scripts/build-record.mjs",
     "test": "node --test test/*.test.mjs"
   },
   "devDependencies": {
