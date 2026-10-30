@@ -18,10 +18,10 @@
  * a11y-decisions.ndjson, and updates the report rows' accepted lists. It is pinned to the sha256 of
  * a11y.json at planning time: any decision in between refuses the whole plan.
  */
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { readLog, sha256, stamp, who } from './approvals.mjs';
-import { appendLine, readLines, writeJson } from './files.mjs';
+import { appendLine, readJson, readLines, writeJson } from './files.mjs';
 import { relPath } from './paths.mjs';
 /** @import { A11yResult, A11yViolation, CheckRow, Project } from '../types.js' */
 /** @import { ApplyPruneOptions, BuildPlanOptions, CheckedPruneEntry, ClassifyOptions, CoverCommand, PlanInput, PruneClass, PruneEntry, PruneEvidence, PruneItem, PruneLine, PrunePlan, PruneReport, PruneReportRef, PruneResult, PruneStale, TimedLine } from '../types/t2.js' */
@@ -30,20 +30,6 @@ import { relPath } from './paths.mjs';
 export const CLASSES = ['prunable', 'still-fires', 'stale', 'not-covered'];
 export const PRUNE_RULE = /^[\w.-]{1,80}$/;
 export const PRUNE_ID = /^[a-z0-9-]+--[a-z0-9-]+(__[a-z0-9-]+)?(@[a-z0-9-]+)?$/;
-
-/**
- * A JSON file, or `fallback` when it is missing or does not parse.
- * @param {string} p
- * @param {unknown} fallback
- * @returns {unknown}
- */
-const readJson = (p, fallback) => {
-  try {
-    return /** @type {unknown} */ (JSON.parse(readFileSync(p, 'utf8')));
-  } catch {
-    return fallback;
-  }
-};
 
 /** @param {Pick<Project, 'store'>} P */
 export const decisionsPath = (P) => join(dirname(P.store.a11y), 'a11y-decisions.ndjson');

@@ -30,6 +30,7 @@ import { axeScript, axeVersion, launchBrowser } from './lib/capture.mjs';
 /** @import { CheckPost, DashboardBuildConfig, DashboardCheckReport, DashboardFixtures, DashboardUiTools, ScenarioServer, Screen, ScreenCatalogue, ScreenFeature, ScreenResult, UiAdapter } from './types/t4.js' */
 import { buildDirFor, STAMP } from './lib/dashboard-dir.mjs';
 import { PXSIG_VERSION } from './lib/workspace.mjs';
+import { readJson } from './lib/files.mjs';
 import { prebuiltDashboardDir } from './report.mjs';
 import { capture, pool } from './dashboard-check/capture.mjs';
 import { galleryHtml, summaryMarkdown } from './dashboard-check/gallery.mjs';
@@ -50,14 +51,6 @@ const load = (dir, file) => import(pathToFileURL(join(dir, file)).href);
 const shown = (/** @type {string} */ cwd, /** @type {string} */ p) => {
   const r = relative(cwd, p);
   return r && !r.startsWith('..') ? r : p;
-};
-/** @returns {unknown} */
-const readJson = (/** @type {string} */ f) => {
-  try {
-    return JSON.parse(readFileSync(f, 'utf8'));
-  } catch {
-    return null;
-  }
 };
 
 /**

@@ -13,12 +13,16 @@ as affected (`affects.workspaceDeps`, on by default).
 
 ```bash
 pnpm install
-pnpm build-storybook && npx http-server apps/storybook/storybook-static -p 6407 -s &
+pnpm build-storybook
 npx pxsig projects
 npx pxsig manifest --project ui && npx pxsig manifest --project forms
 npx pxsig check --full --project ui
 npx pxsig serve                      # one dashboard for both projects
 ```
+
+Nothing else needs to run: when no Storybook answers at `storybook.url`, pxsig serves the build in
+`apps/storybook/storybook-static/` (`storybook.staticDir` in `pxsig.workspace.json`) itself, on a
+free port. A running `storybook dev` on port 6407 works too.
 
 `.github/CODEOWNERS` routes baseline changes to two teams: the design team owns the stores and
 `Button`, the forms team owns `TextField`. See [docs/codeowners.md](../../docs/codeowners.md).

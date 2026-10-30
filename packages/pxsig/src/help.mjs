@@ -7,6 +7,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { distance } from './lib/args.mjs';
 
 /** @import { Block, Cell, HelpCommandEntry, HelpFlag, HelpFound, HelpSetting, HelpSource } from './types/t6.js' */
 
@@ -57,28 +58,6 @@ export function helpNames() {
 }
 
 /**
- * Edit distance, for "did not find x; nearest: …".
- * @param {string} a
- * @param {string} b
- * @returns {number}
- */
-function distance(a, b) {
-  const d = Array.from({ length: a.length + 1 }, (_, i) => [
-    i,
-    .../** @type {number[]} */ (Array(b.length)).fill(0),
-  ]);
-  for (let j = 1; j <= b.length; j++) d[0][j] = j;
-  for (let i = 1; i <= a.length; i++)
-    for (let j = 1; j <= b.length; j++)
-      d[i][j] = Math.min(
-        d[i - 1][j] + 1,
-        d[i][j - 1] + 1,
-        d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
-      );
-  return d[a.length][b.length];
-}
-
-/**
  * The `n` help names nearest to `name`.
  * @param {string} name
  * @param {number} [n]
@@ -92,7 +71,7 @@ export function nearestNames(name, n = 5) {
       d:
         x.toLowerCase().includes(q) || q.includes(x.toLowerCase())
           ? 0
-          : distance(q, x.toLowerCase()),
+          : distance(q, x.toLowerCase(), { swaps: false }),
     }))
     .sort((a, b) => a.d - b.d || a.x.localeCompare(b.x))
     .slice(0, n)

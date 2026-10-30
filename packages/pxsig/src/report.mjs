@@ -28,6 +28,7 @@ import {
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readImage } from './lib/psig.mjs';
+import { readJson } from './lib/files.mjs';
 import { PXSIG_VERSION, engineVersion, openProject } from './lib/workspace.mjs';
 /** @import { Manifest, Project } from './types.js' */
 
@@ -47,15 +48,6 @@ export let dashboardDir = process.env.PXSIG_DASHBOARD_DIR
 export function useDashboard(dir) {
   dashboardDir = dir;
 }
-
-/** @returns {unknown} */
-const readJsonFile = (/** @type {string} */ p) => {
-  try {
-    return JSON.parse(readFileSync(p, 'utf8'));
-  } catch {
-    return null;
-  }
-};
 
 /**
  * @param {Project} P
@@ -109,7 +101,7 @@ function suites(P, prefix, exclude = []) {
   for (const n of names.sort()) {
     const m = n.match(re);
     if (!m || exclude.includes(m[1])) continue;
-    const v = readJsonFile(join(P.store.reports, n));
+    const v = readJson(join(P.store.reports, n));
     if (v) out[m[1] ?? 'default'] = v;
   }
   return out;
@@ -140,10 +132,10 @@ export function uiContractVersion() {
  */
 export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/` } = {}) {
   // The manifest pxsig wrote (docs/spec.md section 6).
-  const manifest = /** @type {Manifest | null} */ (readJsonFile(P.manifestPath())) ?? {
+  const manifest = /** @type {Manifest | null} */ (readJson(P.manifestPath())) ?? {
     stories: [],
   };
-  const read = (/** @type {string} */ name) => readJsonFile(join(P.store.reports, `${name}.json`));
+  const read = (/** @type {string} */ name) => readJson(join(P.store.reports, `${name}.json`));
   return {
     generatedAt: new Date().toISOString(),
     project: P.name,
@@ -218,7 +210,7 @@ export function writeStaticReport(P, out) {
   copyDir(P.store.diffLatest, join(out, 'diffs', 'latest'));
   mkdirSync(join(out, 'renders', 'base'), { recursive: true });
   // The manifest pxsig wrote (docs/spec.md section 6).
-  const manifest = /** @type {Manifest | null} */ (readJsonFile(P.manifestPath())) ?? {
+  const manifest = /** @type {Manifest | null} */ (readJson(P.manifestPath())) ?? {
     stories: [],
   };
   let images = 0;
