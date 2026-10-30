@@ -7,7 +7,6 @@
     "packages/dashboard/src/data.ts": 6196,
     "packages/dashboard/src/diff-viewer/DiffViewer.tsx": 7453,
     "packages/dashboard/src/ui/adapters/hydrotik/index.tsx": 5319,
-    "packages/dashboard/src/ui/contract.ts": 6115,
     "packages/dashboard/src/ui/fallbacks.tsx": 5057,
     "packages/pxsig/src/approve.mjs": 8363,
     "packages/pxsig/src/check.mjs": 9179,
