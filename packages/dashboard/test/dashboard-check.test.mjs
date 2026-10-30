@@ -219,6 +219,44 @@ test('a decision is answered and recorded, nothing is written, and only --out ch
   );
 });
 
+test('the screenshot waits for the layout to hold still, up to a cap', async (t) => {
+  if (skip) return t.skip(skip);
+  const { settle, SETTLE_MS } = await import('../../pxsig/src/dashboard-check/capture.mjs');
+  const page = await browser.newPage();
+  try {
+    // A box that resizes 50 ms after the page draws, as a debounced chart does.
+    await page.setContent(
+      '<div id="b" style="width:10px;height:10px"></div><script>setTimeout(() => { document.getElementById("b").style.width = "200px"; }, 50)</script>'
+    );
+    assert.equal(await settle(page), true);
+    assert.equal(await page.evaluate(() => document.getElementById('b')?.offsetWidth), 200);
+    // A box that changes on every frame never holds still: the cap ends the wait.
+    await page.setContent(
+      '<div id="b" style="width:10px;height:10px"></div><script>let n = 0; const f = () => { document.getElementById("b").style.width = 10 + (n++ % 50) + "px"; requestAnimationFrame(f); }; requestAnimationFrame(f);</script>'
+    );
+    const started = Date.now();
+    assert.equal(await settle(page), false);
+    assert.ok(Date.now() - started >= SETTLE_MS - 100, 'waited for the cap');
+  } finally {
+    await page.close();
+  }
+  const { summaryMarkdown } = await import('../../pxsig/src/dashboard-check.mjs');
+  const screen = { feature: 'overview.stats', index: 0, theme: 'dark', rendered: true, axe: [] };
+  const md = summaryMarkdown(
+    /** @type {any} */ ({
+      summary: { screens: 2, rendered: 2, failed: 0, withAxe: 0 },
+      build: 'dist',
+      contract: { adapter: 1, current: 1 },
+      themes: ['dark'],
+      reference: { used: false, note: 'none' },
+      strict: false,
+      screens: [screen, { ...screen, index: 1, settled: false }],
+    })
+  );
+  assert.match(md, /### Still moving\n\n.*\n\n- `overview.stats` #2 \(dark\)\n/);
+  assert.doesNotMatch(md, /#1 \(dark\)/, 'a settled screen is not listed');
+});
+
 test('setup problems: no build, a placeholder reference, unknown themes and features', async (t) => {
   if (skip) return t.skip(skip);
   await assert.rejects(

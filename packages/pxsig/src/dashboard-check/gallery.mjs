@@ -2,6 +2,7 @@
  * dashboard-check/gallery.mjs — what `pxsig dashboard check` writes for people to read
  * (dashboard-check.mjs): summary.md and the index.html gallery.
  */
+import { SETTLE_MS } from './capture.mjs';
 /** @import { DashboardCheckReport, ScreenResult } from '../types/t4.js' */
 
 export const esc = (/** @type {string | number | null | undefined} */ s) =>
@@ -41,6 +42,16 @@ export function summaryMarkdown(report) {
       '### Failed',
       '',
       ...bad.map((x) => `- \`${x.feature}\` #${x.index + 1} (${x.theme}): ${x.reason}`)
+    );
+  const moving = report.screens.filter((x) => x.settled === false);
+  if (moving.length)
+    lines.push(
+      '',
+      '### Still moving',
+      '',
+      `The layout had not held still after ${SETTLE_MS / 1000} s; these screenshots were taken anyway.`,
+      '',
+      ...moving.map((x) => `- \`${x.feature}\` #${x.index + 1} (${x.theme})`)
     );
   const ax = report.screens.filter((x) => x.axe.length);
   if (ax.length)
