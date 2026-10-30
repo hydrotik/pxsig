@@ -2,7 +2,7 @@
  * cli/doctor.mjs — `pxsig doctor`'s report for one project (`doctorOne`), and the two parts other
  * commands share: warn mode for a gated command (`gate`) and the entries table (`entryTable`).
  */
-import { doctor } from '../mcp.mjs';
+import { doctor } from '../tools/index.mjs';
 import { CODES } from '../lib/integrity.mjs';
 import { describeLock, readLock, takeLock } from '../lib/lock.mjs';
 import { ask, progress, stateCell } from '../lib/term.mjs';

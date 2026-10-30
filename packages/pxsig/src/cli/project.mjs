@@ -4,7 +4,7 @@
 import { existsSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { approveCommand } from '../approve.mjs';
-import { tools } from '../mcp.mjs';
+import { tools } from '../tools/index.mjs';
 import { buildManifest, describeConfig, initProject } from '../lib/setup.mjs';
 import { CONFIG_FILE, findWorkspace, openProject } from '../lib/workspace.mjs';
 import { ask, emit, humanAtTerminal, progress, whyNotPerson } from '../lib/term.mjs';
