@@ -12,7 +12,6 @@
     "packages/pxsig/src/approve.mjs": 8363,
     "packages/pxsig/src/check.mjs": 9179,
     "packages/pxsig/src/cli.mjs": 18941,
-    "packages/pxsig/src/lib/approvals.mjs": 5520,
     "packages/pxsig/src/lib/capture.mjs": 6980,
     "packages/pxsig/src/lib/enforcement.mjs": 6202,
     "packages/pxsig/src/lib/integrity.mjs": 13557,
