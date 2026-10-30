@@ -2,7 +2,7 @@
  * help.test.mjs — the help source (src/help/) against the code, the docs and the dashboard, so the
  * three cannot drift: every command and every flag the CLI reads has an entry and nothing else does,
  * every config key has a setting entry, docs/cli.md and docs/configuration.md name them all, every
- * example parses, and `pxsig --help` is unchanged.
+ * example parses (test/help-index.test.mjs: `pxsig --help`).
  *
  *   node --test packages/pxsig/test/help.test.mjs
  */
@@ -222,16 +222,6 @@ test("the dashboard's Commands rows are examples here, word for word", () => {
     const text = key.split('.').reduce((o, k) => o[k], copy);
     assert.equal(examples.get(cmd), text, `${cmd}: "${text}"`);
   }
-});
-
-test('pxsig --help and pxsig help print the header, as before', () => {
-  const header =
-    // cli.mjs opens with its header comment.
-    /** @type {RegExpMatchArray} */ (src('cli.mjs').match(/\/\*\*([\s\S]*?)\*\//))[1]
-      .replace(/^ \* ?/gm, '')
-      .trim() + '\n';
-  assert.equal(pxsig(['--help']).stdout.replace(/\r\n/g, '\n'), header);
-  assert.equal(pxsig(['help']).stdout.replace(/\r\n/g, '\n'), header);
 });
 
 test('a command, subcommand, topic or setting has its own page; an unknown name exits 2 with the nearest', () => {

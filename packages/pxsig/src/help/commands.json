@@ -1,5 +1,15 @@
 {
-  "$comment": "The CLI's help, one source for `pxsig help <command>`, `pxsig <command> --help` and the MCP's pxsig_help. test/help.test.mjs keeps it in step with the code, docs/cli.md and the dashboard's Help page. `readBy: engine` marks a flag the Rust binary reads, not the npm CLI.",
+  "$comment": "The CLI's help, one source for `pxsig help` (the index), `pxsig help <command>`, `pxsig <command> --help` and the MCP's pxsig_help. test/help.test.mjs keeps it in step with the code, docs/cli.md and the dashboard's Help page. `readBy: engine` marks a flag the Rust binary reads, not the npm CLI. `needsAPerson` is the one list of commands that need a person at a terminal (exit 3 otherwise); test/help-index.test.mjs checks it against each entry's `needs-a-person` effect and the pages that list them.",
+  "needsAPerson": [
+    "check --full --update",
+    "approve apply",
+    "approve undo",
+    "approve verify --adopt",
+    "a11y --prune",
+    "doctor --repair --apply --prune",
+    "doctor --repair --only log-torn --apply",
+    "serve --link"
+  ],
   "global": {
     "summary": "Options every command takes.",
     "flags": [
@@ -909,7 +919,8 @@
     "serve": {
       "summary": "The server and dashboard for every project in the workspace.",
       "usage": [
-        "pxsig serve [--port 6070] [--watch] [--no-open] [--tab name] [--project a,b] [--debug]"
+        "pxsig serve [--port 6070] [--watch] [--no-open] [--tab name] [--project a,b] [--debug]",
+        "pxsig serve --link"
       ],
       "flags": [
         {
@@ -942,10 +953,11 @@
           "env": "PXSIG_DEBUG"
         }
       ],
-      "effects": ["starts-server", "writes-store"],
+      "effects": ["starts-server", "writes-store", "needs-a-person (--link only)"],
       "exits": {
         "0": "Stopped",
-        "2": "Usage or setup error"
+        "2": "Usage or setup error",
+        "3": "--link without a person at a terminal"
       },
       "examples": [
         {
@@ -1273,8 +1285,8 @@
       "seeAlso": ["config"]
     },
     "help": {
-      "summary": "A command's, topic's or setting's page. Alone: the command list.",
-      "usage": ["pxsig help [command [subcommand] | topic | setting]"],
+      "summary": "A command's, topic's or setting's page. Alone: every command and topic. `topics`: the topics.",
+      "usage": ["pxsig help [command [subcommand] | topic | setting]", "pxsig help topics"],
       "effects": ["reads-only"],
       "exits": {
         "0": "OK",
