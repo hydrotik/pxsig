@@ -40,9 +40,9 @@ export function rustBinary(env = process.env) {
 }
 
 /**
- * Load a peer dependency (playwright, axe-core) the way the project would: from the project, then
- * the workspace root, then pxsig's own install (`PXSIG_PLAYWRIGHT`, when set, comes first for
- * Playwright). Playwright is also found through
+ * Load a peer dependency (playwright; axe-core only when pxsig's own is missing, capture/page.mjs)
+ * the way the project would: from the project, then the workspace root, then pxsig's own install
+ * (`PXSIG_PLAYWRIGHT`, when set, comes first for Playwright). Playwright is also found through
  * `@playwright/test`, so renders use the browser build the project already tests with.
  * @param {PeerBase} P
  * @param {string} name

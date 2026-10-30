@@ -14,6 +14,8 @@ export interface EnvRecord {
   id: string;
   browser: { name: string; version: string | null; channel: string | null; launchArgs: string[] };
   playwright: string | null;
+  /** The axe-core version of the a11y pass; absent in an env written by an older pxsig. */
+  axe?: string | null;
   os: {
     platform: string | null;
     arch: string | null;

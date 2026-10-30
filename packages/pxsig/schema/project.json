@@ -327,6 +327,7 @@
               "browser.channel",
               "browser.launchArgs",
               "playwright",
+              "axe",
               "os.platform",
               "os.arch",
               "os.release",

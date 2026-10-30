@@ -24,7 +24,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { dashboardSource } from './dashboard.mjs';
-import { axeScript, launchBrowser } from './lib/capture.mjs';
+import { axeScript, axeVersion, launchBrowser } from './lib/capture.mjs';
 /** @import { Browser } from 'playwright' */
 /** @import { Flags } from './types.js' */
 /** @import { CheckPost, DashboardBuildConfig, DashboardCheckReport, DashboardFixtures, DashboardUiTools, ScenarioServer, Screen, ScreenCatalogue, ScreenFeature, ScreenResult, UiAdapter } from './types/t4.js' */
@@ -297,6 +297,7 @@ export async function dashboardCheck(
   const withAxe = screens.filter((x) => x.axe.length).length;
   const report = {
     pxsig: PXSIG_VERSION,
+    axe: axeVersion({ root: cwd, workspaceRoot: cwd }),
     build: shown(cwd, build),
     adapter: ui?.name ?? null,
     contract: { current: contract.current, adapter: contract.adapter, status: contract.status },

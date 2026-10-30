@@ -1,5 +1,6 @@
 /** The in-page helpers (capture.mjs): the render sentinel, settling, the freeze, tokens and axe. */
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { resolvePeer } from '../workspace.mjs';
 /** @import { Page } from 'playwright' */
@@ -139,7 +140,43 @@ export const FREEZE_CSS =
   // reaches a screenshot.
   'vite-error-overlay{display:none!important}';
 
-/** axe-core's browser bundle, resolved like Playwright, injected per page for the a11y pass. */
+/** Where pxsig's own axe-core dependency resolves from pxsig's folder. */
+const ownAxe = () => createRequire(import.meta.url).resolve('axe-core/package.json');
+
+/**
+ * axe-core's package folder and version. pxsig's own dependency comes first, so a project's
+ * axe-core (any version, perhaps hoisted for another tool) never changes a11y results. The
+ * project's copy (resolved like Playwright, lib/workspace/peers.mjs) is used only when pxsig's
+ * cannot be found from its own folder: a copy of pxsig run without its dependencies installed (a
+ * source checkout, a vendored or bundled copy). Null when neither is found.
+ * @param {PeerBase} project
+ * @param {() => string} [own] resolves pxsig's `axe-core/package.json` (tests replace it)
+ * @returns {{ dir: string, version: string | null } | null}
+ */
+export function axePackage(project, own = ownAxe) {
+  for (const find of [own, () => resolvePeer(project, 'axe-core/package.json')]) {
+    try {
+      const pkg = find();
+      // axe-core's package.json: its `version` is a string.
+      const { version } = /** @type {{ version?: string }} */ (
+        JSON.parse(readFileSync(pkg, 'utf8'))
+      );
+      return { dir: dirname(pkg), version: version ?? null };
+    } catch {
+      // try the next place
+    }
+  }
+  return null;
+}
+
+/**
+ * The axe-core version the a11y pass uses (`axe` in the render environment), or null.
+ * @param {PeerBase} project
+ * @returns {string | null}
+ */
+export const axeVersion = (project) => axePackage(project)?.version ?? null;
+
+/** axe-core's browser bundle (`axePackage`), injected per page for the a11y pass. */
 /** @type {string | null} */
 let axeSource = null;
 /**
@@ -148,11 +185,9 @@ let axeSource = null;
  */
 export function axeScript(project) {
   if (axeSource != null) return axeSource;
+  const pkg = axePackage(project);
   try {
-    axeSource = readFileSync(
-      join(dirname(resolvePeer(project, 'axe-core/package.json')), 'axe.min.js'),
-      'utf8'
-    );
+    axeSource = pkg ? readFileSync(join(pkg.dir, 'axe.min.js'), 'utf8') : '';
   } catch {
     axeSource = '';
   }

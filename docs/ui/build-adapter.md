@@ -666,8 +666,9 @@ draw them with your own segmented control and buttons.
    - Exit 1: a screen did not render (its landmark never appeared, or the page threw); the report
      names the screen and the reason. Exit 2: no build, no Chromium, or an adapter written for an
      older major contract version.
-   - Each screen's axe violations are listed in the gallery, `summary.md` and `report.json`.
-     They are advisory; `--strict` makes any violation exit 1.
+   - Each screen's axe violations are listed in the gallery, `summary.md` and `report.json`
+     (whose `axe` is the axe-core version that ran). They are advisory; `--strict` makes any
+     violation exit 1.
    - `--only <feature,…>` checks part of it while you work on one feature; `--themes dark` one theme.
    - The components each screen left to the dashboard's fallbacks are listed beside it.
 4. Without Chromium (`npx playwright install chromium` installs it), do it by hand instead: serve

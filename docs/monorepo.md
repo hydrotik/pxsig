@@ -76,9 +76,12 @@ resolve the story paths in its index.
 ## Installs
 
 **One root install covers every project.** Add `pxsig` as a dev dependency of the workspace root.
-Playwright and axe-core are resolved like any dependency: from the project, then the workspace
-root, then pxsig's own install. Packages under test install nothing; they hold a config and a
-store.
+Playwright is resolved like any dependency: from the project, then the workspace root, then
+pxsig's own install. axe-core is pxsig's own dependency and is resolved from pxsig first, so a
+project's axe-core never changes a11y results; the project's copy is used only when pxsig's cannot
+be found (a copy of pxsig run without its dependencies installed). The version used is `axe` in
+the render environment ([configuration.md](configuration.md#env)). Packages under test install
+nothing; they hold a config and a store.
 
 **A package may also install pxsig** when it is used outside the monorepo too (published or
 checked out alone). Outside the monorepo its own config is a one-project workspace.
