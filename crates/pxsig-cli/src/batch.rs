@@ -188,4 +188,8 @@ pub use baseline::{
 pub use check::{check, compare_png, detail_json, metrics_json, Artifacts, CheckOpts};
 
 #[cfg(test)]
+mod baseline_tests;
+#[cfg(test)]
+mod check_tests;
+#[cfg(test)]
 mod tests;
