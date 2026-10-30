@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const OSES = ['ubuntu-latest', 'macos-14', 'windows-latest'];
+const OSES = ['ubuntu-latest', 'macos-latest', 'windows-latest'];
 
 /** Every required check, as GitHub names it. */
 export const REQUIRED = [
