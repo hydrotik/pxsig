@@ -1,6 +1,6 @@
 /**
- * types/t6.d.ts — the shapes of the CLI (cli.mjs), the MCP server (mcp.mjs, mcp-call.mjs), help
- * (help.mjs) and setup (setup.mjs, lib/setup.mjs). Types only: nothing here runs.
+ * types/t6.d.ts — the shapes of the CLI (cli.mjs, cli/), the MCP server (mcp.mjs, mcp-call.mjs),
+ * help (help.mjs) and setup (setup.mjs, lib/setup.mjs). Types only: nothing here runs.
  */
 
 import type {

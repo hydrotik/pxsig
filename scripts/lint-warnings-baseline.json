@@ -49,7 +49,7 @@
     "packages/dashboard/src/views/Scenarios.tsx": {
       "jsx-a11y(prefer-tag-over-role)": 1
     },
-    "packages/pxsig/src/cli.mjs": {
+    "packages/pxsig/src/cli/a11y-prune.mjs": {
       "typescript(require-await)": 1
     },
     "packages/pxsig/src/lib/approvals/history.mjs": {
