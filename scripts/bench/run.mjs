@@ -15,9 +15,10 @@
  * One warm-up run, then the median of --runs. Prints a table, appends it to $GITHUB_STEP_SUMMARY
  * when set, writes the results (in baseline.json's shape) to --out.
  *
- * Fails (exit 1) when a median is over its budget (BUDGETS below, decision 100), or more than 50%
- * over the time baseline.json records for this OS at the last release. baseline.json is refreshed
- * at each release from the nightly run's `bench-results` artifact (docs/releasing.md).
+ * Fails (exit 1) when a median is over its budget (BUDGETS below, decision 100). More than 50% over
+ * the time baseline.json records for this OS at the last release is a warning: the baseline is one
+ * nightly sample, and shared runners differ by more than that from night to night. baseline.json is
+ * refreshed at each release from the nightly run's `bench-results` artifact (docs/releasing.md).
  */
 import { spawnSync } from 'node:child_process';
 import {
@@ -42,10 +43,10 @@ const report = join(root, 'packages', 'pxsig', 'src', 'report.mjs');
 const workspace = join(root, 'packages', 'pxsig', 'src', 'lib', 'workspace.mjs');
 
 /**
- * Milliseconds. `plan` has no fixed budget: only the 50% rule against the last release.
+ * Milliseconds. `plan` has the same budget as the other whole-store commands.
  * @type {Record<Step, number | null>}
  */
-export const BUDGETS = { affected: 2000, list: 3000, doctor: 3000, plan: null, data: 2000 };
+export const BUDGETS = { affected: 2000, list: 3000, doctor: 3000, plan: 3000, data: 2000 };
 /** Under this, a 50% rise is noise on a shared runner, not a regression (sub-second steps). */
 export const SLACK_MS = 100;
 
@@ -115,15 +116,24 @@ export function judge(times, base) {
     const was = base?.[step] ?? null;
     const limit = was == null ? null : Math.max(was * 1.5, was + SLACK_MS);
     const why = [];
+    const warn = [];
     if (budget != null && ms > budget) why.push(`over the ${budget} ms budget`);
     if (limit != null && ms > limit)
       // A limit only exists with a baseline time.
-      why.push(
+      warn.push(
         `more than 50% over the last release (${Math.round(/** @type {number} */ (was))} ms)`
       );
-    return { step, ms, budget, was, limit, fail: why.length > 0, why };
+    return { step, ms, budget, was, limit, fail: why.length > 0, why, warn };
   });
 }
+
+/** A verdict as the table's Result column shows it. */
+const result = (/** @type {Verdict} */ v) =>
+  v.fail
+    ? `**fail**: ${[...v.why, ...v.warn].join('; ')}`
+    : v.warn.length
+      ? `warn: ${v.warn.join('; ')}`
+      : 'ok';
 
 /** @type {(args: string[], name: string) => string | undefined} */
 const flag = (args, name) => {
@@ -167,8 +177,7 @@ async function main() {
     const base = baseline?.times?.[os] ?? null;
     const verdicts = judge(times, base);
     const rows = verdicts.map(
-      (v) =>
-        `| ${v.step} | ${v.ms} | ${v.budget ?? '—'} | ${v.was ?? '—'} | ${v.fail ? `**fail**: ${v.why.join('; ')}` : 'ok'} |`
+      (v) => `| ${v.step} | ${v.ms} | ${v.budget ?? '—'} | ${v.was ?? '—'} | ${result(v)} |`
     );
     const table = [
       `### pxsig scale benchmark (${os}, node ${process.version}, pxsig ${version})`,
@@ -202,6 +211,9 @@ async function main() {
           2
         ) + '\n'
       );
+    // On GitHub, a warning is also an annotation on the run, so it is seen without failing it.
+    if (process.env.GITHUB_ACTIONS)
+      for (const v of verdicts) for (const w of v.warn) console.log(`::warning::${v.step}: ${w}`);
     if (verdicts.some((v) => v.fail)) process.exitCode = 1;
   } finally {
     if (!given && !args.includes('--keep'))

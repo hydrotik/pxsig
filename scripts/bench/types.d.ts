@@ -28,8 +28,12 @@ export interface Verdict {
   budget: number | null;
   was: number | null;
   limit: number | null;
+  /** Over its budget. */
   fail: boolean;
+  /** Why it fails. */
   why: string[];
+  /** Over the last release's time by more than 50%: reported, not failed. */
+  warn: string[];
 }
 
 /** The engine's template `.psig`, split at its header. */

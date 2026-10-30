@@ -19,18 +19,20 @@ node scripts/bench/generate-store.mjs DIR  # only the store (the same for the sa
 Each step is a fresh `node` process, start-up included, as a person runs it. One warm-up run, then
 the median of `--runs` (5).
 
-| Step     | Command                                                                                                              | Budget                  |
-| -------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| affected | `pxsig affected --since HEAD~1` (an edited component, an edited shared module, one re-baselined entry, one log line) | 2 s                     |
-| list     | `pxsig list`                                                                                                         | 3 s                     |
-| doctor   | `pxsig doctor --offline`                                                                                             | 3 s                     |
-| plan     | `pxsig approve plan --all-changed` (12 changed entries)                                                              | none: the 50% rule only |
-| data     | the dashboard's data, as `GET /__pxsig/data` builds and serialises it                                                | 2 s                     |
+| Step     | Command                                                                                                              | Budget |
+| -------- | -------------------------------------------------------------------------------------------------------------------- | ------ |
+| affected | `pxsig affected --since HEAD~1` (an edited component, an edited shared module, one re-baselined entry, one log line) | 2 s    |
+| list     | `pxsig list`                                                                                                         | 3 s    |
+| doctor   | `pxsig doctor --offline`                                                                                             | 3 s    |
+| plan     | `pxsig approve plan --all-changed` (12 changed entries)                                                              | 3 s    |
+| data     | the dashboard's data, as `GET /__pxsig/data` builds and serialises it                                                | 2 s    |
 
-A step fails when its median is over its budget, or more than 50% over the time
-`scripts/bench/baseline.json` records for the same OS at the last release (a rise under 100 ms is
-not counted: it is runner noise on a sub-second step). With no baseline for the OS, only the
-budgets apply.
+A step fails when its median is over its budget. More than 50% over the time
+`scripts/bench/baseline.json` records for the same OS at the last release is a warning: the table
+says `warn`, and on GitHub the run carries an annotation, but it does not fail. The baseline is one
+nightly sample, and shared runners differ by more than 50% from night to night (on 2026-10-28 every
+step ran about 30% faster than the nights around it). A rise under 100 ms is not counted at all: it
+is noise on a sub-second step. With no baseline for the OS, only the budgets apply.
 
 ## Where it runs
 

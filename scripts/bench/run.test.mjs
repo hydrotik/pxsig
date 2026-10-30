@@ -7,26 +7,26 @@ import { rustBinary } from '../../packages/pxsig/src/lib/workspace.mjs';
 import { generateStore } from './generate-store.mjs';
 import { judge, SLACK_MS } from './run.mjs';
 
-test('a step fails over its fixed budget, or more than 50% over the last release', () => {
+test('a step fails over its fixed budget; more than 50% over the last release only warns', () => {
   const v = Object.fromEntries(
     judge(
-      { affected: 2100, list: 40, doctor: 900, plan: 700, data: 50 },
+      { affected: 2100, list: 40, doctor: 900, plan: 3100, data: 50 },
       { affected: 300, list: 30, doctor: 500, plan: 400, data: 60 }
     ).map((x) => [x.step, x])
   );
-  assert.deepEqual(v.affected.why, [
-    'over the 2000 ms budget',
-    'more than 50% over the last release (300 ms)',
-  ]);
-  assert.equal(v.list.fail, false, `a rise under ${SLACK_MS} ms is noise`);
-  assert.equal(v.doctor.fail, true);
-  assert.equal(v.plan.fail, true, 'plan has no fixed budget, only the 50% rule');
+  assert.deepEqual(v.affected.why, ['over the 2000 ms budget']);
+  assert.deepEqual(v.affected.warn, ['more than 50% over the last release (300 ms)']);
+  assert.equal(v.list.fail, false);
+  assert.deepEqual(v.list.warn, [], `a rise under ${SLACK_MS} ms is noise`);
+  assert.equal(v.doctor.fail, false, 'a rise over 50% within the budget is a warning');
+  assert.deepEqual(v.doctor.warn, ['more than 50% over the last release (500 ms)']);
+  assert.equal(v.plan.fail, true, 'plan has a budget too');
   assert.equal(v.data.fail, false);
 });
 
 test('with no baseline for this OS, only the budgets apply', () => {
   assert.deepEqual(
-    judge({ affected: 1900, plan: 99999 }, null).map((x) => x.fail),
+    judge({ affected: 1900, plan: 2900 }, null).map((x) => x.fail),
     [false, false]
   );
 });
