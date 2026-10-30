@@ -39,7 +39,8 @@ function candidateRevs(file, gitHead) {
 export function undo(P, manifest, batch, { git = true, ids: only = null } = {}) {
   /** @param {string} id */
   const keep = (id) => !only || only.includes(id);
-  const lines = readLog(P).filter((l) => l.batch === batch && keep(l.id));
+  const log = readLog(P);
+  const lines = log.filter((l) => l.batch === batch && keep(l.id));
   const dir = join(P.store.history, batch);
   const local = existsSync(dir);
   if (!local && !lines.length)
@@ -63,6 +64,20 @@ export function undo(P, manifest, batch, { git = true, ids: only = null } = {}) 
   /** @type {Map<string, ApprovalLine>} */
   const first = new Map();
   for (const l of lines) if (!first.has(l.id)) first.set(l.id, l);
+  /**
+   * The later batch that approved the baseline `file` holds now, when one did: undoing this batch
+   * would silently revert that approval. An undo of this batch itself does not count.
+   * @param {string} id
+   * @param {string} file
+   */
+  const approvedLater = (id, file) => {
+    const l = first.get(id);
+    if (!l || !existsSync(file)) return null;
+    const now = sha256(file);
+    if (now === l.after) return null;
+    const later = log.slice(log.indexOf(l) + 1);
+    return later.find((x) => x.id === id && x.after === now && x.batch !== `${batch}-undo`) ?? null;
+  };
   /** @type {Set<string>} */
   const snaps = local
     ? new Set(
@@ -81,6 +96,14 @@ export function undo(P, manifest, batch, { git = true, ids: only = null } = {}) 
     }
     const file = paths(P, entry).sig;
     const l = first.get(id);
+    const newer = approvedLater(id, file);
+    if (newer) {
+      out.refused.push({
+        id,
+        why: `approved again in batch ${newer.batch} after this one: undo that batch first`,
+      });
+      continue;
+    }
     if (snaps.has(id)) {
       writeAtomic(file, readFileSync(join(dir, `${id}.psig`)));
       out.restored.push(id);
