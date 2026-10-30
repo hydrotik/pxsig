@@ -3,7 +3,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { imageOf } from '../mcp.mjs';
+import { imageOf } from '../tools/index.mjs';
 import { emit, stateCell } from '../lib/term.mjs';
 import { doctorParts } from './doctor.mjs';
 

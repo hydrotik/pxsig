@@ -4,7 +4,7 @@
 import { spawnSync } from '../lib/spawn.mjs';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { doctor } from '../mcp.mjs';
+import { doctor } from '../tools/index.mjs';
 import { emit, progress, stateCell } from '../lib/term.mjs';
 import { relPath } from '../lib/paths.mjs';
 import { writeSarif } from '../lib/sarif.mjs';

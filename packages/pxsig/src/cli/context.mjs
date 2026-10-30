@@ -3,7 +3,7 @@
  * once from the parsed arguments): the current project, the in-process tool runner and the
  * multi-project read loop.
  */
-import { ctxOf, tools } from '../mcp.mjs';
+import { ctxOf, tools } from '../tools/index.mjs';
 import { findWorkspace, pickProject } from '../lib/workspace.mjs';
 import { emit } from '../lib/term.mjs';
 import { combineExits } from '../lib/enforcement.mjs';

@@ -2,7 +2,7 @@
  * cli/a11y-prune.mjs — `pxsig a11y --prune [--dry-run]`.
  */
 import { dirname, join } from 'node:path';
-import { prunePlan } from '../mcp.mjs';
+import { prunePlan } from '../tools/index.mjs';
 import { readLock, takeLock } from '../lib/lock.mjs';
 import { readToken, TOKEN_HEADER } from '../lib/guard.mjs';
 import { ask, emit, humanAtTerminal, progress, whyNotPerson } from '../lib/term.mjs';

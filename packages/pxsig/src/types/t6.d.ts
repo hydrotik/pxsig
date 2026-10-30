@@ -14,7 +14,7 @@ import type {
   ManifestSkipped,
   Project,
 } from '../types.js';
-import type { tools } from '../mcp.mjs';
+import type { tools } from '../tools/index.mjs';
 
 // --- term blocks (lib/term.mjs, as the CLI builds them) ------------------------------------------
 // The same shapes as types/t2.d.ts (lib/term.mjs's own, as of this writing), repeated until the
@@ -615,7 +615,7 @@ export interface BriefEntry {
 export type CliError = Error & { exit?: number; status?: number };
 
 /** What mcp.mjs's `doctor` resolves with (`pxsig doctor`, `pxsig_doctor`). */
-export type DoctorResult = Awaited<ReturnType<(typeof import('../mcp.mjs'))['doctor']>>;
+export type DoctorResult = Awaited<ReturnType<(typeof import('../tools/doctor.mjs'))['doctor']>>;
 
 /** The JSON text `pxsig_entry` answers first: the entry in full (mcp.mjs). */
 export interface EntryDetail extends BriefEntry {

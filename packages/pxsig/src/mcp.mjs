@@ -100,7 +100,8 @@ async function handle(msg) {
   }
 }
 
-// Imported (the pxsig CLI reuses the tools): no stdio loop. Run directly: serve MCP.
+// Imported: no stdio loop. The CLI takes the tools from tools/; these re-exports keep older imports
+// (approve.mjs's types, tests) working. Run directly: serve MCP.
 export { tools, ctxOf, PROBLEMS, doctor, prunePlan, imageOf };
 const isMain = process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
