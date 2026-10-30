@@ -25,10 +25,10 @@ On a Storybook deployed elsewhere (dev, UAT, pre-prod) the addon makes no reques
 server: its panel shows the read-only snapshot `storybook build` wrote into the build
 (`pxsig-snapshot.json`; option `snapshot: false` leaves it out).
 
-Requires Storybook 9 or later (tested on 10.6). It imports `storybook/manager-api` and
+Requires Storybook 10 or later (tested on 10.6). It imports `storybook/manager-api` and
 `storybook/internal/components`, and reports sidebar statuses through Storybook's status store
-(`experimental_getStatusStore`); none of those exist in Storybook 8, so Storybook 8 is not
-supported.
+(`experimental_getStatusStore`); none of those exist in Storybook 8. Storybook 9 has them but is
+not tested, so the peer range starts at 10.
 
 Full documentation: [docs/storybook.md](../../docs/storybook.md).
 
