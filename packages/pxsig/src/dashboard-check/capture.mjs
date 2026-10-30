@@ -12,8 +12,44 @@ export const VIEWPORT = { width: 1280, height: 900 };
 /** The clock every screen sees, so relative times ("2 days ago") are the same on every run. */
 export const FIXED_TIME = '2026-10-25T12:00:00.000Z';
 export const LANDMARK_MS = 10_000;
+/** The screenshot waits until no element's box has moved for this many frames in a row… */
+export const SETTLE_FRAMES = 6;
+/** …or this long, whichever comes first (a page that never stops moving is captured anyway). */
+export const SETTLE_MS = 2_000;
 export const FREEZE =
   '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}';
+
+/**
+ * Wait until the layout holds still: every element's box unchanged for SETTLE_FRAMES animation
+ * frames, or SETTLE_MS. An adapter's chart can resize a moment after it first draws (a debounced
+ * resize observer), and a screenshot taken before that shows it at its first size.
+ * @param {Page} page
+ * @returns {Promise<boolean>} false when SETTLE_MS ran out first
+ */
+export function settle(page) {
+  return page.evaluate(
+    ({ frames, cap }) =>
+      new Promise((done) => {
+        const start = performance.now();
+        let last = '';
+        let same = 0;
+        const tick = () => {
+          let boxes = '';
+          for (const el of document.querySelectorAll('body *')) {
+            const r = el.getBoundingClientRect();
+            boxes += `${r.x},${r.y},${r.width},${r.height};`;
+          }
+          same = boxes === last ? same + 1 : 0;
+          last = boxes;
+          if (same >= frames) done(true);
+          else if (performance.now() - start >= cap) done(false);
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }),
+    { frames: SETTLE_FRAMES, cap: SETTLE_MS }
+  );
+}
 
 /**
  * A screen's target: `{ role, name?, exact? }` or `{ text, exact? }`.
@@ -78,7 +114,17 @@ export async function capture(browser, { url, screen, shot, axe, initScript = nu
         ms: Date.now() - started,
       };
     }
+    // The inspector marks its stage aria-busy until its images are drawn, analysed and fitted.
+    await page
+      .waitForFunction(() => !document.querySelector('[aria-busy="true"]'), null, {
+        timeout: LANDMARK_MS,
+      })
+      .catch(() => {});
+    await page.evaluate(() =>
+      Promise.all([...document.images].map((i) => i.decode().catch(() => {})))
+    );
     await page.evaluate(() => document.fonts?.ready);
+    const settled = await settle(page);
     mkdirSync(dirname(shot), { recursive: true });
     await page.screenshot({ path: shot });
     /** @type {ScreenViolation[]} */
@@ -104,8 +150,16 @@ export async function capture(browser, { url, screen, shot, axe, initScript = nu
         errors,
         axe: violations,
         ms: Date.now() - started,
+        ...(settled ? {} : { settled: /** @type {const} */ (false) }),
       };
-    return { rendered: true, reason: null, errors, axe: violations, ms: Date.now() - started };
+    return {
+      rendered: true,
+      reason: null,
+      errors,
+      axe: violations,
+      ms: Date.now() - started,
+      ...(settled ? {} : { settled: /** @type {const} */ (false) }),
+    };
   } catch (e) {
     return {
       rendered: false,

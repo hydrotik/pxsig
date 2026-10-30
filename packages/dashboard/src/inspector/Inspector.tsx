@@ -171,9 +171,12 @@ export function Inspector({
 
   // Fit on open, then land on the biggest change of a failing story.
   const fittedFor = React.useRef<string | null>(null);
+  // The entry whose images are drawn, analysed and fitted: until then the stage is aria-busy.
+  const [settledFor, setSettledFor] = React.useState<string | null>(null);
   React.useEffect(() => {
-    if (!loaded || loaded === 'missing' || !row) return;
+    if (!loaded || !row) return;
     const key = `${row.id}|${target?.scenario?.name ?? ''}`;
+    if (loaded === 'missing') return setSettledFor(key);
     if (fittedFor.current === key || (pixels && !analysis)) return;
     fittedFor.current = key;
     requestAnimationFrame(() =>
@@ -183,6 +186,7 @@ export function Inspector({
           setRegion(0);
           stage.current?.focus(analysis.regions[0]);
         }
+        setSettledFor(key);
       })
     );
   }, [loaded, analysis, row, pixels, target?.scenario?.name]);
@@ -452,7 +456,10 @@ export function Inspector({
         </Toolbar>
 
         <div className={s.insMain}>
-          <div className={s.insStageWrap}>
+          <div
+            className={s.insStageWrap}
+            aria-busy={settledFor !== `${row.id}|${target?.scenario?.name ?? ''}` || undefined}
+          >
             {loaded === 'missing' ? (
               <div className={s.empty}>
                 {t('inspector.missing', { before: p.before, after: p.after })}

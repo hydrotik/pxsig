@@ -420,6 +420,8 @@ export interface ScreenCapture {
   errors: string[];
   axe: ScreenViolation[];
   ms: number;
+  /** Present only when the layout was still moving after SETTLE_MS: the screenshot was taken anyway. */
+  settled?: false;
 }
 
 /** One screen in one theme, as report.json lists it. */
