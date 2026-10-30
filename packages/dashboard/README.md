@@ -37,6 +37,14 @@ Without a build, `pxsig serve` still answers its API, and `/report/` answers 404
 dashboard is not built". Changes to the data the dashboard reads (`packages/pxsig/src/report.mjs`)
 and to the server can be developed and tested without it.
 
+From a clone without the design system, the plain example adapter in
+[examples/custom-ui](../../examples/custom-ui/README.md) builds the whole dashboard (run from the
+repository root):
+
+```bash
+PXSIG_UI_ADAPTER="$PWD/examples/custom-ui/pxsig-ui" pnpm --filter @pxsig/dashboard build
+```
+
 ## Sample data and screens
 
 `fixtures/scenarios.mjs` holds the sample report data (named scenarios: `clean`, `changed`,

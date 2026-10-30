@@ -29,6 +29,11 @@ without either, those tests are skipped, with the reason (`no Chromium`, `Rust b
 in the output. A skip is not a pass, so CI installs both before the suite. On Linux, add `--with-deps` the first time, for the system libraries Chromium
 needs.
 
+`node scripts/bootstrap.mjs` (or `pnpm bootstrap`) checks each of these against the pins and runs
+the steps that are missing: `pnpm install --frozen-lockfile`, `rustup toolchain install`,
+`cargo build --release --locked` and the Chromium install. It never installs Node or pnpm, and it
+starts no shell. `--check` changes nothing and exits 1 naming what is missing.
+
 Run the CLI from the clone:
 
 ```bash

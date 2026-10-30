@@ -8,6 +8,7 @@
     "node": ">=22.18"
   },
   "scripts": {
+    "bootstrap": "node scripts/bootstrap.mjs",
     "build:rust": "cargo build --release",
     "build:dashboard": "pnpm --filter @pxsig/dashboard build",
     "test": "cargo test --workspace --locked && pnpm -r test && node --test scripts/*.test.mjs",
