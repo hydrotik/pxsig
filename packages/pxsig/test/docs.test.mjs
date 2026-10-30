@@ -54,7 +54,7 @@ function tableRows(md) {
 
 /** The channels launchBrowser tries after Playwright's own Chromium, in order. */
 function fallbackChannels() {
-  const src = read(pkg, 'src', 'lib', 'capture.mjs');
+  const src = read(pkg, 'src', 'lib', 'capture', 'browser.mjs');
   const fn = src.slice(src.indexOf('export async function launchBrowser'));
   // launchBrowser has the list: `channel ? [channel] : [undefined, 'chrome', 'msedge']`.
   const list = /** @type {RegExpMatchArray} */ (fn.match(/: \[undefined, ([^\]]*)\]/))[1];
