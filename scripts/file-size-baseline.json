@@ -14,7 +14,6 @@
     "packages/pxsig/src/cli.mjs": 18941,
     "packages/pxsig/src/lib/integrity.mjs": 13557,
     "packages/pxsig/src/mcp.mjs": 15103,
-    "packages/pxsig/src/serve.mjs": 18751,
-    "packages/pxsig/src/types.d.ts": 6119
+    "packages/pxsig/src/serve.mjs": 18751
   }
 }
