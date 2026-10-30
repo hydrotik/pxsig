@@ -7,9 +7,10 @@
  *     [--allow-missing] [--dry-run]
  *
  * For every platform it writes `<out>/cli-<platform>-<arch>/` holding a package.json
- * (`@pxsig/cli-<platform>-<arch>`, restricted by `os`/`cpu`), a README.md and `bin/pxsig`
- * (`bin/pxsig.exe` on win32), copied from `<artifacts>/pxsig-<platform>-<arch>/pxsig[.exe]` — the
- * layout `actions/download-artifact` produces for the release workflow's build artifacts.
+ * (`@pxsig/cli-<platform>-<arch>`, restricted by `os`/`cpu`), a README.md, the root LICENSE and
+ * `bin/pxsig` (`bin/pxsig.exe` on win32), copied from
+ * `<artifacts>/pxsig-<platform>-<arch>/pxsig[.exe]` — the layout `actions/download-artifact`
+ * produces for the release workflow's build artifacts.
  *
  * The `pxsig` package lists these as optionalDependencies, so a package manager installs only the
  * one matching the host. `rustBinary()` in packages/pxsig/src/lib/workspace/peers.mjs resolves
@@ -195,7 +196,7 @@ function manifest(p) {
     cpu: [p.arch],
     // The Linux binaries are built for *-unknown-linux-gnu: a musl host (Alpine) skips them.
     ...(p.platform === 'linux' ? { libc: ['glibc'] } : {}),
-    files: ['bin'],
+    files: ['bin', 'LICENSE'],
     preferUnplugged: true,
   };
 }
@@ -220,6 +221,7 @@ for (const p of plan) {
     console.log(`[dry-run] ${p.name}@${opts.version}`);
     console.log(`  ${rel('package.json')}  os=${p.platform} cpu=${p.arch}`);
     console.log(`  ${rel('README.md')}`);
+    console.log(`  ${rel('LICENSE')}  <- ${join(root, 'LICENSE')}`);
     console.log(`  ${rel(`bin/${p.exe}`)}  <- ${p.src}`);
     continue;
   }
@@ -227,6 +229,7 @@ for (const p of plan) {
   mkdirSync(join(p.dir, 'bin'), { recursive: true });
   writeFileSync(join(p.dir, 'package.json'), `${JSON.stringify(manifest(p), null, 2)}\n`);
   writeFileSync(join(p.dir, 'README.md'), readme(p));
+  copyFileSync(join(root, 'LICENSE'), join(p.dir, 'LICENSE'));
   const bin = join(p.dir, 'bin', p.exe);
   copyFileSync(p.src, bin);
   chmodSync(bin, 0o755);

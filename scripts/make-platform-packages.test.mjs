@@ -58,12 +58,17 @@ test('every platform package is named, restricted and laid out as rustBinary() r
       assert.deepEqual(m.libc, platform === 'linux' ? ['glibc'] : undefined, `${id}: libc`);
       // The engine is found by path, not run through a `bin` link.
       assert.equal(m.bin, undefined, `${id}: bin`);
-      assert.deepEqual(m.files, ['bin']);
+      assert.deepEqual(m.files, ['bin', 'LICENSE']);
       assert.equal(m.license, 'MIT');
       assert.equal(m.repository?.url, 'git+https://github.com/hydrotik/pxsig.git');
       const bin = join(out, `cli-${id}`, 'bin', exeOf(id));
       assert.equal(readFileSync(bin, 'utf8'), `engine for ${id}\n`, `${id}: bin/${exeOf(id)}`);
       assert.ok(existsSync(join(out, `cli-${id}`, 'README.md')));
+      assert.equal(
+        readFileSync(join(out, `cli-${id}`, 'LICENSE'), 'utf8'),
+        readFileSync(join(repo, 'LICENSE'), 'utf8'),
+        `${id}: LICENSE is the root licence`
+      );
     }
     // rustBinary() (packages/pxsig/src/lib/workspace/peers.mjs) resolves the same name and path.
     const workspace = readFileSync(
@@ -78,6 +83,40 @@ test('every platform package is named, restricted and laid out as rustBinary() r
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test(
+  'a generated platform package packs with its LICENSE, README.md and binary',
+  {
+    skip:
+      spawnSync('npm', ['--version'], { shell: process.platform === 'win32' }).status !== 0 &&
+      'npm is not on PATH',
+  },
+  () => {
+    const dir = artifacts(['linux-x64']);
+    try {
+      const out = join(dir, 'out');
+      const args = ['--artifacts', join(dir, 'artifacts'), '--out', out, '--only', 'linux-x64'];
+      const r = run(['--version', '1.2.3', ...args]);
+      assert.equal(r.status, 0, r.stderr);
+      const pack = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
+        cwd: join(out, 'cli-linux-x64'),
+        encoding: 'utf8',
+        shell: process.platform === 'win32',
+      });
+      assert.equal(pack.status, 0, pack.stderr);
+      /** @type {{ files: { path: string }[] }[]} */
+      const [packed] = JSON.parse(pack.stdout);
+      assert.deepEqual(packed.files.map((f) => f.path).sort(), [
+        'LICENSE',
+        'README.md',
+        'bin/pxsig',
+        'package.json',
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+);
 
 test('--write-optional-deps pins every generated package at the version, sorted, keeping others', () => {
   const dir = artifacts(['linux-x64', 'win32-x64']);

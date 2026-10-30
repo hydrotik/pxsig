@@ -39,7 +39,8 @@
     "dist",
     "dashboard",
     "docs",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "prepack": "node ../../scripts/sync-dashboard-source.mjs",
