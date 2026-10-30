@@ -230,8 +230,8 @@ licence outside `deny.toml`'s `allow` list fails; adding one is a decision for t
   exit codes change only with a version bump and a migration path. Status codes are only ever
   added, never renamed.
 - **Safety rules are not negotiable.** Integrity repairs never write signatures and never approve.
-  Writing baselines in bulk needs a person at a terminal. Agents cannot approve without an explicit
-  instruction. A change that weakens one of these will not be merged.
+  Writing baselines in bulk needs a person at a terminal. Agents cannot approve: no MCP tool
+  approves, and bulk approval refuses under an assistant's marker. A change that weakens one of these will not be merged.
 
 ## Reporting issues
 

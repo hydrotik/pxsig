@@ -143,9 +143,22 @@ export interface HelpSetting {
 export interface HelpSource {
   global: HelpGlobal;
   commands: Record<string, HelpCommandEntry>;
+  /** The commands that need a person at a terminal, as they are written (`approve apply`). */
+  needsAPerson: string[];
   settings: Record<string, HelpSetting>;
   /** Topic name → its Markdown. */
   topics: Record<string, string>;
+}
+
+/** `pxsig help` alone and `pxsig --help` with --json (help.mjs helpIndex). */
+export interface HelpIndex {
+  kind: 'index';
+  name: string;
+  summary: string;
+  /** Every command, then its subcommands (`approve apply`). */
+  commands: { name: string; summary: string; usage: string[] }[];
+  needsAPerson: string[];
+  topics: string[];
 }
 
 /** What `lookup` returns. */

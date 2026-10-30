@@ -3,9 +3,9 @@
  * `browser`, `dashboard`, `help`.
  */
 import { spawn, spawnSync } from '../lib/spawn.mjs';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { helpBlocks, helpData, lookup, nearestNames } from '../help.mjs';
+import { helpBlocks, helpData, helpIndex, lookup, nearestNames } from '../help.mjs';
 import { takeLock } from '../lib/lock.mjs';
 import { migrateLegacy } from '../lib/setup.mjs';
 import { findWorkspace, openProject, rustBinary, serverUrlFor } from '../lib/workspace.mjs';
@@ -239,7 +239,7 @@ export function toolCommands(cli) {
     },
 
     help() {
-      // `pxsig help <name>` and `pxsig <command> [sub] --help`: one page. Alone: the header below.
+      // `pxsig help <name>` and `pxsig <command> [sub] --help`: one page. Alone: the index.
       const words = command === 'help' ? rest : flags.help ? positional : [];
       if (words.length) {
         // `pxsig list changed --help`: the word after a command is an argument, not a subcommand.
@@ -250,13 +250,8 @@ export function toolCommands(cli) {
           );
         return emit(format, helpBlocks(found, CMD), helpData(found));
       }
-      // cli.mjs opens with its header comment.
-      const doc = /** @type {RegExpMatchArray} */ (
-        readFileSync(new URL('../cli.mjs', import.meta.url), 'utf8').match(/\/\*\*([\s\S]*?)\*\//)
-      )[1]
-        .replace(/^ \* ?/gm, '')
-        .trim();
-      process.stdout.write(doc + '\n');
+      const index = helpIndex(CMD);
+      emit(format, index.blocks, index.data);
     },
   };
 }

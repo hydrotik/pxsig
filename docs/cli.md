@@ -86,7 +86,9 @@ Per-entry approval stays in the dashboard and the Storybook panel, where a perso
 
 ### `pxsig help [name]`
 
-Alone (or `pxsig --help`), the command list. With a name, one page:
+Alone (or `pxsig --help`), the index: every command and subcommand with its summary and usage,
+the commands that need a person, and the topics. `pxsig help topics` lists the topics with their
+titles. With a name, one page:
 
 - **a command or subcommand** (`pxsig help check`, `pxsig help approve apply`): usage, flags with
   their defaults and the setting or variable each overrides, exit codes, what it changes (reads
