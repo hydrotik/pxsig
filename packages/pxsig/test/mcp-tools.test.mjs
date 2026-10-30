@@ -18,6 +18,7 @@ import { test } from 'node:test';
 
 import { fixture, hasRust, rustBin } from './fixture.mjs';
 import { fakeStorybook, needs, serve, src } from './server-helpers.mjs';
+import { skipUnless } from './strict.mjs';
 
 /** @typedef {ReturnType<typeof fixture>} Fixture */
 /** @typedef {{ isError?: boolean, content: { type: string, text: string }[] }} ToolResult */
@@ -70,7 +71,7 @@ function mcp(f, t, url = 'http://127.0.0.1:1') {
   return { call, json };
 }
 
-const skip = !hasRust && 'Rust binary not built';
+const skip = skipUnless(hasRust, 'Rust binary not built');
 
 test(
   'pxsig_affected traces edited files to their entries, and needs files or since',

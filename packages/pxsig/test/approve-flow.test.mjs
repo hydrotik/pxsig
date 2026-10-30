@@ -23,11 +23,12 @@ import { lockPath } from '../src/lib/lock.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, hashTree, hasRust, png, rustBin, testEnv, testHome } from './fixture.mjs';
 import { serve, src } from './server-helpers.mjs';
+import { skipUnless } from './strict.mjs';
 
 /** @import { ManifestEntry } from '../src/types.js' */
 /** @typedef {ReturnType<typeof fixture>} Fixture */
 
-const skip = !hasRust && 'Rust binary not built';
+const skip = skipUnless(hasRust, 'Rust binary not built');
 const NO_SERVER = 'http://127.0.0.1:1';
 const REASON = 'the new palette, reviewed in the dashboard';
 // A render unlike the fixture's checkerboard: approving it changes the baseline's bytes.

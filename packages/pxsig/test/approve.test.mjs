@@ -118,7 +118,7 @@ test(
 
 test(
   'undo refuses a batch whose baseline was approved again later, until that batch is undone',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const P = openProject({ cwd: repo, env: { PXSIG_BIN: rustBin } });
     const id = 'components-alpha--default';
