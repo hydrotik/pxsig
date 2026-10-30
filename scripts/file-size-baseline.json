@@ -3,7 +3,6 @@
   "limit": 5000,
   "exempt": {},
   "files": {
-    "packages/dashboard/src/data.ts": 6196,
     "packages/dashboard/src/diff-viewer/DiffViewer.tsx": 7453,
     "packages/dashboard/src/ui/adapters/hydrotik/index.tsx": 5319,
     "packages/pxsig/src/approve.mjs": 8363,
