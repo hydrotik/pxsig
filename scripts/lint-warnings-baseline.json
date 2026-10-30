@@ -64,9 +64,20 @@
     "packages/pxsig/src/lib/spawn.mjs": {
       "typescript(no-unnecessary-type-assertion)": 1
     },
-    "packages/pxsig/src/mcp.mjs": {
-      "typescript(require-await)": 8,
+    "packages/pxsig/src/tools/context.mjs": {
       "unicorn(no-invalid-fetch-options)": 1
+    },
+    "packages/pxsig/src/tools/info.mjs": {
+      "typescript(require-await)": 2
+    },
+    "packages/pxsig/src/tools/inspect.mjs": {
+      "typescript(require-await)": 2
+    },
+    "packages/pxsig/src/tools/read.mjs": {
+      "typescript(require-await)": 3
+    },
+    "packages/pxsig/src/tools/staleness.mjs": {
+      "typescript(require-await)": 1
     },
     "packages/pxsig/test/cli.test.mjs": {
       "eslint(no-control-regex)": 1
