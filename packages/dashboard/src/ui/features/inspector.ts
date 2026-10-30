@@ -35,7 +35,7 @@ export const INSPECTOR: Feature[] = [
       'Button',
       'CopyValue',
     ],
-    files: ['inspector/Inspector', 'parts/StatusOf'],
+    files: ['inspector/Inspector', 'inspector/Header', 'inspector/controls', 'parts/StatusOf'],
     screens: [
       {
         scenario: 'changed',
@@ -87,7 +87,7 @@ export const INSPECTOR: Feature[] = [
       'Switch',
       'Kbd',
     ],
-    files: ['inspector/Inspector', 'inspector/Stage'],
+    files: ['inspector/Inspector', 'inspector/controls', 'inspector/Stage'],
     screens: [
       {
         scenario: 'changed',
@@ -121,7 +121,14 @@ export const INSPECTOR: Feature[] = [
       'inspector.artifacts',
     ],
     components: ['KeyValueList', 'KeyValueItem', 'Badge', 'StatusBadge', 'Button', 'Link', 'Icon'],
-    files: ['inspector/Inspector'],
+    files: [
+      'inspector/Inspector',
+      'inspector/side/PixelSection',
+      'inspector/side/ChangesSection',
+      'inspector/side/MetricsSection',
+      'inspector/side/A11ySection',
+      'inspector/side/FilesSection',
+    ],
     screens: [
       {
         scenario: 'changed',
@@ -151,7 +158,7 @@ export const INSPECTOR: Feature[] = [
       'CopyValue',
       'Button',
     ],
-    files: ['inspector/Inspector'],
+    files: ['inspector/Inspector', 'inspector/SessionSummary'],
     screens: [
       {
         scenario: 'changed',
@@ -174,7 +181,7 @@ export const INSPECTOR: Feature[] = [
     ],
     copy: ['app.embedEmpty', 'inspector.toggles.details'],
     components: ['Switch', 'IconButton', 'SegmentedChoice'],
-    files: ['App', 'inspector/Inspector'],
+    files: ['App', 'inspector/Inspector', 'inspector/controls', 'inspector/side/ViewSection'],
     screens: [
       {
         scenario: 'changed',
