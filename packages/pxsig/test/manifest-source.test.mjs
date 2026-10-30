@@ -57,7 +57,7 @@ test('manifestWarnings: a missing srcRoot, and stories none of which is under th
   const from = 'http://127.0.0.1:9/index.json';
   assert.deepEqual(manifestWarnings(P, [{ importPath: 'src/A/A.stories.tsx' }], from), []);
   assert.deepEqual(manifestWarnings(P, [], from), [], 'an empty index is reported elsewhere');
-  const away = /** @type {Project} */ ({ ...P, srcRoot: join(root, 'lib') });
+  const away = { ...P, srcRoot: join(root, 'lib') };
   assert.deepEqual(manifestWarnings(away, [{ importPath: '../other/B.stories.tsx' }], from), [
     'srcRoot lib does not exist (pxsig.config.json "srcRoot")',
     `none of the 1 stories in ${from} is under .: is it this project's Storybook? (storybook.url, storybook.configDir)`,
