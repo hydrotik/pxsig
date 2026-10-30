@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { knownFlags, parseArgs, unknownFlagLines, unknownFlags } from '../src/lib/args.mjs';
-import { testEnv, testHome } from './fixture.mjs';
+import { tempDir, testEnv, testHome } from './fixture.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, '..');
@@ -24,15 +24,45 @@ test('a misspelled flag is reported with the closest known one and the word it t
     { name: 'x', suggestion: null, took: null },
   ]);
   assert.deepEqual(unknownFlagLines([{ name: 'zzzz', suggestion: null, took: null }]), [
-    'pxsig: unknown flag --zzzz, ignored',
+    'pxsig: unknown flag --zzzz',
   ]);
 });
 
-test('an unknown flag is still parsed as before: a warning, not a change in what runs', () => {
+test('the parser keeps an unknown flag; the CLI refuses it before any command runs', () => {
   assert.deepEqual(parseArgs(['init', '--nmae', 'foo']), {
     positional: ['init'],
     flags: { nmae: 'foo' },
   });
+});
+
+test('an unknown flag exits 2 with the nearest known one, and nothing runs', () => {
+  const dir = tempDir('unknown-flag');
+  /** @param {string[]} args */
+  const run = (...args) =>
+    spawnSync(process.execPath, [join(pkg, 'bin', 'pxsig.mjs'), ...args], {
+      cwd: dir,
+      encoding: 'utf8',
+      env: { ...testEnv(testHome), PXSIG_WORKSPACE: dir, PXSIG_NO_DELEGATE: '1' },
+    });
+  const init = run('init', '--nmae', 'foo');
+  assert.equal(init.status, 2);
+  assert.equal(
+    init.stderr,
+    'pxsig: unknown flag --nmae (did you mean --name?); it took "foo" as its value\n'
+  );
+  assert.equal(init.stdout, '');
+  assert.equal(existsSync(join(dir, 'pxsig.config.json')), false, 'init did not run');
+  for (const args of [
+    ['status', '--ful'],
+    ['check', '--zzzz=1'],
+    ['--help', '--jsno'],
+  ]) {
+    const r = run(...args);
+    assert.equal(r.status, 2, args.join(' '));
+    assert.match(r.stderr, /^pxsig: unknown flag --/, args.join(' '));
+  }
+  // `cat` hands its flags to the engine, which checks them itself.
+  assert.doesNotMatch(run('cat', 'none.psig', '--image', 'x.png').stderr, /unknown flag/);
 });
 
 // The registry is the CLI's flags (test/help.test.mjs); the help a person reads names no other.
