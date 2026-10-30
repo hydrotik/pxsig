@@ -48,6 +48,7 @@ env:
 jobs:
   plan:
     name: Plan
+    timeout-minutes: 10
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
@@ -90,6 +91,7 @@ jobs:
 
   build:
     name: Build ${{ matrix.playwright }} ${{ matrix.arch }}
+    timeout-minutes: 60
     needs: plan
     strategy:
       fail-fast: false
@@ -186,6 +188,7 @@ jobs:
 
   manifest:
     name: Manifest ${{ matrix.playwright }}
+    timeout-minutes: 15
     needs: [plan, build]
     strategy:
       matrix:
@@ -237,6 +240,7 @@ jobs:
   # pushed or attested.
   pr:
     name: Build and smoke-test (no push)
+    timeout-minutes: 60
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -263,6 +267,7 @@ jobs:
   # Weekly: a Playwright release with no image for the latest pxsig. Reports; never builds.
   playwright-check:
     name: Newer Playwright
+    timeout-minutes: 60
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     steps:

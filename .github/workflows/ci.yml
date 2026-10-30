@@ -8,9 +8,10 @@ on:
 permissions:
   contents: read
 
-# A new push to a pull request cancels its older run; runs on main always finish.
+# A new push to a pull request cancels its older run. On main each commit has its own group, so a
+# run is never cancelled, nor left pending, by the next merge.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -44,32 +45,21 @@ jobs:
       # Files and paths only. The denylist of names never leaves the maintainer's machine: /scrub
       # checks it there after any work that read another repository (CONTRIBUTING.md).
       - run: node scripts/check-clean.mjs
-      # Its own rules, the product-shot exemption among them.
-      - run: node --test scripts/check-clean.test.mjs
-      # The published package.json files drop scripts and devDependencies (release.yml, pack job).
-      - run: node --test scripts/pack-manifest.test.mjs
       # Changelog fragments (changelog.d/README.md): well formed, and a pull request adds one instead
       # of editing CHANGELOG.md, which only a release/ branch changes.
       - run: node scripts/changelog.mjs check
-      - run: node --test scripts/changelog.test.mjs
-      # The release's raw binaries and SHA256SUMS (release.yml, pack job).
-      - run: node --test scripts/release-files.test.mjs
-      # The per-platform engine packages (names, os/cpu, layout, pxsig's optionalDependencies);
-      # the examples job installs one of them from its tarball (scripts/install-smoke.mjs).
-      - run: node --test scripts/make-platform-packages.test.mjs
-      # The Windows engine's runtime check (the check itself runs on the built .exe: rust job, release).
-      - run: node --test scripts/check-win-runtime.test.mjs
       # Cargo.toml, Cargo.lock and every package.json carry the same version (docs/releasing.md).
       - run: node scripts/check-versions.mjs
-      - run: node --test scripts/check-versions.test.mjs
       # Every relative link and #anchor in the tracked Markdown resolves.
       - run: node scripts/check-links.mjs
-      - run: node --test scripts/check-links.test.mjs
-      # The required checks a release tag needs (release.yml): the list matches this file's jobs.
-      - run: node --test scripts/required-checks.test.mjs
       # Source and test files: at most 5,000 tokens, and one already over may not grow
       # (scripts/file-size-baseline.json; the pre-commit hook checks the staged files).
-      - run: node scripts/check-file-size.mjs --all && node --test scripts/check-file-size.test.mjs
+      - run: node scripts/check-file-size.mjs --all
+      # Every script's own tests (scripts/*.test.mjs), found by name so a new one cannot be left
+      # out: the clean check's rules, the published package.json files, changelog fragments, the
+      # release files and platform packages, the Windows runtime check, versions, links, the
+      # required checks, file sizes, types, the pre-commit config and the research tools.
+      - run: node --test scripts/*.test.mjs
       - if: github.event_name == 'pull_request'
         run: git fetch --no-tags --depth=1 origin "$GITHUB_BASE_REF" && node scripts/changelog.mjs check --since FETCH_HEAD
       # The dashboard's UI contract: no design-system import outside the adapters; the manifest,
@@ -171,6 +161,8 @@ jobs:
       - run: pnpm --filter @pxsig/storybook-addon test
       # The scale benchmark's generator and verdicts (the benchmark itself runs nightly: bench.yml).
       - run: node --test scripts/bench/run.test.mjs
+      # The folder copy the release's pack job uses, on every OS (Windows paths among them).
+      - run: node --test scripts/copy-tree.test.mjs
       # tsc --noEmit: the dashboard, its test harness and both adapters (the reference adapter against
       # its committed design-system declarations, which must cover every name it imports).
       - run: pnpm typecheck

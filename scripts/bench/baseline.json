@@ -1,23 +1,23 @@
 {
-  "pxsig": "0.5.1",
-  "measuredAt": "2026-10-28T03:38:44.140Z",
-  "node": "v22.23.3",
+  "pxsig": "0.6.0",
+  "measuredAt": "2026-10-30T20:36:07.017Z",
+  "node": "v22.22.1",
   "runs": 5,
-  "note": "Times in ms, per OS (os.platform()). darwin: the first measured run, on the maintainer's Mac. linux: added from the first nightly run. Refreshed at each release (docs/releasing.md).",
+  "note": "Times in ms, per OS (os.platform()). linux: the nightly run's bench-results. darwin: run.mjs --out on the maintainer's Mac. Refreshed at each release (docs/releasing.md).",
   "times": {
     "darwin": {
-      "affected": 315,
-      "list": 37,
-      "doctor": 351,
-      "plan": 429,
-      "data": 69
+      "affected": 312,
+      "list": 46,
+      "doctor": 386,
+      "plan": 431,
+      "data": 104
     },
     "linux": {
-      "affected": 124,
-      "list": 58,
-      "doctor": 245,
-      "plan": 392,
-      "data": 111
+      "affected": 174,
+      "list": 86,
+      "doctor": 356,
+      "plan": 637,
+      "data": 203
     }
   }
 }
