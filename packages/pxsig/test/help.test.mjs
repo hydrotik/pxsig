@@ -57,6 +57,13 @@ const documentedFlags = () =>
 function readFlags() {
   const files = [
     'cli.mjs',
+    'cli/context.mjs',
+    'cli/doctor.mjs',
+    'cli/a11y-prune.mjs',
+    'cli/read.mjs',
+    'cli/check.mjs',
+    'cli/project.mjs',
+    'cli/tools.mjs',
     'check.mjs',
     'approve.mjs',
     'serve.mjs',
@@ -85,11 +92,13 @@ function readFlags() {
 }
 
 test('every command the CLI dispatches has an entry, and no other', () => {
-  // cli.mjs has the block (the test fails on a TypeError otherwise).
-  const block = /** @type {RegExpMatchArray} */ (
-    src('cli.mjs').match(/\nconst commands = \{\n([\s\S]*?)\n\};\n/)
-  )[1];
-  const names = [...block.matchAll(/^ {2}(?:async )?([a-z0-9]+)(?:\(\) \{|: )/gm)].map((m) => m[1]);
+  // The command groups in cli/ return the blocks cli.mjs spreads (a TypeError when one is missing).
+  const names = ['read', 'check', 'project', 'tools'].flatMap((g) => {
+    const block = /** @type {RegExpMatchArray} */ (
+      src(`cli/${g}.mjs`).match(/\n {2}return \{\n([\s\S]*?)\n {2}\};\n\}/)
+    )[1];
+    return [...block.matchAll(/^ {4}(?:async )?([a-z0-9]+)(?:\(\) \{|: )/gm)].map((m) => m[1]);
+  });
   assert.deepEqual(names.sort(), Object.keys(commands).sort());
 });
 
