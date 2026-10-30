@@ -27,7 +27,7 @@ change.
 
 ## Why
 
-- **Offline.** No account, no token, no upload. Renders and baselines stay on your machines.
+- **Offline.** No account, no sign-in, no upload. Renders and baselines stay on your machines.
 - **Reviewable.** Baselines are files in your repository. `git diff` shows who approved what (see
   [docs/monorepo.md](docs/monorepo.md#reviewing-psig-changes-in-git)).
 - **No drift unless approved.** A baseline changes only when a person approves it. Every approval

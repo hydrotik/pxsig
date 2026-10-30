@@ -31,6 +31,8 @@ test('the list, per OS', () => {
     /does not start/,
     'fc-list is Linux only'
   );
+  // The help topic ships in the package; docs/platforms.md does not.
+  assert.match(/** @type {string} */ (refused('cmd', 'win32')), /pxsig help platforms/);
 });
 
 test('never a shell or a system tool', () => {

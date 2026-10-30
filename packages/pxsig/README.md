@@ -40,13 +40,29 @@ Module exports:
 
 Peer dependencies: `playwright` 1.58 or later (the oldest version CI tests); `react` 19 or later, optional, needed only by
 `pxsig/diff-viewer` and `pxsig dashboard build`. The engine binary comes from a per-platform package
-`@pxsig/cli-<platform>-<arch>` once published; `PXSIG_BIN` points at another build.
+`@pxsig/cli-<platform>-<arch>`, installed with it; `PXSIG_BIN` points at another build.
+
+## First run
+
+The first `check --full` exits 1, because no entry has a baseline yet. Approve the first renders in
+the dashboard (press `A` in the inspector), or plan them in bulk with
+`npx pxsig approve plan --new --first-baselines --reason "first baselines"` and apply the plan with
+`npx pxsig approve apply` (a person at a terminal, with the server running). `pxsig help approvals`
+has the rest.
 
 ## Documentation
 
-<https://github.com/hydrotik/pxsig/tree/main/docs>: [CLI](../../docs/cli.md),
-[configuration](../../docs/configuration.md), [monorepos](../../docs/monorepo.md),
-[spec](../../docs/spec.md), [integrity](../../docs/integrity.md), [server](../../docs/server.md),
-[MCP](../../docs/mcp.md), [CI](../../docs/ci.md).
+Offline, in the package: `pxsig help` (every command), `pxsig help <command>`, and the topics
+`agents`, `approvals`, `catalog`, `ci`, `dashboard`, `exit-codes`, `platforms` and
+`troubleshooting`.
+
+Online: [CLI](https://github.com/hydrotik/pxsig/blob/main/docs/cli.md),
+[configuration](https://github.com/hydrotik/pxsig/blob/main/docs/configuration.md),
+[monorepos](https://github.com/hydrotik/pxsig/blob/main/docs/monorepo.md),
+[spec](https://github.com/hydrotik/pxsig/blob/main/docs/spec.md),
+[integrity](https://github.com/hydrotik/pxsig/blob/main/docs/integrity.md),
+[server](https://github.com/hydrotik/pxsig/blob/main/docs/server.md),
+[MCP](https://github.com/hydrotik/pxsig/blob/main/docs/mcp.md),
+[CI](https://github.com/hydrotik/pxsig/blob/main/docs/ci.md).
 
 MIT. Copyright (c) 2026 Hydrotik LLC.

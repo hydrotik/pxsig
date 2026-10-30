@@ -3,7 +3,7 @@
  * reads, an entry's state and brief, the pxsig server over HTTP, and the MCP text content item.
  * Used by the tool groups beside it, the MCP server (mcp.mjs) and the CLI.
  */
-import { statSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openProject } from '../lib/workspace.mjs';
@@ -63,13 +63,28 @@ function stateOf(row, review) {
 }
 const PROBLEMS = new Set(['changed', 'new', 'error', 'flaky', 'rejected']);
 
+/**
+ * No check report yet. The message is worded for MCP; `cli` is the same for the CLI, which uses it
+ * instead (cli/context.mjs `run`). Before a manifest exists, the first step is `pxsig manifest`.
+ * @param {ProjectContext} C
+ */
+function noReport(C) {
+  const at = `no report at ${relPath(C.root, C.checkPath)}`;
+  const first = existsSync(C.P.manifestPath())
+    ? null
+    : `no manifest yet: run \`pxsig manifest\`, then \`pxsig check --full\``;
+  return Object.assign(
+    new Error(
+      `${at}: ${first ? `${first}, in a terminal` : 'pxsig_check with all: true runs one'}`
+    ),
+    { cli: `${at}: ${first ?? 'run `pxsig check --full`'}` }
+  );
+}
+
 /** @param {ProjectContext} C */
 function load(C) {
   const check = /** @type {CheckReport | null} */ (readJson(C.checkPath, null));
-  if (!check)
-    throw new Error(
-      `no report at ${relPath(C.root, C.checkPath)}: run a check first (pxsig check, or the pxsig_check tool)`
-    );
+  if (!check) throw noReport(C);
   const review = /** @type {ReviewFile} */ (readJson(C.reviewPath, {}));
   const a11yReview = /** @type {ReviewFile} */ (
     readJson(join(dirname(C.reviewPath), 'a11y-review.json'), {})

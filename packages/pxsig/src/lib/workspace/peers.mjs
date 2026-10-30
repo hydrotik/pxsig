@@ -1,6 +1,6 @@
 /** What pxsig runs beside (workspace.mjs): the engine binary, peer packages, the server's address. */
 /** @import { PeerBase } from '../../types.js' */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -79,7 +79,35 @@ export function resolvePeer(P, name, env = process.env) {
       // try the next place
     }
   }
-  throw new SetupError(`cannot find "${name}": install it in the workspace (pnpm add -D ${name})`);
+  const pkg = name
+    .split('/')
+    .slice(0, name.startsWith('@') ? 2 : 1)
+    .join('/');
+  throw new SetupError(
+    `cannot find "${pkg}": install it in the workspace (${addCommand(bases, pkg)})`
+  );
+}
+
+/** Lockfile → the command that adds a dev dependency with that package manager. */
+const LOCKFILES = [
+  ['pnpm-lock.yaml', 'pnpm add -D'],
+  ['yarn.lock', 'yarn add -D'],
+  ['bun.lock', 'bun add -d'],
+  ['bun.lockb', 'bun add -d'],
+  ['package-lock.json', 'npm install -D'],
+];
+
+/**
+ * The command that adds `pkg` as a dev dependency, for the package manager whose lockfile is in the
+ * first of `dirs` that has one (a file check, nothing run); npm without a lockfile.
+ * @param {string[]} dirs
+ * @param {string} pkg
+ * @returns {string}
+ */
+export function addCommand(dirs, pkg) {
+  for (const dir of dirs)
+    for (const [file, cmd] of LOCKFILES) if (existsSync(join(dir, file))) return `${cmd} ${pkg}`;
+  return `npm install -D ${pkg}`;
 }
 
 /**

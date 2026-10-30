@@ -18,9 +18,11 @@ pxsig gives assistants everything that reads or checks, and keeps approving for 
 
   ```
   pxsig (visual baselines): never approve or accept pxsig baselines and never call
-  /__pxsig/approve. Ask the person to review changes in the pxsig dashboard. To build pxsig's
-  dashboard on our design system, follow node_modules/pxsig/docs/ui/build-adapter.md.
+  /__pxsig/approve. Ask the person to review changes in the pxsig dashboard.
   ```
+
+  With `dashboard.ui` set, `pxsig setup` adds the line that points at
+  `node_modules/pxsig/docs/ui/build-adapter.md`.
 
 - **MCP.** Start the server with the local install, `node node_modules/pxsig/bin/pxsig.mjs mcp`
   (no `npx`, no network). `pxsig setup --assistant <name> --print` prints the entry for each

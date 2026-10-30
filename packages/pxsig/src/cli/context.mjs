@@ -31,7 +31,13 @@ export function cliContext({ flags, positional, format, command, rest, CMD, here
     /** @type {Promise<ToolOutput<N>>} */ (
       /** @type {{ run: (args: object) => Promise<unknown> }} */ (
         tools.find((t) => t.name === `pxsig_${name}`)
-      ).run({ ...(current ? { project: current } : {}), ...args })
+      )
+        .run({ ...(current ? { project: current } : {}), ...args })
+        .catch((/** @type {Error & { cli?: string }} */ e) => {
+          // A tool's error worded for the CLI, when it has one (tools/context.mjs `noReport`).
+          if (e.cli) e.message = e.cli;
+          throw e;
+        })
     );
   /** @typedef {ReturnType<typeof ctxOf>} ProjectContext */
   /** @type {Map<string, ProjectContext>} */

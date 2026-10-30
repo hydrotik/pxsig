@@ -32,7 +32,7 @@ export function refused(program, platform = process.platform) {
   if (program === process.execPath) return null;
   if (/^pxsig(\.exe)?$/i.test(program.split(/[\\/]/).pop() ?? '')) return null; // the engine binary
   if ((BY_OS[platform] ?? ['git']).includes(program)) return null;
-  return `pxsig does not start "${program}" on ${platform} (see "Programs pxsig starts" in docs/platforms.md)`;
+  return `pxsig does not start "${program}" on ${platform} (see "Programs pxsig starts" in \`pxsig help platforms\`)`;
 }
 
 /**
@@ -61,7 +61,7 @@ function check(program, args, opts = {}) {
 function explain(program, e) {
   const code = /** @type {NodeJS.ErrnoException | null | undefined} */ (e)?.code;
   if (e && code && ['EACCES', 'EPERM'].includes(code))
-    e.message = `${program} could not start (${code}): it may be blocked on this machine. What pxsig starts and why: "Programs pxsig starts" in docs/platforms.md`;
+    e.message = `${program} could not start (${code}): it may be blocked on this machine. What pxsig starts and why: "Programs pxsig starts" in \`pxsig help platforms\``;
   return e;
 }
 

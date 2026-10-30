@@ -12,6 +12,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { tokenFile } from '../src/lib/guard.mjs';
 import {
+  displayPath,
   machineDir,
   readSettings,
   settingsPath,
@@ -113,4 +114,50 @@ test("pxsig doctor names this machine's settings and token folder", () => {
   assert.ok(out.machine.settings.endsWith('settings.json'));
   assert.ok(out.machine.tokens.length > 0);
   assert.ok(!existsSync(join(cfg, 'pxsig')), 'doctor only reads');
+});
+
+test('doctor prints machine paths home-relative, so pasted output carries no user name', () => {
+  const mac = { platform: 'darwin', home: '/Users/a', env: {} };
+  assert.equal(
+    displayPath(`${mac.home}/Library/Application Support/pxsig/settings.json`, mac),
+    '~/Library/Application Support/pxsig/settings.json'
+  );
+  assert.equal(displayPath(`${mac.home}b/x`, mac), `${mac.home}b/x`, 'only the home folder itself');
+  assert.equal(
+    displayPath('/srv/repo/node_modules/.cache/pxsig', mac),
+    '/srv/repo/node_modules/.cache/pxsig'
+  );
+  const win = {
+    platform: 'win32',
+    home: 'C:\\Users\\a',
+    env: { LOCALAPPDATA: 'C:\\Users\\a\\AppData\\Local' },
+  };
+  assert.equal(
+    displayPath('c:\\users\\a\\AppData\\Local\\pxsig\\settings.json', win),
+    '%LOCALAPPDATA%\\pxsig\\settings.json'
+  );
+  assert.equal(displayPath('C:\\Users\\a\\repo\\x', win), '%USERPROFILE%\\repo\\x');
+
+  const f = fixture();
+  const cli = join(dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'pxsig.mjs');
+  const cfg = tmp();
+  const r = spawnSync(process.execPath, [cli, 'doctor', '--offline', '--plain'], {
+    cwd: f.repo,
+    encoding: 'utf8',
+    env: {
+      ...testEnv(testHome),
+      PXSIG_WORKSPACE: '',
+      PXSIG_NO_DELEGATE: '1',
+      XDG_CONFIG_HOME: join(cfg, '.config'),
+      LOCALAPPDATA: join(cfg, 'AppData', 'Local'),
+      HOME: cfg,
+      USERPROFILE: cfg,
+    },
+  });
+  assert.match(
+    r.stdout,
+    /Settings.*(~|%LOCALAPPDATA%).*settings\.json \(not used in this version\)/
+  );
+  assert.match(r.stdout, /Approval guard files/);
+  assert.ok(!r.stdout.includes(join(cfg, 'Library')), 'no absolute home path');
 });

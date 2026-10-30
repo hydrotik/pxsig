@@ -76,12 +76,12 @@ cargo fmt --all
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
-The rules and the format are the same as the hydrotik monorepo's. oxfmt leaves alone the files a
-tool reads or compares by their text: the UI contract (`contract.ts`, `tokens.ts`, parsed and
-hashed by `pnpm ui:lock`), the generated UI docs and manifest, and `docs/agents.md`, whose recipes
-must match what `pxsig setup` writes word for word. After fixing warnings, lower the baseline in
-its own commit: `node scripts/check-lint-warnings.mjs --update`. A warning that is right to keep
-gets an inline `oxlint-disable-next-line <rule> -- <reason>`, not a higher baseline.
+oxfmt leaves alone the files a tool reads or compares by their text: the UI contract (`contract.ts`,
+`tokens.ts`, parsed and hashed by `pnpm ui:lock`), the generated UI docs and manifest, and
+`docs/agents.md`, whose recipes must match what `pxsig setup` writes word for word. After fixing
+warnings, lower the baseline in its own commit: `node scripts/check-lint-warnings.mjs --update`. A
+warning that is right to keep gets an inline `oxlint-disable-next-line <rule> -- <reason>`, not a
+higher baseline.
 
 `pnpm install` sets up the git hooks (husky): the pre-commit hook lints and formats the staged files, and the
 commit-msg hook checks the subject against `commitlint.config.cjs`: `<type>(<scope>): <subject>`,
@@ -97,7 +97,7 @@ job runs `--all`. When a change would grow a file over the limit, keep the file 
 first move one self-contained part out in its own commit; the hook's message gives the steps. After
 a file shrinks, lower the baseline in its own commit: `node scripts/check-file-size.mjs --update`
 (it never raises an entry). A generated or vendored file goes in the baseline's `exempt` map with
-its reason, in its own commit. The script is the same file in pxsig and hydrotik.
+its reason, in its own commit.
 
 ## What never goes into this repository
 

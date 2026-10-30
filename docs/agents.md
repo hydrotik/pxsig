@@ -93,8 +93,14 @@ file when there is none):
 
 ```
 pxsig (visual baselines): never approve or accept pxsig baselines and never call
-/__pxsig/approve. Ask the person to review changes in the pxsig dashboard. To build pxsig's
-dashboard on our design system, follow node_modules/pxsig/docs/ui/build-adapter.md.
+/__pxsig/approve. Ask the person to review changes in the pxsig dashboard.
+```
+
+When a project's `pxsig.config.json` names a UI adapter (`dashboard.ui`), `pxsig setup` adds:
+
+```
+To build pxsig's dashboard on our design system, follow
+node_modules/pxsig/docs/ui/build-adapter.md.
 ```
 
 ## Recipes

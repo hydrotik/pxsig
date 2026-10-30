@@ -15,8 +15,12 @@
 
 /** The instruction for the assistant (decision 80), word for word in the docs and `pxsig help agents`. */
 export const SNIPPET = `pxsig (visual baselines): never approve or accept pxsig baselines and never call
-/__pxsig/approve. Ask the person to review changes in the pxsig dashboard. To build pxsig's
-dashboard on our design system, follow node_modules/pxsig/docs/ui/build-adapter.md.
+/__pxsig/approve. Ask the person to review changes in the pxsig dashboard.
+`;
+
+/** Added to the instruction only when a project's config names a UI adapter (`dashboard.ui`). */
+export const ADAPTER_SNIPPET = `To build pxsig's dashboard on our design system, follow
+node_modules/pxsig/docs/ui/build-adapter.md.
 `;
 
 /** The script every recipe runs, relative to the repository. */

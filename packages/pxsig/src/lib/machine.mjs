@@ -40,6 +40,37 @@ export function machineDir({
   return join(env.XDG_CONFIG_HOME || join(home, '.config'), 'pxsig');
 }
 
+/**
+ * `path` as `pxsig doctor` prints it: under `%LOCALAPPDATA%` (Windows) or the home folder (`~`,
+ * `%USERPROFILE%` on Windows), so pasted output carries no user name. `--json` keeps the absolute
+ * path.
+ * @param {string} path
+ * @param {MachineOptions} [opts]
+ * @returns {string}
+ */
+export function displayPath(
+  path,
+  { platform = process.platform, env = process.env, home = homedir() } = {}
+) {
+  const win = platform === 'win32';
+  /** @type {[string | undefined, string][]} */
+  const bases = win
+    ? [
+        [env.LOCALAPPDATA, '%LOCALAPPDATA%'],
+        [home, '%USERPROFILE%'],
+      ]
+    : [[home, '~']];
+  for (const [base, name] of bases) {
+    const b = base?.replace(/[\\/]+$/, '');
+    if (!b) continue;
+    const head = path.slice(0, b.length);
+    const same = win ? head.toLowerCase() === b.toLowerCase() : head === b;
+    if (same && (path.length === b.length || /[\\/]/.test(path[b.length])))
+      return name + path.slice(b.length);
+  }
+  return path;
+}
+
 /** @param {MachineOptions} [opts] */
 export const settingsPath = (opts) => join(machineDir(opts), 'settings.json');
 
