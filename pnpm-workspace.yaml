@@ -2,3 +2,9 @@ packages:
   - packages/pxsig
   - packages/storybook-addon
   - packages/dashboard
+
+# Dependency build scripts: pnpm 10 runs none unless a package is in onlyBuiltDependencies, and
+# none is. esbuild's postinstall only verifies the binary its optional @esbuild/<platform> package
+# already provides, so it stays off; listing it here records that instead of an install warning.
+ignoredBuiltDependencies:
+  - esbuild
