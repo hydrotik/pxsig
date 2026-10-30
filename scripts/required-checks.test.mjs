@@ -68,11 +68,11 @@ test('a missing, failed or running check is named; the latest re-run counts', ()
   runs.push(run('Clean repository', 'failure'));
   runs.push(run('Rust (ubuntu-latest)', 'failure', '2026-10-28T09:00:00Z'));
   runs.push(run('Rust (ubuntu-latest)', 'success', '2026-10-28T11:00:00Z'));
-  runs.push(run('Rust (macos-14)', null, '2026-10-28T11:00:00Z', 'in_progress'));
+  runs.push(run('Rust (macos-latest)', null, '2026-10-28T11:00:00Z', 'in_progress'));
   runs.push(run('Node (windows-latest)', 'failure', '2026-10-28T12:00:00Z'));
   assert.deepEqual(missingChecks(checkRuns({ check_runs: runs })), [
     'Clean repository: failure',
-    'Rust (macos-14): in_progress',
+    'Rust (macos-latest): in_progress',
     'Rust (windows-latest): no run on this commit',
     'Node (windows-latest): failure',
   ]);

@@ -56,13 +56,13 @@ changes first), with the entries already under Unreleased ahead of the fragments
 3. **build**: `cargo build --release --locked --target <target> -p pxsig-cli` for each platform,
    uploaded as the artifact `pxsig-<platform>-<arch>`:
 
-   | Package suffix | Runner             | Rust target                 |
-   | -------------- | ------------------ | --------------------------- |
-   | darwin-arm64   | `macos-14`         | `aarch64-apple-darwin`      |
-   | darwin-x64     | `macos-14` (cross) | `x86_64-apple-darwin`       |
-   | linux-x64      | `ubuntu-latest`    | `x86_64-unknown-linux-gnu`  |
-   | linux-arm64    | `ubuntu-24.04-arm` | `aarch64-unknown-linux-gnu` |
-   | win32-x64      | `windows-latest`   | `x86_64-pc-windows-msvc`    |
+   | Package suffix | Runner                 | Rust target                 |
+   | -------------- | ---------------------- | --------------------------- |
+   | darwin-arm64   | `macos-latest`         | `aarch64-apple-darwin`      |
+   | darwin-x64     | `macos-latest` (cross) | `x86_64-apple-darwin`       |
+   | linux-x64      | `ubuntu-latest`        | `x86_64-unknown-linux-gnu`  |
+   | linux-arm64    | `ubuntu-24.04-arm`     | `aarch64-unknown-linux-gnu` |
+   | win32-x64      | `windows-latest`       | `x86_64-pc-windows-msvc`    |
 
 4. **dashboard**: produces `packages/pxsig/dist/dashboard/` (see below).
 5. **sbom-rust**: a CycloneDX SBOM of the engine's crates (`cargo-cyclonedx`, pinned, from
