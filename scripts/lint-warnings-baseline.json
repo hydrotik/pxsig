@@ -55,7 +55,7 @@
     "packages/pxsig/src/cli.mjs": {
       "typescript(require-await)": 1
     },
-    "packages/pxsig/src/lib/approvals.mjs": {
+    "packages/pxsig/src/lib/approvals/history.mjs": {
       "unicorn(prefer-string-starts-ends-with)": 1
     },
     "packages/pxsig/src/lib/capture.mjs": {
