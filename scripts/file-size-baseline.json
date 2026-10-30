@@ -19,7 +19,6 @@
     "packages/pxsig/src/lib/env.mjs": 5396,
     "packages/pxsig/src/lib/integrity.mjs": 13557,
     "packages/pxsig/src/lib/repair.mjs": 10849,
-    "packages/pxsig/src/lib/setup.mjs": 5138,
     "packages/pxsig/src/mcp.mjs": 15103,
     "packages/pxsig/src/serve.mjs": 18751,
     "packages/pxsig/src/types.d.ts": 6119
