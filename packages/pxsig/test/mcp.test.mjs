@@ -140,6 +140,7 @@ test('tools/list exposes every tool with a JSON schema and no handler', async ()
     'pxsig_entry',
     'pxsig_a11y',
     'pxsig_affected',
+    'pxsig_stale',
     'pxsig_check',
     'pxsig_review',
     'pxsig_history',

@@ -5,14 +5,14 @@ use crate::io;
 use serde_json::json;
 use std::path::PathBuf;
 
-fn scratch(name: &str) -> PathBuf {
+pub(super) fn scratch(name: &str) -> PathBuf {
     let d = std::env::temp_dir().join(format!("pxsig-batch-{}-{name}", std::process::id()));
     let _ = fs::remove_dir_all(&d);
     fs::create_dir_all(d.join("png")).unwrap();
     d
 }
 
-fn write_png(path: &Path, shade: u8) {
+pub(super) fn write_png(path: &Path, shade: u8) {
     let px: Vec<u8> = (0..32 * 32)
         .flat_map(|i| [shade, (i % 251) as u8, 40, 255])
         .collect();
