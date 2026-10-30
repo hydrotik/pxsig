@@ -25,7 +25,7 @@
     "README.md"
   ],
   "peerDependencies": {
-    "storybook": ">=9"
+    "storybook": ">=10"
   },
   "scripts": {
     "test": "node --test test/*.test.mjs"

@@ -30,7 +30,7 @@ addons: [{ name: '@pxsig/storybook-addon', options: { server: 'http://127.0.0.1:
 | `server`   | The pxsig server's URL. Only needed when the server is not found on its own.                    |
 | `snapshot` | `false`: `storybook build` writes no `pxsig-snapshot.json` ([below](#on-a-deployed-storybook)). |
 
-The addon needs Storybook 9 or later (the examples in this repository use Storybook 10). Its
+The addon needs Storybook 10 or later (the examples in this repository test with 10). Its
 manager code imports `storybook/manager-api` and `storybook/internal/components` from your
 Storybook install.
 

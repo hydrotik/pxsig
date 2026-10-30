@@ -30,7 +30,7 @@ npx pxsig doctor            # what the check does not cover
 
 Module exports: `pxsig/workspace` (the resolver) and `pxsig/psig` (read `.psig` headers and images).
 
-Peer dependency: `playwright` 1.40 or later. The engine binary comes from a per-platform package
+Peer dependency: `playwright` 1.58 or later (the oldest version CI tests). The engine binary comes from a per-platform package
 `@pxsig/cli-<platform>-<arch>` once published; `PXSIG_BIN` points at another build.
 
 ## Documentation
