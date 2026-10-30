@@ -141,13 +141,19 @@ jobs:
       # capture helpers) skip without one, and a skip is not a pass.
       # System libraries are a Linux concern; macOS and Windows runners need only the browser.
       - run: pnpm --filter pxsig exec playwright install ${{ runner.os == 'Linux' && '--with-deps' || '' }} chromium
+      # PXSIG_TEST_STRICT: a test that would skip for a missing engine, browser or git fails instead.
+      # The only skips left are the per-OS ones listed in packages/pxsig/test/strict.mjs.
       - if: runner.os != 'Linux'
         run: pnpm --filter pxsig test
+        env:
+          PXSIG_TEST_STRICT: '1'
       # On Linux, the same suite with coverage floors (packages/pxsig/package.json, test:coverage),
       # and the table in the job summary. It counts code run in the test process only: a CLI or
       # server a test starts is a subprocess and is not counted, so the figure understates.
       - if: runner.os == 'Linux'
         shell: bash
+        env:
+          PXSIG_TEST_STRICT: '1'
         run: |
           status=0
           pnpm --filter pxsig run test:coverage | tee coverage.txt || status=$?
@@ -170,6 +176,8 @@ jobs:
       # The diff-viewer primitives in a browser (keyboard, ARIA, controlled state), and the
       # dashboard's review and repair flows against a mocked server.
       - run: pnpm --filter @pxsig/dashboard test
+        env:
+          PXSIG_TEST_STRICT: '1'
       # The pxsig suite again on Node 24, the container image's Node (engines: >=22.18). Linux
       # only, and last: every step after this setup-node runs on 24.
       - if: matrix.os == 'ubuntu-latest'
@@ -178,6 +186,8 @@ jobs:
           node-version: 24
       - if: matrix.os == 'ubuntu-latest'
         run: node --version && pnpm --filter pxsig test
+        env:
+          PXSIG_TEST_STRICT: '1'
 
   examples:
     name: Examples (end to end) (${{ matrix.os }})

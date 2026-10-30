@@ -11,13 +11,14 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { hasImage, readHeader, readImage, readSection } from '../src/lib/psig.mjs';
 import { CHECKER, hasRust, rustBin, tempDir } from './fixture.mjs';
+import { skipUnless } from './strict.mjs';
 
 /** @param {Buffer} b */
 const sha256 = (b) => createHash('sha256').update(b).digest('hex');
 
 test(
   'a .psig the engine writes reads the same in JS: header, section table, signature and image',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   (t) => {
     const dir = tempDir('psig', t);
     const png = join(dir, 'render.png');

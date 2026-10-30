@@ -23,6 +23,7 @@ import {
 } from '../src/lib/prune.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
+import { skipUnless } from './strict.mjs';
 
 /** @import { AddressInfo } from 'node:net' */
 /** @import { CheckRow } from '../src/types.js' */
@@ -341,7 +342,7 @@ const cli = (f, args, env = {}) => {
 
 test(
   "the dry run is anyone's and exits 0; pruning refuses piped, in CI and under an assistant, writing nothing",
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const { f } = project();
     const before = readFileSync(join(f.px, 'a11y.json'), 'utf8');
@@ -443,7 +444,7 @@ async function serve(f) {
 
 test(
   "the server's route takes the CLI's token only, refuses a stale plan, writes and tells the dashboard",
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const { f, plan } = project();
     const S = await serve(f);

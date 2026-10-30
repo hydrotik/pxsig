@@ -1,7 +1,8 @@
 /**
  * flows-helpers.mjs — what the flows tests share: `setupFlows()` builds the dashboard with the plain
  * example adapter, serves it over HTTP and launches Chromium before a file's tests (and cleans up
- * after), and `open()` opens a page on the mocked server.
+ * after), and `open()` opens a page on the mocked server. `noChromium()` is the skip when Chromium
+ * does not launch.
  */
 import { createReadStream, existsSync, mkdtempSync, rmSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -10,6 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, before } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { load } from '../../pxsig/src/dashboard-check/capture.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dashboard = path.dirname(here);
@@ -22,6 +24,16 @@ let out = null;
 let server = null;
 export let base = null;
 
+/**
+ * The skip reason when Chromium does not launch. CI sets PXSIG_TEST_STRICT=1 (ci.yml, the `node`
+ * job), and there the launch error is thrown instead: a broken browser install fails, not skips.
+ * @param {unknown} e the launch error
+ */
+export function noChromium(e) {
+  if (process.env.PXSIG_TEST_STRICT === '1') throw e;
+  return `no Chromium (${String(/** @type {Error} */ (e).message).split('\n')[0]})`;
+}
+
 /** Builds, serves and launches before the calling file's tests; closes and removes them after. */
 export function setupFlows() {
   before(async () => {
@@ -31,7 +43,7 @@ export function setupFlows() {
         process.env.PXSIG_CHROMIUM ? { executablePath: process.env.PXSIG_CHROMIUM } : {}
       );
     } catch (e) {
-      skip = `no Chromium (${String(e.message).split('\n')[0]})`;
+      skip = noChromium(e);
       return;
     }
     const { build } = await import('vite');
@@ -114,6 +126,7 @@ export async function open(
     return route.fulfill({ status: 404, json: { error: 'not found' } });
   });
   await page.route('**/p/demo/**', (route) => route.fulfill({ status: 404, body: '' }));
-  await page.goto(`${base}/report/${hash}`);
+  // One retry on Windows' ERR_NO_BUFFER_SPACE, as `pxsig dashboard check` does.
+  await load(page, `${base}/report/${hash}`);
   return { page, posts, errors };
 }

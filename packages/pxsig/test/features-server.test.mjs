@@ -12,56 +12,64 @@ import { acquireLock, lockPath, readLock } from '../src/lib/lock.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin, testEnv, testHome } from './fixture.mjs';
 import { src, env, tree, node, cli, twoProjects } from './features-helpers.mjs';
+import { skipUnless } from './strict.mjs';
 /** @import { LockState, Project } from '../src/types.js' */
 /** @import { AddressInfo } from 'node:net' */
 
 // --- the store lock ------------------------------------------------------------------------------------------
 
-test('store lock: one holder; a dead holder is stale and taken over', () => {
-  const root = tree({
-    'pxsig.config.json': {},
-    '.pxsig/manifest.json': {
-      version: 2,
-      stories: [{ id: 'a--b', sig: '.pxsig/baselines/a--b.psig' }],
-    },
-  });
-  const P = openProject({ cwd: root, env });
-  const l = acquireLock(P, { holder: 'test' });
-  // Taken just above.
-  assert.equal(/** @type {LockState} */ (readLock(P)).pid, process.pid);
-  l.release();
-  assert.equal(readLock(P), null);
-  // A live process holds it: refused, naming the holder.
-  const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 20000)']);
-  writeFileSync(
-    lockPath(P),
-    JSON.stringify({
-      pid: child.pid,
-      startedAt: new Date(Date.now() + 5000).toISOString(),
-      holder: 'check',
-      command: 'pxsig check --full',
-    })
-  );
-  try {
-    assert.throws(() => acquireLock(P, { holder: 'test' }), /pxsig check --full.*holds the store/);
-    const r = node([join(src, 'check.mjs'), '--changed', 'x.ts'], root);
-    assert.equal(r.status, 2);
-    assert.match(r.stderr, /holds the store/);
-  } finally {
-    child.kill();
+test(
+  'store lock: one holder; a dead holder is stale and taken over',
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
+  () => {
+    const root = tree({
+      'pxsig.config.json': {},
+      '.pxsig/manifest.json': {
+        version: 2,
+        stories: [{ id: 'a--b', sig: '.pxsig/baselines/a--b.psig' }],
+      },
+    });
+    const P = openProject({ cwd: root, env });
+    const l = acquireLock(P, { holder: 'test' });
+    // Taken just above.
+    assert.equal(/** @type {LockState} */ (readLock(P)).pid, process.pid);
+    l.release();
+    assert.equal(readLock(P), null);
+    // A live process holds it: refused, naming the holder.
+    const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 20000)']);
+    writeFileSync(
+      lockPath(P),
+      JSON.stringify({
+        pid: child.pid,
+        startedAt: new Date(Date.now() + 5000).toISOString(),
+        holder: 'check',
+        command: 'pxsig check --full',
+      })
+    );
+    try {
+      assert.throws(
+        () => acquireLock(P, { holder: 'test' }),
+        /pxsig check --full.*holds the store/
+      );
+      const r = node([join(src, 'check.mjs'), '--changed', 'x.ts'], root);
+      assert.equal(r.status, 2);
+      assert.match(r.stderr, /holds the store/);
+    } finally {
+      child.kill();
+    }
+    // Gone: stale, taken over.
+    writeFileSync(
+      lockPath(P),
+      JSON.stringify({ pid: 2 ** 22 + 12345, startedAt: new Date().toISOString(), holder: 'check' })
+    );
+    assert.equal(/** @type {LockState} */ (readLock(P)).stale, true);
+    acquireLock(P, { holder: 'test' }).release();
   }
-  // Gone: stale, taken over.
-  writeFileSync(
-    lockPath(P),
-    JSON.stringify({ pid: 2 ** 22 + 12345, startedAt: new Date().toISOString(), holder: 'check' })
-  );
-  assert.equal(/** @type {LockState} */ (readLock(P)).stale, true);
-  acquireLock(P, { holder: 'test' }).release();
-});
+);
 
 test(
   'a full check against a project the server holds goes through its queue',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const ids = [f.ids.ok, f.ids.drift];
@@ -126,7 +134,7 @@ test(
 
 test(
   'the server: a story two projects share is answered for the project asked about',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     /** @param {string} name */
     const proj = (name) => ({
@@ -230,7 +238,7 @@ test('write commands refuse without a project; report errors exit 2', () => {
 
 test(
   'check --changed records unaffected entries with a baseline as skipped-unaffected, not never-checked',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const r = node([join(src, 'check.mjs'), '--changed', 'src/elsewhere/Unrelated.ts'], f.repo);

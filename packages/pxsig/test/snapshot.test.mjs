@@ -12,6 +12,7 @@ import { record } from '../src/lib/approvals.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { buildSnapshot, envSummary, SNAPSHOT_FORMAT } from '../src/snapshot.mjs';
 import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
+import { skipUnless } from './strict.mjs';
 
 /** @import { ManifestEntry } from '../src/types.js' */
 /**
@@ -70,7 +71,7 @@ const tmp = (prefix) => {
 };
 /** @param {string} repo */
 const open = (repo) => openProject({ cwd: repo, env: { PXSIG_BIN: rustBin } });
-const skip = { skip: !hasRust && 'Rust binary not built' };
+const skip = { skip: skipUnless(hasRust, 'Rust binary not built') };
 
 /** The fixture as a git repository on `main`, every entry logged as a first baseline. */
 function repoFixture() {

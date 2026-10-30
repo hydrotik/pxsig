@@ -10,6 +10,7 @@ import { record } from '../src/lib/approvals.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 import { src } from './enforcement-helpers.mjs';
+import { skipUnless } from './strict.mjs';
 
 /** @import { ManifestEntry } from '../src/types.js' */
 
@@ -84,7 +85,7 @@ function repoFixture({ log = true, enforcement } = {}) {
 
 test(
   'approve verify under warn: only untracked baselines are warned; a mismatch still fails',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const f = repoFixture({ log: false, enforcement: { gates: { verify: 'warn' } } });
     let r = f.cli(['approve', 'verify']);
@@ -131,7 +132,7 @@ test(
 
 test(
   '--warn needs a person at a terminal: piped, it exits 3 and runs nothing',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const f = repoFixture();
     const r = f.cli(['approve', 'verify', '--warn']);
@@ -144,7 +145,7 @@ test(
 
 test(
   'no enforcement key: the gated commands print what they did before, byte for byte',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const f = repoFixture({ log: false });
     for (const args of [['approve', 'verify'], ['stale'], ['doctor', '--offline'], ['config']]) {
@@ -162,7 +163,7 @@ test(
 
 test(
   'doctor and stale under warn exit advisoryExit and say so; doctor lists the setup code',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {
     const f = repoFixture({
       enforcement: {

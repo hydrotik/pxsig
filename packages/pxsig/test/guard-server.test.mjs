@@ -15,6 +15,7 @@ import { test } from 'node:test';
 import { NEEDS_LINK_CODE, NEEDS_PERSON, readToken, tokenFile } from '../src/lib/guard.mjs';
 import { fixture, hasRust, rustBin, testEnv, testHome } from './fixture.mjs';
 import { src, raw, dashboardCookie, serve } from './guard-helpers.mjs';
+import { skipUnless } from './strict.mjs';
 /** @import { CheckRow, ManifestEntry } from '../src/types.js' */
 /** @import { ToolResult } from './guard-helpers.mjs' */
 
@@ -22,7 +23,7 @@ import { src, raw, dashboardCookie, serve } from './guard-helpers.mjs';
 
 test(
   'the server refuses decisions an agent posts (no token), from another site, or through another host; the dashboard gets through',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const id = f.ids.changed;
@@ -308,7 +309,7 @@ test(
 
 test(
   "the MCP server's pxsig_review rejects through the server, logged as via: mcp; it cannot clear a person's accept",
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const id = f.ids.a11y;

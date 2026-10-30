@@ -9,6 +9,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readToken } from '../src/lib/guard.mjs';
 import { hasRust, rustBin } from './fixture.mjs';
+import { skipUnless } from './strict.mjs';
 
 /** @import { IndexStory } from '../src/types.js' */
 /** @typedef {ReturnType<typeof import('./fixture.mjs').fixture>} Fixture */
@@ -35,7 +36,8 @@ try {
 } catch {
   chromium = null;
 }
-export const needs = !hasRust ? 'Rust binary not built' : !chromium ? 'no Chromium' : false;
+export const needs =
+  skipUnless(hasRust, 'Rust binary not built') || skipUnless(chromium, 'no Chromium');
 
 /** @returns {Promise<number>} */
 export const freePort = () =>

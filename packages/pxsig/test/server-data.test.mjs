@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fixture, hasRust } from './fixture.mjs';
 import { serve } from './server-helpers.mjs';
+import { skipUnless } from './strict.mjs';
 
 /**
  * The keys of the answer these tests read (src/report.mjs buildData).
@@ -36,7 +37,7 @@ const data = async (base, query = '') => {
 
 test(
   "GET /__pxsig/data answers the project's report, its links and its signatures, read on each request",
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const S = await serve(f);
@@ -88,7 +89,7 @@ test(
 
 test(
   'GET /__pxsig/data for an unknown or path-like project is a 404 naming the projects',
-  { skip: !hasRust && 'Rust binary not built' },
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
     const S = await serve(f);

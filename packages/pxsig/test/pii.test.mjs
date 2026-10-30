@@ -20,6 +20,7 @@ import { collectEnv } from '../src/lib/env.mjs';
 import { readToken } from '../src/lib/guard.mjs';
 import { openProject, PXSIG_VERSION, satisfies } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
+import { skipUnless } from './strict.mjs';
 /** @import { IncomingHttpHeaders } from 'node:http' */
 /** @import { AddressInfo } from 'node:net' */
 /** @import { EnvBrowser, ManifestEntry, PsigHeader } from '../src/types.js' */
@@ -59,7 +60,7 @@ const setConfig = (f, patch) => {
 
 test(
   'approval lines: no `by` unless approvals.identity asks for it; the pxsig version always',
-  { skip: !git && 'no git' },
+  { skip: skipUnless(git, 'no git') },
   () => {
     const f = gitFixture();
     // The fixture's manifest lists ids.ok.
@@ -187,7 +188,7 @@ function committed(f) {
 
 test(
   'nothing a repository commits names the person, the user or the machine',
-  { skip: (!hasRust || !git) && 'needs the Rust binary and git' },
+  { skip: skipUnless(hasRust && git, 'needs the Rust binary and git') },
   async () => {
     const f = gitFixture();
     // The render environment as this machine produces it (real OS facts; a stand-in browser), on the
@@ -345,7 +346,7 @@ test(
 
 test(
   'a log line from before 0.4.0 still reads; verify names the pxsig that wrote it',
-  { skip: !git && 'no git' },
+  { skip: skipUnless(git, 'no git') },
   async () => {
     const f = gitFixture();
     // The fixture's manifest lists ids.ok.

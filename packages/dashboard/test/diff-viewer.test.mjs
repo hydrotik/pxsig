@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { noChromium } from './flows-helpers.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dashboard = path.dirname(here);
@@ -28,7 +29,7 @@ before(async () => {
       process.env.PXSIG_CHROMIUM ? { executablePath: process.env.PXSIG_CHROMIUM } : {}
     );
   } catch (e) {
-    skip = `no Chromium (${String(e.message).split('\n')[0]})`;
+    skip = noChromium(e);
     return;
   }
   const { build, version } = await import('vite');

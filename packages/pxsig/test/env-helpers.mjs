@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { envId } from '../src/lib/env.mjs';
 import { hasRust } from './fixture.mjs';
+import { skipUnless } from './strict.mjs';
 /** @import { EnvBrowser, EnvFields, EnvRecord } from '../src/types.js' */
 
 export const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
@@ -107,4 +108,5 @@ try {
 } catch {
   chromium = false;
 }
-export const needs = !hasRust ? 'Rust binary not built' : !chromium ? 'no Chromium' : false;
+export const needs =
+  skipUnless(hasRust, 'Rust binary not built') || skipUnless(chromium, 'no Chromium');

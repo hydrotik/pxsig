@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { applyTokenOverrides, injectAxe } from '../src/lib/capture.mjs';
+import { skipUnless } from './strict.mjs';
 /** @import { Page } from 'playwright' */
 
 const require = createRequire(import.meta.url);
@@ -52,7 +53,7 @@ async function withPage(html, fn) {
 
 test(
   'token overrides: a literal, a scale and a mix; nothing runs as code',
-  { skip: !pw && "Playwright's Chromium is not installed" },
+  { skip: skipUnless(pw, "Playwright's Chromium is not installed") },
   async () => {
     const html =
       '<style>:root{--space-md__a1:12px;--color-primary__b2:rgb(0, 0, 255);--radius__c3:4px}</style><div data-theme></div>';
@@ -85,7 +86,7 @@ test(
 
 test(
   'a string value is a literal, even one that looks like code',
-  { skip: !pw && "Playwright's Chromium is not installed" },
+  { skip: skipUnless(pw, "Playwright's Chromium is not installed") },
   async () => {
     const html = '<style>:root{--x__a:1px}</style>';
     const out = await withPage(html, async (page) => {
@@ -99,7 +100,7 @@ test(
 
 test(
   'axe is added once per page and runs',
-  { skip: !pw && "Playwright's Chromium is not installed" },
+  { skip: skipUnless(pw, "Playwright's Chromium is not installed") },
   async () => {
     const html = '<main><img src="x.png"></main>';
     const out = await withPage(html, async (page) => {
