@@ -690,6 +690,13 @@ draw them with your own segmented control and buttons.
      The rules read roles and the box model, not class names, so they apply to any adapter. An
      element opts out with `data-layout-allow="<reason>"`.
 
+   - `--compare <dir>`: each screen against the same screen of an earlier check's output (its
+     `--out`), compared by the pxsig engine with the gates stories get. Changed screens are listed
+     in `summary.md` and `report.json` (`compare` per screen: status, SSIM, changed cells), and
+     the gallery shows the earlier screenshot and the changed pixels beside each, with a filter for
+     changed screens only. Advisory: a change never fails the check. Use it to see what a change to
+     your adapter or design system moves: check before, keep that `--out`, check after with
+     `--compare` pointing at it.
    - `--only <feature,…>` checks part of it while you work on one feature; `--themes dark` one theme.
    - The components each screen left to the dashboard's fallbacks are listed beside it.
 4. Without Chromium (`npx playwright install chromium` installs it), do it by hand instead: serve

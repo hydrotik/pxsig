@@ -435,6 +435,19 @@ export interface ScreenCapture {
   retried?: 'ERR_NO_BUFFER_SPACE';
 }
 
+/** A screen against the same screen of an earlier check (`--compare`, dashboard-check/compare.mjs). */
+export interface ScreenCompare {
+  /** `not-rendered-before`: the earlier run has the screen but no screenshot of it. */
+  status: 'same' | 'changed' | 'new' | 'not-rendered' | 'not-rendered-before';
+  ssim: number | null;
+  changedCellsPct: number | null;
+  /** The engine's reasons for a change (the gates it failed). */
+  reasons: string[];
+  /** The earlier screenshot and the changed-pixel mask, under --out. */
+  earlier: string | null;
+  diff: string | null;
+}
+
 /** One screen in one theme, as report.json lists it. */
 export interface ScreenResult extends ScreenCapture {
   feature: string;
@@ -447,6 +460,8 @@ export interface ScreenResult extends ScreenCapture {
   fallbacks: string[] | null;
   shot: string | null;
   referenceShot: string | null;
+  /** Only with --compare. */
+  compare?: ScreenCompare;
 }
 
 /** report.json of `pxsig dashboard check`. */
@@ -458,6 +473,8 @@ export interface DashboardCheckReport {
   reference: { dir: string; used: boolean; note: string | null };
   themes: string[];
   strict: boolean;
+  /** --compare: the earlier check, how many screens changed, and the screens only it has. */
+  compare: { dir: string; pxsig: string; build: string; changed: number; removed: string[] } | null;
   summary: {
     screens: number;
     rendered: number;
