@@ -5,6 +5,362 @@ semantic versioning.
 
 ## Unreleased
 
+## 0.7.0 - 2026-10-31
+
+The trust-the-approval release. The dashboard decides one entry at a time: Approve story is off
+by default, Reject and Approve keep their place, and the top bar says whether the page can approve
+(`Live · Read only` or `Live · Can approve`), with the dashboard link's timing said in full and 5
+minutes to access it. A client uses only its own workspace's server, so a check is never queued on
+another checkout's. Nothing the server answers carries an absolute path. `pxsig dashboard check`
+measures each screen's layout and compares screens between builds, and the dashboard names the
+application under review (`pxsig • <scope>`). Read **Upgrading from 0.6.0** first: an unknown
+flag and a bad number are now errors, the peer ranges start at Playwright 1.58 and Storybook 10,
+two HTTP fields change, and `pxsig/workspace` exports only the documented resolver
+([migrating.md](docs/migrating.md#upgrading-to-07) groups the steps by who acts).
+
+### Upgrading from 0.6.0
+
+- **`pxsig/workspace` exports only the documented resolver.** Code that imported one of the 27 reads what it needs from the project `openProject()` returns (its resolved config and store paths) or from `pxsig config --json`, or opens an issue naming what it needs.
+- **`pxsig/dashboard` is types only at run time.** Import it with `import type` only.
+- **The dashboard shows no path.** A client that read `approving.cwd` reads `approving.folder` (the folder's name only).
+- **A number flag with a bad value is an error: `pxsig` exits 2 and runs nothing.** A script that passes such a value now fails; pass a number in the range, or leave the flag out.
+- **The peer ranges start at the versions CI tests: `playwright >=1.58` (was `>=1.40`) and, for `@pxsig/storybook-addon`, `storybook >=10` (was `>=9`).** Move to Playwright 1.58 or later and Storybook 10, or keep the older version and accept the warning (`--legacy-peer-deps` on npm); older versions are untested.
+- **`pxsig dashboard build` with no adapter configured now builds the plain adapter.** For the reference look, pass `--ui hydrotik` or set `PXSIG_DS_SOURCE`.
+- **`GET /__pxsig/projects` no longer sends the workspace's absolute path.** A script that read `workspace` from this answer runs `pxsig projects --json` instead, which computes the path in its own process.
+- **One entry, one decision: Approve story is off by default.** Approve each entry on its own; a client of `POST /__pxsig/approve-story` handles the 403, or the project sets `approvals.byStory: true` in `pxsig.config.json` to bring it back.
+- **The CLI, the MCP server and the Storybook addon use only their own workspace's server.** Start `pxsig serve` in each workspace that uses one (and restart a server from 0.6.0 so it names its workspace), or set `PXSIG_URL` to the server meant.
+- **An unknown flag is an error: `pxsig` exits 2 and runs nothing.** A script or CI step that passes a misspelled or retired flag now fails; correct the flag the message names, or remove it.
+- **The a11y pass uses pxsig's own axe-core, not the project's.** Nothing to do; to choose the axe version, pin pxsig.
+- **The render environment records the axe-core version.** Nothing to do; to leave the field out of comparisons, set `env.ignore: ["axe"]`.
+- **`pxsig doctor` before a manifest exists prints a setup preflight.** A script that matched the error on stderr reads it from stdout now, or uses `--json` (`error`).
+- **React is declared as an optional peer (`react >=19`).** Use React 19 with `pxsig/diff-viewer` and `pxsig dashboard build`, or accept the warning.
+- **`pxsig init` records the package's Storybook folders.** Check the config `init` writes; to keep a key out, remove it there, or pass the flag with the path you want.
+- **`pxsig manifest` names the Storybook it read and warns about a project it does not match.** Nothing to do; when a warning appears, set `storybook.url` (or `storybook.configDir`, `srcRoot`) in `pxsig.config.json`.
+- **Nothing to do:** `check` no longer retries an entry with no baseline yet; `pxsig dashboard check` records a screen whose layout never held still; `pxsig dashboard check` records a page load it retried; The dashboard link has 5 minutes to be accessed, up from 2.
+
+### Breaking changes
+
+- **`pxsig/workspace` exports only the documented resolver.** The export is now
+  `src/public/workspace.mjs` with five names: `openProject`, `findWorkspace`, `pickProject`,
+  `loadProject` and `SetupError`, the functions the README describes as the resolver. The other 27
+  names it used to carry (`DEFAULTS`, `CONFIG_FILE`, `WORKSPACE_FILE`, `PXSIG_VERSION`, `expand`,
+  `flagLayer`, `setFlagLayer`, `merge`, `provenance`, `resolveModes`, `missingProjects`,
+  `satisfies`, `unlistedConfigs`, `workspaceProblems`, `engineProblems`, `engineVersion`,
+  `imageProblems`, `parseImageTag`, `componentOfImport`, `entryConfig`, `runManifest`,
+  `writeRunManifest`, `browserFile`, `resolvePeer`, `rustBinary`, `serverFile`, `serverUrlFor`) were
+  never documented and were pxsig's own internals; nothing in the Storybook addon or the examples
+  imported them through the package.
+  To update: code that imported one of the 27 reads what it needs from the project
+  `openProject()` returns (its resolved config and store paths) or from `pxsig config --json`, or
+  opens an issue naming what it needs.
+- **`pxsig/dashboard` is types only at run time.** Its `types` condition still points at the UI
+  contract, so `import type * as C from 'pxsig/dashboard'` is unchanged. Loading it in Node used to
+  fail with a syntax error from the `.ts` source; it now throws `pxsig/dashboard is types only`.
+  To update: import it with `import type` only.
+- **The dashboard shows no path.** The read-only note and the Read only badge's hint named the
+  workspace by its full path (`cd "/Users/<name>/…" && …`), which puts the user's name on screen
+  and in every screenshot. They now name the folder by its own name ("in the uat-example folder,
+  where pxsig serve runs") and show the command alone; the copy button copies the command.
+  `GET /__pxsig/status`'s `approving` answers `folder` instead of `cwd`. When pxsig is not installed
+  in the workspace, the command is `pxsig serve --link` (a global install) instead of `node` and
+  the path to pxsig's own file.
+  To update: a client that read `approving.cwd` reads `approving.folder` (the folder's name only).
+- **A number flag with a bad value is an error: `pxsig` exits 2 and runs nothing.** A value that
+  was not a number was read as the default, so `pxsig serve --port notaport` served on 6070 and
+  `pxsig list --limit 0` showed 30 rows, without a word. Now every `<n>` flag takes a whole number
+  (`--retries`, `--settle-ms` and `--min-cell-px` from 0, the others from 1; a port up to 65535)
+  and a bad one is named: `pxsig: --port takes a whole number from 1 to 65535 (got "notaport")`.
+  To update: a script that passes such a value now fails; pass a number in the range, or leave the
+  flag out.
+- **The peer ranges start at the versions CI tests: `playwright >=1.58` (was `>=1.40`) and, for
+  `@pxsig/storybook-addon`, `storybook >=10` (was `>=9`).** Playwright 1.58.2 is the oldest
+  version CI runs pxsig with (the container image), and the examples test Storybook 10 only.
+  Nothing changes at run time: pxsig does not check either version. A project that pins an older
+  version sees the install report a peer conflict: pnpm and Yarn warn; npm 7 and later stops with
+  `ERESOLVE` unless run with `--legacy-peer-deps`.
+  To update: move to Playwright 1.58 or later and Storybook 10, or keep the older version and
+  accept the warning (`--legacy-peer-deps` on npm); older versions are untested.
+- **`pxsig dashboard build` with no adapter configured now builds the plain adapter.** It used to
+  pick the `hydrotik` reference adapter, which needs a checkout of a design system that is not
+  public, so the build failed everywhere but on the maintainer's machine. The order is now `--ui`,
+  `PXSIG_UI_ADAPTER`, `dashboard.ui` in `pxsig.config.json`, `hydrotik` when `PXSIG_DS_SOURCE` is
+  set, then `plain`; the build prints which rule picked the adapter. The prebuilt dashboard in the
+  npm package is unaffected.
+  To update: for the reference look, pass `--ui hydrotik` or set `PXSIG_DS_SOURCE`.
+- **`GET /__pxsig/projects` no longer sends the workspace's absolute path.** Its `workspace` field
+  (the path, which contains the user's name) is replaced by `workspaceId`, the same hash of the path
+  `GET /__pxsig/status` answers. Each project's `root` stays relative to the workspace; a project on
+  another drive (Windows) is named by its folder alone.
+  To update: a script that read `workspace` from this answer runs `pxsig projects --json` instead,
+  which computes the path in its own process.
+- **One entry, one decision: Approve story is off by default.** The inspector no longer offers
+  **Approve story** (every waiting mode and state of a story in one click), and the server refuses
+  `POST /__pxsig/approve-story` with 403, so each entry is approved after a person has looked at it.
+  To update: approve each entry on its own; a client of `POST /__pxsig/approve-story` handles the
+  403, or the project sets `approvals.byStory: true` in `pxsig.config.json` to bring it back.
+- **The CLI, the MCP server and the Storybook addon use only their own workspace's server.** Every
+  `pxsig serve` tries port 6070 first, so with no server running for a workspace, its commands
+  reached whichever workspace's server held the port (another checkout or worktree with the same
+  project name got its checks queued there). `GET /__pxsig/status` now names the workspace it serves
+  (`workspaceId`, a hash of its path, not the path), and a client uses a server only when the id is
+  its own. Another workspace's server counts as not running: `pxsig check` runs in this workspace
+  instead and says why, `pxsig status` shows the server as down with the reason, `pxsig serve
+  --link` and `pxsig approve apply` stop. A server from pxsig 0.6 or earlier names no workspace and
+  is used only at the address this workspace's `server.json` (or the addon's `server` option)
+  records. `PXSIG_URL` still picks a server: a mismatch there is one warning line.
+  To update: start `pxsig serve` in each workspace that uses one (and restart a server from 0.6.0
+  so it names its workspace), or set `PXSIG_URL` to the server meant.
+- **An unknown flag is an error: `pxsig` exits 2 and runs nothing.** Until now a misspelled flag
+  printed a warning and the command ran without it, so `pxsig check --ful` ran the quick check and
+  `pxsig init --nmae web` wrote a config with the default name. The message is the same, with the
+  nearest known flag (`pxsig: unknown flag --ful (did you mean --full?)`). `pxsig cat` is
+  unchanged (the engine checks its flags).
+  To update: a script or CI step that passes a misspelled or retired flag now fails; correct the
+  flag the message names, or remove it.
+
+### Behaviour changes
+
+- **The a11y pass uses pxsig's own axe-core, not the project's.** A project (or workspace root)
+  with its own `axe-core` used to override the version pxsig declares, so a11y results could change
+  when an unrelated tool bumped it. pxsig now resolves `axe-core` from its own install first, and
+  falls back to the project's only when its own cannot be found. New axe violations after
+  upgrading come from that version change, not the stories.
+  To update: nothing to do; to choose the axe version, pin pxsig.
+- **The render environment records the axe-core version** as `axe` (a minor field), in each
+  `.psig` header and in `check.json`; `pxsig dashboard check` writes it to `report.json`. A
+  baseline written before this compares as `compatible` with `envDiff: ["axe"]`, never as a
+  mismatch, and its `id` does not change.
+  To update: nothing to do; to leave the field out of comparisons, set `env.ignore: ["axe"]`.
+- **`check` no longer retries an entry with no baseline yet.** A NEW entry has nothing to compare
+  with, so a fresh render could not pass; it was re-rendered `--retries` times and the retry lines
+  counted it. A first `check --full` on a new project is faster (6.6 s → 2.5 s on 12 entries).
+  To update: nothing to do; the entry is still NEW and fails the check until it is approved.
+- **`pxsig dashboard check` records a screen whose layout never held still.** Such a screen gets
+  `"settled": false` in `report.json` and is listed under "Still moving" in `summary.md`. The
+  field is absent for every other screen, so existing readers see no change. A screen listed there
+  has an animation or a resize that runs longer than 2 s.
+  To update: nothing to do; a reader of `report.json` may treat a missing `settled` as `true`.
+- **`pxsig dashboard check` records a page load it retried.** Such a screen gets
+  `"retried": "ERR_NO_BUFFER_SPACE"` in `report.json` and is listed under "Retried" in
+  `summary.md`. The field is absent for every other screen, so existing readers see no change. A
+  screen listed there loaded on the second try.
+  To update: nothing to do.
+- **`pxsig doctor` before a manifest exists prints a setup preflight.** It used to print
+  `no readable manifest at …` twice and stop. It now lists the engine binary and its version, the
+  Playwright package that resolves and its version, whether Playwright's Chromium is present (a
+  file check; no browser starts), the configured Storybook URL and `staticDir` (nothing is
+  fetched), and the assistant marker; then the error once and `pxsig manifest` as the next step.
+  The exit stays 2. `--json` gives `{ error, preflight, next }`, and the MCP tool `pxsig_doctor`
+  adds the same `{ preflight, next }` after its error.
+  To update: a script that matched the error on stderr reads it from stdout now, or uses
+  `--json` (`error`).
+- **React is declared as an optional peer (`react >=19`).** `pxsig/diff-viewer` and
+  `pxsig dashboard build` use the project's React; the dashboard's UI contract passes `ref` as a
+  prop, which needs React 19. Package managers now warn when a project has an older React
+  installed; projects without React are unaffected.
+  To update: use React 19 with `pxsig/diff-viewer` and `pxsig dashboard build`, or accept the
+  warning.
+- **`pxsig init` records the package's Storybook folders.** A new `pxsig.config.json` gets
+  `storybook.configDir: ".storybook"` when the folder has `.storybook/`, and
+  `storybook.staticDir: "storybook-static"` when it has a `storybook-static/` folder; init lists
+  what it recorded. A flag for the same key wins, and an existing config is never edited.
+  To update: check the config `init` writes; to keep a key out, remove it there, or pass the flag
+  with the path you want.
+- **The dashboard link has 5 minutes to be accessed, up from 2.** The time is only to open the link;
+  once opened, that browser can approve until `pxsig serve` stops or the browser closes. Every
+  message now says so in those words ("5 minutes to access this link").
+  To update: nothing to do; a script that matched the old wording ("within two minutes") matches
+  the new one.
+- **`pxsig manifest` names the Storybook it read and warns about a project it does not match.**
+  The heading reads `from <storybook.url>/index.json` (or `from <staticDir> (served at …)`), and
+  `--json` adds `source: { url, staticDir }` and `warnings`. A warning is printed when `srcRoot`
+  does not exist or when none of the index's stories is under the project, which is what another
+  package's Storybook on the same port looks like; the exit code is unchanged. The
+  "no stories in srcRoot" error now also names the index it read.
+  To update: nothing to do; when a warning appears, set `storybook.url` (or
+  `storybook.configDir`, `srcRoot`) in `pxsig.config.json`.
+
+### Added
+
+- **The prebuilt dashboard records how it was built.** `dist/dashboard/BUILD.json` in the `pxsig`
+  package names the UI adapter, the design-system commit (and whether its checkout had changes),
+  the lockfile hashes, the Node version, the build time and the third-party packages compiled
+  into the bundle with their versions and licences. The release's `pxsig-npm.cdx.json` now lists
+  those packages too. Nothing to do; nothing reads the file at run time.
+- **`pxsig dashboard check --compare <dir>`** compares each screen with the same screen of an
+  earlier check's output (its `--out`), using the engine and the gates stories get. Changed, new
+  and gone screens are listed in `summary.md` and `report.json` (`compare` per screen: status,
+  SSIM, changed cells), and the gallery shows the earlier screenshot and the changed pixels beside
+  each changed screen, with a "changed screens only" filter. Advisory: a change never fails the
+  check. Use it to see what an adapter or design-system change moves.
+- **`pxsig dashboard check` measures each screen's layout.** After a screen renders it records
+  layout findings beside axe: the page scrolling sideways at 1280 or 900 px wide, content cut off
+  by `overflow: hidden` (truncated text passes when a `title` or `aria-label` holds it), controls
+  in one toolbar line that differ in height or bottom edge, text or controls within 2px of a drawn
+  frame, and controls drawn over each other. They are in `report.json` (`layout`, and
+  `summary.withLayout`), `summary.md` and the gallery. Advisory; `--strict` fails on them as it
+  does on axe. An element opts out with `data-layout-allow="<reason>"`.
+- **The dashboard names the application under review: `pxsig • <scope>`**, in the top bar and the
+  browser tab, so one workspace's dashboard is never taken for another's. A new `label` in
+  `pxsig.workspace.json` names the whole workspace (`"label": "hydrotik ds"` reads
+  `pxsig • hydrotik ds`); without it the project's `label`, else its name, as before. The dashboard
+  data gains `scope` (additive); `pxsig config` prints the title. See
+  "The dashboard title" in `docs/configuration.md`.
+- **`pxsig init --storybook-static <dir>`** writes `storybook.staticDir`: a Storybook build that
+  `manifest`, `check` and the server serve themselves when nothing answers at `storybook.url`, so
+  pxsig works without a running Storybook. The `pxsig init` section of `docs/cli.md` has a
+  three-line quick start.
+- **Every published package carries the MIT licence file.** `pxsig`, each `@pxsig/cli-*` package
+  and `@pxsig/storybook-addon` now hold `LICENSE` at their root, so a licence scanner reading the
+  installed packages finds it. The licence itself is unchanged. Nothing to do.
+- **`pxsig serve --link --copy`** also copies the new link to the clipboard and says so (`pbcopy` on
+  macOS; `wl-copy`, else `xclip`, on Linux; not on Windows, where pxsig starts no shell). Opt-in:
+  any program on the computer can read the clipboard, while the printed link reaches only the person
+  at the terminal. Refused, like `--link`, without a person at a terminal.
+- **`pxsig serve --link --open`.** Opens the new dashboard link in the default browser as well as
+  printing it, so a person at a terminal does not copy it by hand: on macOS an open Chrome tab on
+  the dashboard is reused, else `open`; on Linux `xdg-open`; on Windows nothing is started and the
+  link is only printed. Refused like `--link` outside a person's terminal (exit 3). `pxsig serve
+  --open` without `--link` is a usage error (exit 2): `pxsig serve` already opens a tab unless
+  `--no-open`.
+- **A built-in `plain` UI adapter** (`dashboard/src/ui/adapters/plain/`): the dashboard on semantic
+  HTML and one stylesheet, by name with `--ui plain`. It is the same adapter as
+  `examples/custom-ui/pxsig-ui`, which stays as the example of a project's own adapter.
+- **The top bar says whether this page can approve.** Beside the connection badge: `Live · Read
+  only` (the page holds no dashboard link), `Live · Can approve` (it opened one), or `Static report
+  · Read only`; Offline is unchanged. The hint on `Read only` names the command for a new link, in
+  the folder the server serves (`pnpm exec pxsig serve --link`, `yarn pxsig …`, `npx pxsig …`, or
+  `pxsig serve --link`).
+- **The inspector says Read only before any click.** Without the dashboard link, a note under the
+  header gives the command with a copy button, and Reject, Approve and Undo stay in place,
+  disabled, with the reason as their title. `GET /__pxsig/status` answers `approving`: `allowed`
+  (whether the request carries the link's session; never the session itself), `folder` (the
+  folder's name only) and `command`.
+- **`workspaceId` in `GET /__pxsig/status`** (`docs/server.md`, "Reading").
+
+### Changed
+
+- **`pxsig doctor` prints machine paths relative to the home folder.** The Settings and approval
+  guard rows show `~/…` (on Windows `%LOCALAPPDATA%\…` or `%USERPROFILE%\…`), so pasted output
+  carries no user name; `--json` keeps the absolute paths. The `Token files` row is now
+  `Approval guard files`, and a missing `settings.json` reads `(not used in this version)`, since
+  no command writes it yet.
+- **"No report" names the next step for each surface.** The CLI names `pxsig check --full`; the MCP
+  tools name `pxsig_check` with `all: true`. Without a manifest both name
+  `pxsig manifest` first.
+- **A missing peer dependency names the package manager's command.** `cannot find "playwright"`
+  now gives `pnpm add -D`, `yarn add -D`, `bun add -d` or `npm install -D`, by the lockfile in
+  the project or the workspace root (a file check; npm when there is none), and names the package
+  rather than the file asked for.
+- **A program pxsig may not start, or that a policy blocked, points at `pxsig help platforms`**,
+  which ships in the package, instead of `docs/platforms.md`, which does not.
+- **The instruction for the assistant mentions the dashboard adapter only when one is set.**
+  `pxsig setup` adds "To build pxsig's dashboard on our design system, …" only when a project's
+  `pxsig.config.json` sets `dashboard.ui`; otherwise the instruction is the approval rule alone.
+- **The top-level help lists every command and topic, and names no internal files.** `pxsig help`
+  and `pxsig --help` are built from the same source as `pxsig help <command>`: every command and
+  subcommand with its summary and usage (`dashboard check`, `init --label`, `serve --link` and
+  `doctor --repair --only log-torn` included), `pxsig version`, the commands that need a person
+  at a terminal, and the topics. Terminal, Markdown and `--json` output follow the
+  chosen format like any other help page. `pxsig help topics` lists the topics with their titles.
+- **One list of the commands that need a person.** `pxsig help exit-codes` now names `doctor
+  --repair --only log-torn --apply`, and `pxsig help serve` lists exit 3 for `--link`, like the
+  other pages.
+- **The title's separator is `•`** (`pxsig • demo`, was `pxsig · demo`). A project's `label` still
+  names it in the project switcher.
+- **`pxsig serve` says when it could not open a browser.** A missing or failing `xdg-open` or
+  `open` at start printed nothing; it now prints one line saying to open the link above.
+- **The Linux platform packages declare `libc: ["glibc"]`.** `@pxsig/cli-linux-x64` and
+  `@pxsig/cli-linux-arm64` hold glibc builds (`*-unknown-linux-gnu`), which do not run on a musl
+  host such as Alpine. npm and pnpm now skip them there instead of installing a binary that fails
+  to start, and pxsig reports the engine binary as missing. On a musl host, set `PXSIG_BIN` to a
+  pxsig binary built for it, or run pxsig in the container image (Ubuntu, glibc).
+- **The `approvals.level: "strict"` error no longer cites "decision 78"**, a number from a design
+  document that is not in the repository. The message is otherwise the same.
+- **The dashboard link's timing is said in full everywhere.** The time limit is only to open the
+  link, which works once; once open, that browser can approve with no time limit until `pxsig
+  serve` stops or the browser closes. Reworded in `pxsig serve`'s start-up line, `pxsig serve
+  --link`, the refusal of a used or late link, the dashboard's notes, `pxsig help serve`, and
+  docs/cli.md, server.md and troubleshooting.md.
+
+### Fixed
+
+- **`pxsig dashboard check` screenshots of the inspector are taken after its diff is drawn.** The
+  screenshot used to be taken as soon as the screen's landmark appeared, while the inspector was
+  still loading, analysing and fitting its images, so two runs on the same build could differ on
+  the 7 inspector and embed screens. The inspector now marks its stage `aria-busy` until it has
+  settled, and `dashboard check` waits for that (up to its usual 10 s), then for every image to
+  decode. Nothing visible changes; a screen reader also learns that the stage is still loading.
+- **`pxsig dashboard check` waits for the layout to hold still before each screenshot.** A chart
+  that resizes a moment after it first draws (a debounced resize observer, as in Recharts) was
+  captured at its first size. The screenshot now waits until no element has moved for 6 frames
+  (about 100 ms), for at most 2 s. The whole check takes about the same time.
+- **`pxsig dashboard check` no longer fails a screen when Windows runs out of socket buffers.**
+  With several screens loading at once, Windows could refuse a page load with
+  `net::ERR_NO_BUFFER_SPACE`, and the screen failed although nothing was wrong with it. That
+  load is now retried once, after 500 ms. Any other error, or the same error twice, still fails
+  the screen.
+- **`pxsig check` says when it could not report integrity.** Its last line is the project's
+  integrity from `pxsig doctor`; when the doctor failed (a report it could not read, a ledger it
+  could not write) the line was left out without a word. It now reads
+  `integrity: unavailable (<reason>)`, and `--json` adds `integrityUnavailable: "<reason>"` next to
+  `integrity: null`. The exit code is unchanged.
+- **A JSON file saved with a byte order mark is read.** Windows Notepad (and PowerShell's
+  `Out-File -Encoding utf8` in Windows PowerShell 5) start a UTF-8 file with a byte order mark, and
+  pxsig failed on such a `pxsig.config.json` or `pxsig.workspace.json` with "is not valid JSON".
+  pxsig now skips the mark in every JSON file it reads. A file saved as UTF-16 (Notepad's
+  "Unicode", Windows PowerShell's `>` redirect) is refused with a message naming the file and its
+  encoding (`<path> is UTF-16 LE; save it as UTF-8`). Nothing to do.
+- **The READMEs on npm link to the documents of the version installed.** pxsig's README linked to
+  the docs on `main`, which can describe features a published version does not have, and the
+  Storybook addon's README and the dashboard README pxsig ships linked to `../../docs/…`, which
+  leads nowhere outside the repository. The release now rewrites both kinds to
+  `github.com/hydrotik/pxsig/blob/v<version>/…` when it packs, and fails a tarball that still has
+  one. The repository's files are unchanged.
+- **The inspector's Reject and Approve keep their place.** They end the review group at its right
+  edge, with labels that no longer change width: Undo, Approve story (when on), Re-check and the
+  new-violations note sit to their left, and the header holds one height whether or not the story
+  has other modes. "Approve · accepts N new a11y violations" becomes the note "Approving accepts N
+  new a11y violations" beside an unchanged Approve; in an accessibility session, "Accept N new"
+  becomes "Accept violations" beside "N new violations". The Storybook panel's Details switch moves
+  left of the buttons for the same reason.
+- **`pxsig approve undo` and the dashboard's undo no longer revert a later approval.** Undoing a
+  batch restored its old baseline even when the entry had been approved again in a later batch,
+  so the later approval was reverted without a word (the undo was logged, the later approval's
+  baseline was gone). Such an entry is now refused with "approved again in batch <batch> after
+  this one: undo that batch first", and nothing is written for it. A baseline written outside the
+  approval trail is restored as before (`approve verify` reports those).
+
+### Security
+
+- **No absolute path in what the dashboard reads.** A test fetches every answer the dashboard reads
+  (status, projects, data, integrity, the event stream, the page) after a check and fails on the
+  workspace's path or the home folder.
+- **No absolute path in the server's project list.** Any program on the machine can read
+  `GET /__pxsig/projects`; it now carries no part of the user's home folder.
+- **A release fails on a known advisory in anything it ships.** The release scans its SBOMs (the
+  npm install tree, the packages the dashboard bundle inlines, and the engine's crates) with a
+  pinned osv-scanner, so a package that only the dashboard bundle contains, which no `npm audit`
+  sees, is checked too. A dashboard attached to the GitHub release must now carry the `BUILD.json`
+  its build writes, naming its adapter and design-system commit; one without it fails the release
+  instead of shipping with a warning.
+
+### Documentation
+
+- The npm README names the platform packages as installed with pxsig, adds the first-run note
+  (the first `check --full` exits 1; how to approve), lists the offline `pxsig help` topics and
+  links the docs by absolute URL, so the links work inside `node_modules`. README: "no sign-in"
+  in place of "no token".
+- **The README lists every export.** `pxsig/diff-viewer` is TypeScript source for a bundler that
+  compiles TypeScript and JSX (such as the Vite build `pxsig dashboard build` runs), not for Node.
+- **The dashboard's Help page opens with how approving works.** A first section, "Approving From
+  the Dashboard", explains the dashboard link and its ticket (`pxsig serve`, `pxsig serve --link`,
+  `--open`, the opt-in `--copy`), its timing (5 minutes to access the link; once opened, no time
+  limit until the server stops or the browser closes), why decisions need it, and the top bar's
+  badges: `Live`, `Static report`, `Offline`, `Can approve`, `Read only`, and the title.
+- **`QUICKSTART.md`** in the repository root: install, first check, the dashboard and its link,
+  reviewing one entry at a time, and CI, linked from the README.
+
 ## 0.6.0 - 2026-10-28
 
 The deployed-Storybook and hardening release. A Storybook deployed to a shared environment shows
