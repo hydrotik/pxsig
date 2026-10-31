@@ -19,7 +19,7 @@ import { test } from 'node:test';
 import { pathToFileURL } from 'node:url';
 import { detectAgent } from '../src/lib/agents.mjs';
 import { paths, readLog, sha256 } from '../src/lib/approvals.mjs';
-import { lockPath } from '../src/lib/lock.mjs';
+import { lockPath, readLock } from '../src/lib/lock.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, hashTree, hasRust, png, rustBin, testEnv, testHome } from './fixture.mjs';
 import { serve, src } from './server-helpers.mjs';
@@ -123,8 +123,11 @@ async function applied({ f, P, id, p }) {
     S.stop();
   }
   assert.equal(r.status, 0, `${out(r)}\n${S.log()}`);
-  for (let i = 0; i < 100 && existsSync(lockPath(P)); i++) {
-    const { pid } = JSON.parse(readFileSync(lockPath(P), 'utf8'));
+  // The server's lock goes when its process ends; it can go between a check and a read, so read it
+  // once (null when it is gone).
+  for (let i = 0; i < 100; i++) {
+    const pid = readLock(P)?.pid;
+    if (!pid) break;
     try {
       process.kill(pid, 0);
     } catch {
