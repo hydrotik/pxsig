@@ -191,7 +191,7 @@ jobs:
 
   examples:
     name: Examples (end to end) (${{ matrix.os }})
-    timeout-minutes: 30
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -215,6 +215,23 @@ jobs:
       # System libraries are a Linux concern; macOS and Windows runners need only the browser.
       - run: pnpm --filter pxsig exec playwright install ${{ runner.os == 'Linux' && '--with-deps' || '' }} chromium
       - run: node scripts/examples-test.mjs
+      # Which dashboard screens this pull request changes: main's dashboard and this one's, built
+      # with the example adapter and rendered on this runner, compared by the engine. A list in the
+      # job summary and a gallery artifact, never a failure (scripts/dashboard-drift.mjs).
+      - if: github.event_name == 'pull_request' && runner.os == 'Linux'
+        name: Dashboard drift against main
+        continue-on-error: true
+        shell: bash
+        run: |
+          git fetch --no-tags --depth=1 origin +refs/heads/main:refs/remotes/origin/main
+          node scripts/dashboard-drift.mjs --base-ref origin/main --out "${RUNNER_TEMP}/dashboard-drift"
+      - if: github.event_name == 'pull_request' && runner.os == 'Linux'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dashboard-drift
+          path: ${{ runner.temp }}/dashboard-drift/head
+          if-no-files-found: ignore
+          retention-days: 7
       # pxsig as a user installs it: the release's scripts pack pxsig and this OS's platform package
       # (0.0.0-ci), npm installs both into a folder whose path has a space, and with no PXSIG_BIN
       # the engine resolves from the platform package; `doctor --ci` under PXSIG_DEBUG=spawn starts

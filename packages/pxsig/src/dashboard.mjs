@@ -219,6 +219,9 @@ export async function dashboardCommand(
                 .filter((x) => !x.rendered)
                 .map((x) => `  failed: ${x.feature} #${x.index + 1} (${x.theme}): ${x.reason}`),
               report.reference.used ? null : `no reference column: ${report.reference.note}`,
+              report.compare
+                ? `compared with ${report.compare.dir}: ${report.compare.changed} changed${report.compare.removed.length ? `, ${report.compare.removed.length} gone` : ''} (advisory)`
+                : null,
               `gallery: ${join(outDir, 'index.html')}`,
             ]
               .filter(Boolean)

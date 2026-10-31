@@ -198,6 +198,55 @@ test('layout findings are advisory; --strict makes them fail', async (t) => {
   assert.equal(strict.code, 1);
 });
 
+test('--compare: each screen against the earlier check, changed screens with the earlier shot and a diff', async (t) => {
+  if (skip) return t.skip(skip);
+  const { rustBinary } = await import('../../pxsig/src/lib/workspace/peers.mjs');
+  if (!existsSync(rustBinary())) {
+    if (process.env.PXSIG_TEST_STRICT === '1') assert.fail(`no engine at ${rustBinary()}`);
+    return t.skip(`no engine at ${rustBinary()} (cargo build --release, or PXSIG_BIN)`);
+  }
+  const flags = { build: good, only: 'help.reference', themes: 'dark,light' };
+  const earlier = path.join(tmp, 'out-earlier');
+  await run({ ...flags, out: earlier });
+  const same = await run({ ...flags, out: path.join(tmp, 'out-same'), compare: earlier });
+  assert.deepEqual(
+    same.report.screens.map((x) => x.compare?.status),
+    ['same', 'same']
+  );
+  assert.equal(same.report.compare.changed, 0);
+  // A visible change on the dark screen only: a red band across the top.
+  const initScript =
+    "document.addEventListener('DOMContentLoaded', () => { if (!location.search.includes('theme=dark')) return; const d = document.createElement('div'); d.style.cssText = 'position:fixed;inset:0 0 auto 0;height:300px;background:#f00'; document.body.append(d); })";
+  const out = path.join(tmp, 'out-changed');
+  const changed = await run(
+    { ...flags, out, compare: earlier, only: 'help.reference' },
+    { initScript }
+  );
+  assert.equal(changed.code, 0, 'a change is advisory');
+  const [dark, light] = changed.report.screens;
+  assert.equal(dark.compare.status, 'changed');
+  assert.ok(dark.compare.ssim < 0.99 && dark.compare.reasons.length);
+  assert.ok(
+    existsSync(path.join(out, dark.compare.earlier)) &&
+      existsSync(path.join(out, dark.compare.diff))
+  );
+  assert.equal(light.compare.status, 'same');
+  assert.equal(changed.report.compare.changed, 1);
+  assert.ok(!existsSync(path.join(out, '.compare')), 'the scratch folder is removed');
+  assert.match(
+    readFileSync(path.join(out, 'summary.md'), 'utf8'),
+    /- changed: `help.reference` #1 \(dark\)/
+  );
+  assert.match(readFileSync(path.join(out, 'index.html'), 'utf8'), /Changed screens only/);
+  // A screen only the earlier run has is listed as gone; one outside --only/--themes is not.
+  const report = JSON.parse(readFileSync(path.join(earlier, 'report.json'), 'utf8'));
+  report.screens.push({ ...report.screens[0], index: 5 }, { ...report.screens[0], feature: 'x.y' });
+  writeFileSync(path.join(earlier, 'report.json'), JSON.stringify(report));
+  const fewer = await run({ ...flags, out: path.join(tmp, 'out-fewer'), compare: earlier });
+  assert.deepEqual(fewer.report.compare.removed, [`help.reference#6@${report.screens[0].theme}`]);
+  await assert.rejects(run({ ...flags, compare: path.join(tmp, 'nowhere') }), CheckSetupError);
+});
+
 test('a decision is answered and recorded, nothing is written, and only --out changes', async (t) => {
   if (skip) return t.skip(skip);
   const cwd = mkdtempSync(path.join(tmp, 'cwd-'));

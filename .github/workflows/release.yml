@@ -312,7 +312,7 @@ jobs:
   # tarballs, so the checksums and attestations describe what npm serves.
   pack:
     name: Pack
-    timeout-minutes: 15
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     needs: [verify, build, dashboard, sbom-rust]
     env:
@@ -402,6 +402,51 @@ jobs:
           name: release-files
           path: release-files
           if-no-files-found: error
+          retention-days: 7
+      # Which dashboard screens look different from the last release's: both rendered on this
+      # runner by this checkout's `pxsig dashboard check` and compared by the engine. After the
+      # release files are packed and uploaded, so nothing here touches them. A list in the job
+      # summary and a gallery artifact, never a failure (scripts/dashboard-drift.mjs).
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - name: Dashboard drift since the last release
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ ! -d packages/pxsig/dist/dashboard/assets ]; then
+            echo "Dashboard drift: the dashboard is a placeholder, nothing to compare." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          prev="" dl="${RUNNER_TEMP}/previous-dashboard"
+          mkdir -p "$dl"
+          for tag in $(gh release list --repo "${GITHUB_REPOSITORY}" --exclude-drafts --limit 20 --json tagName --jq '.[].tagName'); do
+            [ "$tag" = "${GITHUB_REF_NAME}" ] && continue
+            if gh release download "$tag" --repo "${GITHUB_REPOSITORY}" --pattern pxsig-dashboard.tar.gz --dir "$dl" 2>/dev/null; then prev="$tag"; break; fi
+          done
+          if [ -z "$prev" ]; then
+            echo "Dashboard drift: no earlier release has pxsig-dashboard.tar.gz, nothing to compare." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # Only dashboard/... entries, no absolute paths, no parent references (as in the dashboard job).
+          tar tzf "$dl/pxsig-dashboard.tar.gz" > "$dl/entries.txt"
+          if grep -Ev '^(\./)?dashboard(/|$)' "$dl/entries.txt" | grep -q . || grep -Eq '(^/|(^|/)\.\.(/|$))' "$dl/entries.txt"; then
+            echo "::warning::${prev}'s pxsig-dashboard.tar.gz holds more than a dashboard/ folder: not compared"
+            exit 0
+          fi
+          tar xzf "$dl/pxsig-dashboard.tar.gz" -C "$dl" --no-same-owner
+          pnpm install --frozen-lockfile
+          pnpm --filter pxsig exec playwright install --with-deps chromium
+          bin="${GITHUB_WORKSPACE}/release-artifacts/pxsig-linux-x64/pxsig"
+          chmod +x "$bin"
+          echo "Dashboard drift: compared with ${prev}'s dashboard." >> "$GITHUB_STEP_SUMMARY"
+          PXSIG_BIN="$bin" node scripts/dashboard-drift.mjs --base-build "$dl/dashboard" --head-build packages/pxsig/dist/dashboard --out "${RUNNER_TEMP}/dashboard-drift"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dashboard-drift
+          path: ${{ runner.temp }}/dashboard-drift/head
+          if-no-files-found: ignore
           retention-days: 7
 
   # Provenance attestations for every release file (GitHub's signed record of the workflow run and

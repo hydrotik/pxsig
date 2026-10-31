@@ -4,7 +4,7 @@
  * dashboard (docs/ui/build-adapter.md, "Verify").
  *
  *   pxsig dashboard check [--ui path] [--build dir] [--out dir] [--reference dir] [--themes dark,light] [--only feature,…]
- *                         [--strict] [--json]
+ *                         [--compare dir] [--strict] [--json]
  *
  * What it does, and what it does not:
  *   - Sample data only: the scenarios in the dashboard's fixtures/scenarios.mjs, never the project's
@@ -15,6 +15,8 @@
  *     the clock fixed and the caret hidden. For each screen and theme: load, run its actions, wait
  *     for its landmark, take a screenshot, run axe-core, record page errors, and measure the
  *     layout (dashboard-check/layout.mjs: overflow, clipping, control rows, frame edges, overlap).
+ *   - --compare <dir>: each screen against the same screen of an earlier check's output (its
+ *     --out), with the engine (dashboard-check/compare.mjs). Advisory: changes never fail.
  *   - Writes only under --out (default node_modules/.cache/pxsig/dashboard-check): index.html (the
  *     gallery), report.json, summary.md and the screenshots.
  *
@@ -34,6 +36,8 @@ import { PXSIG_VERSION } from './lib/workspace.mjs';
 import { readJson } from './lib/files.mjs';
 import { prebuiltDashboardDir } from './report.mjs';
 import { capture, pool } from './dashboard-check/capture.mjs';
+import { compareScreens, readEarlier } from './dashboard-check/compare.mjs';
+import { rustBinary } from './lib/workspace/peers.mjs';
 import { galleryHtml, summaryMarkdown } from './dashboard-check/gallery.mjs';
 import { sampleImages, scenarioServer } from './dashboard-check/server.mjs';
 
@@ -193,11 +197,23 @@ export async function dashboardCheck(
   if (bad.length || !themes.length)
     throw new CheckSetupError(`--themes takes dark, light or both (got ${flags.themes})`);
 
+  // --compare <dir>: an earlier check's output, each screen compared with its screen there.
+  const earlierDir = typeof flags.compare === 'string' ? resolve(cwd, flags.compare) : null;
+  const earlier = earlierDir ? readEarlier(earlierDir) : null;
+  if (earlier?.error) throw new CheckSetupError(earlier.error);
+  const bin = rustBinary();
+  if (earlierDir && !existsSync(bin))
+    throw new CheckSetupError(`--compare needs the pxsig engine, and it is missing at ${bin}`);
+
   const outDir =
     typeof flags.out === 'string'
       ? resolve(cwd, flags.out)
       : join(cwd, 'node_modules', '.cache', 'pxsig', 'dashboard-check');
   // Only what this command writes is replaced; anything else in the folder stays.
+  if (earlierDir && resolve(earlierDir) === resolve(outDir))
+    throw new CheckSetupError(
+      '--compare names the --out folder itself: give the earlier check its own --out'
+    );
   for (const f of ['shots', 'index.html', 'report.json', 'summary.md'])
     rmSync(join(outDir, f), { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
@@ -289,6 +305,17 @@ export async function dashboardCheck(
     if (!given) await browser.close().catch(() => {});
   }
 
+  const removed =
+    earlierDir && earlier?.report
+      ? compareScreens({
+          screens,
+          earlier: earlier.report,
+          earlierDir,
+          outDir,
+          bin,
+          inScope: (x) => features.some((f) => f.id === x.feature) && themes.includes(x.theme),
+        })
+      : [];
   const failed = screens.filter((x) => !x.rendered).length;
   const withAxe = screens.filter((x) => x.axe.length).length;
   const withLayout = screens.filter((x) => x.layout.length).length;
@@ -301,6 +328,16 @@ export async function dashboardCheck(
     reference: { ...reference, dir: shown(cwd, reference.dir) },
     themes,
     strict: Boolean(flags.strict),
+    compare:
+      earlierDir && earlier?.report
+        ? {
+            dir: shown(cwd, earlierDir),
+            pxsig: earlier.report.pxsig,
+            build: earlier.report.build,
+            changed: screens.filter((x) => x.compare?.status === 'changed').length,
+            removed,
+          }
+        : null,
     summary: {
       screens: screens.length,
       rendered: screens.length - failed,

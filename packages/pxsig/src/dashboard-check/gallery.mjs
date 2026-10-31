@@ -75,6 +75,31 @@ export function summaryMarkdown(report) {
           `- \`${x.feature}\` #${x.index + 1} (${x.theme}): ${x.axe.map((v) => `${v.id} (${v.impact ?? 'n/a'}, ${v.count})`).join(', ')}`
       )
     );
+  if (report.compare) {
+    const changed = report.screens.filter((x) => x.compare?.status === 'changed');
+    const added = report.screens.filter((x) => x.compare?.status === 'new');
+    lines.push(
+      '',
+      '### Compared with the earlier check',
+      '',
+      `\`${report.compare.dir}\` (pxsig ${report.compare.pxsig}, build \`${report.compare.build}\`): ${changed.length} changed, ${added.length} new, ${report.compare.removed.length} gone. Advisory.`,
+      ...(changed.length
+        ? [
+            '',
+            ...changed.map(
+              (x) =>
+                `- changed: \`${x.feature}\` #${x.index + 1} (${x.theme}): ${x.compare?.reasons.join('; ')}`
+            ),
+          ]
+        : []),
+      ...(added.length
+        ? ['', ...added.map((x) => `- new: \`${x.feature}\` #${x.index + 1} (${x.theme})`)]
+        : []),
+      ...(report.compare.removed.length
+        ? ['', ...report.compare.removed.map((k) => `- gone: \`${k}\``)]
+        : [])
+    );
+  }
   const lay = report.screens.filter((x) => x.layout.length);
   if (lay.length)
     lines.push(
@@ -101,13 +126,21 @@ export function galleryHtml(report) {
     src
       ? `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy">`
       : `<p class="none">${esc(alt)}</p>`;
+  const compared = (/** @type {ScreenResult} */ x) =>
+    !x.compare
+      ? ''
+      : x.compare.status === 'changed'
+        ? ` · <strong>changed</strong> (SSIM ${esc(x.compare.ssim)}, ${esc(x.compare.changedCellsPct)}% cells)`
+        : ` · ${esc(x.compare.status)}`;
   const sections = [...groups.values()].map((xs) => {
     const f = xs[0];
     const cells = xs
       .map(
-        (x) => `<figure class="${x.rendered ? 'ok' : 'bad'}">
-  <figcaption>#${x.index + 1} · ${esc(x.theme)} · ${esc(x.scenario)} · ${x.rendered ? 'rendered' : esc(x.reason)}${x.axe.length ? ` · axe: ${esc(x.axe.map((v) => `${v.id} (${v.count})`).join(', '))}` : ''}${x.fallbacks?.length ? ` · fallbacks: ${esc(x.fallbacks.join(', '))}` : ''}${x.layout.length ? ` · layout: ${x.layout.length}` : ''}</figcaption>${x.layout.length ? `\n  <details><summary>Layout findings</summary><ul>${x.layout.map((f) => `<li>${esc(f.rule)}: ${esc(f.text)}</li>`).join('')}</ul></details>` : ''}
-  <div class="pair">${img(x.shot, x.rendered ? 'adapter' : 'not rendered')}${report.reference.used ? img(x.referenceShot, 'reference not rendered') : ''}</div>
+        (
+          x
+        ) => `<figure class="${x.rendered ? 'ok' : 'bad'}${x.compare?.status === 'changed' ? ' changed' : ''}">
+  <figcaption>#${x.index + 1} · ${esc(x.theme)} · ${esc(x.scenario)} · ${x.rendered ? 'rendered' : esc(x.reason)}${x.axe.length ? ` · axe: ${esc(x.axe.map((v) => `${v.id} (${v.count})`).join(', '))}` : ''}${x.fallbacks?.length ? ` · fallbacks: ${esc(x.fallbacks.join(', '))}` : ''}${x.layout.length ? ` · layout: ${x.layout.length}` : ''}${compared(x)}</figcaption>${x.layout.length ? `\n  <details><summary>Layout findings</summary><ul>${x.layout.map((f) => `<li>${esc(f.rule)}: ${esc(f.text)}</li>`).join('')}</ul></details>` : ''}
+  <div class="pair">${img(x.shot, x.rendered ? 'adapter' : 'not rendered')}${report.reference.used ? img(x.referenceShot, 'reference not rendered') : ''}${x.compare?.status === 'changed' ? `${img(x.compare.earlier, 'earlier')}${img(x.compare.diff, 'no diff image')}` : ''}</div>
 </figure>`
       )
       .join('\n');
@@ -120,11 +153,17 @@ export function galleryHtml(report) {
 h1{font-size:1.25rem}h2{font-size:1rem;margin-block:2rem .25rem}p{margin-block:.25rem;max-inline-size:80ch}.meta{opacity:.7}
 figure{margin:1rem 0;padding:.5rem;border:1px solid color-mix(in srgb,currentColor 20%,transparent)}figure.bad{border-color:#c62828}
 figcaption{font-size:.85rem;margin-block-end:.5rem}details{font-size:.85rem;margin-block-end:.5rem}.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(20rem,1fr));gap:.5rem}
+body.only-changed figure:not(.changed),body.only-changed section:not(:has(figure.changed)){display:none}
 .pair img{inline-size:100%;block-size:auto;border:1px solid color-mix(in srgb,currentColor 15%,transparent)}.none{opacity:.7}
 </style></head><body>
 <h1>pxsig dashboard check</h1>
 <p>${esc(report.summary.rendered)} of ${esc(report.summary.screens)} screens rendered · ${esc(report.summary.failed)} failed · ${esc(report.summary.withAxe)} with axe violations · ${esc(report.summary.withLayout)} with layout findings${report.strict ? ' (strict)' : ' (advisory)'}.</p>
 <p>Left: the adapter build <code>${esc(report.build)}</code>. ${report.reference.used ? 'Right: the prebuilt reference dashboard.' : `No reference column: ${esc(report.reference.note)}.`}</p>
+${
+  report.compare
+    ? `<p>Compared with <code>${esc(report.compare.dir)}</code> (pxsig ${esc(report.compare.pxsig)}): ${esc(report.compare.changed)} changed${report.compare.removed.length ? `, ${esc(report.compare.removed.length)} gone` : ''}. A changed screen shows the earlier screenshot and the changed pixels after its own. <label><input type="checkbox" onchange="document.body.classList.toggle('only-changed', this.checked)"> Changed screens only</label></p>`
+    : ''
+}
 ${sections.join('\n')}
 </body></html>
 `;
