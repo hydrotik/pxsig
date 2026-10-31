@@ -5,7 +5,7 @@
   `pxsig.workspace.json` names the whole workspace (`"label": "hydrotik ds"` reads
   `pxsig • hydrotik ds`); without it the project's `label`, else its name, as before. The dashboard
   data gains `scope` (additive); `pxsig config` prints the title. See
-  [the dashboard title](docs/configuration.md#the-dashboard-title).
+  "The dashboard title" in `docs/configuration.md`.
 
 ### Changed
 
