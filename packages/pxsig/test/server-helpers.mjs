@@ -22,6 +22,7 @@ import { skipUnless } from './strict.mjs';
  *   skipped: { name?: string, id?: string, why: string }[],
  *   applied: { action: string, result: string }[],
  *   approved: string[],
+ *   error?: string,
  * }} PostAnswer
  */
 

@@ -86,10 +86,11 @@ export function useInspectorActions({
       ? (data.check?.rows ?? []).filter((r) => r.story === row.story && !r.skipped)
       : [];
 
-  // Entries of this story waiting for a decision (every mode and state): one click approves them.
-  const storyOpen = siblings.filter(
-    (r) => ['changed', 'new'].includes(statusOf(r, data.review)) && !r.error
-  );
+  // Entries of this story waiting for a decision (every mode and state): one click approves them,
+  // only when the project allows it (`approvals.byStory`, off by default: one entry, one decision).
+  const storyOpen = data.approvals?.byStory
+    ? siblings.filter((r) => ['changed', 'new'].includes(statusOf(r, data.review)) && !r.error)
+    : [];
   // What the last re-check or story approval did, shown under the header until the entry changes.
   const [note, setNote] = React.useState<string | null>(null);
   React.useEffect(() => setNote(null), [row?.id]);

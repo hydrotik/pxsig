@@ -1,6 +1,7 @@
 /**
  * The dashboard's decisions in a real browser, against a mocked server (see flows-helpers.mjs): a
- * render error's re-check, the inspector's approvals, the dashboard link, a decision without it,
+ * render error's re-check, the inspector's approvals (Approve story only with `approvals.byStory`;
+ * Reject and Approve in the same place in every state), the dashboard link, a decision without it,
  * and the Storybook panel's small window. Nothing here can write a baseline: every /__pxsig/
  * request is answered by page.route. Skips when no Chromium is available.
  */
@@ -11,6 +12,12 @@ import { changed, data, entry, row } from '../fixtures/scenarios.mjs';
 import { setupFlows, browser, skip, base, open } from './flows-helpers.mjs';
 
 setupFlows();
+
+/** The data with `approvals.byStory` on: the inspector offers Approve story. */
+const withByStory = (/** @type {Parameters<typeof data>[0]} */ o) => ({
+  ...data(o),
+  approvals: { byStory: true },
+});
 
 test('a render error card offers a re-check of that entry', async (t) => {
   if (skip) return t.skip(skip);
@@ -40,10 +47,10 @@ test('a render error card offers a re-check of that entry', async (t) => {
   }
 });
 
-test("the inspector approves a story's entries together, and re-checks one entry", async (t) => {
+test("with approvals.byStory, the inspector approves a story's entries together, and re-checks one entry", async (t) => {
   if (skip) return t.skip(skip);
   const story = 'ui-button--primary';
-  const d = data({
+  const d = withByStory({
     rows: [
       row(story, changed),
       row(`${story}@light`, { ...changed, mode: 'light' }),
@@ -91,6 +98,61 @@ test("the inspector approves a story's entries together, and re-checks one entry
   } finally {
     await page.close();
   }
+});
+
+test('Reject and Approve keep their place whatever else the review group shows', async (t) => {
+  if (skip) return t.skip(skip);
+  const story = 'ui-button--primary';
+  const issue = [{ code: 'changed', severity: 'warn', reason: 'gate failed' }];
+  const a11y = { violations: [{ id: 'color-contrast', impact: 'serious' }], new: 2, baseline: [] };
+  /** Each state the group can be in, as the data that puts the inspector on `story` in it. */
+  const states = {
+    fresh: data({ rows: [row(story, changed)], entries: [entry(story, issue)] }),
+    'story siblings, byStory off': data({
+      rows: [row(story, changed), row(`${story}@light`, { ...changed, mode: 'light' })],
+      entries: [entry(story, issue), entry(`${story}@light`, issue)],
+    }),
+    'story siblings, Approve story shown': withByStory({
+      rows: [row(story, changed), row(`${story}@light`, { ...changed, mode: 'light' })],
+      entries: [entry(story, issue), entry(`${story}@light`, issue)],
+    }),
+    'after a decision (Undo shown)': {
+      ...data({ rows: [row(story, changed)], entries: [entry(story, issue)] }),
+      review: { [story]: { state: 'rejected', at: '2026-10-24T10:00:00.000Z' } },
+    },
+    'new a11y violations (the note shown)': data({
+      rows: [row(story, { ...changed, a11y })],
+      entries: [entry(story, issue)],
+    }),
+  };
+  /** @type {Record<string, { approve: unknown, reject: unknown }>} */
+  const boxes = {};
+  for (const [name, d] of Object.entries(states)) {
+    const { page } = await open(d, { hash: `#inspect=${story}` });
+    try {
+      // The header's: the first in the dialog (the a11y section below has its own Reject).
+      const button = (/** @type {string} */ label) =>
+        page.getByRole('dialog').getByRole('button', { name: label, exact: true }).first();
+      await button('Approve').waitFor();
+      const box = async (/** @type {string} */ label) => {
+        const b = await button(label).boundingBox();
+        return b && [b.x, b.y, b.width, b.height].map(Math.round);
+      };
+      boxes[name] = { approve: await box('Approve'), reject: await box('Reject') };
+      if (name === 'story siblings, byStory off')
+        assert.equal(
+          await page.getByRole('button', { name: /Approve story/ }).count(),
+          0,
+          'no Approve story without approvals.byStory'
+        );
+      if (name === 'story siblings, Approve story shown')
+        await page.getByRole('button', { name: 'Approve story · 2 entries' }).waitFor();
+    } finally {
+      await page.close();
+    }
+  }
+  const [first, ...rest] = Object.entries(boxes);
+  for (const [name, b] of rest) assert.deepEqual(b, first[1], `${name} vs ${first[0]}`);
 });
 
 // --- the dashboard link ----------------------------------------------------------------------------

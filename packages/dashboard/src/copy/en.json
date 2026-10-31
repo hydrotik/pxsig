@@ -857,8 +857,8 @@
       "needsLink": "Open the dashboard link from the terminal to approve here: pxsig serve printed it, and pxsig serve --link prints a new one.",
       "undoTitle": "Restore the previous baseline",
       "approveA11y": {
-        "one": "Approve · accepts {count} new a11y violation",
-        "other": "Approve · accepts {count} new a11y violations"
+        "one": "Approving accepts {count} new a11y violation",
+        "other": "Approving accepts {count} new a11y violations"
       },
       "accept": "Accept violations",
       "acceptTitle": "Add this entry's current violations to its accepted list (A)",
@@ -868,6 +868,10 @@
       "acceptCount": {
         "one": "Accept 1 new",
         "other": "Accept {count} new"
+      },
+      "newCount": {
+        "one": "1 new violation",
+        "other": "{count} new violations"
       },
       "recheck": "Re-check",
       "recheckTitle": "Render and check this entry again. Never writes a baseline.",

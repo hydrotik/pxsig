@@ -59,6 +59,7 @@ export {
   counter,
   slot,
   reserved,
+  heightOnly,
   clip,
   sessionBar,
   note,

@@ -110,6 +110,8 @@ function checkApprovals(config, ref) {
     );
   if (a.identity != null && !['none', 'git-email'].includes(a.identity))
     throw new SetupError(`project "${ref.name}": approvals.identity must be "none" or "git-email"`);
+  if (a.byStory != null && typeof a.byStory !== 'boolean')
+    throw new SetupError(`project "${ref.name}": approvals.byStory must be true or false`);
 }
 
 /**

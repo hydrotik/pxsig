@@ -249,12 +249,26 @@ export function SiblingToggle({
   row,
   target,
   onNavigate,
+  keepHeight = false,
 }: {
   siblings: Row[];
   row: Row;
   target: InspectTarget | null;
   onNavigate: (t: InspectTarget) => void;
+  /** Without siblings, hold the toggle's height (no width), so the header does not shrink. */
+  keepHeight?: boolean;
 }) {
+  if (siblings.length < 2)
+    return keepHeight ? (
+      <span className={s.heightOnly} aria-hidden>
+        <SegmentedChoice
+          value={row.id}
+          onValueChange={() => {}}
+          label={t('inspector.variant')}
+          options={[{ value: row.id, label: row.mode }]}
+        />
+      </span>
+    ) : null;
   return siblings.length > 1 ? (
     <SegmentedChoice
       value={row.id}
@@ -366,8 +380,15 @@ export function ReviewButtons({
   approveAll: () => Promise<void>;
 }) {
   const undo = <Undo review={review} busy={busy} act={act} />;
+  // Reject and Approve keep their place: they end the group, at its right edge, with labels that
+  // never change width. Whatever comes and goes (Undo, Approve story, the a11y note) sits to their
+  // left, so it can only push away from them (test/flows-decisions.test.mjs measures it).
   return !canReview || (idle && embedded) ? null : a11yMode ? (
     <>
+      {undo}
+      {newA11y ? (
+        <span className={s.micro}>{t('inspector.review.newCount', { count: newA11y })}</span>
+      ) : null}
       <Button
         size="sm"
         emphasis="outline"
@@ -383,14 +404,26 @@ export function ReviewButtons({
         onClick={() => act('approve')}
         title={t('inspector.review.acceptTitle')}
       >
-        {newA11y
-          ? t('inspector.review.acceptCount', { count: newA11y })
-          : t('inspector.review.accept')}
+        {t('inspector.review.accept')}
       </Button>
-      {undo}
     </>
   ) : (
     <>
+      {undo}
+      {storyOpen.length > 1 && !target?.scenario ? (
+        <Button
+          size="sm"
+          emphasis="outline"
+          disabled={busy}
+          onClick={approveAll}
+          title={t('inspector.review.approveStoryTitle')}
+        >
+          {t('inspector.review.approveStory', { count: storyOpen.length })}
+        </Button>
+      ) : null}
+      {newA11y && !a11yDecision && !review ? (
+        <span className={s.micro}>{t('inspector.review.approveA11y', { count: newA11y })}</span>
+      ) : null}
       <Button
         size="sm"
         emphasis="outline"
@@ -406,22 +439,8 @@ export function ReviewButtons({
         onClick={() => act('approve')}
         title={t('inspector.review.approveTitle')}
       >
-        {newA11y && !a11yDecision && !review
-          ? t('inspector.review.approveA11y', { count: newA11y })
-          : t('inspector.review.approve')}
+        {t('inspector.review.approve')}
       </Button>
-      {undo}
-      {storyOpen.length > 1 && !target?.scenario ? (
-        <Button
-          size="sm"
-          emphasis="outline"
-          disabled={busy}
-          onClick={approveAll}
-          title={t('inspector.review.approveStoryTitle')}
-        >
-          {t('inspector.review.approveStory', { count: storyOpen.length })}
-        </Button>
-      ) : null}
     </>
   );
 }

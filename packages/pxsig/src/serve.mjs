@@ -83,6 +83,7 @@ import {
   undo,
   who,
 } from './lib/approvals.mjs';
+import { BY_STORY_OFF, byStory, storySkip } from './lib/approvals/story.mjs';
 import { browserPool, renderStories, STORYBOOK_ERROR } from './lib/capture.mjs';
 import {
   fetchStoryIndex,
@@ -733,13 +734,14 @@ async function review(S, action, id, meta = {}) {
 
 /**
  * Approve every entry of one story that waits for a decision (each mode and state), in one batch:
- * a person's single click in the dashboard. Entries that passed, did not render, were rejected or
+ * a person's single click in the dashboard, with `approvals.byStory` on. Entries that passed, did not render, were rejected or
  * are already approved are left out, with why. Each approval is logged and undone like any other.
  * @param {ProjectState} S
  * @param {string} story
  * @param {DecisionMeta} [meta]
  */
 async function approveStory(S, story, meta = {}) {
+  if (!byStory(S.P.config)) throw httpError(403, BY_STORY_OFF);
   needLock(S);
   if (!S.running) S.reload();
   const entries = S.manifest.stories.filter((e) => (e.story ?? e.id) === story);
@@ -754,19 +756,7 @@ async function approveStory(S, story, meta = {}) {
   /** @type {{ id: string, why: string }[]} */
   const skipped = [];
   for (const e of entries) {
-    const r = rows.get(e.id);
-    const why =
-      rv[e.id]?.state === 'approved'
-        ? 'already approved'
-        : rv[e.id]?.state === 'rejected'
-          ? 'rejected: decide on it alone'
-          : !r || r.skipped
-            ? 'not checked yet'
-            : r.error
-              ? `did not render (${String(r.error).split('\n')[0]})`
-              : r.pass && !r.new
-                ? 'passes: nothing to approve'
-                : null;
+    const why = storySkip(rv[e.id]?.state, rows.get(e.id));
     if (why) {
       skipped.push({ id: e.id, why });
       continue;

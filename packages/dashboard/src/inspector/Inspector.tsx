@@ -279,7 +279,13 @@ export function Inspector({
     />
   );
   const siblingToggle = (
-    <SiblingToggle siblings={siblings} row={row} target={target} onNavigate={onNavigate} />
+    <SiblingToggle
+      siblings={siblings}
+      row={row}
+      target={target}
+      onNavigate={onNavigate}
+      keepHeight={!embedded}
+    />
   );
   const storyNav = <StoryNav list={list} index={index} step={step} />;
   const newA11y = row.a11y?.new ?? 0;
@@ -437,8 +443,6 @@ export function Inspector({
             {embedded ? null : viewControls}
           </ToolbarStart>
           <ToolbarEnd>
-            {embedded ? siblingToggle : null}
-            {embedded ? reviewButtons : null}
             {embedded ? (
               <label className={s.ctl}>
                 <Switch
@@ -449,6 +453,9 @@ export function Inspector({
                 {t('inspector.toggles.details')}
               </label>
             ) : null}
+            {embedded ? siblingToggle : null}
+            {/* Last: Approve at the right edge (controls.tsx ReviewButtons). */}
+            {embedded ? reviewButtons : null}
             {pixels && !embedded ? (
               <ChangeNav regions={regions} region={region} stepRegion={stepRegion} />
             ) : null}
