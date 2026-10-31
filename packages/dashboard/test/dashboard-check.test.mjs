@@ -174,6 +174,30 @@ test('axe findings are advisory; --strict makes them fail', async (t) => {
   assert.equal(strict.code, 1);
 });
 
+test('layout findings are advisory; --strict makes them fail', async (t) => {
+  if (skip) return t.skip(skip);
+  // A strip wider than the window on every page: the page scrolls sideways at both widths.
+  const initScript =
+    "document.addEventListener('DOMContentLoaded', () => { const d = document.createElement('div'); d.style.width = '1400px'; d.style.height = '1px'; document.body.append(d); })";
+  const flags = {
+    build: good,
+    out: path.join(tmp, 'out-layout'),
+    only: 'help.reference',
+    themes: 'dark',
+  };
+  const advisory = await run(flags, { initScript });
+  assert.equal(advisory.code, 0);
+  const found = advisory.report.screens[0].layout.filter((f) => f.rule === 'overflow');
+  assert.deepEqual(
+    found.map((f) => f.text.match(/at (\d+)px wide/)?.[1]),
+    ['1280', '900']
+  );
+  assert.equal(advisory.report.summary.withLayout, 1);
+  assert.match(readFileSync(path.join(tmp, 'out-layout', 'summary.md'), 'utf8'), /### Layout/);
+  const strict = await run({ ...flags, strict: true }, { initScript });
+  assert.equal(strict.code, 1);
+});
+
 test('a decision is answered and recorded, nothing is written, and only --out changes', async (t) => {
   if (skip) return t.skip(skip);
   const cwd = mkdtempSync(path.join(tmp, 'cwd-'));
@@ -242,10 +266,17 @@ test('the screenshot waits for the layout to hold still, up to a cap', async (t)
     await page.close();
   }
   const { summaryMarkdown } = await import('../../pxsig/src/dashboard-check.mjs');
-  const screen = { feature: 'overview.stats', index: 0, theme: 'dark', rendered: true, axe: [] };
+  const screen = {
+    feature: 'overview.stats',
+    index: 0,
+    theme: 'dark',
+    rendered: true,
+    axe: [],
+    layout: [],
+  };
   const md = summaryMarkdown(
     /** @type {any} */ ({
-      summary: { screens: 2, rendered: 2, failed: 0, withAxe: 0 },
+      summary: { screens: 2, rendered: 2, failed: 0, withAxe: 0, withLayout: 0 },
       build: 'dist',
       contract: { adapter: 1, current: 1 },
       themes: ['dark'],

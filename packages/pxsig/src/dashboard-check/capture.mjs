@@ -5,8 +5,9 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { injectAxe } from '../lib/capture.mjs';
+import { inspectLayout, MAX_PER_RULE, NARROW_WIDTH, pageOverflow } from './layout.mjs';
 /** @import { Browser, Page } from 'playwright' */
-/** @import { Screen, ScreenCapture, ScreenTarget, ScreenViolation } from '../types/t4.js' */
+/** @import { LayoutFinding, Screen, ScreenCapture, ScreenTarget, ScreenViolation } from '../types/t4.js' */
 
 export const VIEWPORT = { width: 1280, height: 900 };
 /** The clock every screen sees, so relative times ("2 days ago") are the same on every run. */
@@ -95,12 +96,32 @@ export const describe = (/** @type {ScreenTarget} */ t) =>
   t.role ? `${t.role}${t.name != null ? ` "${t.name}"` : ''}` : `text "${t.text}"`;
 
 /**
- * Render one screen in one theme; never throws (a failure is the result).
+ * The layout findings (layout.mjs) at VIEWPORT, then the page's overflow at NARROW_WIDTH. Leaves
+ * the page at NARROW_WIDTH: run it last.
+ * @param {Page} page
+ * @returns {Promise<LayoutFinding[]>}
+ */
+export async function measureLayout(page) {
+  const found = [
+    ...(await page.evaluate(inspectLayout, { max: MAX_PER_RULE })),
+    ...(await page.evaluate(pageOverflow)),
+  ];
+  await page.setViewportSize({ width: NARROW_WIDTH, height: VIEWPORT.height });
+  await settle(page);
+  return [...found, ...(await page.evaluate(pageOverflow))];
+}
+
+/**
+ * Render one screen in one theme; never throws (a failure is the result). `layout`: also measure
+ * the layout findings (the adapter's screens; not the reference's).
  * @param {Browser} browser
- * @param {{ url: string, screen: Screen, shot: string, axe: string, initScript?: string | null }} opts
+ * @param {{ url: string, screen: Screen, shot: string, axe: string, initScript?: string | null, layout?: boolean }} opts
  * @returns {Promise<ScreenCapture>}
  */
-export async function capture(browser, { url, screen, shot, axe, initScript = null }) {
+export async function capture(
+  browser,
+  { url, screen, shot, axe, initScript = null, layout = false }
+) {
   const started = Date.now();
   const context = await browser.newContext({
     viewport: VIEWPORT,
@@ -136,6 +157,7 @@ export async function capture(browser, { url, screen, shot, axe, initScript = nu
         reason: `landmark missing: ${describe(screen.wait)}`,
         errors,
         axe: [],
+        layout: [],
         ms: Date.now() - started,
         ...(retried ? { retried } : {}),
       };
@@ -169,12 +191,14 @@ export async function capture(browser, { url, screen, shot, axe, initScript = nu
         }));
       });
     }
+    const found = layout && !errors.length ? await measureLayout(page) : [];
     if (errors.length)
       return {
         rendered: false,
         reason: `page error: ${errors[0]}`,
         errors,
         axe: violations,
+        layout: [],
         ms: Date.now() - started,
         ...(settled ? {} : { settled: /** @type {const} */ (false) }),
         ...(retried ? { retried } : {}),
@@ -184,6 +208,7 @@ export async function capture(browser, { url, screen, shot, axe, initScript = nu
       reason: null,
       errors,
       axe: violations,
+      layout: found,
       ms: Date.now() - started,
       ...(settled ? {} : { settled: /** @type {const} */ (false) }),
       ...(retried ? { retried } : {}),
@@ -195,6 +220,7 @@ export async function capture(browser, { url, screen, shot, axe, initScript = nu
       reason: String(/** @type {{ message?: string }} */ (e).message ?? e).split('\n')[0],
       errors,
       axe: [],
+      layout: [],
       ms: Date.now() - started,
       ...(retried ? { retried } : {}),
     };

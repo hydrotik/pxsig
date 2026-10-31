@@ -1104,7 +1104,7 @@
           ]
         },
         "check": {
-          "summary": "Every dashboard feature's screens on the adapter build, from sample data that ships with pxsig, in each theme, with Playwright's Chromium: a gallery beside the prebuilt reference dashboard, axe on each screen, page errors. Reads no project data, writes only --out.",
+          "summary": "Every dashboard feature's screens on the adapter build, from sample data that ships with pxsig, in each theme, with Playwright's Chromium: a gallery beside the prebuilt reference dashboard, axe and layout findings on each screen, page errors. Reads no project data, writes only --out.",
           "usage": [
             "pxsig dashboard check [--ui path] [--build dir] [--out dir] [--reference dir] [--themes dark,light] [--only feature,…] [--strict] [--json]"
           ],
@@ -1147,13 +1147,13 @@
             },
             {
               "name": "strict",
-              "meaning": "Any axe violation fails the check (exit 1); without it they are listed and advisory."
+              "meaning": "Any axe violation or layout finding fails the check (exit 1); without it they are listed and advisory."
             }
           ],
           "effects": ["writes-files"],
           "exits": {
             "0": "Every screen rendered with no page error",
-            "1": "A screen did not render, or (with --strict) an axe violation",
+            "1": "A screen did not render, or (with --strict) an axe violation or a layout finding",
             "2": "No build, no Chromium, an adapter for an older major UI contract, or a usage error"
           },
           "examples": [

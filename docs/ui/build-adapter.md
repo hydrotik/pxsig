@@ -677,6 +677,19 @@ draw them with your own segmented control and buttons.
    - Each screen's axe violations are listed in the gallery, `summary.md` and `report.json`
      (whose `axe` is the axe-core version that ran). They are advisory; `--strict` makes any
      violation exit 1.
+   - Each screen's layout is measured after it renders, and the findings are listed beside axe
+     (`layout` in `report.json`). Advisory too; `--strict` makes any finding exit 1:
+     - `overflow`: the page scrolls sideways at 1280 or at 900 CSS px wide.
+     - `clipped`: content cut off by `overflow: hidden`; text truncated on purpose (an ellipsis,
+       a line clamp) passes when a `title` or `aria-label` holds its full text.
+     - `controls`: in a row of controls (`role="toolbar"`, `data-toolbar`, `data-control-row`),
+       the controls on one line differ in height or bottom edge.
+     - `edge`: text or a control within 2px of a drawn border of the region that frames it.
+     - `overlap`: two controls drawn over each other, or one covered by another.
+
+     The rules read roles and the box model, not class names, so they apply to any adapter. An
+     element opts out with `data-layout-allow="<reason>"`.
+
    - `--only <feature,…>` checks part of it while you work on one feature; `--themes dark` one theme.
    - The components each screen left to the dashboard's fallbacks are listed beside it.
 4. Without Chromium (`npx playwright install chromium` installs it), do it by hand instead: serve
