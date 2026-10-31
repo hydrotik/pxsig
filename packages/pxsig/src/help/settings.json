@@ -14,10 +14,10 @@
       "operation": "The name --project takes, and the name in reports and the dashboard."
     },
     "label": {
-      "file": "pxsig.config.json",
-      "meaning": "The dashboard title after \"pxsig ·\": what this project reviews, in your words, for example \"Hydrotik\". 1 to 60 characters. `pxsig init` asks for it at a terminal, or takes --label; afterwards, edit pxsig.config.json.",
+      "file": "pxsig.workspace.json, pxsig.config.json",
+      "meaning": "The application under review, named in the dashboard title after \"pxsig •\" (\"pxsig • hydrotik ds\"). In pxsig.workspace.json it names the whole workspace; in pxsig.config.json it names the project (the title when the workspace has no label, and the project switcher's option). 1 to 60 characters. `pxsig init` asks for a project's at a terminal, or takes --label; afterwards, edit the file.",
       "default": "the project name",
-      "operation": "Read when the dashboard data is built: the title, and the project switcher's options. Nothing else reads it; --project still takes the name."
+      "operation": "Read when the dashboard data is built: the title (the workspace's label, else the project's, else its name), the browser tab, and the project switcher's options. Nothing else reads it; --project still takes the name."
     },
     "srcRoot": {
       "file": "pxsig.config.json",

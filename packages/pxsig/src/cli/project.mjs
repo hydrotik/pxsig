@@ -238,7 +238,7 @@ export function projectCommands(cli) {
           { h: 'pxsig config', sub: d.project },
           {
             kv: [
-              ['Dashboard title', `pxsig · ${d.label ?? d.project}`],
+              ['Dashboard title', `pxsig • ${d.scope ?? d.label ?? d.project}`],
               ['Workspace file', rel(d.workspaceFile)],
               ['Project config', rel(d.configFile)],
               ['Source root', rel(d.srcRoot)],

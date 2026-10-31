@@ -28,6 +28,8 @@ export interface WorkspaceFile {
   defaults?: Record<string, unknown>;
   /** The pxsig versions this workspace needs, as a range. */
   requires?: string;
+  /** The application the workspace is: the dashboard title after "pxsig •". */
+  label?: unknown;
   server?: { port?: number };
 }
 
@@ -53,6 +55,8 @@ export interface Workspace {
   id: string;
   /** Absolute path of `pxsig.workspace.json`; null for a single package without one. */
   file: string | null;
+  /** `label` from the workspace file (1 to 60 characters); null without one. */
+  label: string | null;
   /** `defaults` from the workspace file: the project config layer below each project's own. */
   defaults: Record<string, unknown>;
   /** `server` from the workspace file (`port`). */
@@ -178,8 +182,13 @@ export interface Store {
 /** A project, resolved: what `loadProject` / `openProject` return. */
 export interface Project {
   name: string;
-  /** The dashboard title after "pxsig ·" (config `label`); null: the name. */
+  /** The project switcher's name for it (config `label`); null: the name. */
   label: string | null;
+  /**
+   * The scope the dashboard title names after "pxsig •": the workspace's `label`, else the
+   * project's `label`, else its name.
+   */
+  scope: string;
   /** Absolute project folder. */
   root: string;
   workspaceRoot: string;

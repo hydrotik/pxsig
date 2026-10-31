@@ -257,6 +257,8 @@ export interface DescribedConfig {
   sources: Project['configSources'];
   project: string;
   label: string | null;
+  /** The dashboard title's scope (Project `scope`). */
+  scope: string;
   workspace: string;
   workspaceFile: string | null;
   configFile: string;

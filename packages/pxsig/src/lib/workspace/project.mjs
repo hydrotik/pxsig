@@ -149,7 +149,7 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
   } catch (e) {
     throw new SetupError(/** @type {Error} */ (e).message);
   }
-  // The dashboard title's label: what the page reviews, in the team's words.
+  // The project's label: what it reviews, in the team's words (the title, without a workspace label).
   const label =
     config.label == null ? null : typeof config.label === 'string' ? config.label.trim() : '';
   if (label === '' || (label && label.length > 60))
@@ -217,8 +217,10 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
   /** @type {Project} */
   const P = {
     name: ref.name,
-    /** The dashboard title after "pxsig ·" (config `label`); null: the name. */
+    /** The project switcher's name for it (config `label`); null: the name. */
     label,
+    /** The dashboard title's scope: the workspace's label, else the project's, else its name. */
+    scope: ws.label ?? label ?? ref.name,
     root,
     workspaceRoot: ws.root,
     workspaceFile: ws.file,

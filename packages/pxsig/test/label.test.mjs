@@ -95,6 +95,36 @@ test('a project with a bad label does not load; a good one reaches the dashboard
   );
 });
 
+test("the title's scope: the workspace's label, else the project's, else its name", () => {
+  const ws = (/** @type {unknown} */ label) =>
+    tree({
+      'pxsig.workspace.json': {
+        version: 1,
+        projects: { ui: 'packages/ui' },
+        ...(label === undefined ? {} : { label }),
+      },
+      'packages/ui/pxsig.config.json': { version: 1, label: 'UI kit' },
+    });
+  for (const label of ['', '  ', 'x'.repeat(61), 7])
+    assert.throws(
+      () => openProject({ cwd: ws(label) }),
+      /"label" must be text of 1 to 60 characters/,
+      JSON.stringify(label)
+    );
+  const P = openProject({ cwd: ws(' hydrotik ds ') });
+  assert.equal(P.scope, 'hydrotik ds');
+  const d = buildData(P);
+  assert.deepEqual(
+    [d.scope, d.label],
+    ['hydrotik ds', 'UI kit'],
+    'the switcher keeps the project label'
+  );
+  assert.equal(openProject({ cwd: ws(undefined) }).scope, 'UI kit');
+  const bare = tree({ 'pxsig.config.json': { version: 1, name: 'ui' } });
+  assert.equal(buildData(openProject({ cwd: bare })).scope, 'ui');
+  assert.match(run(['config'], ws('hydrotik ds')).stdout, /Dashboard title.*pxsig • hydrotik ds/);
+});
+
 test('pxsig config names the dashboard title and the layer that set the label', () => {
   const root = tree({ 'pxsig.config.json': { version: 1, name: 'ui', label: 'Hydrotik' } });
   const r = run(['config', '--json'], root);
@@ -102,7 +132,7 @@ test('pxsig config names the dashboard title and the layer that set the label', 
   const d = JSON.parse(r.stdout);
   assert.equal(d.label, 'Hydrotik');
   assert.equal(d.sources.label, 'project config');
-  assert.match(run(['config'], root).stdout, /Dashboard title.*pxsig · Hydrotik/);
+  assert.match(run(['config'], root).stdout, /Dashboard title.*pxsig • Hydrotik/);
 });
 
 test('the schema holds a label to 1–60 characters with something besides spaces', () => {

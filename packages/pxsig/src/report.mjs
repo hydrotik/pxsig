@@ -140,8 +140,10 @@ export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/` } = {}
   return {
     generatedAt: new Date().toISOString(),
     project: P.name,
-    /** The title the dashboard shows after "pxsig ·": the project's `label`, else its name. */
+    /** The project switcher's name for it: the project's `label`, else its name. */
     label: P.label ?? P.name,
+    /** The scope the title names after "pxsig •": the workspace's label, else the project's. */
+    scope: P.scope,
     /** What drew the page, for the top bar's tooltip and the Help section. */
     versions: {
       pxsig: PXSIG_VERSION,

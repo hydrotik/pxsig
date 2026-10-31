@@ -273,6 +273,7 @@ export function describeConfig(P) {
     sources: P.configSources,
     project: P.name,
     label: P.label,
+    scope: P.scope,
     workspace: P.workspaceRoot,
     workspaceFile: P.workspaceFile,
     configFile: P.configPath,

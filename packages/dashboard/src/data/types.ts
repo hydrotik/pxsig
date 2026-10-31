@@ -284,8 +284,13 @@ export interface Data {
   generatedAt: string;
   /** The project this data belongs to (one server can serve several). */
   project?: string;
-  /** The title after "pxsig ·": the project's `label`, else its name. Older servers omit it. */
+  /** The project switcher's name for it: the project's `label`, else its name. Older servers omit it. */
   label?: string;
+  /**
+   * The application under review, after "pxsig •" in the title: the workspace's `label`, else the
+   * project's `label`, else its name. Older servers omit it.
+   */
+  scope?: string;
   /** What drew the page: pxsig, its engine and the UI contract (null when unknown). Older servers omit it. */
   versions?: { pxsig: string | null; engine: string | null; contract: string | null };
   /** The project's store, relative to the workspace root (for copyable paths). */

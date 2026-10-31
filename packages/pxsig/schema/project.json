@@ -115,7 +115,7 @@
       "minLength": 1,
       "maxLength": 60,
       "pattern": "\\S",
-      "description": "The dashboard title after \"pxsig ·\": what this project reviews, in your words (\"Hydrotik\"). Default: the project name. 1 to 60 characters."
+      "description": "What this project reviews, in your words (\"Hydrotik\"): the project switcher's option, and the dashboard title after \"pxsig •\" when the workspace has no label. Default: the project name. 1 to 60 characters."
     },
     "srcRoot": {
       "$ref": "#/$defs/path",
