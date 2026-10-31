@@ -1,4 +1,4 @@
-### Breaking changes
+### Behaviour changes
 
 - **`GET /__pxsig/projects` no longer sends the workspace's absolute path.** Its `workspace` field
   (the path, which contains the user's name) is replaced by `workspaceId`, the same hash of the path
