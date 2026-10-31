@@ -20,6 +20,7 @@ import { LINK_TIMING } from '../lib/dashboard-link.mjs';
 import { ask, emit, humanAtTerminal, whyNotPerson } from '../lib/term.mjs';
 import { relPath } from '../lib/paths.mjs';
 import { openLink } from '../lib/open.mjs';
+import { copyText } from '../lib/clipboard.mjs';
 
 /** @import { Block, CliError } from '../types/t6.js' */
 /** @import { CliContext } from './context.mjs' */
@@ -74,6 +75,11 @@ export function toolCommands(cli) {
       );
     process.stdout.write(`${body.link}\n`);
     process.stderr.write(`${LINK_TIMING}\n`);
+    if (flags.copy) {
+      // Opt-in: the clipboard is readable by any program here (lib/clipboard.mjs).
+      const c = await copyText(/** @type {string} */ (body.link));
+      process.stderr.write(`${c.copied ? 'Copied to the clipboard.' : c.note}\n`);
+    }
     if (!flags.open) return;
     // `body.link` was just printed: whatever happens here, the person has it.
     const o = await openLink(/** @type {string} */ (body.link));
@@ -90,6 +96,7 @@ export function toolCommands(cli) {
           '--open goes with --link (`pxsig serve --link --open`); `pxsig serve` opens a tab by itself unless --no-open',
           2
         );
+      if (flags.copy) fail('--copy goes with --link (`pxsig serve --link --copy`)', 2);
       const pass = process.argv.slice(3);
       const child = spawn(process.execPath, [join(here, 'serve.mjs'), ...pass], {
         stdio: 'inherit',

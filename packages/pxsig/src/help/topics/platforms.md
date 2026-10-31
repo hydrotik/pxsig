@@ -3,7 +3,8 @@
 pxsig runs on macOS, Linux and Windows; CI tests every pull request on all three.
 
 **Programs pxsig starts:** `node`, the engine binary, `git` on every OS; `ps` on macOS and Linux;
-`osascript` and `open` on macOS and `xdg-open` on Linux, to open the dashboard; `fc-list` on Linux
+`osascript` and `open` on macOS and `xdg-open` on Linux, to open the dashboard; `pbcopy` on macOS and
+`wl-copy` or `xclip` on Linux, only for `pxsig serve --link --copy`; `fc-list` on Linux
 when fontconfig is installed (a digest of the installed fonts); `docker` on every OS, only for
 `pxsig browser start`, `stop` and `status`; and the browser Playwright launches. Nothing else, and
 never a shell: on Windows `pxsig serve` prints the dashboard link

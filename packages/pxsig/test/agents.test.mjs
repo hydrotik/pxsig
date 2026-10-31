@@ -178,6 +178,7 @@ test('commands that need a person exit 3 and name the assistant', () => {
     ['approve', 'verify', '--adopt'],
     ['serve', '--link'],
     ['serve', '--link', '--open'],
+    ['serve', '--link', '--copy'],
     ['check', '--full', '--update'],
     ['doctor', '--repair', '--apply', '--prune'],
   ]) {

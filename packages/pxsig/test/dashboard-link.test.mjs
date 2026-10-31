@@ -1,7 +1,7 @@
 /**
  * dashboard-link.test.mjs — what the dashboard says about approving from it (lib/dashboard-link.mjs):
  * the command for a new link in the served folder, whether a request holds the link's session, and
- * the timing, said in full (the two minutes are to open the link, not to decide).
+ * the timing, said in full (the five minutes are to access the link, not to decide).
  *
  *   node --test packages/pxsig/test/dashboard-link.test.mjs
  */
@@ -68,9 +68,10 @@ test('approving: whether the request carries a live session, never the session i
   assert.ok(!JSON.stringify(yes).includes(session));
 });
 
-test('the timing says both halves: two minutes to open it, no limit once open', () => {
+test('the timing says both halves: 5 minutes to access it, no limit once opened', () => {
   for (const text of [LINK_TIMING, LINK_EXPIRED]) {
-    assert.match(text, /two minutes/);
+    assert.match(text, /5 minutes/);
+    assert.match(text, /access/);
     assert.match(text, /no time limit/);
   }
 });

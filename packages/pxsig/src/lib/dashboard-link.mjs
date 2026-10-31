@@ -11,10 +11,10 @@ import { cookieValue, linkCookie } from './guard.mjs';
 /** @import { Links } from './guard.mjs' */
 
 /**
- * The timing, said in full: the two minutes are to open the link, never to decide.
+ * The timing, said in full: the five minutes are to access the link, never to decide.
  */
 export const LINK_TIMING =
-  'Open it within two minutes; it works once. Once open, that browser can approve, with no time limit, until pxsig serve stops or the browser closes.';
+  '5 minutes to access this link; it works once. Once opened, that browser can approve, with no time limit, until pxsig serve stops or the browser closes.';
 
 /** The server's start-up line when the link is not printed (not a person at this terminal). */
 export const LINK_ELSEWHERE =
@@ -22,7 +22,7 @@ export const LINK_ELSEWHERE =
 
 /** The answer to a ticket that was used or not opened in time. */
 export const LINK_EXPIRED =
-  'this dashboard link was used already or not opened within two minutes: run `pxsig serve --link` in a terminal for a new one (once open, a link has no time limit)';
+  'this dashboard link was used already or not accessed within 5 minutes: run `pxsig serve --link` in a terminal for a new one (once opened, a link has no time limit)';
 
 const BIN = fileURLToPath(new URL('../../bin/pxsig.mjs', import.meta.url));
 

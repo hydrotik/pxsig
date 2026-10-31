@@ -115,7 +115,7 @@ browser has no session for approving. The HTTP answer is 403 with
 link.
 
 **Fix.** Open the link the server printed, or run `pxsig serve --link` in a terminal for a new one.
-A link has to be opened within two minutes and works once; once open, that browser can approve with
+A link has 5 minutes to be accessed and works once; once opened, that browser can approve with
 no time limit until the server stops or the browser closes. The dashboard's top bar says which it
 is: **Read only**, or **Can approve**.
 

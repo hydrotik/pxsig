@@ -66,8 +66,8 @@ at a terminal who types `TAKE OVER`.
 
 > approving here needs the dashboard link: open the link `pxsig serve` printed, or run `pxsig serve --link` in a terminal
 
-HTTP 403, `code: "needs-dashboard-link"`. Open the link `pxsig serve` printed (single use, two
-minutes), or run `pxsig serve --link` in a terminal.
+HTTP 403, `code: "needs-dashboard-link"`. Open the link `pxsig serve` printed (single use, 5 minutes
+to access it), or run `pxsig serve --link` in a terminal.
 
 **A program is blocked on this machine**
 
