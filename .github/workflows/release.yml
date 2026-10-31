@@ -208,7 +208,8 @@ jobs:
       # Mode build: compile the dashboard against a checkout of the design system.
       - if: steps.how.outputs.mode == 'build'
         uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - if: steps.how.outputs.mode == 'build'
+      # Node for the build, and for the BUILD.json check in both modes that ship a real dashboard.
+      - if: steps.how.outputs.mode != 'placeholder'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
@@ -231,9 +232,7 @@ jobs:
           pnpm install --frozen-lockfile
           # The adapter is named, not left to the default: the release ships the reference look.
           PXSIG_UI_ADAPTER=hydrotik PXSIG_DS_SOURCE="$ds" pnpm --filter @pxsig/dashboard build
-          node -e 'const d = require("./packages/pxsig/dist/dashboard/BUILD.json").designSystem;
-            if (d?.commit !== process.argv[1]) { console.error("::error::BUILD.json does not record design-system commit " + process.argv[1]); process.exit(1); }
-            if (d.dirty) console.log("::warning::the design-system checkout had changes after pnpm install (BUILD.json: dirty)");' "${DS_REF}"
+          node scripts/check-dashboard-build.mjs packages/pxsig/dist/dashboard --adapter hydrotik --commit "${DS_REF}"
 
       # Mode placeholder (dry run only): an index.html that says so.
       - if: steps.how.outputs.mode == 'placeholder'
@@ -263,10 +262,9 @@ jobs:
           mkdir -p packages/pxsig/dist
           rm -rf packages/pxsig/dist/dashboard
           tar xzf "$dl/pxsig-dashboard.tar.gz" -C packages/pxsig/dist --no-same-owner
-          # `pnpm --filter @pxsig/dashboard build` writes dashboard/BUILD.json (docs/releasing.md).
-          if [ ! -f packages/pxsig/dist/dashboard/BUILD.json ]; then
-            echo "::warning::pxsig-dashboard.tar.gz has no dashboard/BUILD.json: nothing records how this bundle was built"
-          fi
+          # `pnpm --filter @pxsig/dashboard build` writes dashboard/BUILD.json (docs/releasing.md):
+          # without it nothing records how the bundle was built, and the SBOM misses what it inlines.
+          node scripts/check-dashboard-build.mjs packages/pxsig/dist/dashboard --adapter hydrotik
           echo "release asset pxsig-dashboard.tar.gz: sha256 $(sha256sum "$dl/pxsig-dashboard.tar.gz" | cut -d' ' -f1)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check the dashboard
@@ -381,6 +379,22 @@ jobs:
       # The dashboard bundle inlines packages npm never installs: add them to the npm SBOM.
       - name: SBOM (dashboard bundle)
         run: node scripts/bundle-sbom.mjs --dashboard packages/pxsig/dist/dashboard --sbom release-files/pxsig-npm.cdx.json
+      # Known advisories, any severity, in everything the release ships, read from its SBOMs: the npm
+      # install tree, the packages the dashboard bundle inlines (npm never installs them, so no audit
+      # sees them) and the engine's crates. osv-scanner is pinned and its download checked against
+      # the sha256 its release publishes (osv-scanner_SHA256SUMS).
+      - name: Advisories (osv-scanner)
+        shell: bash
+        env:
+          OSV_VERSION: 2.7.0
+          OSV_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b # linux_amd64
+        run: |
+          set -euo pipefail
+          bin="${RUNNER_TEMP}/osv-scanner"
+          curl -fsSL -o "$bin" "https://github.com/google/osv-scanner/releases/download/v${OSV_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SHA256}  $bin" | sha256sum -c -
+          chmod +x "$bin"
+          "$bin" scan source -L release-files/pxsig-npm.cdx.json -L release-files/pxsig-engine.cdx.json
       - name: Raw binaries and SHA256SUMS
         run: node scripts/release-files.mjs --artifacts release-artifacts --out release-files
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

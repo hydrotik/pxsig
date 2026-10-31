@@ -76,7 +76,9 @@ changes first), with the entries already under Unreleased ahead of the fragments
    package: `pxsig` (with the dashboard in `dist/`), each `@pxsig/cli-<platform>-<arch>` and
    `@pxsig/storybook-addon`. A packed manifest that still has either key, or a packed `.md` file that links to `main` or to a file the tarball does not hold, fails the job. It also writes `pxsig-dashboard.tar.gz`, the npm SBOM
    (`pxsig-npm.cdx.json`: the packed `pxsig` installed into an empty project and read by
-   `@cyclonedx/cyclonedx-npm`, pinned), the raw binaries `pxsig-<platform>-<arch>[.exe]`, and
+   `@cyclonedx/cyclonedx-npm`, pinned, plus the packages the dashboard bundle inlines), checks it
+   and the engine SBOM for known advisories of any severity (osv-scanner, pinned, its download
+   checked against its sha256: a finding fails the job), the raw binaries `pxsig-<platform>-<arch>[.exe]`, and
    `SHA256SUMS` over all of them (`scripts/release-files.mjs`).
 7. **attest**: a provenance attestation for every one of those files
    (`actions/attest-build-provenance`), then attaches them all to the GitHub release for the tag,
@@ -158,8 +160,10 @@ Every build writes `dashboard/BUILD.json` (`scripts/build-record.mjs`), which sh
 package: the adapter, the design-system commit with whether its checkout had changes and its
 `pnpm-lock.yaml` sha256, this repository's lockfile sha256, the Node version, the build time
 (`SOURCE_DATE_EPOCH` when set) and the third-party packages compiled into the bundle with their
-versions and licences. With the secret, the job checks that it names `PXSIG_DS_REF`; a release
-asset without it gets a warning. The pack job then appends those packages to `pxsig-npm.cdx.json`
+versions and licences. Either way the job checks it (`scripts/check-dashboard-build.mjs`): it must
+exist, name the `hydrotik` adapter, list the bundled packages and record a full design-system
+commit (with the secret, `PXSIG_DS_REF`), or the release fails; a checkout with changes is a
+warning. A release asset built with pxsig 0.6.0 or earlier has no `BUILD.json`: rebuild it. The pack job then appends those packages to `pxsig-npm.cdx.json`
 as bundled components (`scripts/bundle-sbom.mjs`, read from the module paths the unminified
 bundle keeps), so the npm SBOM covers the dashboard too.
 
