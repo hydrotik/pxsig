@@ -44,7 +44,7 @@ jobs:
         with:
           fetch-depth: 0 # the tagged commit must be on origin/main
       - id: v
-        name: Tag, Cargo workspace and every package.json must agree
+        name: Tag, Cargo workspace and every package.json must agree; a minor has its shots
         shell: bash
         env:
           DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
@@ -66,6 +66,8 @@ jobs:
           fi
           # Cargo.toml, Cargo.lock, packages/pxsig, packages/storybook-addon, packages/dashboard.
           node scripts/check-versions.mjs --tag "v${tag}"
+          # A minor or major release ships shots of its own dashboard, taken on the release branch.
+          node scripts/check-shots.mjs --tag "v${tag}"
           if [[ "$tag" == *-* ]]; then dist_tag=next; else dist_tag=latest; fi
           echo "version=${tag}" >> "$GITHUB_OUTPUT"
           echo "dist_tag=${dist_tag}" >> "$GITHUB_OUTPUT"
