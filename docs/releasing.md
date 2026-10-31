@@ -71,9 +71,10 @@ changes first), with the entries already under Unreleased ahead of the fragments
    `packages/cli-dist/` (git-ignored), adds them to `pxsig` as exact-version `optionalDependencies`
    (in the job's checkout only; nothing is committed), runs pxsig's prepack step
    (`scripts/sync-dashboard-source.mjs`), removes `scripts` and `devDependencies` from the
-   published manifests (`scripts/pack-manifest.mjs`), and runs `npm pack --ignore-scripts` on every
+   published manifests and pins each README's links to the tag (`blob/main` and links out of the
+   package become `blob/v<version>`; `scripts/pack-manifest.mjs`), and runs `npm pack --ignore-scripts` on every
    package: `pxsig` (with the dashboard in `dist/`), each `@pxsig/cli-<platform>-<arch>` and
-   `@pxsig/storybook-addon`. A packed manifest that still has either key fails the job. It also writes `pxsig-dashboard.tar.gz`, the npm SBOM
+   `@pxsig/storybook-addon`. A packed manifest that still has either key, or a packed `.md` file that links to `main` or to a file the tarball does not hold, fails the job. It also writes `pxsig-dashboard.tar.gz`, the npm SBOM
    (`pxsig-npm.cdx.json`: the packed `pxsig` installed into an empty project and read by
    `@cyclonedx/cyclonedx-npm`, pinned), the raw binaries `pxsig-<platform>-<arch>[.exe]`, and
    `SHA256SUMS` over all of them (`scripts/release-files.mjs`).

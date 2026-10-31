@@ -3,21 +3,26 @@
  * pack-manifest.mjs — the release workflow's pack job publishes package.json files without the
  * keys that only matter in this repository: `scripts` (pxsig's `prepack` points at
  * `../../scripts/`, and `test` runs the repository's tests) and `devDependencies`. Every published
- * tarball carries the root LICENSE (REQUIRED_FILES).
+ * tarball carries the root LICENSE (REQUIRED_FILES), and its README links to the documents of the
+ * version packed (lib/doc-links.mjs): `blob/main` becomes `blob/v<version>`, and a relative link
+ * that leaves the package becomes a link to that file on GitHub at the same tag.
  *
  *   node scripts/pack-manifest.mjs <package dir>...    rewrite each package.json in place and
  *                                                      copy the root LICENSE in (git-ignored)
  *   node scripts/pack-manifest.mjs --check <tgz>...    fail if a packed manifest still has them,
- *                                                      or a REQUIRED_FILES file is missing
+ *                                                      a REQUIRED_FILES file is missing, or a
+ *                                                      packed .md links to main or to a file the
+ *                                                      tarball does not hold
  *
  * The rewrite runs in the job's checkout only, like the optionalDependencies edit; nothing is
  * committed, and a local clone keeps its scripts. The job runs pxsig's prepack step itself first,
  * then packs with --ignore-scripts. Exit 1 on a failure, 2 on a usage error.
  */
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { join, posix, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { leftLinks, versionLinks } from './lib/doc-links.mjs';
 
 /** Keys a published package.json leaves out. */
 export const DEV_ONLY = ['scripts', 'devDependencies'];
@@ -46,6 +51,20 @@ function rewrite(dir) {
   const pj = /** @type {Record<string, unknown>} */ (JSON.parse(readFileSync(f, 'utf8')));
   writeFileSync(f, `${JSON.stringify(publishedManifest(pj), null, 2)}\n`);
   copyFileSync(join(repo, 'LICENSE'), join(dir, 'LICENSE'));
+  // Where the README lives in the repository: `repository.directory` (a fixture has none).
+  const from = /** @type {{ directory?: unknown } | undefined} */ (pj.repository)?.directory;
+  const readme = join(dir, 'README.md');
+  if (typeof from === 'string' && existsSync(readme)) {
+    const root = resolve(dir) + sep;
+    writeFileSync(
+      readme,
+      versionLinks(readFileSync(readme, 'utf8'), {
+        version: String(pj.version),
+        source: `${from}/README.md`,
+        held: (p) => resolve(dir, p).startsWith(root) && existsSync(join(dir, p)),
+      })
+    );
+  }
   return devOnlyKeys(pj);
 }
 
@@ -61,14 +80,39 @@ function packedManifest(tgz) {
 }
 
 /**
- * The REQUIRED_FILES a tarball does not hold.
+ * Every path a tarball holds.
  * @param {string} tgz
  */
-function missingFiles(tgz) {
+function listing(tgz) {
   const r = spawnSync('tar', ['-tzf', tgz], { encoding: 'utf8' });
   if (r.status !== 0) throw new Error(`${tgz}: not a readable tarball (${r.stderr.trim()})`);
-  const listed = new Set(r.stdout.split(/\r?\n/));
-  return REQUIRED_FILES.filter((f) => !listed.has(`package/${f}`));
+  return r.stdout.split(/\r?\n/).filter(Boolean);
+}
+
+/**
+ * The REQUIRED_FILES a tarball does not hold.
+ * @param {string[]} listed
+ */
+const missingFiles = (listed) => REQUIRED_FILES.filter((f) => !listed.includes(`package/${f}`));
+
+/**
+ * Each packed .md file's links to main or to a path the tarball does not hold (a file, or a
+ * folder some file is in), as `<file>: <link>`.
+ * @param {string} tgz
+ * @param {string[]} listed
+ */
+function badLinks(tgz, listed) {
+  return listed
+    .filter((f) => f.endsWith('.md'))
+    .flatMap((f) => {
+      const r = spawnSync('tar', ['-xzOf', tgz, f], { encoding: 'utf8' });
+      /** @param {string} p */
+      const held = (p) => {
+        const t = posix.normalize(posix.join(posix.dirname(f), p)).replace(/\/$/, '');
+        return listed.some((l) => l === t || l.startsWith(`${t}/`));
+      };
+      return leftLinks(r.stdout, held).map((l) => `${f.slice('package/'.length)}: ${l}`);
+    });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
@@ -83,16 +127,20 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   for (const t of targets) {
     if (check) {
       const left = devOnlyKeys(packedManifest(t));
-      const missing = missingFiles(t);
+      const listed = listing(t);
+      const missing = missingFiles(listed);
+      const links = badLinks(t, listed);
       if (left.length) console.error(`[pack-manifest] ${t}: still has ${left.join(', ')}`);
       if (missing.length)
         console.error(`[pack-manifest] ${t}: does not hold ${missing.join(', ')}`);
-      if (left.length || missing.length) failed++;
+      for (const l of links)
+        console.error(`[pack-manifest] ${t}: a link to main or out of the package: ${l}`);
+      if (left.length || missing.length || links.length) failed++;
       else console.log(`[pack-manifest] ${t}: ok`);
     } else {
       const removed = rewrite(t);
       console.log(
-        `[pack-manifest] ${t}: removed ${removed.length ? removed.join(', ') : 'nothing'}, LICENSE copied`
+        `[pack-manifest] ${t}: removed ${removed.length ? removed.join(', ') : 'nothing'}, LICENSE copied, README links pinned`
       );
     }
   }
