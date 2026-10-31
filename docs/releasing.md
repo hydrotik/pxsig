@@ -42,7 +42,8 @@ node scripts/changelog.mjs preview              # what the release section will 
 node scripts/changelog.mjs release X.Y.Z        # merge Unreleased and every fragment; delete them
 ```
 
-Then write the release's summary paragraph under its new heading, set the versions (above), commit
+Then write the release's summary paragraph under its new heading, set the versions (above), re-shoot
+the product shots for a minor or major release (below), commit
 the latest nightly `bench-results` as `scripts/bench/baseline.json` ([benchmark.md](benchmark.md#refreshing-the-baseline)), and
 merge the branch before pushing the tag. `release` keeps the headings in a fixed order (Breaking
 changes, then Behaviour changes), with the entries already under Unreleased ahead of the fragments.
@@ -53,6 +54,23 @@ without one). `release` opens the version's section with **Upgrading from <previ
 which collects those lines (the ones with nothing to do in one line at the end), and the GitHub
 release's notes point at that section. Before tagging, add the same steps, grouped by who acts, as
 an "Upgrading to X.Y" section of [migrating.md](migrating.md).
+
+## Product shots
+
+A minor or major release (`X.Y.0`) ships new README screenshots of its own dashboard. On the release
+branch, after setting the versions:
+
+```bash
+PXSIG_DS_SOURCE=<design-system checkout> pnpm build:dashboard   # the release's dashboard
+node scripts/showcase-shots.mjs                                  # docs/product-shots/*.png + shots.json
+```
+
+The script serves that build with mock data (a design system in the middle of a review), shoots the
+Overview and the review's first change in the light theme, crops them and records the version in
+`docs/product-shots/shots.json`. Review the images in the branch's diff like any other change.
+The workflow's verify job runs `node scripts/check-shots.mjs --tag vX.Y.0` and fails the release
+when the shots are from another minor. A patch or a prerelease keeps the last shots.
+`node scripts/showcase-shots.mjs --serve` keeps the mock dashboard running for shots by hand.
 
 ## What the workflow does
 

@@ -4,7 +4,7 @@
  */
 
 /**
- * The part of Playwright product-shots.mjs drives (https://playwright.dev/docs/api/class-browser).
+ * The part of Playwright product-shots.mjs and showcase-shots.mjs drive (https://playwright.dev/docs/api/class-browser).
  * The script loads pxsig's own Playwright with `createRequire`; its types are not resolvable from
  * scripts/ (pnpm keeps playwright-core beside it, not in the root node_modules), so this declares
  * just the calls made, as Playwright documents them.
@@ -15,10 +15,29 @@ export interface ShotsPage {
   evaluate<R>(fn: () => R | Promise<R>): Promise<R>;
   waitForTimeout(ms: number): Promise<void>;
   mouse: { move(x: number, y: number): Promise<void> };
-  screenshot(options: { path: string }): Promise<Buffer>;
+  screenshot(options?: {
+    path?: string;
+    clip?: { x: number; y: number; width: number; height: number };
+  }): Promise<Buffer>;
+  setContent(html: string): Promise<void>;
+  setViewportSize(size: { width: number; height: number }): Promise<void>;
+  waitForFunction(fn: () => unknown): Promise<unknown>;
+  keyboard: { press(key: string): Promise<void> };
+  locator(selector: string): ShotsLocator;
+  getByRole(role: string, options?: { name?: string | RegExp }): ShotsLocator;
+  getByText(text: string, options?: { exact?: boolean }): ShotsLocator;
+  close(): Promise<void>;
+}
+export interface ShotsLocator {
+  first(): ShotsLocator;
+  click(): Promise<void>;
+  waitFor(): Promise<void>;
+  count(): Promise<number>;
+  screenshot(): Promise<Buffer>;
+  boundingBox(): Promise<{ x: number; y: number; width: number; height: number } | null>;
 }
 export interface ShotsContext {
-  addInitScript<A>(script: (arg: A) => unknown, arg: A): Promise<void>;
+  addInitScript<A>(script: (arg: A) => unknown, arg?: A): Promise<void>;
   newPage(): Promise<ShotsPage>;
   close(): Promise<void>;
 }
@@ -29,6 +48,7 @@ export interface ShotsBrowser {
     colorScheme: 'dark' | 'light';
     reducedMotion: 'reduce' | 'no-preference';
   }): Promise<ShotsContext>;
+  newPage(options?: { viewport: { width: number; height: number } }): Promise<ShotsPage>;
   close(): Promise<void>;
 }
 export interface ShotsPlaywright {

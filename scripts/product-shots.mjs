@@ -4,12 +4,15 @@
 /**
  * product-shots.mjs — re-shoots the product screenshots in docs/product-shots/ from an example.
  *
- *   node scripts/product-shots.mjs [--out docs/product-shots] [--keep]
+ *   node scripts/product-shots.mjs [--out docs/product-shots] [--keep] [--approve-manually]
  *
  * 1. Copies examples/single-package to .local/product-shots/ (git-ignored), with its `link:`
  *    dependencies pointed at this checkout, installs it and builds its Storybook.
  * 2. Records baselines there (what approving every first render does), then makes one small,
  *    deliberate change (the Button's padding) and runs the check again: the Button's entries change.
+ *    With --approve-manually it records none itself: it starts the server, says which folder to run
+ *    `pxsig serve --link` in, and waits until a person has approved every first render in the
+ *    dashboard. The approval log then holds a line for each baseline, as in a real project.
  * 3. Starts `pxsig serve` on a free port and captures, at 2x, 1600×1000 CSS px, in both themes:
  *      inspector-<theme>.png   the inspector on the changed Button entry, in the diff view
  *      overview-<theme>.png    the Overview after that check
@@ -49,7 +52,7 @@ const arg = (k, d) => {
   const v = process.argv[process.argv.indexOf(k) + 1];
   if (v == null || v.startsWith('--')) {
     console.error(
-      'usage: node scripts/product-shots.mjs [--out <dir>] [--keep] [--url <url>] [--raw]'
+      'usage: node scripts/product-shots.mjs [--out <dir>] [--keep] [--url <url>] [--raw] [--approve-manually]'
     );
     process.exit(2);
   }
@@ -58,6 +61,7 @@ const arg = (k, d) => {
 // With a string default, `arg` returns a string.
 const out = resolve(/** @type {string} */ (arg('--out', join(repo, 'docs', 'product-shots'))));
 const keep = process.argv.includes('--keep');
+const manual = process.argv.includes('--approve-manually');
 if (!existsSync(bin)) throw new Error('build the Rust binary first: cargo build --release');
 if (!existsSync(join(repo, 'packages', 'pxsig', 'dist', 'dashboard', 'index.html')))
   throw new Error('build the dashboard first: pnpm build:dashboard');
@@ -89,7 +93,7 @@ const env = {
  * @param {string} cmd
  * @param {string[]} args
  * @param {string} cwd
- * @param {{ allow?: (number | null)[], stdio?: import('node:child_process').StdioOptions }} [opts]
+ * @param {{ allow?: (number | null)[], stdio?: import('node:child_process').StdioOptions, env?: NodeJS.ProcessEnv }} [opts]
  */
 const sh = (cmd, args, cwd, { allow = [0], ...opts } = {}) => {
   const r = spawnSync(cmd, args, {
@@ -179,7 +183,7 @@ async function prepare() {
         /** @type {Record<string, string>} */ (pj[k])[dep] =
           `link:${join(repo, 'packages', dep.replace('@pxsig/', ''))}`;
   writeFileSync(pjPath, JSON.stringify(pj, null, 2));
-  log(`installing the example in ${dir}`);
+  log(`installing the example in ${dir.slice(repo.length)}`);
   sh(
     'pnpm',
     ['install', '--ignore-workspace', '--no-frozen-lockfile', '--config.confirmModulesPurge=false'],
@@ -200,14 +204,8 @@ async function prepare() {
   pxsig(['check', '--full', '--retries', '0', ...static_], dir, [1]);
 
   // 2. Baselines from the first renders (what approving every NEW entry does), then the change.
-  const code = `
-    const { openProject, writeRunManifest } = await import(${JSON.stringify(join(repo, 'packages/pxsig/src/lib/workspace.mjs'))});
-    const P = openProject({});
-    const run = writeRunManifest(P).path;
-    const { spawnSync } = await import('node:child_process');
-    const r = spawnSync(P.rustBin, ['baseline', '--manifest', run, '--png-dir', P.store.latest, '--root', P.workspaceRoot, '--json'], { encoding: 'utf8' });
-    process.exit(r.status);`;
-  sh(process.execPath, ['--input-type=module', '-e', code], dir);
+  if (manual) await approvedByHand(dir);
+  else recordBaselines(dir);
   pxsig(['check', '--full', '--retries', '1', ...static_], dir);
   log(`changing ${CHANGE.file}`);
   const f = join(dir, CHANGE.file);
@@ -226,6 +224,54 @@ async function prepare() {
   );
 
   // 3. The dashboard, and the shots.
+  return startServer(dir);
+}
+
+/** Baselines straight from the latest renders, as approving every NEW entry would record them. */
+function recordBaselines(/** @type {string} */ dir) {
+  const code = `
+    const { openProject, writeRunManifest } = await import(${JSON.stringify(join(repo, 'packages/pxsig/src/lib/workspace.mjs'))});
+    const P = openProject({});
+    const run = writeRunManifest(P).path;
+    const { spawnSync } = await import('node:child_process');
+    const r = spawnSync(P.rustBin, ['baseline', '--manifest', run, '--png-dir', P.store.latest, '--root', P.workspaceRoot, '--json'], { encoding: 'utf8' });
+    process.exit(r.status);`;
+  sh(process.execPath, ['--input-type=module', '-e', code], dir);
+}
+
+/**
+ * --approve-manually: the server runs while a person approves every first render through the
+ * dashboard link; then it stops, so the checks after it run on their own (one store, one writer).
+ */
+async function approvedByHand(/** @type {string} */ dir) {
+  const url = await startServer(dir);
+  const folder = dir.slice(repo.length).replace(/^[/\\]+/, '');
+  log(`dashboard: ${url}`);
+  log(
+    `to approve: in ${folder} (this checkout), run \`pnpm exec pxsig serve --link\`, open the link`
+  );
+  log('and approve every new entry; this waits until none is left');
+  const left = () =>
+    /** @type {{ total: number }} */ (
+      JSON.parse(
+        sh(process.execPath, [cli, 'list', 'new'], dir, {
+          env: { ...env, PXSIG_FORMAT: 'json', PXSIG_URL: url.replace(/\/report\/$/, '') },
+        }).stdout
+      )
+    ).total;
+  for (let n = left(), last = -1; n > 0; n = left()) {
+    if (n !== last) log(`${n} new ${n === 1 ? 'entry' : 'entries'} to approve`);
+    last = n;
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+  log('every first render approved; stopping the server for the checks');
+  const s = /** @type {import('node:child_process').ChildProcess} */ (server);
+  await new Promise((r) => (s.once('exit', r), s.kill()));
+  server = null;
+}
+
+/** `pxsig serve` on a free port in the example copy; resolves with its dashboard URL. */
+async function startServer(/** @type {string} */ dir) {
   const port = await freePort();
   server = spawn(process.execPath, [cli, 'serve', '--port', String(port), '--no-open'], {
     cwd: dir,

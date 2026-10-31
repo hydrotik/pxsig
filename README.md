@@ -5,9 +5,9 @@ Visual regression for Storybook that runs on your own machine and in your own CI
 **New here:** [QUICKSTART.md](QUICKSTART.md) goes from install to a reviewed first baseline and CI,
 including how approving from the dashboard works (the dashboard link and the top bar's badges).
 
-<img src="docs/product-shots/overview.png" width="900" alt="The pxsig dashboard's Overview in the middle of a review: status cards (42 checked, 6 changed, 1 new accessibility violation), open items with review actions, a stale-entries heatmap by component, an errors card with the safe-repair actions, and the changed entries across 14 runs.">
+<img src="docs/product-shots/overview.png" width="900" alt="The pxsig dashboard's Overview in the middle of a review: status cards (42 checked, 32 passed, 6 changed, 1 new accessibility violation), open items with review actions, a stale-entries heatmap by component, an errors card with the safe-repair actions, and the changed entries across 14 runs.">
 
-<img src="docs/product-shots/inspector.png" width="900" alt="The inspector reviewing a changed card: the baseline render and the latest render side by side, the changed pixels and detail tiles highlighted, three changed regions listed, and the metrics that failed the gate (SSIM 0.64 below 0.99, 50 detail tiles changed) with Approve, Reject and Approve story.">
+<img src="docs/product-shots/inspector.png" width="900" alt="The inspector reviewing a changed project card, first of six: the baseline render and the latest render side by side, the moved badge and buttons highlighted and boxed, the changed regions listed, and the metrics that failed the gate (SSIM 0.64 below 0.99, 50 detail tiles changed), with Reject and Approve.">
 
 pxsig renders every story state with Playwright, reduces each render to a compact pixel
 signature, and compares it with an approved baseline. Each baseline is one `.psig` file per story

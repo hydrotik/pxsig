@@ -17,27 +17,29 @@ A shot that shows a staged or mocked state, rather than a real run on an example
 ## Re-shooting
 
 ```bash
-cargo build --release
 PXSIG_DS_SOURCE=<design-system checkout> pnpm build:dashboard   # see packages/dashboard/README.md
-node scripts/product-shots.mjs
+node scripts/showcase-shots.mjs
 ```
 
-The script copies `examples/single-package` to `.local/` (git-ignored), records its baselines,
-widens the Button's padding, checks again and starts `pxsig serve` on that copy. It then shoots
-each view at 1600×1000 CSS px and 2x in both themes, and compresses the PNGs with `oxipng` or
-`zopflipng` when one is installed. Every shot is a real run: nothing is mocked.
+`scripts/showcase-shots.mjs` serves the built dashboard with mock data: a design system in the
+middle of a review (`scripts/lib/showcase-data.mjs`: 42 entries, changes, new stories, render and
+coverage errors, an accessibility violation, stale entries, 14 runs). The card the inspector
+compares is rendered by the script, before and after a change. It shoots the light theme at
+1560×1000 CSS px and 2x, crops the Overview to its content and the inspector to its dialog,
+compresses the PNGs with `oxipng` or `zopflipng` when one is installed, and records the version
+in `shots.json`. The data is mocked; the dashboard is the real build. Every minor or major release
+re-shoots them on its release branch ([releasing.md](../releasing.md#product-shots)); the release
+fails when `shots.json` names another minor. `--serve` keeps the mock dashboard running for shots
+by hand.
 
-`--keep` leaves the server running and prints its URL; `--url <that URL> --raw` shoots again from it
-without the setup or the compression, which is the quick way to try a different view.
+`scripts/product-shots.mjs` shoots a real run instead: the `examples/single-package` project checked,
+changed and checked again (`--approve-manually` waits for a person to approve its first renders
+through the dashboard link, so the approval log is real too).
 
 ## Files
 
-Named `<view>.png`. The current two were captured by hand from the kitchen-sink demo (the example
-project with a run history, changes awaiting review, a new story, a render error, stale entries and
-an accessibility violation — all from real checks), light theme, at 2x. `scripts/product-shots.mjs`
-reproduces a simpler version of both from the example.
-
-| File            | What it shows                                                                                                                                                                    |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `overview.png`  | The README hero: the Overview mid-review — status cards, Open Items, the stale-entries heatmap, the Errors card with the safe repairs, and Changed Entries per Run               |
-| `inspector.png` | The inspector on a changed card: baseline and latest render side by side, changed pixels and detail tiles highlighted, the changed regions, and the metrics that failed the gate |
+| File            | What it shows                                                                                                                                                  |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `overview.png`  | The README hero: the Overview mid-review — status cards, Open Items, the Errors card with the safe repairs, the stale-entries heatmap, Changed Entries per Run |
+| `inspector.png` | The review's first change: a project card, baseline and latest render side by side, the changed regions boxed and listed, and the metrics that failed the gate |
+| `shots.json`    | The version the shots were taken at (`scripts/check-shots.mjs` reads it)                                                                                       |
