@@ -19,6 +19,7 @@ import { readToken, TOKEN_HEADER } from '../lib/guard.mjs';
 import { LINK_TIMING } from '../lib/dashboard-link.mjs';
 import { ask, emit, humanAtTerminal, whyNotPerson } from '../lib/term.mjs';
 import { relPath } from '../lib/paths.mjs';
+import { openLink } from '../lib/open.mjs';
 
 /** @import { Block, CliError } from '../types/t6.js' */
 /** @import { CliContext } from './context.mjs' */
@@ -73,11 +74,22 @@ export function toolCommands(cli) {
       );
     process.stdout.write(`${body.link}\n`);
     process.stderr.write(`${LINK_TIMING}\n`);
+    if (!flags.open) return;
+    // `body.link` was just printed: whatever happens here, the person has it.
+    const o = await openLink(/** @type {string} */ (body.link));
+    process.stderr.write(
+      `${o.reused ? 'Reloaded the open dashboard tab with it.' : o.opened ? 'Opened it in the default browser.' : o.note}\n`
+    );
   }
 
   return {
     async serve() {
       if (flags.link) return serveLink();
+      if (flags.open)
+        fail(
+          '--open goes with --link (`pxsig serve --link --open`); `pxsig serve` opens a tab by itself unless --no-open',
+          2
+        );
       const pass = process.argv.slice(3);
       const child = spawn(process.execPath, [join(here, 'serve.mjs'), ...pass], {
         stdio: 'inherit',

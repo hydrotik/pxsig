@@ -930,7 +930,7 @@
       "summary": "The server and dashboard for every project in the workspace.",
       "usage": [
         "pxsig serve [--port 6070] [--watch] [--no-open] [--tab name] [--project a,b] [--debug]",
-        "pxsig serve --link"
+        "pxsig serve --link [--open]"
       ],
       "flags": [
         {
@@ -951,6 +951,10 @@
         {
           "name": "link",
           "meaning": "Print a fresh dashboard link from the running server and exit (a person at a terminal only). Open it within two minutes; it works once. Once open, that browser can approve, with no time limit, until pxsig serve stops or the browser closes."
+        },
+        {
+          "name": "open",
+          "meaning": "With --link: also open the new link in the default browser (macOS and Linux; on Windows it is only printed). The link is printed either way."
         },
         {
           "name": "tab",
