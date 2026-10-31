@@ -24,7 +24,9 @@ Config flags, accepted by every command, form the top configuration layer (see
 [configuration.md](configuration.md#layers)): `--storybook-url <url>`, `--storybook-static <dir>`,
 `--storybook-config <dir>`, `--grid <n>`, `--min-cell-px <n>`, `--settle-ms <n>`, `--browser <ws://…>`
 (render with that Playwright browser server instead of launching one here; [container.md](container.md)).
-Paths are relative to the current folder.
+Paths are relative to the current folder. A flag no command takes, and a number flag (`<n>`) whose
+value is not a whole number in its range, exit 2 before anything runs: `--retries`, `--settle-ms`
+and `--min-cell-px` start at 0, every other one at 1, and a port is at most 65535.
 
 ### Several projects
 

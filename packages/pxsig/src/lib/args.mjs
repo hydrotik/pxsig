@@ -73,11 +73,11 @@ export function parseArgs(argv, { booleans = BOOLEAN_FLAGS } = {}) {
  * Every flag some pxsig command takes: the global ones and each command's and subcommand's in
  * help/commands.json, which test/help.test.mjs keeps equal to the flags the CLI reads. A flag
  * outside it is a typo or another tool's flag: the CLI says so and exits 2 (`unknownFlags`).
+ * `numbers` are the ones whose value is a number (`"value": "n"`).
  */
-/** @type {Set<string> | null} */
+/** @type {{ all: Set<string>, numbers: Set<string> } | null} */
 let known = null;
-/** @returns {Set<string>} */
-export function knownFlags() {
+function readKnown() {
   if (!known) {
     // help/commands.json ships with pxsig and test/help.test.mjs checks its shape.
     const { global, commands } = /** @type {HelpCommands} */ (
@@ -88,13 +88,46 @@ export function knownFlags() {
         )
       )
     );
-    const entries = [
+    const flags = [
       global,
       ...Object.values(commands).flatMap((c) => [c, ...Object.values(c.subcommands ?? {})]),
-    ];
-    known = new Set(entries.flatMap((e) => (e.flags ?? []).map((f) => f.name)));
+    ].flatMap((e) => e.flags ?? []);
+    known = {
+      all: new Set(flags.map((f) => f.name)),
+      numbers: new Set(flags.filter((f) => f.value === 'n').map((f) => f.name)),
+    };
   }
   return known;
+}
+/** @returns {Set<string>} */
+export const knownFlags = () => readKnown().all;
+
+// Number flags that may be 0 (no retries, no settle wait); every other one starts at 1.
+const ZERO_OK = new Set(['retries', 'settle-ms', 'min-cell-px']);
+
+/**
+ * One line per number flag whose value is not a whole number in its range (a port is 1 to 65535),
+ * for stderr. A bad value was read as the default before, so `--port notaport` served on another
+ * port without a word: the CLI now says so and exits 2.
+ * @param {Flags} flags
+ * @param {{ numbers?: Set<string> }} [opts]
+ * @returns {string[]}
+ */
+export function badNumberLines(flags, { numbers = readKnown().numbers } = {}) {
+  /** @type {string[]} */
+  const out = [];
+  for (const name of numbers) {
+    const v = flags[name];
+    if (v === undefined) continue;
+    const min = ZERO_OK.has(name) ? 0 : 1;
+    const max = name === 'port' ? 65535 : Number.MAX_SAFE_INTEGER;
+    const n = typeof v === 'string' && /^\d+$/.test(v) ? Number(v) : NaN;
+    if (!(n >= min && n <= max))
+      out.push(
+        `pxsig: --${name} takes a whole number from ${min}${max === 65535 ? ' to 65535' : ' up'} (got ${v === true ? 'no value' : `"${v}"`})`
+      );
+  }
+  return out;
 }
 
 /**

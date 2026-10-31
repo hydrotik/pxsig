@@ -227,7 +227,7 @@ export interface UnknownFlag {
 
 /** One command (or subcommand, or the global options) in help/commands.json: only what args.mjs reads. */
 export interface HelpCommand {
-  flags?: { name: string }[];
+  flags?: { name: string; value?: string }[];
   subcommands?: Record<string, HelpCommand>;
 }
 

@@ -4,7 +4,13 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { knownFlags, parseArgs, unknownFlagLines, unknownFlags } from '../src/lib/args.mjs';
+import {
+  badNumberLines,
+  knownFlags,
+  parseArgs,
+  unknownFlagLines,
+  unknownFlags,
+} from '../src/lib/args.mjs';
 import { tempDir, testEnv, testHome } from './fixture.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -99,4 +105,42 @@ test('pxsig --version and pxsig version: the CLI, the engine it would run and th
   assert.deepEqual(Object.keys(json), ['pxsig', 'engine', 'contract']);
   assert.equal(json.pxsig, version);
   assert.equal(json.engine, null);
+});
+
+test('a number flag takes a whole number in its range; anything else is reported', () => {
+  const bad = (/** @type {string[]} */ argv) => badNumberLines(parseArgs(argv).flags);
+  assert.deepEqual(bad(['serve', '--port', '6071', '--limit=5', '--retries', '0']), []);
+  assert.deepEqual(bad(['serve', '--port', 'notaport']), [
+    'pxsig: --port takes a whole number from 1 to 65535 (got "notaport")',
+  ]);
+  assert.deepEqual(bad(['serve', '--port=70000']), [
+    'pxsig: --port takes a whole number from 1 to 65535 (got "70000")',
+  ]);
+  assert.deepEqual(bad(['list', '--limit', '0']), [
+    'pxsig: --limit takes a whole number from 1 up (got "0")',
+  ]);
+  assert.deepEqual(bad(['list', '--limit']), [
+    'pxsig: --limit takes a whole number from 1 up (got no value)',
+  ]);
+  assert.deepEqual(bad(['check', '--retries', '-1', '--concurrency', '2.5']), [
+    'pxsig: --concurrency takes a whole number from 1 up (got "2.5")',
+    'pxsig: --retries takes a whole number from 0 up (got "-1")',
+  ]);
+});
+
+test('a bad number flag exits 2 before the command runs', () => {
+  const dir = tempDir('number-flag');
+  const r = spawnSync(
+    process.execPath,
+    [join(pkg, 'bin', 'pxsig.mjs'), 'serve', '--port', 'notaport'],
+    {
+      cwd: dir,
+      encoding: 'utf8',
+      env: { ...testEnv(testHome), PXSIG_WORKSPACE: dir, PXSIG_NO_DELEGATE: '1' },
+      timeout: 20_000,
+    }
+  );
+  assert.equal(r.status, 2, r.stderr);
+  assert.equal(r.stderr, 'pxsig: --port takes a whole number from 1 to 65535 (got "notaport")\n');
+  assert.equal(r.stdout, '');
 });
