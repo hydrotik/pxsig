@@ -1,5 +1,5 @@
 {
-  "version": "0.6.0",
+  "version": "0.7.0",
   "files": ["overview.png", "inspector.png"],
   "by": "scripts/showcase-shots.mjs"
 }

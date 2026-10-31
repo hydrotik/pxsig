@@ -1,9 +1,9 @@
 # Migrating
 
-## Upgrading from 0.6.0
+## Upgrading to 0.7
 
-The next release after 0.6.0 changes some defaults and refuses input it used to accept. Each change
-is in `CHANGELOG.md` with a `To update:` line; by who acts:
+0.7.0 changes some defaults, refuses input it used to accept and sends no path over HTTP. Each change
+is in `CHANGELOG.md` under 0.7.0 with a `To update:` line; by who acts:
 
 **Scripts and CI.**
 
@@ -22,6 +22,10 @@ is in `CHANGELOG.md` with a `To update:` line; by who acts:
   to the server meant.
 - `POST /__pxsig/approve-story` answers 403 unless the project sets `approvals.byStory: true`: the
   dashboard approves one entry per decision. Approve each entry on its own, or set the key.
+- No answer carries an absolute path. `GET /__pxsig/status`'s `approving` answers `folder` (the
+  folder's name) instead of `cwd`; `GET /__pxsig/projects` answers `workspaceId` instead of
+  `workspace`. A client that needs the path runs `pxsig projects --json`, which works it out in its
+  own process.
 
 **Packages and installs.**
 
@@ -38,7 +42,9 @@ package is unchanged.
 
 **Nothing to do** for the rest: pxsig's own axe-core and its version in the render environment, no
 retries of NEW entries, `dashboard check`'s `settled` and `retried` fields, `pxsig init` recording
-the Storybook folders (check the config it writes), and `pxsig manifest`'s source and warnings.
+the Storybook folders (check the config it writes), `pxsig manifest`'s source and warnings, and the
+dashboard link's 5 minutes to be accessed (up from 2). Optional: a `label` in
+`pxsig.workspace.json` names the workspace in the dashboard's title (`pxsig • <label>`).
 
 ## Upgrading to 0.4: strict `approve verify`
 
