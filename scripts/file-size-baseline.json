@@ -9,6 +9,6 @@
     "packages/dashboard/src/ui/adapters/hydrotik/index.tsx": 5319,
     "packages/pxsig/src/approve.mjs": 8360,
     "packages/pxsig/src/check.mjs": 9179,
-    "packages/pxsig/src/serve.mjs": 18577
+    "packages/pxsig/src/serve.mjs": 18556
   }
 }
