@@ -8,6 +8,8 @@
  *   cookie, takes the decision from its opener by message (this origin only), posts it and closes.
  */
 
+import React from 'react';
+
 /** The server's answer to a decision made without the dashboard link (guard.mjs NEEDS_LINK_CODE). */
 export const NEEDS_LINK_CODE = 'needs-dashboard-link';
 
@@ -35,13 +37,49 @@ async function takeTicket(): Promise<void> {
   }).catch(() => undefined);
 }
 
-let ready: Promise<void> = takeTicket();
-// The link pasted into a tab already on the dashboard changes only the fragment: no reload.
-if (typeof window !== 'undefined')
-  window.addEventListener('hashchange', () => (ready = ready.then(takeTicket)));
-
 /** In a frame (the Storybook panel): the dashboard link's cookie is not sent there. */
 const framed = () => typeof window !== 'undefined' && window.top !== window.self;
+
+/**
+ * Whether this page can decide, before any click (`GET /__pxsig/status` → `approving`): `allowed`
+ * when it holds the dashboard link's session, and where and how a person gets a link. Null while
+ * unknown: a static report, a frame (it decides through the small window below), an older server.
+ */
+export type Approving = { allowed: boolean; cwd: string; command: string } | null;
+let approving: Approving = null;
+const listeners = new Set<() => void>();
+const setApproving = (a: Approving) => {
+  approving = a;
+  for (const f of listeners) f();
+};
+
+/** Ask the server whether this page holds the session (after any ticket in the address is traded). */
+async function loadApproving(): Promise<void> {
+  if (typeof location === 'undefined' || !location.protocol.startsWith('http') || framed()) return;
+  if (window.PXSIG?.static) return;
+  try {
+    const r = await fetch('/__pxsig/status');
+    // The status answer (server.md); only `approving` is read here.
+    const body = r.ok ? ((await r.json()) as { approving?: Approving }) : null;
+    setApproving(body?.approving ?? null);
+  } catch {
+    // no answer: stays unknown, and decisions say what to do if they are refused
+  }
+}
+
+let ready: Promise<void> = takeTicket();
+void ready.then(loadApproving);
+// The link pasted into a tab already on the dashboard changes only the fragment: no reload.
+if (typeof window !== 'undefined')
+  window.addEventListener('hashchange', () => (ready = ready.then(takeTicket).then(loadApproving)));
+
+/** The page's approving state, updated when a link is traded or a decision is refused for want of one. */
+export function useApproving(): Approving {
+  return React.useSyncExternalStore(
+    (f) => (listeners.add(f), () => listeners.delete(f)),
+    () => approving
+  );
+}
 
 /** The server's answer to a decision: its fields, and on a refusal `error` and `code` (server.md). */
 type Answer = Record<string, unknown> & { error?: string; code?: string };
@@ -115,7 +153,11 @@ export async function decide(path: string, body: string): Promise<Record<string,
   await ready;
   const r = framed() ? await throughWindow(path, body) : await post(path, body);
   if (r.ok) return r.body;
-  if (r.body.code === NEEDS_LINK_CODE) throw new NeedsLinkError(String(r.body.error ?? ''));
+  if (r.body.code === NEEDS_LINK_CODE) {
+    // The session is gone (the server restarted): the page is read only until a new link.
+    if (approving?.allowed) setApproving({ ...approving, allowed: false });
+    throw new NeedsLinkError(String(r.body.error ?? ''));
+  }
   throw new Error(String(r.body.error ?? r.status));
 }
 

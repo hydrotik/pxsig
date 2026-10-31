@@ -157,6 +157,47 @@ test('Reject and Approve keep their place whatever else the review group shows',
 
 // --- the dashboard link ----------------------------------------------------------------------------
 
+test('without the dashboard link the inspector says Read only up front, and the buttons stay, disabled', async (t) => {
+  if (skip) return t.skip(skip);
+  const story = 'ui-button--primary';
+  const d = data({
+    rows: [row(story, changed)],
+    entries: [entry(story, [{ code: 'changed', severity: 'warn', reason: 'gate failed' }])],
+  });
+  const command = 'pnpm exec pxsig serve --link';
+  const where = { cwd: '/work/demo', command };
+  const ro = await open(d, { hash: `#inspect=${story}`, approving: { allowed: false, ...where } });
+  try {
+    // The top bar's Read only badge needs a live event stream, which page.route cannot hold open;
+    // `pxsig dashboard check` renders it (shell.top-bar's readOnly and canApprove screens).
+    const approve = ro.page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Approve', exact: true });
+    await approve.waitFor();
+    assert.equal(await approve.isDisabled(), true);
+    assert.match(String(await approve.getAttribute('title')), /^Read only/);
+    await ro.page.getByText(`cd "/work/demo" && ${command}`).first().waitFor();
+    await ro.page
+      .getByText(/within two minutes; it works once/)
+      .first()
+      .waitFor();
+    assert.equal(ro.posts.length, 0, 'nothing was sent');
+  } finally {
+    await ro.page.close();
+  }
+  const ok = await open(d, { hash: `#inspect=${story}`, approving: { allowed: true, ...where } });
+  try {
+    const approve = ok.page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Approve', exact: true });
+    await approve.waitFor();
+    assert.equal(await approve.isDisabled(), false);
+    assert.equal(await ok.page.getByText(/^Read only/).count(), 0);
+  } finally {
+    await ok.page.close();
+  }
+});
+
 test('the dashboard link: its ticket is traded once and leaves the address bar', async (t) => {
   if (skip) return t.skip(skip);
   const story = 'ui-button--primary';
@@ -212,7 +253,9 @@ test('a decision without the dashboard link says how to get it, under the header
     let alerted = null;
     page.on('dialog', (dl) => ((alerted = dl.message()), dl.dismiss()));
     await page.getByRole('button', { name: 'Approve', exact: true }).click();
-    await page.getByText('Open the dashboard link from the terminal to approve here').waitFor();
+    await page
+      .getByText(/^Read only: approving needs the dashboard link\. Run pxsig serve --link/)
+      .waitFor();
     assert.equal(alerted, null, 'no alert: the line under the header says it');
   } finally {
     await page.close();

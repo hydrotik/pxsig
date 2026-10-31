@@ -77,6 +77,8 @@ export const row = style({
   gap: v.space['2'],
 });
 export const spacer = style({ flex: 1 });
+// Two badges read as one status (the connection, and whether this page can approve): no wrap.
+export const pair = style({ display: 'inline-flex', alignItems: 'center', gap: v.space['1'] });
 /** Read by assistive technology, not drawn. */
 export const srOnly = style({
   position: 'absolute',

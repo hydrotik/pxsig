@@ -363,6 +363,7 @@ export function ReviewButtons({
   storyOpen,
   target,
   approveAll,
+  readOnly = false,
 }: {
   canReview: boolean;
   idle: boolean;
@@ -378,8 +379,11 @@ export function ReviewButtons({
   storyOpen: Row[];
   target: InspectTarget | null;
   approveAll: () => Promise<void>;
+  /** No dashboard link: every button stays in place, disabled, and says why. */
+  readOnly?: boolean;
 }) {
-  const undo = <Undo review={review} busy={busy} act={act} />;
+  const undo = <Undo review={review} busy={busy || readOnly} act={act} />;
+  const why = readOnly ? t('inspector.review.readOnlyTitle') : undefined;
   // Reject and Approve keep their place: they end the group, at its right edge, with labels that
   // never change width. Whatever comes and goes (Undo, Approve story, the a11y note) sits to their
   // left, so it can only push away from them (test/flows-decisions.test.mjs measures it).
@@ -392,17 +396,17 @@ export function ReviewButtons({
       <Button
         size="sm"
         emphasis="outline"
-        disabled={busy || idle || review?.state === 'rejected'}
+        disabled={readOnly || busy || idle || review?.state === 'rejected'}
         onClick={() => act('reject')}
-        title={t('inspector.review.rejectA11yTitle')}
+        title={why ?? t('inspector.review.rejectA11yTitle')}
       >
         {t('inspector.review.reject')}
       </Button>
       <Button
         size="sm"
-        disabled={busy || idle || review?.state === 'accepted'}
+        disabled={readOnly || busy || idle || review?.state === 'accepted'}
         onClick={() => act('approve')}
-        title={t('inspector.review.acceptTitle')}
+        title={why ?? t('inspector.review.acceptTitle')}
       >
         {t('inspector.review.accept')}
       </Button>
@@ -414,9 +418,9 @@ export function ReviewButtons({
         <Button
           size="sm"
           emphasis="outline"
-          disabled={busy}
+          disabled={readOnly || busy}
           onClick={approveAll}
-          title={t('inspector.review.approveStoryTitle')}
+          title={why ?? t('inspector.review.approveStoryTitle')}
         >
           {t('inspector.review.approveStory', { count: storyOpen.length })}
         </Button>
@@ -427,17 +431,19 @@ export function ReviewButtons({
       <Button
         size="sm"
         emphasis="outline"
-        disabled={busy || idle || review?.state === 'rejected'}
+        disabled={readOnly || busy || idle || review?.state === 'rejected'}
         onClick={() => act('reject')}
-        title={t('inspector.review.rejectTitle')}
+        title={why ?? t('inspector.review.rejectTitle')}
       >
         {t('inspector.review.reject')}
       </Button>
       <Button
         size="sm"
-        disabled={busy || review?.state === 'approved' || !!row.error || (row.pass && !changed)}
+        disabled={
+          readOnly || busy || review?.state === 'approved' || !!row.error || (row.pass && !changed)
+        }
         onClick={() => act('approve')}
-        title={t('inspector.review.approveTitle')}
+        title={why ?? t('inspector.review.approveTitle')}
       >
         {t('inspector.review.approve')}
       </Button>

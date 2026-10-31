@@ -225,8 +225,8 @@ const bench = {
 /**
  * Every scenario by name: a function returning fresh data. The server behaviours that are not data
  * (`loading`: the data never arrives; `load-error`: the data request fails; `offline`: no event
- * stream; `static`: the data inlined, as `pxsig report` writes it) are named by SERVER_STATES and
- * use the `clean` data.
+ * stream; `static`: the data inlined, as `pxsig report` writes it; `read-only`: the page holds no
+ * dashboard link) are named by SERVER_STATES and use the `clean` data.
  */
 export const SCENARIOS = {
   clean() {
@@ -356,7 +356,18 @@ export const SCENARIOS = {
 };
 
 /** Scenarios that are a server behaviour over the `clean` data, not data of their own. */
-export const SERVER_STATES = ['loading', 'load-error', 'offline', 'static'];
+export const SERVER_STATES = ['loading', 'load-error', 'offline', 'static', 'read-only'];
+
+/**
+ * What `/__pxsig/status` says about approving from the page (`approving`): it can, as a page that
+ * opened the dashboard link, except in the `read-only` state.
+ * @param {string} name
+ */
+export const approvingOf = (name) => ({
+  allowed: name !== 'read-only',
+  cwd: '/work/demo',
+  command: 'pnpm exec pxsig serve --link',
+});
 /** What the data request answers in the `load-error` state. */
 export const LOAD_ERROR = 'the report could not be read (sample)';
 

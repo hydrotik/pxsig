@@ -223,6 +223,22 @@ test(
         !S.log().includes(ticket) && !S.log().includes(cookie.split('=')[1]),
         'neither the ticket nor the cookie is logged'
       );
+      // The page asks, before any click, whether it can decide: a boolean, never the session.
+      const status = async (/** @type {Record<string, string>} */ headers) =>
+        // The status answer's `approving` (docs/server.md).
+        /** @type {{ allowed: boolean, cwd: string, command: string }} */ (
+          /** @type {unknown} */ (
+            (await raw(S.port, { method: 'GET', path: '/__pxsig/status', headers })).json()
+              .approving
+          )
+        );
+      const without = await status({});
+      assert.equal(without.allowed, false, 'no cookie: read only');
+      assert.equal(typeof without.command, 'string');
+      assert.match(without.command, /serve --link$/);
+      const withCookie = await status({ cookie });
+      assert.equal(withCookie.allowed, true, 'the link was opened: it can approve');
+      assert.ok(!JSON.stringify(withCookie).includes(cookie.split('=')[1]), 'not the session');
 
       // The dashboard's own request: same-origin, with the cookie. It claims to be the MCP; the log
       // says what it was.

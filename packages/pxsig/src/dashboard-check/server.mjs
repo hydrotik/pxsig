@@ -123,6 +123,13 @@ export function scenarioServer({ dir, scenario, fixtures, images, posts }) {
           );
         }
       }
+      // Only what the page reads from the status: whether it can approve (read only by default).
+      if (name === 'status')
+        return send(
+          200,
+          'application/json',
+          JSON.stringify({ approving: fixtures.approvingOf(scenario) })
+        );
       if (name === 'projects')
         return send(
           200,

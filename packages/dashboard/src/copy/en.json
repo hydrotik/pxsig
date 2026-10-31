@@ -13,7 +13,11 @@
     "connection": {
       "live": "Live",
       "offline": "Offline",
-      "static": "Static report"
+      "static": "Static report",
+      "readOnly": "Read only",
+      "canApprove": "Can approve",
+      "readOnlyHint": "Approving needs the dashboard link. In a terminal: {command}. Open the link within two minutes; it works once. Once open, that browser can approve, with no time limit, until pxsig serve stops or the browser closes.",
+      "canApproveHint": "This browser opened the dashboard link: it can approve, with no time limit, until pxsig serve stops or the browser closes."
     },
     "lastCheck": "Last check {date}",
     "theme": {
@@ -31,7 +35,7 @@
       "title": "pxsig: recording a decision",
       "waiting": "Waiting for the decision from the Storybook panel.",
       "working": "Recording the decision.",
-      "needsLink": "Open the dashboard link from the terminal first: pxsig serve printed it, and pxsig serve --link prints a new one. Then decide in the panel again.",
+      "needsLink": "Open the dashboard link first: run pxsig serve --link in a terminal and open the link it prints within two minutes (it works once; once open, there is no time limit). Then decide in the panel again.",
       "failed": "The decision was not recorded: {error}",
       "noOpener": "This window records decisions from the Storybook panel and closes. Opened on its own, it has nothing to do."
     },
@@ -854,7 +858,10 @@
       "approveTitle": "Use the latest render as the baseline (A)",
       "undo": "Undo",
       "failed": "{action} failed: {error}",
-      "needsLink": "Open the dashboard link from the terminal to approve here: pxsig serve printed it, and pxsig serve --link prints a new one.",
+      "needsLink": "Read only: approving needs the dashboard link. Run pxsig serve --link in a terminal and open the link it prints within two minutes; it works once. Once open, this browser can approve, with no time limit, until pxsig serve stops or the browser closes.",
+      "readOnly": "Read only: approving needs the dashboard link. In a terminal:",
+      "linkTiming": "Open the link within two minutes; it works once. Once open, this browser can approve, with no time limit, until pxsig serve stops or the browser closes.",
+      "readOnlyTitle": "Read only: approving needs the dashboard link (the note under the header says how)",
       "undoTitle": "Restore the previous baseline",
       "approveA11y": {
         "one": "Approving accepts {count} new a11y violation",

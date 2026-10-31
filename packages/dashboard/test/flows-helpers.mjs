@@ -92,10 +92,13 @@ export function setupFlows() {
 
 // --- data: the shared scenarios (fixtures/scenarios.mjs, also what `pxsig dashboard check` renders)
 
-/** A page on the mocked server. `events` is the SSE stream body; `posts` collects every POST. */
+/**
+ * A page on the mocked server. `events` is the SSE stream body; `posts` collects every POST;
+ * `approving` is the status answer's (unset: unknown, as from an older server).
+ */
 export async function open(
   d,
-  { hash = '', events = 'event: hello\ndata: {}\n\n', answers = {}, init = null } = {}
+  { hash = '', events = 'event: hello\ndata: {}\n\n', answers = {}, init = null, approving } = {}
 ) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   if (init) await page.addInitScript(init);
@@ -112,6 +115,7 @@ export async function open(
         body: `retry: 60000\n${events}`,
       });
     if (name === 'data') return route.fulfill({ json: d });
+    if (name === 'status') return route.fulfill({ json: approving ? { approving } : {} });
     if (name === 'projects')
       return route.fulfill({
         json: {
