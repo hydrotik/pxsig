@@ -15,6 +15,35 @@ import { a11yPruneParts } from './a11y-prune.mjs';
 /** @import { Block, CheckReport, ServerStatusReply, ToolOutput } from '../types/t6.js' */
 /** @import { CliContext } from './context.mjs' */
 
+/**
+ * The check's integrity line: the doctor's headline, or why there is none. A doctor that throws
+ * (a report it cannot read, a ledger it cannot write) is named, not dropped, so a check that
+ * could not reconcile its integrity says so.
+ * @param {() => ReturnType<typeof doctor>} reconcile
+ * @returns {Promise<{ ledger: Awaited<ReturnType<typeof doctor>> | null, unavailable: string | null, block: Block }>}
+ */
+export async function integrityOf(reconcile) {
+  try {
+    const ledger = await reconcile();
+    return {
+      ledger,
+      unavailable: null,
+      block: {
+        note: `integrity: ${ledger.summary.headline}`,
+        tone: ledger.summary.status === 'attention' ? 'bad' : 'ok',
+      },
+    };
+  } catch (e) {
+    const unavailable =
+      String(e instanceof Error ? e.message : e).split('\n')[0] || 'no reason given';
+    return {
+      ledger: null,
+      unavailable,
+      block: { note: `integrity: unavailable (${unavailable})`, tone: 'warn' },
+    };
+  }
+}
+
 /** @param {CliContext} cli */
 export function checkCommands(cli) {
   const {
@@ -115,14 +144,8 @@ export function checkCommands(cli) {
       for (const x of r.skipped ?? [])
         blocks.push({ note: `not checked: ${x.name}: ${x.why}`, tone: 'bad' });
       // Integrity: what this run could not cover, in one line.
-      let ledger = null;
-      try {
-        ledger = await doctor({ limit: 0 });
-        blocks.push({
-          note: `integrity: ${ledger.summary.headline}`,
-          tone: ledger.summary.status === 'attention' ? 'bad' : 'ok',
-        });
-      } catch {}
+      const { ledger, unavailable, block } = await integrityOf(() => doctor({ limit: 0 }));
+      blocks.push(block);
       /** @type {[string, string][]} */
       const next = [];
       if (problems.length) next.push([`${CMD} entry ${problems[0].id}`, 'see what changed']);
@@ -156,6 +179,7 @@ export function checkCommands(cli) {
       emit(format, [...g.lead, ...blocks, ...g.last], {
         ...r,
         integrity: ledger?.summary ?? null,
+        ...(unavailable ? { integrityUnavailable: unavailable } : {}),
         ...g.data,
       });
       // Nothing checked because every name was skipped: a selection error, like an empty one.
