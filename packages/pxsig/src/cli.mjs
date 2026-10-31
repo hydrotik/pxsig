@@ -84,7 +84,7 @@
  */
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseArgs, unknownFlagLines, unknownFlags } from './lib/args.mjs';
+import { badNumberLines, parseArgs, unknownFlagLines, unknownFlags } from './lib/args.mjs';
 import {
   engineVersion,
   flagLayer,
@@ -105,11 +105,14 @@ const { positional, flags } = parseArgs(process.argv.slice(2));
 const format = pickFormat(flags);
 const [command = 'status', ...rest] = positional;
 const CMD = process.env.PXSIG_CMD ?? 'pxsig';
-// A flag no command takes is a usage error (exit 2), with the nearest known flag: a misspelled
-// flag would otherwise change what runs without anyone noticing. `cat` passes its flags to the
-// engine, which checks them itself.
+// A flag no command takes, or a number flag with no number, is a usage error (exit 2), with the
+// nearest known flag: either would otherwise change what runs without anyone noticing. `cat`
+// passes its flags to the engine, which checks them itself.
 if (command !== 'cat') {
-  const lines = unknownFlagLines(unknownFlags(process.argv.slice(2)));
+  const lines = [
+    ...unknownFlagLines(unknownFlags(process.argv.slice(2))),
+    ...badNumberLines(flags),
+  ];
   if (lines.length) {
     process.stderr.write(`${lines.join('\n')}\n`);
     process.exit(2);
