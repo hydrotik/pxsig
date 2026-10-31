@@ -57,6 +57,15 @@ export const counter = style({ fontVariantNumeric: 'tabular-nums', textAlign: 'c
 // Undo keeps its slot while there is nothing to undo, so Approve does not move when it appears.
 export const slot = style({ display: 'inline-flex' });
 export const reserved = style({ display: 'inline-flex', visibility: 'hidden' });
+// The mode toggle's height without its width: the header keeps one height whether or not the story
+// has other modes, so the review buttons do not move up and down from entry to entry.
+export const heightOnly = style({
+  display: 'inline-flex',
+  visibility: 'hidden',
+  inlineSize: 0,
+  overflow: 'hidden',
+  marginInlineEnd: `calc(-1 * ${v.space['2']})`,
+});
 // One line, cut with an ellipsis, at the size of whatever it is combined with.
 export const clip = style({
   minInlineSize: 0,

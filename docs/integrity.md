@@ -141,8 +141,9 @@ renders it in one step:
   state the story does not have) is skipped with the reason.
 
 Either way the entries arrive without a signature (`unbaselined`, "Needs a first approval" in the
-dashboard's banner) until a person approves their first render; the inspector's **Approve story**
-approves every mode and state of a story in one click.
+dashboard's banner) until a person approves their first render, one entry at a time (with
+`approvals.byStory` on, the inspector's **Approve story** approves every mode and state of a story in
+one click).
 
 ### Guarantees
 

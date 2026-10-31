@@ -29,6 +29,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readImage } from './lib/psig.mjs';
 import { readJson } from './lib/files.mjs';
+import { byStory } from './lib/approvals/story.mjs';
 import { PXSIG_VERSION, engineVersion, openProject } from './lib/workspace.mjs';
 /** @import { Manifest, Project } from './types.js' */
 
@@ -158,6 +159,8 @@ export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/` } = {}
     bench: read('bench'),
     history: history(P),
     review: read('review') ?? {},
+    /** Whether the inspector offers Approve story (`approvals.byStory`, off by default). */
+    approvals: { byStory: byStory(P.config) },
     a11yReview: read('a11y-review') ?? {},
     integrity: read('integrity'),
     storybook: { baseUrl: P.storybook.url },

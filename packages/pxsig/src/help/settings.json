@@ -421,7 +421,7 @@
     "approvals": {
       "file": "pxsig.config.json",
       "meaning": "How approvals are recorded and guarded.",
-      "operation": "See approvals.identity and approvals.level."
+      "operation": "See approvals.identity, approvals.level and approvals.byStory."
     },
     "approvals.identity": {
       "file": "pxsig.config.json",
@@ -436,6 +436,13 @@
       "values": "standard",
       "default": "standard",
       "operation": "Only standard exists today; any other value stops every command with a setup error."
+    },
+    "approvals.byStory": {
+      "file": "pxsig.config.json",
+      "meaning": "Whether the dashboard may approve a story's waiting entries (each mode and state) together, in one batch.",
+      "values": "true | false",
+      "default": "false",
+      "operation": "Off, each entry is approved on its own: the dashboard shows no Approve story button and the server refuses POST /__pxsig/approve-story. On, the inspector offers Approve story when more than one entry of the story waits."
     },
     "dashboard.ui": {
       "file": "pxsig.config.json",

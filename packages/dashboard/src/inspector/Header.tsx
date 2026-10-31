@@ -66,8 +66,9 @@ export function Header({
       </div>
       <div className={s.insActions}>
         {storyNav}
-        {reviewButtons}
+        {/* Re-check's label changes while it runs: left of the review buttons, so they stay put. */}
         {recheckButton}
+        {reviewButtons}
         {embedded ? null : (
           <Button size="sm" emphasis="outline" onClick={onClose}>
             {t('inspector.close')}

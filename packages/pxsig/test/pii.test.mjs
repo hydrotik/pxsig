@@ -76,7 +76,7 @@ test(
   }
 );
 
-test('approvals.level: standard only, for now; strict is refused as not available yet', () => {
+test('approvals: level is standard only for now (strict refused); identity and byStory take their values', () => {
   const f = fixture({ withSigs: false });
   setConfig(f, { approvals: { level: 'strict' } });
   assert.throws(
@@ -85,6 +85,8 @@ test('approvals.level: standard only, for now; strict is refused as not availabl
   );
   setConfig(f, { approvals: { level: 'standard', identity: 'everyone' } });
   assert.throws(() => openProject({ cwd: f.repo, env: {} }), /approvals\.identity must be/);
+  setConfig(f, { approvals: { byStory: 'yes' } });
+  assert.throws(() => openProject({ cwd: f.repo, env: {} }), /approvals\.byStory must be true or/);
 });
 
 test('requires: a range this pxsig reads, and refuses outside', () => {

@@ -7,7 +7,8 @@
  * Covers: checking a story that is not registered yet (registered, then rendered in the same
  * request; never a signature), a story checked alone whose render throws (recorded, not dropped as
  * a setup error), a repair whose re-check could not run (reported as such), and approving a
- * story's entries together (one batch, reflected in check.json). Needs the Rust binary and
+ * story's entries together (refused unless `approvals.byStory`; then one batch, reflected in
+ * check.json). Needs the Rust binary and
  * Chromium; skipped without them.
  */
 import assert from 'node:assert/strict';
@@ -17,6 +18,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { CHECKER, fixture, hasRust, rustBin } from './fixture.mjs';
 import { src, needs, fakeStorybook, serve, rowsOf } from './server-helpers.mjs';
+import { BY_STORY_OFF } from '../src/lib/approvals/story.mjs';
 import { skipOn, skipUnless } from './strict.mjs';
 
 test(
@@ -206,7 +208,7 @@ test(
 );
 
 test(
-  'approving a story approves each of its entries waiting for a decision, in one batch, and the report agrees',
+  'approving a story is refused by default; with approvals.byStory it approves each entry waiting, in one batch',
   { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
@@ -247,7 +249,20 @@ test(
       }
     );
     writeFileSync(checkPath, JSON.stringify(check));
-    const S = await serve(f);
+    const cfgPath = join(f.repo, 'pxsig.config.json');
+    const cfg = JSON.parse(readFileSync(cfgPath, 'utf8'));
+    // Off by default: one entry, one decision.
+    let S = await serve(f);
+    try {
+      const off = await S.post('approve-story', { story });
+      assert.equal(off.status, 403, JSON.stringify(off.body));
+      assert.equal(off.body.error, BY_STORY_OFF);
+      assert.ok(!existsSync(join(f.px, 'approvals.ndjson')), 'nothing was approved');
+    } finally {
+      S.stop();
+    }
+    writeFileSync(cfgPath, JSON.stringify({ ...cfg, approvals: { byStory: true } }, null, 2));
+    S = await serve(f);
     try {
       const r = await S.post('approve-story', { story });
       assert.equal(r.status, 200, JSON.stringify(r.body));

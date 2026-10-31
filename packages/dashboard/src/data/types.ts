@@ -302,6 +302,8 @@ export interface Data {
   bench: BenchReport | null;
   history: HistoryRun[];
   review: Record<string, ReviewEntry>;
+  /** The project's approval settings; `byStory` offers Approve story (off, or absent: one entry, one decision). */
+  approvals?: { byStory?: boolean };
   /** Decisions on entries' accessibility violations (a11y-review.json); separate from the visual review. */
   a11yReview?: Record<string, { state: 'accepted' | 'rejected'; at: string }>;
   storybook: { baseUrl: string };

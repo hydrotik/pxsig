@@ -501,6 +501,11 @@
           "enum": ["standard", "strict"],
           "default": "standard",
           "description": "standard: a typed phrase at a terminal, or the dashboard with the dashboard link. strict is reserved for a later release and refused for now."
+        },
+        "byStory": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the dashboard may approve a story's waiting entries (each mode and state) together, in one batch. Off: each entry is approved on its own, after it is looked at."
         }
       }
     },

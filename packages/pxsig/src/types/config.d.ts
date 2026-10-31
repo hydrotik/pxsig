@@ -147,7 +147,12 @@ export type Config = {
     manifests?: string[];
   };
   importPathPattern?: string;
-  approvals?: { identity?: 'none' | 'git-email'; level?: 'standard' | 'strict' };
+  approvals?: {
+    identity?: 'none' | 'git-email';
+    level?: 'standard' | 'strict';
+    /** The dashboard's Approve story (one batch for a story's waiting entries); off by default. */
+    byStory?: boolean;
+  };
   dashboard?: { ui?: string };
 };
 
