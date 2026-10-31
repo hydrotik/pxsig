@@ -656,6 +656,44 @@
     },
     "versions": "This page: {versions}.",
     "intro": "Reference for this dashboard. Each section covers one part of the screen. Point at a row, or move to it with Tab, to see where it appears in the drawing beside it.",
+    "approving": {
+      "title": "Approving From the Dashboard",
+      "description": "A person decides. This page approves and rejects only in a browser that opened the dashboard link.",
+      "rows": {
+        "link": {
+          "term": "Dashboard link",
+          "meaning": "pxsig serve prints it when a person starts the server at a terminal. Opening it lets this browser approve and reject. Started in the background, by an assistant or in CI, the server prints no link."
+        },
+        "newLink": {
+          "term": "pxsig serve --link",
+          "meaning": "A new link from the running server, run in the workspace folder. With --open it also opens in the default browser (macOS and Linux)."
+        },
+        "copy": {
+          "term": "pxsig serve --link --copy",
+          "meaning": "Also copies the link to the clipboard (macOS and Linux). Opt-in: any program on the computer, an assistant included, can read the clipboard, while the printed link reaches only the person at the terminal."
+        },
+        "timing": {
+          "term": "Timing",
+          "meaning": "5 minutes to access this link; it works once. Once opened, that browser can approve, with no time limit, until pxsig serve stops or the browser closes."
+        },
+        "why": {
+          "term": "Why a link",
+          "meaning": "pxsig prints the link only to a person at a terminal, never to an assistant, a script or CI, which can read this page and the clipboard. Each approval is recorded with what it changed."
+        },
+        "connection": {
+          "term": "Live · Static report · Offline",
+          "meaning": "Live: connected to pxsig serve; the page updates as checks run. Static report: a saved report opened from disk; nothing is decided there. Offline: the server stopped or cannot be reached; the page keeps the last data it had."
+        },
+        "access": {
+          "term": "Can approve · Read only",
+          "meaning": "Beside the connection. Can approve: this browser opened the dashboard link. Read only: it did not; Approve and Reject stay in place, disabled, and pointing at Read only shows the command for a new link."
+        },
+        "title": {
+          "term": "Title",
+          "meaning": "Beside the pxsig mark: what is under review, from its label in the pxsig config, else the project name."
+        }
+      }
+    },
     "tabs": {
       "title": "Sections",
       "description": "What each section in the top bar is for. Sections that do not fit the bar's width are under its More menu.",

@@ -208,7 +208,7 @@ export const REVIEW: Feature[] = [
     section: 'help',
     title: 'Help',
     purpose:
-      'What each section, card icon, status, coverage code, inspector region and key means, beside a drawing of where it appears, and which pxsig, engine and UI contract versions drew the page.',
+      'First, how approving works: the dashboard link, its timing, and the connection and approval badges. Then what each section, card icon, status, coverage code, inspector region and key means, beside a drawing of where it appears, and which pxsig, engine and UI contract versions drew the page.',
     states: {},
     interactions: [{ action: 'Point at or focus a row to highlight its place in the drawing' }],
     copy: ['help'],

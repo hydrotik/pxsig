@@ -147,3 +147,29 @@ test('every page the dashboard can open on has one main region and one level-one
     }
   }
 });
+
+test('Help opens with how approving works: the link, its timing and the header badges', async (t) => {
+  if (skip) return t.skip(skip);
+  const d = data({ rows: [row('ui-button--ok')], entries: [entry('ui-button--ok')] });
+  const { page, errors } = await open(d, { hash: '#help' });
+  try {
+    await page.getByRole('heading', { name: 'Approving From the Dashboard' }).waitFor();
+    // The headings in page order: the view's own ("Help"), then the sections, this one first.
+    const headings = await page.evaluate(() =>
+      [...document.querySelectorAll('h1, h2, h3, h4')].map((h) => h.textContent?.trim())
+    );
+    const at = headings.indexOf('Approving From the Dashboard');
+    assert.equal(at, headings.indexOf('Help') + 1, headings.join(' | '));
+    for (const text of [
+      'pxsig serve --link',
+      'pxsig serve --link --copy',
+      /5 minutes to access this link; it works once/,
+      'Live · Static report · Offline',
+      'Can approve · Read only',
+    ])
+      assert.ok(await page.getByText(text).first().isVisible(), String(text));
+    assert.deepEqual(errors, []);
+  } finally {
+    await page.close();
+  }
+});

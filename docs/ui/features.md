@@ -298,7 +298,7 @@ Files: `src/views/Diagnostics`, `src/views/Scenarios`, `src/views/Calibration`, 
 
 ### Help
 
-`help.reference` · What each section, card icon, status, coverage code, inspector region and key means, beside a drawing of where it appears, and which pxsig, engine and UI contract versions drew the page.
+`help.reference` · First, how approving works: the dashboard link, its timing, and the connection and approval badges. Then what each section, card icon, status, coverage code, inspector region and key means, beside a drawing of where it appears, and which pxsig, engine and UI contract versions drew the page.
 
 Interactions:
 
