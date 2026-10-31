@@ -42,10 +42,11 @@ const framed = () => typeof window !== 'undefined' && window.top !== window.self
 
 /**
  * Whether this page can decide, before any click (`GET /__pxsig/status` → `approving`): `allowed`
- * when it holds the dashboard link's session, and where and how a person gets a link. Null while
+ * when it holds the dashboard link's session, the folder to run the command in (its name, never a
+ * path) and the command. Null while
  * unknown: a static report, a frame (it decides through the small window below), an older server.
  */
-export type Approving = { allowed: boolean; cwd: string; command: string } | null;
+export type Approving = { allowed: boolean; folder: string; command: string } | null;
 let approving: Approving = null;
 const listeners = new Set<() => void>();
 const setApproving = (a: Approving) => {

@@ -43,7 +43,6 @@ import {
 } from './controls';
 import { Header } from './Header';
 import { useApproving } from '../link';
-import { linkCommandLine } from '../parts/Connection';
 import { SessionSummary } from './SessionSummary';
 import { ViewSection } from './side/ViewSection';
 import { PixelSection } from './side/PixelSection';
@@ -332,8 +331,8 @@ export function Inspector({
   const readOnlyNote =
     readOnly && approving ? (
       <div className={s.note}>
-        <span>{t('inspector.review.readOnly')}</span>
-        <CopyValue value={linkCommandLine(approving)} />
+        <span>{t('inspector.review.readOnly', { folder: approving.folder })}</span>
+        <CopyValue value={approving.command} />
         <span>{t('inspector.review.linkTiming')}</span>
       </div>
     ) : null;

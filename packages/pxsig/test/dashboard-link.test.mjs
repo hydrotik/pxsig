@@ -36,20 +36,12 @@ test("the command runs the project's own pxsig through its package manager, else
     }),
     'pnpm exec pxsig serve --link'
   );
-  assert.equal(
-    linkCommand(root, { exists: has('pnpm-lock.yaml'), bin: '/opt/pxsig/bin/pxsig.mjs' }),
-    'node "/opt/pxsig/bin/pxsig.mjs" serve --link',
-    'not installed in the project: this pxsig, by its path'
-  );
-  assert.equal(
-    linkCommand('C:\\work\\app', {
-      exists: () => false,
-      bin: 'D:\\a\\pxsig\\bin\\pxsig.mjs',
-      platform: 'win32',
-    }),
-    'node "D:\\a\\pxsig\\bin\\pxsig.mjs" serve --link',
-    'a Windows path as it is typed, its backslashes single'
-  );
+  for (const platform of [linux, 'win32'])
+    assert.equal(
+      linkCommand(root, { exists: has('pnpm-lock.yaml'), platform }),
+      'pxsig serve --link',
+      'not installed in the project: pxsig from the PATH, never a path'
+    );
 });
 
 test('approving: whether the request carries a live session, never the session itself', () => {
@@ -64,7 +56,8 @@ test('approving: whether the request carries a live session, never the session i
   );
   const yes = approving({ cookie }, links, url, '/work/app');
   assert.equal(yes.allowed, true);
-  assert.equal(yes.cwd, '/work/app');
+  assert.equal(yes.folder, 'app', 'the folder by its own name');
+  assert.ok(!JSON.stringify(yes).includes('/work'), 'never its parents');
   assert.ok(!JSON.stringify(yes).includes(session));
 });
 

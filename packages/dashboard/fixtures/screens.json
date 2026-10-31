@@ -568,7 +568,7 @@
           "state": "readOnly",
           "hash": "#inspect=ui-button--primary",
           "wait": {
-            "text": "Read only: approving needs the dashboard link. In a terminal:"
+            "text": "Read only: approving needs the dashboard link. In a terminal, in the"
           }
         }
       ]

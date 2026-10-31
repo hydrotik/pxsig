@@ -366,7 +366,7 @@ export const SERVER_STATES = ['loading', 'load-error', 'offline', 'static', 'rea
  */
 export const approvingOf = (name) => ({
   allowed: name !== 'read-only',
-  cwd: '/work/demo',
+  folder: 'demo',
   command: 'pnpm exec pxsig serve --link',
 });
 /** What the data request answers in the `load-error` state. */
