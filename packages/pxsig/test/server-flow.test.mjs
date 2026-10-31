@@ -14,7 +14,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, isAbsolute, join } from 'node:path';
 import { test } from 'node:test';
 import { CHECKER, fixture, hasRust, rustBin } from './fixture.mjs';
 import { src, needs, fakeStorybook, serve, rowsOf } from './server-helpers.mjs';
@@ -123,10 +123,17 @@ test(
       assert.equal((await S.post('check', { ids: [f.ids.ok] })).status, 202);
       await S.idle();
       // GET /__pxsig/projects answers JSON (docs/server.md).
-      const { projects } = /** @type {{ projects: { error: string | null }[] }} */ (
-        await (await fetch(`${S.base}/__pxsig/projects`)).json()
-      );
+      const answer =
+        /** @type {{ workspaceId: string, workspace?: string, projects: { error: string | null, root: string }[] }} */ (
+          await (await fetch(`${S.base}/__pxsig/projects`)).json()
+        );
+      const { projects } = answer;
       assert.equal(projects[0].error, null, 'an earlier load failure no longer shows');
+      // No absolute path (it names the user): the workspace by its id, project roots relative.
+      assert.match(answer.workspaceId, /^[0-9a-f]{16}$/);
+      assert.equal(answer.workspace, undefined);
+      assert.ok(!isAbsolute(projects[0].root), projects[0].root);
+      assert.ok(!JSON.stringify(answer).includes(basename(f.repo)), 'no part of the fixture path');
     } finally {
       S.stop();
       sb.close();

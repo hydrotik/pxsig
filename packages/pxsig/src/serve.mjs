@@ -135,7 +135,7 @@ import {
 import { approving, LINK_ELSEWHERE, LINK_EXPIRED, LINK_TIMING } from './lib/dashboard-link.mjs';
 import { humanAtTerminal } from './lib/term.mjs';
 import { fileURLToPath } from 'node:url';
-import { relPath } from './lib/paths.mjs';
+import { relPath, shownPath } from './lib/paths.mjs';
 import { appendLine, readJson, writeJson } from './lib/files.mjs';
 import { applyPrune } from './lib/prune.mjs';
 /** The server listens on a TCP port, so `server.address()` is an AddressInfo wherever it is read. */
@@ -1429,7 +1429,7 @@ const projectsList = () =>
   [...states.values()].map((S) => ({
     name: S.name,
     label: S.P.label ?? null,
-    root: relPath(ws.root, S.P.root) || '.',
+    root: shownPath(ws.root, S.P.root),
     storybook: S.P.storybook.url,
     entries: S.manifest.stories.length,
     integrity: S.integrity?.summary ?? null,
@@ -1457,7 +1457,7 @@ async function api(req, res, action, q) {
     return;
   }
   if (action === 'projects')
-    return json(res, 200, { workspace: ws.root, projects: projectsList() });
+    return json(res, 200, { workspaceId: ws.id, projects: projectsList() });
   if (action === 'status')
     return json(res, 200, {
       served: true,
@@ -1543,7 +1543,7 @@ async function api(req, res, action, q) {
     return json(res, 200, { link: dashboardLink(`${url}/report/`) });
   }
   // Same-origin, or a project's Storybook (the addon, checks only): a page on any other site must
-  // not write. Decisions also need the token: a person in the dashboard, or `pxsig approve apply`.
+  // not write. Decisions need more: the link's cookie or the CLI's token (top of this file).
   const auth = authorize({
     action,
     headers: req.headers,
