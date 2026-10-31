@@ -102,6 +102,17 @@ const CODES = [
   'excluded',
   'ok',
 ];
+/** Approving: the dashboard link, its timing, and the header's badges (first on the page). */
+const APPROVING: [string, string[]][] = [
+  ['link', []],
+  ['newLink', []],
+  ['copy', []],
+  ['timing', []],
+  ['why', []],
+  ['connection', ['header-status']],
+  ['access', ['header-status', 'review-button']],
+  ['title', []],
+];
 const TABS = ['overview', 'review', 'coverage', 'a11y', 'runs', 'help'] as const;
 const INSPECTOR: [string, string[]][] = [
   ['progress', ['session']],
@@ -150,6 +161,16 @@ export function Help({ data }: { data: Data }) {
   return (
     <div className={s.stack}>
       <p className={s.lede}>{t('help.intro')}</p>
+      <Section
+        title={t('help.approving.title')}
+        description={t('help.approving.description')}
+        layout="dashboard"
+        items={APPROVING.map(([k, at]) => ({
+          term: t(`help.approving.rows.${k}.term` as CopyKey),
+          meaning: t(`help.approving.rows.${k}.meaning` as CopyKey),
+          at,
+        }))}
+      />
       <Section
         title={t('help.tabs.title')}
         description={t('help.tabs.description')}
