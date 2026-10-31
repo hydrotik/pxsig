@@ -413,12 +413,20 @@ export interface ScreenViolation {
   count: number;
 }
 
+/** One layout finding on a screen (dashboard-check/layout.mjs). */
+export interface LayoutFinding {
+  rule: 'overflow' | 'clipped' | 'controls' | 'edge' | 'overlap';
+  text: string;
+}
+
 /** What `capture` returns for one screen in one theme. */
 export interface ScreenCapture {
   rendered: boolean;
   reason: string | null;
   errors: string[];
   axe: ScreenViolation[];
+  /** Empty when the screen did not render, or for the reference build (not measured). */
+  layout: LayoutFinding[];
   ms: number;
   /** Present only when the layout was still moving after SETTLE_MS: the screenshot was taken anyway. */
   settled?: false;
@@ -449,7 +457,14 @@ export interface DashboardCheckReport {
   reference: { dir: string; used: boolean; note: string | null };
   themes: string[];
   strict: boolean;
-  summary: { screens: number; rendered: number; failed: number; withAxe: number; posts: number };
+  summary: {
+    screens: number;
+    rendered: number;
+    failed: number;
+    withAxe: number;
+    withLayout: number;
+    posts: number;
+  };
   screens: ScreenResult[];
 }
 

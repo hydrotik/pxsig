@@ -13,12 +13,13 @@
  *     that answers /__pxsig/ from the scenario. A POST is answered and recorded; nothing is written.
  *   - Playwright's Chromium (docs/platforms.md#programs-pxsig-starts), 1280×900, reduced motion,
  *     the clock fixed and the caret hidden. For each screen and theme: load, run its actions, wait
- *     for its landmark, take a screenshot, run axe-core, and record page errors.
+ *     for its landmark, take a screenshot, run axe-core, record page errors, and measure the
+ *     layout (dashboard-check/layout.mjs: overflow, clipping, control rows, frame edges, overlap).
  *   - Writes only under --out (default node_modules/.cache/pxsig/dashboard-check): index.html (the
  *     gallery), report.json, summary.md and the screenshots.
  *
  * Exit: 0 every screen rendered with no page error · 1 a screen failed, or (with --strict) axe
- * violations · 2 setup: no build, no Chromium, or an adapter for an older major UI contract.
+ * violations or layout findings · 2 setup: no build, no Chromium, or an adapter for an older major UI contract.
  */
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
@@ -248,6 +249,7 @@ export async function dashboardCheck(
         shot,
         axe,
         initScript,
+        layout: true,
       });
       let referenceShot = null;
       if (reference.used) {
@@ -273,6 +275,7 @@ export async function dashboardCheck(
         reason: r.reason,
         errors: r.errors,
         axe: r.axe,
+        layout: r.layout,
         fallbacks: gapRows ? j.f.components.filter((c) => fallback.has(c)) : null,
         ms: r.ms,
         ...(r.settled === false ? { settled: r.settled } : {}),
@@ -288,6 +291,7 @@ export async function dashboardCheck(
 
   const failed = screens.filter((x) => !x.rendered).length;
   const withAxe = screens.filter((x) => x.axe.length).length;
+  const withLayout = screens.filter((x) => x.layout.length).length;
   const report = {
     pxsig: PXSIG_VERSION,
     axe: axeVersion({ root: cwd, workspaceRoot: cwd }),
@@ -302,6 +306,7 @@ export async function dashboardCheck(
       rendered: screens.length - failed,
       failed,
       withAxe,
+      withLayout,
       posts: posts.length,
     },
     screens,
@@ -309,6 +314,6 @@ export async function dashboardCheck(
   writeFileSync(join(outDir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
   writeFileSync(join(outDir, 'summary.md'), summaryMarkdown(report));
   writeFileSync(join(outDir, 'index.html'), galleryHtml(report));
-  const code = failed || (report.strict && withAxe) ? 1 : 0;
+  const code = failed || (report.strict && (withAxe || withLayout)) ? 1 : 0;
   return { code, report, outDir };
 }

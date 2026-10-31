@@ -51,7 +51,13 @@ test('a second ERR_NO_BUFFER_SPACE, or any other error, fails as before', async 
 /** A report.json with these screens, as summaryMarkdown reads it. */
 const report = (/** @type {object[]} */ screens) =>
   /** @type {any} */ ({
-    summary: { screens: screens.length, rendered: screens.length, failed: 0, withAxe: 0 },
+    summary: {
+      screens: screens.length,
+      rendered: screens.length,
+      failed: 0,
+      withAxe: 0,
+      withLayout: 0,
+    },
     build: 'dist',
     contract: { adapter: 1, current: 1 },
     themes: ['dark'],
@@ -61,7 +67,14 @@ const report = (/** @type {object[]} */ screens) =>
   });
 
 test('summary.md lists the retried screens, and has no section when there are none', () => {
-  const screen = { feature: 'overview.stats', index: 0, theme: 'dark', rendered: true, axe: [] };
+  const screen = {
+    feature: 'overview.stats',
+    index: 0,
+    theme: 'dark',
+    rendered: true,
+    axe: [],
+    layout: [],
+  };
   const md = summaryMarkdown(report([screen, { ...screen, index: 1, retried: NO_BUFFER_SPACE }]));
   assert.match(md, /### Retried\n\n.*\n\n- `overview.stats` #2 \(dark\)\n/);
   assert.doesNotMatch(md, /#1 \(dark\)/, 'a screen loaded first time is not listed');
