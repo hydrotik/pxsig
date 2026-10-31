@@ -58,7 +58,7 @@ test('a decision without the dashboard link or a token is refused, with the way 
   assert.match(NEEDS_LINK, /dashboard link/);
 });
 
-test('the dashboard link: a ticket works once, within two minutes; the cookie cannot be read by scripts', () => {
+test('the dashboard link: a ticket works once, accessed within five minutes; the cookie cannot be read by scripts', () => {
   const l = new Links();
   const t0 = 1_000_000;
   const t = l.mint(t0);
@@ -66,6 +66,8 @@ test('the dashboard link: a ticket works once, within two minutes; the cookie ca
   const s = l.redeem(t, t0 + 1000);
   assert.ok(l.has(s));
   assert.equal(l.redeem(t, t0 + 2000), null, 'used once');
+  assert.equal(TICKET_MS, 5 * 60 * 1000, 'five minutes to access the link');
+  assert.ok(l.redeem(l.mint(t0), t0 + 4 * 60 * 1000), 'four minutes in: still good');
   const late = l.mint(t0);
   assert.equal(l.redeem(late, t0 + TICKET_MS + 1), null, 'expired');
   assert.equal(l.redeem(undefined), null);

@@ -6,7 +6,7 @@
  * apply` / `pxsig a11y --prune` at a terminal.
  * The dashboard decides through the dashboard link: `pxsig serve` prints `<url>/report/#ticket=<t>`
  * for a person at a terminal (`pxsig serve --link` prints a new one). The page trades the ticket
- * (single use, opened within two minutes) once, at `POST /__pxsig/session`, for a cookie that scripts cannot read
+ * (single use, accessed within five minutes) once, at `POST /__pxsig/session`, for a cookie that scripts cannot read
  * and other sites cannot send (HttpOnly, SameSite=Strict), valid until the server stops. No token is
  * ever put in a page, so a script fetching the page, with whatever headers, gets nothing to decide
  * with. The server also makes two random tokens it writes to files only its owner can read
@@ -172,7 +172,7 @@ export function cookieValue(header, name) {
 export const linkSetCookie = (port, session) =>
   `${linkCookie(port)}=${session}; HttpOnly; SameSite=Strict; Path=/`;
 
-export const TICKET_MS = 2 * 60 * 1000;
+export const TICKET_MS = 5 * 60 * 1000;
 
 /**
  * The dashboard link's tickets and the cookies they were traded for, in this server's memory only:

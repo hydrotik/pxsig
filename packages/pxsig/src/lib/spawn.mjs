@@ -6,6 +6,8 @@
  *   ps (a lock's start time)                                 macOS, Linux
  *   osascript, open (open the dashboard)                     macOS
  *   xdg-open (open the dashboard)                            Linux
+ *   pbcopy (the dashboard link, `serve --link --copy`)       macOS
+ *   wl-copy, xclip (the dashboard link, `--copy`)            Linux
  *   fc-list (a digest of the installed fonts, render env)    Linux, when fontconfig is installed
  *   docker (`pxsig browser start|stop|status` only)          every OS, only on that command
  *
@@ -17,8 +19,8 @@ import * as cp from 'node:child_process';
 
 /** @type {Record<string, string[]>} */
 const BY_OS = {
-  darwin: ['git', 'ps', 'osascript', 'open', 'docker'],
-  linux: ['git', 'ps', 'xdg-open', 'fc-list', 'docker'],
+  darwin: ['git', 'ps', 'osascript', 'open', 'pbcopy', 'docker'],
+  linux: ['git', 'ps', 'xdg-open', 'wl-copy', 'xclip', 'fc-list', 'docker'],
   win32: ['git', 'docker'],
 };
 

@@ -178,7 +178,7 @@ test('without the dashboard link the inspector says Read only up front, and the 
     assert.match(String(await approve.getAttribute('title')), /^Read only/);
     await ro.page.getByText(`cd "/work/demo" && ${command}`).first().waitFor();
     await ro.page
-      .getByText(/within two minutes; it works once/)
+      .getByText(/5 minutes to access the link; it works once/)
       .first()
       .waitFor();
     assert.equal(ro.posts.length, 0, 'nothing was sent');

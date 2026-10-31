@@ -8,16 +8,16 @@ One server per workspace. It serves the dashboard and an HTTP API for every proj
 engine process and one pool of warm browsers, and keeps each project's integrity ledger current.
 Approving a baseline or re-checking a story then costs one render.
 
-| Flag                | Meaning                                                                                                                                                                                                                         |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--port <n>`        | First port to try (default: `server.port` in the workspace file, else 6070). If it is taken, the next ten are tried.                                                                                                            |
-| `--watch`           | When a file under a project's `srcRoot` changes, re-check only the entries it traces to. A file it cannot trace (an unimported `.json`) is printed, not a reason to re-check everything ([ci.md](ci.md#how-selection-decides)). |
-| `--no-open`         | Do not open a browser tab. On Windows none is opened anyway: the link is printed.                                                                                                                                               |
-| `--link [--open]`   | Print a new dashboard link from the running server and exit (a person at a terminal only, see [Guards](#guards)); with `--open`, also open it in the default browser (macOS and Linux).                                         |
-| `--tab <name>`      | Open the dashboard on this section.                                                                                                                                                                                             |
-| `--project <a,b>`   | Serve only these projects.                                                                                                                                                                                                      |
-| `--workspace <dir>` | The workspace root, instead of walking up from the current folder.                                                                                                                                                              |
-| `--debug`           | Print every program the server starts, with its arguments, on stderr (see [platforms.md](platforms.md#programs-pxsig-starts)).                                                                                                  |
+| Flag                       | Meaning                                                                                                                                                                                                                                                 |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--port <n>`               | First port to try (default: `server.port` in the workspace file, else 6070). If it is taken, the next ten are tried.                                                                                                                                    |
+| `--watch`                  | When a file under a project's `srcRoot` changes, re-check only the entries it traces to. A file it cannot trace (an unimported `.json`) is printed, not a reason to re-check everything ([ci.md](ci.md#how-selection-decides)).                         |
+| `--no-open`                | Do not open a browser tab. On Windows none is opened anyway: the link is printed.                                                                                                                                                                       |
+| `--link [--open] [--copy]` | Print a new dashboard link from the running server and exit (a person at a terminal only, see [Guards](#guards)); with `--open`, also open it in the default browser (macOS and Linux); with `--copy`, also copy it to the clipboard (macOS and Linux). |
+| `--tab <name>`             | Open the dashboard on this section.                                                                                                                                                                                                                     |
+| `--project <a,b>`          | Serve only these projects.                                                                                                                                                                                                                              |
+| `--workspace <dir>`        | The workspace root, instead of walking up from the current folder.                                                                                                                                                                                      |
+| `--debug`                  | Print every program the server starts, with its arguments, on stderr (see [platforms.md](platforms.md#programs-pxsig-starts)).                                                                                                                          |
 
 The server binds to `127.0.0.1` only: it is each developer's own, never deployed
 ([team.md](team.md)). On start it writes
@@ -151,8 +151,11 @@ clears the mark. `summary.changed` counts only real changes waiting for a decisi
 - **The dashboard link.** `pxsig serve` prints `<url>/report/#ticket=<t>` when a person started it
   at a terminal (no assistant's marker, not in the background; [agents.md](agents.md#markers)), and on macOS opens it; `pxsig serve
   --link`, run by a person at a terminal, prints a new one from the running server (`--link --open`
-  also opens it, as the start does). The ticket is single use and has to be opened within two
-  minutes; there is no limit on deciding after that. The page trades it at `POST /__pxsig/session` (its own
+  also opens it, as the start does; `--link --copy` also copies it to the clipboard and says so). The
+  copy is opt-in: any program on the computer, an assistant included, can read the clipboard, while
+  the printed link reaches only the person at the terminal; the ticket works once and expires, so
+  what the clipboard holds stops working soon. The ticket is single use, with 5 minutes to access it;
+  there is no limit on deciding after that. The page trades it at `POST /__pxsig/session` (its own
   origin only) for a cookie `pxsig_link_<port>` that scripts cannot read and other sites cannot send
   (`HttpOnly; SameSite=Strict`), valid until the server stops, and takes it out of the address bar.
   No token is ever in a page: a script fetching the page, with any headers, gets nothing to decide

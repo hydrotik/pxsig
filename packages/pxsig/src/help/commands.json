@@ -930,7 +930,7 @@
       "summary": "The server and dashboard for every project in the workspace.",
       "usage": [
         "pxsig serve [--port 6070] [--watch] [--no-open] [--tab name] [--project a,b] [--debug]",
-        "pxsig serve --link [--open]"
+        "pxsig serve --link [--open] [--copy]"
       ],
       "flags": [
         {
@@ -950,11 +950,15 @@
         },
         {
           "name": "link",
-          "meaning": "Print a fresh dashboard link from the running server and exit (a person at a terminal only). Open it within two minutes; it works once. Once open, that browser can approve, with no time limit, until pxsig serve stops or the browser closes."
+          "meaning": "Print a fresh dashboard link from the running server and exit (a person at a terminal only). 5 minutes to access this link; it works once. Once opened, that browser can approve, with no time limit, until pxsig serve stops or the browser closes."
         },
         {
           "name": "open",
           "meaning": "With --link: also open the new link in the default browser (macOS and Linux; on Windows it is only printed). The link is printed either way."
+        },
+        {
+          "name": "copy",
+          "meaning": "With --link: also copy the new link to the clipboard and say so (macOS pbcopy; Linux wl-copy, else xclip; not on Windows). Opt-in: any program on this computer can read the clipboard. The link is printed either way."
         },
         {
           "name": "tab",
