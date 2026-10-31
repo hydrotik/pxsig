@@ -347,7 +347,10 @@ export interface RepairPlan {
 }
 
 /** What `serverStatus` returns. */
-export type ServerStatus = { up: true; running: boolean; queued: number } | { up: false };
+/** `serverStatus`: `foreign` says why a server that answered counts as down (another workspace's). */
+export type ServerStatus =
+  | { up: true; running: boolean; queued: number }
+  | { up: false; foreign?: string };
 
 /** `planRepairs` options. */
 export interface PlanOptions {

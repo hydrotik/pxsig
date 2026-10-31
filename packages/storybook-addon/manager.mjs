@@ -2,8 +2,9 @@
  * pxsig in Storybook: a "PXSIG: Visual regression" panel and sidebar status dots.
  *
  * Thin client of the pxsig server (`pxsig serve`). Where it is comes from the preset (see
- * preset.cjs): the `server` option, the running server's address, or the configured port; a
- * `pxsig-server` key in localStorage overrides them all.
+ * preset.cjs): the `server` option, the running server's address, or the configured port, then
+ * the default port; a `pxsig-server` key in localStorage overrides them all. A server that serves
+ * another workspace is passed over (server-pick.mjs).
  * - the panel embeds the dashboard's inspector for the current story
  *   (`/report/?embed=1&story=<id>`) — one inspector, built on the design system;
  * - Check story / Check all queue renders + Rust checks on the server's warm pool;
@@ -31,6 +32,7 @@ import {
 import { AddonPanel } from 'storybook/internal/components';
 import { useTheme } from 'storybook/theming';
 import { buttonStyle, dashboardUrl, panelColors, themeMode } from './panel-style.mjs';
+import { acceptsServer, DEFAULT_SERVER } from './server-pick.mjs';
 import {
   headerText,
   noSnapshotText,
@@ -44,13 +46,12 @@ import {
 const ADDON = 'pxsig';
 const PANEL = `${ADDON}/panel`;
 // The localStorage value joins only when it is set: every candidate is a string.
-const CANDIDATES = /** @type {string[]} */ ([
-  ...(typeof window !== 'undefined' && window.localStorage?.getItem('pxsig-server')
-    ? [window.localStorage.getItem('pxsig-server')]
-    : []),
-  ...((typeof window !== 'undefined' && window.__PXSIG__?.servers) || []),
-  'http://127.0.0.1:6070',
-]);
+const OVERRIDE =
+  (typeof window !== 'undefined' && window.localStorage?.getItem('pxsig-server')) || null;
+// The addresses the preset found for this workspace, and this workspace's id (preset.cjs).
+const PINNED = (typeof window !== 'undefined' && window.__PXSIG__?.servers) || [];
+const WORKSPACE = (typeof window !== 'undefined' && window.__PXSIG__?.workspaceId) || null;
+const CANDIDATES = [...new Set([...(OVERRIDE ? [OVERRIDE] : []), ...PINNED, DEFAULT_SERVER])];
 let SERVER = CANDIDATES[0];
 // A Storybook not served from this computer (a deployed one) makes no request to any pxsig server:
 // the panel reads the read-only snapshot its build wrote beside it (snapshot-view.mjs).
@@ -59,7 +60,7 @@ const MODE =
     ? 'live'
     : panelMode({
         hostname: window.location.hostname,
-        override: window.localStorage?.getItem('pxsig-server') ?? null,
+        override: OVERRIDE,
       });
 /**
  * The first candidate that answers; kept until it stops answering.
@@ -70,9 +71,13 @@ async function status() {
     try {
       const r = await fetch(`${url}/__pxsig/status`, { signal: AbortSignal.timeout(1500) });
       if (!r.ok) continue;
-      SERVER = url;
       // The pxsig server's `GET /__pxsig/status` answer (docs/server.md).
-      return /** @type {ServerStatus} */ (await r.json());
+      const s = /** @type {ServerStatus} */ (await r.json());
+      // Another workspace's server (on the default port, say): not this Storybook's.
+      if (!acceptsServer(s, { url, workspaceId: WORKSPACE, pinned: PINNED, override: OVERRIDE }))
+        continue;
+      SERVER = url;
+      return s;
     } catch {
       // try the next candidate
     }

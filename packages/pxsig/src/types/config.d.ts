@@ -49,6 +49,8 @@ export interface PackageJson {
 export interface Workspace {
   /** Absolute folder holding `pxsig.workspace.json`, or the single package's folder. */
   root: string;
+  /** `workspaceId(root)` (lib/workspace/peers.mjs): what the server's status answer names it by. */
+  id: string;
   /** Absolute path of `pxsig.workspace.json`; null for a single package without one. */
   file: string | null;
   /** `defaults` from the workspace file: the project config layer below each project's own. */

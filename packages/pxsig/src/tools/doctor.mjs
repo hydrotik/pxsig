@@ -80,11 +80,15 @@ async function doctor({
     agent: detectAgent(),
   };
   if (repair !== 'none') {
-    const server = await serverStatus(serverUrl);
+    const server = await serverStatus(serverUrl, C.root);
     const plan = planRepairs(ledger, { only, prune: prune && !!confirmPrune, server, stale });
     out.plan = plan;
     if (repair === 'apply') {
-      const hooks = { ...defaultHooks(ctx, { serverUrl }), confirmPrune, confirmTorn };
+      const hooks = {
+        ...defaultHooks(ctx, { serverUrl, root: C.root }),
+        confirmPrune,
+        confirmTorn,
+      };
       const res = await applyRepairs(ctx, plan, { hooks, via, reconcileOpts: { offline } });
       ledger = res.ledger;
       writeLedger(ctx, ledger);

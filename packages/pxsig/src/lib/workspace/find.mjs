@@ -8,6 +8,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { toPosix } from '../paths.mjs';
 import { SetupError, readJsonFile } from './core.mjs';
 import { isObj } from './layers.mjs';
+import { workspaceId } from './peers.mjs';
 import { PXSIG_VERSION, engineProblems, imageProblems } from './versions.mjs';
 
 export const WORKSPACE_FILE = 'pxsig.workspace.json';
@@ -62,6 +63,7 @@ export function findWorkspace({ cwd = process.cwd(), workspace = null, env = pro
     const cfg = /** @type {ConfigFile} */ (readJsonFile(configPath));
     return {
       root,
+      id: workspaceId(root),
       file: null,
       defaults: {},
       server: {},
@@ -92,7 +94,8 @@ export function findWorkspace({ cwd = process.cwd(), workspace = null, env = pro
     const dir = resolve(root, rel);
     return { name, dir, configPath: join(dir, CONFIG_FILE) };
   });
-  return { root, file, defaults: ws.defaults ?? {}, server: ws.server ?? {}, projects };
+  const id = workspaceId(root);
+  return { root, id, file, defaults: ws.defaults ?? {}, server: ws.server ?? {}, projects };
 }
 
 /**

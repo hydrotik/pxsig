@@ -127,6 +127,8 @@ export const actTools = /** @type {const} */ ([
       return {
         ...summarizeIds(C, want, 'check', t0),
         ...(skipped.length ? { skipped } : {}),
+        // Run here, not by the server on the port: it serves another workspace.
+        ...(srv.foreign ? { note: srv.foreign } : {}),
         log: out.log,
       };
     },

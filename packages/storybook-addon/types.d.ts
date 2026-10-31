@@ -6,8 +6,11 @@
 
 declare global {
   interface Window {
-    /** Written by the preset's `managerHead`: the pxsig servers to try, in order. */
-    __PXSIG__?: { servers?: string[] };
+    /**
+     * Written by the preset's `managerHead`: the pxsig servers found for this workspace, in order,
+     * and the workspace's id (what its server's status answer names it by).
+     */
+    __PXSIG__?: { servers?: string[]; workspaceId?: string | null };
   }
 }
 
@@ -85,6 +88,8 @@ export interface StoryIntegrity {
 
 /** The fields of `GET /__pxsig/status` the addon reads. */
 export interface ServerStatus {
+  /** The workspace the server serves; pxsig 0.6 and earlier send none. */
+  workspaceId?: string;
   running: boolean;
   stories: Record<string, StoryStatus>;
   integrity?: Record<string, StoryIntegrity>;
