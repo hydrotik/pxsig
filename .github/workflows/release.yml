@@ -312,7 +312,7 @@ jobs:
   # tarballs, so the checksums and attestations describe what npm serves.
   pack:
     name: Pack
-    timeout-minutes: 30
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     needs: [verify, build, dashboard, sbom-rust]
     env:
@@ -403,11 +403,33 @@ jobs:
           path: release-files
           if-no-files-found: error
           retention-days: 7
-      # Which dashboard screens look different from the last release's: both rendered on this
-      # runner by this checkout's `pxsig dashboard check` and compared by the engine. After the
-      # release files are packed and uploaded, so nothing here touches them. A list in the job
-      # summary and a gallery artifact, never a failure (scripts/dashboard-drift.mjs).
+  # Which dashboard screens look different from the last release's: this release's dashboard and
+  # the last release's, both rendered on this runner by this checkout's `pxsig dashboard check` and
+  # compared by the engine. Its own job, read-only, beside Pack: the install it needs never runs
+  # where the release files are made. A list in the job summary and a gallery artifact, never a
+  # failure (scripts/dashboard-drift.mjs).
+  dashboard-drift:
+    name: Dashboard drift
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    needs: [verify, build, dashboard]
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: pxsig-linux-x64
+          path: release-artifacts/pxsig-linux-x64
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dashboard
+          path: packages/pxsig/dist/dashboard
       - name: Dashboard drift since the last release
         continue-on-error: true
         shell: bash

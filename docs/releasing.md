@@ -79,9 +79,10 @@ changes first), with the entries already under Unreleased ahead of the fragments
    `@cyclonedx/cyclonedx-npm`, pinned, plus the packages the dashboard bundle inlines), checks it
    and the engine SBOM for known advisories of any severity (osv-scanner, pinned, its download
    checked against its sha256: a finding fails the job), the raw binaries `pxsig-<platform>-<arch>[.exe]`, and
-   `SHA256SUMS` over all of them (`scripts/release-files.mjs`). Last, after those files are
-   uploaded, it lists the dashboard screens that look different from the last release's
-   (`scripts/dashboard-drift.mjs`, see [The dashboard](#the-dashboard)). Advisory.
+   `SHA256SUMS` over all of them (`scripts/release-files.mjs`). Beside it, the **dashboard-drift**
+   job lists the dashboard screens that look different from the last release's
+   (`scripts/dashboard-drift.mjs`, see [The dashboard](#the-dashboard)). Advisory, read-only, and
+   in its own job, so the install it needs never runs where the release files are made.
 7. **attest**: a provenance attestation for every one of those files
    (`actions/attest-build-provenance`), then attaches them all to the GitHub release for the tag,
    creating the release if it does not exist yet. Skipped in a dry run.
@@ -172,7 +173,7 @@ bundle keeps), so the npm SBOM covers the dashboard too.
 The tarball must contain only a top-level `dashboard/` folder with `index.html` in it; the job
 rejects anything else. (`COPYFILE_DISABLE=1` keeps macOS `._*` files out.)
 
-**Drift since the last release.** The pack job downloads `pxsig-dashboard.tar.gz` from the most
+**Drift since the last release.** The dashboard-drift job downloads `pxsig-dashboard.tar.gz` from the most
 recent earlier release that has one, renders it and this release's dashboard with this checkout's
 `pxsig dashboard check` on the same runner, and compares each screen with the engine
 (`dashboard check --compare`). The changed, new and gone screens go to the run's summary, and the
