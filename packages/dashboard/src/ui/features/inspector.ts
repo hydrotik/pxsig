@@ -8,7 +8,11 @@ export const INSPECTOR: Feature[] = [
     title: 'Inspector header',
     purpose:
       'The entry id, its context and reasons, its verdict, its other modes and states, the position in the list, the review buttons and Close.',
-    states: { static: 'No review buttons.' },
+    states: {
+      static: 'No review buttons.',
+      readOnly:
+        'A note under the header gives the command for a dashboard link, with a copy button; Reject, Approve and Undo stay in place, disabled.',
+    },
     interactions: [
       { action: 'Approve or reject (accept, in an accessibility session)', keys: 'A / R' },
       { action: 'Previous or next entry', keys: '← → (J / K)' },
@@ -41,6 +45,12 @@ export const INSPECTOR: Feature[] = [
         scenario: 'changed',
         hash: '#inspect=ui-button--primary',
         wait: { role: 'dialog', name: 'ui-button--primary' },
+      },
+      {
+        scenario: 'read-only',
+        state: 'readOnly',
+        hash: '#inspect=ui-button--primary',
+        wait: { text: 'Read only: approving needs the dashboard link. In a terminal:' },
       },
     ],
   },

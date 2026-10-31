@@ -224,6 +224,7 @@
         "inspector/side/A11ySection",
         "inspector/side/MetricsSection",
         "inspector/side/PixelSection",
+        "parts/Connection",
         "parts/StoryGrid",
         "views/Accessibility",
         "views/Integrity",
@@ -368,7 +369,8 @@
       "required": false,
       "role": "a short hint on hover of one element",
       "usedBy": [
-        "App"
+        "App",
+        "parts/Connection"
       ]
     },
     "Link": {

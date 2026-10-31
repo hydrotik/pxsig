@@ -43,6 +43,7 @@ import { History } from './views/History';
 import { type CoverageFocus, Integrity, IntegrityBanner } from './views/Integrity';
 import { t, type CopyKey } from './copy';
 import { versionsText } from './versions';
+import { Connection } from './parts/Connection';
 import * as s from './dashboard.css';
 
 // Section ids are stable (deep links and the remembered section use them); the labels come from the copy.
@@ -354,13 +355,7 @@ export function App() {
             <ProjectPicker current={data.project} />
             {/* The report's modes, beside the connection: what this data covers, and how fresh it is. */}
             {sm ? <Badge className={s.modesTag}>{sm.modes.join(' · ')}</Badge> : null}
-            {served ? (
-              <Badge tone={live ? 'success' : 'neutral'} pulse={live}>
-                {live ? t('app.connection.live') : t('app.connection.offline')}
-              </Badge>
-            ) : (
-              <Badge emphasis="outline">{t('app.connection.static')}</Badge>
-            )}
+            <Connection live={live} />
             {data.check ? (
               <span className={[s.micro, s.lastCheck].join(' ')}>
                 {t('app.lastCheck', { date: new Date(data.check.generatedAt).toLocaleString() })}

@@ -7,12 +7,15 @@ export const SHELL: Feature[] = [
     section: 'shell',
     title: 'Top bar',
     purpose:
-      "The report's title (its label, else the project name) with the versions on hover, the section links with their counts, and the controls pinned at the end: start review, project, modes, connection, last check, theme, review status.",
+      "The report's title (its label, else the project name) with the versions on hover, the section links with their counts, and the controls pinned at the end: start review, project, modes, connection with whether this page can approve (Read only / Can approve, the command for a dashboard link on hover), last check, theme, review status.",
     states: {
       loading: 'The page shows a loading line until the first data arrives.',
       error: 'The page shows the load error instead of the dashboard.',
       offline: 'The connection badge reads Offline; the review button is hidden.',
-      static: 'The connection badge reads Static report; nothing that writes is shown.',
+      static: 'The connection badge reads Static report · Read only; nothing that writes is shown.',
+      readOnly:
+        'Live · Read only: this page holds no dashboard link; the review buttons are disabled.',
+      canApprove: 'Live · Can approve: this page opened the dashboard link.',
     },
     interactions: [
       { action: 'Open a section (a plain #<id> link; Back and Forward move between sections)' },
@@ -33,12 +36,13 @@ export const SHELL: Feature[] = [
       'Select',
       'Tooltip',
     ],
-    files: ['App'],
+    files: ['App', 'parts/Connection', 'link'],
     screens: [
       {
         scenario: 'clean',
+        state: 'canApprove',
         hash: '#overview',
-        wait: { role: 'navigation', name: 'Report sections' },
+        wait: { text: 'Can approve', exact: true },
       },
       { scenario: 'loading', state: 'loading', hash: '#overview', wait: { text: 'Loading' } },
       {
@@ -52,6 +56,12 @@ export const SHELL: Feature[] = [
         state: 'offline',
         hash: '#overview',
         wait: { text: 'Offline', exact: true },
+      },
+      {
+        scenario: 'read-only',
+        state: 'readOnly',
+        hash: '#overview',
+        wait: { text: 'Read only', exact: true },
       },
       {
         scenario: 'static',

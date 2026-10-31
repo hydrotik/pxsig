@@ -10,6 +10,7 @@ import { takeLock } from '../lib/lock.mjs';
 import { migrateLegacy } from '../lib/setup.mjs';
 import { findWorkspace, openProject, rustBinary, serverUrlFor } from '../lib/workspace.mjs';
 import { readToken, TOKEN_HEADER } from '../lib/guard.mjs';
+import { LINK_TIMING } from '../lib/dashboard-link.mjs';
 import { ask, emit, humanAtTerminal, whyNotPerson } from '../lib/term.mjs';
 import { relPath } from '../lib/paths.mjs';
 
@@ -57,9 +58,7 @@ export function toolCommands(cli) {
         `the pxsig server at ${url} refused: ${body.error ?? r.status} (restart \`${CMD} serve\` with this version)`
       );
     process.stdout.write(`${body.link}\n`);
-    process.stderr.write(
-      'Open it once, within two minutes: that browser can then approve from the dashboard until the server stops.\n'
-    );
+    process.stderr.write(`${LINK_TIMING}\n`);
   }
 
   return {

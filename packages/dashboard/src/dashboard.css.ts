@@ -18,6 +18,7 @@ export {
   stack,
   row,
   spacer,
+  pair,
   srOnly,
   twoCol,
   overviewCols,

@@ -950,7 +950,7 @@
         },
         {
           "name": "link",
-          "meaning": "Print a fresh dashboard link from the running server and exit (a person at a terminal only). A browser that opens it once, within two minutes, can approve from the dashboard until the server stops."
+          "meaning": "Print a fresh dashboard link from the running server and exit (a person at a terminal only). Open it within two minutes; it works once. Once open, that browser can approve, with no time limit, until pxsig serve stops or the browser closes."
         },
         {
           "name": "tab",

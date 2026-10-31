@@ -26,7 +26,14 @@ export type Section =
   | 'help'
   | 'inspector'
   | 'embed';
-export type State = 'loading' | 'empty' | 'error' | 'offline' | 'static';
+export type State =
+  | 'loading'
+  | 'empty'
+  | 'error'
+  | 'offline'
+  | 'static'
+  | 'readOnly'
+  | 'canApprove';
 
 export interface Feature {
   id: string;

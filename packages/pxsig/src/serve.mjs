@@ -131,6 +131,7 @@ import {
   sameOriginPage,
   writeToken,
 } from './lib/guard.mjs';
+import { approving, LINK_ELSEWHERE, LINK_EXPIRED, LINK_TIMING } from './lib/dashboard-link.mjs';
 import { humanAtTerminal } from './lib/term.mjs';
 import { fileURLToPath } from 'node:url';
 import { relPath } from './lib/paths.mjs';
@@ -1489,6 +1490,8 @@ async function api(req, res, action, q) {
           ])
       ),
       dashboard: `${url}/report/`,
+      // Listening, so `url` is set.
+      approving: approving(req.headers, links, /** @type {string} */ (url), ws.root),
     });
   if (req.method === 'GET') {
     const S = stateFor({ project: q.get('project'), story: q.get('story') });
@@ -1528,8 +1531,7 @@ async function api(req, res, action, q) {
     const session = links.redeem((await readBody(req)).ticket);
     if (!session)
       return json(res, 403, {
-        error:
-          'this dashboard link was used or is older than two minutes: run `pxsig serve --link` in a terminal for a new one',
+        error: LINK_EXPIRED,
       });
     res.setHeader(
       'set-cookie',
@@ -1830,14 +1832,7 @@ function listen(port, tries = 10) {
     // reads this output, and with the link it could approve from a browser it drives.
     const person = humanAtTerminal();
     const link = person ? dashboardLink(`${url}/report/`, flags.tab ?? null) : null;
-    if (link)
-      console.log(
-        `[serve] dashboard link (approve from the dashboard; once, within two minutes): ${link}`
-      );
-    else
-      console.log(
-        '[serve] to approve from the dashboard, run `pxsig serve --link` in a terminal and open the link it prints'
-      );
+    console.log(`[serve] ${link ? `dashboard link: ${link}\n${LINK_TIMING}` : LINK_ELSEWHERE}`);
     if (!flags['no-open']) openBrowser(link ?? page);
   };
   server.once('error', onError);

@@ -10,14 +10,16 @@ well renders every feature; see [build-adapter.md](build-adapter.md).
 
 ### Top bar
 
-`shell.top-bar` · The report's title (its label, else the project name) with the versions on hover, the section links with their counts, and the controls pinned at the end: start review, project, modes, connection, last check, theme, review status.
+`shell.top-bar` · The report's title (its label, else the project name) with the versions on hover, the section links with their counts, and the controls pinned at the end: start review, project, modes, connection with whether this page can approve (Read only / Can approve, the command for a dashboard link on hover), last check, theme, review status.
 
 States:
 
 - **loading**: The page shows a loading line until the first data arrives.
 - **error**: The page shows the load error instead of the dashboard.
 - **offline**: The connection badge reads Offline; the review button is hidden.
-- **static**: The connection badge reads Static report; nothing that writes is shown.
+- **static**: The connection badge reads Static report · Read only; nothing that writes is shown.
+- **readOnly**: Live · Read only: this page holds no dashboard link; the review buttons are disabled.
+- **canApprove**: Live · Can approve: this page opened the dashboard link.
 
 Interactions:
 
@@ -29,7 +31,7 @@ Components: `AppShell`, `AppMain`, `TopNav`, `NavList`, `NavLink`, `NavEnd`, `Ba
 
 Copy: `app`, `tabs`
 
-Files: `src/App`
+Files: `src/App`, `src/parts/Connection`, `src/link`
 
 ### Theme toggle
 
@@ -317,6 +319,7 @@ Files: `src/views/Help`, `src/parts/Schematic`
 States:
 
 - **static**: No review buttons.
+- **readOnly**: A note under the header gives the command for a dashboard link, with a copy button; Reject, Approve and Undo stay in place, disabled.
 
 Interactions:
 

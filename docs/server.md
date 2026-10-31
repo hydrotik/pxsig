@@ -93,13 +93,13 @@ exactly one project.
 
 ### Reading
 
-| Request                           | Response                                                                                                                                                                   |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /__pxsig/projects`           | `{ workspace, projects: [{ name, root, storybook, entries, integrity, error }] }`                                                                                          |
-| `GET /__pxsig/status`             | Whether a check or repair is running, queue length, review decisions, per-story status and per-story integrity across all projects, integrity summaries, the dashboard URL |
-| `GET /__pxsig/data?project=`      | One project's dashboard data: the last check, history, review decisions, integrity, image paths                                                                            |
-| `GET /__pxsig/integrity?project=` | The project's ledger. `&story=<id>` for one story, `&component=` / `&status=` to filter, `&fresh=1` to recompute first. `/api/integrity` is the same.                      |
-| `GET /__pxsig/events`             | Server-sent events: `hello`, `data` (a report changed), `review`, `check` (`running`, `done`, `error`), `integrity`, `watch`                                               |
+| Request                           | Response                                                                                                                                                                                                                                                                                                                                        |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /__pxsig/projects`           | `{ workspace, projects: [{ name, root, storybook, entries, integrity, error }] }`                                                                                                                                                                                                                                                               |
+| `GET /__pxsig/status`             | Whether a check or repair is running, queue length, review decisions, per-story status and per-story integrity across all projects, integrity summaries, the dashboard URL, and `approving`: `allowed` (whether this browser opened the dashboard link; never the session itself), `cwd` and `command` (where and how a person gets a new link) |
+| `GET /__pxsig/data?project=`      | One project's dashboard data: the last check, history, review decisions, integrity, image paths                                                                                                                                                                                                                                                 |
+| `GET /__pxsig/integrity?project=` | The project's ledger. `&story=<id>` for one story, `&component=` / `&status=` to filter, `&fresh=1` to recompute first. `/api/integrity` is the same.                                                                                                                                                                                           |
+| `GET /__pxsig/events`             | Server-sent events: `hello`, `data` (a report changed), `review`, `check` (`running`, `done`, `error`), `integrity`, `watch`                                                                                                                                                                                                                    |
 
 ### Files
 
@@ -141,7 +141,8 @@ clears the mark. `summary.changed` counts only real changes waiting for a decisi
 - **The dashboard link.** `pxsig serve` prints `<url>/report/#ticket=<t>` when a person started it
   at a terminal (no assistant's marker, not in the background; [agents.md](agents.md#markers)), and on macOS opens it; `pxsig serve
   --link`, run by a person at a terminal, prints a new one from the running server. The ticket is
-  single use and good for two minutes; the page trades it at `POST /__pxsig/session` (its own
+  single use and has to be opened within two minutes; there is no limit on deciding after that. The
+  page trades it at `POST /__pxsig/session` (its own
   origin only) for a cookie `pxsig_link_<port>` that scripts cannot read and other sites cannot send
   (`HttpOnly; SameSite=Strict`), valid until the server stops, and takes it out of the address bar.
   No token is ever in a page: a script fetching the page, with any headers, gets nothing to decide

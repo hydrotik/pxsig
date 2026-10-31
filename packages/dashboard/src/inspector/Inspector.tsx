@@ -42,6 +42,8 @@ import {
   ZoomButtons,
 } from './controls';
 import { Header } from './Header';
+import { useApproving } from '../link';
+import { linkCommandLine } from '../parts/Connection';
 import { SessionSummary } from './SessionSummary';
 import { ViewSection } from './side/ViewSection';
 import { PixelSection } from './side/PixelSection';
@@ -215,6 +217,9 @@ export function Inspector({
   };
 
   const canReview = served && !target?.scenario;
+  // Known to hold no dashboard link: the buttons stay in place, disabled, and a note says how.
+  const approving = useApproving();
+  const readOnly = canReview && !embedded && approving?.allowed === false;
   // In an accessibility session the buttons and A / R decide on the entry's violations, not its render.
   const a11yMode = !embedded && target?.session === 'a11y';
   const review = row ? (a11yMode ? data.a11yReview?.[row.id] : data.review[row.id]) : undefined;
@@ -312,6 +317,7 @@ export function Inspector({
       storyOpen={storyOpen}
       target={target}
       approveAll={approveAll}
+      readOnly={readOnly}
     />
   );
   const recheckButton = (
@@ -323,11 +329,21 @@ export function Inspector({
       recheckOne={recheckOne}
     />
   );
-  const actionNote = note ? (
-    <div className={s.note} role="status">
-      <span>{note}</span>
-    </div>
-  ) : null;
+  const readOnlyNote =
+    readOnly && approving ? (
+      <div className={s.note}>
+        <span>{t('inspector.review.readOnly')}</span>
+        <CopyValue value={linkCommandLine(approving)} />
+        <span>{t('inspector.review.linkTiming')}</span>
+      </div>
+    ) : null;
+  // The read-only note already says what a refused decision's note would.
+  const actionNote =
+    note && !(readOnly && note === t('inspector.review.needsLink')) ? (
+      <div className={s.note} role="status">
+        <span>{note}</span>
+      </div>
+    ) : null;
   const desc = row.reasons?.length
     ? row.reasons.join(' · ')
     : row.pass
@@ -429,6 +445,7 @@ export function Inspector({
           />
         )}
 
+        {readOnlyNote}
         {rejectedNote}
         {actionNote}
         <Toolbar size="sm" className={s.insToolbar}>

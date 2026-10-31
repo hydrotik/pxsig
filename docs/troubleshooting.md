@@ -100,8 +100,10 @@ browser has no session for approving. The HTTP answer is 403 with
 `code: "needs-dashboard-link"` ([server.md](server.md#guards)). Reading the dashboard needs no
 link.
 
-**Fix.** Open the link the server printed (it is good once, for two minutes), or run
-`pxsig serve --link` in a terminal for a new one.
+**Fix.** Open the link the server printed, or run `pxsig serve --link` in a terminal for a new one.
+A link has to be opened within two minutes and works once; once open, that browser can approve with
+no time limit until the server stops or the browser closes. The dashboard's top bar says which it
+is: **Read only**, or **Can approve**.
 
 ## A program is blocked on this machine
 
