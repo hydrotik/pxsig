@@ -58,7 +58,8 @@
  *
  * Binds to 127.0.0.1 only.
  */
-import { execFile, spawn } from './lib/spawn.mjs';
+import { spawn } from './lib/spawn.mjs';
+import { openLink } from './lib/open.mjs';
 import {
   createReadStream,
   existsSync,
@@ -1744,40 +1745,6 @@ const server = createServer(async (req, res) => {
   }
 });
 
-// --- open (or reuse) a browser tab ---------------------------------------------------------------
-/** @param {string} target */
-function openBrowser(target) {
-  // Windows: no program is started to open a link (it would take a shell); the link is printed.
-  if (process.platform === 'win32') return console.log('[serve] open the link above in a browser');
-  if (process.platform !== 'darwin') return execFile('xdg-open', [target], () => {});
-  const origin = new URL(target).origin;
-  const script = `
-    if application "Google Chrome" is running then
-      tell application "Google Chrome"
-        repeat with w in windows
-          set i to 0
-          repeat with t in tabs of w
-            set i to i + 1
-            if URL of t starts with "${origin}" then
-              set URL of t to "${target}"
-              set active tab index of w to i
-              set index of w to 1
-              activate
-              return "reused"
-            end if
-          end repeat
-        end repeat
-      end tell
-    end if
-    return "none"`;
-  execFile('osascript', ['-e', script], (err, out) => {
-    // No `encoding` option: Node's default, utf8, makes `out` a string.
-    if (!err && /** @type {string} */ (out).trim() === 'reused')
-      return console.log('[serve] reloaded the open dashboard tab');
-    execFile('open', [target], () => {});
-  });
-}
-
 /** @type {string | null} */
 let url = null;
 const info = serverFile(ws.root);
@@ -1830,7 +1797,11 @@ function listen(port, tries = 10) {
     const person = humanAtTerminal();
     const link = person ? dashboardLink(`${url}/report/`, flags.tab ?? null) : null;
     console.log(`[serve] ${link ? `dashboard link: ${link}\n${LINK_TIMING}` : LINK_ELSEWHERE}`);
-    if (!flags['no-open']) openBrowser(link ?? page);
+    if (!flags['no-open'])
+      void openLink(link ?? page).then((o) => {
+        const said = o.reused ? 'reloaded the open dashboard tab' : o.note;
+        if (said) console.log(`[serve] ${said}`);
+      });
   };
   server.once('error', onError);
   server.once('listening', onListening);
