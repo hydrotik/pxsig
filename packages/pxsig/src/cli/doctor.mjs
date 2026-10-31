@@ -7,6 +7,7 @@ import { CODES } from '../lib/integrity.mjs';
 import { describeLock, readLock, takeLock } from '../lib/lock.mjs';
 import { ask, progress, stateCell } from '../lib/term.mjs';
 import { describeAgent } from '../lib/agents.mjs';
+import { displayPath } from '../lib/machine.mjs';
 import { preflightReport } from './preflight.mjs';
 import {
   appendReadiness,
@@ -266,13 +267,18 @@ export function doctorParts(cli) {
           ['Ledger', r.ledgerPath],
           ...(r.machine
             ? /** @type {[string, Cell][]} */ ([
+                // Home-relative here; --json keeps the absolute paths. No command writes
+                // settings.json in this version.
                 [
                   'Settings',
                   r.machine.setUp
-                    ? r.machine.settings
-                    : { text: `${r.machine.settings} (not set up)`, color: 'gray' },
+                    ? displayPath(r.machine.settings)
+                    : {
+                        text: `${displayPath(r.machine.settings)} (not used in this version)`,
+                        color: 'gray',
+                      },
                 ],
-                ['Token files', r.machine.tokens],
+                ['Approval guard files', displayPath(r.machine.tokens)],
               ])
             : []),
           [

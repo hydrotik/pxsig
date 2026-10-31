@@ -106,7 +106,8 @@ pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
             }
         ));
     }
-    // Renders made in a different environment than their baseline (decision 1.4): only when any were.
+    // Renders made in a different environment than their baseline (docs/ci.md#render-environment):
+    // only when any were.
     let env_n = v["summary"]["envMismatch"].as_u64().unwrap_or(0);
     if env_n > 0 {
         let fields: Vec<String> = v["summary"]["envFields"]
@@ -126,7 +127,8 @@ pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
             rs.len() - skipped
         ));
     }
-    // Baselines the pull request changed, by how each was approved (decision 80). Names no person.
+    // Baselines the pull request changed, by how each was approved
+    // (docs/agents.md#what-a-marker-changes). Names no person.
     if let Some(ap) = v["summary"].get("approvals").filter(|x| x.is_object()) {
         if ap["rewritten"].as_bool() == Some(true) {
             out.push_str("Baselines changed in this PR: the approval log was rewritten, not appended to (`pxsig approve verify --since` fails).\n\n");
@@ -266,7 +268,8 @@ fn advisory_lead(v: &Value) -> String {
     }
     let would = e["wouldFail"].as_bool() == Some(true) && !reasons.is_empty();
     if configured.is_empty() {
-        // The a11y gate on its built-in warn: only here because a new violation appeared (decision 88).
+        // The a11y gate on its built-in warn: only here because a new violation appeared
+        // (docs/configuration.md#enforcement).
         if would {
             out.push_str(&format!(
                 "> **ADVISORY** (a11y, warn by default): {}. Nothing was blocked.\n\n",
@@ -308,7 +311,8 @@ pub fn junit(v: &Value) -> String {
         rs.len(),
         rs.len()
     );
-    // Warn mode on the visual gate (decision 10.10): failures stay failures; the suite says warn.
+    // Warn mode on the visual gate (docs/ci.md#warn-mode): failures stay failures; the suite says
+    // warn.
     if v["enforcement"]["gates"]["visual"].as_str() == Some("warn") {
         out.push_str(
             "  <properties><property name=\"pxsig.enforcement\" value=\"warn\"/></properties>\n",

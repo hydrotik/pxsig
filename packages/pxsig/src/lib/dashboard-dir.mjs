@@ -45,7 +45,7 @@ export function newestMtime(p) {
  * @param {{ configPath: string }} project
  * @returns {string | null}
  */
-function uiOf(project) {
+export function uiOf(project) {
   // The config file's JSON, read only through optional chaining; `ui` is checked below.
   const ui = /** @type {{ dashboard?: { ui?: unknown } } | null} */ (
     readJson(project.configPath, null)

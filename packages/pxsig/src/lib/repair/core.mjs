@@ -31,7 +31,8 @@ export function guardWrite(ctx, path) {
 }
 
 /**
- * Who ran a repair, for its log: nobody unless `approvals.identity: "git-email"` (decision 81).
+ * Who ran a repair, for its log: nobody unless `approvals.identity: "git-email"`
+ * (docs/configuration.md#keys).
  * @param {IntegrityContext} ctx
  * @returns {string | null}
  */

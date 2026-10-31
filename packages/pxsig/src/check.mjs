@@ -148,7 +148,7 @@ if (flags.update && !humanAtTerminal())
     `--update writes baselines without review: run it yourself in a terminal (${whyNotPerson()})`,
     3
   );
-// A merge or rebase that left store files conflicted (decision 97): checking against one side of
+// A merge or rebase that left store files conflicted: checking against one side of
 // a half-merged baseline would mislead, so stop and say how to finish (docs/ci.md, "Rebasing with baselines").
 const conflicted = conflictedStoreFiles(P);
 if (conflicted.length)
@@ -652,7 +652,7 @@ const out = manifest.stories
     });
   });
 const checked = out.filter((r) => !r.skipped);
-// The approval log lines this range added (decision 80): `--since` only, where a merge base is known.
+// The approval log lines this range added (docs/agents.md): `--since` only, where a merge base is known.
 const approvalsInRange = (() => {
   if (!affected?.mergeBase) return null;
   const a = appendedSince(P, affected.mergeBase);
@@ -670,9 +670,9 @@ const summary = summarize(out, {
   affected: affected
     ? `${affected.ids.length} affected of ${manifest.stories.length} (${affected.reason})`
     : null,
-  // When baselines changed in the range: how each was approved, and any assistant marker (decision 80).
+  // When baselines changed in the range: how each was approved, and any assistant marker.
   ...(approvalsInRange ? { approvals: approvalsInRange } : {}),
-  // Only when the fail-safe fired: summary.md names the first path and its class (decision 6.1g).
+  // Only when the fail-safe fired: summary.md names the first path and its class (docs/ci.md).
   ...(affected?.failSafe?.length
     ? {
         selectAll: {

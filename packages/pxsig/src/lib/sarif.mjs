@@ -1,7 +1,8 @@
 /**
  * sarif.mjs — new accessibility violations as SARIF 2.1.0 (`--sarif <file>` on `check` and `a11y`,
- * decision 96), for tools that read it (GitHub code scanning, IDE viewers). Additive output only:
- * nothing reads it back, and it changes no exit code.
+ * docs/cli.md#pxsig-a11y---component-text---new---sarif-file---limit-50), for tools that read it
+ * (GitHub code scanning, IDE viewers). Additive output only: nothing reads it back, and it changes
+ * no exit code.
  *
  * One result per entry and rule that is not on the entry's accepted list (`a11y.json`), located at
  * the entry's story file, with the entry id as the logical location. Rules carry axe's help text and

@@ -11,7 +11,8 @@
 //! package: the project itself or a workspace package through `exports`, a build output mapped
 //! back to its source. Anything in `node_modules` outside the workspace is external. Whatever is
 //! left (`virtual:*`, an unknown alias, a non-literal `import(x)`) is **unresolved**, and the
-//! caller adds the entries that reach the file holding it to every run (decision 6.1d).
+//! caller adds the entries that reach the file holding it to every run
+//! (docs/ci.md#how-selection-decides).
 
 use std::collections::{HashMap, HashSet};
 use std::fs;

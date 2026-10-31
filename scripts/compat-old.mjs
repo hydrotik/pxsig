@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * compat-old.mjs — what a teammate still on an older pxsig sees in a store this one wrote
- * (decision 92). It installs the published pxsig given (default 0.3.2) into a temporary folder,
- * writes a store with this checkout (approval lines with `pxsig`, no `by`), and runs the old
- * `approve verify` and `status` against it.
+ * (`requires`: docs/configuration.md#pxsigworkspacejson). It installs the published pxsig given
+ * (default 0.3.2) into a temporary folder, writes a store with this checkout (approval lines with
+ * `pxsig`, no `by`), and runs the old `approve verify` and `status` against it.
  *
  *   node scripts/compat-old.mjs [version]
  *

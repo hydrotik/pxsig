@@ -24,7 +24,7 @@
  *                         log was rewritten rather than appended to; --adopt logs the current
  *                         baselines as the starting point (terminal only). Under warn mode
  *                         (the `verify` gate) only baselines with no log line are warned; a
- *                         mismatch or a rewritten log fails in every mode (decision 10.4)
+ *                         mismatch or a rewritten log fails in every mode
  *
  * Per-entry approval in the dashboard / Storybook panel stays as it is (one entry, images on
  * screen) and is logged the same way.
@@ -408,7 +408,7 @@ export async function approveCommand({
 
   if (sub === 'log') {
     const log = readLog(P);
-    // --trace (decision 82): the commit that added a batch's lines and the PR that merged it, from
+    // --trace (docs/cli.md): the commit that added a batch's lines and the PR that merged it, from
     // git. pxsig points at the trail; it shows no names (the commit and the PR say who).
     const trace = flags.trace ? traceLog(P) : null;
     if (flags.trace && !trace)
@@ -604,7 +604,7 @@ export async function approveCommand({
       return;
     }
 
-    // Strict by default (decision 6.1h): a baseline with no log line fails. --no-strict reports it only.
+    // Strict by default (docs/migrating.md): a baseline with no log line fails. --no-strict reports it only.
     const strict = !flags['no-strict'];
     const enf = resolveOrExit(P, { flags }, (m, code) => fail(m, code));
     /** @type {(VerifyResult & { suite: string })[]} */

@@ -1,5 +1,5 @@
-// Warn mode (P13, PHASE-1 §10, 10a core), end to end: the gated commands on fixture projects in git
-// repositories (approve verify, --warn, no enforcement key, doctor and stale).
+// Warn mode (docs/configuration.md#enforcement), end to end: the gated commands on fixture projects
+// in git repositories (approve verify, --warn, no enforcement key, doctor and stale).
 import { spawnSync } from 'node:child_process';
 import { strict as assert } from 'node:assert';
 import { readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
@@ -103,7 +103,8 @@ test(
     assert.equal(f.cli(['approve', 'verify'], { PXSIG_ENFORCEMENT: 'enforce' }).status, 1);
     r = f.cli(['approve', 'verify'], { PXSIG_ENFORCEMENT: 'warn' });
     assert.equal(r.status, 2, r.stdout + r.stderr);
-    // A baseline written outside the trail fails in every mode (decision 10.4).
+    // A baseline written outside the trail fails in every mode (docs/configuration.md#enforcement,
+    // `verify`).
     const g = new Map(f.manifest.stories.map((e) => [e.id, e]));
     const P = f.P;
     for (const e of f.manifest.stories)

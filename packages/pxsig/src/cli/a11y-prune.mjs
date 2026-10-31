@@ -21,7 +21,7 @@ export function a11yPruneParts(cli) {
   const fail = cli.fail;
 
   /**
-   * `pxsig a11y --prune [--dry-run]` (lib/prune.mjs, PHASE-1 §5): the dry run is for anyone, agents
+   * `pxsig a11y --prune [--dry-run]` (lib/prune.mjs): the dry run is for anyone, agents
    * included, and always exits 0; removing rules is a person's, at a terminal, after typing the
    * count. Through the server when it holds the store, so the dashboard updates; else under the lock.
    */

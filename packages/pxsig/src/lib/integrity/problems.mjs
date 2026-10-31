@@ -54,8 +54,8 @@ export function unloggedProblems(ids, _ctx) {
 
 /**
  * Renders made in a different environment than their baseline (lib/env.mjs): one setup-level
- * warning, never a per-entry code, so story cards and `doctor`'s exit stay as they are (decision 1.1).
- * `integrity.severity['env-mismatch']` overrides the severity.
+ * warning, never a per-entry code, so story cards and `doctor`'s exit stay as they are
+ * (docs/integrity.md#setup-problems). `integrity.severity['env-mismatch']` overrides the severity.
  * @param {IntegrityReport | null} report
  * @param {IntegrityContext} ctx
  * @returns {LedgerSetup[]}
@@ -81,8 +81,8 @@ export function envProblems(report, ctx) {
 /**
  * Warn mode (lib/enforcement.mjs): `enforcement-warn`, `enforcement-ending`, `enforcement-expired`
  * when the committed config chose warn for a gate. The quiet built-in a11y default adds nothing
- * (decision 88). A config this process cannot resolve (PXSIG_ENFORCEMENT=warn) adds nothing here:
- * the gated commands refuse it themselves.
+ * (docs/configuration.md#enforcement). A config this process cannot resolve
+ * (PXSIG_ENFORCEMENT=warn) adds nothing here: the gated commands refuse it themselves.
  * @param {IntegrityContext} ctx
  * @returns {LedgerSetup[]}
  */
@@ -102,7 +102,7 @@ export function warnModeProblems(ctx) {
 }
 
 /**
- * Store files a merge or rebase left conflicted (decision 97).
+ * Store files a merge or rebase left conflicted (docs/ci.md#rebasing-with-baselines).
  * @param {IntegrityContext} ctx
  * @returns {LedgerSetup[]}
  */

@@ -59,7 +59,7 @@ export function appendedSince(P, base) {
 }
 
 /**
- * How a log line's approval was made, for the PR summary (decision 80).
+ * How a log line's approval was made, for the PR summary (docs/agents.md#what-a-marker-changes).
  * @param {Pick<ApprovalLine, 'via' | 'reason'>} l
  * @returns {Route}
  */
@@ -73,7 +73,7 @@ export function route(l) {
 
 /**
  * The baselines a range of log lines changed, counted by how each was last approved, and the
- * assistant markers on them (decision 80). Names no person: lines carry none by default (81).
+ * assistant markers on them. Names no person: lines carry none by default.
  * @param {readonly (Pick<ApprovalLine, 'via'> & Partial<ApprovalLine> | null | undefined)[]} lines
  * @returns {RouteCounts}
  */
@@ -101,10 +101,11 @@ const prOf = (text) => {
 };
 
 /**
- * Where each approval came in (decision 82): for every log line, the commit that added it
- * (`git blame`) and the pull request that merged that commit (the first merge on HEAD's
- * first-parent line after it, or the commit's own squash subject). Reads git only and returns no
- * author, email or other name: git and the forge hold who. Null when the log is not in git.
+ * Where each approval came in (`approve log --trace`, docs/cli.md#pxsig-approve): for every log
+ * line, the commit that added it (`git blame`) and the pull request that merged that commit (the
+ * first merge on HEAD's first-parent line after it, or the commit's own squash subject). Reads git
+ * only and returns no author, email or other name: git and the forge hold who. Null when the log is
+ * not in git.
  * @param {{ store: { approvals: string } }} P
  * @returns {TraceRow[] | null}
  */

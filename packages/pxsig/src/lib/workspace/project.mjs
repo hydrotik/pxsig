@@ -95,7 +95,8 @@ function workspaceDepRoots(ws, projectDir) {
  * `flags` is layer 2 (CLI); `env` layer 3.
  */
 /**
- * `approvals`: only what this pxsig does (decision 78: Strict is a later release).
+ * `approvals`: only what this pxsig does (docs/agents.md#approval-levels: Strict is a later
+ * release).
  * @param {Config} config
  * @param {ProjectRef} ref
  */
@@ -104,7 +105,7 @@ function checkApprovals(config, ref) {
   if (a.level != null && a.level !== 'standard')
     throw new SetupError(
       a.level === 'strict'
-        ? `project "${ref.name}": approvals.level "strict" is not available yet (decision 78); remove it or set "standard"`
+        ? `project "${ref.name}": approvals.level "strict" is not available yet; remove it or set "standard"`
         : `project "${ref.name}": approvals.level must be "standard"`
     );
   if (a.identity != null && !['none', 'git-email'].includes(a.identity))

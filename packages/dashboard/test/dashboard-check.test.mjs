@@ -216,7 +216,7 @@ test('a decision is answered and recorded, nothing is written, and only --out ch
   assert.deepEqual(
     files.filter((f) => readFileSync(path.join(src, f), 'utf8').includes('child_process')),
     [],
-    'starts no program itself (decision 91: Playwright launches the browser)'
+    'starts no program itself (Playwright launches the browser: docs/platforms.md)'
   );
 });
 

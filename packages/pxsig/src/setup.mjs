@@ -1,5 +1,5 @@
 /**
- * setup.mjs — `pxsig setup`: the assistant step (decisions 9.6, 80, 93).
+ * setup.mjs — `pxsig setup`: the assistant step (docs/agents.md#recipes).
  *
  *   pxsig setup [<assistant>|assistant] [--assistant <name>] [--print]
  *
@@ -18,7 +18,8 @@
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { ASSISTANTS, assistant, SCRIPT } from './lib/assistants.mjs';
+import { ADAPTER_SNIPPET, ASSISTANTS, assistant, SCRIPT } from './lib/assistants.mjs';
+import { uiOf } from './lib/dashboard-dir.mjs';
 import { findWorkspace } from './lib/workspace.mjs';
 import { toPosix } from './lib/paths.mjs';
 
@@ -41,19 +42,34 @@ export function setupRoot(cwd = process.cwd()) {
 }
 
 /**
+ * Whether a project of the workspace at `root` names a UI adapter (`dashboard.ui`): only then does
+ * the instruction for the assistant mention building the dashboard on a design system.
+ * @param {string} root
+ * @returns {boolean}
+ */
+export function namesAdapter(root) {
+  try {
+    return findWorkspace({ cwd: root }).projects.some((p) => uiOf(p) != null);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Run the step. `person`: a person at a terminal (questions allowed); `ask(question)` resolves with
  * the typed line; `show(blocks)` prints the recipe before the questions about writing it. Returns
  * `{ blocks, data, exit }` (the blocks still to print); throws `{ exit: 2 }` errors for bad usage.
  */
 /**
  * @param {{ step?: string | null, flags?: import('./types.js').Flags, root?: string,
- *   person?: boolean, ask?: ((q: string) => Promise<string>) | null,
+ *   adapter?: boolean, person?: boolean, ask?: ((q: string) => Promise<string>) | null,
  *   show?: ((blocks: Block[]) => void) | null, CMD?: string }} opts
  */
 export async function setupCommand({
   step = null,
   flags = {},
   root = setupRoot(),
+  adapter = namesAdapter(root),
   person = false,
   ask = null,
   show = null,
@@ -129,7 +145,7 @@ export async function setupCommand({
         file: a.instructions.file,
         scope: 'project',
         lang: 'text',
-        text: a.instructions.text,
+        text: a.instructions.text + (adapter ? ADAPTER_SNIPPET : ''),
       })
     );
 

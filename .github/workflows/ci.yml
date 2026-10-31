@@ -239,7 +239,8 @@ jobs:
           name: pxsig-ubuntu-latest
           path: target/release
       - run: chmod +x target/release/pxsig
-      # What a teammate still on 0.3.2 sees in a store this version wrote (decision 92).
+      # What a teammate still on 0.3.2 sees in a store this version wrote
+      # (docs/configuration.md#pxsigworkspacejson, `requires`).
       - run: node scripts/compat-old.mjs 0.3.2
         env:
           PXSIG_BIN: target/release/pxsig

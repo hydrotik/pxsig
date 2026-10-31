@@ -3,7 +3,8 @@
  *
  * Each row is a variable an assistant sets in the shell it runs commands in, and that a person's own
  * terminal does not have. Variables an editor sets in every terminal (TERM_PROGRAM, VSCODE_*,
- * ZED_TERM, CURSOR_TRACE_ID) are not markers: a person's terminal has them too (decision 9.1).
+ * ZED_TERM, CURSOR_TRACE_ID) are not markers: a person's terminal has them too
+ * (docs/agents.md#markers).
  *
  * A marker is a hint, not proof. Any process can set or unset a variable, and some assistants set
  * none (Zed, Aider, Continue, Windsurf as far as is known). The uses are an early refusal that names
