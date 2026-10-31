@@ -11,7 +11,7 @@
  *   - images, fonts and binaries, and anything a run produces (baselines, stores, renders, reports):
  *     those belong to the project under test, never to the tool. One exemption: product
  *     screenshots in `docs/product-shots/` (png, jpg, webp, avif or gif, up to 1.5 MB each, because
- *     the README loads them; the folder holds those and its own Markdown, nothing else)
+ *     the README loads them; the folder holds those, its own Markdown and shots.json, nothing else)
  *   - anything under `.local/`: the maintainer's private notes and reference material (git-ignored)
  *   - absolute home-directory paths
  *   - paths from a consuming repository's package layout (configured below: `forbiddenPaths`)
@@ -66,8 +66,9 @@ export function fileProblem(f, size = 0) {
         ? `a product shot over ${SHOT_MAX_BYTES / 1024 / 1024} MB (${(size / 1024 / 1024).toFixed(2)} MB): the README loads it, compress it`
         : null;
     }
-    if (!/\.md$/i.test(f))
-      return `${SHOTS} holds product screenshots (png, jpg, webp, avif, gif) and Markdown only`;
+    // shots.json: the version the shots show (scripts/showcase-shots.mjs, check-shots.mjs).
+    if (!/\.md$/i.test(f) && f !== `${SHOTS}shots.json`)
+      return `${SHOTS} holds product screenshots (png, jpg, webp, avif, gif), Markdown and shots.json only`;
   }
   if (FORBIDDEN_FILES.some((re) => re.test(f)))
     return 'this kind of file stays out of the repository';

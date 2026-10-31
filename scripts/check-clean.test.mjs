@@ -22,6 +22,7 @@ test('product shots are allowed: images up to the size guard, and Markdown', () 
     'docs/product-shots/c.avif',
     'docs/product-shots/d.gif',
     'docs/product-shots/README.md',
+    'docs/product-shots/shots.json',
   ])
     assert.equal(fileProblem(f, 500 * 1024), null, f);
   assert.equal(fileProblem('docs/product-shots/edge.png', SHOT_MAX_BYTES), null);
@@ -40,6 +41,7 @@ test('nothing else goes into docs/product-shots/', () => {
     'docs/product-shots/x.svg',
     'docs/product-shots/tool.wasm',
     'docs/product-shots/shot.mjs',
+    'docs/product-shots/other.json',
   ])
     assert.ok(fileProblem(f, 10), f);
   for (const f of [
