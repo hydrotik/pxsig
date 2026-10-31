@@ -51,6 +51,7 @@ import { classify } from './lib/shape.mjs';
 import { ask, emit, humanAtTerminal, progress, whyNotPerson } from './lib/term.mjs';
 import { relPath } from './lib/paths.mjs';
 import { writeJson } from './lib/files.mjs';
+import { serverStatus } from './lib/repair/apply.mjs';
 import {
   appendReadiness,
   lastLine,
@@ -318,19 +319,14 @@ export async function approveCommand({
           .map((e) => e.id)
           .join(', ')}…): plan again`
       );
-    // The server's status (docs/server.md): only these two keys are read.
-    const status = /** @type {{ running?: unknown, queued?: unknown } | null} */ (
-      await fetch(`${serverUrl}/__pxsig/status`, { signal: AbortSignal.timeout(3000) })
-        .then((r) => r.json())
-        .catch(() => null)
-    );
-    if (!status)
-      fail(`the pxsig server is not running (${serverUrl}): start it with \`${CMD} serve\``);
-    // `fail` exits when there is no status (TypeScript cannot see that through a parameter).
-    if (
-      /** @type {NonNullable<typeof status>} */ (status).running ||
-      /** @type {NonNullable<typeof status>} */ (status).queued
-    )
+    // This workspace's server: one that serves another workspace counts as not running.
+    const status = await serverStatus(serverUrl, P.workspaceRoot);
+    if (!status.up)
+      fail(
+        status.foreign ??
+          `the pxsig server is not running (${serverUrl}): start it with \`${CMD} serve\``
+      );
+    if (status.up && (status.running || status.queued))
       fail('a check is running: wait for it, then plan again');
     // The server refuses decisions without its token (lib/guard.mjs); this path read it only after
     // the person-at-a-terminal check above.

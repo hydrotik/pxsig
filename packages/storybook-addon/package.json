@@ -21,6 +21,7 @@
     "preset.cjs",
     "manager.mjs",
     "panel-style.mjs",
+    "server-pick.mjs",
     "snapshot-view.mjs",
     "README.md",
     "LICENSE"

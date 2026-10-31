@@ -8,7 +8,13 @@ import { dirname, join, resolve } from 'node:path';
 import { helpBlocks, helpData, helpIndex, lookup, nearestNames } from '../help.mjs';
 import { takeLock } from '../lib/lock.mjs';
 import { migrateLegacy } from '../lib/setup.mjs';
-import { findWorkspace, openProject, rustBinary, serverUrlFor } from '../lib/workspace.mjs';
+import {
+  findWorkspace,
+  foreignServer,
+  openProject,
+  rustBinary,
+  serverUrlFor,
+} from '../lib/workspace.mjs';
 import { readToken, TOKEN_HEADER } from '../lib/guard.mjs';
 import { LINK_TIMING } from '../lib/dashboard-link.mjs';
 import { ask, emit, humanAtTerminal, whyNotPerson } from '../lib/term.mjs';
@@ -40,6 +46,14 @@ export function toolCommands(cli) {
       fail(
         `no pxsig server is running for this workspace (${url}): start it with \`${CMD} serve\``
       );
+    // The token goes only to this workspace's server (GET /__pxsig/status names it).
+    const status = /** @type {{ workspaceId?: string } | null} */ (
+      await fetch(`${url}/__pxsig/status`, { signal: AbortSignal.timeout(1500) })
+        .then((x) => x.json())
+        .catch(() => null)
+    );
+    const foreign = status ? foreignServer(status, { root: ws.root, url }) : null;
+    if (foreign) fail(foreign);
     let r;
     try {
       r = await fetch(`${url}/__pxsig/ticket`, {

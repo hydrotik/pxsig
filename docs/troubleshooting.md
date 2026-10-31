@@ -66,6 +66,20 @@ project's Storybook may be running on another port.
 **Fix.** Stop the other Storybook, or point `storybook.url` at the port this project's Storybook
 printed when it started.
 
+## A server for another workspace
+
+> serves another workspace
+
+> does not say which workspace it serves (pxsig 0.6 or earlier)
+
+**Cause.** No server runs for this workspace, so the CLI tried the default port, and another
+workspace's server answers there (another checkout, worktree or project). pxsig does not use it:
+its stores, Storybook and decisions are that workspace's. Commands that can run without a server
+run here instead; the rest stop. The Storybook panel passes over it the same way.
+
+**Fix.** Start a server in this workspace (`pxsig serve`; it takes the next free port when 6070 is
+taken), or set `PXSIG_URL` to the server you mean.
+
 ## The store is locked
 
 > holds the store

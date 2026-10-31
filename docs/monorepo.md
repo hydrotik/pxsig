@@ -194,7 +194,8 @@ when there is no workspace file, unless a line for `*.psig` is already there.
 | Storybook addon      | the preset walks up from Storybook's `configDir`         | the server works out which project owns each story                                                                                                                                            |
 
 The CLI and the MCP server find a running server through `PXSIG_URL`, else `server.json`, else
-`server.port` in the workspace file, else port 6070. The addon's order is in
+`server.port` in the workspace file, else port 6070, and use it only when its status answer names
+this workspace ([server.md](server.md#reading)). The addon's order is in
 [storybook.md](storybook.md#finding-the-server).
 
 ## Keeping the registry honest

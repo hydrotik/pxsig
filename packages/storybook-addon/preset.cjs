@@ -4,7 +4,8 @@
  *
  * The manager page learns where the pxsig server is: the `server` option, else the address the
  * running server wrote for this workspace (node_modules/.cache/pxsig/server.json), else the
- * workspace's configured port. The panel probes them in that order.
+ * workspace's configured port, then the default port. The panel probes them in that order and
+ * uses a server only when it serves this workspace (server-pick.mjs).
  *
  * On `storybook build` it also writes `pxsig-snapshot.json` into the build (the workspace's own
  * `pxsig snapshot`): what a deployed Storybook's panel shows, since no pxsig server is reachable
@@ -12,6 +13,7 @@
  * or when the command fails, one warning line and no file.
  */
 const { spawnSync } = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 /** @typedef {import('./types.js').PresetOptions} PresetOptions */
@@ -68,8 +70,26 @@ function servers(options) {
     )?.server?.port;
     if (port) out.push(`http://127.0.0.1:${port}`);
   }
-  out.push('http://127.0.0.1:6070');
   return [...new Set(out)];
+}
+
+/**
+ * The workspace's id, as pxsig computes it (lib/workspace/peers.mjs `workspaceId`): the first 16
+ * hex characters of the SHA-256 of its real path. The manager uses a server only when its status
+ * answer names this id (server-pick.mjs); the path itself never reaches the page.
+ * @param {PresetOptions | undefined} options
+ * @returns {string | null}
+ */
+function workspaceIdOf(options) {
+  const ws = options?.configDir ? workspaceOf(options.configDir) : null;
+  if (!ws) return null;
+  let real = path.resolve(ws);
+  try {
+    real = fs.realpathSync(real);
+  } catch {
+    // a folder that is gone: its resolved path
+  }
+  return crypto.createHash('sha256').update(real).digest('hex').slice(0, 16);
 }
 
 /**
@@ -148,6 +168,7 @@ async function staticDirs(dirs = [], options = {}, deps) {
 
 module.exports = {
   staticDirs,
+  workspaceIdOf,
   managerEntries: (/** @type {string[]} */ entry = []) => [
     ...entry,
     path.join(__dirname, 'manager.mjs'),
@@ -156,5 +177,5 @@ module.exports = {
     /** @type {string | undefined} */ head,
     /** @type {PresetOptions | undefined} */ options
   ) =>
-    `${head ?? ''}<script>window.__PXSIG__=${JSON.stringify({ servers: servers(options) })}</script>`,
+    `${head ?? ''}<script>window.__PXSIG__=${JSON.stringify({ servers: servers(options), workspaceId: workspaceIdOf(options) })}</script>`,
 };

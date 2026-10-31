@@ -7,8 +7,8 @@
   "files": {
     "packages/dashboard/src/diff-viewer/DiffViewer.tsx": 7453,
     "packages/dashboard/src/ui/adapters/hydrotik/index.tsx": 5319,
-    "packages/pxsig/src/approve.mjs": 8360,
+    "packages/pxsig/src/approve.mjs": 8301,
     "packages/pxsig/src/check.mjs": 9179,
-    "packages/pxsig/src/serve.mjs": 18556
+    "packages/pxsig/src/serve.mjs": 18532
   }
 }

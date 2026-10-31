@@ -43,6 +43,15 @@ The Storybook at `storybook.url` is not this project's, so it has none of its st
 nothing recorded). Stop the other one, or point `storybook.url` at the port this project's
 Storybook printed.
 
+**A server for another workspace**
+
+> serves another workspace
+
+> does not say which workspace it serves (pxsig 0.6 or earlier)
+
+The server on the port (6070 when none runs here) is another workspace's, so pxsig does not use
+it. Start `pxsig serve` in this workspace, or set `PXSIG_URL` to the server meant.
+
 **The store is locked**
 
 > holds the store

@@ -1460,6 +1460,7 @@ async function api(req, res, action, q) {
   if (action === 'status')
     return json(res, 200, {
       served: true,
+      workspaceId: ws.id,
       projects: projectsList(),
       // Truthiness only: is a check (a promise) running. The parameter's type says so.
       running: [...states.values()].some((/** @type {{ running: unknown }} */ S) => S.running),
@@ -1480,14 +1481,10 @@ async function api(req, res, action, q) {
         [...states.values()]
           .filter((S) => S.integrity)
           // Filtered just above to the projects with a ledger.
-          .map((S) => [
-            S.name,
-            {
-              .../** @type {IntegrityLedger} */ (S.integrity).summary,
-              setup: /** @type {IntegrityLedger} */ (S.integrity).setup,
-              generatedAt: /** @type {IntegrityLedger} */ (S.integrity).generatedAt,
-            },
-          ])
+          .map((S) => {
+            const L = /** @type {IntegrityLedger} */ (S.integrity);
+            return [S.name, { ...L.summary, setup: L.setup, generatedAt: L.generatedAt }];
+          })
       ),
       dashboard: `${url}/report/`,
       // Listening, so `url` is set.

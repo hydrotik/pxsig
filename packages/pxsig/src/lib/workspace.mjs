@@ -57,10 +57,12 @@ export {
 } from './workspace/run-manifest.mjs';
 export {
   browserFile,
+  foreignServer,
   resolvePeer,
   rustBinary,
   serverFile,
   serverUrlFor,
+  workspaceId,
 } from './workspace/peers.mjs';
 
 /**

@@ -6,7 +6,7 @@
 import { existsSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { openProject } from '../lib/workspace.mjs';
+import { foreignServer, openProject } from '../lib/workspace.mjs';
 import { relPath } from '../lib/paths.mjs';
 import { readJson } from '../lib/files.mjs';
 
@@ -151,15 +151,22 @@ async function http(C, path, { method = 'GET', body, headers, timeout = 2000 } =
     clearTimeout(t);
   }
 }
-/** @param {ProjectContext} C */
+/**
+ * The server, when one is up for this workspace: a server that serves another one (on the default
+ * port, say) counts as not running, and `hint` says why.
+ * @param {ProjectContext} C
+ */
 async function server(C) {
+  /** @type {ServerStatusReply} */
+  let s;
   try {
-    /** @type {ServerStatusReply} */
-    const s = await http(C, '/__pxsig/status', { timeout: 1500 });
-    return { up: true, running: s.running, queued: s.queued, dashboard: s.dashboard };
+    s = await http(C, '/__pxsig/status', { timeout: 1500 });
   } catch {
     return { up: false, url: C.serverUrl, hint: 'start it with: pxsig serve --watch' };
   }
+  const foreign = foreignServer(s, { root: C.root, url: C.serverUrl });
+  if (foreign) return { up: false, url: C.serverUrl, hint: foreign, foreign };
+  return { up: true, running: s.running, queued: s.queued, dashboard: s.dashboard };
 }
 
 const ID_RE = /^[a-z0-9-]+--[a-z0-9-]+(__[a-z0-9-]+)?(@[a-z0-9-]+)?$/;

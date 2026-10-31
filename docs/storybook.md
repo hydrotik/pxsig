@@ -51,7 +51,11 @@ pxsig workspace and gives the manager page a list of candidate URLs, in this ord
 4. `http://127.0.0.1:6070`.
 
 A `pxsig-server` key in the browser's `localStorage` goes before all of them. The panel uses the
-first candidate that answers `/__pxsig/status`, and keeps it until it stops answering.
+first candidate that answers `/__pxsig/status` for this workspace, and keeps it until it stops
+answering. The preset also gives the page the workspace's id (a hash of its path, never the path),
+and the server's status answer names its own: a server for another workspace is passed over. One
+from pxsig 0.6 or earlier names none, and is used only at candidates 1–3, never at the default port
+alone. The `localStorage` key is used whatever it answers.
 
 The server must accept the addon's requests. It accepts POSTs from the origin of every served
 project's `storybook.url`, so set `storybook.url` to the address Storybook really runs on.

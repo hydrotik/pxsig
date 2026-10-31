@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { reconcile, readJson, writeJsonAtomic } from '../integrity.mjs';
 import { dropTorn } from '../files.mjs';
 import { relPath } from '../paths.mjs';
+import { foreignServer } from '../workspace/peers.mjs';
 import { guardWrite, logRepair, who } from './core.mjs';
 import { logRegister, registerStories } from './register.mjs';
 import { convertLegacy, restoreBaselineImages } from './restore.mjs';
@@ -84,14 +85,21 @@ export function pruneOrphans(ctx, ledger, ids, { by, via }) {
 // --- default hooks: the running server when it is up, else check.mjs / Playwright ----------------------
 
 /**
+ * The server's state. With `root`, a server that serves another workspace counts as down
+ * (lib/workspace/peers.mjs `foreignServer`): its queue is not this workspace's.
  * @param {string | null | undefined} serverUrl
+ * @param {string | null} [root] the workspace the caller acts for
  * @returns {Promise<ServerStatus>}
  */
-export async function serverStatus(serverUrl) {
+export async function serverStatus(serverUrl, root = null) {
   try {
     const r = await fetch(`${serverUrl}/__pxsig/status`, { signal: AbortSignal.timeout(1500) });
     // The server's status answer (docs/server.md, GET /__pxsig/status).
-    const s = /** @type {{ running?: unknown, queued?: number }} */ (await r.json());
+    const s = /** @type {{ running?: unknown, queued?: number, workspaceId?: string }} */ (
+      await r.json()
+    );
+    const foreign = root ? foreignServer(s, { root, url: String(serverUrl) }) : null;
+    if (foreign) return { up: false, foreign };
     return { up: true, running: !!s.running, queued: s.queued ?? 0 };
   } catch {
     return { up: false };
@@ -100,13 +108,14 @@ export async function serverStatus(serverUrl) {
 
 /**
  * @param {IntegrityContext} ctx
- * @param {{ serverUrl?: string | null, timeoutMs?: number }} [opts]
+ * @param {{ serverUrl?: string | null, root?: string | null, timeoutMs?: number }} [opts] `root`:
+ *   the workspace a client acts for (none when the server itself runs the hooks)
  * @returns {RepairHooks}
  */
-export function defaultHooks(ctx, { serverUrl, timeoutMs = 15 * 60_000 } = {}) {
+export function defaultHooks(ctx, { serverUrl, root = null, timeoutMs = 15 * 60_000 } = {}) {
   return {
     async recheck(ids) {
-      const srv = await serverStatus(serverUrl);
+      const srv = await serverStatus(serverUrl, root);
       if (srv.up) {
         const res = await fetch(`${serverUrl}/__pxsig/check`, {
           method: 'POST',

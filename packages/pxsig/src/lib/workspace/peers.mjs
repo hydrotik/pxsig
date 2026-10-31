@@ -1,6 +1,7 @@
 /** What pxsig runs beside (workspace.mjs): the engine binary, peer packages, the server's address. */
 /** @import { PeerBase } from '../../types.js' */
-import { existsSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -139,4 +140,60 @@ export function serverUrlFor(wsRoot, { env = process.env, port = null } = {}) {
     // no server file: fall through to the configured port
   }
   return `http://127.0.0.1:${port ?? 6070}`;
+}
+
+/** @type {Map<string, string>} */
+const ids = new Map();
+/**
+ * A workspace's id: the first 16 hex characters of the SHA-256 of its real path. The server's
+ * status answer carries it (`workspaceId`) so a client can tell its own workspace's server from
+ * another's on the same port, without the path (a user name) leaving the process.
+ * @param {string} root
+ * @returns {string}
+ */
+export function workspaceId(root) {
+  let id = ids.get(root);
+  if (!id) {
+    let real = resolve(root);
+    try {
+      real = realpathSync(real);
+    } catch {
+      // a folder that is gone: its resolved path
+    }
+    id = createHash('sha256').update(real).digest('hex').slice(0, 16);
+    ids.set(root, id);
+  }
+  return id;
+}
+
+/** @type {Set<string>} */
+const warned = new Set();
+/**
+ * Whether the server that answered `status` at `url` may act for the workspace at `root`: null
+ * when it may, else why not. A server that names another workspace is refused, and so is one that
+ * names none (pxsig 0.6 or earlier) at the default address, where any workspace's server may be
+ * listening. PXSIG_URL is the person's choice: a mismatch there is one warning line on stderr.
+ * @param {{ workspaceId?: unknown } | null | undefined} status GET /__pxsig/status's answer
+ * @param {{ root: string, url: string, env?: NodeJS.ProcessEnv }} at
+ * @returns {string | null}
+ */
+export function foreignServer(status, { root, url, env = process.env }) {
+  const id = status?.workspaceId;
+  if (id === workspaceId(root)) return null;
+  let recorded = null;
+  try {
+    // server.json, which `pxsig serve` writes for this workspace.
+    recorded = /** @type {{ url?: string }} */ (JSON.parse(readFileSync(serverFile(root), 'utf8')))
+      .url;
+  } catch {
+    // no server file
+  }
+  if (id == null && (env.PXSIG_URL || recorded === url)) return null;
+  const why = `the pxsig server at ${url} ${id == null ? 'does not say which workspace it serves (pxsig 0.6 or earlier)' : 'serves another workspace'}`;
+  if (env.PXSIG_URL) {
+    if (!warned.has(url)) process.stderr.write(`pxsig: warning: ${why} (PXSIG_URL)\n`);
+    warned.add(url);
+    return null;
+  }
+  return `${why}: start \`pxsig serve\` in this workspace, or set PXSIG_URL to its address`;
 }

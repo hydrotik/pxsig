@@ -455,6 +455,8 @@ export interface AffectedResult {
 
 /** `GET /__pxsig/status`, as far as the MCP reads it (docs/server.md). */
 export interface ServerStatusReply {
+  /** The workspace the server serves (lib/workspace/peers.mjs `workspaceId`); none before 0.7. */
+  workspaceId?: string;
   running?: boolean;
   queued?: number;
   dashboard?: string;

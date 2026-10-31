@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path';
 import { doctor } from '../tools/index.mjs';
 import { emit, progress, stateCell } from '../lib/term.mjs';
 import { relPath } from '../lib/paths.mjs';
+import { foreignServer } from '../lib/workspace.mjs';
 import { writeSarif } from '../lib/sarif.mjs';
 import { doctorParts } from './doctor.mjs';
 import { a11yPruneParts } from './a11y-prune.mjs';
@@ -102,6 +103,8 @@ export function checkCommands(cli) {
               })
             ).json()
           );
+          // Another workspace's server on the port: its queue is not this check's.
+          if (foreignServer(s, { root: ctx().root, url: ctx().serverUrl })) return;
           spin.update(s.running ? `checking · ${s.queued ?? 0} queued` : 'checking');
         } catch {}
       }, 700);
@@ -129,6 +132,7 @@ export function checkCommands(cli) {
         { h: 'Check', sub: `${r.checked ?? 0} entries · ${r.seconds ?? '?'} s · ${r.via ?? ''}` },
         { kv: [['States', counts.length ? counts : 'nothing selected']] },
       ];
+      if (r.note) blocks.push({ note: r.note, tone: 'warn' });
       if (errs.length && errs.every((p) => /ERR_CONNECTION_REFUSED/.test(p.error ?? '')))
         blocks.push({
           note: 'Storybook is not running, so nothing rendered: start the project Storybook (storybook.url in pxsig.config.json)',
