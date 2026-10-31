@@ -1,12 +1,12 @@
-### Behaviour changes
+### Breaking changes
 
 - **`pxsig dashboard build` with no adapter configured now builds the plain adapter.** It used to
   pick the `hydrotik` reference adapter, which needs a checkout of a design system that is not
   public, so the build failed everywhere but on the maintainer's machine. The order is now `--ui`,
   `PXSIG_UI_ADAPTER`, `dashboard.ui` in `pxsig.config.json`, `hydrotik` when `PXSIG_DS_SOURCE` is
-  set, then `plain`; the build prints which rule picked the adapter. For the reference look, pass
-  `--ui hydrotik` or set `PXSIG_DS_SOURCE`. The prebuilt dashboard in the npm package is
-  unaffected.
+  set, then `plain`; the build prints which rule picked the adapter. The prebuilt dashboard in the
+  npm package is unaffected.
+  To update: for the reference look, pass `--ui hydrotik` or set `PXSIG_DS_SOURCE`.
 
 ### Added
 

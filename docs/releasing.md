@@ -44,8 +44,15 @@ node scripts/changelog.mjs release X.Y.Z        # merge Unreleased and every fra
 
 Then write the release's summary paragraph under its new heading, set the versions (above), commit
 the latest nightly `bench-results` as `scripts/bench/baseline.json` ([benchmark.md](benchmark.md#refreshing-the-baseline)), and
-merge the branch before pushing the tag. `release` keeps the headings in a fixed order (Behaviour
-changes first), with the entries already under Unreleased ahead of the fragments.
+merge the branch before pushing the tag. `release` keeps the headings in a fixed order (Breaking
+changes, then Behaviour changes), with the entries already under Unreleased ahead of the fragments.
+
+**Upgrading.** Every entry under Breaking changes and Behaviour changes carries a `To update:` line:
+what a consumer does about it, or "nothing to do" and why (`changelog.mjs check` fails a fragment
+without one). `release` opens the version's section with **Upgrading from <previous version>**,
+which collects those lines (the ones with nothing to do in one line at the end), and the GitHub
+release's notes point at that section. Before tagging, add the same steps, grouped by who acts, as
+an "Upgrading to X.Y" section of [migrating.md](migrating.md).
 
 ## What the workflow does
 

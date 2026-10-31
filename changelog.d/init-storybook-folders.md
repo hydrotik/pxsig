@@ -3,9 +3,9 @@
 - **`pxsig init` records the package's Storybook folders.** A new `pxsig.config.json` gets
   `storybook.configDir: ".storybook"` when the folder has `.storybook/`, and
   `storybook.staticDir: "storybook-static"` when it has a `storybook-static/` folder; init lists
-  what it recorded. A flag for the same key wins, and an existing config is never edited. Check
-  the written config after `init`; to keep a key out, remove it there, or pass the flag with the
-  path you want.
+  what it recorded. A flag for the same key wins, and an existing config is never edited.
+  To update: check the config `init` writes; to keep a key out, remove it there, or pass the flag
+  with the path you want.
 
 ### Added
 

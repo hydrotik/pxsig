@@ -12,8 +12,10 @@ import {
   changedSince,
   missingFragment,
   parseFragment,
+  previousVersion,
   release,
   splitChangelog,
+  upgrading,
 } from './changelog.mjs';
 
 test('a fragment is one or more known sections, each a list', () => {
@@ -35,6 +37,38 @@ test('a malformed fragment names each problem', () => {
   assert.match(p('### Fixed\n\nprose, not a list\n'), /must be a list/);
   assert.match(p('### Fixed\n- a\n### Fixed\n- b\n'), /appears twice/);
   assert.match(p(''), /empty/);
+});
+
+test('a breaking or behaviour change says what a consumer does: a "To update:" line', () => {
+  /** @param {string} t */
+  const p = (t) => parseFragment(t, 'f.md').problems;
+  assert.match(
+    p('### Breaking changes\n\n- **Gone.** The flag is removed.\n').join('\n'),
+    /"Breaking changes": "Gone" has no "To update:" line/
+  );
+  assert.match(
+    p('### Behaviour changes\n\n- **A.** x\n  To update: y.\n- **B.** z\n').join('\n'),
+    /"B" has no "To update:"/,
+    'each entry, not the section'
+  );
+  assert.deepEqual(p('### Behaviour changes\n\n- **A.** x\n  To update: nothing to do.\n'), []);
+  assert.deepEqual(p('### Breaking changes\n\n- **A.** x\n  - To update: pass `--y`.\n'), []);
+  assert.deepEqual(p('### Fixed\n\n- **A.** no line needed here.\n'), []);
+});
+
+test('a release opens with "Upgrading from <previous>", the to-dos first', () => {
+  const f = parseFragment(
+    '### Breaking changes\n\n- **Flag gone.** Text\n  that wraps.\n  To update: pass\n  `--y` instead.\n\n### Behaviour changes\n\n- **Quieter.** x\n  To update: nothing to do.\n'
+  ).sections;
+  assert.equal(
+    upgrading([f], '0.3.2'),
+    '### Upgrading from 0.3.2\n\n- **Flag gone.** Pass `--y` instead.\n- **Nothing to do:** Quieter.\n'
+  );
+  assert.equal(upgrading([new Map([['Fixed', '- x']])], '0.3.2'), '', 'none without such changes');
+  assert.equal(previousVersion('## 0.3.2 - 2026-10-24\n\n## 0.3.1 - x\n'), '0.3.2');
+  const out = release(CHANGELOG, [{ sections: f }], '0.4.0', '2026-11-01');
+  assert.match(out, /## 0\.4\.0 - 2026-11-01\n\n### Upgrading from 0\.3\.2\n\n- \*\*Flag gone/);
+  assert.ok(out.indexOf('### Upgrading') < out.indexOf('### Breaking changes'));
 });
 
 const CHANGELOG =
@@ -78,7 +112,7 @@ test('a release merges Unreleased first, then fragments, in heading order', () =
 test('merge keeps HEADINGS order and skips empty headings', () => {
   const m = merge([new Map([['Fixed', '- f']]), new Map([['Added', '- a']])]);
   assert.equal(m, '### Added\n\n- a\n\n### Fixed\n\n- f\n');
-  assert.equal(HEADINGS[0], 'Behaviour changes');
+  assert.deepEqual(HEADINGS.slice(0, 2), ['Breaking changes', 'Behaviour changes']);
 });
 
 test('only a release/ branch may edit CHANGELOG.md', () => {

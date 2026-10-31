@@ -1,9 +1,10 @@
-### Behaviour changes
+### Breaking changes
 
 - **One entry, one decision: Approve story is off by default.** The inspector no longer offers
   **Approve story** (every waiting mode and state of a story in one click), and the server refuses
   `POST /__pxsig/approve-story` with 403, so each entry is approved after a person has looked at it.
-  To bring it back, set `approvals.byStory: true` in `pxsig.config.json`.
+  To update: approve each entry on its own; a client of `POST /__pxsig/approve-story` handles the
+  403, or the project sets `approvals.byStory: true` in `pxsig.config.json` to bring it back.
 
 ### Fixed
 

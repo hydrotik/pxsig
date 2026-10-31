@@ -14,7 +14,9 @@
  *
  * A fragment is `changelog.d/<topic>.md`: one or more `### <Heading>` sections (HEADINGS), each a
  * Markdown list, in the style of CHANGELOG.md. A release keeps the headings in HEADINGS order; within
- * one, the entries already under Unreleased come first, then the fragments by file name.
+ * one, the entries already under Unreleased come first, then the fragments by file name. Every
+ * entry under Breaking changes and Behaviour changes carries a `To update:` line (what a consumer
+ * does about it); a release collects them into "Upgrading from <previous version>" at its top.
  * Exit: 0 ok · 1 a problem (each one printed) · 2 usage.
  */
 import { execFileSync } from 'node:child_process';
@@ -27,6 +29,7 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 export const DIR = 'changelog.d';
 /** The section headings a fragment may use, in the order a release prints them. */
 export const HEADINGS = [
+  'Breaking changes',
   'Behaviour changes',
   'Added',
   'Changed',
@@ -38,6 +41,36 @@ export const HEADINGS = [
   'Not yet',
 ];
 const NAME = /^[a-z0-9][a-z0-9.-]*\.md$/;
+/** The headings whose every entry says what a consumer does about it, in a `To update:` line. */
+export const NEEDS_UPDATE = ['Breaking changes', 'Behaviour changes'];
+// `To update: …` to the end of the entry, on its own line or as a nested list item.
+const TO_UPDATE = /^\s*(?:[-*]\s+)?To update:\s*([\s\S]+)$/m;
+
+/**
+ * A section's entries: each top-level list item with its continuation lines.
+ * @param {string} body
+ */
+export const entries = (body) =>
+  body
+    .split(/\n(?=[-*] )/)
+    .map((e) => e.trim())
+    .filter(Boolean);
+
+/**
+ * An entry's name: its bold lead (`**…**`), else its first sentence; without a final full stop.
+ * @param {string} entry
+ */
+const lead = (entry) =>
+  (/\*\*([\s\S]+?)\*\*/.exec(entry)?.[1] ?? entry.replace(/^[-*]\s+/, '').split(/(?<=\.)\s/)[0])
+    .replace(/\s+/g, ' ')
+    .replace(/\.$/, '');
+
+/**
+ * What a consumer does about an entry: the text after `To update:`, on one line; null when the
+ * entry has none.
+ * @param {string} entry
+ */
+export const toUpdate = (entry) => TO_UPDATE.exec(entry)?.[1].replace(/\s+/g, ' ').trim() ?? null;
 
 /**
  * `{ sections: Map<heading, text>, problems: string[] }` for one fragment's text.
@@ -78,6 +111,12 @@ export function parseFragment(text, label = 'fragment') {
     sections.set(h, body.trim());
     if (!body.trim()) problems.push(`${label}: "${h}" has no entries`);
     else if (!/^[-*] /.test(body.trim())) problems.push(`${label}: "${h}" must be a list ("- …")`);
+    else if (NEEDS_UPDATE.includes(h))
+      for (const e of entries(body.trim()))
+        if (!toUpdate(e))
+          problems.push(
+            `${label}: "${h}": "${lead(e)}" has no "To update:" line (what a consumer does about it, or "nothing to do" and why)`
+          );
   }
   if (!sections.size && !problems.length)
     problems.push(`${label}: empty (add at least one "### <Heading>" section)`);
@@ -122,6 +161,46 @@ export function merge(parts) {
 }
 
 /**
+ * "Upgrading from <previous>": every `To update:` line of the breaking and behaviour changes, as
+ * a list at the top of a release's section; '' when there is none.
+ * @param {Map<string, string>[]} parts
+ * @param {string | null} previous the version before this one
+ */
+export function upgrading(parts, previous) {
+  const lines = [];
+  /** @type {string[]} */
+  const none = [];
+  for (const h of NEEDS_UPDATE)
+    for (const p of parts)
+      for (const e of entries(p.get(h) ?? '')) {
+        const what = toUpdate(e);
+        if (!what) continue;
+        // "Nothing to do" alone, or with only a why: one line for all of them, at the end.
+        if (/^nothing to do[.;]?(\s|$)/i.test(what) && !/;\s*(to|if|when)\b/i.test(what))
+          none.push(lead(e));
+        else lines.push(`- **${lead(e)}.** ${what[0].toUpperCase()}${what.slice(1)}`);
+      }
+  if (none.length) lines.push(`- **Nothing to do:** ${none.join('; ')}.`);
+  return lines.length
+    ? `### Upgrading from ${previous ?? 'the previous version'}\n\n${lines.join('\n')}\n`
+    : '';
+}
+
+/**
+ * The newest released version in CHANGELOG.md's text after Unreleased, or null.
+ * @param {string} tail
+ */
+export const previousVersion = (tail) => /^## (\d+\.\d+\.\d+\S*)/m.exec(tail)?.[1] ?? null;
+
+/**
+ * A release's sections: "Upgrading from …" first, then the headings in HEADINGS order.
+ * @param {Map<string, string>[]} parts
+ * @param {string | null} previous
+ */
+const releaseBody = (parts, previous) =>
+  [upgrading(parts, previous), merge(parts)].filter(Boolean).join('\n');
+
+/**
  * CHANGELOG.md after a release: an empty Unreleased, then the new version's section.
  * @param {string} changelog
  * @param {{ sections: Map<string, string> }[]} fragments
@@ -132,7 +211,8 @@ export function release(changelog, fragments, version, date) {
   const { head, unreleased, tail } = splitChangelog(changelog);
   const bad = unreleasedProblems(unreleased);
   if (bad.length) throw new Error(bad.join('\n'));
-  const body = merge([unreleased.sections, ...fragments.map((f) => f.sections)]);
+  const parts = [unreleased.sections, ...fragments.map((f) => f.sections)];
+  const body = merge(parts) && releaseBody(parts, previousVersion(tail));
   if (!body) throw new Error('nothing to release: Unreleased and changelog.d/ are both empty');
   return `${head}\n## ${version} - ${date}\n\n${body}\n${tail}`;
 }
@@ -285,9 +365,10 @@ function run(args) {
   if (command === 'preview') {
     const { fragments, problems } = readFragments();
     if (problems.length) fail(problems);
-    const { unreleased } = splitChangelog(readFileSync(path, 'utf8'));
+    const { unreleased, tail } = splitChangelog(readFileSync(path, 'utf8'));
+    const parts = [unreleased.sections, ...fragments.map((f) => f.sections)];
     return process.stdout.write(
-      `## Unreleased\n\n${merge([unreleased.sections, ...fragments.map((f) => f.sections)]) || '(nothing yet)\n'}`
+      `## Unreleased\n\n${merge(parts) ? releaseBody(parts, previousVersion(tail)) : '(nothing yet)\n'}`
     );
   }
   if (command === 'release') {
