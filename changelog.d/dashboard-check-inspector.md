@@ -2,8 +2,9 @@
 
 - **`pxsig dashboard check` records a screen whose layout never held still.** Such a screen gets
   `"settled": false` in `report.json` and is listed under "Still moving" in `summary.md`. The
-  field is absent for every other screen, so existing readers see no change. Nothing to do; a
-  screen listed there has an animation or a resize that runs longer than 2 s.
+  field is absent for every other screen, so existing readers see no change. A screen listed there
+  has an animation or a resize that runs longer than 2 s.
+  To update: nothing to do; a reader of `report.json` may treat a missing `settled` as `true`.
 
 ### Fixed
 

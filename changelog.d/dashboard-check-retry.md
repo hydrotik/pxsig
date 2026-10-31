@@ -2,8 +2,9 @@
 
 - **`pxsig dashboard check` records a page load it retried.** Such a screen gets
   `"retried": "ERR_NO_BUFFER_SPACE"` in `report.json` and is listed under "Retried" in
-  `summary.md`. The field is absent for every other screen, so existing readers see no change.
-  Nothing to do; a screen listed there loaded on the second try.
+  `summary.md`. The field is absent for every other screen, so existing readers see no change. A
+  screen listed there loaded on the second try.
+  To update: nothing to do.
 
 ### Fixed
 

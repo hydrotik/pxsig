@@ -1,5 +1,45 @@
 # Migrating
 
+## Upgrading from 0.6.0
+
+The next release after 0.6.0 changes some defaults and refuses input it used to accept. Each change
+is in `CHANGELOG.md` with a `To update:` line; by who acts:
+
+**Scripts and CI.**
+
+- A misspelled or retired flag is now an error (exit 2), not a warning: correct the flag the
+  message names, or remove it.
+- A number flag needs a whole number in range (`--port 1..65535`, `--retries`, `--settle-ms`,
+  `--min-cell-px` from 0, the others from 1): a bad value exits 2 instead of using the default.
+- `pxsig doctor` with no manifest prints its error on stdout with a setup preflight; a script that
+  matched it on stderr reads stdout, or `--json` (`error`).
+
+**Servers and clients of the HTTP API** ([server.md](server.md)).
+
+- The CLI, the MCP server and the Storybook addon use a pxsig server only when it serves their own
+  workspace (`workspaceId` in `GET /__pxsig/status`). Start `pxsig serve` in each workspace that
+  uses one, and restart a server started with 0.6.0 so it names its workspace; or set `PXSIG_URL`
+  to the server meant.
+- `POST /__pxsig/approve-story` answers 403 unless the project sets `approvals.byStory: true`: the
+  dashboard approves one entry per decision. Approve each entry on its own, or set the key.
+
+**Packages and installs.**
+
+- Peers: `playwright >=1.58` and, for `@pxsig/storybook-addon`, `storybook >=10`. npm 7+ stops
+  with `ERESOLVE` on an older pinned version: update, or install with `--legacy-peer-deps`.
+- React is an optional peer, `react >=19`, for `pxsig/diff-viewer` and `pxsig dashboard build`.
+- `pxsig/workspace` exports five names (`openProject`, `findWorkspace`, `pickProject`,
+  `loadProject`, `SetupError`); code that imported another reads it from `openProject()` or
+  `pxsig config --json`. `pxsig/dashboard` is types only: `import type`.
+
+**Dashboard builds.** `pxsig dashboard build` with no adapter configured builds `plain`; for the
+reference look pass `--ui hydrotik` or set `PXSIG_DS_SOURCE`. The prebuilt dashboard in the
+package is unchanged.
+
+**Nothing to do** for the rest: pxsig's own axe-core and its version in the render environment, no
+retries of NEW entries, `dashboard check`'s `settled` and `retried` fields, `pxsig init` recording
+the Storybook folders (check the config it writes), and `pxsig manifest`'s source and warnings.
+
 ## Upgrading to 0.4: strict `approve verify`
 
 From 0.4.0, `pxsig approve verify` fails (exit 1) when a baseline has no line in
