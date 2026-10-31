@@ -226,7 +226,7 @@ test(
       // The page asks, before any click, whether it can decide: a boolean, never the session.
       const status = async (/** @type {Record<string, string>} */ headers) =>
         // The status answer's `approving` (docs/server.md).
-        /** @type {{ allowed: boolean, cwd: string, command: string }} */ (
+        /** @type {{ allowed: boolean, folder: string, command: string }} */ (
           /** @type {unknown} */ (
             (await raw(S.port, { method: 'GET', path: '/__pxsig/status', headers })).json()
               .approving

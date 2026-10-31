@@ -4,10 +4,6 @@ import { served } from '../data';
 import { useApproving } from '../link';
 import * as s from '../dashboard.css';
 
-/** `cd <folder> && <command>`: what a person runs for a new dashboard link. */
-export const linkCommandLine = (a: { cwd: string; command: string }) =>
-  `cd ${JSON.stringify(a.cwd)} && ${a.command}`;
-
 /**
  * The connection and what this page may do, side by side in the top bar: `Live · Read only` or
  * `Live · Can approve` (served), `Static report · Read only`, or `Offline` alone. The hint repeats
@@ -32,7 +28,10 @@ export function Connection({ live }: { live: boolean }) {
           content={
             approving.allowed
               ? t('app.connection.canApproveHint')
-              : t('app.connection.readOnlyHint', { command: linkCommandLine(approving) })
+              : t('app.connection.readOnlyHint', {
+                  folder: approving.folder,
+                  command: approving.command,
+                })
           }
         >
           <span>

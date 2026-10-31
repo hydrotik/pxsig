@@ -50,7 +50,7 @@ export const INSPECTOR: Feature[] = [
         scenario: 'read-only',
         state: 'readOnly',
         hash: '#inspect=ui-button--primary',
-        wait: { text: 'Read only: approving needs the dashboard link. In a terminal:' },
+        wait: { text: 'Read only: approving needs the dashboard link. In a terminal, in the' },
       },
     ],
   },

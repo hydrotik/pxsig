@@ -165,7 +165,7 @@ test('without the dashboard link the inspector says Read only up front, and the 
     entries: [entry(story, [{ code: 'changed', severity: 'warn', reason: 'gate failed' }])],
   });
   const command = 'pnpm exec pxsig serve --link';
-  const where = { cwd: '/work/demo', command };
+  const where = { folder: 'demo', command };
   const ro = await open(d, { hash: `#inspect=${story}`, approving: { allowed: false, ...where } });
   try {
     // The top bar's Read only badge needs a live event stream, which page.route cannot hold open;
@@ -176,7 +176,14 @@ test('without the dashboard link the inspector says Read only up front, and the 
     await approve.waitFor();
     assert.equal(await approve.isDisabled(), true);
     assert.match(String(await approve.getAttribute('title')), /^Read only/);
-    await ro.page.getByText(`cd "/work/demo" && ${command}`).first().waitFor();
+    await ro.page.getByText(command, { exact: true }).first().waitFor();
+    await ro.page
+      .getByText(/in the demo folder \(where pxsig serve runs\)/)
+      .first()
+      .waitFor();
+    const text = await ro.page.locator('body').innerText();
+    // A folder path, not the page's own image URLs (`/p/<project>/renders/…`).
+    assert.doesNotMatch(text, /cd "|\/(Users|home|var|private|tmp|work)\/|[A-Za-z]:\\/, 'no path');
     await ro.page
       .getByText(/5 minutes to access the link; it works once/)
       .first()
