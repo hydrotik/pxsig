@@ -272,6 +272,10 @@ A story (or entry) id the manifest does not have yet is registered first when St
 healthy, then checked: its entries arrive NEW, with no signature, for a person to approve. A name
 that cannot be registered is printed as `not checked: <name>: <why>`.
 
+The last line is the project's integrity (`integrity: <headline>`, from `pxsig doctor`). When the
+doctor cannot run it reads `integrity: unavailable (<reason>)`, and `--json` has `integrity: null`
+with `integrityUnavailable: "<reason>"`; the exit code does not change.
+
 | Flag                | Meaning                                         |
 | ------------------- | ----------------------------------------------- |
 | `ids…`              | Entry ids or story ids.                         |
