@@ -186,6 +186,11 @@ export function App() {
       return 'overview';
     }
   });
+  // The application under review (`pxsig • <scope>`), in the top bar and the browser tab.
+  const scope = data ? (data.scope ?? data.label ?? data.project ?? null) : null;
+  React.useEffect(() => {
+    if (scope) document.title = t('app.title', { scope });
+  }, [scope]);
   const [filter, setFilter] = React.useState('all');
   // Coverage opened on one component (a heatmap tile, an error row).
   const [coverageFocus, setCoverageFocus] = React.useState<CoverageFocus | null>(null);
@@ -332,7 +337,7 @@ export function App() {
               <Tooltip content={versionsText(data)}>
                 <span>{t('app.mark')}</span>
               </Tooltip>
-              {data.project ? t('app.titleLabel', { label: data.label ?? data.project }) : null}
+              {scope ? t('app.titleLabel', { label: scope }) : null}
             </h1>
           }
         >

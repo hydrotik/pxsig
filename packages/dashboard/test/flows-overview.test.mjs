@@ -30,7 +30,8 @@ test('the top bar: the title is the label (else the project), the versions on ho
       // The top bar's heading: the loading page has its own (read, not drawn) until the data is in.
       const h1 = page.locator('nav').getByRole('heading', { level: 1 });
       await h1.waitFor();
-      assert.equal(await h1.innerText(), 'pxsig · demo', 'no label: the project name, as before');
+      assert.equal(await h1.innerText(), 'pxsig • demo', 'no label: the project name, as before');
+      assert.equal(await page.title(), 'pxsig • demo', 'the browser tab names it too');
       const m = await modesBeside(page);
       assert.equal(m.inTitle, false);
       assert.match(m.next, /^(Live|Offline)$/, 'the connection badge comes right after');
@@ -55,12 +56,25 @@ test('the top bar: the title is the label (else the project), the versions on ho
       // The top bar's heading: the loading page has its own (read, not drawn) until the data is in.
       const h1 = page.locator('nav').getByRole('heading', { level: 1 });
       await h1.waitFor();
-      assert.equal(await h1.innerText(), 'pxsig · Hydrotik');
+      assert.equal(await h1.innerText(), 'pxsig • Hydrotik');
       // The plain example adapter has no Tooltip: the fallback puts the text in the native title.
       assert.equal(
         await h1.locator('span[title]').getAttribute('title'),
         'pxsig 9.8.7 · engine 9.8.6 · UI contract 1.1.0'
       );
+      assert.deepEqual(errors, []);
+    } finally {
+      await page.close();
+    }
+  }
+  {
+    // A workspace label names the application, over the project's own label.
+    const { page, errors } = await open({ ...labelled, scope: 'hydrotik ds' });
+    try {
+      const h1 = page.locator('nav').getByRole('heading', { level: 1 });
+      await h1.waitFor();
+      assert.equal(await h1.innerText(), 'pxsig • hydrotik ds');
+      assert.equal(await page.title(), 'pxsig • hydrotik ds');
       assert.deepEqual(errors, []);
     } finally {
       await page.close();

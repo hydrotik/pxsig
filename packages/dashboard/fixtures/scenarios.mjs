@@ -351,7 +351,8 @@ export const SCENARIOS = {
     return d;
   },
   'several-projects'() {
-    return SCENARIOS.clean();
+    // A workspace label names the application; the switcher names each project by its own label.
+    return { ...SCENARIOS.clean(), label: 'Demo', scope: 'Demo workspace' };
   },
 };
 
@@ -381,6 +382,7 @@ export function projectsOf(name) {
   /** @param {string} n @param {number} entries */
   const one = (n, entries) => ({
     name: n,
+    label: name === 'several-projects' ? n[0].toUpperCase() + n.slice(1) : null,
     root: n === 'demo' ? '.' : `packages/${n}`,
     entries,
     integrity: null,

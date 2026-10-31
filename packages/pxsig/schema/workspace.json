@@ -17,6 +17,13 @@
       "$ref": "project.json",
       "description": "Project config keys applied under each project's own config. Paths here resolve relative to the workspace root (the folder of pxsig.workspace.json), like every path in this file; \"$workspace/\" works here too."
     },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60,
+      "pattern": "\\S",
+      "description": "The application this workspace is, as the dashboard title names it after \"pxsig •\" (\"hydrotik ds\"). Over every project's own label in the title; the project switcher still lists projects by theirs."
+    },
     "requires": {
       "type": "string",
       "description": "The pxsig versions this workspace needs, as a range (\">=0.4.0\", \">=0.4.0 <0.6.0\"; || between alternatives). A pxsig outside it refuses to run here (pxsig 0.3.x does not read this key)."

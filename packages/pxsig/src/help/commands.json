@@ -807,7 +807,7 @@
           "name": "label",
           "value": "text",
           "default": "the project name",
-          "meaning": "The dashboard title after \"pxsig ·\" (1 to 60 characters). A person at a terminal who leaves it out is asked once; CI, an assistant or piped output is never asked.",
+          "meaning": "The project's label (1 to 60 characters): the dashboard title after \"pxsig •\" when the workspace has none. A person at a terminal who leaves it out is asked once; CI, an assistant or piped output is never asked.",
           "setting": "label"
         },
         {

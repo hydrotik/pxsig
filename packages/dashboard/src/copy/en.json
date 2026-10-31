@@ -1,8 +1,8 @@
 {
   "app": {
-    "title": "pxsig · {project}",
+    "title": "pxsig • {scope}",
     "mark": "pxsig",
-    "titleLabel": " · {label}",
+    "titleLabel": " • {label}",
     "versions": {
       "pxsig": "pxsig {version}",
       "engine": "engine {version}",

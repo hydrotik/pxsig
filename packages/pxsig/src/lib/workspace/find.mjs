@@ -65,6 +65,7 @@ export function findWorkspace({ cwd = process.cwd(), workspace = null, env = pro
       root,
       id: workspaceId(root),
       file: null,
+      label: null,
       defaults: {},
       server: {},
       projects: [{ name: cfg.name ?? packageName(root) ?? 'default', dir: root, configPath }],
@@ -94,8 +95,12 @@ export function findWorkspace({ cwd = process.cwd(), workspace = null, env = pro
     const dir = resolve(root, rel);
     return { name, dir, configPath: join(dir, CONFIG_FILE) };
   });
+  // The application this workspace is, as the dashboard's title names it (`pxsig • <label>`).
+  const label = ws.label == null ? null : typeof ws.label === 'string' ? ws.label.trim() : '';
+  if (label === '' || (label && label.length > 60))
+    throw new SetupError(`${file}: "label" must be text of 1 to 60 characters`);
   const id = workspaceId(root);
-  return { root, id, file, defaults: ws.defaults ?? {}, server: ws.server ?? {}, projects };
+  return { root, id, file, label, defaults: ws.defaults ?? {}, server: ws.server ?? {}, projects };
 }
 
 /**
