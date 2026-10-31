@@ -6,6 +6,13 @@
 /** @import { CheckRow, CheckSummary, EngineResult, ManifestEntry, RenderResult } from '../types.js' */
 
 /**
+ * The engine's verdict on an entry with no signature yet: nothing to compare with, so a fresh
+ * render cannot pass either (check.mjs does not retry it).
+ * @param {EngineResult | null | undefined} r
+ */
+export const noBaseline = (r) => String(r?.error ?? '').startsWith('no baseline sig');
+
+/**
  * Merge the Rust verdict, the render (error, timing, axe) and the a11y baseline. Of the entry it
  * reads `id`, and the rest with fallbacks.
  * @param {Pick<ManifestEntry, 'id'> & Partial<ManifestEntry>} e
@@ -30,7 +37,7 @@ export function buildRow(e, rust, render, a11yBase, manifest, js) {
     : null;
   // No signature yet (a story added since the last approval): rendered fine, nothing to compare
   // with. Not an error — a NEW entry waiting for a person to approve its first render.
-  const isNew = !rr.error && String(r.error ?? '').startsWith('no baseline sig');
+  const isNew = !rr.error && noBaseline(r);
   return {
     // A render that failed leaves the previous image on disk; its comparison describes a story
     // that did not render this time, so a render error carries no metrics and is not "changed".

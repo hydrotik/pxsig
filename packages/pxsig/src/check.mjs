@@ -64,7 +64,7 @@ import {
 } from './lib/approvals.mjs';
 import { parseArgs, strFlag } from './lib/args.mjs';
 import { describeLock, readLock, takeLock } from './lib/lock.mjs';
-import { buildRow, storybookBroken, summarize } from './lib/rows.mjs';
+import { buildRow, noBaseline, storybookBroken, summarize } from './lib/rows.mjs';
 import { harvestParameters } from './lib/manifest.mjs';
 import { registerNamed } from './lib/repair.mjs';
 import { ensureStorybook } from './lib/static.mjs';
@@ -550,7 +550,7 @@ for (const g of rustRes.summary.identicalRenders ?? [])
 let retryMs = 0;
 for (let attempt = 1; attempt <= retries; attempt++) {
   const failing = [...rows.values()]
-    .filter((r) => r.pass !== true && !r.flaky && render.get(r.id)?.png)
+    .filter((r) => r.pass !== true && !r.flaky && !noBaseline(r) && render.get(r.id)?.png)
     .map((r) => r.id);
   if (!failing.length) break;
   const t = performance.now();
