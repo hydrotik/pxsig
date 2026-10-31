@@ -39,7 +39,7 @@ export function linkCommand(
   const local = exists(
     join(root, 'node_modules', '.bin', platform === 'win32' ? 'pxsig.cmd' : 'pxsig')
   );
-  if (!local) return `node ${JSON.stringify(bin)} serve --link`;
+  if (!local) return `node "${bin}" serve --link`;
   const runner = exists(join(root, 'pnpm-lock.yaml'))
     ? 'pnpm exec pxsig'
     : exists(join(root, 'yarn.lock'))

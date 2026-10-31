@@ -18,12 +18,17 @@ test("the command runs the project's own pxsig through its package manager, else
     (/** @type {string} */ p) =>
       files.some((f) => p === join(root, f));
   const bin = join('node_modules', '.bin', 'pxsig');
+  // The platform is fixed: on Windows the shim is pxsig.cmd (the case below).
+  const linux = 'linux';
   assert.equal(
-    linkCommand(root, { exists: has(bin, 'pnpm-lock.yaml') }),
+    linkCommand(root, { exists: has(bin, 'pnpm-lock.yaml'), platform: linux }),
     'pnpm exec pxsig serve --link'
   );
-  assert.equal(linkCommand(root, { exists: has(bin, 'yarn.lock') }), 'yarn pxsig serve --link');
-  assert.equal(linkCommand(root, { exists: has(bin) }), 'npx pxsig serve --link');
+  assert.equal(
+    linkCommand(root, { exists: has(bin, 'yarn.lock'), platform: linux }),
+    'yarn pxsig serve --link'
+  );
+  assert.equal(linkCommand(root, { exists: has(bin), platform: linux }), 'npx pxsig serve --link');
   assert.equal(
     linkCommand(root, {
       exists: has(join('node_modules', '.bin', 'pxsig.cmd'), 'pnpm-lock.yaml'),
@@ -35,6 +40,15 @@ test("the command runs the project's own pxsig through its package manager, else
     linkCommand(root, { exists: has('pnpm-lock.yaml'), bin: '/opt/pxsig/bin/pxsig.mjs' }),
     'node "/opt/pxsig/bin/pxsig.mjs" serve --link',
     'not installed in the project: this pxsig, by its path'
+  );
+  assert.equal(
+    linkCommand('C:\\work\\app', {
+      exists: () => false,
+      bin: 'D:\\a\\pxsig\\bin\\pxsig.mjs',
+      platform: 'win32',
+    }),
+    'node "D:\\a\\pxsig\\bin\\pxsig.mjs" serve --link',
+    'a Windows path as it is typed, its backslashes single'
   );
 });
 
