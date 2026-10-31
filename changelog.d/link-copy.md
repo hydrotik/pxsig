@@ -2,7 +2,9 @@
 
 - **The dashboard link has 5 minutes to be accessed, up from 2.** The time is only to open the link;
   once opened, that browser can approve until `pxsig serve` stops or the browser closes. Every
-  message now says so in those words ("5 minutes to access this link"). Nothing to do.
+  message now says so in those words ("5 minutes to access this link").
+  To update: nothing to do; a script that matched the old wording ("within two minutes") matches
+  the new one.
 
 ### Added
 
