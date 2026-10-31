@@ -384,7 +384,7 @@ export interface DashboardFixtures {
   SCENARIOS: Record<string, () => unknown>;
   scenarioData: (name: string) => Record<string, unknown>;
   projectsOf: (name: string) => unknown[];
-  approvingOf: (name: string) => { allowed: boolean; cwd: string; command: string };
+  approvingOf: (name: string) => { allowed: boolean; folder: string; command: string };
 }
 
 /** The sample PNGs the check's server answers with. */

@@ -1,11 +1,11 @@
 /**
  * dashboard-link.mjs — what the dashboard says about approving from it: whether this browser holds
  * the dashboard link's session, and the command a person runs for a new link, in the folder the
- * server serves. One wording of the link's timing for the server, the CLI and the docs.
+ * server serves. One wording of the link's timing for the server, the CLI and the docs. No path
+ * leaves the server: the folder is named by its own name, never its parents (they name the user).
  */
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { basename, join } from 'node:path';
 import { cookieValue, linkCookie } from './guard.mjs';
 /** @import { IncomingHttpHeaders } from 'node:http' */
 /** @import { Links } from './guard.mjs' */
@@ -24,22 +24,18 @@ export const LINK_ELSEWHERE =
 export const LINK_EXPIRED =
   'this dashboard link was used already or not accessed within 5 minutes: run `pxsig serve --link` in a terminal for a new one (once opened, a link has no time limit)';
 
-const BIN = fileURLToPath(new URL('../../bin/pxsig.mjs', import.meta.url));
-
 /**
  * The command that prints a new dashboard link, run in `root`: the project's own pxsig through its
- * package manager when it has one installed, else this pxsig by its path.
+ * package manager when it has one installed, else `pxsig` from the PATH (a global install). Never a
+ * path: the command is shown on the page.
  * @param {string} root the workspace root
- * @param {{ exists?: (path: string) => boolean, bin?: string, platform?: string }} [o]
+ * @param {{ exists?: (path: string) => boolean, platform?: string }} [o]
  */
-export function linkCommand(
-  root,
-  { exists = existsSync, bin = BIN, platform = process.platform } = {}
-) {
+export function linkCommand(root, { exists = existsSync, platform = process.platform } = {}) {
   const local = exists(
     join(root, 'node_modules', '.bin', platform === 'win32' ? 'pxsig.cmd' : 'pxsig')
   );
-  if (!local) return `node "${bin}" serve --link`;
+  if (!local) return 'pxsig serve --link';
   const runner = exists(join(root, 'pnpm-lock.yaml'))
     ? 'pnpm exec pxsig'
     : exists(join(root, 'yarn.lock'))
@@ -50,7 +46,7 @@ export function linkCommand(
 
 /**
  * The status answer's `approving`: whether this request carries the dashboard link's session (a
- * boolean, never the session), and where and how to get a link.
+ * boolean, never the session), the folder to run the command in (its name only) and the command.
  * @param {IncomingHttpHeaders} headers
  * @param {Links} links
  * @param {string} url the server's own address (`http://127.0.0.1:<port>`)
@@ -58,6 +54,6 @@ export function linkCommand(
  */
 export const approving = (headers, links, url, root) => ({
   allowed: links.has(cookieValue(headers.cookie, linkCookie(Number(new URL(url).port)))),
-  cwd: root,
+  folder: basename(root),
   command: linkCommand(root),
 });
