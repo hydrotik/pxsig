@@ -7,13 +7,15 @@
  *             ellipsis, a line clamp) passes when its full text is in a `title` or an `aria-label`
  *   controls  in a row of controls (`role="toolbar"`, `data-toolbar`, `data-control-row`), the
  *             controls on one line differ in height or bottom edge, or the labels of its fields
- *             (`data-toolbar-field`) differ in top edge
+ *             (`data-toolbar-field`) differ in top edge; a control made of parts (a switch and
+ *             its text) is its outermost `data-control` element
  *   edge      text or a control within 2px of a drawn border of the region that frames it
  *   overlap   two controls drawn over each other, or a control covered by another one
  *
  * The rules follow the design system's own layout checks (controls in one row share one size and
  * one line; content clears its frame), written for any adapter: they read roles and the box
  * model, not an adapter's class names. An element opts out with `data-layout-allow="<reason>"`.
+ * While a modal `<dialog>` is open, only what is inside it is measured.
  *
  * `inspectLayout` and `pageOverflow` run in the page (`page.evaluate`), so each is self-contained.
  */
@@ -82,6 +84,8 @@ export function inspectLayout({ max }) {
   const SIDES = ['top', 'right', 'bottom', 'left'];
   const px = (/** @type {number} */ n) => `${Math.round(n * 10) / 10}px`;
   const allowed = (/** @type {Element} */ el) => !!el.closest('[data-layout-allow]');
+  // A modal <dialog> makes the rest of the page inert without an `inert` attribute.
+  const modal = document.querySelector('dialog:modal');
   const visible = (/** @type {Element} */ el) => {
     const r = el.getBoundingClientRect();
     const cs = getComputedStyle(el);
@@ -90,7 +94,8 @@ export function inspectLayout({ max }) {
       r.height > 1 &&
       cs.visibility !== 'hidden' &&
       cs.opacity !== '0' &&
-      !el.closest('[inert], [aria-hidden="true"]')
+      !el.closest('[inert], [aria-hidden="true"]') &&
+      (!modal || modal.contains(el))
     );
   };
   const name = (/** @type {Element} */ el) => {
