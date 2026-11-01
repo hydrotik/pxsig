@@ -32,7 +32,8 @@ RUN printf '{ "name": "pxsig-image", "private": true }\n' > package.json \
  && npm install --no-audit --no-fund --omit=dev --ignore-scripts "pxsig@${PXSIG_VERSION}" "playwright@${PLAYWRIGHT_VERSION}" \
  && npm cache clean --force \
  && arch="$( [ "$TARGETARCH" = arm64 ] && echo arm64 || echo x64 )" \
- && test -x "node_modules/@pxsig/cli-linux-${arch}/bin/pxsig" \
+ && { test -x "node_modules/@pxsig/cli-linux-${arch}/bin/pxsig" \
+      || { echo "@pxsig/cli-linux-${arch} was not installed: is it on npm yet?" >&2; exit 1; }; } \
  && mkdir -p engine && ln -s "/opt/pxsig/node_modules/@pxsig/cli-linux-${arch}/bin/pxsig" engine/pxsig \
  && engine/pxsig --version \
  && test "$(node -p "require('playwright/package.json').version")" = "$PLAYWRIGHT_VERSION"
