@@ -235,9 +235,12 @@ export interface IndexStory {
   titleSource?: string;
 }
 
-/** What `loadStoryIndex` returns: the live index when Storybook answers healthy, else the scan. */
+/**
+ * What `loadStoryIndex` returns: the live index when Storybook answers healthy, else the scan;
+ * `dashboard-screens` (pxsig's own screens) has no stories.
+ */
 export interface StoryIndex {
-  source: 'storybook' | 'static';
+  source: 'storybook' | 'static' | 'dashboard-screens';
   storybook: {
     url: string;
     reachable: boolean;

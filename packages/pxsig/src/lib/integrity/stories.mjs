@@ -2,6 +2,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { toPosix } from '../paths.mjs';
+import { SCREENS } from '../source.mjs';
 /** @import { IndexStory, StoryIndex } from '../../types.js' */
 /** @import { FetchLike, FetchedIndex, StorybookIndexEntry, StorybookIndexJson } from '../../types/t3.js' */
 /** @import { IntegrityContext } from './context.mjs' */
@@ -67,12 +68,16 @@ const scopeRe = (ctx) =>
   );
 
 /**
- * The storied folder (component) an importPath belongs to, or null when outside scope.
+ * The storied folder (component) an importPath belongs to, or null when outside scope. In a project
+ * of dashboard screens a screen's component is its section, its story's first part
+ * (`inspector--header-1` → `inspector`).
  * @param {IntegrityContext} ctx
  * @param {string | null | undefined} importPath
+ * @param {string | null} [story]
  * @returns {string | null}
  */
-export function componentOf(ctx, importPath) {
+export function componentOf(ctx, importPath, story = null) {
+  if (ctx.source === SCREENS) return story ? story.split('--')[0] : null;
   if (!importPath) return null;
   const m = importPath.match(scopeRe(ctx));
   if (!m) return null;
@@ -207,6 +212,13 @@ export function scanStories(ctx) {
  * @returns {Promise<StoryIndex>}
  */
 export async function loadStoryIndex(ctx, { fetchImpl, offline = false, live } = {}) {
+  // The dashboard's own screens: no Storybook and no story files (source.mjs).
+  if (ctx.source === SCREENS)
+    return {
+      source: SCREENS,
+      storybook: { url: '', reachable: false, healthy: false },
+      stories: [],
+    };
   const baseUrl = ctx.config.baseUrl ?? 'http://localhost:6006';
   /** @type {FetchedIndex} */
   const res =

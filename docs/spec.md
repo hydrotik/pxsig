@@ -307,6 +307,13 @@ letters, digits and hyphens.
 | `play`        | `true` when the story has a play function.                                                        |
 | `a11y`        | `false` skips the axe pass for this entry.                                                        |
 
+A manifest may also name where its entries come from, at the top level: `"source":
+"dashboard-screens"` marks the pxsig dashboard's own screens, written by the pxsig repository's
+`scripts/screens-check.mjs` (each screen of `pxsig dashboard check` in each theme, id
+`<section>--<feature>-<n>@<theme>`, `importPath` the file that defines the feature). Such a project
+has no Storybook: nothing fetches one, its components are the sections, and `pxsig check` refuses it.
+Without `source`, or with any other value, the entries are stories.
+
 `skipped` lists stories left out by `parameters.pxsig.disable` or the `no-pxsig` tag, with the
 reason. `pxsig manifest` rebuilds the file from the running Storybook. Existing entries keep their
 `sig` path.

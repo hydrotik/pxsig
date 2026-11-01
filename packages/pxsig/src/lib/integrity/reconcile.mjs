@@ -155,7 +155,7 @@ export async function reconcile(ctx, opts = {}) {
   const unlogged = [];
   for (const e of manifest.stories) {
     const story = e.story ?? e.id;
-    const component = componentOf(ctx, e.importPath) ?? '(unscoped)';
+    const component = componentOf(ctx, e.importPath, e.story) ?? '(unscoped)';
     const sigAbs = resolve(ctx.repoRoot, e.sig);
     sigPaths.add(sigAbs);
     if (!lastApproval.has(e.id) && existsSync(sigAbs)) unlogged.push(e.id);

@@ -29,6 +29,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readImage } from './lib/psig.mjs';
 import { readJson } from './lib/files.mjs';
+import { manifestSource } from './lib/source.mjs';
 import { byStory } from './lib/approvals/story.mjs';
 import { PXSIG_VERSION, engineVersion, openProject } from './lib/workspace.mjs';
 /** @import { Manifest, Project } from './types.js' */
@@ -166,6 +167,8 @@ export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/` } = {}
     a11yReview: read('a11y-review') ?? {},
     integrity: read('integrity'),
     storybook: { baseUrl: P.storybook.url },
+    /** `dashboard-screens`: pxsig's own screens, with no Storybook to link to or re-check in. */
+    source: manifestSource(P.manifestPath()),
     // renders/base/<id>.png is the baseline image inside each .psig, served (or written) by id.
     paths: {
       diffRoot: `${base}diffs/`,
