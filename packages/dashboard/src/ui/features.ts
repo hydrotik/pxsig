@@ -55,6 +55,19 @@ export interface Feature {
    * landmark that says the feature rendered. `pnpm ui:check` fails a feature without one.
    */
   screens: Screen[];
+  /**
+   * Elements that must not move: each is in the same place and size on every screen of the
+   * feature where it shows, and its box is committed (packages/dashboard/fixtures/locked/
+   * geometry.json, scripts/screens-check.mjs). Change one on purpose with
+   * `pnpm screens:check --update-locks`.
+   */
+  anchors?: Anchor[];
+}
+
+/** An element whose box is locked, found like a screen's landmark. */
+export interface Anchor {
+  name: string;
+  target: Target;
 }
 
 /** An element found by role and accessible name (a substring unless `exact`), or by its text. */

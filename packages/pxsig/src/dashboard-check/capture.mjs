@@ -118,13 +118,14 @@ export async function measureLayout(page) {
  * Render one screen in one theme; never throws (a failure is the result). `layout`: also measure
  * the layout findings (the adapter's screens; not the reference's). `aria`: also take the page's
  * accessibility snapshot (Playwright's `ariaSnapshot`), the structure scripts/screens-check.mjs locks.
+ * `anchors`: measure these elements' boxes, the geometry it locks.
  * @param {Browser} browser
- * @param {{ url: string, screen: Screen, shot: string, axe: string, initScript?: string | null, layout?: boolean, aria?: boolean }} opts
+ * @param {{ url: string, screen: Screen, shot: string, axe: string, initScript?: string | null, layout?: boolean, aria?: boolean, anchors?: { name: string, target: ScreenTarget }[] }} opts
  * @returns {Promise<ScreenCapture>}
  */
 export async function capture(
   browser,
-  { url, screen, shot, axe, initScript = null, layout = false, aria = false }
+  { url, screen, shot, axe, initScript = null, layout = false, aria = false, anchors = [] }
 ) {
   const started = Date.now();
   const context = await browser.newContext({
@@ -183,6 +184,15 @@ export async function capture(
     await page.screenshot({ path: shot });
     // Before the layout measure, which leaves the page at another width.
     const structure = aria ? await page.locator('body').ariaSnapshot() : null;
+    /** @type {Record<string, [number, number, number, number] | null>} */
+    const boxes = {};
+    for (const a of anchors) {
+      const el = locate(page, a.target);
+      const box = (await el.count()) ? await el.boundingBox() : null;
+      boxes[a.name] = box
+        ? [Math.round(box.x), Math.round(box.y), Math.round(box.width), Math.round(box.height)]
+        : null;
+    }
     /** @type {ScreenViolation[]} */
     let violations = [];
     if (axe) {
@@ -219,6 +229,7 @@ export async function capture(
       layout: found,
       ms: Date.now() - started,
       ...(structure != null ? { aria: structure } : {}),
+      ...(anchors.length ? { anchors: boxes } : {}),
       ...(settled ? {} : { settled: /** @type {const} */ (false) }),
       ...(retried ? { retried } : {}),
     };

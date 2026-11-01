@@ -97,6 +97,13 @@ fails the check like a changed screen. For a change made on purpose, `pnpm scree
 --update-locks` rewrites the files, and the diff of that commit is the review; every run also
 writes the current snapshots to the store's `reports/structure/`.
 
+**Locked geometry.** A feature may name anchors in `src/ui/features.ts` (`anchors`: the inspector's
+Reject, Approve and Close, the top bar, the review filters, the inspector toolbar's controls, the
+side panel). Each anchor must sit in the same place and size on every screen of its feature where
+it shows, and its box is committed in `packages/dashboard/fixtures/locked/geometry.json`, so a
+change that moves it everywhere at once fails as well. `--update-locks` rewrites it too. Boxes
+depend on fonts: take them from the container (`pnpm screens:check`, or CI's `reports/structure/`).
+
 **Where it runs.** The `screens` workflow (`.github/workflows/screens.yml`) builds the dashboard on
 the design system at the `PXSIG_DS_REF` variable (a full commit SHA, fetched with the
 `PXSIG_DS_SOURCE` secret) and checks it on every pull request and push to `main`; a pull request

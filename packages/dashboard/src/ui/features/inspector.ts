@@ -53,6 +53,11 @@ export const INSPECTOR: Feature[] = [
         wait: { text: 'Read only: approving needs the dashboard link. In a terminal, in the' },
       },
     ],
+    anchors: [
+      { name: 'reject', target: { role: 'button', name: 'Reject', exact: true } },
+      { name: 'approve', target: { role: 'button', name: 'Approve', exact: true } },
+      { name: 'close', target: { role: 'button', name: 'Close', exact: true } },
+    ],
   },
   {
     id: 'inspector.stage',
@@ -105,6 +110,10 @@ export const INSPECTOR: Feature[] = [
         wait: { role: 'group', name: 'Image comparison' },
       },
     ],
+    anchors: [
+      { name: 'tolerance', target: { role: 'group', name: 'Tolerance' } },
+      { name: 'next-change', target: { role: 'button', name: 'Next change' } },
+    ],
   },
   {
     id: 'inspector.details',
@@ -146,6 +155,7 @@ export const INSPECTOR: Feature[] = [
         wait: { role: 'heading', name: 'Metrics', exact: true },
       },
     ],
+    anchors: [{ name: 'side-panel', target: { role: 'complementary' } }],
   },
   {
     id: 'inspector.session',

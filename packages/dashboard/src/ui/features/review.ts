@@ -31,6 +31,10 @@ export const REVIEW: Feature[] = [
     screens: [
       { scenario: 'changed', hash: '#stories', wait: { role: 'heading', name: 'Review Stories' } },
     ],
+    anchors: [
+      { name: 'story-search', target: { role: 'searchbox', name: 'Story' } },
+      { name: 'group', target: { role: 'combobox', name: 'Group' } },
+    ],
   },
   {
     id: 'review.cards',
