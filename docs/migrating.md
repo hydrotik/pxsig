@@ -2,6 +2,9 @@
 
 ## Upgrading to 0.7
 
+0.7.2 needs nothing: `pxsig dashboard check` now renders in UTC and `en-US`, so on a machine
+outside UTC a screen that shows a time differs once from an earlier `--compare` run.
+
 0.7.1 needs nothing: its one behaviour change, `pxsig dashboard check` measuring only an open
 modal dialog, can only list fewer findings.
 

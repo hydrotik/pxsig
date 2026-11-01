@@ -5,6 +5,36 @@ semantic versioning.
 
 ## Unreleased
 
+## 0.7.2 - 2026-11-01
+
+The locked-behaviour release. What the owner has signed off on in pxsig's own dashboard now fails
+CI when it changes by accident: each screen's look (approved baselines), its structure (the
+accessibility tree), the position of its anchored controls, no accessibility or layout finding,
+and the Storybook addon's panel in a browser. `pxsig dashboard check` renders in UTC and `en-US`,
+so a time on a screen reads the same on every machine. The README has a new introduction and a
+comparison with Chromatic. Nothing to do when upgrading.
+
+### Upgrading from 0.7.1
+
+- **Nothing to do:** `pxsig dashboard check` renders every screen in UTC and `en-US`.
+
+### Behaviour changes
+
+- **`pxsig dashboard check` renders every screen in UTC and `en-US`.** Its clock was already fixed;
+  the time zone and locale were the machine's, so a screen showing a time read differently on a
+  laptop and in CI. Now a time reads the same everywhere.
+  To update: nothing to do; on a machine outside UTC, screenshots that show a time differ once
+  from an earlier `--compare` run.
+
+### Documentation
+
+- **README:** a new introduction. pxsig is for design systems, component libraries and the
+  applications built on them, each with its own baselines; a self-hosted alternative to hosted
+  visual-testing services; the key features of the dashboard, the addon and the CLI. The engine
+  moves to "How it works".
+- **docs/comparison.md:** how pxsig compares with Chromatic, and `pxsig affected` with TurboSnap,
+  as of November 2026.
+
 ## 0.7.1 - 2026-11-01
 
 The consistent-dashboard release. `pxsig dashboard check` finds nothing on either build: the
