@@ -33,7 +33,22 @@ import {
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { CheckSetupError, dashboardCheck } from '../packages/pxsig/src/dashboard-check.mjs';
+import { browserPool } from '../packages/pxsig/src/lib/capture.mjs';
+import { annotateRow, byId, envConfig, envSummary } from '../packages/pxsig/src/lib/env.mjs';
+import { writeJson } from '../packages/pxsig/src/lib/files.mjs';
+import { takeLock } from '../packages/pxsig/src/lib/lock.mjs';
+import { buildRow, summarize } from '../packages/pxsig/src/lib/rows.mjs';
+import { SCREENS } from '../packages/pxsig/src/lib/source.mjs';
+import {
+  engineVersion,
+  openProject,
+  PXSIG_VERSION,
+  writeRunManifest,
+} from '../packages/pxsig/src/lib/workspace.mjs';
+
 /** @import { CheckRow, ManifestEntry, Project } from '../packages/pxsig/src/types.js' */
+/** @import { EnvFields } from '../packages/pxsig/src/types/env.js' */
 /** @import { DashboardCheckReport, EngineCheckOutput, ScreenCatalogue } from '../packages/pxsig/src/types/t4.js' */
 
 export const THEMES = ['dark', 'light'];
@@ -96,17 +111,6 @@ export function screenEntries(catalogue, sigFor, fileOf) {
 
 async function main() {
   const repo = fileURLToPath(new URL('..', import.meta.url));
-  const lib = (/** @type {string} */ p) => import(join(repo, 'packages/pxsig/src', p));
-  const { dashboardCheck, CheckSetupError } = await lib('dashboard-check.mjs');
-  const { openProject, writeRunManifest, PXSIG_VERSION, engineVersion } =
-    await lib('lib/workspace.mjs');
-  const { buildRow, summarize } = await lib('lib/rows.mjs');
-  const { annotateRow, byId, envConfig, envSummary } = await lib('lib/env.mjs');
-  const { browserPool } = await lib('lib/capture.mjs');
-  const { takeLock } = await lib('lib/lock.mjs');
-  const { writeJson } = await lib('lib/files.mjs');
-  const { SCREENS } = await lib('lib/source.mjs');
-
   const args = process.argv.slice(2);
   const flag = (/** @type {string} */ k) => {
     const i = args.indexOf(`--${k}`);
@@ -175,7 +179,7 @@ async function main() {
     );
   } catch (e) {
     await pool.close();
-    if (e instanceof CheckSetupError) die(/** @type {Error} */ (e).message);
+    if (e instanceof CheckSetupError) die(e.message);
     throw e;
   }
   await pool.close();
@@ -239,7 +243,7 @@ async function main() {
   // check.json: this run's rows, and the earlier verdict of any screen --only left out.
   const reportPath = join(reports, 'check.json');
   const previous = existsSync(reportPath)
-    ? /** @type {{ rows?: CheckRow[], envs?: Record<string, unknown>, fullCheckAt?: string } } */ (
+    ? /** @type {{ rows?: CheckRow[], envs?: Record<string, EnvFields>, fullCheckAt?: string } } */ (
         JSON.parse(readFileSync(reportPath, 'utf8'))
       )
     : null;

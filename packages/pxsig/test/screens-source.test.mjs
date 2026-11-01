@@ -20,8 +20,11 @@ const entry = {
   sig: '.pxsig/baselines/inspector/inspector--header-1@dark.psig',
   importPath: 'src/ui/features/inspector.ts',
 };
-/** A project whose Storybook URL would answer nothing; `source` set or not. */
-const project = (/** @type {string | undefined} */ source) =>
+/**
+ * A project whose Storybook URL would answer nothing; `source` set or not.
+ * @param {string} [source]
+ */
+const project = (source) =>
   tree({
     'pxsig.config.json': { name: 'pxsig', storybook: { url: 'http://127.0.0.1:1' } },
     '.pxsig/manifest.json': {
