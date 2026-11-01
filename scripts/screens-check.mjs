@@ -5,6 +5,7 @@
  * store of the `pxsig` project (packages/dashboard/pxsig.config.json).
  *
  *   node scripts/screens-check.mjs [--build <dir>] [--only <feature,…>]
+ *   pnpm screens:check …   (the same, in pxsig's container: scripts/screens-container.mjs)
  *
  * --build is the dashboard to check: the reference build (`PXSIG_UI_ADAPTER=hydrotik
  * PXSIG_DS_SOURCE=<design system> pnpm build:dashboard`), by default packages/pxsig/dist/dashboard.
