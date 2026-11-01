@@ -258,7 +258,7 @@ export interface IntegrityLedger {
   generatedAt: string;
   sources: {
     storyIndex: {
-      source: 'storybook' | 'static';
+      source: 'storybook' | 'static' | 'dashboard-screens';
       reachable?: boolean;
       healthy?: boolean;
       error?: string;
@@ -312,6 +312,8 @@ export interface Data {
   /** Decisions on entries' accessibility violations (a11y-review.json); separate from the visual review. */
   a11yReview?: Record<string, { state: 'accepted' | 'rejected'; at: string }>;
   storybook: { baseUrl: string };
+  /** `dashboard-screens`: pxsig's own screens (no Storybook to open, nothing to re-check here). */
+  source?: 'storybook' | 'dashboard-screens';
   paths: { diffRoot: string; renders: string; baselines: string };
   sigs: Record<string, string>;
   integrity?: IntegrityLedger | null;

@@ -264,6 +264,7 @@
       "title": "Coverage by Component",
       "sourceStorybook": "Source: Storybook index, {count} stories in scope. Updated {date}.",
       "sourceStatic": "Source: static scan of story files, {count} stories in scope. Updated {date}.",
+      "sourceScreens": "Source: the dashboard's screen list, {count} entries. Updated {date}.",
       "withIssues": "With issues ({count})",
       "all": "All components ({count})",
       "status": "Status",

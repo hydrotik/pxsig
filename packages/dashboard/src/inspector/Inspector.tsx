@@ -259,7 +259,9 @@ export function Inspector({
       ? Math.max(loaded.a?.naturalHeight ?? 0, loaded.b.naturalHeight)
       : 0;
   const sbLink = storybookLink(data.storybook.baseUrl, row, data.check?.manifest?.modes);
-  const sb = sbLink.url;
+  // pxsig's own screens come from its dashboard build: no story to open.
+  const screens = data.source === 'dashboard-screens';
+  const sb = screens ? null : sbLink.url;
 
   const viewControls = (
     <ViewControls
@@ -319,7 +321,7 @@ export function Inspector({
       readOnly={readOnly}
     />
   );
-  const recheckButton = (
+  const recheckButton = screens ? null : (
     <RecheckButton
       canReview={canReview}
       target={target}

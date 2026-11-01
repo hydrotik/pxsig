@@ -331,10 +331,15 @@ export function Integrity({
           <CardTitle>{t('coverage.table.title')}</CardTitle>
           <CardDescription>
             {t(
-              ix.source === 'storybook'
-                ? 'coverage.table.sourceStorybook'
-                : 'coverage.table.sourceStatic',
-              { count: ix.inScope, date: new Date(L.generatedAt).toLocaleString() }
+              ix.source === 'dashboard-screens'
+                ? 'coverage.table.sourceScreens'
+                : ix.source === 'storybook'
+                  ? 'coverage.table.sourceStorybook'
+                  : 'coverage.table.sourceStatic',
+              {
+                count: ix.source === 'dashboard-screens' ? sm.entries : ix.inScope,
+                date: new Date(L.generatedAt).toLocaleString(),
+              }
             )}
           </CardDescription>
         </CardHeader>
