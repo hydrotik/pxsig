@@ -2,6 +2,9 @@
 
 ## Upgrading to 0.7
 
+0.7.1 needs nothing: its one behaviour change, `pxsig dashboard check` measuring only an open
+modal dialog, can only list fewer findings.
+
 0.7.0 changes some defaults, refuses input it used to accept and sends no path over HTTP. Each change
 is in `CHANGELOG.md` under 0.7.0 with a `To update:` line; by who acts:
 

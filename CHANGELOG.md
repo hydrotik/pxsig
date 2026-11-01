@@ -5,6 +5,67 @@ semantic versioning.
 
 ## Unreleased
 
+## 0.7.1 - 2026-11-01
+
+The consistent-dashboard release. `pxsig dashboard check` finds nothing on either build: the
+inspector toolbar is one even row, with its sliders on one line; the plain adapter and the
+fallbacks share one control height; and the plain adapter's two axe findings are fixed. A manifest
+can now mark its entries as the dashboard's own screens (`source: dashboard-screens`), which the
+pxsig repository checks against its own approved baselines on every pull request and before every
+release. Nothing to do when upgrading.
+
+### Upgrading from 0.7.0
+
+- **Nothing to do:** `pxsig dashboard check` measures only an open modal dialog.
+
+### Behaviour changes
+
+- **`pxsig dashboard check` measures only an open modal dialog.** While a modal `<dialog>` is open,
+  the layout findings leave out the page behind it, which is inert. The plain adapter's review
+  session reported a button behind its dialog as covered by one inside it.
+  To update: nothing to do; a check of an adapter whose dialog is a native modal can list fewer
+  findings.
+
+### Added
+
+- **A manifest can say its entries are the dashboard's own screens.** `"source":
+  "dashboard-screens"` at the top of a store's manifest (docs/spec.md, section 6) marks the pxsig
+  dashboard's own screens, which the pxsig repository checks with `scripts/screens-check.mjs`
+  against baselines in `packages/dashboard/.pxsig/`. For such a project nothing fetches a Storybook,
+  its components are the dashboard's sections, the dashboard shows no Storybook link and no
+  Re-check, and `pxsig check` refuses it with the command to run instead. A manifest without
+  `source` is a story project, as before.
+
+### Changed
+
+- **The inspector's sliders sit on one line.** On the reference dashboard, Tolerance and the swipe,
+  opacity and cell sliders show their label, track and value on one line at the toolbar's control
+  height, instead of the label over the track, so the inspector toolbar is one even row.
+- **The plain adapter and the fallbacks share one control height.** Buttons are 2rem, and 1.75rem
+  in a `sm` toolbar; selects, search fields, segmented choices and the fallback slider are 1.75rem.
+  The fallback `Toolbar` sets `data-size` on its root, for a stylesheet that sizes an adapter's own
+  controls from it.
+
+### Fixed
+
+- **Two accessibility findings on the plain adapter.** The chart table's corner is a cell, not an
+  empty column header (axe `empty-table-header`), and the Coverage tab's figures are a region named
+  "Coverage summary", apart from the Coverage banner (axe `landmark-unique`).
+- **A switch and its text are one control.** In the inspector toolbar each switch's label carries
+  `data-control`, so `pxsig dashboard check` measures it at the toolbar's height rather than the
+  switch alone.
+- **The inspector's pixel hint keeps its full text.** "Hover over the image to read pixel values."
+  and the cell and tile under the pointer stay on one line so the row keeps its height; where a
+  narrow panel or a wider font cuts them, a `title` holds the whole line.
+
+### Documentation
+
+- **docs/ui/build-adapter.md:** a slider in a toolbar is one line with `data-control`; a control
+  made of parts is measured as its outermost `data-control`; the page behind a modal dialog is not
+  measured.
+- **docs/releasing.md, "pxsig's own baselines":** how the dashboard's screens are checked,
+  reviewed and approved.
+
 ## 0.7.0 - 2026-10-31
 
 The trust-the-approval release. The dashboard decides one entry at a time: Approve story is off
