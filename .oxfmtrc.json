@@ -25,6 +25,7 @@
     "packages/dashboard/src/ui/manifest.json",
     "packages/dashboard/src/ui/contract-lock.json",
     "packages/dashboard/fixtures/screens.json",
+    "packages/dashboard/fixtures/locked/**",
     "docs/ui/features.md",
     "docs/ui/catalog/**",
     "packages/dashboard/src/ui/contract.ts",

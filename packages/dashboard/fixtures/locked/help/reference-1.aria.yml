@@ -1,0 +1,213 @@
+- navigation "Report sections":
+  - heading "pxsig • demo" [level=1]
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: "#overview"
+    - listitem:
+      - link "Review Stories":
+        - /url: "#stories"
+    - listitem:
+      - link "Coverage":
+        - /url: "#integrity"
+    - listitem:
+      - link "Accessibility":
+        - /url: "#a11y"
+    - listitem:
+      - link "Runs, 4 runs":
+        - /url: "#history"
+        - text: Runs
+    - listitem:
+      - link "Diagnostics":
+        - /url: "#diagnostics"
+    - listitem:
+      - link "Help":
+        - /url: "#help"
+  - text: dark · light Live Can approve
+  - button "Light theme"
+  - text: Approved
+- main:
+  - heading "Help" [level=2]
+  - paragraph: Reference for this dashboard. Each section covers one part of the screen. Point at a row, or move to it with Tab, to see where it appears in the drawing beside it.
+  - heading "Approving From the Dashboard" [level=3]
+  - paragraph: A person decides. This page approves and rejects only in a browser that opened the dashboard link.
+  - term: Dashboard link
+  - definition: pxsig serve prints it when a person starts the server at a terminal. Opening it lets this browser approve and reject. Started in the background, by an assistant or in CI, the server prints no link.
+  - term: pxsig serve --link
+  - definition: A new link from the running server, run in the workspace folder. With --open it also opens in the default browser (macOS and Linux).
+  - term: pxsig serve --link --copy
+  - definition: "Also copies the link to the clipboard (macOS and Linux). Opt-in: any program on the computer, an assistant included, can read the clipboard, while the printed link reaches only the person at the terminal."
+  - term: Timing
+  - definition: 5 minutes to access this link; it works once. Once opened, that browser can approve, with no time limit, until pxsig serve stops or the browser closes.
+  - term: Why a link
+  - definition: pxsig prints the link only to a person at a terminal, never to an assistant, a script or CI, which can read this page and the clipboard. Each approval is recorded with what it changed.
+  - term: Live · Static report · Offline
+  - definition: "Live: connected to pxsig serve; the page updates as checks run. Static report: a saved report opened from disk; nothing is decided there. Offline: the server stopped or cannot be reached; the page keeps the last data it had."
+  - term: Can approve · Read only
+  - definition: "Beside the connection. Can approve: this browser opened the dashboard link. Read only: it did not; Approve and Reject stay in place, disabled, and pointing at Read only shows the command for a new link."
+  - term: Title
+  - definition: "Beside the pxsig mark: what is under review, from its label in the pxsig config, else the project name."
+  - img "Drawing of the dashboard": Overview Review Stories Coverage Accessibility Runs Help Review Status Latest check Open Items Status Coverage
+  - heading "Sections" [level=3]
+  - paragraph: What each section in the top bar is for. Sections that do not fit the bar's width are under its More menu.
+  - term: Overview
+  - definition: Counts from the latest check, then open items, each with a link or a review session.
+  - term: Review Stories
+  - definition: Every entry. Filter, group by component, and open one in the inspector. Review sessions start here.
+  - term: Coverage
+  - definition: Whether each story is registered, rendered, checked and current, per component, with safe repairs.
+  - term: Accessibility
+  - definition: axe violations by rule, new ones first.
+  - term: Runs
+  - definition: Timing of the latest check and of every past run.
+  - term: Help
+  - definition: This page.
+  - img "Drawing of the dashboard": Overview Review Stories Coverage Accessibility Runs Help Review Status Latest check Open Items Status Coverage
+  - heading "Card Icons" [level=3]
+  - paragraph: A clickable card shows what it does with one arrow in its top-right corner.
+  - term: Filter
+  - definition: Filters the current view to what the card counts.
+  - term: Go to
+  - definition: "Goes somewhere else: another section, the inspector, or a review session."
+  - img "Drawing of the dashboard": Overview Review Stories Coverage Accessibility Runs Help Review Status Latest check Open Items Status Coverage
+  - heading "Result Statuses" [level=3]
+  - paragraph: The badge on each card and in the inspector header. The card's left edge uses the same colour.
+  - term: Pass
+  - definition: Within the gate.
+  - term: Changed
+  - definition: Differs from the baseline beyond the gate. Approve or reject.
+  - term: New
+  - definition: No baseline. Approving the first render creates one.
+  - term: Approved
+  - definition: Change accepted. The latest render becomes the baseline.
+  - term: Rejected
+  - definition: Change marked as unwanted. The baseline is unchanged.
+  - term: Flaky
+  - definition: Failed, then passed on a second render.
+  - term: Not run
+  - definition: "Left out of a partial check: no edited file affects it."
+  - term: Error
+  - definition: The render failed.
+  - img "Drawing of the dashboard": Overview Review Stories Coverage Accessibility Runs Help Review Status Latest check Open Items Status Coverage
+  - heading "Coverage Statuses" [level=3]
+  - paragraph: Shown in the Coverage section, and as extra badges on a card when an entry has a coverage issue.
+  - term: Not registered
+  - definition: In the story index but not in the manifest. Not rendered or checked.
+  - term: Render error
+  - definition: The last render failed (timeout, missing selector or Storybook error page).
+  - term: Never checked
+  - definition: In the manifest with a signature, but not in the last report.
+  - term: Baseline image missing
+  - definition: The signature exists but the baseline image does not, so the baseline cannot be displayed.
+  - term: Legacy baseline format
+  - definition: "A pre-0.2 .pxsig.json baseline. `pxsig doctor --repair` converts it when the latest render passes the gate."
+  - term: No baseline
+  - definition: In the manifest without a signature. The first render needs approval.
+  - term: No render
+  - definition: No latest render on disk.
+  - term: Orphaned
+  - definition: A signature or baseline image with no matching story.
+  - term: Changed
+  - definition: The render differs from the baseline beyond the gate.
+  - term: Flaky
+  - definition: Failed, then passed on a second render.
+  - term: Stale
+  - definition: A source file the entry depends on changed after the last check.
+  - term: New a11y violations
+  - definition: axe reports violations that are not on the entry's accepted list.
+  - term: Not run
+  - definition: Left out of a partial check because no edited file affects it. Baseline present, no result yet.
+  - term: Pass (minor drift)
+  - definition: Within the gate, with SSIM below 1.
+  - term: Excluded
+  - definition: "Excluded by configuration: a nonVisual folder, parameters.pxsig.disable or the no-pxsig tag."
+  - term: OK
+  - definition: Registered, rendered, checked and passing.
+  - img "Drawing of the dashboard": Overview Review Stories Coverage Accessibility Runs Help Review Status Latest check Open Items Status Coverage
+  - heading "Inspector" [level=3]
+  - paragraph: Opens on an entry from Review Stories, a review session or a link. Images on the left, details on the right.
+  - term: Review progress
+  - definition: "In a review session: how many entries have a decision, and how many are left."
+  - term: Entry
+  - definition: The entry ID, its mode, and the reason it failed the gate.
+  - term: Approve, Reject, Undo
+  - definition: Approve writes the latest render as the baseline. Reject marks the change as unwanted. Undo reverses either; for an approval it restores the previous baseline.
+  - term: Rejected note
+  - definition: The command to re-check the entry once it is fixed.
+  - term: Compare modes
+  - definition: Side by side, swipe, onion skin, pixel diff, or the signature cells the gate compares.
+  - term: Change navigation
+  - definition: Steps through the regions where pixels differ.
+  - term: Pixel
+  - definition: The colour under the pointer in both renders. Requires the local server.
+  - term: Pixel changes
+  - definition: Pixels that differ by more than the tolerance, grouped into regions.
+  - term: Metrics
+  - definition: What the gate measured. A red value is over its limit.
+  - term: Signature images
+  - definition: The baseline and current signatures and the cell heatmap. Written only for entries that fail the gate; a passing entry shows a note instead.
+  - term: Accessibility
+  - definition: axe violations on this render, each marked New or Accepted. New ones can be accepted or rejected; an accepted one can be unaccepted, which reports it as new again.
+  - term: Files
+  - definition: Links to the renders and generated files, each opening in a new tab. Copy path copies the file's path in the repository.
+  - img "Drawing of the inspector": Review progress Entry Status ‹ 1/12 › Reject · Approve · Undo Close Rejected note Compare modes Zoom View options Changes ‹ › Baseline and latest render Shortcuts Pixel Pixel Changes Metrics Signatures Accessibility Files
+  - heading "Accessibility Checks" [level=3]
+  - paragraph: How axe results are collected, compared and accepted.
+  - term: Scan
+  - definition: axe-core runs on every render, right after the screenshot.
+  - term: Accepted list
+  - definition: Each entry's accepted violations, by rule, in a11y.json in the store.
+  - term: New violation
+  - definition: A rule that is not on the entry's accepted list. Counted on the Overview and in the Accessibility section, and marked on the entry's card.
+  - term: Effect on the check
+  - definition: None. New violations are reported but do not fail the check.
+  - term: Accepting
+  - definition: Review Stories has an accessibility queue for entries whose only issue is new violations; Accept adds them to the entry's accepted list, Reject marks them for a fix, and Undo reverses either. Accepts and undos are logged in a11y-decisions.ndjson. Approving a visual change also accepts the render's violations, and the Approve button says how many. Unaccept, next to an accepted violation in the inspector, takes it off the list again.
+  - img "Drawing of the inspector": Review progress Entry Status ‹ 1/12 › Reject · Approve · Undo Close Rejected note Compare modes Zoom View options Changes ‹ › Baseline and latest render Shortcuts Pixel Pixel Changes Metrics Signatures Accessibility Files
+  - heading "Gate" [level=3]
+  - paragraph: Applied by the CLI, CI, this dashboard and the Storybook addon. A story can override it with parameters.pxsig.gate. The measured values appear under Metrics in the inspector.
+  - term: Signature
+  - definition: 64×64 grid, RGB, box-averaged
+  - term: Whole-image rule
+  - definition: Fails when SSIM < 0.99, more than 2% of cells differ, or ≥ 2 cells differ by more than 32
+  - term: Detail channel
+  - definition: 16 px tiles, 4 px blocks. Fails when ≥ 3 tiles change by more than 32 or gain an edge.
+  - term: Modes
+  - definition: —
+  - term: Baseline format
+  - definition: .psig, signature spec v1
+  - img "Drawing of the inspector": Review progress Entry Status ‹ 1/12 › Reject · Approve · Undo Close Rejected note Compare modes Zoom View options Changes ‹ › Baseline and latest render Shortcuts Pixel Pixel Changes Metrics Signatures Accessibility Files
+  - heading "Keyboard Shortcuts" [level=3]
+  - paragraph: In the inspector.
+  - term: 1–5
+  - definition: Compare mode
+  - term: F
+  - definition: Fit to view
+  - term: "0"
+  - definition: Actual size
+  - term: + −
+  - definition: Zoom in / out
+  - term: N ⇧N
+  - definition: Next / previous change
+  - term: ← →
+  - definition: Previous / next story
+  - term: A
+  - definition: Approve
+  - term: R
+  - definition: Reject
+  - term: Esc
+  - definition: Close
+  - img "Drawing of the inspector": Review progress Entry Status ‹ 1/12 › Reject · Approve · Undo Close Rejected note Compare modes Zoom View options Changes ‹ › Baseline and latest render Shortcuts Pixel Pixel Changes Metrics Signatures Accessibility Files
+  - heading "Commands" [level=3]
+  - paragraph: Run from the repository root.
+  - term: pxsig check --full
+  - definition: Render and check every entry
+  - term: pxsig check --since main
+  - definition: Re-check the entries affected by changes since main
+  - term: pxsig serve --watch
+  - definition: Start the server and this dashboard; re-check on source edits
+  - term: pxsig doctor
+  - definition: List coverage issues per component
+  - term: pxsig doctor --repair
+  - definition: Plan the safe repairs; add --apply to run them
+  - paragraph: "This page: UI contract 1.1.0."

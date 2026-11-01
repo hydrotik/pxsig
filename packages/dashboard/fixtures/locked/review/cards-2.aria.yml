@@ -1,0 +1,41 @@
+- navigation "Report sections":
+  - heading "pxsig • demo" [level=1]
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: "#overview"
+    - listitem:
+      - link "Review Stories":
+        - /url: "#stories"
+    - listitem:
+      - link "Coverage":
+        - /url: "#integrity"
+    - listitem:
+      - link "Accessibility":
+        - /url: "#a11y"
+    - listitem:
+      - link "Runs":
+        - /url: "#history"
+    - listitem:
+      - link "Help":
+        - /url: "#help"
+  - text: dark · light Live Can approve
+  - button "Light theme"
+  - text: Approved
+- main:
+  - heading "Review Stories" [level=2]
+  - text: Story
+  - searchbox "Story"
+  - text: Result
+  - combobox "Result": All results
+  - text: Mode
+  - combobox "Mode": All modes
+  - text: Sort
+  - combobox "Sort": Largest change first
+  - text: Group
+  - combobox "Group": By component
+  - text: 2 of 2
+  - region "Button":
+    - heading "Button Flaky 1 · Pass 1" [level=3]
+    - button "ui-button--primary Flaky dark SSIM 1 Cells 0"
+    - button "ui-button--ok Pass dark SSIM 1 Cells 0"

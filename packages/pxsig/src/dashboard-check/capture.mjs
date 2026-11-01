@@ -12,6 +12,9 @@ import { inspectLayout, MAX_PER_RULE, NARROW_WIDTH, pageOverflow } from './layou
 export const VIEWPORT = { width: 1280, height: 900 };
 /** The clock every screen sees, so relative times ("2 days ago") are the same on every run. */
 export const FIXED_TIME = '2026-10-25T12:00:00.000Z';
+/** …in the same time zone and locale on every machine, so a time on a screen reads the same too. */
+export const TIMEZONE = 'UTC';
+export const LOCALE = 'en-US';
 export const LANDMARK_MS = 10_000;
 /** The screenshot waits until no element's box has moved for this many frames in a row… */
 export const SETTLE_FRAMES = 6;
@@ -113,20 +116,23 @@ export async function measureLayout(page) {
 
 /**
  * Render one screen in one theme; never throws (a failure is the result). `layout`: also measure
- * the layout findings (the adapter's screens; not the reference's).
+ * the layout findings (the adapter's screens; not the reference's). `aria`: also take the page's
+ * accessibility snapshot (Playwright's `ariaSnapshot`), the structure scripts/screens-check.mjs locks.
  * @param {Browser} browser
- * @param {{ url: string, screen: Screen, shot: string, axe: string, initScript?: string | null, layout?: boolean }} opts
+ * @param {{ url: string, screen: Screen, shot: string, axe: string, initScript?: string | null, layout?: boolean, aria?: boolean }} opts
  * @returns {Promise<ScreenCapture>}
  */
 export async function capture(
   browser,
-  { url, screen, shot, axe, initScript = null, layout = false }
+  { url, screen, shot, axe, initScript = null, layout = false, aria = false }
 ) {
   const started = Date.now();
   const context = await browser.newContext({
     viewport: VIEWPORT,
     reducedMotion: 'reduce',
     colorScheme: url.includes('theme=light') ? 'light' : 'dark',
+    timezoneId: TIMEZONE,
+    locale: LOCALE,
   });
   /** @type {string[]} */
   const errors = [];
@@ -175,6 +181,8 @@ export async function capture(
     const settled = await settle(page);
     mkdirSync(dirname(shot), { recursive: true });
     await page.screenshot({ path: shot });
+    // Before the layout measure, which leaves the page at another width.
+    const structure = aria ? await page.locator('body').ariaSnapshot() : null;
     /** @type {ScreenViolation[]} */
     let violations = [];
     if (axe) {
@@ -210,6 +218,7 @@ export async function capture(
       axe: violations,
       layout: found,
       ms: Date.now() - started,
+      ...(structure != null ? { aria: structure } : {}),
       ...(settled ? {} : { settled: /** @type {const} */ (false) }),
       ...(retried ? { retried } : {}),
     };

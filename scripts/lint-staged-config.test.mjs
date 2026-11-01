@@ -31,3 +31,8 @@ test('rustfmt formats the staged Rust files only, with the workspace edition', (
     'rustfmt --edition 2021 "/r/crates/pxsig-core/src/lib.rs" "C:/r/crates/pxsig-cli/src/main.rs"'
   );
 });
+
+test('the locked screen structures are never reformatted (compared byte for byte)', () => {
+  const data = config['*.{json,md,yaml,yml,css,html}'];
+  assert.deepEqual(data(['/r/packages/dashboard/fixtures/locked/shell/top-bar-1.aria.yml']), []);
+});

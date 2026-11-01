@@ -90,6 +90,13 @@ mounted and `pnpm install` done). It writes the store as `pxsig check` does and 
 `node scripts/screens-check.mjs` alone renders outside the container: its fonts differ, and its
 rows say so.
 
+**Locked structure.** The same run checks each screen's structure: its accessibility snapshot
+(roles, names, states and order) against `packages/dashboard/fixtures/locked/<section>/<name>-<n>.aria.yml`,
+one file per screen, which both themes must match (the theme toggle's name aside). A difference
+fails the check like a changed screen. For a change made on purpose, `pnpm screens:check
+--update-locks` rewrites the files, and the diff of that commit is the review; every run also
+writes the current snapshots to the store's `reports/structure/`.
+
 **Where it runs.** The `screens` workflow (`.github/workflows/screens.yml`) builds the dashboard on
 the design system at the `PXSIG_DS_REF` variable (a full commit SHA, fetched with the
 `PXSIG_DS_SOURCE` secret) and checks it on every pull request and push to `main`; a pull request

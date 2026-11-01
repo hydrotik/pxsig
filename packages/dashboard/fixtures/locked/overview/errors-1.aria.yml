@@ -1,0 +1,115 @@
+- navigation "Report sections":
+  - heading "pxsig • demo" [level=1]
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: "#overview"
+    - listitem:
+      - link "Review Stories":
+        - /url: "#stories"
+    - listitem:
+      - link "Coverage, 1 component with errors":
+        - /url: "#integrity"
+        - text: Coverage
+    - listitem:
+      - link "Accessibility":
+        - /url: "#a11y"
+    - listitem:
+      - link "Runs, 3 runs":
+        - /url: "#history"
+        - text: Runs
+    - listitem:
+      - link "Help":
+        - /url: "#help"
+  - text: dark · light Live Can approve
+  - button "Light theme"
+  - text: Approved
+- main:
+  - heading "Overview" [level=2]
+  - text: Checked 2dark · light Passed 1
+  - button "Changed 0"
+  - button "Flaky 0"
+  - button "New a11y 0of 0 violations"
+  - text: Duration 200 ms100 ms rendering
+  - heading "Open Items" [level=3]
+  - grid "Data grid":
+    - rowgroup:
+      - row "Item Count Action":
+        - columnheader "Item":
+          - button "Item"
+          - separator "Resize Item column"
+        - columnheader "Count":
+          - button "Count"
+          - separator "Resize Count column"
+        - columnheader "Action":
+          - text: Action
+          - separator "Resize Action column"
+    - rowgroup:
+      - row "Changed, awaiting review 0":
+        - gridcell "Changed, awaiting review"
+        - gridcell "0"
+        - gridcell
+      - row "New, no baseline 0":
+        - gridcell "New, no baseline"
+        - gridcell "0"
+        - gridcell
+      - row "Rejected, awaiting a fix 0":
+        - gridcell "Rejected, awaiting a fix"
+        - gridcell "0"
+        - gridcell
+      - row "Render errors 1 View":
+        - gridcell "Render errors"
+        - gridcell "1"
+        - gridcell "View":
+          - button "View"
+      - row "Components with coverage errors 1 entry 1 Open":
+        - gridcell "Components with coverage errors 1 entry"
+        - gridcell "1"
+        - gridcell "Open":
+          - button "Open"
+      - row "Entries with new a11y violations 0":
+        - gridcell "Entries with new a11y violations"
+        - gridcell "0"
+        - gridcell
+      - row "Flaky 0":
+        - gridcell "Flaky"
+        - gridcell "0"
+        - gridcell
+  - status
+  - heading "Stale Entries by Component" [level=3]
+  - paragraph: 1 of 2 components has stale entries. Highest share first.
+  - list "Stale entries by component":
+    - listitem:
+      - 'button "Button: 1 stale of 1 entries"': Button 1 stale of 1
+  - text: Share stale 1–20% 81–100%
+  - heading "Errors" [level=3]
+  - paragraph: "1 render error · 1 component with errors · Never checked: 1"
+  - button "View 1 render error"
+  - button "View components"
+  - button "Run safe repairs"
+  - text: Safe repairs register new stories and render them, re-check entries without a usable verdict, and restore baseline images that pass the gate. They do not approve changes or write signatures.
+  - grid "Data grid":
+    - rowgroup:
+      - row "Kind Entry or component Detail":
+        - columnheader "Kind":
+          - button "Kind"
+          - separator "Resize Kind column"
+        - columnheader "Entry or component":
+          - button "Entry or component"
+          - separator "Resize Entry or component column"
+        - columnheader "Detail":
+          - button "Detail"
+          - separator "Resize Detail column"
+    - rowgroup:
+      - 'row "Render error ui-card--broken locator.click: Timeout 5000ms exceeded"':
+        - gridcell "Render error"
+        - gridcell "ui-card--broken"
+        - 'gridcell "locator.click: Timeout 5000ms exceeded"'
+      - 'row "Coverage error Card Never checked: 1"':
+        - gridcell "Coverage error"
+        - gridcell "Card"
+        - 'gridcell "Never checked: 1"'
+  - status
+  - heading "Changed Entries per Run" [level=3]
+  - paragraph: 3 runs.
+  - application: 1 2 3 0 1 2
