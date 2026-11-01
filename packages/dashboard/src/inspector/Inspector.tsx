@@ -460,7 +460,7 @@ export function Inspector({
           </ToolbarStart>
           <ToolbarEnd>
             {embedded ? (
-              <label className={s.ctl}>
+              <label className={s.ctl} data-control>
                 <Switch
                   checked={showSide}
                   onCheckedChange={setShowSide}

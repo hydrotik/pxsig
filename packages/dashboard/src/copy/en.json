@@ -254,6 +254,7 @@
       }
     },
     "stats": {
+      "label": "Coverage summary",
       "components": "Components",
       "withErrors": "{count} with errors",
       "errors": "Errors",

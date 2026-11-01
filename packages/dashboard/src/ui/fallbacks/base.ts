@@ -10,7 +10,10 @@ export type F<K extends keyof ComponentProps> = (
 export type Cell = string | number | boolean | null | undefined;
 
 export const border = `1px solid ${v.color.border}`;
+/** A field or button: the sm control height every dashboard toolbar uses. */
 export const control: React.CSSProperties = {
+  boxSizing: 'border-box',
+  blockSize: '1.75rem',
   font: 'inherit',
   fontSize: v.fontSize.sm,
   color: v.color.text,

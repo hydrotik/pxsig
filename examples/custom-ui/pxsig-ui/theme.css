@@ -27,7 +27,10 @@
   --plain-danger: #ff8a80;
   color-scheme: dark;
 }
+/* Controls: md 2rem, sm 1.75rem (every toolbar is sm), so a row shares one height. */
 .plain-button {
+  box-sizing: border-box;
+  block-size: 2rem;
   font: inherit;
   font-size: 0.8125rem;
   padding: 0.25rem 0.625rem;
@@ -51,7 +54,9 @@
   color: var(--plain-text);
   border-color: transparent;
 }
-.plain-button[data-size='sm'] {
+.plain-button[data-size='sm'],
+[role='toolbar'][data-size='sm'] .plain-button {
+  block-size: 1.75rem;
   font-size: 0.75rem;
   padding: 0.125rem 0.5rem;
 }
@@ -153,6 +158,8 @@
   background: rgb(0 0 0 / 0.4);
 }
 .plain-select {
+  box-sizing: border-box;
+  block-size: 1.75rem;
   font: inherit;
   font-size: 0.8125rem;
   color: var(--plain-text);

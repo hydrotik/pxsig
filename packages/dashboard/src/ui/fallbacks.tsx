@@ -267,9 +267,11 @@ const Slider: F<'Slider'> = ({
   return (
     <span
       className={className}
+      data-control
       style={{
         display: 'inline-flex',
         alignItems: 'center',
+        blockSize: control.blockSize,
         gap: v.space['2'],
         fontSize: v.fontSize.xs,
       }}
@@ -305,7 +307,15 @@ const SegmentedChoice: F<'SegmentedChoice'> = ({ label, value, onValueChange, op
   <div
     role="group"
     aria-label={label}
-    style={{ display: 'inline-flex', border, borderRadius: v.radius.md, overflow: 'hidden' }}
+    data-control
+    style={{
+      display: 'inline-flex',
+      boxSizing: 'border-box',
+      blockSize: control.blockSize,
+      border,
+      borderRadius: v.radius.md,
+      overflow: 'hidden',
+    }}
   >
     {options.map((o) => (
       <button
@@ -317,6 +327,7 @@ const SegmentedChoice: F<'SegmentedChoice'> = ({ label, value, onValueChange, op
         onClick={() => o.value !== value && onValueChange(o.value)}
         style={{
           ...control,
+          blockSize: '100%',
           border: 'none',
           borderRadius: 0,
           background: o.value === value ? v.color.accent : v.color.surface,
@@ -336,8 +347,14 @@ const row: React.CSSProperties = {
   alignItems: 'flex-end',
   gap: v.space['2'],
 };
-const Toolbar: F<'Toolbar'> = ({ className, children }) => (
-  <div role="toolbar" className={className} style={{ ...row, justifyContent: 'space-between' }}>
+// `data-size`: the size its controls take, for an adapter's stylesheet to apply to its own.
+const Toolbar: F<'Toolbar'> = ({ size, className, children }) => (
+  <div
+    role="toolbar"
+    data-size={size}
+    className={className}
+    style={{ ...row, justifyContent: 'space-between' }}
+  >
     {children}
   </div>
 );
@@ -489,7 +506,7 @@ const SearchField: F<'SearchField'> = ({ value, onValueChange, placeholder }) =>
     placeholder={placeholder}
     aria-label={placeholder}
     onChange={(e) => onValueChange(e.target.value)}
-    style={{ ...control, inlineSize: '100%', boxSizing: 'border-box' }}
+    style={{ ...control, inlineSize: '100%' }}
   />
 );
 

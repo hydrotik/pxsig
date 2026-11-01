@@ -10,7 +10,8 @@ export const Chart: F<'Chart'> = ({ data, series, x, format = String, className 
     <table style={{ borderCollapse: 'collapse', fontSize: v.fontSize.sm }}>
       <thead>
         <tr>
-          <th scope="col" style={{ textAlign: 'start', paddingInline: v.space['2'] }} />
+          {/* The corner over the row headers: a cell, since a header with no text names nothing. */}
+          <td style={{ paddingInline: v.space['2'] }} />
           {series.map((s) => (
             <th
               key={s.key}

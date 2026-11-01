@@ -118,6 +118,14 @@ test('controls: one height and one bottom edge per line of a toolbar', async (t)
     /toolbar 1 "Review": controls differ in height: <button "Reject"> 28px, <button "Approve"> 32px/
   );
   assert.match(bad[1], /not on one line \(bottom edges 28px, 32px\)/);
+  // A switch and its text in one `data-control` label: measured as the label.
+  assert.deepEqual(
+    await findings(
+      '<div role="toolbar" style="display:flex;align-items:center;gap:8px"><button style="height:28px">Fit</button><label data-control style="display:inline-flex;align-items:center;height:28px"><button role="switch" aria-checked="true" style="height:18px"></button> Regions</label></div>',
+      'controls'
+    ),
+    []
+  );
   // Wrapped onto two lines: each line is checked on its own.
   assert.deepEqual(
     await findings(
@@ -167,6 +175,14 @@ test('overlap: controls drawn over each other, or covered by one', async (t) => 
   assert.deepEqual(
     await findings(
       '<button>Behind</button><div style="position:fixed;inset:0;background:rgba(0,0,0,.5)"></div>',
+      'overlap'
+    ),
+    []
+  );
+  // Behind a modal <dialog>: inert, though no element says so.
+  assert.deepEqual(
+    await findings(
+      '<button style="position:absolute;top:40px;left:40px">Behind</button><dialog style="margin:0;top:30px;left:30px;padding:0"><button>Re-check</button></dialog><script>document.querySelector("dialog").showModal()</script>',
       'overlap'
     ),
     []

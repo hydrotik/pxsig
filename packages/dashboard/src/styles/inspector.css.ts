@@ -381,8 +381,8 @@ export const grow = style({
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
 });
-export const sliderCtl = style({ inlineSize: '9rem' });
-// Same height as the toolbar's sm buttons so a switch + label lines up with them.
+export const sliderCtl = style({ inlineSize: '13rem' });
+// A switch and its text, one control (`data-control`) as tall as the toolbar's sm buttons.
 export const ctl = style({
   display: 'inline-flex',
   alignItems: 'center',

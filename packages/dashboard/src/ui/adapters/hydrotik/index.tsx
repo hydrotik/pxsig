@@ -27,6 +27,7 @@ import {
 import type * as C from '../../contract';
 import { heatStep } from '../../contract';
 import * as hm from './heatmap.css';
+import { oneLineSlider } from './slider';
 
 export const name = 'hydrotik';
 
@@ -374,28 +375,7 @@ export const DialogTitle = ({ ref, ...p }: C.DialogTitleProps) => (
 );
 export const DialogDescription = (p: C.DialogDescriptionProps) => <DS.DialogDescription {...p} />;
 
-export const Slider = ({
-  label,
-  value,
-  onValueChange,
-  min,
-  max,
-  step,
-  formatValue,
-  className,
-}: C.SliderProps) => (
-  <DS.Slider
-    className={className}
-    label={label}
-    showValue
-    {...(formatValue ? { formatValue: ([v]: number[]) => formatValue(v) } : {})}
-    value={[value]}
-    {...(min !== undefined ? { min } : {})}
-    max={max}
-    {...(step !== undefined ? { step } : {})}
-    onValueChange={([v]: number[]) => onValueChange(v)}
-  />
-);
+export const Slider = oneLineSlider(DS.Slider);
 
 export const Switch = ({ checked, onCheckedChange, label }: C.SwitchProps) => (
   <DS.Switch checked={checked} onCheckedChange={onCheckedChange} aria-label={label} />

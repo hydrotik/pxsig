@@ -424,7 +424,10 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Purpose**: one number on a range: tolerance, swipe position, opacity, cell strength.
 - **Props**: `label`, `value`, `onValueChange(value)`, `min`, `max`, `step`, `formatValue`,
   `className`.
-- **Behaviour**: shows the label and the formatted value; dragging and arrow keys change it.
+- **Behaviour**: shows the label and the formatted value; dragging and arrow keys change it. It
+  sits in the inspector's toolbar, so label, track and value share one line at the toolbar's
+  control height, with `data-control` on the outer element (one control to the layout check). If
+  your slider field stacks its label over the track, compose the line from the bare slider.
 - **Accessibility**: `role="slider"` (or a native range input) named by `label`, with
   `aria-valuetext` from `formatValue`.
 - **Mapping questions**: Does your slider take a single number or an array? Does it show its value?
@@ -460,7 +463,8 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 
 - **Purpose**: a row of controls sharing one size and one line.
 - **Props**: `size`, `className`, `children` (`ToolbarStart`, `ToolbarEnd`).
-- **Behaviour**: wraps on narrow widths; passes `size` to the controls inside.
+- **Behaviour**: wraps on narrow widths; passes `size` to the controls inside. The fallback sets
+  `data-size` on its root for a stylesheet that sizes your controls from it.
 - **Accessibility**: `role="toolbar"` if your design system adds it.
 - **Mapping questions**: Does your toolbar propagate a size to its controls?
 - **Acceptance**: the Stories filters, their labels and the count line up. Optional.
@@ -683,12 +687,15 @@ draw them with your own segmented control and buttons.
      - `clipped`: content cut off by `overflow: hidden`; text truncated on purpose (an ellipsis,
        a line clamp) passes when a `title` or `aria-label` holds its full text.
      - `controls`: in a row of controls (`role="toolbar"`, `data-toolbar`, `data-control-row`),
-       the controls on one line differ in height or bottom edge.
+       the controls on one line differ in height or bottom edge. A control made of parts (a switch
+       and its text, a slider with its label and value, a segmented group) is measured as its
+       outermost `data-control` element.
      - `edge`: text or a control within 2px of a drawn border of the region that frames it.
      - `overlap`: two controls drawn over each other, or one covered by another.
 
      The rules read roles and the box model, not class names, so they apply to any adapter. An
-     element opts out with `data-layout-allow="<reason>"`.
+     element opts out with `data-layout-allow="<reason>"`. While a modal `<dialog>` is open, only
+     what is inside it is measured: the page behind it is inert.
 
    - `--compare <dir>`: each screen against the same screen of an earlier check's output (its
      `--out`), compared by the pxsig engine with the gates stories get. Changed screens are listed
