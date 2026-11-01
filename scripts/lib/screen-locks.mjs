@@ -1,11 +1,17 @@
 /**
- * screen-locks.mjs — the locked structure of pxsig's own dashboard screens (scripts/screens-check.mjs).
+ * screen-locks.mjs — the locked structure and geometry of pxsig's own dashboard screens
+ * (scripts/screens-check.mjs).
  *
  * Each screen's accessibility snapshot (Playwright's `ariaSnapshot`: roles, names, states, order) is
  * committed as text, one file per screen: packages/dashboard/fixtures/locked/<section>/<name>-<n>.aria.yml.
  * A theme changes colours, never structure, so every theme of a screen must give the same snapshot.
  * A difference fails the check until the file is updated on purpose (`--update-locks`) and the
  * update is read in its commit's diff.
+ *
+ * Geometry: a feature's anchors (src/ui/features.ts) are each in the same place and size on every
+ * screen of that feature where they show, and their boxes are committed in
+ * packages/dashboard/fixtures/locked/geometry.json, so a change that moves one everywhere at once
+ * fails too.
  *
  * Zero dependencies.
  */
@@ -112,4 +118,81 @@ export function checkStructure({ screens, dir, update = false, complete = false 
         } else problems.push(`${file}: locked, but no screen has it`);
       }
   return { problems, written, removed };
+}
+
+/** @typedef {[number, number, number, number]} Box `[x, y, width, height]`, whole px */
+/** @typedef {Record<string, Record<string, Record<string, Box | null>>>} Geometry feature → screen number → anchor → box */
+
+const showBox = (/** @type {Box | null | undefined} */ b) => (b ? `[${b.join(', ')}]` : 'absent');
+
+/**
+ * Check (or, with `update`, write) the anchors' boxes against the JSON file `file`.
+ * `complete`: every screen was rendered, so a committed feature or screen with none is stale.
+ * @param {{ screens: { feature: string, index: number, theme: string, anchors?: Record<string, Box | null> }[], file: string, update?: boolean, complete?: boolean }} o
+ * @returns {{ problems: string[], written: boolean, geometry: Geometry }}
+ */
+export function checkGeometry({ screens, file, update = false, complete = false }) {
+  /** @type {string[]} */
+  const problems = [];
+  /** @type {Geometry} */
+  const now = {};
+  for (const s of [...screens].sort((a, b) => a.theme.localeCompare(b.theme))) {
+    if (!s.anchors) continue;
+    const n = String(s.index + 1);
+    const at = (now[s.feature] ??= {});
+    const was = at[n];
+    if (!was) at[n] = s.anchors;
+    else if (JSON.stringify(was) !== JSON.stringify(s.anchors))
+      problems.push(`${s.feature} #${n}: the themes place its anchors differently`);
+  }
+  // Each anchor in one place on every screen of its feature where it shows.
+  for (const [feature, byScreen] of Object.entries(now)) {
+    /** @type {Map<string, { n: string, box: Box }>} */
+    const first = new Map();
+    for (const [n, anchors] of Object.entries(byScreen))
+      for (const [name, box] of Object.entries(anchors)) {
+        if (!box) continue;
+        const f = first.get(name);
+        if (!f) first.set(name, { n, box });
+        else if (f.box.join() !== box.join())
+          problems.push(
+            `${feature}: anchor ${name} moves between screens (#${f.n} ${showBox(f.box)}, #${n} ${showBox(box)})`
+          );
+      }
+  }
+  const committed = /** @type {Geometry} */ (
+    existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {}
+  );
+  /** @type {Geometry} */
+  const next = complete ? now : { ...committed };
+  if (!complete)
+    for (const [f, byScreen] of Object.entries(now)) next[f] = { ...committed[f], ...byScreen };
+  if (!update) {
+    for (const [feature, byScreen] of Object.entries(now))
+      for (const [n, anchors] of Object.entries(byScreen))
+        for (const [name, box] of Object.entries(anchors)) {
+          const was = committed[feature]?.[n]?.[name];
+          if (was === undefined) problems.push(`${feature} #${n}: anchor ${name} is not locked`);
+          else if (JSON.stringify(was) !== JSON.stringify(box))
+            problems.push(
+              `${feature} #${n}: anchor ${name} moved (${showBox(was)} → ${showBox(box)})`
+            );
+        }
+    // A removed anchor, screen or feature: only a full run can tell.
+    if (complete)
+      for (const f of new Set([...Object.keys(committed), ...Object.keys(now)]))
+        if (
+          JSON.stringify(committed[f]) !== JSON.stringify(now[f]) &&
+          !problems.some((p) => p.startsWith(`${f} `) || p.startsWith(`${f}:`))
+        )
+          problems.push(
+            `${f}: the locked geometry has an anchor, screen or feature this run does not`
+          );
+  }
+  const written = update && JSON.stringify(next) !== JSON.stringify(committed);
+  if (written) {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, `${JSON.stringify(next, null, 2)}\n`);
+  }
+  return { problems, written, geometry: now };
 }

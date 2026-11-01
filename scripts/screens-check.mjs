@@ -17,14 +17,15 @@
  * summary.md and junit.xml. A person reviews and approves them with `pxsig serve` in
  * packages/dashboard (approving needs `pxsig serve --link`).
  *
- * It also checks each screen's locked structure (scripts/lib/screen-locks.mjs): its accessibility
- * snapshot against packages/dashboard/fixtures/locked/. `--update-locks` rewrites those files instead,
- * for a change made on purpose; the current snapshots are always written to reports/structure/.
+ * It also checks each screen's locked structure and geometry (scripts/lib/screen-locks.mjs): its
+ * accessibility snapshot and its feature's anchors against packages/dashboard/fixtures/locked/.
+ * `--update-locks` rewrites those files instead, for a change made on purpose; the current ones are
+ * always written to reports/structure/.
  *
  * An entry id is `<section>--<feature>-<n>@<theme>`: inspector.header's first screen in the dark
  * theme is `inspector--header-1@dark`, so the review groups screens by section.
- * Exit: 0 every screen matches its baseline and its locked structure · 1 a screen changed, is new,
- * did not render or changed structure · 2 setup.
+ * Exit: 0 every screen matches its baseline and its locks · 1 a screen changed, is new, did not
+ * render, or changed structure or geometry · 2 setup.
  */
 import { spawnSync } from 'node:child_process';
 import {
@@ -46,7 +47,7 @@ import { writeJson } from '../packages/pxsig/src/lib/files.mjs';
 import { takeLock } from '../packages/pxsig/src/lib/lock.mjs';
 import { buildRow, summarize } from '../packages/pxsig/src/lib/rows.mjs';
 import { SCREENS } from '../packages/pxsig/src/lib/source.mjs';
-import { checkStructure, structureFile } from './lib/screen-locks.mjs';
+import { checkGeometry, checkStructure, structureFile } from './lib/screen-locks.mjs';
 import {
   engineVersion,
   openProject,
@@ -186,6 +187,7 @@ async function main() {
         browser: await pool.get('chromium'),
         log: (/** @type {string} */ m) => console.log(m),
         aria: true,
+        anchors: true,
       }
     );
   } catch (e) {
@@ -223,12 +225,21 @@ async function main() {
       mkdirSync(dirname(file), { recursive: true });
       writeFileSync(file, `${x.aria.trimEnd()}\n`);
     }
-  const structure = checkStructure({
+  const lockArgs = {
     screens: checked.report.screens,
-    dir: join(projectDir, 'fixtures', 'locked'),
     update: args.includes('--update-locks'),
     complete: !only && checked.report.screens.every((x) => x.rendered),
+  };
+  const structure = checkStructure({ ...lockArgs, dir: join(projectDir, 'fixtures', 'locked') });
+  const geometry = checkGeometry({
+    ...lockArgs,
+    file: join(projectDir, 'fixtures', 'locked', 'geometry.json'),
   });
+  mkdirSync(structureDir, { recursive: true });
+  writeFileSync(
+    join(structureDir, 'geometry.json'),
+    `${JSON.stringify(geometry.geometry, null, 2)}\n`
+  );
 
   // The engine's check, as `pxsig check` runs it.
   const reports = P.store.reports;
@@ -337,10 +348,13 @@ async function main() {
   const failed = out.filter((r) => !r.skipped && (r.error || !r.pass));
   for (const f of structure.written) console.log(`[screens] locked structure written: ${f}`);
   for (const f of structure.removed) console.log(`[screens] locked structure removed: ${f}`);
+  if (geometry.written) console.log('[screens] locked geometry written: geometry.json');
   for (const p of structure.problems) console.log(`  structure ${p}`);
-  if (structure.problems.length)
+  for (const p of geometry.problems) console.log(`  geometry ${p}`);
+  const locksFailed = structure.problems.length + geometry.problems.length;
+  if (locksFailed)
     console.log(
-      '[screens] a structure change made on purpose: pnpm screens:check --update-locks, and commit packages/dashboard/fixtures/locked'
+      '[screens] a structure or geometry change made on purpose: pnpm screens:check --update-locks, and commit packages/dashboard/fixtures/locked'
     );
   console.log(
     `[screens] ${out.length - out.filter((r) => r.skipped).length} screens checked · ${summary.passed} match · ${failed.length} to review (changed, new or not rendered)`
@@ -351,7 +365,7 @@ async function main() {
     console.log(
       '[screens] review them: cd packages/dashboard && node ../pxsig/bin/pxsig.mjs serve (approve with serve --link)'
     );
-  process.exit(failed.length || structure.problems.length ? 1 : 0);
+  process.exit(failed.length || locksFailed ? 1 : 0);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();

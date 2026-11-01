@@ -4,7 +4,12 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { checkStructure, firstDifference, structureFile } from './lib/screen-locks.mjs';
+import {
+  checkGeometry,
+  checkStructure,
+  firstDifference,
+  structureFile,
+} from './lib/screen-locks.mjs';
 
 const dark = '- heading "Overview" [level=2]\n- button "Light theme"';
 const light = '- heading "Overview" [level=2]\n- button "Dark theme"';
@@ -69,4 +74,63 @@ test('with every screen rendered, a locked file with no screen is stale', () => 
 test('firstDifference names the line', () => {
   assert.equal(firstDifference('a\nb', 'a\nc'), 'line 2: - b / + c');
   assert.equal(firstDifference('a', 'a\nb'), 'line 2: - (nothing) / + b');
+});
+
+/**
+ * Screens of one feature with anchor boxes, in both themes.
+ * @param {(Record<string, [number, number, number, number] | null>)[]} perScreen
+ */
+const anchored = (perScreen) =>
+  perScreen.flatMap((anchors, index) =>
+    ['dark', 'light'].map((theme) => ({ feature: 'inspector.header', index, theme, anchors }))
+  );
+const approve = /** @type {[number, number, number, number]} */ ([1115, 41, 75, 28]);
+
+test('geometry: --update-locks writes the boxes; a check then passes', () => {
+  const file = join(fresh(), 'geometry.json');
+  const s = anchored([{ approve }, { approve }]);
+  assert.equal(checkGeometry({ screens: s, file, update: true, complete: true }).written, true);
+  assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), {
+    'inspector.header': { 1: { approve }, 2: { approve } },
+  });
+  assert.deepEqual(checkGeometry({ screens: s, file, complete: true }).problems, []);
+});
+
+test('geometry: an anchor that moves between screens, or everywhere at once, fails', () => {
+  const file = join(fresh(), 'geometry.json');
+  checkGeometry({ screens: anchored([{ approve }, { approve }]), file, update: true });
+  const moved = /** @type {[number, number, number, number]} */ ([1115, 45, 75, 28]);
+  assert.match(
+    checkGeometry({ screens: anchored([{ approve }, { approve: moved }]), file }).problems[0],
+    /inspector.header: anchor approve moves between screens \(#1 \[1115, 41, 75, 28\], #2 \[1115, 45/
+  );
+  assert.deepEqual(
+    checkGeometry({ screens: anchored([{ approve: moved }, { approve: moved }]), file }).problems,
+    [
+      'inspector.header #1: anchor approve moved ([1115, 41, 75, 28] → [1115, 45, 75, 28])',
+      'inspector.header #2: anchor approve moved ([1115, 41, 75, 28] → [1115, 45, 75, 28])',
+    ]
+  );
+});
+
+test('geometry: an anchor absent on one screen is locked as absent, not compared', () => {
+  const file = join(fresh(), 'geometry.json');
+  const s = anchored([{ approve }, { approve: null }]);
+  checkGeometry({ screens: s, file, update: true });
+  assert.deepEqual(checkGeometry({ screens: s, file }).problems, []);
+  assert.match(
+    checkGeometry({ screens: anchored([{ approve }, { approve }]), file }).problems[0],
+    /#2: anchor approve moved \(absent → \[1115/
+  );
+});
+
+test('geometry: a removed anchor or feature fails a full run only', () => {
+  const file = join(fresh(), 'geometry.json');
+  checkGeometry({ screens: anchored([{ approve, close: approve }]), file, update: true });
+  const fewer = anchored([{ approve }]);
+  assert.deepEqual(checkGeometry({ screens: fewer, file }).problems, []);
+  assert.match(
+    checkGeometry({ screens: fewer, file, complete: true }).problems[0],
+    /inspector.header: the locked geometry has an anchor, screen or feature this run does not/
+  );
 });
