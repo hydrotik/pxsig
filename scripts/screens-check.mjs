@@ -4,7 +4,7 @@
  * dashboard check` renders, each in both themes) checked against packages/dashboard/.pxsig, the
  * store of the `pxsig` project (packages/dashboard/pxsig.config.json).
  *
- *   node scripts/screens-check.mjs [--build <dir>] [--only <feature,…>]
+ *   node scripts/screens-check.mjs [--build <dir>] [--only <feature,…>] [--update-locks]
  *   pnpm screens:check …   (the same, in pxsig's container: scripts/screens-container.mjs)
  *
  * --build is the dashboard to check: the reference build (`PXSIG_UI_ADAPTER=hydrotik
@@ -17,9 +17,14 @@
  * summary.md and junit.xml. A person reviews and approves them with `pxsig serve` in
  * packages/dashboard (approving needs `pxsig serve --link`).
  *
+ * It also checks each screen's locked structure (scripts/lib/screen-locks.mjs): its accessibility
+ * snapshot against packages/dashboard/fixtures/locked/. `--update-locks` rewrites those files instead,
+ * for a change made on purpose; the current snapshots are always written to reports/structure/.
+ *
  * An entry id is `<section>--<feature>-<n>@<theme>`: inspector.header's first screen in the dark
  * theme is `inspector--header-1@dark`, so the review groups screens by section.
- * Exit: 0 every screen matches its baseline · 1 a screen changed, is new or did not render · 2 setup.
+ * Exit: 0 every screen matches its baseline and its locked structure · 1 a screen changed, is new,
+ * did not render or changed structure · 2 setup.
  */
 import { spawnSync } from 'node:child_process';
 import {
@@ -31,7 +36,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { CheckSetupError, dashboardCheck } from '../packages/pxsig/src/dashboard-check.mjs';
@@ -41,6 +46,7 @@ import { writeJson } from '../packages/pxsig/src/lib/files.mjs';
 import { takeLock } from '../packages/pxsig/src/lib/lock.mjs';
 import { buildRow, summarize } from '../packages/pxsig/src/lib/rows.mjs';
 import { SCREENS } from '../packages/pxsig/src/lib/source.mjs';
+import { checkStructure, structureFile } from './lib/screen-locks.mjs';
 import {
   engineVersion,
   openProject,
@@ -176,7 +182,11 @@ async function main() {
     checked = await dashboardCheck(
       { build, out: tmp, reference: build, ...(only ? { only } : {}) },
       repo,
-      { browser: await pool.get('chromium'), log: (/** @type {string} */ m) => console.log(m) }
+      {
+        browser: await pool.get('chromium'),
+        log: (/** @type {string} */ m) => console.log(m),
+        aria: true,
+      }
     );
   } catch (e) {
     await pool.close();
@@ -203,6 +213,22 @@ async function main() {
   }
   rmSync(tmp, { recursive: true, force: true });
   const selected = [...render.keys()];
+
+  // The locked structure: every theme of a screen alike, and as committed.
+  const structureDir = join(P.store.reports, 'structure');
+  rmSync(structureDir, { recursive: true, force: true });
+  for (const x of checked.report.screens)
+    if (x.aria != null && x.theme === THEMES[0]) {
+      const file = join(structureDir, structureFile(x.feature, x.index + 1));
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, `${x.aria.trimEnd()}\n`);
+    }
+  const structure = checkStructure({
+    screens: checked.report.screens,
+    dir: join(projectDir, 'fixtures', 'locked'),
+    update: args.includes('--update-locks'),
+    complete: !only && checked.report.screens.every((x) => x.rendered),
+  });
 
   // The engine's check, as `pxsig check` runs it.
   const reports = P.store.reports;
@@ -309,6 +335,13 @@ async function main() {
   lock.release();
 
   const failed = out.filter((r) => !r.skipped && (r.error || !r.pass));
+  for (const f of structure.written) console.log(`[screens] locked structure written: ${f}`);
+  for (const f of structure.removed) console.log(`[screens] locked structure removed: ${f}`);
+  for (const p of structure.problems) console.log(`  structure ${p}`);
+  if (structure.problems.length)
+    console.log(
+      '[screens] a structure change made on purpose: pnpm screens:check --update-locks, and commit packages/dashboard/fixtures/locked'
+    );
   console.log(
     `[screens] ${out.length - out.filter((r) => r.skipped).length} screens checked · ${summary.passed} match · ${failed.length} to review (changed, new or not rendered)`
   );
@@ -318,7 +351,7 @@ async function main() {
     console.log(
       '[screens] review them: cd packages/dashboard && node ../pxsig/bin/pxsig.mjs serve (approve with serve --link)'
     );
-  process.exit(failed.length ? 1 : 0);
+  process.exit(failed.length || structure.problems.length ? 1 : 0);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();

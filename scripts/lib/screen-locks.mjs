@@ -1,0 +1,115 @@
+/**
+ * screen-locks.mjs — the locked structure of pxsig's own dashboard screens (scripts/screens-check.mjs).
+ *
+ * Each screen's accessibility snapshot (Playwright's `ariaSnapshot`: roles, names, states, order) is
+ * committed as text, one file per screen: packages/dashboard/fixtures/locked/<section>/<name>-<n>.aria.yml.
+ * A theme changes colours, never structure, so every theme of a screen must give the same snapshot.
+ * A difference fails the check until the file is updated on purpose (`--update-locks`) and the
+ * update is read in its commit's diff.
+ *
+ * Zero dependencies.
+ */
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+
+/**
+ * What may differ between the themes of one screen, each with its reason. Only the comparison of
+ * the themes uses them; the committed file keeps the first theme's text as it is.
+ * @type {{ pattern: RegExp, as: string, reason: string }[]}
+ */
+export const THEME_MASKS = [
+  {
+    pattern: /button "(Light|Dark) theme"/g,
+    as: 'button "<theme toggle>"',
+    reason: 'the theme toggle names the theme it switches to',
+  },
+];
+
+/** @param {string} text */
+const masked = (text) => THEME_MASKS.reduce((t, m) => t.replace(m.pattern, m.as), text);
+
+/**
+ * A screen's structure file, relative to the locked folder: `inspector.header` #2 →
+ * `inspector/header-2.aria.yml`.
+ * @param {string} feature `<section>.<name>`
+ * @param {number} n the screen's number within its feature, from 1
+ */
+export function structureFile(feature, n) {
+  const [section, ...name] = feature.split('.');
+  return `${section}/${[...name, String(n)].join('-')}.aria.yml`;
+}
+
+/**
+ * The first line where two texts differ, as `line N: - old / + new`, for a short report.
+ * @param {string} was
+ * @param {string} now
+ */
+export function firstDifference(was, now) {
+  const a = was.split('\n');
+  const b = now.split('\n');
+  for (let i = 0; i < Math.max(a.length, b.length); i++)
+    if (a[i] !== b[i])
+      return `line ${i + 1}: - ${a[i] ?? '(nothing)'} / + ${b[i] ?? '(nothing)'}`.slice(0, 300);
+  return '';
+}
+
+/**
+ * Check (or, with `update`, write) the structure of the rendered screens against `dir`.
+ * `complete`: every screen of the catalogue was rendered, so a file with no screen is stale.
+ * @param {{ screens: { feature: string, index: number, theme: string, aria?: string }[], dir: string, update?: boolean, complete?: boolean }} o
+ * @returns {{ problems: string[], written: string[], removed: string[] }}
+ */
+export function checkStructure({ screens, dir, update = false, complete = false }) {
+  /** @type {Map<string, Map<string, string>>} file → theme → snapshot */
+  const byFile = new Map();
+  for (const s of screens) {
+    if (s.aria == null) continue;
+    const file = structureFile(s.feature, s.index + 1);
+    const themes = byFile.get(file) ?? /** @type {Map<string, string>} */ (new Map());
+    themes.set(s.theme, `${s.aria.trimEnd()}\n`);
+    byFile.set(file, themes);
+  }
+  /** @type {string[]} */
+  const problems = [];
+  /** @type {string[]} */
+  const written = [];
+  /** @type {string[]} */
+  const removed = [];
+  for (const [file, themes] of byFile) {
+    // In name order, so the committed text is always the same theme's (dark, of dark and light).
+    const [[first, text], ...rest] = [...themes].sort(([a], [b]) => a.localeCompare(b));
+    const other = rest.find(([, t]) => masked(t) !== masked(text));
+    if (other) {
+      problems.push(
+        `${file}: the ${first} and ${other[0]} themes differ in structure (${firstDifference(masked(text), masked(other[1]))})`
+      );
+      continue;
+    }
+    const path = join(dir, file);
+    const was = existsSync(path) ? readFileSync(path, 'utf8') : null;
+    if (was === text) continue;
+    if (update) {
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, text);
+      written.push(file);
+    } else
+      problems.push(
+        was == null
+          ? `${file}: no locked structure`
+          : `${file}: the structure changed (${firstDifference(was, text)})`
+      );
+  }
+  if (complete && existsSync(dir))
+    for (const section of readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory()))
+      for (const name of readdirSync(join(dir, section.name)).filter((n) =>
+        n.endsWith('.aria.yml')
+      )) {
+        const file = `${section.name}/${name}`;
+        if (byFile.has(file)) continue;
+        if (update) {
+          rmSync(join(dir, file));
+          removed.push(file);
+        } else problems.push(`${file}: locked, but no screen has it`);
+      }
+  return { problems, written, removed };
+}
