@@ -1,0 +1,1064 @@
+{
+  "version": 2,
+  "project": "pxsig",
+  "source": "dashboard-screens",
+  "stories": [
+    {
+      "id": "shell--top-bar-1@dark",
+      "story": "shell--top-bar-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-1@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-1@light",
+      "story": "shell--top-bar-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-1@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-2@dark",
+      "story": "shell--top-bar-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-2@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-2@light",
+      "story": "shell--top-bar-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-2@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-3@dark",
+      "story": "shell--top-bar-3",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-3@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-3@light",
+      "story": "shell--top-bar-3",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-3@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-4@dark",
+      "story": "shell--top-bar-4",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-4@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-4@light",
+      "story": "shell--top-bar-4",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-4@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-5@dark",
+      "story": "shell--top-bar-5",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-5@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-5@light",
+      "story": "shell--top-bar-5",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-5@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-6@dark",
+      "story": "shell--top-bar-6",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-6@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-6@light",
+      "story": "shell--top-bar-6",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-6@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-7@dark",
+      "story": "shell--top-bar-7",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-7@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-7@light",
+      "story": "shell--top-bar-7",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-7@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--theme-1@dark",
+      "story": "shell--theme-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--theme-1@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--theme-1@light",
+      "story": "shell--theme-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--theme-1@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--coverage-banner-1@dark",
+      "story": "shell--coverage-banner-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--coverage-banner-1@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--coverage-banner-1@light",
+      "story": "shell--coverage-banner-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--coverage-banner-1@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--counts-1@dark",
+      "story": "overview--counts-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--counts-1@dark.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--counts-1@light",
+      "story": "overview--counts-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--counts-1@light.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--counts-2@dark",
+      "story": "overview--counts-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--counts-2@dark.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--counts-2@light",
+      "story": "overview--counts-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--counts-2@light.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--open-items-1@dark",
+      "story": "overview--open-items-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--open-items-1@dark.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--open-items-1@light",
+      "story": "overview--open-items-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--open-items-1@light.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--layout-1@dark",
+      "story": "overview--layout-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--layout-1@dark.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--layout-1@light",
+      "story": "overview--layout-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--layout-1@light.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--errors-1@dark",
+      "story": "overview--errors-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--errors-1@dark.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--errors-1@light",
+      "story": "overview--errors-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--errors-1@light.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--changed-runs-1@dark",
+      "story": "overview--changed-runs-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--changed-runs-1@dark.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--changed-runs-1@light",
+      "story": "overview--changed-runs-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--changed-runs-1@light.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--stale-1@dark",
+      "story": "overview--stale-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--stale-1@dark.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--stale-1@light",
+      "story": "overview--stale-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--stale-1@light.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--stale-2@dark",
+      "story": "overview--stale-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--stale-2@dark.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--stale-2@light",
+      "story": "overview--stale-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--stale-2@light.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "review--filters-1@dark",
+      "story": "review--filters-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/review/review--filters-1@dark.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "review--filters-1@light",
+      "story": "review--filters-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/review/review--filters-1@light.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "review--cards-1@dark",
+      "story": "review--cards-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/review/review--cards-1@dark.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "review--cards-1@light",
+      "story": "review--cards-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/review/review--cards-1@light.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "review--cards-2@dark",
+      "story": "review--cards-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/review/review--cards-2@dark.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "review--cards-2@light",
+      "story": "review--cards-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/review/review--cards-2@light.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "coverage--ledger-1@dark",
+      "story": "coverage--ledger-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/coverage/coverage--ledger-1@dark.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "coverage--ledger-1@light",
+      "story": "coverage--ledger-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/coverage/coverage--ledger-1@light.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "coverage--ledger-2@dark",
+      "story": "coverage--ledger-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/coverage/coverage--ledger-2@dark.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "coverage--ledger-2@light",
+      "story": "coverage--ledger-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/coverage/coverage--ledger-2@light.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "a11y--rules-1@dark",
+      "story": "a11y--rules-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/a11y/a11y--rules-1@dark.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "a11y--rules-1@light",
+      "story": "a11y--rules-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/a11y/a11y--rules-1@light.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "runs--history-1@dark",
+      "story": "runs--history-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/runs/runs--history-1@dark.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "runs--history-1@light",
+      "story": "runs--history-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/runs/runs--history-1@light.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--research-1@dark",
+      "story": "diagnostics--research-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--research-1@dark.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--research-1@light",
+      "story": "diagnostics--research-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--research-1@light.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "help--reference-1@dark",
+      "story": "help--reference-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/help/help--reference-1@dark.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "help--reference-1@light",
+      "story": "help--reference-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/help/help--reference-1@light.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--header-1@dark",
+      "story": "inspector--header-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--header-1@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--header-1@light",
+      "story": "inspector--header-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--header-1@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--header-2@dark",
+      "story": "inspector--header-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--header-2@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--header-2@light",
+      "story": "inspector--header-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--header-2@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--stage-1@dark",
+      "story": "inspector--stage-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--stage-1@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--stage-1@light",
+      "story": "inspector--stage-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--stage-1@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--details-1@dark",
+      "story": "inspector--details-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--details-1@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--details-1@light",
+      "story": "inspector--details-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--details-1@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--session-1@dark",
+      "story": "inspector--session-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--session-1@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--session-1@light",
+      "story": "inspector--session-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--session-1@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "embed--panel-1@dark",
+      "story": "embed--panel-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/embed/embed--panel-1@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "embed--panel-1@light",
+      "story": "embed--panel-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/embed/embed--panel-1@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "embed--decide-1@dark",
+      "story": "embed--decide-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/embed/embed--decide-1@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "embed--decide-1@light",
+      "story": "embed--decide-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/embed/embed--decide-1@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    }
+  ],
+  "skipped": []
+}
