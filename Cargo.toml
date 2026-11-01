@@ -9,7 +9,7 @@ resolver = "2"
 members = ["crates/pxsig-core", "crates/pxsig-cli"]
 
 [workspace.package]
-version = "0.7.0"
+version = "0.7.1"
 edition = "2021"
 # The toolchain CI builds and tests with (rust-toolchain.toml). Only that one is tested, so it is the
 # version declared; an older Rust may build, but nothing checks it.

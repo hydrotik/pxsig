@@ -1,6 +1,6 @@
 {
   "name": "pxsig",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Visual regression for Storybook: compact pixel signatures with their baseline images, a Rust engine, a dashboard, a Storybook addon and an MCP server.",
   "license": "MIT",
   "author": "Donovan Adams (Hydrotik LLC)",
