@@ -370,6 +370,8 @@ export interface ScreenFeature {
   states?: unknown;
   components: string[];
   screens: Screen[];
+  /** Elements whose box is locked (scripts/screens-check.mjs). */
+  anchors?: { name: string; target: ScreenTarget }[];
 }
 
 /** fixtures/screens.json, generated from src/ui/features.ts. */
@@ -435,6 +437,8 @@ export interface ScreenCapture {
   retried?: 'ERR_NO_BUFFER_SPACE';
   /** The page's accessibility snapshot (YAML), when asked for (`aria`) and the screen rendered. */
   aria?: string;
+  /** Each anchor's box `[x, y, width, height]` in whole px, or null where it does not show (`anchors`). */
+  anchors?: Record<string, [number, number, number, number] | null>;
 }
 
 /** A screen against the same screen of an earlier check (`--compare`, dashboard-check/compare.mjs). */
