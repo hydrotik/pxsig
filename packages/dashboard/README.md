@@ -86,4 +86,5 @@ MIT. Copyright (c) 2026 Hydrotik LLC.
 
 The dashboard's own screens have baselines here, in `.pxsig/` (the `pxsig` project,
 `pxsig.config.json`): see [docs/releasing.md](../../docs/releasing.md#pxsigs-own-baselines).
-`node scripts/screens-check.mjs` checks them; `pxsig serve` in this folder reviews them.
+`pnpm screens:check` checks them in pxsig's container, as the `screens` workflow does;
+`pxsig serve` in this folder reviews them.

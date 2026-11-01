@@ -1,0 +1,4 @@
+{
+  "$comment": "The image pxsig's own baselines are rendered in (scripts/screens-container.mjs, .github/workflows/screens.yml, the release's Dashboard job). Pinned by digest: a new image renders different pixels only when this file changes, in a PR that re-renders and re-approves the screens it moves.",
+  "image": "ghcr.io/hydrotik/pxsig:0.7.0-pw1.58.2-r2@sha256:9c32e5e7b98c5c20eabc997b1fdb70d2aee4e8e02f4917291957dc32c60da946"
+}

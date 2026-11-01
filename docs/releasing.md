@@ -77,19 +77,37 @@ when the shots are from another minor. A patch or a prerelease keeps the last sh
 The dashboard's own screens have baselines in pxsig, beside them: `packages/dashboard/.pxsig/`, the
 store of the `pxsig` project (`packages/dashboard/pxsig.config.json`). Each screen `pxsig dashboard
 check` renders, in each theme, is one entry, `<section>--<feature>-<n>@<theme>`
-(`inspector--header-1@dark`). They capture the reference build, rendered in pxsig's container
-(`ghcr.io/hydrotik/pxsig`), whose fonts and browser stay fixed:
+(`inspector--header-1@dark`). They capture the reference build, rendered in pxsig's container, the
+image pinned by digest in `docker/screens-image.json`, whose fonts and browser stay fixed:
 
 ```bash
 PXSIG_UI_ADAPTER=hydrotik PXSIG_DS_SOURCE=<design-system checkout> pnpm build:dashboard
-node scripts/screens-check.mjs [--only <feature,…>]   # exit 1: a screen changed, is new or did not render
+pnpm screens:check [--only <feature,…>]   # exit 1: a screen changed, is new or did not render
 ```
 
-The script writes the store as `pxsig check` does and writes no baseline. A person reviews and
-approves what changed with `pxsig serve` in `packages/dashboard` (approving needs `pxsig serve
---link`), and the approved `.psig` files go into the same pull request. The store commits only
-`manifest.json`, `approvals.ndjson` and `baselines/<section>/<id>.psig` (`.gitignore`,
-`scripts/check-clean.mjs`). A render outside the container differs in fonts, and its rows say so.
+`pnpm screens:check` runs `scripts/screens-check.mjs` in that image (Docker, with the checkout
+mounted and `pnpm install` done). It writes the store as `pxsig check` does and writes no baseline.
+`node scripts/screens-check.mjs` alone renders outside the container: its fonts differ, and its
+rows say so.
+
+**Where it runs.** The `screens` workflow (`.github/workflows/screens.yml`) builds the dashboard on
+the design system at the `PXSIG_DS_REF` variable (a full commit SHA, fetched with the
+`PXSIG_DS_SOURCE` secret) and checks it on every pull request and push to `main`; a pull request
+without the secret (a fork, Dependabot) is not checked. The release's Dashboard job checks the
+dashboard it ships, built or attached, the same way and stops the release on any difference.
+
+**Review.** A failing run uploads its renders as the `pxsig-screens` artifact. Download it into the
+store, then review and approve in the dashboard:
+
+```bash
+gh run download <run id> -R hydrotik/pxsig -n pxsig-screens -D packages/dashboard/.pxsig
+cd packages/dashboard && node ../pxsig/bin/pxsig.mjs serve   # approving needs serve --link
+```
+
+The approved `.psig` files and `approvals.ndjson` go into the same pull request. The store commits
+only `manifest.json`, `approvals.ndjson` and `baselines/<section>/<id>.psig` (`.gitignore`,
+`scripts/check-clean.mjs`). A new image changes `docker/screens-image.json` in a pull request that
+re-approves the screens it moves.
 
 ## What the workflow does
 
