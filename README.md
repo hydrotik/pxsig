@@ -1,6 +1,17 @@
 # pxsig
 
-Visual regression for Storybook that runs on your own machine and in your own CI.
+**Visual regression that keeps a UI looking the way it was approved.**
+
+pxsig guards the visual integrity of a design system or component library, and of the applications
+built on it. It renders every story state with Playwright and compares each render with an approved
+baseline. Nothing changes until a person approves the change in a side-by-side diff. Each
+application keeps its own baselines, separate from those of the design system it consumes, so every
+team reviews only its own UI.
+
+It's a self-hosted alternative to hosted visual-testing services such as Chromatic, and it runs
+entirely on your own machines and in your own CI. There's no account and no upload, and nothing is
+billed per snapshot. Baselines are files committed with the code, so a visual change is reviewed
+like any other change. [How pxsig compares with Chromatic](docs/comparison.md).
 
 **New here:** [QUICKSTART.md](QUICKSTART.md) goes from install to a reviewed first baseline and CI,
 including how approving from the dashboard works (the dashboard link and the top bar's badges).
@@ -9,35 +20,40 @@ including how approving from the dashboard works (the dashboard link and the top
 
 <img src="docs/product-shots/inspector.png" width="900" alt="The inspector reviewing a changed project card, first of six: the baseline render and the latest render side by side, the moved badge and buttons highlighted and boxed, the changed regions listed, and the metrics that failed the gate (SSIM 0.64 below 0.99, 50 detail tiles changed), with Reject and Approve.">
 
-pxsig renders every story state with Playwright, reduces each render to a compact pixel
-signature, and compares it with an approved baseline. Each baseline is one `.psig` file per story
-state: the signature and the full baseline image, packed together. The files live with the
-project under test and are committed with it, so a visual change is reviewed like any other
-change.
+- **Visual diff review.** `pxsig serve` opens a dashboard of everything that changed: side by
+  side, as a swipe, an onion skin, a pixel diff or a heat map. Each entry is approved or rejected on
+  its own.
+- **Storybook addon.** `@pxsig/storybook-addon` shows each story's status in the panel and sidebar
+  of your own Storybook.
+- **A CLI for local runs and CI:**
+  - `check` renders and gates every entry in parallel, or only the stories a change touched
+    (`affected --since`), and writes JUnit and Markdown summaries.
+  - An accessibility gate (axe) runs alongside the visual one.
+  - `doctor` reports what a passing check doesn't cover.
+- **Approvals with a trail.** Every approval is logged with the file's hash before and after, and a
+  reason when one is given, and can be undone. In bulk, approvals are planned first, then applied
+  by a person.
+- **Stable comparisons.** Coarse pixel signatures ignore anti-aliasing and font noise, while a
+  detail channel still catches thin borders and icons.
+- **Fonts and browser held fixed.** A container image (`ghcr.io/hydrotik/pxsig`) renders the same
+  pixels on every machine, and each render records the environment it was made in.
+- **Coding assistants.** `pxsig mcp` gives an assistant the status, images and re-checks. It can't
+  approve a baseline.
+- **Your design system's look.** The dashboard can be rebuilt on your own design system.
+
+## How it works
+
+pxsig reduces each render to a compact pixel signature and compares it with the approved
+baseline. Each baseline is one `.psig` file per story state: the signature and the full baseline
+image, packed together. The files live with the project under test and are committed with it.
 
 - **Engine.** The Rust crate `pxsig-core` builds signatures (spec v1), computes the metrics and
   applies the gate. The `pxsig` binary runs it in parallel over a whole manifest.
-- **Dashboard.** `pxsig serve` opens a local dashboard: what changed, side by side, as a swipe,
-  an onion skin, a pixel diff or a heat map of the signature cells, with approve and reject on
-  each entry.
-- **Storybook addon.** `@pxsig/storybook-addon` adds a panel and sidebar status dots.
-- **MCP server.** `pxsig mcp` gives an agent the same status, images and re-checks. It cannot
-  approve a baseline. `pxsig setup` prints the entry for each coding assistant
-  ([docs/agents.md](docs/agents.md)).
-- **Integrity doctor.** `pxsig doctor` reports what a passing check does not cover: stories with no
-  entry, entries never checked, baselines without an image, stale verdicts, orphans. It never
-  writes a signature and never approves.
-
-## Why
-
-- **Offline.** No account, no sign-in, no upload. Renders and baselines stay on your machines.
-- **Reviewable.** Baselines are files in your repository. `git diff` shows who approved what (see
-  [docs/monorepo.md](docs/monorepo.md#reviewing-psig-changes-in-git)).
-- **No drift unless approved.** A baseline changes only when a person approves it. Every approval
-  is logged with the hash of the file before and after, and can be undone.
-- **Stable.** The gate compares coarse signatures, not raw pixels, so anti-aliasing and font
-  hinting noise does not fail a build. A detail channel catches thin features (borders, icons)
-  that a coarse grid would average away.
+- **Integrity doctor.** `pxsig doctor` lists stories with no entry, entries never checked,
+  baselines without an image, stale verdicts and orphans. It never writes a signature and never
+  approves.
+- **Reviewable in git.** `git diff` shows which baselines changed and the approval log's new lines
+  (see [docs/monorepo.md](docs/monorepo.md#reviewing-psig-changes-in-git)).
 
 ## Status
 
@@ -138,6 +154,7 @@ include it, and `pnpm build:dashboard` builds it on the plain adapter (see
 | Signature format, metrics, gate, `.psig` container, manifest                           | [docs/spec.md](docs/spec.md)                                                                     |
 | Configuration files, layers, environment, story parameters                             | [docs/configuration.md](docs/configuration.md)                                                   |
 | Workspaces, projects and stores                                                        | [docs/monorepo.md](docs/monorepo.md)                                                             |
+| How pxsig compares with Chromatic, and `pxsig affected` with TurboSnap                 | [docs/comparison.md](docs/comparison.md)                                                         |
 | Every command and flag                                                                 | [docs/cli.md](docs/cli.md)                                                                       |
 | Integrity codes, repairs and guarantees                                                | [docs/integrity.md](docs/integrity.md)                                                           |
 | Server, HTTP API and dashboard                                                         | [docs/server.md](docs/server.md)                                                                 |
