@@ -77,3 +77,20 @@ test('merge conflict markers are found at the start of a line, nowhere else', ()
   assert.deepEqual(conflictLines(text), [2, 4, 6]);
   assert.deepEqual(conflictLines('no markers\n'), []);
 });
+
+test("pxsig's own baselines: the screens store keeps what a project commits, nothing else", () => {
+  for (const f of [
+    'packages/dashboard/.pxsig/manifest.json',
+    'packages/dashboard/.pxsig/approvals.ndjson',
+    'packages/dashboard/.pxsig/baselines/inspector/inspector--header-1@dark.psig',
+  ])
+    assert.equal(fileProblem(f, 100 * 1024), null, f);
+  for (const f of [
+    'packages/dashboard/.pxsig/renders/latest/inspector--header-1@dark.png',
+    'packages/dashboard/.pxsig/reports/check.json',
+    'packages/dashboard/.pxsig/history/1/inspector--header-1@dark.psig',
+    'packages/dashboard/.pxsig/baselines/inspector/notes.md',
+    'packages/ui/.pxsig/manifest.json',
+  ])
+    assert.ok(fileProblem(f, 1000), f);
+});

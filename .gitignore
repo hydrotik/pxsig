@@ -17,6 +17,14 @@ packages/storybook-addon/LICENSE
 __pxsig__/
 *.psig
 *.pxsig.json
+# …but pxsig's own baselines: the dashboard screens' store keeps what a project commits
+# (scripts/screens-check.mjs; check-clean.mjs allows exactly these)
+!packages/dashboard/.pxsig/
+packages/dashboard/.pxsig/*
+!packages/dashboard/.pxsig/manifest.json
+!packages/dashboard/.pxsig/approvals.ndjson
+!packages/dashboard/.pxsig/baselines/
+!packages/dashboard/.pxsig/baselines/**/*.psig
 pxsig-diff/
 .baselines/
 .renders/

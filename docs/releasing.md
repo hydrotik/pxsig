@@ -72,6 +72,25 @@ The workflow's verify job runs `node scripts/check-shots.mjs --tag vX.Y.0` and f
 when the shots are from another minor. A patch or a prerelease keeps the last shots.
 `node scripts/showcase-shots.mjs --serve` keeps the mock dashboard running for shots by hand.
 
+## pxsig's own baselines
+
+The dashboard's own screens have baselines in pxsig, beside them: `packages/dashboard/.pxsig/`, the
+store of the `pxsig` project (`packages/dashboard/pxsig.config.json`). Each screen `pxsig dashboard
+check` renders, in each theme, is one entry, `<section>--<feature>-<n>@<theme>`
+(`inspector--header-1@dark`). They capture the reference build, rendered in pxsig's container
+(`ghcr.io/hydrotik/pxsig`), whose fonts and browser stay fixed:
+
+```bash
+PXSIG_UI_ADAPTER=hydrotik PXSIG_DS_SOURCE=<design-system checkout> pnpm build:dashboard
+node scripts/screens-check.mjs [--only <feature,…>]   # exit 1: a screen changed, is new or did not render
+```
+
+The script writes the store as `pxsig check` does and writes no baseline. A person reviews and
+approves what changed with `pxsig serve` in `packages/dashboard` (approving needs `pxsig serve
+--link`), and the approved `.psig` files go into the same pull request. The store commits only
+`manifest.json`, `approvals.ndjson` and `baselines/<section>/<id>.psig` (`.gitignore`,
+`scripts/check-clean.mjs`). A render outside the container differs in fonts, and its rows say so.
+
 ## What the workflow does
 
 1. **verify**: checks the versions as above. On a tag (not a dry run) it also checks that the
