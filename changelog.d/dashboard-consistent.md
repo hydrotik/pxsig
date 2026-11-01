@@ -24,6 +24,9 @@
 - **A switch and its text are one control.** In the inspector toolbar each switch's label carries
   `data-control`, so `pxsig dashboard check` measures it at the toolbar's height rather than the
   switch alone.
+- **The inspector's pixel hint keeps its full text.** "Hover over the image to read pixel values."
+  and the cell and tile under the pointer stay on one line so the row keeps its height; where a
+  narrow panel or a wider font cuts them, a `title` holds the whole line.
 
 ### Documentation
 
