@@ -6,6 +6,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
 import { toPosix } from '../paths.mjs';
 import { readJson, writeJson } from '../files.mjs';
+import { manifestSource } from '../source.mjs';
 /** @import { Project } from '../../types.js' */
 /** @import { EditedFile, IntegritySettings, Ledger, RustAffected, ServeAnswer } from '../../types/t3.js' */
 
@@ -88,6 +89,8 @@ export function resolveContext(P, { manifestPath } = {}) {
     configPath: P.configPath,
     integrity,
     manifestPath: manifestPath ?? P.manifestPath(),
+    /** Where the entries come from (source.mjs): stories, or pxsig's own dashboard screens. */
+    source: manifestSource(manifestPath ?? P.manifestPath()),
     srcRoot: ws(P.srcRoot),
     pixelsRoot: P.store.layout === 'package' ? ws(P.store.baselines) : null,
     pixelsDir: '__pxsig__',

@@ -81,3 +81,9 @@ Served, the app reads `/__pxsig/data?project=<name>` and listens to `/__pxsig/ev
 report inlines the same data in `index.html`. See [docs/server.md](../../docs/server.md).
 
 MIT. Copyright (c) 2026 Hydrotik LLC.
+
+## Baselines
+
+The dashboard's own screens have baselines here, in `.pxsig/` (the `pxsig` project,
+`pxsig.config.json`): see [docs/releasing.md](../../docs/releasing.md#pxsigs-own-baselines).
+`node scripts/screens-check.mjs` checks them; `pxsig serve` in this folder reviews them.

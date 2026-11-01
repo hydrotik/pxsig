@@ -11,6 +11,7 @@ import { foreignServer } from '../lib/workspace.mjs';
 import { writeSarif } from '../lib/sarif.mjs';
 import { doctorParts } from './doctor.mjs';
 import { a11yPruneParts } from './a11y-prune.mjs';
+import { manifestSource, SCREENS } from '../lib/source.mjs';
 
 /** @import { Manifest } from '../types.js' */
 /** @import { Block, CheckReport, ServerStatusReply, ToolOutput } from '../types/t6.js' */
@@ -69,6 +70,12 @@ export function checkCommands(cli) {
 
   return {
     async check() {
+      cli.current = oneProject();
+      // The pxsig dashboard's own screens render from its build, not from a Storybook.
+      if (manifestSource(ctx().P.manifestPath()) === SCREENS)
+        fail(
+          `project ${cli.current} holds the pxsig dashboard's screens: check them with \`node scripts/screens-check.mjs\` in the pxsig repository`
+        );
       // The full check (render everything selected, suites, --update) runs check.mjs itself.
       if (flags.full || flags.update || flags.suite || flags.modes) {
         const pass = process.argv

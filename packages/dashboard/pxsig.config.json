@@ -1,0 +1,20 @@
+{
+  "$schema": "../pxsig/schema/project.json",
+  "version": 1,
+  "name": "pxsig",
+  "label": "pxsig",
+  "srcRoot": "src",
+  "trim": false,
+  "a11y": false,
+  "modes": {
+    "dark": {
+      "globals": "",
+      "colorScheme": "dark"
+    },
+    "light": {
+      "globals": "",
+      "colorScheme": "light"
+    }
+  },
+  "defaultMode": "dark"
+}

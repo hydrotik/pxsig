@@ -21,7 +21,8 @@ export function PixelSection({
   tol,
 }: {
   embedded: boolean;
-  sb: ReturnType<typeof storybookLink>['url'];
+  /** Null: no Storybook (pxsig's own screens). */
+  sb: ReturnType<typeof storybookLink>['url'] | null;
   sbLink: ReturnType<typeof storybookLink>;
   loaded: Loaded | null | 'missing';
   pixels: Loaded | null;
@@ -40,7 +41,7 @@ export function PixelSection({
     <section className={s.sideSection}>
       <div className={s.sectionHead}>
         <h3 className={s.sectionTitle}>{t('inspector.sections.pixel')}</h3>
-        {embedded ? null : (
+        {embedded || !sb ? null : (
           <Button
             href={sb}
             external

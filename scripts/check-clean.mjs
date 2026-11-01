@@ -50,6 +50,11 @@ export const SHOTS = 'docs/product-shots/';
 const SHOT_IMAGE = /\.(png|jpe?g|webp|avif|gif)$/i;
 /** The README loads every shot on the repository's front page: keep each one light. */
 export const SHOT_MAX_BYTES = 1.5 * 1024 * 1024;
+/** pxsig's own baselines: the dashboard screens' store (scripts/screens-check.mjs). */
+export const SCREENS_STORE = 'packages/dashboard/.pxsig/';
+/** What a project commits of its store: the manifest, the approval log, one .psig per entry. */
+const SCREENS_KEPT =
+  /^packages\/dashboard\/\.pxsig\/(manifest\.json|approvals\.ndjson|baselines\/[a-z0-9-]+\/[a-z0-9-]+--[a-z0-9-]+@[a-z0-9-]+\.psig)$/;
 
 /**
  * Why a tracked file must not be committed, from its path (and size, for a product shot), or null.
@@ -59,6 +64,10 @@ export const SHOT_MAX_BYTES = 1.5 * 1024 * 1024;
  */
 export function fileProblem(f, size = 0) {
   if (PRIVATE.test(f)) return '.local/ holds private notes and stays out of the repository';
+  if (f.startsWith(SCREENS_STORE))
+    return SCREENS_KEPT.test(f)
+      ? null
+      : `${SCREENS_STORE} keeps only manifest.json, approvals.ndjson and baselines/<section>/<id>.psig`;
   if (f.startsWith(SHOTS)) {
     if (SHOT_IMAGE.test(f)) {
       if (RUN_DIRS.test(f)) return 'this kind of file stays out of the repository';

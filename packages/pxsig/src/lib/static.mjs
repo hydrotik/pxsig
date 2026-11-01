@@ -10,6 +10,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';
 import { fetchStoryIndex } from './integrity.mjs';
+import { manifestSource, SCREENS } from './source.mjs';
 /** @import { AddressInfo } from 'node:net' */
 /** @import { StaticServer } from '../types.js' */
 /** What `fetchStoryIndex` (lib/integrity.mjs) found. */
@@ -94,11 +95,18 @@ export function serveStaticDir(dir, { port = 0 } = {}) {
  * caller's setup error), or `{ url, served: true, close }` after serving `storybook.staticDir`.
  * On success with a served build, `P.storybook.url` is rewritten to the served address, so the
  * run manifest and every renderer use it.
- * @param {{ storybook: { url: string, staticDir: string | null } }} P
+ * @param {{ storybook: { url: string, staticDir: string | null }, manifestPath?: () => string }} P
  * @param {{ log?: (message: string) => void, fetchImpl?: typeof fetch }} [opts]
  * @returns {Promise<{ url: string, served: false, index: StoryIndexProbe } | { url: string, served: true, close: () => Promise<void>, index: StoryIndexProbe }>}
  */
 export async function ensureStorybook(P, { log = () => {}, fetchImpl } = {}) {
+  // The dashboard's own screens: there is no Storybook to reach.
+  if (P.manifestPath && manifestSource(P.manifestPath()) === SCREENS)
+    return {
+      url: P.storybook.url,
+      served: false,
+      index: { url: '', reachable: false, healthy: false, error: 'a project of dashboard screens' },
+    };
   const idx = await fetchStoryIndex(P.storybook.url, { timeoutMs: 3000, fetchImpl });
   if (idx.reachable) return { url: P.storybook.url, served: false, index: idx };
   const dir = P.storybook.staticDir;

@@ -41,7 +41,8 @@ export function FilesSection({
   p: NonNullable<ReturnType<typeof pathsFor>>;
   hasArtifacts: boolean;
   sizes: Record<string, string>;
-  sb: string;
+  /** Null: no Storybook (pxsig's own screens). */
+  sb: string | null;
 }) {
   // A served URL (/p/<project>/renders/…) or a static one (./renders/…) → the file in the store.
   const repoPath = (u: string) =>
@@ -73,11 +74,13 @@ export function FilesSection({
             <CopyPath value={repoPath(url)} label={label} />
           </li>
         ))}
-        <li>
-          <Link href={sb} external className={s.grow}>
-            {t('inspector.files.storybook')}
-          </Link>
-        </li>
+        {sb ? (
+          <li>
+            <Link href={sb} external className={s.grow}>
+              {t('inspector.files.storybook')}
+            </Link>
+          </li>
+        ) : null}
       </ul>
     </section>
   );
