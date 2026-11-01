@@ -24,8 +24,11 @@
  *
  * An entry id is `<section>--<feature>-<n>@<theme>`: inspector.header's first screen in the dark
  * theme is `inspector--header-1@dark`, so the review groups screens by section.
- * Exit: 0 every screen matches its baseline and its locks · 1 a screen changed, is new, did not
- * render, or changed structure or geometry · 2 setup.
+ * Every rendered screen must also have no accessibility (axe) or layout finding, as `pxsig dashboard
+ * check --strict` requires.
+ *
+ * Exit: 0 every screen matches its baseline and its locks, with no finding · 1 a screen changed, is
+ * new, did not render, changed structure or geometry, or has a finding · 2 setup.
  */
 import { spawnSync } from 'node:child_process';
 import {
@@ -47,7 +50,12 @@ import { writeJson } from '../packages/pxsig/src/lib/files.mjs';
 import { takeLock } from '../packages/pxsig/src/lib/lock.mjs';
 import { buildRow, summarize } from '../packages/pxsig/src/lib/rows.mjs';
 import { SCREENS } from '../packages/pxsig/src/lib/source.mjs';
-import { checkGeometry, checkStructure, structureFile } from './lib/screen-locks.mjs';
+import {
+  checkGeometry,
+  checkStructure,
+  screenFindings,
+  structureFile,
+} from './lib/screen-locks.mjs';
 import {
   engineVersion,
   openProject,
@@ -225,6 +233,11 @@ async function main() {
       mkdirSync(dirname(file), { recursive: true });
       writeFileSync(file, `${x.aria.trimEnd()}\n`);
     }
+  // Strict: an accessibility or layout finding on any screen fails, as `dashboard check --strict`.
+  const findings = screenFindings(
+    checked.report.screens,
+    (x) => screenId(x.feature, x.index + 1, x.theme).id
+  );
   const lockArgs = {
     screens: checked.report.screens,
     update: args.includes('--update-locks'),
@@ -351,6 +364,7 @@ async function main() {
   if (geometry.written) console.log('[screens] locked geometry written: geometry.json');
   for (const p of structure.problems) console.log(`  structure ${p}`);
   for (const p of geometry.problems) console.log(`  geometry ${p}`);
+  for (const f of findings) console.log(`  finding ${f}`.slice(0, 400));
   const locksFailed = structure.problems.length + geometry.problems.length;
   if (locksFailed)
     console.log(
@@ -365,7 +379,7 @@ async function main() {
     console.log(
       '[screens] review them: cd packages/dashboard && node ../pxsig/bin/pxsig.mjs serve (approve with serve --link)'
     );
-  process.exit(failed.length || locksFailed ? 1 : 0);
+  process.exit(failed.length || locksFailed || findings.length ? 1 : 0);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();

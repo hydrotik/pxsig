@@ -104,6 +104,9 @@ it shows, and its box is committed in `packages/dashboard/fixtures/locked/geomet
 change that moves it everywhere at once fails as well. `--update-locks` rewrites it too. Boxes
 depend on fonts: take them from the container (`pnpm screens:check`, or CI's `reports/structure/`).
 
+**No findings.** Every screen must also have no accessibility (axe) or layout finding, as `pxsig
+dashboard check --strict` requires; the run lists each one.
+
 **Where it runs.** The `screens` workflow (`.github/workflows/screens.yml`) builds the dashboard on
 the design system at the `PXSIG_DS_REF` variable (a full commit SHA, fetched with the
 `PXSIG_DS_SOURCE` secret) and checks it on every pull request and push to `main`; a pull request
