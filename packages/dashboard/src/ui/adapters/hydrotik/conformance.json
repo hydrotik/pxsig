@@ -34,7 +34,10 @@
     "Dialog": { "status": "full", "note": "Dialog + DialogContent, no close button" },
     "DialogTitle": { "status": "full" },
     "DialogDescription": { "status": "full" },
-    "Slider": { "status": "full", "note": "Slider with one thumb, value shown" },
+    "Slider": {
+      "status": "full",
+      "note": "Slider with one thumb, on one line: label, track, value"
+    },
     "Switch": { "status": "full" },
     "SegmentedChoice": { "status": "full", "note": "ToggleGroup type single" },
     "Toolbar": { "status": "full" },

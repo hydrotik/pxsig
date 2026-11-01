@@ -374,28 +374,7 @@ export const DialogTitle = ({ ref, ...p }: C.DialogTitleProps) => (
 );
 export const DialogDescription = (p: C.DialogDescriptionProps) => <DS.DialogDescription {...p} />;
 
-export const Slider = ({
-  label,
-  value,
-  onValueChange,
-  min,
-  max,
-  step,
-  formatValue,
-  className,
-}: C.SliderProps) => (
-  <DS.Slider
-    className={className}
-    label={label}
-    showValue
-    {...(formatValue ? { formatValue: ([v]: number[]) => formatValue(v) } : {})}
-    value={[value]}
-    {...(min !== undefined ? { min } : {})}
-    max={max}
-    {...(step !== undefined ? { step } : {})}
-    onValueChange={([v]: number[]) => onValueChange(v)}
-  />
-);
+export { Slider } from './slider';
 
 export const Switch = ({ checked, onCheckedChange, label }: C.SwitchProps) => (
   <DS.Switch checked={checked} onCheckedChange={onCheckedChange} aria-label={label} />

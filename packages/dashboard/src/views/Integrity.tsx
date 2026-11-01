@@ -292,7 +292,7 @@ export function Integrity({
     <div className={s.stack}>
       <StatGroup
         className={s.statCards}
-        label={t('tabs.coverage')}
+        label={t('coverage.stats.label')}
         items={[
           {
             label: t('coverage.stats.components'),

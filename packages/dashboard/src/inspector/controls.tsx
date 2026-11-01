@@ -211,7 +211,7 @@ export function ViewControls({
         />
       ) : null}
       {pixels && mode === 'side' ? (
-        <label className={s.ctl}>
+        <label className={s.ctl} data-control>
           <Switch
             checked={showHighlight}
             onCheckedChange={setShowHighlight}
@@ -221,7 +221,7 @@ export function ViewControls({
         </label>
       ) : null}
       {pixels ? (
-        <label className={s.ctl}>
+        <label className={s.ctl} data-control>
           <Switch
             checked={showBoxes}
             onCheckedChange={setShowBoxes}
@@ -231,7 +231,7 @@ export function ViewControls({
         </label>
       ) : null}
       {detail?.tripped?.length ? (
-        <label className={s.ctl}>
+        <label className={s.ctl} data-control>
           <Switch
             checked={showTiles}
             onCheckedChange={setShowTiles}
