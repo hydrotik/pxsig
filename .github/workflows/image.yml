@@ -136,11 +136,17 @@ jobs:
             echo "::error::$REPO:$TAG-${{ matrix.arch }} is already published; tags never move. Dispatch with rebuild: r2 (or the next) for a rebuild."
             exit 1
           fi
+      # pxsig and this architecture's engine: npm skips a missing optional dependency without a word,
+      # so an image built before the engine reaches the registry has none (0.7.0 arm64).
       - name: Wait for the release on npm
         shell: bash
         run: |
-          for i in $(seq 1 40); do npm view "pxsig@$PXSIG" version >/dev/null 2>&1 && exit 0; sleep 15; done
-          echo "::error::pxsig@$PXSIG is not on npm after 10 minutes"; exit 1
+          ENGINE="@pxsig/cli-linux-${{ matrix.node_arch }}@$PXSIG"
+          for i in $(seq 1 40); do
+            npm view "pxsig@$PXSIG" version >/dev/null 2>&1 && npm view "$ENGINE" version >/dev/null 2>&1 && exit 0
+            sleep 15
+          done
+          echo "::error::pxsig@$PXSIG or $ENGINE is not on npm after 10 minutes"; exit 1
       - name: Build
         shell: bash
         run: |
