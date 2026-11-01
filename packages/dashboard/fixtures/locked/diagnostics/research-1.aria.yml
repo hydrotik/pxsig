@@ -28,7 +28,7 @@
   - text: Approved
 - main:
   - heading "Diagnostics" [level=2]
-  - text: Results from the research tools in tools/. Not part of a normal check. 4 entries · 8 CPUs (sample cpu) · Median of 3 runs · 10/24/2026, 6:00:00 AM Baseline capture 30 ms25 ms in engine Per compare, CLI → server 1.0 ms → 2.0 ms0.5× Peak memory, batch check 12 MB Binary size 5 MB Last full check 200 ms4 entries
+  - text: Results from the research tools in tools/. Not part of a normal check. 4 entries · 8 CPUs (sample cpu) · Median of 3 runs · 10/24/2026, 10:00:00 AM Baseline capture 30 ms25 ms in engine Per compare, CLI → server 1.0 ms → 2.0 ms0.5× Peak memory, batch check 12 MB Binary size 5 MB Last full check 200 ms4 entries
   - heading "Render Time per Story by Page Count" [level=3]
   - paragraph: 4 stories per run.
   - application: 0 ms 25 ms 50 ms 75 ms 100 ms 1 page 4 pages

@@ -59,29 +59,29 @@
           - button "Changed entries"
           - separator "Resize Changed entries column"
     - rowgroup:
-      - row "10/23/2026, 6:00:00 AM 4 0 0 40 ms":
-        - gridcell "10/23/2026, 6:00:00 AM"
+      - row "10/23/2026, 10:00:00 AM 4 0 0 40 ms":
+        - gridcell "10/23/2026, 10:00:00 AM"
         - gridcell "4"
         - gridcell "0"
         - gridcell "0"
         - gridcell "40 ms"
         - gridcell
-      - row "10/22/2026, 6:00:00 AM 4 2 0 40 ms":
-        - gridcell "10/22/2026, 6:00:00 AM"
+      - row "10/22/2026, 10:00:00 AM 4 2 0 40 ms":
+        - gridcell "10/22/2026, 10:00:00 AM"
         - gridcell "4"
         - gridcell "2"
         - gridcell "0"
         - gridcell "40 ms"
         - gridcell
-      - row "10/21/2026, 6:00:00 AM 4 1 0 40 ms":
-        - gridcell "10/21/2026, 6:00:00 AM"
+      - row "10/21/2026, 10:00:00 AM 4 1 0 40 ms":
+        - gridcell "10/21/2026, 10:00:00 AM"
         - gridcell "4"
         - gridcell "1"
         - gridcell "0"
         - gridcell "40 ms"
         - gridcell
-      - row "10/20/2026, 6:00:00 AM 4 0 0 40 ms":
-        - gridcell "10/20/2026, 6:00:00 AM"
+      - row "10/20/2026, 10:00:00 AM 4 0 0 40 ms":
+        - gridcell "10/20/2026, 10:00:00 AM"
         - gridcell "4"
         - gridcell "0"
         - gridcell "0"
