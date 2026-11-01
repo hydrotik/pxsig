@@ -1,0 +1,100 @@
+# pxsig's own baselines (docs/releasing.md, "pxsig's own baselines"): the dashboard, built on the
+# design system at PXSIG_DS_REF, rendered in pxsig's container (docker/screens-image.json) and
+# checked against packages/dashboard/.pxsig. A screen that changed, is new or did not render fails
+# the run until its baseline is approved and committed. The renders are uploaded as the
+# `pxsig-screens` artifact, which the review starts from.
+name: screens
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: screens-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  screens:
+    name: Dashboard screens
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    env:
+      # A git URL (credentials included) of the design-system monorepo. Pull requests from forks
+      # and from Dependabot get no secrets: the job says so and checks nothing.
+      DS_SOURCE: ${{ secrets.PXSIG_DS_SOURCE }}
+      DS_REF: ${{ vars.PXSIG_DS_REF }}
+    steps:
+      - id: has
+        name: Design system source
+        shell: bash
+        run: |
+          if [ -z "${DS_SOURCE}" ]; then
+            echo "::notice::no PXSIG_DS_SOURCE secret in this run (a fork or Dependabot): the screens are not checked"
+            echo "ds=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ds=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.has.outputs.ds == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: steps.has.outputs.ds == 'true'
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - if: steps.has.outputs.ds == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - if: steps.has.outputs.ds == 'true'
+        name: Build the dashboard on the design system
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! [[ "${DS_REF}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::the PXSIG_DS_REF variable must be the design system's full 40-character commit SHA (lower-case hex); got '${DS_REF}'"
+            exit 1
+          fi
+          ds="${RUNNER_TEMP}/design-system"
+          git init -q "$ds"
+          git -C "$ds" fetch -q --depth 1 "${DS_SOURCE}" "${DS_REF}"
+          git -C "$ds" checkout -q --detach FETCH_HEAD
+          (cd "$ds" && pnpm install --frozen-lockfile)
+          pnpm install --frozen-lockfile
+          PXSIG_UI_ADAPTER=hydrotik PXSIG_DS_SOURCE="$ds" pnpm --filter @pxsig/dashboard build
+          node scripts/check-dashboard-build.mjs packages/pxsig/dist/dashboard --adapter hydrotik --commit "${DS_REF}"
+      - if: steps.has.outputs.ds == 'true'
+        id: check
+        name: Check the screens in pxsig's container
+        shell: bash
+        run: |
+          set -uo pipefail
+          docker pull -q "$(node -p "require('./docker/screens-image.json').image")"
+          node scripts/screens-container.mjs
+          code=$?
+          if [ -f packages/dashboard/.pxsig/reports/summary.md ]; then
+            cat packages/dashboard/.pxsig/reports/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          [ "$code" -le 1 ]
+      # The review: download this artifact into packages/dashboard/.pxsig, run `pxsig serve` in
+      # packages/dashboard and approve through `pxsig serve --link` (docs/releasing.md).
+      - if: steps.has.outputs.ds == 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pxsig-screens
+          path: |
+            packages/dashboard/.pxsig/
+            !packages/dashboard/.pxsig/baselines/
+            !packages/dashboard/.pxsig/approvals.ndjson
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 14
+      - if: steps.check.outputs.code == '1'
+        name: Screens to review
+        shell: bash
+        run: |
+          echo "::error::screens changed, are new or did not render: review the pxsig-screens artifact and commit the approved baselines (docs/releasing.md, \"pxsig's own baselines\")"
+          exit 1
