@@ -136,6 +136,17 @@ test('every screen renders on the example adapter in both themes, beside the ref
   assert.ok(existsSync(path.join(out, 'summary.md')) && existsSync(path.join(out, 'report.json')));
 });
 
+test('aria: each rendered screen carries its accessibility snapshot, and only when asked', async (t) => {
+  if (skip) return t.skip(skip);
+  const flags = { build: good, only: 'shell.top-bar' };
+  const asked = await run({ ...flags, out: path.join(tmp, 'out-aria') }, { aria: true });
+  assert.ok(asked.report.screens.length > 0);
+  for (const x of asked.report.screens)
+    assert.match(x.aria ?? '', /- heading "[^"]+" \[level=1\]/, `${x.feature} ${x.theme}`);
+  const plain = await run({ ...flags, out: path.join(tmp, 'out-no-aria') });
+  assert.ok(plain.report.screens.every((x) => !('aria' in x)));
+});
+
 test('a broken adapter component fails the screens that render it (exit 1)', async (t) => {
   if (skip) return t.skip(skip);
   const { code, report } = await run({

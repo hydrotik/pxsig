@@ -113,14 +113,15 @@ export async function measureLayout(page) {
 
 /**
  * Render one screen in one theme; never throws (a failure is the result). `layout`: also measure
- * the layout findings (the adapter's screens; not the reference's).
+ * the layout findings (the adapter's screens; not the reference's). `aria`: also take the page's
+ * accessibility snapshot (Playwright's `ariaSnapshot`), the structure scripts/screens-check.mjs locks.
  * @param {Browser} browser
- * @param {{ url: string, screen: Screen, shot: string, axe: string, initScript?: string | null, layout?: boolean }} opts
+ * @param {{ url: string, screen: Screen, shot: string, axe: string, initScript?: string | null, layout?: boolean, aria?: boolean }} opts
  * @returns {Promise<ScreenCapture>}
  */
 export async function capture(
   browser,
-  { url, screen, shot, axe, initScript = null, layout = false }
+  { url, screen, shot, axe, initScript = null, layout = false, aria = false }
 ) {
   const started = Date.now();
   const context = await browser.newContext({
@@ -175,6 +176,8 @@ export async function capture(
     const settled = await settle(page);
     mkdirSync(dirname(shot), { recursive: true });
     await page.screenshot({ path: shot });
+    // Before the layout measure, which leaves the page at another width.
+    const structure = aria ? await page.locator('body').ariaSnapshot() : null;
     /** @type {ScreenViolation[]} */
     let violations = [];
     if (axe) {
@@ -210,6 +213,7 @@ export async function capture(
       axe: violations,
       layout: found,
       ms: Date.now() - started,
+      ...(structure != null ? { aria: structure } : {}),
       ...(settled ? {} : { settled: /** @type {const} */ (false) }),
       ...(retried ? { retried } : {}),
     };

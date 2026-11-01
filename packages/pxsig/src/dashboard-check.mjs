@@ -84,10 +84,11 @@ export function screenUrl(base, screen, theme) {
 
 /**
  * Run the check. Returns `{ code, report, outDir }`; throws CheckSetupError for exit 2.
- * `browser` (tests) skips the launch.
+ * `browser` (tests) skips the launch. `aria`: each adapter screen also carries its accessibility
+ * snapshot (scripts/screens-check.mjs locks it).
  * @param {Flags} [flags]
  * @param {string} [cwd]
- * @param {{ log?: (m: string) => unknown, browser?: Browser | null, concurrency?: number, catalogue?: ScreenCatalogue | null, initScript?: string | null }} [opts]
+ * @param {{ log?: (m: string) => unknown, browser?: Browser | null, concurrency?: number, catalogue?: ScreenCatalogue | null, initScript?: string | null, aria?: boolean }} [opts]
  * @returns {Promise<{ code: number, report: DashboardCheckReport, outDir: string }>}
  */
 export async function dashboardCheck(
@@ -99,6 +100,7 @@ export async function dashboardCheck(
     concurrency = 4,
     catalogue: givenCatalogue = null,
     initScript = null,
+    aria = false,
   } = {}
 ) {
   const src = dashboardSource();
@@ -266,6 +268,7 @@ export async function dashboardCheck(
         axe,
         initScript,
         layout: true,
+        aria,
       });
       let referenceShot = null;
       if (reference.used) {
@@ -296,6 +299,7 @@ export async function dashboardCheck(
         ms: r.ms,
         ...(r.settled === false ? { settled: r.settled } : {}),
         ...(r.retried ? { retried: r.retried } : {}),
+        ...(r.aria != null ? { aria: r.aria } : {}),
         shot: r.rendered ? `shots/adapter/${name(j)}` : null,
         referenceShot,
       };

@@ -433,6 +433,8 @@ export interface ScreenCapture {
   settled?: false;
   /** Present only when the page load failed with this error and was retried once. */
   retried?: 'ERR_NO_BUFFER_SPACE';
+  /** The page's accessibility snapshot (YAML), when asked for (`aria`) and the screen rendered. */
+  aria?: string;
 }
 
 /** A screen against the same screen of an earlier check (`--compare`, dashboard-check/compare.mjs). */
