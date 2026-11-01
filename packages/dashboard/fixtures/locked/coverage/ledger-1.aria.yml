@@ -1,0 +1,80 @@
+- navigation "Report sections":
+  - heading "pxsig • demo" [level=1]
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: "#overview"
+    - listitem:
+      - link "Review Stories":
+        - /url: "#stories"
+    - listitem:
+      - link "Coverage, 1 component with errors":
+        - /url: "#integrity"
+        - text: Coverage
+    - listitem:
+      - link "Accessibility":
+        - /url: "#a11y"
+    - listitem:
+      - link "Runs, 3 runs":
+        - /url: "#history"
+        - text: Runs
+    - listitem:
+      - link "Help":
+        - /url: "#help"
+  - text: dark · light Live Can approve
+  - button "Light theme"
+  - text: Approved
+- main:
+  - heading "Coverage" [level=2]
+  - alert "Coverage":
+    - text: "1 component with errors · Never checked: 1"
+    - button "View components"
+    - button "Run safe repairs"
+    - text: Safe repairs register new stories and render them, re-check entries without a usable verdict, and restore baseline images that pass the gate. They do not approve changes or write signatures.
+  - text: Components 21 with errors Errors 1 Warnings 1 Not registered 0
+  - button "Never checked 1"
+  - text: Baseline image missing 0 No baseline 0
+  - heading "Stale Entries by Component" [level=3]
+  - paragraph: 1 of 2 components has stale entries. Highest share first.
+  - list "Stale entries by component":
+    - listitem:
+      - 'button "Button: 1 stale of 1 entries"': Button 1 stale of 1
+  - text: Share stale 1–20% 81–100%
+  - heading "Coverage by Component" [level=3]
+  - paragraph: "Source: Storybook index, 2 stories in scope. Updated 10/24/2026, 6:00:00 AM."
+  - button "With issues (2)"
+  - button "All components (2)"
+  - textbox "Search all columns":
+    - /placeholder: Search all columns…
+  - button "Columns":
+    - img
+    - text: Columns
+  - grid "Data grid":
+    - rowgroup:
+      - row "Status Component Entries Issues":
+        - columnheader "Status":
+          - button "Status"
+          - separator "Resize Status column"
+        - columnheader "Component":
+          - button "Component"
+          - separator "Resize Component column"
+        - columnheader "Entries":
+          - button "Entries"
+          - separator "Resize Entries column"
+        - columnheader "Issues":
+          - button "Issues"
+          - separator "Resize Issues column"
+    - rowgroup:
+      - 'row "Never checked Card 1 Never checked: 1"':
+        - gridcell "Never checked"
+        - gridcell "Card":
+          - strong: Card
+        - gridcell "1"
+        - 'gridcell "Never checked: 1"'
+      - 'row "Stale Button 1 Stale: 1"':
+        - gridcell "Stale"
+        - gridcell "Button":
+          - strong: Button
+        - gridcell "1"
+        - 'gridcell "Stale: 1"'
+  - status
