@@ -316,7 +316,7 @@ async function main() {
     console.log(`  ${r.id}: ${r.error ? `error: ${r.error}` : r.new ? 'new' : 'changed'}`);
   if (failed.length)
     console.log(
-      '[screens] review them: cd packages/dashboard && pnpm exec pxsig serve (approve with pxsig serve --link)'
+      '[screens] review them: cd packages/dashboard && node ../pxsig/bin/pxsig.mjs serve (approve with serve --link)'
     );
   process.exit(failed.length ? 1 : 0);
 }
