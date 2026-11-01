@@ -75,6 +75,7 @@ export const SHELL: Feature[] = [
         wait: { role: 'combobox', name: 'Project' },
       },
     ],
+    anchors: [{ name: 'top-bar', target: { role: 'navigation', name: 'Report sections' } }],
   },
   {
     id: 'shell.theme',
