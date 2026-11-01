@@ -107,11 +107,21 @@ export type DashboardScreen = {
   ms?: number;
   /** Page errors seen while it rendered. */
   errors?: string[];
+  /** axe-core's violations on it. */
+  axe?: { id: string; count: number }[];
+  /** Its layout findings (dashboard-check/layout.mjs). */
+  layout?: { rule: string; text: string }[];
 } & ({ rendered: true; reason: null } | { rendered: false; reason: string });
 
 /** `pxsig dashboard check --json`: the keys read. */
 export interface DashboardCheckAnswer {
-  summary?: { screens?: number; failed?: number; rendered?: number };
+  summary?: {
+    screens?: number;
+    failed?: number;
+    rendered?: number;
+    withAxe?: number;
+    withLayout?: number;
+  };
   screens?: DashboardScreen[];
 }
 
