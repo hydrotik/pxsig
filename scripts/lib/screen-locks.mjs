@@ -196,3 +196,20 @@ export function checkGeometry({ screens, file, update = false, complete = false 
   }
   return { problems, written, geometry: now };
 }
+
+/**
+ * Each rendered screen's accessibility and layout findings, one line per screen that has any.
+ * @template {{ rendered: boolean, axe: { id: string, count: number }[], layout: { rule: string, text: string }[] }} S
+ * @param {S[]} screens
+ * @param {(s: S) => string} idOf
+ */
+export const screenFindings = (screens, idOf) =>
+  screens
+    .filter((x) => x.rendered && (x.axe.length || x.layout.length))
+    .map(
+      (x) =>
+        `${idOf(x)}: ${[
+          ...x.axe.map((v) => `axe ${v.id} (${v.count})`),
+          ...x.layout.map((l) => `layout ${l.rule}: ${l.text}`),
+        ].join('; ')}`
+    );

@@ -8,6 +8,7 @@ import {
   checkGeometry,
   checkStructure,
   firstDifference,
+  screenFindings,
   structureFile,
 } from './lib/screen-locks.mjs';
 
@@ -132,5 +133,22 @@ test('geometry: a removed anchor or feature fails a full run only', () => {
   assert.match(
     checkGeometry({ screens: fewer, file, complete: true }).problems[0],
     /inspector.header: the locked geometry has an anchor, screen or feature this run does not/
+  );
+});
+
+test('findings: a rendered screen with an axe or layout finding is one line; others none', () => {
+  const screens = [
+    {
+      id: 'a',
+      rendered: true,
+      axe: [{ id: 'label', count: 2 }],
+      layout: [{ rule: 'edge', text: 'x' }],
+    },
+    { id: 'b', rendered: true, axe: [], layout: [] },
+    { id: 'c', rendered: false, axe: [{ id: 'label', count: 1 }], layout: [] },
+  ];
+  assert.deepEqual(
+    screenFindings(screens, (s) => s.id),
+    ['a: axe label (2); layout edge: x']
   );
 });
