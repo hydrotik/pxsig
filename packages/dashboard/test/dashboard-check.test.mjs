@@ -147,6 +147,16 @@ test('aria: each rendered screen carries its accessibility snapshot, and only wh
   assert.ok(plain.report.screens.every((x) => !('aria' in x)));
 });
 
+test('a time on a screen reads the same on every machine: UTC, en-US', async (t) => {
+  if (skip) return t.skip(skip);
+  const { report } = await run(
+    { build: good, only: 'runs.history', themes: 'dark', out: path.join(tmp, 'out-utc') },
+    { aria: true }
+  );
+  // The sample run of 2026-10-23T10:00Z, whatever this machine's own time zone is.
+  assert.match(report.screens[0].aria ?? '', /10\/23\/2026, 10:00:00 AM/);
+});
+
 test('a broken adapter component fails the screens that render it (exit 1)', async (t) => {
   if (skip) return t.skip(skip);
   const { code, report } = await run({

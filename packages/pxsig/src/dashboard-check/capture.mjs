@@ -12,6 +12,9 @@ import { inspectLayout, MAX_PER_RULE, NARROW_WIDTH, pageOverflow } from './layou
 export const VIEWPORT = { width: 1280, height: 900 };
 /** The clock every screen sees, so relative times ("2 days ago") are the same on every run. */
 export const FIXED_TIME = '2026-10-25T12:00:00.000Z';
+/** …in the same time zone and locale on every machine, so a time on a screen reads the same too. */
+export const TIMEZONE = 'UTC';
+export const LOCALE = 'en-US';
 export const LANDMARK_MS = 10_000;
 /** The screenshot waits until no element's box has moved for this many frames in a row… */
 export const SETTLE_FRAMES = 6;
@@ -128,6 +131,8 @@ export async function capture(
     viewport: VIEWPORT,
     reducedMotion: 'reduce',
     colorScheme: url.includes('theme=light') ? 'light' : 'dark',
+    timezoneId: TIMEZONE,
+    locale: LOCALE,
   });
   /** @type {string[]} */
   const errors = [];
