@@ -180,9 +180,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: verify
     env:
-      # A git URL (credentials included) of the design-system monorepo the dashboard compiles
-      # from. Empty when the secret is not set: then the dashboard comes from the release asset.
-      DS_SOURCE: ${{ secrets.PXSIG_DS_SOURCE }}
+      # Whether the PXSIG_DS_SOURCE secret (a git URL of the design-system monorepo the dashboard
+      # compiles from, credentials included) is set; when it is not, the dashboard comes from the
+      # release asset. The secret itself reaches only the step that fetches.
+      HAS_DS: ${{ secrets.PXSIG_DS_SOURCE != '' }}
       DS_REF: ${{ vars.PXSIG_DS_REF }}
       DRY_RUN: ${{ needs.verify.outputs.dry_run }}
       GH_TOKEN: ${{ github.token }}
@@ -193,7 +194,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ -n "${DS_SOURCE}" ]; then
+          if [ "${HAS_DS}" = true ]; then
             echo "mode=build" >> "$GITHUB_OUTPUT"
           elif gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json assets --jq '.assets[].name' 2>/dev/null | grep -qx 'pxsig-dashboard.tar.gz'; then
             echo "mode=release" >> "$GITHUB_OUTPUT"
@@ -217,8 +218,10 @@ jobs:
         with:
           node-version: 22
       - if: steps.how.outputs.mode == 'build'
-        name: Build the dashboard
+        name: Fetch the design system
         shell: bash
+        env:
+          DS_SOURCE: ${{ secrets.PXSIG_DS_SOURCE }}
         run: |
           set -euo pipefail
           # The design system is pinned by commit, so BUILD.json (written by the build) names
@@ -231,6 +234,12 @@ jobs:
           git init -q "$ds"
           git -C "$ds" fetch -q --depth 1 "${DS_SOURCE}" "${DS_REF}"
           git -C "$ds" checkout -q --detach FETCH_HEAD
+      - if: steps.how.outputs.mode == 'build'
+        name: Build the dashboard
+        shell: bash
+        run: |
+          set -euo pipefail
+          ds="${RUNNER_TEMP}/design-system"
           (cd "$ds" && pnpm install --frozen-lockfile)
           pnpm install --frozen-lockfile
           # The adapter is named, not left to the default: the release ships the reference look.
