@@ -5,6 +5,50 @@ semantic versioning.
 
 ## Unreleased
 
+## 0.7.4 - 2026-11-02
+
+The self-contained addon release. `storybook` becomes an optional peer of
+`@pxsig/storybook-addon`, so resolving the addon on its own (a package procurement service, a
+supply-chain scanner) no longer pulls in the newest Storybook and its bundlers: the addon's install
+graph is the addon. `pxsig/workspace` and `pxsig/psig` gain TypeScript types, and the docs match
+the Storybook 10 floor.
+
+### Upgrading from 0.7.3
+
+- **`@pxsig/storybook-addon`: `storybook` is an optional peer dependency.** Nothing, for a project that has Storybook. A setup that installed the addon on its own to get Storybook installs `storybook` itself: `npm install -D storybook`.
+
+### Behaviour changes
+
+- **`@pxsig/storybook-addon`: `storybook` is an optional peer dependency.** npm 7 and later
+  installed the newest Storybook with the addon when the project had none, and with it Storybook's
+  bundlers (esbuild, oxc-parser, oxc-resolver and their per-platform binaries); a supply-chain
+  scanner or a package procurement service resolving the addon alone counted all of them. The
+  addon has no dependencies of its own and runs inside the project's Storybook, so now installing
+  it installs nothing else. The peer range is unchanged (`>=10`), and npm still reports a
+  Storybook outside it.
+  To update: nothing, for a project that has Storybook. A setup that installed the addon on its
+  own to get Storybook installs `storybook` itself: `npm install -D storybook`.
+
+### Added
+
+- **TypeScript types for `pxsig/workspace` and `pxsig/psig`.** Both exports now carry a `types`
+  condition, so a TypeScript project gets the resolver's and the `.psig` reader's signatures
+  (`Project`, `Workspace`, `PsigHeader`, …) instead of `any`. A test compiles a consumer against
+  the installed layout.
+
+### Documentation
+
+- **README:** the addon needs Storybook 10 or later (it said 9; npm refuses 9 with ERESOLVE). A
+  script test now holds every page that names the addon's Storybook version to its peer floor.
+  The quick start says `manifest` and `check` take a running Storybook or a static build in
+  `storybook.staticDir`, and that `serve` prints the dashboard's link on Windows instead of
+  opening it; QUICKSTART says the same of `--open`.
+- **npm README, Network:** commands reach this workspace's dashboard server at `PXSIG_URL`, else
+  the address `pxsig serve` recorded, else `server.port`; a server for another workspace is not
+  used.
+- **docs/migrating.md:** an "Upgrading to 0.6" section. **docs/architecture.md:** the browser and
+  clipboard helpers, the addon's server check, and how pxsig checks its own dashboard.
+
 ## 0.7.3 - 2026-11-02
 
 The leaner-package release. `playwright` becomes an optional peer dependency, so installing pxsig
