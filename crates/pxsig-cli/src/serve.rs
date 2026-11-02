@@ -182,6 +182,9 @@ fn serve_lines(input: impl BufRead, out: &mut impl Write) -> Result<()> {
 }
 
 #[cfg(test)]
+mod dispatch_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
