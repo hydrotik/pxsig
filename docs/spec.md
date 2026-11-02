@@ -315,7 +315,8 @@ has no Storybook: nothing fetches one, its components are the sections, and `pxs
 Without `source`, or with any other value, the entries are stories.
 
 `skipped` lists stories left out by `parameters.pxsig.disable` or the `no-pxsig` tag, with the
-reason. `pxsig manifest` rebuilds the file from the running Storybook. Existing entries keep their
+reason. `pxsig manifest` rebuilds the file from Storybook's index.json (the running Storybook, or the
+build in `storybook.staticDir`). Existing entries keep their
 `sig` path.
 
 ## 7. Run output

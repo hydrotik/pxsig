@@ -377,7 +377,8 @@ changes the exit.
 ## Story parameters
 
 Per-story settings live in the story file, on a story or on its meta, under `parameters.pxsig`.
-pxsig reads them from the running Storybook, so they are exactly what the story declares.
+pxsig reads them from Storybook's index.json (the running Storybook, or the build in
+`storybook.staticDir`), so they are exactly what the story declares.
 `pxsig manifest` copies them into the manifest; edit a story, then run `pxsig manifest` again.
 
 ```ts
