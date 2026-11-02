@@ -32,7 +32,7 @@ export interface Verdict {
   limit: number | null;
   /** The last release's median in the same run (--against), or null. */
   rel: number | null;
-  /** Over this fails: RELEASE_RATIO × rel, and at least rel + SLACK_MS. */
+  /** Over this fails: RELEASE_RATIO × rel, and at least rel + RELEASE_FLOOR_MS. */
   relLimit: number | null;
   /** Over its budget, or slower than the release in the same run beyond relLimit. */
   fail: boolean;
