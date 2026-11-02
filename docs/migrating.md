@@ -2,6 +2,9 @@
 
 ## Upgrading to 0.7
 
+0.7.3: `playwright` is an optional peer dependency, so npm no longer installs it with pxsig. A
+project with no `playwright` or `@playwright/test` of its own adds it: `npm install -D playwright`.
+
 0.7.2 needs nothing: `pxsig dashboard check` now renders in UTC and `en-US`, so on a machine
 outside UTC a screen that shows a time differs once from an earlier `--compare` run.
 
