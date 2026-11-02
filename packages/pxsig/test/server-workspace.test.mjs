@@ -107,13 +107,23 @@ test('serverStatus (doctor, repair, approve --apply): another workspace’s serv
   const other = await fakeServer({ workspaceId: 'ffffffffffffffff', running: true, queued: 3 });
   const old = await fakeServer({ running: false, queued: 0 });
   try {
-    assert.deepEqual(await serverStatus(mine.url, root), { up: true, running: false, queued: 0 });
-    const r = await serverStatus(other.url, root);
+    // No PXSIG_URL: the tests' own (test/hermetic.mjs) would make every server the person's choice.
+    const env = {};
+    assert.deepEqual(await serverStatus(mine.url, root, env), {
+      up: true,
+      running: false,
+      queued: 0,
+    });
+    const r = await serverStatus(other.url, root, env);
     assert.equal(r.up, false);
     assert.match(String(!r.up && r.foreign), /serves another workspace/);
-    assert.equal((await serverStatus(old.url, root)).up, false, 'names none, not recorded here');
+    assert.equal(
+      (await serverStatus(old.url, root, env)).up,
+      false,
+      'names none, not recorded here'
+    );
     recordServer(root, old.url);
-    assert.equal((await serverStatus(old.url, root)).up, true, 'names none, recorded here');
+    assert.equal((await serverStatus(old.url, root, env)).up, true, 'names none, recorded here');
     // The server's own hooks pass no root: no check.
     assert.equal((await serverStatus(other.url)).up, true);
   } finally {

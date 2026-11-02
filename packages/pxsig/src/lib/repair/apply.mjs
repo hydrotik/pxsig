@@ -89,16 +89,17 @@ export function pruneOrphans(ctx, ledger, ids, { by, via }) {
  * (lib/workspace/peers.mjs `foreignServer`): its queue is not this workspace's.
  * @param {string | null | undefined} serverUrl
  * @param {string | null} [root] the workspace the caller acts for
+ * @param {NodeJS.ProcessEnv} [env] where PXSIG_URL is read (`foreignServer`)
  * @returns {Promise<ServerStatus>}
  */
-export async function serverStatus(serverUrl, root = null) {
+export async function serverStatus(serverUrl, root = null, env = process.env) {
   try {
     const r = await fetch(`${serverUrl}/__pxsig/status`, { signal: AbortSignal.timeout(1500) });
     // The server's status answer (docs/server.md, GET /__pxsig/status).
     const s = /** @type {{ running?: unknown, queued?: number, workspaceId?: string }} */ (
       await r.json()
     );
-    const foreign = root ? foreignServer(s, { root, url: String(serverUrl) }) : null;
+    const foreign = root ? foreignServer(s, { root, url: String(serverUrl), env }) : null;
     if (foreign) return { up: false, foreign };
     return { up: true, running: !!s.running, queued: s.queued ?? 0 };
   } catch {
