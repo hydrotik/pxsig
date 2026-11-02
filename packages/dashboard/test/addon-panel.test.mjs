@@ -175,7 +175,7 @@ async function open({ origin, story = STORY, server = null, snap = null, pinned 
 
 test("live: the story's result, the actions, the embedded inspector and the sidebar dot", async (t) => {
   if (skip) return t.skip(skip);
-  const { page, requests } = await open({ origin: 'http://127.0.0.1:9', server: status() });
+  const { page } = await open({ origin: 'http://127.0.0.1:9', server: status() });
   await page.getByText('pxsig: changed').waitFor();
   assert.ok(await page.getByText('dark changed').isVisible());
   for (const name of ['Check story', 'Check all', 'Open dashboard'])
@@ -194,13 +194,13 @@ test("live: the story's result, the actions, the embedded inspector and the side
       description: 'dark: changed · ssim 0.91',
     },
   ]);
-  await Promise.all([
+  // The request as Playwright saw it: the route handler may not have logged it yet.
+  const [post] = await Promise.all([
     page.waitForRequest(`${SERVER}/__pxsig/check`),
     page.getByRole('button', { name: 'Check story' }).click(),
   ]);
-  const post = requests.find((r) => r.url === `${SERVER}/__pxsig/check`);
-  assert.equal(post?.method, 'POST');
-  assert.deepEqual(JSON.parse(post?.body ?? '{}'), { story: STORY });
+  assert.equal(post.method(), 'POST');
+  assert.deepEqual(JSON.parse(post.postData() ?? '{}'), { story: STORY });
   await page.close();
 });
 
