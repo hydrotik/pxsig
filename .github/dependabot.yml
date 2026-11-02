@@ -1,7 +1,7 @@
-# Dependency updates: GitHub Actions, the pnpm workspace and the Rust workspace, weekly on Monday.
-# Each pull request goes through the same required checks as any other (ci.yml). Commit subjects
-# are `chore(deps): …` (commitlint.config.cjs). Security updates and alerts are switched on in the
-# repository settings (Code security), not here.
+# Dependency updates: GitHub Actions, the pnpm workspace, the examples and the Rust workspace,
+# weekly on Monday. Each pull request goes through the same required checks as any other (ci.yml).
+# Commit subjects are `chore(deps): …` (commitlint.config.cjs). Security updates and alerts are
+# switched on in the repository settings (Code security), not here.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -47,6 +47,25 @@ updates:
       # (7 is a native compiler with an exports map), so it is taken by hand, through a design.
       - dependency-name: typescript
         update-types: ['version-update:semver-major']
+
+  # The examples' own lockfiles (scripts/examples-test.mjs installs them frozen). One grouped pull
+  # request of minor and patch updates; a major comes on its own. Their `link:` dependencies on
+  # pxsig are not versions, so Dependabot leaves them.
+  - package-ecosystem: npm
+    directories:
+      - /examples/single-package
+      - /examples/monorepo
+      - /examples/custom-ui
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      examples:
+        update-types: [minor, patch]
 
   - package-ecosystem: cargo
     directory: /

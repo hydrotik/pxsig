@@ -2,7 +2,14 @@
  * shared.mjs — examples-test.mjs's paths, environment, process helpers and the expect/failure count.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -90,41 +97,66 @@ export const rootPackageManager = /** @type {{ packageManager?: string }} */ (
   JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8'))
 ).packageManager;
 
+/** The packages the examples link to (`link:../../packages/<name>`). */
+const LINKED = ['pxsig', 'storybook-addon'];
+
 /**
- * Copy an example, rewriting `link:` dependencies to this checkout's packages.
+ * Copy an example to `<temp>/examples/<name>`, beside a `<temp>/packages/` whose entries are links
+ * to this checkout's packages, so its `link:` dependencies resolve as written and its committed
+ * pnpm-lock.yaml matches its package.json.
  * @param {string} name
  */
 export function stage(name) {
   // On the checkout's drive: Storybook names a cache folder after the path from the example to a
   // linked package, which across Windows drives contains "D:" and cannot be created.
-  const dir = mkdtempSync(join(process.env.RUNNER_TEMP || tmpdir(), `pxsig-example-${name}-`));
+  const base = mkdtempSync(join(process.env.RUNNER_TEMP || tmpdir(), `pxsig-example-${name}-`));
+  mkdirSync(join(base, 'packages'));
+  // A junction on Windows needs no privilege; elsewhere the type is ignored.
+  for (const p of LINKED)
+    symlinkSync(join(repo, 'packages', p), join(base, 'packages', p), 'junction');
+  const dir = join(base, 'examples', name);
   copyTree(join(repo, 'examples', name), dir, {
     filter: (p) => !/node_modules|storybook-static|\.pxsig|__pxsig__/.test(p),
   });
-  const walk = (/** @type {string} */ d) => {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      const p = join(d, e.name);
-      if (e.isDirectory() && e.name !== 'node_modules') walk(p);
-      else if (e.name === 'package.json') {
-        // An example's package.json: dependency tables and `packageManager` are read.
-        const pj =
-          /** @type {Record<string, Record<string, string> | undefined> & { packageManager?: string }} */ (
-            JSON.parse(readFileSync(p, 'utf8'))
-          );
-        for (const k of ['dependencies', 'devDependencies'])
-          for (const [dep, v] of Object.entries(pj[k] ?? {}))
-            if (String(v).startsWith('link:'))
-              /** @type {Record<string, string>} */ (pj[k])[dep] =
-                `link:${join(repo, 'packages', dep === 'pxsig' ? 'pxsig' : dep.replace('@pxsig/', ''))}`;
-        // The staged copy is outside the checkout, so Corepack would fetch the newest pnpm (12 fails
-        // on ignored build scripts): pin the repository's own.
-        if (d === dir && !pj.packageManager) pj.packageManager = rootPackageManager;
-        writeFileSync(p, JSON.stringify(pj, null, 2));
-      }
-    }
-  };
-  walk(dir);
+  // The staged copy is outside the checkout, so Corepack would fetch the newest pnpm (12 fails on
+  // ignored build scripts): pin the repository's own.
+  const pjPath = join(dir, 'package.json');
+  const pj = /** @type {{ packageManager?: string }} */ (JSON.parse(readFileSync(pjPath, 'utf8')));
+  if (!pj.packageManager) {
+    pj.packageManager = rootPackageManager;
+    writeFileSync(pjPath, JSON.stringify(pj, null, 2));
+  }
   return dir;
+}
+
+/** `--fresh`: install the examples unpinned (the newest versions their ranges allow). */
+export const fresh = process.argv.includes('--fresh');
+
+/**
+ * Install a staged example from its committed pnpm-lock.yaml (`--frozen-lockfile`), or unpinned
+ * with `--fresh`. A workspace example installs as a workspace; another one ignores any workspace
+ * above it.
+ * @param {string} dir
+ */
+export function install(dir) {
+  const ws = existsSync(join(dir, 'pnpm-workspace.yaml'));
+  pnpm(
+    [
+      'install',
+      ...(ws ? [] : ['--ignore-workspace']),
+      fresh ? '--no-frozen-lockfile' : '--frozen-lockfile',
+      '--config.confirmModulesPurge=false',
+    ],
+    dir,
+    { stdio: 'inherit' }
+  );
+  // The example's own Playwright renders its stories: its browser build, if the lockfile pins
+  // another version than the one the job installed (the system libraries are already there).
+  if (
+    existsSync(join(dir, 'node_modules', '.bin', 'playwright')) ||
+    existsSync(join(dir, 'node_modules', '.bin', 'playwright.cmd'))
+  )
+    pnpm(['exec', 'playwright', 'install', 'chromium'], dir, { stdio: 'inherit' });
 }
 
 /**

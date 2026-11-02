@@ -61,6 +61,7 @@ pnpm --filter @pxsig/storybook-addon test  # the addon
 pnpm --filter @pxsig/dashboard test        # the dashboard's flows against a mocked server
 node --test packages/pxsig/test/help.test.mjs   # one file
 node scripts/examples-test.mjs             # the examples, end to end (CI's Examples job)
+node scripts/examples-test.mjs --fresh     # the same, installed unpinned instead of from their lockfiles
 node scripts/dashboard-drift.mjs --base-ref origin/main  # dashboard screens this branch changes (CI, on pull requests)
 node scripts/check-clean.mjs               # what must never be committed (below)
 node scripts/check-links.mjs               # every relative link and #anchor in the Markdown resolves
