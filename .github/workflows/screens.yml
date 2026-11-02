@@ -24,16 +24,17 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-latest
     env:
-      # A git URL (credentials included) of the design-system monorepo. Pull requests from forks
-      # and from Dependabot get no secrets: the job says so and checks nothing.
-      DS_SOURCE: ${{ secrets.PXSIG_DS_SOURCE }}
+      # Whether the PXSIG_DS_SOURCE secret (a git URL of the design-system monorepo, credentials
+      # included) is set. Pull requests from forks and from Dependabot get no secrets: the job says
+      # so and checks nothing. The secret itself reaches only the step that fetches.
+      HAS_DS: ${{ secrets.PXSIG_DS_SOURCE != '' }}
       DS_REF: ${{ vars.PXSIG_DS_REF }}
     steps:
       - id: has
         name: Design system source
         shell: bash
         run: |
-          if [ -z "${DS_SOURCE}" ]; then
+          if [ "${HAS_DS}" != true ]; then
             echo "::notice::no PXSIG_DS_SOURCE secret in this run (a fork or Dependabot): the screens are not checked"
             echo "ds=false" >> "$GITHUB_OUTPUT"
           else
@@ -49,8 +50,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - if: steps.has.outputs.ds == 'true'
-        name: Build the dashboard on the design system
+        name: Fetch the design system
         shell: bash
+        env:
+          DS_SOURCE: ${{ secrets.PXSIG_DS_SOURCE }}
         run: |
           set -euo pipefail
           if ! [[ "${DS_REF}" =~ ^[0-9a-f]{40}$ ]]; then
@@ -61,6 +64,12 @@ jobs:
           git init -q "$ds"
           git -C "$ds" fetch -q --depth 1 "${DS_SOURCE}" "${DS_REF}"
           git -C "$ds" checkout -q --detach FETCH_HEAD
+      - if: steps.has.outputs.ds == 'true'
+        name: Build the dashboard on the design system
+        shell: bash
+        run: |
+          set -euo pipefail
+          ds="${RUNNER_TEMP}/design-system"
           (cd "$ds" && pnpm install --frozen-lockfile)
           pnpm install --frozen-lockfile
           PXSIG_UI_ADAPTER=hydrotik PXSIG_DS_SOURCE="$ds" pnpm --filter @pxsig/dashboard build
