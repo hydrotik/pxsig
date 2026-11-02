@@ -151,12 +151,18 @@ export function install(dir) {
     { stdio: 'inherit' }
   );
   // The example's own Playwright renders its stories: its browser build, if the lockfile pins
-  // another version than the one the job installed (the system libraries are already there).
+  // another version than the one the job installed (the system libraries are already there). Not
+  // in pxsig's image, where PXSIG_PLAYWRIGHT names the Playwright that renders; and never removing
+  // another version's browser (Playwright's clean-up would take the image's).
   if (
-    existsSync(join(dir, 'node_modules', '.bin', 'playwright')) ||
-    existsSync(join(dir, 'node_modules', '.bin', 'playwright.cmd'))
+    !process.env.PXSIG_PLAYWRIGHT &&
+    (existsSync(join(dir, 'node_modules', '.bin', 'playwright')) ||
+      existsSync(join(dir, 'node_modules', '.bin', 'playwright.cmd')))
   )
-    pnpm(['exec', 'playwright', 'install', 'chromium'], dir, { stdio: 'inherit' });
+    pnpm(['exec', 'playwright', 'install', 'chromium'], dir, {
+      stdio: 'inherit',
+      env: { ...env, PLAYWRIGHT_SKIP_BROWSER_GC: '1' },
+    });
 }
 
 /**
