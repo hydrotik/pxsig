@@ -144,3 +144,6 @@ pub fn run(input: &SweepInput) -> Result<Value> {
         .collect::<Result<_>>()?;
     Ok(json!({ "rows": rows }))
 }
+
+#[cfg(test)]
+mod tests;
