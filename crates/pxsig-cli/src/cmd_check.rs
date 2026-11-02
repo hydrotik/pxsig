@@ -12,6 +12,9 @@ use crate::batch::{BaselineOpts, CheckOpts};
 use crate::gate::GateArgs;
 use crate::{affected, batch, gate, io, report, sweep, BatchArgs};
 
+#[cfg(test)]
+mod tests;
+
 // --- capture / compare (drop-in) ----------------------------------------------------
 
 pub(super) fn cmd_capture(
