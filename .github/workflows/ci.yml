@@ -103,7 +103,7 @@ jobs:
       - if: runner.os == 'Linux'
         run: |
           rustup component add llvm-tools-preview
-          cargo llvm-cov --workspace --locked --summary-only --fail-under-lines 72
+          cargo llvm-cov --workspace --locked --summary-only --fail-under-lines 83
       - run: cargo build --release --locked
       # The engine runs on a Windows machine without the Visual C++ Redistributable (crt-static).
       - if: runner.os == 'Windows'
