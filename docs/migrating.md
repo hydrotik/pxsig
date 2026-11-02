@@ -2,6 +2,10 @@
 
 ## Upgrading to 0.7
 
+0.7.4: `storybook` is an optional peer of `@pxsig/storybook-addon`, so npm no longer installs it
+with the addon. A project with Storybook needs nothing; a setup that installed the addon on its own
+to get Storybook adds it: `npm install -D storybook`.
+
 0.7.3: `playwright` is an optional peer dependency, so npm no longer installs it with pxsig. A
 project with no `playwright` or `@playwright/test` of its own adds it: `npm install -D playwright`.
 
