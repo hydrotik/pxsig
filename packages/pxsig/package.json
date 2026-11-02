@@ -17,8 +17,14 @@
     "pxsig": "bin/pxsig.mjs"
   },
   "exports": {
-    "./workspace": "./src/public/workspace.mjs",
-    "./psig": "./src/lib/psig.mjs",
+    "./workspace": {
+      "types": "./src/public/workspace.d.mts",
+      "default": "./src/public/workspace.mjs"
+    },
+    "./psig": {
+      "types": "./src/public/psig.d.mts",
+      "default": "./src/lib/psig.mjs"
+    },
     "./dashboard": {
       "types": "./dashboard/src/ui/contract.ts",
       "default": "./src/public/dashboard.mjs"

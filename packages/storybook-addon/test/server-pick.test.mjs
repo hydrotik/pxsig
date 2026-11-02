@@ -7,9 +7,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { acceptsServer, DEFAULT_SERVER } from '../server-pick.mjs';
-import { workspaceId } from '../../pxsig/src/lib/workspace/peers.mjs';
+import { serverFile, serverUrlFor, workspaceId } from '../../pxsig/src/lib/workspace/peers.mjs';
 
-const { workspaceIdOf } = createRequire(import.meta.url)('../preset.cjs');
+const { managerHead, workspaceIdOf } = createRequire(import.meta.url)('../preset.cjs');
 const ws = mkdtempSync(join(tmpdir(), 'pxsig-pick-'));
 after(() => rmSync(ws, { recursive: true, force: true }));
 writeFileSync(join(ws, 'pxsig.workspace.json'), '{"version":1,"projects":{}}');
@@ -46,4 +46,22 @@ test('the pxsig-server localStorage key is always used', () => {
   const at = { url, workspaceId: 'aaaaaaaaaaaaaaaa', override: url };
   assert.equal(acceptsServer({ workspaceId: 'bbbbbbbbbbbbbbbb' }, at), true);
   assert.equal(acceptsServer({}, at), true);
+});
+
+test("the preset reads server.json where pxsig writes it, and the default is pxsig's", () => {
+  const configDir = join(ws, '.storybook');
+  /** @returns {string[]} the servers the preset hands the manager */
+  const servers = () =>
+    JSON.parse(
+      /** @type {string} */ (/__PXSIG__=(.*)<\/script>/.exec(managerHead('', { configDir }))?.[1])
+    ).servers;
+  // No server file: pxsig falls back to the default port, the address the manager also tries.
+  assert.equal(serverUrlFor(ws, { env: {} }), DEFAULT_SERVER);
+  assert.deepEqual(servers(), []);
+  // The file `pxsig serve` writes for this workspace (peers.mjs serverFile): both read the same one.
+  mkdirSync(join(serverFile(ws), '..'), { recursive: true });
+  writeFileSync(serverFile(ws), JSON.stringify({ url: 'http://127.0.0.1:6471' }));
+  assert.equal(serverUrlFor(ws, { env: {} }), 'http://127.0.0.1:6471');
+  assert.deepEqual(servers(), ['http://127.0.0.1:6471']);
+  rmSync(join(ws, 'node_modules'), { recursive: true, force: true });
 });

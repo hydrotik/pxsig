@@ -32,8 +32,8 @@ Module exports:
 
 | Export                                                             | Content                                                                                                                                                  |
 | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pxsig/workspace`                                                  | The resolver: `openProject`, `findWorkspace`, `pickProject`, `loadProject` and `SetupError`                                                              |
-| `pxsig/psig`                                                       | Read `.psig` headers and images                                                                                                                          |
+| `pxsig/workspace`                                                  | The resolver: `openProject`, `findWorkspace`, `pickProject`, `loadProject` and `SetupError`, with TypeScript types                                       |
+| `pxsig/psig`                                                       | Read `.psig` headers and images (`readHeader`, `readSection`, `readImage`, `hasImage`), with TypeScript types                                            |
 | `pxsig/dashboard`                                                  | The dashboard's UI contract, types only (`import type * as C from 'pxsig/dashboard'`); loading it at run time throws                                     |
 | `pxsig/diff-viewer`                                                | The diff viewer's React parts as TypeScript source, for a bundler that compiles TypeScript and JSX (Vite, as `pxsig dashboard build` uses); not for Node |
 | `pxsig/ui/catalog/hydrotik.json`, `….schema.json`, `….source.json` | The reference design system's component catalog, its schema and its source commit                                                                        |
