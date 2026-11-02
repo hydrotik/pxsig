@@ -2,7 +2,9 @@
 /**
  * scenarios.mjs — sample data for the dashboard: what `/__pxsig/data` would return, as named
  * scenarios. The flows tests (test/flows.test.mjs) and `pxsig dashboard check` share it, so every
- * screen the check renders is one the tests exercise.
+ * screen the check renders is one the tests exercise. pxsig's test/dashboard-fixtures.test.mjs
+ * holds every field set here to a real `/__pxsig/data` answer: one the server stops sending, or
+ * sends as another type, fails there.
  *
  * Neutral names (`demo`, `ui-button--…`) and fixed timestamps: two runs give the same JSON. No
  * project data, no store, no images (the check generates its images at run time).
