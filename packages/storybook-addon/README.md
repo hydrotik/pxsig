@@ -28,7 +28,8 @@ server: its panel shows the read-only snapshot `storybook build` wrote into the 
 Requires Storybook 10 or later (tested on 10.6). It imports `storybook/manager-api` and
 `storybook/internal/components`, and reports sidebar statuses through Storybook's status store
 (`experimental_getStatusStore`); none of those exist in Storybook 8. Storybook 9 has them but is
-not tested, so the peer range starts at 10.
+not tested, so the peer range starts at 10. The peer is optional: npm does not install a
+Storybook with the addon, it uses the one the project already has.
 
 Full documentation: [docs/storybook.md](../../docs/storybook.md).
 
