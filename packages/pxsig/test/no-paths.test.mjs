@@ -67,7 +67,7 @@ test(
           );
       }
     } finally {
-      S.stop();
+      await S.stop();
       sb.close();
     }
   }

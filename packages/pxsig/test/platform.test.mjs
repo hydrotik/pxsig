@@ -7,12 +7,10 @@
  * The serve test needs the Rust binary; skipped without it.
  */
 import assert from 'node:assert/strict';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { createServer } from 'node:http';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { test } from 'node:test';
-import { fileURLToPath } from 'node:url';
 import { toPosix } from '../src/lib/paths.mjs';
 import {
   caseCollisions,
@@ -23,10 +21,9 @@ import {
 } from '../src/lib/portability.mjs';
 import { initProject } from '../src/lib/setup.mjs';
 import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
+import { startServer } from './server-proc.mjs';
 import { skipUnless } from './strict.mjs';
-/** @import { AddressInfo } from 'node:net' */
 
-const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const tmp = () => tempDir('platform');
 
 test('paths Windows cannot check out are named', () => {
@@ -152,38 +149,12 @@ test('a new store keeps its records LF and its baselines binary', () => {
     assert.ok(ga.split('\n').includes(line), line);
 });
 
-const freePort = () =>
-  /** @type {Promise<number>} */ (
-    new Promise((ok) => {
-      const s = createServer().listen(0, '127.0.0.1', () => {
-        // Listening on TCP: the address is an AddressInfo.
-        const p = /** @type {AddressInfo} */ (s.address()).port;
-        s.close(() => ok(p));
-      });
-    })
-  );
-
 /** @param {string} repo */
-async function startServe(repo) {
-  const port = await freePort();
-  const proc = spawn(
-    process.execPath,
-    [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-    { cwd: repo, env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
-  );
-  let log = '';
-  proc.stdout.on('data', (d) => (log += d));
-  proc.stderr.on('data', (d) => (log += d));
-  await /** @type {Promise<void>} */ (
-    new Promise((ok, fail) => {
-      const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-      proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
-      proc.on('exit', (c) => (clearTimeout(t), fail(new Error(`server exited ${c}:\n${log}`))));
-    })
-  );
-  const exited = new Promise((ok) => proc.on('exit', (code, signal) => ok({ code, signal })));
-  return { proc, exited, log: () => log };
-}
+const startServe = (repo) =>
+  startServer({
+    cwd: repo,
+    env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' },
+  });
 
 test(
   'stopping pxsig serve gives the store lock back',

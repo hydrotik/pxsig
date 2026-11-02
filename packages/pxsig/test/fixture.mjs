@@ -40,19 +40,35 @@ export const TEMP_PREFIX = 'pxsig dir é-';
 
 /** @type {string[]} */
 const made = [];
-/** @param {string} dir */
+/**
+ * Remove a folder; one still busy (Windows: a child the test stopped, or the engine under it, is
+ * not gone yet, or a later after hook stops it) is tried again when the file's tests end.
+ * @param {string} dir
+ */
 const remove = (dir) => {
   try {
     rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch (e) {
-    // A folder a stray child still holds (Windows): left in the temp folder, said, not a failure.
-    process.stderr.write(`could not remove ${dir}: ${String(e)}\n`);
+  } catch {
+    made.push(dir);
   }
 };
-// The folders made without a test context (at a file's top level): removed when the file's tests end.
+// The folders made without a test context, and the busy ones: removed when the file's tests end,
+// waiting up to 30 s for the processes that hold them. One still held is said, not a failure.
 // Each test file is its own process, so this runs once per file.
-after(() => {
-  for (const dir of made.splice(0)) remove(dir);
+after(async () => {
+  const until = Date.now() + 30_000;
+  for (const dir of made.splice(0))
+    for (;;)
+      try {
+        rmSync(dir, { recursive: true, force: true });
+        break;
+      } catch (e) {
+        if (Date.now() < until) await new Promise((ok) => setTimeout(ok, 250));
+        else {
+          process.stderr.write(`could not remove ${dir}: ${String(e)}\n`);
+          break;
+        }
+      }
 });
 
 /**

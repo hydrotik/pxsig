@@ -2,13 +2,14 @@
  * server-helpers.mjs — the stand-in Storybook, the `pxsig serve` launcher and the probes that
  * server-flow.test.mjs and server-lifecycle.test.mjs share.
  */
-import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readToken } from '../src/lib/guard.mjs';
 import { hasRust, rustBin } from './fixture.mjs';
+import { startServer } from './server-proc.mjs';
+export { freePort } from './server-proc.mjs';
 import { skipUnless } from './strict.mjs';
 
 /** @import { IndexStory } from '../src/types.js' */
@@ -40,16 +41,6 @@ try {
 export const needs =
   skipUnless(hasRust, 'Rust binary not built') || skipUnless(chromium, 'no Chromium');
 
-/** @returns {Promise<number>} */
-export const freePort = () =>
-  new Promise((ok) => {
-    const s = createServer().listen(0, '127.0.0.1', () => {
-      // Listening on TCP: the address is an AddressInfo.
-      const p = /** @type {import('node:net').AddressInfo} */ (s.address()).port;
-      s.close(() => ok(p));
-    });
-  });
-
 /**
  * A stand-in Storybook: `/index.json` lists `stories`; `/iframe.html?id=` renders a block, or
  * Storybook's error display for an id containing "broken". The preview object answers what
@@ -66,6 +57,10 @@ export async function fakeStorybook(stories) {
   storyStoreValue: { loadStory: async ({ storyId }) => { if (storyId.includes('unreadable')) throw new Error('loadStory threw'); return { parameters: { pxsig: {} }, tags: [], playFunction: null }; } } };</script></body></html>`;
   };
   const server = createServer((req, res) => {
+    // One request per connection. A kept-alive socket can be reused by pxsig's fetch at the moment
+    // this server closes it as idle, and the request then fails with ECONNRESET (seen on a loaded
+    // Windows runner). Storybook's own server is not under test here.
+    res.setHeader('connection', 'close');
     // A request to an http server always has a url.
     const u = new URL(/** @type {string} */ (req.url), 'http://x');
     if (u.pathname === '/index.json') {
@@ -115,23 +110,11 @@ export async function serve(f, { storybook, bin = rustBin } = {}) {
     const cfg = JSON.parse(readFileSync(cfgPath, 'utf8'));
     writeFileSync(cfgPath, JSON.stringify({ ...cfg, storybook: { url: storybook } }, null, 2));
   }
-  const port = await freePort();
-  const proc = spawn(
-    process.execPath,
-    [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-    { cwd: f.repo, env: { ...f.env, PXSIG_BIN: bin, PXSIG_WORKSPACE: '' } }
-  );
-  let log = '';
-  proc.stdout.on('data', (d) => (log += d));
-  proc.stderr.on('data', (d) => (log += d));
-  await /** @type {Promise<void>} */ (
-    new Promise((ok, fail) => {
-      const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-      const on = () => /dashboard →/.test(log) && (clearTimeout(t), ok());
-      proc.stdout.on('data', on);
-    })
-  );
-  const base = `http://127.0.0.1:${port}`;
+  const server = await startServer({
+    cwd: f.repo,
+    env: { ...f.env, PXSIG_BIN: bin, PXSIG_WORKSPACE: '' },
+  });
+  const { url: base, port, log } = server;
   // As the dashboard posts: with the server's token (`headers` adds or overrides, e.g. no token).
   /**
    * @param {string} action
@@ -161,9 +144,9 @@ export async function serve(f, { storybook, bin = rustBin } = {}) {
       if (!s.running && !s.queued && !s.repairing) return;
       await new Promise((r) => setTimeout(r, 100));
     }
-    throw new Error(`the queue did not drain:\n${log}`);
+    throw new Error(`the queue did not drain:\n${log()}`);
   };
-  return { base, port, post, idle, log: () => log, stop: () => proc.kill() };
+  return { base, port, post, idle, log, stop: () => server.stop() };
 }
 
 /** @param {Fixture} f */

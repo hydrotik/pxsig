@@ -188,7 +188,7 @@ test(
     const f = fixture({ t });
     const sb = await fakeStorybook(f.index.stories);
     const S = await serve(f, { storybook: sb.url });
-    t.after(() => (S.stop(), sb.close()));
+    t.after(async () => (await S.stop(), sb.close()));
     const { json } = mcp(f, t, S.base);
     const before = new Map(
       JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8')).rows.map(

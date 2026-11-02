@@ -18,6 +18,7 @@ import { readToken } from '../src/lib/guard.mjs';
 import { engineProblems, openProject, writeRunManifest } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin, testEnv, testHome } from './fixture.mjs';
 import { src, env, needs } from './env-helpers.mjs';
+import { startServer } from './server-proc.mjs';
 import { skipUnless } from './strict.mjs';
 /** @import { EnvRecord, PsigHeader } from '../src/types.js' */
 /** @typedef {ReturnType<typeof fixture>} Fixture */
@@ -149,28 +150,12 @@ test(
       r.id === id ? { ...r, env: renderEnv.id, baselineEnv: null, envMatch: 'unknown' } : r
     );
     writeFileSync(checkPath, JSON.stringify(check));
-    const port = await new Promise((ok) => {
-      const s = createServer().listen(0, '127.0.0.1', () => {
-        // Listening on TCP: the address is an AddressInfo.
-        const p = /** @type {import('node:net').AddressInfo} */ (s.address()).port;
-        s.close(() => ok(p));
-      });
+    const S = await startServer({
+      cwd: f.repo,
+      env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' },
     });
-    const proc = spawn(
-      process.execPath,
-      [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-      { cwd: f.repo, env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
-    );
-    let log = '';
-    proc.stdout.on('data', (d) => (log += d));
-    proc.stderr.on('data', (d) => (log += d));
+    const { port } = S;
     try {
-      await /** @type {Promise<void>} */ (
-        new Promise((ok, fail) => {
-          const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-          proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
-        })
-      );
       const base = `http://127.0.0.1:${port}`;
       const r = await fetch(`${base}/__pxsig/approve`, {
         method: 'POST',
@@ -199,7 +184,7 @@ test(
       assert.equal(r2.status, 200, await r2.text());
       assert.equal(/** @type {PsigHeader} */ (readHeader(f.sig(other))).env, undefined);
     } finally {
-      proc.kill();
+      await S.stop();
     }
   }
 );

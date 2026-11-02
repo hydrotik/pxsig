@@ -1,16 +1,13 @@
 // Accepting a11y violations through the server: the accepted list, undo, and the log. Temp folders
 // only.
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { readToken } from '../src/lib/guard.mjs';
 import { fixture, hasRust, rustBin, testEnv, testHome } from './fixture.mjs';
-import { src } from './features-helpers.mjs';
+import { startServer } from './server-proc.mjs';
 import { skipUnless } from './strict.mjs';
-/** @import { AddressInfo } from 'node:net' */
 
 test(
   'the server: accepting a11y violations updates the accepted list; undo restores it; both are logged',
@@ -32,30 +29,12 @@ test(
     writeFileSync(checkPath, JSON.stringify(check));
     const a11yPath = join(f.px, 'a11y.json');
     writeFileSync(a11yPath, JSON.stringify({ [id]: ['aria-hidden-focus'] }));
-    const port = await new Promise((ok) => {
-      const s = createServer().listen(0, '127.0.0.1', () => {
-        // Listening on TCP: the address is an AddressInfo.
-        const p = /** @type {AddressInfo} */ (s.address()).port;
-        s.close(() => ok(p));
-      });
+    const S = await startServer({
+      cwd: f.repo,
+      env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' },
     });
-    const proc = spawn(
-      process.execPath,
-      [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-      { cwd: f.repo, env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
-    );
+    const { port } = S;
     try {
-      await /** @type {Promise<void>} */ (
-        new Promise((ok, fail) => {
-          let log = '';
-          const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-          proc.stdout.on(
-            'data',
-            (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok()))
-          );
-          proc.stderr.on('data', (d) => (log += d));
-        })
-      );
       /** @param {string} action */
       const post = async (action) => {
         const r = await fetch(`http://127.0.0.1:${port}/__pxsig/${action}`, {
@@ -134,7 +113,7 @@ test(
         'unaccept'
       );
     } finally {
-      proc.kill();
+      await S.stop();
     }
   }
 );

@@ -176,7 +176,7 @@ test(
       );
       assert.equal(s.workspaceId, workspaceId(f.repo));
     } finally {
-      S.stop();
+      await S.stop();
     }
   }
 );

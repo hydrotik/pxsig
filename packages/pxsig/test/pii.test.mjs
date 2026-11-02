@@ -8,9 +8,9 @@
  * The server part needs the Rust binary; skipped without it.
  */
 import assert from 'node:assert/strict';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { createServer, request } from 'node:http';
+import { request } from 'node:http';
 import { homedir, hostname, userInfo } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { test } from 'node:test';
@@ -20,9 +20,9 @@ import { collectEnv } from '../src/lib/env.mjs';
 import { readToken } from '../src/lib/guard.mjs';
 import { openProject, PXSIG_VERSION, satisfies } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
+import { startServer } from './server-proc.mjs';
 import { skipUnless } from './strict.mjs';
 /** @import { IncomingHttpHeaders } from 'node:http' */
-/** @import { AddressInfo } from 'node:net' */
 /** @import { EnvBrowser, ManifestEntry, PsigHeader } from '../src/types.js' */
 /** @typedef {ReturnType<typeof fixture>} Fixture */
 /**
@@ -112,17 +112,6 @@ test('requires: a range this pxsig reads, and refuses outside', () => {
 });
 
 // --- the server's write paths, then a scan of everything a repository would commit ------------------
-
-const freePort = () =>
-  /** @type {Promise<number>} */ (
-    new Promise((ok) => {
-      const s = createServer().listen(0, '127.0.0.1', () => {
-        // Listening on TCP: the address is an AddressInfo.
-        const p = /** @type {AddressInfo} */ (s.address()).port;
-        s.close(() => ok(p));
-      });
-    })
-  );
 
 /**
  * @param {number} port
@@ -229,36 +218,21 @@ test(
       r.id === f.ids.changed ? { ...r, env: renderEnv.id } : r
     );
     writeFileSync(checkPath, JSON.stringify(check));
-    const port = await freePort();
     const dash = tempDir('dash');
     writeFileSync(
       join(dash, 'index.html'),
       '<!doctype html><html><head><title>pxsig</title></head><body></body></html>'
     );
-    const proc = spawn(
-      process.execPath,
-      [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-      {
-        cwd: f.repo,
-        env: {
-          ...testEnv(testHome),
-          PXSIG_BIN: rustBin,
-          PXSIG_WORKSPACE: '',
-          PXSIG_DASHBOARD_DIR: dash,
-        },
-      }
-    );
-    let log = '';
-    proc.stdout.on('data', (d) => (log += d));
-    proc.stderr.on('data', (d) => (log += d));
-    await /** @type {Promise<void>} */ (
-      new Promise((ok, fail) => {
-        const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-        proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
-      })
-    );
-    const url = `http://127.0.0.1:${port}`;
-    const exited = new Promise((ok) => proc.on('exit', ok));
+    const S = await startServer({
+      cwd: f.repo,
+      env: {
+        ...testEnv(testHome),
+        PXSIG_BIN: rustBin,
+        PXSIG_WORKSPACE: '',
+        PXSIG_DASHBOARD_DIR: dash,
+      },
+    });
+    const { url, port } = S;
     try {
       // The server writes its token before it prints the dashboard URL awaited above.
       const token = /** @type {string} */ (readToken(f.repo, url));
@@ -305,12 +279,11 @@ test(
         200
       );
       assert.ok(
-        !log.includes(token) && !log.includes(cookie.split('=')[1]),
+        !S.log().includes(token) && !S.log().includes(cookie.split('=')[1]),
         'no token or cookie in the server log'
       );
     } finally {
-      proc.kill('SIGTERM');
-      await exited;
+      await S.stop();
     }
     const probes = [
       ['the git email', EMAIL],

@@ -60,7 +60,7 @@ test(
         )
       );
     } finally {
-      S.stop();
+      await S.stop();
       sb.close();
     }
   }
@@ -91,7 +91,7 @@ test(
         'and keeps when the last full check ran'
       );
     } finally {
-      S.stop();
+      await S.stop();
       sb.close();
     }
   }
@@ -135,7 +135,7 @@ test(
       assert.ok(!isAbsolute(projects[0].root), projects[0].root);
       assert.ok(!JSON.stringify(answer).includes(basename(f.repo)), 'no part of the fixture path');
     } finally {
-      S.stop();
+      await S.stop();
       sb.close();
     }
   }
@@ -209,7 +209,7 @@ test(
       assert.match(events.join(''), /event: check\ndata: \{"project":"fixture","state":"error"/);
     } finally {
       ctl.abort();
-      S.stop();
+      await S.stop();
     }
   }
 );
@@ -266,7 +266,7 @@ test(
       assert.equal(off.body.error, BY_STORY_OFF);
       assert.ok(!existsSync(join(f.px, 'approvals.ndjson')), 'nothing was approved');
     } finally {
-      S.stop();
+      await S.stop();
     }
     writeFileSync(cfgPath, JSON.stringify({ ...cfg, approvals: { byStory: true } }, null, 2));
     S = await serve(f);
@@ -307,7 +307,7 @@ test(
       assert.equal((await S.post('approve-story', { story: 'Bad Story' })).status, 400);
       assert.equal((await S.post('approve-story', { story: 'components-nope--x' })).status, 404);
     } finally {
-      S.stop();
+      await S.stop();
     }
   }
 );
