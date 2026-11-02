@@ -48,9 +48,12 @@ updates:
       - dependency-name: typescript
         update-types: ['version-update:semver-major']
 
-  # The examples' own lockfiles (scripts/examples-test.mjs installs them frozen). One grouped pull
-  # request of minor and patch updates; a major comes on its own. Their `link:` dependencies on
-  # pxsig are not versions, so Dependabot leaves them.
+  # The examples' own lockfiles (scripts/examples-test.mjs installs them frozen). Each example has
+  # its own pnpm-workspace.yaml, so the install Dependabot runs there rewrites that example's
+  # lockfile, not pxsig's. The same policy as the workspace above: one grouped pull request of
+  # minor and patch updates, a major on its own, and the same majors taken by hand (custom-ui stays
+  # on Vite 6 on purpose, see its README). Their `link:` dependencies on pxsig are not versions,
+  # so Dependabot leaves them.
   - package-ecosystem: npm
     directories:
       - /examples/single-package
@@ -64,8 +67,21 @@ updates:
       prefix: chore
       include: scope
     groups:
-      examples:
+      examples-dev:
+        dependency-type: development
         update-types: [minor, patch]
+      examples-prod:
+        dependency-type: production
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      - dependency-name: vite
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@vitejs/plugin-react'
+        update-types: ['version-update:semver-major']
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: cargo
     directory: /

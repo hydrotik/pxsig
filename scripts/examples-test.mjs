@@ -7,7 +7,7 @@
  * For each example: copy it to a temp folder (its `link:` dependencies resolve to this checkout),
  * install from its committed pnpm-lock.yaml (`--fresh`: unpinned, the newest its ranges allow, to
  * see what an upgrade would do; refresh a lockfile with `pnpm install --lockfile-only` in the
- * example, adding `--ignore-workspace` outside monorepo), build and serve its Storybook, then:
+ * example, which is its own pnpm workspace), build and serve its Storybook, then:
  *   1. manifest      every story × mode × state, for every project
  *   2. check         every entry is NEW (no baseline): exit 1
  *   3. baseline      the first renders become baselines (what approving them does)

@@ -1,0 +1,4 @@
+# This example is its own pnpm workspace: without this file pnpm would take pxsig's workspace
+# above it, and `pnpm install` here (Dependabot's too) would leave this pnpm-lock.yaml unchanged.
+packages:
+  - .

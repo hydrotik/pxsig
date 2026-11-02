@@ -26,3 +26,7 @@ free port. A running `storybook dev` on port 6407 works too.
 
 `.github/CODEOWNERS` routes baseline changes to two teams: the design team owns the stores and
 `Button`, the forms team owns `TextField`. See [docs/codeowners.md](../../docs/codeowners.md).
+
+The `pnpm.overrides` entry in `package.json` lifts `glob` under Storybook's docgen plugin to a
+release with a security fix (the plugin's range stops at glob 13). It can go once the plugin allows
+glob 14.

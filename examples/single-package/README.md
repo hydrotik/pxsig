@@ -18,3 +18,7 @@ port 6406 works too.
 The store, `.pxsig/`, is created by the first run. Its baselines (`.psig`), manifest and approval
 log are what this project commits; renders, diffs and reports stay out of git (see `.pxsig/.gitignore`).
 This example's store is not committed here: the pxsig repository never contains baselines.
+
+The `pnpm.overrides` entry in `package.json` lifts `glob` under Storybook's docgen plugin to a
+release with a security fix (the plugin's range stops at glob 13). It can go once the plugin allows
+glob 14.
