@@ -32,7 +32,8 @@ addons: [{ name: '@pxsig/storybook-addon', options: { server: 'http://127.0.0.1:
 
 The addon needs Storybook 10 or later (the examples in this repository test with 10). Its
 manager code imports `storybook/manager-api` and `storybook/internal/components` from your
-Storybook install.
+Storybook install. Storybook is an optional peer dependency, so npm does not install one
+with the addon: the addon runs inside the Storybook the project already has.
 
 Then start the server from the repository root:
 
