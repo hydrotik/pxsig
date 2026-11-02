@@ -66,7 +66,7 @@ current version. Releases are published from GitHub Actions with npm provenance 
 ## Requirements
 
 - Node.js 22 or later (22.18 or later to work in a clone of this repository)
-- A Storybook (8 or later; the addon needs 9 or later) that pxsig can reach over HTTP with its
+- A Storybook (8 or later; the addon needs 10 or later) that pxsig can reach over HTTP with its
   `index.json`, or a static build of one (`storybook.staticDir`), which pxsig serves itself when
   nothing answers at `storybook.url`
 - Playwright, installed in your workspace (`pnpm add -D playwright`, then
@@ -74,17 +74,17 @@ current version. Releases are published from GitHub Actions with npm provenance 
 
 ## Quick start: one package
 
-Run these in the package that has the stories. Storybook must be running for `manifest` and
-`check`.
+Run these in the package that has the stories. `manifest` and `check` need Storybook running, or
+a static build named in `storybook.staticDir`, which pxsig serves itself.
 
 ```bash
 npm install -D pxsig playwright
 npx playwright install chromium
 
 npx pxsig init                    # writes pxsig.config.json and the .pxsig/ store
-npx pxsig manifest                # lists every story x mode x state, from the running Storybook
+npx pxsig manifest                # lists every story x mode x state, from Storybook's index.json
 npx pxsig check --full            # renders and checks them; the first run marks every entry NEW
-npx pxsig serve                   # opens the dashboard: review and approve each first render
+npx pxsig serve                   # the dashboard, to approve each first render (on Windows: its link)
 npx pxsig doctor                  # confirms nothing is uncovered
 ```
 

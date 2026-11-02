@@ -55,6 +55,22 @@ the Storybook folders (check the config it writes), `pxsig manifest`'s source an
 dashboard link's 5 minutes to be accessed (up from 2). Optional: a `label` in
 `pxsig.workspace.json` names the workspace in the dashboard's title (`pxsig • <label>`).
 
+## Upgrading to 0.6: deployed Storybooks and stricter input
+
+0.6.0's behaviour changes, each in `CHANGELOG.md` under 0.6.0; by who acts:
+
+- **A Storybook deployed to a shared address** (dev, UAT, pre-prod): the panel no longer connects
+  to a pxsig server on each viewer's computer. `storybook build` writes `pxsig-snapshot.json`
+  into the build, so the panel shows the committed baselines read-only; option `snapshot: false`
+  leaves it out. A Storybook served from this computer keeps the live panel.
+- **Story authors:** `pxsig manifest` checks `parameters.pxsig`. A value of the wrong type
+  (`grid: '96'`, `ignore: '.live'`, a state with no `name`) is a setup error (exit 2) naming
+  the story and the key: fix the parameter it names.
+- **CI that runs `pxsig stale`:** above the number of edited files it traces, it now exits 1
+  and names `pxsig check --all` instead of passing (`advisoryExit` on warn). Run that check.
+- **Scripts calling `pxsig list` or `pxsig a11y`:** a flag without its value (`--component`
+  alone) exits 2; give the value.
+
 ## Upgrading to 0.4: strict `approve verify`
 
 From 0.4.0, `pxsig approve verify` fails (exit 1) when a baseline has no line in
