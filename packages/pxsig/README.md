@@ -38,9 +38,31 @@ Module exports:
 | `pxsig/diff-viewer`                                                | The diff viewer's React parts as TypeScript source, for a bundler that compiles TypeScript and JSX (Vite, as `pxsig dashboard build` uses); not for Node |
 | `pxsig/ui/catalog/hydrotik.json`, `….schema.json`, `….source.json` | The reference design system's component catalog, its schema and its source commit                                                                        |
 
-Peer dependencies: `playwright` 1.58 or later (the oldest version CI tests); `react` 19 or later, optional, needed only by
-`pxsig/diff-viewer` and `pxsig dashboard build`. The engine binary comes from a per-platform package
-`@pxsig/cli-<platform>-<arch>`, installed with it; `PXSIG_BIN` points at another build.
+Peer dependencies, both optional to npm, so neither is installed for you: `playwright` 1.58 or later
+(the oldest version CI tests), which renders need: install it beside pxsig, as above; `react` 19 or
+later, needed only by `pxsig/diff-viewer` and `pxsig dashboard build`. The engine binary comes from
+a per-platform package `@pxsig/cli-<platform>-<arch>`, installed with it; `PXSIG_BIN` points at
+another build.
+
+## Network
+
+pxsig talks only to what runs on your machine, or to an address you configure. It sends no
+telemetry and checks for no updates.
+
+- `pxsig serve` (the dashboard) and `pxsig dashboard check` listen on `127.0.0.1` only; the
+  dashboard's default port is 6070.
+- `check`, `approve`, `doctor` and the MCP tools call that dashboard server, at
+  `http://127.0.0.1:6070` or the address in `PXSIG_URL`. The MCP server itself uses stdio.
+- Renders load your Storybook at its configured address (`http://localhost:6006` by default). With
+  `--browser <ws>`, Playwright drives the browser server at that address; the one
+  `pxsig browser start` runs is published on `127.0.0.1` only.
+- `pxsig browser start|stop|status` are the only commands that run `docker`; `start` pulls the
+  image `ghcr.io/hydrotik/pxsig` when it is not on the machine yet.
+- The Storybook addon asks the pxsig servers its preset names (`127.0.0.1` by default) for their
+  status; on a deployed Storybook it reads only the snapshot file published beside it.
+
+Other URLs in the code are written into output, never requested: the SARIF report's schema, rule
+help and project links, and links in the docs.
 
 ## First run
 
