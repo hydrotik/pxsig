@@ -241,7 +241,12 @@ fn main() -> ExitCode {
             .num_threads(n)
             .build_global();
     }
-    let res = match cli.cmd {
+    exit_code(run(cli.cmd))
+}
+
+/// One parsed command, run: its exit code, or the error `main` reports with exit code 2.
+fn run(cmd: Cmd) -> anyhow::Result<u8> {
+    match cmd {
         Cmd::Capture {
             png,
             out,
@@ -336,7 +341,10 @@ fn main() -> ExitCode {
         Cmd::Attach { psig, png, json } => cmd_attach(&psig, &png, json),
         Cmd::Serve => serve::run(),
         Cmd::DetailSweep { input } => cmd_sweep(&input),
-    };
+    }
+}
+
+fn exit_code(res: anyhow::Result<u8>) -> ExitCode {
     match res {
         Ok(code) => ExitCode::from(code),
         Err(e) => {
@@ -345,3 +353,7 @@ fn main() -> ExitCode {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "main_tests.rs"]
+mod tests;
