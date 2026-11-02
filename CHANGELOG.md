@@ -5,6 +5,39 @@ semantic versioning.
 
 ## Unreleased
 
+## 0.7.3 - 2026-11-02
+
+The leaner-package release. `playwright` becomes an optional peer dependency, so installing pxsig
+no longer brings in the newest Playwright by itself; supply-chain scanners stop counting it as part
+of pxsig. The package drops 34 files of pxsig's own CI that 0.7.2 shipped by mistake, and the npm
+README lists every address pxsig connects to. One step when upgrading, for a project with no
+Playwright of its own.
+
+### Upgrading from 0.7.2
+
+- **`playwright` is an optional peer dependency.** If the project has no `playwright` (or `@playwright/test`) of its own, add it: `npm install -D playwright`.
+
+### Behaviour changes
+
+- **`playwright` is an optional peer dependency.** npm 7 and later installed it automatically
+  with pxsig; now it is installed only when the project asks for it, as the README's install step
+  already does (`npm install -D pxsig playwright`). Supply-chain scanners no longer count the
+  newest Playwright, and the Windows installer scripts it carries, as part of pxsig. A missing
+  Playwright still stops a render with a setup error that names the install command.
+  To update: if the project has no `playwright` (or `@playwright/test`) of its own, add it:
+  `npm install -D playwright`.
+
+### Fixed
+
+- **The package no longer ships the dashboard's locked screen files.** 0.7.2 published
+  `dashboard/fixtures/locked/` (34 files), which only pxsig's own CI reads.
+
+### Documentation
+
+- **README (npm): a Network section** lists every address pxsig listens on or connects to:
+  loopback, your Storybook, the server named in `PXSIG_URL`, and the container image that
+  `pxsig browser start` pulls. No telemetry, no update checks.
+
 ## 0.7.2 - 2026-11-01
 
 The locked-behaviour release. What the owner has signed off on in pxsig's own dashboard now fails
