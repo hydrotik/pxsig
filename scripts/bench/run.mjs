@@ -20,11 +20,11 @@
  * --out.
  *
  * Fails (exit 1) when a median is over its budget (BUDGETS below; docs/benchmark.md#what-it-times),
- * or, with --against, more than 30% and more than SLACK_MS slower than the release's median
- * (RELEASE_RATIO). More than 50% over the time baseline.json records for this OS is a warning only:
- * that baseline is one nightly sample from another night, and shared runners differ by more than
- * that from night to night. baseline.json is refreshed at each release from the nightly run's
- * `bench-results` artifact (docs/releasing.md).
+ * or, with --against, more than 30% (RELEASE_RATIO) and more than RELEASE_FLOOR_MS slower than the
+ * release's median. More than 50% (and SLACK_MS) over the time baseline.json records for this OS
+ * is a warning only: that baseline is one nightly sample from another night, and shared runners
+ * differ by more than that from night to night. baseline.json is refreshed at each release from
+ * the nightly run's `bench-results` artifact (docs/releasing.md).
  */
 import { spawnSync } from 'node:child_process';
 import {
@@ -53,14 +53,23 @@ const workspace = join(root, 'packages', 'pxsig', 'src', 'lib', 'workspace.mjs')
  * @type {Record<Step, number | null>}
  */
 export const BUDGETS = { affected: 2000, list: 3000, doctor: 3000, plan: 3000, data: 2000 };
-/** Under this, a rise is noise on a shared runner, not a regression (sub-second steps). */
+/**
+ * Against baseline.json (another night, a warning only): under this, a rise is the runner, not a
+ * regression.
+ */
 export const SLACK_MS = 100;
 /**
- * Slower than the last release by more than this factor (and SLACK_MS) fails. Both run in the same
- * job, alternating, so runner drift between nights cancels out; what is left is run-to-run spread
- * on one runner (docs/benchmark.md#against-the-last-release).
+ * Slower than the last release by more than this factor (and RELEASE_FLOOR_MS) fails. Both run in
+ * the same job, alternating, so runner drift between nights cancels out; what is left is run-to-run
+ * spread on one runner (docs/benchmark.md#against-the-last-release).
  */
 export const RELEASE_RATIO = 1.3;
+/**
+ * The least rise over the release that fails, for a step so fast that 30% of it is a few
+ * milliseconds of process start-up. It only decides under 25 / 0.3 ≈ 83 ms; above that the ratio
+ * does, so a 100 ms step is held to 30% like the others.
+ */
+export const RELEASE_FLOOR_MS = 25;
 
 /** @type {Record<Step, string[] | null>} */
 const STEPS = {
@@ -148,7 +157,7 @@ export function judge(times, base, release = null) {
     const was = base?.[step] ?? null;
     const limit = was == null ? null : Math.max(was * 1.5, was + SLACK_MS);
     const rel = release?.[step] ?? null;
-    const relLimit = rel == null ? null : Math.max(rel * RELEASE_RATIO, rel + SLACK_MS);
+    const relLimit = rel == null ? null : Math.max(rel * RELEASE_RATIO, rel + RELEASE_FLOOR_MS);
     const why = [];
     const warn = [];
     if (budget != null && ms > budget) why.push(`over the ${budget} ms budget`);

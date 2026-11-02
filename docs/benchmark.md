@@ -33,9 +33,9 @@ slower than the last release's median from the same run ([below](#against-the-la
 than 50% over the time `scripts/bench/baseline.json` records for the same OS is a warning: the
 table says `warn`, and on GitHub the run carries an annotation, but it does not fail. That baseline
 is one nightly sample from another night, and shared runners differ by more than 50% from night to
-night (on 2026-10-28 every step ran about 30% faster than the nights around it). A rise under 100 ms
-is not counted against either: it is noise on a sub-second step. With no baseline for the OS, only
-the budgets and the same-run comparison apply.
+night (on 2026-10-28 every step ran about 30% faster than the nights around it), so a rise under
+100 ms is not counted against it either. With no baseline for the OS, only the budgets and the
+same-run comparison apply.
 
 ## Against the last release
 
@@ -45,11 +45,18 @@ run: one warm-up each, then `main`, release, `main`, release… So a slower stre
 runner slows both, and the comparison is between two medians taken minutes apart, not on different
 nights.
 
-The threshold is 30%, and at least 100 ms. Measured on 2026-11-02 (macOS, three full runs of
-`main` against 0.7.3 with the same engine binary): within one run the two medians differed by at
-most 3.6% per step, while the same step moved by up to 11% between runs (`affected` 314 → 280 ms).
-30% leaves room for that spread several times over and still catches a real slowdown. A step the
-release cannot run (a store format it does not read) is reported and not compared.
+The threshold is 30% (`RELEASE_RATIO`), and at least 25 ms (`RELEASE_FLOOR_MS`). Measured on
+2026-11-02 (macOS, three full runs of `main` against 0.7.3 with the same engine binary): within one
+run the two medians differed by at most 3.6% per step, while the same step moved by up to 11%
+between runs (`affected` 314 → 280 ms). 30% leaves room for that spread several times over and
+still catches a real slowdown. On the Linux runner, the two nightly runs with the release in the
+same job (41392549344 and 41508925861) put `main` at most 1.6% slower than 0.7.3 on any step (`plan`, 513 against 505 ms).
+
+The floor is for a step so fast that 30% of it is a few milliseconds of process start-up: it only
+decides under about 83 ms (25 / 0.3). Above that, every step is held to 30%, `list` (about 100 ms on
+Linux) included. Earlier the floor was a flat 100 ms, which let any step under about 333 ms rise
+by more than 30%: `list` could nearly double (102 → 202 ms) without failing. A step the release
+cannot run (a store format it does not read) is reported and not compared.
 
 ## In a release
 
@@ -62,6 +69,15 @@ The release does not run the benchmark. Its first job reads the newest completed
   Run workflow) if it was the runner, then re-run the release;
 - **no such run, or the step did not finish:** the release goes on with a warning, so a missing
   benchmark (a new repository, runs past their retention) never blocks a release for good.
+- **a run too old to speak for the tag:** more than 7 days old at the release (`MAX_AGE_DAYS`), or
+  more than 20 commits on `main` before the tagged one (`MAX_BEHIND`, counted along the first
+  parent, so about one per merged PR). It counts as no run, whatever its result: the release goes on
+  with a warning that says how to get a fresh one (`gh workflow run bench.yml --ref main`, or
+  Actions → bench → Run workflow; then re-run the release). With the nightly schedule a run is
+  normally less than a day old; dispatching one on the release commit just before tagging is the
+  surest way to have the release gated on it.
+
+The notice names the run, how long ago it ran and how many commits before the tag.
 
 Only that step counts: the same job's advisory checks are `ci.yml`'s, which the tagged commit has
 already passed. A dry run skips it.
