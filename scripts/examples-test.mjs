@@ -2,10 +2,12 @@
 /**
  * examples-test.mjs — pxsig end to end on the example projects, from a clean copy.
  *
- *   node scripts/examples-test.mjs [single-package|monorepo|custom-ui]   (default: all)
+ *   node scripts/examples-test.mjs [single-package|monorepo|custom-ui] [--fresh]   (default: all)
  *
- * For each example: copy it to a temp folder (pointing its `link:` dependencies at this checkout),
- * install, build and serve its Storybook, then:
+ * For each example: copy it to a temp folder (its `link:` dependencies resolve to this checkout),
+ * install from its committed pnpm-lock.yaml (`--fresh`: unpinned, the newest its ranges allow, to
+ * see what an upgrade would do; refresh a lockfile with `pnpm install --lockfile-only` in the
+ * example, adding `--ignore-workspace` outside monorepo), build and serve its Storybook, then:
  *   1. manifest      every story × mode × state, for every project
  *   2. check         every entry is NEW (no baseline): exit 1
  *   3. baseline      the first renders become baselines (what approving them does)
@@ -39,6 +41,7 @@ import {
   pxsig,
   pnpm,
   stage,
+  install,
   serveStatic,
   failureCount,
   projectStore,
@@ -46,7 +49,7 @@ import {
 import { baselineAll, checkJson, envSteps, warnSteps } from './examples/steps.mjs';
 import { runCustomUi } from './examples/custom-ui.mjs';
 
-const which = process.argv[2];
+const which = process.argv.slice(2).find((a) => !a.startsWith('--'));
 
 /**
  * @param {string} name
@@ -56,13 +59,7 @@ async function run(name, { projects, storybookDir, change }) {
   log(`${name}: staging`);
   const dir = stage(name);
   log(`${name}: pnpm install in ${dir}`);
-  pnpm(
-    ['install', '--ignore-workspace', '--no-frozen-lockfile', '--config.confirmModulesPurge=false'],
-    dir,
-    { stdio: 'inherit' }
-  );
-  if (existsSync(join(dir, 'pnpm-workspace.yaml')))
-    pnpm(['install', '--no-frozen-lockfile'], dir, { stdio: 'inherit' });
+  install(dir);
   const build = () => pnpm(['build-storybook'], dir, { stdio: 'inherit' });
   build();
   const server = await serveStatic(join(dir, storybookDir, 'storybook-static'));

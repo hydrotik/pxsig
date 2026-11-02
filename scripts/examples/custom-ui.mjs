@@ -5,18 +5,14 @@ import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** @import { BuildStamp, DashboardCheckAnswer, GapsAnswer } from '../types-release.js' */
-import { log, expect, pxsig, pnpm, stage } from './shared.mjs';
+import { log, expect, pxsig, stage, install } from './shared.mjs';
 
 /** The dashboard rebuilt on a plain UI adapter, from the installed pxsig. */
 export function runCustomUi() {
   const name = 'custom-ui';
   log(`${name}: staging`);
   const dir = stage(name);
-  pnpm(
-    ['install', '--ignore-workspace', '--no-frozen-lockfile', '--config.confirmModulesPurge=false'],
-    dir,
-    { stdio: 'inherit' }
-  );
+  install(dir);
   let r = pxsig(['dashboard', 'gaps', '--json'], dir);
   // `dashboard gaps --json`'s answer.
   const g = /** @type {GapsAnswer} */ (JSON.parse(r.stdout || '{}'));
