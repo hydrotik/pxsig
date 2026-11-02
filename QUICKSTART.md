@@ -18,9 +18,13 @@ Node.js 22 or later. Optional: `pnpm add -D @pxsig/storybook-addon` for the Stor
 
 ```bash
 pnpm exec pxsig init                  # writes pxsig.config.json and the .pxsig/ store
-pnpm exec pxsig manifest              # every story × mode × state, from the running Storybook
-pnpm exec pxsig check --full          # renders them; the first run marks every entry NEW (exit 1)
+pnpm exec pxsig manifest              # every story × mode × state, from Storybook's index.json
+pnpm exec pxsig check --full          # renders them; the first run records every entry as new (exit 1)
 ```
+
+No entry has a baseline yet, so the report records every entry as new: `pnpm exec pxsig list new`
+and the dashboard show them so. The check's own summary line counts them as `changed` and lists
+up to 20 of them as `CHANGED <id>  new: no baseline yet — approve its first render`.
 
 Configuration: [docs/configuration.md](docs/configuration.md).
 

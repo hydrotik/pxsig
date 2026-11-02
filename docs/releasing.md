@@ -22,7 +22,11 @@ disagree.
 `node scripts/check-versions.mjs` checks that they all agree (CI runs it on every pull request, so a
 missed bump shows before the tag), and the workflow's first job runs it with `--tag`, failing the
 release if the tag (without the `v`) differs from any of them. Bump them all in one commit, merge
-it, then tag that commit on `main`:
+it, then tag the merge commit on `main`, but only once `main`'s `ci.yml` run on that merge commit
+has finished green. The same first job refuses a tagged commit whose 11 required checks have not
+all passed, and a check still running counts as not passed: a tag pushed while the run is in
+progress fails the release (0.7.4's first release run failed this way). Watch the run with
+`gh run list -w ci.yml -c <merge-commit-sha>`, then tag:
 
 ```bash
 git tag v0.2.0 && git push origin v0.2.0
@@ -130,7 +134,8 @@ re-approves the screens it moves.
 
 1. **verify**: checks the versions as above. On a tag (not a dry run) it also checks that the
    tagged commit is on `main` and that every required check passed on it (the 11 jobs of `ci.yml`,
-   listed once in `scripts/required-checks.mjs`, whose test compares the list with `ci.yml`).
+   listed once in `scripts/required-checks.mjs`, whose test compares the list with `ci.yml`). It
+   reads each check's latest run once and does not wait: a check queued or in progress fails it.
 2. **test**: `cargo test --workspace` on linux-x64.
 3. **build**: `cargo build --release --locked --target <target> -p pxsig-cli` for each platform,
    uploaded as the artifact `pxsig-<platform>-<arch>`:
@@ -262,7 +267,8 @@ list is for the release notes and for review. A placeholder dashboard (a dry run
 is not compared.
 
 Attach it before the workflow runs. Creating the release with the asset also creates and pushes the
-tag, which starts the workflow:
+tag, which starts the workflow, so run it only once `main`'s `ci.yml` run on the merge commit has
+finished green ([Versions](#versions)):
 
 ```bash
 gh release create v0.2.0 pxsig-dashboard.tar.gz --target main --title v0.2.0 --notes-file <notes>

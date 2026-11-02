@@ -83,12 +83,15 @@ npx playwright install chromium
 
 npx pxsig init                    # writes pxsig.config.json and the .pxsig/ store
 npx pxsig manifest                # lists every story x mode x state, from Storybook's index.json
-npx pxsig check --full            # renders and checks them; the first run marks every entry NEW
+npx pxsig check --full            # renders and checks them; the first run records every entry as new
 npx pxsig serve                   # the dashboard, to approve each first render (on Windows: its link)
 npx pxsig doctor                  # confirms nothing is uncovered
 ```
 
-The first `check --full` exits 1, because no entry has a baseline yet. Approve the first renders in
+The first `check --full` exits 1, because no entry has a baseline yet. The report records every
+entry as new (`pxsig list new` and the dashboard show them so), while the check's own summary
+line counts them as `changed` and lists up to 20 of them as
+`CHANGED <id>  new: no baseline yet — approve its first render`. Approve the first renders in
 the dashboard (press `A` in the inspector). In bulk, plan them with
 `npx pxsig approve plan --new --first-baselines --reason "first baselines"` and apply the plan with
 `npx pxsig approve apply` (a person at a terminal, with the server running). A person at a
