@@ -18,5 +18,10 @@
     "@playwright/test": "^1.58.2",
     "storybook": "^10.0.0",
     "vite": "^6.3.5"
+  },
+  "pnpm": {
+    "overrides": {
+      "@joshwooding/vite-plugin-react-docgen-typescript>glob": "^14.0.3"
+    }
   }
 }
