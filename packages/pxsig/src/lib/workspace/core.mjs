@@ -9,7 +9,8 @@ export class SetupError extends Error {
    */
   constructor(message, extra = {}) {
     super(message);
-    this.setup = true;
+    /** @readonly */
+    this.setup = /** @type {const} */ (true);
     Object.assign(this, extra);
   }
 }
