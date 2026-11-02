@@ -54,21 +54,22 @@ const remove = (dir) => {
 };
 // The folders made without a test context, and the busy ones: removed when the file's tests end,
 // waiting up to 30 s for the processes that hold them. One still held is said, not a failure.
-// Each test file is its own process, so this runs once per file.
-after(async () => {
+// Not awaited: a later after hook (a file-level child's kill) runs meanwhile, and the timers keep
+// the process until the folders are gone. Each test file is its own process: once per file.
+after(() => {
   const until = Date.now() + 30_000;
-  for (const dir of made.splice(0))
-    for (;;)
+  const dirs = made.splice(0);
+  const sweep = () => {
+    while (dirs.length)
       try {
-        rmSync(dir, { recursive: true, force: true });
-        break;
+        rmSync(dirs[0], { recursive: true, force: true });
+        dirs.shift();
       } catch (e) {
-        if (Date.now() < until) await new Promise((ok) => setTimeout(ok, 250));
-        else {
-          process.stderr.write(`could not remove ${dir}: ${String(e)}\n`);
-          break;
-        }
+        if (Date.now() < until) return void setTimeout(sweep, 250);
+        process.stderr.write(`could not remove ${dirs.shift()}: ${String(e)}\n`);
       }
+  };
+  sweep();
 });
 
 /**
