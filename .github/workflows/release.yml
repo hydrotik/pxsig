@@ -35,6 +35,7 @@ jobs:
     permissions:
       contents: read
       checks: read # the tagged commit's check runs
+      actions: read # the nightly benchmark's runs (bench.yml)
     outputs:
       version: ${{ steps.v.outputs.version }}
       dist_tag: ${{ steps.v.outputs.dist_tag }}
@@ -86,6 +87,14 @@ jobs:
           fi
           gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs" > "${RUNNER_TEMP}/check-runs.json"
           node scripts/required-checks.mjs "${RUNNER_TEMP}/check-runs.json"
+      # Not slower than the last release: the newest nightly benchmark on main at or before the
+      # tagged commit (scripts/bench/release-gate.mjs). A failed one fails the release; none only
+      # warns (docs/benchmark.md#in-a-release).
+      - name: The benchmark on main is not slower than the last release
+        if: github.ref_type == 'tag' && steps.v.outputs.dry_run != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/bench/release-gate.mjs
 
   test:
     name: Rust tests (linux-x64)

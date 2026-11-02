@@ -165,8 +165,9 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           exit "$status"
       - run: pnpm --filter @pxsig/storybook-addon test
-      # The scale benchmark's generator and verdicts (the benchmark itself runs nightly: bench.yml).
-      - run: node --test scripts/bench/run.test.mjs
+      # The scale benchmark's generator and verdicts, and the release's read of it (the benchmark
+      # itself runs nightly: bench.yml).
+      - run: node --test scripts/bench/run.test.mjs scripts/bench/release-gate.test.mjs
       # The folder copy the release's pack job uses, on every OS (Windows paths among them).
       - run: node --test scripts/copy-tree.test.mjs
       # tsc --noEmit: the dashboard, its test harness and both adapters (the reference adapter against

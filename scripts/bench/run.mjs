@@ -4,6 +4,7 @@
  * hydrotik's size, against fixed budgets and the last release's times.
  *
  *   node scripts/bench/run.mjs [--runs 5] [--out results.json] [--keep] [--dir <existing store>]
+ *                              [--against <an installed pxsig package folder>]
  *
  * Generates a synthetic project (generate-store.mjs) in a temporary folder, then times, as a
  * person would run them (a fresh `node` process each, start-up included):
@@ -12,14 +13,18 @@
  *   doctor    `pxsig doctor --offline`
  *   plan      `pxsig approve plan --all-changed --reason …`
  *   data      the dashboard's data: `buildData()` and its JSON, what GET /__pxsig/data answers
- * One warm-up run, then the median of --runs. Prints a table, appends it to $GITHUB_STEP_SUMMARY
- * when set, writes the results (in baseline.json's shape) to --out.
+ * One warm-up run, then the median of --runs. With --against, the same steps also run on that
+ * pxsig (the last release, installed from npm), on the same store and runner, alternating with
+ * this checkout run by run so that a slower stretch of the runner hits both. Prints a table,
+ * appends it to $GITHUB_STEP_SUMMARY when set, writes the results (in baseline.json's shape) to
+ * --out.
  *
- * Fails (exit 1) when a median is over its budget (BUDGETS below; docs/benchmark.md#what-it-times).
- * More than 50% over the time baseline.json records for this OS at the last release is a warning:
- * the baseline is one nightly sample, and shared runners differ by more than that from night to
- * night. baseline.json is refreshed at each release from the nightly run's `bench-results`
- * artifact (docs/releasing.md).
+ * Fails (exit 1) when a median is over its budget (BUDGETS below; docs/benchmark.md#what-it-times),
+ * or, with --against, more than 30% and more than SLACK_MS slower than the release's median
+ * (RELEASE_RATIO). More than 50% over the time baseline.json records for this OS is a warning only:
+ * that baseline is one nightly sample from another night, and shared runners differ by more than
+ * that from night to night. baseline.json is refreshed at each release from the nightly run's
+ * `bench-results` artifact (docs/releasing.md).
  */
 import { spawnSync } from 'node:child_process';
 import {
@@ -48,8 +53,14 @@ const workspace = join(root, 'packages', 'pxsig', 'src', 'lib', 'workspace.mjs')
  * @type {Record<Step, number | null>}
  */
 export const BUDGETS = { affected: 2000, list: 3000, doctor: 3000, plan: 3000, data: 2000 };
-/** Under this, a 50% rise is noise on a shared runner, not a regression (sub-second steps). */
+/** Under this, a rise is noise on a shared runner, not a regression (sub-second steps). */
 export const SLACK_MS = 100;
+/**
+ * Slower than the last release by more than this factor (and SLACK_MS) fails. Both run in the same
+ * job, alternating, so runner drift between nights cancels out; what is left is run-to-run spread
+ * on one runner (docs/benchmark.md#against-the-last-release).
+ */
+export const RELEASE_RATIO = 1.3;
 
 /** @type {Record<Step, string[] | null>} */
 const STEPS = {
@@ -70,20 +81,38 @@ const STEPS = {
 /** @type {Record<Step, (number | null)[]>} */
 const OK = { affected: [0], list: [0], doctor: [0, 1], plan: [0, 1], data: [0] };
 
-const dataScript = `
-const { openProject } = await import(${JSON.stringify(pathToFileURL(workspace).href)});
-const { buildData } = await import(${JSON.stringify(pathToFileURL(report).href)});
+/**
+ * The data step's script for one pxsig package folder.
+ * @param {{ report: string, workspace: string }} pkg
+ */
+const dataScript = (pkg) => `
+const { openProject } = await import(${JSON.stringify(pathToFileURL(pkg.workspace).href)});
+const { buildData } = await import(${JSON.stringify(pathToFileURL(pkg.report).href)});
 const body = JSON.stringify(buildData(openProject({ cwd: process.cwd() })));
 process.stdout.write(String(body.length));
 `;
 
 /**
+ * The files a step runs, in a pxsig package folder (this checkout's packages/pxsig, or an
+ * installed one).
+ * @param {string} dir
+ */
+export const packageFiles = (dir) => ({
+  cli: join(dir, 'bin', 'pxsig.mjs'),
+  report: join(dir, 'src', 'report.mjs'),
+  workspace: join(dir, 'src', 'lib', 'workspace.mjs'),
+});
+
+/**
  * @param {Step} step
  * @param {string} dir
  * @param {NodeJS.ProcessEnv} env
+ * @param {{ cli: string, report: string, workspace: string }} [pkg]
  */
-function once(step, dir, env) {
-  const args = STEPS[step] ? [cli, ...STEPS[step]] : ['--input-type=module', '-e', dataScript];
+function once(step, dir, env, pkg = { cli, report, workspace }) {
+  const args = STEPS[step]
+    ? [pkg.cli, ...STEPS[step]]
+    : ['--input-type=module', '-e', dataScript(pkg)];
   const t0 = process.hrtime.bigint();
   const r = spawnSync(process.execPath, args, {
     cwd: dir,
@@ -105,26 +134,34 @@ const median = (/** @type {number[]} */ xs) => {
 };
 
 /**
- * Each step's verdict against its budget and the baseline for this OS.
+ * Each step's verdict against its budget, the baseline for this OS and, when given, the last
+ * release's times from the same run.
  * @param {StepTimes} times
  * @param {StepTimes | null | undefined} base
+ * @param {StepTimes | null} [release]
  * @returns {Verdict[]}
  */
-export function judge(times, base) {
+export function judge(times, base, release = null) {
   // `Object.entries` widens the keys: they are StepTimes' own, steps.
   return /** @type {[Step, number][]} */ (Object.entries(times)).map(([step, ms]) => {
     const budget = BUDGETS[step];
     const was = base?.[step] ?? null;
     const limit = was == null ? null : Math.max(was * 1.5, was + SLACK_MS);
+    const rel = release?.[step] ?? null;
+    const relLimit = rel == null ? null : Math.max(rel * RELEASE_RATIO, rel + SLACK_MS);
     const why = [];
     const warn = [];
     if (budget != null && ms > budget) why.push(`over the ${budget} ms budget`);
+    if (relLimit != null && ms > relLimit)
+      why.push(
+        `more than ${Math.round((RELEASE_RATIO - 1) * 100)}% slower than the last release in this run (${rel} ms)`
+      );
     if (limit != null && ms > limit)
       // A limit only exists with a baseline time.
       warn.push(
         `more than 50% over the last release (${Math.round(/** @type {number} */ (was))} ms)`
       );
-    return { step, ms, budget, was, limit, fail: why.length > 0, why, warn };
+    return { step, ms, budget, was, limit, rel, relLimit, fail: why.length > 0, why, warn };
   });
 }
 
@@ -145,6 +182,16 @@ const flag = (args, name) => {
 async function main() {
   const args = process.argv.slice(2);
   const runs = Number(flag(args, '--runs') ?? 5);
+  const againstDir = flag(args, '--against');
+  const against = againstDir ? packageFiles(resolve(againstDir)) : null;
+  // The release's own engine (its platform package), not this checkout's build.
+  const releaseEnv = { ...process.env };
+  delete releaseEnv.PXSIG_BIN;
+  const releaseVersion = againstDir
+    ? /** @type {{ version: string }} */ (
+        JSON.parse(readFileSync(join(resolve(againstDir), 'package.json'), 'utf8'))
+      ).version
+    : null;
   const given = flag(args, '--dir');
   const dir = given ? resolve(given) : mkdtempSync(join(tmpdir(), 'pxsig-bench-'));
   const env = { ...process.env };
@@ -163,11 +210,38 @@ async function main() {
     }
     /** @type {StepTimes} */
     const times = {};
+    /** @type {StepTimes} */
+    const release = {};
+    /** @type {string[]} */
+    const notCompared = [];
     // STEPS' own keys: the steps.
     for (const step of /** @type {Step[]} */ (Object.keys(STEPS))) {
+      // A step the release cannot run (a store it does not read) is reported, not compared.
+      const rel = () => {
+        if (!against || notCompared.includes(step)) return null;
+        try {
+          return once(step, dir, releaseEnv, against);
+        } catch (e) {
+          notCompared.push(step);
+          console.log(
+            `[bench] ${step}: pxsig ${releaseVersion} could not run it, not compared (${String(/** @type {Error} */ (e).message).split('\n')[0]})`
+          );
+          return null;
+        }
+      };
       once(step, dir, env);
-      const xs = Array.from({ length: runs }, () => once(step, dir, env));
+      rel();
+      /** @type {number[]} */
+      const xs = [];
+      /** @type {number[]} */
+      const ys = [];
+      for (let i = 0; i < runs; i++) {
+        xs.push(once(step, dir, env));
+        const y = rel();
+        if (y != null) ys.push(y);
+      }
       times[step] = Math.round(median(xs));
+      if (ys.length === runs) release[step] = Math.round(median(ys));
     }
     const os = platform();
     const baselinePath = join(here, 'baseline.json');
@@ -176,18 +250,19 @@ async function main() {
       ? /** @type {BenchBaseline} */ (JSON.parse(readFileSync(baselinePath, 'utf8')))
       : null;
     const base = baseline?.times?.[os] ?? null;
-    const verdicts = judge(times, base);
+    const verdicts = judge(times, base, against ? release : null);
     const rows = verdicts.map(
-      (v) => `| ${v.step} | ${v.ms} | ${v.budget ?? '—'} | ${v.was ?? '—'} | ${result(v)} |`
+      (v) =>
+        `| ${v.step} | ${v.ms} | ${v.budget ?? '—'} | ${v.rel ?? '—'} | ${v.was ?? '—'} | ${result(v)} |`
     );
     const table = [
       `### pxsig scale benchmark (${os}, node ${process.version}, pxsig ${version})`,
       '',
       // `base` comes from `baseline`: set only when it is.
-      `Median of ${runs} runs, in ms. Baseline: ${base ? `pxsig ${/** @type {BenchBaseline} */ (baseline).pxsig}` : `none for ${os} yet (budgets only)`}.`,
+      `Median of ${runs} runs, in ms. Same run: ${against ? `pxsig ${releaseVersion}, alternating with this checkout` : 'none (no --against)'}. Baseline: ${base ? `pxsig ${/** @type {BenchBaseline} */ (baseline).pxsig}` : `none for ${os} yet (budgets only)`}.`,
       '',
-      '| Step | Median | Budget | Last release | Result |',
-      '| --- | --- | --- | --- | --- |',
+      '| Step | Median | Budget | Release, same run | Baseline | Result |',
+      '| --- | --- | --- | --- | --- | --- |',
       ...rows,
       '',
     ].join('\n');
@@ -207,6 +282,7 @@ async function main() {
             node: process.version,
             runs,
             times: { ...baseline?.times, [os]: times },
+            ...(against ? { release: { pxsig: releaseVersion, os, times: release } } : {}),
           },
           null,
           2
