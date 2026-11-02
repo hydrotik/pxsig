@@ -74,6 +74,19 @@ jobs:
           pnpm install --frozen-lockfile
           PXSIG_UI_ADAPTER=hydrotik PXSIG_DS_SOURCE="$ds" pnpm --filter @pxsig/dashboard build
           node scripts/check-dashboard-build.mjs packages/pxsig/dist/dashboard --adapter hydrotik --commit "${DS_REF}"
+      # `pnpm typecheck` with the design system: the reference adapter against its sources, and the
+      # committed adapters/hydrotik/design-system.d.ts against a fresh `ui.mjs types`, which reads
+      # the design system's built declarations (CONTRIBUTING.md).
+      - if: steps.has.outputs.ds == 'true'
+        name: Type-check the reference adapter against the design system
+        shell: bash
+        env:
+          TURBO_TELEMETRY_DISABLED: '1'
+        run: |
+          set -euo pipefail
+          ds="${RUNNER_TEMP}/design-system"
+          (cd "$ds" && pnpm turbo run build --filter=@hydrotik/design-system)
+          PXSIG_DS_SOURCE="$ds" node scripts/typecheck.mjs
       - if: steps.has.outputs.ds == 'true'
         id: check
         name: Check the screens in pxsig's container
