@@ -1,7 +1,8 @@
 name: bench
 
 # The scale benchmark (scripts/bench/run.mjs): pxsig's read paths on a synthetic store of hydrotik's
-# size, against the budgets in docs/benchmark.md and the last release's times. Nightly and by hand;
+# size, against the budgets in docs/benchmark.md and the last release, timed in the same job.
+# release.yml reads this job's "Benchmark against the last release" step. Nightly and by hand;
 # never on pull requests, so it adds nothing to a PR's wait. The same job re-runs ci.yml's advisory
 # checks, so an advisory published between pushes fails a nightly run.
 on:
@@ -30,8 +31,21 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # The table goes to this run's summary page; a step over budget fails the job.
-      - run: node scripts/bench/run.mjs --runs 5 --out bench-results.json
+      # The last release from npm, with its own engine (its platform package), outside the
+      # workspace so pnpm's lockfile is not involved.
+      - name: Install the last release
+        shell: bash
+        run: |
+          set -euo pipefail
+          rel="${RUNNER_TEMP}/release"
+          mkdir -p "$rel"
+          version=$(npm view pxsig version)
+          (cd "$rel" && npm init -y > /dev/null && npm install --no-audit --no-fund --ignore-scripts "pxsig@${version}")
+          echo "RELEASE_DIR=${rel}/node_modules/pxsig" >> "$GITHUB_ENV"
+      # The table goes to this run's summary page. A step over budget, or more than 30% slower than
+      # the last release in this same run, fails it. release.yml looks this step up by its name.
+      - name: Benchmark against the last release
+        run: node scripts/bench/run.mjs --runs 5 --against "${RELEASE_DIR}" --out bench-results.json
       # In baseline.json's shape: a release commits it as scripts/bench/baseline.json (docs/releasing.md).
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

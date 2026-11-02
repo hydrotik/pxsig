@@ -19,6 +19,8 @@ export interface BenchBaseline {
   note?: string;
   /** Per OS (`os.platform()`). */
   times?: Record<string, StepTimes>;
+  /** With --against: the last release's times from the same run (not read back). */
+  release?: { pxsig: string | null; os: string; times: StepTimes };
 }
 
 /** One step's verdict (`judge`). */
@@ -28,11 +30,15 @@ export interface Verdict {
   budget: number | null;
   was: number | null;
   limit: number | null;
-  /** Over its budget. */
+  /** The last release's median in the same run (--against), or null. */
+  rel: number | null;
+  /** Over this fails: RELEASE_RATIO × rel, and at least rel + SLACK_MS. */
+  relLimit: number | null;
+  /** Over its budget, or slower than the release in the same run beyond relLimit. */
   fail: boolean;
   /** Why it fails. */
   why: string[];
-  /** Over the last release's time by more than 50%: reported, not failed. */
+  /** Over baseline.json's time by more than 50%: reported, not failed. */
   warn: string[];
 }
 
