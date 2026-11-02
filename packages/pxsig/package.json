@@ -38,6 +38,7 @@
     "schema",
     "dist",
     "dashboard",
+    "!dashboard/fixtures/locked",
     "docs",
     "README.md",
     "LICENSE"
@@ -56,6 +57,9 @@
     "react": ">=19"
   },
   "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    },
     "react": {
       "optional": true
     }

@@ -52,7 +52,7 @@ test('pxsig/dashboard is types only: loading it in Node throws a clear error', a
   });
 });
 
-test('the manifest keeps the TypeScript entries and declares React as an optional peer', async () => {
+test('the manifest keeps the TypeScript entries and declares React and Playwright as optional peers', async () => {
   const require = createRequire(import.meta.url);
   const manifest = require('../package.json');
   assert.equal(manifest.exports['./dashboard'].types, './dashboard/src/ui/contract.ts');
@@ -62,4 +62,7 @@ test('the manifest keeps the TypeScript entries and declares React as an optiona
   });
   assert.match(manifest.peerDependencies.react, /^>=\d+$/);
   assert.equal(manifest.peerDependenciesMeta.react.optional, true);
+  // Optional, so npm does not install the newest Playwright on its own; renders need it.
+  assert.match(manifest.peerDependencies.playwright, /^>=\d+\.\d+$/);
+  assert.equal(manifest.peerDependenciesMeta.playwright.optional, true);
 });
