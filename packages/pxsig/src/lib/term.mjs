@@ -122,6 +122,7 @@ export const STATES = {
   drift: { sym: '≈', color: 'green' },
   approved: { sym: '✓', color: 'cyan' },
   changed: { sym: '◆', color: 'yellow' },
+  new: { sym: '+', color: 'blue' },
   flaky: { sym: '~', color: 'magenta' },
   rejected: { sym: '✗', color: 'red' },
   error: { sym: '✗', color: 'red' },

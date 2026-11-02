@@ -1,7 +1,7 @@
 // The CLI's output contract: piped output is clean Markdown, --json is one JSON document, and the
 // exit codes hold. Runs in a fixture project; no server or Storybook needed.
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -122,6 +122,31 @@ test('entry shows the review decision on the current result', () => {
   });
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /Review\W+rejected/);
+});
+
+test('status and list show NEW entries by name, as status --json counts them', () => {
+  const own = fixture({ withSigs: false }).repo;
+  const file = join(own, '.pxsig/reports/check.json');
+  const report = JSON.parse(readFileSync(file, 'utf8'));
+  // A first check: the entry has no signature yet.
+  Object.assign(report.rows[0], { new: true, pass: false, metrics: null });
+  writeFileSync(file, JSON.stringify(report));
+  const at = (/** @type {string[]} */ args) =>
+    spawnSync(process.execPath, [cli, ...args], {
+      cwd: own,
+      encoding: 'utf8',
+      env: {
+        ...testEnv(testHome),
+        PXSIG_FORMAT: '',
+        PXSIG_URL: 'http://127.0.0.1:1',
+        PXSIG_BIN: rustBin,
+      },
+    });
+  assert.equal(JSON.parse(at(['status', '--json']).stdout).counts.new, 1);
+  const status = at(['status']);
+  assert.equal(status.status, 0, status.stderr);
+  assert.match(status.stdout, /\*\*States:\*\* ◆ changed 1 · \+ new 1 · /);
+  assert.match(at(['list', 'new']).stdout, /\| \+ new \| /);
 });
 
 test(

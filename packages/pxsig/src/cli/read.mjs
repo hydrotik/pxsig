@@ -37,6 +37,7 @@ export function readCommands(cli) {
         const s = await run('status');
         const order = [
           'changed',
+          'new',
           'error',
           'flaky',
           'rejected',
