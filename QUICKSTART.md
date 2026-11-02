@@ -37,8 +37,8 @@ browser that opened the link.
 - **5 minutes to access the link; it works once.** Once opened, that browser can approve, with no
   time limit, until `pxsig serve` stops or the browser closes.
 - **A new link** from the running server, in the same folder: `pnpm exec pxsig serve --link`.
-  `--open` also opens it in the browser; `--copy` also copies it to the clipboard (opt-in: any
-  program on the computer can read the clipboard).
+  `--open` also opens it in the browser (on Windows nothing is started); `--copy` also copies it
+  to the clipboard (opt-in: any program on the computer can read the clipboard).
 - **Why a link:** pxsig prints it only to a person at a terminal, never to an assistant, a script
   or CI. Those can read the dashboard and the clipboard, so a decision stays a person's.
 

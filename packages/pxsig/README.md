@@ -51,8 +51,9 @@ telemetry and checks for no updates.
 
 - `pxsig serve` (the dashboard) and `pxsig dashboard check` listen on `127.0.0.1` only; the
   dashboard's default port is 6070.
-- `check`, `approve`, `doctor` and the MCP tools call that dashboard server, at
-  `http://127.0.0.1:6070` or the address in `PXSIG_URL`. The MCP server itself uses stdio.
+- `check`, `approve`, `doctor`, `status` and the MCP tools call this workspace's dashboard server:
+  `PXSIG_URL`, else the address `pxsig serve` recorded, else `server.port` (6070). A server that
+  serves another workspace is not used. The MCP server itself uses stdio.
 - Renders load your Storybook at its configured address (`http://localhost:6006` by default). With
   `--browser <ws>`, Playwright drives the browser server at that address; the one
   `pxsig browser start` runs is published on `127.0.0.1` only.
