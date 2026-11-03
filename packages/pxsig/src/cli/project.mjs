@@ -8,7 +8,7 @@ import { tools } from '../tools/index.mjs';
 import { buildManifest, describeConfig, detectStorybook, initProject } from '../lib/setup.mjs';
 import { CONFIG_FILE, findWorkspace, openProject } from '../lib/workspace.mjs';
 import { ask, emit, humanAtTerminal, progress, whyNotPerson } from '../lib/term.mjs';
-import { relPath } from '../lib/paths.mjs';
+import { insidePath, relPath } from '../lib/paths.mjs';
 import { resolveEnforcement } from '../lib/enforcement.mjs';
 import { doctorParts } from './doctor.mjs';
 
@@ -147,13 +147,16 @@ export function projectCommands(cli) {
         layout: s('layout'),
       });
       const served = staticDir ?? detected.staticDir;
+      // The folder under the current one by its path, else by its name: never absolute (it names the user).
+      const under = insidePath(process.cwd(), dir);
+      const shownDir = under && under !== '.' ? under : basename(dir);
+      /** @param {string} p a file init wrote, shown (and in --json) the same way */
+      const shown = (p) => insidePath(process.cwd(), p) ?? `${shownDir}/${relPath(dir, p)}`;
       emit(
         format,
         [
-          { h: 'pxsig init', sub: dir },
-          wrote.length
-            ? { list: wrote.map((p) => relPath(process.cwd(), p) || p) }
-            : { note: 'already set up: nothing written' },
+          { h: 'pxsig init', sub: shownDir },
+          wrote.length ? { list: wrote.map(shown) } : { note: 'already set up: nothing written' },
           ...(detected.configDir
             ? [{ note: `found ${detected.configDir}/: recorded as storybook.configDir` }]
             : []),
@@ -176,7 +179,7 @@ export function projectCommands(cli) {
             ],
           },
         ],
-        { wrote, detected }
+        { wrote: wrote.map(shown), detected }
       );
     },
 

@@ -5,7 +5,7 @@
 /** @import { ConfigFile, PackageJson, Project, ProjectRef, SetupProblem, Workspace, WorkspaceFile } from '../../types.js' */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
-import { toPosix } from '../paths.mjs';
+import { shortPath, toPosix } from '../paths.mjs';
 import { SetupError, readJsonFile } from './core.mjs';
 import { isObj } from './layers.mjs';
 import { workspaceId } from './peers.mjs';
@@ -44,7 +44,7 @@ export function findWorkspace({ cwd = process.cwd(), workspace = null, env = pro
     root = resolve(cwd, forced);
     file = existsSync(join(root, WORKSPACE_FILE)) ? join(root, WORKSPACE_FILE) : null;
     if (!file && !existsSync(join(root, CONFIG_FILE)))
-      throw new SetupError(`no ${WORKSPACE_FILE} or ${CONFIG_FILE} in ${root}`);
+      throw new SetupError(`no ${WORKSPACE_FILE} or ${CONFIG_FILE} in ${shortPath(cwd, root)}`);
   } else {
     file = findUp(cwd, WORKSPACE_FILE);
     if (file) root = dirname(file);
@@ -52,7 +52,7 @@ export function findWorkspace({ cwd = process.cwd(), workspace = null, env = pro
       const cfg = findUp(cwd, CONFIG_FILE);
       if (!cfg)
         throw new SetupError(
-          `no ${WORKSPACE_FILE} or ${CONFIG_FILE} here or above ${cwd}: run \`pxsig init\` in the package to test`
+          `no ${WORKSPACE_FILE} or ${CONFIG_FILE} in this folder or above it: run \`pxsig init\` in the package to test`
         );
       root = dirname(cfg);
     }
