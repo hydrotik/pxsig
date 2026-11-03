@@ -154,10 +154,8 @@ test('doctor prints machine paths home-relative, so pasted output carries no use
       USERPROFILE: cfg,
     },
   });
-  assert.match(
-    r.stdout,
-    /Settings.*(~|%LOCALAPPDATA%).*settings\.json \(not used in this version\)/
-  );
+  // No Settings row: nothing writes settings.json in this version (--json keeps machine.settings).
+  assert.doesNotMatch(r.stdout, /not used in this version/);
   assert.match(r.stdout, /Approval guard files/);
   assert.ok(!r.stdout.includes(join(cfg, 'Library')), 'no absolute home path');
 });

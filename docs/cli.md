@@ -411,6 +411,11 @@ pxsig doctor --repair [--only actions] [--apply] [--prune] [--stale]
 Exit: 0 nothing at or above `--fail-on`, 1 findings at or above it (`advisoryExit` with the doctor
 gate on [warn](#warn-mode)), 2 a setup error or usage, 3 `--prune` or `log-torn` without a person
 at a terminal. The details list has an `Enforcement` row: each gate not enforced, and until when.
+The verdict line agrees with the exit: when findings below error fail `--fail-on`, it counts them
+("2 findings at or above --fail-on warn, 0 errors") instead of "No errors". When every finding is a
+new entry (`unbaselined`, as after a first check), Next is `pxsig serve`, to review them, not
+`--repair`. With nothing at `storybook.url`, doctor reads the index of the build in
+`storybook.staticDir` (the one `check` serves), shown as `index: Storybook build (<folder>)`.
 
 Before a manifest exists (a fresh `pxsig init`), `doctor` prints a setup preflight instead: the
 engine binary and its version (as `pxsig --version` finds them), the Playwright package that

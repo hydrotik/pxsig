@@ -7,6 +7,7 @@ import {
   CODES,
   filterLedger,
   ledgerPath,
+  loadStoryIndex,
   reconcile,
   resolveContext,
   writeLedger,
@@ -57,7 +58,9 @@ async function doctor({
   /** @type {Awaited<ReturnType<typeof reconcile>>} */
   let ledger;
   try {
-    ledger = await reconcile(ctx, { offline });
+    // With nothing at storybook.url, the build in storybook.staticDir (the one check served).
+    const index = await loadStoryIndex(ctx, { offline, build: true });
+    ledger = await reconcile(ctx, { offline, index });
   } catch (e) {
     // Before a manifest exists: the setup preflight rides on the error (CLI and MCP print it).
     if (/** @type {NodeJS.ErrnoException} */ (e).code === 'no-manifest')
