@@ -1,20 +1,19 @@
 // `approve plan --new`, `approve undo` from git, undo with ids, the server's undo and refusing a
 // failed render. Temp folders only.
 import assert from 'node:assert/strict';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { createServer } from 'node:http';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { readLog, record, snapshot, undo } from '../src/lib/approvals.mjs';
 import { readToken } from '../src/lib/guard.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin, testEnv, testHome } from './fixture.mjs';
-import { src, env, tree, cli } from './features-helpers.mjs';
+import { env, tree, cli } from './features-helpers.mjs';
+import { startServer } from './server-proc.mjs';
 import { skipUnless } from './strict.mjs';
 /** @import { ApprovalLine, ManifestEntry, Project } from '../src/types.js' */
-/** @import { AddressInfo } from 'node:net' */
 
 // --- approve plan --new ------------------------------------------------------------------------------------------
 
@@ -163,30 +162,12 @@ test(
       /** @type {ManifestEntry} */ (f.manifest.stories.find((e) => e.id === id)).sig
     );
     const original = readFileSync(file);
-    const port = await new Promise((ok) => {
-      const s = createServer().listen(0, '127.0.0.1', () => {
-        // Listening on TCP: the address is an AddressInfo.
-        const p = /** @type {AddressInfo} */ (s.address()).port;
-        s.close(() => ok(p));
-      });
+    const S = await startServer({
+      cwd: f.repo,
+      env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' },
     });
-    const proc = spawn(
-      process.execPath,
-      [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-      { cwd: f.repo, env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
-    );
+    const { port } = S;
     try {
-      await /** @type {Promise<void>} */ (
-        new Promise((ok, fail) => {
-          let log = '';
-          const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-          proc.stdout.on(
-            'data',
-            (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok()))
-          );
-          proc.stderr.on('data', (d) => (log += d));
-        })
-      );
       /** @param {string} action */
       const post = async (action) => {
         const r = await fetch(`http://127.0.0.1:${port}/__pxsig/${action}`, {
@@ -218,7 +199,7 @@ test(
       assert.equal(/** @type {ApprovalLine} */ (log.at(-1)).via, 'undo');
       assert.match(/** @type {ApprovalLine} */ (log.at(-1)).batch, /-undo$/);
     } finally {
-      proc.kill();
+      await S.stop();
     }
   }
 );
@@ -248,30 +229,12 @@ test(
         : r
     );
     writeFileSync(checkFile, JSON.stringify(report));
-    const port = await new Promise((ok) => {
-      const s = createServer().listen(0, '127.0.0.1', () => {
-        // Listening on TCP: the address is an AddressInfo.
-        const p = /** @type {AddressInfo} */ (s.address()).port;
-        s.close(() => ok(p));
-      });
+    const S = await startServer({
+      cwd: f.repo,
+      env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' },
     });
-    const proc = spawn(
-      process.execPath,
-      [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-      { cwd: f.repo, env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
-    );
+    const { port } = S;
     try {
-      await /** @type {Promise<void>} */ (
-        new Promise((ok, fail) => {
-          let log = '';
-          const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-          proc.stdout.on(
-            'data',
-            (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok()))
-          );
-          proc.stderr.on('data', (d) => (log += d));
-        })
-      );
       const r = await fetch(`http://127.0.0.1:${port}/__pxsig/approve`, {
         method: 'POST',
         headers: {
@@ -287,7 +250,7 @@ test(
       assert.match(body.error, /did not render/);
       assert.deepEqual(readFileSync(file), original, 'the baseline is untouched');
     } finally {
-      proc.kill();
+      await S.stop();
     }
   }
 );

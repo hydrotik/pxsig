@@ -120,7 +120,7 @@ async function applied({ f, P, id, p }) {
   try {
     r = await person(f, ['apply'], { input: 'APPROVE 1 ENTRIES\n', url: S.base });
   } finally {
-    S.stop();
+    await S.stop();
   }
   assert.equal(r.status, 0, `${out(r)}\n${S.log()}`);
   // The server's lock goes when its process ends; it can go between a check and a read, so read it
@@ -267,7 +267,7 @@ test(
       assert.match(r.stderr, /Undo writes baselines, so it needs the store to itself/);
       assert.deepEqual(written(), before, 'the baselines and the approval log are unchanged');
     } finally {
-      S.stop();
+      await S.stop();
     }
   }
 );

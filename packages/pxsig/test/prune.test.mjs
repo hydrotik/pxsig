@@ -5,9 +5,9 @@
  *   node --test packages/pxsig/test/prune.test.mjs
  */
 import assert from 'node:assert/strict';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { createServer, request } from 'node:http';
+import { request } from 'node:http';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -23,9 +23,9 @@ import {
 } from '../src/lib/prune.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
+import { startServer } from './server-proc.mjs';
 import { skipUnless } from './strict.mjs';
 
-/** @import { AddressInfo } from 'node:net' */
 /** @import { CheckRow } from '../src/types.js' */
 /**
  * @typedef {ReturnType<typeof fixture>} Fixture
@@ -370,16 +370,6 @@ test(
 
 // --- through the server ------------------------------------------------------------------------
 
-const freePort = () =>
-  /** @type {Promise<number>} */ (
-    new Promise((ok) => {
-      const s = createServer().listen(0, '127.0.0.1', () => {
-        // A TCP listener: its address is an AddressInfo.
-        const p = /** @type {AddressInfo} */ (s.address()).port;
-        s.close(() => ok(p));
-      });
-    })
-  );
 /**
  * @param {number} port
  * @param {{ method?: string, path: string, headers?: Record<string, string>, body?: unknown }} req
@@ -413,33 +403,18 @@ const raw = (port, { method = 'POST', path, headers = {}, body }) =>
 
 /** @param {Fixture} f */
 async function serve(f) {
-  const port = await freePort();
   const dash = tempDir('dash');
   writeFileSync(join(dash, 'index.html'), '<!doctype html><title>pxsig</title>');
-  const proc = spawn(
-    process.execPath,
-    [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-    {
-      cwd: f.repo,
-      env: {
-        ...testEnv(testHome),
-        PXSIG_BIN: rustBin,
-        PXSIG_WORKSPACE: '',
-        PXSIG_DASHBOARD_DIR: dash,
-      },
-    }
-  );
-  let log = '';
-  proc.stdout.on('data', (d) => (log += d));
-  proc.stderr.on('data', (d) => (log += d));
-  await /** @type {Promise<void>} */ (
-    new Promise((ok, fail) => {
-      const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-      proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
-    })
-  );
-  const exited = new Promise((ok) => proc.on('exit', ok));
-  return { port, url: `http://127.0.0.1:${port}`, stop: () => (proc.kill('SIGTERM'), exited) };
+  const S = await startServer({
+    cwd: f.repo,
+    env: {
+      ...testEnv(testHome),
+      PXSIG_BIN: rustBin,
+      PXSIG_WORKSPACE: '',
+      PXSIG_DASHBOARD_DIR: dash,
+    },
+  });
+  return { port: S.port, url: S.url, stop: () => S.stop() };
 }
 
 test(

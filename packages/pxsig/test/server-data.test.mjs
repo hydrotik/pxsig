@@ -82,7 +82,7 @@ test(
       const again = await data(S.base, '?project=fixture');
       assert.equal(again.body.check.rows.find((x) => x.id === f.ids.ok)?.pass, false);
     } finally {
-      S.stop();
+      await S.stop();
     }
   }
 );
@@ -102,7 +102,7 @@ test(
         assert.equal(r.body.project, undefined, `${name}: no report in the answer`);
       }
     } finally {
-      S.stop();
+      await S.stop();
     }
   }
 );

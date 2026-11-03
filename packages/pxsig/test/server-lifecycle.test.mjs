@@ -7,13 +7,13 @@
  * Needs the Rust binary; skipped without it.
  */
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { hostname } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fixture, hasRust, rustBin } from './fixture.mjs';
-import { src, freePort, serve } from './server-helpers.mjs';
+import { serve } from './server-helpers.mjs';
+import { startServer } from './server-proc.mjs';
 import { skipUnless } from './strict.mjs';
 
 test(
@@ -49,7 +49,7 @@ test(
       );
       assert.equal((await S.post('check', { ids: [f.ids.ok] })).status, 409, 'writes are refused');
     } finally {
-      S.stop();
+      await S.stop();
     }
   }
 );
@@ -59,27 +59,16 @@ test(
   { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
-    const port = await freePort();
-    const proc = spawn(
-      process.execPath,
-      [join(src, '..', 'bin', 'pxsig.mjs'), 'serve', '--port', String(port), '--no-open'],
-      { cwd: f.repo, env: { ...f.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
-    );
-    let log = '';
-    proc.stdout.on('data', (d) => (log += d));
-    await /** @type {Promise<void>} */ (
-      new Promise((ok, fail) => {
-        const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-        proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
-      })
-    );
-    assert.equal((await fetch(`http://127.0.0.1:${port}/__pxsig/status`)).status, 200);
-    const exited = new Promise((ok) => proc.on('exit', ok));
-    proc.kill('SIGTERM');
-    await exited;
+    const S = await startServer({
+      cwd: f.repo,
+      env: { ...f.env, PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' },
+      bin: true,
+    });
+    assert.equal((await fetch(`${S.url}/__pxsig/status`)).status, 200);
+    await S.stop();
     let up = true;
     for (let i = 0; i < 50 && up; i++) {
-      up = await fetch(`http://127.0.0.1:${port}/__pxsig/status`).then(
+      up = await fetch(`${S.url}/__pxsig/status`).then(
         () => true,
         () => false
       );

@@ -3,16 +3,15 @@
  * (origins, tokens, the dashboard link session), the authorize shorthands, and the server helpers
  * (a free port, raw requests, the built dashboard, the link cookie, `pxsig serve`).
  */
-import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
-import { createServer, request } from 'node:http';
+import { request } from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { authorize, linkCookie, Links } from '../src/lib/guard.mjs';
 import { rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
+import { startServer } from './server-proc.mjs';
 
 /** @import { IncomingHttpHeaders, OutgoingHttpHeaders } from 'node:http' */
-/** @import { AddressInfo } from 'node:net' */
 /**
  * @typedef {ReturnType<typeof import('./fixture.mjs').fixture>} Fixture
  * @typedef {{ status: number, error: string, code?: string }} Refusal
@@ -70,17 +69,6 @@ export const viaOf = (action, headers) =>
     ownOrigin: own,
     allowedOrigins: storybook,
   }).via;
-
-export const freePort = () =>
-  /** @type {Promise<number>} */ (
-    new Promise((ok) => {
-      const s = createServer().listen(0, '127.0.0.1', () => {
-        // A TCP listener: its address is an AddressInfo.
-        const p = /** @type {AddressInfo} */ (s.address()).port;
-        s.close(() => ok(p));
-      });
-    })
-  );
 
 /**
  * A raw request (fetch will not send every header a browser does, Host among them).
@@ -156,35 +144,15 @@ export async function dashboardCookie(S, cliToken) {
  * @returns {Promise<Server>}
  */
 export async function serve(f, env = {}) {
-  const port = await freePort();
-  const proc = spawn(
-    process.execPath,
-    [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-    {
-      cwd: f.repo,
-      env: {
-        ...testEnv(testHome),
-        PXSIG_BIN: rustBin,
-        PXSIG_WORKSPACE: '',
-        PXSIG_DASHBOARD_DIR: dashboardDir(),
-        ...env,
-      },
-    }
-  );
-  let log = '';
-  proc.stdout.on('data', (d) => (log += d));
-  proc.stderr.on('data', (d) => (log += d));
-  await /** @type {Promise<void>} */ (
-    new Promise((ok, fail) => {
-      const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-      proc.stdout.on('data', () => /dashboard →/.test(log) && (clearTimeout(t), ok()));
-    })
-  );
-  const exited = new Promise((ok) => proc.on('exit', ok));
-  return {
-    port,
-    url: `http://127.0.0.1:${port}`,
-    log: () => log,
-    stop: () => (proc.kill('SIGTERM'), exited),
-  };
+  const S = await startServer({
+    cwd: f.repo,
+    env: {
+      ...testEnv(testHome),
+      PXSIG_BIN: rustBin,
+      PXSIG_WORKSPACE: '',
+      PXSIG_DASHBOARD_DIR: dashboardDir(),
+      ...env,
+    },
+  });
+  return { port: S.port, url: S.url, log: S.log, stop: () => S.stop() };
 }

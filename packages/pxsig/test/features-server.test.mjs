@@ -12,6 +12,7 @@ import { acquireLock, lockPath, readLock } from '../src/lib/lock.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin, testEnv, testHome } from './fixture.mjs';
 import { src, env, tree, node, cli, twoProjects } from './features-helpers.mjs';
+import { startServer } from './server-proc.mjs';
 import { skipUnless } from './strict.mjs';
 /** @import { LockState, Project } from '../src/types.js' */
 /** @import { AddressInfo } from 'node:net' */
@@ -155,30 +156,12 @@ test(
       ...proj('ui'),
       ...proj('forms'),
     });
-    const port = await new Promise((ok) => {
-      const s = createServer().listen(0, '127.0.0.1', () => {
-        // Listening on TCP: the address is an AddressInfo.
-        const p = /** @type {AddressInfo} */ (s.address()).port;
-        s.close(() => ok(p));
-      });
+    const S = await startServer({
+      cwd: root,
+      env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' },
     });
-    const proc = spawn(
-      process.execPath,
-      [join(src, 'serve.mjs'), '--port', String(port), '--no-open'],
-      { cwd: root, env: { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } }
-    );
+    const { port } = S;
     try {
-      await /** @type {Promise<void>} */ (
-        new Promise((ok, fail) => {
-          let log = '';
-          const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-          proc.stdout.on(
-            'data',
-            (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok()))
-          );
-          proc.stderr.on('data', (d) => (log += d));
-        })
-      );
       for (const project of ['ui', 'forms']) {
         const r = await fetch(
           `http://127.0.0.1:${port}/__pxsig/integrity?project=${project}&story=shared-story--a`
@@ -187,7 +170,7 @@ test(
         assert.equal(/** @type {{ project: string }} */ (await r.json()).project, project);
       }
     } finally {
-      proc.kill();
+      await S.stop();
     }
   }
 );

@@ -1,13 +1,11 @@
 // Which dashboard `pxsig serve` serves (lib/dashboard-dir.mjs): every branch, on folders built here.
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
-import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
-import { fileURLToPath } from 'node:url';
 import { buildDirFor, chooseDashboard, STAMP } from '../src/lib/dashboard-dir.mjs';
 import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
+import { startServer } from './server-proc.mjs';
 import { skipUnless } from './strict.mjs';
 
 /** @typedef {{ name: string, dir: string, configPath: string }} DirProject */
@@ -192,7 +190,6 @@ test('a built-in adapter by name: staleness from its folder', () => {
 
 // --- through `pxsig serve`: the line it prints and the page it serves ---------------------------
 
-const serveJs = fileURLToPath(new URL('../src/serve.mjs', import.meta.url));
 const PXSIG = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
 /**
@@ -200,35 +197,15 @@ const PXSIG = JSON.parse(readFileSync(new URL('../package.json', import.meta.url
  * @param {(io: { log: string, get: (p: string) => Promise<Response> }) => Promise<void>} run
  */
 async function serving(repo, run) {
-  const port = await new Promise((ok) => {
-    const s = createServer().listen(0, '127.0.0.1', () => {
-      // Listening on TCP: the address is an AddressInfo.
-      const p = /** @type {import('node:net').AddressInfo} */ (s.address()).port;
-      s.close(() => ok(p));
-    });
-  });
   /** @type {NodeJS.ProcessEnv} */
   const env = { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' };
   delete env.PXSIG_DASHBOARD_DIR;
-  const proc = spawn(process.execPath, [serveJs, '--port', String(port), '--no-open'], {
-    cwd: repo,
-    env,
-  });
-  let log = '';
+  const S = await startServer({ cwd: repo, env });
+  const { port } = S;
   try {
-    await /** @type {Promise<void>} */ (
-      new Promise((ok, fail) => {
-        const t = setTimeout(() => fail(new Error(`server did not start:\n${log}`)), 20000);
-        proc.stdout.on(
-          'data',
-          (d) => ((log += d), /dashboard →/.test(log) && (clearTimeout(t), ok()))
-        );
-        proc.stderr.on('data', (d) => (log += d));
-      })
-    );
-    await run({ log, get: (p) => fetch(`http://127.0.0.1:${port}${p}`) });
+    await run({ log: S.log(), get: (p) => fetch(`http://127.0.0.1:${port}${p}`) });
   } finally {
-    proc.kill();
+    await S.stop();
   }
 }
 
