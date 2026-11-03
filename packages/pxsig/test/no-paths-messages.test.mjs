@@ -32,29 +32,40 @@ function noAbsolute(text, dir) {
     assert.ok(!text.includes(p), `names an absolute path: ${text}`);
 }
 
-test('machinePath: workspace-relative, else ~/…, else ../ from the workspace; never absolute', () => {
-  const mac = { platform: 'darwin', home: '/Users/a' };
-  const root = '/srv/repo';
-  assert.equal(
-    machinePath(`${root}/node_modules/.cache/pxsig`, { ...mac, root }),
-    'node_modules/.cache/pxsig'
-  );
-  assert.equal(machinePath('/Users/a/.config/pxsig', { ...mac, root }), '~/.config/pxsig');
-  assert.equal(machinePath('/srv/other/.cache/pxsig', { ...mac, root }), '../other/.cache/pxsig');
-  assert.equal(machinePath('/Users/a/repo/x', { ...mac, root: '/Users/a/repo' }), 'x');
-});
+// POSIX paths (a made-up home folder): the spawned commands below cover each OS's own paths.
+const posix = { skip: process.platform === 'win32' && 'POSIX paths' };
 
-test('herePath: ./ inside the current folder, ../ outside, ~/ when only that hides the home folder', () => {
-  const mac = { platform: 'darwin', home: '/Users/a' };
-  const cwd = '/Users/a/repo';
-  assert.equal(herePath('/Users/a/repo/.pxsig/x.png', { ...mac, cwd }), './.pxsig/x.png');
-  assert.equal(herePath('/Users/a/repo', { ...mac, cwd }), '.');
-  assert.equal(herePath('/Users/a/site/index.html', { ...mac, cwd }), '../site/index.html');
-  assert.equal(herePath('/srv/site', { ...mac, cwd }), '../../../srv/site');
-  // From outside the home folder, a ../ path would spell it out.
-  assert.equal(herePath('/Users/a/site', { ...mac, cwd: '/srv/repo' }), '~/site');
-  assert.equal(herePath('/opt/site', { ...mac, cwd: '/srv/repo' }), '../../opt/site');
-});
+test(
+  'machinePath: workspace-relative, else ~/…, else ../ from the workspace; never absolute',
+  posix,
+  () => {
+    const mac = { platform: 'darwin', home: '/h/a' };
+    const root = '/srv/repo';
+    assert.equal(
+      machinePath(`${root}/node_modules/.cache/pxsig`, { ...mac, root }),
+      'node_modules/.cache/pxsig'
+    );
+    assert.equal(machinePath('/h/a/.config/pxsig', { ...mac, root }), '~/.config/pxsig');
+    assert.equal(machinePath('/srv/other/.cache/pxsig', { ...mac, root }), '../other/.cache/pxsig');
+    assert.equal(machinePath('/h/a/repo/x', { ...mac, root: '/h/a/repo' }), 'x');
+  }
+);
+
+test(
+  'herePath: ./ inside the current folder, ../ outside, ~/ when only that hides the home folder',
+  posix,
+  () => {
+    const mac = { platform: 'darwin', home: '/h/a' };
+    const cwd = '/h/a/repo';
+    assert.equal(herePath('/h/a/repo/.pxsig/x.png', { ...mac, cwd }), './.pxsig/x.png');
+    assert.equal(herePath('/h/a/repo', { ...mac, cwd }), '.');
+    assert.equal(herePath('/h/a/site/index.html', { ...mac, cwd }), '../site/index.html');
+    assert.equal(herePath('/srv/site', { ...mac, cwd }), '../../../srv/site');
+    // From outside the home folder, a ../ path would spell it out.
+    assert.equal(herePath('/h/a/site', { ...mac, cwd: '/srv/repo' }), '~/site');
+    assert.equal(herePath('/opt/site', { ...mac, cwd: '/srv/repo' }), '../../opt/site');
+  }
+);
 
 test('dashboard build prints a serve line that pastes from the current folder', () => {
   const cwd = tempDir('dash-build');
