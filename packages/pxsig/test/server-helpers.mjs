@@ -42,12 +42,37 @@ export const needs =
   skipUnless(hasRust, 'Rust binary not built') || skipUnless(chromium, 'no Chromium');
 
 /**
+ * Reset (TCP RST) the first `n` connections `server` accepts, as a loaded machine's socket layer
+ * can: the client sees ECONNRESET (fetch) or net::ERR_CONNECTION_RESET (Chromium).
+ * @param {import('node:net').Server} server
+ * @param {number} n
+ * @returns {{ readonly dropped: number }}
+ */
+export function dropFirst(server, n) {
+  let dropped = 0;
+  server.prependListener('connection', (/** @type {import('node:net').Socket} */ socket) => {
+    if (dropped >= n) return;
+    dropped++;
+    socket.resetAndDestroy();
+  });
+  return {
+    get dropped() {
+      return dropped;
+    },
+  };
+}
+
+/**
  * A stand-in Storybook: `/index.json` lists `stories`; `/iframe.html?id=` renders a block, or
  * Storybook's error display for an id containing "broken". The preview object answers what
  * pxsig reads: `storyStoreValue.loadStory` (parameters) and `currentRender` (render finished).
+ * `drop`: reset the first `drop` connections (dropFirst). `requests`: every request's path and query.
  * @param {IndexStory[]} stories
+ * @param {{ drop?: number }} [opts]
  */
-export async function fakeStorybook(stories) {
+export async function fakeStorybook(stories, { drop = 0 } = {}) {
+  /** @type {string[]} */
+  const requests = [];
   /** @param {string} id */
   const page = (id) => {
     const broken = id.includes('broken');
@@ -63,6 +88,7 @@ export async function fakeStorybook(stories) {
     res.setHeader('connection', 'close');
     // A request to an http server always has a url.
     const u = new URL(/** @type {string} */ (req.url), 'http://x');
+    requests.push(`${u.pathname}${u.search}`);
     if (u.pathname === '/index.json') {
       res.writeHead(200, { 'content-type': 'application/json' });
       return res.end(
@@ -90,10 +116,12 @@ export async function fakeStorybook(stories) {
     }
     res.writeHead(404).end();
   });
+  dropFirst(server, drop);
   await /** @type {Promise<void>} */ (new Promise((ok) => server.listen(0, '127.0.0.1', ok)));
   // Listening on TCP: the address is an AddressInfo.
   return {
     url: `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (server.address()).port}`,
+    requests,
     close: () => server.close(),
   };
 }

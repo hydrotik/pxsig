@@ -7,6 +7,7 @@ import { reconcile, readJson, writeJsonAtomic } from '../integrity.mjs';
 import { dropTorn } from '../files.mjs';
 import { relPath } from '../paths.mjs';
 import { foreignServer } from '../workspace/peers.mjs';
+import { isSocketError, retryOnce } from '../retry.mjs';
 import { guardWrite, logRepair, who } from './core.mjs';
 import { logRegister, registerStories } from './register.mjs';
 import { convertLegacy, restoreBaselineImages } from './restore.mjs';
@@ -94,7 +95,12 @@ export function pruneOrphans(ctx, ledger, ids, { by, via }) {
  */
 export async function serverStatus(serverUrl, root = null, env = process.env) {
   try {
-    const r = await fetch(`${serverUrl}/__pxsig/status`, { signal: AbortSignal.timeout(1500) });
+    // A busy machine can time out, reset or refuse one request to a server that is up: one retry
+    // (lib/retry.mjs) before "not running". Refused twice is down.
+    const { value: r } = await retryOnce(
+      () => fetch(`${serverUrl}/__pxsig/status`, { signal: AbortSignal.timeout(1500) }),
+      { when: (e) => isSocketError(e, { refused: true, timeout: true }) }
+    );
     // The server's status answer (docs/server.md, GET /__pxsig/status).
     const s = /** @type {{ running?: unknown, queued?: number, workspaceId?: string }} */ (
       await r.json()

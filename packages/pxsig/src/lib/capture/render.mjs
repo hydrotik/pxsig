@@ -12,6 +12,7 @@ import {
   waitLayoutStable,
   waitMarkupStable,
 } from './page.mjs';
+import { navErrorCode, retryOnce } from '../retry.mjs';
 /** @import { BrowserContext, Page, PageScreenshotOptions } from 'playwright' */
 /** @import { RenderResult } from '../../types.js' */
 /** @import { BrowserSource, PxsigBrowser, RenderEntry, RenderOptions, RenderOutput, StorybookPreview } from '../../types/t4.js' */
@@ -176,10 +177,24 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
           // Storybook bundle (~600 ms). A new page, new globals or a failed switch reloads.
           const switched = fastSwitch && loadedGlobals === g && (await switchStory(page, storyId));
           if (!switched) {
-            const resp = await page.goto(
-              `${baseUrl}/iframe.html?id=${encodeURIComponent(storyId)}&viewMode=story${g ? `&globals=${g}` : ''}`,
-              { waitUntil: 'networkidle', timeout: 30000 }
-            );
+            const url = `${baseUrl}/iframe.html?id=${encodeURIComponent(storyId)}&viewMode=story${g ? `&globals=${g}` : ''}`;
+            // A connection that broke (lib/retry.mjs NAV_CODES, e.g. Windows' ERR_NO_BUFFER_SPACE) is
+            // retried once on a fresh page; an answer (an HTTP error, Storybook's error screen) never.
+            const { value: resp } = await retryOnce(
+              () => page.goto(url, { waitUntil: 'networkidle', timeout: 30000 }),
+              {
+                when: (err) => navErrorCode(err) !== null,
+                before: async () => {
+                  await page.close().catch(() => {});
+                  page = await /** @type {BrowserContext} */ (context).newPage();
+                },
+              }
+            ).catch((err) => {
+              // A page whose navigation failed is left on chrome-error://, and the next entry's
+              // navigation on it is interrupted: the next entry starts on a fresh context and page.
+              ctxKey = null;
+              throw err;
+            });
             if (resp && !resp.ok()) throw new Error(`HTTP ${resp.status()}`);
             loadedGlobals = g;
             reloads++;

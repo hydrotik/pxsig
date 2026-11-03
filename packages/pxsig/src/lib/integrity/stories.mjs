@@ -2,6 +2,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { toPosix } from '../paths.mjs';
+import { isSocketError, retryOnce } from '../retry.mjs';
 import { SCREENS } from '../source.mjs';
 /** @import { IndexStory, StoryIndex } from '../../types.js' */
 /** @import { FetchLike, FetchedIndex, StorybookIndexEntry, StorybookIndexJson } from '../../types/t3.js' */
@@ -99,7 +100,12 @@ export async function fetchStoryIndex(
   const url = `${String(baseUrl).replace(/\/$/, '')}/index.json`;
   let res;
   try {
-    res = await fetchImpl(url, { signal: AbortSignal.timeout(timeoutMs) });
+    // A connection reset by a busy machine is retried once (lib/retry.mjs); a refused one is not:
+    // nothing listens, and static.mjs then serves storybook.staticDir.
+    ({ value: res } = await retryOnce(
+      () => fetchImpl(url, { signal: AbortSignal.timeout(timeoutMs) }),
+      { when: (e) => isSocketError(e) }
+    ));
   } catch (e) {
     return {
       url,
