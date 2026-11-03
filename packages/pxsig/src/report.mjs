@@ -243,8 +243,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     });
     const out = resolve(strFlag(flags, 'out') ?? join(P.store.reports, 'site'));
     const { images } = writeStaticReport(P, out);
+    // Relative to the current folder: it opens from there, and an absolute path names the user.
+    const { herePath } = await import('./lib/machine.mjs');
     console.log(
-      `[report] ${join(out, 'index.html')} · project ${P.name} · ${images} baseline images`
+      `[report] ${herePath(join(out, 'index.html'))} · project ${P.name} · ${images} baseline images`
     );
   } catch (e) {
     // openProject and the writes above throw an Error.

@@ -12,7 +12,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { tokenFile } from '../src/lib/guard.mjs';
 import {
-  displayPath,
+  homePath,
   machineDir,
   readSettings,
   settingsPath,
@@ -117,24 +117,17 @@ test("pxsig doctor names this machine's settings and token folder", () => {
 });
 
 test('doctor prints machine paths home-relative, so pasted output carries no user name', () => {
-  const mac = { platform: 'darwin', home: '/Users/a', env: {} };
+  const mac = { platform: 'darwin', home: '/Users/a' };
   assert.equal(
-    displayPath(`${mac.home}/Library/Application Support/pxsig/settings.json`, mac),
+    homePath(`${mac.home}/Library/Application Support/pxsig/settings.json`, mac),
     '~/Library/Application Support/pxsig/settings.json'
   );
-  assert.equal(displayPath(`${mac.home}b/x`, mac), 'x', 'only the home folder itself');
-  // Outside the workspace and the home folder: the folder's name, never the absolute path.
-  assert.equal(displayPath('/srv/repo/node_modules/.cache/pxsig', mac), 'pxsig');
-  const win = {
-    platform: 'win32',
-    home: 'C:\\Users\\a',
-    env: { LOCALAPPDATA: 'C:\\Users\\a\\AppData\\Local' },
-  };
+  assert.equal(homePath(`${mac.home}b/x`, mac), null, 'only the home folder itself');
+  const win = { platform: 'win32', home: 'C:\\Users\\a' };
   assert.equal(
-    displayPath('c:\\users\\a\\AppData\\Local\\pxsig\\settings.json', win),
-    '%LOCALAPPDATA%\\pxsig\\settings.json'
+    homePath('c:\\users\\a\\AppData\\Local\\pxsig\\settings.json', win),
+    '~/AppData/Local/pxsig/settings.json'
   );
-  assert.equal(displayPath('C:\\Users\\a\\repo\\x', win), '%USERPROFILE%\\repo\\x');
 
   const f = fixture();
   const cli = join(dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'pxsig.mjs');
@@ -152,7 +145,7 @@ test('doctor prints machine paths home-relative, so pasted output carries no use
       USERPROFILE: cfg,
     },
   });
-  // No Settings row: nothing writes settings.json in this version (--json keeps machine.settings).
+  // No Settings row: nothing writes settings.json in this version.
   assert.doesNotMatch(r.stdout, /not used in this version/);
   assert.match(r.stdout, /Approval guard files/);
   assert.ok(!r.stdout.includes(join(cfg, 'Library')), 'no absolute home path');

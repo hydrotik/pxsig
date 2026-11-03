@@ -7,7 +7,6 @@ import { CODES } from '../lib/integrity.mjs';
 import { describeLock, readLock, takeLock } from '../lib/lock.mjs';
 import { ask, progress, stateCell } from '../lib/term.mjs';
 import { describeAgent } from '../lib/agents.mjs';
-import { displayPath } from '../lib/machine.mjs';
 import { preflightReport } from './preflight.mjs';
 import {
   appendReadiness,
@@ -284,12 +283,10 @@ export function doctorParts(cli) {
             `${r.sources.staleness.method} · ${r.sources.staleness.filesTraced} edited files traced`,
           ],
           ['Ledger', r.ledgerPath],
-          // Workspace- or home-relative here, as in --json (`machine.settings`, which no command
-          // writes in this version, has no row).
+          // Workspace-relative, else `~/…`, as in --json (lib/machine.mjs machinePath).
+          // `machine.settings`, which no command writes in this version, has no row.
           ...(r.machine
-            ? /** @type {[string, Cell][]} */ ([
-                ['Approval guard files', displayPath(r.machine.tokens, { root: ctx().root })],
-              ])
+            ? /** @type {[string, Cell][]} */ ([['Approval guard files', r.machine.tokens]])
             : []),
           [
             'Running under',

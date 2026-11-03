@@ -313,7 +313,8 @@ function imagePath(C, kind, id) {
 }
 
 /**
- * An image's bytes and where they came from, or null.
+ * An image's bytes (null when missing), its `file` (absolute: callers print it relative, never as
+ * it is) and `where` (workspace-relative, or 'no manifest entry').
  * @param {ProjectContext} C
  * @param {string} kind
  * @param {string} id
@@ -321,10 +322,11 @@ function imagePath(C, kind, id) {
 export function imageOf(C, kind, id) {
   const p = imagePath(C, kind, id);
   if (!p || !existsSync(p))
-    return { bytes: null, where: p ? relPath(C.root, p) : 'no manifest entry' };
+    return { bytes: null, file: p, where: p ? relPath(C.root, p) : 'no manifest entry' };
   const bytes = kind === 'baseline' ? readImage(p) : readFileSync(p);
   return {
     bytes,
+    file: p,
     where: kind === 'baseline' ? `${relPath(C.root, p)} (image section)` : relPath(C.root, p),
   };
 }

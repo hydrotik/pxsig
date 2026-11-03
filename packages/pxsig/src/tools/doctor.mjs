@@ -13,7 +13,7 @@ import {
   writeLedger,
 } from '../lib/integrity.mjs';
 import { tokenFile } from '../lib/guard.mjs';
-import { readSettings } from '../lib/machine.mjs';
+import { machinePath, readSettings } from '../lib/machine.mjs';
 import { detectAgent } from '../lib/agents.mjs';
 import { applyRepairs, defaultHooks, planRepairs, serverStatus } from '../lib/repair.mjs';
 import { relPath } from '../lib/paths.mjs';
@@ -76,10 +76,14 @@ async function doctor({
   const out = {
     project: C.P.name,
     ledgerPath: relPath(C.root, ledgerPath(ctx)),
+    // Workspace-relative, else `~/…`, never absolute: an absolute path names the user.
     machine: {
-      settings: settings.path,
+      settings: machinePath(settings.path, { root: C.root }),
       setUp: settings.exists,
-      tokens: dirname(tokenFile(C.P.workspaceRoot, serverUrl ?? 'http://127.0.0.1:6070')),
+      tokens: machinePath(
+        dirname(tokenFile(C.P.workspaceRoot, serverUrl ?? 'http://127.0.0.1:6070')),
+        { root: C.root }
+      ),
     },
     agent: detectAgent(),
   };

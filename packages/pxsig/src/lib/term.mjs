@@ -8,8 +8,9 @@
  *           inline images in iTerm2 / WezTerm.
  *   plain   anything else (CI, a pipe, an assistant even in a real terminal): Markdown.
  *           No ANSI, no carriage-return redraws, nothing that reads as noise in a transcript;
- *           tables are GFM, image paths are absolute so the agent can open them, and a "Next"
- *           section names the exact commands to run.
+ *           tables are GFM, image paths are relative to the current folder (never absolute: it
+ *           names the user) so the agent can open them, and a "Next" section names the exact
+ *           commands to run.
  *   json    the command's data as one JSON document on stdout (logs stay on stderr).
  *
  * Choice: --json / --plain / --pretty, else PXSIG_FORMAT, else pretty only on a TTY that is not
@@ -257,7 +258,7 @@ function renderMarkdown(blocks) {
       for (const [c, why] of b.next) out.push(`- \`${c}\` — ${why}`);
       out.push('');
     } else if (b.images) {
-      // Absolute paths: an agent can open the PNG with its file/image tool.
+      // Relative to the current folder: an agent can open the PNG with its file/image tool.
       for (const im of b.images)
         out.push(`- ${im.label}: ${im.path}${im.missing ? ' (missing)' : ''}`);
       out.push('');
