@@ -3,6 +3,8 @@
 // server.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { realpathSync } from 'node:fs';
+import { userInfo } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { cli, src, tree } from './features-helpers.mjs';
@@ -24,6 +26,18 @@ const fresh = () =>
  */
 const starts = (stderr) => stderr.split('\n').filter((l) => l.startsWith('[spawn] '));
 
+/**
+ * No absolute path in `text`: not the project's folder, not the home folder (either names the
+ * user), not pxsig's own engine path. JSON-escaped forms too (Windows backslashes).
+ * @param {string} text
+ * @param {string} root
+ */
+function noPaths(text, root) {
+  const paths = [root, realpathSync(root), testHome, userInfo().homedir, rustBin];
+  for (const p of paths.flatMap((x) => [x, JSON.stringify(x).slice(1, -1)]))
+    assert.ok(!text.includes(p), `absolute path (${p}) in:\n${text}`);
+}
+
 test('doctor without a manifest prints the preflight once, then the next step, exit 2', () => {
   const root = fresh();
   const r = cli(['doctor', '--offline', '--plain'], root, {
@@ -39,6 +53,18 @@ test('doctor without a manifest prints the preflight once, then the next step, e
   assert.match(r.stdout, /storybook-static \(missing\)/);
   assert.match(r.stdout, /probe \(PXSIG_AGENT=probe\)/);
   assert.match(r.stdout, /pxsig manifest/);
+  // Workspace-relative, or a label outside the workspace: no absolute path, no user name.
+  assert.match(r.stdout, /no readable manifest at \.pxsig\/manifest\.json/);
+  assert.match(r.stdout, /Engine\W+PXSIG_BIN \(pxsig(\.exe)?\)/);
+  assert.match(r.stdout, /Chromium\W+(Playwright's Chromium|no path)/);
+  // PXSIG_DEBUG's own `[spawn]` lines name the engine they start: debug output, not the report.
+  noPaths(
+    all
+      .split('\n')
+      .filter((l) => !l.startsWith('[spawn] '))
+      .join('\n'),
+    root
+  );
   // At most the engine's `--version` (what `pxsig --version` runs); nothing else starts.
   assert.ok(starts(r.stderr).length <= 1, r.stderr);
   for (const line of starts(r.stderr))
@@ -60,7 +86,9 @@ test('doctor --json without a manifest carries the same fields', () => {
     'playwright',
     'storybook',
   ]);
-  assert.equal(pf.engine.path.split('/').pop(), rustBin.split(/[\\/]/).pop());
+  assert.equal(out.error, 'no readable manifest at .pxsig/manifest.json');
+  assert.match(pf.engine.path, /^PXSIG_BIN \(pxsig(\.exe)?\)$/);
+  noPaths(r.stdout, root);
   assert.equal(typeof pf.engine.present, 'boolean');
   if (pf.engine.present) assert.match(String(pf.engine.version), /^\d+\.\d+\.\d+/);
   assert.equal(typeof pf.chromium.present, 'boolean');
@@ -103,6 +131,7 @@ test('pxsig_doctor without a manifest answers the error and the same preflight',
   const detail = JSON.parse(reply.result.content[1].text);
   assert.equal(detail.next, 'pxsig manifest');
   assert.equal(detail.preflight.storybook.url, 'http://127.0.0.1:1');
+  noPaths(m.stdout, root);
   for (const line of starts(m.stderr))
     assert.match(line, /^\[spawn\] .*pxsig(\.exe)? --version$/, line);
 });

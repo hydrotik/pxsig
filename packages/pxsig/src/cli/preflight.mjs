@@ -24,7 +24,7 @@ export function preflightReport(error, pf, CMD) {
     [
       'Engine',
       !engine.present
-        ? bad(`not found at ${engine.path}`)
+        ? bad(`${engine.path}: not found`)
         : `${engine.path} (${engine.version ? `pxsig ${engine.version}` : 'version unknown'})`,
     ],
     [
@@ -39,7 +39,7 @@ export function preflightReport(error, pf, CMD) {
         ? `${chromium.path} (present; not launched)`
         : bad(
             chromium.path
-              ? `missing at ${chromium.path} (npx playwright install chromium)`
+              ? `${chromium.path}: missing (npx playwright install chromium)`
               : (chromium.error ?? 'no path: Playwright did not resolve')
           ),
     ],

@@ -15,7 +15,7 @@ import { tokenFile } from '../lib/guard.mjs';
 import { readSettings } from '../lib/machine.mjs';
 import { detectAgent } from '../lib/agents.mjs';
 import { applyRepairs, defaultHooks, planRepairs, serverStatus } from '../lib/repair.mjs';
-import { relPath } from '../lib/paths.mjs';
+import { relPath, shortPath } from '../lib/paths.mjs';
 import {
   checkFindings,
   outcome,
@@ -60,8 +60,10 @@ async function doctor({
     ledger = await reconcile(ctx, { offline });
   } catch (e) {
     // Before a manifest exists: the setup preflight rides on the error (CLI and MCP print it).
+    // The manifest's path relative to the workspace: an absolute one names the user.
     if (/** @type {NodeJS.ErrnoException} */ (e).code === 'no-manifest')
       Object.assign(/** @type {Error} */ (e), {
+        message: `no readable manifest at ${shortPath(C.root, ctx.manifestPath)}`,
         detail: { preflight: await preflight(C), next: 'pxsig manifest' },
       });
     throw e;

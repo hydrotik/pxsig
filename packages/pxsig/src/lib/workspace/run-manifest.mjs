@@ -2,7 +2,7 @@
 /** @import { Manifest, Project, RunManifest } from '../../types.js' */
 import { mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
-import { toPosix } from '../paths.mjs';
+import { shortPath, toPosix } from '../paths.mjs';
 import { writeAtomic } from '../files.mjs';
 import { SetupError } from './core.mjs';
 
@@ -113,7 +113,7 @@ export function writeRunManifest(P, manifestPath = P.manifestPath(), { dir: runD
     m = /** @type {Manifest} */ (JSON.parse(readFileSync(manifestPath, 'utf8')));
   } catch (e) {
     throw new SetupError(
-      `no readable manifest at ${manifestPath} (${/** @type {NodeJS.ErrnoException} */ (e).code ?? /** @type {Error} */ (e).message}): run \`pxsig manifest\` first`
+      `no readable manifest at ${shortPath(P.workspaceRoot, manifestPath)} (${/** @type {NodeJS.ErrnoException} */ (e).code ?? /** @type {Error} */ (e).message}): run \`pxsig manifest\` first`
     );
   }
   const run = runManifest(P, m, {

@@ -418,7 +418,10 @@ resolves and its version, whether Playwright's Chromium is at its `executablePat
 no browser starts), the configured `storybook.url` and `storybook.staticDir` (as config; nothing is
 fetched), and the assistant marker. Then the error once, and `pxsig manifest` as the next step;
 exit 2. With `--json`: `{ error, preflight: { engine, playwright, chromium, storybook, agent },
-next }`. The MCP tool `pxsig_doctor` answers the error with the same `{ preflight, next }`.
+next }`. The MCP tool `pxsig_doctor` answers the error with the same `{ preflight, next }`. No
+path in it is absolute (one would name the user): each is relative to the workspace, or outside it
+a label (`bundled (@pxsig/cli-<os>-<arch>)`, `PXSIG_BIN (pxsig)`, `Playwright's Chromium`);
+`pxsig config --json` has the engine's absolute path.
 
 ## Server, MCP, reports
 

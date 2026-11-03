@@ -19,3 +19,22 @@ export const shownPath = (from, to) => {
   const rel = relPath(from, to) || '.';
   return isAbsolute(rel) ? basename(to) : rel;
 };
+/**
+ * `to` relative to `from` when it is inside `from` ('.' for `from` itself), else null: a path
+ * outside the workspace is shown by a label instead (the folders above it name the user).
+ * @param {string} from
+ * @param {string} to
+ * @returns {string | null}
+ */
+export const insidePath = (from, to) => {
+  const rel = relative(from, to);
+  if (rel === '') return '.';
+  return rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel) ? null : toPosix(rel);
+};
+/**
+ * A path as human output shows it: relative to `from` inside it, else the folder's or file's own
+ * name. Never absolute, never `../` (either can name the user).
+ * @param {string} from
+ * @param {string} to
+ */
+export const shortPath = (from, to) => insidePath(from, to) ?? basename(to);

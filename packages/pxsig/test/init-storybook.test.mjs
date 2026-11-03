@@ -2,12 +2,14 @@
 // `storybook-static/` when the folder has them. The written config opens as a valid project. No
 // Storybook, no server: nothing here makes a request.
 import assert from 'node:assert/strict';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { userInfo } from 'node:os';
+import { basename, join } from 'node:path';
 import { test } from 'node:test';
 import { detectStorybook, initProject } from '../src/lib/setup.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { cli, env, tree } from './features-helpers.mjs';
+import { testHome } from './fixture.mjs';
 
 /** @param {string} dir */
 const config = (dir) => JSON.parse(readFileSync(join(dir, 'pxsig.config.json'), 'utf8'));
@@ -81,4 +83,29 @@ test('init leaves an existing config alone, folders or not', () => {
   assert.equal(r.status, 0, r.stderr);
   assert.deepEqual(config(dir), { version: 1, srcRoot: 'src' });
   assert.deepEqual(JSON.parse(r.stdout).detected, { configDir: null, staticDir: null });
+});
+
+test('init and a missing config name no absolute path: the folder by its name', () => {
+  const dir = tree({});
+  const forbidden = [dir, realpathSync(dir), testHome, userInfo().homedir];
+  /** @param {string} text */
+  const clean = (text) => {
+    for (const p of forbidden.flatMap((x) => [x, JSON.stringify(x).slice(1, -1)]))
+      assert.ok(!text.includes(p), `absolute path (${p}) in:\n${text}`);
+  };
+  const missing = cli(['doctor', '--plain'], dir);
+  assert.equal(missing.status, 2, missing.stdout + missing.stderr);
+  assert.match(missing.stderr, /in this folder or above it: run `pxsig init`/);
+  clean(missing.stdout + missing.stderr);
+  const plain = cli(['init', '--plain'], dir);
+  assert.equal(plain.status, 0, plain.stderr);
+  assert.match(plain.stdout, new RegExp(`pxsig init — ${basename(dir)}`));
+  assert.match(plain.stdout, /pxsig\.config\.json/);
+  clean(plain.stdout + plain.stderr);
+  const json = cli(['init', '--json'], tree({}));
+  assert.deepEqual(JSON.parse(json.stdout).wrote, [
+    'pxsig.config.json',
+    '.pxsig/.gitignore',
+    '.pxsig/.gitattributes',
+  ]);
 });
