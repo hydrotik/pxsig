@@ -199,7 +199,26 @@ export function doctorParts(cli) {
       lock?.release();
     }
     const sm = r.summary;
-    spin.done(sm.headline, sm.status !== 'attention');
+    // --fail-on: error → errors; warn → errors + warnings; info → also info findings, never ok / excluded / drift.
+    const findings = {
+      error: sm.bySeverity.error,
+      warn: sm.bySeverity.warn,
+      info: sm.infoFindings ?? 0,
+    };
+    /** @type {Record<string, number>} */
+    const rank = { error: 0, warn: 1, info: 2 };
+    const over = Object.entries(findings)
+      .filter(([k]) => rank[k] <= rank[failOn])
+      .reduce((n, [, c]) => n + c, 0);
+    // The verdict agrees with the exit: "No errors" only when no finding fails --fail-on.
+    const verdict =
+      over && !sm.bySeverity.error
+        ? `${over} ${over === 1 ? 'finding' : 'findings'} at or above --fail-on ${failOn}, 0 errors`
+        : sm.headline;
+    // Every finding a new entry (the first check): reviewing them is the next step, not a repair.
+    const onlyNew =
+      Object.keys(sm.byCode).length > 0 && Object.keys(sm.byCode).every((c) => c === 'unbaselined');
+    spin.done(verdict, sm.status !== 'attention');
     const ix = r.sources.storyIndex;
     /**
      * @param {string} code
@@ -231,10 +250,10 @@ export function doctorParts(cli) {
     const blocks = [
       {
         h: 'pxsig doctor',
-        sub: `${sm.components} components · ${sm.entries} entries · index: ${ix.source === 'storybook' ? 'Storybook (live)' : `static scan (${ix.reachable ? 'Storybook index broken' : 'Storybook not reachable'})`} · ${ix.inScope} stories in scope`,
+        sub: `${sm.components} components · ${sm.entries} entries · index: ${ix.source === 'storybook' ? (ix.build ? `Storybook build (${ix.build})` : 'Storybook (live)') : `static scan (${ix.reachable ? 'Storybook index broken' : 'Storybook not reachable'})`} · ${ix.inScope} stories in scope`,
       },
       {
-        note: sm.headline,
+        note: verdict,
         tone: sm.status === 'attention' ? 'bad' : sm.status === 'warnings' ? 'warn' : 'ok',
       },
       ...r.setup.map(
@@ -265,19 +284,10 @@ export function doctorParts(cli) {
             `${r.sources.staleness.method} · ${r.sources.staleness.filesTraced} edited files traced`,
           ],
           ['Ledger', r.ledgerPath],
+          // Home-relative here; --json keeps the absolute paths (and `machine.settings`, which no
+          // command writes in this version, so it has no row).
           ...(r.machine
             ? /** @type {[string, Cell][]} */ ([
-                // Home-relative here; --json keeps the absolute paths. No command writes
-                // settings.json in this version.
-                [
-                  'Settings',
-                  r.machine.setUp
-                    ? displayPath(r.machine.settings)
-                    : {
-                        text: `${displayPath(r.machine.settings)} (not used in this version)`,
-                        color: 'gray',
-                      },
-                ],
                 ['Approval guard files', displayPath(r.machine.tokens)],
               ])
             : []),
@@ -395,7 +405,9 @@ export function doctorParts(cli) {
     }
     /** @type {[string, string][]} */
     const next = [];
-    if (repair === 'none' && sm.status !== 'clean')
+    if (repair === 'none' && onlyNew)
+      next.push([`${CMD} serve`, 'review the new entries and approve their first renders']);
+    else if (repair === 'none' && sm.status !== 'clean')
       next.push([`${CMD} doctor --repair`, 'the safe repairs, as a dry-run plan']);
     if (repair === 'plan' && r.plan?.steps.some((x) => !x.blocked))
       next.push([
@@ -408,17 +420,6 @@ export function doctorParts(cli) {
         'every entry of one component',
       ]);
     blocks.push({ next });
-    // --fail-on: error → errors; warn → errors + warnings; info → also info findings, never ok / excluded / drift.
-    const findings = {
-      error: sm.bySeverity.error,
-      warn: sm.bySeverity.warn,
-      info: sm.infoFindings ?? 0,
-    };
-    /** @type {Record<string, number>} */
-    const rank = { error: 0, warn: 1, info: 2 };
-    const over = Object.entries(findings)
-      .filter(([k]) => rank[k] <= rank[failOn])
-      .reduce((n, [, c]) => n + c, 0);
     // A setup error is never warned (exit 2 in every mode); findings at or above --fail-on are the doctor gate.
     const g = gate(
       [

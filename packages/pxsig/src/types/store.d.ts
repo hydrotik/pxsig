@@ -247,6 +247,8 @@ export interface StoryIndex {
     healthy: boolean;
     version?: unknown;
     error?: string;
+    /** The build in `storybook.staticDir` the index was read from (workspace-relative), when nothing answered. */
+    build?: string;
   };
   stories: IndexStory[];
 }

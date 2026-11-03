@@ -138,8 +138,21 @@ export async function fetchStoryIndex(
       error: `broken index (HTTP ${res.status}): ${msg || 'not a story index'}`,
     };
   }
-  // A v4/v5 index: `entries` holds its story and docs records.
-  const stories = Object.values(/** @type {Record<string, StorybookIndexEntry>} */ (json.entries))
+  return {
+    url,
+    reachable: true,
+    healthy: true,
+    version: json.v ?? null,
+    stories: indexStories(json),
+  };
+}
+
+/**
+ * The stories of a v4/v5 index: `entries` holds its story and docs records.
+ * @param {StorybookIndexJson} json
+ */
+const indexStories = (json) =>
+  Object.values(/** @type {Record<string, StorybookIndexEntry>} */ (json.entries))
     .filter((e) => e.type === 'story')
     .map((e) => ({
       id: e.id,
@@ -148,7 +161,30 @@ export async function fetchStoryIndex(
       importPath: e.importPath,
       tags: e.tags ?? [],
     }));
-  return { url, reachable: true, healthy: true, version: json.v ?? null, stories };
+
+/**
+ * The index of the build in `storybook.staticDir` (index.json + iframe.html, what `check` serves
+ * when nothing answers at storybook.url), read from disk; null without one or when it is no index.
+ * @param {IntegrityContext} ctx
+ */
+function buildIndex(ctx) {
+  const dir = ctx.project.storybook?.staticDir;
+  // A build as static.mjs's isStorybookBuild sees one (not imported: static.mjs imports this module).
+  if (!dir || !existsSync(join(dir, 'iframe.html'))) return null;
+  try {
+    // Storybook's own build output: only `entries` is read, and it is checked next.
+    const json = /** @type {StorybookIndexJson} */ (
+      JSON.parse(readFileSync(join(dir, 'index.json'), 'utf8'))
+    );
+    if (typeof json?.entries !== 'object' || json.entries === null) return null;
+    return {
+      dir: toPosix(relative(ctx.repoRoot, dir)),
+      version: json.v ?? null,
+      stories: indexStories(json),
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -212,12 +248,18 @@ export function scanStories(ctx) {
 }
 
 /**
- * The story index to reconcile against: live when healthy, else the static scan.
+ * The story index to reconcile against: live when healthy, else the static scan. With `build`
+ * (the doctor), when nothing answers at storybook.url, the index of the build in
+ * `storybook.staticDir` comes before the scan: the build `check` served (`storybook.build` names
+ * its folder; `reachable` stays false, so nothing that needs a running Storybook relies on it).
  * @param {IntegrityContext} ctx
- * @param {{ fetchImpl?: FetchLike, offline?: boolean, live?: FetchedIndex | null }} [opts]
+ * @param {{ fetchImpl?: FetchLike, offline?: boolean, live?: FetchedIndex | null, build?: boolean }} [opts]
  * @returns {Promise<StoryIndex>}
  */
-export async function loadStoryIndex(ctx, { fetchImpl, offline = false, live } = {}) {
+export async function loadStoryIndex(
+  ctx,
+  { fetchImpl, offline = false, live, build = false } = {}
+) {
   // The dashboard's own screens: no Storybook and no story files (source.mjs).
   if (ctx.source === SCREENS)
     return {
@@ -237,17 +279,29 @@ export async function loadStoryIndex(ctx, { fetchImpl, offline = false, live } =
           error: 'offline (not fetched)',
         }
       : await fetchStoryIndex(baseUrl, { timeoutMs: ctx.integrity.indexTimeoutMs, fetchImpl }));
-  if (res.healthy) {
-    const stories = res.stories.map((s) => ({
-      ...s,
-      importPath: normaliseImportPath(ctx, s.importPath),
-    }));
+  /** @param {IndexStory[]} stories */
+  const normalised = (stories) =>
+    stories.map((s) => ({ ...s, importPath: normaliseImportPath(ctx, s.importPath) }));
+  if (res.healthy)
     return {
       source: 'storybook',
       storybook: { url: res.url, reachable: true, healthy: true, version: res.version },
-      stories,
+      stories: normalised(res.stories),
     };
-  }
+  const built = build && !offline && !res.reachable ? buildIndex(ctx) : null;
+  if (built)
+    return {
+      source: 'storybook',
+      storybook: {
+        url: res.url,
+        reachable: false,
+        healthy: true,
+        version: built.version,
+        error: res.error,
+        build: built.dir,
+      },
+      stories: normalised(built.stories),
+    };
   return {
     source: 'static',
     storybook: { url: res.url, reachable: res.reachable, healthy: false, error: res.error },

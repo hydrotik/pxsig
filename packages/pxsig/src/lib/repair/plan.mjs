@@ -54,8 +54,9 @@ export function planRepairs(ledger, { only, prune = false, server = null, stale 
       action: 'register',
       ids: unregistered.map((x) => x.id),
       why: 'stories in the index with no manifest entry: add them (modes and states from parameters.pxsig) and render them in the re-check step; they arrive without a signature, as NEW, for a person to approve',
+      // A build's index (sb.build) lists the stories, but parameters are read from a running one.
       blocked:
-        sb.source === 'storybook'
+        sb.source === 'storybook' && !sb.build
           ? null
           : `needs a running, healthy Storybook to read parameters.pxsig (${sb.error ?? 'index not loaded'})`,
       // The entries register adds are rendered in this same run (the re-check step takes them).
