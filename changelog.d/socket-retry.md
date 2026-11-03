@@ -9,5 +9,6 @@
   `net::ERR_CONNECTION_RESET`) retries once on a fresh page, and a navigation that still fails
   fails only its own entry instead of every entry after it on that page. An answer from the server
   (an HTTP error, Storybook's error screen) is never retried. "The pxsig server is not running"
-  now takes about 250 ms longer to answer.
+  now takes about 250 ms longer when the connection is refused, and up to about 3.3 s (was 1.5 s)
+  when the status request times out.
   To update: nothing to do; no option, output or exit code changes.
