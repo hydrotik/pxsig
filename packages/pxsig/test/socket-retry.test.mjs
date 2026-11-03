@@ -229,7 +229,9 @@ test(
   { skip: skipUnless(chromium, 'no Chromium') },
   async () => {
     const { results } = await render(2, stories.slice(0, 2));
-    assert.match(String(results[0].error), /net::ERR_(CONNECTION_RESET|EMPTY_RESPONSE)/);
+    // Chromium names a reset connection several ways (RESET, EMPTY_RESPONSE, SOCKET_NOT_CONNECTED
+    // on a loaded runner): any connection failure the retry covers.
+    assert.ok(navErrorCode(results[0].error), String(results[0].error));
     assert.equal(results[1].error ?? null, null, 'no cascade from the failed page');
     assert.ok(results[1].png);
   }
