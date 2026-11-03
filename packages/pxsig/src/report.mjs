@@ -27,6 +27,7 @@ import {
 } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { herePath } from './lib/machine.mjs';
 import { shortPath } from './lib/paths.mjs';
 import { readImage } from './lib/psig.mjs';
 import { readJson } from './lib/files.mjs';
@@ -244,7 +245,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const out = resolve(strFlag(flags, 'out') ?? join(P.store.reports, 'site'));
     const { images } = writeStaticReport(P, out);
     // Relative to the current folder: it opens from there, and an absolute path names the user.
-    const { herePath } = await import('./lib/machine.mjs');
     console.log(
       `[report] ${herePath(join(out, 'index.html'))} · project ${P.name} · ${images} baseline images`
     );
