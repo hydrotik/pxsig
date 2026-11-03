@@ -5,6 +5,7 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { injectAxe } from '../lib/capture.mjs';
+import { navErrorCode, retryOnce } from '../lib/retry.mjs';
 import { inspectLayout, MAX_PER_RULE, NARROW_WIDTH, pageOverflow } from './layout.mjs';
 /** @import { Browser, Page } from 'playwright' */
 /** @import { LayoutFinding, Screen, ScreenCapture, ScreenTarget, ScreenViolation } from '../types/t4.js' */
@@ -67,15 +68,11 @@ export function settle(page) {
  * @returns {Promise<typeof NO_BUFFER_SPACE | null>} what was retried, or null
  */
 export async function load(page, url) {
-  try {
-    await page.goto(url, { waitUntil: 'load' });
-    return null;
-  } catch (e) {
-    if (!String(e).includes(`net::${NO_BUFFER_SPACE}`)) throw e;
-  }
-  await new Promise((r) => setTimeout(r, RETRY_MS));
-  await page.goto(url, { waitUntil: 'load' });
-  return NO_BUFFER_SPACE;
+  const { retried } = await retryOnce(() => page.goto(url, { waitUntil: 'load' }), {
+    when: (e) => navErrorCode(e) === NO_BUFFER_SPACE,
+    delayMs: RETRY_MS,
+  });
+  return retried ? NO_BUFFER_SPACE : null;
 }
 
 /**
