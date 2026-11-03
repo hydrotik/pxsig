@@ -21,6 +21,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
 import { writeJson } from './files.mjs';
+import { insidePath } from './paths.mjs';
 import { spawnSync } from './spawn.mjs';
 /** @import { MachineOptions } from '../types.js' */
 
@@ -41,18 +42,21 @@ export function machineDir({
 }
 
 /**
- * `path` as `pxsig doctor` prints it: under `%LOCALAPPDATA%` (Windows) or the home folder (`~`,
- * `%USERPROFILE%` on Windows), so pasted output carries no user name. `--json` keeps the absolute
+ * `path` as `pxsig doctor` prints it, never absolute (an absolute path names the user): relative to
+ * the workspace `root` inside it; else under `%LOCALAPPDATA%` (Windows) or the home folder (`~`,
+ * `%USERPROFILE%` on Windows); else the folder's or file's own name. `--json` keeps the absolute
  * path.
  * @param {string} path
- * @param {MachineOptions} [opts]
+ * @param {MachineOptions & { root?: string }} [opts]
  * @returns {string}
  */
 export function displayPath(
   path,
-  { platform = process.platform, env = process.env, home = homedir() } = {}
+  { platform = process.platform, env = process.env, home = homedir(), root } = {}
 ) {
   const win = platform === 'win32';
+  const inRoot = root ? insidePath(root, path) : null;
+  if (inRoot) return inRoot;
   /** @type {[string | undefined, string][]} */
   const bases = win
     ? [
@@ -68,7 +72,8 @@ export function displayPath(
     if (same && (path.length === b.length || /[\\/]/.test(path[b.length])))
       return name + path.slice(b.length);
   }
-  return path;
+  // Split on both separators: a Windows path's name on any OS.
+  return path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 }
 
 /** @param {MachineOptions} [opts] */

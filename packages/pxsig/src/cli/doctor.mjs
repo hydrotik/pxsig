@@ -284,11 +284,11 @@ export function doctorParts(cli) {
             `${r.sources.staleness.method} · ${r.sources.staleness.filesTraced} edited files traced`,
           ],
           ['Ledger', r.ledgerPath],
-          // Home-relative here; --json keeps the absolute paths (and `machine.settings`, which no
-          // command writes in this version, so it has no row).
+          // Workspace- or home-relative here, as in --json (`machine.settings`, which no command
+          // writes in this version, has no row).
           ...(r.machine
             ? /** @type {[string, Cell][]} */ ([
-                ['Approval guard files', displayPath(r.machine.tokens)],
+                ['Approval guard files', displayPath(r.machine.tokens, { root: ctx().root })],
               ])
             : []),
           [

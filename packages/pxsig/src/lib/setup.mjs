@@ -18,7 +18,7 @@ import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { componentOf, loadStoryIndex, resolveContext, writeJsonAtomic } from './integrity.mjs';
 import { expandEntries, harvestParameters } from './manifest.mjs';
 import { CONFIG_FILE, entryConfig, SetupError, WORKSPACE_FILE } from './workspace.mjs';
-import { toPosix } from './paths.mjs';
+import { shortPath, toPosix } from './paths.mjs';
 import { writeJson } from './files.mjs';
 /** @import { ManifestEntry, Project, WorkspaceFile } from '../types.js' */
 /** @import { BuiltManifest, DescribedConfig, InitConfig } from '../types/t6.js' */
@@ -138,7 +138,9 @@ export function initProject({
     if (!Object.values(ws.projects ?? {}).includes(rel)) {
       const key = cfg.name ?? name ?? basename(dir);
       if (ws.projects?.[key])
-        throw new SetupError(`${wsFile} already has a project named "${key}": pass --name`);
+        throw new SetupError(
+          `${shortPath(process.cwd(), wsFile)} already has a project named "${key}": pass --name`
+        );
       ws.projects = { ...ws.projects, [key]: rel };
       writeJson(wsFile, ws, { pretty: true });
       wrote.push(wsFile);

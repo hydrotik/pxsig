@@ -73,24 +73,26 @@ export function findWorkspace({ cwd = process.cwd(), workspace = null, env = pro
   }
   // pxsig.workspace.json as written (schema/workspace.json); `projects` is checked next.
   const ws = /** @type {WorkspaceFile} */ (readJsonFile(file));
+  // The file as errors name it: an absolute path names the user.
+  const shown = shortPath(cwd, file);
   if (!isObj(ws.projects))
-    throw new SetupError(`${file}: "projects" must map a project name to its folder`);
+    throw new SetupError(`${shown}: "projects" must map a project name to its folder`);
   if (ws.requires != null) {
     const ok = satisfies(PXSIG_VERSION, ws.requires);
     if (ok === null)
       throw new SetupError(
-        `${file}: "requires" is not a version range pxsig reads ("${ws.requires}"; for example ">=0.4.0")`
+        `${shown}: "requires" is not a version range pxsig reads ("${ws.requires}"; for example ">=0.4.0")`
       );
     if (!ok)
       throw new SetupError(
-        `${file} requires pxsig ${ws.requires}; this is pxsig ${PXSIG_VERSION}: install a version in that range`,
+        `${shown} requires pxsig ${ws.requires}; this is pxsig ${PXSIG_VERSION}: install a version in that range`,
         { code: 'version-required' }
       );
   }
   const projects = Object.entries(ws.projects).map(([name, rel]) => {
     if (typeof rel !== 'string')
       throw new SetupError(
-        `${file}: the folder of project "${name}" must be a string (a path from the workspace root)`
+        `${shown}: the folder of project "${name}" must be a string (a path from the workspace root)`
       );
     const dir = resolve(root, rel);
     return { name, dir, configPath: join(dir, CONFIG_FILE) };
@@ -98,7 +100,7 @@ export function findWorkspace({ cwd = process.cwd(), workspace = null, env = pro
   // The application this workspace is, as the dashboard's title names it (`pxsig • <label>`).
   const label = ws.label == null ? null : typeof ws.label === 'string' ? ws.label.trim() : '';
   if (label === '' || (label && label.length > 60))
-    throw new SetupError(`${file}: "label" must be text of 1 to 60 characters`);
+    throw new SetupError(`${shown}: "label" must be text of 1 to 60 characters`);
   const id = workspaceId(root);
   return { root, id, file, label, defaults: ws.defaults ?? {}, server: ws.server ?? {}, projects };
 }

@@ -7,7 +7,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { readImage } from '../lib/psig.mjs';
 import { writeRunManifest } from '../lib/workspace.mjs';
-import { relPath } from '../lib/paths.mjs';
+import { relPath, shortPath } from '../lib/paths.mjs';
 import { buildPlan } from '../lib/prune.mjs';
 import { folders, sourceRoots } from '../lib/integrity/context.mjs';
 import { ctxOf, readJson } from './context.mjs';
@@ -24,7 +24,8 @@ import { ctxOf, readJson } from './context.mjs';
  * @returns {AffectedResult}
  */
 function affected(C, { files, since, manifestPath }) {
-  if (!existsSync(C.rustBin)) throw new Error(`the pxsig binary is missing: ${C.rustBin}`);
+  if (!existsSync(C.rustBin))
+    throw new Error(`the pxsig binary is missing: ${shortPath(C.root, C.rustBin)}`);
   // Callers pass files or since.
   const how = files?.length
     ? ['--files', files.join(',')]

@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
-import { toPosix } from '../paths.mjs';
+import { shortPath, toPosix } from '../paths.mjs';
 import { readJson, writeJson } from '../files.mjs';
 import { manifestSource } from '../source.mjs';
 /** @import { Project } from '../../types.js' */
@@ -105,6 +105,17 @@ export function resolveContext(P, { manifestPath } = {}) {
     rustBin: P.rustBin,
   };
 }
+
+/**
+ * What reconcile throws before a manifest exists. It names the manifest relative to the workspace
+ * (an absolute path names the user): the server logs it, doctor and check print it.
+ * @param {IntegrityContext} ctx
+ */
+export const noManifest = (ctx) =>
+  Object.assign(new Error(`no readable manifest at ${shortPath(ctx.repoRoot, ctx.manifestPath)}`), {
+    setup: true,
+    code: 'no-manifest',
+  });
 
 /** @param {IntegrityContext} ctx */
 export const ledgerPath = (ctx) => join(ctx.dirs.reports, 'integrity.json');

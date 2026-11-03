@@ -34,6 +34,7 @@ import { axeScript, axeVersion, launchBrowser } from './lib/capture.mjs';
 import { buildDirFor, STAMP } from './lib/dashboard-dir.mjs';
 import { PXSIG_VERSION } from './lib/workspace.mjs';
 import { readJson } from './lib/files.mjs';
+import { shortPath } from './lib/paths.mjs';
 import { prebuiltDashboardDir } from './report.mjs';
 import { capture, pool } from './dashboard-check/capture.mjs';
 import { compareScreens, readEarlier } from './dashboard-check/compare.mjs';
@@ -185,8 +186,8 @@ export async function dashboardCheck(
     reference.note = 'the build checked is the reference itself';
   else if (!isDashboardBuild(refDir))
     reference.note = existsSync(join(refDir, 'index.html'))
-      ? `${refDir} is a placeholder, not a built dashboard`
-      : `no prebuilt dashboard at ${refDir}`;
+      ? `${shortPath(cwd, refDir)} is a placeholder, not a built dashboard`
+      : `no prebuilt dashboard at ${shortPath(cwd, refDir)}`;
   else reference.used = true;
 
   const themes =
@@ -206,7 +207,9 @@ export async function dashboardCheck(
   if (earlier?.error) throw new CheckSetupError(earlier.error);
   const bin = rustBinary();
   if (earlierDir && !existsSync(bin))
-    throw new CheckSetupError(`--compare needs the pxsig engine, and it is missing at ${bin}`);
+    throw new CheckSetupError(
+      `--compare needs the pxsig engine, and it is missing at ${shortPath(cwd, bin)}`
+    );
 
   const outDir =
     typeof flags.out === 'string'

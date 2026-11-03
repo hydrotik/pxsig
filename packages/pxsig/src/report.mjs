@@ -27,6 +27,7 @@ import {
 } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { shortPath } from './lib/paths.mjs';
 import { readImage } from './lib/psig.mjs';
 import { readJson } from './lib/files.mjs';
 import { manifestSource } from './lib/source.mjs';
@@ -201,7 +202,7 @@ export function pageWithData(data) {
  */
 export function writeStaticReport(P, out) {
   if (!existsSync(join(dashboardDir, 'index.html')))
-    throw new Error(`the dashboard is not built (${dashboardDir})`);
+    throw new Error(`the dashboard is not built (${shortPath(P.workspaceRoot, dashboardDir)})`);
   mkdirSync(join(out, 'assets'), { recursive: true });
   for (const f of readdirSync(join(dashboardDir, 'assets')))
     copyFileSync(join(dashboardDir, 'assets', f), join(out, 'assets', f));

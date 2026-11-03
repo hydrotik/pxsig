@@ -11,6 +11,7 @@ import { createServer } from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';
 import { fetchStoryIndex } from './integrity.mjs';
 import { manifestSource, SCREENS } from './source.mjs';
+import { shortPath } from './paths.mjs';
 /** @import { AddressInfo } from 'node:net' */
 /** @import { StaticServer } from '../types.js' */
 /** What `fetchStoryIndex` (lib/integrity.mjs) found. */
@@ -95,7 +96,7 @@ export function serveStaticDir(dir, { port = 0 } = {}) {
  * caller's setup error), or `{ url, served: true, close }` after serving `storybook.staticDir`.
  * On success with a served build, `P.storybook.url` is rewritten to the served address, so the
  * run manifest and every renderer use it.
- * @param {{ storybook: { url: string, staticDir: string | null }, manifestPath?: () => string }} P
+ * @param {{ storybook: { url: string, staticDir: string | null }, manifestPath?: () => string, workspaceRoot?: string }} P
  * @param {{ log?: (message: string) => void, fetchImpl?: typeof fetch }} [opts]
  * @returns {Promise<{ url: string, served: false, index: StoryIndexProbe } | { url: string, served: true, close: () => Promise<void>, index: StoryIndexProbe }>}
  */
@@ -113,7 +114,7 @@ export async function ensureStorybook(P, { log = () => {}, fetchImpl } = {}) {
   if (!dir) return { url: P.storybook.url, served: false, index: idx };
   if (!isStorybookBuild(dir)) {
     log(
-      `storybook.staticDir ${dir} holds no Storybook build (index.json + iframe.html): build it first`
+      `storybook.staticDir ${shortPath(P.workspaceRoot ?? process.cwd(), dir)} holds no Storybook build (index.json + iframe.html): build it first`
     );
     return { url: P.storybook.url, served: false, index: idx };
   }

@@ -5,7 +5,7 @@ import { basename, dirname, join, relative, resolve } from 'node:path';
 import { sha256 } from '../approvals.mjs';
 import { writeJsonAtomic } from '../integrity.mjs';
 import { SetupError, runManifest } from '../workspace.mjs';
-import { toPosix } from '../paths.mjs';
+import { shortPath, toPosix } from '../paths.mjs';
 import { appendLine } from '../files.mjs';
 /** @import { ManifestEntry, Project } from '../../types.js' */
 /** @import { EngineVerdict, LegacyManifest, MigrateManifest, MigratePlan, MigrateVerify } from '../../types/t6.js' */
@@ -21,7 +21,9 @@ import { ensureGitattributes, readJson, STORE_GITATTRIBUTES, STORE_GITIGNORE } f
 function legacyManifests(from) {
   const dir = join(from, 'js');
   if (!existsSync(join(dir, 'pxsig.manifest.json')))
-    throw new SetupError(`no legacy manifest at ${join(dir, 'pxsig.manifest.json')}`);
+    throw new SetupError(
+      `no legacy manifest at ${shortPath(process.cwd(), join(dir, 'pxsig.manifest.json'))}`
+    );
   return readdirSync(dir)
     .filter((n) => /^pxsig\.manifest(\.[a-z0-9-]+)?\.json$/.test(n))
     .sort()
@@ -167,7 +169,7 @@ export function migrateLegacy(P, { from, apply = false, verify = true, log = () 
   const existing = plan.pack.filter((x) => existsSync(x.out));
   if (existing.length)
     throw new SetupError(
-      `${existing.length} baselines already exist in ${P.store.root} (first: ${existing[0].out}); migrate into an empty store`
+      `${existing.length} baselines already exist in ${shortPath(P.workspaceRoot, P.store.root)} (first: ${shortPath(P.workspaceRoot, existing[0].out)}); migrate into an empty store`
     );
   mkdirSync(P.store.reports, { recursive: true });
   const planFile = join(P.store.reports, 'migrate-plan.json');

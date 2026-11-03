@@ -122,11 +122,9 @@ test('doctor prints machine paths home-relative, so pasted output carries no use
     displayPath(`${mac.home}/Library/Application Support/pxsig/settings.json`, mac),
     '~/Library/Application Support/pxsig/settings.json'
   );
-  assert.equal(displayPath(`${mac.home}b/x`, mac), `${mac.home}b/x`, 'only the home folder itself');
-  assert.equal(
-    displayPath('/srv/repo/node_modules/.cache/pxsig', mac),
-    '/srv/repo/node_modules/.cache/pxsig'
-  );
+  assert.equal(displayPath(`${mac.home}b/x`, mac), 'x', 'only the home folder itself');
+  // Outside the workspace and the home folder: the folder's name, never the absolute path.
+  assert.equal(displayPath('/srv/repo/node_modules/.cache/pxsig', mac), 'pxsig');
   const win = {
     platform: 'win32',
     home: 'C:\\Users\\a',
