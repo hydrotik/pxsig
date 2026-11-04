@@ -136,6 +136,8 @@
   - definition: The command to re-check the entry once it is fixed.
   - term: Compare modes
   - definition: Side by side, swipe, onion skin, pixel diff, or the signature cells the gate compares.
+  - term: Originals
+  - definition: "The baseline and the latest render with no analysis drawn: the stored renders, trimmed to the story. Not saved, and never part of a decision."
   - term: Change navigation
   - definition: Steps through the regions where pixels differ.
   - term: Pixel
@@ -189,6 +191,8 @@
   - definition: Zoom in / out
   - term: N ⇧N
   - definition: Next / previous change
+  - term: O
+  - definition: Original images
   - term: ← →
   - definition: Previous / next story
   - term: A

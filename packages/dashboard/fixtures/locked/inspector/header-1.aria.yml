@@ -26,9 +26,8 @@
   - button "Zoom in (+)": +
   - button "Fit"
   - button "1:1"
-  - text: Tolerance
-  - group "Tolerance":
-    - slider "Tolerance": "16"
+  - switch "Show the original images without analysis"
+  - text: Originals
   - switch "Highlight changed pixels" [checked]
   - text: Highlight
   - switch "Outline changed regions" [checked]
@@ -37,13 +36,16 @@
   - text: Change 1 / 2
   - button "Next change (N)": ›
   - group "Image comparison. Drag to pan, scroll to zoom.": Baseline render Latest render
-  - text: 1–5 mode F fit 0 1:1 + − zoom N ⇧N next / previous change ← → story A approve R reject Esc close
+  - text: 1–5 mode F fit 0 1:1 + − zoom N ⇧N next / previous change O originals ← → story A approve R reject Esc close
   - complementary:
     - heading "Pixel" [level=3]
     - link "Storybook":
       - /url: http://127.0.0.1:1/?path=/story/ui-button--primary
     - text: Hover over the image to read pixel values. Before — After — Max channel Δ —
     - heading "Pixel Changes" [level=3]
+    - text: Tolerance
+    - group "Tolerance":
+      - slider "Tolerance": "16"
     - term: Changed pixels
     - definition: 1.0K (1.60%)
     - term: Regions
