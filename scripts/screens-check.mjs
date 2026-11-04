@@ -4,7 +4,7 @@
  * dashboard check` renders, each in both themes) checked against packages/dashboard/.pxsig, the
  * store of the `pxsig` project (packages/dashboard/pxsig.config.json).
  *
- *   node scripts/screens-check.mjs [--build <dir>] [--only <feature,…>] [--update-locks]
+ *   node scripts/screens-check.mjs [--build <dir>] [--only <feature,…>] [--update-locks] [--no-live] [--repeat <n>]
  *   pnpm screens:check …   (the same, in pxsig's container: scripts/screens-container.mjs)
  *
  * --build is the dashboard to check: the reference build (`PXSIG_UI_ADAPTER=hydrotik
@@ -24,6 +24,11 @@
  *
  * An entry id is `<section>--<feature>-<n>@<theme>`: inspector.header's first screen in the dark
  * theme is `inspector--header-1@dark`, so the review groups screens by section.
+ *
+ * Live screens (scripts/live/): the real `pxsig serve` on a staged example, driven through the
+ * reviewer's flows, `live--<flow>-<n>@<theme>`, checked the same way after the fixture screens.
+ * `--only` takes fixture and live features alike; `--no-live` leaves the live screens out;
+ * `--repeat <n>` runs the flows n times (default 2) and fails a step whose runs differ.
  * Every rendered screen must also have no accessibility (axe) or layout finding, as `pxsig dashboard
  * check --strict` requires.
  *
@@ -40,11 +45,11 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { CheckSetupError, dashboardCheck } from '../packages/pxsig/src/dashboard-check.mjs';
-import { browserPool } from '../packages/pxsig/src/lib/capture.mjs';
+import { axeScript, browserPool } from '../packages/pxsig/src/lib/capture.mjs';
 import { annotateRow, byId, envConfig, envSummary } from '../packages/pxsig/src/lib/env.mjs';
 import { writeJson } from '../packages/pxsig/src/lib/files.mjs';
 import { takeLock } from '../packages/pxsig/src/lib/lock.mjs';
@@ -56,6 +61,8 @@ import {
   screenFindings,
   structureFile,
 } from './lib/screen-locks.mjs';
+import { FEATURES as LIVE } from './live/flows.mjs';
+import { liveCatalogue, runLive } from './live/run.mjs';
 import {
   engineVersion,
   openProject,
@@ -138,7 +145,19 @@ async function main() {
   /** @type {Project} */
   const P = openProject({ cwd: projectDir });
   const build = resolve(flag('build') ?? join(repo, 'packages/pxsig/dist/dashboard'));
-  const only = flag('only');
+  // --only splits into the fixture features (dashboardCheck's) and the live ones.
+  const named =
+    flag('only')
+      ?.split(',')
+      .map((x) => x.trim())
+      .filter(Boolean) ?? null;
+  const liveIds = new Set(LIVE.map((f) => f.id));
+  const noLive = args.includes('--no-live');
+  const liveOnly = named ? named.filter((x) => liveIds.has(x)) : null;
+  const only = named?.filter((x) => !liveIds.has(x)).join(',') || (named ? null : undefined);
+  const runFixtures = only !== null;
+  const runLiveScreens = !noLive && (!liveOnly || liveOnly.length > 0);
+  const repeat = Number(flag('repeat') ?? 2);
 
   // The entries: every screen in both themes, baselines grouped by section.
   const catalogue = /** @type {ScreenCatalogue} */ (
@@ -153,9 +172,12 @@ async function main() {
     for (const m of readFileSync(join(featuresDir, f), 'utf8').matchAll(/\bid: '([a-z0-9.-]+)'/g))
       defined.set(m[1], rel(join(featuresDir, f)));
   const entries = screenEntries(
-    catalogue,
+    { features: [...catalogue.features, ...liveCatalogue().features] },
     (id, section) => rel(join(P.store.baselines, section, `${id}.psig`)),
-    (feature) => defined.get(feature) ?? rel(join(projectDir, 'src', 'ui', 'features.ts'))
+    (feature) =>
+      liveIds.has(feature)
+        ? rel(join(repo, 'scripts', 'live', 'flows.mjs'))
+        : (defined.get(feature) ?? rel(join(projectDir, 'src', 'ui', 'features.ts')))
   );
   const manifestPath = P.manifestPath();
   mkdirSync(P.store.root, { recursive: true });
@@ -185,19 +207,31 @@ async function main() {
     engine,
   });
   const tmp = join(P.store.root, 'renders', '.screens');
-  /** @type {{ report: DashboardCheckReport, outDir: string }} */
-  let checked;
+  const keep = join(P.store.reports, 'live-repeat');
+  rmSync(keep, { recursive: true, force: true });
+  /** @type {{ report: { screens: DashboardCheckReport['screens'] }, outDir: string }} */
+  let checked = { report: { screens: [] }, outDir: tmp };
   try {
-    checked = await dashboardCheck(
-      { build, out: tmp, reference: build, ...(only ? { only } : {}) },
-      repo,
-      {
-        browser: await pool.get('chromium'),
-        log: (/** @type {string} */ m) => console.log(m),
-        aria: true,
-        anchors: true,
-      }
-    );
+    const browser = await pool.get('chromium');
+    if (runFixtures)
+      checked = await dashboardCheck(
+        { build, out: tmp, reference: build, ...(only ? { only } : {}) },
+        repo,
+        { browser, log: (/** @type {string} */ m) => console.log(m), aria: true, anchors: true }
+      );
+    if (runLiveScreens)
+      checked.report.screens.push(
+        ...(await runLive({
+          browser,
+          dashboard: build,
+          axe: axeScript({ root: repo, workspaceRoot: repo }),
+          out: join(tmp, 'live'),
+          keep,
+          themes: /** @type {('dark' | 'light')[]} */ (THEMES),
+          repeat,
+          only: liveOnly,
+        }))
+      );
   } catch (e) {
     await pool.close();
     if (e instanceof CheckSetupError) die(e.message);
@@ -213,7 +247,8 @@ async function main() {
     const { id } = screenId(x.feature, x.index + 1, x.theme);
     const png = join(P.store.latest, `${id}.png`);
     rmSync(png, { force: true });
-    if (x.rendered && x.shot) cpSync(join(checked.outDir, x.shot), png);
+    if (x.rendered && x.shot)
+      cpSync(isAbsolute(x.shot) ? x.shot : join(checked.outDir, x.shot), png);
     render.set(
       id,
       x.rendered
@@ -241,7 +276,8 @@ async function main() {
   const lockArgs = {
     screens: checked.report.screens,
     update: args.includes('--update-locks'),
-    complete: !only && checked.report.screens.every((x) => x.rendered),
+    // A stale lock file shows only when both kinds of screen ran in full.
+    complete: !named && !noLive && checked.report.screens.every((x) => x.rendered),
   };
   const structure = checkStructure({ ...lockArgs, dir: join(projectDir, 'fixtures', 'locked') });
   const geometry = checkGeometry({
@@ -370,8 +406,9 @@ async function main() {
     console.log(
       '[screens] a structure or geometry change made on purpose: pnpm screens:check --update-locks, and commit packages/dashboard/fixtures/locked'
     );
+  const live = out.filter((r) => !r.skipped && r.id.startsWith('live--')).length;
   console.log(
-    `[screens] ${out.length - out.filter((r) => r.skipped).length} screens checked · ${summary.passed} match · ${failed.length} to review (changed, new or not rendered)`
+    `[screens] ${out.length - out.filter((r) => r.skipped).length} screens checked (${live} live) · ${summary.passed} match · ${failed.length} to review (changed, new or not rendered)`
   );
   for (const r of failed.slice(0, 20))
     console.log(`  ${r.id}: ${r.error ? `error: ${r.error}` : r.new ? 'new' : 'changed'}`);

@@ -112,6 +112,117 @@ export async function measureLayout(page) {
 }
 
 /**
+ * A browser context as every screen sees it: VIEWPORT, reduced motion, the theme's colour scheme,
+ * TIMEZONE and LOCALE, and FREEZE's style added to every page (no animation, transition or caret).
+ * `bypassCSP`: axe-core is injected as a script, which a served page's policy refuses (the real
+ * server's, scripts/live/run.mjs); the page renders the same.
+ * @param {Browser} browser
+ * @param {'light' | 'dark'} colorScheme
+ * @param {{ bypassCSP?: boolean }} [opts]
+ */
+export async function screenContext(browser, colorScheme, { bypassCSP = false } = {}) {
+  const context = await browser.newContext({
+    ...(bypassCSP ? { bypassCSP } : {}),
+    viewport: VIEWPORT,
+    reducedMotion: 'reduce',
+    colorScheme,
+    timezoneId: TIMEZONE,
+    locale: LOCALE,
+  });
+  await context.addInitScript((css) => {
+    document.addEventListener('DOMContentLoaded', () => {
+      const s = document.createElement('style');
+      s.textContent = css;
+      document.head.append(s);
+    });
+  }, FREEZE);
+  return context;
+}
+
+/**
+ * Capture a page already showing its screen (its landmark visible): wait until its images are
+ * drawn, its fonts loaded and its layout still, then take the screenshot, the accessibility
+ * snapshot (`aria`), the anchors' boxes, axe's violations and (`layout`) the layout findings.
+ * Never throws for a page error (`errors`, collected by the caller): the result says it.
+ * `restore`: after the layout measure, put the page back at VIEWPORT and let it settle, so a flow
+ * goes on on the same page (scripts/live/run.mjs).
+ * @param {Page} page
+ * @param {{ shot: string, axe: string, layout?: boolean, aria?: boolean, anchors?: { name: string, target: ScreenTarget }[], errors: string[], restore?: boolean }} opts
+ * @returns {Promise<Omit<ScreenCapture, 'ms' | 'retried'>>}
+ */
+export async function snap(
+  page,
+  { shot, axe, layout = false, aria = false, anchors = [], errors, restore = false }
+) {
+  // The inspector marks its stage aria-busy until its images are drawn, analysed and fitted.
+  await page
+    .waitForFunction(() => !document.querySelector('[aria-busy="true"]'), null, {
+      timeout: LANDMARK_MS,
+    })
+    .catch(() => {});
+  await page.evaluate(() =>
+    Promise.all([...document.images].map((i) => i.decode().catch(() => {})))
+  );
+  await page.evaluate(() => document.fonts?.ready);
+  const settled = await settle(page);
+  mkdirSync(dirname(shot), { recursive: true });
+  await page.screenshot({ path: shot });
+  // Before the layout measure, which leaves the page at another width.
+  const structure = aria ? await page.locator('body').ariaSnapshot() : null;
+  /** @type {Record<string, [number, number, number, number] | null>} */
+  const boxes = {};
+  for (const a of anchors) {
+    const el = locate(page, a.target);
+    const box = (await el.count()) ? await el.boundingBox() : null;
+    boxes[a.name] = box
+      ? [Math.round(box.x), Math.round(box.y), Math.round(box.width), Math.round(box.height)]
+      : null;
+  }
+  /** @type {ScreenViolation[]} */
+  let violations = [];
+  if (axe) {
+    await injectAxe(page, axe);
+    violations = await page.evaluate(async () => {
+      // injectAxe added axe-core to this page just above.
+      const r = await /** @type {NonNullable<Window['axe']>} */ (window.axe).run(document, {
+        resultTypes: ['violations'],
+      });
+      return r.violations.map((v) => ({
+        id: v.id,
+        impact: v.impact ?? null,
+        count: v.nodes.length,
+      }));
+    });
+  }
+  const measured = layout && !errors.length;
+  const found = measured ? await measureLayout(page) : [];
+  if (measured && restore) {
+    await page.setViewportSize(VIEWPORT);
+    await settle(page);
+  }
+  const unsettled = settled ? {} : { settled: /** @type {const} */ (false) };
+  if (errors.length)
+    return {
+      rendered: false,
+      reason: `page error: ${errors[0]}`,
+      errors,
+      axe: violations,
+      layout: [],
+      ...unsettled,
+    };
+  return {
+    rendered: true,
+    reason: null,
+    errors,
+    axe: violations,
+    layout: found,
+    ...(structure != null ? { aria: structure } : {}),
+    ...(anchors.length ? { anchors: boxes } : {}),
+    ...unsettled,
+  };
+}
+
+/**
  * Render one screen in one theme; never throws (a failure is the result). `layout`: also measure
  * the layout findings (the adapter's screens; not the reference's). `aria`: also take the page's
  * accessibility snapshot (Playwright's `ariaSnapshot`), the structure scripts/screens-check.mjs locks.
@@ -125,25 +236,12 @@ export async function capture(
   { url, screen, shot, axe, initScript = null, layout = false, aria = false, anchors = [] }
 ) {
   const started = Date.now();
-  const context = await browser.newContext({
-    viewport: VIEWPORT,
-    reducedMotion: 'reduce',
-    colorScheme: url.includes('theme=light') ? 'light' : 'dark',
-    timezoneId: TIMEZONE,
-    locale: LOCALE,
-  });
+  const context = await screenContext(browser, url.includes('theme=light') ? 'light' : 'dark');
   /** @type {string[]} */
   const errors = [];
   /** @type {typeof NO_BUFFER_SPACE | null} */
   let retried = null;
   try {
-    await context.addInitScript((css) => {
-      document.addEventListener('DOMContentLoaded', () => {
-        const s = document.createElement('style');
-        s.textContent = css;
-        document.head.append(s);
-      });
-    }, FREEZE);
     if (initScript) await context.addInitScript(initScript);
     const page = await context.newPage();
     page.on('pageerror', (e) => errors.push(String(e.message ?? e).split('\n')[0]));
@@ -166,68 +264,9 @@ export async function capture(
         ...(retried ? { retried } : {}),
       };
     }
-    // The inspector marks its stage aria-busy until its images are drawn, analysed and fitted.
-    await page
-      .waitForFunction(() => !document.querySelector('[aria-busy="true"]'), null, {
-        timeout: LANDMARK_MS,
-      })
-      .catch(() => {});
-    await page.evaluate(() =>
-      Promise.all([...document.images].map((i) => i.decode().catch(() => {})))
-    );
-    await page.evaluate(() => document.fonts?.ready);
-    const settled = await settle(page);
-    mkdirSync(dirname(shot), { recursive: true });
-    await page.screenshot({ path: shot });
-    // Before the layout measure, which leaves the page at another width.
-    const structure = aria ? await page.locator('body').ariaSnapshot() : null;
-    /** @type {Record<string, [number, number, number, number] | null>} */
-    const boxes = {};
-    for (const a of anchors) {
-      const el = locate(page, a.target);
-      const box = (await el.count()) ? await el.boundingBox() : null;
-      boxes[a.name] = box
-        ? [Math.round(box.x), Math.round(box.y), Math.round(box.width), Math.round(box.height)]
-        : null;
-    }
-    /** @type {ScreenViolation[]} */
-    let violations = [];
-    if (axe) {
-      await injectAxe(page, axe);
-      violations = await page.evaluate(async () => {
-        // injectAxe added axe-core to this page just above.
-        const r = await /** @type {NonNullable<Window['axe']>} */ (window.axe).run(document, {
-          resultTypes: ['violations'],
-        });
-        return r.violations.map((v) => ({
-          id: v.id,
-          impact: v.impact ?? null,
-          count: v.nodes.length,
-        }));
-      });
-    }
-    const found = layout && !errors.length ? await measureLayout(page) : [];
-    if (errors.length)
-      return {
-        rendered: false,
-        reason: `page error: ${errors[0]}`,
-        errors,
-        axe: violations,
-        layout: [],
-        ms: Date.now() - started,
-        ...(settled ? {} : { settled: /** @type {const} */ (false) }),
-        ...(retried ? { retried } : {}),
-      };
     return {
-      rendered: true,
-      reason: null,
-      errors,
-      axe: violations,
-      layout: found,
+      ...(await snap(page, { shot, axe, layout, aria, anchors, errors })),
       ms: Date.now() - started,
-      ...(structure != null ? { aria: structure } : {}),
-      ...(anchors.length ? { anchors: boxes } : {}),
-      ...(settled ? {} : { settled: /** @type {const} */ (false) }),
       ...(retried ? { retried } : {}),
     };
   } catch (e) {

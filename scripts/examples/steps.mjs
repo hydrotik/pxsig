@@ -11,13 +11,19 @@ import { repo, expect, sh, pxsig, pxsigIn, tail, projectStore } from './shared.m
 /**
  * Write baselines from the latest renders: what approving every NEW entry does. `withEnv`: each
  * baseline records its row's render environment from check.json, as approving in the dashboard does.
+ * `only`: these entry ids alone (the engine's `baseline --only`).
  * @param {string} dir
  * @param {string} project
- * @param {{ withEnv?: boolean }} [opts]
+ * @param {{ withEnv?: boolean, only?: string[] | null }} [opts]
  * @returns {BaselineAnswer}
  */
-export function baselineAll(dir, project, { withEnv = false } = {}) {
-  let envArg = '';
+export function baselineAll(dir, project, { withEnv = false, only = null } = {}) {
+  let extra = '';
+  if (only) {
+    const file = join(dir, '.only.json');
+    writeFileSync(file, JSON.stringify(only));
+    extra += `, '--only', ${JSON.stringify(`@${file}`)}`;
+  }
   if (withEnv) {
     const c = checkJson(dir, project);
     const plan = join(dir, '.env-plan.json');
@@ -28,14 +34,14 @@ export function baselineAll(dir, project, { withEnv = false } = {}) {
         byId: Object.fromEntries(c.rows.filter((r) => r.env).map((r) => [r.id, r.env])),
       })
     );
-    envArg = `, '--env', ${JSON.stringify(`@${plan}`)}`;
+    extra += `, '--env', ${JSON.stringify(`@${plan}`)}`;
   }
   const code = `
     const { openProject, writeRunManifest } = await import(${JSON.stringify(pathToFileURL(join(repo, 'packages/pxsig/src/lib/workspace.mjs')).href)});
     const P = openProject({ project: ${JSON.stringify(project)} });
     const run = writeRunManifest(P).path;
     const { spawnSync } = await import('node:child_process');
-    const r = spawnSync(P.rustBin, ['baseline', '--manifest', run, '--png-dir', P.store.latest, '--root', P.workspaceRoot, '--json'${envArg}], { encoding: 'utf8' });
+    const r = spawnSync(P.rustBin, ['baseline', '--manifest', run, '--png-dir', P.store.latest, '--root', P.workspaceRoot, '--json'${extra}], { encoding: 'utf8' });
     process.stdout.write(r.stdout); process.exit(r.status);`;
   // The engine's `baseline --json` answer, printed by the script above.
   return /** @type {BaselineAnswer} */ (

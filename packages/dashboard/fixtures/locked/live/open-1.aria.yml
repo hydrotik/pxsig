@@ -1,0 +1,86 @@
+- navigation "Report sections":
+  - heading "pxsig • example-single" [level=1]
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: "#overview"
+    - listitem:
+      - link "Review Stories, 3 to review":
+        - /url: "#stories"
+        - text: Review Stories
+    - listitem:
+      - link "Coverage":
+        - /url: "#integrity"
+    - listitem:
+      - link "Accessibility":
+        - /url: "#a11y"
+    - listitem:
+      - button "More navigation"
+  - button "Approve 3 new entries"
+  - text: light · dark Live Can approve
+  - button "Light theme"
+  - text: Review required
+- main:
+  - heading "Overview" [level=2]
+  - text: Checked 12light · dark Passed 9
+  - button "Changed 0"
+  - button "Flaky 0"
+  - button "New a11y 0of 0 violations"
+  - text: Duration 1.0 s1.0 s rendering
+  - heading "Open Items" [level=3]
+  - grid "Data grid":
+    - rowgroup:
+      - row "Item Count Action":
+        - columnheader "Item":
+          - button "Item"
+          - separator "Resize Item column"
+        - columnheader "Count":
+          - button "Count"
+          - separator "Resize Count column"
+        - columnheader "Action":
+          - text: Action
+          - separator "Resize Action column"
+    - rowgroup:
+      - row "Changed, awaiting review 0":
+        - gridcell "Changed, awaiting review"
+        - gridcell "0"
+        - gridcell
+      - row "New, no baseline 3 Start review":
+        - gridcell "New, no baseline"
+        - gridcell "3"
+        - gridcell "Start review":
+          - button "Start review"
+      - row "Rejected, awaiting a fix 0":
+        - gridcell "Rejected, awaiting a fix"
+        - gridcell "0"
+        - gridcell
+      - row "Render errors 0":
+        - gridcell "Render errors"
+        - gridcell "0"
+        - gridcell
+      - row "Components with coverage errors 0":
+        - gridcell "Components with coverage errors"
+        - gridcell "0"
+        - gridcell
+      - row "Entries with new a11y violations 0":
+        - gridcell "Entries with new a11y violations"
+        - gridcell "0"
+        - gridcell
+      - row "Flaky 0":
+        - gridcell "Flaky"
+        - gridcell "0"
+        - gridcell
+  - status
+  - heading "Stale Entries by Component" [level=3]
+  - text: No stale entries
+  - heading "Errors" [level=3]
+  - paragraph: No errors. 1 component with warnings.
+  - strong: verify-unlogged
+  - text: "· 9 baselines have no approval log line (components-badge--neutral, components-badge--success, components-badge--danger, …): `pxsig approve verify` fails on them (strict by default since 0.4.0). For baselines from before pxsig kept a log, a person runs `pxsig approve verify --adopt` once; `--no-strict` only reports them Needs a first approval: 3 entries Registered entries without a baseline. Nothing is approved automatically."
+  - button "View components"
+  - button "Approve 3 new entries"
+  - button "Run safe repairs"
+  - text: Safe repairs register new stories and render them, re-check entries without a usable verdict, and restore baseline images that pass the gate. They do not approve changes or write signatures.
+  - heading "Changed Entries per Run" [level=3]
+  - paragraph: 2 runs.
+  - application: 1 2 0 6 12
