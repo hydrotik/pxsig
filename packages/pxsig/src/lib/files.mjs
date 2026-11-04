@@ -9,6 +9,7 @@
  *   is closed off first, so it can never swallow the new line.
  * - `readLines`: a log's complete lines; a line that does not parse, or a last line without its
  *   newline (a write cut short), is returned apart as `torn` (integrity code `log-torn`).
+ * - `tailLines`: a log's last lines, read from its end, so a long log costs what its tail costs.
  * - `readJsonFile` (throws) and `readJson` (a fallback instead): one JSON file. A UTF-8 byte order
  *   mark (Windows Notepad writes one) is skipped; a UTF-16 file is refused with a message that
  *   names the encoding.
@@ -193,6 +194,43 @@ export function readLines(path) {
     }
   });
   return { lines, torn };
+}
+
+/**
+ * The last `n` lines of a text file, as `readFileSync(path, 'utf8').trim().split('\n').slice(-n)`
+ * gives them, read backwards from the end in chunks until they are all in hand.
+ * @param {string} path
+ * @param {number} n
+ * @param {number} [chunk] bytes read at a time
+ * @returns {string[]}
+ */
+export function tailLines(path, n, chunk = 1 << 16) {
+  const whole = () => readFileSync(path, 'utf8').trim().split('\n').slice(-n);
+  if (n < 1) return whole();
+  const fd = openSync(path, 'r');
+  try {
+    /** @type {Buffer[]} */
+    const bufs = [];
+    let pos = fstatSync(fd).size;
+    let newlines = 0;
+    while (pos > 0) {
+      const len = Math.min(chunk, pos);
+      pos -= len;
+      const buf = Buffer.alloc(len);
+      readSync(fd, buf, 0, len, pos);
+      bufs.unshift(buf);
+      for (const byte of buf) if (byte === 10) newlines++;
+      // More lines than asked for, after any blank tail: the first one may be cut, the rest are whole.
+      if (pos > 0 && newlines > n) {
+        const parts = Buffer.concat(bufs).toString('utf8').trimEnd().split('\n');
+        if (parts.length > n) return parts.slice(-n);
+      }
+    }
+    // The whole file is in hand.
+    return Buffer.concat(bufs).toString('utf8').trim().split('\n').slice(-n);
+  } finally {
+    closeSync(fd);
+  }
 }
 
 /**
