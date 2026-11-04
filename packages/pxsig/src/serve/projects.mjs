@@ -106,7 +106,7 @@ export function openState(srv, ref) {
   S.affected = (file) =>
     S.runPath
       ? srv
-          .rust('affected', { manifest: S.runPath, root: P.workspaceRoot, files: [file] })
+          .trace('affected', { manifest: S.runPath, root: P.workspaceRoot, files: [file] })
           .then((r) => r.traced ?? r.ids)
       : Promise.resolve([]);
   mkdirSync(P.store.reports, { recursive: true });
