@@ -48,6 +48,7 @@ import {
 } from './examples/shared.mjs';
 import { baselineAll, checkJson, envSteps, warnSteps } from './examples/steps.mjs';
 import { runCustomUi } from './examples/custom-ui.mjs';
+import { notNew } from './examples/verdicts.mjs';
 
 const which = process.argv.slice(2).find((a) => !a.startsWith('--'));
 
@@ -75,9 +76,11 @@ async function run(name, { projects, storybookDir, change }) {
       );
       r = pxsig(['check', '--full', '--project', p, '--retries', '0'], dir);
       const first = checkJson(dir, p);
+      // A render error is not NEW: say which render failed and why, here, not as "PNG not found".
+      const odd = notNew(first.rows);
       expect(
-        r.status === 1 && first.rows.every((x) => !x.pass),
-        `first check: every entry is NEW (${first.rows.length})`
+        r.status === 1 && !odd.length,
+        `first check: every entry is NEW (${first.rows.length - odd.length}/${first.rows.length})${odd.map((l) => `\n    ${l}`).join('')}`
       );
       const b = baselineAll(dir, p);
       expect(
