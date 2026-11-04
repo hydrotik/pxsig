@@ -94,8 +94,10 @@ jobs:
         run: |
           set -uo pipefail
           docker pull -q "$(node -p "require('./docker/screens-image.json').image")"
-          node scripts/screens-container.mjs
-          code=$?
+          # The runner's bash has -e on: catch the check's exit, so 1 (screens to review) still
+          # writes the summary and the output that "Screens to review" reads. Above 1 fails below.
+          code=0
+          node scripts/screens-container.mjs || code=$?
           if [ -f packages/dashboard/.pxsig/reports/summary.md ]; then
             cat packages/dashboard/.pxsig/reports/summary.md >> "$GITHUB_STEP_SUMMARY"
           fi
