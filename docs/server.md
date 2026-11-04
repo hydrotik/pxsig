@@ -79,7 +79,8 @@ With several projects, a switcher in the top bar picks one. URL parameters:
 | `?embed=1&story=<id>` | The inspector alone, for one story (used by the Storybook panel) |
 
 The dashboard ships prebuilt in the `pxsig` npm package. In a clone without a build, the API works
-and `/report/` answers 404 with "the dashboard is not built".
+and `/report/` answers 404 with "the dashboard is not built (<folder>)", the folder relative to
+the workspace, else `~/…` under the home folder.
 
 A project can rebuild the dashboard on its own design system (`dashboard.ui`, `pxsig dashboard
 build`: [ui/build-adapter.md](ui/build-adapter.md)). The server then serves that build while it is

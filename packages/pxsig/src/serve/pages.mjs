@@ -5,6 +5,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pageHeaders } from '../lib/guard.mjs';
+import { machinePath } from '../lib/machine.mjs';
 import { readHeader, readImage } from '../lib/psig.mjs';
 // A live binding: report.mjs `useDashboard` sets it to the folder serve.mjs chose.
 import { dashboardDir } from '../report.mjs';
@@ -70,7 +71,7 @@ export function reportFile(srv, req, res, path) {
     return json(res, 404, {
       error: existsSync(dashboardDir)
         ? 'not found'
-        : `the dashboard is not built (${dashboardDir})`,
+        : `the dashboard is not built (${machinePath(dashboardDir, { root: srv.ws.root })})`,
     });
   if (file === join(dashboardDir, 'index.html')) {
     // Served pages fetch live data: drop whatever a static build inlined.

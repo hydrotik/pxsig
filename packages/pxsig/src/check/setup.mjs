@@ -11,6 +11,7 @@ import { parseArgs, strFlag } from '../lib/args.mjs';
 import { humanAtTerminal, whyNotPerson } from '../lib/term.mjs';
 import { flagLayer, openProject, writeRunManifest } from '../lib/workspace.mjs';
 import { relPath } from '../lib/paths.mjs';
+import { herePath } from '../lib/machine.mjs';
 import { leadLine, resolveOrExit } from '../lib/enforcement.mjs';
 /** @import { Project } from '../types.js' */
 
@@ -85,7 +86,7 @@ export function openCheck(argv) {
   if (lead) console.log(`[pxsig] ${lead}`);
   if (!existsSync(rustBin))
     die(
-      `the pxsig binary is missing (${rustBin}): install the platform package, or build it with \`cargo build --release\``
+      `the pxsig binary is missing (${herePath(rustBin)}): install the platform package, or build it with \`cargo build --release\``
     );
   mkdirSync(reports, { recursive: true });
 
