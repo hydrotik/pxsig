@@ -71,7 +71,10 @@ test('Originals hides the highlight, regions and tiles in every mode it allows, 
       assert.equal(await control(page, name).isChecked(), false, name);
       assert.equal(await control(page, name).isDisabled(), true, name);
     }
-    assert.equal(await page.getByRole('slider', { name: 'Tolerance' }).isDisabled(), true);
+    // Tolerance sits in the side panel's Pixel Changes section, not the toolbar.
+    const tolerance = page.getByRole('complementary').getByRole('slider', { name: 'Tolerance' });
+    assert.equal(await tolerance.isDisabled(), true);
+    assert.equal(await page.getByRole('slider', { name: 'Tolerance' }).count(), 1);
     // The change arrows still step (navigation draws nothing).
     await page.keyboard.press('n');
     await page.getByText('Change 2 /').first().waitFor();
@@ -167,6 +170,18 @@ test('in the Storybook panel Originals is in the View section, and O works on th
     const view = p.getByRole('heading', { name: 'View', exact: true });
     await view.waitFor();
     assert.equal(await control(p, ORIGINALS).isChecked(), false);
+    // Tolerance is in Pixel Changes, after the View section, as in the dialog.
+    assert.deepEqual(
+      await p.evaluate(() => {
+        const heading = (/** @type {Element} */ el) =>
+          el.closest('section')?.querySelector('h3')?.textContent;
+        const slider = document.querySelector(
+          '[role="slider"][aria-labelledby], input[type="range"]'
+        );
+        return slider ? heading(slider) : null;
+      }),
+      'Pixel Changes'
+    );
     // Focus is on the Details switch, inside the panel.
     await p.keyboard.press('o');
     assert.equal(await control(p, ORIGINALS).isChecked(), true);

@@ -277,8 +277,6 @@ export function Inspector({
       heat={heat}
       setHeat={setHeat}
       pixels={pixels}
-      tol={tol}
-      setTol={setTol}
       showHighlight={showHighlight}
       setShowHighlight={setShowHighlight}
       showBoxes={showBoxes}
@@ -555,6 +553,8 @@ export function Inspector({
                   region={region}
                   focusRegion={focusRegion}
                   tol={tol}
+                  setTol={setTol}
+                  originals={originals}
                 />
               ) : null}
 

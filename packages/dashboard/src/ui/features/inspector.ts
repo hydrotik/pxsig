@@ -76,7 +76,7 @@ export const INSPECTOR: Feature[] = [
       { action: 'Originals: the images without analysis, not saved', keys: 'O' },
       { action: 'Drag to pan, wheel to zoom, drag the swipe handle (or arrow keys on it)' },
       {
-        action: 'Tolerance, swipe, opacity and cell sliders; highlight, regions and tiles switches',
+        action: 'Swipe, opacity and cell sliders; originals, highlight, regions and tiles switches',
       },
     ],
     copy: [
@@ -124,10 +124,7 @@ export const INSPECTOR: Feature[] = [
         wait: { role: 'switch', name: 'Show the original images without analysis' },
       },
     ],
-    anchors: [
-      { name: 'tolerance', target: { role: 'group', name: 'Tolerance' } },
-      { name: 'next-change', target: { role: 'button', name: 'Next change' } },
-    ],
+    anchors: [{ name: 'next-change', target: { role: 'button', name: 'Next change' } }],
   },
   {
     id: 'inspector.details',
@@ -140,6 +137,9 @@ export const INSPECTOR: Feature[] = [
     },
     interactions: [
       { action: 'Read a pixel; focus a region' },
+      {
+        action: 'Tolerance: how far a pixel must change to count (disabled while Originals is on)',
+      },
       { action: 'Take one rule off the accepted list' },
       { action: 'Copy a file path; open a file or the story in Storybook' },
     ],
@@ -147,13 +147,23 @@ export const INSPECTOR: Feature[] = [
       'inspector.sections',
       'inspector.pixel',
       'inspector.changes',
+      'inspector.sliders.tolerance',
       'inspector.metrics',
       'inspector.a11y',
       'inspector.files',
       'inspector.storybook',
       'inspector.artifacts',
     ],
-    components: ['KeyValueList', 'KeyValueItem', 'Badge', 'StatusBadge', 'Button', 'Link', 'Icon'],
+    components: [
+      'KeyValueList',
+      'KeyValueItem',
+      'Badge',
+      'StatusBadge',
+      'Button',
+      'Link',
+      'Icon',
+      'Slider',
+    ],
     files: [
       'inspector/Inspector',
       'inspector/side/PixelSection',
@@ -169,7 +179,10 @@ export const INSPECTOR: Feature[] = [
         wait: { role: 'heading', name: 'Metrics', exact: true },
       },
     ],
-    anchors: [{ name: 'side-panel', target: { role: 'complementary' } }],
+    anchors: [
+      { name: 'side-panel', target: { role: 'complementary' } },
+      { name: 'tolerance', target: { role: 'group', name: 'Tolerance' } },
+    ],
   },
   {
     id: 'inspector.session',

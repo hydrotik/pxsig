@@ -142,8 +142,6 @@ export function ViewControls({
   heat,
   setHeat,
   pixels,
-  tol,
-  setTol,
   showHighlight,
   setShowHighlight,
   showBoxes,
@@ -163,8 +161,6 @@ export function ViewControls({
   heat: number;
   setHeat: (v: number) => void;
   pixels: Loaded | null;
-  tol: number;
-  setTol: (v: number) => void;
   showHighlight: boolean;
   setShowHighlight: (v: boolean) => void;
   showBoxes: boolean;
@@ -172,7 +168,7 @@ export function ViewControls({
   detail: Row['detail'];
   showTiles: boolean;
   setShowTiles: (v: boolean) => void;
-  /** Originals: the images with no analysis; the overlay switches and Tolerance show disabled. */
+  /** Originals: the images with no analysis; the overlay switches show disabled. */
   originals: boolean;
   setOriginals: (v: boolean) => void;
   /** A new entry (no baseline) has nothing to hide, so no Originals switch. */
@@ -218,16 +214,6 @@ export function ViewControls({
           value={heat}
           max={100}
           onValueChange={setHeat}
-        />
-      ) : null}
-      {pixels ? (
-        <Slider
-          className={s.sliderCtl}
-          label={t('inspector.sliders.tolerance')}
-          value={tol}
-          max={96}
-          onValueChange={setTol}
-          disabled={originals}
         />
       ) : null}
       {pixels && mode === 'side' ? (

@@ -684,13 +684,6 @@
       ],
       "anchors": [
         {
-          "name": "tolerance",
-          "target": {
-            "role": "group",
-            "name": "Tolerance"
-          }
-        },
-        {
           "name": "next-change",
           "target": {
             "role": "button",
@@ -714,7 +707,8 @@
         "StatusBadge",
         "Button",
         "Link",
-        "Icon"
+        "Icon",
+        "Slider"
       ],
       "screens": [
         {
@@ -732,6 +726,13 @@
           "name": "side-panel",
           "target": {
             "role": "complementary"
+          }
+        },
+        {
+          "name": "tolerance",
+          "target": {
+            "role": "group",
+            "name": "Tolerance"
           }
         }
       ]
