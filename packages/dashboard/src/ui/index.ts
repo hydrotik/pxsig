@@ -95,8 +95,15 @@ export const Icon = (props: ComponentProps['Icon']) => {
 export const Dialog = pick('Dialog');
 export const DialogTitle = pick('DialogTitle');
 export const DialogDescription = pick('DialogDescription');
-export const Slider = pick('Slider');
-export const Switch = pick('Switch');
+/** The adapter's control, or the fallback while disabled on an adapter older than `min`. */
+function since<K extends 'Switch' | 'Slider'>(name: K, min: string) {
+  const own = pick(name);
+  const fallback = fallbacks[name] as React.ComponentType<ComponentProps[K]>;
+  return (props: ComponentProps[K]) =>
+    React.createElement(props.disabled && older(adapterContract, min) ? fallback : own, props);
+}
+export const Slider = since('Slider', '1.2.0');
+export const Switch = since('Switch', '1.2.0');
 export const SegmentedChoice = pick('SegmentedChoice');
 export const Toolbar = pick('Toolbar');
 export const ToolbarStart = pick('ToolbarStart');

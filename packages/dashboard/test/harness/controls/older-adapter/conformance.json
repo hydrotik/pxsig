@@ -1,0 +1,6 @@
+{
+  "adapter": "older",
+  "contract": "1.1.0",
+  "designSystem": "none: the plain adapter with a Switch and a Slider of its own",
+  "components": {}
+}

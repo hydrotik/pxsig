@@ -262,6 +262,7 @@ const Slider: F<'Slider'> = ({
   step = 1,
   formatValue = String,
   className,
+  disabled,
 }) => {
   const id = React.useId();
   return (
@@ -274,6 +275,7 @@ const Slider: F<'Slider'> = ({
         blockSize: control.blockSize,
         gap: v.space['2'],
         fontSize: v.fontSize.xs,
+        ...(disabled ? { opacity: 0.5 } : {}),
       }}
     >
       <label htmlFor={id}>{label}</label>
@@ -284,6 +286,7 @@ const Slider: F<'Slider'> = ({
         max={max}
         step={step}
         value={value}
+        disabled={disabled}
         onChange={(e) => onValueChange(Number(e.target.value))}
         style={{ flex: 1, minInlineSize: 0, accentColor: v.color.accent }}
       />
@@ -292,12 +295,13 @@ const Slider: F<'Slider'> = ({
   );
 };
 
-const Switch: F<'Switch'> = ({ checked, onCheckedChange, label }) => (
+const Switch: F<'Switch'> = ({ checked, onCheckedChange, label, disabled }) => (
   <input
     type="checkbox"
     role="switch"
     aria-label={label}
     checked={checked}
+    disabled={disabled}
     onChange={(e) => onCheckedChange(e.target.checked)}
     style={{ accentColor: v.color.accent }}
   />

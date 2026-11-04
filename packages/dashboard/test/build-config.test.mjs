@@ -87,13 +87,25 @@ test('the plain default resolves to the built-in adapter', () => {
   assert.equal(ui.file, path.join(repo, 'packages/dashboard/src/ui/adapters/plain/index.tsx'));
 });
 
-test('the built-in plain adapter and the example agree, but for where the contract comes from', () => {
+// The example stays written for an older contract (docs/ui/contract-changes.md), so the two
+// conformance.json files differ in `contract` only.
+test('the built-in plain adapter and the example agree, but for the contract they use', () => {
   const built = path.join(repo, 'packages/dashboard/src/ui/adapters/plain');
   const example = path.join(repo, 'examples/custom-ui/pxsig-ui');
   /** @param {string} dir @param {string} f */
   const read = (dir, f) => readFileSync(path.join(dir, f), 'utf8');
-  for (const f of ['theme.css', 'conformance.json'])
-    assert.equal(read(built, f), read(example, f), `${f} differs: copy one onto the other`);
+  assert.equal(
+    read(built, 'theme.css'),
+    read(example, 'theme.css'),
+    'theme.css differs: copy one onto the other'
+  );
+  /** @param {string} dir */
+  const conformance = (dir) => read(dir, 'conformance.json').replace(/"contract": "[^"]*"/, '');
+  assert.equal(
+    conformance(built),
+    conformance(example),
+    'conformance.json differs beyond "contract": copy one onto the other'
+  );
   assert.equal(
     read(built, 'index.tsx').replace(
       "import type * as C from '../../contract';",

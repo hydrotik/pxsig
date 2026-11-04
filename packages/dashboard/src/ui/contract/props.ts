@@ -200,12 +200,16 @@ export interface SliderProps extends WithClass {
   step?: number;
   /** Unset: the number as is. */
   formatValue?: (value: number) => string;
+  /** Shown but not operable: no drag or keys, dimmed, `aria-disabled` (since 1.2.0). */
+  disabled?: boolean;
 }
 /** An on / off control. The visible text sits beside it, in the caller's `<label>`. */
 export interface SwitchProps {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   label: string;
+  /** Shown but not operable: does not toggle, dimmed, `aria-disabled` (since 1.2.0). */
+  disabled?: boolean;
 }
 /** One option of a `SegmentedChoice`. */
 export interface ChoiceOption {
