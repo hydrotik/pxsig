@@ -26,6 +26,7 @@ import {
 } from '../lib/enforcement.mjs';
 import { brief, ctxOf, load, PROBLEMS, stateOf } from './context.mjs';
 import { preflight } from './preflight.mjs';
+import { reactFindings } from '../lib/react/doctor.mjs';
 
 /** @import { CheckToolResult, DoctorOptions } from '../types/t6.js' */
 /** @import { ProjectContext } from './context.mjs' */
@@ -127,6 +128,8 @@ async function doctor({
     generatedAt: ledger.generatedAt,
     summary: ledger.summary,
     setup: ledger.setup,
+    // React analysis (lib/react/doctor.mjs): information and config warnings, never the exit.
+    react: reactFindings(C.P),
     sources: ledger.sources,
     components: {
       total: comps.length,

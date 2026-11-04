@@ -46,6 +46,9 @@
  *                               the full check (src/check.mjs); --update writes baselines (a person only)
  *   affected <files…> | --since <ref>
  *                               which entries those edits can change
+ *   react [--since <ref> | --files a,b | --all]
+ *                               the React Compiler on the changed files, compared with the merge base:
+ *                               newly skipped components and hooks, as alerts (exit 0 whatever it finds)
  *   a11y [--component x] [--new] [--sarif out.sarif]
  *                               axe violations per entry (--sarif: the new ones as SARIF 2.1.0)
  *   a11y --prune --dry-run [--component x] [--mode m] [--only id,…]
@@ -99,6 +102,7 @@ import { readCommands } from './cli/read.mjs';
 import { checkCommands } from './cli/check.mjs';
 import { projectCommands } from './cli/project.mjs';
 import { toolCommands } from './cli/tools.mjs';
+import { reactCommands } from './cli/react.mjs';
 
 // --- args --------------------------------------------------------------------------------------
 const { positional, flags } = parseArgs(process.argv.slice(2));
@@ -150,6 +154,7 @@ const commands = {
   ...checkCommands(cli),
   ...projectCommands(cli),
   ...toolCommands(cli),
+  ...reactCommands(cli),
 };
 
 if (flags.help || command === '--help') commands.help();
