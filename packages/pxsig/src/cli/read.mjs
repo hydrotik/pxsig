@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { imageOf } from '../tools/index.mjs';
 import { emit, stateCell } from '../lib/term.mjs';
+import { herePath } from '../lib/machine.mjs';
 import { doctorParts } from './doctor.mjs';
 
 /** @import { Block, EngineMetrics, EntryDetail, ToolOutput } from '../types/t6.js' */
@@ -294,10 +295,12 @@ export function readCommands(cli) {
       const m = /** @type {Partial<EngineMetrics>} */ (e.metrics ?? {});
       const regions = e.pixels?.regions ?? [];
       const images = kinds.map((k) => {
-        const { bytes, where } = imageOf(ctx(), k, id);
+        const { bytes, file, where } = imageOf(ctx(), k, id);
+        // Relative to the current folder, so it opens from there; never absolute (names the user).
+        const at = file ? herePath(file) : where;
         return {
           label: k,
-          path: where,
+          path: k === 'baseline' && bytes ? `${at} (image section)` : at,
           missing: !bytes,
           data: bytes && format === 'pretty' ? bytes : null,
         };

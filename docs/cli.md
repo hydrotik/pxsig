@@ -43,7 +43,8 @@ otherwise. A run in CI (`CI` set) or under a coding assistant's marker gets `pla
 real terminal ([agents.md](agents.md#markers); `PXSIG_AGENT` marks any other shell).
 
 `plain` is written for logs and agents: GitHub-flavoured Markdown tables, no colour codes, no
-redraws, absolute image paths, and a "Next" section with the exact commands to run. `NO_COLOR` and
+redraws, image paths relative to the current folder (`./…`, `../…`; never absolute, which would
+name the user), and a "Next" section with the exact commands to run. `NO_COLOR` and
 `FORCE_COLOR=0` turn colour off in `pretty`.
 
 ### Exit codes
@@ -424,9 +425,11 @@ no browser starts), the configured `storybook.url` and `storybook.staticDir` (as
 fetched), and the assistant marker. Then the error once, and `pxsig manifest` as the next step;
 exit 2. With `--json`: `{ error, preflight: { engine, playwright, chromium, storybook, agent },
 next }`. The MCP tool `pxsig_doctor` answers the error with the same `{ preflight, next }`. No
-path in it is absolute (one would name the user): each is relative to the workspace, or outside it
-a label (`bundled (@pxsig/cli-<os>-<arch>)`, `PXSIG_BIN (pxsig)`, `Playwright's Chromium`);
-`pxsig config --json` has the engine's absolute path.
+path in it is absolute (one would name the user): each is relative to the workspace, else `~/…`
+under the home folder, else a label (`bundled (@pxsig/cli-<os>-<arch>)`, `PXSIG_BIN (pxsig)`,
+`Playwright's Chromium`); `pxsig config --json` has the engine's absolute path. `doctor --json`'s
+`machine.settings` and `machine.tokens` are the same way: relative to the workspace, else `~/…`, else
+relative to the workspace with `../`.
 
 ## Server, MCP, reports
 

@@ -18,6 +18,7 @@ import {
   sigFilesOnDisk,
   sigComponent,
   siblingManifests,
+  noManifest,
 } from './context.mjs';
 import { componentOf, loadStoryIndex } from './stories.mjs';
 import {
@@ -47,11 +48,7 @@ export async function reconcile(ctx, opts = {}) {
   const t0 = performance.now();
   // The manifest `pxsig manifest` wrote (docs/spec.md section 6); checked on the next line.
   const manifest = /** @type {IntegrityManifest | null} */ (readJson(ctx.manifestPath, null));
-  if (!manifest?.stories)
-    throw Object.assign(new Error(`no readable manifest at ${ctx.manifestPath}`), {
-      setup: true,
-      code: 'no-manifest',
-    });
+  if (!manifest?.stories) throw noManifest(ctx);
   const index =
     opts.index ?? (await loadStoryIndex(ctx, { offline: opts.offline, fetchImpl: opts.fetchImpl }));
   const reportPath = join(ctx.dirs.reports, 'check.json');

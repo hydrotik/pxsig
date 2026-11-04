@@ -47,7 +47,10 @@ test('a UTF-16 file is refused with its encoding named, with or without a BOM', 
     assert.equal(readJson(p, 'fallback'), 'fallback');
     assert.throws(
       () => readSetupJson(p),
-      (e) => e instanceof SetupError && e.message === `${p} is UTF-16 ${order}; save it as UTF-8`
+      // The workspace reader names the file by its name here (outside the current folder).
+      (e) =>
+        e instanceof SetupError &&
+        e.message === `pxsig.workspace.json is UTF-16 ${order}; save it as UTF-8`
     );
   }
 });
@@ -61,6 +64,7 @@ test('a missing or broken file throws, or gives the fallback (null by default)',
   assert.deepEqual(readJson(broken, { rows: [] }), { rows: [] });
   assert.throws(
     () => readSetupJson(broken),
-    (e) => e instanceof SetupError && e.message.startsWith(`${broken} is not valid JSON: `)
+    (e) =>
+      e instanceof SetupError && e.message.startsWith('pxsig.workspace.json is not valid JSON: ')
   );
 });

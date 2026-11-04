@@ -19,8 +19,9 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { isAbsolute, join, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { writeJson } from './files.mjs';
+import { insidePath, relPath } from './paths.mjs';
 import { spawnSync } from './spawn.mjs';
 /** @import { MachineOptions } from '../types.js' */
 
@@ -41,34 +42,83 @@ export function machineDir({
 }
 
 /**
- * `path` as `pxsig doctor` prints it: under `%LOCALAPPDATA%` (Windows) or the home folder (`~`,
- * `%USERPROFILE%` on Windows), so pasted output carries no user name. `--json` keeps the absolute
- * path.
+ * The rest of `path` below `base` ('' for `base` itself, else starting with a separator), or null
+ * when it is not under it. Case-insensitive on Windows.
  * @param {string} path
- * @param {MachineOptions} [opts]
+ * @param {string | undefined} base
+ * @param {boolean} win
+ */
+function below(path, base, win) {
+  const b = base?.replace(/[\\/]+$/, '');
+  if (!b) return null;
+  const head = path.slice(0, b.length);
+  const same = win ? head.toLowerCase() === b.toLowerCase() : head === b;
+  return same && (path.length === b.length || /[\\/]/.test(path[b.length]))
+    ? path.slice(b.length)
+    : null;
+}
+
+/**
+ * `p` with its links resolved (macOS `/var` is `/private/var`), as far up as it exists.
+ * @param {string} p
  * @returns {string}
  */
-export function displayPath(
-  path,
-  { platform = process.platform, env = process.env, home = homedir() } = {}
-) {
-  const win = platform === 'win32';
-  /** @type {[string | undefined, string][]} */
-  const bases = win
-    ? [
-        [env.LOCALAPPDATA, '%LOCALAPPDATA%'],
-        [home, '%USERPROFILE%'],
-      ]
-    : [[home, '~']];
-  for (const [base, name] of bases) {
-    const b = base?.replace(/[\\/]+$/, '');
-    if (!b) continue;
-    const head = path.slice(0, b.length);
-    const same = win ? head.toLowerCase() === b.toLowerCase() : head === b;
-    if (same && (path.length === b.length || /[\\/]/.test(path[b.length])))
-      return name + path.slice(b.length);
+const real = (p) => {
+  try {
+    return realpathSync(p);
+  } catch {
+    const up = dirname(p);
+    return up === p ? p : join(real(up), basename(p));
   }
-  return path;
+};
+
+/**
+ * `path` under the home folder as `~/…` (`/`-separated, on every OS), else null.
+ * @param {string} path
+ * @param {MachineOptions} [opts]
+ * @returns {string | null}
+ */
+export function homePath(path, { platform = process.platform, home = homedir() } = {}) {
+  const win = platform === 'win32';
+  for (const h of new Set([home, real(home)])) {
+    const rest = below(path, h, win) ?? below(real(path), h, win);
+    if (rest != null) return `~${rest.replace(/\\/g, '/')}`;
+  }
+  return null;
+}
+
+/**
+ * `path` as `pxsig doctor` and `pxsig_doctor` give it, never absolute and never the home folder's own path (either names
+ * the user): relative to the workspace `root` inside it; else `~/…` under the home folder; else
+ * relative to `root` (`../…`); on another drive (Windows), its name.
+ * @param {string} path
+ * @param {MachineOptions & { root: string }} opts
+ * @returns {string}
+ */
+export function machinePath(path, { root, ...opts }) {
+  const inRoot = insidePath(root, path) ?? insidePath(real(root), real(path));
+  if (inRoot) return inRoot;
+  const home = homePath(path, opts);
+  if (home) return home;
+  const rel = relPath(root, path);
+  return isAbsolute(rel) ? basename(path) : rel;
+}
+
+/**
+ * `path` as a line a person pastes or opens from the current folder `cwd` shows it: `./…` inside
+ * it, `../…` outside; `~/…` when the path is under the home folder and `cwd` is not (a `../` path
+ * there would name the home folder); on another drive (Windows), its name. Never absolute.
+ * @param {string} path
+ * @param {MachineOptions & { cwd?: string }} [opts]
+ * @returns {string}
+ */
+export function herePath(path, { cwd = process.cwd(), ...opts } = {}) {
+  const home = homePath(path, opts);
+  const [from, to] = insidePath(cwd, path) == null ? [real(cwd), real(path)] : [cwd, path];
+  const rel = relPath(from, to);
+  if (isAbsolute(rel) || (home && !homePath(from, opts))) return home ?? basename(path);
+  if (rel === '') return '.';
+  return rel === '..' || rel.startsWith('../') ? rel : `./${rel}`;
 }
 
 /** @param {MachineOptions} [opts] */

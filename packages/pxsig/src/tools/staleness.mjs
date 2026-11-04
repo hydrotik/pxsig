@@ -7,7 +7,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { readImage } from '../lib/psig.mjs';
 import { writeRunManifest } from '../lib/workspace.mjs';
-import { relPath } from '../lib/paths.mjs';
+import { relPath, shortPath } from '../lib/paths.mjs';
 import { buildPlan } from '../lib/prune.mjs';
 import { folders, sourceRoots } from '../lib/integrity/context.mjs';
 import { ctxOf, readJson } from './context.mjs';
@@ -24,7 +24,8 @@ import { ctxOf, readJson } from './context.mjs';
  * @returns {AffectedResult}
  */
 function affected(C, { files, since, manifestPath }) {
-  if (!existsSync(C.rustBin)) throw new Error(`the pxsig binary is missing: ${C.rustBin}`);
+  if (!existsSync(C.rustBin))
+    throw new Error(`the pxsig binary is missing: ${shortPath(C.root, C.rustBin)}`);
   // Callers pass files or since.
   const how = files?.length
     ? ['--files', files.join(',')]
@@ -312,7 +313,8 @@ function imagePath(C, kind, id) {
 }
 
 /**
- * An image's bytes and where they came from, or null.
+ * An image's bytes (null when missing), its `file` (absolute: callers print it relative, never as
+ * it is) and `where` (workspace-relative, or 'no manifest entry').
  * @param {ProjectContext} C
  * @param {string} kind
  * @param {string} id
@@ -320,10 +322,11 @@ function imagePath(C, kind, id) {
 export function imageOf(C, kind, id) {
   const p = imagePath(C, kind, id);
   if (!p || !existsSync(p))
-    return { bytes: null, where: p ? relPath(C.root, p) : 'no manifest entry' };
+    return { bytes: null, file: p, where: p ? relPath(C.root, p) : 'no manifest entry' };
   const bytes = kind === 'baseline' ? readImage(p) : readFileSync(p);
   return {
     bytes,
+    file: p,
     where: kind === 'baseline' ? `${relPath(C.root, p)} (image section)` : relPath(C.root, p),
   };
 }

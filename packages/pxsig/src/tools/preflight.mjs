@@ -6,8 +6,8 @@
  * `--version`, once per binary). Chromium is a stat of Playwright's `executablePath()`: no launch.
  * The Storybook URL and `staticDir` are the config's; nothing is fetched.
  *
- * No absolute path (it names the user): each path is workspace-relative, or a label outside the
- * workspace. `pxsig config --json` has the engine's absolute path.
+ * No absolute path (it names the user): each path is workspace-relative, else `~/…` under the home
+ * folder, else a label. `pxsig config --json` has the engine's absolute path.
  */
 import { existsSync, statSync } from 'node:fs';
 import { basename, dirname } from 'node:path';
@@ -15,17 +15,19 @@ import { pathToFileURL } from 'node:url';
 import { engineVersion, resolvePeer } from '../lib/workspace.mjs';
 import { playwrightVersion } from '../lib/env.mjs';
 import { detectAgent } from '../lib/agents.mjs';
+import { homePath } from '../lib/machine.mjs';
 import { insidePath } from '../lib/paths.mjs';
 
 /** @import { ProjectContext } from './context.mjs' */
 
 /**
- * A path as the preflight shows it: workspace-relative inside the workspace, else `label`.
+ * A path as the preflight shows it: workspace-relative inside the workspace, else `~/…` under the
+ * home folder, else `label`.
  * @param {string} root
  * @param {string} p
  * @param {string} label
  */
-const show = (root, p, label) => insidePath(root, p) ?? label;
+const show = (root, p, label) => insidePath(root, p) ?? homePath(p) ?? label;
 
 /**
  * The engine outside the workspace: where it came from, by name.

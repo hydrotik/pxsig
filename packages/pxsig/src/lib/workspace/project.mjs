@@ -4,7 +4,7 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, relative, sep } from 'node:path';
-import { toPosix } from '../paths.mjs';
+import { shortPath, toPosix } from '../paths.mjs';
 import { checkEnforcementConfig } from '../enforcement.mjs';
 import { SetupError, readJsonFile } from './core.mjs';
 import { CONFIG_FILE } from './find.mjs';
@@ -126,9 +126,12 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
     ? /** @type {ConfigFile} */ (readJsonFile(ref.configPath))
     : null;
   if (!raw)
-    throw new SetupError(`project "${ref.name}": no ${CONFIG_FILE} at ${ref.configPath}`, {
-      code: 'project-missing',
-    });
+    throw new SetupError(
+      `project "${ref.name}": no ${CONFIG_FILE} at ${shortPath(ws.root, ref.configPath)}`,
+      {
+        code: 'project-missing',
+      }
+    );
   // The workspace file's paths are relative to the workspace root, not to the project.
   const wsDefaults = anchorPaths(ws, ws.defaults ?? {}, ws.root);
   /** @type {{ name: string, value: unknown }[]} */
