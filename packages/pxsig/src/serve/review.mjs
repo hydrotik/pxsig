@@ -10,12 +10,13 @@ import { readJson, writeJson } from '../lib/files.mjs';
 import { NEEDS_PERSON } from '../lib/guard.mjs';
 import { httpError } from './http.mjs';
 import { needLock } from './projects.mjs';
-import { updateCheckRows } from './report-rows.mjs';
+import { checkPatch, updateCheckRows } from './report-rows.mjs';
 /**
  * @import { A11yBaseline, CheckReport, DecisionMeta, ReviewEntry, ReviewFile } from '../types/t5.js'
  */
 /** @import { ServeContext } from '../types/serve.js' */
 /** @import { ProjectState } from './projects.mjs' */
+/** @import { Written } from './report-rows.mjs' */
 
 /**
  * An agent clears its own kind of decision only: never a person's approval or accept.
@@ -147,6 +148,8 @@ export async function review(srv, S, action, id, meta = {}) {
   needLock(srv, S);
   // review.json is this server's own file.
   const rv = /** @type {ReviewFile} */ (readJson(S.reviewPath, {}));
+  /** @type {Written | null} */
+  let written = null;
   if (action === 'approve') {
     rv[id] = {
       state: 'approved',
@@ -154,7 +157,7 @@ export async function review(srv, S, action, id, meta = {}) {
       ...(await approve(srv, S, id, meta)),
     };
     // The report says so too, so its counts (failed, changed) agree with the review.
-    updateCheckRows(S, (r) =>
+    written = updateCheckRows(S, (r) =>
       r.id === id
         ? // `approve` just above set the batch.
           { ...r, approved: { at: rv[id].at, batch: /** @type {string} */ (rv[id].batch) } }
@@ -173,14 +176,19 @@ export async function review(srv, S, action, id, meta = {}) {
         meta.via ?? 'dashboard'
       );
     delete rv[id];
-    updateCheckRows(S, (r) =>
+    written = updateCheckRows(S, (r) =>
       r.id === id && r.approved ? (({ approved: _approved, ...rest }) => rest)(r) : null
     );
   } else throw httpError(404, 'unknown action');
   S.quietUntil = Date.now() + 800;
   writeJson(S.reviewPath, rv, { pretty: true });
   console.log(`[serve] ${S.name}: ${action} ${id} (via ${meta.via ?? 'dashboard'})`);
-  srv.broadcast('review', { project: S.name, id, entry: rv[id] ?? null });
+  srv.broadcast('review', {
+    project: S.name,
+    id,
+    entry: rv[id] ?? null,
+    ...checkPatch(written, id),
+  });
   return rv[id] ?? null;
 }
 
