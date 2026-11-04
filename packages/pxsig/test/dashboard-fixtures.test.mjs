@@ -66,7 +66,7 @@ const NOT_IN_SCENARIOS = new Set([
  */
 const ONLY_SOME_RUNS = {
   // A failing entry whose retry render passes.
-  'check.rows[].flaky': ['check.mjs', /\brow\.flaky = true;/],
+  'check.rows[].flaky': ['check/render.mjs', /\brow\.flaky = true;/],
 };
 
 /** @returns {Shape} */
