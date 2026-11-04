@@ -50,6 +50,12 @@ import { routeOf, scrubber } from './volatile.mjs';
 /** @import { LiveAction, LiveStep } from './types.js' */
 
 export const PROJECT = 'example-single';
+/**
+ * The staged workspace runs this checkout's pxsig inside an image built for a released one: without
+ * this, every Overview would show that mismatch (a setup finding naming both versions), a property
+ * of the harness that would also change the screens at every version bump.
+ */
+const NO_IMAGE = { PXSIG_IMAGE: '', PXSIG_IMAGE_REVISION: '', PXSIG_IMAGE_DIGEST: '' };
 /** The example's new entries at the start of a run; every other entry has a baseline. */
 const NEW_AT_START = /^components-badge--[a-z]+@dark$/;
 /** pngjs's reader, as far as samePixels uses it (pngjs resolves from packages/pxsig). */
@@ -86,7 +92,7 @@ async function prepare(dir, log) {
   rmSync(join(dir, '.pxsig'), { recursive: true, force: true });
   copyFileSync(join(pristineDir(), 'Badge.jsx'), join(dir, CHANGE.file));
   swapStorybook(dir, 'storybook-static');
-  const env = { PXSIG_STORYBOOK_URL: DEAD_URL, PXSIG_URL: DEAD_URL };
+  const env = { ...NO_IMAGE, PXSIG_STORYBOOK_URL: DEAD_URL, PXSIG_URL: DEAD_URL };
   const run = (/** @type {string[]} */ args, /** @type {number} */ want) => {
     const r = pxsigIn(args, dir, env);
     if (r.status !== want)
@@ -154,6 +160,7 @@ async function runOnce({ browser, theme, dashboard, axe, out, log, want }) {
       HOME: stateHome,
       XDG_STATE_HOME: stateHome,
       PLAYWRIGHT_BROWSERS_PATH: browsers,
+      ...NO_IMAGE,
     },
   });
   const url = assertSafeUrl(S.url);
@@ -210,7 +217,7 @@ async function runOnce({ browser, theme, dashboard, axe, out, log, want }) {
     } else if (a.click) await locate(page, a.click).click({ timeout: LANDMARK_MS });
     else if (a.press) await page.keyboard.press(a.press);
     else if (a.cli) {
-      const r = pxsigIn(a.cli, dir, { PXSIG_URL: url, PXSIG_STORYBOOK_URL: DEAD_URL });
+      const r = pxsigIn(a.cli, dir, { ...NO_IMAGE, PXSIG_URL: url, PXSIG_STORYBOOK_URL: DEAD_URL });
       if (r.status !== 0 && r.status !== 1)
         throw new Error(`pxsig ${a.cli.join(' ')}: exit ${r.status}\n${r.stderr}`);
     } else if (a.change) {
