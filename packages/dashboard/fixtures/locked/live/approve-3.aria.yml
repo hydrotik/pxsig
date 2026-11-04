@@ -1,0 +1,14 @@
+- main:
+  - status
+- dialog "Review complete":
+  - strong: Approving new entries
+  - progressbar "Review progress": x
+  - text: 3 of 3 reviewed · 0 left
+  - heading "Review complete" [level=2]
+  - term: 3 approved
+  - definition:
+    - text: Baselines are written to
+    - code: .pxsig
+    - text: . Commit them with the change.
+  - button "Back to overview"
+  - button "Back to entries"
