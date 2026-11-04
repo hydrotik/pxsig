@@ -58,6 +58,10 @@ test('an approval in flight says so and sends once; the next entry waits for its
     });
   };
   const { page } = await open(d, { hash: `#inspect=${first}`, images: true, routes });
+  // A slow machine's timing on any machine: on a fast one the stale images of the last entry (the
+  // render that moves on still holds them) were fitted and marked drawn too seldom to see.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 8 });
   try {
     const dialog = page.getByRole('dialog');
     const button = (/** @type {string} */ name, disabled = false) =>

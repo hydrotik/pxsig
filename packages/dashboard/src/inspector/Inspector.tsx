@@ -120,14 +120,19 @@ export function Inspector({
 
   const row = target?.row ?? null;
   const p = row ? pathsFor(data, row.id, target!.scenario) : null;
+  const entry = `${row?.id}|${target?.scenario?.name ?? ''}`;
+  // Whose images `loaded` holds (the last entry's, on the render that moves on).
+  const loadedFor = React.useRef('');
 
   React.useEffect(() => {
     if (!p) return;
     let alive = true;
+    loadedFor.current = '';
     setLoaded(null);
     setRegion(-1);
     void Promise.all([loadImg(p.before), loadImg(p.after), loadImg(p.heat)]).then(([a, b, h]) => {
       if (!alive) return;
+      loadedFor.current = entry;
       // A new entry has only its latest render; anything else needs both.
       if (!b || (!a && !row?.new)) return setLoaded('missing');
       setLoaded({
@@ -177,11 +182,10 @@ export function Inspector({
   // The entry whose images are drawn, analysed and fitted: until then the stage is aria-busy.
   const [settledFor, setSettledFor] = React.useState<string | null>(null);
   React.useEffect(() => {
-    if (!loaded || !row) return;
-    const key = `${row.id}|${target?.scenario?.name ?? ''}`;
-    if (loaded === 'missing') return setSettledFor(key);
-    if (fittedFor.current === key || (pixels && !analysis)) return;
-    fittedFor.current = key;
+    if (!loaded || !row || loadedFor.current !== entry) return;
+    if (loaded === 'missing') return setSettledFor(entry);
+    if (fittedFor.current === entry || (pixels && !analysis)) return;
+    fittedFor.current = entry;
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
         stage.current?.fit();
@@ -189,10 +193,10 @@ export function Inspector({
           setRegion(0);
           stage.current?.focus(analysis.regions[0]);
         }
-        setSettledFor(key);
+        setSettledFor(entry);
       })
     );
-  }, [loaded, analysis, row, pixels, target?.scenario?.name, originals]);
+  }, [loaded, analysis, row, pixels, entry, originals]);
 
   const regions = analysis?.regions ?? [];
   const focusRegion = (i: number) => {
@@ -229,7 +233,7 @@ export function Inspector({
     useInspectorActions({ data, target, row, list, index, a11yMode, onNavigate, setBusy });
   // Reject, Approve, A and R wait for the entry's images: a click meant for the last entry
   // cannot land on this one.
-  const settled = !!row && settledFor === `${row.id}|${target?.scenario?.name ?? ''}`;
+  const settled = !!row && settledFor === entry;
   const { blockKeys, onKey } = useInspectorKeys({
     embedded,
     setMode,
