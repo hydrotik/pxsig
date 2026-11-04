@@ -116,6 +116,8 @@ export interface RecordOptions {
   kind?: string | null;
   /** A person's decision (no `agent`); by default, when `via` is `dashboard` or `cli`. */
   person?: boolean;
+  /** The short HEAD, read beforehand (`headOf`); by default `record` reads it itself. */
+  gitHead?: string;
 }
 
 /** An entry `undo` would not restore, and why. */
