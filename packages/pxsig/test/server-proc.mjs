@@ -89,14 +89,14 @@ async function ready(proc, log, exited, deadline) {
 
 /**
  * Start `pxsig serve --no-open` in `cwd`: src/serve.mjs, or with `bin` through the `pxsig` command
- * (a wrapper process that starts the server).
- * @param {{ cwd: string, env: NodeJS.ProcessEnv, bin?: boolean }} opts
+ * (a wrapper process that starts the server). `args`: more flags (`--watch`).
+ * @param {{ cwd: string, env: NodeJS.ProcessEnv, bin?: boolean, args?: string[] }} opts
  */
-export async function startServer({ cwd, env, bin = false }) {
+export async function startServer({ cwd, env, bin = false, args = [] }) {
   const cmd = bin ? [join(pkg, 'bin', 'pxsig.mjs'), 'serve'] : [join(pkg, 'src', 'serve.mjs')];
   for (let attempt = 1; ; attempt++) {
     const port = await freePort();
-    const proc = spawn(process.execPath, [...cmd, '--port', String(port), '--no-open'], {
+    const proc = spawn(process.execPath, [...cmd, '--port', String(port), '--no-open', ...args], {
       cwd,
       env,
     });

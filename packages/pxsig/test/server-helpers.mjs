@@ -128,11 +128,11 @@ export async function fakeStorybook(stories, { drop = 0 } = {}) {
 
 /**
  * Start `pxsig serve` on a fixture; `storybook` overrides the config's storybook.url, `bin` the
- * engine binary.
+ * engine binary, `args` adds flags (`--watch`).
  * @param {Fixture} f
- * @param {{ storybook?: string, bin?: string }} [opts]
+ * @param {{ storybook?: string, bin?: string, args?: string[] }} [opts]
  */
-export async function serve(f, { storybook, bin = rustBin } = {}) {
+export async function serve(f, { storybook, bin = rustBin, args = [] } = {}) {
   if (storybook) {
     const cfgPath = join(f.repo, 'pxsig.config.json');
     const cfg = JSON.parse(readFileSync(cfgPath, 'utf8'));
@@ -141,6 +141,7 @@ export async function serve(f, { storybook, bin = rustBin } = {}) {
   const server = await startServer({
     cwd: f.repo,
     env: { ...f.env, PXSIG_BIN: bin, PXSIG_WORKSPACE: '' },
+    args,
   });
   const { url: base, port, log } = server;
   // As the dashboard posts: with the server's token (`headers` adds or overrides, e.g. no token).

@@ -25,6 +25,9 @@ const OS_SKIPS = {
   // The engine-protocol tests stand in a `#!/usr/bin/env node` script for the engine. Windows
   // starts no script by its shebang, and pxsig never starts a shell to run one.
   'the stand-in engine is a script': 'win32',
+  // Windows has no signals: a process killed with SIGTERM (or SIGINT) ends at once, without the
+  // shutdown its handler runs elsewhere (the next serve takes over what it left; platform.test.mjs).
+  'a signal ends a Windows process without its shutdown': 'win32',
 };
 
 /**
