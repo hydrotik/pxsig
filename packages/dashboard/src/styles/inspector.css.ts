@@ -391,6 +391,12 @@ export const ctl = style({
   gap: v.space['2'],
   fontSize: v.fontSize.xs,
   lineHeight: 1,
+  // The visible text of a disabled switch dims with it (the switch dims itself).
+  selectors: {
+    '&:has(:disabled, [aria-disabled="true"], [data-disabled])': {
+      color: `color-mix(in srgb, ${v.color.text} 50%, transparent)`,
+    },
+  },
 });
 export const empty = style({
   padding: v.space['8'],

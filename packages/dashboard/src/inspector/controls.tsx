@@ -115,6 +115,7 @@ export function KeyHelp({
         ['0', t('inspector.keys.actual')],
         ['+ −', t('inspector.keys.zoom')],
         ['N ⇧N', t('inspector.keys.change')],
+        ['O', t('inspector.keys.originals')],
         ['← →', t('inspector.keys.story')],
         ...(canReview
           ? [
@@ -150,6 +151,9 @@ export function ViewControls({
   detail,
   showTiles,
   setShowTiles,
+  originals,
+  setOriginals,
+  isNew,
 }: {
   mode: Mode;
   split: number;
@@ -168,9 +172,24 @@ export function ViewControls({
   detail: Row['detail'];
   showTiles: boolean;
   setShowTiles: (v: boolean) => void;
+  /** Originals: the images with no analysis; the overlay switches and Tolerance show disabled. */
+  originals: boolean;
+  setOriginals: (v: boolean) => void;
+  /** A new entry (no baseline) has nothing to hide, so no Originals switch. */
+  isNew: boolean;
 }) {
   return (
     <>
+      {isNew ? null : (
+        <label className={s.ctl} data-control>
+          <Switch
+            checked={originals}
+            onCheckedChange={setOriginals}
+            label={t('inspector.toggles.originalsLabel')}
+          />{' '}
+          {t('inspector.toggles.originals')}
+        </label>
+      )}
       {mode === 'swipe' ? (
         <Slider
           className={s.sliderCtl}
@@ -208,13 +227,15 @@ export function ViewControls({
           value={tol}
           max={96}
           onValueChange={setTol}
+          disabled={originals}
         />
       ) : null}
       {pixels && mode === 'side' ? (
         <label className={s.ctl} data-control>
           <Switch
-            checked={showHighlight}
+            checked={showHighlight && !originals}
             onCheckedChange={setShowHighlight}
+            disabled={originals}
             label={t('inspector.toggles.highlightLabel')}
           />{' '}
           {t('inspector.toggles.highlight')}
@@ -223,8 +244,9 @@ export function ViewControls({
       {pixels ? (
         <label className={s.ctl} data-control>
           <Switch
-            checked={showBoxes}
+            checked={showBoxes && !originals}
             onCheckedChange={setShowBoxes}
+            disabled={originals}
             label={t('inspector.toggles.regionsLabel')}
           />{' '}
           {t('inspector.toggles.regions')}
@@ -233,8 +255,9 @@ export function ViewControls({
       {detail?.tripped?.length ? (
         <label className={s.ctl} data-control>
           <Switch
-            checked={showTiles}
+            checked={showTiles && !originals}
             onCheckedChange={setShowTiles}
+            disabled={originals}
             label={t('inspector.toggles.tilesLabel')}
           />{' '}
           {t('inspector.toggles.tiles')}

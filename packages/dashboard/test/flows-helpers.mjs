@@ -12,6 +12,7 @@ import path from 'node:path';
 import { after, before } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { load } from '../../pxsig/src/dashboard-check/capture.mjs';
+import { sampleImages } from '../../pxsig/src/dashboard-check/server.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dashboard = path.dirname(here);
@@ -94,11 +95,19 @@ export function setupFlows() {
 
 /**
  * A page on the mocked server. `events` is the SSE stream body; `posts` collects every POST;
- * `approving` is the status answer's (unset: unknown, as from an older server).
+ * `approving` is the status answer's (unset: unknown, as from an older server). `images` serves
+ * the sample PNGs under /p/demo/, as the screens server does, so the inspector draws its stage.
  */
 export async function open(
   d,
-  { hash = '', events = 'event: hello\ndata: {}\n\n', answers = {}, init = null, approving } = {}
+  {
+    hash = '',
+    events = 'event: hello\ndata: {}\n\n',
+    answers = {},
+    init = null,
+    approving,
+    images = false,
+  } = {}
 ) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   if (init) await page.addInitScript(init);
@@ -129,7 +138,13 @@ export async function open(
     }
     return route.fulfill({ status: 404, json: { error: 'not found' } });
   });
-  await page.route('**/p/demo/**', (route) => route.fulfill({ status: 404, body: '' }));
+  const png = images ? sampleImages() : null;
+  await page.route('**/p/demo/**', (route) => {
+    const u = new URL(route.request().url()).pathname;
+    if (!png || !u.endsWith('.png')) return route.fulfill({ status: 404, body: '' });
+    const body = u.includes('/diffs/') ? png.diff : u.includes('/base') ? png.baseline : png.render;
+    return route.fulfill({ status: 200, contentType: 'image/png', body });
+  });
   // One retry on Windows' ERR_NO_BUFFER_SPACE, as `pxsig dashboard check` does.
   await load(page, `${base}/report/${hash}`);
   return { page, posts, errors };

@@ -26,6 +26,8 @@ interface Props {
   showHighlight: boolean;
   showTiles: boolean;
   tol: number;
+  /** Originals: the images only, with no overlay or highlight (the switches keep their values). */
+  originals?: boolean;
 }
 
 export function Stage(p: Props) {
@@ -33,8 +35,12 @@ export function Stage(p: Props) {
   const boxes = (
     <DiffViewer.Regions
       className={s.boxes}
-      regions={p.showBoxes ? (p.analysis?.regions ?? []) : []}
-      tiles={p.showTiles && p.tiles ? { indices: p.tiles.indices, size: p.tiles.tile } : null}
+      regions={p.showBoxes && !p.originals ? (p.analysis?.regions ?? []) : []}
+      tiles={
+        p.showTiles && !p.originals && p.tiles
+          ? { indices: p.tiles.indices, size: p.tiles.tile }
+          : null
+      }
     />
   );
   const pane = (label: string, layers: React.ReactNode, extra?: React.ReactNode) => (
@@ -65,7 +71,7 @@ export function Stage(p: Props) {
           al,
           <>
             <DiffViewer.Layer kind="latest" />
-            {p.analysis && p.showHighlight ? (
+            {p.analysis && p.showHighlight && !p.originals ? (
               <DiffViewer.Layer kind="highlight" source={p.analysis.highlight} />
             ) : null}
             {boxes}

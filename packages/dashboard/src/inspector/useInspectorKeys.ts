@@ -18,6 +18,8 @@ export function useInspectorKeys({
   busy,
   row,
   act,
+  originals,
+  setOriginals,
 }: {
   embedded: boolean;
   setMode: (mode: Mode) => void;
@@ -28,6 +30,8 @@ export function useInspectorKeys({
   busy: boolean;
   row: Row | null;
   act: (action: 'approve' | 'reject') => unknown;
+  originals: boolean;
+  setOriginals: (on: boolean) => void;
 }) {
   // The summary screen takes no shortcuts (A would re-approve the last entry).
   const blockKeys = React.useRef(false);
@@ -46,6 +50,7 @@ export function useInspectorKeys({
     if (k === '-' || k === '_') return run(() => stage.current?.zoomBy(1 / 1.5));
     if (k === 'n') return run(() => stepRegion(1));
     if (k === 'N') return run(() => stepRegion(-1));
+    if (k === 'o' || k === 'O') return run(() => setOriginals(!originals));
     if (k === 'ArrowRight' || k === 'j') return run(() => step(1));
     if (k === 'ArrowLeft' || k === 'k') return run(() => step(-1));
     if ((k === 'a' || k === 'A') && canReview && !busy && !row?.error)

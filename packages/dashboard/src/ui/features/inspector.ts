@@ -64,7 +64,7 @@ export const INSPECTOR: Feature[] = [
     section: 'inspector',
     title: 'Image stage',
     purpose:
-      'Baseline and latest render side by side, as a swipe, onion skin, pixel difference or signature cells; pan, zoom, change regions and detail tiles; built on the diff-viewer primitives.',
+      'Baseline and latest render side by side, as a swipe, onion skin, pixel difference or signature cells; pan, zoom, change regions and detail tiles; Originals shows the two images with no analysis drawn; built on the diff-viewer primitives.',
     states: {
       loading: 'A loading line until both images decode.',
       error: 'Which image is missing.',
@@ -73,6 +73,7 @@ export const INSPECTOR: Feature[] = [
       { action: 'Choose the view', keys: '1–5' },
       { action: 'Fit, actual size, zoom', keys: 'F, 0, + −' },
       { action: 'Next or previous change', keys: 'N / ⇧N' },
+      { action: 'Originals: the images without analysis, not saved', keys: 'O' },
       { action: 'Drag to pan, wheel to zoom, drag the swipe handle (or arrow keys on it)' },
       {
         action: 'Tolerance, swipe, opacity and cell sliders; highlight, regions and tiles switches',
@@ -108,6 +109,19 @@ export const INSPECTOR: Feature[] = [
         scenario: 'changed',
         hash: '#inspect=ui-button--primary',
         wait: { role: 'group', name: 'Image comparison' },
+      },
+      {
+        // Originals on, fitted: the first change chosen once the analysis is done (the same one
+        // the entry opens on), then O and F; the last click leaves the pointer off the images.
+        scenario: 'changed',
+        hash: '#inspect=ui-button--primary',
+        actions: [
+          { click: { role: 'button', name: '24×32 @ 56,120' } },
+          { press: 'o' },
+          { press: 'f' },
+          { click: { role: 'heading', name: 'ui-button--primary' } },
+        ],
+        wait: { role: 'switch', name: 'Show the original images without analysis' },
       },
     ],
     anchors: [

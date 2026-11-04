@@ -336,7 +336,7 @@ Files: `src/inspector/Inspector`, `src/inspector/Header`, `src/inspector/control
 
 ### Image stage
 
-`inspector.stage` · Baseline and latest render side by side, as a swipe, onion skin, pixel difference or signature cells; pan, zoom, change regions and detail tiles; built on the diff-viewer primitives.
+`inspector.stage` · Baseline and latest render side by side, as a swipe, onion skin, pixel difference or signature cells; pan, zoom, change regions and detail tiles; Originals shows the two images with no analysis drawn; built on the diff-viewer primitives.
 
 States:
 
@@ -348,6 +348,7 @@ Interactions:
 - Choose the view (1–5)
 - Fit, actual size, zoom (F, 0, + −)
 - Next or previous change (N / ⇧N)
+- Originals: the images without analysis, not saved (O)
 - Drag to pan, wheel to zoom, drag the swipe handle (or arrow keys on it)
 - Tolerance, swipe, opacity and cell sliders; highlight, regions and tiles switches
 

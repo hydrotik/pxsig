@@ -27,6 +27,7 @@ export const oneLineSlider = (Track: typeof DS.Slider) =>
       <span
         data-control
         data-disabled={disabled || undefined}
+        aria-disabled={disabled || undefined}
         className={[sl.root, className].filter(Boolean).join(' ')}
       >
         <span id={id}>{label}</span>
