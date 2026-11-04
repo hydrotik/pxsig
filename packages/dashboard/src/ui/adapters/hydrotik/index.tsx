@@ -376,8 +376,13 @@ export const DialogDescription = (p: C.DialogDescriptionProps) => <DS.DialogDesc
 
 export const Slider = oneLineSlider(DS.Slider);
 
-export const Switch = ({ checked, onCheckedChange, label }: C.SwitchProps) => (
-  <DS.Switch checked={checked} onCheckedChange={onCheckedChange} aria-label={label} />
+export const Switch = ({ checked, onCheckedChange, label, disabled }: C.SwitchProps) => (
+  <DS.Switch
+    checked={checked}
+    onCheckedChange={onCheckedChange}
+    aria-label={label}
+    disabled={disabled}
+  />
 );
 
 export const SegmentedChoice = ({

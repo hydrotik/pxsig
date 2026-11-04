@@ -82,7 +82,9 @@ test('gaps: dashboard.ui in pxsig.config.json; a missing required component is a
 
 test("gaps and build compare the adapter's contract version with this pxsig's", () => {
   const r = pxsig(['dashboard', 'gaps', '--ui', 'hydrotik', '--json']);
-  assert.equal(JSON.parse(r.stdout).contract.status, 'same');
+  const { status, current } = JSON.parse(r.stdout).contract;
+  assert.equal(status, 'same');
+  const now = current.replace(/\./g, '\\.');
   const dir = tempDir('ui');
   try {
     mkdirSync(join(dir, 'ui'));
@@ -101,7 +103,9 @@ test("gaps and build compare the adapter's contract version with this pxsig's", 
     assert.equal(old.contract.status, 'older-major');
     assert.ok(
       old.problems.some((/** @type {string} */ p) =>
-        p.startsWith('contract: written for contract 0.1.0; this pxsig has 1.1.0, a major change')
+        p.startsWith(
+          `contract: written for contract 0.1.0; this pxsig has ${current}, a major change`
+        )
       ),
       old.problems.join('\n')
     );
@@ -121,7 +125,7 @@ test("gaps and build compare the adapter's contract version with this pxsig's", 
     );
     assert.match(
       pxsig(['dashboard', 'gaps', '--ui', './ui'], dir).stdout,
-      /\ncontract: written for contract 9\.0\.0; this pxsig has 1\.1\.0/
+      new RegExp(`\\ncontract: written for contract 9\\.0\\.0; this pxsig has ${now}`)
     );
   } finally {
     rmSync(dir, { recursive: true, force: true });

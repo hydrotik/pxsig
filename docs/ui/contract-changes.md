@@ -20,6 +20,16 @@ icon without a default. A major version's section starts with its migration note
 a version bump of the right size, or without a section here, fails. After the bump and the
 section, `node scripts/ui.mjs lock` records the new contract.
 
+## 1.2.0
+
+Minor: two optional props.
+
+- **`disabled`** on `Switch` and `Slider`: shown but not operable. A disabled control keeps its
+  role, name and value (announced as unavailable, not hidden), does not call `onCheckedChange` /
+  `onValueChange`, and is drawn at 0.5 opacity. Without it (an adapter written for 1.1.0) the
+  dashboard draws that control with the built-in fallback while it is disabled, so it is never
+  operable when it should not be.
+
 ## 1.1.0
 
 Minor: one optional component.

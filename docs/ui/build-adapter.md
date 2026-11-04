@@ -423,27 +423,36 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 
 - **Purpose**: one number on a range: tolerance, swipe position, opacity, cell strength.
 - **Props**: `label`, `value`, `onValueChange(value)`, `min`, `max`, `step`, `formatValue`,
-  `className`.
+  `className`, `disabled` (since 1.2.0).
 - **Behaviour**: shows the label and the formatted value; dragging and arrow keys change it. It
   sits in the inspector's toolbar, so label, track and value share one line at the toolbar's
   control height, with `data-control` on the outer element (one control to the layout check). If
   your slider field stacks its label over the track, compose the line from the bare slider.
+  Disabled, no drag or key changes the value, `onValueChange` is not called, and the whole line
+  (label, track and value) is drawn at 0.5 opacity.
 - **Accessibility**: `role="slider"` (or a native range input) named by `label`, with
-  `aria-valuetext` from `formatValue`.
+  `aria-valuetext` from `formatValue`. Disabled, it stays in the accessibility tree with its name
+  and value, announced as unavailable (`aria-disabled` or a native `disabled`).
 - **Mapping questions**: Does your slider take a single number or an array? Does it show its value?
-- **Acceptance**: in the inspector, moving Tolerance updates the changed-pixel count. Optional
-  (fallback: a range input).
+  Does it take a disabled state that keeps it in the accessibility tree?
+- **Acceptance**: in the inspector, moving Tolerance updates the changed-pixel count; with
+  Originals on, Tolerance shows disabled. Optional (fallback: a range input). An adapter written
+  for 1.1.0 gets the fallback while the slider is disabled.
 
 ### `Switch`
 
 - **Purpose**: an on / off control (highlight, regions, tiles, details).
 - **Props**: `checked`, `onCheckedChange(checked)`, `label` (accessible name; the visible text is
-  in the caller's `<label>`).
-- **Behaviour**: toggles on click and Space.
-- **Accessibility**: `role="switch"` with `aria-checked`.
+  in the caller's `<label>`), `disabled` (since 1.2.0).
+- **Behaviour**: toggles on click and Space. Disabled, it does not toggle, `onCheckedChange` is not
+  called, and it is drawn at 0.5 opacity (the caller's label dims with it).
+- **Accessibility**: `role="switch"` with `aria-checked`. Disabled, it stays in the accessibility
+  tree with its name and state, announced as unavailable (`aria-disabled` or a native `disabled`).
 - **Mapping questions**: Is your switch a button or a checkbox? Does it accept an accessible name?
-- **Acceptance**: turning Regions off hides the region outlines. Optional (fallback: a checkbox
-  with `role="switch"`).
+  Does it take a disabled state that keeps it in the accessibility tree?
+- **Acceptance**: turning Regions off hides the region outlines; with Originals on, Highlight,
+  Regions and Detail tiles show disabled. Optional (fallback: a checkbox with `role="switch"`). An
+  adapter written for 1.1.0 gets the fallback while the switch is disabled.
 
 ### `SegmentedChoice`
 

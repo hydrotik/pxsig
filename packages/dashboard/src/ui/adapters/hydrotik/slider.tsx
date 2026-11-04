@@ -20,10 +20,15 @@ export const oneLineSlider = (Track: typeof DS.Slider) =>
     step,
     formatValue,
     className,
+    disabled,
   }: C.SliderProps) {
     const id = React.useId();
     return (
-      <span data-control className={[sl.root, className].filter(Boolean).join(' ')}>
+      <span
+        data-control
+        data-disabled={disabled || undefined}
+        className={[sl.root, className].filter(Boolean).join(' ')}
+      >
         <span id={id}>{label}</span>
         <Track
           className={sl.track}
@@ -34,6 +39,7 @@ export const oneLineSlider = (Track: typeof DS.Slider) =>
           max={max}
           {...(step !== undefined ? { step } : {})}
           onValueChange={([v]: number[]) => onValueChange(v)}
+          disabled={disabled}
         />
         <output className={sl.value} aria-hidden="true">
           {formatValue ? formatValue(value) : value}
