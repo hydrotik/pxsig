@@ -97,6 +97,7 @@ export function setupFlows() {
  * A page on the mocked server. `events` is the SSE stream body; `posts` collects every POST;
  * `approving` is the status answer's (unset: unknown, as from an older server). `images` serves
  * the sample PNGs under /p/demo/, as the screens server does, so the inspector draws its stage.
+ * `routes(page)` adds the caller's own routes before the page loads; they take precedence.
  */
 export async function open(
   d,
@@ -107,6 +108,7 @@ export async function open(
     init = null,
     approving,
     images = false,
+    routes = null,
   } = {}
 ) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
@@ -145,6 +147,7 @@ export async function open(
     const body = u.includes('/diffs/') ? png.diff : u.includes('/base') ? png.baseline : png.render;
     return route.fulfill({ status: 200, contentType: 'image/png', body });
   });
+  if (routes) await routes(page);
   // One retry on Windows' ERR_NO_BUFFER_SPACE, as `pxsig dashboard check` does.
   await load(page, `${base}/report/${hash}`);
   return { page, posts, errors };

@@ -27,26 +27,21 @@ const d = data({
 
 test('an approval in flight says so and sends once; the next entry waits for its images', async (t) => {
   if (skip) return t.skip(skip);
-  const { page } = await open(d, { hash: `#inspect=${first}`, images: true });
-  try {
-    const dialog = page.getByRole('dialog');
-    const button = (/** @type {string} */ name, disabled = false) =>
-      dialog.getByRole('button', { name, exact: true, disabled });
-    let decisions = 0;
-    page.on('request', (r) => {
-      if (r.method() === 'POST' && /\/__pxsig\/(approve|reject)/.test(r.url())) decisions++;
-    });
+  // Settled by the test, whenever the route's handler starts (it may start after the call).
+  /** @type {() => void} */
+  let answer = () => {};
+  const answered = new Promise((/** @type {(v?: unknown) => void} */ ok) => (answer = ok));
+  /** @type {() => void} */
+  let draw = () => {};
+  const drawn = new Promise((/** @type {(v?: unknown) => void} */ ok) => (draw = ok));
+  const png = sampleImages();
+  // Before the page loads: the cards behind the dialog fetch the second entry's images too.
+  const routes = async (/** @type {import('playwright').Page} */ page) => {
     // The approval answers when the test says so; the second entry's images likewise.
-    /** @type {() => void} */
-    let answer = () => {};
-    await page.route('**/__pxsig/approve', async (route) => {
-      await new Promise((/** @type {(v?: unknown) => void} */ ok) => (answer = ok));
+    await page.route('**/__pxsig/approve*', async (route) => {
+      await answered;
       await route.fulfill({ json: { ok: true } });
     });
-    /** @type {() => void} */
-    let draw = () => {};
-    const drawn = new Promise((/** @type {(v?: unknown) => void} */ ok) => (draw = ok));
-    const png = sampleImages();
     await page.route('**/p/demo/**', async (route) => {
       const u = new URL(route.request().url()).pathname;
       if (!u.includes(second) || !u.endsWith('.png')) return route.fallback();
@@ -57,6 +52,16 @@ test('an approval in flight says so and sends once; the next entry waits for its
           ? png.baseline
           : png.render;
       await route.fulfill({ status: 200, contentType: 'image/png', body });
+    });
+  };
+  const { page } = await open(d, { hash: `#inspect=${first}`, images: true, routes });
+  try {
+    const dialog = page.getByRole('dialog');
+    const button = (/** @type {string} */ name, disabled = false) =>
+      dialog.getByRole('button', { name, exact: true, disabled });
+    let decisions = 0;
+    page.on('request', (r) => {
+      if (r.method() === 'POST' && /\/__pxsig\/(approve|reject)/.test(r.url())) decisions++;
     });
 
     await button('Approve').waitFor();
