@@ -35,6 +35,7 @@ mod changes;
 #[cfg(test)]
 mod git_tests;
 mod graph;
+mod inventory;
 mod paths;
 mod records;
 #[cfg(test)]
@@ -48,7 +49,9 @@ mod tests;
 
 pub use changes::{changes_from_files, changes_since, Changes};
 use graph::graph;
-use paths::{glob_match, is_module, norm_str, normalize, under};
+pub use inventory::inventory;
+pub use paths::glob_match;
+use paths::{is_module, norm_str, normalize, under};
 use records::{diff_a11y, diff_log, diff_manifest, other_suites, record_kind, Class, RecordDiff};
 
 /// Modules: graph nodes, read for imports. A changed one that reaches no entry selects nothing.
@@ -109,6 +112,8 @@ pub fn affected(root: &Path, m: &Manifest, ch: &Changes) -> Result<Value> {
     for c in &ch.files {
         let p = c.path.as_str();
         let np = normalize(Path::new(p));
+        // `graph` files: the entries whose story file reaches them (React analysis names them).
+        let mut entries: Option<Vec<String>> = None;
         let (class, selects, n, why): Class = if let Some(a) =
             all_prefixes.iter().find(|a| under(p, a))
         {
@@ -222,6 +227,12 @@ pub fn affected(root: &Path, m: &Manifest, ch: &Changes) -> Result<Value> {
             || (g.nodes.contains(&np) && is_module(&np))
         {
             let seen = reach(&np);
+            let hit: Vec<&crate::batch::Entry> = m
+                .stories
+                .iter()
+                .filter(|s| story_file(s).is_some_and(|f| seen.contains(&f)))
+                .collect();
+            entries = Some(hit.iter().map(|s| s.id.clone()).collect());
             if let Some(a) = seen
                 .iter()
                 .map(|f| crate::io::to_slash(f))
@@ -235,11 +246,6 @@ pub fn affected(root: &Path, m: &Manifest, ch: &Changes) -> Result<Value> {
                     format!("reaches {a}, which affects every entry"),
                 )
             } else {
-                let hit: Vec<&crate::batch::Entry> = m
-                    .stories
-                    .iter()
-                    .filter(|s| story_file(s).is_some_and(|f| seen.contains(&f)))
-                    .collect();
                 let files: HashSet<PathBuf> = hit.iter().filter_map(|s| story_file(s)).collect();
                 ids.extend(hit.iter().map(|s| s.id.clone()));
                 story_hits.extend(files.iter().cloned());
@@ -274,6 +280,9 @@ pub fn affected(root: &Path, m: &Manifest, ch: &Changes) -> Result<Value> {
         }
         if let Some(n) = n {
             f["n"] = json!(n);
+        }
+        if let Some(e) = entries.filter(|_| class == "graph") {
+            f["entries"] = json!(e);
         }
         files_out.push(f);
     }

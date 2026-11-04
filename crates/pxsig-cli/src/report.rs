@@ -225,6 +225,7 @@ pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
         }
         out.push_str("\n</details>\n");
     }
+    out.push_str(&crate::report_react::section(v));
     out
 }
 

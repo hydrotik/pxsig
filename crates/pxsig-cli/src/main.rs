@@ -10,6 +10,7 @@
 //! - `report` — Markdown (PR comment) / JUnit from a check result;
 //! - `pack` / `cat` / `attach` — build `.psig` baselines from spec v1 records, print a header
 //!   (git's textconv), add a baseline image without touching the signature;
+//! - `react-plan` / `react-diff` — React analysis: what to compile, then base vs now per function;
 //! - `serve` — the engine as a stdio JSON-RPC daemon;
 //! - `detail-sweep` — raw material for calibrating the detail channel.
 //!
@@ -21,7 +22,9 @@ mod cmd_check;
 mod cmd_store;
 mod gate;
 mod io;
+mod react;
 mod report;
+mod report_react;
 mod resolve;
 mod serve;
 mod sweep;
@@ -209,6 +212,43 @@ enum Cmd {
         #[arg(long)]
         json: bool,
     },
+    /// React analysis, step 1: the changed module files to compile, each side's hash and cache hit.
+    ReactPlan {
+        #[arg(long)]
+        manifest: PathBuf,
+        #[arg(long, env = "PXSIG_ROOT")]
+        root: Option<PathBuf>,
+        /// Git ref to diff against (merge-base with HEAD), plus uncommitted work (default main).
+        #[arg(long, conflicts_with_all = ["files", "all"])]
+        since: Option<String>,
+        /// Explicit changed files (comma-separated), compared with HEAD.
+        #[arg(long, conflicts_with = "all")]
+        files: Option<String>,
+        /// Every module file that reaches an entry, with no comparison.
+        #[arg(long)]
+        all: bool,
+        /// The cache directory (`<store>/cache/react`).
+        #[arg(long)]
+        cache: PathBuf,
+        /// `@file` or inline JSON: `{ "key": { backend, compiler, babel, options }, "exclude"?: [globs] }`.
+        #[arg(long)]
+        options: String,
+        /// Write the plan here and print only its counts.
+        #[arg(long)]
+        out: Option<PathBuf>,
+    },
+    /// React analysis, step 2: base vs now per function; writes the cache and `react.json`.
+    ReactDiff {
+        #[arg(long)]
+        plan: PathBuf,
+        /// `{ backend, project?, ms?, results: { <sha>: { functions } | { error } } }`.
+        #[arg(long)]
+        results: PathBuf,
+        #[arg(long)]
+        cache: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+    },
     /// Long-lived engine: JSON requests on stdin, one JSON response per line.
     Serve,
     /// Detail-channel calibration data over base/current render pairs.
@@ -339,6 +379,32 @@ fn run(cmd: Cmd) -> anyhow::Result<u8> {
             json,
         } => cmd_pack(sig, out, image, entry, plan, json),
         Cmd::Attach { psig, png, json } => cmd_attach(&psig, &png, json),
+        Cmd::ReactPlan {
+            manifest,
+            root,
+            since,
+            files,
+            all,
+            cache,
+            options,
+            out,
+        } => {
+            let files = files.map(|f| f.split(',').map(String::from).collect());
+            let o = react::PlanOpts {
+                manifest,
+                root: root.unwrap_or_else(|| PathBuf::from(".")),
+                select: react::select(since, files, all)?,
+                cache,
+                options: react::json_arg(&options)?,
+            };
+            react::cmd_plan(&o, out)
+        }
+        Cmd::ReactDiff {
+            plan,
+            results,
+            cache,
+            out,
+        } => react::cmd_diff(&plan, &results, &cache, &out),
         Cmd::Serve => serve::run(),
         Cmd::DetailSweep { input } => cmd_sweep(&input),
     }
