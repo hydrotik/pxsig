@@ -1,0 +1,57 @@
+- main:
+  - status
+- dialog "components-badge--danger@dark":
+  - strong: Approving new entries
+  - progressbar "Review progress": x
+  - text: 0 of 3 reviewed · 3 left New
+  - group "Mode":
+    - radio "light"
+    - radio "dark" [checked]
+  - text: Latest check · dark
+  - heading "components-badge--danger@dark" [level=2]
+  - paragraph: "new: no baseline yet — approve its first render"
+  - button "Previous story (←)": ‹
+  - text: 1 / 3
+  - button "Next story (→)": ›
+  - button "Re-check"
+  - button "Reject"
+  - button "Approve"
+  - button "Close"
+  - group "Compare mode":
+    - radio "Side by side" [checked]
+    - radio "Swipe"
+    - radio "Onion skin"
+    - radio "Pixel diff"
+    - radio "Signature cells"
+  - button "Zoom out (−)": −
+  - text: 200%
+  - button "Zoom in (+)": +
+  - button "Fit"
+  - button "1:1"
+  - group "Image comparison. Drag to pan, scroll to zoom.": Latest render (no baseline yet)
+  - text: 1–5 mode F fit 0 1:1 + − zoom N ⇧N next / previous change ← → story A approve R reject Esc close
+  - complementary:
+    - heading "Pixel" [level=3]
+    - link "Storybook":
+      - /url: http://127.0.0.1:1/?path=/story/components-badge--danger&globals=theme:dark
+    - text: No baseline to compare against yet.
+    - heading "Files" [level=3]
+    - list:
+      - listitem:
+        - link "Baseline render (opens in a new tab)":
+          - /url: /p/example-single/renders/base/components-badge--danger@dark.png
+        - text: missing
+        - 'button "Copy path: Baseline render"': Copy path
+      - listitem:
+        - link "Latest render (opens in a new tab)":
+          - /url: /p/example-single/renders/latest/components-badge--danger@dark.png
+        - text: 0.8 KB
+        - 'button "Copy path: Latest render"': Copy path
+      - listitem:
+        - link "Baseline record (JSON) (opens in a new tab)":
+          - /url: /p/example-single/sig/components-badge--danger%40dark
+        - text: missing
+        - 'button "Copy path: Baseline record (JSON)"': Copy path
+      - listitem:
+        - link "Open in Storybook (opens in a new tab)":
+          - /url: http://127.0.0.1:1/?path=/story/components-badge--danger&globals=theme:dark

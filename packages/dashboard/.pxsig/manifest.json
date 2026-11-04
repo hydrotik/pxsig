@@ -1090,6 +1090,390 @@
       ],
       "browser": "chromium",
       "a11y": false
+    },
+    {
+      "id": "live--open-1@dark",
+      "story": "live--open-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--open-1@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--open-1@light",
+      "story": "live--open-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--open-1@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--approve-1@dark",
+      "story": "live--approve-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--approve-1@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--approve-1@light",
+      "story": "live--approve-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--approve-1@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--approve-2@dark",
+      "story": "live--approve-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--approve-2@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--approve-2@light",
+      "story": "live--approve-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--approve-2@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--approve-3@dark",
+      "story": "live--approve-3",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--approve-3@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--approve-3@light",
+      "story": "live--approve-3",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--approve-3@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--reject-1@dark",
+      "story": "live--reject-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--reject-1@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--reject-1@light",
+      "story": "live--reject-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--reject-1@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--undo-1@dark",
+      "story": "live--undo-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--undo-1@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--undo-1@light",
+      "story": "live--undo-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--undo-1@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--recheck-1@dark",
+      "story": "live--recheck-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--recheck-1@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--recheck-1@light",
+      "story": "live--recheck-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--recheck-1@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--check-all-1@dark",
+      "story": "live--check-all-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--check-all-1@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--check-all-1@light",
+      "story": "live--check-all-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--check-all-1@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--changed-1@dark",
+      "story": "live--changed-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--changed-1@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--changed-1@light",
+      "story": "live--changed-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--changed-1@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--changed-2@dark",
+      "story": "live--changed-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--changed-2@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--changed-2@light",
+      "story": "live--changed-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--changed-2@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--read-only-1@dark",
+      "story": "live--read-only-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--read-only-1@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--read-only-1@light",
+      "story": "live--read-only-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--read-only-1@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--offline-1@dark",
+      "story": "live--offline-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--offline-1@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--offline-1@light",
+      "story": "live--offline-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--offline-1@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
     }
   ],
   "skipped": []

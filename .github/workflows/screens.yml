@@ -1,7 +1,8 @@
 # pxsig's own baselines (docs/releasing.md, "pxsig's own baselines"): the dashboard, built on the
 # design system at PXSIG_DS_REF, rendered in pxsig's container (docker/screens-image.json) and
-# checked against packages/dashboard/.pxsig. A screen that changed, is new or did not render fails
-# the run until its baseline is approved and committed. The renders are uploaded as the
+# checked against packages/dashboard/.pxsig: its fixture screens, and its live screens (the real
+# `pxsig serve` on a staged example, driven through the reviewer's flows; "Live screens"). A screen
+# that changed, is new or did not render fails the run until its baseline is approved and committed. The renders are uploaded as the
 # `pxsig-screens` artifact, which the review starts from.
 name: screens
 
@@ -49,6 +50,10 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          # The live screens install examples/single-package on the runner (scripts/live/stage.mjs).
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            examples/single-package/pnpm-lock.yaml
       - if: steps.has.outputs.ds == 'true'
         name: Fetch the design system
         shell: bash
@@ -94,8 +99,10 @@ jobs:
         run: |
           set -uo pipefail
           docker pull -q "$(node -p "require('./docker/screens-image.json').image")"
-          node scripts/screens-container.mjs
-          code=$?
+          # The runner's bash has -e on: catch the check's exit, so 1 (screens to review) still
+          # writes the summary and the output that "Screens to review" reads. Above 1 fails below.
+          code=0
+          node scripts/screens-container.mjs || code=$?
           if [ -f packages/dashboard/.pxsig/reports/summary.md ]; then
             cat packages/dashboard/.pxsig/reports/summary.md >> "$GITHUB_STEP_SUMMARY"
           fi

@@ -111,11 +111,42 @@ depend on fonts: take them from the container (`pnpm screens:check`, or CI's `re
 **No findings.** Every screen must also have no accessibility (axe) or layout finding, as `pxsig
 dashboard check --strict` requires; the run lists each one.
 
+**Live screens.** The fixture screens answer the dashboard from sample data; the live screens run
+the real `pxsig serve`, the CLI a person runs, on a staged copy of `examples/single-package`, and
+drive it through the reviewer's flows on one page: open the dashboard link, approve the new
+entries, reject one and undo it, re-check one, `pxsig check --full` from a terminal beside the
+server, a real source change (two entries change, the inspector on real renders), a browser
+without the link (Read only), the server stopped (Offline). Each step is one screen in each theme,
+`live--<flow>-<n>@<theme>` (`live--approve-2@dark`), with its locked structure in
+`fixtures/locked/live/`, checked with the fixture screens in the same run and reviewed the same way.
+A behaviour-free change to the server or the dashboard shows `0 to review`: that is its proof.
+
+- The flows are `scripts/live/flows.mjs`. An id is a baseline: a step is never renumbered; a new
+  step takes the next number or a new flow. `scripts/live-screens.test.mjs` fails when the
+  dashboard calls a server route that no flow covers and `UNCOVERED` does not list with its reason;
+  that list may only shrink.
+- `pnpm screens:check` stages the example on the host first (`scripts/live/stage.mjs`: installed
+  from its lockfile, its Storybook built as committed and with the scripted change, under
+  `node_modules/.cache/pxsig/live`; skipped while nothing it reads changed). In the container each
+  run starts from a clean scratch store there: 9 entries pass, 3 are new.
+- What varies from run to run (the times the server writes, durations, its ports) is rewritten at
+  the HTTP boundary (`scripts/live/volatile.mjs`), strictly: a listed field that goes missing, or a
+  time, port or duration no rule rewrites, fails the step and names the field.
+- Approvals in the flows are clicks on the page of the server the run started, in its scratch
+  store, with a link minted from that server's own CLI token. Nothing in `packages/dashboard/.pxsig`
+  is approved by a run; ports 6006 and 6070 are never used.
+- `--repeat <n>` (default 2) runs the flows n times per theme: a step whose structure differs
+  between runs, or whose screenshot differs beyond the gate (run 2 against run 1, as a render
+  against its baseline), fails as "not deterministic". Any difference, within the gate too, keeps
+  both renders in `reports/live-repeat/` and is logged.
+  `--no-live` leaves the live screens out; `--only` takes live features (`live.approve`) too.
+
 **Where it runs.** The `screens` workflow (`.github/workflows/screens.yml`) builds the dashboard on
 the design system at the `PXSIG_DS_REF` variable (a full commit SHA, fetched with the
 `PXSIG_DS_SOURCE` secret) and checks it on every pull request and push to `main`; a pull request
 without the secret (a fork, Dependabot) is not checked. The release's Dashboard job checks the
-dashboard it ships, built or attached, the same way and stops the release on any difference.
+dashboard it ships, built or attached, the same way (its fixture screens, `--no-live` for now) and
+stops the release on any difference.
 
 **Review.** A failing run uploads its renders as the `pxsig-screens` artifact. Download it into the
 store, then review and approve in the dashboard:

@@ -304,7 +304,8 @@ jobs:
           pnpm install --frozen-lockfile
           docker pull -q "$(node -p "require('./docker/screens-image.json').image")"
           code=0
-          node scripts/screens-container.mjs || code=$?
+          # --no-live: the live screens join the release in their own change (the published build).
+          node scripts/screens-container.mjs --no-live || code=$?
           if [ -f packages/dashboard/.pxsig/reports/summary.md ]; then
             cat packages/dashboard/.pxsig/reports/summary.md >> "$GITHUB_STEP_SUMMARY"
           fi

@@ -3,17 +3,34 @@
  * screens-container.mjs — runs scripts/screens-check.mjs in pxsig's container, the image pinned in
  * docker/screens-image.json, so pxsig's own baselines are rendered the same way on every machine.
  *
- *   pnpm screens:check [--build <dir>] [--only <feature,…>]
+ *   pnpm screens:check [--build <dir>] [--only <feature,…>] [--no-live] [--repeat <n>]
  *
  * The checkout is mounted at its own path (pnpm's links stay valid) and the check runs as the
  * calling user, so what it writes in packages/dashboard/.pxsig belongs to them. The image's engine
  * and Playwright are used (PXSIG_BIN, PXSIG_PLAYWRIGHT), the checkout's pxsig sources and
  * dependencies (`pnpm install` first). Needs Docker. Exit: screens-check's, or 2 when Docker fails.
+ *
+ * The live screens' workspace is staged here, on the host, first (scripts/live/stage.mjs: the
+ * container has no pnpm), unless `--no-live` or an `--only` that names no live feature.
  */
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { FEATURES } from './live/flows.mjs';
+import { stageLive } from './live/stage.mjs';
+
+/**
+ * Whether these screens-check arguments run the live screens (and so need the staged workspace).
+ * @param {string[]} args
+ */
+export function wantsLive(args) {
+  if (args.includes('--no-live')) return false;
+  const i = args.indexOf('--only');
+  if (i < 0) return true;
+  const named = (args[i + 1] ?? '').split(',').map((x) => x.trim());
+  return FEATURES.some((f) => named.includes(f.id));
+}
 
 /** The pinned image, as docker/screens-image.json names it. */
 export function pinnedImage(/** @type {string} */ repo) {
@@ -60,6 +77,12 @@ export function dockerArgs({ image, repo, user, args }) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const repo = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
   const user = process.getuid && process.getgid ? `${process.getuid()}:${process.getgid()}` : null;
+  // A staging failure is setup (2), never a screen to review.
+  if (wantsLive(process.argv.slice(2)))
+    await stageLive().catch((/** @type {Error} */ e) => {
+      console.error(`[screens] staging the live screens failed: ${e.message}`);
+      process.exit(2);
+    });
   const r = spawnSync(
     'docker',
     dockerArgs({ image: pinnedImage(repo), repo, user, args: process.argv.slice(2) }),

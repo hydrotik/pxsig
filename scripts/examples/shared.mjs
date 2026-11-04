@@ -7,6 +7,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  rmSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -23,7 +24,8 @@ export const cli = join(repo, 'packages', 'pxsig', 'bin', 'pxsig.mjs');
 export const bin =
   process.env.PXSIG_BIN ??
   join(repo, 'target', 'release', process.platform === 'win32' ? 'pxsig.exe' : 'pxsig');
-if (!existsSync(bin))
+// Staging alone (scripts/live/stage.mjs, on a host without the engine) needs no binary.
+if (!existsSync(bin) && !process.env.PXSIG_STAGE_ONLY)
   throw new Error(`build the Rust binary first: cargo build --release (looked for ${bin})`);
 
 export const log = (/** @type {string} */ m) => console.log(`[examples] ${m}`);
@@ -103,13 +105,18 @@ const LINKED = ['pxsig', 'storybook-addon'];
 /**
  * Copy an example to `<temp>/examples/<name>`, beside a `<temp>/packages/` whose entries are links
  * to this checkout's packages, so its `link:` dependencies resolve as written and its committed
- * pnpm-lock.yaml matches its package.json.
+ * pnpm-lock.yaml matches its package.json. `base`: a fixed folder instead of a new temp one,
+ * emptied first (the live screens' staging, scripts/live/stage.mjs).
  * @param {string} name
+ * @param {{ base?: string }} [opts]
  */
-export function stage(name) {
+export function stage(name, { base: fixed } = {}) {
   // On the checkout's drive: Storybook names a cache folder after the path from the example to a
   // linked package, which across Windows drives contains "D:" and cannot be created.
-  const base = mkdtempSync(join(process.env.RUNNER_TEMP || tmpdir(), `pxsig-example-${name}-`));
+  if (fixed) rmSync(fixed, { recursive: true, force: true });
+  const base = fixed
+    ? (mkdirSync(fixed, { recursive: true }), fixed)
+    : mkdtempSync(join(process.env.RUNNER_TEMP || tmpdir(), `pxsig-example-${name}-`));
   mkdirSync(join(base, 'packages'));
   // A junction on Windows needs no privilege; elsewhere the type is ignored.
   for (const p of LINKED)
@@ -135,10 +142,11 @@ export const fresh = process.argv.includes('--fresh');
 /**
  * Install a staged example from its committed pnpm-lock.yaml (`--frozen-lockfile`), or unpinned
  * with `--fresh`. A workspace example installs as a workspace; another one ignores any workspace
- * above it.
+ * above it. `browser: false`: no browser for the example's Playwright (it renders elsewhere).
  * @param {string} dir
+ * @param {{ browser?: boolean }} [opts]
  */
-export function install(dir) {
+export function install(dir, { browser = true } = {}) {
   const ws = existsSync(join(dir, 'pnpm-workspace.yaml'));
   pnpm(
     [
@@ -155,6 +163,7 @@ export function install(dir) {
   // in pxsig's image, where PXSIG_PLAYWRIGHT names the Playwright that renders; and never removing
   // another version's browser (Playwright's clean-up would take the image's).
   if (
+    browser &&
     !process.env.PXSIG_PLAYWRIGHT &&
     (existsSync(join(dir, 'node_modules', '.bin', 'playwright')) ||
       existsSync(join(dir, 'node_modules', '.bin', 'playwright.cmd')))
