@@ -41,15 +41,20 @@ export function runCustomUi() {
     JSON.parse(readFileSync(join(dir, 'dashboard-build', 'pxsig-build.json'), 'utf8'))
   );
   expect(stamp.pxsig, 'build: stamped with the pxsig version, for serve');
+  // The example stays written for an older minor contract (docs/ui/contract-changes.md).
+  const written = /** @type {{ contract: string }} */ (
+    JSON.parse(readFileSync(join(dir, 'pxsig-ui', 'conformance.json'), 'utf8'))
+  ).contract;
   expect(
-    stamp.contract && stamp.adapterContract === stamp.contract,
+    stamp.contract && stamp.adapterContract === written,
     `build: stamped with the UI contract (${stamp.contract}) and the adapter's (${stamp.adapterContract})`
   );
   r = pxsig(['dashboard', 'gaps', '--json'], dir);
   expect(
     // `dashboard gaps --json`'s answer.
-    /** @type {GapsAnswer} */ (JSON.parse(r.stdout)).contract?.status === 'same',
-    'gaps: the adapter is written for this contract'
+    /** @type {GapsAnswer} */ (JSON.parse(r.stdout)).contract?.status ===
+      (written === stamp.contract ? 'same' : 'older-minor'),
+    `gaps: the adapter is written for contract ${written}, this one or an older minor`
   );
   // Every feature on a design system other than the reference, from the shipped sample data.
   // --strict: an axe violation or a layout finding fails it too.
