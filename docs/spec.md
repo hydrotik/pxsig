@@ -333,3 +333,37 @@ A full check writes, under `<store>/reports/`:
 
 Renders go to `<store>/renders/latest/<id>.png`; diff images for failures to
 `<store>/diffs/latest/`.
+
+### Render counts
+
+With `react.renders` on ([configuration.md](configuration.md#react)), each rendered row has
+`renders`, and `summary.renderAlerts` counts the rows React was still committing at capture.
+Without it the field is absent; `renders: null` means no React renderer loaded on the page (a
+story with no React).
+
+```jsonc
+"renders": {
+  "v": 1,
+  "build": "development",       // or "production": React's own build, as it told the hook
+  "react": "19.3.1",            // the renderer's version, or null
+  "mount": { "commits": 2, "rendered": 37, "mounted": 37 },
+  "interaction": { "commits": 1, "rendered": 3 },   // only for an interaction state
+  "top": [{ "name": "Button", "renders": 4, "compiled": false }],
+  "ms": 12.4,                   // React's render time, development builds only
+  "settled": true               // React had stopped committing at capture
+}
+```
+
+`mount` counts from the start of the story (a story switch, or the page load) to the capture, or
+to the interaction when there is one; `interaction` from there to the capture. `rendered` counts
+the function, class, `forwardRef` and `memo` components that rendered in those commits,
+`mounted` the ones rendered for the first time; both are `null` when the story was too large to
+walk (over 200,000 fibers) and only commits were counted. `top` lists at most five components by
+renders over the whole capture, `compiled` when React kept a React Compiler memo cache for it.
+Counts are deterministic for a deterministic story; `ms` varies with the machine and is never
+compared. `settled` is true when React made no commit within 250 ms after its last commit
+before the capture: a commit just before it (the answer to an interaction) followed by quiet is
+settled; a component that keeps re-rendering (an effect that sets state, a timer) is not. The
+check waits at most what is left of those 250 ms, after the capture, so the image is taken at the
+same moment as without counting. `settled: false` is an alert, never a failure: it changes no exit
+code, gate or JUnit result.

@@ -16,6 +16,8 @@
  *   4b. env          (single-package) baselines re-taken with their render environment; a
  *                    forced font-probe difference warns (exit 0, one setup finding), and
  *                    --strict-env refuses it (exit 2)
+ *   4c. renders      (single-package) react.renders on: the same baselines pass, every row
+ *                    counts React's commits; --no-react turns it off
  *   5. change        a component's colour changes; the check fails on exactly its entries
  *   5b. warn         (single-package) the visual gate on warn: the same failing rows, exit 0,
  *                    ADVISORY lines, `enforcement` in check.json, the summary.md lead and the
@@ -47,6 +49,7 @@ import {
   projectStore,
 } from './examples/shared.mjs';
 import { baselineAll, checkJson, envSteps, warnSteps } from './examples/steps.mjs';
+import { rendersSteps } from './examples/renders.mjs';
 import { runCustomUi } from './examples/custom-ui.mjs';
 
 const which = process.argv.slice(2).find((a) => !a.startsWith('--'));
@@ -113,7 +116,10 @@ async function run(name, { projects, storybookDir, change }) {
         !existsSync(join(dir, ...projectStore(dir, p), 'reports', '.lock')),
         'the store lock is released'
       );
-      if (name === 'single-package') envSteps(dir, p);
+      if (name === 'single-package') {
+        envSteps(dir, p);
+        rendersSteps(dir, p);
+      }
     }
     // A visual change: rebuild Storybook, every project re-checks, only the changed component fails.
     log(`${name}: changing ${change.file}`);

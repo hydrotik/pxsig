@@ -31,6 +31,7 @@ export const BOOLEAN_FLAGS = new Set([
   'no-open',
   'no-verify',
   'no-a11y',
+  'no-react',
   'no-server',
   'from-git',
   'strict-env',

@@ -83,3 +83,10 @@ export type {
   Tokens,
   Authorization,
 } from './types/run.js';
+export type {
+  ReactSettings,
+  RenderPhase,
+  RenderTop,
+  RenderCounts,
+  RenderRead,
+} from './types/react.js';

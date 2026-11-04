@@ -89,6 +89,8 @@ export interface RenderOptions {
   project?: PeerBase;
   fastSwitch?: boolean;
   waitFor?: Config['capture']['waitFor'];
+  /** Count React commits and renders (default: the project's `react.renders`). */
+  renders?: boolean;
 }
 
 /** What `renderStories` returns. */
