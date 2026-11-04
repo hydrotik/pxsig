@@ -135,8 +135,10 @@ A behaviour-free change to the server or the dashboard shows `0 to review`: that
 - Approvals in the flows are clicks on the page of the server the run started, in its scratch
   store, with a link minted from that server's own CLI token. Nothing in `packages/dashboard/.pxsig`
   is approved by a run; ports 6006 and 6070 are never used.
-- `--repeat <n>` (default 2) runs the flows n times per theme: a step whose screenshot or structure
-  differs between runs fails as "not deterministic", both renders kept in `reports/live-repeat/`.
+- `--repeat <n>` (default 2) runs the flows n times per theme: a step whose structure differs
+  between runs, or whose screenshot differs beyond the gate (run 2 against run 1, as a render
+  against its baseline), fails as "not deterministic". Any difference, within the gate too, keeps
+  both renders in `reports/live-repeat/` and is logged.
   `--no-live` leaves the live screens out; `--only` takes live features (`live.approve`) too.
 
 **Where it runs.** The `screens` workflow (`.github/workflows/screens.yml`) builds the dashboard on

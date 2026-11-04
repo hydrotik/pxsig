@@ -14,10 +14,13 @@
  * link minted from that server's own CLI token (as `pxsig serve --link` does). Nothing in
  * packages/dashboard/.pxsig is approved or written by a flow. Ports 6006 and 6070 are refused.
  *
- * `repeat`: the flows run that many times per theme; every step's screenshot must be the same
- * pixels and its accessibility snapshot the same text on every run, else the step fails as "not
- * deterministic" and both renders are kept under `keep`.
+ * `repeat`: the flows run that many times per theme. A step's accessibility snapshot must be the
+ * same text on every run, and its screenshot the same pixels or, failing that, within the gate as
+ * the check judges a render against its baseline (the example's own story renders, shown in the
+ * inspector, can differ by a pixel between runs); else the step fails as "not deterministic". Any
+ * difference keeps both renders under `keep` and is logged.
  */
+import { spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
@@ -30,7 +33,9 @@ import {
   screenContext,
   snap,
 } from '../../packages/pxsig/src/dashboard-check/capture.mjs';
+import { waitMarkupStable } from '../../packages/pxsig/src/lib/capture.mjs';
 import { readToken } from '../../packages/pxsig/src/lib/guard.mjs';
+import { rustBinary } from '../../packages/pxsig/src/lib/workspace/peers.mjs';
 import { copyTree } from '../lib/copy-tree.mjs';
 import { FEATURES, STEPS } from './flows.mjs';
 import { assertSafeUrl, DEAD_URL, idle, startLiveServer } from './server.mjs';
@@ -242,6 +247,7 @@ async function runOnce({ browser, theme, dashboard, axe, out, log, want }) {
             .catch(() => {
               throw new Error(`landmark missing: ${describe(step.wait)}`);
             });
+          await still(page);
           const c = await snap(page, {
             shot,
             axe: want(step) ? axe : '',
@@ -285,10 +291,49 @@ async function runOnce({ browser, theme, dashboard, axe, out, log, want }) {
 }
 
 /**
+ * Bring the page to rest beyond what snap's settle sees: Web Animations (a component's JS-driven
+ * fade, which the freeze stylesheet cannot stop) finished, and the markup (a chart drawn on its own
+ * clock) unchanged across polls.
+ * @param {Page} page
+ */
+async function still(page) {
+  await page.evaluate(() => {
+    for (const a of document.getAnimations())
+      try {
+        a.finish();
+      } catch {
+        // an endless animation cannot finish: it is left as it is
+      }
+  });
+  await waitMarkupStable(page, 'body');
+}
+
+/**
  * @param {string} reason
  * @returns {Omit<ScreenCapture, 'ms' | 'retried'>}
  */
 const notRendered = (reason) => ({ rendered: false, reason, errors: [], axe: [], layout: [] });
+
+/**
+ * Run 2's render against run 1's, as the check judges a render against its baseline: the engine's
+ * signature of `a`, then `b` compared with the default gate.
+ * @param {string} a
+ * @param {string} b
+ * @param {string} sig where the signature goes
+ * @returns {{ pass: boolean, ssim: number | null }}
+ */
+function withinGate(a, b, sig) {
+  const bin = rustBinary();
+  spawnSync(bin, ['capture', a, '--out', sig], { encoding: 'utf8' });
+  const r = spawnSync(bin, ['compare', b, sig, '--json'], { encoding: 'utf8' });
+  try {
+    // `pxsig compare --json` (docs/cli.md), as far as this reads it.
+    const j = /** @type {{ pass?: boolean, metrics?: { ssim?: number } }} */ (JSON.parse(r.stdout));
+    return { pass: j.pass === true, ssim: j.metrics?.ssim ?? null };
+  } catch {
+    return { pass: false, ssim: null };
+  }
+}
 
 /**
  * Same pixels? (Byte-identical files are; otherwise decoded and compared.)
@@ -339,12 +384,16 @@ export async function runLive({
       runs.push(await runOnce({ browser, theme, dashboard, axe, out: dirK, log, want }));
     }
     const [first, ...rest] = runs;
+    let identical = 0;
     first.forEach((r, i) => {
       for (const [j, other] of rest.entries()) {
         const o = other[i];
         if (!r.rendered || !o.rendered || !r.shot || !o.shot) continue;
         const pixels = samePixels(r.shot, o.shot);
-        if (pixels && r.aria === o.aria) continue;
+        if (pixels && r.aria === o.aria) {
+          identical++;
+          continue;
+        }
         const id = `live--${r.feature.split('.')[1]}-${r.index + 1}@${theme}`;
         mkdirSync(keep, { recursive: true });
         copyFileSync(r.shot, join(keep, `${id}.run1.png`));
@@ -353,16 +402,25 @@ export async function runLive({
           writeFileSync(join(keep, `${id}.run1.aria.yml`), r.aria ?? '');
           writeFileSync(join(keep, `${id}.run${j + 2}.aria.yml`), o.aria ?? '');
         }
+        // Pixels that differ within the gate never show as a change against a baseline: kept,
+        // logged, and not a failure. Outside it, or a different structure, the step fails.
+        const gate = pixels ? null : withinGate(r.shot, o.shot, join(keep, `${id}.pxsig.json`));
+        if (r.aria === o.aria && gate?.pass) {
+          log(`[live] ${id}: run ${j + 2} differs in pixels within the gate (ssim ${gate.ssim})`);
+          continue;
+        }
         Object.assign(r, {
           rendered: false,
           shot: null,
-          reason: `not deterministic: run ${j + 2} differs in ${pixels ? 'its accessibility snapshot' : 'pixels'} (both kept in reports/live-repeat)`,
+          reason: `not deterministic: run ${j + 2} differs in ${r.aria !== o.aria ? 'its accessibility snapshot' : `pixels beyond the gate (ssim ${gate?.ssim})`} (both kept in reports/live-repeat)`,
         });
         break;
       }
     });
-    if (rest.length && first.every((r) => r.rendered))
-      log(`[live] ${theme}: ${repeat} runs, every step the same pixels and structure`);
+    if (rest.length)
+      log(
+        `[live] ${theme}: ${repeat} runs, ${identical} of ${first.length} steps the same pixels and structure`
+      );
     all.push(...first);
   }
   return all;
