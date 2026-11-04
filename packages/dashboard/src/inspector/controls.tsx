@@ -3,6 +3,7 @@
  * arrows, the view's sliders and switches, the story's other modes and states, the story arrows,
  * the review buttons with Undo, Re-check, and the keys under the stage.
  */
+import type { ReactNode } from 'react';
 import { Button, IconButton, Kbd, SegmentedChoice, Slider, Switch } from '@ui';
 import type { Data, Row } from '../data';
 import { t } from '../copy';
@@ -373,12 +374,18 @@ export function ReviewButtons({
   target,
   approveAll,
   readOnly = false,
+  pending = null,
+  armed = true,
 }: {
   canReview: boolean;
   idle: boolean;
   embedded: boolean;
   a11yMode: boolean;
   busy: boolean;
+  /** The decision the server is answering: its button names it ("Approving…"). */
+  pending?: 'approve' | 'reject' | null;
+  /** The entry's images are drawn: until then Reject and Approve stay disabled. */
+  armed?: boolean;
   review: Data['review'][string] | NonNullable<Data['a11yReview']>[string] | undefined;
   act: (action: 'approve' | 'reject' | 'unreview', a11y?: boolean) => Promise<void>;
   newA11y: number;
@@ -393,6 +400,21 @@ export function ReviewButtons({
 }) {
   const undo = <Undo review={review} busy={busy || readOnly} act={act} />;
   const why = readOnly ? t('inspector.review.readOnlyTitle') : undefined;
+  const off = readOnly || busy || !armed;
+  // Each decision button in a box that shows the progress cursor and is aria-busy while its request
+  // runs (the button itself is disabled then, and a disabled button takes no pointer).
+  const decision = (action: 'approve' | 'reject', button: ReactNode) => (
+    <span className={s.decision} aria-busy={pending === action || undefined}>
+      {button}
+    </span>
+  );
+  const rejectLabel = (
+    <DecisionLabel
+      label={t('inspector.review.reject')}
+      busyLabel={t('inspector.review.rejecting')}
+      busy={pending === 'reject'}
+    />
+  );
   // Reject and Approve keep their place: they end the group, at its right edge, with labels that
   // never change width. Whatever comes and goes (Undo, Approve story, the a11y note) sits to their
   // left, so it can only push away from them (test/flows-decisions.test.mjs measures it).
@@ -402,23 +424,33 @@ export function ReviewButtons({
       {newA11y ? (
         <span className={s.micro}>{t('inspector.review.newCount', { count: newA11y })}</span>
       ) : null}
-      <Button
-        size="sm"
-        emphasis="outline"
-        disabled={readOnly || busy || idle || review?.state === 'rejected'}
-        onClick={() => act('reject')}
-        title={why ?? t('inspector.review.rejectA11yTitle')}
-      >
-        {t('inspector.review.reject')}
-      </Button>
-      <Button
-        size="sm"
-        disabled={readOnly || busy || idle || review?.state === 'accepted'}
-        onClick={() => act('approve')}
-        title={why ?? t('inspector.review.acceptTitle')}
-      >
-        {t('inspector.review.accept')}
-      </Button>
+      {decision(
+        'reject',
+        <Button
+          size="sm"
+          emphasis="outline"
+          disabled={off || idle || review?.state === 'rejected'}
+          onClick={() => act('reject')}
+          title={why ?? t('inspector.review.rejectA11yTitle')}
+        >
+          {rejectLabel}
+        </Button>
+      )}
+      {decision(
+        'approve',
+        <Button
+          size="sm"
+          disabled={off || idle || review?.state === 'accepted'}
+          onClick={() => act('approve')}
+          title={why ?? t('inspector.review.acceptTitle')}
+        >
+          <DecisionLabel
+            label={t('inspector.review.accept')}
+            busyLabel={t('inspector.review.accepting')}
+            busy={pending === 'approve'}
+          />
+        </Button>
+      )}
     </>
   ) : (
     <>
@@ -437,26 +469,55 @@ export function ReviewButtons({
       {newA11y && !a11yDecision && !review ? (
         <span className={s.micro}>{t('inspector.review.approveA11y', { count: newA11y })}</span>
       ) : null}
-      <Button
-        size="sm"
-        emphasis="outline"
-        disabled={readOnly || busy || idle || review?.state === 'rejected'}
-        onClick={() => act('reject')}
-        title={why ?? t('inspector.review.rejectTitle')}
-      >
-        {t('inspector.review.reject')}
-      </Button>
-      <Button
-        size="sm"
-        disabled={
-          readOnly || busy || review?.state === 'approved' || !!row.error || (row.pass && !changed)
-        }
-        onClick={() => act('approve')}
-        title={why ?? t('inspector.review.approveTitle')}
-      >
-        {t('inspector.review.approve')}
-      </Button>
+      {decision(
+        'reject',
+        <Button
+          size="sm"
+          emphasis="outline"
+          disabled={off || idle || review?.state === 'rejected'}
+          onClick={() => act('reject')}
+          title={why ?? t('inspector.review.rejectTitle')}
+        >
+          {rejectLabel}
+        </Button>
+      )}
+      {decision(
+        'approve',
+        <Button
+          size="sm"
+          disabled={off || review?.state === 'approved' || !!row.error || (row.pass && !changed)}
+          onClick={() => act('approve')}
+          title={why ?? t('inspector.review.approveTitle')}
+        >
+          <DecisionLabel
+            label={t('inspector.review.approve')}
+            busyLabel={t('inspector.review.approving')}
+            busy={pending === 'approve'}
+          />
+        </Button>
+      )}
     </>
+  );
+}
+
+/**
+ * A decision button's label and its "…ing" form, stacked in one cell: the button is as wide as the
+ * longer one either way, so Reject and Approve never move while a request runs.
+ */
+function DecisionLabel({
+  label,
+  busyLabel,
+  busy,
+}: {
+  label: string;
+  busyLabel: string;
+  busy: boolean;
+}) {
+  return (
+    <span className={s.labelStack}>
+      <span className={busy ? s.labelHidden : undefined}>{label}</span>
+      <span className={busy ? undefined : s.labelHidden}>{busyLabel}</span>
+    </span>
   );
 }
 
