@@ -108,7 +108,8 @@ export function Inspector({
     setOriginals,
   } = useInspectorPrefs();
 
-  const [loaded, setLoaded] = React.useState<Loaded | null | 'missing'>(null);
+  // The images with the entry they belong to: after a move, the last entry's are not this one's.
+  const [held, setLoaded] = React.useState<[string, Loaded | 'missing'] | null>(null);
   const [region, setRegion] = React.useState(-1);
   const [busy, setBusy] = React.useState(false);
   // Embedded in Storybook's short panel the image gets the room; details open on demand.
@@ -120,24 +121,28 @@ export function Inspector({
 
   const row = target?.row ?? null;
   const p = row ? pathsFor(data, row.id, target!.scenario) : null;
+  const key = `${row?.id}|${target?.scenario?.name ?? ''}`;
+  const loaded = held?.[0] === key ? held[1] : null;
 
   React.useEffect(() => {
     if (!p) return;
     let alive = true;
-    setLoaded(null);
     setRegion(-1);
     void Promise.all([loadImg(p.before), loadImg(p.after), loadImg(p.heat)]).then(([a, b, h]) => {
       if (!alive) return;
       // A new entry has only its latest render; anything else needs both.
-      if (!b || (!a && !row?.new)) return setLoaded('missing');
-      setLoaded({
-        a,
-        b,
-        heat: h,
-        pa: a ? readPixels(a) : null,
-        pb: readPixels(b),
-        cells: h ? cellsLayer(h) : null,
-      });
+      if (!b || (!a && !row?.new)) return setLoaded([key, 'missing']);
+      setLoaded([
+        key,
+        {
+          a,
+          b,
+          heat: h,
+          pa: a ? readPixels(a) : null,
+          pb: readPixels(b),
+          cells: h ? cellsLayer(h) : null,
+        },
+      ]);
     });
     if (served) {
       const files = [p.before, p.after, p.baseSig, p.curSig, p.heat, p.page, p.record].filter(
@@ -178,7 +183,6 @@ export function Inspector({
   const [settledFor, setSettledFor] = React.useState<string | null>(null);
   React.useEffect(() => {
     if (!loaded || !row) return;
-    const key = `${row.id}|${target?.scenario?.name ?? ''}`;
     if (loaded === 'missing') return setSettledFor(key);
     if (fittedFor.current === key || (pixels && !analysis)) return;
     fittedFor.current = key;
@@ -192,7 +196,7 @@ export function Inspector({
         setSettledFor(key);
       })
     );
-  }, [loaded, analysis, row, pixels, target?.scenario?.name, originals]);
+  }, [loaded, analysis, row, pixels, key, originals]);
 
   const regions = analysis?.regions ?? [];
   const focusRegion = (i: number) => {
@@ -486,10 +490,7 @@ export function Inspector({
         </Toolbar>
 
         <div className={s.insMain}>
-          <div
-            className={s.insStageWrap}
-            aria-busy={settledFor !== `${row.id}|${target?.scenario?.name ?? ''}` || undefined}
-          >
+          <div className={s.insStageWrap} aria-busy={settledFor !== key || undefined}>
             {loaded === 'missing' ? (
               <div className={s.empty}>
                 {t('inspector.missing', { before: p.before, after: p.after })}

@@ -96,7 +96,8 @@ export function setupFlows() {
 /**
  * A page on the mocked server. `events` is the SSE stream body; `posts` collects every POST;
  * `approving` is the status answer's (unset: unknown, as from an older server). `images` serves
- * the sample PNGs under /p/demo/, as the screens server does, so the inspector draws its stage.
+ * the sample PNGs under /p/demo/, as the screens server does, so the inspector draws its stage; a
+ * function picks them per path (a `sampleImages()` result, or null for a 404).
  */
 export async function open(
   d,
@@ -138,9 +139,10 @@ export async function open(
     }
     return route.fulfill({ status: 404, json: { error: 'not found' } });
   });
-  const png = images ? sampleImages() : null;
-  await page.route('**/p/demo/**', (route) => {
+  const sample = images === true ? sampleImages() : null;
+  await page.route('**/p/demo/**', async (route) => {
     const u = new URL(route.request().url()).pathname;
+    const png = typeof images === 'function' ? await images(u) : sample;
     if (!png || !u.endsWith('.png')) return route.fulfill({ status: 404, body: '' });
     const body = u.includes('/diffs/') ? png.diff : u.includes('/base') ? png.baseline : png.render;
     return route.fulfill({ status: 200, contentType: 'image/png', body });
