@@ -28,6 +28,14 @@ const DECISION_ANCHORS = [
   { name: 'close', target: { role: 'button', name: 'Close', exact: true } },
 ];
 const heading = (/** @type {string} */ name) => ({ role: 'heading', name, exact: true });
+/**
+ * Fit the stage again. Moving to an entry whose image has another size can leave the stage centred
+ * for the previous image (the inspector's fit can run before the new size reaches the viewer), so a
+ * step that changes entries in the open inspector fits before its capture. Without it the image
+ * sits about 10 px apart from run to run (seen in pxsig's container); once that race is fixed this
+ * action can go, and no screen should change.
+ */
+const FIT = { click: { role: 'button', name: 'Fit', exact: true } };
 
 /** @type {LiveFeature[]} */
 export const FEATURES = [
@@ -107,7 +115,7 @@ export const STEPS = [
   {
     feature: 'live.approve',
     n: 2,
-    actions: [{ click: { role: 'button', name: 'Approve', exact: true } }],
+    actions: [{ click: { role: 'button', name: 'Approve', exact: true } }, FIT],
     wait: heading('components-badge--neutral@dark'),
   },
   {
@@ -116,6 +124,7 @@ export const STEPS = [
     actions: [
       { click: { role: 'button', name: 'Reject', exact: true } },
       { click: { role: 'button', name: 'Previous story (←)' } },
+      FIT,
     ],
     wait: { text: 'Rejected. Fix the component' },
   },
