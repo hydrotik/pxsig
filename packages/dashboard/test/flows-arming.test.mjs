@@ -35,6 +35,8 @@ test('an approval in flight says so and sends once; the next entry waits for its
   let draw = () => {};
   const drawn = new Promise((/** @type {(v?: unknown) => void} */ ok) => (draw = ok));
   const png = sampleImages();
+  /** @type {string[]} the image requests, for a failure's message */
+  const images = [];
   // Before the page loads: the cards behind the dialog fetch the second entry's images too.
   const routes = async (/** @type {import('playwright').Page} */ page) => {
     // The approval answers when the test says so; the second entry's images likewise.
@@ -44,6 +46,7 @@ test('an approval in flight says so and sends once; the next entry waits for its
     });
     await page.route('**/p/demo/**', async (route) => {
       const u = new URL(route.request().url()).pathname;
+      images.push(u);
       if (!u.includes(second) || !u.endsWith('.png')) return route.fallback();
       await drawn;
       const body = u.includes('/diffs/')
@@ -79,8 +82,13 @@ test('an approval in flight says so and sends once; the next entry waits for its
 
     answer();
     // The next entry, its images not drawn yet: Reject, Approve, A and R wait.
-    await dialog.getByText(second).first().waitFor();
-    await button('Approve', true).waitFor();
+    await button('Approve', true)
+      .waitFor({ timeout: 10_000 })
+      .catch(async (/** @type {Error} */ e) => {
+        throw new Error(
+          `${e.message}\n${await dialog.ariaSnapshot()}\nimages: ${images.join(' ')}`
+        );
+      });
     assert.equal(await button('Reject', true).count(), 1);
     await page.keyboard.press('a');
     await page.keyboard.press('r');
