@@ -336,7 +336,7 @@ Files: `src/inspector/Inspector`, `src/inspector/Header`, `src/inspector/control
 
 ### Image stage
 
-`inspector.stage` · Baseline and latest render side by side, as a swipe, onion skin, pixel difference or signature cells; pan, zoom, change regions and detail tiles; built on the diff-viewer primitives.
+`inspector.stage` · Baseline and latest render side by side, as a swipe, onion skin, pixel difference or signature cells; pan, zoom, change regions and detail tiles; Originals shows the two images with no analysis drawn; built on the diff-viewer primitives.
 
 States:
 
@@ -348,8 +348,9 @@ Interactions:
 - Choose the view (1–5)
 - Fit, actual size, zoom (F, 0, + −)
 - Next or previous change (N / ⇧N)
+- Originals: the images without analysis, not saved (O)
 - Drag to pan, wheel to zoom, drag the swipe handle (or arrow keys on it)
-- Tolerance, swipe, opacity and cell sliders; highlight, regions and tiles switches
+- Swipe, opacity and cell sliders; originals, highlight, regions and tiles switches
 
 Components: `Toolbar`, `ToolbarStart`, `ToolbarEnd`, `SegmentedChoice`, `IconButton`, `Button`, `Slider`, `Switch`, `Kbd`
 
@@ -368,12 +369,13 @@ States:
 Interactions:
 
 - Read a pixel; focus a region
+- Tolerance: how far a pixel must change to count (disabled while Originals is on)
 - Take one rule off the accepted list
 - Copy a file path; open a file or the story in Storybook
 
-Components: `KeyValueList`, `KeyValueItem`, `Badge`, `StatusBadge`, `Button`, `Link`, `Icon`
+Components: `KeyValueList`, `KeyValueItem`, `Badge`, `StatusBadge`, `Button`, `Link`, `Icon`, `Slider`
 
-Copy: `inspector.sections`, `inspector.pixel`, `inspector.changes`, `inspector.metrics`, `inspector.a11y`, `inspector.files`, `inspector.storybook`, `inspector.artifacts`
+Copy: `inspector.sections`, `inspector.pixel`, `inspector.changes`, `inspector.sliders.tolerance`, `inspector.metrics`, `inspector.a11y`, `inspector.files`, `inspector.storybook`, `inspector.artifacts`
 
 Files: `src/inspector/Inspector`, `src/inspector/side/PixelSection`, `src/inspector/side/ChangesSection`, `src/inspector/side/MetricsSection`, `src/inspector/side/A11ySection`, `src/inspector/side/FilesSection`
 

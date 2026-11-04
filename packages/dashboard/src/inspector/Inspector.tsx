@@ -104,6 +104,8 @@ export function Inspector({
     setShowHighlight,
     showTiles,
     setShowTiles,
+    originals,
+    setOriginals,
   } = useInspectorPrefs();
 
   const [loaded, setLoaded] = React.useState<Loaded | null | 'missing'>(null);
@@ -183,14 +185,14 @@ export function Inspector({
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
         stage.current?.fit();
-        if (analysis?.regions.length && !row.pass) {
+        if (analysis?.regions.length && !row.pass && !originals) {
           setRegion(0);
           stage.current?.focus(analysis.regions[0]);
         }
         setSettledFor(key);
       })
     );
-  }, [loaded, analysis, row, pixels, target?.scenario?.name]);
+  }, [loaded, analysis, row, pixels, target?.scenario?.name, originals]);
 
   const regions = analysis?.regions ?? [];
   const focusRegion = (i: number) => {
@@ -235,6 +237,8 @@ export function Inspector({
     busy,
     row,
     act,
+    originals,
+    setOriginals,
   });
 
   // The dialog opens on its title, not on the first control: a control focused by script before any
@@ -273,8 +277,6 @@ export function Inspector({
       heat={heat}
       setHeat={setHeat}
       pixels={pixels}
-      tol={tol}
-      setTol={setTol}
       showHighlight={showHighlight}
       setShowHighlight={setShowHighlight}
       showBoxes={showBoxes}
@@ -282,6 +284,9 @@ export function Inspector({
       detail={detail}
       showTiles={showTiles}
       setShowTiles={setShowTiles}
+      originals={originals}
+      setOriginals={setOriginals}
+      isNew={!!row.new}
     />
   );
   const siblingToggle = (
@@ -505,6 +510,7 @@ export function Inspector({
                 showBoxes={showBoxes}
                 showHighlight={showHighlight}
                 showTiles={showTiles}
+                originals={originals}
               />
             ) : (
               <div className={s.empty}>{t('inspector.loading')}</div>
@@ -547,6 +553,8 @@ export function Inspector({
                   region={region}
                   focusRegion={focusRegion}
                   tol={tol}
+                  setTol={setTol}
+                  originals={originals}
                 />
               ) : null}
 

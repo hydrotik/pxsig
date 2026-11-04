@@ -33,7 +33,7 @@
   - button "Fit"
   - button "1:1"
   - group "Image comparison. Drag to pan, scroll to zoom.": Latest render (no baseline yet)
-  - text: 1–5 mode F fit 0 1:1 + − zoom N ⇧N next / previous change ← → story A approve R reject Esc close
+  - text: 1–5 mode F fit 0 1:1 + − zoom N ⇧N next / previous change O originals ← → story A approve R reject Esc close
   - complementary:
     - heading "Pixel" [level=3]
     - link "Storybook":

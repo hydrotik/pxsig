@@ -273,7 +273,8 @@
       "required": false,
       "role": "one number on a range",
       "usedBy": [
-        "inspector/controls"
+        "inspector/controls",
+        "inspector/side/ChangesSection"
       ]
     },
     "Switch": {

@@ -642,6 +642,7 @@
       "actual": "Actual size",
       "zoom": "Zoom in / out",
       "change": "Next / previous change",
+      "originals": "Original images",
       "story": "Previous / next story",
       "approve": "Approve",
       "reject": "Reject",
@@ -743,6 +744,10 @@
         "modes": {
           "term": "Compare modes",
           "meaning": "Side by side, swipe, onion skin, pixel diff, or the signature cells the gate compares."
+        },
+        "originals": {
+          "term": "Originals",
+          "meaning": "The baseline and the latest render with no analysis drawn: the stored renders, trimmed to the story. Not saved, and never part of a decision."
         },
         "changes": {
           "term": "Change navigation",
@@ -879,6 +884,8 @@
       "regionsLabel": "Outline changed regions",
       "tiles": "Detail tiles",
       "tilesLabel": "Show detail tiles over the limit",
+      "originals": "Originals",
+      "originalsLabel": "Show the original images without analysis",
       "details": "Details",
       "detailsLabel": "Show details"
     },
@@ -941,6 +948,7 @@
       "actual": "1:1",
       "zoom": "zoom",
       "change": "next / previous change",
+      "originals": "originals",
       "story": "story",
       "approve": "approve",
       "reject": "reject",

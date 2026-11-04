@@ -269,6 +269,7 @@ const Slider: F<'Slider'> = ({
     <span
       className={className}
       data-control
+      aria-disabled={disabled || undefined}
       style={{
         display: 'inline-flex',
         alignItems: 'center',

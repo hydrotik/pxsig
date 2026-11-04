@@ -1,5 +1,8 @@
-/** The inspector's Changes section (Inspector.tsx): changed pixels, the size, the regions. */
-import { KeyValueItem, KeyValueList } from '@ui';
+/**
+ * The inspector's Changes section (Inspector.tsx): the Tolerance that decides which pixels count as
+ * changed (disabled while Originals is on), changed pixels, the size, the regions.
+ */
+import { KeyValueItem, KeyValueList, Slider } from '@ui';
 import { t } from '../../copy';
 import * as s from '../../dashboard.css';
 import { fmt } from '../../data';
@@ -15,6 +18,8 @@ export function ChangesSection({
   region,
   focusRegion,
   tol,
+  setTol,
+  originals,
 }: {
   analysis: Analysis;
   loaded: Loaded | null | 'missing';
@@ -24,6 +29,8 @@ export function ChangesSection({
   region: number;
   focusRegion: (i: number) => void;
   tol: number;
+  setTol: (v: number) => void;
+  originals: boolean;
 }) {
   const sizeNote =
     loaded &&
@@ -36,6 +43,14 @@ export function ChangesSection({
   return (
     <section className={s.sideSection}>
       <h3 className={s.sectionTitle}>{t('inspector.sections.changes')}</h3>
+      <Slider
+        className={s.sliderCtl}
+        label={t('inspector.sliders.tolerance')}
+        value={tol}
+        max={96}
+        onValueChange={setTol}
+        disabled={originals}
+      />
       <KeyValueList labelWidth="45%">
         <KeyValueItem label={t('inspector.changes.pixels')}>
           <span className={s.mono}>
