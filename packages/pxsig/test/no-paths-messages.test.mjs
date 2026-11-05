@@ -20,7 +20,11 @@ import { reconcile } from '../src/lib/integrity/reconcile.mjs';
 import { ensureStorybook } from '../src/lib/static.mjs';
 import { findWorkspace, loadProject } from '../src/lib/workspace.mjs';
 import { readJsonFile } from '../src/lib/workspace/core.mjs';
-import { fixture, tempDir, testEnv, testHome } from './fixture.mjs';
+import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
+import { startServer } from './server-proc.mjs';
+import { skipUnless } from './strict.mjs';
+
+const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 
 /**
  * Fails when `text` names `dir` (as given or resolved), the temp folder or the home folder.
@@ -235,3 +239,41 @@ test('report prints the page it wrote relative to the current folder', () => {
   assert.match(page, /^\.\.\//);
   assert.ok(existsSync(resolve(f.repo, page)), page);
 });
+
+test('check names a missing engine binary from the current folder', () => {
+  const f = fixture({ withSigs: false });
+  const r = spawnSync(process.execPath, [join(src, 'check.mjs'), '--only', f.ids.ok], {
+    cwd: f.repo,
+    encoding: 'utf8',
+    env: { ...f.env, PXSIG_BIN: join(f.repo, 'tools', 'pxsig'), PXSIG_WORKSPACE: '' },
+  });
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stderr, /the pxsig binary is missing \(\.\/tools\/pxsig\): /);
+  noAbsolute(r.stderr, f.repo);
+});
+
+test(
+  "the server's answer for a dashboard that is not built names it relative to the workspace",
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
+  async () => {
+    const f = fixture({ withSigs: false });
+    const server = await startServer({
+      cwd: f.repo,
+      env: {
+        ...f.env,
+        PXSIG_BIN: rustBin,
+        PXSIG_WORKSPACE: '',
+        PXSIG_DASHBOARD_DIR: join(f.repo, 'no-dashboard'),
+      },
+    });
+    try {
+      const r = await fetch(`${server.url}/report/`);
+      assert.equal(r.status, 404);
+      // The server answers JSON (docs/server.md).
+      const { error } = /** @type {{ error: string }} */ (await r.json());
+      assert.equal(error, 'the dashboard is not built (no-dashboard)');
+    } finally {
+      await server.stop();
+    }
+  }
+);
