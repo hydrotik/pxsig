@@ -1,0 +1,5 @@
+{
+  "name": "pxsig-test-react-compiler",
+  "private": true,
+  "description": "Test fixtures only: see pnpm-workspace.yaml."
+}

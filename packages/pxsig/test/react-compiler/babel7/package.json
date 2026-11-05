@@ -1,0 +1,9 @@
+{
+  "name": "pxsig-test-react-babel7",
+  "private": true,
+  "description": "Test fixture only: the React Compiler under Babel 7, for packages/pxsig/test/react-*.test.mjs. Never a dependency of pxsig, which declares both as optional peers.",
+  "devDependencies": {
+    "@babel/core": "7.29.7",
+    "babel-plugin-react-compiler": "1.0.0"
+  }
+}

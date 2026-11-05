@@ -248,6 +248,9 @@ enum Cmd {
         cache: PathBuf,
         #[arg(long)]
         out: PathBuf,
+        /// Read the cache, write nothing to it (another process holds the store).
+        #[arg(long)]
+        read_only: bool,
     },
     /// Long-lived engine: JSON requests on stdin, one JSON response per line.
     Serve,
@@ -404,7 +407,8 @@ fn run(cmd: Cmd) -> anyhow::Result<u8> {
             results,
             cache,
             out,
-        } => react::cmd_diff(&plan, &results, &cache, &out),
+            read_only,
+        } => react::cmd_diff(&plan, &results, &cache, &out, read_only),
         Cmd::Serve => serve::run(),
         Cmd::DetailSweep { input } => cmd_sweep(&input),
     }

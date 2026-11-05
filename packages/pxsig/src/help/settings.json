@@ -353,6 +353,60 @@
       "operation": "Accessibility violations are recorded per entry and compared with a11y.json.",
       "flag": "--no-a11y (check --full)"
     },
+    "react": {
+      "file": "pxsig.config.json",
+      "meaning": "React analysis: when a change makes a component or hook worse for React, pxsig says so, as an alert. Also under the workspace file's `defaults`. false turns everything React off.",
+      "default": "{} (compiler analysis on when the project has the compiler installed; render counting off)",
+      "operation": "Alerts only: never an exit code, a gate, a JUnit failure or a baseline. A bad value is one warning line and a doctor finding (`react-config`), and the analysis is off for the run.",
+      "env": "PXSIG_REACT=off (off for this run)"
+    },
+    "react.compiler": {
+      "file": "pxsig.config.json",
+      "meaning": "Compare the React Compiler's verdict on changed files at the merge base and now (`pxsig react`).",
+      "values": "true | false | \"auto\" | \"off\"",
+      "default": "\"auto\"",
+      "operation": "auto (or true): runs when babel-plugin-react-compiler and @babel/core resolve from the project, else one note. false (or \"off\"): never, and no note."
+    },
+    "react.lint": {
+      "file": "pxsig.config.json",
+      "meaning": "Also report the validation-only findings eslint-plugin-react-hooks reports, on functions that still compile.",
+      "values": "true | false",
+      "default": "true",
+      "operation": "A finding absent at the merge base is an alert (level note)."
+    },
+    "react.compilationMode": {
+      "file": "pxsig.config.json",
+      "meaning": "The compiler's compilationMode, as the project's build sets it.",
+      "values": "\"infer\" | \"annotation\" | \"syntax\" | \"all\"",
+      "default": "\"infer\"",
+      "operation": "pxsig never reads the project's Babel or Vite config: set the build's options here."
+    },
+    "react.target": {
+      "file": "pxsig.config.json",
+      "meaning": "The compiler's target React version.",
+      "values": "\"17\" | \"18\" | \"19\" | \"auto\"",
+      "default": "\"auto\"",
+      "operation": "auto: the major of the react the project has (17, 18, 19; else 19)."
+    },
+    "react.environment": {
+      "file": "pxsig.config.json",
+      "meaning": "Compiler environment flags (JSON values), as the project's build sets them.",
+      "default": "{}",
+      "operation": "Passed through to the compiler, which validates them."
+    },
+    "react.exclude": {
+      "file": "pxsig.config.json",
+      "meaning": "Globs (workspace-relative) of changed files that are not analysed.",
+      "default": "[\"**/*.stories.*\", \"**/*.test.*\", \"**/*.spec.*\", \"**/*.d.ts\", \"**/*.css.ts\", \"**/__tests__/**\", \"**/__mocks__/**\"]",
+      "operation": "Replaces the default list when set."
+    },
+    "react.renders": {
+      "file": "pxsig.config.json",
+      "meaning": "Count React commits and component renders in every render.",
+      "values": "true | false",
+      "default": "false",
+      "operation": "Each render page gets an init script that counts React commits; a component still rendering at capture is an alert."
+    },
     "integrity": {
       "file": "pxsig.config.json",
       "meaning": "Integrity options for doctor and the ledger.",

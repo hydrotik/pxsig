@@ -97,3 +97,17 @@ At each release, on the `release/X.Y.Z` branch: download `bench-results` from th
 run on `main` and commit it as `scripts/bench/baseline.json`. The file keeps the other OSes' times
 and replaces Linux's. A macOS time can be refreshed the same way with
 `node scripts/bench/run.mjs --out scripts/bench/baseline.json` on a Mac.
+
+## React analysis
+
+`pxsig react` is measured by hand, not nightly: it needs the React Compiler, which the generated store does not have. The
+numbers below are the whole command, Node start-up (about 70 ms) included, the median of three, on
+an Apple M4 Max (14 cores), Node 22.22, `babel-plugin-react-compiler` 1.0.0 under `@babel/core`
+7.29, `react.lint` on (two compiler passes per file side), 4 worker threads. The fixture: 10
+component files of 8 components each (80 functions), every one changed since `main`.
+
+| Case                         | Budget (design) | Measured | Notes                                                                        |
+| ---------------------------- | --------------- | -------- | ---------------------------------------------------------------------------- |
+| Nothing to analyse           | no worker       | 0.31 s   | No worker thread is started and Babel is not loaded (a test checks it).      |
+| 10 changed files, cold cache | 1.5 s           | 1.41 s   | 20 file sides compiled.                                                      |
+| 10 changed files, warm cache | -               | 0.58 s   | Every side from `<store>/cache/react`: the plan, the hashes and the compare. |

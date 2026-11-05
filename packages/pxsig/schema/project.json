@@ -432,6 +432,57 @@
       "description": "Top-level folders under srcRoot with no visual stories."
     },
     "a11y": { "type": "boolean", "default": true, "description": "Run axe on every render." },
+    "react": {
+      "type": ["object", "boolean"],
+      "additionalProperties": false,
+      "description": "React analysis (alerts only, never an exit code). false: off, everything React (also PXSIG_REACT=off). A bad value warns and turns the analysis off for the run.",
+      "properties": {
+        "compiler": {
+          "enum": [true, false, "auto", "off"],
+          "default": "auto",
+          "description": "Compare the React Compiler's verdict on changed files with the merge base, when babel-plugin-react-compiler and @babel/core are installed in the project. false (or \"off\"): never."
+        },
+        "lint": {
+          "type": "boolean",
+          "default": true,
+          "description": "Also the validation-only findings eslint-plugin-react-hooks reports (set-state-in-effect, …), on functions that still compile."
+        },
+        "compilationMode": {
+          "enum": ["infer", "annotation", "syntax", "all"],
+          "default": "infer",
+          "description": "The compiler's compilationMode, as the project's build sets it."
+        },
+        "target": {
+          "enum": ["17", "18", "19", "auto"],
+          "default": "auto",
+          "description": "The compiler's target. auto: the major of the react the project has (17, 18, 19; else 19)."
+        },
+        "environment": {
+          "type": "object",
+          "default": {},
+          "description": "Compiler environment flags (JSON values), passed through as the project's build sets them."
+        },
+        "exclude": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [
+            "**/*.stories.*",
+            "**/*.test.*",
+            "**/*.spec.*",
+            "**/*.d.ts",
+            "**/*.css.ts",
+            "**/__tests__/**",
+            "**/__mocks__/**"
+          ],
+          "description": "Globs (workspace-relative) of changed files not analysed. Replaces the default list when set."
+        },
+        "renders": {
+          "type": "boolean",
+          "default": false,
+          "description": "Count React commits and component renders in every render."
+        }
+      }
+    },
     "integrity": {
       "type": "object",
       "additionalProperties": false,
