@@ -353,6 +353,20 @@
       "operation": "Accessibility violations are recorded per entry and compared with a11y.json.",
       "flag": "--no-a11y (check --full)"
     },
+    "react": {
+      "file": "pxsig.config.json",
+      "meaning": "React features: false turns all of them off; an object sets them one by one.",
+      "default": "{}",
+      "operation": "A bad value is one warning line and that feature off for the run, never a failed check.",
+      "flag": "--no-react",
+      "env": "PXSIG_REACT=off"
+    },
+    "react.renders": {
+      "file": "pxsig.config.json",
+      "meaning": "Count React commits and component renders in every render.",
+      "default": "false",
+      "operation": "Each check row gets renders; an entry React was still committing at capture is an alert, never a failure."
+    },
     "integrity": {
       "file": "pxsig.config.json",
       "meaning": "Integrity options for doctor and the ledger.",

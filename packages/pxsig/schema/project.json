@@ -432,6 +432,17 @@
       "description": "Top-level folders under srcRoot with no visual stories."
     },
     "a11y": { "type": "boolean", "default": true, "description": "Run axe on every render." },
+    "react": {
+      "description": "React features. false (or \"off\") turns all of them off, like --no-react and PXSIG_REACT=off; true or an object leaves them on. A bad value is a warning and that feature off, never a failed check.",
+      "anyOf": [{ "type": "boolean" }, { "const": "off" }, { "type": "object" }],
+      "properties": {
+        "renders": {
+          "type": "boolean",
+          "default": false,
+          "description": "Count React commits and component renders in every render (check rows' renders)."
+        }
+      }
+    },
     "integrity": {
       "type": "object",
       "additionalProperties": false,
