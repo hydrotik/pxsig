@@ -261,6 +261,9 @@ export function doctorParts(cli) {
           tone: x.severity === 'error' ? 'bad' : 'warn',
         })
       ),
+      ...r.react
+        .filter((x) => x.severity === 'warn')
+        .map((x) => ({ note: `${x.code} — ${x.text}`, tone: 'warn' })),
       {
         kv: [
           [
@@ -288,6 +291,15 @@ export function doctorParts(cli) {
           ...(r.machine
             ? /** @type {[string, Cell][]} */ ([['Approval guard files', r.machine.tokens]])
             : []),
+          ...r.react
+            .filter((x) => x.severity === 'info')
+            .map(
+              (x) =>
+                /** @type {[string, Cell]} */ ([
+                  x.code === 'react-flow' ? 'React (Flow)' : 'React',
+                  x.text,
+                ])
+            ),
           [
             'Running under',
             r.agent ? describeAgent(r.agent) : { text: 'no agent marker', color: 'gray' },

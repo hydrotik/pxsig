@@ -59,10 +59,18 @@
     "pngjs": "^7.0.0"
   },
   "peerDependencies": {
+    "@babel/core": ">=7.24",
+    "babel-plugin-react-compiler": ">=1.0.0",
     "playwright": ">=1.58",
     "react": ">=19"
   },
   "peerDependenciesMeta": {
+    "@babel/core": {
+      "optional": true
+    },
+    "babel-plugin-react-compiler": {
+      "optional": true
+    },
     "playwright": {
       "optional": true
     },

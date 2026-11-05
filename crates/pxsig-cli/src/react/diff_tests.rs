@@ -38,7 +38,7 @@ fn run(base: Option<Vec<Value>>, head: Vec<Value>, compare: bool) -> (Value, std
         "backend": { "name": "babel", "compiler": "1.0.0", "babel": "7.29.7" }, "project": "ui", "ms": 12,
         "results": { "aa11": { "functions": head }, "bb22": { "functions": base.unwrap_or_default() } },
     });
-    (diff(&plan, &results, &d).unwrap(), d)
+    (diff(&plan, &results, &d, true).unwrap(), d)
 }
 
 fn change(r: &Value, name: &str) -> String {
@@ -257,7 +257,7 @@ fn compile_results_are_cached_and_errors_are_not() {
     assert!(cache::read(&d, "bb22").is_some());
     // A cached side is read back from the cache and counted.
     let plan = json!({ "base": null, "files": [{ "path": "x.tsx", "entries": [], "all": true, "compare": false, "head": { "sha": "aa11", "hit": true }, "base": null }] });
-    let r = diff(&plan, &json!({ "results": {} }), &d).unwrap();
+    let r = diff(&plan, &json!({ "results": {} }), &d, true).unwrap();
     assert_eq!(r["summary"]["cached"], 1);
     assert_eq!(r["files"][0]["head"], "cached");
     assert_eq!(r["functions"][0]["change"], Value::Null);
@@ -267,13 +267,14 @@ fn compile_results_are_cached_and_errors_are_not() {
         &plan,
         &json!({ "results": { "cc33": { "error": "analysis-timeout" } } }),
         &d,
+        true,
     )
     .unwrap();
     assert_eq!(r["files"][0]["head"], "analysis-timeout");
     assert_eq!(r["functions"], json!([]));
     assert!(cache::read(&d, "cc33").is_none());
     // A missing result is reported as missing.
-    let r = diff(&plan, &json!({ "results": {} }), &d).unwrap();
+    let r = diff(&plan, &json!({ "results": {} }), &d, true).unwrap();
     assert_eq!(r["files"][0]["head"], "missing");
 }
 
@@ -283,8 +284,20 @@ fn a_base_that_failed_compares_nothing_in_that_file() {
     let plan = json!({ "base": { "since": "main" }, "files": [{ "path": "z.tsx", "entries": ["a"], "all": false, "compare": true,
         "head": { "sha": "dd44", "hit": false }, "base": { "sha": "ee55", "hit": false } }] });
     let results = json!({ "results": { "dd44": { "functions": [bailout("Z", 1, "refs", "x", 2)] }, "ee55": { "error": "analysis-timeout" } } });
-    let r = diff(&plan, &results, &d).unwrap();
+    let r = diff(&plan, &results, &d, true).unwrap();
     assert_eq!(r["files"][0]["base"], "analysis-timeout");
     assert_eq!(change(&r, "Z"), "null");
     assert_eq!(r["alerts"], json!([]));
+}
+
+#[test]
+fn read_only_compares_without_writing_the_cache() {
+    let d = tmp("diff-read-only");
+    let plan = json!({ "base": null, "files": [{ "path": "r.tsx", "entries": [], "all": false, "compare": false,
+        "head": { "sha": "ff66", "hit": false }, "base": null }] });
+    let results = json!({ "results": { "ff66": { "functions": [compiled("R", 1)] } } });
+    let r = diff(&plan, &results, &d, false).unwrap();
+    assert_eq!(r["summary"]["compiled"], 1);
+    assert!(cache::read(&d, "ff66").is_none());
+    assert!(!d.join("ff").exists());
 }
