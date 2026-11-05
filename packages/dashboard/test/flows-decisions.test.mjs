@@ -231,11 +231,11 @@ test('without the dashboard link the inspector says Read only up front, and the 
   }
   const ok = await open(d, { hash: `#inspect=${story}`, approving: { allowed: true, ...where } });
   try {
-    const approve = ok.page
+    // Enabled once the entry is drawn (here: its images missing), not before.
+    await ok.page
       .getByRole('dialog')
-      .getByRole('button', { name: 'Approve', exact: true });
-    await approve.waitFor();
-    assert.equal(await approve.isDisabled(), false);
+      .getByRole('button', { name: 'Approve', exact: true, disabled: false })
+      .waitFor();
     assert.equal(await ok.page.getByText(/^Read only/).count(), 0);
   } finally {
     await ok.page.close();

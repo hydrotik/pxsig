@@ -46,9 +46,12 @@ export function useInspectorActions({
     e instanceof NeedsLinkError
       ? setNote(t('inspector.review.needsLink'))
       : alert(t('inspector.review.failed', { action, error: (e as Error).message }));
+  // The decision under way, which its button names ("Approving…") until the server answers.
+  const [pending, setPending] = React.useState<'approve' | 'reject' | null>(null);
   const act = async (action: 'approve' | 'reject' | 'unreview', a11y = a11yMode) => {
     if (!row) return;
     setBusy(true);
+    if (action !== 'unreview') setPending(action);
     try {
       await (a11y
         ? a11yAction(action === 'approve' ? 'accept' : action, row.id)
@@ -64,6 +67,7 @@ export function useInspectorActions({
       refused(e, label(action, a11y));
     } finally {
       setBusy(false);
+      setPending(null);
     }
   };
 
@@ -164,5 +168,5 @@ export function useInspectorActions({
       setBusy(false);
     }
   };
-  return { siblings, storyOpen, note, checking, act, unaccept, recheckOne, approveAll };
+  return { siblings, storyOpen, note, checking, pending, act, unaccept, recheckOne, approveAll };
 }

@@ -416,3 +416,15 @@ export const embed = style({
 // Toolbar groups centre their items, so status badges, toggle groups, buttons and
 // switches share one midline.
 globalStyle(`${insToolbar} > *`, { alignItems: 'center' });
+
+// --- decisions ------------------------------------------------------------------
+// Reject and Approve, each in a box: while its request runs the box is aria-busy and shows the
+// progress cursor (the disabled button inside may take no pointer, so the box is what it is over).
+export const decision = style({ display: 'inline-flex', alignItems: 'center' });
+globalStyle(`${decision}[aria-busy="true"], ${decision}[aria-busy="true"] *`, {
+  cursor: 'progress',
+});
+// A label and its "…ing" form in one cell: the button keeps the width of the longer one.
+export const labelStack = style({ display: 'inline-grid' });
+globalStyle(`${labelStack} > *`, { gridArea: '1 / 1', textAlign: 'center' });
+export const labelHidden = style({ visibility: 'hidden' });

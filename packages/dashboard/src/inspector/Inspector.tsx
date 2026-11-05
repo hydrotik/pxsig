@@ -229,8 +229,11 @@ export function Inspector({
   const a11yMode = !embedded && target?.session === 'a11y';
   const review = row ? (a11yMode ? data.a11yReview?.[row.id] : data.review[row.id]) : undefined;
   const a11yDecision = row ? data.a11yReview?.[row.id] : undefined;
-  const { siblings, storyOpen, note, checking, act, unaccept, recheckOne, approveAll } =
+  const { siblings, storyOpen, note, checking, pending, act, unaccept, recheckOne, approveAll } =
     useInspectorActions({ data, target, row, list, index, a11yMode, onNavigate, setBusy });
+  // Reject, Approve, A and R wait for the entry's images: a click meant for the last entry
+  // cannot land on this one.
+  const settled = !!row && settledFor === key;
   const { blockKeys, onKey } = useInspectorKeys({
     embedded,
     setMode,
@@ -238,7 +241,7 @@ export function Inspector({
     stepRegion,
     step,
     canReview,
-    busy,
+    busy: busy || !settled,
     row,
     act,
     originals,
@@ -318,6 +321,8 @@ export function Inspector({
       embedded={embedded}
       a11yMode={a11yMode}
       busy={busy}
+      pending={pending}
+      armed={settled}
       review={review}
       act={act}
       newA11y={newA11y}
@@ -490,7 +495,7 @@ export function Inspector({
         </Toolbar>
 
         <div className={s.insMain}>
-          <div className={s.insStageWrap} aria-busy={settledFor !== key || undefined}>
+          <div className={s.insStageWrap} aria-busy={!settled || undefined}>
             {loaded === 'missing' ? (
               <div className={s.empty}>
                 {t('inspector.missing', { before: p.before, after: p.after })}
