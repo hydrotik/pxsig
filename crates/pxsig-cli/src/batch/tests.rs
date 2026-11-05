@@ -61,6 +61,7 @@ fn baseline_env_plan_writes_env_and_check_returns_its_id() {
         cache: None,
         history: None,
         enforcement: None,
+        history_extra: None,
         base_png_dir: None,
         tolerance: 16,
         cli_gate: GateSpec::default(),

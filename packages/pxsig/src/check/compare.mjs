@@ -1,13 +1,16 @@
 /**
  * check/compare.mjs — stage 3: `pxsig check` (Rust) on this run's renders: per-entry gates and
- * grids, the content cache, the history line (with the enforcement gates when config sets any).
+ * grids, the content cache, the history line (with the enforcement gates when config sets any, and
+ * the React counts when there are any).
  */
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { historyExtra } from './react.mjs';
 /** @import { CheckSetup } from './setup.mjs' */
 /** @import { Selection } from './select.mjs' */
 /** @import { Rendered } from './render.mjs' */
 /** @import { A11yBaseline, EngineCheckOutput, EngineCheckRow } from '../types/t4.js' */
+/** @import { ReactRun } from '../types/react.js' */
 
 /** @typedef {ReturnType<typeof compare>} Compared */
 
@@ -15,8 +18,9 @@ import { join } from 'node:path';
  * @param {CheckSetup} S
  * @param {Selection} sel
  * @param {Rendered} run
+ * @param {ReactRun | null} [react] the compiler analysis, when the run asked for it
  */
-export function compare(S, sel, run) {
+export function compare(S, sel, run, react = null) {
   const { runPath, P, reports, enf, a11yBaselinePath, rust, pngDir, diffDir } = S;
   const { entries } = sel;
   const { results, onlyFile } = run;
@@ -56,6 +60,13 @@ export function compare(S, sel, run) {
     writeFileSync(enfFile, JSON.stringify({ gates: enf.gates, a11yNew }));
     historyEnf.push('--enforcement', `@${enfFile}`);
   }
+  // React: the alerts, newly skipped functions and entries still rendering, on the history line.
+  const extraFile = join(reports, '.history-extra.json');
+  const extra = historyExtra(react, results);
+  if (extra) {
+    writeFileSync(extraFile, JSON.stringify(extra));
+    historyEnf.push('--history-extra', `@${extraFile}`);
+  }
   let rc = entries.length
     ? rust(
         checkArgs(pngDir, diffDir, [
@@ -68,6 +79,7 @@ export function compare(S, sel, run) {
       )
     : { out: '{"summary":{"elapsedMs":0},"results":[]}', ms: 0 };
   rmSync(enfFile, { force: true });
+  rmSync(extraFile, { force: true });
   // `pxsig check --json` (or the empty result above).
   const rustRes = /** @type {EngineCheckOutput} */ (JSON.parse(rc.out));
   /** @type {Map<string, EngineCheckRow>} */

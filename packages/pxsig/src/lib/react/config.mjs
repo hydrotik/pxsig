@@ -110,6 +110,18 @@ function read(raw, env) {
 const warned = new Set();
 
 /**
+ * A settings warning, printed once per process: render counting and a check's compiler analysis
+ * can meet the same bad value.
+ * @param {string} line without the `[pxsig] ` prefix
+ * @param {(line: string) => void} [warn]
+ */
+export function warnOnce(line, warn = (l) => console.error(l)) {
+  if (warned.has(line)) return;
+  warned.add(line);
+  warn(`[pxsig] ${line}`);
+}
+
+/**
  * Render counting's view (lib/capture/render.mjs): whether everything React is off, and
  * `react.renders`. A bad value is one warning line per process.
  * @param {unknown} config the project's merged config (`P.config`)
@@ -119,10 +131,7 @@ const warned = new Set();
 export function reactSettings(config, { env = process.env, warn = (l) => console.error(l) } = {}) {
   const r = read(/** @type {Record<string, unknown> | null | undefined} */ (config)?.react, env);
   for (const line of r.problems.filter((p) => p === RENDERS_BAD || p === NOT_OBJECT))
-    if (!warned.has(line)) {
-      warned.add(line);
-      warn(`[pxsig] ${line}`);
-    }
+    warnOnce(line, warn);
   return { off: r.off, renders: !r.off && r.renders };
 }
 

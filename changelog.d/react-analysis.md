@@ -1,5 +1,18 @@
 ### Behaviour changes
 
+- **`pxsig check --since` / `--changed` analyses the changed React files with the project's React
+  Compiler** when `babel-plugin-react-compiler` and `@babel/core` are installed in the project,
+  while the entries render (two worker threads). One more line after the summary line (the
+  counts, then each alert, at most ten), a `react` block in `check.json`, `react` counts on the
+  `history.ndjson` line, and a "React (alerts, not blocking)" section in `summary.md` only when
+  something is newly skipped or newly found. A project that depends on React (its own or the
+  workspace root's `package.json`) but lacks the two packages gets one line saying so; a project
+  without React gets none (`pxsig doctor` names it either way). With
+  `react.renders`, a `[check] renders:` line counts the entries React was still committing at
+  capture. None of it changes the exit code, a gate, `junit.xml` or the `--sarif` file.
+  To update: nothing to do. To turn it off: `"react": { "compiler": false }` in
+  `pxsig.config.json` (the analysis), or `--no-react` / `PXSIG_REACT=off` (everything React).
+
 - **`pxsig doctor` has a React line.** It names the `babel-plugin-react-compiler` and
   `@babel/core` versions the project has (or that they are not installed, or that React features
   are off and where), each bad `react` value and what it turns off (`react-config`, a warning)
@@ -32,6 +45,12 @@
   bad value is one warning line, a doctor finding, and the part it belongs to off for the run (a
   bad `renders`: render counting; any other bad key: the compiler analysis), never a failed check
   (`docs/configuration.md`, "`react`").
+- **`check --react-sarif <file>` and `pxsig react --sarif <file>`.** The React alerts as SARIF
+  2.1.0, in a file of their own: rules `react-compiler/<rule>` (at the function's file and line;
+  `warning` when the compiler skips it, `note` for a finding; React's docs page for the rule as the
+  help link) and `react-renders/still-rendering` (`note`, at the story file). Never `error`. The
+  existing `--sarif` file stays accessibility only, byte for byte.
+- **The engine's `check --history-extra json|@file`** adds an object's keys to the history line.
 - **The engine's `react-plan` and `react-diff`** (and the same two `pxsig serve` methods), and
   `entries` per `graph` file in `affected --json`.
 - **Optional peer dependencies `babel-plugin-react-compiler >=1.0.0` and `@babel/core >=7.24`.**

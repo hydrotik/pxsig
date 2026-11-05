@@ -116,6 +116,7 @@ pub(super) fn cmd_check(
     cache: Option<PathBuf>,
     history: Option<PathBuf>,
     enforcement: Option<String>,
+    history_extra: Option<String>,
     base_png_dir: Option<PathBuf>,
     tolerance: u8,
     gate: &GateArgs,
@@ -131,6 +132,11 @@ pub(super) fn cmd_check(
         cache,
         history,
         enforcement: batch::parse_enforcement(enforcement.as_deref())?,
+        history_extra: history_extra
+            .as_deref()
+            .map(crate::react::json_arg)
+            .transpose()
+            .context("--history-extra")?,
         base_png_dir,
         tolerance,
         cli_gate: gate.spec(),

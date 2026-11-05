@@ -5,6 +5,7 @@
  *   pxsig check [--project name] [--suite matrix] [--since main | --changed a.tsx,b.css.ts]
  *               [--modes dark,light] [--only id,id] [--concurrency 8] [--retries 2] [--no-a11y]
  *               [--update] [--link-base http://127.0.0.1:6070/report/] [--sarif a11y.sarif]
+ *               [--react-sarif react.sarif] [--no-react]
  *               [--warn[=gate,…]] [--enforce[=gate,…]]
  *
  * 1. select   manifest v2 entries; `--since <ref>` asks `pxsig affected` (Rust: import
@@ -18,6 +19,12 @@
  * 5. a11y     violations compared with the a11y baseline → `new` per entry;
  * 6. report   <store>/reports/check.json, plus `pxsig report` → summary.md (PR comment)
  *             and junit.xml.
+ *
+ * React (check/react.mjs, alerts only): with `--since` / `--changed`, the project's React Compiler
+ * compares the changed files with the merge base while the entries render; `react.renders` counts
+ * React commits in each render. Both add lines, a `react` block in check.json, counts on the history
+ * line and, when there is an alert, a section in summary.md; `--react-sarif <file>` writes them as
+ * SARIF. None changes the exit code, junit.xml or the `--sarif` file.
  *
  * `--update` renders the selection and writes baselines instead (`pxsig baseline`: each `.psig`
  * carries the render as its image and the environment it was rendered in) and the a11y baseline
@@ -49,6 +56,7 @@ import { renderSelection, retry } from './check/render.mjs';
 import { update } from './check/update.mjs';
 import { compare } from './check/compare.mjs';
 import { report } from './check/report.mjs';
+import { startReact } from './check/react.mjs';
 
 /**
  * The stages, in order (src/check/). Each one that ends the run exits the process.
@@ -59,11 +67,14 @@ async function main(argv) {
   const t0 = performance.now();
   const sel = select(S);
   const prep = await prepare(S, sel);
+  // Once the store is held: the compiler analysis runs while the entries render.
+  const analysis = startReact(S);
   const run = await renderSelection(S, sel, prep);
   if (S.flags.update) await update(S, sel, prep, run);
-  const cmp = compare(S, sel, run);
+  const react = await analysis;
+  const cmp = compare(S, sel, run, react);
   const retryMs = await retry(S, sel, prep, run, cmp);
-  await report(S, sel, prep, run, cmp, { t0, retryMs });
+  await report(S, sel, prep, run, cmp, { t0, retryMs, react });
 }
 
 await main(process.argv.slice(2));

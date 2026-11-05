@@ -256,6 +256,46 @@ export type ReactRun =
       text: string;
     };
 
+/** check.json's `react` (check/react.mjs): the analysis, or why it did not run. */
+export type CheckReact =
+  | Pick<ReactReport, 'summary' | 'alerts' | 'base' | 'backend'>
+  | { skipped: 'off' | 'config' | 'not-installed' | 'failed' };
+
+/** A rule in the React SARIF file (lib/sarif-react.mjs). */
+export interface ReactSarifRule {
+  id: string;
+  shortDescription: { text: string };
+  helpUri?: string;
+  properties: { tags: string[] };
+}
+
+/** One React alert as a SARIF result. */
+export interface ReactSarifResult {
+  ruleId: string;
+  level: 'warning' | 'note';
+  message: { text: string };
+  locations: {
+    physicalLocation?: {
+      artifactLocation: { uri: string };
+      region?: { startLine: number };
+    };
+    logicalLocations: { name: string; kind: string }[];
+  }[];
+  properties: { id: string; change: string };
+}
+
+/** What `reactSarifLog` returns. */
+export interface ReactSarifLog {
+  $schema: string;
+  version: '2.1.0';
+  runs: {
+    tool: {
+      driver: { name: string; version?: string; informationUri: string; rules: ReactSarifRule[] };
+    };
+    results: ReactSarifResult[];
+  }[];
+}
+
 declare global {
   interface Window {
     /** React's DevTools hook: pxsig's own when `react.renders` is on (lib/capture/react-hook.mjs). */

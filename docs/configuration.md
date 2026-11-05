@@ -332,8 +332,8 @@ changes the exit.
 
 ### `react`
 
-React features: the compiler analysis ([`pxsig react`](cli.md#pxsig-react---since-----files-ab----all)) and
-render counting. Alerts only: nothing here changes an exit code, a gate, JUnit or a baseline. Also
+React features: the compiler analysis ([`pxsig react`](cli.md#pxsig-react---since-----files-ab----all), and
+`pxsig check --since` / `--changed` while it renders) and render counting. Alerts only: nothing here changes an exit code, a gate, JUnit or a baseline. Also
 under the workspace file's `defaults` (the project's own key wins).
 
 | Key               | Default                 | Meaning                                                                                                                                                                                                                                                                                 |

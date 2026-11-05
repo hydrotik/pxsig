@@ -114,6 +114,9 @@ pub struct CheckOpts {
     /// Warn mode (`--enforcement @file`, `{ gates, a11yNew }`): the history line records the gates
     /// and whether the run would have failed. Absent: the line is as before.
     pub enforcement: Option<Value>,
+    /// More keys for the history line (`--history-extra @file`, an object such as
+    /// `{ "react": { … } }`); the line's own keys are never replaced. Absent: the line is as before.
+    pub history_extra: Option<Value>,
     /// Base renders: when set, failing entries also get a full-resolution pixel diff.
     pub base_png_dir: Option<PathBuf>,
     pub tolerance: u8,
@@ -274,7 +277,13 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
         "identicalRenders": identical,
     });
     if let Some(h) = &o.history {
-        append_history(h, &summary, &rows, o.enforcement.as_ref())?;
+        append_history(
+            h,
+            &summary,
+            &rows,
+            o.enforcement.as_ref(),
+            o.history_extra.as_ref(),
+        )?;
     }
     Ok(json!({ "summary": summary, "results": rows, "baselineEnvs": baseline_envs }))
 }
@@ -358,6 +367,7 @@ fn append_history(
     summary: &Value,
     rows: &[Value],
     enforcement: Option<&Value>,
+    extra: Option<&Value>,
 ) -> Result<()> {
     if let Some(d) = path.parent() {
         fs::create_dir_all(d)?;
@@ -385,6 +395,11 @@ fn append_history(
             summary["failed"].as_u64().unwrap_or(0) > 0 || e["a11yNew"].as_u64().unwrap_or(0) > 0;
         line["enforcement"] = e["gates"].clone();
         line["wouldFail"] = json!(would);
+    }
+    for (k, v) in extra.and_then(Value::as_object).into_iter().flatten() {
+        if line.get(k).is_none() {
+            line[k] = v.clone();
+        }
     }
     let mut f = OpenOptions::new().create(true).append(true).open(path)?;
     writeln!(f, "{line}")?;
