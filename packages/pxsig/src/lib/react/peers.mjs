@@ -60,6 +60,29 @@ export function reactPeers(P) {
 }
 
 /**
+ * Whether the project uses React: `react` in the `dependencies`, `devDependencies` or
+ * `peerDependencies` of its own package.json or the workspace root's. `check` says that the
+ * compiler is not installed only then; a project without React hears nothing about it.
+ * @param {Pick<Project, 'root' | 'workspaceRoot'>} P
+ */
+export function dependsOnReact(P) {
+  return [...new Set([P.root, P.workspaceRoot])].some((dir) => {
+    try {
+      // The project's own package.json.
+      const p = /** @type {Record<string, Record<string, unknown> | undefined>} */ (
+        JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
+      );
+      return ['dependencies', 'devDependencies', 'peerDependencies'].some(
+        (k) => p[k] != null && typeof p[k] === 'object' && 'react' in p[k]
+      );
+    } catch {
+      // no package.json, or not JSON: no declared dependency
+      return false;
+    }
+  });
+}
+
+/**
  * The compiler's `target` for `auto`: the major of the project's React (17, 18, 19), else 19.
  * @param {string | null} react
  * @returns {'17' | '18' | '19'}

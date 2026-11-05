@@ -5,7 +5,9 @@
   while the entries render (two worker threads). One more line after the summary line (the
   counts, then each alert, at most ten), a `react` block in `check.json`, `react` counts on the
   `history.ndjson` line, and a "React (alerts, not blocking)" section in `summary.md` only when
-  something is newly skipped or newly found. Without the two packages, one line says so. With
+  something is newly skipped or newly found. A project that depends on React (its own or the
+  workspace root's `package.json`) but lacks the two packages gets one line saying so; a project
+  without React gets none (`pxsig doctor` names it either way). With
   `react.renders`, a `[check] renders:` line counts the entries React was still committing at
   capture. None of it changes the exit code, a gate, `junit.xml` or the `--sarif` file.
   To update: nothing to do. To turn it off: `"react": { "compiler": false }` in

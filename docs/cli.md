@@ -378,7 +378,9 @@ threads. One line follows the summary line, then each alert (at most ten):
 The `renders` line comes with `react.renders`. `check.json` gets `react` (the analysis' `summary`,
 `alerts`, `base` and `backend`, or `{ "skipped": "off" | "config" | "not-installed" | "failed" }`),
 the history line `react` counts, and `summary.md` a "React (alerts, not blocking)" section when
-there is an alert. Without the compiler and Babel in the project one line says so; a failed
+there is an alert. A project that depends on React (`react` in its own or the workspace root's
+`package.json` dependencies, dev or peer dependencies) but has no compiler and Babel gets one line
+saying so; a project without React gets none (`pxsig doctor` names it either way). A failed
 analysis says `nothing compared. The check is not affected.` None of it changes the exit code,
 junit.xml or the `--sarif` file. `--no-react` (or `react: false`, `PXSIG_REACT=off`) turns all of
 it off; `--update` analyses nothing.

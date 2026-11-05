@@ -13,12 +13,13 @@
  */
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { hasRust, rustBin, testEnv, testHome } from './fixture.mjs';
+import { hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
+import { dependsOnReact } from '../src/lib/react/peers.mjs';
 import { BASE, hasCompiler, reactProject } from './react-helpers.mjs';
 import { needs, src } from './server-helpers.mjs';
 import { skipUnless } from './strict.mjs';
@@ -280,8 +281,17 @@ test(
       .split('\n')
       .map((l) => JSON.parse(l));
     assert.equal(history.at(-1).react, undefined, 'no counts: the line as before');
-    // The compiler absent: one line, `skipped: not-installed`.
+    // The compiler absent in a project without React: nothing said; check.json says why.
+    const plain = reactProject(t, { babel: null, config: { storybook: { url: sb.url } } });
+    const p = await check(plain, RUN);
+    assert.doesNotMatch(p.out, /\[check\] react:/);
+    assert.deepEqual(JSON.parse(report(plain, 'check.json')).react, { skipped: 'not-installed' });
+    // ... and in a project that depends on React: one line.
     const bare = reactProject(t, { babel: null, config: { storybook: { url: sb.url } } });
+    writeFileSync(
+      join(bare, 'package.json'),
+      JSON.stringify({ name: 'ui', devDependencies: { react: '^19.0.0' } })
+    );
     const b = await check(bare, RUN);
     assert.match(
       b.out,
@@ -290,6 +300,25 @@ test(
     assert.deepEqual(JSON.parse(report(bare, 'check.json')).react, { skipped: 'not-installed' });
   }
 );
+
+test("a project depends on React when its package.json or the workspace root's names it", (t) => {
+  const ws = tempDir('react-deps', t);
+  const app = join(ws, 'apps', 'ui');
+  mkdirSync(app, { recursive: true });
+  const P = { root: app, workspaceRoot: ws };
+  assert.equal(dependsOnReact(P), false, 'no package.json');
+  writeFileSync(join(app, 'package.json'), '{ not json');
+  assert.equal(dependsOnReact(P), false, 'unreadable');
+  writeFileSync(join(app, 'package.json'), JSON.stringify({ dependencies: { vue: '^3' } }));
+  assert.equal(dependsOnReact(P), false, 'another framework');
+  for (const k of ['dependencies', 'devDependencies', 'peerDependencies']) {
+    writeFileSync(join(app, 'package.json'), JSON.stringify({ [k]: { react: '^19' } }));
+    assert.equal(dependsOnReact(P), true, k);
+  }
+  writeFileSync(join(app, 'package.json'), '{}');
+  writeFileSync(join(ws, 'package.json'), JSON.stringify({ devDependencies: { react: '^19' } }));
+  assert.equal(dependsOnReact(P), true, "the workspace root's");
+});
 
 test(
   'pxsig react --sarif: the compiler alerts, and an empty file when nothing was analysed',

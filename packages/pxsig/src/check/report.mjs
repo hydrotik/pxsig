@@ -246,7 +246,7 @@ export async function report(S, sel, prep, run, cmp, { t0, retryMs, react = null
   );
   for (const r of checked.filter((x) => !x.pass).slice(0, 20))
     console.log(`  CHANGED ${r.id.padEnd(60)} ${r.error ?? (r.reasons ?? []).join('; ')}`);
-  for (const l of reactLines(react, checked)) console.log(l);
+  for (const l of reactLines(react, checked, P)) console.log(l);
   const sarif = str('sarif');
   if (sarif)
     console.log(

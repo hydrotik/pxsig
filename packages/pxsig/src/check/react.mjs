@@ -11,11 +11,12 @@
 import { resolve } from 'node:path';
 import { analyse } from '../lib/react/index.mjs';
 import { warnOnce } from '../lib/react/config.mjs';
+import { dependsOnReact } from '../lib/react/peers.mjs';
 import { writeReactSarif } from '../lib/sarif-react.mjs';
 import { summaryLine } from '../cli/react.mjs';
 import { PXSIG_VERSION } from '../lib/workspace.mjs';
 /** @import { CheckSetup } from './setup.mjs' */
-/** @import { CheckRow, ManifestEntry } from '../types.js' */
+/** @import { CheckRow, ManifestEntry, Project } from '../types.js' */
 /** @import { CheckReact, ReactRun } from '../types/react.js' */
 
 /** Alerts printed before "… n more". */
@@ -79,12 +80,14 @@ export function historyExtra(run, results) {
 
 /**
  * The terminal lines, after the summary line: the analysis (or why it did not run) with its first
- * alerts, and the render counts. A switched-off analysis says nothing.
+ * alerts, and the render counts. A switched-off analysis says nothing, and so does a missing
+ * compiler in a project that does not depend on React (`pxsig doctor` still names it).
  * @param {ReactRun | null} run
  * @param {CheckRow[]} checked the rows this run checked
+ * @param {Pick<Project, 'root' | 'workspaceRoot'>} P
  * @returns {string[]}
  */
-export function reactLines(run, checked) {
+export function reactLines(run, checked, P) {
   /** @type {string[]} */
   const lines = [];
   if (run?.ran) {
@@ -98,7 +101,7 @@ export function reactLines(run, checked) {
     warnOnce(run.text.replace(/^\[pxsig\] /, ''));
   } else if (run?.why === 'failed') {
     lines.push(`[check] ${run.text}. The check is not affected.`);
-  } else if (run?.why === 'not-installed') {
+  } else if (run?.why === 'not-installed' && dependsOnReact(P)) {
     lines.push(`[check] ${run.text}`);
   }
   const counted = checked.filter((r) => r.renders !== undefined);
