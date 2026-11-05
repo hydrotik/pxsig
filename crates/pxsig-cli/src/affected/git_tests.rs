@@ -280,3 +280,35 @@ fn no_merge_base_selects_everything() {
     let _ = fs::remove_dir_all(&origin);
     let _ = fs::remove_dir_all(&clone);
 }
+
+#[test]
+fn graph_files_name_the_entries_they_reach() {
+    let ws = tmp("entries");
+    init(&ws);
+    workspace(&ws);
+    commit(&ws, "base");
+    let files = [
+        "src/Button/Button.tsx",
+        "src/Button/Button.test.tsx",
+        "README.md",
+    ];
+    let v = affected(
+        &ws,
+        &manifest(&[]),
+        &changes_from_files(&ws, &files.map(String::from)),
+    )
+    .unwrap();
+    let file = |p: &str| {
+        v["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|f| f["path"] == p)
+            .unwrap()
+            .clone()
+    };
+    assert_eq!(file("src/Button/Button.tsx")["entries"], json!(["b"]));
+    // Only `graph` files carry them.
+    assert!(file("src/Button/Button.test.tsx").get("entries").is_none());
+    assert!(file("README.md").get("entries").is_none());
+}
