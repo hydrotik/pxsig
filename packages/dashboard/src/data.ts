@@ -5,6 +5,7 @@
 import React from 'react';
 import { t } from './copy';
 import { currentProject, type Refusal, scope, served, setCurrentProject } from './data/request';
+import { applyReviewEvent, type ReviewEvent } from './data/live';
 import type { CheckReport, Data } from './data/types';
 
 export type {
@@ -143,30 +144,65 @@ export function useData(): { data: Data | null; error: string | null; live: bool
   React.useEffect(() => {
     if (!served) return;
     let alive = true;
-    const load = () =>
+    // One fetch in flight and at most one waiting: a burst of events costs two fetches, not one each.
+    let fetching = false;
+    let again = false;
+    // The data on the page, which a decision's event is applied to.
+    let latest: Data | null = window.PXSIG ? normalizeData(window.PXSIG) : null;
+    const show = (d: Data) => {
+      latest = d;
+      setData(d);
+    };
+    const load = (): void => {
+      if (fetching) {
+        again = true;
+        return;
+      }
+      fetching = true;
       fetchData()
-        .then((d) => alive && (setData(d), setError(null)))
+        .then((d) => alive && (show(d), setError(null)))
         .catch(
           // fetchData rejects with an Error (its own, fetch's or normalizeData's).
           (e: Error) => alive && !window.PXSIG && setError(String(e.message ?? e))
-        );
-    void load();
+        )
+        .finally(() => {
+          fetching = false;
+          if (again && alive) {
+            again = false;
+            load();
+          }
+        });
+    };
+    load();
     let es: EventSource | null = null;
     // Events name their project; another project's results don't concern this page.
     // An event's data is the JSON object the server broadcast (serve.mjs), naming its project.
-    const mine = (e: MessageEvent<string>) => {
+    const parse = (e: MessageEvent<string>): ReviewEvent | null => {
       try {
-        const p = (JSON.parse(e.data) as { project?: string } | null)?.project;
-        if (!p || !currentProject || p === currentProject) void load();
+        return JSON.parse(e.data) as ReviewEvent | null;
       } catch {
-        void load();
+        return null;
       }
+    };
+    const ours = (ev: ReviewEvent | null) =>
+      !ev?.project || !currentProject || ev.project === currentProject;
+    const mine = (e: MessageEvent<string>) => {
+      if (ours(parse(e))) load();
+    };
+    // A decision carries what it changed: applied in place, unless a fetch is under way (its
+    // answer may predate the decision, so another follows it) or the page cannot apply it.
+    const decided = (e: MessageEvent<string>) => {
+      const ev = parse(e);
+      if (!ours(ev)) return;
+      const next = ev && !fetching && latest ? applyReviewEvent(latest, ev) : null;
+      if (next) show(normalizeData(next));
+      else load();
     };
     try {
       es = new EventSource('/__pxsig/events');
       es.addEventListener('hello', () => setLive(true));
       es.addEventListener('data', mine);
-      es.addEventListener('review', mine);
+      es.addEventListener('review', decided);
       es.addEventListener('integrity', mine);
       // Check runs: shown while they run, and their errors (Storybook down) reach the page.
       es.addEventListener('check', (e: MessageEvent<string>) => {
