@@ -100,6 +100,43 @@ test("with approvals.byStory, the inspector approves a story's entries together,
   }
 });
 
+test("the inspector's re-check says Queued until the entry's run ends; what was not checked stays", async (t) => {
+  if (skip) return t.skip(skip);
+  const id = 'ui-button--primary';
+  const d = data({
+    rows: [row(id, changed)],
+    entries: [entry(id, [{ code: 'changed', severity: 'warn', reason: 'gate failed' }])],
+  });
+  // The event stream closes and comes back every 100 ms; each time it says what `next` holds.
+  /** @type {string[]} */
+  const next = [];
+  const { page } = await open(d, {
+    hash: `#inspect=${id}`,
+    events: 'retry: 100\nevent: hello\ndata: {}\n\n',
+    answers: { check: { ok: true, queued: [id], skipped: [{ name: 'other', why: 'no story' }] } },
+  });
+  await page.route('**/__pxsig/events', (route) =>
+    route.fulfill({
+      status: 200,
+      headers: { 'content-type': 'text/event-stream' },
+      body: `retry: 100\nevent: hello\ndata: {}\n\n${next.shift() ?? ''}`,
+    })
+  );
+  const check = (/** @type {object} */ e) => `event: check\ndata: ${JSON.stringify(e)}\n\n`;
+  try {
+    await page.getByRole('button', { name: 'Re-check' }).click();
+    const status = page.getByRole('status').filter({ hasText: 'Not checked' });
+    await status.getByText('Queued 1 entry · Not checked: other: no story').waitFor();
+    next.push(check({ project: 'demo', state: 'running', ids: [id] }));
+    await page.getByRole('button', { name: /Checking/ }).waitFor();
+    assert.equal(await status.textContent(), 'Queued 1 entry · Not checked: other: no story');
+    next.push(check({ project: 'demo', state: 'done', ids: [id] }));
+    await status.getByText('Not checked: other: no story', { exact: true }).waitFor();
+  } finally {
+    await page.close();
+  }
+});
+
 test('Reject and Approve keep their place whatever else the review group shows', async (t) => {
   if (skip) return t.skip(skip);
   const story = 'ui-button--primary';
