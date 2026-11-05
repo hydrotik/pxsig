@@ -232,7 +232,7 @@
       "summary": "Re-render and re-check entries: some through the running server, or the full check. Never writes baselines unless --update is given by a person.",
       "usage": [
         "pxsig check [ids…] [--changed a.tsx,b.ts] [--since <ref>] [--all]",
-        "pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] [--only id,id] [--concurrency 8] [--retries 2] [--no-a11y] [--link-base <url>] [--out <name>] [--no-server] [--strict-env] [--sarif file] [--warn[=gates]] [--enforce[=gates]] [--update [--kind word] [--reason text]]"
+        "pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] [--only id,id] [--concurrency 8] [--retries 2] [--no-a11y] [--link-base <url>] [--out <name>] [--no-server] [--strict-env] [--sarif file] [--react-sarif file] [--warn[=gates]] [--enforce[=gates]] [--update [--kind word] [--reason text]]"
       ],
       "flags": [
         {
@@ -330,6 +330,11 @@
           "meaning": "With --full: also write the new axe violations (not on an entry's accepted list) as SARIF 2.1.0, for code-scanning viewers. Changes no exit code."
         },
         {
+          "name": "react-sarif",
+          "value": "file",
+          "meaning": "With --full: also write the React alerts as SARIF 2.1.0, in a file of their own (--sarif stays a11y only): the React Compiler's (with --since or --changed) and the entries React was still committing in at capture (react.renders). Level warning or note, never error. Changes no exit code."
+        },
+        {
           "name": "warn",
           "value": "gates",
           "meaning": "Warn mode for this run, for the named gates (comma-separated; all without a value): a failure in them is reported and exits advisoryExit. A person at a terminal only (exit 3 otherwise); a team sets warn in pxsig.config.json (enforcement)."
@@ -396,7 +401,7 @@
     },
     "react": {
       "summary": "The React Compiler on the changed files, compared with the merge base: components and hooks it compiled before and skips now, and new Rules-of-React findings, as alerts. No Storybook, no browser.",
-      "usage": ["pxsig react [--since <ref> | --files a,b | --all]"],
+      "usage": ["pxsig react [--since <ref> | --files a,b | --all] [--sarif file]"],
       "flags": [
         {
           "name": "since",
@@ -408,6 +413,11 @@
           "name": "files",
           "value": "a,b",
           "meaning": "These files (comma-separated), compared with HEAD."
+        },
+        {
+          "name": "sarif",
+          "value": "file",
+          "meaning": "Also write the alerts as SARIF 2.1.0 (rules react-compiler/<rule>; level warning when the compiler skips the function, note for a finding). Written, empty, when nothing was analysed. Changes no exit code."
         }
       ],
       "effects": ["writes-store"],

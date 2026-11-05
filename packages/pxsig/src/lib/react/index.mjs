@@ -58,14 +58,15 @@ const notInstalled = (missing) =>
 /**
  * Analyse the changed React files of a project.
  * @param {Project} P
- * @param {{ since?: string, files?: string[], all?: boolean, workers?: number, flags?: Flags, env?: NodeJS.ProcessEnv }} [opts]
+ * @param {{ since?: string, files?: string[], all?: boolean, workers?: number, flags?: Flags, env?: NodeJS.ProcessEnv, manifest?: string }} [opts]
  *   `since` (default `main`), `files` (workspace-relative, compared with HEAD) or `all`; `workers`:
- *   the pool's size at most (default: the CPUs less one, at most 4).
+ *   the pool's size at most (default: the CPUs less one, at most 4); `manifest`: a run manifest
+ *   already written (a check's, its suite's entries), else the project's is written.
  * @returns {Promise<ReactRun>}
  */
 export async function analyse(
   P,
-  { since, files, all = false, workers, flags = {}, env = process.env } = {}
+  { since, files, all = false, workers, flags = {}, env = process.env, manifest: runManifest } = {}
 ) {
   const t0 = Date.now();
   const cfg = reactConfig(P, { flags, env });
@@ -95,7 +96,7 @@ export async function analyse(
   /** @type {ReturnType<typeof createPool> | null} */
   let pool = null;
   try {
-    const manifest = writeRunManifest(P, undefined, { dir: runDir }).path;
+    const manifest = runManifest ?? writeRunManifest(P, undefined, { dir: runDir }).path;
     const options = {
       compilationMode: cfg.compilationMode,
       target: cfg.target === 'auto' ? autoTarget(peers.react) : cfg.target,

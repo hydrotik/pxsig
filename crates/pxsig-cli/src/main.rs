@@ -84,7 +84,7 @@ enum Cmd {
     /// Batch diff: every manifest entry's `<png-dir>/<id>.png` against its baseline.
     Check {
         #[command(flatten)]
-        batch: BatchArgs,
+        batch: Box<BatchArgs>,
         #[arg(long)]
         out_dir: Option<PathBuf>,
         #[arg(long)]
@@ -107,6 +107,9 @@ enum Cmd {
         /// Warn mode for the history line: `@file` (or inline JSON) `{ "gates": {…}, "a11yNew": n }`.
         #[arg(long)]
         enforcement: Option<String>,
+        /// More keys for the history line: `@file` (or inline JSON), an object (`{ "react": {…} }`).
+        #[arg(long)]
+        history_extra: Option<String>,
         /// Base renders; failing entries also get a pixel diff with change regions.
         #[arg(long)]
         base_png_dir: Option<PathBuf>,
@@ -313,6 +316,7 @@ fn run(cmd: Cmd) -> anyhow::Result<u8> {
             cache,
             history,
             enforcement,
+            history_extra,
             base_png_dir,
             tolerance,
             gate,
@@ -326,13 +330,14 @@ fn run(cmd: Cmd) -> anyhow::Result<u8> {
             };
             artifacts.and_then(|a| {
                 cmd_check(
-                    batch,
+                    *batch,
                     out_dir,
                     &format,
                     a,
                     cache,
                     history,
                     enforcement,
+                    history_extra,
                     base_png_dir,
                     tolerance,
                     &gate,

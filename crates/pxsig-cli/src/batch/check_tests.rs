@@ -16,6 +16,7 @@ fn opts(d: &Path) -> CheckOpts {
         cache: None,
         history: None,
         enforcement: None,
+        history_extra: None,
         base_png_dir: None,
         tolerance: 16,
         cli_gate: GateSpec::default(),
@@ -180,6 +181,45 @@ fn the_cache_answers_a_repeat_and_history_appends_one_line_per_run() {
     assert_eq!(lines[1]["rows"]["b"][0], json!(0));
     assert_eq!(lines[1]["enforcement"], json!(["visual"]));
     assert_eq!(lines[1]["wouldFail"], json!(true));
+    let _ = fs::remove_dir_all(&d);
+}
+
+#[test]
+fn history_extra_adds_its_keys_and_never_replaces_the_lines_own() {
+    let d = scratch("check-history-extra");
+    store(&d, &["a"], &[]);
+    let h = d.join("history.ndjson");
+    let o = CheckOpts {
+        history: Some(h.clone()),
+        history_extra: Some(json!({
+            "react": { "alerts": 2, "newBailouts": 1, "renderAlerts": 0 },
+            "summary": "not this"
+        })),
+        ..opts(&d)
+    };
+    check(&o).unwrap();
+    check(&CheckOpts {
+        history_extra: None,
+        ..o
+    })
+    .unwrap();
+    let lines: Vec<Value> = fs::read_to_string(&h)
+        .unwrap()
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    assert_eq!(
+        lines[0]["react"],
+        json!({ "alerts": 2, "newBailouts": 1, "renderAlerts": 0 })
+    );
+    assert!(
+        lines[0]["summary"].is_object(),
+        "the line's own summary stays"
+    );
+    assert!(
+        lines[1].get("react").is_none(),
+        "absent: the line is as before"
+    );
     let _ = fs::remove_dir_all(&d);
 }
 

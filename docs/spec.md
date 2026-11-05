@@ -328,11 +328,18 @@ A full check writes, under `<store>/reports/`:
 | `check.json` (`check-<suite>.json`) | `{ generatedAt, project, suite, manifest, summary, affected, envs, rows }`, one row per entry. `envs` maps every render environment a row names (its render's `env`, its baseline's `baselineEnv`) by id; each row adds `envMatch` (`same`, `compatible`, `mismatch`, `unknown`) and, when not `same`, `envDiff` (the differing field names); `summary.envMismatch` counts the mismatched rows |
 | `summary.md` (`summary-<suite>.md`) | Markdown summary, suitable for a pull request comment                                                                                                                                                                                                                                                                                                                                          |
 | `junit.xml` (`junit-<suite>.xml`)   | JUnit results, one test case per entry                                                                                                                                                                                                                                                                                                                                                         |
-| `history.ndjson`                    | One line per run (full checks and server re-checks)                                                                                                                                                                                                                                                                                                                                            |
+| `history.ndjson`                    | One line per run (full checks and server re-checks); a full check that analysed React or counted renders adds `react`: `{ alerts, newBailouts, renderAlerts }` (each present when known)                                                                                                                                                                                                       |
 | `integrity.json`                    | The integrity ledger (see [integrity.md](integrity.md))                                                                                                                                                                                                                                                                                                                                        |
 
 Renders go to `<store>/renders/latest/<id>.png`; diff images for failures to
 `<store>/diffs/latest/`.
+
+### React analysis
+
+A full check with `--since` / `--changed` that ran the React Compiler (`pxsig react`'s analysis)
+adds `react` to `check.json`: `{ summary, alerts, base, backend }`, as in `reports/react.json`; or
+`{ "skipped": "off" | "config" | "not-installed" | "failed" }` when it did not run. Without
+`--since` / `--changed` the key is absent. Nothing reads it back to decide anything.
 
 ### Render counts
 

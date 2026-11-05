@@ -8,6 +8,8 @@ import { resolve } from 'node:path';
 import { emit } from '../lib/term.mjs';
 import { relPath } from '../lib/paths.mjs';
 import { analyse } from '../lib/react/index.mjs';
+import { writeReactSarif } from '../lib/sarif-react.mjs';
+import { PXSIG_VERSION } from '../lib/workspace.mjs';
 
 /** @import { Block } from '../types/t6.js' */
 /** @import { ReactReport } from '../types/react.js' */
@@ -49,7 +51,7 @@ export function reactCommands(cli) {
       cli.current = oneProject();
       if ([flags.since, flags.files, flags.all].filter((v) => v !== undefined).length > 1)
         fail('usage: react [--since <ref> | --files a,b | --all]');
-      for (const n of ['since', 'files'])
+      for (const n of ['since', 'files', 'sarif'])
         if (flags[n] === true) fail(`usage: --${n} needs a value`);
       const P = ctx().P;
       const files = list(flags.files).map((f) => relPath(P.workspaceRoot, resolve(f)));
@@ -59,8 +61,21 @@ export function reactCommands(cli) {
         all: flags.all === true,
         flags,
       });
+      // `--sarif <file>`: the compiler alerts as SARIF, written (empty) whatever the run found, so
+      // a CI step that uploads it always has a file.
+      const sarif = typeof flags.sarif === 'string' ? flags.sarif : null;
+      const sarifCount = () =>
+        sarif
+          ? writeReactSarif(resolve(sarif), {
+              alerts: r.ran ? r.report.alerts : [],
+              version: PXSIG_VERSION,
+            })
+          : 0;
       if (!r.ran) {
-        emit(format, [{ h: 'React', sub: r.text }], { ran: false, why: r.why, text: r.text });
+        /** @type {Block[]} */
+        const off = [{ h: 'React', sub: r.text }];
+        if (sarif) off.push({ note: `wrote ${sarifCount()} React alerts to ${sarif} (SARIF)` });
+        emit(format, off, { ran: false, why: r.why, text: r.text });
         process.exit(0);
       }
       const { report } = r;
@@ -77,6 +92,7 @@ export function reactCommands(cli) {
         if (s.why === 'a Flow file')
           blocks.push({ note: `react: ${s.path}: a Flow file, not analysed` });
       if (r.heldBy) blocks.push({ note: `results not saved: ${r.heldBy}`, tone: 'warn' });
+      if (sarif) blocks.push({ note: `wrote ${sarifCount()} React alerts to ${sarif} (SARIF)` });
       emit(format, blocks, report);
       process.exit(0);
     },

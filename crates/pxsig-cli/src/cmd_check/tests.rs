@@ -96,6 +96,7 @@ fn baseline_exits_2_when_an_entry_has_no_render_and_check_exits_1_on_a_failed_en
             None,
             None,
             None,
+            None,
             16,
             &gate,
         )
@@ -110,6 +111,7 @@ fn baseline_exits_2_when_an_entry_has_no_render_and_check_exits_1_on_a_failed_en
         Some(d.join("diff")),
         "text",
         batch::Artifacts::All,
+        None,
         None,
         None,
         None,
@@ -160,6 +162,7 @@ fn report_writes_markdown_or_junit_and_refuses_another_format() {
         cache: None,
         history: None,
         enforcement: None,
+        history_extra: None,
         base_png_dir: None,
         tolerance: 16,
         cli_gate: gate::GateSpec::default(),

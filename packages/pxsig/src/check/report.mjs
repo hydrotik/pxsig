@@ -28,6 +28,7 @@ import {
 } from '../lib/enforcement.mjs';
 import { writeSarif } from '../lib/sarif.mjs';
 import { gitHead } from './via-server.mjs';
+import { reactBlock, reactLines, reactSarif } from './react.mjs';
 /** @import { CheckSetup } from './setup.mjs' */
 /** @import { Selection } from './select.mjs' */
 /** @import { Prepared } from './prepare.mjs' */
@@ -35,6 +36,7 @@ import { gitHead } from './via-server.mjs';
 /** @import { Compared } from './compare.mjs' */
 /** @import { CheckRow } from '../types.js' */
 /** @import { A11yBaseline, CheckReport } from '../types/t4.js' */
+/** @import { ReactRun } from '../types/react.js' */
 
 /**
  * @param {CheckSetup} S
@@ -42,10 +44,10 @@ import { gitHead } from './via-server.mjs';
  * @param {Prepared} prep
  * @param {Rendered} run
  * @param {Compared} cmp
- * @param {{ t0: number, retryMs: number }} times
+ * @param {{ t0: number, retryMs: number, react?: ReactRun | null }} times and the compiler analysis
  * @returns {Promise<never>}
  */
-export async function report(S, sel, prep, run, cmp, { t0, retryMs }) {
+export async function report(S, sel, prep, run, cmp, { t0, retryMs, react = null }) {
   const {
     P,
     reports,
@@ -183,6 +185,8 @@ export async function report(S, sel, prep, run, cmp, { t0, retryMs }) {
   // `enf` is null only under --update, which exited above.
   const gated = outcome(/** @type {NonNullable<typeof enf>} */ (enf), found);
   const enforcement = reportBlock(/** @type {NonNullable<typeof enf>} */ (enf), gated);
+  // Alerts only: nothing reads it back to decide anything.
+  const reactJson = reactBlock(react);
   const report = {
     generatedAt: now,
     fullCheckAt,
@@ -196,6 +200,7 @@ export async function report(S, sel, prep, run, cmp, { t0, retryMs }) {
     },
     summary,
     affected,
+    ...(reactJson ? { react: reactJson } : {}),
     envs: Object.fromEntries(Object.entries(envs).filter(([id]) => usedEnvs.has(id))),
     ...(enforcement ? { enforcement, git: { head: gitHead(P) } } : {}),
     rows: out,
@@ -241,11 +246,14 @@ export async function report(S, sel, prep, run, cmp, { t0, retryMs }) {
   );
   for (const r of checked.filter((x) => !x.pass).slice(0, 20))
     console.log(`  CHANGED ${r.id.padEnd(60)} ${r.error ?? (r.reasons ?? []).join('; ')}`);
+  for (const l of reactLines(react, checked)) console.log(l);
   const sarif = str('sarif');
   if (sarif)
     console.log(
       `[check] wrote ${writeSarif(resolve(sarif), out, { entries: new Map(manifest.stories.map((e) => [e.id, e])), version: PXSIG_VERSION })} new a11y violations to ${sarif} (SARIF)`
     );
+  const reactSarifFile = str('react-sarif');
+  if (reactSarifFile) console.log(reactSarif(reactSarifFile, react, out, manifest.stories));
   console.log(`[check] wrote ${rel(reports)}/${outName}.json, summary${sfx}.md, junit${sfx}.xml`);
   // Integrity: what the run did not cover (unregistered stories, missing images, never-checked…).
   if (outName === 'check' && !suite) {
