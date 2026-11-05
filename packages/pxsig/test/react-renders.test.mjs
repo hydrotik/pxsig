@@ -353,35 +353,47 @@ test(
   'budget: walking a 1,000-row grid of 5,000 components stays within 5 ms',
   { skip },
   async (t) => {
-    const page = await open('production');
-    try {
-      // Time the hook's own work on each commit, beside React's.
-      await page.evaluate(() => {
-        const hook = /** @type {NonNullable<Window['__REACT_DEVTOOLS_GLOBAL_HOOK__']>} */ (
-          window.__REACT_DEVTOOLS_GLOBAL_HOOK__
+    // The median of five mounts, each on a fresh page: one measurement on a shared CI runner can
+    // land on a pause that is not the hook's (5.2 ms once on ubuntu, 0.4–0.6 ms locally).
+    /** @type {number[]} */
+    const times = [];
+    for (let i = 0; i < 5; i++) {
+      const page = await open('production');
+      try {
+        // Time the hook's own work on each commit, beside React's.
+        await page.evaluate(() => {
+          const hook = /** @type {NonNullable<Window['__REACT_DEVTOOLS_GLOBAL_HOOK__']>} */ (
+            window.__REACT_DEVTOOLS_GLOBAL_HOOK__
+          );
+          const on = /** @type {NonNullable<typeof hook.onCommitFiberRoot>} */ (
+            hook.onCommitFiberRoot
+          );
+          const spent = { ms: 0 };
+          Object.assign(window, { __spent: spent });
+          hook.onCommitFiberRoot = (...a) => {
+            const t0 = performance.now();
+            on(...a);
+            spent.ms += performance.now() - t0;
+          };
+        });
+        const r = /** @type {RenderRead} */ (await mountAndRead(page, 'Grid'));
+        assert.equal(r.phase.rendered, 5001);
+        times.push(
+          await page.evaluate(
+            () =>
+              /** @type {{ __spent: { ms: number } }} */ (/** @type {unknown} */ (window)).__spent
+                .ms
+          )
         );
-        const on = /** @type {NonNullable<typeof hook.onCommitFiberRoot>} */ (
-          hook.onCommitFiberRoot
-        );
-        const spent = { ms: 0 };
-        Object.assign(window, { __spent: spent });
-        hook.onCommitFiberRoot = (...a) => {
-          const t0 = performance.now();
-          on(...a);
-          spent.ms += performance.now() - t0;
-        };
-      });
-      const r = /** @type {RenderRead} */ (await mountAndRead(page, 'Grid'));
-      assert.equal(r.phase.rendered, 5001);
-      const ms = await page.evaluate(
-        () =>
-          /** @type {{ __spent: { ms: number } }} */ (/** @type {unknown} */ (window)).__spent.ms
-      );
-      t.diagnostic(`the hook took ${ms.toFixed(2)} ms for ${r.phase.rendered} components`);
-      assert.ok(ms <= 5, `the hook took ${ms.toFixed(2)} ms`);
-    } finally {
-      await page.close();
+      } finally {
+        await page.close();
+      }
     }
+    const ms = [...times].sort((a, b) => a - b)[2];
+    t.diagnostic(
+      `the hook took ${times.map((x) => x.toFixed(2)).join(', ')} ms; median ${ms.toFixed(2)}`
+    );
+    assert.ok(ms <= 5, `the hook's median was ${ms.toFixed(2)} ms`);
   }
 );
 
