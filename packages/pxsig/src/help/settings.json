@@ -355,15 +355,56 @@
     },
     "react": {
       "file": "pxsig.config.json",
-      "meaning": "React features: false turns all of them off; an object sets them one by one.",
-      "default": "{}",
-      "operation": "A bad value is one warning line and that feature off for the run, never a failed check.",
+      "meaning": "React features: the compiler analysis (`pxsig react`) and render counting, as alerts. false (or \"off\") turns all of them off; an object sets them one by one. Also under the workspace file's `defaults`.",
+      "default": "{} (compiler analysis on when the project has the compiler installed; render counting off)",
+      "operation": "Alerts only: never an exit code, a gate, a JUnit failure or a baseline. A bad value is one warning line, a doctor finding (`react-config`), and the part it belongs to off for the run, never a failed check.",
       "flag": "--no-react",
       "env": "PXSIG_REACT=off"
+    },
+    "react.compiler": {
+      "file": "pxsig.config.json",
+      "meaning": "Compare the React Compiler's verdict on changed files at the merge base and now (`pxsig react`).",
+      "values": "true | false | \"auto\" | \"off\"",
+      "default": "\"auto\"",
+      "operation": "auto (or true): runs when babel-plugin-react-compiler and @babel/core resolve from the project, else one note. false (or \"off\"): never, and no note."
+    },
+    "react.lint": {
+      "file": "pxsig.config.json",
+      "meaning": "Also report the validation-only findings eslint-plugin-react-hooks reports, on functions that still compile.",
+      "values": "true | false",
+      "default": "true",
+      "operation": "A finding absent at the merge base is an alert (level note)."
+    },
+    "react.compilationMode": {
+      "file": "pxsig.config.json",
+      "meaning": "The compiler's compilationMode, as the project's build sets it.",
+      "values": "\"infer\" | \"annotation\" | \"syntax\" | \"all\"",
+      "default": "\"infer\"",
+      "operation": "pxsig never reads the project's Babel or Vite config: set the build's options here."
+    },
+    "react.target": {
+      "file": "pxsig.config.json",
+      "meaning": "The compiler's target React version.",
+      "values": "\"17\" | \"18\" | \"19\" | \"auto\"",
+      "default": "\"auto\"",
+      "operation": "auto: the major of the react the project has (17, 18, 19; else 19)."
+    },
+    "react.environment": {
+      "file": "pxsig.config.json",
+      "meaning": "Compiler environment flags (JSON values), as the project's build sets them.",
+      "default": "{}",
+      "operation": "Passed through to the compiler, which validates them."
+    },
+    "react.exclude": {
+      "file": "pxsig.config.json",
+      "meaning": "Globs (workspace-relative) of changed files that are not analysed.",
+      "default": "[\"**/*.stories.*\", \"**/*.test.*\", \"**/*.spec.*\", \"**/*.d.ts\", \"**/*.css.ts\", \"**/__tests__/**\", \"**/__mocks__/**\"]",
+      "operation": "Replaces the default list when set."
     },
     "react.renders": {
       "file": "pxsig.config.json",
       "meaning": "Count React commits and component renders in every render.",
+      "values": "true | false",
       "default": "false",
       "operation": "Each check row gets renders; an entry React was still committing at capture is an alert, never a failure."
     },

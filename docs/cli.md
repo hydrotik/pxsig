@@ -258,6 +258,37 @@ candidate for `affects.aliases` or `affects.unresolved`). `--json` adds `files` 
 class, what it selects, why), `failSafe`, `ignored`, `baselines`, `records`, `otherSuites`,
 `warnings`, `unresolved` (file, spec, line, why, accepted, what it selects) and `remote`.
 
+### `pxsig react [--since <ref> | --files a,b | --all]`
+
+The React Compiler's verdict on the changed files, compared with the merge base: a component or
+hook it compiled at the base and skips now, a new function it skips, a new reason it skips one, and
+(with `react.lint`) a new Rules-of-React finding on a function that still compiles. Alerts only:
+exit 0 whatever it finds; 2 for a usage or setup error. No Storybook and no browser: fast enough
+for a pre-commit hook or an assistant.
+
+`--since <ref>` (default `main`) uses the files changed since the merge base with that ref, plus
+staged, unstaged and untracked work; `--files a,b` names files (relative to the current folder),
+compared with `HEAD`; `--all` analyses every module that reaches an entry, with no comparison: how
+much of the project the compiler compiles today. Analysed: changed `.tsx .jsx .ts .js .mts .mjs
+.cts .cjs` modules that reach an entry or are Storybook config modules, minus `react.exclude`
+(stories, tests, `.d.ts` and `.css.ts` by default); Flow files are skipped with a note; at most 300
+files.
+
+It runs the project's own `babel-plugin-react-compiler` with its own `@babel/core` (7 or 8), in a
+small pool of worker threads, only for the files the cache (`<store>/cache/react`) does not have;
+it never loads the project's Babel config. Neither package is a dependency of pxsig: without them
+it prints one line and exits 0. The result is `<store>/reports/react.json`; `--json` prints it.
+While another process holds the store (the server), it reads the cache and writes nothing:
+`results not saved: …`.
+
+```
+## React — react: 1 files, 2 functions · 1 newly skipped by the React Compiler · 1 new findings · 0.7 s
+- Button (src/Button/Button.tsx): compiled at main, skipped now: Cannot access refs during render (refs, line 3). Reaches 2 entries.
+- Card (src/Button/Button.tsx): Calling setState synchronously within an effect can trigger cascading renders (set-state-in-effect, line 9). It still compiles.
+```
+
+Settings: [`react`](configuration.md#react). `react: false`, `--no-react` or `PXSIG_REACT=off` turns it off.
+
 ## Checking
 
 ### `pxsig check` (quick)

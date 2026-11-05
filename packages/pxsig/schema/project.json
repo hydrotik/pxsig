@@ -433,9 +433,49 @@
     },
     "a11y": { "type": "boolean", "default": true, "description": "Run axe on every render." },
     "react": {
-      "description": "React features. false (or \"off\") turns all of them off, like --no-react and PXSIG_REACT=off; true or an object leaves them on. A bad value is a warning and that feature off, never a failed check.",
+      "description": "React features, alerts only (never an exit code). false (or \"off\") turns all of them off, like --no-react and PXSIG_REACT=off; true or an object leaves them on. A bad value is a warning and the part it belongs to off for the run (react.renders: render counting; any other key: the compiler analysis), never a failed check.",
       "anyOf": [{ "type": "boolean" }, { "const": "off" }, { "type": "object" }],
+      "additionalProperties": false,
       "properties": {
+        "compiler": {
+          "enum": [true, false, "auto", "off"],
+          "default": "auto",
+          "description": "Compare the React Compiler's verdict on changed files with the merge base, when babel-plugin-react-compiler and @babel/core are installed in the project. false (or \"off\"): never."
+        },
+        "lint": {
+          "type": "boolean",
+          "default": true,
+          "description": "Also the validation-only findings eslint-plugin-react-hooks reports (set-state-in-effect, …), on functions that still compile."
+        },
+        "compilationMode": {
+          "enum": ["infer", "annotation", "syntax", "all"],
+          "default": "infer",
+          "description": "The compiler's compilationMode, as the project's build sets it."
+        },
+        "target": {
+          "enum": ["17", "18", "19", "auto"],
+          "default": "auto",
+          "description": "The compiler's target. auto: the major of the react the project has (17, 18, 19; else 19)."
+        },
+        "environment": {
+          "type": "object",
+          "default": {},
+          "description": "Compiler environment flags (JSON values), passed through as the project's build sets them."
+        },
+        "exclude": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [
+            "**/*.stories.*",
+            "**/*.test.*",
+            "**/*.spec.*",
+            "**/*.d.ts",
+            "**/*.css.ts",
+            "**/__tests__/**",
+            "**/__mocks__/**"
+          ],
+          "description": "Globs (workspace-relative) of changed files not analysed. Replaces the default list when set."
+        },
         "renders": {
           "type": "boolean",
           "default": false,

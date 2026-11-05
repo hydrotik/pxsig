@@ -97,26 +97,38 @@ export function useInspectorActions({
     : [];
   // What the last re-check or story approval did, shown under the header until the entry changes.
   const [note, setNote] = React.useState<string | null>(null);
-  React.useEffect(() => setNote(null), [row?.id]);
+  // This entry's re-check, from the click until its run ends (the server's `check` events): then
+  // "Queued" goes, and only what was not checked stays.
+  const run = React.useRef<{ ran?: boolean; ended?: boolean; note?: string; after?: string }>(null);
+  React.useEffect(() => {
+    run.current = null;
+    setNote(null);
+  }, [row?.id]);
   const activity = useCheckActivity();
   const checking = !!row && !!activity.running?.includes(row.id);
+  React.useEffect(() => {
+    const r = run.current;
+    if (!r) return;
+    if (checking) r.ran = true;
+    else if (r.ran && !r.ended) {
+      r.ended = true;
+      if (r.note) setNote((n) => (n === r.note ? r.after || null : n));
+    }
+  }, [checking]);
   const recheckOne = async () => {
     if (!row) return;
     setBusy(true);
+    const mine: NonNullable<typeof run.current> = {};
+    run.current = mine;
     try {
       const r = await recheck([row.id]);
-      setNote(
-        [
-          t('app.check.queued', { count: r.queued.length }),
-          r.skipped?.length
-            ? t('app.check.skipped', {
-                list: r.skipped.map((x) => `${x.name}: ${x.why}`).join('; '),
-              })
-            : null,
-        ]
-          .filter(Boolean)
-          .join(' · ')
-      );
+      mine.after = r.skipped?.length
+        ? t('app.check.skipped', { list: r.skipped.map((x) => `${x.name}: ${x.why}`).join('; ') })
+        : '';
+      mine.note = [t('app.check.queued', { count: r.queued.length }), mine.after]
+        .filter(Boolean)
+        .join(' · ');
+      setNote(mine.ended ? mine.after || null : mine.note);
     } catch (e) {
       alert(
         t('inspector.review.failed', {

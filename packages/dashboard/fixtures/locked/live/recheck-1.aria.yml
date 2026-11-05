@@ -17,7 +17,6 @@
   - button "Reject"
   - button "Approve"
   - button "Close"
-  - status: Queued 1 entry
   - group "Compare mode":
     - radio "Side by side" [checked]
     - radio "Swipe"

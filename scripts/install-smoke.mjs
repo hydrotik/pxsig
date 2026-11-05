@@ -11,7 +11,8 @@
  *    packed from a copy, so the two package.json edits the release makes in its checkout never
  *    touch this one.
  * 2. In an empty folder whose path has a space: `npm install <pxsig.tgz> <cli-*.tgz>` (Playwright
- *    at the version this checkout tests with, so the installed Chromium matches), then
+ *    at the version this checkout tests with, so the installed Chromium matches); the optional
+ *    peers for React analysis (babel-plugin-react-compiler, @babel/core) are not installed. Then
  *    `npm exec -- pxsig --version`: the CLI is 0.0.0-ci and its engine resolves.
  * 3. `PXSIG_DEBUG=spawn npm exec -- pxsig doctor --ci` on a one-story project: every `[spawn]` line
  *    names node, git or the engine in that platform package, and the engine is among them.
@@ -185,6 +186,11 @@ try {
   const installed = join(project, 'node_modules', '@pxsig', `cli-${id}`, 'bin', exe);
   if (!existsSync(installed)) fail(`the platform package's engine is not at ${installed}`);
   log(`installed; engine at ${installed}`);
+  // React analysis's packages are optional peers: installing pxsig installs neither.
+  for (const peer of ['babel-plugin-react-compiler', '@babel/core'])
+    if (existsSync(join(project, 'node_modules', peer, 'package.json')))
+      fail(`installing pxsig installed its optional peer ${peer}`);
+  log('optional peers: babel-plugin-react-compiler and @babel/core not installed');
 
   // pxsig's runs: no PXSIG_BIN, and the machine's state folders in the temp folder. Playwright
   // finds its browsers under the same folders, so its own path stays where they are.

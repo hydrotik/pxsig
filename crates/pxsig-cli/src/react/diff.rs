@@ -173,11 +173,12 @@ fn alert_text(
 }
 
 /// A side's result: from the cache when the plan found it there, else from this run's results
-/// (stored in the cache when it is a real compile result).
+/// (stored in the cache when it is a real compile result, unless `write` is off).
 fn side_result(
     side: &Value,
     results: &Value,
     cache_dir: &Path,
+    write: bool,
     cached: &mut usize,
 ) -> Result<Value> {
     let sha = side["sha"].as_str().unwrap_or("");
@@ -189,14 +190,17 @@ fn side_result(
     }
     let r = results["results"][sha].clone();
     if r["functions"].is_array() && r.get("error").is_none() {
-        cache::write(cache_dir, sha, &r)?;
+        if write {
+            cache::write(cache_dir, sha, &r)?;
+        }
         return Ok(r);
     }
     Ok(json!({ "error": r["error"].as_str().unwrap_or("missing") }))
 }
 
-/// `reports/react.json` from a plan and the worker results.
-pub fn diff(plan: &Value, results: &Value, cache_dir: &Path) -> Result<Value> {
+/// `reports/react.json` from a plan and the worker results. `write: false` (another process holds
+/// the store) reads the cache and writes nothing to it.
+pub fn diff(plan: &Value, results: &Value, cache_dir: &Path, write: bool) -> Result<Value> {
     let since = plan["base"]["since"]
         .as_str()
         .unwrap_or("the base")
@@ -214,9 +218,15 @@ pub fn diff(plan: &Value, results: &Value, cache_dir: &Path) -> Result<Value> {
         } else {
             format!("Reaches {entries} entries.")
         };
-        let head = side_result(&f["head"], results, cache_dir, &mut cached)?;
+        let head = side_result(&f["head"], results, cache_dir, write, &mut cached)?;
         let base = if f["base"].is_object() {
-            Some(side_result(&f["base"], results, cache_dir, &mut cached)?)
+            Some(side_result(
+                &f["base"],
+                results,
+                cache_dir,
+                write,
+                &mut cached,
+            )?)
         } else {
             None
         };
