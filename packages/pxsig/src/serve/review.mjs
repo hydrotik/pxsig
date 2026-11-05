@@ -4,7 +4,16 @@
  */
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { newBatch, PERSON_VIA, paths, record, sha256, snapshot, undo } from '../lib/approvals.mjs';
+import {
+  headOf,
+  newBatch,
+  PERSON_VIA,
+  paths,
+  record,
+  sha256,
+  snapshot,
+  undo,
+} from '../lib/approvals.mjs';
 import { BY_STORY_OFF, byStory, storySkip } from '../lib/approvals/story.mjs';
 import { readJson, writeJson } from '../lib/files.mjs';
 import { NEEDS_PERSON } from '../lib/guard.mjs';
@@ -47,21 +56,24 @@ export async function approve(srv, S, id, meta = {}) {
   if (S.checking?.has(id) || S.queued.has(id))
     throw httpError(409, `${id} is being re-checked; approve it once the check finishes`);
   // A render that failed (an error page, a timeout) left the previous image behind, not this story.
-  // check.json is pxsig's own file (the fallback has its `rows`).
-  const current = /** @type {CheckReport} */ (readJson(S.checkPath, { rows: [] })).rows.find(
-    (r) => r.id === id
-  );
+  // check.json is pxsig's own file (the fallback has its `rows`), read once: the entry's row cannot
+  // change while it is approved (not queued, not checking, checked above).
+  const report = /** @type {CheckReport} */ (readJson(S.checkPath, { rows: [] }));
+  const current = report.rows.find((r) => r.id === id);
   if (current?.error)
     throw httpError(
       409,
       `${id} did not render (${current.error}); fix it and re-check before approving`
     );
   const batch = meta.batch ?? newBatch(meta.via ?? 'dashboard');
+  // The log line's HEAD, read beside the engine call instead of blocking the event loop.
+  const head = headOf(P.workspaceRoot);
+  // Awaited after the capture; a capture that throws first must not leave it unhandled.
+  head.catch(() => {});
   // No baseline yet (a NEW entry): nothing to snapshot, `before` is null and undo removes the file.
   const { before } = snapshot(P, e, batch);
   // A .psig output carries the render itself as the baseline image, and the environment of that
   // render (the row's, from the check that made it), never this server's or the approver's.
-  const report = /** @type {CheckReport} */ (readJson(S.checkPath, { rows: [] }));
   const renderEnv = current?.env ? (report.envs?.[current.env] ?? null) : null;
   const res = await srv.rust('capture', {
     png: latest,
@@ -73,16 +85,13 @@ export async function approve(srv, S, id, meta = {}) {
     ...(renderEnv ? { env: renderEnv } : {}),
   });
   // The a11y baseline follows the approved render; the old list is kept so an undo can put it back.
-  const row = /** @type {CheckReport} */ (readJson(S.checkPath, { rows: [] })).rows.find(
-    (r) => r.id === id
-  );
   /** @type {string[] | null | undefined} */
   let a11yBefore;
-  if (row?.a11y?.violations) {
+  if (current?.a11y?.violations) {
     // a11y.json is pxsig's own file: entry id → accepted rule ids.
     const base = /** @type {A11yBaseline} */ (readJson(P.store.a11y, {}));
     a11yBefore = base[id] ?? null;
-    base[id] = row.a11y.violations.map((v) => v.id).sort();
+    base[id] = current.a11y.violations.map((v) => v.id).sort();
     writeJson(P.store.a11y, base, { pretty: true });
   }
   const logged = record(P, e, {
@@ -91,6 +100,7 @@ export async function approve(srv, S, id, meta = {}) {
     reason: meta.reason ?? null,
     kind: meta.kind ?? null,
     before,
+    gitHead: await head,
   });
   return {
     ...res,
