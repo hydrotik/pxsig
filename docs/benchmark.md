@@ -97,3 +97,16 @@ At each release, on the `release/X.Y.Z` branch: download `bench-results` from th
 run on `main` and commit it as `scripts/bench/baseline.json`. The file keeps the other OSes' times
 and replaces Linux's. A macOS time can be refreshed the same way with
 `node scripts/bench/run.mjs --out scripts/bench/baseline.json` on a Mac.
+
+## Render counting
+
+`react.renders` ([configuration.md](configuration.md#react)) works in the browser, so this
+benchmark does not time it. Its budget is at most 5 ms per entry and at most 2% of a full check.
+Measured on 2026-11-04 with a full check of hydrotik's static Storybook build (1,074 entries, 8
+pages, Chromium, macOS), twice with the setting off and twice on, alternating: 106.3 s off and
+106.9 s on both times, +0.65 s (0.6%), about 4.8 ms of page time per entry, most of it the wait
+after a capture that followed a commit (`settled`, [spec.md](spec.md#render-counts)). The hook's
+own walk of a commit is about 0.5 ms for 5,000 components, which
+`packages/pxsig/test/react-renders.test.mjs` asserts stays within 5 ms. Both pairs gave the same
+verdict for every entry, and the renders that differed between off and on differed as much
+between two runs with the setting off.

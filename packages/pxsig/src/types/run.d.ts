@@ -42,6 +42,8 @@ export interface RenderResult {
   ms?: number;
   error?: string;
   a11y?: { violations?: A11yViolation[]; error?: string } | null;
+  /** React commits and renders (`react.renders`); null when no React renderer loaded. */
+  renders?: import('./react.js').RenderCounts | null;
 }
 
 /** One row of check.json: the engine's result, the render and the review state of an entry. */
@@ -61,6 +63,8 @@ export interface CheckRow {
   renderMs?: number;
   checkedAt?: string;
   a11y?: A11yResult | null;
+  /** React commits and renders at capture (`react.renders`); null when no React renderer loaded. */
+  renders?: import('./react.js').RenderCounts | null;
   js?: unknown;
   skipped?: boolean;
   /** Approved in review since this verdict (the server marks the row; the next check clears it). */
@@ -92,6 +96,8 @@ export interface CheckSummary {
   a11yViolations: number;
   a11yNew: number;
   modes: (string | undefined)[];
+  /** Entries React was still committing at capture; present when renders were counted. */
+  renderAlerts?: number;
 }
 
 // --- machine (lib/machine.mjs) -------------------------------------------------------------------

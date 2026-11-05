@@ -99,6 +99,12 @@
         "meaning": "Config flag: render with this Playwright browser server instead of launching a browser here, usually the container's from `pxsig browser start`.",
         "setting": "capture.browserEndpoint",
         "env": "PXSIG_BROWSER_WS"
+      },
+      {
+        "name": "no-react",
+        "meaning": "Config flag: React features off for this run, render counting included.",
+        "setting": "react",
+        "env": "PXSIG_REACT"
       }
     ]
   },

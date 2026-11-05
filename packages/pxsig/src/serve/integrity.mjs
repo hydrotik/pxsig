@@ -4,6 +4,7 @@
  */
 import { loadStoryIndex, oneLine, reconcile, writeLedger } from '../lib/integrity.mjs';
 import { pruneStaleRows } from './report-rows.mjs';
+import { REUSE } from './traces.mjs';
 /** @import { StoryIntegrity } from '../types/t5.js' */
 /** @import { ServeContext } from '../types/serve.js' */
 /** @import { ProjectState } from './projects.mjs' */
@@ -23,7 +24,10 @@ export async function runIntegrity(srv, S, why) {
     S.reload();
     pruneStaleRows(srv, S);
     const idx = await loadStoryIndex(S.ctx);
-    const ledger = await reconcile(S.ctx, { index: idx, affected: S.affected });
+    // A pass for a baseline or a render reuses the last pass's tracing (serve/traces.mjs).
+    if (!REUSE.has(why)) S.traces.clear();
+    const affected = S.traces.tracer(S, S.ctx.repoRoot);
+    const ledger = await reconcile(S.ctx, { index: idx, affected });
     const before = S.integrity?.summary?.headline;
     S.integrity = ledger;
     // The ledger is the store's file: only the lock holder writes it (a second, read-only server

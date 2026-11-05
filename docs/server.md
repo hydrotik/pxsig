@@ -5,7 +5,8 @@ pxsig serve [--port 6070] [--watch] [--no-open] [--tab stories] [--project a,b] 
 ```
 
 One server per workspace. It serves the dashboard and an HTTP API for every project, keeps one
-engine process and one pool of warm browsers, and keeps each project's integrity ledger current.
+engine process for renders and decisions (and a second one for tracing edits) and one pool of
+warm browsers, and keeps each project's integrity ledger current.
 Approving a baseline or re-checking a story then costs one render.
 
 | Flag                       | Meaning                                                                                                                                                                                                                                                 |
@@ -79,7 +80,8 @@ With several projects, a switcher in the top bar picks one. URL parameters:
 | `?embed=1&story=<id>` | The inspector alone, for one story (used by the Storybook panel) |
 
 The dashboard ships prebuilt in the `pxsig` npm package. In a clone without a build, the API works
-and `/report/` answers 404 with "the dashboard is not built".
+and `/report/` answers 404 with "the dashboard is not built (<folder>)", the folder relative to
+the workspace, else `~/…` under the home folder.
 
 A project can rebuild the dashboard on its own design system (`dashboard.ui`, `pxsig dashboard
 build`: [ui/build-adapter.md](ui/build-adapter.md)). The server then serves that build while it is
@@ -100,7 +102,7 @@ exactly one project.
 | `GET /__pxsig/status`             | `workspaceId` (below), whether a check or repair is running, queue length, review decisions, per-story status and per-story integrity across all projects, integrity summaries, the dashboard URL, and `approving`: `allowed` (whether this browser opened the dashboard link; never the session itself), `folder` (the workspace folder's own name, never a path) and `command` (how a person gets a new link there: the project's pxsig through its package manager, else `pxsig` from the PATH). No answer the dashboard reads carries an absolute path |
 | `GET /__pxsig/data?project=`      | One project's dashboard data: the last check, history, review decisions, integrity, image paths                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `GET /__pxsig/integrity?project=` | The project's ledger. `&story=<id>` for one story, `&component=` / `&status=` to filter, `&fresh=1` to recompute first. `/api/integrity` is the same.                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `GET /__pxsig/events`             | Server-sent events: `hello`, `data` (a report changed), `review`, `check` (`running`, `done`, `error`), `integrity`, `watch`                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `GET /__pxsig/events`             | Server-sent events: `hello`, `data` (a report changed), `review` (a decision: `id`, `entry` or `a11y`; with `row` and `summary` when check.json was rewritten, `refetch` when more changed), `check` (`running`, `done`, `error`), `integrity`, `watch`                                                                                                                                                                                                                                                                                                    |
 
 `workspaceId` names the workspace the server serves: the first 16 hex characters of the SHA-256 of
 its real path, so the path itself is not sent. Every port tries 6070 first, so a client can reach

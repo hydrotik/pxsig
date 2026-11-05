@@ -9,6 +9,7 @@ import { envSummary } from '../lib/env.mjs';
 /** @import { CheckReport, CheckTiming } from '../types/t5.js' */
 /** @import { ServeContext } from '../types/serve.js' */
 /** @import { ProjectState } from './projects.mjs' */
+/** @typedef {{ check: CheckReport, dropped: string[] }} Written */
 
 /**
  * Rewrite check.json's rows with `mut` (null keeps a row), add `fresh` rows it lacks, recount.
@@ -17,6 +18,7 @@ import { envSummary } from '../lib/env.mjs';
  * @param {Map<string, CheckRow>} [fresh]
  * @param {CheckTiming | null} [timing]
  * @param {Record<string, EnvRecord> | null} [envs]
+ * @returns {Written} the report as written, and the ids of the rows it dropped
  */
 export function updateCheckRows(S, mut, fresh = new Map(), timing = null, envs = null) {
   // check.json is this server's (or a CLI check's) own file.
@@ -60,7 +62,26 @@ export function updateCheckRows(S, mut, fresh = new Map(), timing = null, envs =
   }
   S.quietUntil = Date.now() + 800;
   writeJson(S.checkPath, check);
+  return { check, dropped };
 }
+
+/**
+ * What a decision's `review` event carries about check.json, so an open page patches its data
+ * instead of fetching all of it again: the entry's rewritten row and the recounted summary. Empty
+ * when check.json was not rewritten; `refetch` when rows were dropped too (the page reloads).
+ * @param {Written | null} written
+ * @param {string} id
+ * @returns {{ row?: CheckRow | null, summary?: CheckReport['summary'], refetch?: true }}
+ */
+export const checkPatch = (written, id) =>
+  !written
+    ? {}
+    : written.dropped.length
+      ? { refetch: true }
+      : {
+          row: written.check.rows.find((r) => r.id === id) ?? null,
+          summary: written.check.summary,
+        };
 
 /**
  * Drops check rows for entries no longer in the manifest (a story removed on another branch), on

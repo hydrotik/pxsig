@@ -13,6 +13,8 @@ import {
   waitMarkupStable,
 } from './page.mjs';
 import { navErrorCode, retryOnce } from '../retry.mjs';
+import { reactSettings } from '../react/config.mjs';
+import { RESET_RENDERS, STAYED_QUIET, reactHook, readRenders, rowRenders } from './react-hook.mjs';
 /** @import { BrowserContext, Page, PageScreenshotOptions } from 'playwright' */
 /** @import { RenderResult } from '../../types.js' */
 /** @import { BrowserSource, PxsigBrowser, RenderEntry, RenderOptions, RenderOutput, StorybookPreview } from '../../types/t4.js' */
@@ -74,8 +76,10 @@ async function resetPage(page) {
  * `browser` is a Browser (chromium) or a `browserPool()`.
  *
  * opts: { baseUrl, globals, viewport, colorScheme, settleMs, target, waitFor, concurrency,
- *         css, tokens, a11y, project }
- * Returns [{ id, png, ms, error, a11y }] in input order plus wall-clock ms.
+ *         css, tokens, a11y, project, renders }
+ * `renders` (default: the project's `react.renders`; never when React is off) counts React commits
+ * and renders per entry.
+ * Returns [{ id, png, ms, error, a11y, renders }] in input order plus wall-clock ms.
  * @param {PxsigBrowser | BrowserSource} browser
  * @param {RenderEntry[]} stories
  * @param {string} outDir
@@ -98,6 +102,11 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
     fastSwitch = true,
     waitFor = [],
   } = opts;
+  // An off switch (`react: false`, --no-react, PXSIG_REACT=off) wins over an explicit `renders`.
+  const react = reactSettings(
+    /** @type {{ config?: unknown } | null | undefined} */ (project)?.config
+  );
+  const counting = !react.off && (opts.renders ?? react.renders);
   let reloads = 0;
   // A pool has `get`; a Browser does not.
   const pool =
@@ -169,13 +178,17 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             await context.addInitScript(() => {
               Math.random = () => 0.5;
             });
+            if (counting) await context.addInitScript(reactHook);
             page = await context.newPage();
             ctxKey = cfg.key;
           }
           const g = e.globals ?? globals;
           // Switch stories inside the loaded preview (~40 ms) instead of reloading the
           // Storybook bundle (~600 ms). A new page, new globals or a failed switch reloads.
-          const switched = fastSwitch && loadedGlobals === g && (await switchStory(page, storyId));
+          const canSwitch = fastSwitch && loadedGlobals === g;
+          // A switch keeps the page: its render counters start again for this story.
+          if (canSwitch && counting) await page.evaluate(RESET_RENDERS).catch(() => {});
+          const switched = canSwitch && (await switchStory(page, storyId));
           if (!switched) {
             const url = `${baseUrl}/iframe.html?id=${encodeURIComponent(storyId)}&viewMode=story${g ? `&globals=${g}` : ''}`;
             // A connection that broke (lib/retry.mjs NAV_CODES, e.g. Windows' ERR_NO_BUFFER_SPACE) is
@@ -236,6 +249,7 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             minMs: Math.max(settleMs, ...rules.map((w) => w.minMs ?? 0)) + (e.delay ?? 0),
           });
           for (const w of rules) if (w.stableMarkup) await waitMarkupStable(page, w.stableMarkup);
+          const mountRead = counting ? await readRenders(page) : undefined;
           if (e.interaction) {
             const it = e.interaction;
             const loc = page.locator(it.target ?? `${target} *`).first();
@@ -252,6 +266,11 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             if (it.waitFor) await page.waitForSelector(it.waitFor, { timeout: 5000 });
             await page.waitForTimeout(it.settleMs ?? 150);
           }
+          const renders = counting
+            ? e.interaction && mountRead
+              ? rowRenders(mountRead, await readRenders(page))
+              : rowRenders(mountRead)
+            : undefined;
           await page.evaluate(PAUSE_SVG);
           const sel = e.target ?? target;
           const el = await page.$(sel);
@@ -297,7 +316,16 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
               // Playwright rejects with an Error.
               .catch((/** @type {Error} */ err) => ({ error: String(err.message).split('\n')[0] }));
           }
-          results[i] = { id: e.id, png, ms: performance.now() - t, a11y: a11yRes };
+          results[i] = {
+            id: e.id,
+            png,
+            ms: performance.now() - t,
+            a11y: a11yRes,
+            ...(renders !== undefined ? { renders } : {}),
+          };
+          // A commit just before the capture: settled only if React then stayed quiet.
+          if (renders && !renders.settled)
+            renders.settled = await page.evaluate(STAYED_QUIET).catch(() => false);
           // Leave nothing behind for the next story on this page: pointer, focus, scroll.
           if (fastSwitch) await resetPage(page);
         } catch (err) {

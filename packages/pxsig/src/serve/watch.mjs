@@ -43,14 +43,19 @@ export function watchStores(srv) {
     const { P } = S;
     /** @param {string} why */
     const later = (why) => () => scheduleIntegrity(srv, S, why);
-    watchFor(srv, P.srcRoot, later('source changed'), (f) =>
+    /** @param {string} why a change that can change what an edit traces to */
+    const retrace = (why) => () => {
+      S.traces.clear();
+      scheduleIntegrity(srv, S, why);
+    };
+    watchFor(srv, P.srcRoot, retrace('source changed'), (f) =>
       /\.(tsx?|jsx?|mjs|css|json|mdx)$/.test(f)
     );
     watchFor(srv, P.store.baselines, later('baselines changed'));
     watchFor(srv, join(P.store.root, 'renders'), later('renders changed'), (f) =>
       f.startsWith('latest')
     );
-    watchFor(srv, P.store.root, later('manifest changed'), (f) =>
+    watchFor(srv, P.store.root, retrace('manifest changed'), (f) =>
       /^manifest(\..+)?\.json$/.test(f)
     );
     /** @type {NodeJS.Timeout | null} */
@@ -91,7 +96,11 @@ export function watchSources(srv) {
           changed.clear();
           try {
             if (!S.runPath) return;
-            const a = await srv.rust('affected', { manifest: S.runPath, root: srv.ws.root, files });
+            const a = await srv.trace('affected', {
+              manifest: S.runPath,
+              root: srv.ws.root,
+              files,
+            });
             // Watch is not a gate: it re-checks what the edits trace to, and names what it cannot trace
             // (the gates would check everything for those; docs/ci.md).
             const ids = a.traced ?? a.ids;

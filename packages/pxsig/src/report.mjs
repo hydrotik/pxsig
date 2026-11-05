@@ -30,7 +30,7 @@ import { fileURLToPath } from 'node:url';
 import { herePath } from './lib/machine.mjs';
 import { shortPath } from './lib/paths.mjs';
 import { readImage } from './lib/psig.mjs';
-import { readJson } from './lib/files.mjs';
+import { readJson, tailLines } from './lib/files.mjs';
 import { manifestSource } from './lib/source.mjs';
 import { byStory } from './lib/approvals/story.mjs';
 import { PXSIG_VERSION, engineVersion, openProject } from './lib/workspace.mjs';
@@ -60,10 +60,8 @@ export function useDashboard(dir) {
 function history(P, limit = 100) {
   const p = join(P.store.reports, 'history.ndjson');
   if (!existsSync(p)) return [];
-  return readFileSync(p, 'utf8')
-    .trim()
-    .split('\n')
-    .slice(-limit)
+  // The log grows with every check; only its tail is read.
+  return tailLines(p, limit)
     .map((l) => {
       try {
         // A line the engine wrote (`--history`): `rows` maps an id to `[pass, …]`.

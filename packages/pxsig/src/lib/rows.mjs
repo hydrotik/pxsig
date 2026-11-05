@@ -61,6 +61,8 @@ export function buildRow(e, rust, render, a11yBase, manifest, js) {
     // mix ages: pxsig_stale compares it with source edits.
     checkedAt: new Date().toISOString(),
     a11y,
+    // React commits and renders at capture (`react.renders`); absent when not counted.
+    ...(rr.renders !== undefined ? { renders: rr.renders } : {}),
     ...(js ? { js } : {}),
   };
 }
@@ -91,6 +93,10 @@ export function summarize(rows, extra = /** @type {X} */ ({})) {
     a11yViolations: checked.reduce((a, r) => a + (r.a11y?.violations?.length ?? 0), 0),
     a11yNew: checked.reduce((a, r) => a + (r.a11y?.new ?? 0), 0),
     modes: [...new Set(checked.map((r) => r.mode))],
+    // Entries React was still committing at capture: an alert, never a failure.
+    ...(checked.some((r) => r.renders !== undefined)
+      ? { renderAlerts: checked.filter((r) => r.renders?.settled === false).length }
+      : {}),
     ...extra,
   };
 }

@@ -258,11 +258,16 @@ fn dedup(files: Vec<Change>) -> Vec<Change> {
 impl Changes {
     /// The base side of a workspace file (empty when absent there, or when there is no git).
     pub(super) fn base_text(&self, ws_path: &str) -> String {
-        let (Some(top), Some(base)) = (&self.top, &self.base) else {
-            return String::new();
-        };
-        git_raw(top, &["show", &format!("{base}:{}{ws_path}", self.prefix)])
+        self.base_bytes(ws_path)
             .map(|b| String::from_utf8_lossy(&b).into_owned())
             .unwrap_or_default()
+    }
+
+    /// The base side's bytes; `None` when git cannot read them (absent there, or no git).
+    pub fn base_bytes(&self, ws_path: &str) -> Option<Vec<u8>> {
+        let (Some(top), Some(base)) = (&self.top, &self.base) else {
+            return None;
+        };
+        git_raw(top, &["show", &format!("{base}:{}{ws_path}", self.prefix)]).ok()
     }
 }
