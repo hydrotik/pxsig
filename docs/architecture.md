@@ -122,7 +122,9 @@ flowchart TD
 
 The server keeps, per workspace:
 
-- one engine process (`pxsig serve`), spoken to over stdin and stdout, one JSON request per line;
+- two engine processes (`pxsig serve`), spoken to over stdin and stdout, one JSON request per
+  line: one for captures, comparisons and decisions, one for tracing (`affected`), so a decision
+  never waits behind an integrity pass;
 - one pool of browsers, shared by every project;
 - per project: the run manifest, a queue of entries to re-check, the integrity ledger, and file
   watchers on the sources, baselines, renders, manifest and reports.

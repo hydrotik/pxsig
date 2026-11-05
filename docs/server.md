@@ -5,7 +5,8 @@ pxsig serve [--port 6070] [--watch] [--no-open] [--tab stories] [--project a,b] 
 ```
 
 One server per workspace. It serves the dashboard and an HTTP API for every project, keeps one
-engine process and one pool of warm browsers, and keeps each project's integrity ledger current.
+engine process for renders and decisions (and a second one for tracing edits) and one pool of
+warm browsers, and keeps each project's integrity ledger current.
 Approving a baseline or re-checking a story then costs one render.
 
 | Flag                       | Meaning                                                                                                                                                                                                                                                 |

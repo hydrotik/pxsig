@@ -91,7 +91,11 @@ export function watchSources(srv) {
           changed.clear();
           try {
             if (!S.runPath) return;
-            const a = await srv.rust('affected', { manifest: S.runPath, root: srv.ws.root, files });
+            const a = await srv.trace('affected', {
+              manifest: S.runPath,
+              root: srv.ws.root,
+              files,
+            });
             // Watch is not a gate: it re-checks what the edits trace to, and names what it cannot trace
             // (the gates would check everything for those; docs/ci.md).
             const ids = a.traced ?? a.ids;

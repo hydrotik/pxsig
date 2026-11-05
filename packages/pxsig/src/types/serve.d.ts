@@ -24,7 +24,12 @@ export interface ServeContext {
     method: M,
     params: EngineMethods[M]['params']
   ): Promise<EngineMethods[M]['result']>;
-  /** Stops the engine, when one is running. */
+  /** One call to the tracing engine: integrity's and watch's `affected`, off `rust`'s queue. */
+  trace<M extends EngineMethod>(
+    method: M,
+    params: EngineMethods[M]['params']
+  ): Promise<EngineMethods[M]['result']>;
+  /** Stops both engines, when running. */
   kill(): void;
   /** One event to every page on `/__pxsig/events`. */
   broadcast(event: string, data?: Record<string, unknown>): void;

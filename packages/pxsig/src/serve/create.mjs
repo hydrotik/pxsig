@@ -61,8 +61,17 @@ export function createPxsigServer({
   const TOKENS = { cli: newToken(), mcp: newToken() };
   // The dashboard link's tickets and cookies (lib/guard.mjs): in memory, so a restart ends them.
   const links = new Links();
-  // --- the Rust engine, kept running --------------------------------------------------
-  const { rust, kill } = startEngine(ws.root, rustBinary());
+  // --- the Rust engine, kept running: two lanes ---------------------------------------
+  // The engine answers one request at a time, so tracing (`affected`, up to seconds per edited
+  // file in an integrity pass) runs on its own engine: a capture, an approval or a check never
+  // waits behind it.
+  const engine = startEngine(ws.root, rustBinary());
+  const tracer = startEngine(ws.root, rustBinary());
+  const { rust } = engine;
+  const kill = () => {
+    engine.kill();
+    tracer.kill();
+  };
   // --- live updates -------------------------------------------------------------------------
   /** @type {Set<ServerResponse>} */
   const clients = new Set();
@@ -116,6 +125,7 @@ export function createPxsigServer({
     tokens: TOKENS,
     links,
     rust,
+    trace: tracer.rust,
     kill,
     broadcast,
     clients,
