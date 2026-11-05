@@ -8,7 +8,7 @@ import { appendLine, readJson, writeJson } from '../lib/files.mjs';
 import { applyPrune } from '../lib/prune.mjs';
 import { httpError } from './http.mjs';
 import { needLock } from './projects.mjs';
-import { updateCheckRows } from './report-rows.mjs';
+import { checkPatch, updateCheckRows } from './report-rows.mjs';
 import { agentMayClear } from './review.mjs';
 /** @import { Project } from '../types.js' */
 /**
@@ -16,6 +16,7 @@ import { agentMayClear } from './review.mjs';
  */
 /** @import { ServeContext } from '../types/serve.js' */
 /** @import { ProjectState } from './projects.mjs' */
+/** @import { Written } from './report-rows.mjs' */
 
 // Separate from the visual verdict: accepting puts an entry's current axe violations on its
 // accepted list (<store>/a11y.json); rejecting marks them for a fix. Both last until the next
@@ -50,6 +51,8 @@ export function a11yReview(srv, S, action, id, meta = {}) {
   const at = new Date().toISOString();
   const by = who(P.workspaceRoot, P.config);
   const via = meta.via ?? 'dashboard';
+  /** @type {Written | null} */
+  let written = null;
   if (action === 'a11y-accept') {
     const row = /** @type {CheckReport} */ (readJson(S.checkPath, { rows: [] })).rows.find(
       (r) => r.id === id
@@ -82,7 +85,7 @@ export function a11yReview(srv, S, action, id, meta = {}) {
       rule: meta.rule ?? null,
     });
     delete av[id];
-    updateCheckRows(S, (r) =>
+    written = updateCheckRows(S, (r) =>
       r.id === id && r.a11y?.violations
         ? {
             ...r,
@@ -109,7 +112,12 @@ export function a11yReview(srv, S, action, id, meta = {}) {
   S.quietUntil = Date.now() + 800;
   writeJson(S.a11yReviewPath, av, { pretty: true });
   console.log(`[serve] ${S.name}: ${action} ${id} (via ${via})`);
-  srv.broadcast('review', { project: S.name, id, a11y: av[id] ?? null });
+  srv.broadcast('review', {
+    project: S.name,
+    id,
+    a11y: av[id] ?? null,
+    ...checkPatch(written, id),
+  });
   return av[id] ?? null;
 }
 

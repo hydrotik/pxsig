@@ -5,7 +5,8 @@
 //!   → {"id":1,"method":"compare","params":{"png":"a.png","sig":"a.pxsig.json"}}
 //!   ← {"id":1,"result":{"pass":true,"metrics":{…}}}
 //!
-//! Methods: ping · capture · compare (+ outDir: write artifacts) · check · baseline · trim · diff · affected.
+//! Methods: ping · capture · compare (+ outDir: write artifacts) · check · baseline · trim · diff ·
+//! affected · react-plan · react-diff (the commands' parameters, `react.rs`).
 //! Paths are resolved against the process cwd (or `root` where a method takes one).
 
 use std::io::{BufRead, Write};
@@ -143,6 +144,8 @@ fn dispatch(method: &str, p: &Value) -> Result<Value> {
             };
             affected::affected(&root, &m, &ch)
         }
+        "react-plan" => crate::react::serve_plan(p),
+        "react-diff" => crate::react::serve_diff(p),
         other => Err(anyhow!("unknown method `{other}`")),
     }
 }
@@ -183,6 +186,8 @@ fn serve_lines(input: impl BufRead, out: &mut impl Write) -> Result<()> {
 
 #[cfg(test)]
 mod dispatch_tests;
+#[cfg(test)]
+mod react_tests;
 
 #[cfg(test)]
 mod tests {

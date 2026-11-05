@@ -12,6 +12,7 @@ import { shownPath } from '../lib/paths.mjs';
 import { flagLayer, loadProject, writeRunManifest } from '../lib/workspace.mjs';
 import { httpError } from './http.mjs';
 import { scheduleIntegrity } from './integrity.mjs';
+import { traceCache } from './traces.mjs';
 /** @import { IntegrityContext, reconcile } from '../lib/integrity.mjs' */
 /** @import { applyRepairs } from '../lib/repair.mjs' */
 /** @import { LockHandle, Project, ProjectRef, RunManifest } from '../types.js' */
@@ -46,6 +47,7 @@ import { scheduleIntegrity } from './integrity.mjs';
  * @property {string} [error] why the run manifest could not be written
  * @property {() => void} reload
  * @property {(file: string) => Promise<string[]>} affected
+ * @property {ReturnType<typeof traceCache>} traces the last pass's tracing (serve/traces.mjs)
  */
 
 /**
@@ -77,6 +79,7 @@ export function openState(srv, ref) {
     quietUntil: 0,
     lock: null,
     lockWait: null,
+    traces: traceCache(),
   };
   S.reload = () => {
     try {
@@ -106,7 +109,7 @@ export function openState(srv, ref) {
   S.affected = (file) =>
     S.runPath
       ? srv
-          .rust('affected', { manifest: S.runPath, root: P.workspaceRoot, files: [file] })
+          .trace('affected', { manifest: S.runPath, root: P.workspaceRoot, files: [file] })
           .then((r) => r.traced ?? r.ids)
       : Promise.resolve([]);
   mkdirSync(P.store.reports, { recursive: true });

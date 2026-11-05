@@ -30,6 +30,7 @@ import { paths, sha256 } from './approvals/core.mjs';
 /** @import { ApprovalProject, EntryPaths, Interrupted, Mismatch, VerifyResult } from '../types/t2.js' */
 
 export {
+  headOf,
   newBatch,
   paths,
   PERSON_VIA,

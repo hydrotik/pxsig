@@ -226,3 +226,107 @@ fn detail_sweep_reads_its_input_file() {
     let e = run_args(&["detail-sweep", "--input", &s(&input)]).unwrap_err();
     assert!(format!("{e:#}").contains("sweep input"), "{e:#}");
 }
+
+#[test]
+fn react_plan_then_diff_from_the_command_line() {
+    let d = scratch("react");
+    fs::create_dir_all(d.join("src")).unwrap();
+    fs::write(d.join("src/A.tsx"), "export function A() {}\n").unwrap();
+    fs::write(d.join("src/A.stories.tsx"), "import { A } from './A';\n").unwrap();
+    fs::write(
+        d.join("m.json"),
+        r#"{"srcRoot":"src","stories":[{"id":"a","sig":"a.psig","importPath":"src/A.stories.tsx"}]}"#,
+    )
+    .unwrap();
+    fs::write(d.join("opts.json"), r#"{"key":{"backend":"babel"}}"#).unwrap();
+    fs::write(d.join("results.json"), r#"{"results":{}}"#).unwrap();
+    let (m, root, cache) = (s(&d.join("m.json")), s(&d), s(&d.join("cache")));
+    let (opts, plan) = (
+        format!("@{}", s(&d.join("opts.json"))),
+        s(&d.join("plan.json")),
+    );
+    let plan_args = [
+        "react-plan",
+        "--manifest",
+        &m,
+        "--root",
+        &root,
+        "--all",
+        "--cache",
+        &cache,
+        "--options",
+        &opts,
+        "--out",
+        &plan,
+    ];
+    assert_eq!(run_args(&plan_args).unwrap(), 0);
+    let out = s(&d.join("react.json"));
+    let diff_args = [
+        "react-diff",
+        "--plan",
+        &plan,
+        "--results",
+        &s(&d.join("results.json")),
+        "--cache",
+        &cache,
+        "--out",
+        &out,
+    ];
+    assert_eq!(run_args(&diff_args).unwrap(), 0);
+    let r: serde_json::Value = serde_json::from_str(&fs::read_to_string(&out).unwrap()).unwrap();
+    assert_eq!(r["files"][0]["path"], "src/A.tsx");
+    // Nothing compiled it: reported as missing, never an exit code.
+    assert_eq!(r["files"][0]["head"], "missing");
+    // One selection at most; the cache and options are required.
+    for args in [
+        &[
+            "react-plan",
+            "--manifest",
+            "m",
+            "--cache",
+            "c",
+            "--options",
+            "{}",
+            "--all",
+            "--since",
+            "main",
+        ][..],
+        &[
+            "react-plan",
+            "--manifest",
+            "m",
+            "--cache",
+            "c",
+            "--options",
+            "{}",
+            "--all",
+            "--files",
+            "a",
+        ],
+        &["react-plan", "--manifest", "m", "--options", "{}"],
+        &["react-plan", "--manifest", "m", "--cache", "c"],
+        &[
+            "react-diff",
+            "--plan",
+            "p",
+            "--results",
+            "r",
+            "--cache",
+            "c",
+        ],
+    ] {
+        assert!(parse(args).is_err(), "{args:?}");
+    }
+    // Options that are not JSON: an error, exit 2.
+    assert!(run_args(&[
+        "react-plan",
+        "--manifest",
+        &m,
+        "--all",
+        "--cache",
+        &cache,
+        "--options",
+        "{nope"
+    ])
+    .is_err());
+}

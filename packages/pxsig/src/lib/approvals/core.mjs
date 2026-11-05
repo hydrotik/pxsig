@@ -1,6 +1,6 @@
 /** The approval trail (approvals.mjs): hashes, the snapshot before a write, the log line. */
 import { createHash } from 'node:crypto';
-import { spawnSync } from '../spawn.mjs';
+import { execFile, spawnSync } from '../spawn.mjs';
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { appendLine, fault, readLines } from '../files.mjs';
@@ -36,6 +36,18 @@ export function paths(P, entry) {
  */
 const git = (root, ...args) =>
   spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' }).stdout?.trim() ?? '';
+/**
+ * The short HEAD `record` logs as `gitHead`, read without blocking: the server starts it before
+ * the engine call and passes it in. The same string as `record` reads ('' outside a repository).
+ * @param {string} root
+ * @returns {Promise<string>}
+ */
+export const headOf = (root) =>
+  new Promise((ok) => {
+    execFile('git', ['-C', root, 'rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }, (_, out) =>
+      ok(String(out ?? '').trim())
+    );
+  });
 /**
  * Who approved, for the log: nobody by default (`approvals.identity`, docs/configuration.md#keys).
  * The commit that adds a line, and the pull request that merges it, already say who; pxsig keeps no
@@ -92,7 +104,11 @@ export function snapshot(P, entry, batch) {
  * @param {EntryPaths} entry
  * @param {RecordOptions} options
  */
-export function record(P, entry, { batch, via, reason = null, before, kind = null, person }) {
+export function record(
+  P,
+  entry,
+  { batch, via, reason = null, before, kind = null, person, gitHead }
+) {
   const p = paths(P, entry);
   fault('after-psig');
   const line = stamp(
@@ -104,7 +120,7 @@ export function record(P, entry, { batch, via, reason = null, before, kind = nul
       batch,
       reason,
       kind,
-      gitHead: git(P.workspaceRoot, 'rev-parse', '--short', 'HEAD'),
+      gitHead: gitHead ?? git(P.workspaceRoot, 'rev-parse', '--short', 'HEAD'),
       before,
       after: sha256(p.sig),
     },

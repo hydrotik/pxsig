@@ -65,6 +65,9 @@ function readFlags() {
     'cli/project.mjs',
     'cli/tools.mjs',
     'check.mjs',
+    ...['setup', 'select', 'prepare', 'render', 'update', 'compare', 'report', 'via-server'].map(
+      (s) => `check/${s}.mjs`
+    ),
     'approve.mjs',
     'serve.mjs',
     'report.mjs',
