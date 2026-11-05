@@ -64,6 +64,7 @@ function readFlags() {
     'cli/check.mjs',
     'cli/project.mjs',
     'cli/tools.mjs',
+    'cli/react.mjs',
     'check.mjs',
     ...['setup', 'select', 'prepare', 'render', 'update', 'compare', 'report', 'via-server'].map(
       (s) => `check/${s}.mjs`
@@ -96,7 +97,7 @@ function readFlags() {
 
 test('every command the CLI dispatches has an entry, and no other', () => {
   // The command groups in cli/ return the blocks cli.mjs spreads (a TypeError when one is missing).
-  const names = ['read', 'check', 'project', 'tools'].flatMap((g) => {
+  const names = ['read', 'check', 'project', 'tools', 'react'].flatMap((g) => {
     const block = /** @type {RegExpMatchArray} */ (
       src(`cli/${g}.mjs`).match(/\n {2}return \{\n([\s\S]*?)\n {2}\};\n\}/)
     )[1];

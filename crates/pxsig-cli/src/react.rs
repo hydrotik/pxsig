@@ -65,9 +65,16 @@ fn plan_answer(plan: Value, out: Option<&Path>) -> Result<Value> {
     )
 }
 
-/// `react-diff`: compare, write the cache and `out`; answers `{ summary, alerts }`.
-fn diff_answer(plan: &Path, results: &Path, cache: &Path, out: &Path) -> Result<Value> {
-    let report = diff::diff(&read_json(plan)?, &read_json(results)?, cache)?;
+/// `react-diff`: compare, write the cache (unless `read_only`) and `out`; answers
+/// `{ summary, alerts }`.
+fn diff_answer(
+    plan: &Path,
+    results: &Path,
+    cache: &Path,
+    out: &Path,
+    read_only: bool,
+) -> Result<Value> {
+    let report = diff::diff(&read_json(plan)?, &read_json(results)?, cache, !read_only)?;
     write_json(out, &report)?;
     Ok(
         json!({ "summary": report["summary"], "alerts": report["alerts"], "notes": report["notes"] }),
@@ -80,10 +87,16 @@ pub fn cmd_plan(o: &PlanOpts, out: Option<PathBuf>) -> Result<u8> {
     Ok(0)
 }
 
-pub fn cmd_diff(plan: &Path, results: &Path, cache: &Path, out: &Path) -> Result<u8> {
+pub fn cmd_diff(
+    plan: &Path,
+    results: &Path,
+    cache: &Path,
+    out: &Path,
+    read_only: bool,
+) -> Result<u8> {
     println!(
         "{}",
-        serde_json::to_string_pretty(&diff_answer(plan, results, cache, out)?)?
+        serde_json::to_string_pretty(&diff_answer(plan, results, cache, out, read_only)?)?
     );
     Ok(0)
 }
@@ -124,12 +137,13 @@ pub fn serve_plan(p: &Value) -> Result<Value> {
     plan_answer(plan::plan(&o)?, p["out"].as_str().map(Path::new))
 }
 
-/// The daemon's `react-diff`: `{ plan, results, cache, out }` (paths).
+/// The daemon's `react-diff`: `{ plan, results, cache, out, readOnly? }` (paths).
 pub fn serve_diff(p: &Value) -> Result<Value> {
     diff_answer(
         Path::new(param(p, "plan")?),
         Path::new(param(p, "results")?),
         Path::new(param(p, "cache")?),
         Path::new(param(p, "out")?),
+        p["readOnly"] == true,
     )
 }

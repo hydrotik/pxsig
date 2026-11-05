@@ -21,7 +21,7 @@
       },
       {
         "name": "all",
-        "meaning": "Read commands (status, list, stale, a11y, history, doctor): every project in the workspace. `check --all` keeps its own meaning: every entry."
+        "meaning": "Read commands (status, list, stale, a11y, history, doctor): every project in the workspace. `check --all` keeps its own meaning: every entry; `react --all`: every module that reaches an entry."
       },
       {
         "name": "workspace",
@@ -393,6 +393,43 @@
         }
       ],
       "seeAlso": ["check"]
+    },
+    "react": {
+      "summary": "The React Compiler on the changed files, compared with the merge base: components and hooks it compiled before and skips now, and new Rules-of-React findings, as alerts. No Storybook, no browser.",
+      "usage": ["pxsig react [--since <ref> | --files a,b | --all]"],
+      "flags": [
+        {
+          "name": "since",
+          "value": "ref",
+          "default": "main",
+          "meaning": "The files changed since the merge base with <ref>, plus staged, unstaged and untracked work."
+        },
+        {
+          "name": "files",
+          "value": "a,b",
+          "meaning": "These files (comma-separated), compared with HEAD."
+        }
+      ],
+      "effects": ["writes-store"],
+      "exits": {
+        "0": "Analysed, skipped (off, not installed, a bad react value) or failed: alerts never change the exit code",
+        "2": "Usage or setup error"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig react",
+          "shows": "What the React Compiler skips now that it compiled at the merge base with main"
+        },
+        {
+          "cmd": "pxsig react --since origin/main --json",
+          "shows": "A pull request's React analysis as reports/react.json's shape"
+        },
+        {
+          "cmd": "pxsig react --all",
+          "shows": "The inventory: every module that reaches an entry, compiled or skipped, with no comparison"
+        }
+      ],
+      "seeAlso": ["affected", "check", "doctor"]
     },
     "a11y": {
       "summary": "axe violations per entry, grouped by rule; with --prune, the accepted rules that no longer fire.",
