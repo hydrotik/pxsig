@@ -133,7 +133,7 @@ image's engine.
   that list may only shrink.
 - `pnpm screens:check` stages the example on the host first (`scripts/live/stage.mjs`: installed
   from its lockfile, its Storybook built as committed and with the scripted change, under
-  `node_modules/.cache/pxsig/live`; skipped while nothing it reads changed). In the container each
+  `target/pxsig-live`; skipped while nothing it reads changed). In the container each
   run starts from a clean scratch store there: 9 entries pass, 3 are new.
   The staged example also has the React Compiler and Babel (pxsig's own test fixtures,
   `packages/pxsig/test/react-compiler`, installed and linked in) and a git repository whose `main`
