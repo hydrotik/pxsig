@@ -13,7 +13,7 @@ import {
   writeLedger,
 } from '../lib/integrity.mjs';
 import { appendedSince, changedByRoute } from '../lib/approvals.mjs';
-import { buildRow, summarize } from '../lib/rows.mjs';
+import { buildRow, stampRenders, summarize } from '../lib/rows.mjs';
 import { writeJson } from '../lib/files.mjs';
 import { annotateRow, byId, envLine, envSummary } from '../lib/env.mjs';
 import { PXSIG_VERSION } from '../lib/workspace.mjs';
@@ -73,6 +73,7 @@ export async function report(S, sel, prep, run, cmp, { t0, retryMs, react = null
 
   // --- 6. report -------------------------------------------------------------------------------------------
   // The last check.json this check (or the server) wrote.
+  const checkedAt = new Date().toISOString();
   const previous = existsSync(join(reports, `${outName}.json`))
     ? /** @type {CheckReport} */ (
         JSON.parse(readFileSync(join(reports, `${outName}.json`), 'utf8'))
@@ -126,11 +127,12 @@ export async function report(S, sel, prep, run, cmp, { t0, retryMs, react = null
           inherited: false,
         };
       }
-      return annotateRow(buildRow(e, rows.get(e.id), render.get(e.id), a11yBase, manifest, null), {
-        current,
-        envs,
-        ignore: envCfg.ignore,
-      });
+      const row = annotateRow(
+        buildRow(e, rows.get(e.id), render.get(e.id), a11yBase, manifest, null),
+        { current, envs, ignore: envCfg.ignore }
+      );
+      // Render counts: when, and the counts of the row this one replaces.
+      return stampRenders(row, prevRows.get(e.id), checkedAt);
     });
   const checked = out.filter((r) => !r.skipped);
   // The approval log lines this range added (docs/agents.md): `--since` only, where a merge base is known.

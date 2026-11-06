@@ -38,6 +38,10 @@ export interface RenderCounts {
   ms?: number;
   /** React had stopped committing: no commit within 250 ms after its last one before the capture. */
   settled: boolean;
+  /** When the render that measured these counts ran (a check that rendered the entry). */
+  at?: string;
+  /** The mount counts of the row this one replaced, for "since the last check in this store". */
+  prev?: { commits: number; rendered: number | null; at: string | null };
 }
 
 /** One read of the page's counters (`readRenders`): a window, plus the totals so far. */
@@ -235,6 +239,54 @@ export interface ReactReport {
   summary: ReactSummary;
 }
 
+/** Where React is off, for the dashboard: the place and the key that turned it off. */
+export interface ReactOff {
+  where: 'config' | 'workspace' | 'flag' | 'env';
+  key: 'react' | 'react.compiler';
+}
+
+/** What the server knows about a project's analysis (serve/react.mjs), for `data.react`. */
+export interface ReactLive {
+  running: boolean;
+  /** The last run failed: why. */
+  error: string | null;
+  /** The last run was skipped (and none finished since). */
+  skipped: boolean;
+  /** The last run's results were not saved: the store's holder. */
+  held: string | null;
+  /** Source files changed since the last analysis. */
+  stale: { files: number; since: string } | null;
+  /** The packages the compiler analysis needs and the project lacks. */
+  missing: string[];
+  /** `generatedAt` of the react.json this server wrote last. */
+  wrote: string | null;
+  /** A run's results kept in memory, when they could not be saved. */
+  report: ReactReport | null;
+}
+
+/** `data.react` (lib/react/data.mjs): the analysis' state, its last results and who wrote them. */
+export interface ReactData {
+  status: {
+    compiler: 'ready' | 'off' | 'not-installed' | 'bad-config' | 'running' | 'skipped' | 'failed';
+    renders: 'ready' | 'off';
+    off: ReactOff | null;
+    missing: string[];
+    configWarning: string | null;
+    error: string | null;
+    held: string | null;
+    stale: { files: number; since: string } | null;
+  };
+  report: ReactReport | null;
+  source: 'check' | 'server' | 'react-cli' | null;
+}
+
+/** An analysis run's progress (`analyse`'s `onProgress`): files done of all, those from the cache. */
+export interface ReactProgress {
+  done: number;
+  total: number;
+  cached: number;
+}
+
 /** What one analysis run answers (lib/react/index.mjs `analyse`). */
 export type ReactRun =
   | {
@@ -250,8 +302,8 @@ export type ReactRun =
     }
   | {
       ran: false;
-      /** `off` (a switch), `config` (a bad value), `not-installed`, `failed`. */
-      why: 'off' | 'config' | 'not-installed' | 'failed';
+      /** `off` (a switch), `config` (a bad value), `not-installed`, `failed`, `skipped` (its signal). */
+      why: 'off' | 'config' | 'not-installed' | 'failed' | 'skipped';
       /** The line the CLI prints. */
       text: string;
     };
@@ -259,7 +311,7 @@ export type ReactRun =
 /** check.json's `react` (check/react.mjs): the analysis, or why it did not run. */
 export type CheckReact =
   | Pick<ReactReport, 'summary' | 'alerts' | 'base' | 'backend'>
-  | { skipped: 'off' | 'config' | 'not-installed' | 'failed' };
+  | { skipped: Extract<ReactRun, { ran: false }>['why'] };
 
 /** A rule in the React SARIF file (lib/sarif-react.mjs). */
 export interface ReactSarifRule {

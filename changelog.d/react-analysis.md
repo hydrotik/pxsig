@@ -50,6 +50,15 @@
   `warning` when the compiler skips it, `note` for a finding; React's docs page for the rule as the
   help link) and `react-renders/still-rendering` (`note`, at the story file). Never `error`. The
   existing `--sarif` file stays accessibility only, byte for byte.
+- **The server runs the React analysis** after its startup integrity pass and, with `--watch`,
+  after a code edit (compared with `main`; no browser; only the store lock's holder saves
+  `reports/react.json`). `/__pxsig/data` has `react` (where the analysis stands, its last results
+  and who wrote them), and `/__pxsig/events` sends `react` (running with its file count, done,
+  skipped, error) and `check` `progress` and `cancelled`. New routes, each needing the dashboard
+  link: `react/analyse`, `react/skip`, `check/cancel` (the entries rendered by then keep their new
+  results, the others their last ones) and `check` with `renders: true` (Measure renders: counts
+  React renders in that run, also with `react.renders` off). Render counts carry `at` and `prev`
+  (the counts of the row they replaced). See docs/server.md.
 - **The engine's `check --history-extra json|@file`** adds an object's keys to the history line.
 - **The engine's `react-plan` and `react-diff`** (and the same two `pxsig serve` methods), and
   `entries` per `graph` file in `affected --json`.

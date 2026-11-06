@@ -78,7 +78,8 @@ async function resetPage(page) {
  * opts: { baseUrl, globals, viewport, colorScheme, settleMs, target, waitFor, concurrency,
  *         css, tokens, a11y, project, renders }
  * `renders` (default: the project's `react.renders`; never when React is off) counts React commits
- * and renders per entry.
+ * and renders per entry. `signal` stops the run after the entries already started (the others'
+ * slots stay empty); `onEntry(done)` follows the run.
  * Returns [{ id, png, ms, error, a11y, renders }] in input order plus wall-clock ms.
  * @param {PxsigBrowser | BrowserSource} browser
  * @param {RenderEntry[]} stories
@@ -101,6 +102,8 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
     project = null,
     fastSwitch = true,
     waitFor = [],
+    signal,
+    onEntry,
   } = opts;
   // An off switch (`react: false`, --no-react, PXSIG_REACT=off) wins over an explicit `renders`.
   const react = reactSettings(
@@ -142,6 +145,7 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
   });
   const queue = [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, idx]) => idx);
   let next = 0;
+  let done = 0;
   const axe = a11y && project ? axeScript(project) : '';
 
   async function worker() {
@@ -155,9 +159,10 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
     let loadedGlobals = null;
     for (;;) {
       const g = next++;
-      if (g >= queue.length) break;
+      if (g >= queue.length || signal?.aborted) break;
       loadedGlobals = null; // a new story file starts on a fresh page load
       for (const i of queue[g]) {
+        if (signal?.aborted) break;
         const e = stories[i];
         const cfg = cfgOf(e);
         const storyId = e.story ?? e.id;
@@ -337,6 +342,7 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             error: /** @type {Error} */ (err).message.split('\n')[0],
           };
         }
+        onEntry?.(++done);
       }
     }
     await context?.close();

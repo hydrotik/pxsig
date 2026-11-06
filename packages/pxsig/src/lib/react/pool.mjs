@@ -103,11 +103,12 @@ export function createPool({ size, babel, compiler, cwd, options, timeoutMs = 10
     get started() {
       return started;
     },
-    /** End every worker. */
+    /** End every worker; a task still running or waiting answers `compiler-error`. */
     async close() {
       closed = true;
       const all = slots.splice(0);
       for (const s of all) finish(s, { error: 'compiler-error' });
+      for (const job of queue.splice(0)) job.done({ error: 'compiler-error' });
       await Promise.all(all.map((s) => s.worker.terminate()));
     },
   };

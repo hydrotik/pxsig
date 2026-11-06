@@ -26,6 +26,7 @@ import { rustBinary, serverFile } from '../lib/workspace.mjs';
 import { startEngine } from './engine.mjs';
 import { cors, json } from './http.mjs';
 import { runIntegrity } from './integrity.mjs';
+import { startReact } from './react.mjs';
 import { projectFile, reportFile } from './pages.mjs';
 import { openState, takeLock } from './projects.mjs';
 import { dashboardLink, dispatch, routes } from './routes.mjs';
@@ -221,7 +222,7 @@ export function createPxsigServer({
 
   /**
    * The engine, each project's store lock and Storybook, then listen (the ready line) and the
-   * startup integrity pass, which runs on while the server answers. Resolves once listening;
+   * startup integrity pass and React analysis, which run on while the server answers. Resolves once listening;
    * rejects with a StartError when no port could be bound.
    */
   async function start() {
@@ -241,7 +242,9 @@ export function createPxsigServer({
     }
     /** @type {Promise<void>} */
     const listening = new Promise((ok, fail) => listen(port, (e) => (e ? fail(e) : ok())));
-    for (const S of states.values()) void runIntegrity(srv, S, 'startup');
+    // The startup integrity pass, then the React analysis (when the project has the compiler).
+    for (const S of states.values())
+      void runIntegrity(srv, S, 'startup').then(() => startReact(srv, S, 'startup'));
     await listening;
   }
 

@@ -91,6 +91,10 @@ export interface RenderOptions {
   waitFor?: Config['capture']['waitFor'];
   /** Count React commits and renders (default: the project's `react.renders`). */
   renders?: boolean;
+  /** Stops the run: entries not started yet are left out of `results` (their slot stays empty). */
+  signal?: AbortSignal;
+  /** Called after each entry, with how many are done. */
+  onEntry?: (done: number) => void;
 }
 
 /** What `renderStories` returns. */

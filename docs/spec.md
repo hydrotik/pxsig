@@ -357,7 +357,9 @@ story with no React).
   "interaction": { "commits": 1, "rendered": 3 },   // only for an interaction state
   "top": [{ "name": "Button", "renders": 4, "compiled": false }],
   "ms": 12.4,                   // React's render time, development builds only
-  "settled": true               // React had stopped committing at capture
+  "settled": true,              // React had stopped committing at capture
+  "at": "2026-11-05T12:00:00.000Z",   // when the check that rendered it ran
+  "prev": { "commits": 1, "rendered": 35, "at": "2026-11-04T09:30:00.000Z" }  // the row it replaced
 }
 ```
 
@@ -373,4 +375,7 @@ before the capture: a commit just before it (the answer to an interaction) follo
 settled; a component that keeps re-rendering (an effect that sets state, a timer) is not. The
 check waits at most what is left of those 250 ms, after the capture, so the image is taken at the
 same moment as without counting. `settled: false` is an alert, never a failure: it changes no exit
-code, gate or JUnit result.
+code, gate or JUnit result. `at` is when the check that rendered the entry ran; `prev` holds the
+mount counts of the row this one replaced (absent on a first measurement), for "since the last
+check in this store": information, never compared. A dashboard check with `renders: true`
+(Measure renders, [server.md](server.md#writing)) counts renders also when `react.renders` is off.

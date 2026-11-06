@@ -18,6 +18,8 @@ import {
   authorize,
   linkSetCookie,
   mayMintTicket,
+  NEEDS_LINK_CODE,
+  NEEDS_LINK_RUN,
   NEEDS_PERSON,
   sameOriginPage,
 } from '../lib/guard.mjs';
@@ -28,6 +30,7 @@ import { enqueue } from './checks.mjs';
 import { json, readBody } from './http.mjs';
 import { runIntegrity, storyIntegrity } from './integrity.mjs';
 import { projectsList, stateFor } from './projects.mjs';
+import { linked, liveOf, reactRoutes } from './react.mjs';
 import { repair } from './repair.mjs';
 import { approveStory, review } from './review.mjs';
 /** @import { IncomingMessage, ServerResponse } from 'node:http' */
@@ -191,7 +194,7 @@ const table = [
       methods: 'GET',
       stage: 'open',
       project: 'query',
-      run: ({ res, S }) => json(res, 200, buildData(S.P)),
+      run: ({ res, S }) => json(res, 200, buildData(S.P, { live: liveOf(S) })),
     },
   ],
   // GET /__pxsig/integrity?project= (also /api/integrity): the ledger; story, component, status, fresh
@@ -266,14 +269,19 @@ const table = [
       },
     },
   ],
-  // POST /__pxsig/check {ids?|story?|stories?|all?}: queue renders + engine checks, answer 202
+  // POST /__pxsig/check {ids?|story?|stories?|all?, renders?}: queue renders + engine checks, answer
+  // 202; `renders: true` (Measure renders, the link only) counts React renders in that run
   [
     'check',
     {
       methods: 'POST',
       stage: 'authorized',
       project: 'split',
-      async run({ srv, res, body }) {
+      async run(cx) {
+        const { srv, res, body } = cx;
+        // Measure renders (`renders: true`) replaces visual results: a person, with the link.
+        if (body.renders === true && !linked(cx))
+          return json(res, 403, { error: NEEDS_LINK_RUN, code: NEEDS_LINK_CODE });
         // Without a project, a check is split across the projects that own the ids / stories.
         const targets =
           body.project || srv.states.size === 1 ? [stateFor(srv, body)] : [...srv.states.values()];
@@ -352,6 +360,8 @@ const table = [
       },
     },
   ],
+  // react/analyse, react/skip, check/cancel (serve/react.mjs)
+  ...reactRoutes,
 ];
 /** The routes by action: `create.mjs` copies them into `srv.routes`. */
 export const routes = new Map(table);
