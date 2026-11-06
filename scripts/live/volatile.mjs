@@ -63,6 +63,13 @@ export const RULES = {
     { path: 'storybook.baseUrl', kind: 'url' },
     { path: 'review.*.at', kind: 'time', optional: true },
     { path: 'a11yReview.*.at', kind: 'time', optional: true },
+    // The React analysis (lib/react/data.mjs): when results went out of date, when they were made,
+    // how long the analysis took; a row's render counts' times.
+    { path: 'react.status.stale.since', kind: 'time', optional: true },
+    { path: 'react.report.generatedAt', kind: 'time', optional: true },
+    { path: 'react.report.summary.ms', kind: 'ms', optional: true },
+    { path: 'check.rows[].renders.at', kind: 'time', optional: true },
+    { path: 'check.rows[].renders.prev.at', kind: 'time', optional: true },
     ...ledger('integrity.', true),
   ],
   status: [
