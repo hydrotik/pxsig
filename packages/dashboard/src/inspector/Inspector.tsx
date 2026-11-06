@@ -44,12 +44,7 @@ import {
 import { Header } from './Header';
 import { useApproving } from '../link';
 import { SessionSummary } from './SessionSummary';
-import { ViewSection } from './side/ViewSection';
-import { PixelSection } from './side/PixelSection';
-import { ChangesSection } from './side/ChangesSection';
-import { MetricsSection } from './side/MetricsSection';
-import { A11ySection } from './side/A11ySection';
-import { FilesSection } from './side/FilesSection';
+import { InspectorSide } from './side/Side';
 
 export interface InspectTarget {
   row: Row;
@@ -527,61 +522,12 @@ export function Inspector({
           </div>
 
           {showSide ? (
-            <aside className={s.insSide}>
-              {embedded ? (
-                <ViewSection
-                  viewControls={viewControls}
-                  pixels={pixels}
-                  regions={regions}
-                  region={region}
-                  stepRegion={stepRegion}
-                />
-              ) : null}
-              <PixelSection
-                embedded={embedded}
-                sb={sb}
-                sbLink={sbLink}
-                loaded={loaded}
-                pixels={pixels}
-                W={W}
-                H={H}
-                m={m}
-                tol={tol}
-              />
-
-              {pixels && analysis ? (
-                <ChangesSection
-                  analysis={analysis}
-                  loaded={loaded}
-                  W={W}
-                  H={H}
-                  regions={regions}
-                  region={region}
-                  focusRegion={focusRegion}
-                  tol={tol}
-                  setTol={setTol}
-                  originals={originals}
-                />
-              ) : null}
-
-              {m ? (
-                <MetricsSection m={m} detail={detail} hasArtifacts={hasArtifacts} p={p} />
-              ) : null}
-
-              <A11ySection
-                row={row}
-                newA11y={newA11y}
-                target={target}
-                canReview={canReview}
-                busy={busy}
-                unaccept={unaccept}
-                a11yMode={a11yMode}
-                a11yDecision={a11yDecision}
-                act={act}
-              />
-
-              <FilesSection data={data} p={p} hasArtifacts={hasArtifacts} sizes={sizes} sb={sb} />
-            </aside>
+            <InspectorSide
+              {...{ embedded, viewControls, pixels, regions, region, stepRegion, sb, sbLink }}
+              {...{ loaded, W, H, m, tol, analysis, focusRegion, setTol, originals, detail }}
+              {...{ hasArtifacts, p, row, newA11y, target, canReview, busy, unaccept, a11yMode }}
+              {...{ a11yDecision, act, data, sizes }}
+            />
           ) : null}
         </div>
       </DiffViewer.Root>
