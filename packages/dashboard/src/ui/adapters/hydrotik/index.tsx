@@ -26,6 +26,7 @@ import {
 } from 'recharts';
 import type * as C from '../../contract';
 import { oneLineSlider } from './slider';
+import { sidePanel } from './side-panel';
 export { Heatmap } from './heatmap';
 
 export const name = 'hydrotik';
@@ -374,6 +375,17 @@ export const DialogTitle = ({ ref, ...p }: C.DialogTitleProps) => (
 );
 export const DialogDescription = (p: C.DialogDescriptionProps) => <DS.DialogDescription {...p} />;
 
+const panel = sidePanel({
+  Layout: DS.ContentLayout,
+  Main: DS.ContentLayoutMain,
+  Panel: DS.SidePanel,
+  Header: DS.SidePanelHeader,
+  Body: DS.SidePanelBody,
+  Close: DS.SidePanelCloseButton,
+});
+export const SidePanelLayout = panel.SidePanelLayout;
+export const SidePanelMain = panel.SidePanelMain;
+export const SidePanel = panel.SidePanel;
 export const Slider = oneLineSlider(DS.Slider);
 
 export const Switch = ({ checked, onCheckedChange, label, disabled }: C.SwitchProps) => (

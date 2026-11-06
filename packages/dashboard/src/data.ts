@@ -6,6 +6,7 @@ import React from 'react';
 import { t } from './copy';
 import { currentProject, type Refusal, scope, served, setCurrentProject } from './data/request';
 import { applyReviewEvent, type ReviewEvent } from './data/live';
+import { noteReact, type ReactEvent } from './data/react';
 import type { CheckReport, Data } from './data/types';
 
 export type {
@@ -31,6 +32,25 @@ export type {
   IntegrityLedger,
   Data,
 } from './data/types';
+export type {
+  ReactAlert,
+  ReactData,
+  ReactDiagnostic,
+  ReactFunction,
+  ReactReport,
+  ReactSide,
+  ReactSummary,
+  RenderCounts,
+} from './data/react-types';
+export {
+  analyseReact,
+  cancelCheck,
+  dismissReact,
+  measureRenders,
+  skipReact,
+  useReactActivity,
+  type ReactActivity,
+} from './data/react';
 export { served } from './data/request';
 export { reviewAction, a11yAction, recheck, approveStory, repairSafe } from './data/actions';
 export {
@@ -213,6 +233,11 @@ export function useData(): { data: Data | null; error: string | null; live: bool
           /* not ours */
         }
       });
+      // The React analysis' progress and end (serve/react.mjs).
+      es.addEventListener('react', (e: MessageEvent<string>) => {
+        const d = parse(e) as ReactEvent | null;
+        if (d && (!d.project || !currentProject || d.project === currentProject)) noteReact(d);
+      });
       es.addEventListener('reload', () => location.reload());
       es.onerror = () => setLive(false);
     } catch {
@@ -230,10 +255,22 @@ export function useData(): { data: Data | null; error: string | null; live: bool
 export interface CheckActivity {
   /** Entries in the run going on now, or null. */
   running: string[] | null;
+  /** The run going on counts React renders (Measure renders). */
+  renders: boolean;
+  /** How far the run going on is (entries rendered of all), once it reports it. */
+  progress: { done: number; total: number } | null;
+  /** How the last Measure renders run ended, until dismissed or the next run starts. */
+  measured: { cancelled: boolean; done: number; total: number; ids: string[] } | null;
   /** The last run's error (Storybook down, a broken index), until dismissed or a run succeeds. */
   error: { message: string; setup: boolean } | null;
 }
-let activity: CheckActivity = { running: null, error: null };
+let activity: CheckActivity = {
+  running: null,
+  renders: false,
+  progress: null,
+  measured: null,
+  error: null,
+};
 const listeners = new Set<() => void>();
 const setActivity = (next: CheckActivity) => {
   activity = next;
@@ -246,14 +283,46 @@ type CheckEvent = {
   ids?: string[];
   error?: string;
   setup?: boolean;
+  renders?: boolean;
+  done?: number;
+  total?: number;
 };
-function noteCheck(d: { state?: string; ids?: string[]; error?: string; setup?: boolean }) {
-  if (d.state === 'running') setActivity({ ...activity, running: d.ids ?? [] });
-  else if (d.state === 'done') setActivity({ running: null, error: null });
+const idle = { running: null, renders: false, progress: null } as const;
+function noteCheck(d: CheckEvent) {
+  const total = d.total ?? activity.progress?.total ?? activity.running?.length ?? 0;
+  if (d.state === 'running')
+    setActivity({
+      ...activity,
+      running: d.ids ?? [],
+      renders: !!d.renders,
+      progress: null,
+      ...(d.renders ? { measured: null } : {}),
+    });
+  else if (d.state === 'progress')
+    setActivity({ ...activity, progress: { done: d.done ?? 0, total: d.total ?? 0 } });
+  else if (d.state === 'done' || d.state === 'cancelled')
+    setActivity({
+      ...idle,
+      measured: activity.renders
+        ? {
+            cancelled: d.state === 'cancelled',
+            done: d.done ?? d.ids?.length ?? 0,
+            total,
+            ids: d.ids ?? activity.running ?? [],
+          }
+        : activity.measured,
+      error: null,
+    });
   else if (d.state === 'error')
-    setActivity({ running: null, error: { message: d.error ?? '', setup: !!d.setup } });
+    setActivity({
+      ...idle,
+      measured: activity.measured,
+      error: { message: d.error ?? '', setup: !!d.setup },
+    });
 }
 export const dismissCheckError = () => setActivity({ ...activity, error: null });
+/** Forget how the last Measure renders run ended (Dismiss). */
+export const dismissMeasured = () => setActivity({ ...activity, measured: null });
 export function useCheckActivity(): CheckActivity {
   return React.useSyncExternalStore(
     (l) => (listeners.add(l), () => listeners.delete(l)),

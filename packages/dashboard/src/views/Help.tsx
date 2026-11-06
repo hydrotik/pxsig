@@ -148,6 +148,16 @@ const KEYS: [string, CopyKey, string[]][] = [
   ['R', 'help.keys.reject', ['ins-review']],
   ['Esc', 'help.keys.close', ['ins-close']],
 ];
+/** The React Analysis rows (help.react.rows). */
+const REACT_ROWS = [
+  'compiler',
+  'changes',
+  'renders',
+  'still',
+  'measure',
+  'switches',
+  'install',
+] as const;
 const COMMANDS: [string, CopyKey][] = [
   ['pxsig check --full', 'help.commands.check'],
   ['pxsig check --since main', 'help.commands.checkChanged'],
@@ -218,6 +228,15 @@ export function Help({ data }: { data: Data }) {
           term: t(`status.${x}`),
           meaning: t(`help.statuses.${x}`),
           at: ['card-status', 'card-edge'],
+        }))}
+      />
+      <Section
+        title={t('help.react.title')}
+        description={t('help.react.description')}
+        items={REACT_ROWS.map((k) => ({
+          term: t(`help.react.rows.${k}.term`),
+          meaning: t(`help.react.rows.${k}.meaning`),
+          at: [],
         }))}
       />
       <Section

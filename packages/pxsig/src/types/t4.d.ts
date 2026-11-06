@@ -393,6 +393,8 @@ export interface DashboardFixtures {
   scenarioData: (name: string) => Record<string, unknown>;
   projectsOf: (name: string) => unknown[];
   approvingOf: (name: string) => { allowed: boolean; folder: string; command: string };
+  /** Events sent after `hello` (a run going on); older fixture modules lack it. */
+  eventsOf?: (name: string) => [string, Record<string, unknown>][];
 }
 
 /** The sample PNGs the check's server answers with. */

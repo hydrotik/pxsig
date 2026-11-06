@@ -70,6 +70,56 @@
         "other": "Queued {count} entries"
       },
       "skipped": "Not checked: {list}"
+    },
+    "react": {
+      "region": "React analysis",
+      "analysing": "React analysis",
+      "progressLabel": "React analysis progress",
+      "files": "{done} of {total} files · {cached} cached",
+      "filesNoCache": "{done} of {total} files",
+      "skip": "Skip",
+      "skipTitle": "Stop the analysis for now. Nothing is written; Diagnostics › React can run it again.",
+      "measuring": "Measuring renders (visual check)",
+      "measureLabel": "Render measurement progress",
+      "entries": {
+        "one": "{done} of {total} entry",
+        "other": "{done} of {total} entries"
+      },
+      "cancel": "Cancel",
+      "cancelTitle": "Stop the visual check. Entries not yet rendered keep their last results.",
+      "result": "React: {parts}",
+      "part": {
+        "newlySkipped": {
+          "one": "{count} newly skipped",
+          "other": "{count} newly skipped"
+        },
+        "newReason": {
+          "one": "{count} new reason",
+          "other": "{count} new reasons"
+        },
+        "newFinding": {
+          "one": "{count} new finding",
+          "other": "{count} new findings"
+        },
+        "fixed": {
+          "one": "{count} fixed",
+          "other": "{count} fixed"
+        }
+      },
+      "open": "Open React",
+      "skipped": "React analysis skipped. Diagnostics › React runs it again.",
+      "failedTitle": "React analysis failed",
+      "failed": "{error} · nothing compared. Checks are not affected.",
+      "measured": {
+        "one": "Renders measured: {count} entry",
+        "other": "Renders measured: {count} entries"
+      },
+      "measuredStill": {
+        "one": "{count} still rendering",
+        "other": "{count} still rendering"
+      },
+      "openRenders": "Open Renders",
+      "cancelled": "Measurement cancelled after {done} of {total} entries: those {done} have new results and render counts; the rest keep their last results."
     }
   },
   "tabs": {
@@ -86,8 +136,14 @@
         "one": "{count} component with errors",
         "other": "{count} components with errors"
       },
-      "a11y": { "one": "{count} new entry", "other": "{count} new entries" },
-      "runs": { "one": "{count} run", "other": "{count} runs" }
+      "a11y": {
+        "one": "{count} new entry",
+        "other": "{count} new entries"
+      },
+      "runs": {
+        "one": "{count} run",
+        "other": "{count} runs"
+      }
     }
   },
   "status": {
@@ -158,14 +214,55 @@
       "title": "Errors",
       "render": "Render error",
       "coverage": "Coverage error",
-      "renderCount": { "one": "{count} render error", "other": "{count} render errors" },
-      "viewRender": { "one": "View {count} render error", "other": "View {count} render errors" },
-      "more": { "one": "{count} more", "other": "{count} more" },
+      "renderCount": {
+        "one": "{count} render error",
+        "other": "{count} render errors"
+      },
+      "viewRender": {
+        "one": "View {count} render error",
+        "other": "View {count} render errors"
+      },
+      "more": {
+        "one": "{count} more",
+        "other": "{count} more"
+      },
       "columns": {
         "kind": "Kind",
         "name": "Entry or component",
         "detail": "Detail"
       }
+    },
+    "react": {
+      "title": "React",
+      "label": "React figures",
+      "description": "Alerts only, not blocking. {from}",
+      "fromCheck": "From the check at {date} · base {ref} ({commit})",
+      "fromAnalysis": "From the analysis at {date} · base {ref} ({commit})",
+      "noBase": "From the check at {date} · no merge base: nothing compared",
+      "stale": {
+        "one": " · {count} file changed since",
+        "other": " · {count} files changed since"
+      },
+      "newlySkipped": "Newly skipped",
+      "newReason": {
+        "one": "+{count} new reason",
+        "other": "+{count} new reasons"
+      },
+      "findings": "Findings",
+      "findingsOf": {
+        "one": "new · of {count}",
+        "other": "new · of {count}"
+      },
+      "compiled": "Compiled",
+      "compiledOf": "of {count} analysed",
+      "still": "Still rendering",
+      "stillOf": {
+        "one": "of {count} entry",
+        "other": "of {count} entries"
+      },
+      "compilerOff": "Compiler analysis off",
+      "notInstalled": "Not installed",
+      "notMeasured": "Not measured"
     }
   },
   "review": {
@@ -487,6 +584,7 @@
     "description": "Results from the research tools in tools/. Not part of a normal check.",
     "sections": "Diagnostics section",
     "tabs": {
+      "react": "React",
       "scenarios": "Scenarios",
       "calibration": "Calibration",
       "performance": "Performance"
@@ -602,6 +700,217 @@
       "perCallSeries": "ms per compare",
       "cli": "CLI process",
       "server": "Server request"
+    },
+    "react": {
+      "parts": "React part",
+      "tabs": {
+        "compiler": "Compiler",
+        "renders": "Renders"
+      },
+      "fromCheck": "From the check at {date} · base {ref} ({commit})",
+      "fromAnalysis": "From the analysis at {date} · base {ref} ({commit})",
+      "fromCheckNoBase": "From the check at {date} · no merge base",
+      "fromAnalysisNoBase": "From the analysis at {date} · no merge base",
+      "stale": "Out of date",
+      "readOnlyTitle": "Read only: this needs the dashboard link (pointing at Read only in the top bar shows how)",
+      "skip": "Skip",
+      "skipTitle": "Stop the analysis for now. Nothing is written; Analyse runs it again.",
+      "off": {
+        "config": "React analysis is off: {setting} in pxsig.config.json.",
+        "workspace": "React analysis is off: {setting} in pxsig.workspace.json.",
+        "compilerConfig": "Compiler analysis is off: {setting} in pxsig.config.json. Renders are not affected.",
+        "compilerWorkspace": "Compiler analysis is off: {setting} in pxsig.workspace.json. Renders are not affected.",
+        "flag": "React analysis is off for this server: started with {flag}.",
+        "env": "React analysis is off: {variable} in the server's environment.",
+        "help": "Help › React Analysis lists the switches."
+      },
+      "notInstalled": "Compiler analysis needs babel-plugin-react-compiler and @babel/core in this project. Not installed: {missing}. Renders are not affected.",
+      "notInstalledHelp": "Help › React Analysis has the install command.",
+      "badConfig": "React analysis is off for this run: {warning}.",
+      "noBase": "No merge base with {ref}: nothing to compare with, so no alerts. Fetch the history (fetch-depth: 0) to compare.",
+      "flow": {
+        "one": "{count} Flow file not analysed.",
+        "other": "{count} Flow files not analysed."
+      },
+      "compiler": {
+        "analyse": "Analyse",
+        "analyseTitle": "Run the React Compiler on the files changed since {ref}. No browser; writes reports/react.json.",
+        "analysing": "Analysing…",
+        "progress": {
+          "one": "Analysing {done} of {total} file…",
+          "other": "Analysing {done} of {total} files…"
+        },
+        "progressLabel": "React analysis progress",
+        "title": "React Compiler",
+        "summary": "{files} files · {functions} functions · compiled {compiled} · skipped {skipped} · opted out {optedOut} · fixed {fixed} · {time} ({cached} cached)",
+        "filterAlerts": "Alerts ({count})",
+        "filterAll": "All analysed ({count})",
+        "columns": {
+          "function": "Function",
+          "file": "File",
+          "before": "Before",
+          "now": "Now",
+          "rule": "Rule",
+          "line": "Line",
+          "entries": "Entries"
+        },
+        "outcome": {
+          "compiled": "Compiled",
+          "bailout": "Skipped",
+          "opted-out": "Opted out",
+          "compiler-error": "Compiler error",
+          "analysis-timeout": "Timed out",
+          "absent": "—"
+        },
+        "change": {
+          "new-bailout": "Newly skipped",
+          "new-function-bailout": "New, skipped",
+          "reason-changed": "New reason",
+          "new-finding": "New finding",
+          "fixed": "Fixed",
+          "still-bailout": "Still skipped",
+          "new": "New",
+          "removed": "Removed",
+          "opted-out": "Opted out"
+        },
+        "otherRules": "+ {rules}",
+        "noAlerts": "No alerts: nothing newly skipped and no new findings since {ref}.",
+        "noneAnalysed": "No changed component or hook files since {ref}.",
+        "none": "No React Compiler results yet.",
+        "skippedNote": "Skipped at {time}.",
+        "staleNote": {
+          "one": "{count} file changed since the analysis.",
+          "other": "{count} files changed since the analysis."
+        },
+        "failedTitle": "React analysis failed",
+        "failed": "{error} · nothing compared. Checks are not affected.",
+        "held": "Results not saved: the store is held by {holder}.",
+        "moreFunctions": "{count} more in reports/react.json"
+      },
+      "side": {
+        "label": "Function details",
+        "close": "Close",
+        "selected": ", selected",
+        "alert": "Alert",
+        "diagnostics": "Diagnostics ({count})",
+        "rule": "Rule",
+        "reason": "Reason",
+        "line": "Line",
+        "group": "Group",
+        "stops": "Stops compilation",
+        "yes": "Yes",
+        "no": "No: still compiles",
+        "groups": {
+          "rules": "Rules of React",
+          "library": "Library",
+          "suppressed": "Suppressed",
+          "limitation": "Compiler limitation",
+          "setup": "Setup"
+        },
+        "atBase": "At {ref}",
+        "notAtBase": "Not present at {ref}",
+        "memoSlots": {
+          "one": "{outcome} · {count} memo slot",
+          "other": "{outcome} · {count} memo slots"
+        },
+        "entries": "Entries ({count})",
+        "entriesAll": "Every entry: the file reaches all of them.",
+        "entriesMore": "… {count} more",
+        "entryOpen": "Open {id} in the inspector",
+        "comparison": "Comparison",
+        "base": "Base",
+        "compiler": "Compiler",
+        "babel": "Babel",
+        "options": "Options",
+        "optionsValue": "{mode} · target {target} · lint {lint}",
+        "on": "on",
+        "offWord": "off",
+        "ruleDoc": "{rule} on react.dev"
+      },
+      "renders": {
+        "title": "Renders per Entry",
+        "measure": "Measure renders",
+        "measureTitle": "Render the entries in scope again with React render counting on. A visual check: their visual results are replaced, as by Re-check.",
+        "measureNote": {
+          "one": "Runs a visual check: renders {count} entry and replaces its visual results.",
+          "other": "Runs a visual check: renders {count} entries and replaces their visual results."
+        },
+        "measuring": "Measuring…",
+        "cancel": "Cancel",
+        "cancelTitle": "Stop the visual check. Entries not yet rendered keep their last results.",
+        "scope": "Scope",
+        "scopeAll": "All entries · {count}",
+        "scopeShown": "Shown · {count}",
+        "summary": "{count} entries measured · {build} build · React {version}{still}",
+        "summaryStill": {
+          "one": " · {count} still rendering",
+          "other": " · {count} still rendering"
+        },
+        "build": {
+          "development": "development",
+          "production": "production"
+        },
+        "productionNote": "Production build: counts only. Names come from displayName.",
+        "filterAlerts": "Alerts ({count})",
+        "filterAll": "All measured ({count})",
+        "columns": {
+          "entry": "Entry",
+          "commits": "Commits",
+          "rendered": "Rendered",
+          "time": "Time",
+          "top": "Top component",
+          "since": "Since last"
+        },
+        "top": "{name} ×{count} · {compiled}",
+        "compiled": "compiled",
+        "notCompiled": "not compiled",
+        "compiledBadge": "Compiled",
+        "notCompiledBadge": "Not compiled",
+        "stillBadge": "Still rendering",
+        "notReact": "Not React",
+        "sinceCommits": {
+          "one": "{sign}{count} commit",
+          "other": "{sign}{count} commits"
+        },
+        "sinceNew": "new",
+        "ms": "{ms} ms",
+        "noAlerts": "No alerts: every measured entry had settled when pxsig captured it.",
+        "none": "No render counts yet. Measure renders runs a visual check with React render counting on.",
+        "progress": {
+          "one": "Measuring {done} of {total} entry…",
+          "other": "Measuring {done} of {total} entries…"
+        },
+        "progressLabel": "Render measurement progress",
+        "queued": {
+          "one": "Measure renders: {count} entry queued behind the running check",
+          "other": "Measure renders: {count} entries queued behind the running check"
+        },
+        "stillAlert": "{id}: React was still committing when pxsig captured it ({commits} commits). A component keeps re-rendering (an effect that sets state, a timer, a subscription).",
+        "side": {
+          "label": "Entry render details",
+          "measuredAt": "Measured {time}",
+          "settled": "Settled",
+          "notSettled": "Still committing at capture",
+          "mount": "Mount",
+          "interaction": "Interaction",
+          "commits": "Commits",
+          "rendered": "Rendered",
+          "mounted": "Mounted",
+          "time": "Time",
+          "topTitle": "Top Components",
+          "sinceTitle": "Since the Last Check",
+          "sinceCommits": "Commits",
+          "sinceRendered": "Rendered",
+          "sinceValue": "{before} → {now}",
+          "sinceAt": "(check at {time})",
+          "build": "Build",
+          "buildValue": "{build} · React {version}",
+          "budget": "Over the counting budget: commits only.",
+          "open": "Open in inspector",
+          "measureOne": "Measure this entry",
+          "close": "Close"
+        }
+      }
     }
   },
   "help": {
@@ -838,6 +1147,40 @@
         "term": "Go to",
         "meaning": "Goes somewhere else: another section, the inspector, or a review session."
       }
+    },
+    "react": {
+      "title": "React Analysis",
+      "description": "Alerts only: nothing here fails a check, changes an exit code or asks for a decision.",
+      "rows": {
+        "compiler": {
+          "term": "Compiler",
+          "meaning": "Each changed component and hook file is compiled with the project's React Compiler at the merge base and now. A function compiled before and skipped now is an alert, with the compiler's rule and line."
+        },
+        "changes": {
+          "term": "Newly skipped · New, skipped · New reason · New finding · Fixed",
+          "meaning": "Newly skipped: compiled at the base, skipped now. New, skipped: a new function the compiler skips. New reason: still skipped, for a rule that was not there before. New finding: a Rules of React problem in a function that still compiles. Fixed: skipped at the base, compiled now."
+        },
+        "renders": {
+          "term": "Renders",
+          "meaning": "Commits and component renders counted while pxsig renders each entry. Counts are reported, not compared. Durations exist only in development builds and are never compared."
+        },
+        "still": {
+          "term": "Still rendering",
+          "meaning": "React was still committing when pxsig captured the entry. A component keeps re-rendering; this is a common cause of a flaky entry."
+        },
+        "measure": {
+          "term": "Measure renders",
+          "meaning": "A visual check of the entries in scope with render counting on, also when react.renders is off. Their visual results are replaced, as by Re-check."
+        },
+        "switches": {
+          "term": "Turning it off",
+          "meaning": "\"react\": false (everything) or \"react\": { \"compiler\": false } in pxsig.config.json, or defaults.react in pxsig.workspace.json; pxsig serve --no-react; PXSIG_REACT=off."
+        },
+        "install": {
+          "term": "Compiler packages",
+          "meaning": "The compiler analysis uses babel-plugin-react-compiler and @babel/core from the project: npm install -D babel-plugin-react-compiler @babel/core. pxsig installs neither."
+        }
+      }
     }
   },
   "inspector": {
@@ -1060,7 +1403,10 @@
     "artifacts": {
       "notWritten": "Signature images and the diff page are written only for entries that fail the gate."
     },
-    "a11yRejectedNote": "Violations rejected. Fix them, then re-run the check:"
+    "a11yRejectedNote": "Violations rejected. Fix them, then re-run the check:",
+    "react": {
+      "stillBadge": "Still rendering"
+    }
   },
   "ui": {
     "fallback": {

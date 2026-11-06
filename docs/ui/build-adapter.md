@@ -355,6 +355,47 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Acceptance**: on Accessibility, clicking or pressing Enter on a rule opens its entries; sorting
   by Entries works. Optional (fallback: a plain sortable table).
 
+### `SidePanelLayout`
+
+- **Purpose**: records and the details of the one selected, side by side (since 1.3.0): the React
+  view's functions and entries, with the selected one's details. It holds one `SidePanelMain`,
+  then one `SidePanel`.
+- **Props**: `children`, `className`.
+- **Behaviour**: the panel sits beside the main area, and drops below it when the container is too
+  narrow for both (no page-wide horizontal scroll at the dashboard check's narrow width). The three
+  parts are a set: export all three or none (with none, the fallback draws all three). A design
+  system whose panel needs its own layout around the main area maps that layout here.
+- **Accessibility**: no role of its own.
+- **Mapping questions**: Does your panel need a layout component around the main area? Does that
+  layout fill its parent's height (then size it to its content)?
+- **Acceptance**: on Diagnostics › React, a function's details open beside the table. Optional
+  (fallback: a wrapping flex row). An adapter written for 1.2.0 gets the fallback.
+
+### `SidePanelMain`
+
+- **Purpose**: the main area of a `SidePanelLayout`: the records (since 1.3.0).
+- **Props**: `children`, `className`.
+- **Behaviour**: takes the room the panel leaves; the page scrolls, not this area.
+- **Accessibility**: not a landmark (the page already has its `main`).
+- **Mapping questions**: Is your layout's main area a `<main>` by default? Use another element.
+- **Acceptance**: the table keeps its full height beside the panel. Optional, with the set.
+
+### `SidePanel`
+
+- **Purpose**: the details of one selected record, beside the main area (since 1.3.0).
+- **Props**: `open`, `onOpenChange(open)`, `title` (it names the panel), `headingLevel` (default
+  3), `closeLabel` (the close button's name), `children`, `className`.
+- **Behaviour**: not modal: the rest of the page stays usable. Its close button and Escape inside it
+  call `onOpenChange(false)`. Nothing in it renders while it is closed.
+- **Accessibility**: a `complementary` landmark named by its title; on open, focus moves into it
+  (its heading, or the panel itself when it is focusable), and back to the element that had it on
+  close. The close button is named by `closeLabel`, never by a fixed English name.
+- **Mapping questions**: Can its close button take an accessible name? Does it have parts whose
+  names you cannot set (a resize handle, an expand button)? Leave those off.
+- **Acceptance**: on Diagnostics › React › Compiler, activating a row opens its details with focus
+  in the panel; Escape closes it and focus returns to the row. Optional, with the set (fallback:
+  an `<aside>` beside the table, below it when narrow).
+
 ### `StatusBadge`
 
 - **Purpose**: a state: icon, tone and label (verdicts, impacts, coverage codes).

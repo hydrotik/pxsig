@@ -9,6 +9,7 @@ import { tokens as v } from './tokens';
 import { t } from '../copy';
 import { border, type Cell, control, type F } from './fallbacks/base';
 import { Chart, Heatmap } from './fallbacks/charts';
+import { SidePanel, SidePanelLayout, SidePanelMain } from './fallbacks/side-panel';
 
 const UiProvider: F<'UiProvider'> = ({ mode, children }) => {
   React.useEffect(() => {
@@ -522,6 +523,9 @@ export const fallbacks = {
   AppMain,
   NavEnd,
   StatGroup,
+  SidePanelLayout,
+  SidePanelMain,
+  SidePanel,
   DataTable: DataTableFallback as F<'DataTable'>,
   Slider,
   Switch,

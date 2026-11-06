@@ -1,4 +1,6 @@
 /** The report data's shape (data.ts re-exports every type), from the server or a static report. */
+import type { ReactData, RenderCounts } from './react-types';
+
 export interface Metrics {
   ssim: number;
   changedCells: number;
@@ -72,6 +74,8 @@ export interface Row {
     error?: string;
   } | null;
   retry?: { attempt: number; metrics: Metrics };
+  /** React render counts (`react.renders`, or Measure renders); null: no React on the page. */
+  renders?: RenderCounts | null;
 }
 export interface CheckReport {
   generatedAt: string;
@@ -317,6 +321,8 @@ export interface Data {
   paths: { diffRoot: string; renders: string; baselines: string };
   sigs: Record<string, string>;
   integrity?: IntegrityLedger | null;
+  /** The React analysis (always when served; in a static report only with results to show). */
+  react?: ReactData;
   /** Set when the data was inlined into a static report. */
   static?: boolean;
 }

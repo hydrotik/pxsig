@@ -20,6 +20,19 @@ icon without a default. A major version's section starts with its migration note
 a version bump of the right size, or without a section here, fails. After the bump and the
 section, `node scripts/ui.mjs lock` records the new contract.
 
+## 1.3.0
+
+Minor: three optional components, a set.
+
+- **`SidePanelLayout`**, **`SidePanelMain`** and **`SidePanel`**: records (a table) and the
+  details of the one selected, side by side; the panel drops below the main area when the
+  container is narrow. `SidePanel` (`open`, `onOpenChange`, `title`, `headingLevel`,
+  `closeLabel`) is not modal: a `complementary` landmark named by its title, closed by its close
+  button and by Escape inside it; on open, focus moves into it, and back on close. The dashboard's
+  React view (Diagnostics › React) uses them. The three are taken as a set: an adapter that exports
+  all three draws its own, else all three render the fallback (an `<aside>` beside the table, as
+  the inspector's side panel), so an adapter written for 1.2.0 or 1.1.0 keeps working.
+
 ## 1.2.0
 
 Minor: two optional props.

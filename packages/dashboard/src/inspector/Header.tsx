@@ -1,6 +1,6 @@
 /** The inspector's header (Inspector.tsx): the entry's context, id and reasons, and its actions. */
 import type { ReactNode, RefObject } from 'react';
-import { Button, type DialogDescription, type DialogTitle } from '@ui';
+import { Badge, Button, type DialogDescription, type DialogTitle } from '@ui';
 import { type Data, type Row, statusOf } from '../data';
 import { t } from '../copy';
 import * as s from '../dashboard.css';
@@ -44,6 +44,18 @@ export function Header({
       <div className={s.insInfo}>
         <div className={s.insContext}>
           <StatusOf status={statusOf(row, data.review)} />
+          {/* React was still committing at capture: beside the verdict, never changing it. */}
+          {row.renders?.settled === false ? (
+            <Badge
+              tone="warning"
+              title={t('diagnostics.react.renders.stillAlert', {
+                id: row.id,
+                commits: row.renders.mount.commits,
+              })}
+            >
+              {t('inspector.react.stillBadge')}
+            </Badge>
+          ) : null}
           {siblingToggle}
           <span className={`${s.micro} ${s.clip}`}>
             {target!.scenario

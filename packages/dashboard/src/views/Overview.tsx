@@ -15,6 +15,7 @@ import { Affordance } from '../parts/Affordance';
 import { ChangedPerRun } from '../parts/RunCharts';
 import { StaleHeatmap } from '../parts/StaleHeatmap';
 import { CoverageDetails, coverageHasErrors, coverageHeadline } from './Integrity';
+import { type OpenReact, ReactCard } from './react/OverviewCard';
 import * as s from '../dashboard.css';
 
 interface Item {
@@ -174,10 +175,12 @@ export function Overview({
   data,
   go,
   startReview,
+  openReact,
 }: {
   data: Data;
   go: (tab: string, filter?: string) => void;
   startReview: (kind: Queue) => void;
+  openReact: OpenReact;
 }) {
   // With the server, a queue opens straight into the inspector; a static report lists it instead.
   const review = (kind: Queue) => (served ? startReview(kind) : go('stories', kind));
@@ -389,6 +392,7 @@ export function Overview({
           </div>
           <div className={s.stack} data-column="end">
             <ErrorsCard data={data} renderErrors={errors} go={go} startReview={startReview} />
+            <ReactCard data={data} openReact={openReact} />
             {/* A third of the Runs page's height: on the Overview it is a trend, not the detail view. */}
             <ChangedPerRun runs={data.history ?? []} height={16 / 3} />
           </div>

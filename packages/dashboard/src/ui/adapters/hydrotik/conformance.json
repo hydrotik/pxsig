@@ -1,6 +1,6 @@
 {
   "adapter": "hydrotik",
-  "contract": "1.2.0",
+  "contract": "1.3.0",
   "designSystem": "@hydrotik/design-system (built from source: PXSIG_DS_SOURCE)",
   "components": {
     "UiProvider": {
@@ -25,6 +25,12 @@
     "CardContent": { "status": "full" },
     "StatGroup": { "status": "full", "note": "StatPanel; selectable items are filter cards" },
     "DataTable": { "status": "full", "note": "DataGrid, compact density" },
+    "SidePanelLayout": { "status": "full", "note": "ContentLayout, as tall as its content" },
+    "SidePanelMain": { "status": "full", "note": "ContentLayoutMain as a div, not scrolling" },
+    "SidePanel": {
+      "status": "full",
+      "note": "SidePanel pushed in on the right, 20rem; no resize handle or expand button (their names are fixed English in the design system); focus moves into it on open"
+    },
     "StatusBadge": { "status": "full", "note": "StatusBadge with an explicit tone and glyph" },
     "Badge": {
       "status": "full",

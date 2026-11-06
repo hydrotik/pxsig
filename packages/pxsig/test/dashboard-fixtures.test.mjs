@@ -57,7 +57,6 @@ const NOT_IN_SCENARIOS = new Set([
   'calibrationSuites', // the same
   'approvals', // approvals.byStory: off unless set
   'source', // `dashboard-screens` only for pxsig's own screens
-  'react', // the React analysis: no dashboard screen reads it yet
 ]);
 
 /**
@@ -68,6 +67,8 @@ const NOT_IN_SCENARIOS = new Set([
 const ONLY_SOME_RUNS = {
   // A failing entry whose retry render passes.
   'check.rows[].flaky': ['check/render.mjs', /\brow\.flaky = true;/],
+  // React render counts: with `react.renders` on, or a Measure renders run.
+  'check.rows[].renders': ['lib/rows.mjs', /\{ renders: rr\.renders \}/],
 };
 
 /** @returns {Shape} */
@@ -191,7 +192,9 @@ test(
     assert.deepEqual(out.problems, [], out.problems.join('\n'));
     for (const [p, [file, sets]] of Object.entries(ONLY_SOME_RUNS))
       assert.match(readFileSync(join(src, file), 'utf8'), sets, `${p}: no longer set in ${file}`);
-    // Only the sections a sample project cannot produce go unchecked.
-    assert.deepEqual(out.unverified, ['bench']);
+    // Only the sections a sample project cannot produce go unchecked: a bench run, and the React
+    // analysis' results (the fixture project has no React Compiler; react.json's shape is the
+    // engine's, held by its own tests and lib/react/data.mjs's).
+    assert.deepEqual(out.unverified, ['bench', 'react.status.off', 'react.report', 'react.source']);
   }
 );

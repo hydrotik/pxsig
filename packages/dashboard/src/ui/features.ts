@@ -12,6 +12,7 @@
 import type { ComponentName } from './contract';
 import { INSPECTOR } from './features/inspector.ts';
 import { OVERVIEW } from './features/overview.ts';
+import { REACT } from './features/react.ts';
 import { REVIEW } from './features/review.ts';
 import { SHELL } from './features/shell.ts';
 
@@ -87,4 +88,4 @@ export interface Screen {
   wait: Target;
 }
 
-export const FEATURES: Feature[] = [...SHELL, ...OVERVIEW, ...REVIEW, ...INSPECTOR];
+export const FEATURES: Feature[] = [...SHELL, ...OVERVIEW, ...REVIEW, ...REACT, ...INSPECTOR];
