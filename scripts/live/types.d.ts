@@ -15,6 +15,10 @@ export interface LiveAction {
   readOnly?: string;
   /** Stop the server. */
   stop?: true;
+  /** The scripted React change (Badge reads a ref during render; nothing drawn changes). */
+  react?: true;
+  /** With `click`: go on at once, without waiting for the server to be idle (a run to cancel). */
+  busy?: true;
 }
 
 /** One step: its feature, its number within it, its actions and its landmark. */

@@ -11,17 +11,25 @@
  *
  * Layout of LIVE_BASE: packages/ (links to this checkout's packages), examples/single-package/
  * (the workspace), pristine/ (Badge.jsx, storybook-static, storybook-static-after), stamp.json.
+ *
+ * For the React analysis the workspace also has the React Compiler and Babel (pxsig's own test
+ * fixture packages, packages/pxsig/test/react-compiler, linked in with relative links that hold in
+ * the container) and a git repository whose `main` is the example as committed: the base the
+ * analysis compares with.
  */
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   existsSync,
+  mkdirSync,
   readdirSync,
   readFileSync,
   renameSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { join, relative } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { copyTree } from '../lib/copy-tree.mjs';
 
@@ -37,8 +45,19 @@ export const CHANGE = {
   from: "success: '#1f7a43'",
   to: "success: '#7a1f6a'",
 };
+/**
+ * The scripted React change (live.react): Badge reads a ref during render, which the React Compiler
+ * skips, and nothing drawn changes (no Storybook build follows it).
+ */
+export const REACT_CHANGE = {
+  file: 'src/Badge/Badge.jsx',
+  from: '  const colours =',
+  to: '  const renders = React.useRef(0);\n  renders.current += 1;\n  const colours =',
+};
+/** pxsig's React Compiler test fixtures (Babel 7): what the live workspace analyses with. */
+const COMPILER = join(repo, 'packages', 'pxsig', 'test', 'react-compiler');
 /** Bump when the staging itself changes, so an old stamp never matches. */
-const STAGE_VERSION = 1;
+const STAGE_VERSION = 2;
 
 /**
  * Every file under `dir` but generated folders, as `relative path → sha256`, in name order.
@@ -70,6 +89,7 @@ export function stageStamp() {
   ])
     h.update(`${label}\n${fileHashes(dir).join('\n')}\n`);
   h.update(readFileSync(join(repo, 'packages', 'pxsig', 'package.json')));
+  h.update(readFileSync(join(COMPILER, 'pnpm-lock.yaml')));
   return h.digest('hex');
 }
 
@@ -118,7 +138,48 @@ export async function stageLive({
   }
   renameSync(join(dir, 'storybook-static-after'), join(pristine, 'storybook-static-after'));
   copyTree(join(dir, 'storybook-static'), join(pristine, 'storybook-static'));
+  if (!original.includes(REACT_CHANGE.from))
+    throw new Error(`${REACT_CHANGE.file} no longer has ${REACT_CHANGE.from.trim()}`);
+  reactBase(dir, pnpm);
   writeFileSync(stampFile, `${JSON.stringify({ stamp }, null, 2)}\n`);
   log('staged');
   return { staged: true, dir };
+}
+
+/**
+ * The React analysis' setup in the staged workspace: the compiler fixture packages installed and
+ * linked in (relative links: the checkout is mounted at its own path in the container), and a git
+ * repository whose `main` is the example as committed.
+ * @param {string} dir the staged workspace
+ * @param {(args: string[], cwd: string) => unknown} pnpm
+ */
+function reactBase(dir, pnpm) {
+  pnpm(['install', '--frozen-lockfile', '--ignore-scripts'], COMPILER);
+  const from = join(COMPILER, 'babel7', 'node_modules');
+  for (const name of ['babel-plugin-react-compiler', '@babel/core']) {
+    const at = join(dir, 'node_modules', name);
+    mkdirSync(dirname(at), { recursive: true });
+    symlinkSync(relative(dirname(at), join(from, name)), at, 'dir');
+  }
+  writeFileSync(join(dir, '.gitignore'), 'node_modules\nstorybook-static*\n.pxsig\n');
+  /** @param {string[]} args */
+  const git = (args) => {
+    const r = spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
+    if (r.status !== 0) throw new Error(`git ${args[0]}: ${r.stderr}`);
+  };
+  git(['init', '-q', '-b', 'main']);
+  git(['add', '-A']);
+  // A fixed author, no signing: the base is this staging's, not a person's.
+  git([
+    '-c',
+    'user.name=pxsig live',
+    '-c',
+    'user.email=live@example.invalid',
+    '-c',
+    'commit.gpgsign=false',
+    'commit',
+    '-q',
+    '-m',
+    'base',
+  ]);
 }
