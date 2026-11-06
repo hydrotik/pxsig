@@ -2412,6 +2412,13 @@
         "layout-contentlayout--overlay-panel",
         "layout-contentlayout--with-aside",
         "layout-contentlayout--with-side-panel"
+      ],
+      "usedBy": [
+        "pxsig"
+      ],
+      "pxsigParts": [
+        "ContentLayout",
+        "ContentLayoutMain"
       ]
     },
     {
@@ -6607,6 +6614,15 @@
         "components-sidepanel--expandable",
         "components-sidepanel--left-overlay",
         "components-sidepanel--not-dismissible"
+      ],
+      "usedBy": [
+        "pxsig"
+      ],
+      "pxsigParts": [
+        "SidePanel",
+        "SidePanelBody",
+        "SidePanelCloseButton",
+        "SidePanelHeader"
       ]
     },
     {
