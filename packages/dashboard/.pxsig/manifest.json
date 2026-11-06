@@ -836,6 +836,518 @@
       "a11y": false
     },
     {
+      "id": "diagnostics--react-compiler-1@dark",
+      "story": "diagnostics--react-compiler-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-1@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-compiler-1@light",
+      "story": "diagnostics--react-compiler-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-1@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-compiler-2@dark",
+      "story": "diagnostics--react-compiler-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-2@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-compiler-2@light",
+      "story": "diagnostics--react-compiler-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-2@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-compiler-3@dark",
+      "story": "diagnostics--react-compiler-3",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-3@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-compiler-3@light",
+      "story": "diagnostics--react-compiler-3",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-3@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-compiler-4@dark",
+      "story": "diagnostics--react-compiler-4",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-4@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-compiler-4@light",
+      "story": "diagnostics--react-compiler-4",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-4@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-compiler-5@dark",
+      "story": "diagnostics--react-compiler-5",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-5@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-compiler-5@light",
+      "story": "diagnostics--react-compiler-5",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-5@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-compiler-6@dark",
+      "story": "diagnostics--react-compiler-6",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-6@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-compiler-6@light",
+      "story": "diagnostics--react-compiler-6",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-6@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-renders-1@dark",
+      "story": "diagnostics--react-renders-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-renders-1@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-renders-1@light",
+      "story": "diagnostics--react-renders-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-renders-1@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-renders-2@dark",
+      "story": "diagnostics--react-renders-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-renders-2@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-renders-2@light",
+      "story": "diagnostics--react-renders-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-renders-2@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-renders-3@dark",
+      "story": "diagnostics--react-renders-3",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-renders-3@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-renders-3@light",
+      "story": "diagnostics--react-renders-3",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-renders-3@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-renders-4@dark",
+      "story": "diagnostics--react-renders-4",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-renders-4@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-renders-4@light",
+      "story": "diagnostics--react-renders-4",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-renders-4@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--react-1@dark",
+      "story": "inspector--react-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--react-1@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--react-1@light",
+      "story": "inspector--react-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--react-1@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--react-strip-1@dark",
+      "story": "shell--react-strip-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--react-strip-1@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--react-strip-1@light",
+      "story": "shell--react-strip-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--react-strip-1@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--react-strip-2@dark",
+      "story": "shell--react-strip-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--react-strip-2@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--react-strip-2@light",
+      "story": "shell--react-strip-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--react-strip-2@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--react-strip-3@dark",
+      "story": "shell--react-strip-3",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--react-strip-3@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--react-strip-3@light",
+      "story": "shell--react-strip-3",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--react-strip-3@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--react-1@dark",
+      "story": "overview--react-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--react-1@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--react-1@light",
+      "story": "overview--react-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--react-1@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--react-2@dark",
+      "story": "overview--react-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--react-2@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--react-2@light",
+      "story": "overview--react-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--react-2@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
       "id": "inspector--header-1@dark",
       "story": "inspector--header-1",
       "mode": "dark",
@@ -1401,6 +1913,102 @@
       "mode": "light",
       "state": null,
       "sig": ".pxsig/baselines/live/live--changed-2@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--react-1@dark",
+      "story": "live--react-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--react-1@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--react-1@light",
+      "story": "live--react-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--react-1@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--react-2@dark",
+      "story": "live--react-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--react-2@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--react-2@light",
+      "story": "live--react-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--react-2@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--react-3@dark",
+      "story": "live--react-3",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--react-3@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--react-3@light",
+      "story": "live--react-3",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--react-3@light.psig",
       "importPath": "../../scripts/live/flows.mjs",
       "globals": "",
       "colorScheme": "light",

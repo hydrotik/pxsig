@@ -89,6 +89,22 @@
   - term: Error
   - definition: The render failed.
   - img "Drawing of the dashboard": Overview Review Stories Coverage Accessibility Runs Help Review Status Latest check Open Items Status Coverage
+  - heading "React Analysis" [level=3]
+  - paragraph: "Alerts only: nothing here fails a check, changes an exit code or asks for a decision."
+  - term: Compiler
+  - definition: Each changed component and hook file is compiled with the project's React Compiler at the merge base and now. A function compiled before and skipped now is an alert, with the compiler's rule and line.
+  - term: Newly skipped · New, skipped · New reason · New finding · Fixed
+  - definition: "Newly skipped: compiled at the base, skipped now. New, skipped: a new function the compiler skips. New reason: still skipped, for a rule that was not there before. New finding: a Rules of React problem in a function that still compiles. Fixed: skipped at the base, compiled now."
+  - term: Renders
+  - definition: Commits and component renders counted while pxsig renders each entry. Counts are reported, not compared. Durations exist only in development builds and are never compared.
+  - term: Still rendering
+  - definition: React was still committing when pxsig captured the entry. A component keeps re-rendering; this is a common cause of a flaky entry.
+  - term: Measure renders
+  - definition: A visual check of the entries in scope with render counting on, also when react.renders is off. Their visual results are replaced, as by Re-check.
+  - term: Turning it off
+  - definition: "\"react\": false (everything) or \"react\": { \"compiler\": false } in pxsig.config.json, or defaults.react in pxsig.workspace.json; pxsig serve --no-react; PXSIG_REACT=off."
+  - term: Compiler packages
+  - definition: "The compiler analysis uses babel-plugin-react-compiler and @babel/core from the project: npm install -D babel-plugin-react-compiler @babel/core. pxsig installs neither."
   - heading "Coverage Statuses" [level=3]
   - paragraph: Shown in the Coverage section, and as extra badges on a card when an entry has a coverage issue.
   - term: Not registered
@@ -214,4 +230,4 @@
   - definition: List coverage issues per component
   - term: pxsig doctor --repair
   - definition: Plan the safe repairs; add --apply to run them
-  - paragraph: "This page: UI contract 1.2.0."
+  - paragraph: "This page: UI contract 1.3.0."

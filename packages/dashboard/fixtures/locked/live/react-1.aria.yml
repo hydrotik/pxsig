@@ -1,0 +1,92 @@
+- navigation "Report sections":
+  - heading "pxsig • example-single" [level=1]
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: "#overview"
+    - listitem:
+      - link "Review Stories":
+        - /url: "#stories"
+    - listitem:
+      - link "Coverage":
+        - /url: "#integrity"
+    - listitem:
+      - link "Accessibility":
+        - /url: "#a11y"
+    - listitem:
+      - link "Runs, 4 runs":
+        - /url: "#history"
+        - text: Runs
+    - listitem:
+      - link "Diagnostics":
+        - /url: "#diagnostics"
+    - listitem:
+      - link "Help":
+        - /url: "#help"
+  - text: light · dark Live Can approve
+  - button "Light theme"
+  - text: Approved
+- main:
+  - heading "Diagnostics" [level=2]
+  - region "React analysis":
+    - text: "React: 1 newly skipped"
+    - button "Open React"
+    - button "Dismiss"
+    - status: "React: 1 newly skipped"
+  - alert "Coverage":
+    - text: No errors. 1 component with warnings.
+    - strong: verify-unlogged
+    - text: "· 9 baselines have no approval log line (components-badge--neutral, components-badge--success, components-badge--danger, …): `pxsig approve verify` fails on them (strict by default since 0.4.0). For baselines from before pxsig kept a log, a person runs `pxsig approve verify --adopt` once; `--no-strict` only reports them"
+    - button "View components"
+    - button "Run safe repairs"
+    - text: Safe repairs register new stories and render them, re-check entries without a usable verdict, and restore baseline images that pass the gate. They do not approve changes or write signatures.
+  - group "React part":
+    - radio "Compiler" [checked]
+    - radio "Renders"
+  - text: From the analysis at 10/25/2026, 12:00:00 PM · base main (5a0208e)
+  - button "Analyse"
+  - heading "React Compiler" [level=3]
+  - paragraph: 1 files · 1 functions · compiled 0 · skipped 1 · opted out 0 · fixed 0 · 1.0 s (0 cached)
+  - button "Alerts (1)"
+  - button "All analysed (1)"
+  - textbox "Search all columns":
+    - /placeholder: Search all columns…
+  - button "Columns":
+    - img
+    - text: Columns
+  - grid "Data grid":
+    - rowgroup:
+      - row "Function File Before Now Rule Line Entries":
+        - columnheader "Function":
+          - button "Function"
+          - separator "Resize Function column"
+        - columnheader "File":
+          - text: File
+          - separator "Resize File column"
+        - columnheader "Before":
+          - text: Before
+          - separator "Resize Before column"
+        - columnheader "Now":
+          - text: Now
+          - separator "Resize Now column"
+        - columnheader "Rule":
+          - text: Rule
+          - separator "Resize Rule column"
+        - columnheader "Line":
+          - text: Line
+          - separator "Resize Line column"
+        - columnheader "Entries":
+          - text: Entries
+          - separator "Resize Entries column"
+    - rowgroup:
+      - row "Badge Newly skipped src/Badge/Badge.jsx Compiled Skipped refs 5 6":
+        - gridcell "Badge Newly skipped":
+          - strong: Badge
+          - text: Newly skipped
+        - gridcell "src/Badge/Badge.jsx"
+        - gridcell "Compiled"
+        - gridcell "Skipped"
+        - gridcell "refs"
+        - gridcell "5"
+        - gridcell "6"
+  - status

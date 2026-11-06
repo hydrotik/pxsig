@@ -15,12 +15,11 @@
       - link "Accessibility":
         - /url: "#a11y"
     - listitem:
-      - link "Runs, 5 runs":
+      - link "Runs, 7 runs":
         - /url: "#history"
         - text: Runs
     - listitem:
-      - link "Help":
-        - /url: "#help"
+      - button "More navigation"
   - button "Review 2 changes"
   - text: light · dark Live Read only
   - button "Light theme"
@@ -85,6 +84,12 @@
   - button "View components"
   - button "Run safe repairs"
   - text: Safe repairs register new stories and render them, re-check entries without a usable verdict, and restore baseline images that pass the gate. They do not approve changes or write signatures.
+  - heading "React" [level=3]
+  - paragraph: Alerts only, not blocking. From the analysis at 10/25/2026, 12:00:00 PM · base main (5a0208e) · 1 file changed since
+  - button "Newly skipped 1"
+  - button "Findings 0new · of 0"
+  - button "Compiled 0of 1 analysed"
+  - text: Still rendering —Not measured
   - heading "Changed Entries per Run" [level=3]
-  - paragraph: 5 runs.
-  - application: 1 2 3 4 5 0 6 12
+  - paragraph: 7 runs.
+  - application: 1 2 3 4 5 6 7 0 6 12
