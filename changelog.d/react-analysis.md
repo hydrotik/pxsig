@@ -69,6 +69,11 @@
   results, the others their last ones) and `check` with `renders: true` (Measure renders: counts
   React renders in that run, also with `react.renders` off). Render counts carry `at` and `prev`
   (the counts of the row they replaced). See docs/server.md.
+- **MCP: `pxsig_react`, and React fields in `pxsig_check` and `pxsig_entry`.** `pxsig_react` reads
+  the last `reports/react.json` (summary, each alert with its sentence, the functions analysed,
+  alerts first) or, with `run: true`, runs the analysis first, as `pxsig react --since` does.
+  `pxsig_check` with `since` or `changed_files` adds `react`: the alerts for those files.
+  `pxsig_entry` adds the row's `renders`. No tool accepts, approves or silences an alert.
 - **The engine's `check --history-extra json|@file`** adds an object's keys to the history line.
 - **The engine's `react-plan` and `react-diff`** (and the same two `pxsig serve` methods), and
   `entries` per `graph` file in `affected --json`.

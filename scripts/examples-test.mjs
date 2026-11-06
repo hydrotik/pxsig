@@ -77,7 +77,9 @@ async function run(name, { projects, storybookDir, change }) {
         r.status === 0,
         `manifest (${r.stdout.match(/Entries[^\n]*/)?.[0] ?? r.stderr.trim()})`
       );
-      r = pxsig(['check', '--full', '--project', p, '--retries', '0'], dir);
+      // One retry, as the second check has: on a slow runner the preview can start late (Windows,
+      // 2026-11-05: "the Storybook preview did not start" for one entry, then "PNG not found").
+      r = pxsig(['check', '--full', '--project', p, '--retries', '1'], dir);
       const first = checkJson(dir, p);
       // A render error is not NEW: say which render failed and why, here, not as "PNG not found".
       const odd = notNew(first.rows);

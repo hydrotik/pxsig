@@ -207,6 +207,26 @@ export interface ReactAlert {
   text: string;
 }
 
+/** One side of a function in `react.json`: the outcome, memo slots and the reasons, if any. */
+export interface ReactReportSide {
+  outcome: ReactFunction['outcome'] | 'analysis-timeout';
+  memoSlots?: number;
+  diagnostics?: ReactDiagnostic[];
+}
+
+/** One function in `react.json`: base and now (null: absent on that side), and what changed. */
+export interface ReactReportFunction {
+  id: string;
+  name: string;
+  kind: ReactFunction['kind'];
+  line: number;
+  base: ReactReportSide | null;
+  head: ReactReportSide | null;
+  /** Null when nothing was compared (no merge base, `--all`). */
+  change: string | null;
+  alert: boolean;
+}
+
 /** `reports/react.json`'s summary. */
 export interface ReactSummary {
   files: number;
@@ -240,7 +260,7 @@ export interface ReactReport {
     head: string;
     base: string | null;
   }[];
-  functions: Record<string, unknown>[];
+  functions: ReactReportFunction[];
   alerts: ReactAlert[];
   skipped: { path: string; why: string }[];
   notes: string[];
@@ -320,6 +340,44 @@ export type ReactRun =
 export type CheckReact =
   | Pick<ReactReport, 'summary' | 'alerts' | 'base' | 'backend'>
   | { skipped: Extract<ReactRun, { ran: false }>['why'] };
+
+/** `pxsig_react` (tools/react.mjs). */
+export interface ReactToolArgs {
+  project?: string | null;
+  run?: boolean;
+  since?: string;
+  limit?: number;
+}
+
+/** One function as `pxsig_react` lists it. */
+export interface ReactToolFunction {
+  id: string;
+  change: string | null;
+  alert: boolean;
+  now: string | null;
+  before: string | null;
+  rules: { rule: string; line: number | null; stops: boolean }[];
+}
+
+/** What `pxsig_react` answers: react.json reduced, or why there is none. */
+export type ReactToolResult =
+  | {
+      ran: true;
+      at: string;
+      base: ReactReport['base'];
+      backend: { compiler: string; babel: string };
+      summary: ReactSummary;
+      alerts: Pick<ReactAlert, 'id' | 'change' | 'level' | 'text'>[];
+      functions: ReactToolFunction[];
+      more: number;
+      /** The run's results were not saved: who holds the store. */
+      heldBy?: string;
+    }
+  | {
+      ran: false;
+      why: 'off' | 'config' | 'not-installed' | 'failed' | 'skipped' | 'none';
+      text: string;
+    };
 
 /** A rule in the React SARIF file (lib/sarif-react.mjs). */
 export interface ReactSarifRule {

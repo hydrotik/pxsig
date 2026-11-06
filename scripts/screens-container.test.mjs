@@ -44,4 +44,24 @@ test('docker run mounts the checkout at its own path and runs screens-check as t
     'inspector.header',
   ]);
   assert.ok(!dockerArgs({ image: 'i', repo: '/r', user: null, args: [] }).includes('--user'));
+  // The live screens' engine, when one is named: passed by value, at the path the container sees.
+  const live = dockerArgs({
+    image: 'i',
+    repo: '/r',
+    user: null,
+    args: [],
+    liveBin: '/r/target/release/pxsig',
+  });
+  assert.deepEqual(
+    live.slice(
+      live.indexOf('PXSIG_LIVE_BIN=/r/target/release/pxsig') - 1,
+      live.indexOf('PXSIG_LIVE_BIN=/r/target/release/pxsig') + 1
+    ),
+    ['-e', 'PXSIG_LIVE_BIN=/r/target/release/pxsig']
+  );
+  assert.ok(
+    !dockerArgs({ image: 'i', repo: '/r', user: null, args: [] }).some((x) =>
+      x.startsWith('PXSIG_LIVE_BIN')
+    )
+  );
 });

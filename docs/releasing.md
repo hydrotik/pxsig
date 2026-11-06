@@ -120,6 +120,10 @@ without the link (Read only), the server stopped (Offline). Each step is one scr
 `live--<flow>-<n>@<theme>` (`live--approve-2@dark`), with its locked structure in
 `fixtures/locked/live/`, checked with the fixture screens in the same run and reviewed the same way.
 A behaviour-free change to the server or the dashboard shows `0 to review`: that is its proof.
+The live screens run this commit's engine: the workflow builds it on the runner and passes it to the
+container (`PXSIG_LIVE_BIN`), so a change to the engine shows in them too; the browser and fonts
+stay the image's. Run locally without it (a macOS build cannot run in the container), they use the
+image's engine.
 
 - The flows are `scripts/live/flows.mjs`. An id is a baseline: a step is never renumbered; a new
   step takes the next number or a new flow. `scripts/live-screens.test.mjs` fails when the

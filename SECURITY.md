@@ -55,7 +55,7 @@ Storybook.
   log line written under a marker names the assistant (`agent`). No MCP tool can approve or
   accept a baseline or an accessibility violation: `pxsig_status`, `pxsig_projects`, `pxsig_list`,
   `pxsig_entry`, `pxsig_history`, `pxsig_a11y`, `pxsig_affected`, `pxsig_stale`, `pxsig_help`
-  read; `pxsig_check` re-renders; `pxsig_doctor` runs the safe repairs, which never change a
+  read; `pxsig_react` reads, or runs the React Compiler analysis (no browser, alerts only); `pxsig_check` re-renders; `pxsig_doctor` runs the safe repairs, which never change a
   baseline's signature or the log (one adds a missing image to a `.psig` only when it passes that
   signature's gate); `pxsig_review` marks rejections only, and refuses even those without `confirm: true`. Every
   approval is logged with hashes and the pxsig version, and can be undone. The approval log is not
