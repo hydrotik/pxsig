@@ -652,6 +652,8 @@ export interface EntryDetail extends BriefEntry {
   envMatch: string;
   envDiff: string[] | null;
   envFonts?: string[];
+  /** React render counts (null: no React renderer); absent when not counted. */
+  renders?: ReportRow['renders'];
   checkedAt: string | null;
   renderedAt: string | null;
   diffPage: string;
@@ -677,6 +679,8 @@ export interface CheckToolResult {
   wouldFail?: boolean;
   /** Without the server: the last lines of the check's output. */
   log?: string;
+  /** With `since` / `changed_files`: the React Compiler's alerts (tools/react.mjs). */
+  react?: import('./react.js').CheckReact;
 }
 
 /** A value read out of a config (JSON): `pxsig config` prints it. */

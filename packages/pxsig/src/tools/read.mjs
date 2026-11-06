@@ -230,6 +230,8 @@ export const readTools = /** @type {const} */ ([
           env: row.env ?? null,
           baselineEnv: row.baselineEnv ?? null,
           envMatch: row.envMatch ?? 'unknown',
+          // React render counts (react.renders, or Measure renders): null when no React rendered.
+          ...(row.renders !== undefined ? { renders: row.renders } : {}),
           envDiff: row.envDiff ?? null,
           ...(row.envFonts ? { envFonts: row.envFonts } : {}),
           checkedAt: verdictTimes(C, check).get(id)?.at.toISOString() ?? null,
