@@ -22,7 +22,7 @@ import { autoTarget, BABEL, COMPILER, reactPeers } from './peers.mjs';
 import { createPool } from './pool.mjs';
 
 /** @import { Flags, Project } from '../../types.js' */
-/** @import { CompileResult, ReactPlan, ReactReport, ReactRun } from '../../types/react.js' */
+/** @import { CompileResult, ReactPlan, ReactProgress, ReactReport, ReactRun } from '../../types/react.js' */
 
 /** @param {unknown} code an exit code, or a spawn error's code */
 const engineCode = (code) =>
@@ -58,15 +58,26 @@ const notInstalled = (missing) =>
 /**
  * Analyse the changed React files of a project.
  * @param {Project} P
- * @param {{ since?: string, files?: string[], all?: boolean, workers?: number, flags?: Flags, env?: NodeJS.ProcessEnv, manifest?: string }} [opts]
+ * @param {{ since?: string, files?: string[], all?: boolean, workers?: number, flags?: Flags, env?: NodeJS.ProcessEnv, manifest?: string, signal?: AbortSignal, onProgress?: (p: ReactProgress) => void }} [opts]
  *   `since` (default `main`), `files` (workspace-relative, compared with HEAD) or `all`; `workers`:
  *   the pool's size at most (default: the CPUs less one, at most 4); `manifest`: a run manifest
- *   already written (a check's, its suite's entries), else the project's is written.
+ *   already written (a check's, its suite's entries), else the project's is written. `signal`
+ *   skips the run (nothing is written: `why: 'skipped'`); `onProgress` hears the files done.
  * @returns {Promise<ReactRun>}
  */
 export async function analyse(
   P,
-  { since, files, all = false, workers, flags = {}, env = process.env, manifest: runManifest } = {}
+  {
+    since,
+    files,
+    all = false,
+    workers,
+    flags = {},
+    env = process.env,
+    manifest: runManifest,
+    signal,
+    onProgress,
+  } = {}
 ) {
   const t0 = Date.now();
   const cfg = reactConfig(P, { flags, env });
@@ -144,6 +155,35 @@ export async function analyse(
       for (const side of [f.head, f.base])
         if (side && !side.hit && side.text != null)
           misses.set(side.sha, { path: f.path, text: side.text, parser: f.parser });
+    // Progress: a file is done when each side it needs compiled is (a cache hit needs none).
+    /** @type {Map<string, Set<string>>} sha → the paths waiting for it */
+    const waiting = new Map();
+    /** @type {Map<string, number>} */
+    const left = new Map();
+    for (const f of plan.files) {
+      const shas = new Set(
+        [f.head, f.base].filter((x) => x && !x.hit && x.text != null).map((x) => x?.sha ?? '')
+      );
+      left.set(f.path, shas.size);
+      for (const sha of shas) waiting.set(sha, (waiting.get(sha) ?? new Set()).add(f.path));
+    }
+    const cached = [...left.values()].filter((n) => n === 0).length;
+    let done = cached;
+    onProgress?.({ done, total: plan.files.length, cached });
+    /** @param {string} sha */
+    const compiled = (sha) => {
+      for (const path of waiting.get(sha) ?? []) {
+        const n = (left.get(path) ?? 1) - 1;
+        left.set(path, n);
+        if (n === 0) onProgress?.({ done: ++done, total: plan.files.length, cached });
+      }
+    };
+    const skipped = () => ({
+      ran: /** @type {const} */ (false),
+      why: /** @type {const} */ ('skipped'),
+      text: 'react: analysis skipped: nothing written',
+    });
+    if (signal?.aborted) return skipped();
     /** @type {Record<string, CompileResult>} */
     const results = {};
     if (misses.size) {
@@ -158,13 +198,19 @@ export async function analyse(
         options,
       });
       const p = pool;
+      // Skip: the workers end, and what they were doing answers at once.
+      const stop = () => void p.close();
+      signal?.addEventListener('abort', stop, { once: true });
       await Promise.all(
         [...misses].map(async ([sha, task]) => {
           results[sha] = await p.compile(task);
+          compiled(sha);
         })
       );
+      signal?.removeEventListener('abort', stop);
       await pool.close();
     }
+    if (signal?.aborted) return skipped();
     const resultsFile = join(runDir, 'react-results.json');
     writeAtomic(
       resultsFile,

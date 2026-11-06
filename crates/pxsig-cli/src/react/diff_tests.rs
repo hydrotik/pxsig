@@ -173,7 +173,7 @@ fn every_change_row() {
     );
     assert_eq!(
         r["files"],
-        json!([{ "path": "src/Button/Button.tsx", "entries": 3, "all": false, "head": "compiled", "base": "compiled" }])
+        json!([{ "path": "src/Button/Button.tsx", "entries": 3, "all": false, "ids": ["a", "b", "c"], "head": "compiled", "base": "compiled" }])
     );
 }
 
@@ -260,6 +260,8 @@ fn compile_results_are_cached_and_errors_are_not() {
     let r = diff(&plan, &json!({ "results": {} }), &d, true).unwrap();
     assert_eq!(r["summary"]["cached"], 1);
     assert_eq!(r["files"][0]["head"], "cached");
+    // A file that reaches every entry lists none.
+    assert_eq!(r["files"][0]["ids"], Value::Null);
     assert_eq!(r["functions"][0]["change"], Value::Null);
     // A timed-out file: no functions, not cached.
     let plan = json!({ "base": null, "files": [{ "path": "y.tsx", "entries": [], "all": false, "compare": false, "head": { "sha": "cc33", "hit": false }, "base": null }] });

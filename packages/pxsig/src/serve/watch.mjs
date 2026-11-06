@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { relPath } from '../lib/paths.mjs';
 import { enqueue } from './checks.mjs';
 import { scheduleIntegrity } from './integrity.mjs';
+import { sourceEdited, startReact } from './react.mjs';
 /** @import { ServeContext } from '../types/serve.js' */
 
 /**
@@ -48,8 +49,15 @@ export function watchStores(srv) {
       S.traces.clear();
       scheduleIntegrity(srv, S, why);
     };
-    watchFor(srv, P.srcRoot, retrace('source changed'), (f) =>
-      /\.(tsx?|jsx?|mjs|css|json|mdx)$/.test(f)
+    watchFor(
+      srv,
+      P.srcRoot,
+      (file) => {
+        retrace('source changed')();
+        // The React results are out of date for a code file until the next analysis.
+        if (/\.(tsx?|jsx?|mjs)$/.test(file)) sourceEdited(S, file);
+      },
+      (f) => /\.(tsx?|jsx?|mjs|css|json|mdx)$/.test(f)
     );
     watchFor(srv, P.store.baselines, later('baselines changed'));
     watchFor(srv, join(P.store.root, 'renders'), later('renders changed'), (f) =>
@@ -74,7 +82,7 @@ export function watchStores(srv) {
   }
 }
 
-// --- watch mode: edits re-check only what they can affect --------------------------------------
+// --- watch mode: edits re-check only what they can affect, and run the React analysis ----------
 /** @param {ServeContext} srv */
 export function watchSources(srv) {
   for (const S of srv.states.values()) {
@@ -112,6 +120,8 @@ export function watchSources(srv) {
                 `[serve] ${S.name}: watch: not traced: ${f.why} (a gate would check every entry)`
               );
             srv.broadcast('watch', { project: S.name, files, ids: ids.length });
+            // The compiler analysis follows a code edit (it skips what did not change).
+            if (files.some((f) => /\.(tsx?|jsx?|mjs)$/.test(f))) startReact(srv, S, 'watch');
             if (ids.length) await enqueue(srv, S, { ids });
           } catch (e) {
             // The engine's and enqueue's errors are Errors.

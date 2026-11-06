@@ -57,6 +57,7 @@ const NOT_IN_SCENARIOS = new Set([
   'calibrationSuites', // the same
   'approvals', // approvals.byStory: off unless set
   'source', // `dashboard-screens` only for pxsig's own screens
+  'react', // the React analysis: no dashboard screen reads it yet
 ]);
 
 /**

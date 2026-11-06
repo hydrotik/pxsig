@@ -63,6 +63,9 @@ export const NEEDS_PERSON =
 export const NEEDS_LINK =
   'approving here needs the dashboard link: open the link `pxsig serve` printed, or run `pxsig serve --link` in a terminal';
 export const NEEDS_LINK_CODE = 'needs-dashboard-link';
+/** A run a person starts from the dashboard (Analyse, Skip, Measure renders, Cancel) without the link. */
+export const NEEDS_LINK_RUN =
+  'this needs the dashboard link: open the link `pxsig serve` printed, or run `pxsig serve --link` in a terminal';
 
 export const newToken = () => randomBytes(32).toString('hex');
 
@@ -242,6 +245,18 @@ export function authorize({
   if (browser) return { ok: false, status: 403, error: NEEDS_LINK, code: NEEDS_LINK_CODE };
   return { ok: false, status: 403, error: NEEDS_PERSON };
 }
+
+/**
+ * A page opened with the dashboard link (its cookie): the gate for the runs a person starts from
+ * the dashboard (React's Analyse and Skip, Measure renders, Cancel), on top of a write's origin rule.
+ * They decide nothing, but they replace visual results or stop work a person started.
+ * @param {IncomingHttpHeaders} headers
+ * @param {Links} links
+ * @param {number | null} port
+ */
+export const hasLink = (headers, links, port) =>
+  !!(headers.origin || headers['sec-fetch-site']) &&
+  links.has(cookieValue(headers.cookie, linkCookie(port)));
 
 /**
  * `pxsig serve --link` asking the running server for a ticket: the CLI's token, never a browser.

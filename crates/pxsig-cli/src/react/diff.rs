@@ -237,8 +237,10 @@ pub fn diff(plan: &Value, results: &Value, cache_dir: &Path, write: bool) -> Res
                 None => json!("compiled"),
             }
         };
+        // `ids`: the entries the file reaches (none listed when it reaches every entry).
         files.push(json!({
             "path": path, "entries": entries, "all": f["all"],
+            "ids": if f["all"] == true { Value::Null } else { f["entries"].clone() },
             "head": state(&f["head"], &head),
             "base": base.as_ref().map(|b| state(&f["base"], b)),
         }));

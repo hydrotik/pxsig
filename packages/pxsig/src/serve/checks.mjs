@@ -1,6 +1,9 @@
 /**
  * serve/checks.mjs — on-demand checks (dashboard, addon, watch): the queue, with names the manifest
  * lacks registered first, and the run that renders, checks and merges the rows into check.json.
+ * A run reports its progress (`check` events, `progress`), can count React renders (Measure
+ * renders) and can be cancelled (`check/cancel`): the entries rendered by then keep their new
+ * results, the others their last ones.
  */
 import { join } from 'node:path';
 import { browserPool, renderStories, STORYBOOK_ERROR } from '../lib/capture.mjs';
@@ -8,13 +11,13 @@ import { annotateRow, byId, envConfig } from '../lib/env.mjs';
 import { readJson, writeJson } from '../lib/files.mjs';
 import { fetchStoryIndex, loadStoryIndex } from '../lib/integrity.mjs';
 import { defaultHooks, registerNamed } from '../lib/repair.mjs';
-import { buildRow, storybookBroken } from '../lib/rows.mjs';
+import { buildRow, stampRenders, storybookBroken } from '../lib/rows.mjs';
 import { PXSIG_VERSION } from '../lib/workspace.mjs';
 import { scheduleIntegrity } from './integrity.mjs';
 import { needLock } from './projects.mjs';
 import { updateCheckRows } from './report-rows.mjs';
 /**
- * @import { A11yBaseline, A11yReviewFile, Enqueued, RequestBody, ReviewFile, SetupError
+ * @import { A11yBaseline, A11yReviewFile, CheckReport, Enqueued, RequestBody, ReviewFile, SetupError
  * } from '../types/t5.js'
  */
 /** @import { ServeContext } from '../types/serve.js' */
@@ -26,14 +29,24 @@ import { updateCheckRows } from './report-rows.mjs';
  */
 export async function runChecks(srv, S) {
   if (S.running || !S.queued.size) return S.running;
-  const ids = [...S.queued];
+  let ids = [...S.queued];
   S.queued = new Set();
   S.checking = new Set(ids);
+  // Measure renders asked for this run; a check queued after it waits for the next run.
+  const renders = S.measure;
+  S.measure = false;
+  const cancel = new AbortController();
+  S.cancel = cancel;
   const { P } = S;
   const seq = ++S.runs;
   S.running = (async () => {
     const t0 = performance.now();
-    srv.broadcast('check', { project: S.name, state: 'running', ids });
+    srv.broadcast('check', {
+      project: S.name,
+      state: 'running',
+      ids,
+      ...(renders ? { renders: true } : {}),
+    });
     try {
       S.reload();
       // The manifest stopped loading since these ids were queued: say why, render nothing.
@@ -67,12 +80,46 @@ export async function runChecks(srv, S) {
         entries.map((e) => e.browser ?? 'chromium'),
         { fontProbe: envCfg.fontProbe, pxsig: PXSIG_VERSION, engine: engineVersion }
       );
-      const { results, wallMs, reloads } = await renderStories(srv.pool, entries, P.store.latest, {
+      let tick = 0;
+      const rendered = await renderStories(srv.pool, entries, P.store.latest, {
         ...manifest,
         concurrency,
         project: P,
         a11y: true,
+        // Measure renders counts them also when `react.renders` is off (never when React is).
+        ...(renders ? { renders: true } : {}),
+        signal: cancel.signal,
+        // At most four progress events a second, and the last one.
+        onEntry(done) {
+          if (done < entries.length && Date.now() - tick < 250) return;
+          tick = Date.now();
+          srv.broadcast('check', {
+            project: S.name,
+            state: 'progress',
+            done,
+            total: entries.length,
+          });
+        },
       });
+      const { wallMs, reloads } = rendered;
+      // Cancelled: only the entries rendered by then are checked and recorded.
+      const results = rendered.results.filter(Boolean);
+      const cancelled = cancel.signal.aborted;
+      if (cancelled) {
+        const done = new Set(results.map((r) => r.id));
+        ids = ids.filter((id) => done.has(id));
+      }
+      if (cancelled && !ids.length) {
+        console.log(`[serve] ${S.name}: check cancelled before any entry was rendered`);
+        srv.broadcast('check', {
+          project: S.name,
+          state: 'cancelled',
+          ids,
+          done: 0,
+          total: entries.length,
+        });
+        return;
+      }
       const sbErrors = results.filter((r) => r.error?.startsWith(STORYBOOK_ERROR));
       if (storybookBroken(sbErrors.length, results.length))
         throw Object.assign(
@@ -103,7 +150,12 @@ export async function runChecks(srv, S) {
           `[serve] ${S.name}: ${g.count} failing entries rendered the same image (${g.ids.slice(0, 3).join(', ')}…): marked as errors, nothing to approve`
         );
       const rustRows = new Map(res.results.map((r) => [r.id, r]));
-      const renders = new Map(results.map((r) => [r.id, r]));
+      // Render counts: when, and the counts of the row each one replaces.
+      const before = new Map(
+        /** @type {CheckReport} */ (readJson(S.checkPath, { rows: [] })).rows.map((r) => [r.id, r])
+      );
+      const at = new Date().toISOString();
+      const byRender = new Map(results.map((r) => [r.id, r]));
       const a11yBase = /** @type {A11yBaseline | null} */ (readJson(P.store.a11y, null));
       const rv = /** @type {ReviewFile} */ (readJson(S.reviewPath, {}));
       for (const id of ids) delete rv[id]; // a fresh verdict replaces a decision on the old one
@@ -113,16 +165,22 @@ export async function runChecks(srv, S) {
       writeJson(S.a11yReviewPath, av, { pretty: true });
       const envs = { ...res.baselineEnvs, ...byId(current) };
       const fresh = new Map(
-        entries.map((e) => [
-          e.id,
-          annotateRow(buildRow(e, rustRows.get(e.id), renders.get(e.id), a11yBase, manifest), {
-            current,
-            envs,
-            ignore: envCfg.ignore,
-          }),
-        ])
+        entries
+          .filter((e) => byRender.has(e.id))
+          .map((e) => [
+            e.id,
+            stampRenders(
+              annotateRow(buildRow(e, rustRows.get(e.id), byRender.get(e.id), a11yBase, manifest), {
+                current,
+                envs,
+                ignore: envCfg.ignore,
+              }),
+              before.get(e.id),
+              at
+            ),
+          ])
       );
-      const full = entries.length === manifest.stories.length;
+      const full = !cancelled && entries.length === manifest.stories.length;
       const timing = full
         ? {
             concurrency,
@@ -139,10 +197,11 @@ export async function runChecks(srv, S) {
       );
       srv.broadcast('check', {
         project: S.name,
-        state: 'done',
+        state: cancelled ? 'cancelled' : 'done',
         ids,
         failed,
         ms: performance.now() - t0,
+        ...(cancelled ? { done: ids.length, total: entries.length } : {}),
       });
       srv.broadcast('data', { project: S.name });
     } catch (e) {
@@ -165,6 +224,7 @@ export async function runChecks(srv, S) {
     } finally {
       S.running = null;
       S.checking = null;
+      S.cancel = null;
       if (S.queued.size) void runChecks(srv, S);
       else scheduleIntegrity(srv, S, 'check', 0);
     }
@@ -221,6 +281,8 @@ export async function enqueue(srv, S, body) {
   for (const e of S.manifest.stories) if (body.all || stories.has(e.story ?? e.id)) ids.add(e.id);
   const queued = [...ids].filter((id) => S.manifest.stories.some((e) => e.id === id));
   queued.forEach((id) => S.queued.add(id));
+  // Measure renders: the run that takes these counts React renders.
+  if (body.renders === true && queued.length) S.measure = true;
   void runChecks(srv, S);
   if (registered.added.length) scheduleIntegrity(srv, S, 'registered', 0);
   return { queued, registered: registered.added, skipped: registered.skipped };

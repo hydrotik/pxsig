@@ -12,12 +12,14 @@ import { shownPath } from '../lib/paths.mjs';
 import { flagLayer, loadProject, writeRunManifest } from '../lib/workspace.mjs';
 import { httpError } from './http.mjs';
 import { scheduleIntegrity } from './integrity.mjs';
+import { reactState } from './react.mjs';
 import { traceCache } from './traces.mjs';
 /** @import { IntegrityContext, reconcile } from '../lib/integrity.mjs' */
 /** @import { applyRepairs } from '../lib/repair.mjs' */
 /** @import { LockHandle, Project, ProjectRef, RunManifest } from '../types.js' */
 /** @import { ProjectQuery } from '../types/t5.js' */
 /** @import { ServeContext } from '../types/serve.js' */
+/** @import { ReactState } from './react.mjs' */
 /** The integrity ledger (lib/integrity.mjs `reconcile`). */
 /** @typedef {Awaited<ReturnType<typeof reconcile>>} IntegrityLedger */
 /**
@@ -48,6 +50,9 @@ import { traceCache } from './traces.mjs';
  * @property {() => void} reload
  * @property {(file: string) => Promise<string[]>} affected
  * @property {ReturnType<typeof traceCache>} traces the last pass's tracing (serve/traces.mjs)
+ * @property {ReactState} react the React analysis (serve/react.mjs)
+ * @property {AbortController | null} cancel stops the running check (`check/cancel`)
+ * @property {boolean} measure the next check run counts React renders (Measure renders)
  */
 
 /**
@@ -80,6 +85,9 @@ export function openState(srv, ref) {
     lock: null,
     lockWait: null,
     traces: traceCache(),
+    react: reactState(),
+    cancel: null,
+    measure: false,
   };
   S.reload = () => {
     try {

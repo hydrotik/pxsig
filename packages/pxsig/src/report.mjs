@@ -34,7 +34,10 @@ import { readJson, tailLines } from './lib/files.mjs';
 import { manifestSource } from './lib/source.mjs';
 import { byStory } from './lib/approvals/story.mjs';
 import { PXSIG_VERSION, engineVersion, openProject } from './lib/workspace.mjs';
+import { reactData } from './lib/react/data.mjs';
 /** @import { Manifest, Project } from './types.js' */
+/** @import { CheckReport } from './types/t5.js' */
+/** @import { ReactLive } from './types/react.js' */
 
 const here = dirname(fileURLToPath(import.meta.url));
 /**
@@ -128,16 +131,19 @@ export function uiContractVersion() {
 
 /**
  * One project's dashboard data. `base` is the URL prefix of the project's files: `/p/<name>/`
- * when served, `./` for a static report.
+ * when served, `./` for a static report; `live`, the server's React state (serve/react.mjs).
  * @param {Project} P
- * @param {{ base?: string }} [opts]
+ * @param {{ base?: string, live?: ReactLive | null }} [opts]
  */
-export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/` } = {}) {
+export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/`, live = null } = {}) {
   // The manifest pxsig wrote (docs/spec.md section 6).
   const manifest = /** @type {Manifest | null} */ (readJson(P.manifestPath())) ?? {
     stories: [],
   };
   const read = (/** @type {string} */ name) => readJson(join(P.store.reports, `${name}.json`));
+  const check = /** @type {CheckReport | null} */ (read('check'));
+  // The React analysis: always when served, else only with results to show (lib/react/data.mjs).
+  const react = reactData(P, { check, live });
   return {
     generatedAt: new Date().toISOString(),
     project: P.name,
@@ -152,7 +158,8 @@ export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/` } = {}
       contract: uiContractVersion(),
     },
     store: relative(P.workspaceRoot, P.store.root),
-    check: read('check'),
+    check,
+    ...(react ? { react } : {}),
     gateCalibration: read('calibration-gate'),
     /** scenarios.json → `default`, scenarios-<suite>.json → `<suite>`. */
     scenarioSuites: suites(P, 'scenarios'),

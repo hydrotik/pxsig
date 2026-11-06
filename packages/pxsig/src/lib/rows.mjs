@@ -4,6 +4,7 @@
  * mode), so every producer writes the same shape into <store>/reports/check.json.
  */
 /** @import { CheckRow, CheckSummary, EngineResult, ManifestEntry, RenderResult } from '../types.js' */
+/** @import { RenderCounts } from '../types/react.js' */
 
 /**
  * The engine's verdict on an entry with no signature yet: nothing to compare with, so a fresh
@@ -119,6 +120,31 @@ export function dropStaleRows(check, manifest) {
     check.summary = { ...check.summary, ...summarize(check.rows) };
   }
   return dropped;
+}
+
+/**
+ * A checked row's render counts with when they were measured (`at`) and the mount counts of the
+ * row it replaces (`prev`, "since the last check in this store": information, never compared).
+ * A row without counts is returned as it is.
+ * @template {{ renders?: RenderCounts | null }} R
+ * @param {R} row
+ * @param {{ renders?: RenderCounts | null } | undefined} old the row it replaces
+ * @param {string} at
+ * @returns {R}
+ */
+export function stampRenders(row, old, at) {
+  if (!row.renders) return row;
+  const was = old?.renders;
+  return {
+    ...row,
+    renders: {
+      ...row.renders,
+      at,
+      ...(was
+        ? { prev: { commits: was.mount.commits, rendered: was.mount.rendered, at: was.at ?? null } }
+        : {}),
+    },
+  };
 }
 
 /**
