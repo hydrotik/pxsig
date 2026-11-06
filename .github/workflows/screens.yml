@@ -92,6 +92,17 @@ jobs:
           ds="${RUNNER_TEMP}/design-system"
           (cd "$ds" && pnpm turbo run build --filter=@hydrotik/design-system)
           PXSIG_DS_SOURCE="$ds" node scripts/typecheck.mjs
+      # The live screens run on this commit's engine (docs/releasing.md, "Live screens"): built here,
+      # on the runner (Ubuntu, as the image), and seen by the container at the same path.
+      - if: steps.has.outputs.ds == 'true'
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable branch, 2026-10-26
+        with:
+          toolchain: 1.99.0 # rust-toolchain.toml
+      - if: steps.has.outputs.ds == 'true'
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - if: steps.has.outputs.ds == 'true'
+        name: Build the engine for the live screens
+        run: cargo build --release --locked
       - if: steps.has.outputs.ds == 'true'
         id: check
         name: Check the screens in pxsig's container
@@ -102,7 +113,7 @@ jobs:
           # The runner's bash has -e on: catch the check's exit, so 1 (screens to review) still
           # writes the summary and the output that "Screens to review" reads. Above 1 fails below.
           code=0
-          node scripts/screens-container.mjs || code=$?
+          PXSIG_LIVE_BIN="$PWD/target/release/pxsig" node scripts/screens-container.mjs || code=$?
           if [ -f packages/dashboard/.pxsig/reports/summary.md ]; then
             cat packages/dashboard/.pxsig/reports/summary.md >> "$GITHUB_STEP_SUMMARY"
           fi

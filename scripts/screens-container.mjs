@@ -12,6 +12,10 @@
  *
  * The live screens' workspace is staged here, on the host, first (scripts/live/stage.mjs: the
  * container has no pnpm), unless `--no-live` or an `--only` that names no live feature.
+ *
+ * PXSIG_LIVE_BIN, when set: the engine the live screens run on, a Linux build of this checkout's
+ * (the screens workflow builds it on the runner); the container sees it at the same path. Unset,
+ * the live screens run on the image's engine, as the fixture screens' check always does.
  */
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -49,10 +53,10 @@ export function pinnedImage(/** @type {string} */ repo) {
 
 /**
  * The `docker run` arguments.
- * @param {{ image: string, repo: string, user: string | null, args: string[] }} o
- *   user `uid:gid`, or null where there is none (Windows)
+ * @param {{ image: string, repo: string, user: string | null, args: string[], liveBin?: string | null }} o
+ *   user `uid:gid`, or null where there is none (Windows); liveBin: the live screens' engine
  */
-export function dockerArgs({ image, repo, user, args }) {
+export function dockerArgs({ image, repo, user, args, liveBin = null }) {
   return [
     'run',
     '--rm',
@@ -63,6 +67,7 @@ export function dockerArgs({ image, repo, user, args }) {
     'HOME=/tmp',
     '-e',
     'CI',
+    ...(liveBin ? ['-e', `PXSIG_LIVE_BIN=${liveBin}`] : []),
     '-v',
     `${repo}:${repo}`,
     '-w',
@@ -85,7 +90,13 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     });
   const r = spawnSync(
     'docker',
-    dockerArgs({ image: pinnedImage(repo), repo, user, args: process.argv.slice(2) }),
+    dockerArgs({
+      image: pinnedImage(repo),
+      repo,
+      user,
+      args: process.argv.slice(2),
+      liveBin: process.env.PXSIG_LIVE_BIN ? resolve(process.env.PXSIG_LIVE_BIN) : null,
+    }),
     { stdio: 'inherit' }
   );
   if (r.error) {
