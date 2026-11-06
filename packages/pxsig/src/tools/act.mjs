@@ -9,6 +9,7 @@ import { acquireLock, describeLock, readLock } from '../lib/lock.mjs';
 import { ctxOf, here, http, ID_RE, load, PROJECT, server } from './context.mjs';
 import { affected } from './staleness.mjs';
 import { doctor, summarizeIds } from './doctor.mjs';
+import { checkReact } from './react.mjs';
 
 /** @import { Readable } from 'node:stream' */
 /** @import { LockError } from '../lib/lock.mjs' */
@@ -20,7 +21,7 @@ export const actTools = /** @type {const} */ ([
   {
     name: 'pxsig_check',
     description:
-      'Re-render and re-check entries, then report their results. Select by `ids`, `stories`, `changed_files` (import graph), `since` (git ref), or `all`. A story (or entry) not in the manifest yet is registered first when Storybook is healthy: its entries arrive NEW, with no signature, for a person to approve; anything that cannot be registered is listed in `skipped` with the reason. Uses the running pxsig server (fast, warm browsers); without it, runs the check itself (needs the project Storybook). Never writes baselines.',
+      'Re-render and re-check entries, then report their results. Select by `ids`, `stories`, `changed_files` (import graph), `since` (git ref), or `all`. A story (or entry) not in the manifest yet is registered first when Storybook is healthy: its entries arrive NEW, with no signature, for a person to approve; anything that cannot be registered is listed in `skipped` with the reason. Uses the running pxsig server (fast, warm browsers); without it, runs the check itself (needs the project Storybook). With `since` or `changed_files`, `react` carries the React Compiler alerts for those files (alerts only, see pxsig_react). Never writes baselines.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -51,11 +52,22 @@ export const actTools = /** @type {const} */ ([
       const sel = new Set(ids);
       if (changed_files?.length || since)
         for (const id of affected(C, { files: changed_files, since }).ids) sel.add(id);
+      // The React Compiler's alerts for the same files (alerts only). Beside the server's renders
+      // (it holds the store, so the analysis writes only in a temporary folder); after a check run
+      // here (both would write the store's run files).
+      /** @type {ReturnType<typeof checkReact> | null} */
+      let reacting = null;
+      /** @param {CheckToolResult} out */
+      const withReact = async (out) => {
+        const react = await (reacting ??= checkReact(C, { since, changed_files }));
+        return react ? { ...out, react } : out;
+      };
       if (!sel.size && !stories.length && !all)
-        return { checked: 0, note: 'nothing selected (the files affect no entries?)' };
+        return withReact({ checked: 0, note: 'nothing selected (the files affect no entries?)' });
       const srv = await server(C);
       const t0 = Date.now();
       if (srv.up) {
+        reacting = checkReact(C, { since, changed_files });
         // Registering a new story reads its parameters in a browser first: allow for that.
         /** @type {ServerCheckReply} */
         const res = await http(C, '/__pxsig/check', {
@@ -69,13 +81,13 @@ export const actTools = /** @type {const} */ ([
           ...(res.skipped?.length ? { skipped: res.skipped } : {}),
         };
         if (!queued.size)
-          return {
+          return withReact({
             checked: 0,
             ...extra,
             note: res.skipped?.length
               ? 'nothing queued: every name was skipped (see skipped)'
               : 'nothing queued: no entry matches the selection',
-          };
+          });
         // Wait for the queue to drain.
         for (;;) {
           await new Promise((r) => setTimeout(r, 1500));
@@ -83,13 +95,13 @@ export const actTools = /** @type {const} */ ([
           const s = await http(C, '/__pxsig/status', { timeout: 5000 }).catch(() => null);
           if (s && !s.running && !s.queued) break;
           if (Date.now() - t0 > timeout_s * 1000)
-            return {
+            return withReact({
               timedOut: true,
               queued: queued.size,
               note: 'still running; call pxsig_status later',
-            };
+            });
         }
-        return { ...summarizeIds(C, queued, 'server', t0), ...extra };
+        return withReact({ ...summarizeIds(C, queued, 'server', t0), ...extra });
       }
       const args = [join(here, 'check.mjs'), '--project', C.P.name, '--retries', '1'];
       // Ids and stories together (both name entries to --only; new ones are registered there).
@@ -124,13 +136,13 @@ export const actTools = /** @type {const} */ ([
         name: m[1],
         why: m[2],
       }));
-      return {
+      return withReact({
         ...summarizeIds(C, want, 'check', t0),
         ...(skipped.length ? { skipped } : {}),
         // Run here, not by the server on the port: it serves another workspace.
         ...(srv.foreign ? { note: srv.foreign } : {}),
         log: out.log,
-      };
+      });
     },
   },
   {

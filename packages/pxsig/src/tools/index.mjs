@@ -5,12 +5,14 @@
 import { actTools } from './act.mjs';
 import { infoTools } from './info.mjs';
 import { inspectTools } from './inspect.mjs';
+import { reactTools } from './react.mjs';
 import { readTools } from './read.mjs';
 
 // Spreading the const groups keeps each tool's literal name (types/t6.d.ts).
 export const tools = /** @type {const} */ ([
   ...readTools,
   ...inspectTools,
+  ...reactTools,
   ...actTools,
   ...infoTools,
 ]);
