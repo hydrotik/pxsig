@@ -404,15 +404,19 @@ Files: `src/views/Help`, `src/parts/Schematic`
 
 ## Inspector
 
-### Still rendering
+### React in the inspector
 
-`inspector.react` · In the inspector header, beside the verdict: a Still rendering badge when React was still committing at capture (its title is the alert), a likely cause of a flaky entry. It never changes the verdict, the decision buttons or the review queue. Not in the Storybook panel.
+`inspector.react` · In the header, beside the verdict: a Still rendering badge when React was still committing at capture (its title is the alert), a likely cause of a flaky entry; it never changes the verdict, the decision buttons or the review queue. In the side panel, after Accessibility: the entry's render counts, whether React had settled, its top components and the counts before, and the React Compiler alerts whose file reaches the entry, each opening Diagnostics › React on that function. Neither in the Storybook panel.
 
-Components: `Badge`
+Interactions:
 
-Copy: `inspector.react`, `diagnostics.react.renders.stillAlert`
+- Open a compiler alert in Diagnostics › React
 
-Files: `src/inspector/Header`
+Components: `Badge`, `Button`, `KeyValueList`, `KeyValueItem`
+
+Copy: `inspector.react`, `inspector.sections.react`, `diagnostics.react.renders`
+
+Files: `src/inspector/Header`, `src/inspector/side/ReactSection`, `src/inspector/side/Side`
 
 ### Inspector header
 

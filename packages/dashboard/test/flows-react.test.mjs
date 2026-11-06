@@ -244,3 +244,35 @@ test('the Overview card opens React where its figure is listed; old links land o
     await plain.page.close();
   }
 });
+
+test("the inspector's React section: counts, the alert, and Open in React on the function", async (t) => {
+  if (skip) return t.skip(skip);
+  const { page, errors } = await open(scenarioData('react'), {
+    hash: '#inspect=ui-button--primary',
+    approving: CAN,
+    images: true,
+  });
+  try {
+    const section = page.locator('aside section', { hasText: 'Compiler alerts (1)' }).first();
+    await section.waitFor();
+    assert.ok(await page.getByText('No: still committing at capture').isVisible());
+    assert.ok(await page.getByText('src/Button/Button.tsx · refs, line 18').isVisible());
+    await page.getByRole('button', { name: 'Open in React', exact: true }).click();
+    await page.getByRole('complementary', { name: 'Button' }).waitFor();
+    assert.deepEqual(errors, []);
+  } finally {
+    await page.close();
+  }
+  // The Storybook panel shows no React section.
+  const embed = await open(scenarioData('react'), {
+    hash: '?embed=1&story=ui-button--primary',
+    images: true,
+  });
+  try {
+    await embed.page.getByRole('switch', { name: 'Show details', exact: true }).click();
+    await embed.page.getByRole('heading', { name: 'View', exact: true }).waitFor();
+    assert.equal(await embed.page.getByRole('heading', { name: 'React', exact: true }).count(), 0);
+  } finally {
+    await embed.page.close();
+  }
+});

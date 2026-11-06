@@ -105,7 +105,7 @@ export function Diagnostics({
   data: Data;
   onOpen: (row: Row, list: Row[], scenario?: { tag: string; name: string } | null) => void;
   /** Opened on React (an old `#react` / `#react-renders` link): the part to show. */
-  focus?: { part: ReactPart; all?: boolean; at: number } | null;
+  focus?: { part: ReactPart; all?: boolean; fn?: string; at: number } | null;
 }) {
   const sections = diagnosticsOf(data);
   // Opened on React (App keys this view by the focus, so a new one starts here again).
@@ -133,6 +133,7 @@ export function Diagnostics({
           react={data.react}
           initialPart={focus?.part ?? 'compiler'}
           initialAll={focus?.all}
+          initialFn={focus?.fn}
           onOpen={(r, l) => onOpen(r, l, null)}
         />
       ) : section === 'scenarios' ? (

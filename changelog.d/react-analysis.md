@@ -56,7 +56,9 @@
   first, every entry measured on demand, and an entry's counts in a side panel; Measure renders
   runs a visual check of the entries in scope with counting on, and Cancel stops it. A progress
   strip at the top of every section while either runs (with Skip and Cancel), then how it ended; a
-  React card on the Overview; a Still rendering badge in the inspector header; a React Analysis
+  React card on the Overview; a Still rendering badge in the inspector header, and a React section
+  in its side panel (the entry's render counts and the compiler alerts that reach it, each opening
+  Diagnostics › React on the function); a React Analysis
   section in Help. Analyse, Skip, Measure renders and Cancel need the dashboard link (disabled
   while the page is read only). Alerts only: nothing here decides anything. Old `#react` and
   `#react-renders` links open the view.

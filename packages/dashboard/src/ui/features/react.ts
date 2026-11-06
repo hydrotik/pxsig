@@ -158,19 +158,24 @@ export const REACT: Feature[] = [
   {
     id: 'inspector.react',
     section: 'inspector',
-    title: 'Still rendering',
+    title: 'React in the inspector',
     purpose:
-      'In the inspector header, beside the verdict: a Still rendering badge when React was still committing at capture (its title is the alert), a likely cause of a flaky entry. It never changes the verdict, the decision buttons or the review queue. Not in the Storybook panel.',
+      "In the header, beside the verdict: a Still rendering badge when React was still committing at capture (its title is the alert), a likely cause of a flaky entry; it never changes the verdict, the decision buttons or the review queue. In the side panel, after Accessibility: the entry's render counts, whether React had settled, its top components and the counts before, and the React Compiler alerts whose file reaches the entry, each opening Diagnostics › React on that function. Neither in the Storybook panel.",
     states: {},
-    interactions: [],
-    copy: ['inspector.react', 'diagnostics.react.renders.stillAlert'],
-    components: ['Badge'],
-    files: ['inspector/Header'],
+    interactions: [{ action: 'Open a compiler alert in Diagnostics › React' }],
+    copy: ['inspector.react', 'inspector.sections.react', 'diagnostics.react.renders'],
+    components: ['Badge', 'Button', 'KeyValueList', 'KeyValueItem'],
+    files: ['inspector/Header', 'inspector/side/ReactSection', 'inspector/side/Side'],
     screens: [
       {
         scenario: 'react',
         hash: '#inspect=ui-button--primary',
         wait: { text: 'Still rendering', exact: true },
+      },
+      {
+        scenario: 'react',
+        hash: '#inspect=ui-button--primary',
+        wait: { role: 'heading', name: 'Compiler alerts (1)' },
       },
     ],
   },
