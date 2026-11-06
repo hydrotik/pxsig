@@ -14,6 +14,10 @@
  * link minted from that server's own CLI token (as `pxsig serve --link` does). Nothing in
  * packages/dashboard/.pxsig is approved or written by a flow. Ports 6006 and 6070 are refused.
  *
+ * The engine: the checkout's when PXSIG_LIVE_BIN names a build of it (the screens workflow builds
+ * one on the runner, docs/releasing.md), so the live screens run the server, CLI and engine of this
+ * commit; else the image's (PXSIG_BIN). The browser and fonts are the image's either way.
+ *
  * `repeat`: the flows run that many times per theme. A step's accessibility snapshot must be the
  * same text on every run, and its screenshot the same pixels or, failing that, within the gate as
  * the check judges a render against its baseline (the example's own story renders, shown in the
@@ -379,6 +383,16 @@ export async function runLive({
       'the live workspace is not staged: run scripts/screens-container.mjs (it stages it)'
     );
   const want = (/** @type {LiveStep} */ s) => !only || only.includes(s.feature);
+  // The checkout's engine for everything the live run starts (server, CLI, the gate between runs),
+  // until it returns; a run that throws ends the check.
+  const image = process.env.PXSIG_BIN;
+  const live = process.env.PXSIG_LIVE_BIN;
+  if (live) {
+    const v = spawnSync(live, ['--version'], { encoding: 'utf8' });
+    if (v.status !== 0) throw new Error(`PXSIG_LIVE_BIN does not run here: ${v.stderr || v.error}`);
+    log(`[live] engine: this checkout's (${v.stdout.trim()})`);
+    process.env.PXSIG_BIN = live;
+  }
   /** @type {ScreenResult[]} */
   const all = [];
   for (const theme of themes) {
@@ -430,5 +444,7 @@ export async function runLive({
       );
     all.push(...first);
   }
+  if (image === undefined) delete process.env.PXSIG_BIN;
+  else process.env.PXSIG_BIN = image;
   return all;
 }
