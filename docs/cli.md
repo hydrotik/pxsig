@@ -278,6 +278,8 @@ It runs the project's own `babel-plugin-react-compiler` with its own `@babel/cor
 small pool of worker threads, only for the files the cache (`<store>/cache/react`) does not have;
 it never loads the project's Babel config. Neither package is a dependency of pxsig: without them
 it prints one line and exits 0. The result is `<store>/reports/react.json`; `--json` prints it.
+Each of its `files` names how many entries the file reaches (`entries`) and which (`ids`; null
+when it reaches every entry).
 While another process holds the store (the server), it reads the cache and writes nothing:
 `results not saved: …`.
 

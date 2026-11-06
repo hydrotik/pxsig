@@ -231,7 +231,15 @@ export interface ReactReport {
   mode: 'alert';
   backend: { name: string; compiler: string; babel: string; options: Record<string, unknown> };
   base: { since: string; commit: string } | null;
-  files: { path: string; entries: number; all: boolean; head: string; base: string | null }[];
+  /** `ids`: the entries the file reaches; null when it reaches every entry (`all`). */
+  files: {
+    path: string;
+    entries: number;
+    all: boolean;
+    ids: string[] | null;
+    head: string;
+    base: string | null;
+  }[];
   functions: Record<string, unknown>[];
   alerts: ReactAlert[];
   skipped: { path: string; why: string }[];
