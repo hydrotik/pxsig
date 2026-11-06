@@ -7,7 +7,9 @@
  * pxsig's container installs no pnpm and has no network of its own for the example, and it mounts
  * only the checkout: so the host stages, and the container renders. scripts/screens-container.mjs
  * calls `stageLive` before `docker run`; a stamp (a hash of everything the staging reads) skips it
- * when nothing changed. The folder is under node_modules/, so git and the size checks ignore it.
+ * when nothing changed. The folder is under target/ (Cargo's), so git, the formatter, the linter and
+ * the size checks ignore it; not under a node_modules/ folder, whose files the React Compiler skips
+ * by default (its `sources`), as a project's build would.
  *
  * Layout of LIVE_BASE: packages/ (links to this checkout's packages), examples/single-package/
  * (the workspace), pristine/ (Badge.jsx, storybook-static, storybook-static-after), stamp.json.
@@ -35,8 +37,8 @@ import { copyTree } from '../lib/copy-tree.mjs';
 
 export const repo = fileURLToPath(new URL('../..', import.meta.url));
 export const EXAMPLE = 'single-package';
-/** The staging folder: fixed, inside the mounted checkout, ignored by git (node_modules/). */
-export const LIVE_BASE = join(repo, 'node_modules', '.cache', 'pxsig', 'live');
+/** The staging folder: fixed, inside the mounted checkout, ignored by git (target/). */
+export const LIVE_BASE = join(repo, 'target', 'pxsig-live');
 export const liveDir = (base = LIVE_BASE) => join(base, 'examples', EXAMPLE);
 export const pristineDir = (base = LIVE_BASE) => join(base, 'pristine');
 /** The scripted change: one colour, so exactly `components-badge--success@*` changes. */
@@ -57,7 +59,7 @@ export const REACT_CHANGE = {
 /** pxsig's React Compiler test fixtures (Babel 7): what the live workspace analyses with. */
 const COMPILER = join(repo, 'packages', 'pxsig', 'test', 'react-compiler');
 /** Bump when the staging itself changes, so an old stamp never matches. */
-const STAGE_VERSION = 2;
+const STAGE_VERSION = 3;
 
 /**
  * Every file under `dir` but generated folders, as `relative path → sha256`, in name order.
@@ -162,6 +164,8 @@ function reactBase(dir, pnpm) {
     symlinkSync(relative(dirname(at), join(from, name)), at, 'dir');
   }
   writeFileSync(join(dir, '.gitignore'), 'node_modules\nstorybook-static*\n.pxsig\n');
+  // As a project's store asks: baselines are binary to git (no line-endings warning).
+  writeFileSync(join(dir, '.gitattributes'), '*.psig binary\n');
   /** @param {string[]} args */
   const git = (args) => {
     const r = spawnSync('git', args, { cwd: dir, encoding: 'utf8' });

@@ -159,18 +159,6 @@ export const STEPS = [
     wait: { role: 'button', name: 'Changed 0' },
   },
   {
-    feature: 'live.changed',
-    n: 1,
-    actions: [{ change: true }, { cli: ['check', '--full'] }],
-    wait: { role: 'button', name: 'Changed 2' },
-  },
-  {
-    feature: 'live.changed',
-    n: 2,
-    actions: [{ link: '#overview' }, { click: { role: 'button', name: 'Start review' } }],
-    wait: { role: 'heading', name: 'components-badge--success' },
-  },
-  {
     feature: 'live.react',
     n: 1,
     actions: [
@@ -184,7 +172,7 @@ export const STEPS = [
     feature: 'live.react',
     n: 2,
     actions: [
-      { click: { role: 'button', name: 'Renders', exact: true } },
+      { click: { role: 'radio', name: 'Renders', exact: true } },
       { click: { role: 'button', name: 'Measure renders', exact: true } },
     ],
     wait: { text: 'Renders measured: 12 entries' },
@@ -198,6 +186,19 @@ export const STEPS = [
       { click: { role: 'button', name: 'Cancel', exact: true } },
     ],
     wait: { text: 'Measurement cancelled after' },
+  },
+  {
+    feature: 'live.changed',
+    n: 1,
+    // Back on Overview first: the React steps before it end on Diagnostics.
+    actions: [{ link: '#overview' }, { change: true }, { cli: ['check', '--full'] }],
+    wait: { role: 'button', name: 'Changed 2' },
+  },
+  {
+    feature: 'live.changed',
+    n: 2,
+    actions: [{ link: '#overview' }, { click: { role: 'button', name: 'Start review' } }],
+    wait: { role: 'heading', name: 'components-badge--success' },
   },
   {
     feature: 'live.read-only',
