@@ -4,12 +4,15 @@
 //! ```text
 //! "PSIG" · u16 LE container version · u32 LE header length
 //! header    UTF-8 JSON (pretty): the record without `sig`, the section table, `encryption`
-//! sections  in table order: `sig` (raw grid*grid*3 RGB bytes), then `image` (PNG bytes)
+//! sections  in table order: `sig` (raw grid*grid*3 RGB bytes), then `image` (PNG bytes), then
+//!           any other section (`boxes`: the text record, deflated JSON), kept as stored
 //! ```
 //!
 //! The record inside is the spec v1 record: decoding a `.psig` and re-encoding its signature as
 //! base64 gives back the `.pxsig.json` record it was packed from. Nothing here touches the
 //! filesystem.
+
+use std::io::{Read as _, Write as _};
 
 use base64::Engine as _;
 use serde_json::{json, Map, Value};
@@ -20,6 +23,8 @@ use crate::record::PxsigRecord;
 pub const MAGIC: &[u8; 4] = b"PSIG";
 pub const CONTAINER_VERSION: u16 = 1;
 const PREFIX: usize = 4 + 2 + 4;
+/// The most bytes a deflated section may inflate to (a 5,000-run text record is about 2 MB).
+pub const MAX_INFLATED: u64 = 32 << 20;
 
 /// A decoded container.
 #[derive(Debug, Clone)]
@@ -29,8 +34,75 @@ pub struct Psig {
     pub sig: Vec<u8>,
     /// The baseline image (PNG bytes), when the container carries one.
     pub image: Option<Vec<u8>>,
+    /// Every section other than `sig` and `image`, in table order, as stored.
+    pub sections: Vec<Section>,
     /// The full header, as stored.
     pub header: Value,
+}
+
+/// A section other than `sig` and `image`: its table entry and its bytes, both as stored, so a
+/// file re-encoded with it keeps a section this version does not know byte for byte.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Section {
+    /// The section's table entry: `name`, `length`, `sha256`, and its own keys (`type`, `encoding`).
+    pub meta: Value,
+    /// The stored bytes (deflated when `encoding` is `"deflate"`).
+    pub body: Vec<u8>,
+}
+
+impl Section {
+    /// A JSON section, always deflated (raw DEFLATE, RFC 1951). `keys` are added to its table entry
+    /// (a `boxes` section's `runs`); one of the keys this function writes is ignored.
+    pub fn json(
+        name: &str,
+        value: &Value,
+        keys: Option<&Map<String, Value>>,
+    ) -> Result<Self, String> {
+        let raw = serde_json::to_vec(value).map_err(|e| e.to_string())?;
+        let mut z = flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::default());
+        z.write_all(&raw).map_err(|e| e.to_string())?;
+        let body = z.finish().map_err(|e| e.to_string())?;
+        let mut meta = json!({ "name": name, "type": "application/json", "encoding": "deflate" });
+        for (k, v) in keys.into_iter().flatten() {
+            if !["name", "type", "encoding", "length", "sha256"].contains(&k.as_str()) {
+                meta[k] = v.clone();
+            }
+        }
+        meta["length"] = json!(body.len());
+        meta["sha256"] = json!(sha256_hex(&body));
+        Ok(Self { meta, body })
+    }
+
+    /// The section's name.
+    pub fn name(&self) -> &str {
+        self.meta["name"].as_str().unwrap_or("")
+    }
+
+    /// The section's content: inflated when `encoding` is `"deflate"`, as stored when it is absent
+    /// or `"identity"`. Any other encoding, or more than [`MAX_INFLATED`] bytes, is an error.
+    pub fn data(&self) -> Result<Vec<u8>, String> {
+        match self.meta.get("encoding").and_then(Value::as_str) {
+            None | Some("identity") => Ok(self.body.clone()),
+            Some("deflate") => {
+                let mut out = Vec::new();
+                flate2::read::DeflateDecoder::new(self.body.as_slice())
+                    .take(MAX_INFLATED + 1)
+                    .read_to_end(&mut out)
+                    .map_err(|e| format!("section {} does not inflate: {e}", self.name()))?;
+                if out.len() as u64 > MAX_INFLATED {
+                    return Err(format!(
+                        "section {} inflates past {MAX_INFLATED} bytes",
+                        self.name()
+                    ));
+                }
+                Ok(out)
+            }
+            Some(other) => Err(format!(
+                "section {} has encoding {other:?}, not supported",
+                self.name()
+            )),
+        }
+    }
 }
 
 fn sha256_hex(b: &[u8]) -> String {
@@ -74,13 +146,16 @@ pub fn extras(header: &Value) -> Map<String, Value> {
         .unwrap_or_default()
 }
 
-/// Pack a record, its image, optional entry metadata (`id`, `story`, `mode`, `state`) and extra
-/// top-level header keys (`env`). An extra key that this module owns is ignored.
+/// Pack a record, its image, optional entry metadata (`id`, `story`, `mode`, `state`), extra
+/// top-level header keys (`env`) and extra sections, written after `sig` and `image` in the order
+/// given. An extra key that this module owns is ignored; a section named `sig` or `image`, without
+/// a name, or named twice is an error.
 pub fn encode(
     record: &PxsigRecord,
     image: Option<&[u8]>,
     entry: Option<&Value>,
     extra: Option<&Map<String, Value>>,
+    more: &[Section],
 ) -> Result<Vec<u8>, String> {
     let (_, sig) = record.baseline()?;
     let mut rec = serde_json::to_value(record).map_err(|e| e.to_string())?;
@@ -96,6 +171,20 @@ pub fn encode(
             s["height"] = json!(h);
         }
         sections.push(s);
+    }
+    let mut names: Vec<&str> = Vec::new();
+    for s in more {
+        let n = s.name();
+        if n.is_empty() || n == "sig" || n == "image" || names.contains(&n) {
+            return Err(format!(
+                "section name {n:?} is reserved, empty or used twice"
+            ));
+        }
+        names.push(n);
+        let mut meta = s.meta.clone();
+        meta["length"] = json!(s.body.len());
+        meta["sha256"] = json!(sha256_hex(&s.body));
+        sections.push(meta);
     }
     let mut header = Map::new();
     header.insert("format".into(), json!("psig"));
@@ -114,8 +203,8 @@ pub fn encode(
     let head =
         serde_json::to_string_pretty(&Value::Object(header)).map_err(|e| e.to_string())? + "\n";
 
-    let mut out =
-        Vec::with_capacity(PREFIX + head.len() + sig.len() + image.map_or(0, <[u8]>::len));
+    let rest = image.map_or(0, <[u8]>::len) + more.iter().map(|s| s.body.len()).sum::<usize>();
+    let mut out = Vec::with_capacity(PREFIX + head.len() + sig.len() + rest);
     out.extend_from_slice(MAGIC);
     out.extend_from_slice(&CONTAINER_VERSION.to_le_bytes());
     out.extend_from_slice(&(head.len() as u32).to_le_bytes());
@@ -123,6 +212,9 @@ pub fn encode(
     out.extend_from_slice(&sig);
     if let Some(img) = image {
         out.extend_from_slice(img);
+    }
+    for s in more {
+        out.extend_from_slice(&s.body);
     }
     Ok(out)
 }
@@ -166,6 +258,7 @@ pub fn decode(bytes: &[u8]) -> Result<Psig, String> {
     let mut at = PREFIX + len;
     let mut sig = None;
     let mut image = None;
+    let mut sections = Vec::new();
     for s in header["sections"]
         .as_array()
         .ok_or("header has no section table")?
@@ -180,7 +273,12 @@ pub fn decode(bytes: &[u8]) -> Result<Psig, String> {
         match s["name"].as_str() {
             Some("sig") => sig = Some(body.to_vec()),
             Some("image") => image = Some(body.to_vec()),
-            _ => {} // unknown sections are skipped, so later versions can add them
+            // Any other section is kept as stored, never interpreted here, so later versions can
+            // add sections and re-encoding a file keeps them.
+            _ => sections.push(Section {
+                meta: s.clone(),
+                body: body.to_vec(),
+            }),
         }
         at += n;
     }
@@ -197,9 +295,14 @@ pub fn decode(bytes: &[u8]) -> Result<Psig, String> {
         record,
         sig,
         image,
+        sections,
         header,
     })
 }
+
+#[cfg(test)]
+#[path = "psig_sections_tests.rs"]
+mod sections_tests;
 
 #[cfg(test)]
 mod tests {
@@ -220,7 +323,7 @@ mod tests {
         let r = record();
         let png = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x20\0\0\0\x10rest".to_vec();
         let entry = json!({ "id": "x--y", "mode": "dark" });
-        let bytes = encode(&r, Some(&png), Some(&entry), None).unwrap();
+        let bytes = encode(&r, Some(&png), Some(&entry), None, &[]).unwrap();
         let p = decode(&bytes).unwrap();
         assert_eq!(
             serde_json::to_string(&p.record).unwrap(),
@@ -234,7 +337,7 @@ mod tests {
     #[test]
     fn signature_only_and_tamper_detection() {
         let r = record();
-        let mut bytes = encode(&r, None, None, None).unwrap();
+        let mut bytes = encode(&r, None, None, None, &[]).unwrap();
         assert!(decode(&bytes).unwrap().image.is_none());
         let last = bytes.len() - 1;
         bytes[last] ^= 1;
@@ -248,7 +351,7 @@ mod tests {
         let mut extra = Map::new();
         extra.insert("env".into(), json!({ "v": 1, "id": "0123456789abcdef" }));
         extra.insert("record".into(), json!("ignored"));
-        let bytes = encode(&r, None, None, Some(&extra)).unwrap();
+        let bytes = encode(&r, None, None, Some(&extra), &[]).unwrap();
         let p = decode(&bytes).unwrap();
         assert_eq!(p.header["env"]["id"], json!("0123456789abcdef"));
         assert_eq!(
@@ -265,7 +368,7 @@ mod tests {
         let r = record();
         let mut extra = Map::new();
         extra.insert("futureKey".into(), json!({ "x": [1, 2, 3] }));
-        let bytes = encode(&r, None, None, Some(&extra)).unwrap();
+        let bytes = encode(&r, None, None, Some(&extra), &[]).unwrap();
         let p = decode(&bytes).unwrap();
         assert_eq!(p.sig, r.baseline().unwrap().1);
         assert_eq!(extras(&p.header)["futureKey"]["x"][2], json!(3));
@@ -279,7 +382,7 @@ mod tests {
             "a.png",
             "2026-10-18T00:00:00.000Z",
         );
-        let bytes = encode(&r, None, None, None).unwrap();
+        let bytes = encode(&r, None, None, None, &[]).unwrap();
         assert!(bytes.len() < serde_json::to_string_pretty(&r).unwrap().len());
     }
 }

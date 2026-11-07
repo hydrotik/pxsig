@@ -171,7 +171,7 @@ pub fn capture_png(
         record.detail = Some(detail_of(&data, w, h, DetailParams::default()).to_record());
     }
     let image = io::is_psig_path(out).then_some(bytes.as_slice());
-    io::write_baseline(out, &record, image, entry, extra)?;
+    io::write_baseline(out, &record, image, entry, extra, &[])?;
     Ok(record)
 }
 

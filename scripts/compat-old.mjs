@@ -9,14 +9,17 @@
  *
  * Asserted, as observed for 0.3.2: both run, verify finds every baseline matching its line, status
  * reads the store (whose report carries render environments), the old engine reads a baseline whose
- * header records one (`env`, 0.5); a workspace `requires: ">=0.4.0"` does not stop it (it predates
- * the key). Needs npm, network access to the registry, and this checkout's Rust binary.
+ * header records one (`env`, 0.5) and a text record after its image (a `boxes` section, 0.7.6); a
+ * workspace `requires: ">=0.4.0"` does not stop it (it predates the key). Needs npm, network access
+ * to the registry, and this checkout's Rust binary.
  */
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
+import { deflateRawSync } from 'node:zlib';
 
 /** @import { ApprovalLine, CheckRow, CheckSummary, Project } from '../packages/pxsig/src/types.js' */
 
@@ -98,6 +101,33 @@ report.rows = report.rows.map((r) =>
 report.summary = { ...report.summary, envMismatch: 0 };
 writeFileSync(join(f.px, 'reports', 'check.json'), JSON.stringify(report));
 ok(`${withEnv.length} baselines record a render environment (env), and the report carries envs`);
+
+// A text record, as approval writes it from 0.7.6: a deflated `boxes` section after the image
+// (docs/spec.md section 5), appended here since no command writes one yet. This checkout's engine
+// reads it back; the old one must skip it (below).
+const withBoxes = f.sig(f.ids.ok);
+{
+  const buf = readFileSync(withBoxes);
+  const len = buf.readUInt32LE(6);
+  // The header this checkout's engine just wrote (docs/spec.md section 5).
+  const head = /** @type {{ sections: object[] }} */ (
+    JSON.parse(buf.subarray(10, 10 + len).toString('utf8'))
+  );
+  const body = deflateRawSync(JSON.stringify({ v: 1, runs: [{ s: '1 ' }, { s: 'new' }] }));
+  const sha256 = createHash('sha256').update(body).digest('hex');
+  const boxes = { name: 'boxes', type: 'application/json', encoding: 'deflate' };
+  head.sections.push({ ...boxes, length: body.length, sha256, runs: 2 });
+  const text = Buffer.from(`${JSON.stringify(head, null, 2)}\n`);
+  const pre = Buffer.from(buf.subarray(0, 10));
+  pre.writeUInt32LE(text.length, 6);
+  writeFileSync(withBoxes, Buffer.concat([pre, text, buf.subarray(10 + len), body]));
+}
+const cat = spawnSync(P.rustBin, ['cat', withBoxes], { encoding: 'utf8' });
+if (cat.status !== 0 || !cat.stdout.includes('--- boxes: 2 runs\n"1 "\n"new"'))
+  fail(
+    `this engine does not read the boxes section: exit ${cat.status}\n${cat.stdout}${cat.stderr}`
+  );
+ok('a baseline carries a text record (boxes, deflated), and this engine prints its strings');
 for (const e of f.manifest.stories.filter((x) => !x.sig.endsWith('.pxsig.json')))
   record(P, e, { batch: 'compat', via: 'cli', before: null });
 const lines = readFileSync(join(f.px, 'approvals.ndjson'), 'utf8')
@@ -165,11 +195,13 @@ const oldBin = join(
 );
 if (existsSync(oldBin)) {
   r = spawnSync(oldBin, ['cat', f.sig(f.ids.ok)], { encoding: 'utf8' });
-  if (r.status !== 0 || !r.stdout.includes('"record"'))
+  if (r.status !== 0 || !r.stdout.includes('"record"') || !r.stdout.includes('"boxes"'))
     fail(
-      `pxsig ${version}'s engine could not read a baseline with env: exit ${r.status}\n${r.stderr}`
+      `pxsig ${version}'s engine could not read a baseline with env and boxes: exit ${r.status}\n${r.stderr}`
     );
-  ok(`pxsig ${version}'s engine reads a baseline whose header records env (cat: exit 0)`);
+  ok(
+    `pxsig ${version}'s engine reads a baseline whose header records env and a boxes section (cat: exit 0)`
+  );
 } else
   ok(
     `pxsig ${version}'s engine for ${process.platform}-${process.arch} is not installed here: skipped the header read`

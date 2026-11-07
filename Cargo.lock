@@ -898,6 +898,7 @@ name = "pxsig-core"
 version = "0.7.4"
 dependencies = [
  "base64",
+ "flate2",
  "serde",
  "serde_json",
  "sha2",

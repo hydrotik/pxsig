@@ -9,8 +9,36 @@ use crate::io;
 
 // --- .psig: cat / pack -----------------------------------------------------------
 
+/// The run strings of a `boxes` section (the text record), in record order.
+fn run_strings(s: &pxsig_core::psig::Section) -> Result<Vec<String>, String> {
+    let v: Value = serde_json::from_slice(&s.data()?).map_err(|e| format!("not JSON: {e}"))?;
+    let runs = v["runs"].as_array().ok_or("no runs")?;
+    Ok(runs
+        .iter()
+        .map(|r| r["s"].as_str().unwrap_or("").to_owned())
+        .collect())
+}
+
+/// What `cat` prints after the header for a `.psig`'s sections: each `boxes` section's run strings,
+/// one a line, JSON-quoted (so a space or a line break shows in `git diff`). Never an error, since
+/// git's textconv must not fail: an unreadable section says so in its line.
+fn section_lines(sections: &[pxsig_core::psig::Section]) -> Vec<String> {
+    let mut out = Vec::new();
+    for s in sections.iter().filter(|s| s.name() == "boxes") {
+        match run_strings(s) {
+            Ok(runs) => {
+                out.push(format!("--- boxes: {} runs", runs.len()));
+                out.extend(runs.iter().map(|r| Value::from(r.as_str()).to_string()));
+            }
+            Err(e) => out.push(format!("--- boxes: unreadable ({e})")),
+        }
+    }
+    out
+}
+
 pub(super) fn cmd_cat(file: &Path, image: Option<PathBuf>) -> Result<u8> {
     let bytes = std::fs::read(file).with_context(|| format!("reading {}", file.display()))?;
+    let mut lines = Vec::new();
     let header = if pxsig_core::psig::is_psig(&bytes) {
         let p = pxsig_core::psig::decode(&bytes)
             .map_err(|e| anyhow::anyhow!("{}: {e}", file.display()))?;
@@ -21,6 +49,7 @@ pub(super) fn cmd_cat(file: &Path, image: Option<PathBuf>) -> Result<u8> {
                 .with_context(|| format!("{} has no baseline image", file.display()))?;
             std::fs::write(&out, img).with_context(|| format!("writing {}", out.display()))?;
         }
+        lines = section_lines(&p.sections);
         p.header
     } else {
         if image.is_some() {
@@ -37,6 +66,9 @@ pub(super) fn cmd_cat(file: &Path, image: Option<PathBuf>) -> Result<u8> {
         v
     };
     println!("{}", serde_json::to_string_pretty(&header)?);
+    for l in lines {
+        println!("{l}");
+    }
     Ok(0)
 }
 
@@ -58,7 +90,14 @@ fn pack_one(it: &PackItem) -> Result<Value> {
         Some(p) => Some(std::fs::read(p).with_context(|| format!("reading {}", p.display()))?),
         None => None,
     };
-    io::write_baseline(&it.out, &record, image.as_deref(), it.entry.as_ref(), None)?;
+    io::write_baseline(
+        &it.out,
+        &record,
+        image.as_deref(),
+        it.entry.as_ref(),
+        None,
+        &[],
+    )?;
     // Read it back: the packed record and image must equal their sources exactly.
     let back =
         pxsig_core::psig::decode(&std::fs::read(&it.out)?).map_err(|e| anyhow::anyhow!(e))?;
@@ -149,7 +188,8 @@ pub(super) fn cmd_attach(psig: &Path, png: &Path, as_json: bool) -> Result<u8> {
     }
     let img = std::fs::read(png).with_context(|| format!("reading {}", png.display()))?;
     io::decode_png_bytes(&img, png)?; // must be a readable PNG
-                                      // Every top-level key this version does not own (`env`, or one a later version added) is kept.
+                                      // Every top-level key this version does not own (`env`, or one a later version added) is kept,
+                                      // and every section other than `sig` and `image` (`boxes`, or one a later version added).
     let extra = pxsig_core::psig::extras(&p.header);
     io::write_baseline(
         psig,
@@ -157,6 +197,7 @@ pub(super) fn cmd_attach(psig: &Path, png: &Path, as_json: bool) -> Result<u8> {
         Some(&img),
         p.header.get("entry"),
         Some(&extra),
+        &p.sections,
     )?;
     let back = pxsig_core::psig::decode(&std::fs::read(psig)?).map_err(|e| anyhow::anyhow!(e))?;
     if back.sig != p.sig
@@ -166,6 +207,9 @@ pub(super) fn cmd_attach(psig: &Path, png: &Path, as_json: bool) -> Result<u8> {
     }
     if pxsig_core::psig::extras(&back.header) != extra {
         bail!("{}: header keys changed on attach", psig.display());
+    }
+    if back.sections != p.sections {
+        bail!("{}: sections changed on attach", psig.display());
     }
     if as_json {
         println!("{}", json!({ "attached": psig, "bytes": img.len() }));
@@ -223,10 +267,63 @@ mod tests {
                 p.image.as_deref(),
                 p.header.get("entry"),
                 Some(&extra),
+                &p.sections,
             )
             .unwrap();
             assert!(again == bytes, "{} re-encodes differently", f.display());
+            // No section beyond sig and image, so `cat` prints exactly what it printed before.
+            assert!(section_lines(&p.sections).is_empty(), "{}", f.display());
         }
+    }
+
+    #[test]
+    fn attach_keeps_a_boxes_section_and_one_it_does_not_know() {
+        use pxsig_core::psig::Section;
+        let d = std::env::temp_dir().join(format!("pxsig-attach-sec-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        let png = d.join("a.png");
+        let px: Vec<u8> = (0..16 * 16)
+            .flat_map(|i| [(i % 251) as u8, 9, 9, 255])
+            .collect();
+        io::encode_png_pub(&png, 16, 16, &px).unwrap();
+        let rec =
+            batch::capture_png(&png, &d.join("tmp.pxsig.json"), 16, false, None, None).unwrap();
+        let boxes = json!({ "v": 1, "runs": [{ "s": "1 " }, { "s": "new\n" }] });
+        let later = Section {
+            meta: json!({ "name": "later", "encoding": "zstd" }),
+            body: b"opaque".to_vec(),
+        };
+        let kept = vec![Section::json("boxes", &boxes, None).unwrap(), later];
+        let sig = d.join("a.psig");
+        io::write_baseline(&sig, &rec, None, None, None, &kept).unwrap();
+        cmd_attach(&sig, &png, true).unwrap();
+        let p = pxsig_core::psig::decode(&std::fs::read(&sig).unwrap()).unwrap();
+        assert!(p.image.is_some());
+        // Kept as stored: the table entries (with the lengths and hashes they were written with)
+        // and the bytes, the unknown encoding included.
+        let stored = pxsig_core::psig::decode(
+            &pxsig_core::psig::encode(&rec, None, None, None, &kept).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(p.sections, stored.sections);
+        assert_eq!(
+            section_lines(&p.sections),
+            ["--- boxes: 2 runs", "\"1 \"", "\"new\\n\""]
+        );
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn cat_says_when_a_boxes_section_cannot_be_read() {
+        use pxsig_core::psig::Section;
+        let bad = Section {
+            meta: json!({ "name": "boxes", "encoding": "deflate" }),
+            body: b"not deflate".to_vec(),
+        };
+        let lines = section_lines(&[bad]);
+        assert_eq!(lines.len(), 1);
+        assert!(lines[0].starts_with("--- boxes: unreadable ("), "{lines:?}");
     }
 
     #[test]
@@ -246,7 +343,15 @@ mod tests {
         extra.insert("later".into(), json!(true));
         let rec =
             batch::capture_png(&png, &d.join("tmp.pxsig.json"), 16, false, None, None).unwrap();
-        io::write_baseline(&sig, &rec, None, Some(&json!({ "id": "a" })), Some(&extra)).unwrap();
+        io::write_baseline(
+            &sig,
+            &rec,
+            None,
+            Some(&json!({ "id": "a" })),
+            Some(&extra),
+            &[],
+        )
+        .unwrap();
         cmd_attach(&sig, &png, true).unwrap();
         let h = pxsig_core::psig::header(&std::fs::read(&sig).unwrap()).unwrap();
         assert_eq!(h["env"]["id"], json!("1111222233334444"));
