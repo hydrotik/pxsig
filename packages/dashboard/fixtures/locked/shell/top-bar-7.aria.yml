@@ -11,10 +11,10 @@
       - link "Coverage":
         - /url: "#integrity"
     - listitem:
-      - link "Accessibility":
-        - /url: "#a11y"
-    - listitem:
       - button "More navigation"
+    - listitem:
+      - link "Help":
+        - /url: "#help"
   - combobox "Project": Demo · 4 entries
   - text: dark · light Live Can approve
   - button "Light theme"

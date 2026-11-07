@@ -41,7 +41,7 @@ export type { TokenMap, TokenName } from './tokens';
  * a default. An adapter records the version it was written for in its conformance.json
  * (`"contract"`); `pnpm ui:check` holds this number to src/ui/contract-lock.json.
  */
-export const CONTRACT_VERSION = '1.3.0';
+export const CONTRACT_VERSION = '1.4.0';
 
 // --- shared vocabulary ---------------------------------------------------------------------------
 

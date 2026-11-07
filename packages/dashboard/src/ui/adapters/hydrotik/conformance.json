@@ -1,6 +1,6 @@
 {
   "adapter": "hydrotik",
-  "contract": "1.3.0",
+  "contract": "1.4.0",
   "designSystem": "@hydrotik/design-system (built from source: PXSIG_DS_SOURCE)",
   "components": {
     "UiProvider": {

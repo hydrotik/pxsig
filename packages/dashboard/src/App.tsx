@@ -336,11 +336,12 @@ export function App() {
     tone: Count['tone'],
     key: 'review' | 'coverage' | 'a11y' | 'runs'
   ): Count => ({ count, tone, label: t(`tabs.counts.${key}`, { count }) });
-  const link = (id: Tab, label: string, c?: Count) => (
+  const link = (id: Tab, label: string, c?: Count, keep?: boolean) => (
     <NavLink
       key={id}
       href={`#${id}`}
       active={shown === id}
+      keep={keep}
       count={c?.count}
       countTone={c?.tone}
       countLabel={c?.label}
@@ -371,7 +372,8 @@ export function App() {
             {link('a11y', t('tabs.a11y'), counted(undecided('a11y'), 'info', 'a11y'))}
             {link('history', t('tabs.runs'), counted(data.history?.length ?? 0, 'neutral', 'runs'))}
             {diagnostics ? link('diagnostics', t('tabs.diagnostics')) : null}
-            {link('help', t('tabs.help'))}
+            {/* Help stays in the bar at every width; the other links move into the More menu. */}
+            {link('help', t('tabs.help'), undefined, true)}
           </NavList>
           {/* Pinned controls sit beside the list, so the list's own resize tracking sees them change width. */}
           <NavEnd className={s.navEnd}>

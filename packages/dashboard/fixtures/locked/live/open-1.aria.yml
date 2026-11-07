@@ -16,6 +16,9 @@
         - /url: "#a11y"
     - listitem:
       - button "More navigation"
+    - listitem:
+      - link "Help":
+        - /url: "#help"
   - button "Approve 3 new entries"
   - text: light · dark Live Can approve
   - button "Light theme"

@@ -309,6 +309,7 @@ export async function capture(
   try {
     if (initScript) await context.addInitScript(initScript);
     const page = await context.newPage();
+    if (screen.width) await page.setViewportSize({ width: screen.width, height: VIEWPORT.height });
     page.on('pageerror', (e) => errors.push(String(e.message ?? e).split('\n')[0]));
     await page.clock.setFixedTime(new Date(FIXED_TIME));
     retried = await load(page, url);

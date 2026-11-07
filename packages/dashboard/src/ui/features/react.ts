@@ -79,6 +79,19 @@ export const REACT: Feature[] = [
         wait: { text: 'Compiler analysis needs babel-plugin-react-compiler' },
       },
       { scenario: 'react-no-base', hash: '#react', wait: { text: 'No merge base with main' } },
+      // Narrow: the side panel overlays the list from the right, the list at full width under it.
+      {
+        scenario: 'react',
+        hash: '#react',
+        width: 900,
+        // Then into the panel, as a reader does: the pointer leaves the row it opened.
+        actions: [
+          { click: { role: 'button', name: 'All analysed (9)' } },
+          { click: { text: 'Button', exact: true } },
+          { click: { role: 'heading', name: 'Button', exact: true } },
+        ],
+        wait: { role: 'complementary', name: 'Button' },
+      },
     ],
   },
   {
@@ -152,6 +165,17 @@ export const REACT: Feature[] = [
         state: 'empty',
         hash: '#react-renders',
         wait: { text: 'No render counts yet' },
+      },
+      {
+        scenario: 'react',
+        hash: '#react-renders',
+        width: 900,
+        actions: [
+          { click: { role: 'button', name: 'All measured (7)' } },
+          { click: { text: 'ui-datagrid--many-rows', exact: true } },
+          { click: { role: 'heading', name: 'ui-datagrid--many-rows', exact: true } },
+        ],
+        wait: { role: 'complementary', name: 'ui-datagrid--many-rows' },
       },
     ],
   },
