@@ -95,11 +95,14 @@ export const note = style({
   fontSize: v.fontSize.sm,
 });
 export const summaryDialog = style({ inlineSize: 'min(100%, 40rem)', padding: 0, gap: 0 });
+// No wider than the dialog: a design system's Dialog may lay its content out in a grid, where an
+// item is as wide as its widest unbreakable line (a long `pxsig check …` command) unless it may shrink.
 export const summary = style({
   display: 'flex',
   flexDirection: 'column',
   gap: v.space['4'],
   padding: v.space['6'],
+  minInlineSize: 0,
 });
 // --- help: term rows beside a drawing of the screen -----------------------------------------
 export const helpSection = style({
