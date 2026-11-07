@@ -1,25 +1,21 @@
 /**
  * The side panel's plain renderings (fallbacks.tsx), the inspector's `<aside>` pattern: the panel
- * beside the main area, dropping below it when the container is narrow (an intrinsic sidebar: no
- * media query), with a heading that names it and a close button.
+ * beside the main area, overlaid on it when the container is too narrow for both (side-panel.css.ts:
+ * a container query, no media query), with a heading that names it and a close button.
  */
 import React from 'react';
 import { tokens as v } from '../tokens';
 import { border, control, type F } from './base';
+import * as sp from './side-panel.css';
+
+const cx = (a: string, b?: string) => (b ? `${a} ${b}` : a);
 
 export const SidePanelLayout: F<'SidePanelLayout'> = ({ className, children }) => (
-  <div
-    className={className}
-    style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: v.space['4'] }}
-  >
-    {children}
-  </div>
+  <div className={cx(sp.layout, className)}>{children}</div>
 );
 
 export const SidePanelMain: F<'SidePanelMain'> = ({ className, children }) => (
-  <div className={className} style={{ flex: '999 1 40rem', minInlineSize: 0 }}>
-    {children}
-  </div>
+  <div className={cx(sp.main, className)}>{children}</div>
 );
 
 export const SidePanel: F<'SidePanel'> = ({
@@ -47,15 +43,13 @@ export const SidePanel: F<'SidePanel'> = ({
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the aside is not a control
     <aside
       aria-labelledby={id}
-      className={className}
+      className={cx(sp.panel, className)}
       onKeyDown={(e) => {
         if (e.key !== 'Escape' || e.defaultPrevented) return;
         e.stopPropagation();
         onOpenChange(false);
       }}
       style={{
-        flex: '1 1 20rem',
-        minInlineSize: 0,
         display: 'flex',
         flexDirection: 'column',
         gap: v.space['3'],

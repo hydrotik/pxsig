@@ -361,8 +361,10 @@ accessibility, the questions to answer when mapping, and the acceptance check.
   view's functions and entries, with the selected one's details. It holds one `SidePanelMain`,
   then one `SidePanel`.
 - **Props**: `children`, `className`.
-- **Behaviour**: the panel sits beside the main area, and drops below it when the container is too
-  narrow for both (no page-wide horizontal scroll at the dashboard check's narrow width). The three
+- **Behaviour**: the panel sits beside the main area while both fit, and overlays the main area from
+  the end edge when the container is too narrow for both, the main area keeping its full width
+  underneath (a container query, not a viewport one; no page-wide horizontal scroll at the
+  dashboard check's narrow width). The three
   parts are a set: export all three or none (with none, the fallback draws all three). A design
   system whose panel needs its own layout around the main area maps that layout here.
 - **Accessibility**: no role of its own.

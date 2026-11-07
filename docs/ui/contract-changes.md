@@ -25,13 +25,13 @@ section, `node scripts/ui.mjs lock` records the new contract.
 Minor: three optional components, a set.
 
 - **`SidePanelLayout`**, **`SidePanelMain`** and **`SidePanel`**: records (a table) and the
-  details of the one selected, side by side; the panel drops below the main area when the
-  container is narrow. `SidePanel` (`open`, `onOpenChange`, `title`, `headingLevel`,
+  details of the one selected, side by side; when the container is too narrow for both, the panel
+  overlays the main area from the end edge, the main area keeping its full width underneath. `SidePanel` (`open`, `onOpenChange`, `title`, `headingLevel`,
   `closeLabel`) is not modal: a `complementary` landmark named by its title, closed by its close
   button and by Escape inside it; on open, focus moves into it, and back on close. The dashboard's
   React view (Diagnostics › React) uses them. The three are taken as a set: an adapter that exports
   all three draws its own, else all three render the fallback (an `<aside>` beside the table, as
-  the inspector's side panel), so an adapter written for 1.2.0 or 1.1.0 keeps working.
+  the inspector's side panel, overlaid on it when narrow), so an adapter written for 1.2.0 or 1.1.0 keeps working.
 
 ## 1.2.0
 

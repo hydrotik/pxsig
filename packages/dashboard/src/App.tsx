@@ -367,8 +367,9 @@ export function App() {
             {link('integrity', t('tabs.coverage'), counted(integrityErrors, 'info', 'coverage'))}
             {link('a11y', t('tabs.a11y'), counted(undecided('a11y'), 'info', 'a11y'))}
             {link('history', t('tabs.runs'), counted(data.history?.length ?? 0, 'neutral', 'runs'))}
-            {diagnostics ? link('diagnostics', t('tabs.diagnostics')) : null}
+            {/* Help before Diagnostics: links that do not fit move into the More menu from the end. */}
             {link('help', t('tabs.help'))}
+            {diagnostics ? link('diagnostics', t('tabs.diagnostics')) : null}
           </NavList>
           {/* Pinned controls sit beside the list, so the list's own resize tracking sees them change width. */}
           <NavEnd className={s.navEnd}>
