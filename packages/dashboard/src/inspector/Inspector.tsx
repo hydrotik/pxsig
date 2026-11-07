@@ -526,7 +526,7 @@ export function Inspector({
               {...{ embedded, viewControls, pixels, regions, region, stepRegion, sb, sbLink }}
               {...{ loaded, W, H, m, tol, analysis, focusRegion, setTol, originals, detail }}
               {...{ hasArtifacts, p, row, newA11y, target, canReview, busy, unaccept, a11yMode }}
-              {...{ a11yDecision, act, data, sizes }}
+              {...{ a11yDecision, act, data, sizes, onGo }}
             />
           ) : null}
         </div>
