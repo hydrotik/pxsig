@@ -224,6 +224,19 @@ test('the Overview card opens React where its figure is listed; old links land o
   const { page } = await open(scenarioData('react'), { hash: '#overview', approving: CAN });
   try {
     await page.getByRole('heading', { name: 'React', exact: true }).waitFor();
+    // A tile's name keeps its figure and unit apart: a space read, not drawn (ui/index.ts).
+    for (const [region, names] of [
+      [
+        'React figures',
+        ['Findings 1 new · of 1', 'Compiled 5 of 9 analysed', 'Still rendering 1 of 7 entries'],
+      ],
+      ['Latest check', ['New a11y 0 of 0 violations']],
+    ])
+      for (const name of names)
+        await page
+          .getByRole('region', { name: region })
+          .getByRole('button', { name, exact: true })
+          .waitFor({ timeout: 2000 });
     await page.getByRole('button', { name: /^Still rendering/ }).click();
     await page.getByRole('heading', { name: 'Renders per Entry' }).waitFor();
   } finally {

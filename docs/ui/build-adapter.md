@@ -336,7 +336,8 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Behaviour**: items wrap; a `tone` colours the value or edge; an item with `onSelect` is a
   button (`active` is pressed); `icon` sits in its corner.
 - **Accessibility**: a region named by `label`; selectable items are buttons with `aria-pressed`
-  when they filter.
+  when they filter. A value that a unit follows arrives ending in a space that is read, not drawn,
+  so a tile's name keeps them apart ("Findings 1 new · of 1"): render `value` as given.
 - **Mapping questions**: Do you have a stat or KPI component? Can its tiles be buttons? Which tones
   does it colour?
 - **Acceptance**: on Coverage, a count with a corner arrow filters the table below and shows as
