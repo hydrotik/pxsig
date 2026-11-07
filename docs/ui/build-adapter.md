@@ -5,7 +5,7 @@ followed step by step, by a person or by a coding agent. Follow them in order, a
 questions for each component from your design system's documentation, and check each acceptance
 criterion before moving on.
 
-The dashboard renders through a contract of 43 neutral components. An adapter is one module that
+The dashboard renders through a contract of 48 neutral components. An adapter is one module that
 implements them on your design system. Nothing in the dashboard's views changes; the adapter is
 chosen once, at build time.
 
@@ -138,7 +138,7 @@ those components with its own classes.
 3. Core: `Button`, `IconButton`, `Card` and its parts, `Badge`, `StatusBadge`, `Icon`, `StatGroup`,
    `DataTable`.
 4. Controls: `Dialog` and its parts first (the inspector), then `Select`, `SegmentedChoice`,
-   `Toolbar` and its parts, `Slider`, `Switch`, `SearchField`, `Progress`, `KeyValueList`,
+   `Toolbar` and its parts, `Slider`, `Switch`, `SearchField`, `TextField`, `Progress`, `KeyValueList`,
    `KeyValueItem`, `Alert` and its parts, `Link`, `CopyValue`, `Kbd`.
 5. `Chart`, `Heatmap`.
 6. The diff viewer's colours: [Styling the diff viewer](#styling-the-diff-viewer).
@@ -652,6 +652,23 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Accessibility**: `type="search"`, named by the surrounding `ToolbarField`.
 - **Mapping questions**: Is your search input controlled with a value callback?
 - **Acceptance**: typing narrows the cards at once. Optional.
+
+### `TextField`
+
+- **Purpose**: a controlled single-line text input with a visible label (since 1.5.0): the reason
+  on Reject will use it. Nothing renders it yet.
+- **Props**: `label`, `value`, `onValueChange(value)`, `maxLength`, `placeholder`,
+  `onSubmit(value)`, `autoFocus`.
+- **Behaviour**: updates on every keystroke; with `onSubmit`, Enter calls it with the value
+  instead of submitting a surrounding form, except while an input method is composing;
+  `maxLength` caps what can be typed; `autoFocus` focuses it on mount. Other keys, Escape among
+  them, bubble to the caller.
+- **Accessibility**: `type="text"` (not `search`), named by its visible `label`; the placeholder is
+  a hint, never the name.
+- **Mapping questions**: Does your text input render its own label, or is it composed with a label
+  component? Does it forward native input props (`maxLength`, `autoFocus`, `onKeyDown`)?
+- **Acceptance**: none yet in the dashboard; the fallback is a native `<label>` above a native
+  text `<input>`. Optional.
 
 ### `Select`
 

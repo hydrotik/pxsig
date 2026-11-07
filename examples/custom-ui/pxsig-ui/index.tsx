@@ -253,3 +253,36 @@ export const Select = ({ value, onValueChange, options, label, inlineSize }: C.S
 );
 
 export const Kbd = ({ children }: C.KbdProps) => <kbd>{children}</kbd>;
+
+/** A native label above a native text input; Enter submits, except while composing. */
+export function TextField({
+  label,
+  value,
+  onValueChange,
+  maxLength,
+  placeholder,
+  onSubmit,
+  autoFocus,
+}: C.TextFieldProps) {
+  const id = React.useId();
+  return (
+    <div className="plain-field">
+      <label htmlFor={id}>{label}</label>
+      <input
+        id={id}
+        type="text"
+        value={value}
+        maxLength={maxLength}
+        placeholder={placeholder}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- the contract's prop: the caller opens the field on a key
+        autoFocus={autoFocus}
+        onChange={(e) => onValueChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter' || e.nativeEvent.isComposing || !onSubmit) return;
+          e.preventDefault();
+          onSubmit(e.currentTarget.value);
+        }}
+      />
+    </div>
+  );
+}

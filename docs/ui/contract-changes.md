@@ -20,6 +20,18 @@ icon without a default. A major version's section starts with its migration note
 a version bump of the right size, or without a section here, fails. After the bump and the
 section, `node scripts/ui.mjs lock` records the new contract.
 
+## 1.5.0
+
+Minor: one optional component.
+
+- **`TextField`** (`label`, `value`, `onValueChange`, `maxLength`, `placeholder`, `onSubmit`,
+  `autoFocus`): a controlled single-line text input with a visible label, which is also its
+  accessible name (the placeholder is a hint, never the name). Enter calls `onSubmit` with the
+  value, except while an input method is composing; `maxLength` caps what can be typed. Not a
+  search field: no search role. Nothing renders it yet; the reason on Reject will. An adapter
+  written for 1.4.0 or earlier keeps working: the fallback draws a native `<label>` above a native
+  text `<input>`.
+
 ## 1.4.0
 
 Minor: one optional prop.

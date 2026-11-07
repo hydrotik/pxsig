@@ -534,6 +534,12 @@
         "views/Stories"
       ]
     },
+    "TextField": {
+      "group": "controls",
+      "required": false,
+      "role": "a labelled single-line text input",
+      "usedBy": []
+    },
     "Select": {
       "group": "controls",
       "required": true,

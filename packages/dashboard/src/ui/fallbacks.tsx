@@ -10,6 +10,7 @@ import { t } from '../copy';
 import { border, type Cell, control, type F } from './fallbacks/base';
 import { Chart, Heatmap } from './fallbacks/charts';
 import { SidePanel, SidePanelLayout, SidePanelMain } from './fallbacks/side-panel';
+import { TextField } from './fallbacks/text-field';
 
 const UiProvider: F<'UiProvider'> = ({ mode, children }) => {
   React.useEffect(() => {
@@ -546,6 +547,7 @@ export const fallbacks = {
   AlertTitle,
   AlertDescription,
   SearchField,
+  TextField,
   Chart,
   Heatmap,
 };

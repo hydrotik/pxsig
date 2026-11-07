@@ -22,6 +22,7 @@
     "DialogDescription": { "status": "full" },
     "Select": { "status": "full", "note": "native <select>" },
     "Kbd": { "status": "full", "note": "native <kbd>" },
+    "TextField": { "status": "full", "note": "native <label> and text <input>" },
     "Tooltip": { "status": "missing", "note": "the fallback: the native title attribute" }
   }
 }
