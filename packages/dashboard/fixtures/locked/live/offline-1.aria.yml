@@ -20,6 +20,9 @@
         - text: Runs
     - listitem:
       - button "More navigation"
+    - listitem:
+      - link "Help":
+        - /url: "#help"
   - button "Review 2 changes"
   - text: light · dark Offline
   - button "Light theme"

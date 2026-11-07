@@ -658,6 +658,36 @@
           "wait": {
             "text": "No merge base with main"
           }
+        },
+        {
+          "scenario": "react",
+          "hash": "#react",
+          "width": 900,
+          "actions": [
+            {
+              "click": {
+                "role": "button",
+                "name": "All analysed (9)"
+              }
+            },
+            {
+              "click": {
+                "text": "Button",
+                "exact": true
+              }
+            },
+            {
+              "click": {
+                "role": "heading",
+                "name": "Button",
+                "exact": true
+              }
+            }
+          ],
+          "wait": {
+            "role": "complementary",
+            "name": "Button"
+          }
         }
       ]
     },
@@ -740,6 +770,36 @@
           "hash": "#react-renders",
           "wait": {
             "text": "No render counts yet"
+          }
+        },
+        {
+          "scenario": "react",
+          "hash": "#react-renders",
+          "width": 900,
+          "actions": [
+            {
+              "click": {
+                "role": "button",
+                "name": "All measured (7)"
+              }
+            },
+            {
+              "click": {
+                "text": "ui-datagrid--many-rows",
+                "exact": true
+              }
+            },
+            {
+              "click": {
+                "role": "heading",
+                "name": "ui-datagrid--many-rows",
+                "exact": true
+              }
+            }
+          ],
+          "wait": {
+            "role": "complementary",
+            "name": "ui-datagrid--many-rows"
           }
         }
       ]

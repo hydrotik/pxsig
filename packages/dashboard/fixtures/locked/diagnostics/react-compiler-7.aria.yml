@@ -1,0 +1,189 @@
+- navigation "Report sections":
+  - heading "pxsig • demo" [level=1]
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: "#overview"
+    - listitem:
+      - link "Review Stories":
+        - /url: "#stories"
+    - listitem:
+      - link "Coverage":
+        - /url: "#integrity"
+    - listitem:
+      - link "Accessibility":
+        - /url: "#a11y"
+    - listitem:
+      - button "More navigation"
+    - listitem:
+      - link "Help":
+        - /url: "#help"
+  - text: Live Can approve
+  - button "Light theme"
+  - text: Approved
+- main:
+  - heading "Diagnostics" [level=2]
+  - group "React part":
+    - radio "Compiler" [checked]
+    - radio "Renders"
+  - text: From the check at 10/24/2026, 10:00:00 AM · base main (4883bcd)
+  - button "Analyse"
+  - heading "React Compiler" [level=3]
+  - paragraph: 4 files · 9 functions · compiled 5 · skipped 3 · opted out 1 · fixed 1 · 0.3 s (2 cached)
+  - button "Alerts (4)"
+  - button "All analysed (9)"
+  - textbox "Search all columns":
+    - /placeholder: Search all columns…
+  - button "Columns":
+    - img
+    - text: Columns
+  - grid "Data grid":
+    - rowgroup:
+      - row "Function File Before Now Rule Line Entries":
+        - columnheader "Function":
+          - button "Function"
+          - separator "Resize Function column"
+        - columnheader "File":
+          - text: File
+          - separator "Resize File column"
+        - columnheader "Before":
+          - text: Before
+          - separator "Resize Before column"
+        - columnheader "Now":
+          - text: Now
+          - separator "Resize Now column"
+        - columnheader "Rule":
+          - text: Rule
+          - separator "Resize Rule column"
+        - columnheader "Line":
+          - text: Line
+          - separator "Resize Line column"
+        - columnheader "Entries":
+          - text: Entries
+          - separator "Resize Entries column"
+    - rowgroup:
+      - row "Button , selected Newly skipped src/Button/Button.tsx Compiled Skipped refs 18 3":
+        - gridcell "Button , selected Newly skipped":
+          - strong: Button , selected
+          - text: Newly skipped
+        - gridcell "src/Button/Button.tsx"
+        - gridcell "Compiled"
+        - gridcell "Skipped"
+        - gridcell "refs"
+        - gridcell "18"
+        - gridcell "3"
+      - row "useGrid New, skipped src/DataGrid/useGrid.ts — Skipped immutability 40 1":
+        - gridcell "useGrid New, skipped":
+          - strong: useGrid
+          - text: New, skipped
+        - gridcell "src/DataGrid/useGrid.ts"
+        - gridcell "—"
+        - gridcell "Skipped"
+        - gridcell "immutability"
+        - gridcell "40"
+        - gridcell "1"
+      - row "Select New reason src/Select/Select.tsx Skipped Skipped set-state-in-render + refs 77 1":
+        - gridcell "Select New reason":
+          - strong: Select
+          - text: New reason
+        - gridcell "src/Select/Select.tsx"
+        - gridcell "Skipped"
+        - gridcell "Skipped"
+        - gridcell "set-state-in-render + refs"
+        - gridcell "77"
+        - gridcell "1"
+      - row "Toast New finding src/Toast/Toast.tsx Compiled Compiled set-state-in-effect 33 1":
+        - gridcell "Toast New finding":
+          - strong: Toast
+          - text: New finding
+        - gridcell "src/Toast/Toast.tsx"
+        - gridcell "Compiled"
+        - gridcell "Compiled"
+        - gridcell "set-state-in-effect"
+        - gridcell "33"
+        - gridcell "1"
+      - row "ButtonGroup src/Button/Button.tsx Compiled Compiled 3":
+        - gridcell "ButtonGroup":
+          - strong: ButtonGroup
+        - gridcell "src/Button/Button.tsx"
+        - gridcell "Compiled"
+        - gridcell "Compiled"
+        - gridcell
+        - gridcell
+        - gridcell "3"
+      - row "SelectItem Fixed src/Select/Select.tsx Skipped Compiled 1":
+        - gridcell "SelectItem Fixed":
+          - strong: SelectItem
+          - text: Fixed
+        - gridcell "src/Select/Select.tsx"
+        - gridcell "Skipped"
+        - gridcell "Compiled"
+        - gridcell
+        - gridcell
+        - gridcell "1"
+      - row "ToastViewport src/Toast/Toast.tsx Compiled Compiled 1":
+        - gridcell "ToastViewport":
+          - strong: ToastViewport
+        - gridcell "src/Toast/Toast.tsx"
+        - gridcell "Compiled"
+        - gridcell "Compiled"
+        - gridcell
+        - gridcell
+        - gridcell "1"
+      - row "useGridColumns New src/DataGrid/useGrid.ts — Compiled 1":
+        - gridcell "useGridColumns New":
+          - strong: useGridColumns
+          - text: New
+        - gridcell "src/DataGrid/useGrid.ts"
+        - gridcell "—"
+        - gridcell "Compiled"
+        - gridcell
+        - gridcell
+        - gridcell "1"
+      - row "useToastTimer Opted out src/Toast/Toast.tsx Opted out Opted out 1":
+        - gridcell "useToastTimer Opted out":
+          - strong: useToastTimer
+          - text: Opted out
+        - gridcell "src/Toast/Toast.tsx"
+        - gridcell "Opted out"
+        - gridcell "Opted out"
+        - gridcell
+        - gridcell
+        - gridcell "1"
+  - status
+  - complementary "Button":
+    - heading "Button" [level=3]
+    - button "Close"
+    - text: Newly skipped src/Button/Button.tsx:12
+    - button "Copy src/Button/Button.tsx:12"
+    - status
+    - heading "Alert" [level=4]
+    - text: "Button (src/Button/Button.tsx): compiled at main, skipped now: Cannot access refs during render (refs, line 18). Reaches 3 entries."
+    - heading "Diagnostics (1)" [level=4]
+    - term: Rule
+    - definition:
+      - link "refs on react.dev (opens in a new tab)":
+        - /url: https://react.dev/reference/eslint-plugin-react-hooks/lints/refs
+    - term: Reason
+    - definition: Cannot access refs during render
+    - term: Line
+    - definition: "18"
+    - term: Group
+    - definition: Rules of React
+    - term: Stops compilation
+    - definition: "Yes"
+    - heading "At main" [level=4]
+    - text: Compiled · 5 memo slots
+    - heading "Entries (3)" [level=4]
+    - button "ui-button--primary"
+    - button "ui-button--primary@light"
+    - button "ui-button--ok"
+    - heading "Comparison" [level=4]
+    - term: Base
+    - definition: main (4883bcd)
+    - term: Compiler
+    - definition: 1.0.0
+    - term: Babel
+    - definition: 7.29.7
+    - term: Options
+    - definition: infer · target 19 · lint on

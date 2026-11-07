@@ -127,20 +127,30 @@ export const NavLink = (p: C.NavLinkProps) => (
 );
 
 /**
+ * A link that stays in the bar (`keep`): the design system's NavItems moves only items of the
+ * NavItemLink type into its More menu, and keeps any other element in place, so a kept link is a
+ * NavItemLink under another component.
+ */
+const KeptNavItemLink = (p: React.ComponentProps<typeof DS.NavItemLink>) => (
+  <DS.NavItemLink {...p} />
+);
+
+/**
  * The design system's NavItems finds its links by element type (to measure them and move the ones
- * that do not fit into its More menu), so each contract NavLink becomes a NavItemLink here.
+ * that do not fit into its More menu), so each contract NavLink becomes a NavItemLink here, or a
+ * KeptNavItemLink when it is kept.
  */
 export const NavList = ({ children }: C.NavListProps) => (
   <DS.NavItems>
-    {React.Children.map(children, (c) =>
-      React.isValidElement<C.NavLinkProps>(c) && c.type === NavLink ? (
-        <DS.NavItemLink key={c.key ?? undefined} {...navItemProps(c.props)}>
+    {React.Children.map(children, (c) => {
+      if (!React.isValidElement<C.NavLinkProps>(c) || c.type !== NavLink) return c;
+      const Item = c.props.keep ? KeptNavItemLink : DS.NavItemLink;
+      return (
+        <Item key={c.key ?? undefined} {...navItemProps(c.props)}>
           {c.props.children}
-        </DS.NavItemLink>
-      ) : (
-        c
-      )
-    )}
+        </Item>
+      );
+    })}
   </DS.NavItems>
 );
 

@@ -365,6 +365,8 @@ export interface Screen {
   hash?: string;
   actions?: { click?: ScreenTarget; scroll?: ScreenTarget; press?: string }[];
   wait: ScreenTarget;
+  /** The viewport's width in CSS px, for a narrow layout; else VIEWPORT's. The height stays. */
+  width?: number;
 }
 
 /** One feature of fixtures/screens.json. */

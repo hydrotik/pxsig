@@ -87,6 +87,8 @@ export interface Screen {
   /** `scroll`: the target at the top of what scrolls it (no click: nothing activated or focused). */
   actions?: ({ click: Target } | { scroll: Target } | { press: string })[];
   wait: Target;
+  /** The viewport's width in CSS px, for a narrow layout (default 1280); the height stays 900. */
+  width?: number;
 }
 
 export const FEATURES: Feature[] = [...SHELL, ...OVERVIEW, ...REVIEW, ...REACT, ...INSPECTOR];
