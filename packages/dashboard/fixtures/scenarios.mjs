@@ -269,6 +269,27 @@ export const SCENARIOS = {
     d.history = history(3);
     return d;
   },
+  // A finished review of changed entries with long ids, all but one rejected: the summary's
+  // `pxsig check …` command is longer than its dialog is wide.
+  'long-rejections'() {
+    const ids = [
+      'ui-button--primary',
+      'ui-date-range-picker--with-presets-and-time',
+      'ui-date-range-picker--with-presets-and-time@light',
+      'ui-navigation-menu--nested-with-descriptions',
+      'ui-navigation-menu--nested-with-descriptions@light',
+    ];
+    const d = data({
+      rows: ids.map((id) =>
+        row(id, { ...changed, mode: id.includes('@light') ? 'light' : 'dark' })
+      ),
+      entries: ids.map((id) => entry(id, [changedIssue])),
+    });
+    d.review = Object.fromEntries(
+      ids.map((id, i) => [id, { state: i ? 'rejected' : 'approved', at: AT }])
+    );
+    return d;
+  },
   'first-approval'() {
     const ids = ['ui-button--new', 'ui-button--new@light'];
     return data({

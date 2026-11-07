@@ -7,9 +7,10 @@
  *
  * A fixture project is checked for real: once by `pxsig check` (the CLI writes check.json), then
  * by the server (`POST /__pxsig/check`, which rewrites it in its own shape), with the server's
- * integrity ledger. Every key path the scenarios set must be one the server sent in either answer,
- * with the same JSON type, so a field renamed on the server fails here instead of leaving the
- * mocked dashboard green. Needs the Rust binary and Chromium; skipped without them.
+ * integrity ledger, and one entry rejected through it. Every key path the scenarios set must be
+ * one the server sent in either answer, with the same JSON type, so a field renamed on the server
+ * fails here instead of leaving the mocked dashboard green. Needs the Rust binary and Chromium;
+ * skipped without them.
  */
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -160,6 +161,10 @@ async function liveData() {
       assert.equal((await S.post('check', { all: true })).status, 202, `server check:\n${S.log()}`);
       await S.idle();
       await get('integrity?fresh=1');
+      // A decision, so the answer carries `review` (the session summary's scenarios set it).
+      const rows = /** @type {{ rows: { id: string }[] }} */ ((await get('data')).check).rows;
+      const id = rows[0].id;
+      assert.equal((await S.post('reject', { id })).status, 200, `reject:\n${S.log()}`);
       return [afterCli, await get('data')];
     } finally {
       S.stop();
