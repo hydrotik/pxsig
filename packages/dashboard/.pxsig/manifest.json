@@ -1028,6 +1028,38 @@
       "a11y": false
     },
     {
+      "id": "diagnostics--react-compiler-7@dark",
+      "story": "diagnostics--react-compiler-7",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-7@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        900,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-compiler-7@light",
+      "story": "diagnostics--react-compiler-7",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-7@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        900,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
       "id": "diagnostics--react-renders-1@dark",
       "story": "diagnostics--react-renders-1",
       "mode": "dark",
@@ -1150,6 +1182,38 @@
       "colorScheme": "light",
       "viewport": [
         1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-renders-5@dark",
+      "story": "diagnostics--react-renders-5",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-renders-5@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        900,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-renders-5@light",
+      "story": "diagnostics--react-renders-5",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-renders-5@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        900,
         900
       ],
       "browser": "chromium",

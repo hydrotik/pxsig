@@ -15,11 +15,10 @@
       - link "Accessibility":
         - /url: "#a11y"
     - listitem:
-      - link "Runs, 7 runs":
-        - /url: "#history"
-        - text: Runs
-    - listitem:
       - button "More navigation"
+    - listitem:
+      - link "Help":
+        - /url: "#help"
   - button "Review 2 changes"
   - text: light · dark Live Can approve
   - button "Light theme"
