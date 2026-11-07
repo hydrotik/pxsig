@@ -1,6 +1,7 @@
 /**
  * The reference adapter's side panel (contract 1.3.0): hydrotik's SidePanel pushed in on the right
- * of a ContentLayout, which its panel needs around the main area. Neither a resize handle nor an
+ * of a ContentLayout, which its panel needs around the main area, and overlaid on the main area
+ * when the layout is too narrow for both (side-panel.css.ts). Neither a resize handle nor an
  * expand button: the design system names both in fixed English, and the dashboard's copy lives in
  * en.json. The close button is the design system's, named from the contract. index.tsx passes the
  * design-system parts in (as slider.tsx), so every part the adapter uses is named in that one file.
@@ -8,6 +9,7 @@
 import React from 'react';
 import type * as DS from '@hydrotik/design-system';
 import type * as C from '../../contract';
+import * as sp from './side-panel.css';
 
 /** The design-system parts the mapping uses. */
 export interface PanelParts {
@@ -49,7 +51,7 @@ export const sidePanel = (P: PanelParts) => {
         defaultWidth={20}
         minWidth={20}
         maxWidth={20}
-        className={className}
+        className={className ? `${sp.panel} ${className}` : sp.panel}
       >
         <P.Header title={title} headingLevel={headingLevel} showClose={false}>
           <P.Close aria-label={closeLabel} title={closeLabel} />
@@ -62,7 +64,11 @@ export const sidePanel = (P: PanelParts) => {
     // In the page's flow: as tall as its content (the layout fills its parent by default), on the
     // surface it sits on (its own background is the page's).
     SidePanelLayout: ({ className, children }: C.SidePanelLayoutProps) => (
-      <P.Layout height="auto" className={className} style={{ backgroundColor: 'transparent' }}>
+      <P.Layout
+        height="auto"
+        className={className ? `${sp.layout} ${className}` : sp.layout}
+        style={{ backgroundColor: 'transparent' }}
+      >
         {children}
       </P.Layout>
     ),

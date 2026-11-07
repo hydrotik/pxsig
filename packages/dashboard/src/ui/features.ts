@@ -86,6 +86,8 @@ export interface Screen {
   hash?: string;
   actions?: ({ click: Target } | { press: string })[];
   wait: Target;
+  /** The viewport's width in CSS px, for a narrow layout (default 1280); the height stays 900. */
+  width?: number;
 }
 
 export const FEATURES: Feature[] = [...SHELL, ...OVERVIEW, ...REVIEW, ...REACT, ...INSPECTOR];

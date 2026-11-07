@@ -48,6 +48,11 @@ export interface NavLinkProps {
   countTone?: 'info' | 'neutral';
   /** The link's accessible name with its count ("Review Stories, 6 to review"). */
   countLabel?: string;
+  /**
+   * Never moves into the overflow menu: it stays in the bar at every width, and the links before
+   * it move first (since 1.4.0; Help). An adapter written for 1.3.0 overflows it like the others.
+   */
+  keep?: boolean;
   children: React.ReactNode;
 }
 /** The controls pinned at the end of the top bar. */
@@ -148,7 +153,8 @@ export interface DataTableProps<T> {
 }
 /**
  * Records and the details of one of them side by side: one `SidePanelMain`, then one `SidePanel`.
- * When the container is narrow the panel drops below the main area (since 1.3.0).
+ * When the container is too narrow for both, the panel overlays the main area from the end edge,
+ * the main area keeping its full width underneath (since 1.3.0).
  */
 export interface SidePanelLayoutProps extends WithClass {
   children: React.ReactNode;
