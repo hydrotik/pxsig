@@ -2,7 +2,7 @@
  * The side panel's plain layout (side-panel.tsx): the panel beside the main area while both fit
  * (the main area keeps 40rem, the panel 20rem), overlaid on the main area from the end edge below
  * that, the main area keeping its full width underneath. Overlaid, the panel is as tall as the main
- * area and scrolls, so it never makes the page scroll. A container query on the layout, not the
+ * area and its body scrolls under its heading, so it never makes the page scroll. A container query on the layout, not the
  * viewport, so the panel follows the room the page gives it.
  */
 import { style } from '@vanilla-extract/css';
@@ -30,9 +30,18 @@ export const panel = style({
       insetBlock: 0,
       insetInlineEnd: 0,
       zIndex: 4,
-      overflowY: 'auto',
       inlineSize: 'min(20rem, 100%)',
       boxShadow: `0 ${v.space['2']} ${v.space['6']} color-mix(in srgb, ${v.color.text} 18%, transparent)`,
     },
   },
+});
+
+/** The panel's content under its heading: it scrolls when the overlaid panel is shorter. */
+export const body = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: v.space['3'],
+  flex: 1,
+  minBlockSize: 0,
+  overflowY: 'auto',
 });

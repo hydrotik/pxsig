@@ -85,7 +85,7 @@ export const SidePanel: F<'SidePanel'> = ({
           <span aria-hidden>×</span>
         </button>
       </div>
-      {children}
+      <div className={sp.body}>{children}</div>
     </aside>
   );
 };
