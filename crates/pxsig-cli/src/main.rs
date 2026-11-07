@@ -23,6 +23,7 @@ mod cmd_store;
 mod gate;
 mod io;
 mod react;
+mod react_compile;
 mod report;
 mod report_react;
 mod resolve;
@@ -255,6 +256,14 @@ enum Cmd {
         #[arg(long)]
         read_only: bool,
     },
+    /// The built-in React Compiler (`react-oxc` builds) over files: `{ options, files }` on stdin,
+    /// `{ compiler, warnings, results }` on stdout, one result per file. Each batch runs in a child
+    /// process; a file that crashes the compiler is `{ error: "compiler-error" }`.
+    ReactCompile {
+        /// The child process: compile and print one result per line.
+        #[arg(long, hide = true)]
+        worker: bool,
+    },
     /// Long-lived engine: JSON requests on stdin, one JSON response per line.
     Serve,
     /// Detail-channel calibration data over base/current render pairs.
@@ -414,6 +423,7 @@ fn run(cmd: Cmd) -> anyhow::Result<u8> {
             out,
             read_only,
         } => react::cmd_diff(&plan, &results, &cache, &out, read_only),
+        Cmd::ReactCompile { worker } => react_compile::run(worker),
         Cmd::Serve => serve::run(),
         Cmd::DetailSweep { input } => cmd_sweep(&input),
     }

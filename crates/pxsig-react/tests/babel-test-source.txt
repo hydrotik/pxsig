@@ -1,0 +1,13 @@
+import { forwardRef, memo, useEffect, useRef, useState } from 'react';
+export function Good({ a }) { return <div>{a}</div>; }
+export function RefBad() { const r = useRef(0); return <div>{r.current}</div>; }
+export const Arrow = () => { const r = useRef(0); r.current = 2; return <i />; };
+export function useDerived(x) { const [s, setS] = useState(0); useEffect(() => { setS(x); }, [x]); return s; }
+export function Opt() { 'use no memo'; return <b />; }
+export function Sup() {
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [a] = useState(0); return <p>{a}</p>;
+}
+export function Tri() { try { return <a />; } catch (e) { return null; } }
+export const Fancy = memo(forwardRef(function (props, ref) { const r = useRef(0); return <i>{r.current}</i>; }));
+export function Effect() { const [v, setV] = useState(0); useEffect(() => { setV(1); }, []); return <i>{v}</i>; }
