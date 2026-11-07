@@ -214,6 +214,7 @@ export function App() {
       ? {
           part: v === 'react' ? ('compiler' as const) : ('renders' as const),
           all: undefined as boolean | undefined,
+          fn: undefined as string | undefined,
           at: Date.now(),
         }
       : null;
@@ -288,14 +289,16 @@ export function App() {
   ).length;
   const integrityErrors = data.integrity?.summary.componentsBySeverity.error ?? 0;
   // Diagnostics › React on a part (the strip, the Overview's React card).
-  const openReact = (part: 'compiler' | 'renders', all?: boolean) => (
-    setReactFocus({ part, all, at: Date.now() }),
+  const openReact = (part: 'compiler' | 'renders', all?: boolean, fn?: string) => (
+    setReactFocus({ part, all, fn, at: Date.now() }),
     setTab('diagnostics')
   );
   const open = (row: Row, list: Row[], scenario: InspectTarget['scenario'] = null) =>
     setTarget({ row, list, scenario });
   // `f`: the Review filter, or for Coverage the component to open.
   const go = (t: string, f?: string) => {
+    // The inspector's React section: Diagnostics › React on a function.
+    if (t === 'react') return openReact('compiler', true, f);
     if (t === 'integrity') setCoverageFocus(f ? { component: f, at: Date.now() } : null);
     else if (f) setFilter(f);
     setTab(t as Tab);

@@ -6,4 +6,5 @@
   size), skipped and why, opted out, or a compiler error. A file that crashes the compiler is
   isolated as a compiler error; the others still compile. Nothing calls it yet: the compiler
   analysis still uses the project's `babel-plugin-react-compiler`. A later release adds the opt-in
-  `"react": { "compiler": "oxc" }`. The published engine is about 3 MB larger.
+  `"react": { "compiler": "oxc" }`. It is built only with the `react-oxc` cargo feature, which the
+  published engines leave off until that release, so their size is unchanged.

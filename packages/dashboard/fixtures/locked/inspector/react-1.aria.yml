@@ -77,6 +77,18 @@
     - figure "Cell heatmap":
       - img "Cell heatmap"
       - text: Cell heatmap
+    - heading "React" [level=3]
+    - term: Renders
+    - definition: 14 commits · 52 rendered · 12.4 ms (development build)
+    - term: Settled
+    - definition: "No: still committing at capture"
+    - heading "Alert" [level=4]
+    - text: "ui-button--primary: React was still committing when pxsig captured it (14 commits). A component keeps re-rendering (an effect that sets state, a timer, a subscription). Button 14 Not compiled Icon 14 Compiled Spinner 12 Compiled Since the check at 9:58:00 AM: +12 commits"
+    - heading "Compiler alerts (1)" [level=4]
+    - strong: Button
+    - text: Newly skipped src/Button/Button.tsx · refs, line 18
+    - button "Open in React"
+    - text: From the check at 10:00:00 AM
     - heading "Files" [level=3]
     - list:
       - listitem:

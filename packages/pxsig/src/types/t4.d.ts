@@ -363,7 +363,7 @@ export interface Screen {
   state?: string;
   query?: string;
   hash?: string;
-  actions?: { click?: ScreenTarget; press?: string }[];
+  actions?: { click?: ScreenTarget; scroll?: ScreenTarget; press?: string }[];
   wait: ScreenTarget;
 }
 

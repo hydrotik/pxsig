@@ -1188,6 +1188,38 @@
       "a11y": false
     },
     {
+      "id": "inspector--react-2@dark",
+      "story": "inspector--react-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--react-2@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--react-2@light",
+      "story": "inspector--react-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--react-2@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
       "id": "shell--react-strip-1@dark",
       "story": "shell--react-strip-1",
       "mode": "dark",
