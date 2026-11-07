@@ -1,0 +1,151 @@
+- navigation "Report sections":
+  - heading "pxsig • demo" [level=1]
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: "#overview"
+    - listitem:
+      - link "Review Stories":
+        - /url: "#stories"
+    - listitem:
+      - link "Coverage":
+        - /url: "#integrity"
+    - listitem:
+      - link "Accessibility":
+        - /url: "#a11y"
+    - listitem:
+      - link "Runs":
+        - /url: "#history"
+    - listitem:
+      - link "Diagnostics":
+        - /url: "#diagnostics"
+    - listitem:
+      - link "Help":
+        - /url: "#help"
+  - text: dark · light Live Can approve
+  - button "Light theme"
+  - text: Approved
+- main:
+  - heading "Diagnostics" [level=2]
+  - group "React part":
+    - radio "Compiler" [checked]
+    - radio "Renders"
+  - text: From the check at 10/24/2026, 10:00:00 AM · no merge base
+  - button "Analyse"
+  - paragraph: "No merge base with main: nothing to compare with, so no alerts. Fetch the history (fetch-depth: 0) to compare."
+  - heading "React Compiler" [level=3]
+  - paragraph: 4 files · 9 functions · compiled 5 · skipped 3 · opted out 1 · fixed 0 · 0.3 s (2 cached)
+  - button "Alerts (0)" [disabled]
+  - button "All analysed (9)"
+  - textbox "Search all columns":
+    - /placeholder: Search all columns…
+  - button "Columns":
+    - img
+    - text: Columns
+  - grid "Data grid":
+    - rowgroup:
+      - row "Function File Before Now Rule Line Entries":
+        - columnheader "Function":
+          - button "Function"
+          - separator "Resize Function column"
+        - columnheader "File":
+          - text: File
+          - separator "Resize File column"
+        - columnheader "Before":
+          - text: Before
+          - separator "Resize Before column"
+        - columnheader "Now":
+          - text: Now
+          - separator "Resize Now column"
+        - columnheader "Rule":
+          - text: Rule
+          - separator "Resize Rule column"
+        - columnheader "Line":
+          - text: Line
+          - separator "Resize Line column"
+        - columnheader "Entries":
+          - text: Entries
+          - separator "Resize Entries column"
+    - rowgroup:
+      - row "Button src/Button/Button.tsx — Skipped refs 18 3":
+        - gridcell "Button":
+          - strong: Button
+        - gridcell "src/Button/Button.tsx"
+        - gridcell "—"
+        - gridcell "Skipped"
+        - gridcell "refs"
+        - gridcell "18"
+        - gridcell "3"
+      - row "ButtonGroup src/Button/Button.tsx — Compiled 3":
+        - gridcell "ButtonGroup":
+          - strong: ButtonGroup
+        - gridcell "src/Button/Button.tsx"
+        - gridcell "—"
+        - gridcell "Compiled"
+        - gridcell
+        - gridcell
+        - gridcell "3"
+      - row "Select src/Select/Select.tsx — Skipped set-state-in-render + refs 77 1":
+        - gridcell "Select":
+          - strong: Select
+        - gridcell "src/Select/Select.tsx"
+        - gridcell "—"
+        - gridcell "Skipped"
+        - gridcell "set-state-in-render + refs"
+        - gridcell "77"
+        - gridcell "1"
+      - row "SelectItem src/Select/Select.tsx — Compiled 1":
+        - gridcell "SelectItem":
+          - strong: SelectItem
+        - gridcell "src/Select/Select.tsx"
+        - gridcell "—"
+        - gridcell "Compiled"
+        - gridcell
+        - gridcell
+        - gridcell "1"
+      - row "Toast src/Toast/Toast.tsx — Compiled set-state-in-effect 33 1":
+        - gridcell "Toast":
+          - strong: Toast
+        - gridcell "src/Toast/Toast.tsx"
+        - gridcell "—"
+        - gridcell "Compiled"
+        - gridcell "set-state-in-effect"
+        - gridcell "33"
+        - gridcell "1"
+      - row "ToastViewport src/Toast/Toast.tsx — Compiled 1":
+        - gridcell "ToastViewport":
+          - strong: ToastViewport
+        - gridcell "src/Toast/Toast.tsx"
+        - gridcell "—"
+        - gridcell "Compiled"
+        - gridcell
+        - gridcell
+        - gridcell "1"
+      - row "useGrid src/DataGrid/useGrid.ts — Skipped immutability 40 1":
+        - gridcell "useGrid":
+          - strong: useGrid
+        - gridcell "src/DataGrid/useGrid.ts"
+        - gridcell "—"
+        - gridcell "Skipped"
+        - gridcell "immutability"
+        - gridcell "40"
+        - gridcell "1"
+      - row "useGridColumns src/DataGrid/useGrid.ts — Compiled 1":
+        - gridcell "useGridColumns":
+          - strong: useGridColumns
+        - gridcell "src/DataGrid/useGrid.ts"
+        - gridcell "—"
+        - gridcell "Compiled"
+        - gridcell
+        - gridcell
+        - gridcell "1"
+      - row "useToastTimer src/Toast/Toast.tsx — Opted out 1":
+        - gridcell "useToastTimer":
+          - strong: useToastTimer
+        - gridcell "src/Toast/Toast.tsx"
+        - gridcell "—"
+        - gridcell "Opted out"
+        - gridcell
+        - gridcell
+        - gridcell "1"
+  - status

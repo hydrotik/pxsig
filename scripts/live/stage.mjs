@@ -59,7 +59,7 @@ export const REACT_CHANGE = {
 /** pxsig's React Compiler test fixtures (Babel 7): what the live workspace analyses with. */
 const COMPILER = join(repo, 'packages', 'pxsig', 'test', 'react-compiler');
 /** Bump when the staging itself changes, so an old stamp never matches. */
-const STAGE_VERSION = 3;
+const STAGE_VERSION = 4;
 
 /**
  * Every file under `dir` but generated folders, as `relative path → sha256`, in name order.
@@ -142,7 +142,7 @@ export async function stageLive({
   copyTree(join(dir, 'storybook-static'), join(pristine, 'storybook-static'));
   if (!original.includes(REACT_CHANGE.from))
     throw new Error(`${REACT_CHANGE.file} no longer has ${REACT_CHANGE.from.trim()}`);
-  reactBase(dir, pnpm);
+  log(`git base ${reactBase(dir, pnpm)}`);
   writeFileSync(stampFile, `${JSON.stringify({ stamp }, null, 2)}\n`);
   log('staged');
   return { staged: true, dir };
@@ -154,6 +154,7 @@ export async function stageLive({
  * repository whose `main` is the example as committed.
  * @param {string} dir the staged workspace
  * @param {(args: string[], cwd: string) => unknown} pnpm
+ * @returns {string} the base commit (short)
  */
 function reactBase(dir, pnpm) {
   pnpm(['install', '--frozen-lockfile', '--ignore-scripts'], COMPILER);
@@ -166,24 +167,42 @@ function reactBase(dir, pnpm) {
   writeFileSync(join(dir, '.gitignore'), 'node_modules\nstorybook-static*\n.pxsig\n');
   // As a project's store asks: baselines are binary to git (no line-endings warning).
   writeFileSync(join(dir, '.gitattributes'), '*.psig binary\n');
+  // The base is the same commit from every checkout: the example's own files (its package.json as
+  // committed, not the copy staging adds the checkout's packageManager to), a fixed author and
+  // committer, a fixed date, no signing, no line-ending conversion.
+  const env = {
+    ...process.env,
+    GIT_AUTHOR_NAME: 'pxsig live',
+    GIT_AUTHOR_EMAIL: 'live@example.invalid',
+    GIT_AUTHOR_DATE: '2026-01-01T00:00:00Z',
+    GIT_COMMITTER_NAME: 'pxsig live',
+    GIT_COMMITTER_EMAIL: 'live@example.invalid',
+    GIT_COMMITTER_DATE: '2026-01-01T00:00:00Z',
+  };
   /** @param {string[]} args */
   const git = (args) => {
-    const r = spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
+    const r = spawnSync(
+      'git',
+      ['-c', 'core.autocrlf=false', '-c', 'commit.gpgsign=false', ...args],
+      {
+        cwd: dir,
+        encoding: 'utf8',
+        env,
+      }
+    );
     if (r.status !== 0) throw new Error(`git ${args[0]}: ${r.stderr}`);
+    return r.stdout.trim();
   };
-  git(['init', '-q', '-b', 'main']);
-  git(['add', '-A']);
-  // A fixed author, no signing: the base is this staging's, not a person's.
-  git([
-    '-c',
-    'user.name=pxsig live',
-    '-c',
-    'user.email=live@example.invalid',
-    '-c',
-    'commit.gpgsign=false',
-    'commit',
-    '-q',
-    '-m',
-    'base',
-  ]);
+  const pj = join(dir, 'package.json');
+  const staged = readFileSync(pj);
+  writeFileSync(pj, readFileSync(join(repo, 'examples', EXAMPLE, 'package.json')));
+  try {
+    git(['init', '-q', '-b', 'main']);
+    git(['add', '-A']);
+    git(['commit', '-q', '-m', 'base']);
+  } finally {
+    writeFileSync(pj, staged);
+  }
+  // package.json differs from the base only by packageManager: not a module the analysis reads.
+  return git(['rev-parse', '--short', 'HEAD']);
 }
