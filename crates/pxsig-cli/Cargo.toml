@@ -20,6 +20,12 @@ rayon.workspace = true
 clap.workspace = true
 anyhow.workspace = true
 sha2.workspace = true
+pxsig-react = { path = "../pxsig-react", optional = true }
+
+[features]
+# The built-in React Compiler (oxc_react_compiler, about 3 MB): `pxsig react-compile`. Off by
+# default; the release build and CI turn it on (`-p pxsig-cli --features react-oxc`).
+react-oxc = ["dep:pxsig-react"]
 
 [lints]
 workspace = true
