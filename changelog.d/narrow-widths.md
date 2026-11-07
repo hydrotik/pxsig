@@ -1,8 +1,10 @@
 ### Behaviour changes
 
-- **The dashboard's top bar keeps Help visible at every width.** Help now comes before
-  Diagnostics, so at a narrow width Diagnostics is the first link to move into the More menu.
-  To update: nothing to do; the links' targets (`#help`, `#diagnostics`) are unchanged.
+- **The dashboard's top bar keeps Help visible at every width.** At a narrow width the other
+  section links (Diagnostics first) move into the More menu and Help stays in the bar, with an
+  adapter on UI contract 1.4.0 (the reference adapter is).
+  To update: nothing to do; an adapter written for 1.3.0 or earlier keeps moving Help into its menu
+  until it maps `keep` and sets `"contract": "1.4.0"` in its conformance.json.
 
 ### Added
 

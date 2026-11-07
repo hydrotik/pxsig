@@ -234,13 +234,15 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 
 - **Purpose**: one section link, with an optional count.
 - **Props**: `href` (`#<section>`), `active`, `count`, `countTone` (`info`: asks for action;
-  `neutral`: a plain total), `countLabel` (the link's accessible name with its count), `children`.
+  `neutral`: a plain total), `countLabel` (the link's accessible name with its count), `keep`
+  (since 1.4.0), `children`.
 - **Behaviour**: a plain link: the dashboard follows the hash. No count at zero; cap long counts
-  (99+).
+  (99+). A `keep` link (Help) never moves into the overflow menu: it stays in the bar at every
+  width and the other links move first. Without overflow, `keep` changes nothing.
 - **Accessibility**: `aria-current="page"` when `active`; when there is a count, the accessible name
   includes it (use `countLabel`).
 - **Mapping questions**: Does your nav item take a count or badge? Which tone is your attention
-  colour?
+  colour? How does your overflow keep an item out of its menu?
 - **Acceptance**: Back and Forward move between sections; a screen reader reads "Review Stories, 6
   to review". Required.
 

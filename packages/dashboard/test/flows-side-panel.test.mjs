@@ -2,8 +2,8 @@
  * The side panel's two layouts (contract 1.3.0, the fallback the plain build draws) in a real
  * browser, against a mocked server (flows-helpers.mjs): beside the records while both fit, and
  * overlaid on them from the right when the container is too narrow, the records keeping their
- * width; and the top bar, which keeps Help in the bar and moves Diagnostics into the More menu
- * first. Skips when no Chromium is available (PXSIG_CHROMIUM names an executable).
+ * width. (Help kept in the top bar is the reference adapter's overflow: the live screens show it.)
+ * Skips when no Chromium is available (PXSIG_CHROMIUM names an executable).
  */
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -50,17 +50,3 @@ for (const [width, overlaid] of /** @type {const} */ ([
     }
   });
 }
-
-test('the top bar: Help comes before Diagnostics, so Diagnostics leaves the bar first', async (t) => {
-  if (skip) return t.skip(skip);
-  const { page, errors } = await open(scenarioData('react'), { hash: '#react' });
-  try {
-    const nav = page.getByRole('navigation').first();
-    await nav.getByRole('link', { name: 'Diagnostics' }).waitFor();
-    const names = await nav.getByRole('link').allInnerTexts();
-    assert.ok(names.indexOf('Help') < names.indexOf('Diagnostics'), names.join(', '));
-    assert.deepEqual(errors, []);
-  } finally {
-    await page.close();
-  }
-});

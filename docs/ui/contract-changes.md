@@ -20,6 +20,14 @@ icon without a default. A major version's section starts with its migration note
 a version bump of the right size, or without a section here, fails. After the bump and the
 section, `node scripts/ui.mjs lock` records the new contract.
 
+## 1.4.0
+
+Minor: one optional prop.
+
+- **`keep`** on `NavLink`: the link never moves into the overflow menu; it stays in the bar at
+  every width, and the other links move first. The dashboard sets it on Help. An adapter written
+  for 1.3.0 ignores it, so Help moves into the menu like the other links at a narrow width.
+
 ## 1.3.0
 
 Minor: three optional components, a set.

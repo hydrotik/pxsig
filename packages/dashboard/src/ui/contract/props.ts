@@ -48,6 +48,11 @@ export interface NavLinkProps {
   countTone?: 'info' | 'neutral';
   /** The link's accessible name with its count ("Review Stories, 6 to review"). */
   countLabel?: string;
+  /**
+   * Never moves into the overflow menu: it stays in the bar at every width, and the links before
+   * it move first (since 1.4.0; Help). An adapter written for 1.3.0 overflows it like the others.
+   */
+  keep?: boolean;
   children: React.ReactNode;
 }
 /** The controls pinned at the end of the top bar. */
