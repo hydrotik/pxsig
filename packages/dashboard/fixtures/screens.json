@@ -1134,6 +1134,23 @@
             "role": "progressbar",
             "name": "Review progress"
           }
+        },
+        {
+          "scenario": "long-rejections",
+          "hash": "#overview",
+          "actions": [
+            {
+              "click": {
+                "role": "button",
+                "name": "Changed 0",
+                "exact": true
+              }
+            }
+          ],
+          "wait": {
+            "role": "heading",
+            "name": "Review complete"
+          }
         }
       ]
     },

@@ -1,8 +1,8 @@
 /**
  * flows-helpers.mjs — what the flows tests share: `setupFlows()` builds the dashboard with the plain
- * example adapter, serves it over HTTP and launches Chromium before a file's tests (and cleans up
- * after), and `open()` opens a page on the mocked server. `noChromium()` is the skip when Chromium
- * does not launch.
+ * example adapter (or PXSIG_FLOWS_ADAPTER), serves it over HTTP and launches Chromium before a
+ * file's tests (and cleans up after), and `open()` opens a page on the mocked server. `noChromium()`
+ * is the skip when Chromium does not launch.
  */
 import { createReadStream, existsSync, mkdtempSync, rmSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -53,7 +53,8 @@ export function setupFlows() {
     const { dashboardConfig } = await import('../build-config.mjs');
     out = mkdtempSync(path.join(tmpdir(), 'pxsig-flows-'));
     const config = await dashboardConfig({
-      adapter: path.join(repo, 'examples/custom-ui/pxsig-ui'),
+      // PXSIG_FLOWS_ADAPTER runs the flows on another adapter (`hydrotik`, with PXSIG_DS_SOURCE).
+      adapter: process.env.PXSIG_FLOWS_ADAPTER ?? path.join(repo, 'examples/custom-ui/pxsig-ui'),
       cwd: repo,
       outDir: out,
       resolveFrom: [dashboard],
