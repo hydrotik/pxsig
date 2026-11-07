@@ -92,6 +92,72 @@ export function locate(page, t) {
   // A target without a role has its text (screens.json).
   return page.getByText(/** @type {string} */ (t.text), { exact: t.exact ?? false }).first();
 }
+/**
+ * Wait for what a screenshot waits for: the inspector's stage no longer aria-busy, images decoded,
+ * fonts loaded.
+ * @param {Page} page
+ */
+async function ready(page) {
+  // The inspector marks its stage aria-busy until its images are drawn, analysed and fitted.
+  await page
+    .waitForFunction(() => !document.querySelector('[aria-busy="true"]'), null, {
+      timeout: LANDMARK_MS,
+    })
+    .catch(() => {});
+  await page.evaluate(() =>
+    Promise.all([...document.images].map((i) => i.decode().catch(() => {})))
+  );
+  await page.evaluate(() => document.fonts?.ready);
+}
+
+/**
+ * A `scroll` action: once the layout is stable, set scrollTop on the target's nearest scrollable
+ * ancestor so the target sits at its top. Only that container moves (not scrollIntoView, which
+ * also scrolls the dialog and the page). Throws (the capture fails) when nothing scrolled, the
+ * scroll did not hold, or the dialog or page moved.
+ * @param {Page} page
+ * @param {ScreenTarget} t
+ */
+export async function scrollTo(page, t) {
+  await ready(page);
+  await settle(page);
+  const el = locate(page, t);
+  await el.waitFor({ state: 'attached', timeout: LANDMARK_MS });
+  /**
+   * @param {Element} target
+   * @param {string} phase `set` scrolls; anything else only reads
+   * @returns {{ error?: string, scrollTop?: number, at?: string }}
+   */
+  const run = (target, phase) => {
+    let box = target.parentElement;
+    while (
+      box &&
+      !(box.scrollHeight > box.clientHeight && /auto|scroll/.test(getComputedStyle(box).overflowY))
+    )
+      box = box.parentElement;
+    if (!box) return { error: 'no scrollable ancestor' };
+    const frame = (target.closest('[role="dialog"]') ?? document.body).getBoundingClientRect();
+    const at = `${Math.round(frame.x)},${Math.round(frame.y)},${Math.round(frame.width)},${Math.round(frame.height)},${window.scrollX},${window.scrollY}`;
+    if (phase === 'set')
+      box.scrollTop += target.getBoundingClientRect().top - box.getBoundingClientRect().top;
+    return { scrollTop: box.scrollTop, at };
+  };
+  const before = await el.evaluate(run, 'read');
+  const set = await el.evaluate(run, 'set');
+  await settle(page);
+  const after = await el.evaluate(run, 'read');
+  const problem =
+    before.error ??
+    (!((set.scrollTop ?? 0) > 0)
+      ? 'its scroll container did not scroll'
+      : after.scrollTop !== set.scrollTop
+        ? `its scroll container did not hold (${set.scrollTop} → ${after.scrollTop})`
+        : after.at !== before.at
+          ? 'the dialog or page moved'
+          : null);
+  if (problem) throw new Error(`scroll to ${describe(t)}: ${problem}`);
+}
+
 export const describe = (/** @type {ScreenTarget} */ t) =>
   t.role ? `${t.role}${t.name != null ? ` "${t.name}"` : ''}` : `text "${t.text}"`;
 
@@ -154,16 +220,7 @@ export async function snap(
   page,
   { shot, axe, layout = false, aria = false, anchors = [], errors, restore = false }
 ) {
-  // The inspector marks its stage aria-busy until its images are drawn, analysed and fitted.
-  await page
-    .waitForFunction(() => !document.querySelector('[aria-busy="true"]'), null, {
-      timeout: LANDMARK_MS,
-    })
-    .catch(() => {});
-  await page.evaluate(() =>
-    Promise.all([...document.images].map((i) => i.decode().catch(() => {})))
-  );
-  await page.evaluate(() => document.fonts?.ready);
+  await ready(page);
   const settled = await settle(page);
   mkdirSync(dirname(shot), { recursive: true });
   await page.screenshot({ path: shot });
@@ -250,10 +307,9 @@ export async function capture(
     for (const a of screen.actions ?? []) {
       if (a.click) await locate(page, a.click).click({ timeout: LANDMARK_MS });
       else if (a.press) await page.keyboard.press(a.press);
-      // The target at the top of what scrolls it (a section below a panel's fold), as a person
-      // scrolls: no click, so nothing is activated or focused.
-      else if (a.scroll)
-        await locate(page, a.scroll).evaluate((el) => el.scrollIntoView({ block: 'start' }));
+      // The target at the top of its scroll container (a section below a panel's fold), as a
+      // person scrolls: no click, so nothing is activated or focused.
+      else if (a.scroll) await scrollTo(page, a.scroll);
     }
     try {
       await locate(page, screen.wait).waitFor({ state: 'visible', timeout: LANDMARK_MS });
