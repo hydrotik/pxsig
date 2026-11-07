@@ -31,7 +31,7 @@
     - button "View components"
     - button "Run safe repairs"
     - text: Safe repairs register new stories and render them, re-check entries without a usable verdict, and restore baseline images that pass the gate. They do not approve changes or write signatures.
-  - text: Components 21 with errors Errors 1 Warnings 1 Not registered 0
+  - text: Components 2 1 with errors Errors 1 Warnings 1 Not registered 0
   - button "Never checked 1"
   - text: Baseline image missing 0 No baseline 0
   - heading "Stale Entries by Component" [level=3]

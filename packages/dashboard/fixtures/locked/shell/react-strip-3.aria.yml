@@ -32,11 +32,11 @@
     - button "Open React"
     - button "Dismiss"
     - status: "React: 2 newly skipped · 1 new reason · 1 new finding · 1 fixed"
-  - text: Checked 7dark · light Passed 7
+  - text: Checked 7 dark · light Passed 7
   - button "Changed 0"
   - button "Flaky 0"
-  - button "New a11y 0of 0 violations"
-  - text: Duration 200 ms100 ms rendering
+  - button "New a11y 0 of 0 violations"
+  - text: Duration 200 ms 100 ms rendering
   - heading "Open Items" [level=3]
   - text: No open items.
   - grid "Data grid":
@@ -85,7 +85,7 @@
   - text: No stale entries
   - heading "React" [level=3]
   - paragraph: Alerts only, not blocking. From the analysis at 10/24/2026, 10:00:00 AM · base main (4883bcd)
-  - button "Newly skipped 2+1 new reason"
-  - button "Findings 1new · of 1"
-  - button "Compiled 5of 9 analysed"
-  - button "Still rendering 1of 7 entries"
+  - button "Newly skipped 2 +1 new reason"
+  - button "Findings 1 new · of 1"
+  - button "Compiled 5 of 9 analysed"
+  - button "Still rendering 1 of 7 entries"
