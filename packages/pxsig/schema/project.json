@@ -438,9 +438,9 @@
       "additionalProperties": false,
       "properties": {
         "compiler": {
-          "enum": [true, false, "auto", "off"],
+          "enum": [true, false, "auto", "off", "babel", "oxc"],
           "default": "auto",
-          "description": "Compare the React Compiler's verdict on changed files with the merge base, when babel-plugin-react-compiler and @babel/core are installed in the project. false (or \"off\"): never."
+          "description": "Compare the React Compiler's verdict on changed files with the merge base. \"auto\" (or true): with babel-plugin-react-compiler and @babel/core when they are installed in the project. \"babel\": that plugin only. \"oxc\": the engine's built-in compiler (oxc_react_compiler, experimental), with no Node packages. false (or \"off\"): never."
         },
         "lint": {
           "type": "boolean",

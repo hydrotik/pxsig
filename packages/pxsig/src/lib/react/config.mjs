@@ -52,6 +52,7 @@ function read(raw, env) {
     fromConfig: false,
     problems: [],
     compiler: false,
+    choice: 'auto',
     lint: true,
     compilationMode: 'infer',
     target: 'auto',
@@ -69,8 +70,8 @@ function read(raw, env) {
   for (const k of Object.keys(r))
     if (!KEYS.includes(k)) bad.push(`react.${k} is not a React setting (${KEYS.join(', ')})`);
   const compiler = r.compiler ?? 'auto';
-  if (![true, false, 'auto', 'off'].includes(/** @type {never} */ (compiler)))
-    bad.push('react.compiler must be true, false, "auto" or "off"');
+  if (![true, false, 'auto', 'off', 'babel', 'oxc'].includes(/** @type {never} */ (compiler)))
+    bad.push('react.compiler must be true, false, "auto", "off", "babel" or "oxc"');
   if (r.lint != null && typeof r.lint !== 'boolean') bad.push('react.lint must be true or false');
   const compilationMode = r.compilationMode == null ? 'infer' : r.compilationMode;
   if (typeof compilationMode !== 'string' || !MODES.includes(compilationMode))
@@ -96,7 +97,8 @@ function read(raw, env) {
   return {
     ...all,
     problems,
-    compiler: compiler === true || compiler === 'auto',
+    compiler: compiler !== false && compiler !== 'off',
+    choice: compiler === 'babel' || compiler === 'oxc' ? compiler : 'auto',
     lint: r.lint !== false,
     compilationMode: /** @type {ReactConfig['compilationMode']} */ (compilationMode),
     target: /** @type {ReactConfig['target']} */ (target),

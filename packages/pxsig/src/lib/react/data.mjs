@@ -7,8 +7,8 @@
  */
 import { join } from 'node:path';
 import { readJson } from '../files.mjs';
+import { missingFor } from './backend.mjs';
 import { configWarning, reactConfig } from './config.mjs';
-import { BABEL, COMPILER, reactPeers } from './peers.mjs';
 
 /** @import { Project } from '../../types.js' */
 /** @import { CheckReact, ReactData, ReactLive, ReactOff, ReactReport } from '../../types/react.js' */
@@ -36,12 +36,12 @@ function offAt(P, cfg) {
 }
 
 /**
- * The missing packages (names only), from `peers` when the caller has them.
- * @param {Pick<Project, 'root' | 'workspaceRoot'>} P
- * @param {ReturnType<typeof reactPeers>} [peers]
+ * The packages the chosen compiler needs and the project lacks (names only): none for
+ * `react.compiler: "oxc"`, the engine's built-in compiler.
+ * @param {Pick<Project, 'root' | 'workspaceRoot' | 'config' | 'configSources'>} P
+ * @param {Pick<ReturnType<typeof reactConfig>, 'choice'>} [cfg]
  */
-export const missingPeers = (P, peers = reactPeers(P)) =>
-  [peers.compiler ? null : COMPILER, peers.babel ? null : BABEL].filter((x) => x != null);
+export const missingPeers = (P, cfg = reactConfig(P)) => missingFor(P, cfg);
 
 /**
  * `data.react` for a project, or null for a static report with nothing to show.
@@ -59,7 +59,7 @@ export function reactData(P, { check = null, live = null } = {}) {
   const cfg = reactConfig(P);
   const warning = configWarning(cfg);
   const off = offAt(P, cfg);
-  const missing = live?.missing ?? missingPeers(P);
+  const missing = live?.missing ?? missingPeers(P, cfg);
   const compiler = cfg.off
     ? 'off'
     : warning

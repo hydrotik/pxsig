@@ -364,9 +364,9 @@
     "react.compiler": {
       "file": "pxsig.config.json",
       "meaning": "Compare the React Compiler's verdict on changed files at the merge base and now (`pxsig react`).",
-      "values": "true | false | \"auto\" | \"off\"",
+      "values": "true | false | \"auto\" | \"off\" | \"babel\" | \"oxc\"",
       "default": "\"auto\"",
-      "operation": "auto (or true): runs when babel-plugin-react-compiler and @babel/core resolve from the project, else one note. false (or \"off\"): never, and no note."
+      "operation": "auto (or true): runs when babel-plugin-react-compiler and @babel/core resolve from the project, else one note. \"babel\": the same, named. \"oxc\": the engine's built-in compiler (oxc_react_compiler, experimental), even when the Babel plugin is installed; needs no Node packages. false (or \"off\"): never, and no note."
     },
     "react.lint": {
       "file": "pxsig.config.json",

@@ -7,6 +7,7 @@
 import { resolve } from 'node:path';
 import { emit } from '../lib/term.mjs';
 import { relPath } from '../lib/paths.mjs';
+import { compilerName } from '../lib/react/backend.mjs';
 import { analyse } from '../lib/react/index.mjs';
 import { writeReactSarif } from '../lib/sarif-react.mjs';
 import { PXSIG_VERSION } from '../lib/workspace.mjs';
@@ -68,6 +69,7 @@ export function reactCommands(cli) {
         sarif
           ? writeReactSarif(resolve(sarif), {
               alerts: r.ran ? r.report.alerts : [],
+              backend: r.ran ? r.report.backend : null,
               version: PXSIG_VERSION,
             })
           : 0;
@@ -80,7 +82,10 @@ export function reactCommands(cli) {
       }
       const { report } = r;
       /** @type {Block[]} */
-      const blocks = [{ h: 'React', sub: summaryLine(report, report.summary.cached) }];
+      const blocks = [
+        { h: 'React', sub: summaryLine(report, report.summary.cached) },
+        { note: `compiler: ${compilerName(report.backend)}` },
+      ];
       const alerts = report.alerts;
       if (alerts.length) {
         blocks.push({ list: alerts.slice(0, SHOWN).map((a) => a.text) });

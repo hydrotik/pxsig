@@ -33,6 +33,7 @@ test('defaults: compiler on (auto), lint on, renders off', () => {
       off: null,
       problems: [],
       compiler: true,
+      choice: 'auto',
       lint: true,
       compilationMode: 'infer',
       target: 'auto',
@@ -48,6 +49,16 @@ test('react.compiler: false canonical, "off" accepted, true and "auto" on', () =
     assert.equal(reactConfig(P({ compiler: v }), { env: {} }).compiler, false);
   for (const v of [true, 'auto'])
     assert.equal(reactConfig(P({ compiler: v }), { env: {} }).compiler, true);
+  // "babel" and "oxc" name the compiler; true and "auto" are the same choice (Babel, today).
+  for (const [v, choice] of [
+    [true, 'auto'],
+    ['auto', 'auto'],
+    ['babel', 'babel'],
+    ['oxc', 'oxc'],
+  ]) {
+    const c = reactConfig(P({ compiler: v }), { env: {} });
+    assert.deepEqual([c.compiler, c.choice], [true, choice], String(v));
+  }
   // The compiler off leaves the rest on.
   assert.equal(reactConfig(P({ compiler: false, renders: true }), { env: {} }).renders, true);
 });
@@ -68,7 +79,7 @@ test('off switches name where they came from', () => {
 
 test('a bad value: a warning line and its part off, never a throw', () => {
   for (const [raw, line] of /** @type {[unknown, string][]} */ ([
-    [{ compiler: 'maybe' }, 'react.compiler must be true, false, "auto" or "off"'],
+    [{ compiler: 'maybe' }, 'react.compiler must be true, false, "auto", "off", "babel" or "oxc"'],
     [{ lint: 'yes' }, 'react.lint must be true or false'],
     [
       { compilationMode: 'some' },
