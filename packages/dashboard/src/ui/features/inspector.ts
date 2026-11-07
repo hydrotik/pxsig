@@ -213,6 +213,14 @@ export const INSPECTOR: Feature[] = [
         actions: [{ click: { role: 'button', name: 'Review 2 changes' } }],
         wait: { role: 'progressbar', name: 'Review progress' },
       },
+      {
+        // Every entry decided, most rejected, with long ids: the summary's command is longer than
+        // the dialog is wide.
+        scenario: 'long-rejections',
+        hash: '#overview',
+        actions: [{ click: { role: 'button', name: 'Changed 0', exact: true } }],
+        wait: { role: 'heading', name: 'Review complete' },
+      },
     ],
   },
   {
