@@ -1,0 +1,20 @@
+- main:
+  - status
+- dialog "Review complete":
+  - strong: Reviewing changes
+  - progressbar "Review progress": x
+  - text: 5 of 5 reviewed · 0 left
+  - heading "Review complete" [level=2]
+  - term: 1 approved
+  - definition:
+    - text: Baselines are written to
+    - code: .pxsig
+    - text: . Commit them with the change.
+  - term: 4 rejected
+  - definition:
+    - text: "Fix the components, then re-run the check: pxsig check ui-date-range-picker--with-presets-and-time ui-date-range-picker--with-presets-and-time@light ui-navigation-menu--nested-with-descriptions ui-navigation-menu--nested-with-descriptions@light"
+    - button "Copy pxsig check ui-date-range-picker--with-presets-and-time ui-date-range-picker--with-presets-and-time@light ui-navigation-menu--nested-with-descriptions ui-navigation-menu--nested-with-descriptions@light"
+    - status
+  - button "Back to overview"
+  - button "View rejected"
+  - button "Back to entries"
