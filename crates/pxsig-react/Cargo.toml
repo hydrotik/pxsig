@@ -1,0 +1,26 @@
+[package]
+name = "pxsig-react"
+description = "pxsig's React Compiler analysis on oxc_react_compiler (the React Compiler's Rust port): each file's components and hooks, compiled or skipped, in the shape of pxsig's Babel worker."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+# One exact version of the compiler and the oxc crates it is built on. A bump is its own pull
+# request, with the parity report (scripts/react-parity.mjs) in its body.
+[dependencies]
+oxc_allocator = "=0.143.0"
+oxc_ast = "=0.143.0"
+oxc_ast_visit = "=0.143.0"
+oxc_diagnostics = "=0.143.0"
+oxc_parser = "=0.143.0"
+oxc_react_compiler = "=0.143.0"
+oxc_semantic = "=0.143.0"
+oxc_span = "=0.143.0"
+oxc_syntax = "=0.143.0"
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

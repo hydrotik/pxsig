@@ -1,12 +1,14 @@
 # pxsig Rust workspace.
 #
 # pxsig-core: the pure engine: signatures (spec v1), metrics, the detail channel, the .psig container.
+# pxsig-react: the React Compiler analysis on oxc_react_compiler (the React Compiler's Rust port).
 # pxsig-cli:  the `pxsig` binary: capture/compare, parallel check/baseline, affected, pack/cat/attach,
-#             and the stdio daemon the JS server drives. See docs/cli.md.
+#             and the stdio daemon the JS server drives; with the `react-oxc` feature (the release
+#             turns it on), `react-compile` on pxsig-react. See docs/cli.md.
 
 [workspace]
 resolver = "2"
-members = ["crates/pxsig-core", "crates/pxsig-cli"]
+members = ["crates/pxsig-core", "crates/pxsig-react", "crates/pxsig-cli"]
 
 [workspace.package]
 version = "0.7.4"
