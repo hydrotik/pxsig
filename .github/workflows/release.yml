@@ -163,8 +163,8 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: ${{ matrix.target }}
-      # react-oxc: the built-in React Compiler (pxsig react-compile), in every published engine.
-      - run: cargo build --release --locked --target ${{ matrix.target }} -p pxsig-cli --features react-oxc
+      # Without react-oxc: the built-in React Compiler joins the published engine with its opt-in.
+      - run: cargo build --release --locked --target ${{ matrix.target }} -p pxsig-cli
       # crt-static (.cargo/config.toml): the published engine needs no Visual C++ Redistributable.
       - if: matrix.platform == 'win32'
         run: node scripts/check-win-runtime.mjs target/${{ matrix.target }}/release/pxsig.exe
@@ -338,7 +338,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo cyclonedx --all-features --format json --spec-version 1.5 --override-filename pxsig-engine.cdx
+          cargo cyclonedx --format json --spec-version 1.5 --override-filename pxsig-engine.cdx
           mkdir -p sbom
           mv crates/pxsig-cli/pxsig-engine.cdx.json sbom/pxsig-engine.cdx.json
           find crates -name 'pxsig-engine.cdx.json' -delete
