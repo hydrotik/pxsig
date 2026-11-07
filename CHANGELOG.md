@@ -5,6 +5,302 @@ semantic versioning.
 
 ## Unreleased
 
+## 0.7.5 - 2026-11-07
+
+The React release. `pxsig react` and `pxsig check --since` compare the project's own React
+Compiler verdict on changed files with the merge base, and opt-in render counting flags entries
+React was still committing at capture: alerts only, never a gate. The dashboard gains a React view,
+a progress strip, an Overview card and an inspector section, keeps Help in the top bar at every
+width, and overlays the React side panel when narrow; decisions do less work and say when they are
+under way. No command, message or answer prints an absolute path. The engine carries the React
+Compiler's Rust port for a later opt-in; published engines leave it out.
+
+### Upgrading from 0.7.4
+
+- **`pxsig doctor` after a first check.** A script that matched "No errors" in doctor's output while it exits 1 reads the exit code (or `--json`'s `summary`); one that relied on `storybook-unreachable` with a build present reads `sources.storyIndex.build`.
+- **No absolute path in "the pxsig binary is missing" from `pxsig check`, or in the server's "the dashboard is not built".** A script that matched the absolute path in one of these messages matches the relative path instead.
+- **No absolute paths in doctor's machine rows, the server's integrity log or setup errors.** A script that matched an absolute path in one of these messages matches the relative path or the name instead.
+- **`pxsig doctor --json` and `pxsig_doctor` give machine paths relative, never absolute.** A script that read `machine.settings` or `machine.tokens` as an absolute path resolves it against the workspace root, or expands a leading `~/` to the home folder.
+- **The paths a person pastes or opens are relative to the current folder.** Run the pasted line, or open the path, from the folder the command ran in.
+- **No absolute paths in setup output.** A script that read `preflight.engine.path` or `preflight.chromium.path` as a file path runs `pxsig config --json` for the engine's path, or Playwright's `chromium.executablePath()`; one that read `init --json`'s `wrote` resolves each entry against the folder it ran in.
+- **Nothing to do:** The inspector says when a decision is under way, and waits for the next entry to be drawn; The dashboard's top bar keeps Help visible at every width; `pxsig check --since` / `--changed` analyses the changed React files with the project's React Compiler; `pxsig doctor` has a React line.
+
+### Behaviour changes
+
+- **The inspector says when a decision is under way, and waits for the next entry to be drawn.**
+  While the server answers, the button reads "Approving…", "Rejecting…" or "Accepting…" in a box
+  that is `aria-busy` and shows the progress cursor; every decision button stays disabled, as
+  before. After moving on, Reject and Approve, and the A and R keys, stay disabled until the next
+  entry's images are drawn, so a second click or key press aimed at the last entry cannot decide
+  the new one. Keys pressed meanwhile are dropped, not queued. Reject and Approve keep the width of
+  their longer label, so they never move.
+  To update: nothing to do. Scripts that drive the dashboard should wait for Approve to be enabled
+  before clicking it (Playwright's `click` does) and not press A or R before the entry is drawn
+  (the stage's `aria-busy` clears when it is).
+- **`pxsig doctor` after a first check.** With nothing answering at `storybook.url`, doctor reads
+  the index of the build in `storybook.staticDir` (the one `check` serves) instead of a static scan
+  of the story files: the header says `index: Storybook build (<folder>)`, and `--json`'s
+  `sources.storyIndex` has `source: "storybook"`, `reachable: false` and `build`. The `register`
+  repair still needs a running Storybook. When every finding is a new entry (`unbaselined`), Next
+  is `pxsig serve`, to review and approve them, not `pxsig doctor --repair`. The Settings row is
+  gone (no command writes `settings.json` in this version; `--json` keeps `machine.settings`). The
+  verdict line agrees with the exit: when warnings fail `--fail-on` (the default `warn`), it reads
+  "2 findings at or above --fail-on warn, 0 errors" instead of "No errors; …". The exit codes are
+  unchanged.
+  To update: a script that matched "No errors" in doctor's output while it exits 1 reads the exit
+  code (or `--json`'s `summary`); one that relied on `storybook-unreachable` with a build present
+  reads `sources.storyIndex.build`.
+- **The dashboard's top bar keeps Help visible at every width.** At a narrow width the other
+  section links (Diagnostics first) move into the More menu and Help stays in the bar, with an
+  adapter on UI contract 1.4.0 (the reference adapter is).
+  To update: nothing to do; an adapter written for 1.3.0 or earlier keeps moving Help into its menu
+  until it maps `keep` and sets `"contract": "1.4.0"` in its conformance.json.
+- **No absolute path in "the pxsig binary is missing" from `pxsig check`, or in the server's "the
+  dashboard is not built".** `pxsig check` names the missing engine binary relative to the current
+  folder (`./…`, `../…`, or `~/…` when the current folder is outside the home folder). The
+  server's 404 for `/report/` without a dashboard build names the folder relative to the workspace,
+  else `~/…` under the home folder, else relative to the workspace (`../…`), as `pxsig doctor
+  --json` does. Before, both printed absolute paths, which name the user.
+  To update: a script that matched the absolute path in one of these messages matches the relative
+  path instead.
+- **No absolute paths in doctor's machine rows, the server's integrity log or setup errors.**
+  `pxsig doctor`'s "Approval guard files" row shows the folder relative to the workspace, else under
+  the home folder as `~/…` (on every OS), else relative to the workspace (`../…`); before, a folder
+  outside the home folder (the approval guard folder of a workspace outside it, on macOS and Linux)
+  printed absolute. "no readable manifest at" names the manifest relative to the workspace wherever
+  it is printed, the server's "integrity failed" log line too. The setup errors about
+  `pxsig.workspace.json` or `pxsig.config.json` (missing, not valid JSON, UTF-16, a bad `projects`,
+  `requires` or `label`, a missing project config, a project name already taken), the log line for
+  a `storybook.staticDir` with no Storybook build, "the pxsig binary is missing" from `pxsig
+  affected`, the static report's "the dashboard is not built", `pxsig dashboard check`'s reference
+  and engine messages and `pxsig migrate`'s errors name each file relative to the workspace or the
+  current folder, else by its name. An absolute path names the user, and this output is pasted into
+  issues and read by assistants.
+  To update: a script that matched an absolute path in one of these messages matches the relative
+  path or the name instead.
+- **`pxsig doctor --json` and `pxsig_doctor` give machine paths relative, never absolute.**
+  `machine.settings` and `machine.tokens` are relative to the workspace inside it, else `~/…` under
+  the home folder, else relative to the workspace (`../…`). The setup preflight before a manifest
+  exists (`preflight.engine.path`, `playwright.path`, `chromium.path`, `storybook.staticDir`) shows
+  a path under the home folder as `~/…` where it showed a label (`Playwright's Chromium`, `outside
+  the workspace`); a path outside both still shows the label. `pxsig config --json` still has the
+  engine's absolute path.
+  To update: a script that read `machine.settings` or `machine.tokens` as an absolute path resolves
+  it against the workspace root, or expands a leading `~/` to the home folder.
+- **The paths a person pastes or opens are relative to the current folder.** `pxsig dashboard
+  build` prints `built ./…` and `serve it: PXSIG_DASHBOARD_DIR=./… pxsig serve` (single-quoted when
+  the path has a space), `pxsig report` prints the page it wrote as `./…/index.html`, and `pxsig
+  entry`'s image paths (`--plain`, `--json`, and the links in a terminal) are `./…`. A path outside
+  the current folder is `../…`, or `~/…` when the current folder is outside the home folder. Each
+  still works pasted or opened from the folder the command ran in. Before, the first two printed
+  absolute paths, which name the user, and the entry's images were relative to the workspace, not
+  to the folder the command ran in. `pxsig dashboard build --json` keeps `outDir` absolute.
+  To update: run the pasted line, or open the path, from the folder the command ran in.
+- **No absolute paths in setup output.** `pxsig init`'s heading names the folder (its path under
+  the current folder, else its name) and its list of written files, and `--json`'s `wrote`, are
+  relative to the current folder. The error before any config ("no pxsig.workspace.json or
+  pxsig.config.json in this folder or above it") names no folder. `pxsig doctor` before a manifest
+  (and `pxsig_doctor`) shows the engine, Playwright and Chromium relative to the workspace, or by a
+  label outside it (`bundled (@pxsig/cli-<os>-<arch>)`, `PXSIG_BIN (pxsig)`, `Playwright's
+  Chromium`), in `--json` too; "no readable manifest at" names the manifest relative to the
+  workspace, for `doctor` and `check`. An absolute path names the user, and this output is pasted
+  into issues and read by assistants.
+  To update: a script that read `preflight.engine.path` or `preflight.chromium.path` as a file path
+  runs `pxsig config --json` for the engine's path, or Playwright's `chromium.executablePath()`; one
+  that read `init --json`'s `wrote` resolves each entry against the folder it ran in.
+- **`pxsig check --since` / `--changed` analyses the changed React files with the project's React
+  Compiler** when `babel-plugin-react-compiler` and `@babel/core` are installed in the project,
+  while the entries render (two worker threads). One more line after the summary line (the
+  counts, then each alert, at most ten), a `react` block in `check.json`, `react` counts on the
+  `history.ndjson` line, and a "React (alerts, not blocking)" section in `summary.md` only when
+  something is newly skipped or newly found. A project that depends on React (its own or the
+  workspace root's `package.json`) but lacks the two packages gets one line saying so; a project
+  without React gets none (`pxsig doctor` names it either way). With
+  `react.renders`, a `[check] renders:` line counts the entries React was still committing at
+  capture. None of it changes the exit code, a gate, `junit.xml` or the `--sarif` file.
+  To update: nothing to do. To turn it off: `"react": { "compiler": false }` in
+  `pxsig.config.json` (the analysis), or `--no-react` / `PXSIG_REACT=off` (everything React).
+
+- **`pxsig doctor` has a React line.** It names the `babel-plugin-react-compiler` and
+  `@babel/core` versions the project has (or that they are not installed, or that React features
+  are off and where), each bad `react` value and what it turns off (`react-config`, a warning)
+  and the Flow files the last analysis skipped (`react-flow`). `--json` adds `react` (`code`,
+  `severity`, `text`). None of them changes doctor's exit.
+  To update: nothing to do.
+
+### Added
+
+- **An Originals switch in the inspector shows the baseline and the latest render without
+  analysis.** While it is on, the highlight, region outlines and detail tiles are not drawn; the
+  Highlight, Regions and Detail tiles switches and the Tolerance slider show disabled and keep
+  their own settings, which come back when Originals goes off. Turning it on in Pixel diff or
+  Signature cells goes to Side by side, and choosing either of those turns it off. An entry opens
+  fitted to the whole image instead of zoomed to its largest change. `O` toggles it, in the dialog
+  and in the Storybook panel (where it sits in the side panel's View section). It is view state
+  only: not saved between sessions and never sent with a decision. The images are the stored
+  renders, trimmed to the story; Help says so.
+- **`width` on a dashboard screen** (`src/ui/features.ts`, `fixtures/screens.json`): the
+  viewport's width for a narrow layout, 1280 when absent. The React view's side panel has a
+  screen at 900 px wide in Compiler and in Renders.
+- **`pxsig react [--since <ref> | --files a,b | --all]`.** The React Compiler's verdict on the
+  changed files, compared with the merge base: a component or hook it compiled before and skips
+  now, a new function it skips, a new reason it skips one, and (with `react.lint`) a new
+  Rules-of-React finding on a function that still compiles. Alerts only: exit 0 whatever it
+  finds. No Storybook and no browser. It runs the project's own compiler and Babel in worker
+  threads for the files its cache does not have, never loads the project's Babel config, and
+  writes `<store>/reports/react.json`; while the server holds the store it reads the cache and
+  writes nothing. `--all` is the inventory: every module that reaches an entry, compiled or not.
+- **React render counting, off by default (`react.renders`).** With `"react": { "renders": true }`
+  in `pxsig.config.json`, each render page gets an init script that defines React's DevTools hook
+  (or chains onto one that is there) and counts React commits and the components that rendered,
+  without React DevTools or any dependency, sending nothing anywhere. Each `check.json` row gets
+  `renders` (commits, rendered and mounted components, the top five components with whether the
+  React Compiler compiled them, React's build and version, render time on development builds,
+  and whether React was still committing at capture); `summary.renderAlerts` counts the entries
+  React was still committing. An alert only: it changes no exit code, gate, JUnit result or
+  baseline. Format: `docs/spec.md`, "Render counts".
+- **The `react` config key** (`compiler`, `lint`, `compilationMode`, `target`, `environment`,
+  `exclude`, `renders`), also under the workspace file's `defaults`. Off switches for every React
+  feature: `"react": false` (or `"off"`), the config flag `--no-react`, and `PXSIG_REACT=off`. A
+  bad value is one warning line, a doctor finding, and the part it belongs to off for the run (a
+  bad `renders`: render counting; any other bad key: the compiler analysis), never a failed check
+  (`docs/configuration.md`, "`react`").
+- **`check --react-sarif <file>` and `pxsig react --sarif <file>`.** The React alerts as SARIF
+  2.1.0, in a file of their own: rules `react-compiler/<rule>` (at the function's file and line;
+  `warning` when the compiler skips it, `note` for a finding; React's docs page for the rule as the
+  help link) and `react-renders/still-rendering` (`note`, at the story file). Never `error`. The
+  existing `--sarif` file stays accessibility only, byte for byte.
+- **The dashboard's React view (Diagnostics › React).** Compiler: the alerts first, every
+  function analysed on demand, and a function's diagnostics, base and entries in a side panel;
+  Analyse runs the analysis again. Renders: the entries React was still committing at capture
+  first, every entry measured on demand, and an entry's counts in a side panel; Measure renders
+  runs a visual check of the entries in scope with counting on, and Cancel stops it. A progress
+  strip at the top of every section while either runs (with Skip and Cancel), then how it ended; a
+  React card on the Overview; a Still rendering badge in the inspector header, and a React section
+  in its side panel (the entry's render counts and the compiler alerts that reach it, each opening
+  Diagnostics › React on the function); a React Analysis
+  section in Help. Analyse, Skip, Measure renders and Cancel need the dashboard link (disabled
+  while the page is read only). Alerts only: nothing here decides anything. Old `#react` and
+  `#react-renders` links open the view.
+- **The server runs the React analysis** after its startup integrity pass and, with `--watch`,
+  after a code edit (compared with `main`; no browser; only the store lock's holder saves
+  `reports/react.json`). `/__pxsig/data` has `react` (where the analysis stands, its last results
+  and who wrote them), and `/__pxsig/events` sends `react` (running with its file count, done,
+  skipped, error) and `check` `progress` and `cancelled`. New routes, each needing the dashboard
+  link: `react/analyse`, `react/skip`, `check/cancel` (the entries rendered by then keep their new
+  results, the others their last ones) and `check` with `renders: true` (Measure renders: counts
+  React renders in that run, also with `react.renders` off). Render counts carry `at` and `prev`
+  (the counts of the row they replaced). See docs/server.md.
+- **MCP: `pxsig_react`, and React fields in `pxsig_check` and `pxsig_entry`.** `pxsig_react` reads
+  the last `reports/react.json` (summary, each alert with its sentence, the functions analysed,
+  alerts first) or, with `run: true`, runs the analysis first, as `pxsig react --since` does.
+  `pxsig_check` with `since` or `changed_files` adds `react`: the alerts for those files.
+  `pxsig_entry` adds the row's `renders`. No tool accepts, approves or silences an alert.
+- **The engine's `check --history-extra json|@file`** adds an object's keys to the history line.
+- **The engine's `react-plan` and `react-diff`** (and the same two `pxsig serve` methods), and
+  `entries` per `graph` file in `affected --json`.
+- **Optional peer dependencies `babel-plugin-react-compiler >=1.0.0` and `@babel/core >=7.24`.**
+  Installing pxsig installs neither; a project that uses the compiler already has both. To use
+  the analysis in a project without them: `npm install -D babel-plugin-react-compiler @babel/core`.
+- **The engine has a built-in React Compiler, not used yet.** `pxsig react-compile` runs
+  `oxc_react_compiler` 0.143.0, the React Compiler's Rust port, over a batch of files and answers
+  each component and hook in the shape the Babel analysis uses: compiled (with its memo cache
+  size), skipped and why, opted out, or a compiler error. A file that crashes the compiler is
+  isolated as a compiler error; the others still compile. Nothing calls it yet: the compiler
+  analysis still uses the project's `babel-plugin-react-compiler`. A later release adds the opt-in
+  `"react": { "compiler": "oxc" }`. It is built only with the `react-oxc` cargo feature, which the
+  published engines leave off until that release, so their size is unchanged.
+- **UI contract 1.2.0: `Switch` and `Slider` take `disabled`.** A disabled control stays visible
+  and announced, and does not change. An adapter written for contract 1.1.0 keeps working: while a
+  control is disabled the dashboard draws it with the built-in fallback. See
+  docs/ui/contract-changes.md.
+- **UI contract 1.3.0: `SidePanelLayout`, `SidePanelMain` and `SidePanel`**, three optional
+  components taken as a set: records and the details of the one selected, side by side (on a container too
+  narrow for both, the panel overlays the records from the right). The panel is a `complementary` landmark named by its title,
+  closed by its close button and by Escape; focus moves into it on open and back on close. The
+  reference adapter maps them to hydrotik's `ContentLayout` and `SidePanel` (pushed in on the
+  right, overlaid on a narrow container, no resize handle or expand button). See docs/ui/contract-changes.md.
+  To update: an adapter written for 1.2.0 or 1.1.0 keeps working (the built-in fallback draws all
+  three); to draw your own, export all three and set `"contract": "1.3.0"` in its conformance.json.
+- **UI contract 1.4.0: `keep` on `NavLink`**, an optional prop: the link never moves into the top
+  bar's overflow menu. The dashboard sets it on Help; the reference adapter keeps that link out of
+  hydrotik's More menu. See docs/ui/contract-changes.md.
+
+### Changed
+
+- **The inspector's Tolerance slider moves from the toolbar to the side panel's Pixel Changes
+  section**, beside the counts it decides, so the toolbar with the Originals switch stays on one
+  row. In the Storybook panel it moves from the View section to Pixel Changes as well. It still
+  shows only when the images' pixels can be read, and is disabled while Originals is on.
+  To update: nothing to do for the dashboard's users; a browser script that finds the slider by
+  its name ("Tolerance") still finds it, while one that looks for it inside the toolbar or the View
+  section looks in the side panel's Pixel Changes section instead.
+- **A decision no longer makes every open dashboard fetch all of its data again.** The server's
+  `review` event now carries what the decision changed (the entry's decision, and when check.json
+  was rewritten, its row and the recounted summary), and the dashboard applies it in place. Other
+  events still fetch the data, one fetch at a time with at most one waiting, so a burst of events
+  costs two fetches instead of one each. In a large store this saves a multi-megabyte request per
+  open page per decision ([docs/server.md](../docs/server.md)).
+- **A dashboard approval does less work before it answers.** The server's approve reads
+  `check.json` once instead of three times, and reads the commit for the approvals log
+  (`gitHead`) while the engine writes the baseline, instead of blocking the server on `git`
+  afterwards. The log line and the files written are the same.
+- **The integrity pass after an approval traces nothing.** `pxsig serve` keeps the last pass's
+  tracing of edited files; a pass started by a baseline or render change reuses it while the
+  edited files, their modification times and the manifest's entries are the same. A source or
+  manifest change, or a pass for any other reason, traces again. The ledger is the same.
+- **An approval no longer waits behind an integrity pass.** `pxsig serve` runs a second engine
+  process for tracing edited files, so a capture, comparison or decision is answered while a pass
+  traces; before, it queued behind every file the pass traced (seconds on a large store). The
+  server now has two `pxsig` engine child processes instead of one; both stop with the server.
+
+### Fixed
+
+- **The inspector fits each entry to its own image.** Moving to the next or previous entry could
+  leave the stage fitted for the previous entry's image size until Fit was pressed: the fit ran
+  before the new entry's images had arrived. The stage now waits for them, and stays busy until
+  they are drawn.
+- **The inspector's "Queued" note goes when the re-check is done.** After Re-check, "Queued 1
+  entry" stayed under the header until another entry was opened. It now goes when the entry's run
+  ends; a "Not checked" part, if any, stays.
+- **The "Review complete" summary keeps a long `pxsig check …` command inside its dialog.** With
+  several rejected entries with long ids, a design system whose dialog lays its content out in a
+  grid (the hydrotik adapter) let the summary grow as wide as the command: the dialog scrolled
+  sideways to the focused Copy button, so the title and the labels went out of view and the Copy
+  tooltip appeared outside the dialog. The summary now shrinks to the dialog's width; the command
+  is shortened with an ellipsis (or wraps, on adapters that wrap it) and Copy still copies all of
+  it.
+- **One transient socket failure no longer fails a whole operation.** On a loaded machine (seen on
+  Windows) a single connection to a local server can be reset, refused or run out of socket
+  buffers while the server is up. Now the pxsig server status check (`approve --apply`, `doctor`,
+  repair's re-check) retries once after 250 ms on a timeout, a reset or a refused connection before
+  it says the server is not running; the Storybook reachability check retries once on a reset
+  connection; and a story render whose navigation broke (for example `net::ERR_NO_BUFFER_SPACE` or
+  `net::ERR_CONNECTION_RESET`) retries once on a fresh page, and a navigation that still fails
+  fails only its own entry instead of every entry after it on that page. An answer from the server
+  (an HTTP error, Storybook's error screen) is never retried. "The pxsig server is not running"
+  now takes about 250 ms longer when the connection is refused, and up to about 3.3 s (was 1.5 s)
+  when the status request times out.
+  To update: nothing to do; no option, output or exit code changes.
+- **`pxsig status` lists NEW entries.** After a first check the human `status` view printed an empty
+  `States:` line, because its list of states had no `new` (`status --json` counted them). It now
+  shows `+ new N` next to `changed`, and every human view (`status`, `list`, `check`, `doctor`)
+  marks a NEW entry `+ new` instead of `? new`.
+
+### Documentation
+
+- **Quick starts and the first check.** The npm README and QUICKSTART say `manifest` reads
+  Storybook's index.json (a running Storybook or the static build in `storybook.staticDir`), not
+  only "the running Storybook". README, QUICKSTART and the npm README now say what the first
+  `check --full` does: the report records every entry as new, while the check's summary line
+  counts them as `changed` and prints them as `CHANGED <id>  new: no baseline yet`.
+- **Architecture: the public surface.** `docs/architecture.md` lists the package's subpath exports,
+  what runs for each and where its types come from, including the hand-written declarations in
+  `src/public/`.
+- **Releasing: tag after CI.** `docs/releasing.md` says to tag only once `main`'s `ci.yml` run on
+  the release merge commit has finished green: the release's first job refuses a commit whose
+  required checks have not all passed, and does not wait for running ones.
+
 ## 0.7.4 - 2026-11-02
 
 The self-contained addon release. `storybook` becomes an optional peer of
