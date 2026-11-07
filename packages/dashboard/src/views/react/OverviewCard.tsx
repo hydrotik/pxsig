@@ -13,11 +13,6 @@ import * as s from '../../dashboard.css';
 export type OpenReact = (part: 'compiler' | 'renders', all?: boolean) => void;
 
 const when = (iso: string) => new Date(iso).toLocaleString();
-/**
- * A tile's figure, then a space: the figure and its unit are separate elements, and without it the
- * tile's name runs them together ("1new · of 1").
- */
-const figure = (v: number | string) => `${v} `;
 
 export function ReactCard({ data, openReact }: { data: Data; openReact: OpenReact }) {
   const activity = useReactActivity();
@@ -71,7 +66,7 @@ export function ReactCard({ data, openReact }: { data: Data; openReact: OpenReac
               items={[
                 {
                   label: t('overview.react.newlySkipped'),
-                  value: figure(sm ? sm.newBailouts : '—'),
+                  value: sm ? sm.newBailouts : '—',
                   unit:
                     away ??
                     (reasons ? t('overview.react.newReason', { count: reasons }) : undefined),
@@ -80,7 +75,7 @@ export function ReactCard({ data, openReact }: { data: Data; openReact: OpenReac
                 },
                 {
                   label: t('overview.react.findings'),
-                  value: figure(sm ? sm.newFindings : '—'),
+                  value: sm ? sm.newFindings : '—',
                   unit:
                     away ??
                     (sm ? t('overview.react.findingsOf', { count: sm.findings }) : undefined),
@@ -89,7 +84,7 @@ export function ReactCard({ data, openReact }: { data: Data; openReact: OpenReac
                 },
                 {
                   label: t('overview.react.compiled'),
-                  value: figure(sm ? sm.compiled : '—'),
+                  value: sm ? sm.compiled : '—',
                   unit:
                     away ??
                     (sm ? t('overview.react.compiledOf', { count: sm.functions }) : undefined),
@@ -97,7 +92,7 @@ export function ReactCard({ data, openReact }: { data: Data; openReact: OpenReac
                 },
                 {
                   label: t('overview.react.still'),
-                  value: figure(measured.length ? still : '—'),
+                  value: measured.length ? still : '—',
                   unit: measured.length
                     ? t('overview.react.stillOf', { count: measured.length })
                     : t('overview.react.notMeasured'),
