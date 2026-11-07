@@ -17,6 +17,7 @@ export function ReactView({
   react,
   initialPart = 'compiler',
   initialAll,
+  initialFn,
   onOpen,
 }: {
   data: Data;
@@ -24,6 +25,8 @@ export function ReactView({
   initialPart?: ReactPart;
   /** Opened on every row (true) or on the alerts (false); unset: alerts when there are any. */
   initialAll?: boolean;
+  /** The function whose details open first (the inspector's Open in React). */
+  initialFn?: string;
   onOpen: (row: Row, list: Row[]) => void;
 }) {
   const [part, setPart] = React.useState<ReactPart>(initialPart);
@@ -40,5 +43,9 @@ export function ReactView({
       </div>
     );
   const props = { data, react, part, onPart: setPart, onOpen, initialAll };
-  return part === 'renders' ? <Renders {...props} /> : <Compiler {...props} />;
+  return part === 'renders' ? (
+    <Renders {...props} />
+  ) : (
+    <Compiler {...props} initialFn={initialFn} />
+  );
 }

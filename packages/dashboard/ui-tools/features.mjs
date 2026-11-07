@@ -137,8 +137,10 @@ export function screenProblems(f, scenarios = scenarioNames()) {
     const target = (t) => t && (typeof t.role === 'string' || typeof t.text === 'string');
     if (!target(x.wait)) problems.push(`${where}: no landmark (wait: { role, name } or { text })`);
     for (const a of x.actions ?? [])
-      if (!(a.click ? target(a.click) : typeof a.press === 'string'))
-        problems.push(`${where}: an action is neither { click: target } nor { press: key }`);
+      if (!(a.click ? target(a.click) : a.scroll ? target(a.scroll) : typeof a.press === 'string'))
+        problems.push(
+          `${where}: an action is neither { click: target }, { scroll: target } nor { press: key }`
+        );
   });
   return problems;
 }

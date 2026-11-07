@@ -62,6 +62,7 @@ export function Compiler({
   onPart,
   onOpen,
   initialAll,
+  initialFn,
 }: {
   data: Data;
   react: ReactData;
@@ -69,6 +70,7 @@ export function Compiler({
   onPart: (p: ReactPart) => void;
   onOpen: (row: Row, list: Row[]) => void;
   initialAll?: boolean;
+  initialFn?: string;
 }) {
   const report = react.report;
   const activity = useReactActivity();
@@ -96,7 +98,7 @@ export function Compiler({
   const [all, setAll] = React.useState<boolean | null>(initialAll ?? null);
   const showAll = noBase || (all ?? !alerts.length);
   const shown = showAll ? fns : alerts;
-  const [picked, setPicked] = React.useState<string | null>(null);
+  const [picked, setPicked] = React.useState<string | null>(initialFn ?? null);
   const selected = shown.find((f) => f.id === picked) ?? null;
   const entriesOf = (path: string) => report?.files.find((x) => x.path === path);
   const ref = report?.base?.since ?? 'main';

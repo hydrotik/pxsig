@@ -107,7 +107,7 @@ jobs:
         with:
           toolchain: 1.99.0 # rust-toolchain.toml
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - run: cargo test --workspace --locked
+      - run: cargo test --workspace --all-features --locked
 
   build:
     name: Build ${{ matrix.platform }}-${{ matrix.arch }}
@@ -163,6 +163,7 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: ${{ matrix.target }}
+      # Without react-oxc: the built-in React Compiler joins the published engine with its opt-in.
       - run: cargo build --release --locked --target ${{ matrix.target }} -p pxsig-cli
       # crt-static (.cargo/config.toml): the published engine needs no Visual C++ Redistributable.
       - if: matrix.platform == 'win32'

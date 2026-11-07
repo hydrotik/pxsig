@@ -80,12 +80,16 @@ jobs:
         with:
           toolchain: 1.99.0 # rust-toolchain.toml
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - run: cargo test --workspace --locked
+      # With every feature: the built-in React Compiler (pxsig-cli's react-oxc), tested before it ships.
+      - run: cargo test --workspace --all-features --locked
+      # And `react-compile` in an engine built without it (exit 2, and why). Once, on Linux.
+      - if: runner.os == 'Linux'
+        run: cargo test -p pxsig-cli --locked --test react_compile
       # Lints and formatting are the same on every OS: once, on Linux.
       - if: runner.os == 'Linux'
         run: cargo fmt --all --check
       - if: runner.os == 'Linux'
-        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
       # Advisories, licences, duplicate crates and sources of the engine's crates (deny.toml).
       - if: runner.os == 'Linux'
         uses: taiki-e/install-action@68a389c788b2cd04016ce8c80ee23b80d2ab3d68 # v2.88.1
@@ -103,8 +107,8 @@ jobs:
       - if: runner.os == 'Linux'
         run: |
           rustup component add llvm-tools-preview
-          cargo llvm-cov --workspace --locked --summary-only --fail-under-lines 87
-      - run: cargo build --release --locked
+          cargo llvm-cov --workspace --all-features --locked --summary-only --fail-under-lines 87
+      - run: cargo build --release --locked -p pxsig-cli --features react-oxc
       # The engine runs on a Windows machine without the Visual C++ Redistributable (crt-static).
       - if: runner.os == 'Windows'
         run: node scripts/check-win-runtime.mjs target/release/pxsig.exe
@@ -140,6 +144,14 @@ jobs:
           path: target/release
       - if: runner.os != 'Windows'
         run: chmod +x target/release/pxsig
+      # The built-in React Compiler against the newest Babel plugin release, per function
+      # (scripts/react-parity.mjs): pxsig's examples, and the React Compiler's own fixture tests
+      # (facebook/react, MIT), fetched at the commit scripts/react-parity.json names and never
+      # committed. The figures and every difference must match that file. Linux only.
+      - if: runner.os == 'Linux'
+        run: |
+          node scripts/react-parity.mjs --fetch "$RUNNER_TEMP/react-fixtures"
+          node scripts/react-parity.mjs --engine target/release/pxsig --fixtures "$RUNNER_TEMP/react-fixtures"
       # Chromium before the pxsig suite: its browser tests (render environment, server flows,
       # capture helpers) skip without one, and a skip is not a pass.
       # System libraries are a Linux concern; macOS and Windows runners need only the browser.

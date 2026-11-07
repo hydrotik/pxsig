@@ -69,6 +69,7 @@
         "inspector/side/A11ySection",
         "inspector/side/FilesSection",
         "inspector/side/PixelSection",
+        "inspector/side/ReactSection",
         "parts/ReactStrip",
         "parts/StaleHeatmap",
         "parts/StoryGrid",
@@ -275,6 +276,7 @@
         "inspector/side/A11ySection",
         "inspector/side/MetricsSection",
         "inspector/side/PixelSection",
+        "inspector/side/ReactSection",
         "parts/Connection",
         "parts/StoryGrid",
         "views/Accessibility",
@@ -471,6 +473,7 @@
         "inspector/SessionSummary",
         "inspector/side/ChangesSection",
         "inspector/side/MetricsSection",
+        "inspector/side/ReactSection",
         "views/Diagnostics",
         "views/react/CompilerPanel",
         "views/react/RendersPanel"
@@ -484,6 +487,7 @@
         "inspector/SessionSummary",
         "inspector/side/ChangesSection",
         "inspector/side/MetricsSection",
+        "inspector/side/ReactSection",
         "views/Diagnostics",
         "views/react/CompilerPanel",
         "views/react/RendersPanel"

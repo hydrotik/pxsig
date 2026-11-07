@@ -84,7 +84,8 @@ export interface Screen {
   query?: string;
   /** The hash, with `#` (`#overview`, `#inspect=<id>`). */
   hash?: string;
-  actions?: ({ click: Target } | { press: string })[];
+  /** `scroll`: the target at the top of what scrolls it (no click: nothing activated or focused). */
+  actions?: ({ click: Target } | { scroll: Target } | { press: string })[];
   wait: Target;
   /** The viewport's width in CSS px, for a narrow layout (default 1280); the height stays 900. */
   width?: number;
