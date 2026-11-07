@@ -126,7 +126,7 @@ export async function scrollTo(page, t) {
   /**
    * @param {Element} target
    * @param {string} phase `set` scrolls; anything else only reads
-   * @returns {{ error?: string, scrollTop?: number, at?: string }}
+   * @returns {{ error?: string, inView?: boolean, scrollTop?: number, at?: string }}
    */
   const run = (target, phase) => {
     let box = target.parentElement;
@@ -135,7 +135,14 @@ export async function scrollTo(page, t) {
       !(box.scrollHeight > box.clientHeight && /auto|scroll/.test(getComputedStyle(box).overflowY))
     )
       box = box.parentElement;
-    if (!box) return { error: 'no scrollable ancestor' };
+    // No scroll container (an adapter whose panel grows with its content): nothing to scroll
+    // when the target is already in the viewport, a failure when it is not.
+    if (!box) {
+      const r = target.getBoundingClientRect();
+      return r.top >= 0 && r.bottom <= window.innerHeight
+        ? { inView: true }
+        : { error: 'no scrollable ancestor, and the target is outside the viewport' };
+    }
     const frame = (target.closest('[role="dialog"]') ?? document.body).getBoundingClientRect();
     const at = `${Math.round(frame.x)},${Math.round(frame.y)},${Math.round(frame.width)},${Math.round(frame.height)},${window.scrollX},${window.scrollY}`;
     if (phase === 'set')
@@ -143,6 +150,7 @@ export async function scrollTo(page, t) {
     return { scrollTop: box.scrollTop, at };
   };
   const before = await el.evaluate(run, 'read');
+  if (before.inView) return;
   const set = await el.evaluate(run, 'set');
   await settle(page);
   const after = await el.evaluate(run, 'read');
