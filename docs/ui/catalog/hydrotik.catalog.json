@@ -4311,6 +4311,12 @@
         "components-input--with-error",
         "components-input--with-help-text",
         "components-input--with-label"
+      ],
+      "usedBy": [
+        "pxsig"
+      ],
+      "pxsigParts": [
+        "Input"
       ]
     },
     {
