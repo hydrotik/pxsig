@@ -87,7 +87,7 @@
   - button "Run safe repairs"
   - text: Safe repairs register new stories and render them, re-check entries without a usable verdict, and restore baseline images that pass the gate. They do not approve changes or write signatures.
   - heading "React" [level=3]
-  - paragraph: Alerts only, not blocking. From the analysis at 10/25/2026, 12:00:00 PM · base main (5a0208e)
+  - paragraph: Alerts only, not blocking. From the analysis at 10/25/2026, 12:00:00 PM · base main (d3bdd51)
   - button "Newly skipped 0"
   - button "Findings 0new · of 0"
   - button "Compiled 0of 0 analysed"
