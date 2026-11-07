@@ -250,6 +250,10 @@ export async function capture(
     for (const a of screen.actions ?? []) {
       if (a.click) await locate(page, a.click).click({ timeout: LANDMARK_MS });
       else if (a.press) await page.keyboard.press(a.press);
+      // The target at the top of what scrolls it (a section below a panel's fold), as a person
+      // scrolls: no click, so nothing is activated or focused.
+      else if (a.scroll)
+        await locate(page, a.scroll).evaluate((el) => el.scrollIntoView({ block: 'start' }));
     }
     try {
       await locate(page, screen.wait).waitFor({ state: 'visible', timeout: LANDMARK_MS });

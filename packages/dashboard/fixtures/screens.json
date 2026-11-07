@@ -770,8 +770,9 @@
           "hash": "#inspect=ui-button--primary",
           "actions": [
             {
-              "click": {
-                "text": "Not compiled",
+              "scroll": {
+                "role": "heading",
+                "name": "React",
                 "exact": true
               }
             }

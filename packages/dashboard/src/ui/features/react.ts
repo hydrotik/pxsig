@@ -175,9 +175,8 @@ export const REACT: Feature[] = [
       {
         scenario: 'react',
         hash: '#inspect=ui-button--primary',
-        // The section is below the side panel's fold. A click scrolls its target to the middle of
-        // the panel: the Not compiled badge (no action) sits mid-section, so all of it shows.
-        actions: [{ click: { text: 'Not compiled', exact: true } }],
+        // The section is below the side panel's fold: its heading scrolled to the panel's top.
+        actions: [{ scroll: { role: 'heading', name: 'React', exact: true } }],
         wait: { role: 'heading', name: 'Compiler alerts (1)' },
       },
     ],
