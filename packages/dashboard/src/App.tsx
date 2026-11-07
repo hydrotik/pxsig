@@ -44,6 +44,7 @@ import { type CoverageFocus, Integrity, IntegrityBanner } from './views/Integrit
 import { t, type CopyKey } from './copy';
 import { versionsText } from './versions';
 import { Connection } from './parts/Connection';
+import { ReactStrip } from './parts/ReactStrip';
 import * as s from './dashboard.css';
 
 // Section ids are stable (deep links and the remembered section use them); the labels come from the copy.
@@ -62,6 +63,8 @@ const MOVED: Record<string, Tab> = {
   scenarios: 'diagnostics',
   calibration: 'diagnostics',
   performance: 'diagnostics',
+  react: 'diagnostics',
+  'react-renders': 'diagnostics',
 };
 const asTab = (v: string | null): Tab | null =>
   v && TABS.includes(v as Tab) ? (v as Tab) : v && MOVED[v] ? MOVED[v] : null;
@@ -92,7 +95,7 @@ function ThemeToggle() {
  * index): the server broadcasts both, and a failed run recorded nothing, so the page says so.
  */
 function CheckBanner() {
-  const { running, error } = useCheckActivity();
+  const { running, renders, error } = useCheckActivity();
   if (error)
     return (
       <Alert tone="danger" label={t('app.check.failedTitle')}>
@@ -107,7 +110,8 @@ function CheckBanner() {
         </AlertDescription>
       </Alert>
     );
-  return running?.length ? (
+  // A Measure renders run: the React strip says it.
+  return running?.length && !renders ? (
     <span className={s.muted} role="status">
       {t('app.check.running', { count: running.length })}
     </span>
@@ -203,6 +207,17 @@ export function App() {
     if (data && tab === 'diagnostics' && !diagnosticsOf(data).length) setTab('overview');
   }, [data, tab]);
   const [target, setTarget] = React.useState<InspectTarget | null>(null);
+  // Diagnostics opened on React: an old link (#react, #react-renders) names the part.
+  const [reactFocus, setReactFocus] = React.useState(() => {
+    const v = readHash().get('tab');
+    return v === 'react' || v === 'react-renders'
+      ? {
+          part: v === 'react' ? ('compiler' as const) : ('renders' as const),
+          all: undefined as boolean | undefined,
+          at: Date.now(),
+        }
+      : null;
+  });
 
   React.useEffect(() => {
     try {
@@ -272,6 +287,11 @@ export function App() {
     ['changed', 'new'].includes(statusOf(r, data.review))
   ).length;
   const integrityErrors = data.integrity?.summary.componentsBySeverity.error ?? 0;
+  // Diagnostics › React on a part (the strip, the Overview's React card).
+  const openReact = (part: 'compiler' | 'renders', all?: boolean) => (
+    setReactFocus({ part, all, at: Date.now() }),
+    setTab('diagnostics')
+  );
   const open = (row: Row, list: Row[], scenario: InspectTarget['scenario'] = null) =>
     setTarget({ row, list, scenario });
   // `f`: the Review filter, or for Coverage the component to open.
@@ -378,7 +398,10 @@ export function App() {
         <AppMain ref={mainRef}>
           <div className={s.page}>
             {/* The section's heading, for the outline (the bar's link says it visibly). */}
-            <h2 className={s.srOnly}>{sectionTitle}</h2>
+            <h2 id="section-title" tabIndex={-1} className={s.srOnly}>
+              {sectionTitle}
+            </h2>
+            <ReactStrip data={data} live={live} openReact={openReact} />
             <CheckBanner />
             {/* The Overview shows coverage errors in its own errors card, so the banner leaves them to it. */}
             <IntegrityBanner
@@ -388,7 +411,7 @@ export function App() {
               errorsShownElsewhere={shown === 'overview'}
             />
             {shown === 'overview' ? (
-              <Overview data={data} go={go} startReview={startReview} />
+              <Overview data={data} go={go} startReview={startReview} openReact={openReact} />
             ) : null}
             {shown === 'stories' ? (
               <Stories
@@ -405,7 +428,9 @@ export function App() {
               <Accessibility data={data} onOpen={(r, l) => open(r, l)} startReview={startReview} />
             ) : null}
             {shown === 'history' ? <History data={data} /> : null}
-            {shown === 'diagnostics' ? <Diagnostics data={data} onOpen={open} /> : null}
+            {shown === 'diagnostics' ? (
+              <Diagnostics key={reactFocus?.at} data={data} onOpen={open} focus={reactFocus} />
+            ) : null}
             {shown === 'help' ? <Help data={data} /> : null}
           </div>
         </AppMain>

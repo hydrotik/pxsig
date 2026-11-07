@@ -19,13 +19,18 @@ import { VERDICT } from '../parts/StatusOf';
 import { Scenarios } from './Scenarios';
 import { Calibration } from './Calibration';
 import { Performance } from './Performance';
+import { ReactView, type ReactPart } from './react/ReactView';
 import * as s from '../dashboard.css';
 
-type Section = 'scenarios' | 'calibration' | 'performance';
+type Section = 'react' | 'scenarios' | 'calibration' | 'performance';
 
-/** The sections a research run wrote data for (the tab is hidden when there are none). */
+/**
+ * The sections there is data for (the tab is hidden when there are none): React first (a normal
+ * check feeds it), then the ones a research run wrote.
+ */
 export function diagnosticsOf(data: Data): Section[] {
   return [
+    ...(data.react ? (['react'] as const) : []),
     ...(Object.keys(data.scenarioSuites ?? {}).length ? (['scenarios'] as const) : []),
     ...(Object.keys(data.calibrationSuites ?? {}).length || data.detailCalibration
       ? (['calibration'] as const)
@@ -95,12 +100,16 @@ function DetectionRate({ data }: { data: Data }) {
 export function Diagnostics({
   data,
   onOpen,
+  focus = null,
 }: {
   data: Data;
-  onOpen: (row: Row, list: Row[], scenario: { tag: string; name: string }) => void;
+  onOpen: (row: Row, list: Row[], scenario?: { tag: string; name: string } | null) => void;
+  /** Opened on React (an old `#react` / `#react-renders` link): the part to show. */
+  focus?: { part: ReactPart; all?: boolean; at: number } | null;
 }) {
   const sections = diagnosticsOf(data);
-  const [picked, setPicked] = React.useState<Section | null>(null);
+  // Opened on React (App keys this view by the focus, so a new one starts here again).
+  const [picked, setPicked] = React.useState<Section | null>(focus ? 'react' : null);
   const section = picked && sections.includes(picked) ? picked : sections[0];
   if (!section) return null;
   return (
@@ -117,8 +126,16 @@ export function Diagnostics({
           </ToolbarStart>
         </Toolbar>
       ) : null}
-      <span className={s.muted}>{t('diagnostics.description')}</span>
-      {section === 'scenarios' ? (
+      {section === 'react' ? null : <span className={s.muted}>{t('diagnostics.description')}</span>}
+      {section === 'react' && data.react ? (
+        <ReactView
+          data={data}
+          react={data.react}
+          initialPart={focus?.part ?? 'compiler'}
+          initialAll={focus?.all}
+          onOpen={(r, l) => onOpen(r, l, null)}
+        />
+      ) : section === 'scenarios' ? (
         <>
           <DetectionRate data={data} />
           <Scenarios data={data} onOpen={onOpen} />

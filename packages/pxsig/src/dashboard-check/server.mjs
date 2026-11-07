@@ -106,7 +106,11 @@ export function scenarioServer({ dir, scenario, fixtures, images, posts }) {
       if (name === 'events') {
         if (scenario === 'offline') return send(503, 'text/plain', 'offline');
         res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' });
-        return res.write('retry: 600000\nevent: hello\ndata: {}\n\n');
+        // A run going on in the scenario (fixtures.eventsOf): its events follow hello.
+        const runs = (fixtures.eventsOf?.(scenario) ?? [])
+          .map(([event, d]) => `event: ${event}\ndata: ${JSON.stringify(d)}\n\n`)
+          .join('');
+        return res.write(`retry: 600000\nevent: hello\ndata: {}\n\n${runs}`);
       }
       if (name === 'data') {
         if (scenario === 'loading') return; // the data never arrives: the loading line stays

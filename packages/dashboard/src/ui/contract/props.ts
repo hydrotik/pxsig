@@ -146,6 +146,35 @@ export interface DataTableProps<T> {
   /** `false`: every row on one page. Unset: the adapter's paging. */
   paginate?: boolean;
 }
+/**
+ * Records and the details of one of them side by side: one `SidePanelMain`, then one `SidePanel`.
+ * When the container is narrow the panel drops below the main area (since 1.3.0).
+ */
+export interface SidePanelLayoutProps extends WithClass {
+  children: React.ReactNode;
+}
+/** The main area of a `SidePanelLayout` (the records). */
+export interface SidePanelMainProps extends WithClass {
+  children: React.ReactNode;
+}
+/**
+ * The details of one selected record, beside the main area: not modal, the page stays usable. A
+ * landmark (`complementary`) named by its title; nothing inside renders while it is closed. On
+ * open, focus moves into the panel (its heading, or the panel itself); on close, back to the
+ * element that had it.
+ */
+export interface SidePanelProps extends WithClass {
+  open: boolean;
+  /** Called with false on its close button and on Escape inside the panel. */
+  onOpenChange: (open: boolean) => void;
+  /** The panel's heading; it names the panel. */
+  title: React.ReactNode;
+  /** Default 3: the panel sits inside a page section. */
+  headingLevel?: 2 | 3 | 4;
+  /** The close button's accessible name. */
+  closeLabel: string;
+  children: React.ReactNode;
+}
 /** A state as an icon plus a label; the label is always visible, so colour is never the only signal. */
 export interface StatusBadgeProps extends WithClass {
   tone: Tone;

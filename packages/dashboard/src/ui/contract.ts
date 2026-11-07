@@ -30,7 +30,7 @@
  */
 import type * as React from 'react';
 import type { TokenMap } from './tokens';
-import type { UiProviderProps, AppShellProps, AppMainProps, TopNavProps, NavListProps, NavLinkProps, NavEndProps, ButtonProps, IconButtonProps, CardProps, CardHeaderProps, CardTitleProps, CardDescriptionProps, CardContentProps, StatGroupProps, DataTableProps, StatusBadgeProps, BadgeProps, IconProps, DialogProps, DialogTitleProps, DialogDescriptionProps, SliderProps, SwitchProps, SegmentedChoiceProps, ToolbarProps, ToolbarStartProps, ToolbarEndProps, ToolbarFieldProps, ToolbarSummaryProps, CopyValueProps, KbdProps, TooltipProps, LinkProps, ProgressProps, KeyValueListProps, KeyValueItemProps, AlertProps, AlertTitleProps, AlertDescriptionProps, SearchFieldProps, SelectProps, ChartProps, HeatmapProps } from './contract/props';
+import type { UiProviderProps, AppShellProps, AppMainProps, TopNavProps, NavListProps, NavLinkProps, NavEndProps, ButtonProps, IconButtonProps, CardProps, CardHeaderProps, CardTitleProps, CardDescriptionProps, CardContentProps, StatGroupProps, DataTableProps, SidePanelLayoutProps, SidePanelMainProps, SidePanelProps, StatusBadgeProps, BadgeProps, IconProps, DialogProps, DialogTitleProps, DialogDescriptionProps, SliderProps, SwitchProps, SegmentedChoiceProps, ToolbarProps, ToolbarStartProps, ToolbarEndProps, ToolbarFieldProps, ToolbarSummaryProps, CopyValueProps, KbdProps, TooltipProps, LinkProps, ProgressProps, KeyValueListProps, KeyValueItemProps, AlertProps, AlertTitleProps, AlertDescriptionProps, SearchFieldProps, SelectProps, ChartProps, HeatmapProps } from './contract/props';
 
 export type { TokenMap, TokenName } from './tokens';
 
@@ -41,7 +41,7 @@ export type { TokenMap, TokenName } from './tokens';
  * a default. An adapter records the version it was written for in its conformance.json
  * (`"contract"`); `pnpm ui:check` holds this number to src/ui/contract-lock.json.
  */
-export const CONTRACT_VERSION = '1.2.0';
+export const CONTRACT_VERSION = '1.3.0';
 
 // --- shared vocabulary ---------------------------------------------------------------------------
 
@@ -80,7 +80,7 @@ export const ICON_DEFAULTS = {} as const satisfies Partial<Record<IconName, { si
 
 // --- component props (contract/props.ts) ---------------------------------------------------------
 
-export type { UiProviderProps, AppShellProps, AppMainProps, TopNavProps, NavListProps, NavLinkProps, NavEndProps, ButtonProps, IconButtonProps, CardProps, CardHeaderProps, CardTitleProps, CardDescriptionProps, CardContentProps, StatItem, StatGroupProps, DataColumn, DataTableProps, StatusBadgeProps, BadgeProps, IconProps, DialogProps, DialogTitleProps, DialogDescriptionProps, SliderProps, SwitchProps, ChoiceOption, SegmentedChoiceProps, ToolbarProps, ToolbarStartProps, ToolbarEndProps, ToolbarFieldProps, ToolbarSummaryProps, CopyValueProps, KbdProps, TooltipProps, LinkProps, ProgressProps, KeyValueListProps, KeyValueItemProps, AlertProps, AlertTitleProps, AlertDescriptionProps, SearchFieldProps, SelectOption, SelectProps, SeriesDef, ChartProps, HeatmapCell, HeatmapProps } from './contract/props';
+export type { UiProviderProps, AppShellProps, AppMainProps, TopNavProps, NavListProps, NavLinkProps, NavEndProps, ButtonProps, IconButtonProps, CardProps, CardHeaderProps, CardTitleProps, CardDescriptionProps, CardContentProps, StatItem, StatGroupProps, DataColumn, DataTableProps, SidePanelLayoutProps, SidePanelMainProps, SidePanelProps, StatusBadgeProps, BadgeProps, IconProps, DialogProps, DialogTitleProps, DialogDescriptionProps, SliderProps, SwitchProps, ChoiceOption, SegmentedChoiceProps, ToolbarProps, ToolbarStartProps, ToolbarEndProps, ToolbarFieldProps, ToolbarSummaryProps, CopyValueProps, KbdProps, TooltipProps, LinkProps, ProgressProps, KeyValueListProps, KeyValueItemProps, AlertProps, AlertTitleProps, AlertDescriptionProps, SearchFieldProps, SelectOption, SelectProps, SeriesDef, ChartProps, HeatmapCell, HeatmapProps } from './contract/props';
 
 /** The step (0–5) a share falls in on a `Heatmap`'s scale: 0 only for a share of 0. */
 export const heatStep = (value: number): 0 | 1 | 2 | 3 | 4 | 5 => (value <= 0 ? 0 : (Math.min(5, Math.max(1, Math.ceil(value * 5))) as 1 | 2 | 3 | 4 | 5));
@@ -107,6 +107,9 @@ export const CONTRACT = {
   CardContent: { group: 'core', required: true, role: "a card's body" },
   StatGroup: { group: 'core', required: false, role: 'a row of key figures, some selectable' },
   DataTable: { group: 'core', required: false, role: 'records as sortable rows' },
+  SidePanelLayout: { group: 'core', required: false, role: 'records and the details of one, side by side' },
+  SidePanelMain: { group: 'core', required: false, role: "a side panel layout's main area" },
+  SidePanel: { group: 'core', required: false, role: 'the details of one selected record, not modal' },
   StatusBadge: { group: 'core', required: true, role: 'a state: tone, icon and label' },
   Badge: { group: 'core', required: true, role: 'a short tag' },
   Icon: { group: 'core', required: true, role: 'a glyph from the closed set' },
@@ -158,6 +161,9 @@ export interface ComponentProps {
   CardContent: CardContentProps;
   StatGroup: StatGroupProps;
   DataTable: DataTableProps<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  SidePanelLayout: SidePanelLayoutProps;
+  SidePanelMain: SidePanelMainProps;
+  SidePanel: SidePanelProps;
   StatusBadge: StatusBadgeProps;
   Badge: BadgeProps;
   Icon: IconProps;

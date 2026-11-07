@@ -43,7 +43,7 @@ import { rustBinary } from '../../packages/pxsig/src/lib/workspace/peers.mjs';
 import { copyTree } from '../lib/copy-tree.mjs';
 import { FEATURES, STEPS } from './flows.mjs';
 import { assertSafeUrl, DEAD_URL, idle, startLiveServer } from './server.mjs';
-import { CHANGE, LIVE_BASE, liveDir, pristineDir, repo } from './stage.mjs';
+import { CHANGE, LIVE_BASE, liveDir, pristineDir, REACT_CHANGE, repo } from './stage.mjs';
 import { routeOf, scrubber } from './volatile.mjs';
 
 // Playwright's types, through capture.mjs (playwright resolves from packages/pxsig, not scripts/).
@@ -228,8 +228,11 @@ async function runOnce({ browser, theme, dashboard, axe, out, log, want }) {
       const f = join(dir, CHANGE.file);
       writeFileSync(f, readFileSync(f, 'utf8').replace(CHANGE.from, CHANGE.to));
       swapStorybook(dir, 'storybook-static-after');
+    } else if (a.react) {
+      const f = join(dir, REACT_CHANGE.file);
+      writeFileSync(f, readFileSync(f, 'utf8').replace(REACT_CHANGE.from, REACT_CHANGE.to));
     } else if (a.stop) await S.stop();
-    if (S.proc.exitCode === null && S.proc.signalCode === null) await observe();
+    if (!a.busy && S.proc.exitCode === null && S.proc.signalCode === null) await observe();
   };
   /** @type {ScreenResult[]} */
   const results = [];

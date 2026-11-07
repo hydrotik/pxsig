@@ -115,8 +115,10 @@ dashboard check --strict` requires; the run lists each one.
 the real `pxsig serve`, the CLI a person runs, on a staged copy of `examples/single-package`, and
 drive it through the reviewer's flows on one page: open the dashboard link, approve the new
 entries, reject one and undo it, re-check one, `pxsig check --full` from a terminal beside the
-server, a real source change (two entries change, the inspector on real renders), a browser
-without the link (Read only), the server stopped (Offline). Each step is one screen in each theme,
+server, a real source change (two entries change, the inspector on real renders), the React
+analysis (a component the React Compiler now skips, found by Analyse; Measure renders; a
+measurement cancelled part way), a browser without the link (Read only), the server stopped
+(Offline). Each step is one screen in each theme,
 `live--<flow>-<n>@<theme>` (`live--approve-2@dark`), with its locked structure in
 `fixtures/locked/live/`, checked with the fixture screens in the same run and reviewed the same way.
 A behaviour-free change to the server or the dashboard shows `0 to review`: that is its proof.
@@ -131,8 +133,11 @@ image's engine.
   that list may only shrink.
 - `pnpm screens:check` stages the example on the host first (`scripts/live/stage.mjs`: installed
   from its lockfile, its Storybook built as committed and with the scripted change, under
-  `node_modules/.cache/pxsig/live`; skipped while nothing it reads changed). In the container each
+  `target/pxsig-live`; skipped while nothing it reads changed). In the container each
   run starts from a clean scratch store there: 9 entries pass, 3 are new.
+  The staged example also has the React Compiler and Babel (pxsig's own test fixtures,
+  `packages/pxsig/test/react-compiler`, installed and linked in) and a git repository whose `main`
+  is the example as committed: the base the analysis compares with.
 - What varies from run to run (the times the server writes, durations, its ports) is rewritten at
   the HTTP boundary (`scripts/live/volatile.mjs`), strictly: a listed field that goes missing, or a
   time, port or duration no rule rewrites, fails the step and names the field.

@@ -69,11 +69,16 @@
         "inspector/side/A11ySection",
         "inspector/side/FilesSection",
         "inspector/side/PixelSection",
+        "parts/ReactStrip",
         "parts/StaleHeatmap",
         "parts/StoryGrid",
         "views/Accessibility",
         "views/Integrity",
-        "views/Overview"
+        "views/Overview",
+        "views/react/Compiler",
+        "views/react/CompilerPanel",
+        "views/react/Renders",
+        "views/react/RendersPanel"
       ]
     },
     "IconButton": {
@@ -101,7 +106,10 @@
         "views/Integrity",
         "views/Overview",
         "views/Performance",
-        "views/Scenarios"
+        "views/Scenarios",
+        "views/react/Compiler",
+        "views/react/OverviewCard",
+        "views/react/Renders"
       ]
     },
     "CardHeader": {
@@ -119,7 +127,10 @@
         "views/Integrity",
         "views/Overview",
         "views/Performance",
-        "views/Scenarios"
+        "views/Scenarios",
+        "views/react/Compiler",
+        "views/react/OverviewCard",
+        "views/react/Renders"
       ]
     },
     "CardTitle": {
@@ -137,7 +148,10 @@
         "views/Integrity",
         "views/Overview",
         "views/Performance",
-        "views/Scenarios"
+        "views/Scenarios",
+        "views/react/Compiler",
+        "views/react/OverviewCard",
+        "views/react/Renders"
       ]
     },
     "CardDescription": {
@@ -155,7 +169,10 @@
         "views/Integrity",
         "views/Overview",
         "views/Performance",
-        "views/Scenarios"
+        "views/Scenarios",
+        "views/react/Compiler",
+        "views/react/OverviewCard",
+        "views/react/Renders"
       ]
     },
     "CardContent": {
@@ -173,7 +190,10 @@
         "views/Integrity",
         "views/Overview",
         "views/Performance",
-        "views/Scenarios"
+        "views/Scenarios",
+        "views/react/Compiler",
+        "views/react/OverviewCard",
+        "views/react/Renders"
       ]
     },
     "StatGroup": {
@@ -186,7 +206,8 @@
         "views/Integrity",
         "views/Overview",
         "views/Performance",
-        "views/Scenarios"
+        "views/Scenarios",
+        "views/react/OverviewCard"
       ]
     },
     "DataTable": {
@@ -199,7 +220,36 @@
         "views/History",
         "views/Integrity",
         "views/Overview",
-        "views/Performance"
+        "views/Performance",
+        "views/react/Compiler",
+        "views/react/Renders"
+      ]
+    },
+    "SidePanelLayout": {
+      "group": "core",
+      "required": false,
+      "role": "records and the details of one, side by side",
+      "usedBy": [
+        "views/react/Compiler",
+        "views/react/Renders"
+      ]
+    },
+    "SidePanelMain": {
+      "group": "core",
+      "required": false,
+      "role": "a side panel layout's main area",
+      "usedBy": [
+        "views/react/Compiler",
+        "views/react/Renders"
+      ]
+    },
+    "SidePanel": {
+      "group": "core",
+      "required": false,
+      "role": "the details of one selected record, not modal",
+      "usedBy": [
+        "views/react/Compiler",
+        "views/react/Renders"
       ]
     },
     "StatusBadge": {
@@ -221,6 +271,7 @@
       "role": "a short tag",
       "usedBy": [
         "App",
+        "inspector/Header",
         "inspector/side/A11ySection",
         "inspector/side/MetricsSection",
         "inspector/side/PixelSection",
@@ -228,7 +279,11 @@
         "parts/StoryGrid",
         "views/Accessibility",
         "views/Integrity",
-        "views/Scenarios"
+        "views/Scenarios",
+        "views/react/Compiler",
+        "views/react/Renders",
+        "views/react/RendersPanel",
+        "views/react/shared"
       ]
     },
     "Icon": {
@@ -294,7 +349,8 @@
         "inspector/controls",
         "views/Calibration",
         "views/Diagnostics",
-        "views/Scenarios"
+        "views/Scenarios",
+        "views/react/shared"
       ]
     },
     "Toolbar": {
@@ -306,7 +362,10 @@
         "views/Diagnostics",
         "views/Integrity",
         "views/Scenarios",
-        "views/Stories"
+        "views/Stories",
+        "views/react/Compiler",
+        "views/react/ReactView",
+        "views/react/Renders"
       ]
     },
     "ToolbarStart": {
@@ -318,7 +377,10 @@
         "views/Diagnostics",
         "views/Integrity",
         "views/Scenarios",
-        "views/Stories"
+        "views/Stories",
+        "views/react/Compiler",
+        "views/react/ReactView",
+        "views/react/Renders"
       ]
     },
     "ToolbarEnd": {
@@ -327,7 +389,9 @@
       "role": "a toolbar's trailing group",
       "usedBy": [
         "inspector/Inspector",
-        "views/Stories"
+        "views/Stories",
+        "views/react/Compiler",
+        "views/react/Renders"
       ]
     },
     "ToolbarField": {
@@ -336,7 +400,8 @@
       "role": "a labelled control in a toolbar",
       "usedBy": [
         "views/Scenarios",
-        "views/Stories"
+        "views/Stories",
+        "views/react/Renders"
       ]
     },
     "ToolbarSummary": {
@@ -345,7 +410,8 @@
       "role": "a count on the toolbar's line",
       "usedBy": [
         "views/Scenarios",
-        "views/Stories"
+        "views/Stories",
+        "views/react/Compiler"
       ]
     },
     "CopyValue": {
@@ -354,7 +420,8 @@
       "role": "a command with a copy button",
       "usedBy": [
         "inspector/Inspector",
-        "inspector/SessionSummary"
+        "inspector/SessionSummary",
+        "views/react/CompilerPanel"
       ]
     },
     "Kbd": {
@@ -379,7 +446,9 @@
       "required": false,
       "role": "a link, router-aware through render",
       "usedBy": [
-        "inspector/side/FilesSection"
+        "inspector/side/FilesSection",
+        "views/react/CompilerPanel",
+        "views/react/shared"
       ]
     },
     "Progress": {
@@ -388,7 +457,10 @@
       "role": "a completion bar",
       "usedBy": [
         "inspector/Inspector",
-        "views/Scenarios"
+        "parts/ReactStrip",
+        "views/Scenarios",
+        "views/react/Compiler",
+        "views/react/Renders"
       ]
     },
     "KeyValueList": {
@@ -399,7 +471,9 @@
         "inspector/SessionSummary",
         "inspector/side/ChangesSection",
         "inspector/side/MetricsSection",
-        "views/Diagnostics"
+        "views/Diagnostics",
+        "views/react/CompilerPanel",
+        "views/react/RendersPanel"
       ]
     },
     "KeyValueItem": {
@@ -410,7 +484,9 @@
         "inspector/SessionSummary",
         "inspector/side/ChangesSection",
         "inspector/side/MetricsSection",
-        "views/Diagnostics"
+        "views/Diagnostics",
+        "views/react/CompilerPanel",
+        "views/react/RendersPanel"
       ]
     },
     "Alert": {
@@ -419,7 +495,9 @@
       "role": "a message about the whole page",
       "usedBy": [
         "App",
-        "views/Integrity"
+        "parts/ReactStrip",
+        "views/Integrity",
+        "views/react/shared"
       ]
     },
     "AlertTitle": {
@@ -428,7 +506,9 @@
       "role": "an alert's title line, not a heading",
       "usedBy": [
         "App",
-        "views/Integrity"
+        "parts/ReactStrip",
+        "views/Integrity",
+        "views/react/shared"
       ]
     },
     "AlertDescription": {
@@ -437,7 +517,9 @@
       "role": "an alert's body",
       "usedBy": [
         "App",
-        "views/Integrity"
+        "parts/ReactStrip",
+        "views/Integrity",
+        "views/react/shared"
       ]
     },
     "SearchField": {
@@ -455,7 +537,8 @@
       "usedBy": [
         "App",
         "views/Scenarios",
-        "views/Stories"
+        "views/Stories",
+        "views/react/Renders"
       ]
     },
     "Chart": {

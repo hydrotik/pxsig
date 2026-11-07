@@ -66,6 +66,29 @@ Copy: `coverage.banner`, `coverage.headline`
 
 Files: `src/views/Integrity`
 
+### React progress strip
+
+`shell.react-strip` · At the top of every section while the server analyses React files (with Skip) or measures renders (with Cancel), then how the run ended (the alerts in one line, skipped, failed, measured, cancelled) until dismissed. Never takes focus, blocks or counts down; only the start and the end are announced.
+
+States:
+
+- **loading**: A bar per run going on, with its count.
+- **error**: The analysis failed: what happened, and that checks are not affected.
+- **offline**: The rows stay as they were; Skip and Cancel are disabled.
+- **static**: Not shown.
+- **readOnly**: Skip and Cancel are disabled: they need the dashboard link.
+
+Interactions:
+
+- Skip the analysis; Cancel the measuring
+- Open React or Renders from the end line; Dismiss it
+
+Components: `Progress`, `Button`, `Alert`, `AlertTitle`, `AlertDescription`
+
+Copy: `app.react`, `app.check.dismiss`
+
+Files: `src/parts/ReactStrip`, `src/App`
+
 ## Overview
 
 ### Latest check in numbers
@@ -169,6 +192,25 @@ Components: `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`,
 Copy: `coverage.stale`
 
 Files: `src/parts/StaleHeatmap`
+
+### React
+
+`overview.react` · In the Overview end column, after Errors: the compiler analysis and render counts in four figures (newly skipped, findings, compiled, still rendering), each opening the React view where it is listed. Alerts only, not blocking; shown only when there are results.
+
+States:
+
+- **loading**: While an analysis runs: the last figures, the file count under the description, busy.
+- **empty**: Not shown without results, or when React is off.
+
+Interactions:
+
+- Open Diagnostics › React on what a figure counts
+
+Components: `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `StatGroup`
+
+Copy: `overview.react`, `app.react.files`, `app.react.filesNoCache`
+
+Files: `src/views/Overview`, `src/views/react/OverviewCard`, `src/parts/Affordance`
 
 ## Review Stories
 
@@ -294,6 +336,56 @@ Copy: `diagnostics`
 
 Files: `src/views/Diagnostics`, `src/views/Scenarios`, `src/views/Calibration`, `src/views/Performance`, `src/parts/Charts`
 
+### React Compiler
+
+`diagnostics.react-compiler` · The React Compiler's verdict on the changed component and hook files, at the merge base and now: alerts first (newly skipped, new and skipped, a new reason, a new finding), every function analysed on demand, and one function's diagnostics, base and entries in a side panel. Alerts only: nothing here fails a check or asks for a decision.
+
+States:
+
+- **loading**: Analysing: a progress row with Skip; the table keeps the last results, busy.
+- **empty**: No results yet, with Analyse; no alerts, or no changed files, in the table.
+- **error**: The last analysis failed: what happened, and that checks are not affected.
+- **static**: No Analyse: a static report cannot run anything.
+- **readOnly**: Analyse and Skip are disabled: they need the dashboard link.
+- **canApprove**: Analyse and Skip work (they decide nothing).
+
+Interactions:
+
+- Choose Compiler or Renders
+- Analyse now; Skip a running analysis
+- Alerts or every function analysed; search
+- Open a function's details; open an entry it reaches in the inspector (Esc closes)
+
+Components: `Toolbar`, `ToolbarStart`, `ToolbarEnd`, `ToolbarSummary`, `SegmentedChoice`, `Button`, `Badge`, `Progress`, `Alert`, `AlertTitle`, `AlertDescription`, `Link`, `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `DataTable`, `SidePanelLayout`, `SidePanelMain`, `SidePanel`, `KeyValueList`, `KeyValueItem`, `CopyValue`
+
+Copy: `diagnostics.tabs.react`, `diagnostics.react`
+
+Files: `src/views/Diagnostics`, `src/views/react/ReactView`, `src/views/react/shared`, `src/views/react/Compiler`, `src/views/react/CompilerPanel`
+
+### React renders
+
+`diagnostics.react-renders` · React's commits and renders per entry, counted while pxsig rendered it: the entries React was still committing at capture first, every entry measured on demand, and one entry's counts, top components and counts before in a side panel. Measure renders runs a visual check of the entries in scope with counting on; Cancel stops it, and the entries rendered by then keep their new results.
+
+States:
+
+- **loading**: Measuring: a progress row with Cancel; Measure renders is disabled.
+- **empty**: No render counts yet: what Measure renders does.
+- **static**: No Measure renders and no Scope.
+- **readOnly**: Measure renders and Cancel are disabled: they need the dashboard link.
+- **canApprove**: Measure renders and Cancel work (a re-check, not a decision).
+
+Interactions:
+
+- Scope: every entry, the ones shown, or the one in the side panel
+- Measure renders; Cancel a run
+- Alerts or every entry measured; open an entry's details or the inspector (Esc closes)
+
+Components: `Toolbar`, `ToolbarStart`, `ToolbarEnd`, `ToolbarField`, `Select`, `SegmentedChoice`, `Button`, `Badge`, `Progress`, `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `DataTable`, `SidePanelLayout`, `SidePanelMain`, `SidePanel`, `KeyValueList`, `KeyValueItem`
+
+Copy: `diagnostics.react.renders`
+
+Files: `src/views/Diagnostics`, `src/views/react/ReactView`, `src/views/react/shared`, `src/views/react/Renders`, `src/views/react/RendersPanel`
+
 ## Help
 
 ### Help
@@ -311,6 +403,16 @@ Copy: `help`
 Files: `src/views/Help`, `src/parts/Schematic`
 
 ## Inspector
+
+### Still rendering
+
+`inspector.react` · In the inspector header, beside the verdict: a Still rendering badge when React was still committing at capture (its title is the alert), a likely cause of a flaky entry. It never changes the verdict, the decision buttons or the review queue. Not in the Storybook panel.
+
+Components: `Badge`
+
+Copy: `inspector.react`, `diagnostics.react.renders.stillAlert`
+
+Files: `src/inspector/Header`
 
 ### Inspector header
 

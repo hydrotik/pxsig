@@ -10,9 +10,11 @@
  * A step's actions: `{ click }` and `{ press }` as in fixtures/screens.json, and the live ones:
  * `{ link: '#hash' }` open a fresh dashboard link (the ticket traded by the page) · `{ cli: [...] }`
  * run the pxsig CLI in the staged folder, against this server · `{ change: true }` the scripted
- * change (Badge.jsx written, Storybook swapped for the "after" build) · `{ readOnly: '#hash' }` the
- * page of a second browser context without the link's cookie · `{ stop: true }` stop the server.
- * After every action the run waits until the server is idle (scripts/live/server.mjs).
+ * change (Badge.jsx written, Storybook swapped for the "after" build) · `{ react: true }` the
+ * scripted React change (Badge reads a ref during render: the compiler skips it, nothing drawn
+ * changes) · `{ readOnly: '#hash' }` the page of a second browser context without the link's
+ * cookie · `{ stop: true }` stop the server. After every action the run waits until the server is
+ * idle (scripts/live/server.mjs), except after a `{ click, busy: true }` (a run to cancel).
  *
  * `covers`: the server routes (`/__pxsig/<route>`) a flow's page or CLI calls exercise. The coverage
  * ratchet (scripts/live-screens.test.mjs) fails when the dashboard calls a route no flow covers and
@@ -75,6 +77,13 @@ export const FEATURES = [
       'A real source change re-rendered: two entries change; the inspector shows real renders.',
     covers: ['check'],
     anchors: DECISION_ANCHORS,
+  },
+  {
+    id: 'live.react',
+    title: 'React analysis and render counts',
+    purpose:
+      'Analyse finds the component the React Compiler now skips; Measure renders counts renders in a visual check; Cancel stops one part way.',
+    covers: ['react', 'check'],
   },
   {
     id: 'live.read-only',
@@ -150,9 +159,39 @@ export const STEPS = [
     wait: { role: 'button', name: 'Changed 0' },
   },
   {
+    feature: 'live.react',
+    n: 1,
+    actions: [
+      { react: true },
+      { link: '#react' },
+      { click: { role: 'button', name: 'Analyse', exact: true } },
+    ],
+    wait: { text: 'Newly skipped', exact: true },
+  },
+  {
+    feature: 'live.react',
+    n: 2,
+    actions: [
+      { click: { role: 'radio', name: 'Renders', exact: true } },
+      { click: { role: 'button', name: 'Measure renders', exact: true } },
+    ],
+    wait: { text: 'Renders measured: 12 entries' },
+  },
+  {
+    feature: 'live.react',
+    n: 3,
+    // Cancel while the first entry of each story file renders: those two keep their new results.
+    actions: [
+      { click: { role: 'button', name: 'Measure renders', exact: true }, busy: true },
+      { click: { role: 'button', name: 'Cancel', exact: true } },
+    ],
+    wait: { text: 'Measurement cancelled after' },
+  },
+  {
     feature: 'live.changed',
     n: 1,
-    actions: [{ change: true }, { cli: ['check', '--full'] }],
+    // Back on Overview first: the React steps before it end on Diagnostics.
+    actions: [{ link: '#overview' }, { change: true }, { cli: ['check', '--full'] }],
     wait: { role: 'button', name: 'Changed 2' },
   },
   {

@@ -50,6 +50,16 @@
   `warning` when the compiler skips it, `note` for a finding; React's docs page for the rule as the
   help link) and `react-renders/still-rendering` (`note`, at the story file). Never `error`. The
   existing `--sarif` file stays accessibility only, byte for byte.
+- **The dashboard's React view (Diagnostics › React).** Compiler: the alerts first, every
+  function analysed on demand, and a function's diagnostics, base and entries in a side panel;
+  Analyse runs the analysis again. Renders: the entries React was still committing at capture
+  first, every entry measured on demand, and an entry's counts in a side panel; Measure renders
+  runs a visual check of the entries in scope with counting on, and Cancel stops it. A progress
+  strip at the top of every section while either runs (with Skip and Cancel), then how it ended; a
+  React card on the Overview; a Still rendering badge in the inspector header; a React Analysis
+  section in Help. Analyse, Skip, Measure renders and Cancel need the dashboard link (disabled
+  while the page is read only). Alerts only: nothing here decides anything. Old `#react` and
+  `#react-renders` links open the view.
 - **The server runs the React analysis** after its startup integrity pass and, with `--watch`,
   after a code edit (compared with `main`; no browser; only the store lock's holder saves
   `reports/react.json`). `/__pxsig/data` has `react` (where the analysis stands, its last results

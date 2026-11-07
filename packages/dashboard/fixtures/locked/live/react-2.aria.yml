@@ -1,0 +1,154 @@
+- navigation "Report sections":
+  - heading "pxsig • example-single" [level=1]
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: "#overview"
+    - listitem:
+      - link "Review Stories":
+        - /url: "#stories"
+    - listitem:
+      - link "Coverage":
+        - /url: "#integrity"
+    - listitem:
+      - link "Accessibility":
+        - /url: "#a11y"
+    - listitem:
+      - link "Runs, 5 runs":
+        - /url: "#history"
+        - text: Runs
+    - listitem:
+      - link "Diagnostics":
+        - /url: "#diagnostics"
+    - listitem:
+      - link "Help":
+        - /url: "#help"
+  - text: light · dark Live Can approve
+  - button "Light theme"
+  - text: Approved
+- main:
+  - heading "Diagnostics" [level=2]
+  - region "React analysis":
+    - text: "React: 1 newly skipped"
+    - button "Open React"
+    - button "Dismiss"
+    - text: "Renders measured: 12 entries"
+    - button "Open Renders"
+    - button "Dismiss"
+    - status: "React: 1 newly skipped"
+  - alert "Coverage":
+    - text: No coverage issues.
+    - strong: verify-unlogged
+    - text: "· 9 baselines have no approval log line (components-badge--neutral, components-badge--success, components-badge--danger, …): `pxsig approve verify` fails on them (strict by default since 0.4.0). For baselines from before pxsig kept a log, a person runs `pxsig approve verify --adopt` once; `--no-strict` only reports them"
+    - button "View components"
+    - button "Run safe repairs"
+    - text: Safe repairs register new stories and render them, re-check entries without a usable verdict, and restore baseline images that pass the gate. They do not approve changes or write signatures.
+  - group "React part":
+    - radio "Compiler"
+    - radio "Renders" [checked]
+  - text: Scope
+  - combobox "Scope": All entries · 12
+  - button "Measure renders"
+  - text: "Runs a visual check: renders 12 entries and replaces their visual results."
+  - heading "Renders per Entry" [level=3]
+  - paragraph: 12 entries measured · production build · React 19.3.1
+  - text: "Production build: counts only. Names come from displayName."
+  - button "Alerts (0)"
+  - button "All measured (12)"
+  - textbox "Search all columns":
+    - /placeholder: Search all columns…
+  - button "Columns":
+    - img
+    - text: Columns
+  - grid "Data grid":
+    - rowgroup:
+      - row "Entry Commits Rendered Top component Since last":
+        - columnheader "Entry":
+          - button "Entry"
+          - separator "Resize Entry column"
+        - columnheader "Commits":
+          - text: Commits
+          - separator "Resize Commits column"
+        - columnheader "Rendered":
+          - text: Rendered
+          - separator "Resize Rendered column"
+        - columnheader "Top component":
+          - text: Top component
+          - separator "Resize Top component column"
+        - columnheader "Since last":
+          - text: Since last
+          - separator "Resize Since last column"
+    - rowgroup:
+      - row "components-badge--danger 2 6 Anonymous ×1 · not compiled new":
+        - gridcell "components-badge--danger"
+        - gridcell "2"
+        - gridcell "6"
+        - gridcell "Anonymous ×1 · not compiled"
+        - gridcell "new"
+      - row "components-badge--danger@dark 2 6 Anonymous ×1 · not compiled new":
+        - gridcell "components-badge--danger@dark"
+        - gridcell "2"
+        - gridcell "6"
+        - gridcell "Anonymous ×1 · not compiled"
+        - gridcell "new"
+      - row "components-badge--success 2 6 Anonymous ×1 · not compiled new":
+        - gridcell "components-badge--success"
+        - gridcell "2"
+        - gridcell "6"
+        - gridcell "Anonymous ×1 · not compiled"
+        - gridcell "new"
+      - row "components-badge--success@dark 2 6 Anonymous ×1 · not compiled new":
+        - gridcell "components-badge--success@dark"
+        - gridcell "2"
+        - gridcell "6"
+        - gridcell "Anonymous ×1 · not compiled"
+        - gridcell "new"
+      - row "components-button--disabled 2 6 t ×2 · not compiled new":
+        - gridcell "components-button--disabled"
+        - gridcell "2"
+        - gridcell "6"
+        - gridcell "t ×2 · not compiled"
+        - gridcell "new"
+      - row "components-button--disabled@dark 2 6 t ×2 · not compiled new":
+        - gridcell "components-button--disabled@dark"
+        - gridcell "2"
+        - gridcell "6"
+        - gridcell "t ×2 · not compiled"
+        - gridcell "new"
+      - row "components-button--secondary 2 6 t ×2 · not compiled new":
+        - gridcell "components-button--secondary"
+        - gridcell "2"
+        - gridcell "6"
+        - gridcell "t ×2 · not compiled"
+        - gridcell "new"
+      - row "components-button--secondary@dark 2 6 t ×2 · not compiled new":
+        - gridcell "components-button--secondary@dark"
+        - gridcell "2"
+        - gridcell "6"
+        - gridcell "t ×2 · not compiled"
+        - gridcell "new"
+      - row "components-badge--neutral 1 6 Anonymous ×1 · not compiled new":
+        - gridcell "components-badge--neutral"
+        - gridcell "1"
+        - gridcell "6"
+        - gridcell "Anonymous ×1 · not compiled"
+        - gridcell "new"
+      - row "components-badge--neutral@dark 1 6 Anonymous ×1 · not compiled new":
+        - gridcell "components-badge--neutral@dark"
+        - gridcell "1"
+        - gridcell "6"
+        - gridcell "Anonymous ×1 · not compiled"
+        - gridcell "new"
+      - row "components-button--primary 1 6 t ×2 · not compiled new":
+        - gridcell "components-button--primary"
+        - gridcell "1"
+        - gridcell "6"
+        - gridcell "t ×2 · not compiled"
+        - gridcell "new"
+      - row "components-button--primary@dark 1 6 t ×2 · not compiled new":
+        - gridcell "components-button--primary@dark"
+        - gridcell "1"
+        - gridcell "6"
+        - gridcell "t ×2 · not compiled"
+        - gridcell "new"
+  - status

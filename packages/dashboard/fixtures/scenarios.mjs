@@ -21,6 +21,8 @@
  * @typedef {Omit<T, K> & { [P in K]: T[P] | null }} Nullable
  */
 
+import { REACT_EVENTS, REACT_SCENARIOS } from './react.mjs';
+
 export const AT = '2026-10-24T10:00:00.000Z';
 
 // --- builders -----------------------------------------------------------------------------------
@@ -352,11 +354,19 @@ export const SCENARIOS = {
     d.integrity = null;
     return d;
   },
+  ...REACT_SCENARIOS,
   'several-projects'() {
     // A workspace label names the application; the switcher names each project by its own label.
     return { ...SCENARIOS.clean(), label: 'Demo', scope: 'Demo workspace' };
   },
 };
+
+/**
+ * Events the server sends after `hello` in a scenario (a run going on), as [event, data].
+ * @param {string} name
+ * @returns {[string, Record<string, unknown>][]}
+ */
+export const eventsOf = (name) => REACT_EVENTS[name] ?? [];
 
 /** Scenarios that are a server behaviour over the `clean` data, not data of their own. */
 export const SERVER_STATES = ['loading', 'load-error', 'offline', 'static', 'read-only'];

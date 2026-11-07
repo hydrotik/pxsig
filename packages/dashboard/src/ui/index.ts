@@ -71,6 +71,17 @@ export const StatGroup = pick('StatGroup');
 export const DataTable = pick('DataTable') as unknown as <T>(
   props: DataTableProps<T>
 ) => React.ReactElement | null;
+/**
+ * The side panel's three parts come as a set: the adapter's when it exports all three, else the
+ * three fallbacks (a design system's panel can need its own layout around it, since 1.3.0).
+ */
+const PANEL = ['SidePanelLayout', 'SidePanelMain', 'SidePanel'] as const;
+const ownPanel = PANEL.every((n) => (adapter as Record<string, unknown>)[n] != null);
+const panelPart = <K extends (typeof PANEL)[number]>(name: K) =>
+  (ownPanel ? pick(name) : fallbacks[name]) as React.ComponentType<ComponentProps[K]>;
+export const SidePanelLayout = panelPart('SidePanelLayout');
+export const SidePanelMain = panelPart('SidePanelMain');
+export const SidePanel = panelPart('SidePanel');
 export const StatusBadge = pick('StatusBadge');
 export const Badge = pick('Badge');
 /** The contract version the adapter was written for (its conformance.json; the build defines it). */
