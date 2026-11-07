@@ -83,6 +83,12 @@
     - figure "Cell heatmap":
       - img "Cell heatmap"
       - text: Cell heatmap
+    - heading "React" [level=3]
+    - heading "Compiler alerts (1)" [level=4]
+    - strong: Badge
+    - text: Newly skipped src/Badge/Badge.jsx · refs, line 5
+    - button "Open in React"
+    - text: From the check at 12:00:00 PM
     - heading "Files" [level=3]
     - list:
       - listitem:
