@@ -80,7 +80,7 @@ jobs:
         with:
           toolchain: 1.99.0 # rust-toolchain.toml
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      # With every feature: the built-in React Compiler (pxsig-cli's react-oxc), tested before it ships.
+      # With every feature: the built-in React Compiler (pxsig-cli's react-oxc) is in the release.
       - run: cargo test --workspace --all-features --locked
       # And `react-compile` in an engine built without it (exit 2, and why). Once, on Linux.
       - if: runner.os == 'Linux'
