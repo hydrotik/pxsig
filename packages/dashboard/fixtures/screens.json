@@ -768,6 +768,14 @@
         {
           "scenario": "react",
           "hash": "#inspect=ui-button--primary",
+          "actions": [
+            {
+              "click": {
+                "text": "Not compiled",
+                "exact": true
+              }
+            }
+          ],
           "wait": {
             "role": "heading",
             "name": "Compiler alerts (1)"
