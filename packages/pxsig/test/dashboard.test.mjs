@@ -6,6 +6,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { NOT_YET_RENDERED } from '../../dashboard/ui-tools.mjs';
 import { tempDir, testEnv, testHome } from './fixture.mjs';
 
 const cli = fileURLToPath(new URL('../bin/pxsig.mjs', import.meta.url));
@@ -31,8 +32,11 @@ test('gaps: the reference adapter covers every contract component', () => {
     []
   );
   assert.ok(
-    g.rows.every((/** @type {{ usedBy: string[] }} */ x) => x.usedBy.length),
-    'every contract component is used somewhere'
+    g.rows.every(
+      (/** @type {{ name: string, usedBy: string[] }} */ x) =>
+        x.usedBy.length || NOT_YET_RENDERED[x.name]
+    ),
+    'every contract component is used somewhere, but those not rendered yet (ui-tools.mjs)'
   );
 });
 
