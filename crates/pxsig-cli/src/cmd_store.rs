@@ -185,6 +185,50 @@ mod tests {
     use super::*;
     use crate::batch;
 
+    /// Every committed `.psig` in this repository (written by earlier versions), by path.
+    fn committed_psigs() -> Vec<PathBuf> {
+        fn walk(d: &Path, out: &mut Vec<PathBuf>) {
+            for e in std::fs::read_dir(d).into_iter().flatten().flatten() {
+                let p = e.path();
+                if p.is_dir() {
+                    walk(&p, out);
+                } else if io::is_psig_path(&p) {
+                    out.push(p);
+                }
+            }
+        }
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/dashboard/.pxsig");
+        let mut out = Vec::new();
+        walk(&root.join("baselines"), &mut out);
+        out.sort();
+        out
+    }
+
+    #[test]
+    fn committed_baselines_decode_and_re_encode_byte_for_byte() {
+        // Pin: a file an earlier pxsig wrote reads, and writing back what was read gives the same
+        // bytes, so nothing this version adds can change an existing baseline.
+        let files = committed_psigs();
+        assert!(
+            files.len() > 50,
+            "found {} committed baselines",
+            files.len()
+        );
+        for f in files {
+            let bytes = std::fs::read(&f).unwrap();
+            let p = pxsig_core::psig::decode(&bytes).unwrap();
+            let extra = pxsig_core::psig::extras(&p.header);
+            let again = pxsig_core::psig::encode(
+                &p.record,
+                p.image.as_deref(),
+                p.header.get("entry"),
+                Some(&extra),
+            )
+            .unwrap();
+            assert!(again == bytes, "{} re-encodes differently", f.display());
+        }
+    }
+
     #[test]
     fn attach_keeps_every_header_key_it_does_not_own() {
         let d = std::env::temp_dir().join(format!("pxsig-attach-{}", std::process::id()));
