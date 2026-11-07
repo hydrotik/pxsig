@@ -108,7 +108,7 @@ export function screenEntries(catalogue, sigFor, fileOf) {
   /** @type {ManifestEntry[]} */
   const out = [];
   for (const f of catalogue.features)
-    f.screens.forEach((_, i) => {
+    f.screens.forEach((screen, i) => {
       for (const theme of THEMES) {
         const { id, story } = screenId(f.id, i + 1, theme);
         const was = seen.get(id);
@@ -123,7 +123,7 @@ export function screenEntries(catalogue, sigFor, fileOf) {
           importPath: fileOf(f.id),
           globals: '',
           colorScheme: theme,
-          viewport: [VIEWPORT.width, VIEWPORT.height],
+          viewport: [screen.width ?? VIEWPORT.width, VIEWPORT.height],
           browser: 'chromium',
           a11y: false,
         });
