@@ -1,6 +1,6 @@
 /**
  * The inspector's side panel (Inspector.tsx): its sections in order. View (in the Storybook panel
- * only), Pixel, Pixel Changes, Metrics, Accessibility and Files, each shown as Inspector.tsx
+ * only), Pixel, Pixel Changes, Metrics, Accessibility, React (not in the panel) and Files, each shown as Inspector.tsx
  * decides from what it computed; nothing is computed here.
  */
 import * as s from '../../dashboard.css';
@@ -10,6 +10,7 @@ import { ChangesSection } from './ChangesSection';
 import { FilesSection } from './FilesSection';
 import { MetricsSection } from './MetricsSection';
 import { PixelSection } from './PixelSection';
+import { ReactSection } from './ReactSection';
 import { ViewSection } from './ViewSection';
 
 /** A section's props. */
@@ -21,7 +22,8 @@ export type SideProps = P<typeof PixelSection> &
   Omit<P<typeof ChangesSection>, 'analysis' | 'loaded' | 'W' | 'H' | 'tol' | 'regions' | 'region'> &
   Omit<P<typeof MetricsSection>, 'm'> &
   P<typeof A11ySection> &
-  Omit<P<typeof FilesSection>, 'sb'> & { analysis: Analysis | null };
+  Omit<P<typeof FilesSection>, 'sb'> &
+  Pick<P<typeof ReactSection>, 'onGo'> & { analysis: Analysis | null };
 
 export function InspectorSide({
   embedded,
@@ -55,6 +57,7 @@ export function InspectorSide({
   act,
   data,
   sizes,
+  onGo,
 }: SideProps) {
   return (
     <aside className={s.insSide}>
@@ -107,6 +110,8 @@ export function InspectorSide({
         a11yDecision={a11yDecision}
         act={act}
       />
+
+      {embedded ? null : <ReactSection data={data} row={row} onGo={onGo} />}
 
       <FilesSection data={data} p={p} hasArtifacts={hasArtifacts} sizes={sizes} sb={sb} />
     </aside>

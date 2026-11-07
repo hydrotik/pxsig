@@ -1307,7 +1307,8 @@
       "changes": "Pixel Changes",
       "metrics": "Metrics",
       "a11y": "Accessibility ({count})",
-      "files": "Files"
+      "files": "Files",
+      "react": "React"
     },
     "pixel": {
       "needsServer": "Pixel values require the local server ({command}).",
@@ -1405,7 +1406,22 @@
     },
     "a11yRejectedNote": "Violations rejected. Fix them, then re-run the check:",
     "react": {
-      "stillBadge": "Still rendering"
+      "stillBadge": "Still rendering",
+      "rendersLabel": "Renders",
+      "renders": "{commits} commits · {rendered} rendered · {ms} ({build} build)",
+      "rendersProduction": "{commits} commits · {rendered} rendered (production build: counts only)",
+      "interaction": "Interaction",
+      "interactionValue": "{commits} commits · {rendered} rendered",
+      "settled": "Settled",
+      "settledYes": "Yes",
+      "settledNo": "No: still committing at capture",
+      "alert": "Alert",
+      "since": "Since the check at {time}: {delta}",
+      "notReact": "Not a React story.",
+      "compilerAlerts": "Compiler alerts ({count})",
+      "alertWhere": "{path} · {rule}, line {line}",
+      "openInReact": "Open in React",
+      "from": "From the check at {time}"
     }
   },
   "ui": {
