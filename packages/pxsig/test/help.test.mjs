@@ -70,6 +70,7 @@ function readFlags() {
       (s) => `check/${s}.mjs`
     ),
     'approve.mjs',
+    ...['plan', 'log', 'verify'].map((s) => `approve/${s}.mjs`),
     'serve.mjs',
     'report.mjs',
     'dashboard.mjs',
