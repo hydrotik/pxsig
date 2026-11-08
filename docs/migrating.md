@@ -2,6 +2,12 @@
 
 ## Upgrading to 0.7
 
+0.7.5: no command, message or answer prints an absolute path, and `pxsig doctor` reads the
+Storybook build after a first check. A script that matched an absolute path matches the relative
+path (or the name) instead, and one that matched doctor's "No errors" reads the exit code. The
+React analysis and render counting are alerts only; `"react": false` turns everything React off.
+Each change has its `To update:` line in `CHANGELOG.md` under 0.7.5.
+
 0.7.4: `storybook` is an optional peer of `@pxsig/storybook-addon`, so npm no longer installs it
 with the addon. A project with Storybook needs nothing; a setup that installed the addon on its own
 to get Storybook adds it: `npm install -D storybook`.
