@@ -57,6 +57,7 @@ import { takeLock } from '../packages/pxsig/src/lib/lock.mjs';
 import { buildRow, summarize } from '../packages/pxsig/src/lib/rows.mjs';
 import { boxesFile } from '../packages/pxsig/src/lib/capture/boxes.mjs';
 import { textSettings } from '../packages/pxsig/src/lib/text/config.mjs';
+import { envPlan } from '../packages/pxsig/src/lib/text/env-plan.mjs';
 import { SCREENS } from '../packages/pxsig/src/lib/source.mjs';
 import {
   checkGeometry,
@@ -313,6 +314,9 @@ async function main() {
   mkdirSync(reports, { recursive: true });
   const onlyFile = join(reports, '.selected.json');
   writeFileSync(onlyFile, JSON.stringify(selected.filter((id) => render.get(id)?.png)));
+  // Each screen's environment: the engine compares text records only within one.
+  const envFile = join(reports, '.check-env.json');
+  writeFileSync(envFile, JSON.stringify(envPlan(entries, current)));
   const engineRun = (/** @type {string[]} */ a) => {
     const r = spawnSync(P.rustBin, a, {
       encoding: 'utf8',
@@ -337,6 +341,8 @@ async function main() {
         P.store.diffLatest,
         '--only',
         `@${onlyFile}`,
+        '--env',
+        `@${envFile}`,
         '--json',
         '--history',
         join(reports, 'history.ndjson'),

@@ -101,6 +101,8 @@ export interface EngineMethods {
       outDir: string;
       cache: string;
       history: string;
+      /** Each render's environment (lib/text/env-plan.mjs): text is compared only within one. */
+      env?: { envs: Record<string, unknown>; byId: Record<string, string> };
     };
     result: EngineCheck;
   };
