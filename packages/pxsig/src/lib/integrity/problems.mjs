@@ -3,11 +3,11 @@ import { conflictedStoreFiles } from '../approvals.mjs';
 import { enforcementProblems, readinessTally, resolveEnforcement } from '../enforcement.mjs';
 import { reportsIgnored } from '../decisions.mjs';
 import { relPath } from '../paths.mjs';
-import { readLines } from '../files.mjs';
+import { readJson, readLines } from '../files.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { iso } from './context.mjs';
-/** @import { EnvSummary, StoryIndex, TornLine } from '../../types.js' */
+/** @import { EnvSummary, Project, StoryIndex, TornLine } from '../../types.js' */
 /** @import { IntegrityReport, IntegrityRow, LedgerSetup } from '../../types/t3.js' */
 /** @import { IntegrityContext } from './context.mjs' */
 
@@ -140,7 +140,7 @@ export function decisionProblems(ctx) {
     add(
       'approvals-identity',
       identity === 'git-email' ? 'warn' : 'info',
-      'approvals.identity is no longer read: log lines carry a decision reference, never a name. Remove the key from pxsig.config.json'
+      `approvals.identity is no longer read: log lines carry a decision reference, never a name. Remove the key from ${identityFiles(P)}`
     );
   const n = legacyPersonal(ctx.files.approvals);
   const m = legacyPersonal(join(dirname(ctx.files.a11y), 'a11y-decisions.ndjson'));
@@ -152,6 +152,27 @@ export function decisionProblems(ctx) {
       n + m
     );
   return out;
+}
+
+/**
+ * The files that set `approvals.identity`, by name: the project's config, the workspace file's
+ * `defaults`, or both. The loader records only the layer that won (`configSources`); a project
+ * config that sets it can hide the workspace's, so only then is the workspace file read.
+ * @param {Project} P
+ */
+function identityFiles(P) {
+  const project = P.configSources?.['approvals.identity'] !== 'workspace defaults';
+  const ws =
+    !project ||
+    (P.workspaceFile != null &&
+      /** @type {{ defaults?: { approvals?: { identity?: unknown } } } | null} */ (
+        readJson(P.workspaceFile, null)
+      )?.defaults?.approvals?.identity != null);
+  const names = [
+    ...(project ? ['pxsig.config.json'] : []),
+    ...(ws ? ['pxsig.workspace.json (defaults.approvals)'] : []),
+  ];
+  return names.join(' and ');
 }
 
 /** The reasons pxsig itself wrote before 0.7.6 (`check --update`'s default; undo, adopt, migrate). */
