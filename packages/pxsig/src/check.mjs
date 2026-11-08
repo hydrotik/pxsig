@@ -72,7 +72,7 @@ async function main(argv) {
   const run = await renderSelection(S, sel, prep);
   if (S.flags.update) await update(S, sel, prep, run);
   const react = await analysis;
-  const cmp = compare(S, sel, run, react);
+  const cmp = compare(S, sel, run, react, prep.current);
   const retryMs = await retry(S, sel, prep, run, cmp);
   await report(S, sel, prep, run, cmp, { t0, retryMs, react });
 }

@@ -3,7 +3,11 @@
  * pxsig.workspace.json): whether a capture writes its text record (lib/capture/boxes.mjs), and the
  * selectors whose text is never recorded.
  *
- *   text: true | false | "off" | { ignore: ["<selector>", …] }
+ *   text: true | false | "off" | { ignore: ["<selector>", …], movePx, edgePx, noisePx }
+ *
+ * `movePx`, `edgePx` and `noisePx` are the tolerances the engine labels a check's text changes
+ * with (crates/pxsig-core/src/text.rs); they reach it in the run manifest's `text`
+ * (`textTolerances`). A bad one is a warning and its default.
  *
  * Off: `text: false` (or "off"), `--no-text` (a config flag: it sets `text: false`),
  * `PXSIG_TEXT=off`. Labels only: text capture never changes a render, a gate or an exit code. A bad
@@ -17,7 +21,9 @@ import { warnOnce } from '../react/config.mjs';
 
 /** Text capture when the config does not say: on (owner decision, 2026-11-07). */
 export const TEXT_DEFAULT = true;
-const KEYS = ['ignore'];
+/** The label tolerances when the config does not say (the spike's, 2026-11-07). */
+export const TEXT_TOLERANCES = Object.freeze({ movePx: 0.5, edgePx: 2, noisePx: 0 });
+const KEYS = ['ignore', ...Object.keys(TEXT_TOLERANCES)];
 const OFF = 'text capture is off for this run';
 
 /**
@@ -34,7 +40,7 @@ const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
  */
 export function readText(raw, env = process.env) {
   /** @type {TextSettings} */
-  const off = { on: false, off: null, ignore: [], problems: [] };
+  const off = { on: false, off: null, ignore: [], problems: [], ...TEXT_TOLERANCES };
   if (['off', 'false', '0'].includes(String(env.PXSIG_TEXT ?? '').toLowerCase()))
     return { ...off, off: 'PXSIG_TEXT=off' };
   if (raw === false || raw === 'off') return { ...off, off: 'text: false' };
@@ -56,7 +62,41 @@ export function readText(raw, env = process.env) {
       off: 'a bad text.ignore',
       problems: [...problems, `text.ignore must be an array of selectors: ${OFF}`],
     };
-  return { on: true, off: null, ignore: /** @type {string[]} */ (ignore), problems };
+  const tol = tolerances(raw, problems);
+  return { on: true, off: null, ignore: /** @type {string[]} */ (ignore), problems, ...tol };
+}
+
+/**
+ * The tolerances in a `text` object: each a number of px, 0 or more (`noisePx` a whole number);
+ * a bad one is a problem line and its default.
+ * @param {Record<string, unknown>} raw
+ * @param {string[]} problems
+ * @returns {{ movePx: number, edgePx: number, noisePx: number }}
+ */
+function tolerances(raw, problems) {
+  /** @type {{ movePx: number, edgePx: number, noisePx: number }} */
+  const out = { ...TEXT_TOLERANCES };
+  for (const k of /** @type {(keyof typeof TEXT_TOLERANCES)[]} */ (Object.keys(out))) {
+    const v = raw[k];
+    if (v === undefined) continue;
+    const whole = k === 'noisePx';
+    if (typeof v === 'number' && Number.isFinite(v) && v >= 0 && (!whole || Number.isInteger(v)))
+      out[k] = v;
+    else
+      problems.push(
+        `text.${k} must be ${whole ? 'a whole number' : 'a number'} of px, 0 or more: ${TEXT_TOLERANCES[k]} is used`
+      );
+  }
+  return out;
+}
+
+/**
+ * The run manifest's `text`: the tolerances the engine labels text changes with.
+ * @param {unknown} config the merged config
+ */
+export function textTolerances(config) {
+  const t = readText(/** @type {{ text?: unknown } | null | undefined} */ (config)?.text, {});
+  return { movePx: t.movePx, edgePx: t.edgePx, noisePx: t.noisePx };
 }
 
 /**

@@ -98,6 +98,7 @@ fn baseline_exits_2_when_an_entry_has_no_render_and_check_exits_1_on_a_failed_en
             None,
             None,
             16,
+            None,
             &gate,
         )
         .unwrap();
@@ -117,6 +118,7 @@ fn baseline_exits_2_when_an_entry_has_no_render_and_check_exits_1_on_a_failed_en
         None,
         None,
         16,
+        None,
         &gate,
     )
     .unwrap();
@@ -167,6 +169,7 @@ fn report_writes_markdown_or_junit_and_refuses_another_format() {
         tolerance: 16,
         cli_gate: gate::GateSpec::default(),
         env_gate: gate::GateSpec::default(),
+        env: None,
     })
     .unwrap();
     fs::write(d.join("res.json"), res.to_string()).unwrap();

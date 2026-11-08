@@ -411,8 +411,8 @@
     "text": {
       "file": "pxsig.config.json",
       "meaning": "Text capture: each render also writes its text record (<id>.boxes.json: the text it draws, line boxes, font facts, painted element boxes), and a baseline approved from it stores the record as its boxes section; `pxsig cat` prints the strings. Also under the workspace file's `defaults`; a story turns it off with parameters.pxsig.text: false.",
-      "values": "true | false | \"off\" | { ignore }",
-      "default": "false",
+      "values": "true | false | \"off\" | { ignore, movePx, edgePx, noisePx }",
+      "default": "true",
       "operation": "Labels only: never a render, a gate, an exit code or a verdict. Form fields are never read. A bad value is one warning line and text capture off for the run, never a failed check.",
       "flag": "--no-text",
       "env": "PXSIG_TEXT=off"
@@ -423,6 +423,27 @@
       "values": "[\"<selector>\", …]",
       "default": "[]",
       "operation": "Not a selector list: a warning, and text capture off for the run."
+    },
+    "text.movePx": {
+      "file": "pxsig.config.json",
+      "meaning": "How far a text box may move (px) and still be in the same place, when a check labels its text changes.",
+      "values": "a number, 0 or more",
+      "default": "0.5",
+      "operation": "Labels only: never a gate, a verdict or an exit code. A bad value is a warning and the default."
+    },
+    "text.edgePx": {
+      "file": "pxsig.config.json",
+      "meaning": "How far around a text run's boxes (px) a changed pixel still belongs to it (anti-aliasing), when a check labels its text changes.",
+      "values": "a number, 0 or more",
+      "default": "2",
+      "operation": "Labels only: never a gate, a verdict or an exit code. A bad value is a warning and the default."
+    },
+    "text.noisePx": {
+      "file": "pxsig.config.json",
+      "meaning": "Changed pixels outside text that a text label (copy, reflow, moved, restyled) still allows.",
+      "values": "a whole number, 0 or more",
+      "default": "0",
+      "operation": "Labels only: never a gate, a verdict or an exit code. A bad value is a warning and the default."
     },
     "integrity": {
       "file": "pxsig.config.json",

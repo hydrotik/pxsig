@@ -20,6 +20,7 @@ pub mod pixeldiff;
 pub mod psig;
 pub mod record;
 pub mod signature;
+pub mod text;
 pub mod trim;
 
 pub use compare::{compare, compare_with_detail, CompareResult, GateThresholds, Metrics};

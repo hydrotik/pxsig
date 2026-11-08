@@ -119,6 +119,7 @@ pub(super) fn cmd_check(
     history_extra: Option<String>,
     base_png_dir: Option<PathBuf>,
     tolerance: u8,
+    env: Option<String>,
     gate: &GateArgs,
 ) -> Result<u8> {
     let out_dir = out_dir.unwrap_or_else(|| PathBuf::from("pxsig-diff"));
@@ -141,6 +142,7 @@ pub(super) fn cmd_check(
         tolerance,
         cli_gate: gate.spec(),
         env_gate: gate::env_spec(),
+        env: batch::parse_env_plan(env.as_deref())?,
     })?;
     let failed = res["summary"]["failed"].as_u64().unwrap_or(0);
     match format {

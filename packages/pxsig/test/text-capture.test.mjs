@@ -193,6 +193,9 @@ test('the text settings: off switches, the default, a bad value', () => {
     off: null,
     ignore: ['.x'],
     problems: [],
+    movePx: 0.5,
+    edgePx: 2,
+    noisePx: 0,
   });
   assert.equal(readText(false, {}).off, 'text: false');
   assert.equal(readText('off', {}).off, 'text: false');
@@ -201,9 +204,9 @@ test('the text settings: off switches, the default, a bad value', () => {
   assert.equal(readText(true, { PXSIG_TEXT: 'on' }).on, true);
   assert.equal(readText(3, {}).on, false);
   assert.equal(readText({ ignore: '.x' }, {}).on, false, 'an ignore list it cannot read');
-  const later = readText({ movePx: 1 }, {});
+  const later = readText({ fontPx: 1 }, {});
   assert.equal(later.on, true);
-  assert.match(later.problems[0], /text\.movePx is not a text setting/);
+  assert.match(later.problems[0], /text\.fontPx is not a text setting/);
 });
 
 /** sha256 of a file. */

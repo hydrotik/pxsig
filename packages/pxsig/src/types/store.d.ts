@@ -198,6 +198,8 @@ export interface RunManifest {
     suite: string | null;
   };
   a11y: boolean;
+  /** The text label tolerances (lib/text/config.mjs `textTolerances`). */
+  text: { movePx: number; edgePx: number; noisePx: number };
   stories: ManifestEntry[];
   skipped: ManifestSkipped[];
 }

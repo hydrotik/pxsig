@@ -97,6 +97,12 @@ fn dispatch(method: &str, p: &Value) -> Result<Value> {
             tolerance: p["tolerance"].as_u64().unwrap_or(16) as u8,
             cli_gate: gate_of(p)?,
             env_gate: gate::env_spec(),
+            // `env`: the run's env plan (`{ byId }`), so text records are compared like for like.
+            env: if p["env"].is_object() {
+                Some(serde_json::from_value(p["env"].clone())?)
+            } else {
+                None
+            },
         }),
         "baseline" => batch::baseline(&BaselineOpts {
             manifest: s(p, "manifest")?.into(),

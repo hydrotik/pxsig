@@ -21,6 +21,7 @@ fn opts(d: &Path) -> CheckOpts {
         tolerance: 16,
         cli_gate: GateSpec::default(),
         env_gate: GateSpec::default(),
+        env: None,
     }
 }
 
