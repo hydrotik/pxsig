@@ -3,7 +3,7 @@
  * compat-old.mjs — what a teammate still on an older pxsig sees in a store this one wrote
  * (`requires`: docs/configuration.md#pxsigworkspacejson). It installs the published pxsig given
  * (default 0.3.2) into a temporary folder, writes a store with this checkout (approval lines with
- * `pxsig`, no `by`), and runs the old `approve verify` and `status` against it.
+ * `pxsig`, no `by`, no `reason`), and runs the old `approve verify` and `status` against it.
  *
  *   node scripts/compat-old.mjs [version]
  *
@@ -135,9 +135,9 @@ const lines = readFileSync(join(f.px, 'approvals.ndjson'), 'utf8')
   .split('\n')
   // approvals.ndjson, as `record` just wrote it.
   .map((l) => /** @type {ApprovalLine} */ (JSON.parse(l)));
-if (!lines.every((l) => l.pxsig === PXSIG_VERSION && !('by' in l)))
-  fail('this pxsig wrote lines without its version, or with `by`');
-ok(`${lines.length} approval lines written by pxsig ${PXSIG_VERSION} (no by)`);
+if (!lines.every((l) => l.pxsig === PXSIG_VERSION && !('by' in l) && !('reason' in l)))
+  fail('this pxsig wrote lines without its version, or with `by` or `reason`');
+ok(`${lines.length} approval lines written by pxsig ${PXSIG_VERSION} (no by, no reason)`);
 
 // The old pxsig, as a teammate has it.
 const old = mkdtempSync(join(tmpdir(), `pxsig-${version}-`));

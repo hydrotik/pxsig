@@ -7,8 +7,9 @@
  * Reads only the committed store (manifests, baseline headers, the approval log, the a11y
  * baseline) and git. No browser, no engine, no network, no store lock; writes nothing in the store.
  *
- * It never carries who approved (`by`), how (`via`), tokens, machine data, file paths or images:
- * the commit and the pull request say who, in the forge, for people who can open it.
+ * It never carries who approved (`by`), how (`via`), a reason (`reason` is always null), tokens,
+ * machine data, file paths or images: the commit and the pull request say who and why, in the
+ * forge, for people who can open it. It never reads `reports/decisions.ndjson`.
  */
 import { spawnSync } from './lib/spawn.mjs';
 import { existsSync, readdirSync } from 'node:fs';
@@ -33,9 +34,6 @@ const git = (/** @type {string} */ dir, /** @type {string[]} */ ...args) => {
 const EVENT = { undo: 'undone', adopt: 'adopted', migrate: 'migrated' };
 const eventOf = (/** @type {ApprovalLine} */ l) =>
   EVENT[l.via] ?? (l.before == null ? 'first baseline' : 'approved');
-/** The reason a person gave; a migration's is the old file path pxsig wrote, not a reason. */
-const reasonOf = (/** @type {ApprovalLine} */ l) =>
-  l.via === 'migrate' ? null : (l.reason ?? null);
 
 /**
  * Every committed manifest of a project: `manifest.json` and each suite's `manifest.<suite>.json`.
@@ -158,7 +156,9 @@ export function projectSnapshot(P, { shallow = false } = {}) {
             pr: where(last.l)?.pr ?? null,
             commit: where(last.l)?.commit ?? null,
             kind: last.l.kind ?? null,
-            reason: reasonOf(last.l),
+            // Always null (the key stays, SNAPSHOT_VERSION 1): the snapshot is published with
+            // `storybook build`, and a reason stays on the machine where it was given.
+            reason: null,
           }
         : null,
       env: baseline ? envSummary(readHeader(sig)?.env) : null,
@@ -185,7 +185,7 @@ export function projectSnapshot(P, { shallow = false } = {}) {
         pr: where(l)?.pr ?? null,
         commit: where(l)?.commit ?? null,
         kind: l.kind ?? null,
-        reason: reasonOf(l),
+        reason: null,
         entries: 1,
       },
     });

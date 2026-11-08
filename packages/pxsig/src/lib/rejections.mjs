@@ -16,6 +16,7 @@
  */
 import { join } from 'node:path';
 import { decisionRef, stamp } from './approvals.mjs';
+import { reasonText } from './decisions.mjs';
 import { appendLine, readJson, writeJson } from './files.mjs';
 /** @import { CheckRow } from '../types.js' */
 /**
@@ -31,23 +32,12 @@ export const REJECTION_KINDS = ['visual', 'a11y'];
 const KEEP = 20;
 
 /**
- * A reason as stored: one line of plain text. Control characters, line breaks and bidirectional
- * overrides become a space, runs of spaces one, the ends are trimmed and the rest is cut at 280
- * characters (as a reader counts them). Nothing left (or not a string): no reason, null.
+ * A reason as stored: one line of plain text, cut at 280 characters (lib/decisions.mjs
+ * `reasonText`). Nothing left (or not a string): no reason, null.
  * @param {unknown} v
  * @returns {string | null}
  */
-export function sanitizeNote(v) {
-  if (typeof v !== 'string') return null;
-  const one = v
-    // oxlint-disable-next-line no-control-regex -- control characters are what this removes
-    .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  // Characters as a reader sees them (grapheme clusters): an emoji is never cut in half.
-  const chars = Array.from(new Intl.Segmenter().segment(one), (g) => g.segment);
-  return chars.slice(0, NOTE_MAX).join('').trim() || null;
-}
+export const sanitizeNote = (v) => reasonText(v, NOTE_MAX);
 
 /** @param {{ store: { reports: string } }} P */
 const files = (P) => ({

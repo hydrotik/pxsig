@@ -5,6 +5,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { appendLine, fault, readLines } from '../files.mjs';
 import { agentName } from '../agents.mjs';
+import { keepReason } from '../decisions.mjs';
 import { PXSIG_VERSION } from '../workspace.mjs';
 /** @import { ApprovalLine, Config, Project } from '../../types.js' */
 /** @import { ApprovalProject, EntryPaths, RecordOptions } from '../../types/t2.js' */
@@ -127,6 +128,8 @@ export function snapshot(P, entry, batch) {
 }
 
 /**
+ * Log an approval. The line carries no reason: a reason given goes to the store's git-ignored
+ * reports/ beside the line's `ref` (lib/decisions.mjs), when `ignored` says reports/ is.
  * @param {ApprovalProject & Pick<Project, 'config'>} P
  * @param {EntryPaths} entry
  * @param {RecordOptions} options
@@ -134,7 +137,7 @@ export function snapshot(P, entry, batch) {
 export function record(
   P,
   entry,
-  { batch, via, reason = null, before, kind = null, person, gitHead }
+  { batch, via, reason = null, ignored = false, before, kind = null, undo, person, gitHead }
 ) {
   const p = paths(P, entry);
   fault('after-psig');
@@ -146,16 +149,18 @@ export function record(
       via,
       batch,
       ref: decisionRef(),
-      reason,
       kind,
       gitHead: gitHead ?? git(P.workspaceRoot, 'rev-parse', '--short', 'HEAD'),
       before,
       after: sha256(p.sig),
+      ...(undo ? { undo } : {}),
     },
     process.env,
     { person: person ?? PERSON_VIA.has(via) }
   );
   appendLine(p.log, line);
+  if (reason)
+    keepReason(P, { ref: line.ref, log: 'approvals', id: entry.id, batch, via, reason }, ignored);
   return line;
 }
 

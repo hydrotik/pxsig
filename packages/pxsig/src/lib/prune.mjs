@@ -22,6 +22,7 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { decisionRef, readLog, sha256, stamp, who } from './approvals.mjs';
+import { keepReason } from './decisions.mjs';
 import { appendLine, readJson, readLines, writeJson } from './files.mjs';
 import { relPath } from './paths.mjs';
 /** @import { A11yResult, A11yViolation, CheckRow, Project } from '../types.js' */
@@ -376,7 +377,7 @@ export function checkPlan(plan) {
 export function applyPrune(
   P,
   plan,
-  { batch, reason = null, via = 'cli', lockCheck = () => {} } = {}
+  { batch, reason = null, ignored = false, via = 'cli', lockCheck = () => {} } = {}
 ) {
   const bad = checkPlan(plan);
   if (bad) throw Object.assign(new Error(`a11y --prune: ${bad}`), { status: 400 });
@@ -412,14 +413,17 @@ export function applyPrune(
       after,
       rules,
       batch,
-      reason,
       evidence: { report: p.evidence?.report ?? null, checkedAt: p.evidence?.checkedAt ?? null },
     });
   }
   if (!lines.length) return { batch, entries: 0, rules: 0, lines };
   lockCheck();
   writeJson(P.store.a11y, base, { pretty: true });
-  for (const l of lines) appendLine(decisionsPath(P), stamp(l));
+  for (const l of lines) {
+    appendLine(decisionsPath(P), stamp(l));
+    // The reason stays local, beside each line's ref (lib/decisions.mjs), never on the line.
+    if (reason) keepReason(P, { ref: l.ref, log: 'a11y', id: l.id, batch, via, reason }, ignored);
+  }
   // The report rows carry each entry's accepted list: keep them in step (as unaccept does).
   const now = new Map(lines.map((l) => [l.id, l.after]));
   for (const rep of readReports(P)) {

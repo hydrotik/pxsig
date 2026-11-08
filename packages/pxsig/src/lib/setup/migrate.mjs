@@ -1,8 +1,17 @@
 /** Moving a pre-0.2 store in (setup.mjs): `pxsig migrate`, packed and verified. */
 import { spawnSync } from '../spawn.mjs';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
-import { migrateBatch, sha256 } from '../approvals.mjs';
+import { decisionRef, migrateBatch, sha256, stamp } from '../approvals.mjs';
+import { forgetIgnored, keepReason, reportsIgnored } from '../decisions.mjs';
 import { writeJsonAtomic } from '../integrity.mjs';
 import { SetupError, runManifest } from '../workspace.mjs';
 import { shortPath, toPosix } from '../paths.mjs';
@@ -187,33 +196,69 @@ export function migrateLegacy(P, { from, apply = false, verify = true, log = () 
     mkdirSync(dirname(c.to), { recursive: true });
     copyFileSync(c.from, c.to);
   }
-  // The approvals trail carries over, and one `migrated` line per baseline records the new file's
-  // hash, so `pxsig approve verify` starts clean on the new store.
-  if (existsSync(approvalsFrom)) copyFileSync(approvalsFrom, P.store.approvals);
-  const at = new Date().toISOString();
-  const lines = plan.pack.map((x) =>
-    JSON.stringify({
-      at,
-      id: x.entry.id,
-      by: 'pxsig migrate',
-      via: 'migrate',
-      batch: migrateBatch(at),
-      reason: `moved from ${toPosix(relative(P.workspaceRoot, x.sig))}`,
-      kind: null,
-      gitHead: null,
-      before: sha256(x.sig),
-      after: sha256(x.out),
-    })
-  );
-  for (const l of lines) appendLine(P.store.approvals, l);
   for (const [file, text] of [
     ['.gitignore', STORE_GITIGNORE],
     ['.gitattributes', STORE_GITATTRIBUTES],
   ])
     if (!existsSync(join(P.store.root, file))) writeFileSync(join(P.store.root, file), text);
+  // The approvals trail carries over without its reasons: each line gains a `ref`, and its reason
+  // stays beside that ref in the git-ignored reports/ (lib/decisions.mjs). One `migrated` line per
+  // baseline records the new file's hash, so `pxsig approve verify` starts clean on the new store.
+  forgetIgnored();
+  const ignored = reportsIgnored(P);
+  if (existsSync(approvalsFrom)) {
+    writeFileSync(P.store.approvals, '');
+    for (const text of readFileSync(approvalsFrom, 'utf8').split('\n')) {
+      if (text.trim()) copyLine(P, text, ignored);
+    }
+  }
+  const at = new Date().toISOString();
+  for (const x of plan.pack)
+    appendLine(
+      P.store.approvals,
+      stamp({
+        at,
+        id: x.entry.id,
+        by: 'pxsig migrate',
+        via: 'migrate',
+        batch: migrateBatch(at),
+        ref: decisionRef(),
+        kind: null,
+        gitHead: null,
+        before: sha256(x.sig),
+        after: sha256(x.out),
+      })
+    );
   if (P.store.layout === 'colocated') plan.gitattributes = ensureGitattributes(P.workspaceRoot);
   if (verify) plan.verify = verifyMigration(P, plan, from, log);
   return plan;
+}
+
+/** @param {unknown} v */
+const str = (v) => (typeof v === 'string' ? v : '');
+/**
+ * One line of the old approvals trail, into the new store's log without its reason: it gains a
+ * `ref`, and the reason is kept beside it (lib/decisions.mjs) when reports/ is git-ignored. A line
+ * that does not parse is copied as it is (`pxsig doctor` reports it).
+ * @param {Project} P
+ * @param {string} text
+ * @param {boolean} ignored
+ */
+function copyLine(P, text, ignored) {
+  /** @type {unknown} */
+  let old = null;
+  try {
+    old = JSON.parse(text);
+  } catch {
+    // copied as it is, below
+  }
+  if (!old || typeof old !== 'object' || Array.isArray(old))
+    return appendFileSync(P.store.approvals, `${text}\n`);
+  const { reason, ...rest } = /** @type {Record<string, unknown>} */ (old);
+  const ref = str(rest.ref) || decisionRef();
+  appendLine(P.store.approvals, { ...rest, ref });
+  const d = { ref, log: /** @type {const} */ ('approvals'), id: str(rest.id), via: str(rest.via) };
+  keepReason(P, { ...d, batch: str(rest.batch), reason }, ignored);
 }
 
 /**

@@ -3,6 +3,7 @@
  * context): the approvals by batch, and a batch's previous baselines put back.
  */
 import { paths, readLog, record, sha256, traceLog, undo as undoBatch } from '../lib/approvals.mjs';
+import { readReasons } from '../lib/decisions.mjs';
 import { takeLock } from '../lib/lock.mjs';
 import { ask, emit } from '../lib/term.mjs';
 /** @import { LockHandle, ManifestEntry } from '../types.js' */
@@ -29,7 +30,10 @@ export function logCommand(cx) {
     if (t.pr) w.prs.add(`#${t.pr}`);
     where.set(t.batch, w);
   }
-  /** @type {Map<string, { batch: string, at: string, by?: string | null, via: string, reason?: string | null, n: number, commit?: string, pr?: string }>} */
+  // A reason stays on the machine where it was given (lib/decisions.mjs), found by any of the
+  // batch's refs; a line written before 0.7.6 may still carry its own. A clean clone has none.
+  const kept = readReasons(P);
+  /** @type {Map<string, { batch: string, at: string, by?: string | null, via: string, reason: string | null, n: number, commit?: string, pr?: string }>} */
   const batches = new Map();
   for (const l of log) {
     const b = batches.get(l.batch) ?? {
@@ -37,9 +41,11 @@ export function logCommand(cx) {
       at: l.at,
       by: l.by,
       via: l.via,
-      reason: l.reason,
+      reason: null,
       n: 0,
     };
+    b.reason ??=
+      (l.ref ? kept.get(l.ref) : undefined) ?? (typeof l.reason === 'string' ? l.reason : null);
     b.n++;
     batches.set(l.batch, b);
   }
@@ -127,7 +133,10 @@ export async function undoCommand(cx) {
     record(P, /** @type {ManifestEntry} */ (byId.get(id)), {
       batch: `${batch}-undo`,
       via: 'undo',
-      reason: `undo ${batch}${/** @type {UndoResult} */ (res).source === 'git' ? ' (from git)' : ''}`,
+      undo: {
+        in: 'terminal',
+        from: /** @type {UndoResult} */ (res).source === 'git' ? 'git' : 'snapshot',
+      },
       before: before.get(id) ?? null,
     });
   /** @type {LockHandle} */ (lock).release();

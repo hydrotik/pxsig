@@ -57,8 +57,9 @@ export function openCheck(argv) {
   const rel = (/** @type {string} */ p) => relPath(P.workspaceRoot, p);
   // A suite run keeps its own report, so the main report stays intact.
   const outName = str('out') ?? (suite ? `check-${suite}` : 'check');
-  // --kind / --reason (with --update) are written on every log line: `--kind environment` re-takes
-  // baselines for a new render environment and leaves the accepted a11y list as it is.
+  // --kind (with --update) is written on every log line, --reason kept beside each line's ref in
+  // the git-ignored reports/ (lib/decisions.mjs): `--kind environment` re-takes baselines for a
+  // new render environment and leaves the accepted a11y list as it is.
   const kind = str('kind');
   if (kind != null && !/^[a-z][a-z0-9-]{0,15}$/.test(kind))
     die(

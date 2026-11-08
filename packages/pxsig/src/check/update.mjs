@@ -6,6 +6,7 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { newBatch, record, snapshot } from '../lib/approvals.mjs';
+import { notKept, reportsIgnored } from '../lib/decisions.mjs';
 import { ask } from '../lib/term.mjs';
 import { writeJson } from '../lib/files.mjs';
 import { byId } from '../lib/env.mjs';
@@ -94,6 +95,9 @@ export async function update(S, sel, prep, run) {
   rmSync(envFile, { force: true });
   // `pxsig baseline --json`.
   const res = /** @type {BaselineResult} */ (JSON.parse(b.out));
+  // `--reason` stays local (lib/decisions.mjs); `via: "check-update"` says the rest.
+  const reason = str('reason');
+  const ignored = reason ? reportsIgnored(P) : false;
   for (const id of ok)
     record(
       P,
@@ -102,7 +106,8 @@ export async function update(S, sel, prep, run) {
       {
         batch,
         via: 'check-update',
-        reason: str('reason') ?? 'pxsig check --update',
+        reason,
+        ignored,
         kind,
         before: before.get(id),
       }
@@ -123,5 +128,6 @@ export async function update(S, sel, prep, run) {
     `[check] baselines: ${res.summary.stories - res.summary.failed} written in ${res.summary.elapsedMs.toFixed(0)} ms (Rust) · ${res.summary.failed} failed · render errors ${renderErrors}`
   );
   for (const e of res.errors) console.error(`  ${e}`);
+  if (reason && ok.length && !ignored) console.error(notKept(P));
   process.exit(res.summary.failed || renderErrors ? 2 : 0);
 }

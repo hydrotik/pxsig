@@ -1,9 +1,10 @@
 /**
  * approvals.mjs — every baseline write is backed up, logged and reversible.
  *
- *   <store>/approvals.ndjson          one line per approved entry: when, how, why, batch, the git
- *                                     HEAD, the sha256 of the baseline before / after, and the
- *                                     assistant marker when there is one
+ *   <store>/approvals.ndjson          one line per approved entry: when, how, batch, the decision's
+ *                                     reference (`ref`), the git HEAD, the sha256 of the baseline
+ *                                     before / after, and the assistant marker when there is one;
+ *                                     never a reason (lib/decisions.mjs keeps it on the machine)
  *   <store>/history/<batch>/<id>.psig the previous baseline (signature + image), for `undo`
  *
  * The server calls `snapshot()` + `record()` around every approve, whichever client asked

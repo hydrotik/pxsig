@@ -60,11 +60,17 @@ export function appendedSince(P, base) {
 
 /**
  * How a log line's approval was made, for the PR summary (docs/agents.md#what-a-marker-changes).
- * @param {Pick<ApprovalLine, 'via' | 'reason'>} l
+ * An undo line says where it was asked for in `undo.in`; one written before 0.7.6, in its reason.
+ * @param {Pick<ApprovalLine, 'via' | 'reason' | 'undo'>} l
  * @returns {Route}
  */
 export function route(l) {
-  if (l.via === 'dashboard' || (l.via === 'undo' && /\(dashboard\)$/.test(l.reason ?? '')))
+  const undoIn = l.via === 'undo' ? (l.undo?.in ?? null) : null;
+  if (
+    l.via === 'dashboard' ||
+    undoIn === 'dashboard' ||
+    (l.via === 'undo' && !undoIn && /\(dashboard\)$/.test(l.reason ?? ''))
+  )
     return 'dashboard';
   if (l.via === 'mcp') return 'mcp';
   if (['cli', 'check-update', 'undo', 'adopt'].includes(l.via)) return 'terminal';

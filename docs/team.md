@@ -19,7 +19,8 @@ pull. Two people approving the same baseline meet as a git conflict, like any ot
 1. A developer changes a component and checks it (`pxsig check`, or `pxsig serve --watch` and the
    Storybook panel).
 2. They review the change in their own dashboard and approve it. That writes the baseline and a
-   line in the approval log: the time, the entry, colour or shape, the reason. No name.
+   line in the approval log: the time, the entry, colour or shape, the decision's reference. No
+   name and no reason: a reason given stays on their machine (`reports/decisions.ndjson`).
 3. They commit and open a pull request. [CODEOWNERS](codeowners.md) can require the owning team's
    review of each baseline; CI runs the check and `pxsig approve verify`, which fails on a baseline
    nobody approved ([ci.md](ci.md), [required-checks.md](required-checks.md)).
@@ -51,9 +52,9 @@ for the current story:
 - **Coverage:** each mode and state, whether it has a baseline, its last change (date, approved or
   first baseline), the pull request, colour or shape, the render environment, and the accepted
   axe rules.
-- **History:** every change to the story's look, newest first, with its pull request and reason.
+- **History:** every change to the story's look, newest first, with its pull request.
 
-It never shows who approved, how, or any image. It always matches the stories on screen, since
+It never shows who approved, how, why (the pull request says that), or any image. It always matches the stories on screen, since
 both come from the same commit. In a shallow clone (a CI checkout at depth 1) no pull request is
 shown rather than a wrong one; build with `fetch-depth: 0` to have them. Without a snapshot, the
 panel says pxsig runs on a developer's computer and makes no connection. `snapshot: false` in the

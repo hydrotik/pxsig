@@ -73,7 +73,6 @@ export async function verifyCommand(cx) {
         record(P, e, {
           batch,
           via: 'adopt',
-          reason: 'adopt current baselines as the starting point',
           before: null,
         });
     emit(

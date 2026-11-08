@@ -124,6 +124,7 @@ export interface SnapshotApproval {
   pr: number | null;
   commit: string | null;
   kind: string | null;
+  /** Always null since 0.7.6: a reason stays on the machine where it was given. */
   reason: string | null;
 }
 
@@ -186,7 +187,6 @@ export type HistoryRow = {
   event: string;
   pr: string;
   change: string;
-  reason: string;
   entries: number;
 };
 

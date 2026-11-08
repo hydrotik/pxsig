@@ -219,12 +219,15 @@ export interface ApprovalLine {
   batch: string;
   /** The decision's opaque reference (`d_` and 16 characters; since 0.7.6). */
   ref?: string;
+  /** Only on a line written before 0.7.6: since, the reason stays in `reports/decisions.ndjson`. */
   reason?: string | null;
   kind?: string | null;
   gitHead?: string | null;
   /** sha256 of the baseline before (null: a first baseline) and after. */
   before?: string | null;
   after?: string | null;
+  /** An undo line's origin (since 0.7.6; before, the reason said it). */
+  undo?: import('./t2.js').UndoMark;
   /** The assistant's marker, when one started the process (lib/agents.mjs). */
   agent?: string;
   /** The pxsig version that wrote the line. */

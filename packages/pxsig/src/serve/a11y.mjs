@@ -5,6 +5,7 @@
 import { dirname, join } from 'node:path';
 import { decisionRef, newBatch, ownBatch, stamp, who } from '../lib/approvals.mjs';
 import { appendLine, readJson, writeJson } from '../lib/files.mjs';
+import { keepReason, reportsIgnoredAsync } from '../lib/decisions.mjs';
 import { applyPrune } from '../lib/prune.mjs';
 import { httpError } from './http.mjs';
 import { needLock } from './projects.mjs';
@@ -23,7 +24,8 @@ import { agentMayClear } from './review.mjs';
 // accepted list (<store>/a11y.json); rejecting marks them for a fix, with an optional reason that
 // stays open past the check (serve/rejections.mjs). Both decisions last until the next check of
 // the entry, like review.json. Every accept and undo is logged beside a11y.json, with the
-// decision's opaque reference.
+// decision's opaque reference; an accept's reason stays in the git-ignored reports/
+// (lib/decisions.mjs), never on the line.
 
 /**
  * @param {Project} P
@@ -44,10 +46,12 @@ export const writeA11y = (P, base) => writeJson(P.store.a11y, base, { pretty: tr
  * @param {string} id
  * @param {DecisionMeta} [meta]
  */
-export function a11yReview(srv, S, action, id, meta = {}) {
+export async function a11yReview(srv, S, action, id, meta = {}) {
   needLock(srv, S);
   const { P, manifest } = S;
   if (!manifest.stories.some((e) => e.id === id)) throw httpError(404, `unknown entry ${id}`);
+  // Asked before anything is read, and only for an accept with a reason: no spawn otherwise.
+  const ignored = action === 'a11y-accept' && meta.reason ? await reportsIgnoredAsync(P) : false;
   // a11y-review.json and a11y.json are pxsig's own files.
   const av = /** @type {A11yReviewFile} */ (readJson(S.a11yReviewPath, {}));
   const base = /** @type {A11yBaseline} */ (readJson(P.store.a11y, {}));
@@ -67,17 +71,8 @@ export function a11yReview(srv, S, action, id, meta = {}) {
     const after = row.a11y.violations.map((v) => v.id).sort();
     base[id] = after;
     writeA11y(P, base);
-    a11yLog(P, {
-      at,
-      by,
-      via,
-      ref,
-      action: 'accept',
-      id,
-      before,
-      after,
-      reason: meta.reason ?? null,
-    });
+    a11yLog(P, { at, by, via, ref, action: 'accept', id, before, after });
+    if (meta.reason) keepReason(P, { ref, log: 'a11y', id, via, reason: meta.reason }, ignored);
     av[id] = { state: 'accepted', at, ref, before };
     closeAfter(srv, S, 'a11y', id, 'accepted', { via, ref });
   } else if (action === 'a11y-reject') av[id] = rejectWithNote(srv, S, 'a11y', id, meta);
@@ -148,7 +143,7 @@ export function a11yReview(srv, S, action, id, meta = {}) {
  * @param {RequestBody} body `{ plan, batch, reason? }`
  * @param {string} via how it reached the server (lib/guard.mjs `authorize`)
  */
-export function a11yPrune(srv, S, body, via) {
+export async function a11yPrune(srv, S, body, via) {
   needLock(srv, S);
   /**
    * @param {unknown} v
@@ -157,11 +152,15 @@ export function a11yPrune(srv, S, body, via) {
   const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : null);
   // pxsig's own batch name (`pxsig a11y --prune` sends one), else the server's.
   const batch = ownBatch(body.batch) ?? newBatch('prune');
+  // Asked only with a reason: the reason stays beside each line's ref (lib/decisions.mjs).
+  const reason = s(body.reason, 500);
+  const ignored = reason ? await reportsIgnoredAsync(S.P) : false;
   // Errors carry their status (400 a bad plan, 409 a11y.json changed since it was made).
   // `applyPrune` checks the plan (`checkPlan`).
   const r = applyPrune(S.P, /** @type {import('../types/t2.js').PlanInput} */ (body.plan), {
     batch,
-    reason: s(body.reason, 500),
+    reason,
+    ignored,
     via,
     lockCheck: () => needLock(srv, S),
   });

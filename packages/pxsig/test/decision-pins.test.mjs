@@ -1,8 +1,8 @@
 /**
- * decision-pins.test.mjs — what the approval log commits today, pinned before a decision's reason
- * and the approver's identity leave the committed logs (design: a decision commits only its
- * reference, PR 1). Each pin names the PR of that design that flips it:
- *   PR 3 — the reason stays on the machine (`reports/decisions.ndjson`); the logs commit `ref`
+ * decision-pins.test.mjs — what the approval log commits, pinned while a decision's reason and the
+ * approver's identity leave the committed logs (design: a decision commits only its reference).
+ * PR 3 flipped its pins: the reason stays on the machine (`reports/decisions.ndjson`, only when
+ * reports/ is git-ignored); the logs commit `ref`. The pins still open name the PR that flips them:
  *   PR 4 — no person's identity in any log; `approvals.identity` is no longer read
  * The accessibility log and the store's other files: decision-pins-a11y.test.mjs.
  *
@@ -17,6 +17,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  rmSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs';
@@ -25,6 +26,7 @@ import { test } from 'node:test';
 import { pathToFileURL } from 'node:url';
 import { detectAgent } from '../src/lib/agents.mjs';
 import { changedByRoute, paths, readLog, record, route, snapshot } from '../src/lib/approvals.mjs';
+import { decisionsFile, readReasons } from '../src/lib/decisions.mjs';
 import { reconcile } from '../src/lib/integrity.mjs';
 import { migrateLegacy } from '../src/lib/setup/migrate.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
@@ -49,14 +51,17 @@ const keys = (l) => Object.keys(l).filter((k) => k !== 'agent');
 
 /**
  * A fixture in a real git repository whose git email is the probe; `identity` sets
- * `approvals.identity: "git-email"`.
+ * `approvals.identity: "git-email"`; `ignored` gives the store the .gitignore `pxsig init` writes
+ * (else the store's reports/ is not git-ignored, and no reason is kept).
  * @param {{ after: (fn: () => void) => void }} t
  * @param {boolean} identity
+ * @param {{ ignored?: boolean }} [o]
  */
-function project(t, identity) {
+function project(t, identity, { ignored = false } = {}) {
   const f = fixture({ t });
   spawnSync('git', ['init', '-q', f.repo]);
   spawnSync('git', ['-C', f.repo, 'config', 'user.email', EMAIL]);
+  if (ignored) writeFileSync(join(f.px, '.gitignore'), 'reports/\n');
   if (identity) {
     const cfg = join(f.repo, 'pxsig.config.json');
     const c = JSON.parse(readFileSync(cfg, 'utf8'));
@@ -98,17 +103,23 @@ function person(f, args, { input = '', url = 'http://127.0.0.1:1', script = 'cli
   );
 }
 
-const LINE = ['at', 'id', 'via', 'batch', 'ref', 'reason', 'kind', 'gitHead', 'before', 'after'];
+const LINE = ['at', 'id', 'via', 'batch', 'ref', 'kind', 'gitHead', 'before', 'after'];
+const NOT_KEPT = 'Reason not kept: .pxsig/reports/ is not git-ignored. pxsig doctor shows the fix.';
+/** @param {Fixture} f */
+const local = (f) =>
+  existsSync(join(f.px, 'reports', 'decisions.ndjson'))
+    ? readFileSync(join(f.px, 'reports', 'decisions.ndjson'), 'utf8')
+    : null;
 
 test(
-  'pins 1, 2: record — the keys in order, reason null by default, by only with git-email',
+  'pins 1, 2: record — the keys in order, never a reason, by only with git-email',
   { skip },
   (t) => {
     const a = project(t, false);
     const l = record(a.P, a.entry(a.f.ids.changed), { batch: 'b1-cli', via: 'cli', before: null });
-    // Flips in PR 3: no `reason` key at all.
+    // PR 3: no `reason` key at all.
     assert.deepEqual(keys(l), [...LINE, 'pxsig']);
-    assert.equal(l.reason, null);
+    assert.ok(!('reason' in l));
     assert.equal(l.by, undefined);
     assert.deepEqual(readLog(a.P), [l], 'the line returned is the line logged');
     const b = project(t, true);
@@ -123,7 +134,7 @@ test(
   'pins 3, 5: plan --reason → apply through the server; a dashboard undo',
   { skip },
   async (t) => {
-    const { f, P, entry } = project(t, true);
+    const { f, P, entry } = project(t, true, { ignored: true });
     const id = f.ids.changed;
     const p = paths(P, entry(id));
     writeFileSync(p.latestPng, STRIPES);
@@ -132,7 +143,7 @@ test(
     const r = await person(f, ['approve', 'plan', id, '--reason', REASON, '--allow-shape', id]);
     assert.equal(r.status, 0, r.out);
     const plan = JSON.parse(readFileSync(join(P.store.reports, 'approval-plan.json'), 'utf8'));
-    // Flips in PR 3 (the reason only when reports/ is git-ignored) and PR 4 (no `by`).
+    // PR 3: the reason, as reports/ is git-ignored (below: not kept otherwise). Flips in PR 4 (no `by`).
     assert.deepEqual(keys(plan), ['version', 'createdAt', 'by', 'project', 'reason', 'entries']);
     assert.deepEqual([plan.by, plan.reason], [EMAIL, REASON]);
     const S = await serve(f);
@@ -143,18 +154,31 @@ test(
       });
       assert.equal(a.status, 0, `${a.out}\n${S.log()}`);
       assert.match(a.out, new RegExp(`Reason: ${REASON}`), '`apply` prints the reason (stays)');
+      assert.ok(!a.out.includes('Reason not kept'), a.out);
       const [line] = readLog(P);
-      // Flips in PR 3 (no `reason`) and PR 4 (no `by`).
-      assert.deepEqual([line.via, line.reason, line.by], ['cli', REASON, EMAIL]);
+      // PR 3: no `reason` on the line; it stays beside the line's ref. Flips in PR 4 (no `by`).
+      assert.deepEqual([line.via, line.reason, line.by], ['cli', undefined, EMAIL]);
       assert.deepEqual(keys(line), [...LINE, 'by', 'pxsig']);
+      assert.equal(readReasons(P).get(String(line.ref)), REASON);
+      const kept = JSON.parse(readFileSync(decisionsFile(P), 'utf8'));
+      assert.deepEqual(
+        Object.keys(kept).filter((k) => k !== 'agent'),
+        ['at', 'ref', 'log', 'id', 'batch', 'via', 'reason', 'pxsig']
+      );
+      assert.deepEqual(
+        [kept.log, kept.id, kept.batch, kept.via],
+        ['approvals', id, line.batch, 'cli']
+      );
+      assert.ok(!JSON.stringify(kept).includes(EMAIL), 'the local file names no person');
       const u = await S.post('unreview', { id });
       assert.equal(u.status, 200, JSON.stringify(u.body));
       const undo = readLog(P)[1];
-      // Flips in PR 3: `undo: { in: "dashboard", from: "snapshot" }` instead of the reason text.
+      // PR 3: `undo: { in: "dashboard", from: "snapshot" }` instead of the reason text.
       assert.deepEqual(
-        [undo.batch, undo.via, undo.reason, undo.by],
-        [`${line.batch}-undo`, 'undo', `undo ${line.batch} (dashboard)`, EMAIL]
+        [undo.batch, undo.via, undo.reason, undo.undo, undo.by],
+        [`${line.batch}-undo`, 'undo', undefined, { in: 'dashboard', from: 'snapshot' }, EMAIL]
       );
+      assert.deepEqual(keys(undo), [...LINE, 'undo', 'by', 'pxsig']);
       assert.deepEqual([route(line), route(undo)], ['terminal', 'dashboard']);
       const c = changedByRoute(readLog(P));
       assert.deepEqual([c.total, c.dashboard, c.terminal], [1, 1, 0], 'summary.md counts');
@@ -165,7 +189,45 @@ test(
 );
 
 test(
-  'pin 5: approve undo — "undo <batch>" from the snapshot, "(from git)" from git',
+  'PR 3: a store whose reports/ is not git-ignored keeps no reason; one line says so; exits unchanged',
+  { skip },
+  async (t) => {
+    const { f, P } = project(t, false);
+    const id = f.ids.changed;
+    writeFileSync(
+      paths(
+        P,
+        /** @type {ManifestEntry} */ (f.manifest.stories.find((e) => e.id === id))
+      ).latestPng,
+      STRIPES
+    );
+    const r = await person(f, ['approve', 'plan', id, '--reason', REASON, '--allow-shape', id]);
+    assert.equal(r.status, 0, r.out);
+    assert.match(r.out, /Reason\W+not kept \(reports\/ is not git-ignored\)/);
+    const plan = JSON.parse(readFileSync(join(P.store.reports, 'approval-plan.json'), 'utf8'));
+    assert.equal(plan.reason, null, 'the plan in reports/ holds no reason');
+    const S = await serve(f);
+    try {
+      const input = 'APPROVE 1 ENTRIES\n';
+      const a = await person(f, ['approve', 'apply'], { input, url: S.base });
+      assert.equal(a.status, 0, `${a.out}\n${S.log()}`);
+      assert.equal(a.out.split(NOT_KEPT).length - 1, 1, `once, store-relative:\n${a.out}`);
+      assert.match(a.out, /Reason: not kept \(reports\/ is not git-ignored\)/);
+      // A reason sent to the server anyway (a client with the CLI's token): not kept either.
+      const s = await S.post('approve', { id: f.ids.drift, reason: REASON });
+      assert.equal(s.status, 200, JSON.stringify(s.body));
+    } finally {
+      await S.stop();
+    }
+    assert.equal(readLog(P).length, 2);
+    for (const l of readLog(P)) assert.ok(!('reason' in l), JSON.stringify(l));
+    assert.equal(local(f), null, 'no decisions.ndjson');
+    assert.ok(!readFileSync(P.store.approvals, 'utf8').includes(REASON));
+  }
+);
+
+test(
+  'pin 5: approve undo — `undo.in` terminal, `undo.from` snapshot or git; no reason',
   { skip },
   async (t) => {
     const { f, P, entry } = project(t, false);
@@ -179,12 +241,12 @@ test(
       assert.equal(r.status, 0, r.out);
     }
     const undo = readLog(P).filter((l) => l.via === 'undo');
-    // Flips in PR 3: `undo: { in: "terminal", from: "snapshot" | "git" }`, no reason.
+    // PR 3: `undo: { in: "terminal", from: "snapshot" | "git" }`, no reason.
     assert.deepEqual(
-      undo.map((l) => [l.batch, l.reason]),
+      undo.map((l) => [l.batch, l.reason, l.undo]),
       [
-        ['b1-cli-undo', 'undo b1-cli'],
-        ['b2-cli-undo', 'undo b2-cli (from git)'],
+        ['b1-cli-undo', undefined, { in: 'terminal', from: 'snapshot' }],
+        ['b2-cli-undo', undefined, { in: 'terminal', from: 'git' }],
       ]
     );
     assert.deepEqual(undo.map(route), ['terminal', 'terminal']);
@@ -193,22 +255,21 @@ test(
   }
 );
 
-test('pin 6: approve verify --adopt — the fixed reason on every line', { skip }, async (t) => {
+test('pin 6: approve verify --adopt — no reason; `via: "adopt"` says it', { skip }, async (t) => {
   const { f, P } = project(t, false);
   const r = await person(f, ['approve', 'verify', '--adopt'], { input: 'ADOPT\n' });
   assert.equal(r.status, 0, r.out);
   const log = readLog(P);
   assert.equal(log.length, f.manifest.stories.length);
-  // Flips in PR 3: no reason; `via: "adopt"` says it.
-  for (const l of log)
-    assert.deepEqual(
-      [l.via, l.reason, l.before],
-      ['adopt', 'adopt current baselines as the starting point', null]
-    );
+  // PR 3: no reason; `via: "adopt"` says it.
+  for (const l of log) {
+    assert.deepEqual([l.via, l.before], ['adopt', null]);
+    assert.ok(!('reason' in l), JSON.stringify(l));
+  }
 });
 
 test(
-  'pin 4: check --update — --reason on every line, and its default',
+  'pin 4: check --update — no reason on any line; --reason not kept where reports/ is not ignored',
   { skip: needs },
   async (t) => {
     const { f, P } = project(t, false);
@@ -218,24 +279,33 @@ test(
     const c = JSON.parse(readFileSync(cfg, 'utf8'));
     writeFileSync(cfg, JSON.stringify({ ...c, storybook: { url: sb.url } }, null, 2));
     const only = ['--update', '--only', f.ids.ok, '--retries', '0'];
+    /** @type {string[]} */
+    const outs = [];
     for (const extra of [['--reason', 're-taken on purpose'], []]) {
       const input = 'UPDATE 1 BASELINES\n';
       const r = await person(f, [...only, ...extra], { script: 'check.mjs', input });
       assert.equal(r.status, 0, r.out);
+      outs.push(r.out);
     }
-    // Flips in PR 3: no reason on the line (`via: "check-update"` says it).
+    // PR 3: no reason on the line (`via: "check-update"` says it), no default text.
     assert.deepEqual(
-      readLog(P).map((l) => [l.id, l.via, l.reason]),
+      readLog(P).map((l) => [l.id, l.via, 'reason' in l]),
       [
-        [f.ids.ok, 'check-update', 're-taken on purpose'],
-        [f.ids.ok, 'check-update', 'pxsig check --update'],
+        [f.ids.ok, 'check-update', false],
+        [f.ids.ok, 'check-update', false],
       ]
     );
+    assert.deepEqual(
+      outs.map((o) => o.includes(NOT_KEPT)),
+      [true, false],
+      'said once, for the run with --reason'
+    );
+    assert.equal(local(f), null);
   }
 );
 
 test(
-  'pin 7: migrate — by "pxsig migrate", "moved from <old path>", the old trail as is',
+  'pin 7: migrate — no old path, a ref per line; the old trail loses its reason, kept locally',
   { skip },
   (t) => {
     const { f, P } = project(t, false);
@@ -255,26 +325,25 @@ test(
     writeFileSync(join(from, '.baselines', 'approvals.ndjson'), `${JSON.stringify(oldLine)}\n`);
     migrateLegacy(P, { from, apply: true, verify: false });
     const [copied, moved] = readLog(P);
-    // Flips in PR 3 and PR 4: the copied trail loses `by` and `reason`.
-    assert.deepEqual(copied, oldLine);
-    // Flips in PR 4 (no `by`) and PR 3 (no old path; a `ref`, through `stamp`).
-    assert.deepEqual(
-      keys(moved),
-      ['at', 'id', 'by', 'via', 'batch', 'reason', 'kind', 'gitHead'].concat(['before', 'after'])
-    );
-    assert.deepEqual(
-      [moved.by, moved.via, moved.reason],
-      ['pxsig migrate', 'migrate', 'moved from legacy/sigs/zeta.pxsig.json']
-    );
+    // PR 3: the copied trail loses `reason` and gains a `ref`; migrate wrote the store's
+    // .gitignore, so the old reason is kept beside that ref. Flips in PR 4: no `by`.
+    assert.deepEqual(copied, { ...trail, batch: 'b0-cli', ref: copied.ref });
+    assert.match(String(copied.ref), /^d_[A-Za-z0-9_-]{16}$/);
+    assert.equal(readReasons(P).get(String(copied.ref)), 'an old reason');
+    // PR 3: no old path; a `ref`, through `stamp`. Flips in PR 4 (no `by`).
+    assert.deepEqual(keys(moved), [...LINE, 'by', 'pxsig']);
+    assert.deepEqual([moved.by, moved.via, moved.reason], ['pxsig migrate', 'migrate', undefined]);
+    assert.ok(!readFileSync(P.store.approvals, 'utf8').includes('legacy/sigs'), 'no old path');
   }
 );
 
 test('pins 10, 11: approve log text and --json; the integrity entry', { skip }, async (t) => {
-  const { f, P, entry } = project(t, true);
-  record(P, entry(f.ids.changed), { batch: 'b1-cli', via: 'cli', reason: REASON, before: null });
+  const { f, P, entry } = project(t, true, { ignored: true });
+  const opts = { batch: 'b1-cli', via: 'cli', reason: REASON, ignored: true, before: null };
+  record(P, entry(f.ids.changed), opts);
   const text = await person(f, ['approve', 'log']);
   assert.equal(text.status, 0, text.out);
-  // Flips in PR 4 ("By" goes) and PR 3 (the reason comes from the local file).
+  // PR 3: the reason comes from the local file. Flips in PR 4 ("By" goes).
   assert.match(text.out, /\| When \| Via \| Entries \| By \| Reason \| Batch \|/);
   assert.ok(text.out.includes(EMAIL) && text.out.includes(REASON), text.out);
   const json = await person(f, ['approve', 'log', '--json']);
@@ -293,3 +362,40 @@ test('pins 10, 11: approve log text and --json; the integrity entry', { skip }, 
   // Flips in PR 4: `approval: { at, via, batch }`.
   assert.deepEqual(e?.approval, { at: row.at, by: EMAIL, via: 'cli', batch: 'b1-cli' });
 });
+
+test(
+  "PR 3: approve log — an old line's own reason; a clean clone and a corrupt local file exit 0",
+  { skip },
+  async (t) => {
+    const { f, P, entry } = project(t, false, { ignored: true });
+    const old = { at: '2026-01-01T00:00:00.000Z', id: f.ids.ok, via: 'cli', batch: 'b0-cli' };
+    writeFileSync(P.store.approvals, `${JSON.stringify({ ...old, reason: 'an old reason' })}\n`);
+    record(P, entry(f.ids.changed), {
+      batch: 'b1-cli',
+      via: 'cli',
+      reason: REASON,
+      ignored: true,
+      before: null,
+    });
+    /** @returns {Promise<Record<string, string | null>>} */
+    const reasons = async () => {
+      const r = await person(f, ['approve', 'log', '--json']);
+      assert.equal(r.status, 0, r.out);
+      return Object.fromEntries(
+        JSON.parse(r.out).map((/** @type {{ batch: string, reason: string | null }} */ b) => [
+          b.batch,
+          b.reason,
+        ])
+      );
+    };
+    assert.deepEqual(await reasons(), { 'b1-cli': REASON, 'b0-cli': 'an old reason' });
+    // Torn and broken lines are left out; the old line's own reason still shows.
+    writeFileSync(decisionsFile(P), '{"ref":\nnot json\n[1]\n{"ref":"d_x"');
+    assert.deepEqual(await reasons(), { 'b1-cli': null, 'b0-cli': 'an old reason' });
+    // A clean clone: no reports/ at all.
+    rmSync(P.store.reports, { recursive: true, force: true });
+    assert.deepEqual(await reasons(), { 'b1-cli': null, 'b0-cli': 'an old reason' });
+    const text = await person(f, ['approve', 'log']);
+    assert.equal(text.status, 0, text.out);
+  }
+);

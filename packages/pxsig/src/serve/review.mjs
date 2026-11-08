@@ -17,6 +17,7 @@ import {
   snapshot,
   undo,
 } from '../lib/approvals.mjs';
+import { reportsIgnoredAsync } from '../lib/decisions.mjs';
 import { BY_STORY_OFF, byStory, storySkip } from '../lib/approvals/story.mjs';
 import { readJson, writeJson } from '../lib/files.mjs';
 import { boxesFile } from '../lib/capture/boxes.mjs';
@@ -110,6 +111,8 @@ export async function approve(srv, S, id, meta = {}) {
     batch,
     via: meta.via ?? 'dashboard',
     reason: meta.reason ?? null,
+    // Asked only with a reason (the dashboard sends none): no spawn otherwise.
+    ignored: meta.reason ? await reportsIgnoredAsync(P) : false,
     kind: meta.kind ?? null,
     before,
     gitHead: await head,
@@ -147,7 +150,7 @@ export function unapprove(S, id, entry, via = 'dashboard') {
   record(P, e, {
     batch: `${entry.batch}-undo`,
     via: 'undo',
-    reason: `undo ${entry.batch} (dashboard)`,
+    undo: { in: 'dashboard', from: 'snapshot' },
     before,
     person: PERSON_VIA.has(via),
   });
