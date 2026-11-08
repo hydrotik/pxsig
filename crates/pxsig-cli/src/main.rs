@@ -26,6 +26,7 @@ mod react;
 mod react_compile;
 mod report;
 mod report_react;
+mod report_text;
 mod resolve;
 mod serve;
 mod sweep;
