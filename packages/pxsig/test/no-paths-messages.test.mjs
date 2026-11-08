@@ -15,10 +15,11 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { builtText } from '../src/dashboard.mjs';
+import { notKept } from '../src/lib/decisions.mjs';
 import { herePath, machinePath } from '../src/lib/machine.mjs';
 import { reconcile } from '../src/lib/integrity/reconcile.mjs';
 import { ensureStorybook } from '../src/lib/static.mjs';
-import { findWorkspace, loadProject } from '../src/lib/workspace.mjs';
+import { findWorkspace, loadProject, openProject } from '../src/lib/workspace.mjs';
 import { readJsonFile } from '../src/lib/workspace/core.mjs';
 import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 import { startServer } from './server-proc.mjs';
@@ -102,6 +103,29 @@ test('doctor prints the approval guard folder without the workspace path', () =>
   });
   assert.match(r.stdout, /Approval guard files/, r.stdout + r.stderr);
   noAbsolute(r.stdout + r.stderr, f.repo);
+});
+
+test('"Reason not kept" and doctor\'s reports-not-ignored name the store, never an absolute path', () => {
+  const f = fixture({ withSigs: false });
+  spawnSync('git', ['init', '-q', f.repo]);
+  const cli = join(dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'pxsig.mjs');
+  const r = spawnSync(process.execPath, [cli, 'doctor', '--offline', '--json'], {
+    cwd: f.repo,
+    encoding: 'utf8',
+    env: { ...testEnv(testHome), PXSIG_WORKSPACE: '', PXSIG_NO_DELEGATE: '1' },
+  });
+  const d = JSON.parse(r.stdout);
+  const setup = /** @type {{ code: string, reason: string }[]} */ ((d.projects?.[0] ?? d).setup);
+  const w = setup.find((x) => x.code === 'reports-not-ignored');
+  assert.match(w?.reason ?? '', /^\.pxsig\/reports\/ is not git-ignored/, r.stdout + r.stderr);
+  noAbsolute(String(w?.reason), f.repo);
+  const P = openProject({ cwd: f.repo, env: { PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } });
+  const m = notKept(P);
+  assert.equal(
+    m,
+    'Reason not kept: .pxsig/reports/ is not git-ignored. pxsig doctor shows the fix.'
+  );
+  noAbsolute(m, f.repo);
 });
 
 test('reconcile without a manifest names it relative to the workspace (the server logs it)', async () => {

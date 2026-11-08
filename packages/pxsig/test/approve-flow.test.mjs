@@ -19,6 +19,7 @@ import { test } from 'node:test';
 import { pathToFileURL } from 'node:url';
 import { detectAgent } from '../src/lib/agents.mjs';
 import { paths, readLog, sha256 } from '../src/lib/approvals.mjs';
+import { readReasons } from '../src/lib/decisions.mjs';
 import { lockPath, readLock } from '../src/lib/lock.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, hashTree, hasRust, png, rustBin, testEnv, testHome } from './fixture.mjs';
@@ -213,7 +214,9 @@ test(
     assert.equal(readLog(P).length, 1, 'one line per entry');
     assert.equal(line.batch, plan.batch);
     assert.equal(line.via, 'cli');
-    assert.equal(line.reason, REASON);
+    // The reason stays local, beside the line's ref (the fixture's store is in no git repository).
+    assert.ok(!('reason' in line), 'the committed line carries no reason');
+    assert.equal(readReasons(P).get(String(line.ref)), REASON);
     assert.equal(line.before, old);
     assert.equal(line.after, sha256(p.sig));
   }

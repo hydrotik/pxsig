@@ -110,7 +110,10 @@ export interface EntryPaths {
 export interface RecordOptions {
   batch: string;
   via: string;
+  /** Kept in `<store>/reports/decisions.ndjson` beside the line's `ref`, never on the line. */
   reason?: string | null;
+  /** Whether the store's reports/ is git-ignored (lib/decisions.mjs): only then is `reason` kept. */
+  ignored?: boolean;
   /** sha256 of the baseline before (`snapshot`); null for a first baseline. */
   before?: string | null;
   kind?: string | null;
@@ -118,6 +121,14 @@ export interface RecordOptions {
   person?: boolean;
   /** The short HEAD, read beforehand (`headOf`); by default `record` reads it itself. */
   gitHead?: string;
+  /** An undo line: where it was asked for, and where the baseline came back from. */
+  undo?: UndoMark;
+}
+
+/** `undo` on an undo line of the approval log (since 0.7.6). */
+export interface UndoMark {
+  in: 'dashboard' | 'terminal';
+  from: 'snapshot' | 'git';
 }
 
 /** An entry `undo` would not restore, and why. */
@@ -424,7 +435,10 @@ export interface CheckedPruneEntry {
 /** `applyPrune`'s options. */
 export interface ApplyPruneOptions {
   batch?: string;
+  /** Kept in `<store>/reports/decisions.ndjson` beside each line's `ref`, never on the line. */
   reason?: string | null;
+  /** Whether the store's reports/ is git-ignored (lib/decisions.mjs): only then is `reason` kept. */
+  ignored?: boolean;
   via?: string;
   /** Runs before the writes: throws when the lock was taken over. */
   lockCheck?: () => void;
@@ -443,7 +457,6 @@ export interface PruneLine {
   after: string[];
   rules: string[];
   batch: string | undefined;
-  reason: string | null;
   evidence: { report: string | null; checkedAt: string | null };
 }
 

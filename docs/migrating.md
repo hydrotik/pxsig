@@ -149,22 +149,28 @@ any of the target baselines: migrate into an empty store.
 
 ## The approvals trail
 
-The old trail is copied as it is. Then pxsig appends one line per migrated baseline:
+The old trail is copied line by line without its reasons: each line gains a decision reference
+(`ref`), and its `reason` is kept beside that reference in the new store's git-ignored
+`reports/decisions.ndjson` ([decisions.md](decisions.md#reasons-stay-on-the-machine)). Then pxsig
+appends one line per migrated baseline:
 
 ```json
 {
   "at": "…",
   "id": "button--primary",
-  "by": "pxsig migrate",
   "via": "migrate",
   "batch": "migrate-…",
-  "reason": "moved from <old path>",
+  "ref": "d_…",
   "kind": null,
   "gitHead": null,
   "before": "<sha256 of the old file>",
-  "after": "<sha256 of the new .psig>"
+  "after": "<sha256 of the new .psig>",
+  "by": "pxsig migrate",
+  "pxsig": "<version>"
 }
 ```
+
+The old paths are in the migration's commit.
 
 `pxsig approve verify` then starts clean on the new store: every baseline's bytes match its last
 logged approval.

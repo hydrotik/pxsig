@@ -337,7 +337,7 @@
         {
           "name": "reason",
           "value": "text",
-          "meaning": "With --update: the reason written on each log line, instead of \"pxsig check --update\"."
+          "meaning": "With --update: why. Kept beside each log line's ref in the store's reports/decisions.ndjson when reports/ is git-ignored, never on the line."
         },
         {
           "name": "sarif",
@@ -500,7 +500,7 @@
         {
           "name": "reason",
           "value": "text",
-          "meaning": "With --prune: why, written on each log line."
+          "meaning": "With --prune: why. Kept beside each log line's ref in the store's reports/decisions.ndjson when reports/ is git-ignored, never on the line."
         },
         {
           "name": "sarif",
@@ -681,7 +681,7 @@
             {
               "name": "reason",
               "value": "text",
-              "meaning": "Why: at least eight characters, logged with every approval."
+              "meaning": "Why: at least eight characters. Kept beside each approval's ref in the store's reports/decisions.ndjson when reports/ is git-ignored, never on the log line."
             },
             {
               "name": "allow-shape",
@@ -1093,7 +1093,7 @@
       "seeAlso": ["ci"]
     },
     "snapshot": {
-      "summary": "A read-only summary of the committed store, for a Storybook deployed to a shared server: each entry's baseline, last approval (date, PR, commit, colour or shape, reason), render environment and accepted a11y rules, and each story's history. Never who approved or how.",
+      "summary": "A read-only summary of the committed store, for a Storybook deployed to a shared server: each entry's baseline, last approval (date, PR, commit, colour or shape), render environment and accepted a11y rules, and each story's history. Never who approved, how, or why (reason is always null).",
       "usage": ["pxsig snapshot [--out file] [--project a,b]"],
       "flags": [
         {

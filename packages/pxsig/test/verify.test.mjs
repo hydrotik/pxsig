@@ -162,6 +162,34 @@ test(
 );
 
 test(
+  'approve verify --since: lines written since 0.7.6 (a ref, no reason) after old lines (a reason)',
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
+  () => {
+    const f = repoFixture();
+    // The base's lines carry a reason (record before 0.7.6 wrote it on the line); appended as is.
+    const e = /** @type {ManifestEntry} */ (f.manifest.stories.find((x) => x.id === f.ids.ok));
+    const [first] = readFileSync(f.P.store.approvals, 'utf8').split('\n');
+    const { ref: _ref, ...old } = JSON.parse(first);
+    appendFileSync(f.P.store.approvals, `${JSON.stringify({ ...old, reason: 'an old reason' })}\n`);
+    must(f.repo, 'commit', '-q', '-am', 'an old line');
+    must(f.repo, 'checkout', '-q', '-b', 'pr');
+    const l = record(f.P, e, { batch: 'b1-cli', via: 'cli', reason: 'new', before: null });
+    record(f.P, e, {
+      batch: 'b1-cli-undo',
+      via: 'undo',
+      undo: { in: 'terminal', from: 'git' },
+      before: null,
+    });
+    must(f.repo, 'commit', '-q', '-am', 'approve');
+    assert.ok(!('reason' in l));
+    const r = cli(f.repo, ['approve', 'verify', '--since', 'main', '--json']);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    const j = JSON.parse(r.stdout);
+    assert.deepEqual([j.range.rewritten, j.range.appended], [false, 2]);
+  }
+);
+
+test(
   'the PR summary counts changed baselines by how they were approved, and names markers, not people',
   { skip: skipUnless(hasRust, 'Rust binary not built') },
   () => {

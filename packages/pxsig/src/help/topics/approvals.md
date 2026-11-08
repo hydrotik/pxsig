@@ -20,7 +20,10 @@ a small window of the server for a moment. The MCP server can reject entries and
 rejections, never approve.
 
 Every approval is a line in `<store>/approvals.ndjson`: when, how (`via`: dashboard, cli, mcp),
-why, the batch, the commit it was made on, and the sha256 of the baseline before and after. The
+the batch, the decision's reference (`ref`), the commit it was made on, and the sha256 of the
+baseline before and after. A reason never goes on the line: it stays in the store's git-ignored
+`reports/decisions.ndjson` beside the `ref`, and only when `reports/` is git-ignored (else the
+command prints "Reason not kept" and `pxsig doctor` reports `reports-not-ignored`). The
 replaced baseline is kept in `<store>/history/<batch>/`. `pxsig approve log` lists batches
 (`--trace` adds the commit and pull request each came in by, and no names), `pxsig approve undo
 <batch>` restores one, and `pxsig approve verify` checks that every baseline in the repository

@@ -114,7 +114,8 @@ test('every manifest entry, with its baseline, last log line and commit', skip, 
   const ok = entryOf(snap, f.ids.ok);
   assert.equal(ok.baseline, true);
   assert.equal(ok.approved.event, 'first baseline');
-  assert.equal(ok.approved.reason, 'first baselines');
+  // Always null: the snapshot is published, and a reason stays on the machine it was given on.
+  assert.equal(ok.approved.reason, null);
   assert.equal(ok.approved.commit, snap.commit, 'committed on main directly: its own commit');
   assert.equal(ok.approved.pr, null, 'no merge, no PR subject: no PR');
   // History: one row per batch per story, counting the story's entries in it.
@@ -146,8 +147,13 @@ test('a story with several entries counts each of them in its batch', skip, () =
   must(f.repo, 'commit', '-q', '-m', 'base');
   const story = buildSnapshot([P]).projects[P.name].stories[ok.story];
   assert.equal(story.entries.length, 2);
-  const byReason = Object.fromEntries(story.history.map((h) => [h.reason, h.entries]));
-  assert.deepEqual(byReason, { 'first baselines': 2, 'light only': 1 });
+  assert.deepEqual(
+    story.history.map((h) => [h.entries, h.reason]).sort((a, b) => Number(a[0]) - Number(b[0])),
+    [
+      [1, null],
+      [2, null],
+    ]
+  );
 });
 
 test('no person, no route: no `by`, no `via`, no author name or email', skip, () => {
@@ -191,7 +197,7 @@ test('the PR that merged an approval, from the merge subject', skip, () => {
   must(f.repo, 'merge', '-q', '--no-ff', 'feat/x', '-m', 'Merge pull request #12 from org/feat-x');
   const e = entryOf(buildSnapshot([open(f.repo)]), f.ids.changed);
   assert.equal(e.approved.pr, 12);
-  assert.equal(e.approved.reason, 'new border colour');
+  assert.equal(e.approved.reason, null, 'kept locally, never in the snapshot');
   assert.equal(e.approved.kind, 'colour');
 });
 

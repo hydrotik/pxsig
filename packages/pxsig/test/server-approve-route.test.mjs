@@ -10,10 +10,11 @@
  */
 import assert from 'node:assert/strict';
 import cp from 'node:child_process';
-import { readFileSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { forgetIgnored } from '../src/lib/decisions.mjs';
 import { findWorkspace } from '../src/lib/workspace.mjs';
 import { createPxsigServer } from '../src/serve/create.mjs';
 import { review } from '../src/serve/review.mjs';
@@ -57,8 +58,11 @@ test(
       open: false,
     });
     const real = cp.spawnSync;
+    const realExec = cp.execFile;
     /** @type {string[][]} */
     const sync = [];
+    /** @type {string[][]} */
+    const async = [];
     try {
       await app.start();
       const { srv } = app;
@@ -69,6 +73,12 @@ test(
         (/** @type {string} */ cmd, /** @type {string[]} */ args, /** @type {object} */ o) =>
           (sync.push([cmd, ...(args ?? [])]), real(cmd, args, o))
       );
+      cp.execFile = /** @type {typeof cp.execFile} */ (
+        /** @type {unknown} */ (
+          (/** @type {string} */ cmd, /** @type {string[]} */ args, /** @type {any[]} */ ...rest) =>
+            (async.push([cmd, ...(args ?? [])]), realExec(cmd, args, ...rest))
+        )
+      );
       syncBuiltinESMExports();
 
       const id = f.ids.a11y;
@@ -78,6 +88,13 @@ test(
         sync.filter((a) => a.includes('rev-parse')),
         [],
         'git rev-parse ran without spawnSync'
+      );
+      /** @param {string[][]} calls */
+      const ignoreAsked = (calls) => calls.filter((a) => a.includes('check-ignore')).length;
+      assert.deepEqual(
+        [ignoreAsked(sync), ignoreAsked(async)],
+        [0, 0],
+        'no git check-ignore for an approve without a reason'
       );
 
       const lines = readFileSync(join(f.px, 'approvals.ndjson'), 'utf8').trim().split('\n');
@@ -93,7 +110,15 @@ test(
         JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8'))
       );
       assert.equal(check.rows.find((r) => r.id === id)?.approved?.batch, entry?.batch);
+      // With a reason: git is asked once, without blocking (the store's reports/ is not ignored
+      // here, so the reason is not kept either).
+      forgetIgnored();
+      await review(srv, S, 'approve', f.ids.changed, { via: 'cli', reason: 'the new border' });
+      assert.deepEqual([ignoreAsked(sync), ignoreAsked(async)], [0, 1]);
+      assert.ok(!existsSync(join(f.px, 'reports', 'decisions.ndjson')));
+      assert.ok(!readFileSync(join(f.px, 'approvals.ndjson'), 'utf8').includes('the new border'));
     } finally {
+      cp.execFile = realExec;
       cp.spawnSync = real;
       syncBuiltinESMExports();
       await app.stop();

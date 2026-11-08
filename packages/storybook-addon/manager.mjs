@@ -407,7 +407,6 @@ function SnapshotPanel() {
                   ['event', 'Event'],
                   ['pr', 'PR'],
                   ['change', 'Change'],
-                  ['reason', 'Reason'],
                   ['entries', 'Entries'],
                 ],
                 view.history

@@ -5,6 +5,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { newBatch, paths, sha256, who } from '../lib/approvals.mjs';
+import { notKept, reportsIgnored } from '../lib/decisions.mjs';
 import { readToken, TOKEN_HEADER } from '../lib/guard.mjs';
 import { readImage } from '../lib/psig.mjs';
 import { classify } from '../lib/shape.mjs';
@@ -15,6 +16,8 @@ import { serverStatus } from '../lib/repair/apply.mjs';
 /** @import { ApproveContext } from '../approve.mjs' */
 
 const PLAN_MAX_AGE_H = 24;
+/** The plan's Reason when the store's reports/ (where the plan and the reason live) is not ignored. */
+const NOT_KEPT = 'not kept (reports/ is not git-ignored)';
 
 /**
  * One entry of an approval plan (`approval-plan.json`).
@@ -126,7 +129,8 @@ export async function planCommand(cx) {
     createdAt: new Date().toISOString(),
     ...(who(P.workspaceRoot, P.config) ? { by: who(P.workspaceRoot, P.config) } : {}),
     project: P.name,
-    reason,
+    // The plan sits in reports/: it holds the reason only where git leaves reports/ out.
+    reason: reportsIgnored(P) ? reason : null,
     entries,
   };
   writeJson(planPath, plan, { pretty: true });
@@ -138,7 +142,7 @@ export async function planCommand(cx) {
       { h: 'Approval plan', sub: `${ok.length} ready · ${entries.length - ok.length} blocked` },
       {
         kv: [
-          ['Reason', reason],
+          ['Reason', plan.reason ?? NOT_KEPT],
           ['Colour only', String(n('colour'))],
           ['Shape changes', String(n('shape'))],
           ['First baselines', String(entries.filter((e) => e.first).length)],
@@ -204,7 +208,7 @@ export async function applyCommand(cx) {
   const file = args[0] ?? planPath;
   if (!existsSync(file)) fail(`no plan at ${rel(file)}: run \`${CMD} approve plan\` first`);
   // A plan `approve plan` wrote (the hashes below refuse one that does not match the store).
-  const plan = /** @type {{ createdAt: string, reason: string, entries: PlanEntry[] }} */ (
+  const plan = /** @type {{ createdAt: string, reason: string | null, entries: PlanEntry[] }} */ (
     JSON.parse(readFileSync(file, 'utf8'))
   );
   const ageH = (Date.now() - Date.parse(plan.createdAt)) / 3.6e6;
@@ -253,8 +257,10 @@ export async function applyCommand(cx) {
   const shape = ok.filter((e) => e.kind === 'shape' && !e.first);
   const first = ok.filter((e) => e.first);
   process.stdout.write(
-    `\nApprove ${ok.length} baselines (${ok.length - shape.length - first.length} colour only, ${shape.length} shape changes allowed by name, ${first.length} first baselines).\nReason: ${plan.reason}\n`
+    `\nApprove ${ok.length} baselines (${ok.length - shape.length - first.length} colour only, ${shape.length} shape changes allowed by name, ${first.length} first baselines).\nReason: ${plan.reason ?? NOT_KEPT}\n`
   );
+  // The server keeps it beside each line's ref when reports/ is git-ignored (lib/decisions.mjs).
+  if (!plan.reason || !reportsIgnored(P)) process.stderr.write(`${notKept(P)}\n`);
   if (first.length)
     process.stdout.write(
       `First baselines (nothing to compare them with): ${first.map((e) => e.id).join(', ')}\n`

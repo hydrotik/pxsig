@@ -12,6 +12,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { newBatch } from '../src/lib/approvals.mjs';
+import { readReasons } from '../src/lib/decisions.mjs';
 import { readToken } from '../src/lib/guard.mjs';
 import {
   applyPrune,
@@ -256,7 +257,7 @@ test('applying writes a11y.json, one log line per entry (no name, no agent), and
   process.env.CLAUDECODE = '1';
   let r;
   try {
-    r = applyPrune(P, plan, { batch: 'b-1', reason: 'fixed in #12' });
+    r = applyPrune(P, plan, { batch: 'b-1', reason: 'fixed in #12', ignored: true });
   } finally {
     if (prev === undefined) delete process.env.CLAUDECODE;
     else process.env.CLAUDECODE = prev;
@@ -280,13 +281,14 @@ test('applying writes a11y.json, one log line per entry (no name, no agent), and
       'evidence',
       'id',
       'pxsig',
-      'reason',
       'ref',
       'rules',
       'via',
     ]);
     assert.match(l.ref, /^d_[A-Za-z0-9_-]{16}$/, 'an opaque decision reference');
-    assert.deepEqual([l.action, l.via, l.batch, l.reason], ['prune', 'cli', 'b-1', 'fixed in #12']);
+    assert.deepEqual([l.action, l.via, l.batch], ['prune', 'cli', 'b-1']);
+    // The reason stays local, beside the line's ref (lib/decisions.mjs).
+    assert.equal(readReasons(P).get(l.ref), 'fixed in #12');
     assert.equal(l.evidence.report, '.pxsig/reports/check.json');
   }
   const row = JSON.parse(readFileSync(join(f.px, 'reports', 'check.json'), 'utf8')).rows.find(

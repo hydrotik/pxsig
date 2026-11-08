@@ -1,9 +1,9 @@
 /**
  * decision-pins-a11y.test.mjs — what the accessibility log and the store's other files commit or
- * keep today, pinned before a decision's reason and the approver's identity leave the committed
- * logs (design: a decision commits only its reference, PR 1; the approval log's pins are in
- * decision-pins.test.mjs). Each pin names the PR of that design that flips it:
- *   PR 3 — the reason stays on the machine (`reports/decisions.ndjson`); the logs commit `ref`
+ * keep, pinned while a decision's reason and the approver's identity leave the committed logs
+ * (design: a decision commits only its reference; the approval log's pins are in
+ * decision-pins.test.mjs). PR 3 flipped its pins: the reason stays on the machine
+ * (`reports/decisions.ndjson`, only when reports/ is git-ignored). The open pins name their PR:
  *   PR 4 — no person's identity in any log; `approvals.identity` is no longer read
  *   PR 5 — rejection notes only when the store's reports/ is git-ignored
  *
@@ -17,6 +17,7 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { record, sha256 } from '../src/lib/approvals.mjs';
+import { decisionsFile, readReasons } from '../src/lib/decisions.mjs';
 import { reconcile, resolveContext } from '../src/lib/integrity.mjs';
 import { applyPrune } from '../src/lib/prune.mjs';
 import { readHeader } from '../src/lib/psig.mjs';
@@ -41,13 +42,15 @@ const skip = skipUnless(hasRust && hasGit, 'Rust binary or git missing');
 
 /**
  * A fixture in a real git repository whose git email is the probe, on `approvals.identity:
- * "git-email"`.
+ * "git-email"`; `ignored` gives the store the .gitignore `pxsig init` writes.
  * @param {{ after: (fn: () => void) => void }} t
+ * @param {{ ignored?: boolean }} [o]
  */
-function project(t) {
+function project(t, { ignored = false } = {}) {
   const f = fixture({ t });
   spawnSync('git', ['init', '-q', f.repo]);
   spawnSync('git', ['-C', f.repo, 'config', 'user.email', EMAIL]);
+  if (ignored) writeFileSync(join(f.px, '.gitignore'), 'reports/\n');
   const cfg = join(f.repo, 'pxsig.config.json');
   const c = JSON.parse(readFileSync(cfg, 'utf8'));
   writeFileSync(cfg, JSON.stringify({ ...c, approvals: { identity: 'git-email' } }, null, 2));
@@ -66,7 +69,7 @@ test(
   'pins 8, 13: the a11y log through the server and a prune; a .psig header',
   { skip },
   async (t) => {
-    const { f, P } = project(t);
+    const { f, P } = project(t, { ignored: true });
     const id = f.ids.a11y;
     const S = await serve(f);
     try {
@@ -85,25 +88,41 @@ test(
     }
     writeFileSync(P.store.a11y, JSON.stringify({ [id]: ['color-contrast', 'region'] }));
     const plan = { a11ySha: sha256(P.store.a11y), prune: [{ id, rules: ['region'] }] };
-    applyPrune(P, plan, { batch: 'b-prune', reason: 'fixed in #12', via: 'cli' });
+    applyPrune(P, plan, { batch: 'b-prune', reason: 'fixed in #12', ignored: true, via: 'cli' });
     const log = ndjson(join(dirname(P.store.a11y), 'a11y-decisions.ndjson'));
-    // Flips in PR 4 (no `by` on any line) and PR 3 (no `reason`: accept's and prune's go local).
+    // PR 3: no `reason` on any line; accept's and prune's stay local, beside the line's ref.
+    // Flips in PR 4: no `by` on any line.
     assert.deepEqual(
-      log.map((l) => [l.action, l.by, l.reason]),
+      log.map((l) => [l.action, l.by, 'reason' in l]),
       [
-        ['accept', EMAIL, REASON],
-        ['undo', EMAIL, undefined],
-        ['accept', EMAIL, null],
-        ['unaccept', EMAIL, undefined],
-        ['prune', EMAIL, 'fixed in #12'],
+        ['accept', EMAIL, false],
+        ['undo', EMAIL, false],
+        ['accept', EMAIL, false],
+        ['unaccept', EMAIL, false],
+        ['prune', EMAIL, false],
       ]
     );
     const [accept, , , , prune] = log.map((l) => Object.keys(l).filter((k) => k !== 'agent'));
     assert.deepEqual(
       accept,
-      ['at', 'via', 'ref', 'action', 'id', 'before', 'after', 'reason', 'by'].concat('pxsig')
+      ['at', 'via', 'ref', 'action', 'id', 'before', 'after', 'by'].concat('pxsig')
     );
-    assert.deepEqual(prune.slice(-4), ['reason', 'evidence', 'by', 'pxsig']);
+    assert.deepEqual(prune.slice(-4), ['batch', 'evidence', 'by', 'pxsig']);
+    const kept = readReasons(P);
+    assert.deepEqual(
+      [kept.get(log[0].ref), kept.get(log[2].ref), kept.get(log[4].ref)],
+      [REASON, undefined, 'fixed in #12']
+    );
+    const local = ndjson(decisionsFile(P));
+    assert.deepEqual(
+      local.map((l) => [l.log, l.id]),
+      [
+        ['a11y', id],
+        ['a11y', id],
+      ]
+    );
+    assert.ok(!JSON.stringify(local).includes(EMAIL), 'the local file names no person');
+    assert.ok(!readFileSync(P.store.approvals, 'utf8').includes(REASON));
     // Pin 13 (stays): a baseline's header names the render, never a person.
     for (const sig of [f.sig(f.ids.ok), f.sig(f.ids.changed)]) {
       const h = /** @type {Record<string, any>} */ (readHeader(sig));
@@ -119,21 +138,35 @@ test(
   }
 );
 
-test("pin 9: the snapshot gives a person's reason; a migration's is null", { skip }, (t) => {
-  const { f, P } = project(t);
-  const e = /** @type {ManifestEntry} */ (f.manifest.stories.find((x) => x.id === f.ids.ok));
-  record(P, e, { batch: 'b1-cli', via: 'cli', reason: REASON, before: null });
-  const at = new Date().toISOString();
-  const moved = { at, id: f.ids.a11y, via: 'migrate', batch: 'b2-migrate', reason: 'moved from x' };
-  appendFileSync(P.store.approvals, `${JSON.stringify(moved)}\n`);
-  const snap = /** @type {Snap} */ (/** @type {unknown} */ (buildSnapshot([P])));
-  const entries = Object.values(snap.projects[P.name].stories).flatMap((s) => s.entries);
-  /** @param {string} id */
-  const reason = (id) => entries.find((x) => x.id === id)?.approved?.reason;
-  // Flips in PR 3: `reason` always null (the key stays; SNAPSHOT_VERSION 1).
-  assert.equal(reason(f.ids.ok), REASON);
-  assert.equal(reason(f.ids.a11y), null);
-});
+test(
+  "pin 9: the snapshot gives no reason: not the local file's, not an old line's",
+  { skip },
+  (t) => {
+    const { f, P } = project(t, { ignored: true });
+    const e = /** @type {ManifestEntry} */ (f.manifest.stories.find((x) => x.id === f.ids.ok));
+    record(P, e, { batch: 'b1-cli', via: 'cli', reason: REASON, ignored: true, before: null });
+    assert.equal(readReasons(P).size, 1, 'the reason is kept locally');
+    const at = new Date().toISOString();
+    const moved = {
+      at,
+      id: f.ids.a11y,
+      via: 'migrate',
+      batch: 'b2-migrate',
+      reason: 'moved from x',
+    };
+    const old = { at, id: f.ids.changed, via: 'cli', batch: 'b0-cli', reason: 'an old reason' };
+    appendFileSync(P.store.approvals, `${JSON.stringify(moved)}\n${JSON.stringify(old)}\n`);
+    const snap = /** @type {Snap} */ (/** @type {unknown} */ (buildSnapshot([P])));
+    const entries = Object.values(snap.projects[P.name].stories).flatMap((s) => s.entries);
+    /** @param {string} id */
+    const reason = (id) => entries.find((x) => x.id === id)?.approved?.reason;
+    // PR 3: `reason` always null (the key stays; SNAPSHOT_VERSION 1).
+    for (const id of [f.ids.ok, f.ids.a11y, f.ids.changed]) assert.equal(reason(id), null, id);
+    const histories = Object.values(snap.projects[P.name].stories).flatMap((s) => s.history);
+    assert.ok(histories.length && histories.every((h) => h.reason === null));
+    assert.ok(!JSON.stringify(snap).includes(REASON) && !JSON.stringify(snap).includes('an old'));
+  }
+);
 
 test('pin 12: repairs.ndjson carries `by` with git-email', { skip }, async (t) => {
   const { f, P } = project(t);

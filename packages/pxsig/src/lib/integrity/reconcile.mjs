@@ -27,6 +27,7 @@ import {
   envProblems,
   warnModeProblems,
   conflictProblems,
+  decisionProblems,
   tornProblems,
   setupProblems,
 } from './problems.mjs';
@@ -541,6 +542,7 @@ export async function reconcile(ctx, opts = {}) {
       ...tornProblems(rel(ctx.files.approvals), torn),
       ...unloggedProblems(unlogged, ctx),
       ...conflictProblems(ctx),
+      ...decisionProblems(ctx),
       ...envProblems(report, ctx),
       ...warnModeProblems(ctx),
     ],

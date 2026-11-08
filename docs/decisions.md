@@ -88,14 +88,31 @@ coverage must not be able to hide a regression.
 
 ## Approvals are logged and reversible
 
-**Decision.** Every approval, from any surface, snapshots the old baseline and logs who, when, how,
-why, and the hashes before and after. Bulk approval classifies colour versus shape changes, pins
+**Decision.** Every approval, from any surface, snapshots the old baseline and logs when, how, the
+decision's opaque reference (`ref`), and the hashes before and after. Bulk approval classifies colour versus shape changes, pins
 render hashes, and needs a person at a terminal. Agents cannot approve: the server takes
 approvals only from the dashboard and `pxsig approve apply`, and the MCP server can only reject.
 
 **Why.** A baseline change is the one thing pxsig must never do silently. A log with hashes makes
 an unlogged change detectable (`approve verify`), and a snapshot makes a mistaken approval cheap
 to undo.
+
+### Reasons stay on the machine
+
+**Decision.** A reason given with a decision (`approve plan --reason`, `check --update --reason`,
+`a11y --prune --reason`, a `reason` a client sends) never goes on a committed line. It is stored as
+one line (control characters and line breaks become spaces, at most 500 characters) in the
+store's `reports/decisions.ndjson`, one line per reference (`{ at, ref, log, id, batch, via,
+reason, pxsig }`), and only when git leaves `reports/` out (`git check-ignore`; outside a
+repository nothing can be committed). Otherwise the reason is not kept, the command says so in one
+line, and the decision goes through: `pxsig doctor` reports `reports-not-ignored`. `approve log`
+shows a batch's reason from that file, else the one a line written before 0.7.6 carries; `pxsig
+snapshot` never gives one. Lines already committed stay as they are.
+
+**Why.** The approval and accessibility logs are committed and reach everyone who can read the
+repository. A reason is a person's words for the people at that decision; the commit and the pull
+request already say what changed and when, and the reference ties the line to the reason on the
+machine where it was given.
 
 ## Encryption is reserved, not built
 

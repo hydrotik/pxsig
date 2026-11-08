@@ -1,6 +1,8 @@
 /** Setup and environment problems the ledger reports (integrity.mjs). */
 import { conflictedStoreFiles } from '../approvals.mjs';
 import { enforcementProblems, readinessTally, resolveEnforcement } from '../enforcement.mjs';
+import { reportsIgnored } from '../decisions.mjs';
+import { relPath } from '../paths.mjs';
 import { iso } from './context.mjs';
 /** @import { EnvSummary, StoryIndex, TornLine } from '../../types.js' */
 /** @import { IntegrityReport, IntegrityRow, LedgerSetup } from '../../types/t3.js' */
@@ -99,6 +101,25 @@ export function warnModeProblems(ctx) {
   return enforcementProblems(enf, enf.configured.length ? readinessTally(ctx.project) : null).map(
     (x) => ({ ...x, severity: ctx.integrity?.severity?.[x.code] ?? x.severity })
   );
+}
+
+/**
+ * Where a decision's reason goes (lib/decisions.mjs): `reports-not-ignored` when git would pick up
+ * the store's reports/, so no reason is kept. `integrity.severity` overrides the severity.
+ * @param {IntegrityContext} ctx
+ * @returns {LedgerSetup[]}
+ */
+export function decisionProblems(ctx) {
+  const P = ctx.project;
+  if (!P || reportsIgnored(P)) return [];
+  const store = relPath(P.workspaceRoot, P.store.root) || '.';
+  return [
+    {
+      code: 'reports-not-ignored',
+      severity: ctx.integrity?.severity?.['reports-not-ignored'] ?? 'warn',
+      reason: `${store}/reports/ is not git-ignored: reasons given with a decision are not kept, so none can be committed. Add \`reports/\` to ${store}/.gitignore (pxsig init writes it)`,
+    },
+  ];
 }
 
 /**

@@ -115,7 +115,15 @@ test('the story view: coverage per mode and state, then history', () => {
   assert.equal(v.entries[1].last, 'not logged');
   assert.equal(v.entries[1].a11y, 'none accepted');
   assert.equal(v.history.length, 2);
-  assert.equal(v.history[0].reason, 'tab border');
+  // A reason in a snapshot (one written before 0.7.6) is never shown: the History has no Reason.
+  assert.deepEqual(v.history[0], {
+    at: '2026-10-25',
+    event: 'approved',
+    pr: '#137',
+    change: 'colour',
+    entries: 2,
+  });
+  assert.ok(v.history.every((h) => !('reason' in h)));
   assert.equal(v.history[1].pr, 'not committed');
   assert.equal(storyView(snap, 'components-other--x'), null);
 });

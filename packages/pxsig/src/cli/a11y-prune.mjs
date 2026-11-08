@@ -9,6 +9,7 @@ import { ask, emit, humanAtTerminal, progress, whyNotPerson } from '../lib/term.
 import { relPath } from '../lib/paths.mjs';
 import { applyPrune, confirmPrune } from '../lib/prune.mjs';
 import { newBatch } from '../lib/approvals.mjs';
+import { notKept, reasonText, reportsIgnored } from '../lib/decisions.mjs';
 
 /** @import { LockHandle } from '../types.js' */
 /** @import { Block } from '../types/t6.js' */
@@ -107,10 +108,11 @@ export function a11yPruneParts(cli) {
     }
     emit(format, blocks, plan);
     if (!(await confirmPrune(plan, ask))) fail('not confirmed: nothing was written', 1);
-    const reason =
-      typeof flags.reason === 'string' ? flags.reason.trim().slice(0, 500) || null : null;
+    const reason = reasonText(flags.reason);
     const batch = newBatch('prune');
     const P = ctx().P;
+    // Asked only with a reason; the server asks again for its own write.
+    const ignored = reason ? reportsIgnored(P) : false;
     const held = readLock(P);
     /** @type {{ rules: number, entries: number } | undefined} */
     let r;
@@ -161,6 +163,7 @@ export function a11yPruneParts(cli) {
         r = applyPrune(P, plan, {
           batch,
           reason,
+          ignored,
           via: 'cli',
           lockCheck: () => /** @type {LockHandle} */ (lock).check(),
         });
@@ -173,6 +176,7 @@ export function a11yPruneParts(cli) {
       // A plan made stale by a decision since is refused whole: plan again (exit 1, as a wrong phrase).
       if (err) fail(err.message, err.exit ?? (err.status === 409 ? 1 : 2));
     }
+    if (reason && !ignored) process.stderr.write(`${notKept(P)}\n`);
     // `r` is set in both branches above; a failure has exited.
     emit(
       format,

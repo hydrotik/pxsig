@@ -102,7 +102,6 @@ export function storyView(snap, storyId) {
         event: h.event,
         pr: prText(h, snap),
         change: h.kind ?? '',
-        reason: h.reason ?? '',
         entries: h.entries,
       })),
     };

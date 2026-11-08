@@ -332,12 +332,12 @@ const table = [
       methods: 'POST',
       stage: 'authorized',
       project: 'body',
-      run: ({ srv, res, body, S, auth }) =>
+      run: async ({ srv, res, body, S, auth }) =>
         // A decision (lib/guard.mjs DECISIONS): `authorize` let it through only with its `via` set.
         json(res, 200, {
           ok: true,
           project: S.name,
-          ...a11yPrune(srv, S, body, /** @type {string} */ (auth.via)),
+          ...(await a11yPrune(srv, S, body, /** @type {string} */ (auth.via))),
         }),
     },
   ],
@@ -408,7 +408,7 @@ async function decide({ srv, res, action, body, S, auth }) {
       ok: true,
       project: S.name,
       id,
-      entry: a11yReview(srv, S, action, id, meta),
+      entry: await a11yReview(srv, S, action, id, meta),
     });
   json(res, 200, { ok: true, project: S.name, id, entry: await review(srv, S, action, id, meta) });
 }
