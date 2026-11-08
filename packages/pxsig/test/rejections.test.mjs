@@ -26,8 +26,14 @@ import { tempDir } from './fixture.mjs';
 
 const REF = /^d_[A-Za-z0-9_-]{16}$/;
 
-/** @param {import('node:test').TestContext} t */
-const store = (t) => ({ store: { reports: join(tempDir('reports', t), 'reports') } });
+/**
+ * A store outside any repository: nothing there can be committed, so a note is kept.
+ * @param {import('node:test').TestContext} t
+ */
+const store = (t) => {
+  const root = tempDir('reports', t);
+  return { workspaceRoot: root, store: { root, reports: join(root, 'reports') } };
+};
 
 /** @param {{ store: { reports: string } }} P */
 const events = (P) => {

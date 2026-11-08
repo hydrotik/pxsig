@@ -13,6 +13,7 @@
  * the first render becomes its baseline, logged with `before: null`.
  */
 import { ownBatch } from '../lib/approvals.mjs';
+import { notKept } from '../lib/decisions.mjs';
 import { readJson } from '../lib/files.mjs';
 import { filterLedger } from '../lib/integrity.mjs';
 import { withoutNotes } from '../lib/rejections.mjs';
@@ -403,14 +404,12 @@ async function decide({ srv, res, action, body, S, auth }) {
     // Cut to one line of 280 characters where it is stored (lib/rejections.mjs `sanitizeNote`).
     note: s(body.note, 4096),
   };
-  if (action.startsWith('a11y-'))
-    return json(res, 200, {
-      ok: true,
-      project: S.name,
-      id,
-      entry: await a11yReview(srv, S, action, id, meta),
-    });
-  json(res, 200, { ok: true, project: S.name, id, entry: await review(srv, S, action, id, meta) });
+  const entry = action.startsWith('a11y-')
+    ? await a11yReview(srv, S, action, id, meta)
+    : await review(srv, S, action, id, meta);
+  // A reject's note not kept (reports/ is not git-ignored): the answer says so, store-relative.
+  const notice = entry?.noteKept === false ? { notice: notKept(S.P, 'Note') } : {};
+  json(res, 200, { ok: true, project: S.name, id, entry, ...notice });
 }
 
 /**

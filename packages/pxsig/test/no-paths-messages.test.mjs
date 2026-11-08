@@ -126,6 +126,13 @@ test('"Reason not kept" and doctor\'s reports-not-ignored name the store, never 
     'Reason not kept: .pxsig/reports/ is not git-ignored. pxsig doctor shows the fix.'
   );
   noAbsolute(m, f.repo);
+  // A rejection's note (the server's `notice`).
+  const note = notKept(P, 'Note');
+  assert.equal(
+    note,
+    'Note not kept: .pxsig/reports/ is not git-ignored. pxsig doctor shows the fix.'
+  );
+  noAbsolute(note, f.repo);
 });
 
 test('reconcile without a manifest names it relative to the workspace (the server logs it)', async () => {

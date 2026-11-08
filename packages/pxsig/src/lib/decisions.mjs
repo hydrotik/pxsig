@@ -150,8 +150,10 @@ export function readReasons(P) {
 }
 
 /**
- * What the CLI prints, once, when a reason was given and not kept.
+ * What the CLI prints, once, when a reason was given and not kept; `what` names it (`Note` for a
+ * rejection's reason, which the server says so in its answer).
  * @param {DecisionProject} P
+ * @param {'Reason' | 'Note'} [what]
  */
-export const notKept = (P) =>
-  `Reason not kept: ${relPath(P.workspaceRoot, P.store.reports)}/ is not git-ignored. pxsig doctor shows the fix.`;
+export const notKept = (P, what = 'Reason') =>
+  `${what} not kept: ${relPath(P.workspaceRoot, P.store.reports)}/ is not git-ignored. pxsig doctor shows the fix.`;
