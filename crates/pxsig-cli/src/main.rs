@@ -116,6 +116,10 @@ enum Cmd {
         base_png_dir: Option<PathBuf>,
         #[arg(long, default_value_t = 16)]
         tolerance: u8,
+        /// The environment each render was made in (as `baseline --env`; `byId` is read): a
+        /// render's text record is compared only when it is its baseline's.
+        #[arg(long)]
+        env: Option<String>,
         #[command(flatten)]
         gate: GateArgs,
     },
@@ -329,6 +333,7 @@ fn run(cmd: Cmd) -> anyhow::Result<u8> {
             history_extra,
             base_png_dir,
             tolerance,
+            env,
             gate,
         } => {
             let format =
@@ -350,6 +355,7 @@ fn run(cmd: Cmd) -> anyhow::Result<u8> {
                     history_extra,
                     base_png_dir,
                     tolerance,
+                    env,
                     &gate,
                 )
             })

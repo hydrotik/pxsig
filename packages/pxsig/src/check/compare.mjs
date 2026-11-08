@@ -1,16 +1,19 @@
 /**
  * check/compare.mjs — stage 3: `pxsig check` (Rust) on this run's renders: per-entry gates and
  * grids, the content cache, the history line (with the enforcement gates when config sets any, and
- * the React counts when there are any).
+ * the React counts when there are any), and each render's environment (`--env`), so text labels
+ * compare like for like.
  */
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { historyExtra } from './react.mjs';
+import { envPlan } from '../lib/text/env-plan.mjs';
 /** @import { CheckSetup } from './setup.mjs' */
 /** @import { Selection } from './select.mjs' */
 /** @import { Rendered } from './render.mjs' */
 /** @import { A11yBaseline, EngineCheckOutput, EngineCheckRow } from '../types/t4.js' */
 /** @import { ReactRun } from '../types/react.js' */
+/** @import { EnvRecord } from '../types.js' */
 
 /** @typedef {ReturnType<typeof compare>} Compared */
 
@@ -19,12 +22,16 @@ import { historyExtra } from './react.mjs';
  * @param {Selection} sel
  * @param {Rendered} run
  * @param {ReactRun | null} [react] the compiler analysis, when the run asked for it
+ * @param {Record<string, EnvRecord>} [current] the run's env per browser (check/prepare.mjs)
  */
-export function compare(S, sel, run, react = null) {
+export function compare(S, sel, run, react = null, current = {}) {
   const { runPath, P, reports, enf, a11yBaselinePath, rust, pngDir, diffDir } = S;
   const { entries } = sel;
   const { results, onlyFile } = run;
   // --- 3. check (Rust) ------------------------------------------------------------------------
+  // Each render's environment: the engine compares text records only within one (the retry too).
+  const envFile = join(reports, '.check-env.json');
+  writeFileSync(envFile, JSON.stringify(envPlan(entries, current)));
   const checkArgs = (
     /** @type {string} */ dir,
     /** @type {string} */ out,
@@ -42,6 +49,8 @@ export function compare(S, sel, run, react = null) {
     '--only',
     `@${onlyFile}`,
     '--json',
+    '--env',
+    `@${envFile}`,
     ...extra,
   ];
   // Warn mode chosen in config: the history line records the gates and whether the run would fail.

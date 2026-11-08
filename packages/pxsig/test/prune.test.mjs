@@ -11,6 +11,7 @@ import { request } from 'node:http';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { newBatch } from '../src/lib/approvals.mjs';
 import { readToken } from '../src/lib/guard.mjs';
 import {
   applyPrune,
@@ -432,10 +433,12 @@ test(
     );
     sse.end();
     try {
+      // `pxsig a11y --prune` sends its own batch name; the server keeps that shape only.
+      const own = newBatch('prune');
       const body = {
         project: 'fixture',
         plan: { a11ySha: plan.a11ySha, prune: plan.prune },
-        batch: 'b-srv',
+        batch: own,
         reason: 'fixed',
       };
       // The server writes both tokens before it prints its URL (serve() waits for that line).
@@ -481,11 +484,11 @@ test(
         body,
       });
       assert.equal(ok.status, 200, ok.text);
-      assert.deepEqual([ok.json().entries, ok.json().rules, ok.json().batch], [2, 3, 'b-srv']);
+      assert.deepEqual([ok.json().entries, ok.json().rules, ok.json().batch], [2, 3, own]);
       const lines = decisions(f);
       assert.deepEqual(
         [lines.length, lines[0].via, lines[0].action, lines[0].batch],
-        [2, 'cli', 'prune', 'b-srv']
+        [2, 'cli', 'prune', own]
       );
       assert.deepEqual(JSON.parse(readFileSync(join(f.px, 'a11y.json'), 'utf8'))[f.ids.ok], []);
       await new Promise((r) => setTimeout(r, 200));

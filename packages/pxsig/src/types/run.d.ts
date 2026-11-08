@@ -32,6 +32,8 @@ export interface EngineResult {
   pass?: boolean;
   flaky?: boolean;
   error?: string | null;
+  /** The text labels (crates/pxsig-cli/src/batch/text.rs): beside the verdict, never changing it. */
+  textDiff?: import('./text.js').TextDiff;
   [metric: string]: unknown;
 }
 
@@ -73,6 +75,8 @@ export interface CheckRow {
   approved?: { at: string; batch: string };
   flaky?: boolean;
   cached?: boolean;
+  /** The engine's text labels, as it gave them (labels only). */
+  textDiff?: import('./text.js').TextDiff;
   /** The render's env id (lib/env.mjs `annotateRow`). */
   env?: string | null;
   baselineEnv?: string | null;

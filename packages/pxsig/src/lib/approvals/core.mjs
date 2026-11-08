@@ -88,8 +88,28 @@ export const stamp = (line, env = process.env, { person = PERSON_VIA.has(line.vi
  * sends it anywhere.
  */
 export const decisionRef = () => `d_${randomBytes(12).toString('base64url')}`;
+/** An ISO time as a batch name holds it: `-` for `:` and `.`. */
+const STAMP = String.raw`\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z`;
+/** How a decision came, as pxsig names its batches: the request's `via`, or the command's. */
+const VIAS = ['cli', 'dashboard', 'mcp', 'adopt', 'prune', 'check-update'];
+/**
+ * The shape of every batch name pxsig makes, and the only one the server keeps from a request:
+ * `newBatch` (`<time>-<via>`), `migrateBatch` (`migrate-<time>`), each with `-undo` per undo.
+ */
+export const BATCH_RE = new RegExp(
+  `^(?:${STAMP}-(?:${VIAS.join('|')})|migrate-${STAMP})(?:-undo)*$`
+);
 /** @param {string} via */
 export const newBatch = (via) => `${new Date().toISOString().replace(/[:.]/g, '-')}-${via}`;
+/** @param {string} at the migration's ISO time */
+export const migrateBatch = (at) => `migrate-${at.replace(/[:.]/g, '-')}`;
+/**
+ * A batch name a request sent, kept only when pxsig made it (`BATCH_RE`, at most 80 characters):
+ * else null, and the server names the batch itself. A client cannot log free text as a batch.
+ * @param {unknown} v
+ */
+export const ownBatch = (v) =>
+  typeof v === 'string' && v.length <= 80 && BATCH_RE.test(v) ? v : null;
 
 /**
  * Copy the current baseline aside before it is overwritten.

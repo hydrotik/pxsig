@@ -51,6 +51,9 @@ pub struct Manifest {
     /// Where the store's record files are, so `affected` can select by them (absent: older callers).
     #[serde(default)]
     pub store: Option<StoreInfo>,
+    /// The `text` tolerances (`movePx`, `edgePx`, `noisePx`): labels only (`text.rs`).
+    #[serde(default)]
+    pub text: Option<Value>,
     pub stories: Vec<Entry>,
 }
 
@@ -136,6 +139,8 @@ pub struct Baseline {
     pub image: Option<Vec<u8>>,
     /// The environment the baseline was rendered in (the header's `env`), when it records one.
     pub env: Option<Value>,
+    /// The baseline's text record (its `boxes` section, as stored), when it has one.
+    pub boxes: Option<pxsig_core::psig::Section>,
 }
 
 /// The `id` of a header's `env`, when it has one.
@@ -148,14 +153,15 @@ pub fn load_baseline(sig: &Path) -> Result<Baseline> {
         bail!("baseline signature not found: {}", sig.display());
     }
     let raw = fs::read(sig).with_context(|| format!("reading {}", sig.display()))?;
-    let (record, image, env) = if pxsig_core::psig::is_psig(&raw) {
+    let (record, image, env, boxes) = if pxsig_core::psig::is_psig(&raw) {
         let p = pxsig_core::psig::decode(&raw).map_err(|e| anyhow!("{}: {e}", sig.display()))?;
         let env = p.header.get("env").filter(|e| e.is_object()).cloned();
-        (p.record, p.image, env)
+        let boxes = p.sections.into_iter().find(|s| s.name() == "boxes");
+        (p.record, p.image, env, boxes)
     } else {
         let r: PxsigRecord = serde_json::from_slice(&raw)
             .map_err(|e| anyhow!("baseline is not valid JSON ({}): {e}", sig.display()))?;
-        (r, None, None)
+        (r, None, None, None)
     };
     if record.version != SPEC_VERSION {
         bail!(
@@ -175,16 +181,18 @@ pub fn load_baseline(sig: &Path) -> Result<Baseline> {
         detail,
         image,
         env,
+        boxes,
     })
 }
 
 mod baseline;
 mod boxes;
 mod check;
+mod text;
 
 pub use baseline::{
     baseline, capture_png, capture_png_policy, parse_enforcement, parse_env_plan, trim,
-    BaselineOpts, TrimOpts,
+    BaselineOpts, EnvPlan, TrimOpts,
 };
 pub use check::{check, compare_png, detail_json, metrics_json, Artifacts, CheckOpts};
 

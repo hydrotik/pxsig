@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { browserPool, renderStories, STORYBOOK_ERROR } from '../lib/capture.mjs';
 import { annotateRow, byId, envConfig } from '../lib/env.mjs';
 import { readJson, writeJson } from '../lib/files.mjs';
+import { envPlan } from '../lib/text/env-plan.mjs';
 import { fetchStoryIndex, loadStoryIndex } from '../lib/integrity.mjs';
 import { defaultHooks, registerNamed } from '../lib/repair.mjs';
 import { buildRow, stampRenders, storybookBroken } from '../lib/rows.mjs';
@@ -145,6 +146,8 @@ export async function runChecks(srv, S) {
         cache: join(P.store.cache, 'check'),
         // Re-checks are runs too: the History tab and pxsig_history read this.
         history: join(P.store.reports, 'history.ndjson'),
+        // Each render's environment: text records are compared only within one.
+        env: envPlan(entries, current),
       });
       for (const g of res.summary.identicalRenders ?? [])
         console.error(

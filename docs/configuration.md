@@ -171,6 +171,9 @@ The smallest config is `{}`: every key has a default. `pxsig init` writes
 | `react.renders`           | `false`                                                    | Count React commits and component renders in every render ([react](#react)).                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `text`                    | `true`                                                     | Text capture ([text](#text)): each render also writes its text record, and an approved baseline stores it. `false` turns it off.                                                                                                                                                                                                                                                                                                                                                                                           |
 | `text.ignore`             | `[]`                                                       | Selectors whose text is never recorded ([text](#text)).                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `text.movePx`             | `0.5`                                                      | Labels only: how far a text box may move and still be in place ([text](#text)).                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `text.edgePx`             | `2`                                                        | Labels only: how far around a run a changed pixel still belongs to it ([text](#text)).                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `text.noisePx`            | `0`                                                        | Labels only: changed pixels outside text a text label still allows ([text](#text)).                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `a11y`                    | `true`                                                     | Run axe on every render.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `env`                     | `{}`                                                       | The render environment each baseline records and each check compares (below).                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `env.ignore`              | `[]`                                                       | Environment fields left out of the comparison, by name, for example `["render.timezone"]` when no story formats a date.                                                                                                                                                                                                                                                                                                                                                                                                    |
@@ -379,10 +382,13 @@ every function of the released plugin's corpus, with a `To update:` line.
 Text capture: right after each screenshot, pxsig reads the text the render draws and writes it
 beside the PNG as `<id>.boxes.json`, the render's **text record**. A baseline approved from that
 render stores the record as its `boxes` section ([spec.md](spec.md#5-the-psig-container-version-1)),
-deflated, and `pxsig cat` prints its strings, so `git diff` of a baseline shows a copy change. The
-record is the groundwork for labelling a change as copy, reflow, moved or restyled text; this
-version records it and labels nothing. Reading changes no pixel: the render, the gate, every
-verdict and exit code are the same with text capture on or off.
+deflated, and `pxsig cat` prints its strings, so `git diff` of a baseline shows a copy change.
+`pxsig check` compares a render's record with its baseline's and labels the change in check.json
+(the row's `textDiff`: copy, copy with reflow, moved, restyled, or a pixel change), but only when
+the render and the baseline were made in the same environment (the same env id the pixel check
+reports); otherwise the row says `env-differs` and compares nothing. Labels only: reading changes no
+pixel, and the render, the gate, every verdict and exit code are the same with text capture on or
+off.
 
 What a record holds, per run (a DOM Text node the screenshot draws): its string as in the DOM, one
 box per line fragment in the screenshot's frame (CSS px, rounded to 0.01), its font facts (family,
@@ -400,16 +406,20 @@ read. `::before` / `::after` content and text drawn in a `<canvas>` are not Text
 recorded. The strings are what the page renders as captured, mostly what the baseline image shows;
 the record is committed inside the `.psig`, beside that image.
 
-| Key      | Default | Meaning                                                                         |
-| -------- | ------- | ------------------------------------------------------------------------------- |
-| `ignore` | `[]`    | CSS selectors whose text is never recorded, beside each entry's `ignore` masks. |
+| Key       | Default | Meaning                                                                                                     |
+| --------- | ------- | ----------------------------------------------------------------------------------------------------------- |
+| `ignore`  | `[]`    | CSS selectors whose text is never recorded, beside each entry's `ignore` masks.                             |
+| `movePx`  | `0.5`   | Labels only: how far a text box may move (px) and still be in the same place.                               |
+| `edgePx`  | `2`     | Labels only: how far around a run's boxes (px) a changed pixel still belongs to it (anti-aliasing fringes). |
+| `noisePx` | `0`     | Labels only: changed pixels outside text that a text label still allows.                                    |
 
 Text capture is on by default; `"text": false` (or `"off"`) in `pxsig.config.json` or
 `defaults` of `pxsig.workspace.json`, `--no-text` for one run, or `PXSIG_TEXT=off` turns it off. A
 story turns it off for its own entries with `parameters.pxsig.text: false`. A `text` that is not a
 boolean or an object, or a `text.ignore` that is not an array of selectors, is one warning line and
-text capture off for the run, never a failed check; a key this version does not know is a warning
-and ignored. `pxsig doctor` says whether it is on, and how many baselines have a text record. A
+text capture off for the run, never a failed check; a `movePx`, `edgePx` or `noisePx` that is not a
+number of 0 or more (`noisePx` a whole number) is a warning and its default; a key this version does
+not know is a warning and ignored. `pxsig doctor` says whether it is on, and how many baselines have a text record. A
 baseline approved before text capture, or with it off, has none until it is approved again: nothing
 rewrites a baseline on its own.
 

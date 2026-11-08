@@ -66,6 +66,7 @@ fn baseline_env_plan_writes_env_and_check_returns_its_id() {
         tolerance: 16,
         cli_gate: GateSpec::default(),
         env_gate: GateSpec::default(),
+        env: None,
     })
     .unwrap();
     let row = |id: &str| {

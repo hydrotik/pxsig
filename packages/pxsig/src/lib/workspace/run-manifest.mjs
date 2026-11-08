@@ -5,6 +5,7 @@ import { basename, dirname, join, relative, resolve } from 'node:path';
 import { shortPath, toPosix } from '../paths.mjs';
 import { writeAtomic } from '../files.mjs';
 import { SetupError } from './core.mjs';
+import { textTolerances } from '../text/config.mjs';
 
 /**
  * The component folder (relative to srcRoot) for a workspace-relative story file path.
@@ -92,6 +93,7 @@ export function runManifest(P, manifest, { suite = null } = {}) {
       suite,
     },
     a11y: c.a11y,
+    text: textTolerances(c),
     stories: manifest.stories ?? [],
     skipped: manifest.skipped ?? [],
   };

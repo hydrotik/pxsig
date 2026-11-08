@@ -493,6 +493,24 @@
           "items": { "type": "string", "minLength": 1 },
           "default": [],
           "description": "CSS selectors whose text is never recorded, beside each entry's ignore masks."
+        },
+        "movePx": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0.5,
+          "description": "Labels only: how far a text box may move (px) and still be in the same place."
+        },
+        "edgePx": {
+          "type": "number",
+          "minimum": 0,
+          "default": 2,
+          "description": "Labels only: how far around a text run's boxes (px) a changed pixel still belongs to it (anti-aliasing)."
+        },
+        "noisePx": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Labels only: changed pixels outside text a text label (copy, reflow, moved, restyled) still allows."
         }
       }
     },
