@@ -484,9 +484,9 @@
       }
     },
     "text": {
-      "description": "Text capture: each render also writes its text record (<id>.boxes.json: the text runs it draws, their boxes and font facts, and painted element boxes), and a baseline approved from that render stores it as its boxes section. Labels only: never a render, a gate or an exit code. true or an object turns it on; false (or \"off\") turns it off, like --no-text and PXSIG_TEXT=off. A bad value is a warning and text capture off for the run, never a failed check.",
+      "description": "Text capture: each render also writes its text record (<id>.boxes.json: the text runs it draws, their boxes and font facts, and painted element boxes), and a baseline approved from that render stores it as its boxes section. Labels only: never a render, a gate or an exit code. On by default; false (or \"off\") turns it off, like --no-text and PXSIG_TEXT=off. A bad value is a warning and text capture off for the run, never a failed check.",
       "anyOf": [{ "type": "boolean" }, { "const": "off" }, { "type": "object" }],
-      "default": false,
+      "default": true,
       "properties": {
         "ignore": {
           "type": "array",
