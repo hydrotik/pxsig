@@ -223,6 +223,9 @@ reader checks a section without inflating it. pxsig writes `boxes` deflated and 
 past 32 MiB. A reader that does not know a section's encoding cannot read that section; the file is
 still read.
 
+`pxsig check` reads the `boxes` section as the baseline's side of a row's text labels (section 7,
+[Text labels](#text-labels)). Nothing in it is read by the gate, a verdict or an exit code.
+
 ### Reading rules
 
 A reader must:
@@ -344,7 +347,7 @@ A full check writes, under `<store>/reports/`:
 | File                                | Content                                                                                                                                                                                                                                                                                                                                                                                        |
 | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `check.json` (`check-<suite>.json`) | `{ generatedAt, project, suite, manifest, summary, affected, envs, rows }`, one row per entry. `envs` maps every render environment a row names (its render's `env`, its baseline's `baselineEnv`) by id; each row adds `envMatch` (`same`, `compatible`, `mismatch`, `unknown`) and, when not `same`, `envDiff` (the differing field names); `summary.envMismatch` counts the mismatched rows |
-| `summary.md` (`summary-<suite>.md`) | Markdown summary, suitable for a pull request comment                                                                                                                                                                                                                                                                                                                                          |
+| `summary.md` (`summary-<suite>.md`) | Markdown summary, suitable for a pull request comment; a changed entry's reasons end with its text kind (`· text: copy, reflow`, [Text labels](#text-labels))                                                                                                                                                                                                                                  |
 | `junit.xml` (`junit-<suite>.xml`)   | JUnit results, one test case per entry                                                                                                                                                                                                                                                                                                                                                         |
 | `history.ndjson`                    | One line per run (full checks and server re-checks); a full check that analysed React or counted renders adds `react`: `{ alerts, newBailouts, renderAlerts }` (each present when known)                                                                                                                                                                                                       |
 | `integrity.json`                    | The integrity ledger (see [integrity.md](integrity.md))                                                                                                                                                                                                                                                                                                                                        |
@@ -353,7 +356,54 @@ Renders go to `<store>/renders/latest/<id>.png`; diff images for failures to
 `<store>/diffs/latest/`. With text capture on ([configuration.md](configuration.md#text)), each
 render's text record is beside it, `<store>/renders/latest/<id>.boxes.json` (version 1: `frame`,
 `styles`, `runs`, `elements`, `skipped`, `truncated`); an approval stores it as the baseline's
-`boxes` section (section 5). check.json rows do not change.
+`boxes` section (section 5), and the check labels each row's text from the two (below).
+
+### Text labels
+
+A rendered row whose render has a text record carries `textDiff`: labels only, beside the verdict.
+`pass`, the reasons, every verdict and exit code, the SARIF log and the JUnit results are the same
+with or without it.
+
+```jsonc
+"textDiff": {
+  "v": 1,
+  "state": "compared",               // compared | env-differs | no-baseline | error
+  "kind": "copy-reflow",             // copy | copy-reflow | moved | restyled | pixel; null when no text differs
+  "kinds": ["copy", "moved"],        // the change kinds present
+  "counts": { "runs": 61, "copy": 3, "moved": 3, "rewrapped": 0, "restyled": 0, "added": 0, "removed": 0 },
+  "outsidePx": 0, "insidePx": 812, "elementPx": 0,
+  "changes": [                       // the first 20, largest first; "changeCount" has the total
+    { "kind": "copy", "was": "1", "now": "1 ", "whitespace": true, "key": "tile-findings", "path": "0/2/1/#0", "box": [12, 40, 12.27, 18] },
+    { "kind": "moved", "s": "new · of 1", "dx": 4.2, "dy": 0, "pushed": true, "pushedBy": 0, "same": 2, "path": "0/2/1/1/#0", "box": [28.2, 40, 61, 18] }
+  ],
+  "changeCount": 4
+}
+```
+
+| State         | When                                                                                                                                                                       |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `compared`    | The render and its baseline were made in the same environment and both have a text record.                                                                                 |
+| `env-differs` | The environments differ, or either is unknown: text boxes differ across operating systems and fonts, so text is compared only within one environment. Nothing else is set. |
+| `no-baseline` | The baseline has no `boxes` section (approved before text capture, or with it off); its next approval records one.                                                         |
+| `error`       | A record did not read; `error` says which and why.                                                                                                                         |
+
+The kind is the first that applies: `pixel` (more than `text.noisePx` changed pixels outside every
+change's boxes, widened by `text.edgePx`), `restyled` (a font fact changed), `moved` (a run moved
+or rewrapped that no copy change pushed), `copy-reflow` (copy changes, and every move pushed by
+them), `copy` (copy changes only). A change is `copy` (`was`, `now`; `whitespace` when equal after
+collapsing whitespace; `facts` when its style changed too), `moved` or `rewrapped` (`s`, `dx`,
+`dy`; `pushed` and `pushedBy`, the index in `changes` of the copy change that pushed it; `same`,
+how many more runs moved the same way), `restyled` (`s`, `facts`: the `styles` keys that differ),
+`added` or `removed` (`s`). `box` is the change's first line box in the render (the baseline's, for
+a removed run), `[x, y, width, height]` in CSS px. `outsidePx` and `insidePx` count changed pixels
+outside and inside the changes' widened boxes; `elementPx`, those of `outsidePx` that a painted box
+moved or resized by copy explains. A passing row whose records do not differ gets no pixel diff,
+and these three are absent. `truncated`: a record hit the capture's cap.
+
+Every output says the labels in the same words (`lib/text/say.mjs`): `pxsig entry`'s Text block,
+`pxsig list`'s Why column, MCP's `textSummary` and `textLines` ([mcp.md](mcp.md#text-labels)), and
+summary.md, which adds the kind after a changed entry's reasons: `· text: copy, reflow` (none for
+`pixel`). The dashboard does not show them yet.
 
 ### React analysis
 

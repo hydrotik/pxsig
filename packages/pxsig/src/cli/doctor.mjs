@@ -8,6 +8,7 @@ import { describeLock, readLock, takeLock } from '../lib/lock.mjs';
 import { ask, progress, stateCell } from '../lib/term.mjs';
 import { describeAgent } from '../lib/agents.mjs';
 import { preflightReport } from './preflight.mjs';
+import { textSuffix } from '../lib/text/say.mjs';
 import {
   appendReadiness,
   describeEnforcement,
@@ -79,7 +80,10 @@ export function doctorParts(cli) {
           id: idCell(e.id),
           ssim: e.ssim ?? '',
           cells: pct(e.changedCellsPct),
-          why: e.error ?? (e.reasons ?? [])[0] ?? '',
+          // The first reason, then the text kind (lib/text/say.mjs): `… · text: copy, reflow`.
+          why: [e.error ?? (e.reasons ?? [])[0], textSuffix(e.textKind)]
+            .filter(Boolean)
+            .join(' · '),
         })),
         more,
       },

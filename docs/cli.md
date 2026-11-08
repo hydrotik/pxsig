@@ -193,19 +193,40 @@ entries, whether the server is up, the integrity headline, and files edited sinc
 
 ### `pxsig list [state]`
 
-Entries in one state, with SSIM, the share of changed cells, and the first gate reason.
+Entries in one state, with SSIM, the share of changed cells, and the first gate reason, followed by
+the entry's text label when its text was compared (`· text: copy, reflow`; see
+[configuration.md](configuration.md#text)).
 
-| Flag                 | Meaning                                                                                                                                                                       |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `state`              | `problems` (default: changed, error, flaky, rejected), `changed`, `new`, `error`, `flaky`, `rejected`, `approved`, `drift`, `pass`, `skipped`, `a11y`, `all`. Also `--state`. |
-| `--component <text>` | Entries whose id contains this text.                                                                                                                                          |
-| `--mode <name>`      | One mode.                                                                                                                                                                     |
-| `--limit <n>`        | Rows shown (default 30).                                                                                                                                                      |
+| Flag                 | Meaning                                                                                                                                                                                   |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `state`              | `problems` (default: changed, error, flaky, rejected), `changed`, `new`, `error`, `flaky`, `rejected`, `approved`, `drift`, `pass`, `skipped`, `a11y`, `all`. Also `--state`.             |
+| `--component <text>` | Entries whose id contains this text.                                                                                                                                                      |
+| `--mode <name>`      | One mode.                                                                                                                                                                                 |
+| `--text <kind>`      | Entries whose text labels are this kind: `copy`, `copy-reflow`, `moved`, `restyled`, or `any` (any text change). Without a state, every state: a copy change under the gate still passes. |
+| `--limit <n>`        | Rows shown (default 30).                                                                                                                                                                  |
 
 ### `pxsig entry <id>`
 
 One entry: state, metrics, gate reasons, changed regions, accessibility, review decision, a link to
 the dashboard, and the paths of its images. `--images baseline,current,diff` chooses the images.
+
+When the entry has text labels, a **Text** block follows the gate reasons: the kind (Copy, Copy,
+reflow, Text moved, Text restyled, Pixel change), then up to 8 sentences, one per change, then the
+changed pixels outside text:
+
+```text
+### Text — Copy, reflow
+
+- Copy: "1" → "1␠" (whitespace only: a space added)
+- "new · of 1" moved 4.2px right, and 2 more runs the same way, pushed by the copy change "1" → "1␠"
+- No pixels changed outside text.
+
+Labels only. The gate and the decision are unchanged.
+```
+
+A string shows a space at either end (every space, for a change in whitespace only) as `␠`. A row
+whose text was not compared says why in one sentence (`env-differs`: text is compared only within
+one environment). `--json` carries the row's `textDiff` and every sentence as `textLines`.
 
 ### `pxsig stale [--limit 200]`
 

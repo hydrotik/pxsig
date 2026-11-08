@@ -154,3 +154,24 @@ export type TextDiff =
     }
   | { v: 1; state: 'env-differs' | 'no-baseline' }
   | { v: 1; state: 'error'; error: string };
+
+/** What `pxsig_list`'s brief adds for a row's text (lib/text/say.mjs `textBrief`). */
+export interface TextBrief {
+  /** The entry's text kind; null when nothing in text differs. Absent when nothing was compared. */
+  textKind?: TextKind | null;
+  /** Why nothing was compared. */
+  textState?: 'env-differs' | 'no-baseline' | 'error';
+  /** The labels in one line (`textSummary`); absent when nothing in text differs. */
+  textSummary?: string;
+}
+
+/** What `pxsig_entry` adds for a row's text. */
+export interface TextDetail {
+  /** The row's labels in full. */
+  textDiff?: TextDiff;
+  /** One sentence per change, then the pixels outside text (lib/text/say.mjs `textLines`). */
+  textLines?: string[];
+}
+
+/** `pxsig_list`'s text filter: an entry kind, or `any` text change. */
+export type TextFilter = 'copy' | 'copy-reflow' | 'moved' | 'restyled' | 'any';

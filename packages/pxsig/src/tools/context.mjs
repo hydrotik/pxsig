@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { foreignServer, openProject } from '../lib/workspace.mjs';
 import { relPath } from '../lib/paths.mjs';
 import { readJson } from '../lib/files.mjs';
+import { textBrief } from '../lib/text/say.mjs';
 
 /** @import { BriefEntry, CheckReport, McpContent, ReportRow, ReviewFile, ServerStatusReply } from '../types/t6.js' */
 
@@ -117,6 +118,8 @@ function brief(row, review) {
     ...(row.reasons?.length ? { reasons: row.reasons } : {}),
     ...(row.error ? { error: String(row.error) } : {}),
     ...(row.a11y?.new ? { a11yNew: row.a11y.new } : {}),
+    // Text labels (lib/text/say.mjs): labels only, beside the state, never changing it.
+    ...textBrief(row.textDiff),
   };
 }
 

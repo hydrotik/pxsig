@@ -390,6 +390,14 @@ reports); otherwise the row says `env-differs` and compares nothing. Labels only
 pixel, and the render, the gate, every verdict and exit code are the same with text capture on or
 off.
 
+The labels are shown in `pxsig entry` (a Text block: the kind and one sentence per change, such as
+`Copy: "1" → "1␠" (whitespace only: a space added)`), `pxsig list` (`· text: copy, reflow` after
+the first reason; `--text <kind>` keeps one kind), MCP `pxsig_list` and `pxsig_entry`
+([mcp.md](mcp.md#text-labels)), and summary.md (after a changed entry's reasons). A row whose
+environment differs says that text is compared only within one environment: a render from that
+environment approved as the baseline gives it labels. The row's shape is in
+[spec.md](spec.md#text-labels).
+
 What a record holds, per run (a DOM Text node the screenshot draws): its string as in the DOM, one
 box per line fragment in the screenshot's frame (CSS px, rounded to 0.01), its font facts (family,
 size, weight, style, line height, letter and word spacing, transform, decoration, colour, font

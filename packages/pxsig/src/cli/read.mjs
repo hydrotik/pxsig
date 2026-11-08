@@ -7,6 +7,7 @@ import { imageOf } from '../tools/index.mjs';
 import { emit, stateCell } from '../lib/term.mjs';
 import { herePath } from '../lib/machine.mjs';
 import { doctorParts } from './doctor.mjs';
+import { TEXT_FILTERS, TEXT_LABELS_ONLY, textKindLabel, textLines } from '../lib/text/say.mjs';
 
 /** @import { Block, EngineMetrics, EntryDetail, ToolOutput } from '../types/t6.js' */
 /** @import { CliContext } from './context.mjs' */
@@ -245,12 +246,17 @@ export function readCommands(cli) {
       }),
 
     list: () => {
-      needValues(['component', 'mode', 'state']);
+      needValues(['component', 'mode', 'state', 'text']);
+      const text = /** @type {import('../types/text.js').TextFilter | undefined} */ (flags.text);
+      if (text && !TEXT_FILTERS.includes(text))
+        fail(`usage: --text is one of ${TEXT_FILTERS.join(', ')}`);
       return overProjects(async () => {
-        const state = rest[0] ?? flags.state ?? 'problems';
+        // With --text, every state unless one is named: a copy change under the gate still passes.
+        const state = rest[0] ?? flags.state ?? (text ? 'all' : 'problems');
         const limit = Number(flags.limit) || 30;
         const s = await run('list', {
           state,
+          text,
           component: /** @type {string | undefined} */ (flags.component),
           mode: /** @type {string | undefined} */ (flags.mode),
           limit,
@@ -259,7 +265,7 @@ export function readCommands(cli) {
         const blocks = [
           {
             h: `Entries: ${state}`,
-            sub: `${s.total} match${flags.component ? ` · component ~ ${flags.component}` : ''}${flags.mode ? ` · ${flags.mode}` : ''}`,
+            sub: `${s.total} match${flags.component ? ` · component ~ ${flags.component}` : ''}${flags.mode ? ` · ${flags.mode}` : ''}${text ? ` · text ${text}` : ''}`,
           },
           s.total
             ? entryTable(s.entries, { more: s.total - s.shown })
@@ -329,6 +335,7 @@ export function readCommands(cli) {
         },
       ];
       if (e.reasons?.length) blocks.push({ h: 'Why' }, { list: e.reasons });
+      blocks.push(...textBlocks(e));
       if (regions.length)
         blocks.push(
           { h: 'Regions' },
@@ -355,4 +362,35 @@ export function readCommands(cli) {
       });
     },
   };
+}
+
+/** The most text lines `pxsig entry` shows; `--json` carries them all (`textLines`). */
+const TEXT_LINES = 8;
+
+/**
+ * `pxsig entry`'s Text block (lib/text/say.mjs): the kind, then up to 8 sentences, and that the
+ * labels change nothing. None for an entry without text labels.
+ * @param {EntryDetail} e
+ * @returns {Block[]}
+ */
+function textBlocks(e) {
+  const t = e.textDiff;
+  if (!t) return [];
+  const lines = e.textLines ?? textLines(t);
+  const sub =
+    t.state === 'compared'
+      ? (textKindLabel(t.kind) ?? 'No text change')
+      : t.state === 'env-differs'
+        ? 'Not compared'
+        : t.state === 'no-baseline'
+          ? 'No baseline record'
+          : 'Not read';
+  const more = lines.length - TEXT_LINES;
+  return [
+    { h: 'Text', sub },
+    {
+      list: more > 0 ? [...lines.slice(0, TEXT_LINES), `… ${more} more in --json`] : lines,
+    },
+    { note: TEXT_LABELS_ONLY },
+  ];
 }
