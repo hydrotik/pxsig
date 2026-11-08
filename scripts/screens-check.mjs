@@ -314,9 +314,13 @@ async function main() {
   mkdirSync(reports, { recursive: true });
   const onlyFile = join(reports, '.selected.json');
   writeFileSync(onlyFile, JSON.stringify(selected.filter((id) => render.get(id)?.png)));
-  // Each screen's environment: the engine compares text records only within one.
+  // Each screen's environment: the engine compares text records only within one. The image's
+  // engine may predate `check --env` (it then labels no text): the plan goes only to one that takes it.
   const envFile = join(reports, '.check-env.json');
   writeFileSync(envFile, JSON.stringify(envPlan(entries, current)));
+  const takesEnv = spawnSync(P.rustBin, ['check', '--help'], { encoding: 'utf8' }).stdout?.includes(
+    '--env'
+  );
   const engineRun = (/** @type {string[]} */ a) => {
     const r = spawnSync(P.rustBin, a, {
       encoding: 'utf8',
@@ -341,8 +345,7 @@ async function main() {
         P.store.diffLatest,
         '--only',
         `@${onlyFile}`,
-        '--env',
-        `@${envFile}`,
+        ...(takesEnv ? ['--env', `@${envFile}`] : []),
         '--json',
         '--history',
         join(reports, 'history.ndjson'),
