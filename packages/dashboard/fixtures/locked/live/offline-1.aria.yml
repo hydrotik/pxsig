@@ -29,11 +29,11 @@
   - text: Review required
 - main:
   - heading "Overview" [level=2]
-  - text: Checked 12light · dark Passed 10
+  - text: Checked 12 light · dark Passed 10
   - button "Changed 2"
   - button "Flaky 0"
-  - button "New a11y 0of 0 violations"
-  - text: Duration 1.0 s1.0 s rendering
+  - button "New a11y 0 of 0 violations"
+  - text: Duration 1.0 s 1.0 s rendering
   - heading "Open Items" [level=3]
   - grid "Data grid":
     - rowgroup:
@@ -90,9 +90,9 @@
   - heading "React" [level=3]
   - paragraph: Alerts only, not blocking. From the analysis at 10/25/2026, 12:00:00 PM · base main (d3bdd51) · 1 file changed since
   - button "Newly skipped 1"
-  - button "Findings 0new · of 0"
-  - button "Compiled 0of 1 analysed"
-  - text: Still rendering —Not measured
+  - button "Findings 0 new · of 0"
+  - button "Compiled 0 of 1 analysed"
+  - text: Still rendering — Not measured
   - heading "Changed Entries per Run" [level=3]
   - paragraph: 7 runs.
   - application: 1 2 3 4 5 6 7 0 6 12

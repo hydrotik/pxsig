@@ -67,7 +67,34 @@ export const CardHeader = pick('CardHeader');
 export const CardTitle = pick('CardTitle');
 export const CardDescription = pick('CardDescription');
 export const CardContent = pick('CardContent');
-export const StatGroup = pick('StatGroup');
+const AdapterStatGroup = pick('StatGroup');
+/** Read, not drawn: a 1px box clipped to nothing and out of flow, so nothing around it moves. */
+const unseen: React.CSSProperties = {
+  position: 'absolute',
+  inlineSize: '1px',
+  blockSize: '1px',
+  padding: 0,
+  margin: '-1px',
+  overflow: 'hidden',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'pre',
+  border: 0,
+};
+const gap = React.createElement('span', { style: unseen }, ' ');
+/**
+ * The adapter's StatGroup, with a space after each value that a unit follows: read, not drawn. The
+ * figure and its unit are drawn apart by a margin only, so without it a tile's accessible name runs
+ * them together ("1new · of 1"). Done here once, for every adapter and every tile.
+ */
+export const StatGroup = (props: ComponentProps['StatGroup']) =>
+  React.createElement(AdapterStatGroup, {
+    ...props,
+    items: props.items.map((it) =>
+      it.unit == null || it.unit === false || it.unit === ''
+        ? it
+        : { ...it, value: React.createElement(React.Fragment, null, it.value, gap) }
+    ),
+  });
 export const DataTable = pick('DataTable') as unknown as <T>(
   props: DataTableProps<T>
 ) => React.ReactElement | null;
@@ -132,6 +159,7 @@ export const Alert = pick('Alert');
 export const AlertTitle = pick('AlertTitle');
 export const AlertDescription = pick('AlertDescription');
 export const SearchField = pick('SearchField');
+export const TextField = pick('TextField');
 export const Select = pick('Select');
 export const Chart = pick('Chart');
 export const Heatmap = pick('Heatmap');

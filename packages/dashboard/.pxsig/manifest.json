@@ -1636,6 +1636,38 @@
       "a11y": false
     },
     {
+      "id": "inspector--session-2@dark",
+      "story": "inspector--session-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--session-2@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--session-2@light",
+      "story": "inspector--session-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--session-2@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
       "id": "embed--panel-1@dark",
       "story": "embed--panel-1",
       "mode": "dark",

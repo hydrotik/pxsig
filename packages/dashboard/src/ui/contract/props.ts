@@ -357,6 +357,21 @@ export interface SearchFieldProps {
   onValueChange: (value: string) => void;
   placeholder?: string;
 }
+/** A controlled single-line text field with a visible label (since 1.5.0). */
+export interface TextFieldProps {
+  /** The visible label, and the field's accessible name. */
+  label: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  /** The most characters the field takes. */
+  maxLength?: number;
+  /** A hint shown while the field is empty; never its name. */
+  placeholder?: string;
+  /** Enter in the field, with its value (not while an input method is composing). */
+  onSubmit?: (value: string) => void;
+  /** Focus the field when it mounts. */
+  autoFocus?: boolean;
+}
 /** One option of a `Select`. */
 export interface SelectOption {
   value: string;

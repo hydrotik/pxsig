@@ -190,7 +190,8 @@ One file per baseline: the record, the raw signature bytes and, optionally, the 
   "encryption": "none",
   "sections": [
     { "name": "sig", "length": 12288, "sha256": "…" },
-    { "name": "image", "type": "image/png", "length": 20511, "sha256": "…", "width": 412, "height": 96 }
+    { "name": "image", "type": "image/png", "length": 20511, "sha256": "…", "width": 412, "height": 96 },
+    { "name": "boxes", "type": "application/json", "encoding": "deflate", "length": 507, "sha256": "…", "runs": 3 }
   ]
 }
 ```
@@ -203,16 +204,24 @@ One file per baseline: the record, the raw signature bytes and, optionally, the 
 | `env`        | Optional (0.5 and later). The environment the baseline's render was made in, `v` 1: browser, OS, font probe, render settings, versions, and `id` over the major fields ([configuration.md](configuration.md#env)). Always the render's, never the approving machine's. A baseline without it compares as `unknown`. |
 | `record`     | The spec v1 record, without `sig`.                                                                                                                                                                                                                                                                                  |
 | `encryption` | `"none"`. Reserved: encryption is not implemented, and a reader refuses any other value.                                                                                                                                                                                                                            |
-| `sections`   | One object per section: `name`, `length` in bytes, `sha256` hex of its bytes. The image section adds `type`, and `width` / `height` read from the PNG header.                                                                                                                                                       |
+| `sections`   | One object per section: `name`, `length` in bytes, `sha256` hex of its bytes as stored. The image section adds `type`, and `width` / `height` read from the PNG header. Any other section may add `type`, `encoding` and keys of its own (`boxes`: `runs`).                                                         |
 
 ### Sections
 
-| Name    | Content                                                | Required |
-| ------- | ------------------------------------------------------ | -------- |
-| `sig`   | The raw signature: `grid * grid * 3` bytes, not base64 | Yes      |
-| `image` | The baseline render, PNG bytes, unchanged              | No       |
+| Name    | Content                                                 | Required |
+| ------- | ------------------------------------------------------- | -------- |
+| `sig`   | The raw signature: `grid * grid * 3` bytes, not base64  | Yes      |
+| `image` | The baseline render, PNG bytes, unchanged               | No       |
+| `boxes` | The text record: the render's text runs, JSON, deflated | No       |
 
-Sections follow the header back to back, in table order. pxsig writes `sig` first, then `image`.
+Sections follow the header back to back, in table order. pxsig writes `sig` first, then `image`,
+then any other section.
+
+A section's `encoding` says how its bytes are stored: absent or `"identity"`, as is; `"deflate"`,
+raw DEFLATE (RFC 1951) of its content. `length` and `sha256` are always of the stored bytes, so a
+reader checks a section without inflating it. pxsig writes `boxes` deflated and refuses to inflate
+past 32 MiB. A reader that does not know a section's encoding cannot read that section; the file is
+still read.
 
 ### Reading rules
 
@@ -221,8 +230,9 @@ A reader must:
 1. check the magic and refuse any container version it does not know;
 2. refuse any `encryption` other than `"none"`;
 3. for each section in the table, check its length and sha256; a mismatch is an error;
-4. skip sections whose name it does not know, so later versions can add sections, and ignore
-   top-level header keys it does not know (`env` to a reader older than 0.5);
+4. skip sections whose name it does not know, so later versions can add sections (`boxes` to a
+   reader older than 0.7.6), and ignore top-level header keys it does not know (`env` to a reader
+   older than 0.5);
 5. require a `sig` section, and check that it matches the record (`grid * grid * 3` bytes).
 
 Putting the `sig` bytes back into the record as base64 gives the exact spec v1 record the
@@ -233,7 +243,9 @@ container was packed from. `pxsig pack` checks that by reading every file back a
 - A `.psig` is written to a temporary file and renamed into place.
 - `pxsig attach` adds an image to a container that has none. It refuses a container that already
   has one, and verifies that the record and signature bytes are unchanged afterwards. It keeps
-  every top-level header key it does not write itself (`env`, and any key a later version adds).
+  every top-level header key it does not write itself (`env`, and any key a later version adds),
+  and every section other than `sig` and `image` as stored: its table entry and its bytes, never
+  inflated and deflated again. Decoding a file and writing back what was read gives the same bytes.
 - `pxsig baseline --env @file` writes each entry's render environment as `env`. The file is
   `{ "envs": { "<envId>": env }, "byId": { "<entryId>": "<envId>" } }`; an entry it does not name
   gets no `env`.

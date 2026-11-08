@@ -138,3 +138,24 @@ test('a contract change without a version bump and a changes entry fails', async
     bumped.join('\n')
   );
 });
+
+test('a contract component no feature renders passes only while NOT_YET_RENDERED names it', async () => {
+  const problems = await check(({ read, write }) => {
+    const t = read('ui-tools.mjs');
+    write('ui-tools.mjs', t.replace(/^ {2}TextField: .*\n/m, ''));
+  });
+  assert.ok(
+    problems.includes(
+      'TextField is in the contract but no feature in src/ui/features.ts renders it'
+    ),
+    problems.join('\n')
+  );
+  const stale = await check(({ read, write }) => {
+    const t = read('ui-tools.mjs');
+    write('ui-tools.mjs', t.replace(/^ {2}TextField: (.*)\n/m, "  TextField: $1\n  Nope: 'x',\n"));
+  });
+  assert.ok(
+    stale.includes('NOT_YET_RENDERED (ui-tools.mjs) names Nope, which is not in the contract'),
+    stale.join('\n')
+  );
+});

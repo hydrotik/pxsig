@@ -27,6 +27,7 @@ import {
 import type * as C from '../../contract';
 import { oneLineSlider } from './slider';
 import { sidePanel } from './side-panel';
+import { textField } from './text-field';
 export { Heatmap } from './heatmap';
 
 export const name = 'hydrotik';
@@ -520,6 +521,7 @@ export const AlertDescription = ({ children }: C.AlertDescriptionProps) => (
 export const SearchField = ({ id, value, onValueChange, placeholder }: C.SearchFieldProps) => (
   <DS.SearchBar id={id} value={value} onValueChange={onValueChange} placeholder={placeholder} />
 );
+export const TextField = textField(DS.Input);
 
 export const Select = ({
   id,
