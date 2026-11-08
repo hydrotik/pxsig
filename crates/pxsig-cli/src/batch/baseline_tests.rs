@@ -237,3 +237,41 @@ fn the_env_plan_and_enforcement_parse_inline_or_from_a_file() {
     );
     let _ = fs::remove_dir_all(&d);
 }
+
+/// Pin (text-aware diffs): a render with no text record beside it gets the baseline it got before
+/// text capture existed: sections `sig` and `image` only, the bytes the container writes for that
+/// record, image, entry and header keys and nothing else.
+#[test]
+fn a_render_without_a_text_record_gets_sig_and_image_only() {
+    let d = scratch("no-boxes");
+    write_png(&d.join("png/a.png"), 10);
+    manifest(
+        &d,
+        json!({ "stories": [{ "id": "a", "sig": "store/a.psig" }] }),
+    );
+    assert_eq!(baseline(&opts(&d)).unwrap()["summary"]["failed"], json!(0));
+    let bytes = fs::read(d.join("store/a.psig")).unwrap();
+    let p = pxsig_core::psig::decode(&bytes).unwrap();
+    let names: Vec<&str> = p.header["sections"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["sig", "image"]);
+    assert!(p.sections.is_empty());
+    let extra = pxsig_core::psig::extras(&p.header);
+    let again = pxsig_core::psig::encode(
+        &p.record,
+        p.image.as_deref(),
+        p.header.get("entry"),
+        Some(&extra),
+        &[],
+    )
+    .unwrap();
+    assert!(
+        again == bytes,
+        "the same bytes as a container with no extra section"
+    );
+    let _ = fs::remove_dir_all(&d);
+}
