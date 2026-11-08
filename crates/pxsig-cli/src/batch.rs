@@ -179,6 +179,7 @@ pub fn load_baseline(sig: &Path) -> Result<Baseline> {
 }
 
 mod baseline;
+mod boxes;
 mod check;
 
 pub use baseline::{

@@ -168,3 +168,25 @@ fn affected_takes_a_file_list_without_git() {
     assert!(r["ids"].is_array(), "{r}");
     assert!(r["reason"].is_string(), "{r}");
 }
+
+#[test]
+fn capture_stores_the_text_record_it_is_given_and_none_without_one() {
+    let d = scratch("boxes");
+    png(&d.join("png/a.png"), 10);
+    let rec = json!({ "v": 1, "runs": [{ "path": "0/#0", "s": "1 ", "st": 0, "boxes": [] }] });
+    fs::write(d.join("png/a.boxes.json"), rec.to_string()).unwrap();
+    let with = json!({ "png": p(&d, "png/a.png"), "out": p(&d, "a.psig"), "boxes": p(&d, "png/a.boxes.json") });
+    dispatch("capture", &with).unwrap();
+    let a = pxsig_core::psig::decode(&fs::read(d.join("a.psig")).unwrap()).unwrap();
+    assert_eq!(a.sections.len(), 1);
+    assert_eq!(a.sections[0].meta["runs"], json!(1));
+    // Without `boxes`, the file beside the render is not read: the caller decides.
+    dispatch(
+        "capture",
+        &json!({ "png": p(&d, "png/a.png"), "out": p(&d, "b.psig") }),
+    )
+    .unwrap();
+    let b = pxsig_core::psig::decode(&fs::read(d.join("b.psig")).unwrap()).unwrap();
+    assert!(b.sections.is_empty());
+    let _ = fs::remove_dir_all(&d);
+}

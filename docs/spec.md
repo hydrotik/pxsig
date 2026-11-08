@@ -249,6 +249,11 @@ container was packed from. `pxsig pack` checks that by reading every file back a
 - `pxsig baseline --env @file` writes each entry's render environment as `env`. The file is
   `{ "envs": { "<envId>": env }, "byId": { "<entryId>": "<envId>" } }`; an entry it does not name
   gets no `env`.
+- A render's text record, `<id>.boxes.json` beside `<id>.png` (written by the capture when text
+  capture is on, [configuration.md](configuration.md#text)), becomes the baseline's `boxes` section:
+  `pxsig baseline` reads it from `--png-dir`, and the server's approval passes the approved
+  render's. The record must be a JSON object with `v` 1 and a `runs` array, else that entry's
+  baseline is not written. A render without one gets `sig` and `image` only, as before.
 
 ## 6. Manifest, version 2
 
