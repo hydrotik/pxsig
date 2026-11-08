@@ -21,21 +21,21 @@ pub fn beside(png: &Path) -> Option<PathBuf> {
 /// `runs` array), then deflated, its run count in the table entry. Any other file is an error, so
 /// a baseline never stores what is not a text record.
 pub fn section(file: &Path) -> Result<Section> {
+    // Named by its file name only: the message reaches the dashboard, and a full path names the user.
+    let name = file
+        .file_name()
+        .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
     let len = fs::metadata(file)
-        .with_context(|| format!("reading {}", file.display()))?
+        .with_context(|| format!("reading {name}"))?
         .len();
     if len > MAX_INFLATED {
-        bail!(
-            "{}: a text record over {MAX_INFLATED} bytes is not stored",
-            file.display()
-        );
+        bail!("{name}: a text record over {MAX_INFLATED} bytes is not stored");
     }
-    let text = fs::read(file).with_context(|| format!("reading {}", file.display()))?;
-    let v: Value =
-        serde_json::from_slice(&text).with_context(|| format!("{} is not JSON", file.display()))?;
+    let text = fs::read(file).with_context(|| format!("reading {name}"))?;
+    let v: Value = serde_json::from_slice(&text).with_context(|| format!("{name} is not JSON"))?;
     let runs = match (v.get("v"), v.get("runs")) {
         (Some(ver), Some(Value::Array(runs))) if ver == &json!(1) => runs.len(),
-        _ => bail!("{} is not a text record (v 1 with runs)", file.display()),
+        _ => bail!("{name} is not a text record (v 1 with runs)"),
     };
     let mut keys = Map::new();
     keys.insert("runs".into(), json!(runs));
@@ -90,7 +90,12 @@ mod tests {
         ] {
             let f = d.join(format!("{name}.boxes.json"));
             fs::write(&f, body).unwrap();
-            assert!(section(&f).is_err(), "{name}: {body}");
+            let err = format!("{:#}", section(&f).unwrap_err());
+            assert!(
+                err.starts_with(&format!("{name}.boxes.json")),
+                "{name}: {err}"
+            );
+            assert!(!err.contains(&*d.to_string_lossy()), "no folder in {err}");
         }
         let _ = fs::remove_dir_all(&d);
     }
