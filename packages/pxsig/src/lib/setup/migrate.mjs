@@ -2,7 +2,7 @@
 import { spawnSync } from '../spawn.mjs';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
-import { sha256 } from '../approvals.mjs';
+import { migrateBatch, sha256 } from '../approvals.mjs';
 import { writeJsonAtomic } from '../integrity.mjs';
 import { SetupError, runManifest } from '../workspace.mjs';
 import { shortPath, toPosix } from '../paths.mjs';
@@ -197,7 +197,7 @@ export function migrateLegacy(P, { from, apply = false, verify = true, log = () 
       id: x.entry.id,
       by: 'pxsig migrate',
       via: 'migrate',
-      batch: `migrate-${at.replace(/[:.]/g, '-')}`,
+      batch: migrateBatch(at),
       reason: `moved from ${toPosix(relative(P.workspaceRoot, x.sig))}`,
       kind: null,
       gitHead: null,

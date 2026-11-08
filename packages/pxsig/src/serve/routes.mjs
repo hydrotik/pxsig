@@ -12,6 +12,7 @@
  * `via` in the body is ignored. An approve works for an entry with no baseline yet (a NEW entry):
  * the first render becomes its baseline, logged with `before: null`.
  */
+import { ownBatch } from '../lib/approvals.mjs';
 import { readJson } from '../lib/files.mjs';
 import { filterLedger } from '../lib/integrity.mjs';
 import { withoutNotes } from '../lib/rejections.mjs';
@@ -393,7 +394,8 @@ async function decide({ srv, res, action, body, S, auth }) {
    */
   const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : undefined);
   const meta = {
-    batch: s(body.batch, 80)?.replace(/[^\w.-]/g, ''),
+    // pxsig's own batch name (`pxsig approve apply` sends one per plan), else the server's.
+    batch: ownBatch(body.batch) ?? undefined,
     via: auth.via,
     reason: s(body.reason, 500),
     kind: s(body.kind, 16),

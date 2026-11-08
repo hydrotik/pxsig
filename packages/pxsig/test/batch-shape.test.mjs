@@ -1,17 +1,20 @@
 /**
  * batch-shape.test.mjs — the batch name a decision is logged under (`batch` in approvals.ndjson and
  * a11y-decisions.ndjson): the names pxsig itself makes (`newBatch`, an undo's `-undo`), and what
- * the server does with a `batch` a request sends (POST /__pxsig/approve, /__pxsig/a11y-prune).
+ * the server does with a `batch` a request sends (POST /__pxsig/approve, /__pxsig/a11y-prune): it
+ * keeps pxsig's own shape (`BATCH_RE`) and names any other batch itself, so a client cannot log
+ * free text.
  *
  *   node --test packages/pxsig/test/batch-shape.test.mjs
  *
  * The server tests need the Rust binary; skipped without it.
  */
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { test } from 'node:test';
-import { newBatch } from '../src/lib/approvals.mjs';
+import { fileURLToPath } from 'node:url';
+import { BATCH_RE, migrateBatch, newBatch, ownBatch } from '../src/lib/approvals.mjs';
 import { readToken } from '../src/lib/guard.mjs';
 import { buildPlan } from '../src/lib/prune.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
@@ -19,8 +22,8 @@ import { fixture, hasRust, rustBin, testEnv, testHome } from './fixture.mjs';
 import { startServer } from './server-proc.mjs';
 import { skipUnless } from './strict.mjs';
 
-/** What `newBatch` makes: the ISO time with `-` for `:` and `.`, then how the decision came. */
-const SHAPE = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-[a-z]+(-[a-z]+)*$/;
+const SHAPE = BATCH_RE;
+const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 
 test("pxsig's own batch names: newBatch for every way in, and an undo's -undo", () => {
   // Every `newBatch(...)` in src/: the CLI's apply, adopt, check --update, a11y --prune, and the
@@ -31,7 +34,50 @@ test("pxsig's own batch names: newBatch for every way in, and an undo's -undo", 
     assert.ok(b.endsWith(`-${via}`), b);
     // `approve undo <batch>` (approve.mjs) and the dashboard's undo (serve/review.mjs).
     assert.match(`${b}-undo`, SHAPE);
+    assert.match(`${b}-undo-undo`, SHAPE);
+    assert.equal(ownBatch(b), b);
   }
+  // `pxsig migrate` (lib/setup/migrate.mjs), and its undo.
+  const m = migrateBatch(new Date().toISOString());
+  assert.match(m, SHAPE, m);
+  assert.match(`${m}-undo`, SHAPE);
+});
+
+test('every newBatch in src/ names a way in BATCH_RE knows', () => {
+  /** @param {string} dir @returns {string[]} */
+  const files = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+      d.isDirectory()
+        ? files(join(dir, d.name))
+        : d.name.endsWith('.mjs')
+          ? [join(dir, d.name)]
+          : []
+    );
+  const vias = files(src).flatMap((f) =>
+    [...readFileSync(f, 'utf8').matchAll(/newBatch\('([^']+)'\)/g)].map((m) => m[1])
+  );
+  assert.ok(vias.length >= 5, vias.join());
+  for (const via of vias) assert.match(newBatch(via), SHAPE, via);
+});
+
+test('ownBatch keeps only a batch name pxsig made', () => {
+  for (const v of [
+    'my release: v2!',
+    'myreleasev2',
+    'b-srv',
+    '',
+    `${newBatch('cli')} `,
+    `x${newBatch('cli')}`,
+    newBatch('someone'),
+    newBatch('cli').replace('Z-', 'Z-cli-'),
+    `${newBatch('cli')}${'-undo'.repeat(12)}`,
+    `migrate-${newBatch('cli')}`,
+    42,
+    null,
+    undefined,
+    ['x'],
+  ])
+    assert.equal(ownBatch(v), null, String(v));
 });
 
 /**
@@ -76,7 +122,7 @@ async function serve(f) {
 }
 
 test(
-  "the approve route: pxsig's own batch is kept, none gets the server's, free text is committed as sent",
+  "the approve route: pxsig's own batch is kept; none, or free text, gets the server's",
   { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture();
@@ -95,11 +141,12 @@ test(
       assert.match(none.body.entry.batch, SHAPE);
       assert.ok(none.body.entry.batch.endsWith('-cli'), 'named after how it came (the token)');
 
-      // Free text: cut to [\w.-] and committed.
+      // Free text is never logged: the server names the batch, and the answer says which.
       const free = await S.post('approve', { id: f.ids.drift, batch: 'my release: v2!' });
       assert.equal(free.status, 200, JSON.stringify(free.body));
-      assert.equal(free.body.entry.batch, 'myreleasev2');
-      assert.equal(lines(f, 'approvals.ndjson').at(-1).batch, 'myreleasev2');
+      assert.match(free.body.entry.batch, SHAPE);
+      assert.ok(free.body.entry.batch.endsWith('-cli'));
+      assert.equal(lines(f, 'approvals.ndjson').at(-1).batch, free.body.entry.batch);
     } finally {
       await S.stop();
     }
@@ -107,7 +154,7 @@ test(
 );
 
 test(
-  "the a11y-prune route: pxsig's own batch is kept, free text is committed as sent",
+  "the a11y-prune route: pxsig's own batch is kept, free text gets the server's",
   { skip: skipUnless(hasRust, 'Rust binary not built') },
   async () => {
     const f = fixture({ withSigs: false });
@@ -138,8 +185,9 @@ test(
 
       const free = await prune('ticket 42: tidy');
       assert.equal(free.status, 200, JSON.stringify(free.body));
-      assert.equal(free.body.batch, 'ticket42tidy');
-      assert.equal(lines(f, 'a11y-decisions.ndjson').at(-1).batch, 'ticket42tidy');
+      assert.match(free.body.batch, SHAPE);
+      assert.ok(free.body.batch.endsWith('-prune'));
+      assert.equal(lines(f, 'a11y-decisions.ndjson').at(-1).batch, free.body.batch);
     } finally {
       await S.stop();
     }
