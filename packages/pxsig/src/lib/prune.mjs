@@ -21,7 +21,7 @@
  */
 import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { readLog, sha256, stamp, who } from './approvals.mjs';
+import { decisionRef, readLog, sha256, stamp, who } from './approvals.mjs';
 import { appendLine, readJson, readLines, writeJson } from './files.mjs';
 import { relPath } from './paths.mjs';
 /** @import { A11yResult, A11yViolation, CheckRow, Project } from '../types.js' */
@@ -405,6 +405,7 @@ export function applyPrune(
       at,
       by,
       via,
+      ref: decisionRef(),
       action: 'prune',
       id: p.id,
       before,

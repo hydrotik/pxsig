@@ -1,7 +1,7 @@
 /**
  * no-paths.test.mjs — what the server answers the dashboard carries no absolute path: not the
  * workspace's, not the home folder's (both name the user). Every GET the dashboard reads, on a
- * fixture project after a check, against a stand-in Storybook.
+ * fixture project after a check and a rejection with its reason, against a stand-in Storybook.
  *
  *   node --test packages/pxsig/test/no-paths.test.mjs
  *
@@ -45,6 +45,9 @@ test(
       const r = await S.post('check', { all: true });
       assert.ok(r.status < 300, JSON.stringify(r.body));
       await S.idle();
+      // An open rejection with its reason: /data carries it (lib/rejections.mjs).
+      const rejected = await S.post('reject', { id: f.ids.changed, note: 'the block moved' });
+      assert.equal(rejected.status, 200, JSON.stringify(rejected.body));
       const q = '?project=fixture';
       const answers = {
         status: await (await fetch(`${S.base}/__pxsig/status`)).text(),
@@ -54,6 +57,7 @@ test(
         events: await head(`${S.base}/__pxsig/events`),
         report: await (await fetch(`${S.base}/report/`)).text(),
       };
+      assert.ok(JSON.parse(answers.data).rejections.visual[f.ids.changed], 'with the rejection');
       const forbidden = [f.repo, realpathSync(f.repo), homedir()].flatMap((p) => [
         p,
         JSON.stringify(p).slice(1, -1),

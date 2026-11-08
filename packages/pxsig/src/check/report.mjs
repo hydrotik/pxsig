@@ -13,6 +13,7 @@ import {
   writeLedger,
 } from '../lib/integrity.mjs';
 import { appendedSince, changedByRoute } from '../lib/approvals.mjs';
+import { afterCheck } from '../lib/rejections.mjs';
 import { buildRow, stampRenders, summarize } from '../lib/rows.mjs';
 import { writeJson } from '../lib/files.mjs';
 import { annotateRow, byId, envLine, envSummary } from '../lib/env.mjs';
@@ -210,8 +211,11 @@ export async function report(S, sel, prep, run, cmp, { t0, retryMs, react = null
   fence();
   writeJson(join(reports, `${outName}.json`), report);
   // Review decisions belong to the run they were made on: a new run starts clean.
-  if (outName === 'check')
+  // Open rejections outlive them (lib/rejections.mjs): a pass closes one, else it gains the check.
+  if (outName === 'check') {
     for (const f of ['review.json', 'a11y-review.json']) rmSync(join(reports, f), { force: true });
+    afterCheck(P, out, { known: new Set(manifest.stories.map((e) => e.id)) });
+  }
   const link = str('link-base');
   const sfx = outName === 'check' ? '' : `-${outName.replace(/^check-/, '')}`;
   rust(

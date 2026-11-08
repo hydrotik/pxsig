@@ -3,12 +3,13 @@
  * unreview an entry's axe violations, and `pxsig a11y --prune` for the store the server holds.
  */
 import { dirname, join } from 'node:path';
-import { newBatch, stamp, who } from '../lib/approvals.mjs';
+import { decisionRef, newBatch, stamp, who } from '../lib/approvals.mjs';
 import { appendLine, readJson, writeJson } from '../lib/files.mjs';
 import { applyPrune } from '../lib/prune.mjs';
 import { httpError } from './http.mjs';
 import { needLock } from './projects.mjs';
 import { checkPatch, updateCheckRows } from './report-rows.mjs';
+import { agentMayClearRejection, closeAfter, rejectWithNote } from './rejections.mjs';
 import { agentMayClear } from './review.mjs';
 /** @import { Project } from '../types.js' */
 /**
@@ -19,8 +20,10 @@ import { agentMayClear } from './review.mjs';
 /** @import { Written } from './report-rows.mjs' */
 
 // Separate from the visual verdict: accepting puts an entry's current axe violations on its
-// accepted list (<store>/a11y.json); rejecting marks them for a fix. Both last until the next
-// check of the entry, like review.json. Every accept and undo is logged beside a11y.json.
+// accepted list (<store>/a11y.json); rejecting marks them for a fix, with an optional reason that
+// stays open past the check (serve/rejections.mjs). Both decisions last until the next check of
+// the entry, like review.json. Every accept and undo is logged beside a11y.json, with the
+// decision's opaque reference.
 
 /**
  * @param {Project} P
@@ -51,6 +54,7 @@ export function a11yReview(srv, S, action, id, meta = {}) {
   const at = new Date().toISOString();
   const by = who(P.workspaceRoot, P.config);
   const via = meta.via ?? 'dashboard';
+  const ref = decisionRef();
   /** @type {Written | null} */
   let written = null;
   if (action === 'a11y-accept') {
@@ -63,9 +67,20 @@ export function a11yReview(srv, S, action, id, meta = {}) {
     const after = row.a11y.violations.map((v) => v.id).sort();
     base[id] = after;
     writeA11y(P, base);
-    a11yLog(P, { at, by, via, action: 'accept', id, before, after, reason: meta.reason ?? null });
-    av[id] = { state: 'accepted', at, before };
-  } else if (action === 'a11y-reject') av[id] = { state: 'rejected', at, via };
+    a11yLog(P, {
+      at,
+      by,
+      via,
+      ref,
+      action: 'accept',
+      id,
+      before,
+      after,
+      reason: meta.reason ?? null,
+    });
+    av[id] = { state: 'accepted', at, ref, before };
+    closeAfter(srv, S, 'a11y', id, 'accepted', { via, ref });
+  } else if (action === 'a11y-reject') av[id] = rejectWithNote(srv, S, 'a11y', id, meta);
   else if (action === 'a11y-unaccept') {
     // Take a rule (or every rule) off the accepted list: the report shows it as new at once.
     const current = base[id] ?? [];
@@ -78,6 +93,7 @@ export function a11yReview(srv, S, action, id, meta = {}) {
       at,
       by,
       via,
+      ref,
       action: 'unaccept',
       id,
       before: current,
@@ -100,14 +116,16 @@ export function a11yReview(srv, S, action, id, meta = {}) {
   } else if (action === 'a11y-unreview') {
     const prev = av[id];
     agentMayClear(meta, prev?.state);
+    agentMayClearRejection(S, meta, 'a11y', id, prev);
     if (prev?.state === 'accepted') {
       const current = base[id] ?? null;
       if (prev.before == null) delete base[id];
       else base[id] = prev.before;
       writeA11y(P, base);
-      a11yLog(P, { at, by, via, action: 'undo', id, before: current, after: prev.before });
+      a11yLog(P, { at, by, via, ref, action: 'undo', id, before: current, after: prev.before });
     }
     delete av[id];
+    closeAfter(srv, S, 'a11y', id, 'undone', { via, ref });
   } else throw httpError(404, 'unknown action');
   S.quietUntil = Date.now() + 800;
   writeJson(S.a11yReviewPath, av, { pretty: true });

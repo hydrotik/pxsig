@@ -148,7 +148,7 @@ export const actTools = /** @type {const} */ ([
   {
     name: 'pxsig_review',
     description:
-      "Mark entries for attention. reject: the entry's visual change is marked rejected (to be fixed); a11y-reject: its axe violations are marked for a fix; unreview / a11y-unreview: clear a rejection. Approving and accepting are not here: they need a person (the dashboard, or `pxsig approve` in a terminal), and the server refuses an agent's unreview of a person's approval or accept. A decision lasts until the entry's next check and is logged as via: mcp. Pass confirm: true ONLY when the user explicitly asked for this action on these exact entries in this conversation. Needs the pxsig server.",
+      "Mark entries for attention. reject: the entry's visual change is marked rejected (to be fixed); a11y-reject: its axe violations are marked for a fix; unreview / a11y-unreview: clear a rejection this assistant made. Approving and accepting are not here: they need a person (the dashboard, or `pxsig approve` in a terminal), and the server refuses an agent's unreview of a person's approval, accept or rejection. A decision lasts until the entry's next check and is logged as via: mcp. Pass confirm: true ONLY when the user explicitly asked for this action on these exact entries in this conversation. Needs the pxsig server.",
     inputSchema: {
       type: 'object',
       properties: {

@@ -15,6 +15,7 @@ import { buildRow, stampRenders, storybookBroken } from '../lib/rows.mjs';
 import { PXSIG_VERSION } from '../lib/workspace.mjs';
 import { scheduleIntegrity } from './integrity.mjs';
 import { needLock } from './projects.mjs';
+import { rejectionsAfterCheck } from './rejections.mjs';
 import { updateCheckRows } from './report-rows.mjs';
 /**
  * @import { A11yBaseline, A11yReviewFile, CheckReport, Enqueued, RequestBody, ReviewFile, SetupError
@@ -191,6 +192,8 @@ export async function runChecks(srv, S) {
           }
         : null;
       updateCheckRows(S, (r) => fresh.get(r.id), fresh, timing, envs);
+      // Open rejections outlive the decisions cleared above: a pass closes one, else it gains the check.
+      rejectionsAfterCheck(srv, S, fresh.values());
       const failed = [...fresh.values()].filter((r) => !r.pass).length;
       console.log(
         `[serve] ${S.name}: re-checked ${ids.length} entries · ${failed} changed · ${((performance.now() - t0) / 1000).toFixed(1)} s (Rust ${res.summary.elapsedMs.toFixed(0)} ms)`

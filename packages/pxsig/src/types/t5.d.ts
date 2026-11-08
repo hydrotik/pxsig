@@ -136,6 +136,10 @@ export interface ReviewEntry extends Partial<EngineCapture> {
   at: string;
   /** How a rejection reached the server (`dashboard`, `cli`, `mcp`). */
   via?: string;
+  /** The decision's opaque reference (lib/approvals/core.mjs `decisionRef`). */
+  ref?: string;
+  /** A rejection's reason (lib/rejections.mjs): one line, at most 280 characters. */
+  note?: string;
   /** An approval: its batch, the baseline's sha256 after, the a11y baseline before. */
   batch?: string;
   after?: string | null;
@@ -151,6 +155,9 @@ export interface A11yReviewEntry {
   /** An accept: the accepted list before it. */
   before?: string[] | null;
   via?: string;
+  ref?: string;
+  /** A rejection's reason. */
+  note?: string;
 }
 
 export type A11yReviewFile = Record<string, A11yReviewEntry>;
@@ -166,6 +173,8 @@ export interface DecisionMeta {
   reason?: string;
   kind?: string;
   rule?: string;
+  /** A reject's reason, as sent: lib/rejections.mjs `sanitizeNote` makes it one line. */
+  note?: unknown;
 }
 
 // --- check.json, as the server merges it -------------------------------------------------------

@@ -1,5 +1,5 @@
 /** The approval trail (approvals.mjs): hashes, the snapshot before a write, the log line. */
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { execFile, spawnSync } from '../spawn.mjs';
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -81,6 +81,13 @@ export const stamp = (line, env = process.env, { person = PERSON_VIA.has(line.vi
   const agent = person ? null : agentName(env);
   return { ...rest, ...(by ? { by } : {}), ...(agent ? { agent } : {}), pxsig: PXSIG_VERSION };
 };
+/**
+ * A decision's reference: opaque and random (12 bytes), unique, with nothing derivable in it (no
+ * time, host, user or entry). Every decision carries one: the approval and a11y logs keep it, and
+ * the reason a rejection gives stays beside it in the store's git-ignored reports/ only. Nothing
+ * sends it anywhere.
+ */
+export const decisionRef = () => `d_${randomBytes(12).toString('base64url')}`;
 /** @param {string} via */
 export const newBatch = (via) => `${new Date().toISOString().replace(/[:.]/g, '-')}-${via}`;
 
@@ -118,6 +125,7 @@ export function record(
       by: who(P.workspaceRoot, P.config),
       via,
       batch,
+      ref: decisionRef(),
       reason,
       kind,
       gitHead: gitHead ?? git(P.workspaceRoot, 'rev-parse', '--short', 'HEAD'),

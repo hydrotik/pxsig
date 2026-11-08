@@ -5,7 +5,7 @@
  * GET takes `?project=`, POST a `project` field; either may be left out when the workspace has one
  * project, or when the id / story names its project unambiguously (the Storybook addon sends only
  * ids). Writes are same-origin, or (checks and repairs only) a project's Storybook. Decisions
- * (approve, approve-story, reject, unreview, a11y-*) also need the dashboard link's cookie (a page
+ * (approve, approve-story, reject, unreview, a11y-*, rejection-dismiss) also need the dashboard link's cookie (a page
  * opened with the link this server prints) or the CLI's token (`x-pxsig-token`, `pxsig approve
  * apply`): an agent or a script posting to the server, or reading the page, is refused with 403
  * (lib/guard.mjs). A decision's `via` in the log is what it carried (`dashboard` or `cli`); a
@@ -14,6 +14,7 @@
  */
 import { readJson } from '../lib/files.mjs';
 import { filterLedger } from '../lib/integrity.mjs';
+import { withoutNotes } from '../lib/rejections.mjs';
 import {
   authorize,
   linkSetCookie,
@@ -31,6 +32,7 @@ import { json, readBody } from './http.mjs';
 import { runIntegrity, storyIntegrity } from './integrity.mjs';
 import { projectsList, stateFor } from './projects.mjs';
 import { linked, liveOf, reactRoutes } from './react.mjs';
+import { rejectionRoutes } from './rejections.mjs';
 import { repair } from './repair.mjs';
 import { approveStory, review } from './review.mjs';
 /** @import { IncomingMessage, ServerResponse } from 'node:http' */
@@ -156,12 +158,15 @@ const table = [
           repairing: [...srv.states.values()].some(
             (/** @type {{ repairing: unknown }} */ S) => S.repairing
           ),
-          // Every project's review.json (this server's own files), merged.
-          review: /** @type {ReviewFile} */ (
-            Object.assign(
-              {},
-              ...[...srv.states.values()].map(
-                (S) => /** @type {ReviewFile} */ (readJson(S.reviewPath, {}))
+          // Every project's review.json (this server's own files), merged. Without the reasons:
+          // Storybook's origins read this answer; /__pxsig/data (same-origin) carries them.
+          review: withoutNotes(
+            /** @type {ReviewFile} */ (
+              Object.assign(
+                {},
+                ...[...srv.states.values()].map(
+                  (S) => /** @type {ReviewFile} */ (readJson(S.reviewPath, {}))
+                )
               )
             )
           ),
@@ -362,6 +367,8 @@ const table = [
   ],
   // react/analyse, react/skip, check/cancel (serve/react.mjs)
   ...reactRoutes,
+  // rejection-dismiss (serve/rejections.mjs)
+  ...rejectionRoutes,
 ];
 /** The routes by action: `create.mjs` copies them into `srv.routes`. */
 export const routes = new Map(table);
@@ -369,8 +376,9 @@ export const routes = new Map(table);
 /**
  * Every other POST: a decision on one entry, by its id.
  *   POST /__pxsig/approve {id, batch?, reason?, kind?}: the latest render becomes the baseline
- *   POST /__pxsig/reject {id} · /__pxsig/unreview {id}: unreviewing an approval restores the old baseline
- *   POST /__pxsig/a11y-accept {id} · a11y-reject · a11y-unreview: the entry's axe violations
+ *   POST /__pxsig/reject {id, note?} · /__pxsig/unreview {id}: unreviewing an approval restores the
+ *     old baseline; a reject's note (its reason) stays open past the check (serve/rejections.mjs)
+ *   POST /__pxsig/a11y-accept {id} · a11y-reject {id, note?} · a11y-unreview: the axe violations
  *   POST /__pxsig/a11y-unaccept {id, rule?}: a rule (or all) off the entry's accepted list
  * Any other name is 404 "unknown action", once the id is checked.
  * @param {RouteContext} cx
@@ -390,6 +398,8 @@ async function decide({ srv, res, action, body, S, auth }) {
     reason: s(body.reason, 500),
     kind: s(body.kind, 16),
     rule: s(body.rule, 80)?.replace(/[^\w-]/g, ''),
+    // Cut to one line of 280 characters where it is stored (lib/rejections.mjs `sanitizeNote`).
+    note: s(body.note, 4096),
   };
   if (action.startsWith('a11y-'))
     return json(res, 200, {
