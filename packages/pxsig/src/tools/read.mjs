@@ -20,6 +20,7 @@ import {
 } from './context.mjs';
 import { affected, editedSince, imageOf, renderedAt, verdictTimes } from './staleness.mjs';
 import { warnMode } from './doctor.mjs';
+import { TEXT_FILTERS, textLines, textMatches } from '../lib/text/say.mjs';
 
 /** @import { EntryArgs, ListArgs, McpContent, ProjectArg } from '../types/t6.js' */
 
@@ -128,7 +129,7 @@ export const readTools = /** @type {const} */ ([
   {
     name: 'pxsig_list',
     description:
-      'List entries (story × mode × interaction state) by state, with their metrics and the gate reasons. `state` defaults to "problems" (changed, error, flaky, rejected). Filter by component name substring (e.g. "hovercard") and mode (dark, light, …).',
+      'List entries (story × mode × interaction state) by state, with their metrics and the gate reasons. `state` defaults to "problems" (changed, error, flaky, rejected). Filter by component name substring (e.g. "hovercard") and mode (dark, light, …). Each entry with text labels carries `textKind` (copy, copy-reflow, moved, restyled, pixel, or null when no text differs) and `textSummary`, or `textState` when text was not compared (env-differs, no-baseline, error). `text` keeps the entries of one text kind (`any`: any text change); with `text` and no `state`, every state is searched, since a copy change under the gate still passes. Labels only: they never change a state or a verdict.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -151,6 +152,12 @@ export const readTools = /** @type {const} */ ([
           ],
           default: 'problems',
         },
+        text: {
+          type: 'string',
+          enum: TEXT_FILTERS,
+          description:
+            'Entries whose text labels are this kind (copy, copy-reflow, moved, restyled), or any text change (any).',
+        },
         component: {
           type: 'string',
           description: 'Substring of the entry id, e.g. "toast" or "components-datagrid".',
@@ -161,9 +168,14 @@ export const readTools = /** @type {const} */ ([
       additionalProperties: false,
     },
     /** @param {ListArgs} args */
-    async run({ project, state = 'problems', component, mode, limit = 50 }) {
+    async run({ project, state, component, mode, limit = 50, text: kind }) {
+      if (kind && !TEXT_FILTERS.includes(kind))
+        throw new Error(`text must be one of ${TEXT_FILTERS.join(', ')}: ${kind}`);
       const { check, review } = load(ctxOf(project));
+      // A text filter searches every state unless one is named: passing entries carry labels too.
+      state ??= kind ? 'all' : 'problems';
       const rows = check.rows.filter((r) => {
+        if (kind && !textMatches(r.textDiff, kind)) return false;
         const st = stateOf(r, review);
         if (state === 'problems' && !PROBLEMS.has(st)) return false;
         if (state === 'a11y' && !r.a11y?.violations?.length) return false;
@@ -182,7 +194,7 @@ export const readTools = /** @type {const} */ ([
   {
     name: 'pxsig_entry',
     description:
-      "One entry in full: the gate's metrics and reasons, the changed pixel regions, accessibility violations, the review decision, the render environment against its baseline's (envMatch: same, compatible, mismatch or unknown) — and the images, inline: the baseline render, the latest render and the diff heat map. Use it to see what actually changed.",
+      "One entry in full: the gate's metrics and reasons, the changed pixel regions, accessibility violations, the review decision, the render environment against its baseline's (envMatch: same, compatible, mismatch or unknown), the text labels (`textDiff`: each changed string's old and new text, each moved run's string and move in px, its box, `path` and `key`; `textLines`: the same as sentences) — and the images, inline: the baseline render, the latest render and the diff heat map. Use it to see what actually changed. Text labels are labels only: they never change the verdict.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -233,6 +245,8 @@ export const readTools = /** @type {const} */ ([
           // React render counts (react.renders, or Measure renders): null when no React rendered.
           ...(row.renders !== undefined ? { renders: row.renders } : {}),
           envDiff: row.envDiff ?? null,
+          // Text labels (lib/text/say.mjs): the engine's textDiff, and the same as sentences.
+          ...(row.textDiff ? { textDiff: row.textDiff, textLines: textLines(row.textDiff) } : {}),
           ...(row.envFonts ? { envFonts: row.envFonts } : {}),
           checkedAt: verdictTimes(C, check).get(id)?.at.toISOString() ?? null,
           renderedAt: renderedAt(C, id)?.toISOString() ?? null,

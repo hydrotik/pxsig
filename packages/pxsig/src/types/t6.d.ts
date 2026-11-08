@@ -15,6 +15,7 @@ import type {
   Project,
 } from '../types.js';
 import type { tools } from '../tools/index.mjs';
+import type { TextBrief, TextDetail, TextFilter } from './text.js';
 
 // --- term blocks (lib/term.mjs, as the CLI builds them) ------------------------------------------
 // The same shapes as types/t2.d.ts (lib/term.mjs's own, as of this writing), repeated until the
@@ -481,6 +482,7 @@ export interface ProjectArg {
 /** `pxsig_list`. */
 export interface ListArgs extends ProjectArg {
   state?: string;
+  text?: TextFilter;
   component?: string;
   mode?: string;
   limit?: number;
@@ -617,7 +619,7 @@ export interface Rendered {
 }
 
 /** One entry as `pxsig_list` and `pxsig_check` list it (mcp.mjs `brief`). */
-export interface BriefEntry {
+export interface BriefEntry extends TextBrief {
   id: string;
   state: string;
   mode?: string;
@@ -639,7 +641,7 @@ export type CliError = Error & { exit?: number; status?: number };
 export type DoctorResult = Awaited<ReturnType<(typeof import('../tools/doctor.mjs'))['doctor']>>;
 
 /** The JSON text `pxsig_entry` answers first: the entry in full (mcp.mjs). */
-export interface EntryDetail extends BriefEntry {
+export interface EntryDetail extends BriefEntry, TextDetail {
   story?: string;
   browser?: string;
   metrics?: EngineMetrics | null;

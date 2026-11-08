@@ -13,7 +13,6 @@ import { summarize } from '../src/lib/rows.mjs';
 import { stateOf } from '../src/tools/context.mjs';
 
 /** @import { CheckRow } from '../src/types.js' */
-/** @import { ReportRow } from '../src/types/t6.js' */
 
 const counts = { runs: 4, copy: 1, moved: 1, rewrapped: 0, restyled: 0, added: 0, removed: 0 };
 /** One label per row: a copy change, an environment that differs, a pixel change, none, an error. */
@@ -85,6 +84,6 @@ test('the summary counts (the exit code) are the same with and without text labe
 });
 
 test('every entry keeps its state with text labels', () => {
-  const state = (/** @type {CheckRow} */ r) => stateOf(/** @type {ReportRow} */ (r), {});
+  const state = (/** @type {CheckRow} */ r) => stateOf(r, {});
   assert.deepEqual(rows(true).map(state), rows(false).map(state));
 });

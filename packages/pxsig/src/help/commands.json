@@ -167,8 +167,8 @@
       "seeAlso": ["check", "doctor"]
     },
     "list": {
-      "summary": "Entries in one state, with SSIM, the share of changed cells and the first gate reason.",
-      "usage": ["pxsig list [state] [--component text] [--mode name] [--limit 30]"],
+      "summary": "Entries in one state, with SSIM, the share of changed cells, the first gate reason and the text label.",
+      "usage": ["pxsig list [state] [--component text] [--mode name] [--text kind] [--limit 30]"],
       "flags": [
         {
           "name": "state",
@@ -187,6 +187,11 @@
           "meaning": "One mode."
         },
         {
+          "name": "text",
+          "value": "kind",
+          "meaning": "Entries whose text labels are this kind: copy, copy-reflow, moved, restyled, or any (any text change). Without a state, every state: a copy change under the gate still passes. Labels only."
+        },
+        {
           "name": "limit",
           "value": "n",
           "default": "30",
@@ -200,6 +205,10 @@
       },
       "examples": [
         {
+          "cmd": "pxsig list --text copy",
+          "shows": "Entries whose only change is copy, passing or not"
+        },
+        {
           "cmd": "pxsig list changed",
           "shows": "Every changed entry"
         },
@@ -211,7 +220,7 @@
       "seeAlso": ["entry", "status"]
     },
     "entry": {
-      "summary": "One entry: verdict, metrics, gate reasons, regions, accessibility, review decision, and where its images are.",
+      "summary": "One entry: verdict, metrics, gate reasons, text labels, regions, accessibility, review decision, and where its images are.",
       "usage": ["pxsig entry <id> [--images baseline,current,diff]"],
       "flags": [
         {

@@ -197,7 +197,7 @@ pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
                 r["mode"].as_str().unwrap_or("default"),
                 r["metrics"]["ssim"],
                 r["metrics"]["changedCells"],
-                esc_md(&why)
+                esc_md(&why) + &crate::report_text::suffix(r)
             ));
         }
         if failing.len() > 50 {

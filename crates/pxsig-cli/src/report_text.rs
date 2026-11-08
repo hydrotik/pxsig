@@ -1,5 +1,27 @@
-//! Text labels in `pxsig report`: rows' `textDiff` (check.json) never changes a verdict, the
+//! Text labels in `pxsig report`: summary.md's table of changed entries names a row's text kind
+//! after its reasons (`· text: copy, reflow`), in the words of `lib/text/say.mjs` (`TEXT_SUFFIX`; a
+//! test there keeps the two in step). Labels only: a row's `textDiff` never changes a verdict, the
 //! summary's head and counts, or a JUnit outcome.
+
+use serde_json::Value;
+
+/// The suffix after a row's reasons: ` · text: <kind>` when its text was compared and the kind is
+/// copy, copy-reflow, moved or restyled; empty for `pixel`, none and the states that compare
+/// nothing.
+pub fn suffix(row: &Value) -> String {
+    let t = &row["textDiff"];
+    if t["state"].as_str() != Some("compared") {
+        return String::new();
+    }
+    let kind = match t["kind"].as_str() {
+        Some("copy") => "copy",
+        Some("copy-reflow") => "copy, reflow",
+        Some("moved") => "moved",
+        Some("restyled") => "restyled",
+        _ => return String::new(),
+    };
+    format!(" · text: {kind}")
+}
 
 #[cfg(test)]
 mod tests {
@@ -68,5 +90,42 @@ mod tests {
         assert_eq!(count(&on, "| `card--default` |"), 1);
         let a11y = |md: &str| md.split("<details>").nth(1).map(String::from);
         assert_eq!(a11y(&off), a11y(&on));
+    }
+
+    #[test]
+    fn a_changed_entry_names_its_text_kind_after_its_reasons() {
+        let md = markdown(&report(true), None);
+        assert!(
+            md.contains("| detail 19 tiles changed >= 3 · text: copy, reflow |"),
+            "{md}"
+        );
+        let plain = markdown(&report(false), None);
+        assert!(
+            plain.contains("| detail 19 tiles changed >= 3 |"),
+            "{plain}"
+        );
+    }
+
+    #[test]
+    fn the_suffix_only_for_a_compared_text_kind() {
+        let row = |t: Value| json!({ "textDiff": t });
+        for (kind, want) in [
+            ("copy", " · text: copy"),
+            ("copy-reflow", " · text: copy, reflow"),
+            ("moved", " · text: moved"),
+            ("restyled", " · text: restyled"),
+            ("pixel", ""),
+        ] {
+            assert_eq!(
+                super::suffix(&row(json!({ "state": "compared", "kind": kind }))),
+                want
+            );
+        }
+        assert_eq!(
+            super::suffix(&row(json!({ "state": "compared", "kind": null }))),
+            ""
+        );
+        assert_eq!(super::suffix(&row(json!({ "state": "env-differs" }))), "");
+        assert_eq!(super::suffix(&json!({ "id": "a" })), "");
     }
 }
