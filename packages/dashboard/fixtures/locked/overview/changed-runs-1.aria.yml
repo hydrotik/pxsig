@@ -29,7 +29,7 @@
 - main:
   - heading "Runs" [level=2]
   - heading "Last Check Timing" [level=3]
-  - text: Render 100 ms1 page Engine 1 ms0 cached Retries 0 ms Scope All entries
+  - text: Render 100 ms 1 page Engine 1 ms 0 cached Retries 0 ms Scope All entries
   - heading "Changed Entries per Run" [level=3]
   - paragraph: 4 runs.
   - application: 1 2 3 4 0 0.5 1 1.5 2
