@@ -1,6 +1,6 @@
 {
   "adapter": "hydrotik",
-  "contract": "1.4.0",
+  "contract": "1.5.0",
   "designSystem": "@hydrotik/design-system (built from source: PXSIG_DS_SOURCE)",
   "components": {
     "UiProvider": {
@@ -65,6 +65,7 @@
     "AlertTitle": { "status": "full" },
     "AlertDescription": { "status": "full" },
     "SearchField": { "status": "full", "note": "SearchBar" },
+    "TextField": { "status": "full", "note": "Input with its own label, full width" },
     "Select": {
       "status": "full",
       "note": "Select with trigger, value and items built from options"

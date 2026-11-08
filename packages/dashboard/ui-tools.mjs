@@ -146,6 +146,16 @@ function copyExists(messages, key) {
  *  6. Every feature has a screen for `pxsig dashboard check`, on a known scenario and one of its
  *     own states; fixtures/screens.json matches.
  */
+/**
+ * Contract components no feature renders yet, each with the work that will: a component can enter
+ * the contract in a minor version of its own, ahead of its first use. `check` fails once a feature
+ * renders one, so its entry leaves with that work.
+ * @type {Partial<Record<string, string>>}
+ */
+export const NOT_YET_RENDERED = {
+  TextField: "the reason row on Reject (pxsig 0.7.6, the rejection packet's dashboard work)",
+};
+
 export async function checkAll() {
   /** @type {string[]} */
   const problems = [];
@@ -269,8 +279,15 @@ export async function checkAll() {
     if (f.startsWith('views/') && !covered.has(f.replace(/\.(tsx?|jsx?)$/, '')))
       problems.push(`src/${f} belongs to no feature in src/ui/features.ts`);
   for (const n of names)
-    if (!inFeatures.has(n))
+    if (!inFeatures.has(n) && !NOT_YET_RENDERED[n])
       problems.push(`${n} is in the contract but no feature in src/ui/features.ts renders it`);
+  for (const n of Object.keys(NOT_YET_RENDERED))
+    if (!contract[n])
+      problems.push(`NOT_YET_RENDERED (ui-tools.mjs) names ${n}, which is not in the contract`);
+    else if (inFeatures.has(n))
+      problems.push(
+        `${n} is rendered by a feature now: remove it from NOT_YET_RENDERED (ui-tools.mjs)`
+      );
 
   // 6. screens
   for (const f of features) problems.push(...screenProblems(f));

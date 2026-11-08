@@ -1,0 +1,6 @@
+{
+  "adapter": "older",
+  "contract": "1.4.0",
+  "designSystem": "none: the plain adapter without a TextField",
+  "components": {}
+}
