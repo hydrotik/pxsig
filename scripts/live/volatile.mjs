@@ -63,6 +63,11 @@ export const RULES = {
     { path: 'storybook.baseUrl', kind: 'url' },
     { path: 'review.*.at', kind: 'time', optional: true },
     { path: 'a11yReview.*.at', kind: 'time', optional: true },
+    // The open rejections (lib/rejections.mjs): kind → entry id → when it opened, each reason's
+    // time, each check's.
+    { path: 'rejections.*.*.at', kind: 'time', optional: true },
+    { path: 'rejections.*.*.notes[].at', kind: 'time', optional: true },
+    { path: 'rejections.*.*.checks[].at', kind: 'time', optional: true },
     // The React analysis (lib/react/data.mjs): when results went out of date, when they were made,
     // how long the analysis took; a row's render counts' times.
     { path: 'react.status.stale.since', kind: 'time', optional: true },

@@ -280,9 +280,11 @@ test('applying writes a11y.json, one log line per entry (no name, no agent), and
       'id',
       'pxsig',
       'reason',
+      'ref',
       'rules',
       'via',
     ]);
+    assert.match(l.ref, /^d_[A-Za-z0-9_-]{16}$/, 'an opaque decision reference');
     assert.deepEqual([l.action, l.via, l.batch, l.reason], ['prune', 'cli', 'b-1', 'fixed in #12']);
     assert.equal(l.evidence.report, '.pxsig/reports/check.json');
   }

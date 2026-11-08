@@ -35,6 +35,7 @@ import { manifestSource } from './lib/source.mjs';
 import { byStory } from './lib/approvals/story.mjs';
 import { PXSIG_VERSION, engineVersion, openProject } from './lib/workspace.mjs';
 import { reactData } from './lib/react/data.mjs';
+import { readRejections, withoutNotes } from './lib/rejections.mjs';
 /** @import { Manifest, Project } from './types.js' */
 /** @import { CheckReport } from './types/t5.js' */
 /** @import { ReactLive } from './types/react.js' */
@@ -172,6 +173,8 @@ export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/`, live 
     /** Whether the inspector offers Approve story (`approvals.byStory`, off by default). */
     approvals: { byStory: byStory(P.config) },
     a11yReview: read('a11y-review') ?? {},
+    /** The open rejections, with their reasons (lib/rejections.mjs); a static report has none. */
+    rejections: readRejections(P),
     integrity: read('integrity'),
     storybook: { baseUrl: P.storybook.url },
     /** `dashboard-screens`: pxsig's own screens, with no Storybook to link to or re-check in. */
@@ -190,7 +193,7 @@ export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/`, live 
 
 /**
  * index.html with the data inlined (static) or with the placeholder left for the server.
- * @param {ReturnType<typeof buildData>} data
+ * @param {Omit<ReturnType<typeof buildData>, 'rejections'>} data
  */
 export function pageWithData(data) {
   const html = readFileSync(join(dashboardDir, 'index.html'), 'utf8');
@@ -212,7 +215,14 @@ export function writeStaticReport(P, out) {
   mkdirSync(join(out, 'assets'), { recursive: true });
   for (const f of readdirSync(join(dashboardDir, 'assets')))
     copyFileSync(join(dashboardDir, 'assets', f), join(out, 'assets', f));
-  const data = buildData(P, { base: './' });
+  // A static report is made to be shared: the reasons belong to the live session.
+  const { rejections: _open, ...shared } = buildData(P, { base: './' });
+  const data = {
+    ...shared,
+    // review.json and a11y-review.json are pxsig's own files: entry id → decision.
+    review: withoutNotes(/** @type {Record<string, { note?: string }>} */ (shared.review)),
+    a11yReview: withoutNotes(/** @type {Record<string, { note?: string }>} */ (shared.a11yReview)),
+  };
   writeFileSync(join(out, 'index.html'), pageWithData(data));
   // Images: latest renders and diffs as they are; baseline images out of their .psig files.
   const copyDir = (/** @type {string} */ from, /** @type {string} */ to) => {

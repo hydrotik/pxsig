@@ -207,6 +207,8 @@ export interface ApprovalLine {
   by?: string | null;
   via: string;
   batch: string;
+  /** The decision's opaque reference (`d_` and 16 characters; since 0.7.6). */
+  ref?: string;
   reason?: string | null;
   kind?: string | null;
   gitHead?: string | null;

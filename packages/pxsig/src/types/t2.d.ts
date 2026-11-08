@@ -435,6 +435,8 @@ export interface PruneLine {
   at: string;
   by: string | null;
   via: string;
+  /** The decision's opaque reference. */
+  ref: string;
   action: 'prune';
   id: string;
   before: string[];

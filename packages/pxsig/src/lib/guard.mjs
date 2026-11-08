@@ -2,7 +2,7 @@
  * guard.mjs — who may write through `pxsig serve`.
  *
  * Decisions (approve, approve a story, reject, unreview, the a11y decisions, pruning accepted a11y
- * rules) need a person: the dashboard (or the Storybook panel that embeds it), or `pxsig approve
+ * rules, dismissing a rejection's reason) need a person: the dashboard (or the Storybook panel that embeds it), or `pxsig approve
  * apply` / `pxsig a11y --prune` at a terminal.
  * The dashboard decides through the dashboard link: `pxsig serve` prints `<url>/report/#ticket=<t>`
  * for a person at a terminal (`pxsig serve --link` prints a new one). The page trades the ticket
@@ -20,7 +20,8 @@
  *
  * The MCP's token is an agent's, so it decides less: it may mark entries rejected and clear a
  * rejection (AGENT_DECISIONS), nothing that writes a baseline or an accepted list, and the server
- * refuses its unreview of a person's approval or accept. A rejection only asks for attention.
+ * refuses its unreview of a person's approval, accept or rejection (serve/rejections.mjs). A
+ * rejection only asks for attention.
  *
  * Every write also refuses a request a browser sent from another site (CSRF): an Origin that is
  * not the server's own (or, for checks and repairs only, a project's Storybook), or a
@@ -52,9 +53,10 @@ export const DECISIONS = new Set([
   'a11y-unreview',
   'a11y-unaccept',
   'a11y-prune',
+  'rejection-dismiss',
 ]);
 
-/** What an agent's (the MCP's) token may decide: rejections, and clearing them. */
+/** What an agent's (the MCP's) token may decide: rejections, and clearing its own. */
 export const AGENT_DECISIONS = new Set(['reject', 'unreview', 'a11y-reject', 'a11y-unreview']);
 
 export const NEEDS_PERSON =

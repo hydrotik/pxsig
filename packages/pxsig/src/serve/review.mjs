@@ -1,10 +1,13 @@
 /**
  * serve/review.mjs — visual decisions through the server: approve (the latest render becomes the
- * baseline), reject, unreview (an approval's undo), and approving a whole story at once.
+ * baseline), reject (with an optional reason: serve/rejections.mjs), unreview (an approval's undo,
+ * or a rejection's), and approving a whole story at once. An approval or an undo closes the
+ * entry's open rejection.
  */
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import {
+  decisionRef,
   headOf,
   newBatch,
   PERSON_VIA,
@@ -19,6 +22,7 @@ import { readJson, writeJson } from '../lib/files.mjs';
 import { NEEDS_PERSON } from '../lib/guard.mjs';
 import { httpError } from './http.mjs';
 import { needLock } from './projects.mjs';
+import { agentMayClearRejection, closeAfter, rejectWithNote } from './rejections.mjs';
 import { checkPatch, updateCheckRows } from './report-rows.mjs';
 /**
  * @import { A11yBaseline, CheckReport, DecisionMeta, ReviewEntry, ReviewFile } from '../types/t5.js'
@@ -106,6 +110,7 @@ export async function approve(srv, S, id, meta = {}) {
   return {
     ...res,
     batch,
+    ref: logged.ref,
     after: logged.after,
     ...(a11yBefore !== undefined ? { a11yBefore } : {}),
   };
@@ -173,10 +178,11 @@ export async function review(srv, S, action, id, meta = {}) {
           { ...r, approved: { at: rv[id].at, batch: /** @type {string} */ (rv[id].batch) } }
         : null
     );
-  } else if (action === 'reject')
-    rv[id] = { state: 'rejected', at: new Date().toISOString(), via: meta.via ?? 'dashboard' };
+    closeAfter(srv, S, 'visual', id, 'approved', { via: meta.via ?? 'dashboard', ref: rv[id].ref });
+  } else if (action === 'reject') rv[id] = rejectWithNote(srv, S, 'visual', id, meta);
   else if (action === 'unreview') {
     agentMayClear(meta, rv[id]?.state);
+    agentMayClearRejection(S, meta, 'visual', id, rv[id]);
     if (rv[id]?.state === 'approved' && rv[id].batch)
       // An approval with its batch: checked just above.
       unapprove(
@@ -186,6 +192,10 @@ export async function review(srv, S, action, id, meta = {}) {
         meta.via ?? 'dashboard'
       );
     delete rv[id];
+    closeAfter(srv, S, 'visual', id, 'undone', {
+      via: meta.via ?? 'dashboard',
+      ref: decisionRef(),
+    });
     written = updateCheckRows(S, (r) =>
       r.id === id && r.approved ? (({ approved: _approved, ...rest }) => rest)(r) : null
     );
