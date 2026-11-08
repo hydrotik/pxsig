@@ -1305,7 +1305,7 @@
       "seeAlso": ["check", "serve", "capture.browserEndpoint"]
     },
     "cat": {
-      "summary": "A baseline's header as JSON (git's textconv for *.psig), or its image.",
+      "summary": "A baseline's header as JSON, then its text record's strings (git's textconv for *.psig), or its image.",
       "usage": ["pxsig cat <file.psig> [--image out.png]"],
       "flags": [
         {

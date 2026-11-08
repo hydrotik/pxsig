@@ -185,7 +185,8 @@ enum Cmd {
         json: bool,
     },
     /// Print a baseline's header (a `.psig` header, or a `.pxsig.json` without its signature
-    /// bytes); `--image` writes a `.psig`'s baseline image. Git's textconv for `*.psig`.
+    /// bytes), then a `boxes` section's run strings, one a line; `--image` writes a `.psig`'s
+    /// baseline image. Git's textconv for `*.psig`.
     Cat {
         file: PathBuf,
         #[arg(long)]
