@@ -159,6 +159,7 @@ include it, and `pnpm build:dashboard` builds it on the plain adapter (see
 | Workspaces, projects and stores                                                        | [docs/monorepo.md](docs/monorepo.md)                                                             |
 | How pxsig compares with Chromatic, and `pxsig affected` with TurboSnap                 | [docs/comparison.md](docs/comparison.md)                                                         |
 | Every command and flag                                                                 | [docs/cli.md](docs/cli.md)                                                                       |
+| The npm package: what it holds, its module exports, peer dependencies, network use     | [docs/package.md](docs/package.md)                                                               |
 | Integrity codes, repairs and guarantees                                                | [docs/integrity.md](docs/integrity.md)                                                           |
 | Server, HTTP API and dashboard                                                         | [docs/server.md](docs/server.md)                                                                 |
 | The dashboard on your own design system: the UI contract and how to build an adapter   | [docs/ui/build-adapter.md](docs/ui/build-adapter.md), [docs/ui/features.md](docs/ui/features.md) |

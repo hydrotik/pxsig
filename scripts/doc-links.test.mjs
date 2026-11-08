@@ -37,6 +37,38 @@ test('links to main and out of the package are pinned to the tag; the rest are l
   assert.deepEqual(leftLinks(out, held), ['../../../elsewhere.md']);
 });
 
+test('images go to raw.githubusercontent.com at the tag; HTML src and href are pinned like links', () => {
+  const R = 'https://raw.githubusercontent.com/hydrotik/pxsig';
+  const md = [
+    '<img src="docs/shots/a.png" width="900" alt="A"> <a href="docs/cli.md#flags">cli</a>',
+    "![b](docs/shots/b.png) [![badge](docs/badge.svg)](docs/ci.md) <img src='LICENSE.png'>",
+    `<img src="${R}/main/docs/shots/c.png"> <a href="https://example.com/x">ext</a> <a href="#top">top</a>`,
+    '[held](LICENSE) <img src="held.png"> [up](../out.md) ![ext](https://example.com/i.png)',
+  ].join('\n');
+  const held = (/** @type {string} */ p) => p === 'LICENSE' || p === 'held.png';
+  const out = versionLinks(md, { version: '0.7.5', source: 'README.md', held });
+  assert.equal(
+    out,
+    [
+      `<img src="${R}/v0.7.5/docs/shots/a.png" width="900" alt="A"> <a href="${U}/blob/v0.7.5/docs/cli.md#flags">cli</a>`,
+      `![b](${R}/v0.7.5/docs/shots/b.png) [![badge](${R}/v0.7.5/docs/badge.svg)](${U}/blob/v0.7.5/docs/ci.md) <img src='${R}/v0.7.5/LICENSE.png'>`,
+      `<img src="${R}/v0.7.5/docs/shots/c.png"> <a href="https://example.com/x">ext</a> <a href="#top">top</a>`,
+      '[held](LICENSE) <img src="held.png"> [up](../out.md) ![ext](https://example.com/i.png)',
+    ].join('\n')
+  );
+  assert.deepEqual(leftLinks(md, held), [
+    `${R}/main/`,
+    'docs/shots/b.png',
+    'docs/badge.svg',
+    'docs/ci.md',
+    '../out.md',
+    'docs/shots/a.png',
+    'docs/cli.md#flags',
+    'LICENSE.png',
+  ]);
+  assert.deepEqual(leftLinks(out, held), ['../out.md']);
+});
+
 test(
   'pack-manifest pins a README by its repository.directory; --check fails one that links to main',
   {
