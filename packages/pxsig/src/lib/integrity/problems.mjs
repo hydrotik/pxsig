@@ -132,7 +132,7 @@ export function decisionProblems(ctx) {
     add(
       'reports-not-ignored',
       'warn',
-      `${store}/reports/ is not git-ignored: reasons given with a decision are not kept, so none can be committed. Add \`reports/\` to ${store}/.gitignore (pxsig init writes it)`
+      `${store}/reports/ is not git-ignored: reasons given with a decision and rejection notes are not kept, so none can be committed. Add \`reports/\` to ${store}/.gitignore (pxsig init writes it)`
     );
   }
   const identity = P.config.approvals?.identity;
