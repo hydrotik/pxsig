@@ -12,12 +12,15 @@ use rayon::prelude::*;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
-use pxsig_core::{compare_with_detail, pixel_diff, CompareResult, GateThresholds};
+use pxsig_core::{compare_with_detail, pixel_diff, CompareResult, GateThresholds, PixelDiff};
 
 use crate::gate::{self, GateSpec};
 use crate::io;
 
-use super::{env_id, load_baseline, load_manifest, Baseline, Entry, Manifest};
+use pxsig_core::text::Pixels;
+
+use super::text::{self, Text};
+use super::{env_id, load_baseline, load_manifest, Baseline, Entry, EnvPlan, Manifest};
 
 pub fn compare_png(png: &Path, b: &Baseline, gate: &GateThresholds) -> Result<CompareResult> {
     let (data, w, h) = io::decode_png(png)?;
@@ -124,19 +127,40 @@ pub struct CheckOpts {
     pub cli_gate: GateSpec,
     /// Gate values from `PXSIG_*` variables (above the manifest, below the flags).
     pub env_gate: GateSpec,
+    /// The environment each render was made in (`--env @file`, `byId` read): text records are
+    /// compared only when it is the baseline's. Absent: no row's text is compared.
+    pub env: Option<EnvPlan>,
 }
 
 fn hex(b: &[u8]) -> String {
     b.iter().map(|x| format!("{x:02x}")).collect()
 }
 
-fn cache_key(png: &[u8], sig: &[u8], gate: &Value) -> String {
+/// The row's inputs: the render, the baseline, the gate, and for `textDiff` the render's text
+/// record, its environment and the text tolerances.
+fn cache_key(png: &[u8], sig: &[u8], gate: &Value, text: &[u8]) -> String {
     let mut h = Sha256::new();
-    h.update(b"pxsig-check-v3\0"); // v3: rows carry `baselineEnv`
+    h.update(b"pxsig-check-v4\0"); // v4: rows carry `textDiff`
     h.update(png);
     h.update(sig);
     h.update(gate.to_string().as_bytes());
+    h.update(b"\0");
+    h.update(text);
     hex(&h.finalize())
+}
+
+/// The text inputs of a row's cache key: its text record's bytes (or none), its environment id,
+/// the text tolerances and the pixel tolerance its mask is made at.
+fn text_key(
+    png: &Path,
+    render_env: Option<&str>,
+    tol: &pxsig_core::text::Tolerances,
+    tolerance: u8,
+) -> Vec<u8> {
+    let rec = super::boxes::beside(png).and_then(|f| fs::read(f).ok());
+    let mut k = serde_json::to_vec(&json!([render_env, tol, tolerance])).unwrap_or_default();
+    k.extend(rec.map_or_else(|| b"\0none".to_vec(), |r| [b"\0".as_slice(), &r].concat()));
+    k
 }
 
 fn cached_pass(dir: &Path, key: &str) -> bool {
@@ -146,16 +170,26 @@ fn cached_pass(dir: &Path, key: &str) -> bool {
         .is_some_and(|v| v["pass"] == json!(true))
 }
 
-fn pixels_json(base: &[u8], cur: &Path, tolerance: u8) -> Result<Value> {
+/// The pixel diff, and the baseline's and the render's sizes.
+type Diff = (PixelDiff, (usize, usize), (usize, usize));
+
+fn diff_of(base: &[u8], cur: &Path, tolerance: u8) -> Result<Diff> {
     let (a, aw, ah) = io::decode_png_bytes(base, Path::new("baseline image"))?;
     let (b, bw, bh) = io::decode_png(cur)?;
-    let d = pixel_diff(&a, aw, ah, &b, bw, bh, tolerance);
-    Ok(json!({
+    Ok((
+        pixel_diff(&a, aw, ah, &b, bw, bh, tolerance),
+        (aw, ah),
+        (bw, bh),
+    ))
+}
+
+fn pixels_json(d: &PixelDiff, tolerance: u8) -> Value {
+    json!({
         "width": d.width, "height": d.height, "changed": d.changed, "maxDelta": d.max_delta,
         "tolerance": tolerance,
         "regions": d.regions.iter().take(20).map(|r| json!({"x": r.x, "y": r.y, "w": r.w, "h": r.h, "px": r.px})).collect::<Vec<_>>(),
         "regionCount": d.regions.len(),
-    }))
+    })
 }
 
 /// Check every (selected) manifest entry. Returns `{ summary, results }`.
@@ -171,6 +205,7 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
     if let Some(c) = &o.cache {
         fs::create_dir_all(c)?;
     }
+    let tol = text::tolerances(m.text.as_ref());
     let t0 = Instant::now();
     let entries: Vec<&Entry> = m
         .stories
@@ -200,7 +235,8 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
                 let png_bytes = fs::read(&png).with_context(|| format!("PNG not found: {}", png.display()))?;
                 let sig_bytes = fs::read(&sig)?;
                 let render = hex(&Sha256::digest(&png_bytes));
-                let key = o.cache.as_ref().map(|_| cache_key(&png_bytes, &sig_bytes, &gate_json));
+                let render_env = o.env.as_ref().and_then(|p| p.by_id.get(&s.id)).map(String::as_str);
+                let key = o.cache.as_ref().map(|_| cache_key(&png_bytes, &sig_bytes, &gate_json, &text_key(&png, render_env, &tol, o.tolerance)));
                 let stem = io::stem_of(&sig);
                 if let (Some(c), Some(k)) = (&o.cache, &key) {
                     let hit = c.join(format!("{k}.json"));
@@ -228,14 +264,27 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
                 v["reasons"] = json!(r.reasons);
                 v["detail"] = detail_json(&r);
                 v["note"] = json!(if r.pass { "pass".to_string() } else { r.reasons.join("; ") });
-                if !r.pass {
-                    // The baseline image: inside a `.psig`, else `<base-png-dir>/<id>.png`.
+                // One pixel diff, for `pixels` (a failing row) and for `textDiff` (any row whose text
+                // differs): the baseline image is inside a `.psig`, else `<base-png-dir>/<id>.png`.
+                let txt = text::prepare(&png, render_env, &b);
+                let identical = r.metrics.identical;
+                let wants = txt.wants_pixels(&tol, identical);
+                let mut diff = None;
+                if !r.pass || wants {
                     let base_img = b.image.clone().or_else(|| {
                         o.base_png_dir.as_ref().and_then(|bd| fs::read(bd.join(format!("{}.png", s.id))).ok())
                     });
                     if let Some(img) = base_img {
-                        v["pixels"] = pixels_json(&img, &png, o.tolerance).unwrap_or(Value::Null);
+                        diff = Some(diff_of(&img, &png, o.tolerance));
+                        if !r.pass {
+                            v["pixels"] = diff.as_ref().and_then(|d| d.as_ref().ok()).map_or(Value::Null, |d| pixels_json(&d.0, o.tolerance));
+                        }
                     }
+                }
+                let mask = diff.as_ref().and_then(|d| d.as_ref().ok()).map(|(d, base, cur)| Pixels::Mask { w: d.width, h: d.height, m: &d.mask, base: *base, cur: *cur });
+                let txt = if mask.is_none() && wants { Text::Row(text::failed("no baseline image to diff")) } else { txt };
+                if let Some(td) = txt.finish(&tol, identical, mask) {
+                    v["textDiff"] = td;
                 }
                 if let (Some(c), Some(k)) = (&o.cache, &key) {
                     let _ = fs::write(c.join(format!("{k}.json")), v.to_string());

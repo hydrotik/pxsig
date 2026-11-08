@@ -21,6 +21,8 @@ pub struct Shot {
     pub runs: Vec<(&'static str, usize, Vec<[f64; 4]>)>,
     /// A second style (index 1) that differs from style 0 in colour.
     pub red: bool,
+    /// The record hit the capture's cap.
+    pub truncated: bool,
 }
 
 pub struct Case {
@@ -49,7 +51,7 @@ pub fn record(s: &Shot) -> Value {
         "runs": runs, "elements": [],
         "skipped": { "iframes": 0, "closedShadow": 0, "hidden": 0, "fields": 0, "ignored": 0,
             "clipped": 0, "covered": 0, "offFrame": 0 },
-        "truncated": false })
+        "truncated": s.truncated })
 }
 
 pub fn write_png(path: &Path, s: &Shot) {
@@ -88,7 +90,7 @@ fn shot(runs: Vec<(&'static str, [f64; 4])>) -> Shot {
     Shot {
         rects: runs.iter().map(|r| glyph(r.1)).collect(),
         runs: runs.into_iter().map(|(s, b)| (s, 0, vec![b])).collect(),
-        red: false,
+        ..Shot::default()
     }
 }
 
@@ -100,6 +102,11 @@ pub fn cases() -> Vec<Case> {
     pixel.rects.push((60, 20, 30, 10, 90));
     let mut copy_cur = shot(vec![("abd", [4.0, 4.0, 18.0, 10.0])]);
     copy_cur.rects.push((16, 6, 4, 4, 255));
+    // A copy change of one pixel: under the gate.
+    let mut small = shot(vec![("Totai", [4.0, 4.0, 20.0, 10.0])]);
+    small.rects.push((22, 12, 1, 1, 255));
+    let mut truncated = total.clone();
+    truncated.truncated = true;
     let mut restyled = total.clone();
     restyled.runs[0].1 = 1;
     restyled.red = true;
@@ -122,7 +129,7 @@ pub fn cases() -> Vec<Case> {
                     ("1 ", 0, vec![[4.0, 4.0, 10.0, 10.0]]),
                     ("new", 0, vec![[16.0, 4.0, 18.0, 10.0]]),
                 ],
-                red: false,
+                ..Shot::default()
             },
         },
         Case {
@@ -151,11 +158,28 @@ pub fn cases() -> Vec<Case> {
             cur: shot(vec![("Totals", [4.0, 4.0, 24.0, 10.0])]),
         },
         Case {
+            id: "copy-passing",
+            base: total.clone(),
+            cur: small,
+        },
+        Case {
+            id: "truncated",
+            base: truncated,
+            cur: copy_cur_total(),
+        },
+        Case {
             id: "no-render",
             base: total.clone(),
             cur: total,
         },
     ]
+}
+
+/// "Total" → "Tote": a copy change drawn inside its box.
+fn copy_cur_total() -> Shot {
+    let mut s = shot(vec![("Tote", [4.0, 4.0, 20.0, 10.0])]);
+    s.rects.push((18, 6, 4, 4, 255));
+    s
 }
 
 pub fn scratch(name: &str) -> PathBuf {
@@ -179,6 +203,12 @@ pub fn pxsig(dir: &Path, args: &[&str]) -> Output {
 /// `base/`. With `text`, each render gets its text record (but `no-record`'s baseline does not,
 /// and `no-render` has no current render).
 pub fn build(d: &Path, text: bool) -> Vec<&'static str> {
+    build_in(d, text, None)
+}
+
+/// [`build`], with the baselines' environment: `env` is written into each baseline's header
+/// (`baseline --env`) and saved as `env.json`, a plan `check --env @env.json` reads.
+pub fn build_in(d: &Path, text: bool, env: Option<&str>) -> Vec<&'static str> {
     let cs = cases();
     let stories: Vec<Value> = cs
         .iter()
@@ -205,25 +235,37 @@ pub fn build(d: &Path, text: bool) -> Vec<&'static str> {
             .unwrap();
         }
     }
-    let out = pxsig(
-        d,
-        &[
-            "baseline",
-            "--manifest",
-            "m.json",
-            "--png-dir",
-            "base",
-            "--root",
-            ".",
-            "--json",
-        ],
-    );
+    let mut args = vec![
+        "baseline",
+        "--manifest",
+        "m.json",
+        "--png-dir",
+        "base",
+        "--root",
+        ".",
+        "--json",
+    ];
+    if let Some(id) = env {
+        plan(d, "env.json", id);
+        args.extend(["--env", "@env.json"]);
+    }
+    let out = pxsig(d, &args);
     assert!(
         out.status.success(),
         "baseline: {}",
         String::from_utf8_lossy(&out.stderr)
     );
     cs.iter().map(|c| c.id).collect()
+}
+
+/// An env plan naming environment `id` for every entry of the corpus.
+pub fn plan(d: &Path, file: &str, id: &str) {
+    let by_id: serde_json::Map<String, Value> = cases()
+        .iter()
+        .map(|c| (c.id.to_string(), json!(id)))
+        .collect();
+    let v = json!({ "envs": { id: { "v": 1, "id": id } }, "byId": by_id });
+    fs::write(d.join(file), v.to_string()).unwrap();
 }
 
 /// `pxsig check` on the current renders: its exit code and its JSON.

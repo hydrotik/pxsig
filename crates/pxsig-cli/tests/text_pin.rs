@@ -5,7 +5,7 @@
 mod text_corpus;
 
 use serde_json::Value;
-use text_corpus::{build, check, rows, scratch};
+use text_corpus::{build_in, check, rows, scratch};
 
 /// A row without the keys text may add.
 fn verdict(r: &Value) -> Value {
@@ -21,7 +21,8 @@ fn run(text: bool, extra: &[&str]) -> (i32, Value) {
         "pin-{text}-{}",
         extra.join("-").replace(['@', '/', '.'], "")
     ));
-    build(&d, text);
+    // The baselines' environment is the renders' (`--env @env.json` compares their text).
+    build_in(&d, text, Some("aaaabbbbccccdddd"));
     let out = check(&d, extra);
     let _ = std::fs::remove_dir_all(&d);
     out
@@ -46,6 +47,11 @@ fn assert_same(extra: &[&str]) {
 #[test]
 fn every_verdict_and_the_exit_code_are_the_same_with_text_on_and_off() {
     assert_same(&[]);
+}
+
+#[test]
+fn every_verdict_is_the_same_when_text_is_compared() {
+    assert_same(&["--env", "@env.json"]);
 }
 
 #[test]
