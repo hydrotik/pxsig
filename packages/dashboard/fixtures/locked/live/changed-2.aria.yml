@@ -59,6 +59,9 @@
     - list:
       - listitem:
         - button "48×32 @ 16,8 910 px" [pressed]
+    - heading "Text" [level=3]
+    - paragraph: No text changed. The change is outside text.
+    - text: Labels only. The gate and the decision are unchanged.
     - heading "Metrics" [level=3]
     - term: SSIM
     - definition: 0.9468 < 0.99

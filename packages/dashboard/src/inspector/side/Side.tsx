@@ -1,7 +1,8 @@
 /**
  * The inspector's side panel (Inspector.tsx): its sections in order. View (in the Storybook panel
- * only), Pixel, Pixel Changes, Metrics, Accessibility, React (not in the panel) and Files, each shown as Inspector.tsx
- * decides from what it computed; nothing is computed here.
+ * only), Pixel, Pixel Changes, Text (a row with text labels), Metrics, Accessibility, React (not in
+ * the panel) and Files, each shown as Inspector.tsx decides from what it computed; nothing is
+ * computed here.
  */
 import * as s from '../../dashboard.css';
 import type { Analysis } from '../analyse';
@@ -11,6 +12,7 @@ import { FilesSection } from './FilesSection';
 import { MetricsSection } from './MetricsSection';
 import { PixelSection } from './PixelSection';
 import { ReactSection } from './ReactSection';
+import { TextSection } from './TextSection';
 import { ViewSection } from './ViewSection';
 
 /** A section's props. */
@@ -23,7 +25,8 @@ export type SideProps = P<typeof PixelSection> &
   Omit<P<typeof MetricsSection>, 'm'> &
   P<typeof A11ySection> &
   Omit<P<typeof FilesSection>, 'sb'> &
-  Pick<P<typeof ReactSection>, 'onGo'> & { analysis: Analysis | null };
+  Pick<P<typeof ReactSection>, 'onGo'> &
+  Pick<P<typeof TextSection>, 'focusBox'> & { analysis: Analysis | null };
 
 export function InspectorSide({
   embedded,
@@ -58,6 +61,7 @@ export function InspectorSide({
   data,
   sizes,
   onGo,
+  focusBox,
 }: SideProps) {
   return (
     <aside className={s.insSide}>
@@ -96,6 +100,8 @@ export function InspectorSide({
           originals={originals}
         />
       ) : null}
+
+      <TextSection key={row.id} row={row} focusBox={focusBox} />
 
       {m ? <MetricsSection m={m} detail={detail} hasArtifacts={hasArtifacts} p={p} /> : null}
 

@@ -158,6 +158,8 @@ const REACT_ROWS = [
   'switches',
   'install',
 ] as const;
+/** The Text Labels rows (help.text.rows). */
+const TEXT_ROWS = ['recorded', 'compared', 'kinds', 'changes', 'noRecord', 'switches'] as const;
 const COMMANDS: [string, CopyKey][] = [
   ['pxsig check --full', 'help.commands.check'],
   ['pxsig check --since main', 'help.commands.checkChanged'],
@@ -236,6 +238,15 @@ export function Help({ data }: { data: Data }) {
         items={REACT_ROWS.map((k) => ({
           term: t(`help.react.rows.${k}.term`),
           meaning: t(`help.react.rows.${k}.meaning`),
+          at: [],
+        }))}
+      />
+      <Section
+        title={t('help.text.title')}
+        description={t('help.text.description')}
+        items={TEXT_ROWS.map((k) => ({
+          term: t(`help.text.rows.${k}.term`),
+          meaning: t(`help.text.rows.${k}.meaning`),
           at: [],
         }))}
       />

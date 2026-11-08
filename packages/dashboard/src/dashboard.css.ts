@@ -93,6 +93,7 @@ export {
   swatch,
   regions,
   region,
+  textChange,
   sigs,
   resources,
   a11yItem,

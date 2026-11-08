@@ -200,6 +200,10 @@ export function Inspector({
     setRegion(i);
     stage.current?.focus(r);
   };
+  const focusBox = (r: { x: number; y: number; w: number; h: number }) => {
+    setRegion(-1);
+    stage.current?.focus(r);
+  };
   const stepRegion = (d: number) =>
     regions.length &&
     focusRegion(
@@ -526,7 +530,7 @@ export function Inspector({
               {...{ embedded, viewControls, pixels, regions, region, stepRegion, sb, sbLink }}
               {...{ loaded, W, H, m, tol, analysis, focusRegion, setTol, originals, detail }}
               {...{ hasArtifacts, p, row, newA11y, target, canReview, busy, unaccept, a11yMode }}
-              {...{ a11yDecision, act, data, sizes, onGo }}
+              {...{ a11yDecision, act, data, sizes, onGo, focusBox }}
             />
           ) : null}
         </div>
