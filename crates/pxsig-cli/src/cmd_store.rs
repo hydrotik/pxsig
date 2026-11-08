@@ -271,8 +271,21 @@ mod tests {
             )
             .unwrap();
             assert!(again == bytes, "{} re-encodes differently", f.display());
-            // No section beyond sig and image, so `cat` prints exactly what it printed before.
-            assert!(section_lines(&p.sections).is_empty(), "{}", f.display());
+            // No section beyond sig, image and a readable text record (`text: true`), so `cat`
+            // prints what it printed before, plus that record.
+            assert!(
+                p.sections
+                    .iter()
+                    .all(|s| matches!(s.name(), "sig" | "image" | "boxes")),
+                "{}",
+                f.display()
+            );
+            let lines = section_lines(&p.sections);
+            assert!(
+                !lines.iter().any(|l| l.contains("unreadable")),
+                "{}",
+                f.display()
+            );
         }
     }
 
