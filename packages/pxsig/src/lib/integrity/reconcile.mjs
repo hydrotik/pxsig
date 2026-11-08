@@ -322,7 +322,7 @@ export async function reconcile(ctx, opts = {}) {
         : null,
       renderedAt: iso(latestAt),
       review: review[e.id]?.state ?? null,
-      approval: last ? { at: last.at, by: last.by, via: last.via, batch: last.batch } : null,
+      approval: last ? { at: last.at, via: last.via, batch: last.batch } : null,
       a11y: {
         enabled: e.a11y !== false,
         baselined: a11yBase ? Object.hasOwn(a11yBase, e.id) : false,

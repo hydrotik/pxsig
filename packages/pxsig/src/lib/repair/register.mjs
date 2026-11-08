@@ -2,7 +2,7 @@
 import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { componentOf, readJson, writeJsonAtomic } from '../integrity.mjs';
-import { guardWrite, logRepair, who } from './core.mjs';
+import { guardWrite, logRepair } from './core.mjs';
 /** @import { IntegrityContext } from '../integrity.mjs' */
 /** @import { IndexStory, StoryRef } from '../../types.js' */
 /** @import { NamedIndex, Harvest, IntegrityManifest, RegisterResult, RepairActor, StoryToRegister } from '../../types/t3.js' */
@@ -99,14 +99,13 @@ export function logRegister(
   ctx,
   r,
   storyIds,
-  { by, via, why = 'unregistered: in the story index, not in the manifest' }
+  { via, why = 'unregistered: in the story index, not in the manifest' }
 ) {
   const failed = new Map(r.failed.map((f) => [f.id, f.why]));
   const skipped = new Map(r.skipped.map((s) => [s.id, s.reason]));
   for (const id of storyIds) {
     if (failed.has(id))
       logRepair(ctx, {
-        by,
         via,
         action: 'register',
         id,
@@ -116,7 +115,6 @@ export function logRegister(
       });
     else if (skipped.has(id))
       logRepair(ctx, {
-        by,
         via,
         action: 'register',
         id,
@@ -125,7 +123,6 @@ export function logRegister(
       });
     else
       logRepair(ctx, {
-        by,
         via,
         action: 'register',
         id,
@@ -137,7 +134,6 @@ export function logRegister(
   // An existing file at a new entry's signature path becomes its baseline as it is: say so.
   for (const id of r.adoptedSignatures)
     logRepair(ctx, {
-      by,
       via,
       action: 'register',
       id,
@@ -154,10 +150,10 @@ export function logRegister(
  * Returns { added: entry ids, stories: story ids registered, skipped: [{ name, why }] }.
  * @param {IntegrityContext} ctx
  * @param {Iterable<string>} names
- * @param {{ index?: NamedIndex | null, harvest: Harvest, by?: string | null, via?: string }} opts
+ * @param {{ index?: NamedIndex | null, harvest: Harvest, via?: string }} opts
  * @returns {Promise<{ added: string[], stories: string[], skipped: { name: string, why: string }[], adoptedSignatures?: string[] }>}
  */
-export async function registerNamed(ctx, names, { index, harvest, by = who(ctx), via = 'check' }) {
+export async function registerNamed(ctx, names, { index, harvest, via = 'check' }) {
   // The manifest `pxsig manifest` wrote (docs/spec.md section 6).
   const manifest = /** @type {IntegrityManifest} */ (readJson(ctx.manifestPath, null));
   const entryIds = new Set(manifest.stories.map((e) => e.id));
@@ -214,7 +210,6 @@ export async function registerNamed(ctx, names, { index, harvest, by = who(ctx),
     { harvest }
   );
   logRegister(ctx, r, [...want.keys()], {
-    by,
     via,
     why: `named by ${via} but not in the manifest`,
   });

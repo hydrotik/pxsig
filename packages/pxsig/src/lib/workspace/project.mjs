@@ -108,8 +108,7 @@ function checkApprovals(config, ref) {
         ? `project "${ref.name}": approvals.level "strict" is not available yet; remove it or set "standard"`
         : `project "${ref.name}": approvals.level must be "standard"`
     );
-  if (a.identity != null && !['none', 'git-email'].includes(a.identity))
-    throw new SetupError(`project "${ref.name}": approvals.identity must be "none" or "git-email"`);
+  // approvals.identity is no longer read (0.7.6): a config that has it loads; doctor reports it.
   if (a.byStory != null && typeof a.byStory !== 'boolean')
     throw new SetupError(`project "${ref.name}": approvals.byStory must be true or false`);
 }

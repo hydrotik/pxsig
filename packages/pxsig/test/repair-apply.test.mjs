@@ -35,7 +35,7 @@ test(
       f.ctx,
       led,
       [f.ids.restorable, f.ids.unrecoverable, f.ids.ok],
-      { by: 'test', via: 'test' }
+      { via: 'test' }
     );
     const by = Object.fromEntries(res.map((r) => [r.id, r]));
     assert.equal(by[f.ids.restorable].result, 'restored');
@@ -60,7 +60,10 @@ test(
       res.map((r) => [r.id, r.result])
     );
     assert.ok(
-      log.every((l) => l.by === 'test' && l.at && l.why && l.action === 'restore-baseline-image')
+      log.every(
+        (l) =>
+          !('by' in l) && l.via === 'test' && l.at && l.why && l.action === 'restore-baseline-image'
+      )
     );
     const after = await reconcile(f.ctx, { index: f.index, affected: f.affected });
     assert.ok(
@@ -86,7 +89,7 @@ test(
     const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
     const x = /** @type {LedgerEntry} */ (led.entries.find((e) => e.id === f.ids.restorable));
     x.issues.push({ code: 'stale', severity: 'warn', reason: 'test' });
-    const [r] = restoreBaselineImages(f.ctx, led, [f.ids.restorable], { by: 't', via: 't' });
+    const [r] = restoreBaselineImages(f.ctx, led, [f.ids.restorable], { via: 't' });
     assert.equal(r.result, 'blocked');
     assert.ok(!f.hasBaseImage(f.ids.restorable));
   }
@@ -106,7 +109,6 @@ test(
     /** @type {string[]} */
     const rechecked = [];
     const res = await applyRepairs(f.ctx, plan, {
-      by: 'tester',
       via: 'test',
       reconcileOpts: { index: f.index, affected: f.affected },
       hooks: {
@@ -136,7 +138,7 @@ test(
       [...new Set(log.map((l) => l.action))],
       ['register', 'recheck', 'restore-baseline-image']
     );
-    assert.ok(log.every((l) => l.by === 'tester' && l.via === 'test' && l.schemaVersion === 1));
+    assert.ok(log.every((l) => !('by' in l) && l.via === 'test' && l.schemaVersion === 1));
   }
 );
 
@@ -146,14 +148,13 @@ test('prune needs confirmation, moves orphans to trash/ and deletes nothing', as
   const plan = planRepairs(led, { only: ['prune'], prune: true });
   assert.equal(plan.steps[0].action, 'prune');
   const refused = await applyRepairs(f.ctx, plan, {
-    by: 't',
     via: 't',
     reconcileOpts: { index: f.index, affected: f.affected },
     hooks: { confirmPrune: async () => false },
   });
   assert.match(refused.steps[0].result, /not confirmed/);
   assert.ok(existsSync(join(f.px, 'baselines', 'components', 'Old', 'components-old--x.psig')));
-  const r = pruneOrphans(f.ctx, led, plan.steps[0].ids, { by: 't', via: 't' });
+  const r = pruneOrphans(f.ctx, led, plan.steps[0].ids, { via: 't' });
   assert.ok(!existsSync(join(f.px, 'baselines', 'components', 'Old', 'components-old--x.psig')));
   for (const m of r.moved) assert.ok(existsSync(join(f.repo, m.to)), `${m.from} kept in trash/`);
   assert.deepEqual(r.droppedEntries, [f.ids.gone]);

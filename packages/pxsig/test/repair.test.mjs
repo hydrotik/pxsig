@@ -127,7 +127,6 @@ test('one repair run registers a new story and renders its entries; the count is
   /** @type {string[]} */
   const asked = [];
   const res = await applyRepairs(f.ctx, plan, {
-    by: 't',
     via: 't',
     reconcileOpts: { index: f.index, affected: f.affected },
     hooks: {
@@ -169,7 +168,6 @@ test('a failed re-check is reported as failed, not as re-checked', async () => {
   const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
   const plan = planRepairs(led, { server: { up: true }, only: ['recheck'] });
   const res = await applyRepairs(f.ctx, plan, {
-    by: 't',
     via: 't',
     reconcileOpts: { index: f.index, affected: f.affected },
     hooks: {
@@ -203,7 +201,6 @@ test('register survives a story whose parameters cannot be read, and logs an ado
   const plan = planRepairs(led, { server: { up: true }, only: ['register'] });
   assert.deepEqual(plan.steps[0].ids.sort(), [back, f.ids.unregistered].sort());
   const res = await applyRepairs(f.ctx, plan, {
-    by: 't',
     via: 't',
     reconcileOpts: { index, affected: f.affected },
     hooks: {
@@ -260,7 +257,7 @@ test('registerNamed registers a named story that is not in the manifest, or says
       'nope--missing',
       'internal-helpers--default',
     ],
-    { index: f.index, harvest, by: 't', via: 'test' }
+    { index: f.index, harvest, via: 'test' }
   );
   assert.deepEqual(r.added, [f.ids.unregistered]);
   assert.deepEqual(r.stories, [f.ids.unregistered]);

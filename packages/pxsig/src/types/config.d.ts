@@ -158,6 +158,7 @@ export type Config = {
   };
   importPathPattern?: string;
   approvals?: {
+    /** No longer read (0.7.6): no log names a person. Still loads; doctor reports it. */
     identity?: 'none' | 'git-email';
     level?: 'standard' | 'strict';
     /** The dashboard's Approve story (one batch for a story's waiting entries); off by default. */

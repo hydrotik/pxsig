@@ -201,8 +201,8 @@ export function migrateLegacy(P, { from, apply = false, verify = true, log = () 
     ['.gitattributes', STORE_GITATTRIBUTES],
   ])
     if (!existsSync(join(P.store.root, file))) writeFileSync(join(P.store.root, file), text);
-  // The approvals trail carries over without its reasons: each line gains a `ref`, and its reason
-  // stays beside that ref in the git-ignored reports/ (lib/decisions.mjs). One `migrated` line per
+  // The approvals trail carries over without its reasons or names: each line gains a `ref`, its
+  // reason stays beside that ref in the git-ignored reports/ (lib/decisions.mjs). One line per
   // baseline records the new file's hash, so `pxsig approve verify` starts clean on the new store.
   forgetIgnored();
   const ignored = reportsIgnored(P);
@@ -219,7 +219,6 @@ export function migrateLegacy(P, { from, apply = false, verify = true, log = () 
       stamp({
         at,
         id: x.entry.id,
-        by: 'pxsig migrate',
         via: 'migrate',
         batch: migrateBatch(at),
         ref: decisionRef(),
@@ -237,8 +236,8 @@ export function migrateLegacy(P, { from, apply = false, verify = true, log = () 
 /** @param {unknown} v */
 const str = (v) => (typeof v === 'string' ? v : '');
 /**
- * One line of the old approvals trail, into the new store's log without its reason: it gains a
- * `ref`, and the reason is kept beside it (lib/decisions.mjs) when reports/ is git-ignored. A line
+ * One line of the old approvals trail, into the new store's log without its reason or `by`: it
+ * gains a `ref`, and the reason is kept beside it (lib/decisions.mjs) when reports/ is git-ignored. A line
  * that does not parse is copied as it is (`pxsig doctor` reports it).
  * @param {Project} P
  * @param {string} text
@@ -254,7 +253,7 @@ function copyLine(P, text, ignored) {
   }
   if (!old || typeof old !== 'object' || Array.isArray(old))
     return appendFileSync(P.store.approvals, `${text}\n`);
-  const { reason, ...rest } = /** @type {Record<string, unknown>} */ (old);
+  const { reason, by: _by, ...rest } = /** @type {Record<string, unknown>} */ (old);
   const ref = str(rest.ref) || decisionRef();
   appendLine(P.store.approvals, { ...rest, ref });
   const d = { ref, log: /** @type {const} */ ('approvals'), id: str(rest.id), via: str(rest.via) };

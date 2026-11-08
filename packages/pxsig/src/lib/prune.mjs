@@ -21,7 +21,7 @@
  */
 import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { decisionRef, readLog, sha256, stamp, who } from './approvals.mjs';
+import { decisionRef, readLog, sha256, stamp } from './approvals.mjs';
 import { keepReason } from './decisions.mjs';
 import { appendLine, readJson, readLines, writeJson } from './files.mjs';
 import { relPath } from './paths.mjs';
@@ -392,7 +392,6 @@ export function applyPrune(
   // a11y.json is pxsig's own: entry id → accepted rule ids.
   const base = /** @type {Record<string, string[]>} */ (readJson(P.store.a11y, {}));
   const at = new Date().toISOString();
-  const by = who(P.workspaceRoot, P.config);
   /** @type {PruneLine[]} */
   const lines = [];
   // `checkPlan` passed: ids and rules have their shape.
@@ -404,7 +403,6 @@ export function applyPrune(
     base[p.id] = after;
     lines.push({
       at,
-      by,
       via,
       ref: decisionRef(),
       action: 'prune',

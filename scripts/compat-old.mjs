@@ -3,7 +3,8 @@
  * compat-old.mjs — what a teammate still on an older pxsig sees in a store this one wrote
  * (`requires`: docs/configuration.md#pxsigworkspacejson). It installs the published pxsig given
  * (default 0.3.2) into a temporary folder, writes a store with this checkout (approval lines with
- * `pxsig`, no `by`, no `reason`), and runs the old `approve verify` and `status` against it.
+ * `pxsig`, no `by` even on `approvals.identity: "git-email"`, no `reason`), and runs the old
+ * `approve verify` and `status` against it.
  *
  *   node scripts/compat-old.mjs [version]
  *
@@ -128,8 +129,10 @@ if (cat.status !== 0 || !cat.stdout.includes('--- boxes: 2 runs\n"1 "\n"new"'))
     `this engine does not read the boxes section: exit ${cat.status}\n${cat.stdout}${cat.stderr}`
   );
 ok('a baseline carries a text record (boxes, deflated), and this engine prints its strings');
+// With `approvals.identity: "git-email"` (no longer read): still no `by`.
+const named = { ...P, config: { ...P.config, approvals: { identity: 'git-email' } } };
 for (const e of f.manifest.stories.filter((x) => !x.sig.endsWith('.pxsig.json')))
-  record(P, e, { batch: 'compat', via: 'cli', before: null });
+  record(/** @type {Project} */ (named), e, { batch: 'compat', via: 'cli', before: null });
 const lines = readFileSync(join(f.px, 'approvals.ndjson'), 'utf8')
   .trim()
   .split('\n')

@@ -149,7 +149,8 @@ any of the target baselines: migrate into an empty store.
 
 ## The approvals trail
 
-The old trail is copied line by line without its reasons: each line gains a decision reference
+The old trail is copied line by line without its reasons and without `by` (no line names a
+person): each line gains a decision reference
 (`ref`), and its `reason` is kept beside that reference in the new store's git-ignored
 `reports/decisions.ndjson` ([decisions.md](decisions.md#reasons-stay-on-the-machine)). Then pxsig
 appends one line per migrated baseline:
@@ -165,7 +166,6 @@ appends one line per migrated baseline:
   "gitHead": null,
   "before": "<sha256 of the old file>",
   "after": "<sha256 of the new .psig>",
-  "by": "pxsig migrate",
   "pxsig": "<version>"
 }
 ```

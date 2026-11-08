@@ -1,7 +1,9 @@
 /**
- * decisions-doctor.test.mjs — the setup finding `reports-not-ignored` (lib/integrity/problems.mjs
- * `decisionProblems`): a store whose reports/ git would pick up keeps no reason, and doctor says
- * so, as a warning `integrity.severity` can change. Fixture projects in real git repositories.
+ * decisions-doctor.test.mjs — the setup findings of lib/integrity/problems.mjs `decisionProblems`:
+ * `reports-not-ignored` (a store whose reports/ git would pick up keeps no reason),
+ * `approvals-identity` (a config that still has the key no pxsig reads) and `log-legacy-personal`
+ * (lines from before 0.7.6 with a reason or a `by`), each with a severity `integrity.severity` can
+ * change. Fixture projects in real git repositories.
  *
  *   node --test packages/pxsig/test/decisions-doctor.test.mjs
  *
@@ -10,7 +12,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { forgetIgnored } from '../src/lib/decisions.mjs';
 import { reconcile, resolveContext } from '../src/lib/integrity.mjs';
@@ -25,14 +27,15 @@ const skip = skipUnless(hasGit, 'git missing');
  * The fixture's setup findings for one code, in a real repository, with `config` merged in.
  * @param {ReturnType<typeof fixture>} f
  * @param {Record<string, unknown>} [config]
+ * @param {string} [code]
  */
-async function finding(f, config = {}) {
+async function finding(f, config = {}, code = 'reports-not-ignored') {
   const cfg = join(f.repo, 'pxsig.config.json');
   writeFileSync(cfg, JSON.stringify({ ...JSON.parse(readFileSync(cfg, 'utf8')), ...config }));
   forgetIgnored();
   const P = openProject({ cwd: f.repo, env: { PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } });
   const led = await reconcile(resolveContext(P), { index: f.index, affected: f.affected });
-  return led.setup.filter((x) => x.code === 'reports-not-ignored');
+  return led.setup.filter((x) => x.code === code);
 }
 
 test(
@@ -58,3 +61,65 @@ test(
     assert.deepEqual(await finding(f), []);
   }
 );
+
+test('approvals-identity: the key loads, and doctor names it: warn for git-email, info for none', async (t) => {
+  const f = fixture({ t });
+  assert.deepEqual(await finding(f, {}, 'approvals-identity'), []);
+  const reason =
+    'approvals.identity is no longer read: log lines carry a decision reference, never a name. Remove the key from pxsig.config.json';
+  for (const [identity, severity] of [
+    ['git-email', 'warn'],
+    ['none', 'info'],
+  ])
+    assert.deepEqual(await finding(f, { approvals: { identity } }, 'approvals-identity'), [
+      { code: 'approvals-identity', severity, reason },
+    ]);
+  const integrity = { severity: { 'approvals-identity': 'error' } };
+  const [o] = await finding(
+    f,
+    { approvals: { identity: 'git-email' }, integrity },
+    'approvals-identity'
+  );
+  assert.equal(o.severity, 'error', 'integrity.severity overrides it');
+});
+
+test("log-legacy-personal: counts old lines with a reason or a `by`, never pxsig's own", async (t) => {
+  const f = fixture({ t });
+  const code = 'log-legacy-personal';
+  assert.deepEqual(await finding(f, {}, code), [], 'a store of 0.7.6 lines: nothing');
+  const P = openProject({ cwd: f.repo, env: { PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } });
+  const at = '2026-01-01T00:00:00.000Z';
+  /** @param {object[]} ls */
+  const nd = (ls) =>
+    ls.map((l) => `${JSON.stringify({ at, id: 'x', batch: 'b', ...l })}\n`).join('');
+  writeFileSync(
+    P.store.approvals,
+    nd([
+      { via: 'cli', reason: 'a person wrote this' },
+      { via: 'dashboard', reason: null, by: 'old@example.test' },
+      { via: 'check-update', reason: 'pxsig check --update' },
+      { via: 'undo', reason: 'undo b (dashboard)' },
+      { via: 'adopt', reason: 'adopt current baselines as the starting point' },
+      { via: 'migrate', reason: 'moved from x', by: 'pxsig migrate' },
+      { via: 'cli', ref: 'd_new' },
+    ])
+  );
+  writeFileSync(
+    join(dirname(P.store.a11y), 'a11y-decisions.ndjson'),
+    nd([
+      { via: 'dashboard', action: 'accept', by: 'old@example.test' },
+      { via: 'cli', ref: 'd_y' },
+    ])
+  );
+  assert.deepEqual(await finding(f, {}, code), [
+    {
+      code,
+      severity: 'info',
+      count: 3,
+      reason:
+        '2 lines of approvals.ndjson and 1 of a11y-decisions.ndjson, written before 0.7.6, carry a reason or a git email. New lines carry neither; old lines stay (the log is append-only, and git history keeps them either way)',
+    },
+  ]);
+  const [o] = await finding(f, { integrity: { severity: { [code]: 'warn' } } }, code);
+  assert.equal(o.severity, 'warn', 'integrity.severity overrides it');
+});

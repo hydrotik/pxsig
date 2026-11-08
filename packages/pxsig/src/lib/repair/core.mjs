@@ -1,5 +1,4 @@
-/** The write guard and the repair log (repair.mjs): who ran it, and the line each action appends. */
-import { spawnSync } from '../spawn.mjs';
+/** The write guard and the repair log (repair.mjs): the line each action appends, naming no person. */
 import { mkdirSync } from 'node:fs';
 import { dirname, relative, resolve, sep } from 'node:path';
 import { repairLogPath, SCHEMA_VERSION } from '../integrity.mjs';
@@ -31,25 +30,13 @@ export function guardWrite(ctx, path) {
 }
 
 /**
- * Who ran a repair, for its log: nobody unless `approvals.identity: "git-email"`
- * (docs/configuration.md#keys).
- * @param {IntegrityContext} ctx
- * @returns {string | null}
- */
-export function who(ctx) {
-  if (ctx.config?.approvals?.identity !== 'git-email') return null;
-  const r = spawnSync('git', ['-C', ctx.repoRoot, 'config', 'user.email'], { encoding: 'utf8' });
-  return r.stdout?.trim() || process.env.USER || process.env.USERNAME || 'unknown';
-}
-
-/**
  * @param {IntegrityContext} ctx
  * @param {RepairLogLine} line
  */
 export function logRepair(ctx, line) {
   const p = guardWrite(ctx, repairLogPath(ctx));
   mkdirSync(dirname(p), { recursive: true });
-  // stamp (lib/approvals.mjs) returns the line with `by` only when set, `agent`, and `pxsig`.
+  // stamp (lib/approvals.mjs) returns the line with `agent` and `pxsig`, never a `by`.
   const full = /** @type {Record<string, unknown>} */ (
     stamp({ schemaVersion: SCHEMA_VERSION, at: new Date().toISOString(), ...line })
   );
