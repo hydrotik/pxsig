@@ -240,7 +240,7 @@ Compiler's Rust port for a later opt-in; published engines leave it out.
   was rewritten, its row and the recounted summary), and the dashboard applies it in place. Other
   events still fetch the data, one fetch at a time with at most one waiting, so a burst of events
   costs two fetches instead of one each. In a large store this saves a multi-megabyte request per
-  open page per decision ([docs/server.md](../docs/server.md)).
+  open page per decision ([docs/server.md](docs/server.md)).
 - **A dashboard approval does less work before it answers.** The server's approve reads
   `check.json` once instead of three times, and reads the commit for the approvals log
   (`gitHead`) while the engine writes the baseline, instead of blocking the server on `git`
