@@ -225,6 +225,23 @@ Compiler's Rust port for a later opt-in; published engines leave it out.
 - **UI contract 1.4.0: `keep` on `NavLink`**, an optional prop: the link never moves into the top
   bar's overflow menu. The dashboard sets it on Help; the reference adapter keeps that link out of
   hydrotik's More menu. See docs/ui/contract-changes.md.
+- **UI contract 1.5.0: `TextField`**, an optional component with a fallback: a controlled
+  single-line text input with a visible label (`label`, `value`, `onValueChange`, `maxLength`,
+  `placeholder`, `onSubmit`, `autoFocus`); Enter calls `onSubmit` with the value. The plain and
+  reference adapters map it (the reference adapter to hydrotik's `Input`). Nothing renders it yet.
+  See docs/ui/contract-changes.md.
+  To update: an adapter written for 1.4.0 or earlier keeps working (the built-in fallback draws a
+  native label and text input); to draw your own, export `TextField` and set
+  `"contract": "1.5.0"` in its conformance.json.
+- **`.psig` files can carry more sections, and pxsig keeps them.** The engine reads and writes
+  sections beyond `sig` and `image`, after them in the table, each with an `encoding` (`deflate`,
+  raw DEFLATE, or `identity`); `length` and `sha256` stay those of the stored bytes. `pxsig attach`
+  keeps every such section byte for byte, as it keeps unknown header keys, so decoding a baseline
+  and writing back what was read gives the same bytes. `pxsig cat` (git's textconv) prints a
+  `boxes` section's run strings after the header, one a line and JSON-quoted, so a copy change
+  shows in a baseline's `git diff`. Nothing writes a `boxes` section yet: text capture comes in a
+  later change, and every existing baseline reads, attaches and prints exactly as before. The
+  container version stays 1, and older pxsig skips the new sections (docs/spec.md section 5).
 
 ### Changed
 
@@ -286,6 +303,12 @@ Compiler's Rust port for a later opt-in; published engines leave it out.
   `States:` line, because its list of states had no `new` (`status --json` counted them). It now
   shows `+ new N` next to `changed`, and every human view (`status`, `list`, `check`, `doctor`)
   marks a NEW entry `+ new` instead of `? new`.
+- **Screen readers: a figure tile's name keeps the figure and its unit apart.** The dashboard's
+  figure tiles with a unit (the Overview's latest check and its React card, Coverage, History and
+  Performance) read their figure and unit as one word, "Findings 1new · of 1" or
+  "Compiled 5of 9 analysed": the two were drawn apart by a margin only. Every `StatGroup` value
+  that a unit follows now ends in a space that is read but not drawn ("Findings 1 new · of 1"), on
+  every UI adapter, a project's own included. Nothing on screen moves.
 
 ### Documentation
 
