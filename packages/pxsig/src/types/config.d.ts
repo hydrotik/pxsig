@@ -144,6 +144,8 @@ export type Config = {
   a11y: boolean;
   /** React analysis (lib/react/config.mjs reads and checks it; a bad value never fails a run). */
   react?: unknown;
+  /** Text capture (lib/text/config.mjs reads and checks it; a bad value never fails a run). */
+  text?: unknown;
   integrity: {
     requireBaselineImages?: boolean;
     staleAfterSourceChange?: boolean;

@@ -1,0 +1,136 @@
+# Is a text record (packages/pxsig/src/lib/capture/boxes.mjs) the same on every OS? The same corpus
+# (pages with text of every kind, in the browser's default fonts and in one pinned web font, and the
+# dashboard's fixture screens, plain adapter) rendered with text capture on in pxsig's container
+# (docker/screens-image.json) and on the Linux, macOS and Windows runners; then each record compared
+# with the container's (scripts/text-determinism.mjs). The table goes to the run's summary page.
+# A measurement, never a gate: not a required check, and it never fails on a difference.
+name: text determinism
+
+on:
+  pull_request:
+    paths:
+      - packages/pxsig/src/lib/capture/boxes.mjs
+      - scripts/text-determinism.mjs
+      - .github/workflows/text-determinism.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: text-determinism-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # The web font every runner renders the same pages in: Inter 400 from @fontsource/inter (OFL-1.1),
+  # fetched by version and checked against the registry's integrity, never committed.
+  FONT_PACKAGE: '@fontsource/inter@5.2.8'
+  FONT_INTEGRITY: 'sha512-P6r5WnJoKiNVV+zvW2xM13gNdFhAEpQ9dQJHt3naLvfg+LkF2ldgSLiF4T41lf1SQCM9QmkqPTn4TH568IRagg=='
+
+jobs:
+  inputs:
+    name: Text record inputs
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The dashboard with the plain adapter (system-ui, no design system), as dashboard-drift builds it.
+      - run: pnpm --filter @pxsig/dashboard build
+      - name: Fetch the web font
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/font"
+          cd "$RUNNER_TEMP/font"
+          got=$(npm view "$FONT_PACKAGE" dist.integrity)
+          [ "$got" = "$FONT_INTEGRITY" ] || { echo "::error::$FONT_PACKAGE integrity is $got"; exit 1; }
+          npm pack "$FONT_PACKAGE" --silent > name.txt
+          node -e "const c=require('crypto'),f=require('fs');const b=f.readFileSync(f.readFileSync('name.txt','utf8').trim());const h='sha512-'+c.createHash('sha512').update(b).digest('base64');if(h!==process.env.FONT_INTEGRITY){console.error('tarball '+h);process.exit(1)}"
+          tar -xzf "$(cat name.txt)" package/files/inter-latin-400-normal.woff2
+          mkdir -p "$GITHUB_WORKSPACE/text-inputs"
+          cp package/files/inter-latin-400-normal.woff2 "$GITHUB_WORKSPACE/text-inputs/face.woff2"
+          cp -R "$GITHUB_WORKSPACE/packages/pxsig/dist/dashboard" "$GITHUB_WORKSPACE/text-inputs/dashboard"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: text-inputs
+          path: text-inputs
+          retention-days: 3
+
+  render:
+    name: Text record (${{ matrix.where }})
+    needs: inputs
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - where: container
+            os: ubuntu-latest
+          - where: ubuntu
+            os: ubuntu-latest
+          - where: macos
+            os: macos-latest
+          - where: windows
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: text-inputs
+          path: text-inputs
+      # The container: its Playwright and Chromium (PXSIG_PLAYWRIGHT), this checkout's sources, as
+      # scripts/screens-container.mjs runs the screens.
+      - if: matrix.where == 'container'
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="$(node -p "require('./docker/screens-image.json').image")"
+          docker pull -q "$image"
+          docker run --rm --init --ipc=host --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -v "$PWD:$PWD" -w "$PWD" "$image" \
+            node scripts/text-determinism.mjs render --out "text-${{ matrix.where }}" \
+              --build text-inputs/dashboard --font text-inputs/face.woff2
+      - if: matrix.where != 'container'
+        run: pnpm --filter pxsig exec playwright install ${{ runner.os == 'Linux' && '--with-deps' || '' }} chromium
+      - if: matrix.where != 'container'
+        run: node scripts/text-determinism.mjs render --out text-${{ matrix.where }} --build text-inputs/dashboard --font text-inputs/face.woff2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: text-${{ matrix.where }}
+          path: text-${{ matrix.where }}
+          retention-days: 7
+
+  compare:
+    name: Text record comparison
+    needs: render
+    if: ${{ !cancelled() }}
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: text-*
+          path: records
+      - run: >-
+          node scripts/text-determinism.mjs compare records/text-container records/text-ubuntu
+          records/text-macos records/text-windows --md "$GITHUB_STEP_SUMMARY"
+      - run: >-
+          node scripts/text-determinism.mjs compare records/text-ubuntu records/text-macos
+          records/text-windows --md "$GITHUB_STEP_SUMMARY"

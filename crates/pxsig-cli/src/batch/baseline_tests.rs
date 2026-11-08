@@ -237,3 +237,83 @@ fn the_env_plan_and_enforcement_parse_inline_or_from_a_file() {
     );
     let _ = fs::remove_dir_all(&d);
 }
+
+/// Pin (text-aware diffs): a render with no text record beside it gets the baseline it got before
+/// text capture existed: sections `sig` and `image` only, the bytes the container writes for that
+/// record, image, entry and header keys and nothing else.
+#[test]
+fn a_render_without_a_text_record_gets_sig_and_image_only() {
+    let d = scratch("no-boxes");
+    write_png(&d.join("png/a.png"), 10);
+    manifest(
+        &d,
+        json!({ "stories": [{ "id": "a", "sig": "store/a.psig" }] }),
+    );
+    assert_eq!(baseline(&opts(&d)).unwrap()["summary"]["failed"], json!(0));
+    let bytes = fs::read(d.join("store/a.psig")).unwrap();
+    let p = pxsig_core::psig::decode(&bytes).unwrap();
+    let names: Vec<&str> = p.header["sections"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["sig", "image"]);
+    assert!(p.sections.is_empty());
+    let extra = pxsig_core::psig::extras(&p.header);
+    let again = pxsig_core::psig::encode(
+        &p.record,
+        p.image.as_deref(),
+        p.header.get("entry"),
+        Some(&extra),
+        &[],
+    )
+    .unwrap();
+    assert!(
+        again == bytes,
+        "the same bytes as a container with no extra section"
+    );
+    let _ = fs::remove_dir_all(&d);
+}
+
+/// A render whose capture wrote a text record (`<id>.boxes.json`) gets it as the baseline's
+/// `boxes` section, deflated; the other sections and the image are as without it. A `.pxsig.json`
+/// baseline has no sections and never reads it; a record that is not one fails that entry only.
+#[test]
+fn a_text_record_beside_the_render_becomes_the_boxes_section() {
+    let d = scratch("boxes");
+    write_png(&d.join("png/a.png"), 10);
+    write_png(&d.join("png/b.png"), 20);
+    write_png(&d.join("png/c.png"), 30);
+    let rec = json!({ "v": 1, "runs": [{ "path": "0/#0", "s": "new", "st": 0, "boxes": [[1, 2, 3, 4]] }] });
+    fs::write(d.join("png/a.boxes.json"), rec.to_string()).unwrap();
+    fs::write(d.join("png/b.boxes.json"), rec.to_string()).unwrap();
+    fs::write(d.join("png/c.boxes.json"), "{}").unwrap();
+    manifest(
+        &d,
+        json!({ "stories": [
+            { "id": "a", "sig": "store/a.psig" },
+            { "id": "b", "sig": "store/b.pxsig.json" },
+            { "id": "c", "sig": "store/c.psig" },
+        ] }),
+    );
+    let r = baseline(&opts(&d)).unwrap();
+    assert_eq!(r["summary"]["failed"], json!(1), "{r}");
+    assert!(r["errors"][0].as_str().unwrap().starts_with("c: "), "{r}");
+    let p = pxsig_core::psig::decode(&fs::read(d.join("store/a.psig")).unwrap()).unwrap();
+    assert_eq!(p.sections.len(), 1);
+    assert_eq!(p.sections[0].name(), "boxes");
+    assert_eq!(p.sections[0].meta["runs"], json!(1));
+    let back: Value = serde_json::from_slice(&p.sections[0].data().unwrap()).unwrap();
+    assert_eq!(back, rec);
+    assert_eq!(
+        p.image.as_deref(),
+        Some(fs::read(d.join("png/a.png")).unwrap().as_slice())
+    );
+    assert!(load_baseline(&d.join("store/b.pxsig.json")).is_ok());
+    assert!(
+        !d.join("store/c.psig").exists(),
+        "a bad record writes nothing"
+    );
+    let _ = fs::remove_dir_all(&d);
+}

@@ -10,7 +10,7 @@
 //! Paths are resolved against the process cwd (or `root` where a method takes one).
 
 use std::io::{BufRead, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
 use serde_json::{json, Value};
@@ -60,6 +60,8 @@ fn dispatch(method: &str, p: &Value) -> Result<Value> {
                 p["detail"].as_bool().unwrap_or(true),
                 p.get("entry"),
                 extra.as_ref(),
+                // `boxes`: the render's text record, stored as the baseline's `boxes` section.
+                p["boxes"].as_str().map(Path::new),
             )?;
             Ok(json!({ "sha256": r.sha256, "grid": r.config.grid, "detail": r.detail.is_some() }))
         }

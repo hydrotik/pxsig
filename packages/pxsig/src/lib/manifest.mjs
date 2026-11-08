@@ -21,6 +21,7 @@
  *       delay: 400,                             // extra settle (ms)
  *       target: '#storybook-root',              // element to capture
  *       a11y: false,                            // skip the axe pass
+ *       text: false,                            // record no text (docs/configuration.md#text)
  *     },
  *   }
  *
@@ -138,6 +139,7 @@ const CHECKS = /** @type {Record<string, [(v: unknown) => boolean, string]>} */ 
   ],
   target: [(v) => typeof v === 'string', 'a selector'],
   a11y: [(v) => typeof v === 'boolean', 'true or false'],
+  text: [(v) => typeof v === 'boolean', 'true or false'],
 });
 
 /**
@@ -223,6 +225,7 @@ export function expandEntries(config, stories, params, opts = {}) {
           ...(px.target ? { target: px.target } : {}),
           ...(p.play ? { play: true } : {}),
           a11y: px.a11y !== false && config.a11y !== false,
+          ...(px.text === false ? { text: /** @type {const} */ (false) } : {}),
         });
       }
     }

@@ -14,7 +14,8 @@
  *
  * It writes the store as `pxsig check` does, and no baseline: manifest.json (the entries, with
  * `source: dashboard-screens`), renders/latest/<id>.png, diffs/latest, reports/check.json,
- * summary.md and junit.xml. A person reviews and approves them with `pxsig serve` in
+ * summary.md and junit.xml (and each screen's text record beside its render, `<id>.boxes.json`, with
+ * the project's `text` on). A person reviews and approves them with `pxsig serve` in
  * packages/dashboard (approving needs `pxsig serve --link`).
  *
  * It also checks each screen's locked structure and geometry (scripts/lib/screen-locks.mjs): its
@@ -54,6 +55,8 @@ import { annotateRow, byId, envConfig, envSummary } from '../packages/pxsig/src/
 import { writeJson } from '../packages/pxsig/src/lib/files.mjs';
 import { takeLock } from '../packages/pxsig/src/lib/lock.mjs';
 import { buildRow, summarize } from '../packages/pxsig/src/lib/rows.mjs';
+import { boxesFile } from '../packages/pxsig/src/lib/capture/boxes.mjs';
+import { textSettings } from '../packages/pxsig/src/lib/text/config.mjs';
 import { SCREENS } from '../packages/pxsig/src/lib/source.mjs';
 import {
   checkGeometry,
@@ -206,6 +209,9 @@ async function main() {
     pxsig: PXSIG_VERSION,
     engine,
   });
+  // The project's text capture: each screen's text record beside its render.
+  const textOn = textSettings(P.config);
+  const text = textOn.on ? { ignore: textOn.ignore } : null;
   const tmp = join(P.store.root, 'renders', '.screens');
   const keep = join(P.store.reports, 'live-repeat');
   rmSync(keep, { recursive: true, force: true });
@@ -217,7 +223,13 @@ async function main() {
       checked = await dashboardCheck(
         { build, out: tmp, reference: build, ...(only ? { only } : {}) },
         repo,
-        { browser, log: (/** @type {string} */ m) => console.log(m), aria: true, anchors: true }
+        {
+          browser,
+          log: (/** @type {string} */ m) => console.log(m),
+          aria: true,
+          anchors: true,
+          text,
+        }
       );
     if (runLiveScreens)
       checked.report.screens.push(
@@ -230,6 +242,7 @@ async function main() {
           themes: /** @type {('dark' | 'light')[]} */ (THEMES),
           repeat,
           only: liveOnly,
+          text,
         }))
       );
   } catch (e) {
@@ -247,8 +260,13 @@ async function main() {
     const { id } = screenId(x.feature, x.index + 1, x.theme);
     const png = join(P.store.latest, `${id}.png`);
     rmSync(png, { force: true });
-    if (x.rendered && x.shot)
-      cpSync(isAbsolute(x.shot) ? x.shot : join(checked.outDir, x.shot), png);
+    rmSync(boxesFile(png), { force: true });
+    if (x.rendered && x.shot) {
+      const shot = isAbsolute(x.shot) ? x.shot : join(checked.outDir, x.shot);
+      cpSync(shot, png);
+      // Its text record, under the same entry id, for the approval to store.
+      if (existsSync(boxesFile(shot))) cpSync(boxesFile(shot), boxesFile(png));
+    }
     render.set(
       id,
       x.rendered

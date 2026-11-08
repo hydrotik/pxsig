@@ -42,7 +42,7 @@ export const DEFAULTS = Object.freeze({
 /** A plain object (a config layer, a JSON object): what `merge` merges. */
 /** @typedef {Record<string, unknown>} Obj */
 /** The CLI flags layer (`flagLayer`): config keys only. */
-/** @typedef {{ storybook?: { url?: string, staticDir?: string, configDir?: string }, grid?: number, minCellPx?: number, capture?: { settleMs?: number, browserEndpoint?: string }, react?: false }} FlagLayer */
+/** @typedef {{ storybook?: { url?: string, staticDir?: string, configDir?: string }, grid?: number, minCellPx?: number, capture?: { settleMs?: number, browserEndpoint?: string }, react?: false, text?: false }} FlagLayer */
 /**
  * @param {unknown} v
  * @returns {v is Obj}
@@ -139,6 +139,7 @@ export function anchorPaths(ws, layer, base) {
  *   --storybook-config d   storybook.configDir    --grid n                 grid
  *   --min-cell-px n        minCellPx              --settle-ms n            capture.settleMs
  *   --browser ws://…       capture.browserEndpoint   --no-react               react: false
+ *   --no-text              text: false
  *
  * Each value is read again after the check on its line, so the casts below hold.
  * @param {Flags} [flags]
@@ -173,6 +174,7 @@ export function flagLayer(flags = {}, cwd = process.cwd()) {
   if (str('browser'))
     out.capture = { ...out.capture, browserEndpoint: /** @type {string} */ (str('browser')) };
   if (flags['no-react'] === true) out.react = false;
+  if (flags['no-text'] === true) out.text = false;
   return out;
 }
 

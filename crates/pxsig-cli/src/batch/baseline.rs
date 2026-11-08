@@ -1,5 +1,5 @@
-//! `baseline` and `trim`: write baselines from renders (with the environment plan and the grid
-//! policy), and trim a render's padding.
+//! `baseline` and `trim`: write baselines from renders (with the environment plan, the grid
+//! policy and the render's text record), and trim a render's padding.
 
 use std::collections::HashSet;
 use std::fs;
@@ -97,6 +97,8 @@ pub fn baseline(o: &BaselineOpts) -> Result<Value> {
             };
             let entry = json!({ "id": s.id, "story": s.story, "mode": s.mode, "state": s.state });
             let extra = o.env.as_ref().and_then(|p| p.extra_for(&s.id));
+            // The render's text record, when its capture wrote one, goes into the baseline.
+            let boxes = super::boxes::beside(&png);
             capture_png_policy(
                 &png,
                 &o.root.join(&s.sig),
@@ -105,6 +107,7 @@ pub fn baseline(o: &BaselineOpts) -> Result<Value> {
                 detail,
                 Some(&entry),
                 extra.as_ref(),
+                boxes.as_deref(),
             )
             .err()
             .map(|e| format!("{}: {e:#}", s.id))
@@ -129,6 +132,9 @@ pub fn grid_for(w: usize, h: usize, max_grid: usize, min_cell: Option<usize>) ->
     }
 }
 
+/// One baseline under the grid policy. `boxes`: the render's text record, stored as the `boxes`
+/// section of a `.psig` (a `.pxsig.json` has no sections and never reads it).
+#[allow(clippy::too_many_arguments)]
 pub fn capture_png_policy(
     png: &Path,
     out: &Path,
@@ -137,15 +143,22 @@ pub fn capture_png_policy(
     detail: bool,
     entry: Option<&Value>,
     extra: Option<&serde_json::Map<String, Value>>,
+    boxes: Option<&Path>,
 ) -> Result<PxsigRecord> {
     let (_, w, h) = io::png_size(png)?;
-    capture_png(
+    let sections = if io::is_psig_path(out) {
+        super::boxes::sections_for(boxes)?
+    } else {
+        Vec::new()
+    };
+    capture_png_with(
         png,
         out,
         grid_for(w, h, max_grid, min_cell),
         detail,
         entry,
         extra,
+        &sections,
     )
 }
 
@@ -159,6 +172,19 @@ pub fn capture_png(
     entry: Option<&Value>,
     extra: Option<&serde_json::Map<String, Value>>,
 ) -> Result<PxsigRecord> {
+    capture_png_with(png, out, grid, detail, entry, extra, &[])
+}
+
+/// [`capture_png`], with extra sections written after the image (a `.psig` only).
+fn capture_png_with(
+    png: &Path,
+    out: &Path,
+    grid: usize,
+    detail: bool,
+    entry: Option<&Value>,
+    extra: Option<&serde_json::Map<String, Value>>,
+    sections: &[pxsig_core::psig::Section],
+) -> Result<PxsigRecord> {
     let bytes = fs::read(png).with_context(|| format!("PNG not found: {}", png.display()))?;
     let (data, w, h) = io::decode_png_bytes(&bytes, png)?;
     let s = signature_of(&data, w, h, grid);
@@ -171,7 +197,7 @@ pub fn capture_png(
         record.detail = Some(detail_of(&data, w, h, DetailParams::default()).to_record());
     }
     let image = io::is_psig_path(out).then_some(bytes.as_slice());
-    io::write_baseline(out, &record, image, entry, extra, &[])?;
+    io::write_baseline(out, &record, image, entry, extra, sections)?;
     Ok(record)
 }
 

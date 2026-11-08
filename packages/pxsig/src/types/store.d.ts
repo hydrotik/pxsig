@@ -26,6 +26,10 @@ export interface PsigSection {
   type?: string;
   width?: number;
   height?: number;
+  /** How the bytes are stored: absent or `identity`, or `deflate` (a `boxes` section). */
+  encoding?: string;
+  /** A `boxes` section: the text record's run count. */
+  runs?: number;
 }
 
 /**
@@ -69,6 +73,8 @@ export interface StoryPxsigParameters {
   delay?: number;
   target?: string;
   a11y?: boolean;
+  /** false: this story's renders write no text record. */
+  text?: boolean;
   viewport?: Size;
 }
 
@@ -118,6 +124,8 @@ export interface ManifestEntry {
   target?: string;
   play?: true;
   a11y: boolean;
+  /** Only when the story turns text capture off. */
+  text?: false;
 }
 
 /** A story the manifest leaves out, with the reason. */

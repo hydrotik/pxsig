@@ -149,9 +149,9 @@ async function scrubRoutes(context, sc, problems) {
 
 /**
  * Run the flows once in one theme. Returns one result per step, in STEPS order.
- * @param {{ browser: Browser, theme: 'dark' | 'light', dashboard: string, axe: string, out: string, log: (m: string) => void, want: (s: LiveStep) => boolean }} o
+ * @param {{ browser: Browser, theme: 'dark' | 'light', dashboard: string, axe: string, out: string, log: (m: string) => void, want: (s: LiveStep) => boolean , text?: { ignore: string[] } | null }} o
  */
-async function runOnce({ browser, theme, dashboard, axe, out, log, want }) {
+async function runOnce({ browser, theme, dashboard, axe, out, log, want, text }) {
   const dir = liveDir();
   await prepare(dir, log);
   const { env: shEnv, stateHome, browsers, pxsigIn } = await import('../examples/shared.mjs');
@@ -270,6 +270,7 @@ async function runOnce({ browser, theme, dashboard, axe, out, log, want }) {
             anchors: feature.anchors ?? [],
             errors,
             restore: true,
+            text,
           });
           if (problems.length) throw new Error(`scrub: ${problems[0]}`);
           if (c.aria && /\b(?:127\.0\.0\.1|localhost):(?!1\b)\d+/.test(c.aria))
@@ -367,7 +368,7 @@ function samePixels(a, b) {
 /**
  * The live screens, in each theme. `only`: the live features to keep (all when null); the flows
  * always run in full, since each step starts where the one before ended.
- * @param {{ browser: Browser, dashboard: string, axe: string, out: string, keep: string, themes: ('dark' | 'light')[], repeat?: number, only?: string[] | null, log?: (m: string) => void }} o
+ * @param {{ browser: Browser, dashboard: string, axe: string, out: string, keep: string, themes: ('dark' | 'light')[], repeat?: number, only?: string[] | null, log?: (m: string) => void , text?: { ignore: string[] } | null }} o
  * @returns {Promise<ScreenResult[]>}
  */
 export async function runLive({
@@ -380,6 +381,7 @@ export async function runLive({
   repeat = 1,
   only = null,
   log = (m) => console.log(m),
+  text = null,
 }) {
   if (!existsSync(join(pristineDir(), 'storybook-static-after', 'index.json')))
     throw new Error(
@@ -405,7 +407,7 @@ export async function runLive({
       log(`[live] ${theme}: run ${k} of ${repeat}`);
       const dirK = join(out, `run${k}`);
       mkdirSync(dirK, { recursive: true });
-      runs.push(await runOnce({ browser, theme, dashboard, axe, out: dirK, log, want }));
+      runs.push(await runOnce({ browser, theme, dashboard, axe, out: dirK, log, want, text }));
     }
     const [first, ...rest] = runs;
     let identical = 0;

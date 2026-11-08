@@ -1,5 +1,5 @@
 /** Rendering stories on a pool of pages (capture.mjs): switching story, resetting, the queue. */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   applyTokenOverrides,
@@ -15,6 +15,8 @@ import {
 import { navErrorCode, retryOnce } from '../retry.mjs';
 import { reactSettings } from '../react/config.mjs';
 import { RESET_RENDERS, STAYED_QUIET, reactHook, readRenders, rowRenders } from './react-hook.mjs';
+import { textSettings } from '../text/config.mjs';
+import { boxesFile, writeBoxes } from './boxes.mjs';
 /** @import { BrowserContext, Page, PageScreenshotOptions } from 'playwright' */
 /** @import { RenderResult } from '../../types.js' */
 /** @import { BrowserSource, PxsigBrowser, RenderEntry, RenderOptions, RenderOutput, StorybookPreview } from '../../types/t4.js' */
@@ -78,7 +80,8 @@ async function resetPage(page) {
  * opts: { baseUrl, globals, viewport, colorScheme, settleMs, target, waitFor, concurrency,
  *         css, tokens, a11y, project, renders }
  * `renders` (default: the project's `react.renders`; never when React is off) counts React commits
- * and renders per entry. `signal` stops the run after the entries already started (the others'
+ * and renders per entry. With the project's `text` on (lib/text/config.mjs), each render also writes
+ * its text record, `<id>.boxes.json` (lib/capture/boxes.mjs), unless its entry has `text: false`. `signal` stops the run after the entries already started (the others'
  * slots stay empty); `onEntry(done)` follows the run.
  * Returns [{ id, png, ms, error, a11y, renders }] in input order plus wall-clock ms.
  * @param {PxsigBrowser | BrowserSource} browser
@@ -110,6 +113,9 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
     /** @type {{ config?: unknown } | null | undefined} */ (project)?.config
   );
   const counting = !react.off && (opts.renders ?? react.renders);
+  const text = textSettings(
+    /** @type {{ config?: unknown } | null | undefined} */ (project)?.config
+  );
   let reloads = 0;
   // A pool has `get`; a Browser does not.
   const pool =
@@ -288,11 +294,21 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             ...(mask.length ? { mask, maskColor: '#FF00FF' } : {}),
           };
           // An opened popover/menu portals outside the root: capture the viewport for those states.
-          const buf =
-            el && box && box.width > 1 && box.height > 1 && !e.interaction?.fullPage
-              ? await el.screenshot(shot)
-              : await page.screenshot(shot);
+          const ofElement =
+            !!el && !!box && box.width > 1 && box.height > 1 && !e.interaction?.fullPage;
+          const buf = ofElement ? await el.screenshot(shot) : await page.screenshot(shot);
           writeFileSync(png, buf);
+          // The text record of this render, read before anything else touches the page; an earlier
+          // render's is never left beside this one.
+          const boxes = boxesFile(png);
+          rmSync(boxes, { force: true });
+          const textRes =
+            text.on && e.text !== false
+              ? await writeBoxes(page, boxes, {
+                  root: ofElement ? sel : null,
+                  ignore: [...(e.ignore ?? []), ...text.ignore],
+                })
+              : undefined;
           let a11yRes = null;
           if (axe && e.a11y !== false) {
             a11yRes = await injectAxe(page, axe)
@@ -327,6 +343,7 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             ms: performance.now() - t,
             a11y: a11yRes,
             ...(renders !== undefined ? { renders } : {}),
+            ...(textRes ? { text: textRes } : {}),
           };
           // A commit just before the capture: settled only if React then stayed quiet.
           if (renders && !renders.settled)
