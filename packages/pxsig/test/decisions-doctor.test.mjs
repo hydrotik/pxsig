@@ -83,6 +83,31 @@ test('approvals-identity: the key loads, and doctor names it: warn for git-email
   assert.equal(o.severity, 'error', 'integrity.severity overrides it');
 });
 
+test('approvals-identity names the file that sets the key: project config, workspace defaults, both', async (t) => {
+  const f = fixture({ t });
+  const lead =
+    'approvals.identity is no longer read: log lines carry a decision reference, never a name. Remove the key from ';
+  /** @param {Record<string, unknown>} config @param {Record<string, unknown> | null} defaults */
+  const reason = async (config, defaults) => {
+    const ws = { projects: { app: '.' }, ...(defaults ? { defaults } : {}) };
+    writeFileSync(join(f.repo, 'pxsig.workspace.json'), JSON.stringify(ws));
+    const cfg = JSON.parse(readFileSync(join(f.repo, 'pxsig.config.json'), 'utf8'));
+    delete cfg.approvals;
+    writeFileSync(join(f.repo, 'pxsig.config.json'), JSON.stringify(cfg));
+    const [o, ...more] = await finding(f, config, 'approvals-identity');
+    assert.equal(more.length, 0);
+    assert.ok(!o.reason.includes(f.repo), 'file names, never absolute paths');
+    return o.reason.slice(lead.length);
+  };
+  const set = { approvals: { identity: 'git-email' } };
+  assert.equal(await reason(set, null), 'pxsig.config.json');
+  assert.equal(await reason({}, set), 'pxsig.workspace.json (defaults.approvals)');
+  assert.equal(
+    await reason(set, set),
+    'pxsig.config.json and pxsig.workspace.json (defaults.approvals)'
+  );
+});
+
 test("log-legacy-personal: counts old lines with a reason or a `by`, never pxsig's own", async (t) => {
   const f = fixture({ t });
   const code = 'log-legacy-personal';
