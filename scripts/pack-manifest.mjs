@@ -4,18 +4,21 @@
  * keys that only matter in this repository: `scripts` (pxsig's `prepack` points at
  * `../../scripts/`, and `test` runs the repository's tests) and `devDependencies`. Every published
  * tarball carries the root LICENSE (REQUIRED_FILES), and its README links to the documents of the
- * version packed (lib/doc-links.mjs): `blob/main` becomes `blob/v<version>`, and a relative link
- * that leaves the package becomes a link to that file on GitHub at the same tag.
+ * version packed (lib/doc-links.mjs): `blob/main` becomes `blob/v<version>`, a relative link that
+ * leaves the package becomes a link to that file on GitHub at the same tag, and a relative image
+ * one to raw.githubusercontent.com at that tag. pxsig's packed README is the repository's
+ * README.md (README_SOURCE), so npm's page and GitHub's show the same introduction.
  *
- *   node scripts/pack-manifest.mjs <package dir>...    rewrite each package.json in place and
+ *   node scripts/pack-manifest.mjs <package dir>...    rewrite each package.json in place,
  *                                                      copy the root LICENSE in (git-ignored)
+ *                                                      and write its README with pinned links
  *   node scripts/pack-manifest.mjs --check <tgz>...    fail if a packed manifest still has them,
  *                                                      a REQUIRED_FILES file is missing, or a
  *                                                      packed .md links to main or to a file the
  *                                                      tarball does not hold
  *
  * The rewrite runs in the job's checkout only, like the optionalDependencies edit; nothing is
- * committed, and a local clone keeps its scripts. The job runs pxsig's prepack step itself first,
+ * committed, and a local clone keeps its scripts and README. The job runs pxsig's prepack step itself first,
  * then packs with --ignore-scripts. Exit 1 on a failure, 2 on a usage error.
  */
 import { spawnSync } from 'node:child_process';
@@ -28,6 +31,12 @@ import { leftLinks, versionLinks } from './lib/doc-links.mjs';
 export const DEV_ONLY = ['scripts', 'devDependencies'];
 /** Files every published tarball holds at its root. */
 export const REQUIRED_FILES = ['LICENSE'];
+/**
+ * Packages whose packed README is another file in the repository (a path from its root) instead
+ * of their own README.md: npm's page for pxsig shows the repository's introduction.
+ * @type {Record<string, string>}
+ */
+export const README_SOURCE = { pxsig: 'README.md' };
 
 const repo = fileURLToPath(new URL('..', import.meta.url));
 
@@ -44,6 +53,18 @@ export const publishedManifest = (pj) =>
  */
 export const devOnlyKeys = (pj) => DEV_ONLY.filter((k) => k in pj);
 
+/**
+ * Where a package's packed README comes from in the repository: README_SOURCE, else README.md in
+ * its `repository.directory`; undefined when neither applies (a fixture without a directory).
+ * @param {Record<string, unknown>} pj
+ */
+export function readmeSource(pj) {
+  const own = README_SOURCE[String(pj.name)];
+  if (own) return own;
+  const from = /** @type {{ directory?: unknown } | undefined} */ (pj.repository)?.directory;
+  return typeof from === 'string' ? `${from}/README.md` : undefined;
+}
+
 /** @param {string} dir */
 function rewrite(dir) {
   const f = join(dir, 'package.json');
@@ -51,17 +72,19 @@ function rewrite(dir) {
   const pj = /** @type {Record<string, unknown>} */ (JSON.parse(readFileSync(f, 'utf8')));
   writeFileSync(f, `${JSON.stringify(publishedManifest(pj), null, 2)}\n`);
   copyFileSync(join(repo, 'LICENSE'), join(dir, 'LICENSE'));
-  // Where the README lives in the repository: `repository.directory` (a fixture has none).
-  const from = /** @type {{ directory?: unknown } | undefined} */ (pj.repository)?.directory;
-  const readme = join(dir, 'README.md');
-  if (typeof from === 'string' && existsSync(readme)) {
+  const source = readmeSource(pj);
+  const own = README_SOURCE[String(pj.name)];
+  const input = own ? join(repo, own) : join(dir, 'README.md');
+  if (source && existsSync(input)) {
     const root = resolve(dir) + sep;
     writeFileSync(
-      readme,
-      versionLinks(readFileSync(readme, 'utf8'), {
+      join(dir, 'README.md'),
+      versionLinks(readFileSync(input, 'utf8'), {
         version: String(pj.version),
-        source: `${from}/README.md`,
-        held: (p) => resolve(dir, p).startsWith(root) && existsSync(join(dir, p)),
+        source,
+        // A README from elsewhere in the repository names no file of the package as written: each
+        // relative link leads to GitHub at the tag (npm would resolve it inside the package's folder).
+        held: (p) => !own && resolve(dir, p).startsWith(root) && existsSync(join(dir, p)),
       })
     );
   }

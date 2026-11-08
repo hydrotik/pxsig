@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { copyTree } from './lib/copy-tree.mjs';
-import { devOnlyKeys, publishedManifest } from './pack-manifest.mjs';
+import { devOnlyKeys, publishedManifest, readmeSource } from './pack-manifest.mjs';
 
 const script = fileURLToPath(new URL('./pack-manifest.mjs', import.meta.url));
 const repo = fileURLToPath(new URL('..', import.meta.url));
@@ -28,6 +28,16 @@ test('the published manifest drops scripts and devDependencies and keeps everyth
   ]);
   assert.deepEqual(devOnlyKeys(pj), ['scripts', 'devDependencies']);
   assert.deepEqual(devOnlyKeys(publishedManifest(pj)), []);
+});
+
+test("pxsig's packed README is the repository's; another package's is its own", () => {
+  const repository = { type: 'git', url: 'x', directory: 'packages/pxsig' };
+  assert.equal(readmeSource({ name: 'pxsig', repository }), 'README.md');
+  assert.equal(
+    readmeSource({ name: '@pxsig/storybook-addon', repository: { directory: 'packages/addon' } }),
+    'packages/addon/README.md'
+  );
+  assert.equal(readmeSource({ name: 'fixture' }), undefined);
 });
 
 test('the packages that are published carry engines that agree', () => {
@@ -131,6 +141,26 @@ test(
           JSON.parse(readFileSync(join(repo, 'packages', name, 'package.json'), 'utf8'))
         );
         assert.ok(pj.files.includes('LICENSE'), `${name}: files lists LICENSE`);
+        if (name !== 'pxsig') continue;
+        // pxsig's README is the repository's, its images on raw.githubusercontent.com at the tag
+        // and every relative link on GitHub at the tag, even to a file the package also holds.
+        const readme = readFileSync(join(pkg, 'README.md'), 'utf8');
+        const root = readFileSync(join(repo, 'README.md'), 'utf8');
+        assert.equal(readme.split('\n')[0], root.split('\n')[0]);
+        assert.equal(readme.split('\n').length, root.split('\n').length);
+        const tag = `v${JSON.parse(readFileSync(join(pkg, 'package.json'), 'utf8')).version}`;
+        assert.ok(
+          readme.includes(
+            `src="https://raw.githubusercontent.com/hydrotik/pxsig/${tag}/docs/product-shots/overview.png"`
+          )
+        );
+        assert.ok(
+          readme.includes(`(https://github.com/hydrotik/pxsig/blob/${tag}/docs/package.md)`)
+        );
+        assert.ok(
+          readme.includes(`[LICENSE](https://github.com/hydrotik/pxsig/blob/${tag}/LICENSE)`)
+        );
+        assert.doesNotMatch(readme, /(?:src|href)="(?!https:)|\]\((?!https:|#)/);
       }
     } finally {
       rmSync(dir, { recursive: true, force: true });

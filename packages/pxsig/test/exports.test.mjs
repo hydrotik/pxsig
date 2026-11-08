@@ -12,7 +12,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { copyTree, tempDir } from './fixture.mjs';
 
 const pkgDir = fileURLToPath(new URL('../', import.meta.url));
-/** What README.md documents for `pxsig/workspace`. */
+/** What docs/package.md documents for `pxsig/workspace`. */
 const WORKSPACE = ['SetupError', 'findWorkspace', 'loadProject', 'openProject', 'pickProject'];
 
 /**
