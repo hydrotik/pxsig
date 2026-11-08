@@ -3,7 +3,7 @@
  * unreview an entry's axe violations, and `pxsig a11y --prune` for the store the server holds.
  */
 import { dirname, join } from 'node:path';
-import { decisionRef, newBatch, stamp, who } from '../lib/approvals.mjs';
+import { decisionRef, newBatch, ownBatch, stamp, who } from '../lib/approvals.mjs';
 import { appendLine, readJson, writeJson } from '../lib/files.mjs';
 import { applyPrune } from '../lib/prune.mjs';
 import { httpError } from './http.mjs';
@@ -155,7 +155,8 @@ export function a11yPrune(srv, S, body, via) {
    * @param {number} max
    */
   const s = (v, max) => (typeof v === 'string' ? v.slice(0, max) : null);
-  const batch = s(body.batch, 80)?.replace(/[^\w.-]/g, '') || newBatch('prune');
+  // pxsig's own batch name (`pxsig a11y --prune` sends one), else the server's.
+  const batch = ownBatch(body.batch) ?? newBatch('prune');
   // Errors carry their status (400 a bad plan, 409 a11y.json changed since it was made).
   // `applyPrune` checks the plan (`checkPlan`).
   const r = applyPrune(S.P, /** @type {import('../types/t2.js').PlanInput} */ (body.plan), {
