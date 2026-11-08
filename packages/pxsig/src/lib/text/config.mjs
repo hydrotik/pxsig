@@ -15,8 +15,8 @@ import { warnOnce } from '../react/config.mjs';
 /** @import { Project } from '../../types.js' */
 /** @import { TextSettings } from '../../types/text.js' */
 
-/** Text capture when the config does not say: off in this version (owner decision pending). */
-export const TEXT_DEFAULT = false;
+/** Text capture when the config does not say: on (owner decision, 2026-11-07). */
+export const TEXT_DEFAULT = true;
 const KEYS = ['ignore'];
 const OFF = 'text capture is off for this run';
 
