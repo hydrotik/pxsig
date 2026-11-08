@@ -6,6 +6,7 @@
   "srcRoot": "src",
   "trim": false,
   "a11y": false,
+  "text": true,
   "modes": {
     "dark": {
       "globals": "",

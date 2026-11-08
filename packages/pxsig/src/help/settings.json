@@ -408,6 +408,22 @@
       "default": "false",
       "operation": "Each check row gets renders; an entry React was still committing at capture is an alert, never a failure."
     },
+    "text": {
+      "file": "pxsig.config.json",
+      "meaning": "Text capture: each render also writes its text record (<id>.boxes.json: the text it draws, line boxes, font facts, painted element boxes), and a baseline approved from it stores the record as its boxes section; `pxsig cat` prints the strings. Also under the workspace file's `defaults`; a story turns it off with parameters.pxsig.text: false.",
+      "values": "true | false | \"off\" | { ignore }",
+      "default": "false",
+      "operation": "Labels only: never a render, a gate, an exit code or a verdict. Form fields are never read. A bad value is one warning line and text capture off for the run, never a failed check.",
+      "flag": "--no-text",
+      "env": "PXSIG_TEXT=off"
+    },
+    "text.ignore": {
+      "file": "pxsig.config.json",
+      "meaning": "CSS selectors whose text is never recorded, beside each entry's ignore masks.",
+      "values": "[\"<selector>\", …]",
+      "default": "[]",
+      "operation": "Not a selector list: a warning, and text capture off for the run."
+    },
     "integrity": {
       "file": "pxsig.config.json",
       "meaning": "Integrity options for doctor and the ledger.",

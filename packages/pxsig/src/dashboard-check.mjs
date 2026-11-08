@@ -87,9 +87,10 @@ export function screenUrl(base, screen, theme) {
  * Run the check. Returns `{ code, report, outDir }`; throws CheckSetupError for exit 2.
  * `browser` (tests) skips the launch. `aria`: each adapter screen also carries its accessibility
  * snapshot, and `anchors` the boxes of its feature's anchors (scripts/screens-check.mjs locks both).
+ * `text`: each adapter screen also writes its text record beside its shot (`<shot>.boxes.json`).
  * @param {Flags} [flags]
  * @param {string} [cwd]
- * @param {{ log?: (m: string) => unknown, browser?: Browser | null, concurrency?: number, catalogue?: ScreenCatalogue | null, initScript?: string | null, aria?: boolean, anchors?: boolean }} [opts]
+ * @param {{ log?: (m: string) => unknown, browser?: Browser | null, concurrency?: number, catalogue?: ScreenCatalogue | null, initScript?: string | null, aria?: boolean, anchors?: boolean, text?: { ignore: string[] } | null }} [opts]
  * @returns {Promise<{ code: number, report: DashboardCheckReport, outDir: string }>}
  */
 export async function dashboardCheck(
@@ -103,6 +104,7 @@ export async function dashboardCheck(
     initScript = null,
     aria = false,
     anchors = false,
+    text = null,
   } = {}
 ) {
   const src = dashboardSource();
@@ -274,6 +276,7 @@ export async function dashboardCheck(
         layout: true,
         aria,
         anchors: anchors ? (j.f.anchors ?? []) : [],
+        text,
       });
       let referenceShot = null;
       if (reference.used) {

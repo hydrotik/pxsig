@@ -2,9 +2,10 @@
  * dashboard-check/capture.mjs — rendering one screen in one theme for `pxsig dashboard check`
  * (dashboard-check.mjs): the viewport, the fixed clock, the frozen motion, and the runner pool.
  */
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { injectAxe } from '../lib/capture.mjs';
+import { boxesFile, writeBoxes } from '../lib/capture/boxes.mjs';
 import { navErrorCode, retryOnce } from '../lib/retry.mjs';
 import { inspectLayout, MAX_PER_RULE, NARROW_WIDTH, pageOverflow } from './layout.mjs';
 /** @import { Browser, Page } from 'playwright' */
@@ -219,19 +220,23 @@ export async function screenContext(browser, colorScheme, { bypassCSP = false } 
  * snapshot (`aria`), the anchors' boxes, axe's violations and (`layout`) the layout findings.
  * Never throws for a page error (`errors`, collected by the caller): the result says it.
  * `restore`: after the layout measure, put the page back at VIEWPORT and let it settle, so a flow
- * goes on on the same page (scripts/live/run.mjs).
+ * goes on on the same page (scripts/live/run.mjs). `text`: also write the screen's text record
+ * beside the shot (`<name>.boxes.json`, lib/capture/boxes.mjs), right after the screenshot.
  * @param {Page} page
- * @param {{ shot: string, axe: string, layout?: boolean, aria?: boolean, anchors?: { name: string, target: ScreenTarget }[], errors: string[], restore?: boolean }} opts
+ * @param {{ shot: string, axe: string, layout?: boolean, aria?: boolean, anchors?: { name: string, target: ScreenTarget }[], errors: string[], restore?: boolean, text?: { ignore: string[] } | null }} opts
  * @returns {Promise<Omit<ScreenCapture, 'ms' | 'retried'>>}
  */
 export async function snap(
   page,
-  { shot, axe, layout = false, aria = false, anchors = [], errors, restore = false }
+  { shot, axe, layout = false, aria = false, anchors = [], errors, restore = false, text = null }
 ) {
   await ready(page);
   const settled = await settle(page);
   mkdirSync(dirname(shot), { recursive: true });
   await page.screenshot({ path: shot });
+  // The text record of this shot, before anything else reads or moves the page.
+  rmSync(boxesFile(shot), { force: true });
+  if (text) await writeBoxes(page, boxesFile(shot), { ignore: text.ignore });
   // Before the layout measure, which leaves the page at another width.
   const structure = aria ? await page.locator('body').ariaSnapshot() : null;
   /** @type {Record<string, [number, number, number, number] | null>} */
@@ -293,12 +298,22 @@ export async function snap(
  * accessibility snapshot (Playwright's `ariaSnapshot`), the structure scripts/screens-check.mjs locks.
  * `anchors`: measure these elements' boxes, the geometry it locks.
  * @param {Browser} browser
- * @param {{ url: string, screen: Screen, shot: string, axe: string, initScript?: string | null, layout?: boolean, aria?: boolean, anchors?: { name: string, target: ScreenTarget }[] }} opts
+ * @param {{ url: string, screen: Screen, shot: string, axe: string, initScript?: string | null, layout?: boolean, aria?: boolean, anchors?: { name: string, target: ScreenTarget }[], text?: { ignore: string[] } | null }} opts
  * @returns {Promise<ScreenCapture>}
  */
 export async function capture(
   browser,
-  { url, screen, shot, axe, initScript = null, layout = false, aria = false, anchors = [] }
+  {
+    url,
+    screen,
+    shot,
+    axe,
+    initScript = null,
+    layout = false,
+    aria = false,
+    anchors = [],
+    text = null,
+  }
 ) {
   const started = Date.now();
   const context = await screenContext(browser, url.includes('theme=light') ? 'light' : 'dark');
@@ -334,7 +349,7 @@ export async function capture(
       };
     }
     return {
-      ...(await snap(page, { shot, axe, layout, aria, anchors, errors })),
+      ...(await snap(page, { shot, axe, layout, aria, anchors, errors, text })),
       ms: Date.now() - started,
       ...(retried ? { retried } : {}),
     };

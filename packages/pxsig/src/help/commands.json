@@ -105,6 +105,12 @@
         "meaning": "Config flag: React features off for this run, render counting included.",
         "setting": "react",
         "env": "PXSIG_REACT"
+      },
+      {
+        "name": "no-text",
+        "meaning": "Config flag: text capture off for this run (no text record beside a render).",
+        "setting": "text",
+        "env": "PXSIG_TEXT"
       }
     ]
   },

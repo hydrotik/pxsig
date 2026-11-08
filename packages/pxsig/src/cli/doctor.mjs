@@ -261,7 +261,7 @@ export function doctorParts(cli) {
           tone: x.severity === 'error' ? 'bad' : 'warn',
         })
       ),
-      ...r.react
+      ...[...r.react, ...r.text]
         .filter((x) => x.severity === 'warn')
         .map((x) => ({ note: `${x.code} — ${x.text}`, tone: 'warn' })),
       {
@@ -300,6 +300,9 @@ export function doctorParts(cli) {
                   x.text,
                 ])
             ),
+          ...r.text
+            .filter((x) => x.severity === 'info')
+            .map((x) => /** @type {[string, Cell]} */ (['Text', x.text])),
           [
             'Running under',
             r.agent ? describeAgent(r.agent) : { text: 'no agent marker', color: 'gray' },

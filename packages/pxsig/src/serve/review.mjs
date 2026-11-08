@@ -16,6 +16,8 @@ import {
 } from '../lib/approvals.mjs';
 import { BY_STORY_OFF, byStory, storySkip } from '../lib/approvals/story.mjs';
 import { readJson, writeJson } from '../lib/files.mjs';
+import { boxesFile } from '../lib/capture/boxes.mjs';
+import { textSettings } from '../lib/text/config.mjs';
 import { NEEDS_PERSON } from '../lib/guard.mjs';
 import { httpError } from './http.mjs';
 import { needLock } from './projects.mjs';
@@ -84,6 +86,11 @@ export async function approve(srv, S, id, meta = {}) {
     detail: e.detail !== false && manifest.detail !== false,
     entry: { id: e.id, story: e.story ?? null, mode: e.mode ?? null, state: e.state ?? null },
     ...(renderEnv ? { env: renderEnv } : {}),
+    // The approved render's text record, stored as the baseline's `boxes` section; none with text
+    // capture off now, whatever an earlier render left.
+    ...(textSettings(P.config).on && existsSync(boxesFile(latest))
+      ? { boxes: boxesFile(latest) }
+      : {}),
   });
   // The a11y baseline follows the approved render; the old list is kept so an undo can put it back.
   /** @type {string[] | null | undefined} */

@@ -44,6 +44,8 @@ export interface RenderResult {
   a11y?: { violations?: A11yViolation[]; error?: string } | null;
   /** React commits and renders (`react.renders`); null when no React renderer loaded. */
   renders?: import('./react.js').RenderCounts | null;
+  /** The text record this render wrote beside its PNG (`text` on); never in check.json. */
+  text?: import('./text.js').TextCapture;
 }
 
 /** One row of check.json: the engine's result, the render and the review state of an entry. */

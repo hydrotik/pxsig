@@ -169,6 +169,8 @@ The smallest config is `{}`: every key has a default. `pxsig init` writes
 | `nonVisual`               | `[]`                                                       | Top-level folders under `srcRoot` with no visual stories. Their stories are not entries and are reported as `excluded`.                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `react`                   | `{}`                                                       | React features ([react](#react)). `false` (or `"off"`) turns all of them off.                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `react.renders`           | `false`                                                    | Count React commits and component renders in every render ([react](#react)).                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `text`                    | `false`                                                    | Text capture ([text](#text)): each render also writes its text record, and an approved baseline stores it. `true` or an object turns it on.                                                                                                                                                                                                                                                                                                                                                                                |
+| `text.ignore`             | `[]`                                                       | Selectors whose text is never recorded ([text](#text)).                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `a11y`                    | `true`                                                     | Run axe on every render.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `env`                     | `{}`                                                       | The render environment each baseline records and each check compares (below).                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `env.ignore`              | `[]`                                                       | Environment fields left out of the comparison, by name, for example `["render.timezone"]` when no story formats a date.                                                                                                                                                                                                                                                                                                                                                                                                    |
@@ -372,6 +374,45 @@ its compiler: `backend` in `react.json`, the `compiler:` line of `pxsig react`, 
 release may let it pick the built-in compiler for projects without Babel, once the two agree on
 every function of the released plugin's corpus, with a `To update:` line.
 
+### `text`
+
+Text capture: right after each screenshot, pxsig reads the text the render draws and writes it
+beside the PNG as `<id>.boxes.json`, the render's **text record**. A baseline approved from that
+render stores the record as its `boxes` section ([spec.md](spec.md#5-the-psig-container-version-1)),
+deflated, and `pxsig cat` prints its strings, so `git diff` of a baseline shows a copy change. The
+record is the groundwork for labelling a change as copy, reflow, moved or restyled text; this
+version records it and labels nothing. Reading changes no pixel: the render, the gate, every
+verdict and exit code are the same with text capture on or off.
+
+What a record holds, per run (a DOM Text node the screenshot draws): its string as in the DOM, one
+box per line fragment in the screenshot's frame (CSS px, rounded to 0.01), its font facts (family,
+size, weight, style, line height, letter and word spacing, transform, decoration, colour, font
+features and variation, and whether that face had loaded), a path of child indices from the
+capture root, and a key (the nearest `data-testid`, or an id that is not a generated one, when no
+other run has it). Beside the runs: the boxes of painted elements (a visible background, border or
+shadow, and `svg`, `img`, `canvas`, `video`), and counts of what was left out.
+
+What is left out: text with no box of at least 2×2 px inside the frame, text an `overflow` ancestor
+clips, text that is not visible (`display`, `visibility`, `opacity`), text under an open dialog it
+is not part of, text under the entry's `ignore` masks and `text.ignore`, `iframe` content, and every
+form field (`input`, `textarea`, `select`, `option`, `contenteditable`): a field's value is never
+read. `::before` / `::after` content and text drawn in a `<canvas>` are not Text nodes and are not
+recorded. The strings are what the page renders as captured, mostly what the baseline image shows;
+the record is committed inside the `.psig`, beside that image.
+
+| Key      | Default | Meaning                                                                         |
+| -------- | ------- | ------------------------------------------------------------------------------- |
+| `ignore` | `[]`    | CSS selectors whose text is never recorded, beside each entry's `ignore` masks. |
+
+`"text": true` (or an object) turns it on; `"text": false` (or `"off"`) in `pxsig.config.json` or
+`defaults` of `pxsig.workspace.json`, `--no-text` for one run, or `PXSIG_TEXT=off` turns it off. A
+story turns it off for its own entries with `parameters.pxsig.text: false`. A `text` that is not a
+boolean or an object, or a `text.ignore` that is not an array of selectors, is one warning line and
+text capture off for the run, never a failed check; a key this version does not know is a warning
+and ignored. `pxsig doctor` says whether it is on, and how many baselines have a text record. A
+baseline approved before text capture, or with it off, has none until it is approved again: nothing
+rewrites a baseline on its own.
+
 ### `integrity`
 
 | Key                      | Default         | Meaning                                                                                                                                 |
@@ -412,6 +453,7 @@ every function of the released plugin's corpus, with a `To update:` line.
 | `PXSIG_THRESHOLD`, `PXSIG_MIN_SSIM`, `PXSIG_MAX_CHANGED_PCT`, `PXSIG_MAX_EDGE_PCT`, `PXSIG_MIN_CELLS` | binary                   | Gate values above the project's `gate` and below the gate flags and every story's own gate (see [spec.md](spec.md#gate-resolution)).                                                                                                                           |
 | `PXSIG_ENFORCEMENT`                                                                                   | CLI                      | `enforce`: every gate enforced for this run, whatever the config says ([enforcement](#enforcement)). `warn` is refused (exit 2): warn mode comes from the committed config or `--warn` at a terminal.                                                          |
 | `PXSIG_REACT`                                                                                         | CLI, server              | `off`: every React feature off, like `--no-react` ([react](#react)).                                                                                                                                                                                           |
+| `PXSIG_TEXT`                                                                                          | CLI, server              | `off`: text capture off for this run, like `--no-text` ([text](#text)).                                                                                                                                                                                        |
 | `PXSIG_STRICT_ENV`                                                                                    | CLI                      | `1`: `check --full` refuses when a selected baseline was approved in a different render environment, like `--strict-env` ([env](#env)).                                                                                                                        |
 | `PXSIG_IMAGE`, `PXSIG_IMAGE_REVISION`, `PXSIG_IMAGE_DIGEST`                                           | CLI, server              | Recorded in each render's environment (`container.*`); the pxsig container image sets the first two, a runner may set the digest.                                                                                                                              |
 | `PXSIG_BROWSER_WS`                                                                                    | CLI, server              | Overrides `capture.browserEndpoint`: render with that browser server ([container.md](container.md)).                                                                                                                                                           |
@@ -463,6 +505,7 @@ export const Menu = {
 | `delay`    | Extra settle time, in ms.                                           |
 | `target`   | The element to capture, instead of `capture.target`.                |
 | `a11y`     | `false` skips the axe pass.                                         |
+| `text`     | `false`: no text record for this story's renders ([`text`](#text)). |
 
 Each item in `states`:
 

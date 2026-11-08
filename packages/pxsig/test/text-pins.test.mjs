@@ -60,11 +60,13 @@ test('a check row never carries what else a render result holds', () => {
     buildRow(
       e,
       rust,
-      /** @type {RenderResult} */ ({
-        ...render,
-        text: { runs: 3, elements: 1, ms: 2 },
-        boxes: 'x.boxes.json',
-      }),
+      /** @type {RenderResult} */ (
+        /** @type {unknown} */ ({
+          ...render,
+          text: { runs: 3, elements: 1, ms: 2 },
+          boxes: 'x.boxes.json',
+        })
+      ),
       null,
       { defaultMode: 'dark' }
     )

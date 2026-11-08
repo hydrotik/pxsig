@@ -72,6 +72,7 @@ export interface RenderEntry {
   target?: string;
   play?: boolean;
   a11y?: boolean;
+  text?: boolean;
 }
 
 /** `renderStories` options: the run manifest's settings plus the run's own. */

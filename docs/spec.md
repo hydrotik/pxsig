@@ -323,6 +323,7 @@ letters, digits and hyphens.
 | `target`      | The element to capture, when not the project's `capture.target`.                                  |
 | `play`        | `true` when the story has a play function.                                                        |
 | `a11y`        | `false` skips the axe pass for this entry.                                                        |
+| `text`        | `false` when the story turns text capture off (no text record for this entry).                    |
 
 A manifest may also name where its entries come from, at the top level: `"source":
 "dashboard-screens"` marks the pxsig dashboard's own screens, written by the pxsig repository's
@@ -349,7 +350,10 @@ A full check writes, under `<store>/reports/`:
 | `integrity.json`                    | The integrity ledger (see [integrity.md](integrity.md))                                                                                                                                                                                                                                                                                                                                        |
 
 Renders go to `<store>/renders/latest/<id>.png`; diff images for failures to
-`<store>/diffs/latest/`.
+`<store>/diffs/latest/`. With text capture on ([configuration.md](configuration.md#text)), each
+render's text record is beside it, `<store>/renders/latest/<id>.boxes.json` (version 1: `frame`,
+`styles`, `runs`, `elements`, `skipped`, `truncated`); an approval stores it as the baseline's
+`boxes` section (section 5). check.json rows do not change.
 
 ### React analysis
 
