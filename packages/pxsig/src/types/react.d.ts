@@ -110,8 +110,13 @@ export interface ReactConfig {
    * belongs to (`react.renders`: render counting; any other key: compiler analysis).
    */
   problems: string[];
-  /** Compiler analysis (`react.compiler`: true / "auto" on; false / "off" off; off with a bad compiler-side value). */
+  /** Compiler analysis (`react.compiler`: true / "auto" / "babel" / "oxc" on; false / "off" off; off with a bad compiler-side value). */
   compiler: boolean;
+  /**
+   * Which compiler (`react.compiler`): `auto` (true, the default; the project's Babel plugin),
+   * `babel` (the Babel plugin only), `oxc` (the engine's built-in compiler).
+   */
+  choice: 'auto' | 'babel' | 'oxc';
   /** Also the validation-only findings eslint-plugin-react-hooks reports. */
   lint: boolean;
   compilationMode: 'infer' | 'annotation' | 'syntax' | 'all';
@@ -249,7 +254,17 @@ export interface ReactReport {
   generatedAt: string;
   project: string | null;
   mode: 'alert';
-  backend: { name: string; compiler: string; babel: string; options: Record<string, unknown> };
+  /**
+   * The compiler the run used: `babel` (`compiler`: babel-plugin-react-compiler's version, `babel`:
+   * @babel/core's) or `oxc` (the engine's built-in compiler: `compiler`: oxc_react_compiler's
+   * version, `babel`: null).
+   */
+  backend: {
+    name: 'babel' | 'oxc';
+    compiler: string;
+    babel: string | null;
+    options: Record<string, unknown>;
+  };
   base: { since: string; commit: string } | null;
   /** `ids`: the entries the file reaches; null when it reaches every entry (`all`). */
   files: {
@@ -365,7 +380,8 @@ export type ReactToolResult =
       ran: true;
       at: string;
       base: ReactReport['base'];
-      backend: { compiler: string; babel: string };
+      /** `label`: the compiler in words, as `pxsig react` and doctor name it. */
+      backend: { name: 'babel' | 'oxc'; compiler: string; babel: string | null; label: string };
       summary: ReactSummary;
       alerts: Pick<ReactAlert, 'id' | 'change' | 'level' | 'text'>[];
       functions: ReactToolFunction[];
@@ -409,6 +425,8 @@ export interface ReactSarifLog {
   runs: {
     tool: {
       driver: { name: string; version?: string; informationUri: string; rules: ReactSarifRule[] };
+      /** The React Compiler the alerts came from, by package (or crate) and version. */
+      extensions?: { name: string; version: string; properties: { builtIn: boolean } }[];
     };
     results: ReactSarifResult[];
   }[];

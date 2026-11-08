@@ -2,11 +2,12 @@
  * lib/react/index.mjs — one React analysis run (alert mode: nothing here changes an exit code).
  *
  *   1. the engine's `react-plan`: the changed module files, each side's hash and cache hit;
- *   2. the cache misses only, compiled by the project's React Compiler in a worker pool;
+ *   2. the cache misses only, compiled by the project's React Compiler in a worker pool, or by the
+ *      engine's built-in compiler in a process of its own (`react.compiler: "oxc"`, backend.mjs);
  *   3. the engine's `react-diff`: base vs now per function, the cache, `reports/react.json`.
  *
  * The plan, options and results pass as files under `<store>/reports/.run/`. A run with nothing to
- * compile starts no worker and loads no Babel. When another process holds the store (the server),
+ * compile starts no worker, loads no Babel and starts no compiler process. When another process holds the store (the server),
  * the run reads the cache, works in a temporary folder and writes nothing in the store.
  */
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -17,8 +18,9 @@ import { writeAtomic } from '../files.mjs';
 import { describeLock, readLock } from '../lock.mjs';
 import { relPath } from '../paths.mjs';
 import { SetupError, writeRunManifest } from '../workspace.mjs';
+import { backendOf, compileOxc, missingFor, oxcVersion } from './backend.mjs';
 import { configWarning, reactConfig } from './config.mjs';
-import { autoTarget, BABEL, COMPILER, reactPeers } from './peers.mjs';
+import { autoTarget, reactPeers } from './peers.mjs';
 import { createPool } from './pool.mjs';
 
 /** @import { Flags, Project } from '../../types.js' */
@@ -93,11 +95,26 @@ export async function analyse(
       text: 'react: compiler analysis is off (react.compiler: false)',
     };
   const peers = reactPeers(P);
-  const missing = [peers.compiler ? null : COMPILER, peers.babel ? null : BABEL].filter(
-    (x) => x != null
-  );
-  if (!peers.compiler || !peers.babel)
-    return { ran: false, why: 'not-installed', text: notInstalled(missing) };
+  const oxc = backendOf(cfg) === 'oxc';
+  const missing = missingFor(P, cfg, peers);
+  if (missing.length) return { ran: false, why: 'not-installed', text: notInstalled(missing) };
+  // The built-in compiler's version, from the engine (an empty batch): it keys the cache.
+  const built = oxc ? oxcVersion(P.rustBin) : null;
+  if (built && 'why' in built)
+    return {
+      ran: false,
+      why: 'failed',
+      text: `react: compiler analysis skipped: ${built.why} (react.compiler: "oxc")`,
+    };
+  /** @type {{ name: 'babel' | 'oxc', compiler: string, babel: string | null }} */
+  const backend =
+    built && 'version' in built
+      ? { name: 'oxc', compiler: built.version, babel: null }
+      : {
+          name: 'babel',
+          compiler: peers.compiler?.version ?? '',
+          babel: peers.babel?.version ?? '',
+        };
 
   const held = readLock(P);
   const heldBy = held && !held.stale && held.pid !== process.pid ? describeLock(P, held) : null;
@@ -115,9 +132,9 @@ export async function analyse(
       lint: cfg.lint,
     };
     const key = {
-      backend: 'babel',
-      compiler: peers.compiler.version,
-      babel: peers.babel.version,
+      backend: backend.name,
+      compiler: backend.compiler,
+      babel: backend.babel,
       options,
     };
     const optionsFile = join(runDir, 'react-options.json');
@@ -186,7 +203,29 @@ export async function analyse(
     if (signal?.aborted) return skipped();
     /** @type {Record<string, CompileResult>} */
     const results = {};
-    if (misses.size) {
+    if (misses.size && oxc) {
+      // One engine process for every miss; it isolates a file that crashes the compiler.
+      const out = await compileOxc(
+        P.rustBin,
+        P.workspaceRoot,
+        [...misses.values()],
+        options,
+        signal
+      ).catch((e) => {
+        if (signal?.aborted) return null;
+        throw e;
+      });
+      if (!out) return skipped();
+      [...misses.keys()].forEach((sha, i) => {
+        results[sha] = out.results[i];
+        compiled(sha);
+      });
+      // Its warnings (an `environment` key it has no field for) are the run's notes.
+      if (out.warnings.length) {
+        plan.notes = [...(plan.notes ?? []), ...out.warnings];
+        writeAtomic(planFile, JSON.stringify(plan));
+      }
+    } else if (misses.size && peers.babel && peers.compiler) {
       pool = createPool({
         size: Math.max(
           1,
@@ -215,12 +254,7 @@ export async function analyse(
     writeAtomic(
       resultsFile,
       JSON.stringify({
-        backend: {
-          name: 'babel',
-          compiler: peers.compiler.version,
-          babel: peers.babel.version,
-          options,
-        },
+        backend: { ...backend, options },
         project: P.name,
         ms: Date.now() - t0,
         results,

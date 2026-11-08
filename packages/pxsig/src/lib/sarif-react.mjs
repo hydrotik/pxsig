@@ -7,12 +7,16 @@
  * - A compiler alert is a result at its file and line, rule `react-compiler/<rule>` (the
  *   eslint-plugin-react-hooks rule; its React docs page as the help link), level `warning` when
  *   the reason made the compiler skip the function, `note` for a finding. Never `error`.
+ * - The compiler the alerts came from is the run's tool extension: babel-plugin-react-compiler or
+ *   oxc_react_compiler (built in), with its version.
  * - An entry React was still committing in at capture is a `note` at its story file, rule
  *   `react-renders/still-rendering`, with the entry id as the logical location.
  */
 import { writeAtomic } from './files.mjs';
+import { OXC } from './react/backend.mjs';
+import { COMPILER } from './react/peers.mjs';
 /** @import { CheckRow, ManifestEntry } from '../types.js' */
-/** @import { ReactAlert, ReactSarifLog, ReactSarifResult, ReactSarifRule } from '../types/react.js' */
+/** @import { ReactAlert, ReactReport, ReactSarifLog, ReactSarifResult, ReactSarifRule } from '../types/react.js' */
 
 const STILL = 'react-renders/still-rendering';
 /** @param {string} rule */
@@ -20,15 +24,22 @@ const helpUri = (rule) =>
   `https://react.dev/reference/eslint-plugin-react-hooks/lints/${encodeURIComponent(rule)}`;
 
 /**
- * @typedef {{ alerts?: ReactAlert[], rows?: CheckRow[], entries?: Map<string, Pick<ManifestEntry, 'importPath'>>, version?: string | null }} ReactSarifInput
- *   `alerts`: react.json's; `rows`: check.json rows (their `renders`); `entries`: manifest stories by id.
+ * @typedef {{ alerts?: ReactAlert[], backend?: Pick<ReactReport['backend'], 'name' | 'compiler'> | null, rows?: CheckRow[], entries?: Map<string, Pick<ManifestEntry, 'importPath'>>, version?: string | null }} ReactSarifInput
+ *   `alerts` and `backend`: react.json's; `rows`: check.json rows (their `renders`); `entries`:
+ *   manifest stories by id.
  */
 
 /**
  * @param {ReactSarifInput} input
  * @returns {ReactSarifLog}
  */
-export function reactSarifLog({ alerts = [], rows = [], entries = new Map(), version = null }) {
+export function reactSarifLog({
+  alerts = [],
+  backend = null,
+  rows = [],
+  entries = new Map(),
+  version = null,
+}) {
   /** @type {Map<string, ReactSarifRule>} */
   const rules = new Map();
   /** @type {ReactSarifResult[]} */
@@ -99,6 +110,17 @@ export function reactSarifLog({ alerts = [], rows = [], entries = new Map(), ver
             informationUri: 'https://github.com/hydrotik/pxsig',
             rules: [...rules.values()],
           },
+          ...(backend
+            ? {
+                extensions: [
+                  {
+                    name: backend.name === 'oxc' ? OXC : COMPILER,
+                    version: backend.compiler,
+                    properties: { builtIn: backend.name === 'oxc' },
+                  },
+                ],
+              }
+            : {}),
         },
         results,
       },

@@ -89,7 +89,7 @@ function refusal(S) {
   if (cfg.off) return `React analysis is off (${cfg.off})`;
   if (!cfg.compiler) return 'compiler analysis is off (react.compiler: false)';
   // Looked up again for each run: the packages may have been installed since.
-  const missing = (S.react.missing = missingPeers(S.P));
+  const missing = (S.react.missing = missingPeers(S.P, cfg));
   if (missing.length) return `compiler analysis needs ${missing.join(' and ')} in this project`;
   if (!S.runPath) return `the manifest did not load: ${S.error}`;
   return null;

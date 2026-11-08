@@ -336,15 +336,15 @@ React features: the compiler analysis ([`pxsig react`](cli.md#pxsig-react---sinc
 `pxsig check --since` / `--changed` while it renders) and render counting. Alerts only: nothing here changes an exit code, a gate, JUnit or a baseline. Also
 under the workspace file's `defaults` (the project's own key wins).
 
-| Key               | Default                 | Meaning                                                                                                                                                                                                                                                                                 |
-| ----------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `compiler`        | `"auto"`                | `true` or `"auto"`: compare the React Compiler's verdict on changed files at the merge base and now, when `babel-plugin-react-compiler` and `@babel/core` are installed in the project. `false` (or `"off"`): never.                                                                    |
-| `lint`            | `true`                  | Also the validation-only findings eslint-plugin-react-hooks reports (`set-state-in-effect`, …) on functions that still compile. A new one is an alert (level note).                                                                                                                     |
-| `compilationMode` | `"infer"`               | As the project's build: `infer`, `annotation`, `syntax`, `all`.                                                                                                                                                                                                                         |
-| `target`          | `"auto"`                | `auto`: the major of the `react` the project has (17, 18, 19; else 19).                                                                                                                                                                                                                 |
-| `environment`     | `{}`                    | Compiler environment flags (JSON values), as the project's build sets them. pxsig never reads the project's Babel or Vite config.                                                                                                                                                       |
-| `exclude`         | stories, tests, `.d.ts` | Globs, workspace-relative, of changed files not analysed. Default `**/*.stories.*`, `**/*.test.*`, `**/*.spec.*`, `**/*.d.ts`, `**/*.css.ts`, `**/__tests__/**`, `**/__mocks__/**`. Replaces the list when set.                                                                         |
-| `renders`         | `false`                 | Count React commits and the components that rendered, in every render, with a hook defined before the story loads (no dependency, nothing sent anywhere). Each check row gets `renders` ([spec.md](spec.md#render-counts)); an entry React was still committing at capture is an alert. |
+| Key               | Default                 | Meaning                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `compiler`        | `"auto"`                | `true` or `"auto"`: compare the React Compiler's verdict on changed files at the merge base and now, when `babel-plugin-react-compiler` and `@babel/core` are installed in the project. `"babel"`: that plugin only, the same as `"auto"` today. `"oxc"`: the engine's built-in compiler (below), even when the Babel plugin is installed. `false` (or `"off"`): never. |
+| `lint`            | `true`                  | Also the validation-only findings eslint-plugin-react-hooks reports (`set-state-in-effect`, …) on functions that still compile. A new one is an alert (level note).                                                                                                                                                                                                     |
+| `compilationMode` | `"infer"`               | As the project's build: `infer`, `annotation`, `syntax`, `all`.                                                                                                                                                                                                                                                                                                         |
+| `target`          | `"auto"`                | `auto`: the major of the `react` the project has (17, 18, 19; else 19).                                                                                                                                                                                                                                                                                                 |
+| `environment`     | `{}`                    | Compiler environment flags (JSON values), as the project's build sets them. pxsig never reads the project's Babel or Vite config.                                                                                                                                                                                                                                       |
+| `exclude`         | stories, tests, `.d.ts` | Globs, workspace-relative, of changed files not analysed. Default `**/*.stories.*`, `**/*.test.*`, `**/*.spec.*`, `**/*.d.ts`, `**/*.css.ts`, `**/__tests__/**`, `**/__mocks__/**`. Replaces the list when set.                                                                                                                                                         |
+| `renders`         | `false`                 | Count React commits and the components that rendered, in every render, with a hook defined before the story loads (no dependency, nothing sent anywhere). Each check row gets `renders` ([spec.md](spec.md#render-counts)); an entry React was still committing at capture is an alert.                                                                                 |
 
 Off switches, for every React feature at once: `"react": false` (or `"off"`) in
 `pxsig.config.json` (or in `defaults` of `pxsig.workspace.json`), `--no-react` for one run,
@@ -358,6 +358,19 @@ project that already uses the compiler adds nothing. pxsig resolves them from th
 folder up to the workspace root, never from its own install. Tested with
 `babel-plugin-react-compiler` 1.0.0 under `@babel/core` 7.29 and 8.1. See
 [`pxsig react`](cli.md#pxsig-react---since-----files-ab----all).
+
+`"compiler": "oxc"` uses the compiler built into the engine instead: `oxc_react_compiler` 0.143.0,
+the React Compiler's Rust port, which is experimental. It needs no Node packages, so a project that
+builds without Babel (Vite with `oxc-transform-react`, for example) gets the analysis too, and it
+runs several times faster. It runs in an engine process of its own: a file that crashes it is a
+`compiler-error` and the others still compile. It tracks the React Compiler's main branch, so it
+can differ from the released Babel plugin on a few functions; a project that builds with the Babel
+plugin keeps `"auto"` or `"babel"`. `compilationMode`, `target`, `lint` and the `environment` flags
+it has map to it; an `environment` key it has no field for is left out with a note. Each run names
+its compiler: `backend` in `react.json`, the `compiler:` line of `pxsig react`, `pxsig doctor`,
+`pxsig_react` and the SARIF tool extension. `"auto"` keeps meaning the Babel plugin: a later
+release may let it pick the built-in compiler for projects without Babel, once the two agree on
+every function of the released plugin's corpus, with a `To update:` line.
 
 ### `integrity`
 

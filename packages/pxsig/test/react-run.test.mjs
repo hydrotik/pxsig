@@ -48,7 +48,8 @@ for (const babel of /** @type {const} */ ([7, 8]))
       assert.equal(r.compiled, 2);
       assert.equal(r.workers, 2);
       const rep = r.report;
-      assert.equal(rep.backend.babel.split('.')[0], String(babel));
+      assert.equal(rep.backend.name, 'babel');
+      assert.equal(rep.backend.babel?.split('.')[0], String(babel));
       assert.equal(rep.base?.since, 'main');
       assert.deepEqual(
         rep.alerts.map((a) => [a.id, a.change, a.level]),
@@ -143,7 +144,12 @@ test('off switches and a bad value: nothing run, never an error', { skip }, asyn
   );
   assert.deepEqual(
     reactFindings(projectAt(on)).map((f) => [f.code, f.text]),
-    [['react-compiler', 'babel-plugin-react-compiler 1.0.0 with @babel/core 7.29.7']]
+    [
+      [
+        'react-compiler',
+        'babel-plugin-react-compiler 1.0.0 with @babel/core 7.29.7: react.compiler is "auto", which uses the project\'s Babel plugin',
+      ],
+    ]
   );
 });
 

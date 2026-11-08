@@ -131,6 +131,7 @@ export function reactLines(run, checked, P) {
 export function reactSarif(file, run, rows, stories) {
   const n = writeReactSarif(resolve(file), {
     alerts: run?.ran ? run.report.alerts : [],
+    backend: run?.ran ? run.report.backend : null,
     rows,
     entries: new Map(stories.map((e) => [e.id, e])),
     version: PXSIG_VERSION,

@@ -1,7 +1,8 @@
 /**
  * lib/react/doctor.mjs — what `pxsig doctor` says about React analysis. None changes its exit:
  *
- *   react-compiler (info)  the compiler and Babel versions found, not installed, or off and where
+ *   react-compiler (info)  the compiler a run would use and why (react.compiler), its version, what
+ *                          is not installed, or off and where
  *   react-config   (warn)  a bad `react` value, and the part it turns off until it is fixed
  *   react-flow     (info)  Flow files the last analysis did not compile
  *
@@ -9,8 +10,9 @@
  */
 import { join } from 'node:path';
 import { readJson } from '../files.mjs';
+import { backendOf, compilerName, missingFor, oxcVersion } from './backend.mjs';
 import { configWarning, reactConfig } from './config.mjs';
-import { BABEL, COMPILER, reactPeers } from './peers.mjs';
+import { reactPeers } from './peers.mjs';
 
 /** @import { Project } from '../../types.js' */
 /** @import { ReactReport } from '../../types/react.js' */
@@ -42,16 +44,30 @@ export function reactFindings(P) {
       severity: 'info',
       text: 'compiler analysis is off (react.compiler: false)',
     });
-  else {
-    const peers = reactPeers(P);
-    const missing = [peers.compiler ? null : COMPILER, peers.babel ? null : BABEL].filter(Boolean);
+  else if (backendOf(cfg) === 'oxc') {
+    // Asked of the engine: one built without the react-oxc feature has no built-in compiler.
+    const v = oxcVersion(P.rustBin);
     out.push({
       code: 'react-compiler',
       severity: 'info',
       text:
-        peers.compiler && peers.babel
-          ? `${COMPILER} ${peers.compiler.version} with ${BABEL} ${peers.babel.version}`
-          : `${missing.join(' and ')} not installed: compiler analysis skipped`,
+        'version' in v
+          ? `${compilerName({ name: 'oxc', compiler: v.version })}: react.compiler is "oxc"`
+          : `react.compiler is "oxc", but ${v.why}: compiler analysis skipped`,
+    });
+  } else {
+    const peers = reactPeers(P);
+    const missing = missingFor(P, cfg, peers);
+    const why =
+      cfg.choice === 'babel'
+        ? 'react.compiler is "babel"'
+        : 'react.compiler is "auto", which uses the project\'s Babel plugin';
+    out.push({
+      code: 'react-compiler',
+      severity: 'info',
+      text: !missing.length
+        ? `${compilerName({ name: 'babel', compiler: peers.compiler?.version, babel: peers.babel?.version })}: ${why}`
+        : `${missing.join(' and ')} not installed: compiler analysis skipped`,
     });
   }
   const last = /** @type {ReactReport | null} */ (

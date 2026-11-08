@@ -5,6 +5,7 @@
  */
 import { join } from 'node:path';
 import { relPath } from '../lib/paths.mjs';
+import { compilerName } from '../lib/react/backend.mjs';
 import { analyse } from '../lib/react/index.mjs';
 import { ctxOf, PROJECT, readJson } from './context.mjs';
 
@@ -41,7 +42,12 @@ function reduce(r, limit) {
   return {
     at: r.generatedAt,
     base: r.base,
-    backend: { compiler: r.backend.compiler, babel: r.backend.babel },
+    backend: {
+      name: r.backend.name,
+      compiler: r.backend.compiler,
+      babel: r.backend.babel,
+      label: compilerName(r.backend),
+    },
     summary: r.summary,
     alerts: r.alerts.map((a) => ({ id: a.id, change: a.change, level: a.level, text: a.text })),
     functions: fns.slice(0, limit).map(fnBrief),
@@ -79,7 +85,7 @@ export const reactTools = /** @type {const} */ ([
   {
     name: 'pxsig_react',
     description:
-      "The React Compiler's verdict on the changed component and hook files, compared with the merge base: functions it compiled before and skips now, new functions it skips, a new reason for one it skipped, and new Rules-of-React findings (`alerts`, each with the engine's sentence), plus every function analysed (alerts first). Alerts only: nothing here fails a check, and nothing accepts, approves or silences an alert. Reads the last `reports/react.json`; `run: true` runs the analysis first, like `pxsig react --since <since>` (no browser; when the pxsig server holds the store, the results are not saved and `heldBy` names it).",
+      "The React Compiler's verdict on the changed component and hook files, compared with the merge base: functions it compiled before and skips now, new functions it skips, a new reason for one it skipped, and new Rules-of-React findings (`alerts`, each with the engine's sentence), plus every function analysed (alerts first) and `backend`, the compiler the run used (`label`: babel-plugin-react-compiler or the built-in oxc_react_compiler, with its version). Alerts only: nothing here fails a check, and nothing accepts, approves or silences an alert. Reads the last `reports/react.json`; `run: true` runs the analysis first, like `pxsig react --since <since>` (no browser; when the pxsig server holds the store, the results are not saved and `heldBy` names it).",
     inputSchema: {
       type: 'object',
       properties: {
