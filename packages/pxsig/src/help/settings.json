@@ -513,14 +513,13 @@
     "approvals": {
       "file": "pxsig.config.json",
       "meaning": "How approvals are recorded and guarded.",
-      "operation": "See approvals.identity, approvals.level and approvals.byStory."
+      "operation": "See approvals.level and approvals.byStory (approvals.identity is no longer read)."
     },
     "approvals.identity": {
       "file": "pxsig.config.json",
-      "meaning": "What each approval and repair log line says about who made it: none (the default; the commit that adds the line and the pull request say who), or git-email (the git email, as before 0.4.0).",
+      "meaning": "No longer read (0.7.6). No approval, accessibility or repair log line names a person, whatever the key says: the commit that adds a line and the pull request say who (pxsig approve log --trace).",
       "values": "none | git-email",
-      "default": "none",
-      "operation": "With none, pxsig writes no personal data into the store; with git-email every new log line carries a by field."
+      "operation": "A config that still has the key loads; pxsig doctor reports it as approvals-identity (a warning for git-email, a note for none). Remove the key from pxsig.config.json."
     },
     "approvals.level": {
       "file": "pxsig.config.json",

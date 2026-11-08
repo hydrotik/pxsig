@@ -3,6 +3,9 @@ import { conflictedStoreFiles } from '../approvals.mjs';
 import { enforcementProblems, readinessTally, resolveEnforcement } from '../enforcement.mjs';
 import { reportsIgnored } from '../decisions.mjs';
 import { relPath } from '../paths.mjs';
+import { readLines } from '../files.mjs';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { iso } from './context.mjs';
 /** @import { EnvSummary, StoryIndex, TornLine } from '../../types.js' */
 /** @import { IntegrityReport, IntegrityRow, LedgerSetup } from '../../types/t3.js' */
@@ -104,22 +107,74 @@ export function warnModeProblems(ctx) {
 }
 
 /**
- * Where a decision's reason goes (lib/decisions.mjs): `reports-not-ignored` when git would pick up
- * the store's reports/, so no reason is kept. `integrity.severity` overrides the severity.
+ * Decisions and the logs (lib/decisions.mjs, docs/decisions.md): `reports-not-ignored` when git
+ * would pick up the store's reports/, so no reason is kept; `approvals-identity` when the config
+ * still has the key no pxsig reads; `log-legacy-personal`, the lines written before 0.7.6 that
+ * carry a reason or a `by`. `integrity.severity` overrides each severity.
  * @param {IntegrityContext} ctx
  * @returns {LedgerSetup[]}
  */
 export function decisionProblems(ctx) {
   const P = ctx.project;
-  if (!P || reportsIgnored(P)) return [];
-  const store = relPath(P.workspaceRoot, P.store.root) || '.';
-  return [
-    {
-      code: 'reports-not-ignored',
-      severity: ctx.integrity?.severity?.['reports-not-ignored'] ?? 'warn',
-      reason: `${store}/reports/ is not git-ignored: reasons given with a decision are not kept, so none can be committed. Add \`reports/\` to ${store}/.gitignore (pxsig init writes it)`,
-    },
-  ];
+  if (!P) return [];
+  /** @type {LedgerSetup[]} */
+  const out = [];
+  /** @param {string} code @param {LedgerSetup['severity']} severity @param {string} reason */
+  const add = (code, severity, reason, count = 0) =>
+    out.push({
+      code,
+      severity: ctx.integrity?.severity?.[code] ?? severity,
+      ...(count ? { count } : {}),
+      reason,
+    });
+  if (!reportsIgnored(P)) {
+    const store = relPath(P.workspaceRoot, P.store.root) || '.';
+    add(
+      'reports-not-ignored',
+      'warn',
+      `${store}/reports/ is not git-ignored: reasons given with a decision are not kept, so none can be committed. Add \`reports/\` to ${store}/.gitignore (pxsig init writes it)`
+    );
+  }
+  const identity = P.config.approvals?.identity;
+  if (identity != null)
+    add(
+      'approvals-identity',
+      identity === 'git-email' ? 'warn' : 'info',
+      'approvals.identity is no longer read: log lines carry a decision reference, never a name. Remove the key from pxsig.config.json'
+    );
+  const n = legacyPersonal(ctx.files.approvals);
+  const m = legacyPersonal(join(dirname(ctx.files.a11y), 'a11y-decisions.ndjson'));
+  if (n + m)
+    add(
+      'log-legacy-personal',
+      'info',
+      `${n} lines of approvals.ndjson and ${m} of a11y-decisions.ndjson, written before 0.7.6, carry a reason or a git email. New lines carry neither; old lines stay (the log is append-only, and git history keeps them either way)`,
+      n + m
+    );
+  return out;
+}
+
+/** The reasons pxsig itself wrote before 0.7.6 (`check --update`'s default; undo, adopt, migrate). */
+const OWN_REASON = new Set(['undo', 'adopt', 'migrate']);
+/**
+ * Lines of a log, written before 0.7.6, with a person's reason or a `by` (not `pxsig migrate`'s).
+ * A log with neither key anywhere is not parsed.
+ * @param {string} file
+ */
+function legacyPersonal(file) {
+  if (!existsSync(file)) return 0;
+  const text = readFileSync(file, 'utf8');
+  if (!/"(by|reason)"\s*:\s*"/.test(text)) return 0;
+  /** @param {Record<string, unknown>} l */
+  const personal = (l) =>
+    (typeof l.by === 'string' && l.by !== '' && l.by !== 'pxsig migrate') ||
+    (typeof l.reason === 'string' &&
+      l.reason !== '' &&
+      l.reason !== 'pxsig check --update' &&
+      !OWN_REASON.has(String(l.via)));
+  return /** @type {Record<string, unknown>[]} */ (readLines(file).lines).filter(
+    (l) => l && typeof l === 'object' && personal(l)
+  ).length;
 }
 
 /**

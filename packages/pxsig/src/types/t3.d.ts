@@ -203,7 +203,7 @@ export interface LedgerEntry {
   verdict: EntryVerdict | null;
   renderedAt: string | null;
   review: string | null;
-  approval: { at: string; by?: string | null; via: string; batch: string } | null;
+  approval: { at: string; via: string; batch: string } | null;
   a11y: { enabled: boolean; baselined: boolean; new: number } | null;
   /** An unregistered story's file, title and name. */
   importPath?: string;
@@ -377,9 +377,8 @@ export interface RepairHooks {
 /** Reads `parameters.pxsig` of stories from a running Storybook. */
 export type Harvest = (ids: string[]) => Promise<Record<string, StoryParameters>>;
 
-/** Who and through what a repair runs, for its log. */
+/** Through what a repair runs, for its log (no log names a person). */
 export interface RepairActor {
-  by?: string | null;
   via: string;
 }
 
@@ -463,7 +462,6 @@ export interface ApplyOptions {
   /** Each step calls only its own hooks: a plan without a register step needs no `harvest`; none confirms nothing. */
   hooks?: Partial<RepairHooks>;
   via?: string;
-  by?: string | null;
   reconcileOpts?: ReconcileOptions;
 }
 

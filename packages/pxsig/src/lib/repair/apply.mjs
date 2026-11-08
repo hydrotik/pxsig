@@ -8,7 +8,7 @@ import { dropTorn } from '../files.mjs';
 import { relPath } from '../paths.mjs';
 import { foreignServer } from '../workspace/peers.mjs';
 import { isSocketError, retryOnce } from '../retry.mjs';
-import { guardWrite, logRepair, who } from './core.mjs';
+import { guardWrite, logRepair } from './core.mjs';
 import { logRegister, registerStories } from './register.mjs';
 import { convertLegacy, restoreBaselineImages } from './restore.mjs';
 /** @import { IntegrityContext } from '../integrity.mjs' */
@@ -23,7 +23,7 @@ import { convertLegacy, restoreBaselineImages } from './restore.mjs';
  * @param {RepairActor} actor
  * @returns {PruneResult}
  */
-export function pruneOrphans(ctx, ledger, ids, { by, via }) {
+export function pruneOrphans(ctx, ledger, ids, { via }) {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const trash = join(ctx.dirs.trash, stamp);
   const byId = new Map(ledger.entries.map((x) => [x.id, x]));
@@ -62,7 +62,6 @@ export function pruneOrphans(ctx, ledger, ids, { by, via }) {
   }
   for (const m of moved)
     logRepair(ctx, {
-      by,
       via,
       action: 'prune',
       id: m.id,
@@ -73,7 +72,6 @@ export function pruneOrphans(ctx, ledger, ids, { by, via }) {
     });
   for (const id of dropEntries)
     logRepair(ctx, {
-      by,
       via,
       action: 'prune',
       id,
@@ -186,7 +184,7 @@ export async function applyRepairs(
   plan,
   // Each step calls only its own hooks: without `confirmPrune` / `confirmTorn` nothing is confirmed;
   // a register or re-check step without its hook throws, naming it (defaultHooks gives both).
-  { hooks = {}, via = 'cli', by = who(ctx), reconcileOpts = {} } = {}
+  { hooks = {}, via = 'cli', reconcileOpts = {} } = {}
 ) {
   /** @type {DoneStep[]} */
   const done = [];
@@ -198,7 +196,6 @@ export async function applyRepairs(
     if (step.blocked) {
       done.push({ action: step.action, result: 'blocked', why: step.blocked });
       logRepair(ctx, {
-        by,
         via,
         action: step.action,
         ids: step.ids,
@@ -221,7 +218,7 @@ export async function applyRepairs(
         idx.map((x) => ({ id: x.id, importPath: /** @type {string} */ (x.importPath) })),
         { harvest }
       );
-      logRegister(ctx, r, step.ids, { by, via });
+      logRegister(ctx, r, step.ids, { via });
       const notes = [
         r.failed.length ? `${r.failed.length} failed` : null,
         r.adoptedSignatures.length
@@ -278,7 +275,6 @@ export async function applyRepairs(
         ? `not re-checked: ${r.error}`
         : `${recorded.length} of ${step.ids.length} entries re-checked via ${r.via}${errors ? ` (${errors} with render errors)` : ''}`;
       logRepair(ctx, {
-        by,
         via,
         action: 'recheck',
         ids: step.ids,
@@ -294,7 +290,7 @@ export async function applyRepairs(
         ...(r.error ? { error: r.error } : {}),
       });
     } else if (step.action === 'restore-baseline-image') {
-      const res = restoreBaselineImages(ctx, await fresh(), step.ids, { by, via });
+      const res = restoreBaselineImages(ctx, await fresh(), step.ids, { via });
       /** @param {string} k */
       const n = (k) => res.filter((r) => r.result === k).length;
       done.push({
@@ -303,7 +299,7 @@ export async function applyRepairs(
         details: res,
       });
     } else if (step.action === 'convert-legacy') {
-      const res = convertLegacy(ctx, await fresh(), step.ids, { by, via });
+      const res = convertLegacy(ctx, await fresh(), step.ids, { via });
       /** @param {string} k */
       const n = (k) => res.filter((r) => r.result === k).length;
       done.push({
@@ -316,7 +312,7 @@ export async function applyRepairs(
         done.push({ action: 'prune', result: 'not confirmed: nothing moved' });
         continue;
       }
-      const r = pruneOrphans(ctx, await fresh(), step.ids, { by, via });
+      const r = pruneOrphans(ctx, await fresh(), step.ids, { via });
       done.push({ action: 'prune', result: `${r.moved.length} files moved to ${r.trash}`, ...r });
     } else if (step.action === 'log-torn') {
       if (!hooks.confirmTorn || !(await hooks.confirmTorn(step.count))) {
@@ -325,7 +321,6 @@ export async function applyRepairs(
       }
       const n = dropTorn(guardWrite(ctx, ctx.files.approvals));
       logRepair(ctx, {
-        by,
         via,
         action: 'log-torn',
         why: step.why,

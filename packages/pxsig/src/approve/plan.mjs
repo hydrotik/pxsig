@@ -4,7 +4,7 @@
  * server, a person at a terminal confirming.
  */
 import { existsSync, readFileSync } from 'node:fs';
-import { newBatch, paths, sha256, who } from '../lib/approvals.mjs';
+import { newBatch, paths, sha256 } from '../lib/approvals.mjs';
 import { notKept, reportsIgnored } from '../lib/decisions.mjs';
 import { readToken, TOKEN_HEADER } from '../lib/guard.mjs';
 import { readImage } from '../lib/psig.mjs';
@@ -127,7 +127,6 @@ export async function planCommand(cx) {
   const plan = {
     version: 1,
     createdAt: new Date().toISOString(),
-    ...(who(P.workspaceRoot, P.config) ? { by: who(P.workspaceRoot, P.config) } : {}),
     project: P.name,
     // The plan sits in reports/: it holds the reason only where git leaves reports/ out.
     reason: reportsIgnored(P) ? reason : null,

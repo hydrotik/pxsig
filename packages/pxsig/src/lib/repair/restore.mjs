@@ -68,7 +68,7 @@ export function gateLatest(ctx, ids) {
  * @param {string[]} ids
  * @param {RepairActor} actor
  */
-export function restoreBaselineImages(ctx, ledger, ids, { by, via }) {
+export function restoreBaselineImages(ctx, ledger, ids, { via }) {
   const byId = new Map(ledger.entries.map((x) => [x.id, x]));
   /** @type {EntryRepairResult[]} */
   const results = [];
@@ -151,7 +151,6 @@ export function restoreBaselineImages(ctx, ledger, ids, { by, via }) {
   }
   for (const r of results)
     logRepair(ctx, {
-      by,
       via,
       action: 'restore-baseline-image',
       id: r.id,
@@ -172,7 +171,7 @@ export function restoreBaselineImages(ctx, ledger, ids, { by, via }) {
  * @param {string[]} ids
  * @param {RepairActor} actor
  */
-export function convertLegacy(ctx, ledger, ids, { by, via }) {
+export function convertLegacy(ctx, ledger, ids, { via }) {
   const byId = new Map(ledger.entries.map((x) => [x.id, x]));
   /** @type {EntryRepairResult[]} */
   const results = [];
@@ -280,7 +279,6 @@ export function convertLegacy(ctx, ledger, ids, { by, via }) {
   }
   for (const r of results)
     logRepair(ctx, {
-      by,
       via,
       action: 'convert-legacy',
       id: r.id,

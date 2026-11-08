@@ -447,7 +447,6 @@ export interface ApplyPruneOptions {
 /** One `action: "prune"` line of a11y-decisions.ndjson, before `stamp`. */
 export interface PruneLine {
   at: string;
-  by: string | null;
   via: string;
   /** The decision's opaque reference. */
   ref: string;

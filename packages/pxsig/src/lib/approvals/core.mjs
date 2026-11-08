@@ -7,7 +7,7 @@ import { appendLine, fault, readLines } from '../files.mjs';
 import { agentName } from '../agents.mjs';
 import { keepReason } from '../decisions.mjs';
 import { PXSIG_VERSION } from '../workspace.mjs';
-/** @import { ApprovalLine, Config, Project } from '../../types.js' */
+/** @import { ApprovalLine, Project } from '../../types.js' */
 /** @import { ApprovalProject, EntryPaths, RecordOptions } from '../../types/t2.js' */
 
 /**
@@ -50,21 +50,10 @@ export const headOf = (root) =>
     );
   });
 /**
- * Who approved, for the log: nobody by default (`approvals.identity`, docs/configuration.md#keys).
- * The commit that adds a line, and the pull request that merges it, already say who; pxsig keeps no
- * personal data. A team that wants the git email on every line sets `approvals.identity:
- * "git-email"`.
- * @param {string} root
- * @param {Pick<Config, 'approvals'> | null} [config]
- */
-export const who = (root, config = null) =>
-  config?.approvals?.identity === 'git-email'
-    ? git(root, 'config', 'user.email') || process.env.USER || 'unknown'
-    : null;
-/**
- * A log line with `by` only when there is one, the pxsig version that wrote it, and `agent` when
- * this process carries an assistant's marker (lib/agents.mjs;
- * docs/agents.md#what-a-marker-changes): the assistant's name, never a person's. A decision a
+ * A log line with the pxsig version that wrote it, never a `by` (no log names a person: the commit
+ * and the pull request that add a line say who), and `agent` when this process carries an
+ * assistant's marker (lib/agents.mjs; docs/agents.md#what-a-marker-changes): the assistant's name,
+ * never a person's. A decision a
  * person made through the dashboard link or the CLI carries none: the CLI refuses under a marker,
  * so a server started under an assistant would otherwise mark a person's decisions with the
  * assistant that started it.
@@ -78,9 +67,9 @@ export const PERSON_VIA = new Set(['dashboard', 'cli']);
  * @param {{ person?: boolean }} [options]
  */
 export const stamp = (line, env = process.env, { person = PERSON_VIA.has(line.via) } = {}) => {
-  const { by, ...rest } = line;
+  const { by: _by, ...rest } = line;
   const agent = person ? null : agentName(env);
-  return { ...rest, ...(by ? { by } : {}), ...(agent ? { agent } : {}), pxsig: PXSIG_VERSION };
+  return { ...rest, ...(agent ? { agent } : {}), pxsig: PXSIG_VERSION };
 };
 /**
  * A decision's reference: opaque and random (12 bytes), unique, with nothing derivable in it (no
@@ -145,7 +134,6 @@ export function record(
     {
       at: new Date().toISOString(),
       id: entry.id,
-      by: who(P.workspaceRoot, P.config),
       via,
       batch,
       ref: decisionRef(),

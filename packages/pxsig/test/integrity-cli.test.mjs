@@ -85,7 +85,6 @@ test(
     const led = await reconcile(f.ctx, { index: f.index, affected: f.affected });
     const plan = planRepairs(led, { only: ['convert-legacy'] });
     const res = await applyRepairs(f.ctx, plan, {
-      by: 't',
       via: 't',
       reconcileOpts: { index: f.index, affected: f.affected },
       hooks: {},

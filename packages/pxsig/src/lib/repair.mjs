@@ -17,11 +17,11 @@
  *     a person to approve their first render.
  *   - Orphans are only reported. `prune` (a person at a terminal, typed confirmation) moves them
  *     to `<store>/trash/<timestamp>/`; nothing is ever deleted.
- *   - Every action is appended to `<store>/reports/repairs.ndjson`: who, when, what, why, result.
+ *   - Every action is appended to `<store>/reports/repairs.ndjson`: when, how, what, why, result.
  *
  * No LLM, no heuristics that guess: each step has a precondition it checks right before acting.
  */
-export { guardWrite, logRepair, who } from './repair/core.mjs';
+export { guardWrite, logRepair } from './repair/core.mjs';
 export { ACTIONS, planRepairs } from './repair/plan.mjs';
 export {
   entriesOfStory,

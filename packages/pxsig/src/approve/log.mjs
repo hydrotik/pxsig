@@ -18,7 +18,7 @@ export function logCommand(cx) {
   const { flags, format, P, fail } = cx;
   const log = readLog(P);
   // --trace (docs/cli.md): the commit that added a batch's lines and the PR that merged it, from
-  // git. pxsig points at the trail; it shows no names (the commit and the PR say who).
+  // git. pxsig points at the trail; no log names a person (the commit and the PR say who).
   const trace = flags.trace ? traceLog(P) : null;
   if (flags.trace && !trace)
     fail('approve log --trace needs the approval log in a git repository', 2);
@@ -33,13 +33,12 @@ export function logCommand(cx) {
   // A reason stays on the machine where it was given (lib/decisions.mjs), found by any of the
   // batch's refs; a line written before 0.7.6 may still carry its own. A clean clone has none.
   const kept = readReasons(P);
-  /** @type {Map<string, { batch: string, at: string, by?: string | null, via: string, reason: string | null, n: number, commit?: string, pr?: string }>} */
+  /** @type {Map<string, { batch: string, at: string, via: string, reason: string | null, n: number, commit?: string, pr?: string }>} */
   const batches = new Map();
   for (const l of log) {
     const b = batches.get(l.batch) ?? {
       batch: l.batch,
       at: l.at,
-      by: l.by,
       via: l.via,
       reason: null,
       n: 0,
@@ -54,7 +53,6 @@ export function logCommand(cx) {
       const w = where.get(b.batch);
       b.commit = w ? [...w.commits].join(', ') : 'not committed';
       b.pr = w?.prs.size ? [...w.prs].join(', ') : '';
-      delete b.by;
     }
   const rows = [...batches.values()].reverse().slice(0, Number(flags.limit) || 10);
   emit(
@@ -73,7 +71,7 @@ export function logCommand(cx) {
                       { key: 'commit', label: 'Commit' },
                       { key: 'pr', label: 'PR' },
                     ]
-                  : [{ key: 'by', label: 'By' }]),
+                  : []),
                 { key: 'reason', label: 'Reason' },
                 { key: 'batch', label: 'Batch' },
               ],

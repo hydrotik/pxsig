@@ -117,8 +117,8 @@ It guarantees:
 
 It does not guarantee:
 
-- **Who approved in pxsig.** The log names no person by default (`by` only with
-  `approvals.identity: "git-email"`, and then self-asserted). `pxsig approve log --trace` points
+- **Who approved in pxsig.** No log line names a person (since 0.7.6 `approvals.identity` is no
+  longer read; a line from before may carry a self-asserted `by`). `pxsig approve log --trace` points
   each approval at the commit that added it and the pull request that merged it; the code host's
   review is the identity that counts.
 - **That the reviewer looked at the images.** The PR shows a binary file or, with the `psig` diff

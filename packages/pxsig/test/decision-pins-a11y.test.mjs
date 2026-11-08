@@ -3,8 +3,8 @@
  * keep, pinned while a decision's reason and the approver's identity leave the committed logs
  * (design: a decision commits only its reference; the approval log's pins are in
  * decision-pins.test.mjs). PR 3 flipped its pins: the reason stays on the machine
- * (`reports/decisions.ndjson`, only when reports/ is git-ignored). The open pins name their PR:
- *   PR 4 — no person's identity in any log; `approvals.identity` is no longer read
+ * (`reports/decisions.ndjson`, only when reports/ is git-ignored); PR 4, no person's identity in
+ * any log (`approvals.identity` is no longer read). The open pin names its PR:
  *   PR 5 — rejection notes only when the store's reports/ is git-ignored
  *
  *   node --test packages/pxsig/test/decision-pins-a11y.test.mjs
@@ -91,23 +91,24 @@ test(
     applyPrune(P, plan, { batch: 'b-prune', reason: 'fixed in #12', ignored: true, via: 'cli' });
     const log = ndjson(join(dirname(P.store.a11y), 'a11y-decisions.ndjson'));
     // PR 3: no `reason` on any line; accept's and prune's stay local, beside the line's ref.
-    // Flips in PR 4: no `by` on any line.
+    // PR 4: no `by` on any line.
     assert.deepEqual(
-      log.map((l) => [l.action, l.by, 'reason' in l]),
+      log.map((l) => [l.action, 'by' in l, 'reason' in l]),
       [
-        ['accept', EMAIL, false],
-        ['undo', EMAIL, false],
-        ['accept', EMAIL, false],
-        ['unaccept', EMAIL, false],
-        ['prune', EMAIL, false],
+        ['accept', false, false],
+        ['undo', false, false],
+        ['accept', false, false],
+        ['unaccept', false, false],
+        ['prune', false, false],
       ]
     );
     const [accept, , , , prune] = log.map((l) => Object.keys(l).filter((k) => k !== 'agent'));
     assert.deepEqual(
       accept,
-      ['at', 'via', 'ref', 'action', 'id', 'before', 'after', 'by'].concat('pxsig')
+      ['at', 'via', 'ref', 'action', 'id', 'before', 'after'].concat('pxsig')
     );
-    assert.deepEqual(prune.slice(-4), ['batch', 'evidence', 'by', 'pxsig']);
+    assert.deepEqual(prune.slice(-3), ['batch', 'evidence', 'pxsig']);
+    assert.ok(!JSON.stringify(log).includes(EMAIL), 'the a11y log names no one');
     const kept = readReasons(P);
     assert.deepEqual(
       [kept.get(log[0].ref), kept.get(log[2].ref), kept.get(log[4].ref)],
@@ -168,7 +169,7 @@ test(
   }
 );
 
-test('pin 12: repairs.ndjson carries `by` with git-email', { skip }, async (t) => {
+test('pin 12: repairs.ndjson carries no `by`, even with git-email', { skip }, async (t) => {
   const { f, P } = project(t);
   const ctx = resolveContext(P);
   const opts = { index: f.index, affected: f.affected };
@@ -180,8 +181,9 @@ test('pin 12: repairs.ndjson carries `by` with git-email', { skip }, async (t) =
   });
   const log = ndjson(join(f.px, 'reports', 'repairs.ndjson'));
   assert.ok(log.length > 0);
-  // Flips in PR 4: no `by` (repairs.ndjson is local, git-ignored).
-  for (const l of log) assert.equal(l.by, EMAIL);
+  // PR 4: no `by` (repairs.ndjson is local, git-ignored, and names no one either).
+  for (const l of log) assert.ok(!('by' in l), JSON.stringify(l));
+  assert.ok(!readFileSync(join(f.px, 'reports', 'repairs.ndjson'), 'utf8').includes(EMAIL));
 });
 
 test('pin 14: a rejection is written while reports/ is not git-ignored', { skip }, (t) => {

@@ -114,6 +114,19 @@ repository. A reason is a person's words for the people at that decision; the co
 request already say what changed and when, and the reference ties the line to the reason on the
 machine where it was given.
 
+### No log names a person
+
+**Decision.** No approval, accessibility or repair log line, approval plan or integrity entry
+carries a `by` or any other name, email, host or home path. `approvals.identity` is no longer read
+(0.7.6): a config that still has it loads, and `pxsig doctor` reports it (`approvals-identity`).
+Lines committed before 0.7.6 stay as they are (the log is append-only, and git history keeps them
+either way); `pxsig doctor` counts them (`log-legacy-personal`).
+
+**Why.** Who made a decision is the commit's author and the pull request's reviewer, which the
+code host already records and checks; `pxsig approve log --trace` points at both. A name pxsig
+writes is self-asserted, adds nothing the code host does not say better, and is personal data in
+every clone.
+
 ## Encryption is reserved, not built
 
 **Decision.** The `.psig` header carries `encryption: "none"`, and readers refuse anything else.

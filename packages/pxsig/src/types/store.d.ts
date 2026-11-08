@@ -213,7 +213,7 @@ export interface RunManifest {
 export interface ApprovalLine {
   at: string;
   id: string;
-  /** Who, only with `approvals.identity: "git-email"`. */
+  /** Only on a line written before 0.7.6 with `approvals.identity: "git-email"`: since, none. */
   by?: string | null;
   via: string;
   batch: string;

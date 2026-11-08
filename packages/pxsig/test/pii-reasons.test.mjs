@@ -1,9 +1,11 @@
 /**
- * pii-reasons.test.mjs — a reason given with a decision never reaches a file a repository commits:
- * with a reason through every server route that takes one (approve, a11y-accept, a11y-prune), in a
- * repository whose git email and name are probes, no committed file holds the probe email, the user name, the host name,
- * the home folder or the reason; `<store>/reports/decisions.ndjson` (git-ignored) holds the
- * reason, one line per reference, and no email. The scan beside pii.test.mjs's.
+ * pii-reasons.test.mjs — a reason given with a decision, and the person who made it, never reach a
+ * file a repository commits: on `approvals.identity: "git-email"` (no longer read), with a reason
+ * through every server route that takes one (approve, a11y-accept, a11y-prune) and a decision
+ * through each that takes none (unreview, a11y-unaccept, a11y-unreview), in a repository whose git
+ * email and name are probes, no committed file holds the probe email or name, the user name, the
+ * host name, the home folder or the reason; `<store>/reports/decisions.ndjson` (git-ignored) holds
+ * the reason, one line per reference, and no email. The scan beside pii.test.mjs's.
  *
  *   node --test packages/pxsig/test/pii-reasons.test.mjs
  *
@@ -24,6 +26,7 @@ import { serve } from './server-helpers.mjs';
 import { skipUnless } from './strict.mjs';
 
 const EMAIL = 'pii-probe@example.invalid';
+const NAME = 'Probe Q. Person';
 const REASON = 'reviewed with the brand team on the new palette';
 const git = spawnSync('git', ['--version']).status === 0;
 
@@ -45,21 +48,29 @@ function committed(repo) {
 }
 
 test(
-  'a reason through every route stays in reports/decisions.ndjson; no committed file holds it',
+  'with git-email set, every route keeps the reason in reports/ and names no one in a committed file',
   { skip: skipUnless(hasRust && git, 'needs the Rust binary and git') },
   async (t) => {
     const f = fixture({ t });
     spawnSync('git', ['init', '-q', f.repo]);
     spawnSync('git', ['-C', f.repo, 'config', 'user.email', EMAIL]);
-    spawnSync('git', ['-C', f.repo, 'config', 'user.name', 'PII Probe']);
+    spawnSync('git', ['-C', f.repo, 'config', 'user.name', NAME]);
     writeFileSync(join(f.px, '.gitignore'), STORE_GITIGNORE);
+    const cfg = join(f.repo, 'pxsig.config.json');
+    const c = JSON.parse(readFileSync(cfg, 'utf8'));
+    writeFileSync(cfg, JSON.stringify({ ...c, approvals: { identity: 'git-email' } }, null, 2));
     const P = openProject({ cwd: f.repo, env: { PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' } });
     const id = f.ids.a11y;
     const S = await serve(f);
     try {
       for (const [action, body] of /** @type {[string, object][]} */ ([
         ['approve', { id: f.ids.changed, reason: REASON }],
+        ['unreview', { id: f.ids.changed }],
+        ['approve', { id: f.ids.changed }],
+        ['a11y-accept', { id }],
+        ['a11y-unreview', { id }],
         ['a11y-accept', { id, reason: REASON }],
+        ['a11y-unaccept', { id, rule: 'color-contrast' }],
       ])) {
         const r = await S.post(action, body);
         assert.equal(r.status, 200, `${action}: ${JSON.stringify(r.body)}`);
@@ -86,6 +97,7 @@ test(
     assert.ok(!JSON.stringify(kept).includes(EMAIL), 'the local file names no person');
     const probes = [
       ['the git email', EMAIL],
+      ['the git name', NAME],
       ['the home folder', homedir()],
       ['the host name', hostname()],
       ['the reason', REASON],

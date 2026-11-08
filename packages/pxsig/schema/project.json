@@ -576,8 +576,8 @@
       "properties": {
         "identity": {
           "enum": ["none", "git-email"],
-          "default": "none",
-          "description": "What each log line says about who approved: nothing (the commit and the pull request say who), or the git email."
+          "deprecated": true,
+          "description": "No longer read (0.7.6): no log line names a person, whatever this says; the commit and the pull request say who. A config with the key still loads; pxsig doctor reports it (approvals-identity). Remove it."
         },
         "level": {
           "enum": ["standard", "strict"],

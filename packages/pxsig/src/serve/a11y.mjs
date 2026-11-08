@@ -3,7 +3,7 @@
  * unreview an entry's axe violations, and `pxsig a11y --prune` for the store the server holds.
  */
 import { dirname, join } from 'node:path';
-import { decisionRef, newBatch, ownBatch, stamp, who } from '../lib/approvals.mjs';
+import { decisionRef, newBatch, ownBatch, stamp } from '../lib/approvals.mjs';
 import { appendLine, readJson, writeJson } from '../lib/files.mjs';
 import { keepReason, reportsIgnoredAsync } from '../lib/decisions.mjs';
 import { applyPrune } from '../lib/prune.mjs';
@@ -56,7 +56,6 @@ export async function a11yReview(srv, S, action, id, meta = {}) {
   const av = /** @type {A11yReviewFile} */ (readJson(S.a11yReviewPath, {}));
   const base = /** @type {A11yBaseline} */ (readJson(P.store.a11y, {}));
   const at = new Date().toISOString();
-  const by = who(P.workspaceRoot, P.config);
   const via = meta.via ?? 'dashboard';
   const ref = decisionRef();
   /** @type {Written | null} */
@@ -71,7 +70,7 @@ export async function a11yReview(srv, S, action, id, meta = {}) {
     const after = row.a11y.violations.map((v) => v.id).sort();
     base[id] = after;
     writeA11y(P, base);
-    a11yLog(P, { at, by, via, ref, action: 'accept', id, before, after });
+    a11yLog(P, { at, via, ref, action: 'accept', id, before, after });
     if (meta.reason) keepReason(P, { ref, log: 'a11y', id, via, reason: meta.reason }, ignored);
     av[id] = { state: 'accepted', at, ref, before };
     closeAfter(srv, S, 'a11y', id, 'accepted', { via, ref });
@@ -86,7 +85,6 @@ export async function a11yReview(srv, S, action, id, meta = {}) {
     writeA11y(P, base);
     a11yLog(P, {
       at,
-      by,
       via,
       ref,
       action: 'unaccept',
@@ -117,7 +115,7 @@ export async function a11yReview(srv, S, action, id, meta = {}) {
       if (prev.before == null) delete base[id];
       else base[id] = prev.before;
       writeA11y(P, base);
-      a11yLog(P, { at, by, via, ref, action: 'undo', id, before: current, after: prev.before });
+      a11yLog(P, { at, via, ref, action: 'undo', id, before: current, after: prev.before });
     }
     delete av[id];
     closeAfter(srv, S, 'a11y', id, 'undone', { via, ref });

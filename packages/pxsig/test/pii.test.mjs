@@ -1,7 +1,7 @@
 /**
  * pii.test.mjs — pxsig writes no personal data into what a repository commits: no git email, no
  * user name, no host name, no home path. Approval lines carry the pxsig version that wrote them,
- * and `by` only when a team asks for it (`approvals.identity`, docs/configuration.md#keys).
+ * and never a `by`: `approvals.identity` is no longer read (docs/configuration.md#keys).
  *
  *   node --test packages/pxsig/test/pii.test.mjs
  *
@@ -59,7 +59,7 @@ const setConfig = (f, patch) => {
 };
 
 test(
-  'approval lines: no `by` unless approvals.identity asks for it; the pxsig version always',
+  'approval lines: no `by`, whatever approvals.identity says; the pxsig version always',
   { skip: skipUnless(git, 'no git') },
   () => {
     const f = gitFixture();
@@ -72,19 +72,22 @@ test(
     setConfig(f, { approvals: { identity: 'git-email' } });
     P = openProject({ cwd: f.repo, env: { PXSIG_BIN: rustBin } });
     record(P, entry, { batch: 'b2', via: 'cli', before: snapshot(P, entry, 'b2').before });
-    assert.equal(lines(f).at(-1).by, EMAIL, 'a team that asked for it gets the git email');
+    assert.equal(lines(f).at(-1).by, undefined, 'approvals.identity is no longer read');
   }
 );
 
-test('approvals: level is standard only for now (strict refused); identity and byStory take their values', () => {
+test('approvals: level is standard only for now (strict refused); byStory takes its values; identity is not read', () => {
   const f = fixture({ withSigs: false });
   setConfig(f, { approvals: { level: 'strict' } });
   assert.throws(
     () => openProject({ cwd: f.repo, env: {} }),
     /approvals\.level "strict" is not available yet/
   );
-  setConfig(f, { approvals: { level: 'standard', identity: 'everyone' } });
-  assert.throws(() => openProject({ cwd: f.repo, env: {} }), /approvals\.identity must be/);
+  // No longer read: a config that still has the key loads (doctor reports it).
+  for (const identity of ['git-email', 'none', 'everyone']) {
+    setConfig(f, { approvals: { level: 'standard', identity } });
+    assert.doesNotThrow(() => openProject({ cwd: f.repo, env: {} }), identity);
+  }
   setConfig(f, { approvals: { byStory: 'yes' } });
   assert.throws(() => openProject({ cwd: f.repo, env: {} }), /approvals\.byStory must be true or/);
 });

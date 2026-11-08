@@ -35,6 +35,6 @@ commits the baselines is where they are reviewed.
 
 Every log line records how the decision was made (`via`) and the pxsig that wrote it, and no
 personal data: the commit that adds a line and the pull request say who approved
-(`approvals.identity: "git-email"` adds the git email to each line).
+(`approvals.identity` is no longer read; doctor reports a config that still has it).
 
 See also: `pxsig help approve`, docs/cli.md#approvals, docs/server.md#guards.
