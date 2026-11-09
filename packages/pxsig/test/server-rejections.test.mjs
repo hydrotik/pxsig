@@ -107,11 +107,17 @@ test(
       assert.equal(open.via, 'cli');
       assert.equal(open.ref, entry.ref);
 
-      // /data carries the open rejections with their reasons; /status none of the reasons.
+      // /data carries the open rejections with their reasons, and the paragraph for an assistant
+      // (Copy for an agent); /status none of the reasons.
       const data = /** @type {Record<string, any>} */ (
         await (await fetch(`${S.base}/__pxsig/data?project=fixture`)).json()
       );
-      assert.deepEqual(data.rejections.visual[id], open);
+      const { prompt, ...served } = data.rejections.visual[id];
+      assert.deepEqual(served, open);
+      assert.match(
+        prompt,
+        /^pxsig rejected components-beta--default \(fixture\): "the block is too dark"\./
+      );
       assert.equal(data.review[id].note, 'the block is too dark');
       const status = await (await fetch(`${S.base}/__pxsig/status`)).text();
       assert.ok(!status.includes('too dark'), 'no reason in /status');

@@ -36,9 +36,12 @@ import { byStory } from './lib/approvals/story.mjs';
 import { PXSIG_VERSION, engineVersion, openProject } from './lib/workspace.mjs';
 import { reactData } from './lib/react/data.mjs';
 import { readRejections, withoutNotes } from './lib/rejections.mjs';
+import { rejectionOptions } from './lib/rejections/packet.mjs';
+import { rejectionPrompt } from './lib/rejections/prompt.mjs';
 /** @import { Manifest, Project } from './types.js' */
 /** @import { CheckReport } from './types/t5.js' */
 /** @import { ReactLive } from './types/react.js' */
+/** @import { Rejection, RejectionKind, RejectionsFile } from './types/rejections.js' */
 
 const here = dirname(fileURLToPath(import.meta.url));
 /**
@@ -173,8 +176,13 @@ export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/`, live 
     /** Whether the inspector offers Approve story (`approvals.byStory`, off by default). */
     approvals: { byStory: byStory(P.config) },
     a11yReview: read('a11y-review') ?? {},
-    /** The open rejections, with their reasons (lib/rejections.mjs); a static report has none. */
-    rejections: readRejections(P),
+    /** What the dashboard asks on Reject: the reason, unless `rejections.note.ask` is false. */
+    settings: { rejections: { note: { ask: rejectionOptions(P.config).noteAsk } } },
+    /**
+     * The open rejections, with their reasons (lib/rejections.mjs) and each one's paragraph for an
+     * assistant (Copy for an agent); a static report has none.
+     */
+    rejections: withPrompts(P, readRejections(P)),
     integrity: read('integrity'),
     storybook: { baseUrl: P.storybook.url },
     /** `dashboard-screens`: pxsig's own screens, with no Storybook to link to or re-check in. */
@@ -184,11 +192,43 @@ export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/`, live 
       diffRoot: `${base}diffs/`,
       renders: `${base}renders/`,
       baselines: `${base}baselines/`,
+      /** The rejection packets (`/p/<project>/reports/rejected/`, served to this origin only). */
+      rejected: `${base}reports/rejected/`,
     },
     sigs: Object.fromEntries(
       (manifest.stories ?? []).map((s) => [s.id, `${base}sig/${encodeURIComponent(s.id)}`])
     ),
   };
+}
+
+/**
+ * The open rejections, each with `prompt`: the words Copy for an agent copies, the same the
+ * packet, the CLI and MCP use (lib/rejections/prompt.mjs).
+ * @param {Project} P
+ * @param {RejectionsFile} open
+ * @returns {Record<RejectionKind, Record<string, Rejection & { prompt: string }>>}
+ */
+function withPrompts(P, open) {
+  const store = relative(P.workspaceRoot, P.store.root);
+  /** @param {RejectionKind} kind */
+  const each = (kind) =>
+    Object.fromEntries(
+      Object.entries(open[kind]).map(([id, r]) => [
+        id,
+        {
+          ...r,
+          prompt: rejectionPrompt({
+            id,
+            project: P.name,
+            kind,
+            note: r.note,
+            store,
+            packet: r.packet,
+          }),
+        },
+      ])
+    );
+  return { visual: each('visual'), a11y: each('a11y') };
 }
 
 /**
