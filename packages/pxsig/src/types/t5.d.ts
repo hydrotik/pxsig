@@ -142,6 +142,8 @@ export interface ReviewEntry extends Partial<EngineCapture> {
   ref?: string;
   /** A rejection's reason (lib/rejections.mjs): one line, at most 280 characters. */
   note?: string;
+  /** A reject's note given and not kept: the store's reports/ is not git-ignored. */
+  noteKept?: false;
   /** An approval: its batch, the baseline's sha256 after, the a11y baseline before. */
   batch?: string;
   after?: string | null;
@@ -160,6 +162,8 @@ export interface A11yReviewEntry {
   ref?: string;
   /** A rejection's reason. */
   note?: string;
+  /** As ReviewEntry's. */
+  noteKept?: false;
 }
 
 export type A11yReviewFile = Record<string, A11yReviewEntry>;

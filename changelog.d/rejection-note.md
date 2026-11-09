@@ -35,5 +35,5 @@
 - **The store writes `reports/rejections.json` and `reports/rejections.ndjson`** once an entry is
   rejected.
   To update: nothing to do when the store's `reports/` is git-ignored (every store `pxsig init`
-  made); otherwise add `reports/` to the store's `.gitignore`, since the files hold reviewers'
-  reasons.
+  made); otherwise add `reports/` to the store's `.gitignore`, so notes are kept (while it is not
+  ignored, a rejection opens with no note).

@@ -10,7 +10,7 @@ import { applyPrune } from '../lib/prune.mjs';
 import { httpError } from './http.mjs';
 import { needLock } from './projects.mjs';
 import { checkPatch, updateCheckRows } from './report-rows.mjs';
-import { agentMayClearRejection, closeAfter, rejectWithNote } from './rejections.mjs';
+import { agentMayClearRejection, closeAfter, hasNote, rejectWithNote } from './rejections.mjs';
 import { agentMayClear } from './review.mjs';
 /** @import { Project } from '../types.js' */
 /**
@@ -50,8 +50,11 @@ export async function a11yReview(srv, S, action, id, meta = {}) {
   needLock(srv, S);
   const { P, manifest } = S;
   if (!manifest.stories.some((e) => e.id === id)) throw httpError(404, `unknown entry ${id}`);
-  // Asked before anything is read, and only for an accept with a reason: no spawn otherwise.
-  const ignored = action === 'a11y-accept' && meta.reason ? await reportsIgnoredAsync(P) : false;
+  // Asked before anything is read, and only for an accept with a reason or a reject with a note:
+  // no spawn otherwise.
+  const ask =
+    (action === 'a11y-accept' && !!meta.reason) || (action === 'a11y-reject' && hasNote(meta));
+  const ignored = ask ? await reportsIgnoredAsync(P) : false;
   // a11y-review.json and a11y.json are pxsig's own files.
   const av = /** @type {A11yReviewFile} */ (readJson(S.a11yReviewPath, {}));
   const base = /** @type {A11yBaseline} */ (readJson(P.store.a11y, {}));
@@ -74,7 +77,7 @@ export async function a11yReview(srv, S, action, id, meta = {}) {
     if (meta.reason) keepReason(P, { ref, log: 'a11y', id, via, reason: meta.reason }, ignored);
     av[id] = { state: 'accepted', at, ref, before };
     closeAfter(srv, S, 'a11y', id, 'accepted', { via, ref });
-  } else if (action === 'a11y-reject') av[id] = rejectWithNote(srv, S, 'a11y', id, meta);
+  } else if (action === 'a11y-reject') av[id] = rejectWithNote(srv, S, 'a11y', id, meta, ignored);
   else if (action === 'a11y-unaccept') {
     // Take a rule (or every rule) off the accepted list: the report shows it as new at once.
     const current = base[id] ?? [];

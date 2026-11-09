@@ -2,10 +2,11 @@
  * pii-reasons.test.mjs — a reason given with a decision, and the person who made it, never reach a
  * file a repository commits: on `approvals.identity: "git-email"` (no longer read), with a reason
  * through every server route that takes one (approve, a11y-accept, a11y-prune) and a decision
- * through each that takes none (unreview, a11y-unaccept, a11y-unreview), in a repository whose git
- * email and name are probes, no committed file holds the probe email or name, the user name, the
- * host name, the home folder or the reason; `<store>/reports/decisions.ndjson` (git-ignored) holds
- * the reason, one line per reference, and no email. The scan beside pii.test.mjs's.
+ * through each that takes none (unreview, a11y-unaccept, a11y-unreview), and a reject's note
+ * (reject, a11y-reject), in a repository whose git email and name are probes, no committed file
+ * holds the probe email or name, the user name, the host name, the home folder, the reason or the
+ * note; `<store>/reports/decisions.ndjson` (git-ignored) holds the reason, one line per reference,
+ * and no email; `reports/rejections.json` holds the note. The scan beside pii.test.mjs's.
  *
  *   node --test packages/pxsig/test/pii-reasons.test.mjs
  *
@@ -28,6 +29,7 @@ import { skipUnless } from './strict.mjs';
 const EMAIL = 'pii-probe@example.invalid';
 const NAME = 'Probe Q. Person';
 const REASON = 'reviewed with the brand team on the new palette';
+const NOTE = 'the swatch row clips on the right';
 const git = spawnSync('git', ['--version']).status === 0;
 
 /**
@@ -71,6 +73,8 @@ test(
         ['a11y-unreview', { id }],
         ['a11y-accept', { id, reason: REASON }],
         ['a11y-unaccept', { id, rule: 'color-contrast' }],
+        ['reject', { id: f.ids.changed, note: NOTE }],
+        ['a11y-reject', { id, note: NOTE }],
       ])) {
         const r = await S.post(action, body);
         assert.equal(r.status, 200, `${action}: ${JSON.stringify(r.body)}`);
@@ -95,12 +99,16 @@ test(
       ]
     );
     assert.ok(!JSON.stringify(kept).includes(EMAIL), 'the local file names no person');
+    // A rejection's note stays in the git-ignored reports/ too.
+    const open = JSON.parse(readFileSync(join(P.store.reports, 'rejections.json'), 'utf8'));
+    assert.deepEqual([open.visual[f.ids.changed].note, open.a11y[id].note], [NOTE, NOTE]);
     const probes = [
       ['the git email', EMAIL],
       ['the git name', NAME],
       ['the home folder', homedir()],
       ['the host name', hostname()],
       ['the reason', REASON],
+      ['the note', NOTE],
       ...(userInfo().username.length >= 4 ? [['the user name', userInfo().username]] : []),
     ];
     const files = committed(f.repo);

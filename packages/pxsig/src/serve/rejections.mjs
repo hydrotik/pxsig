@@ -5,6 +5,7 @@
  * `rejection` event `{ project, id, kind, record | null }`.
  */
 import { decisionRef } from '../lib/approvals.mjs';
+import { notKept } from '../lib/decisions.mjs';
 import { NEEDS_PERSON } from '../lib/guard.mjs';
 import { readJson } from '../lib/files.mjs';
 import {
@@ -35,22 +36,32 @@ const tell = (srv, S, kind, id, record) =>
   srv.broadcast('rejection', { project: S.name, id, kind, record });
 
 /**
- * A reject: its reason (sanitized) opens the rejection, or is added to the open one. Answers the
- * decision the review file keeps: the leading reason's, so an assistant's note on a person's
- * rejection leaves the person's decision in place.
+ * Whether a reject carries a note: only then is git asked whether it may be kept
+ * (lib/decisions.mjs `reportsIgnoredAsync`), before the caller reads its files. A reject without
+ * one spawns nothing and awaits nothing.
+ * @param {DecisionMeta} meta
+ */
+export const hasNote = (meta) => sanitizeNote(meta.note) != null;
+
+/**
+ * A reject: its reason (sanitized) opens the rejection, or is added to the open one; while the
+ * store's reports/ is not git-ignored the rejection opens with no note and the decision says so
+ * (`noteKept: false`, and one line in the server's log). Answers the decision the review file
+ * keeps: the leading reason's, so an assistant's note on a person's rejection leaves the person's
+ * decision in place.
  * @param {ServeContext} srv
  * @param {ProjectState} S
  * @param {RejectionKind} kind
  * @param {string} id
  * @param {DecisionMeta} meta
- * @returns {{ state: 'rejected', at: string, via: string, ref: string, note?: string }}
+ * @param {boolean} ignored `reportsIgnoredAsync(S.P)`, asked when `hasNote(meta)`
+ * @returns {{ state: 'rejected', at: string, via: string, ref: string, note?: string, noteKept?: false }}
  */
-export function rejectWithNote(srv, S, kind, id, meta) {
-  const r = openRejection(S.P, kind, id, {
-    via: meta.via ?? 'dashboard',
-    note: sanitizeNote(meta.note),
-  });
+export function rejectWithNote(srv, S, kind, id, meta, ignored) {
+  const note = sanitizeNote(meta.note);
+  const r = openRejection(S.P, kind, id, { via: meta.via ?? 'dashboard', note, ignored });
   tell(srv, S, kind, id, r);
+  if (note && !ignored) console.error(`[serve] ${S.name}: ${notKept(S.P, 'Note')}`);
   const n = lead(r.notes);
   return {
     state: 'rejected',
@@ -58,6 +69,7 @@ export function rejectWithNote(srv, S, kind, id, meta) {
     via: n.via,
     ref: n.ref,
     ...(n.note ? { note: n.note } : {}),
+    ...(note && !ignored ? { noteKept: /** @type {const} */ (false) } : {}),
   };
 }
 

@@ -4,8 +4,8 @@
  * (design: a decision commits only its reference; the approval log's pins are in
  * decision-pins.test.mjs). PR 3 flipped its pins: the reason stays on the machine
  * (`reports/decisions.ndjson`, only when reports/ is git-ignored); PR 4, no person's identity in
- * any log (`approvals.identity` is no longer read). The open pin names its PR:
- *   PR 5 — rejection notes only when the store's reports/ is git-ignored
+ * any log (`approvals.identity` is no longer read); PR 5, a rejection's note only when the store's
+ * reports/ is git-ignored (pin 14).
  *
  *   node --test packages/pxsig/test/decision-pins-a11y.test.mjs
  *
@@ -13,11 +13,11 @@
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { record, sha256 } from '../src/lib/approvals.mjs';
-import { decisionsFile, readReasons } from '../src/lib/decisions.mjs';
+import { decisionsFile, forgetIgnored, readReasons } from '../src/lib/decisions.mjs';
 import { reconcile, resolveContext } from '../src/lib/integrity.mjs';
 import { applyPrune } from '../src/lib/prune.mjs';
 import { readHeader } from '../src/lib/psig.mjs';
@@ -186,12 +186,26 @@ test('pin 12: repairs.ndjson carries no `by`, even with git-email', { skip }, as
   assert.ok(!readFileSync(join(f.px, 'reports', 'repairs.ndjson'), 'utf8').includes(EMAIL));
 });
 
-test('pin 14: a rejection is written while reports/ is not git-ignored', { skip }, (t) => {
+test('pin 14: while reports/ is not git-ignored a rejection opens with no note', { skip }, (t) => {
   const { f, P } = project(t);
   const ignored = spawnSync('git', ['-C', P.store.root, 'check-ignore', '-q', 'reports/x.json']);
   assert.equal(ignored.status, 1, 'the fixture store does not ignore reports/');
-  openRejection(P, 'visual', f.ids.changed, { via: 'cli', note: 'the border is wrong' });
-  // Flips in PR 5: nothing written while reports/ is not git-ignored.
+  forgetIgnored();
+  const id = f.ids.changed;
+  const r = openRejection(P, 'visual', id, { via: 'cli', note: 'the border is wrong' });
+  // PR 5: the rejection is kept, its note is not (a file git could commit never holds one).
+  assert.equal(r.note, null);
+  assert.deepEqual(
+    r.notes.map((n) => [n.via, n.note]),
+    [['cli', null]]
+  );
+  const open = JSON.parse(readFileSync(join(P.store.reports, 'rejections.json'), 'utf8'));
+  assert.equal(open.visual[id].note, null);
+  const log = ndjson(join(P.store.reports, 'rejections.ndjson'));
+  assert.deepEqual(
+    log.map((l) => [l.event, l.kind, l.id, l.via, l.note]),
+    [['rejected', 'visual', id, 'cli', null]]
+  );
   for (const n of ['rejections.json', 'rejections.ndjson'])
-    assert.ok(existsSync(join(P.store.reports, n)), n);
+    assert.ok(!readFileSync(join(P.store.reports, n), 'utf8').includes('border'), n);
 });

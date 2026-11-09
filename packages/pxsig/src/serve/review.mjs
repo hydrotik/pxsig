@@ -25,7 +25,7 @@ import { textSettings } from '../lib/text/config.mjs';
 import { NEEDS_PERSON } from '../lib/guard.mjs';
 import { httpError } from './http.mjs';
 import { needLock } from './projects.mjs';
-import { agentMayClearRejection, closeAfter, rejectWithNote } from './rejections.mjs';
+import { agentMayClearRejection, closeAfter, hasNote, rejectWithNote } from './rejections.mjs';
 import { checkPatch, updateCheckRows } from './report-rows.mjs';
 /**
  * @import { A11yBaseline, CheckReport, DecisionMeta, ReviewEntry, ReviewFile } from '../types/t5.js'
@@ -171,6 +171,8 @@ export function unapprove(S, id, entry, via = 'dashboard') {
  */
 export async function review(srv, S, action, id, meta = {}) {
   needLock(srv, S);
+  // Asked before anything is read, and only for a reject with a note: no spawn otherwise.
+  const ignored = action === 'reject' && hasNote(meta) ? await reportsIgnoredAsync(S.P) : false;
   // review.json is this server's own file.
   const rv = /** @type {ReviewFile} */ (readJson(S.reviewPath, {}));
   /** @type {Written | null} */
@@ -189,7 +191,7 @@ export async function review(srv, S, action, id, meta = {}) {
         : null
     );
     closeAfter(srv, S, 'visual', id, 'approved', { via: meta.via ?? 'dashboard', ref: rv[id].ref });
-  } else if (action === 'reject') rv[id] = rejectWithNote(srv, S, 'visual', id, meta);
+  } else if (action === 'reject') rv[id] = rejectWithNote(srv, S, 'visual', id, meta, ignored);
   else if (action === 'unreview') {
     agentMayClear(meta, rv[id]?.state);
     agentMayClearRejection(S, meta, 'visual', id, rv[id]);

@@ -10,15 +10,18 @@
  * every event (`rejected`, `note`, `checked`, `closed`), so a reason outlives its rejection.
  *
  * Both files sit in the store's `reports/`, which the store's .gitignore leaves out: the reason is
- * the reviewer's own words and is never committed. Each decision carries an opaque reference
+ * the reviewer's own words and is never committed. While git would pick up reports/
+ * (lib/decisions.mjs `reportsIgnored`), the rejection still opens, with no note: a file git could
+ * commit never holds one. Each decision carries an opaque reference
  * (`decisionRef`); no line has a user name, host name or path. An assistant's reason (via `mcp`) is
  * kept as its own note, and never leads over a person's.
  */
 import { join } from 'node:path';
 import { decisionRef, stamp } from './approvals.mjs';
-import { reasonText } from './decisions.mjs';
+import { reasonText, reportsIgnored } from './decisions.mjs';
 import { appendLine, readJson, writeJson } from './files.mjs';
 /** @import { CheckRow } from '../types.js' */
+/** @import { DecisionProject } from './decisions.mjs' */
 /**
  * @import { AfterCheck, Rejection, RejectionCheck, RejectionClose, RejectionKind, RejectionNote,
  *   RejectionsFile } from '../types/rejections.js'
@@ -90,17 +93,25 @@ export const byPerson = (r) => !!r && r.via !== 'mcp';
 
 /**
  * Open a rejection of `id`, or add a reason to the open one (a reject again edits the reason).
- * @param {{ store: { reports: string } }} P
+ * The note is kept only when reports/ is git-ignored: `ignored` is the caller's
+ * `reportsIgnored(P)` (the server asks without blocking), else asked here, and only for a note.
+ * @param {DecisionProject} P
  * @param {RejectionKind} kind
  * @param {string} id
- * @param {{ via: string, note: string | null, at?: string, ref?: string }} n
+ * @param {{ via: string, note: string | null, at?: string, ref?: string, ignored?: boolean }} n
  * @returns {Rejection}
  */
-export function openRejection(P, kind, id, { via, note, at = new Date().toISOString(), ref }) {
+export function openRejection(
+  P,
+  kind,
+  id,
+  { via, note, at = new Date().toISOString(), ref, ignored }
+) {
   const all = readRejections(P);
   const was = all[kind][id];
+  const kept = note && (ignored ?? reportsIgnored(P)) ? note : null;
   /** @type {RejectionNote} */
-  const added = { at, via, ref: ref ?? decisionRef(), note };
+  const added = { at, via, ref: ref ?? decisionRef(), note: kept };
   const notes = [added, ...(was?.notes ?? [])].slice(0, KEEP);
   const first = lead(notes);
   /** @type {Rejection} */
