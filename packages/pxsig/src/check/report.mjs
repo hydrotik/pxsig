@@ -13,7 +13,9 @@ import {
   writeLedger,
 } from '../lib/integrity.mjs';
 import { appendedSince, changedByRoute } from '../lib/approvals.mjs';
+import { reportsIgnored } from '../lib/decisions.mjs';
 import { afterCheck } from '../lib/rejections.mjs';
+import { engineDiff, refreshPackets } from '../lib/rejections/packet.mjs';
 import { buildRow, stampRenders, summarize } from '../lib/rows.mjs';
 import { writeJson } from '../lib/files.mjs';
 import { annotateRow, byId, envLine, envSummary } from '../lib/env.mjs';
@@ -214,7 +216,17 @@ export async function report(S, sel, prep, run, cmp, { t0, retryMs, react = null
   // Open rejections outlive them (lib/rejections.mjs): a pass closes one, else it gains the check.
   if (outName === 'check') {
     for (const f of ['review.json', 'a11y-review.json']) rmSync(join(reports, f), { force: true });
-    afterCheck(P, out, { known: new Set(manifest.stories.map((e) => e.id)) });
+    const after = afterCheck(P, out, { known: new Set(manifest.stories.map((e) => e.id)) });
+    // The packets of the rejections still open, refreshed with this run's renders (no path logged).
+    if (after.checked.length)
+      for (const p of await refreshPackets(P, after, {
+        diff: engineDiff(P.rustBin),
+        ignored: reportsIgnored(P),
+        rows: out,
+        entries: manifest.stories,
+      }))
+        if (p.error)
+          console.error(`[check] packet of ${p.id}: ${p.record?.packetError ?? 'not written'}`);
   }
   const link = str('link-base');
   const sfx = outName === 'check' ? '' : `-${outName.replace(/^check-/, '')}`;

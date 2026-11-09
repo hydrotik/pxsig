@@ -165,6 +165,13 @@ export type Config = {
     byStory?: boolean;
   };
   dashboard?: { ui?: string };
+  /** Rejection notes and packets (lib/rejections/packet.mjs `rejectionOptions`). */
+  rejections?: {
+    note?: { ask?: boolean };
+    packet?: boolean;
+    crop?: { pad?: number; max?: number; scale?: 'auto' | 1 | 2 | 4; annotate?: boolean };
+    structure?: string;
+  };
 };
 
 /** Absolute paths of a project's store (`<project>/.pxsig/` by default). */

@@ -601,6 +601,64 @@
           "description": "The UI adapter: a path to its module (a file, or a folder with an index file), relative to this folder, or a built-in adapter's name. See docs/ui/build-adapter.md."
         }
       }
+    },
+    "rejections": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A rejection's note and its packet (reports/rejected/<id>/: rejection.md, rejection.json, the images and full-size crops of the changed regions), in the store's git-ignored reports/, never committed. See docs/configuration.md#rejections.",
+      "properties": {
+        "note": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ask": {
+              "type": "boolean",
+              "default": true,
+              "description": "Reject asks for an optional reason in the dashboard; false: Reject and R reject at once."
+            }
+          }
+        },
+        "packet": {
+          "type": "boolean",
+          "default": true,
+          "description": "Write rejection packets; false: the note only."
+        },
+        "crop": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pad": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 256,
+              "default": 24,
+              "description": "Padding around each changed region, in px; padded regions that overlap merge."
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 6,
+              "description": "Crops per packet, the most changed pixels first."
+            },
+            "scale": {
+              "enum": ["auto", 1, 2, 4],
+              "default": "auto",
+              "description": "Nearest-neighbour upscale: auto brings the short side to at least 160 px, at most 4x; never past 1,024 px on the long side."
+            },
+            "annotate": {
+              "type": "boolean",
+              "default": true,
+              "description": "Outline each changed region on the crops."
+            }
+          }
+        },
+        "structure": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A folder, relative to this one, of committed structure locks (<section>/<name>.aria.yml) to compare with the store's reports/structure/; rejection.md then has a Structure section."
+        }
+      }
     }
   }
 }

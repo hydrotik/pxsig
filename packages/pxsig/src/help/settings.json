@@ -543,6 +543,69 @@
       "flag": "--ui (dashboard build, gaps)",
       "env": "PXSIG_UI_ADAPTER"
     },
+    "rejections": {
+      "file": "pxsig.config.json",
+      "meaning": "A rejection's note and its packet: reports/rejected/<id>/ with rejection.md, rejection.json, the images and full-size crops of the changed regions, in the store's git-ignored reports/.",
+      "operation": "See rejections.note.ask, rejections.packet, rejections.crop and rejections.structure. Nothing is written while reports/ is not git-ignored (pxsig doctor: reports-not-ignored)."
+    },
+    "rejections.note": {
+      "file": "pxsig.config.json",
+      "meaning": "The dashboard's reason row on Reject.",
+      "operation": "See rejections.note.ask."
+    },
+    "rejections.note.ask": {
+      "file": "pxsig.config.json",
+      "meaning": "Whether Reject (and R) asks for an optional reason in the dashboard.",
+      "values": "true | false",
+      "default": "true",
+      "operation": "False: Reject and R reject at once, with no reason."
+    },
+    "rejections.packet": {
+      "file": "pxsig.config.json",
+      "meaning": "Whether an open rejection gets a packet (crops, rejection.md, rejection.json).",
+      "values": "true | false",
+      "default": "true",
+      "operation": "Written after a reject, refreshed after each check of the entry, removed when the rejection closes. False: the note only."
+    },
+    "rejections.crop": {
+      "file": "pxsig.config.json",
+      "meaning": "How a packet's crops are cut from the baseline and the latest render.",
+      "operation": "See rejections.crop.pad, .max, .scale and .annotate."
+    },
+    "rejections.crop.pad": {
+      "file": "pxsig.config.json",
+      "meaning": "Padding around each changed region, in px; padded regions that overlap merge into one crop.",
+      "values": "0 to 256",
+      "default": "24",
+      "operation": "More context around each change in the crops."
+    },
+    "rejections.crop.max": {
+      "file": "pxsig.config.json",
+      "meaning": "Crops per packet, the most changed pixels first.",
+      "values": "1 to 20",
+      "default": "6",
+      "operation": "Changes past the limit are in mask.png and current.png, not in a crop."
+    },
+    "rejections.crop.scale": {
+      "file": "pxsig.config.json",
+      "meaning": "Nearest-neighbour upscale of each crop: auto brings the short side to at least 160 px, at most 4x.",
+      "values": "auto | 1 | 2 | 4",
+      "default": "auto",
+      "operation": "Never past 1,024 px on the long side; a crop larger than that at 1x is left out, and rejection.md says so."
+    },
+    "rejections.crop.annotate": {
+      "file": "pxsig.config.json",
+      "meaning": "Whether each changed region is outlined on the crops.",
+      "values": "true | false",
+      "default": "true",
+      "operation": "False: plain crops."
+    },
+    "rejections.structure": {
+      "file": "pxsig.config.json",
+      "meaning": "A folder, relative to the project, of committed structure locks (<section>/<name>.aria.yml) to compare with the store's reports/structure/.",
+      "default": "none",
+      "operation": "rejection.md gains a Structure section: the same as the lock, or the first line that differs."
+    },
     "projects": {
       "file": "pxsig.workspace.json",
       "meaning": "Project name to project folder, relative to the workspace root. Each folder holds a pxsig.config.json.",

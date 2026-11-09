@@ -91,6 +91,11 @@ export interface EngineMethods {
     params: { dir: string; only: string[]; pad: number; tolerance: number };
     result: unknown;
   };
+  /** Two PNGs at full size; `mask` writes the changed pixels (the rejection packet). */
+  diff: {
+    params: { a: string; b: string; mask?: string; tolerance?: number };
+    result: import('./rejections.js').PixelDiff;
+  };
   check: {
     params: {
       /** Null only when the run manifest could not be written: the engine answers an error. */
