@@ -64,6 +64,8 @@ export {
   clip,
   sessionBar,
   note,
+  noteRow,
+  noteField,
   summaryDialog,
   summary,
   helpSection,

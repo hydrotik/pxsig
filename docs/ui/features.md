@@ -420,7 +420,7 @@ Files: `src/inspector/Header`, `src/inspector/side/ReactSection`, `src/inspector
 
 ### Inspector header
 
-`inspector.header` · The entry id, its context and reasons, its verdict, its other modes and states, the position in the list, the review buttons and Close.
+`inspector.header` · The entry id, its context and reasons, its verdict, its other modes and states, the position in the list, the review buttons and Close. Reject opens a row under the header for an optional reason (one line, at most 280 characters; `rejections.note.ask: false` rejects at once). A rejected entry's note gives its reason, the re-check command, Edit reason and Copy for an agent (one paragraph for an assistant); an entry checked again since its rejection shows Rejected earlier with Dismiss reason; a reason or packet the server did not keep says so.
 
 States:
 
@@ -430,15 +430,17 @@ States:
 Interactions:
 
 - Approve or reject (accept, in an accessibility session) (A / R)
+- Reject with the reason typed, or none; cancel the reason (Enter / Esc)
+- Edit reason, copy for an agent, dismiss an earlier reason
 - Previous or next entry (← → (J / K))
 - Switch mode or state of the same story
 - Close (Esc)
 
-Components: `Dialog`, `DialogTitle`, `DialogDescription`, `StatusBadge`, `SegmentedChoice`, `IconButton`, `Button`, `CopyValue`
+Components: `Dialog`, `DialogTitle`, `DialogDescription`, `StatusBadge`, `SegmentedChoice`, `IconButton`, `Button`, `CopyValue`, `TextField`
 
-Copy: `inspector.review`, `inspector.nav`, `inspector.variant`, `inspector.contextLatest`, `inspector.contextScenario`, `inspector.withinGate`, `inspector.close`, `inspector.rejectedNote`
+Copy: `inspector.review`, `inspector.nav`, `inspector.variant`, `inspector.contextLatest`, `inspector.contextScenario`, `inspector.withinGate`, `inspector.close`, `inspector.rejectedNote`, `inspector.a11yRejectedNote`, `inspector.rejection`
 
-Files: `src/inspector/Inspector`, `src/inspector/Header`, `src/inspector/controls`, `src/parts/StatusOf`
+Files: `src/inspector/Inspector`, `src/inspector/Header`, `src/inspector/controls`, `src/parts/StatusOf`, `src/inspector/RejectNote`, `src/inspector/RejectedNote`
 
 ### Image stage
 
@@ -477,13 +479,13 @@ Interactions:
 - Read a pixel; focus a region
 - Tolerance: how far a pixel must change to count (disabled while Originals is on)
 - Take one rule off the accepted list
-- Copy a file path; open a file or the story in Storybook
+- Copy a file path; open a file, a rejection packet or the story in Storybook
 
 Components: `KeyValueList`, `KeyValueItem`, `Badge`, `StatusBadge`, `Button`, `Link`, `Icon`, `Slider`
 
 Copy: `inspector.sections`, `inspector.pixel`, `inspector.changes`, `inspector.sliders.tolerance`, `inspector.metrics`, `inspector.a11y`, `inspector.files`, `inspector.storybook`, `inspector.artifacts`
 
-Files: `src/inspector/Inspector`, `src/inspector/side/PixelSection`, `src/inspector/side/ChangesSection`, `src/inspector/side/MetricsSection`, `src/inspector/side/A11ySection`, `src/inspector/side/FilesSection`
+Files: `src/inspector/Inspector`, `src/inspector/RejectNote`, `src/inspector/side/PixelSection`, `src/inspector/side/ChangesSection`, `src/inspector/side/MetricsSection`, `src/inspector/side/A11ySection`, `src/inspector/side/FilesSection`
 
 ### Text labels
 
@@ -514,13 +516,14 @@ States:
 Interactions:
 
 - Decide each entry; the next undecided one opens
+- Copy the rejected entries' reasons for an agent
 - Back to the overview, view the rejected, or keep browsing
 
 Components: `Progress`, `Dialog`, `DialogTitle`, `KeyValueList`, `KeyValueItem`, `CopyValue`, `Button`
 
-Copy: `inspector.session`
+Copy: `inspector.session`, `inspector.rejection.copyPrompt`
 
-Files: `src/inspector/Inspector`, `src/inspector/SessionSummary`
+Files: `src/inspector/Inspector`, `src/inspector/SessionSummary`, `src/inspector/RejectedNote`
 
 ## Storybook panel
 
@@ -537,11 +540,11 @@ Interactions:
 - The inspector keys, on the focused panel
 - Show or hide details
 
-Components: `Switch`, `IconButton`, `SegmentedChoice`
+Components: `Switch`, `IconButton`, `SegmentedChoice`, `TextField`
 
 Copy: `app.embedEmpty`, `inspector.toggles.details`
 
-Files: `src/App`, `src/inspector/Inspector`, `src/inspector/controls`, `src/inspector/side/ViewSection`
+Files: `src/App`, `src/inspector/Inspector`, `src/inspector/controls`, `src/inspector/side/ViewSection`, `src/inspector/RejectNote`
 
 ### Decision window
 

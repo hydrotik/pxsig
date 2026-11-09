@@ -357,6 +357,8 @@ export interface ScreenTarget {
   name?: string;
   text?: string;
   exact?: boolean;
+  /** Found inside this target (the first match). */
+  within?: ScreenTarget;
 }
 
 /** One screen of a feature (fixtures/screens.json). */

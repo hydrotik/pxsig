@@ -7,6 +7,9 @@
   "trim": false,
   "a11y": false,
   "text": true,
+  "rejections": {
+    "structure": "fixtures/locked"
+  },
   "modes": {
     "dark": {
       "globals": "",

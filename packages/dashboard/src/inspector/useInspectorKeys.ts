@@ -1,12 +1,17 @@
 /**
  * The inspector's shortcuts (Inspector.tsx): on the window in the dialog; on the panel when
- * embedded, where the caller passes `onKey` to its keydown.
+ * embedded, where the caller passes `onKey` to its keydown. None fires while a field has focus. R
+ * calls `act('reject')`, which opens the reason's row unless the project rejects at once.
  */
 import React from 'react';
 import type { Row } from '../data';
 import type { DiffViewerActions } from '../diff-viewer';
 import { MODES } from './prefs';
 import type { Mode } from './Stage';
+
+/** Where a key is text: a text input, a textarea, a select, an editable element. */
+const TYPING =
+  'input:not([type="checkbox"], [type="radio"], [type="range"], [type="button"], [type="submit"]), textarea, select, [contenteditable="true"]';
 
 export function useInspectorKeys({
   embedded,
@@ -40,6 +45,9 @@ export function useInspectorKeys({
   ) => {
     if (blockKeys.current || e.metaKey || e.ctrlKey || e.altKey) return;
     const t = e.target as HTMLElement;
+    // Typing in a text field (the reason's) is text: A and R in it decide nothing, in the dialog
+    // and in the Storybook panel alike. A switch or a checkbox in the panel still takes the keys.
+    if (t instanceof HTMLElement && t.closest(TYPING)) return;
     if (t.closest('[role="slider"]') && e.key.startsWith('Arrow')) return;
     const k = e.key;
     const run = (f: () => void) => (e.preventDefault(), f());

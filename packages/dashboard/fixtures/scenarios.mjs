@@ -79,6 +79,29 @@ export const history = (n) =>
   }));
 
 /**
+ * An open rejection as `/__pxsig/data` sends it (lib/rejections.mjs), with its packet and the
+ * paragraph Copy for an agent copies (lib/rejections/prompt.mjs words it).
+ * @param {string} id
+ * @param {string | null} note
+ * @param {{ pass: boolean, ssim: number }[]} [checks] the checks since
+ */
+export const rejection = (id, note, checks = []) => ({
+  at: AT,
+  via: 'dashboard',
+  note,
+  notes: [{ at: AT, via: 'dashboard', note }],
+  checks: checks.map((c) => ({ at: AT, ...c })),
+  packet: `reports/rejected/${id}/`,
+  prompt: [
+    `pxsig rejected ${id} (demo): "${note ?? 'No reason given.'}".`,
+    "Goal: what the reason asks; with no reason, restore the baseline's look.",
+    `Details and images: .pxsig/reports/rejected/${id}/rejection.md, or MCP pxsig_rejected.`,
+    `After the fix: pxsig check ${id}.`,
+    'Never approve.',
+  ].join(' '),
+});
+
+/**
  * The served data for these rows and ledger entries.
  * @param {{ rows: FixtureRow[], entries: ReturnType<typeof entry>[], summary?: Record<string, number> }} o
  */
@@ -121,10 +144,18 @@ export function data({ rows, entries, summary = {} }) {
     detailCalibration: null,
     bench: /** @type {typeof bench | null} */ (null),
     history: /** @type {ReturnType<typeof history>} */ ([]),
-    review: {},
+    review: /** @type {Record<string, { state: string, at: string, note?: string }>} */ ({}),
     a11yReview: {},
+    /** @type {{ visual: Record<string, ReturnType<typeof rejection>>, a11y: Record<string, ReturnType<typeof rejection>> }} */
+    rejections: { visual: {}, a11y: {} },
+    settings: { rejections: { note: { ask: true } } },
     storybook: { baseUrl: 'http://127.0.0.1:1' },
-    paths: { diffRoot: '/p/demo/diffs/', renders: '/p/demo/renders/', baselines: '' },
+    paths: {
+      diffRoot: '/p/demo/diffs/',
+      renders: '/p/demo/renders/',
+      baselines: '',
+      rejected: '/p/demo/reports/rejected/',
+    },
     sigs: {},
     integrity: {
       schemaVersion: 1,
@@ -289,6 +320,30 @@ export const SCENARIOS = {
     d.review = Object.fromEntries(
       ids.map((id, i) => [id, { state: i ? 'rejected' : 'approved', at: AT }])
     );
+    // Copy for an agent copies each rejected entry's paragraph (the first has no reason).
+    d.rejections.visual = Object.fromEntries(
+      ids
+        .slice(1)
+        .map((id, i) => [id, rejection(id, i ? 'The presets overlap the time field' : null)])
+    );
+    return d;
+  },
+  // A rejected entry with its reason and packet, and one checked again since its rejection: it
+  // still differs and waits for a decision, its reason open ("Rejected earlier").
+  rejected() {
+    const light = `${PRIMARY}@light`;
+    const d = data({
+      rows: [row(PRIMARY, changed), row(light, { ...changed, mode: 'light' })],
+      entries: [entry(PRIMARY, [changedIssue]), entry(light, [changedIssue])],
+    });
+    const note = 'The label sits 4px lower than in the baseline';
+    d.review = { [PRIMARY]: { state: 'rejected', at: AT, note } };
+    d.rejections.visual = {
+      [PRIMARY]: rejection(PRIMARY, note),
+      [light]: rejection(light, 'The border is lighter than in the baseline', [
+        { pass: false, ssim: 0.8 },
+      ]),
+    };
     return d;
   },
   'first-approval'() {

@@ -72,9 +72,13 @@ export interface Anchor {
 }
 
 /** An element found by role and accessible name (a substring unless `exact`), or by its text. */
-export type Target =
+export type Target = (
   | { role: string; name?: string; exact?: boolean }
-  | { text: string; exact?: boolean };
+  | { text: string; exact?: boolean }
+) & {
+  /** Found inside this target: the side panel's Reject, not the header's. */
+  within?: Target;
+};
 
 export interface Screen {
   scenario: string;

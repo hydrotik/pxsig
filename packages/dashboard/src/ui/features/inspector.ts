@@ -7,7 +7,7 @@ export const INSPECTOR: Feature[] = [
     section: 'inspector',
     title: 'Inspector header',
     purpose:
-      'The entry id, its context and reasons, its verdict, its other modes and states, the position in the list, the review buttons and Close.',
+      "The entry id, its context and reasons, its verdict, its other modes and states, the position in the list, the review buttons and Close. Reject opens a row under the header for an optional reason (one line, at most 280 characters; `rejections.note.ask: false` rejects at once). A rejected entry's note gives its reason, the re-check command, Edit reason and Copy for an agent (one paragraph for an assistant); an entry checked again since its rejection shows Rejected earlier with Dismiss reason; a reason or packet the server did not keep says so.",
     states: {
       static: 'No review buttons.',
       readOnly:
@@ -15,6 +15,8 @@ export const INSPECTOR: Feature[] = [
     },
     interactions: [
       { action: 'Approve or reject (accept, in an accessibility session)', keys: 'A / R' },
+      { action: 'Reject with the reason typed, or none; cancel the reason', keys: 'Enter / Esc' },
+      { action: 'Edit reason, copy for an agent, dismiss an earlier reason' },
       { action: 'Previous or next entry', keys: '← → (J / K)' },
       { action: 'Switch mode or state of the same story' },
       { action: 'Close', keys: 'Esc' },
@@ -28,6 +30,8 @@ export const INSPECTOR: Feature[] = [
       'inspector.withinGate',
       'inspector.close',
       'inspector.rejectedNote',
+      'inspector.a11yRejectedNote',
+      'inspector.rejection',
     ],
     components: [
       'Dialog',
@@ -38,8 +42,16 @@ export const INSPECTOR: Feature[] = [
       'IconButton',
       'Button',
       'CopyValue',
+      'TextField',
     ],
-    files: ['inspector/Inspector', 'inspector/Header', 'inspector/controls', 'parts/StatusOf'],
+    files: [
+      'inspector/Inspector',
+      'inspector/Header',
+      'inspector/controls',
+      'parts/StatusOf',
+      'inspector/RejectNote',
+      'inspector/RejectedNote',
+    ],
     screens: [
       {
         scenario: 'changed',
@@ -51,6 +63,24 @@ export const INSPECTOR: Feature[] = [
         state: 'readOnly',
         hash: '#inspect=ui-button--primary',
         wait: { text: 'Read only: approving needs the dashboard link. In a terminal, in the' },
+      },
+      {
+        // Reject opens the reason's row, empty, under the header.
+        scenario: 'changed',
+        hash: '#inspect=ui-button--primary',
+        actions: [{ click: { role: 'button', name: 'Reject', exact: true } }],
+        wait: { role: 'textbox', name: 'Reason' },
+      },
+      {
+        scenario: 'rejected',
+        hash: '#inspect=ui-button--primary',
+        wait: { text: 'Rejected. Reason: The label sits 4px lower than in the baseline' },
+      },
+      {
+        // Checked again since its rejection: it still differs, its reason open.
+        scenario: 'rejected',
+        hash: '#inspect=ui-button--primary@light',
+        wait: { role: 'button', name: 'Dismiss reason', exact: true },
       },
     ],
     anchors: [
@@ -141,7 +171,7 @@ export const INSPECTOR: Feature[] = [
         action: 'Tolerance: how far a pixel must change to count (disabled while Originals is on)',
       },
       { action: 'Take one rule off the accepted list' },
-      { action: 'Copy a file path; open a file or the story in Storybook' },
+      { action: 'Copy a file path; open a file, a rejection packet or the story in Storybook' },
     ],
     copy: [
       'inspector.sections',
@@ -166,6 +196,7 @@ export const INSPECTOR: Feature[] = [
     ],
     files: [
       'inspector/Inspector',
+      'inspector/RejectNote',
       'inspector/side/PixelSection',
       'inspector/side/ChangesSection',
       'inspector/side/MetricsSection',
@@ -177,6 +208,22 @@ export const INSPECTOR: Feature[] = [
         scenario: 'changed',
         hash: '#inspect=ui-button--primary',
         wait: { role: 'heading', name: 'Metrics', exact: true },
+      },
+      {
+        // The Accessibility section's Reject opens the reason's row for the violations.
+        scenario: 'a11y',
+        hash: '#inspect=ui-button--primary',
+        actions: [
+          {
+            click: {
+              role: 'button',
+              name: 'Reject',
+              exact: true,
+              within: { role: 'complementary' },
+            },
+          },
+        ],
+        wait: { role: 'group', name: 'Reject the violations with a reason' },
       },
     ],
     anchors: [
@@ -237,9 +284,10 @@ export const INSPECTOR: Feature[] = [
     states: { empty: 'The summary when every entry is decided.' },
     interactions: [
       { action: 'Decide each entry; the next undecided one opens' },
+      { action: "Copy the rejected entries' reasons for an agent" },
       { action: 'Back to the overview, view the rejected, or keep browsing' },
     ],
-    copy: ['inspector.session'],
+    copy: ['inspector.session', 'inspector.rejection.copyPrompt'],
     components: [
       'Progress',
       'Dialog',
@@ -249,7 +297,7 @@ export const INSPECTOR: Feature[] = [
       'CopyValue',
       'Button',
     ],
-    files: ['inspector/Inspector', 'inspector/SessionSummary'],
+    files: ['inspector/Inspector', 'inspector/SessionSummary', 'inspector/RejectedNote'],
     screens: [
       {
         scenario: 'changed',
@@ -279,13 +327,26 @@ export const INSPECTOR: Feature[] = [
       { action: 'Show or hide details' },
     ],
     copy: ['app.embedEmpty', 'inspector.toggles.details'],
-    components: ['Switch', 'IconButton', 'SegmentedChoice'],
-    files: ['App', 'inspector/Inspector', 'inspector/controls', 'inspector/side/ViewSection'],
+    components: ['Switch', 'IconButton', 'SegmentedChoice', 'TextField'],
+    files: [
+      'App',
+      'inspector/Inspector',
+      'inspector/controls',
+      'inspector/side/ViewSection',
+      'inspector/RejectNote',
+    ],
     screens: [
       {
         scenario: 'changed',
         query: 'embed=1&story=ui-button--primary',
         wait: { role: 'group', name: 'Image comparison' },
+      },
+      {
+        // Reject in the panel opens the reason's row; typing in it decides nothing.
+        scenario: 'changed',
+        query: 'embed=1&story=ui-button--primary',
+        actions: [{ click: { role: 'button', name: 'Reject', exact: true } }],
+        wait: { role: 'textbox', name: 'Reason' },
       },
     ],
   },

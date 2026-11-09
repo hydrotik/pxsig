@@ -8,7 +8,7 @@ import * as s from '../../dashboard.css';
 import type { Analysis } from '../analyse';
 import { A11ySection } from './A11ySection';
 import { ChangesSection } from './ChangesSection';
-import { FilesSection } from './FilesSection';
+import { FilesSection, packetsOf } from './FilesSection';
 import { MetricsSection } from './MetricsSection';
 import { PixelSection } from './PixelSection';
 import { ReactSection } from './ReactSection';
@@ -24,7 +24,7 @@ export type SideProps = P<typeof PixelSection> &
   Omit<P<typeof ChangesSection>, 'analysis' | 'loaded' | 'W' | 'H' | 'tol' | 'regions' | 'region'> &
   Omit<P<typeof MetricsSection>, 'm'> &
   P<typeof A11ySection> &
-  Omit<P<typeof FilesSection>, 'sb'> &
+  Omit<P<typeof FilesSection>, 'sb' | 'packets'> &
   Pick<P<typeof ReactSection>, 'onGo'> &
   Pick<P<typeof TextSection>, 'focusBox'> & { analysis: Analysis | null };
 
@@ -119,7 +119,10 @@ export function InspectorSide({
 
       {embedded ? null : <ReactSection data={data} row={row} onGo={onGo} />}
 
-      <FilesSection data={data} p={p} hasArtifacts={hasArtifacts} sizes={sizes} sb={sb} />
+      <FilesSection
+        {...{ data, p, hasArtifacts, sizes, sb }}
+        packets={target?.scenario ? [] : packetsOf(data, row.id)}
+      />
     </aside>
   );
 }

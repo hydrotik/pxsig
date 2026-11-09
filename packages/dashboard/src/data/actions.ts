@@ -2,22 +2,43 @@
 import { decide } from '../link';
 import { type Refusal, withProject } from './request';
 
+/**
+ * A decision's answer (server.md): `notice` says what was not kept (a reject's reason, while the
+ * store's reports/ is not git-ignored).
+ */
+export interface DecisionAnswer {
+  notice?: string;
+  entry?: { noteKept?: false } | null;
+}
+
+// A reject's reason goes in the body only when there is one: without it the body is `{ id }`, as
+// before reasons.
+const withNote = (body: Record<string, string>, note?: string) =>
+  withProject(note?.trim() ? { ...body, note: note.trim() } : body);
+
 // Decisions carry the dashboard link's cookie (link.ts); without it the server refuses them, so an
 // agent or a script posting to the server, or reading the page, cannot approve.
 export async function reviewAction(
   action: 'approve' | 'reject' | 'unreview',
-  id: string
-): Promise<void> {
-  await decide(`/__pxsig/${action}`, withProject({ id }));
+  id: string,
+  note?: string
+): Promise<DecisionAnswer> {
+  return await decide(`/__pxsig/${action}`, withNote({ id }, note));
 }
 
-/** `unaccept` takes `rule` (or every rule) off the entry's accepted list. */
+/** `unaccept` takes `rule` (or every rule) off the entry's accepted list; `reject` takes `note`. */
 export async function a11yAction(
   action: 'accept' | 'reject' | 'unreview' | 'unaccept',
   id: string,
-  rule?: string
-): Promise<void> {
-  await decide(`/__pxsig/a11y-${action}`, withProject(rule ? { id, rule } : { id }));
+  rule?: string,
+  note?: string
+): Promise<DecisionAnswer> {
+  return await decide(`/__pxsig/a11y-${action}`, withNote(rule ? { id, rule } : { id }, note));
+}
+
+/** Close an open rejection after a re-check, with no decision (Dismiss reason; a person's). */
+export async function dismissRejection(id: string, kind: 'visual' | 'a11y'): Promise<void> {
+  await decide('/__pxsig/rejection-dismiss', withProject({ id, kind }));
 }
 
 /** `POST /__pxsig/check`'s answer, or a refusal (server.md). */

@@ -44,6 +44,8 @@ import {
 import { Header } from './Header';
 import { useApproving } from '../link';
 import { SessionSummary } from './SessionSummary';
+import { RejectNoteRow, useRejectNote } from './RejectNote';
+import { RejectedNote } from './RejectedNote';
 import { InspectorSide } from './side/Side';
 
 export interface InspectTarget {
@@ -228,8 +230,20 @@ export function Inspector({
   const a11yMode = !embedded && target?.session === 'a11y';
   const review = row ? (a11yMode ? data.a11yReview?.[row.id] : data.review[row.id]) : undefined;
   const a11yDecision = row ? data.a11yReview?.[row.id] : undefined;
-  const { siblings, storyOpen, note, checking, pending, act, unaccept, recheckOne, approveAll } =
-    useInspectorActions({ data, target, row, list, index, a11yMode, onNavigate, setBusy });
+  const actions = useInspectorActions({
+    data,
+    target,
+    row,
+    list,
+    index,
+    a11yMode,
+    onNavigate,
+    setBusy,
+  });
+  const { siblings, storyOpen, note, notice, checking, pending, act, dismiss, dismissed } = actions;
+  const { unaccept, recheckOne, approveAll } = actions;
+  // Reject (button or R) opens the reason's row; `decide` is `act` with that step.
+  const { asking, setAsking, decide, edit, submit } = useRejectNote({ data, row, act, a11yMode });
   // Reject, Approve, A and R wait for the entry's images: a click meant for the last entry
   // cannot land on this one.
   const settled = !!row && settledFor === key;
@@ -242,7 +256,7 @@ export function Inspector({
     canReview,
     busy: busy || !settled,
     row,
-    act,
+    act: decide,
     originals,
     setOriginals,
   });
@@ -323,7 +337,7 @@ export function Inspector({
       pending={pending}
       armed={settled}
       review={review}
-      act={act}
+      act={decide}
       newA11y={newA11y}
       changed={changed}
       row={row}
@@ -352,12 +366,15 @@ export function Inspector({
       </div>
     ) : null;
   // The read-only note already says what a refused decision's note would.
-  const actionNote =
-    note && !(readOnly && note === t('inspector.review.needsLink')) ? (
-      <div className={s.note} role="status">
-        <span>{note}</span>
-      </div>
-    ) : null;
+  const shown = [
+    note && !(readOnly && note === t('inspector.review.needsLink')) ? note : null,
+    notice,
+  ];
+  const actionNote = shown.some(Boolean) ? (
+    <div className={s.note} role="status">
+      {shown.map((x) => (x ? <span key={x}>{x}</span> : null))}
+    </div>
+  ) : null;
   const desc = row.reasons?.length
     ? row.reasons.join(' · ')
     : row.pass
@@ -398,13 +415,19 @@ export function Inspector({
       </span>
     </div>
   ) : null;
-  const rejectedNote =
-    review?.state === 'rejected' && !target?.scenario ? (
-      <div className={s.note}>
-        <span>{t(a11yMode ? 'inspector.a11yRejectedNote' : 'inspector.rejectedNote')}</span>
-        <CopyValue value={`pxsig check ${row.id}`} />
-      </div>
-    ) : null;
+  // In the rejected note's place while it is open: the reason's row.
+  const rejectedNote = asking ? (
+    <RejectNoteRow {...{ asking, setAsking, submit }} busy={busy} />
+  ) : target?.scenario ? null : (
+    <RejectedNote
+      {...{ data, review, busy, canReview }}
+      id={row.id}
+      a11y={a11yMode}
+      dismissed={dismissed === `${a11yMode ? 'a11y' : 'visual'}:${row.id}`}
+      onEdit={(v) => edit(a11yMode, v)}
+      onDismiss={() => dismiss(a11yMode ? 'a11y' : 'visual')}
+    />
+  );
   if (complete)
     return (
       <SessionSummary
@@ -530,7 +553,8 @@ export function Inspector({
               {...{ embedded, viewControls, pixels, regions, region, stepRegion, sb, sbLink }}
               {...{ loaded, W, H, m, tol, analysis, focusRegion, setTol, originals, detail }}
               {...{ hasArtifacts, p, row, newA11y, target, canReview, busy, unaccept, a11yMode }}
-              {...{ a11yDecision, act, data, sizes, onGo, focusBox }}
+              {...{ a11yDecision, data, sizes, onGo, focusBox }}
+              act={decide}
             />
           ) : null}
         </div>

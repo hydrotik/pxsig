@@ -24,13 +24,13 @@ const UNCOVERED_AT_L1 = [
   'repair',
 ];
 
-test('30 live screens: every step in both themes, ids live--<flow>-<n>@<theme>', () => {
+test('34 live screens: every step in both themes, ids live--<flow>-<n>@<theme>', () => {
   const e = screenEntries(
     liveCatalogue(),
     (id, section) => `.pxsig/baselines/${section}/${id}.psig`,
     () => 'scripts/live/flows.mjs'
   );
-  assert.equal(e.length, 30);
+  assert.equal(e.length, 34);
   assert.ok(e.every((x) => /^live--[a-z-]+-\d+@(dark|light)$/.test(x.id)));
   assert.ok(e.every((x) => x.sig.startsWith('.pxsig/baselines/live/')));
   assert.deepEqual(
@@ -49,6 +49,8 @@ test('30 live screens: every step in both themes, ids live--<flow>-<n>@<theme>',
       'live--react-1',
       'live--react-2',
       'live--react-3',
+      'live--dismiss-1',
+      'live--dismiss-2',
       'live--read-only-1',
       'live--offline-1',
     ]

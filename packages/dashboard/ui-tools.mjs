@@ -21,7 +21,7 @@
  *   an adapter's conformance.json
  * @typedef {{ name: string, group: string, required: boolean, status: string, note: string, usedBy: string[] }} GapRow
  * @typedef {{ adapter: string, contract: ContractStatus, rows: GapRow[], problems: string[] }} Gaps
- * @typedef {{ role?: unknown, text?: unknown, name?: string, exact?: boolean }} ScreenTarget
+ * @typedef {{ role?: unknown, text?: unknown, name?: string, exact?: boolean, within?: unknown }} ScreenTarget
  * @typedef {{ scenario: string, state?: string, query?: string, hash?: string, actions?: { click?: ScreenTarget, scroll?: ScreenTarget, press?: unknown }[], wait: ScreenTarget }} FeatureScreen
  * @typedef {{ id: string, section: string, title: string, purpose: string, states: Record<string, string>, interactions: { action: string, keys?: string }[], copy: string[], components: string[], files: string[], screens: FeatureScreen[], anchors?: { name: string, target: ScreenTarget }[] }} FeatureDef
  *   a FEATURES entry (src/ui/features.ts's `Feature`), as the checks below read it
@@ -152,9 +152,7 @@ function copyExists(messages, key) {
  * renders one, so its entry leaves with that work.
  * @type {Partial<Record<string, string>>}
  */
-export const NOT_YET_RENDERED = {
-  TextField: "the reason row on Reject (pxsig 0.7.6, the rejection packet's dashboard work)",
-};
+export const NOT_YET_RENDERED = {};
 
 export async function checkAll() {
   /** @type {string[]} */

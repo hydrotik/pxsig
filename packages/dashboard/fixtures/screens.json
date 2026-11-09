@@ -950,7 +950,7 @@
       "id": "inspector.header",
       "section": "inspector",
       "title": "Inspector header",
-      "purpose": "The entry id, its context and reasons, its verdict, its other modes and states, the position in the list, the review buttons and Close.",
+      "purpose": "The entry id, its context and reasons, its verdict, its other modes and states, the position in the list, the review buttons and Close. Reject opens a row under the header for an optional reason (one line, at most 280 characters; `rejections.note.ask: false` rejects at once). A rejected entry's note gives its reason, the re-check command, Edit reason and Copy for an agent (one paragraph for an assistant); an entry checked again since its rejection shows Rejected earlier with Dismiss reason; a reason or packet the server did not keep says so.",
       "states": {
         "static": "No review buttons.",
         "readOnly": "A note under the header gives the command for a dashboard link, with a copy button; Reject, Approve and Undo stay in place, disabled."
@@ -963,7 +963,8 @@
         "SegmentedChoice",
         "IconButton",
         "Button",
-        "CopyValue"
+        "CopyValue",
+        "TextField"
       ],
       "screens": [
         {
@@ -980,6 +981,39 @@
           "hash": "#inspect=ui-button--primary",
           "wait": {
             "text": "Read only: approving needs the dashboard link. In a terminal, in the"
+          }
+        },
+        {
+          "scenario": "changed",
+          "hash": "#inspect=ui-button--primary",
+          "actions": [
+            {
+              "click": {
+                "role": "button",
+                "name": "Reject",
+                "exact": true
+              }
+            }
+          ],
+          "wait": {
+            "role": "textbox",
+            "name": "Reason"
+          }
+        },
+        {
+          "scenario": "rejected",
+          "hash": "#inspect=ui-button--primary",
+          "wait": {
+            "text": "Rejected. Reason: The label sits 4px lower than in the baseline"
+          }
+        },
+        {
+          "scenario": "rejected",
+          "hash": "#inspect=ui-button--primary@light",
+          "wait": {
+            "role": "button",
+            "name": "Dismiss reason",
+            "exact": true
           }
         }
       ],
@@ -1104,6 +1138,26 @@
             "role": "heading",
             "name": "Metrics",
             "exact": true
+          }
+        },
+        {
+          "scenario": "a11y",
+          "hash": "#inspect=ui-button--primary",
+          "actions": [
+            {
+              "click": {
+                "role": "button",
+                "name": "Reject",
+                "exact": true,
+                "within": {
+                  "role": "complementary"
+                }
+              }
+            }
+          ],
+          "wait": {
+            "role": "group",
+            "name": "Reject the violations with a reason"
           }
         }
       ],
@@ -1252,7 +1306,8 @@
       "components": [
         "Switch",
         "IconButton",
-        "SegmentedChoice"
+        "SegmentedChoice",
+        "TextField"
       ],
       "screens": [
         {
@@ -1261,6 +1316,23 @@
           "wait": {
             "role": "group",
             "name": "Image comparison"
+          }
+        },
+        {
+          "scenario": "changed",
+          "query": "embed=1&story=ui-button--primary",
+          "actions": [
+            {
+              "click": {
+                "role": "button",
+                "name": "Reject",
+                "exact": true
+              }
+            }
+          ],
+          "wait": {
+            "role": "textbox",
+            "name": "Reason"
           }
         }
       ]

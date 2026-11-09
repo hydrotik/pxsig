@@ -7,7 +7,7 @@
  *
  * A fixture project is checked for real: once by `pxsig check` (the CLI writes check.json), then
  * by the server (`POST /__pxsig/check`, which rewrites it in its own shape), with the server's
- * integrity ledger, and one entry rejected through it. Every key path the scenarios set must be
+ * integrity ledger, and one entry rejected through it with a reason (its packet written). Every key path the scenarios set must be
  * one the server sent in either answer, with the same JSON type, so a field renamed on the server
  * fails here instead of leaving the mocked dashboard green. Needs the Rust binary and Chromium;
  * skipped without them.
@@ -36,6 +36,8 @@ const MAPS = new Set([
   'sigs',
   'review',
   'a11yReview',
+  'rejections.visual',
+  'rejections.a11y',
   'scenarioSuites',
   'calibrationSuites',
   'check.envs',
@@ -58,7 +60,6 @@ const NOT_IN_SCENARIOS = new Set([
   'calibrationSuites', // the same
   'approvals', // approvals.byStory: off unless set
   'source', // `dashboard-screens` only for pxsig's own screens
-  'rejections', // the open rejections (lib/rejections.mjs): no dashboard view reads them yet
 ]);
 
 /** The engine's text labels, from src/ (ONLY_SOME_RUNS paths are read relative to it). */
@@ -175,11 +176,24 @@ async function liveData() {
       assert.equal((await S.post('check', { all: true })).status, 202, `server check:\n${S.log()}`);
       await S.idle();
       await get('integrity?fresh=1');
-      // A decision, so the answer carries `review` (the session summary's scenarios set it).
+      // A decision with its reason, so the answer carries `review` with a note and an open
+      // rejection (the rejected scenarios set them), once its packet is written.
       const rows = /** @type {{ rows: { id: string }[] }} */ ((await get('data')).check).rows;
       const id = rows[0].id;
-      assert.equal((await S.post('reject', { id })).status, 200, `reject:\n${S.log()}`);
-      return [afterCli, await get('data')];
+      const note = 'the label moved';
+      assert.equal((await S.post('reject', { id, note })).status, 200, `reject:\n${S.log()}`);
+      /** @type {Record<string, unknown>} */
+      let after = {};
+      for (let i = 0; i < 100; i++) {
+        after = await get('data');
+        const r =
+          /** @type {{ visual: Record<string, { packet: string | null, packetError?: string }> }} */ (
+            after.rejections
+          ).visual[id];
+        if (r?.packet || r?.packetError) break;
+        await new Promise((ok) => setTimeout(ok, 50));
+      }
+      return [afterCli, after];
     } finally {
       S.stop();
     }

@@ -957,7 +957,7 @@
       "originals": "Original images",
       "story": "Previous / next story",
       "approve": "Approve",
-      "reject": "Reject",
+      "reject": "Reject, with an optional reason",
       "close": "Close"
     },
     "commands": {
@@ -1047,11 +1047,11 @@
         },
         "review": {
           "term": "Approve, Reject, Undo",
-          "meaning": "Approve writes the latest render as the baseline. Reject marks the change as unwanted. Undo reverses either; for an approval it restores the previous baseline."
+          "meaning": "Approve writes the latest render as the baseline. Reject marks the change as unwanted, with an optional reason: Enter rejects, Esc cancels. Undo reverses either; for an approval it restores the previous baseline."
         },
         "note": {
           "term": "Rejected note",
-          "meaning": "The command to re-check the entry once it is fixed."
+          "meaning": "The reason, the command to re-check the entry once it is fixed, Edit reason, and Copy for an agent: one paragraph for an assistant with the reason and the re-check command. After a re-check that still differs, Rejected earlier keeps the reason until the entry passes or is approved, or Dismiss reason closes it."
         },
         "modes": {
           "term": "Compare modes",
@@ -1411,7 +1411,9 @@
       "pathCopied": "Copied: {label}",
       "storybook": "Open in Storybook",
       "copyPath": "Copy path",
-      "copied": "Copied"
+      "copied": "Copied",
+      "packet": "Rejection packet",
+      "a11yPacket": "Accessibility rejection packet"
     },
     "renders": {
       "baseline": "Baseline render",
@@ -1425,6 +1427,30 @@
       "swipe": "Swipe position"
     },
     "rejectedNote": "Rejected. Fix the component, then re-run the check:",
+    "rejection": {
+      "reason": "Reason",
+      "placeholder": "Optional. What is wrong, in one line",
+      "rowLabel": "Reject with a reason",
+      "a11yRowLabel": "Reject the violations with a reason",
+      "submitTitle": "Reject, with the reason when one is given (Enter). Esc cancels.",
+      "cancel": "Cancel",
+      "rejected": "Rejected. Reason: {note}",
+      "a11yRejected": "Violations rejected. Reason: {note}",
+      "next": "After the fix, re-run the check:",
+      "edit": "Edit reason",
+      "copyPrompt": "Copy for an agent",
+      "copied": "Copied",
+      "copyPromptTitle": "Copy one paragraph for an assistant: the reason, the goal, where the details are and the re-check command",
+      "copyPromptsTitle": "Copy one paragraph per rejected entry for an assistant: the reason, the goal, where the details are and the re-check command",
+      "earlier": "Rejected earlier: {note}",
+      "earlierNoReason": "Rejected earlier, with no reason given.",
+      "dismiss": "Dismiss reason",
+      "dismissTitle": "Close the earlier rejection with no decision. The reason stays in the store's log.",
+      "dismissed": "Reason dismissed. The store's log keeps it.",
+      "notKept": "Note not kept: {folder}/ is not git-ignored. pxsig doctor shows the fix.",
+      "packetError": "Rejection packet {why}.",
+      "packetFailed": "Rejection packet not written: {why}."
+    },
     "session": {
       "label": "Review progress",
       "changed": "Reviewing changes",
