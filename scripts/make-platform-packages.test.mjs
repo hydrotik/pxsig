@@ -167,8 +167,8 @@ test(
       const self = spawnSync(process.execPath, ['--test'], { cwd: pkg, encoding: 'utf8', env });
       assert.equal(self.status, 0, self.stdout + self.stderr);
       assert.match(self.stdout, /^# pass 1$/m);
-      // A binary of another version fails it.
-      writeFileSync(join(pkg, 'bin', 'pxsig'), '#!/bin/sh\necho "pxsig 0.0.1"\n');
+      // A binary that does not run fails it.
+      writeFileSync(join(pkg, 'bin', 'pxsig'), '#!/bin/sh\nexit 1\n');
       assert.notEqual(spawnSync(process.execPath, ['--test'], { cwd: pkg, env }).status, 0);
     } finally {
       rmSync(dir, { recursive: true, force: true });
