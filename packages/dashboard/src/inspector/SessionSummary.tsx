@@ -1,9 +1,13 @@
-/** The review session's summary (Inspector.tsx): what was decided and what to run next. */
+/**
+ * The review session's summary (Inspector.tsx): what was decided and what to run next, with Copy
+ * for an agent for the rejected entries' reasons.
+ */
 import type { ReactNode } from 'react';
 import { Button, CopyValue, Dialog, DialogTitle, KeyValueItem, KeyValueList } from '@ui';
 import type { Data, Row } from '../data';
 import { Cmd, t, tx } from '../copy';
 import * as s from '../dashboard.css';
+import { CopyText, rejectionOf } from './RejectedNote';
 
 export function SessionSummary({
   progress,
@@ -24,6 +28,11 @@ export function SessionSummary({
   onGo?: (tab: string, filter?: string) => void;
   setStay: (stay: boolean) => void;
 }) {
+  // Every rejected entry's paragraph for an assistant, one after another (Copy for an agent).
+  const prompts = rejectedRows
+    .map((r) => rejectionOf(data, a11yMode, r.id)?.prompt)
+    .filter(Boolean)
+    .join('\n\n');
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} className={s.summaryDialog}>
       {progress}
@@ -54,6 +63,11 @@ export function SessionSummary({
                   )}
                 </span>
                 <CopyValue value={`pxsig check ${rejectedRows.map((r) => r.id).join(' ')}`} />
+                {prompts ? (
+                  <span>
+                    <CopyText value={prompts} title={t('inspector.rejection.copyPromptsTitle')} />
+                  </span>
+                ) : null}
               </span>
             </KeyValueItem>
           ) : null}

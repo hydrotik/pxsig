@@ -15,7 +15,7 @@
       - link "Accessibility":
         - /url: "#a11y"
     - listitem:
-      - link "Runs, 7 runs":
+      - link "Runs, 8 runs":
         - /url: "#history"
         - text: Runs
     - listitem:
@@ -94,5 +94,5 @@
   - button "Compiled 0 of 1 analysed"
   - text: Still rendering — Not measured
   - heading "Changed Entries per Run" [level=3]
-  - paragraph: 7 runs.
-  - application: 1 2 3 4 5 6 7 0 6 12
+  - paragraph: 8 runs.
+  - application: 1 2 3 4 5 6 7 8 0 6 12

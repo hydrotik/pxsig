@@ -18,9 +18,11 @@
   - button "Reject" [disabled]
   - button "Approve"
   - button "Close"
-  - text: "Rejected. Fix the component, then re-run the check: pxsig check components-badge--neutral@dark"
+  - text: "Rejected. Reason: The badge text is cut off After the fix, re-run the check: pxsig check components-badge--neutral@dark"
   - button "Copy pxsig check components-badge--neutral@dark"
   - status
+  - button "Edit reason"
+  - button "Copy for an agent"
   - group "Compare mode":
     - radio "Side by side" [checked]
     - radio "Swipe"
@@ -56,6 +58,10 @@
           - /url: /p/example-single/sig/components-badge--neutral%40dark
         - text: missing
         - 'button "Copy path: Baseline record (JSON)"': Copy path
+      - listitem:
+        - link "Rejection packet (opens in a new tab)":
+          - /url: /p/example-single/reports/rejected/components-badge--neutral@dark/rejection.md
+        - 'button "Copy path: Rejection packet"': Copy path
       - listitem:
         - link "Open in Storybook (opens in a new tab)":
           - /url: http://127.0.0.1:1/?path=/story/components-badge--neutral&globals=theme:dark

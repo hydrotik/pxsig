@@ -64,6 +64,8 @@
       "usedBy": [
         "App",
         "inspector/Header",
+        "inspector/RejectNote",
+        "inspector/RejectedNote",
         "inspector/SessionSummary",
         "inspector/controls",
         "inspector/side/A11ySection",
@@ -422,6 +424,7 @@
       "role": "a command with a copy button",
       "usedBy": [
         "inspector/Inspector",
+        "inspector/RejectedNote",
         "inspector/SessionSummary",
         "views/react/CompilerPanel"
       ]
@@ -538,7 +541,9 @@
       "group": "controls",
       "required": false,
       "role": "a labelled single-line text input",
-      "usedBy": []
+      "usedBy": [
+        "inspector/RejectNote"
+      ]
     },
     "Select": {
       "group": "controls",

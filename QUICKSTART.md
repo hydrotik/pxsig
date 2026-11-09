@@ -63,9 +63,10 @@ the screen below it. Details: [docs/server.md](docs/server.md#guards).
 ## 4. Review, one entry at a time
 
 Open an entry from the Overview or Review, compare the baseline and the latest render (side by
-side, swipe, onion skin, pixel diff, heat map), then **Approve** (`A`) or **Reject** (`R`). Each
-decision covers that one entry: one story in one mode and state. Every approval is logged with
-the file's hash before and after, and can be undone.
+side, swipe, onion skin, pixel diff, heat map), then **Approve** (`A`) or **Reject** (`R`). Reject
+asks for an optional reason, one line: Enter rejects, with or without one. Each decision covers
+that one entry: one story in one mode and state. Every approval is logged with the file's hash
+before and after, and can be undone.
 
 ```bash
 pnpm exec pxsig doctor                # confirms nothing is left uncovered

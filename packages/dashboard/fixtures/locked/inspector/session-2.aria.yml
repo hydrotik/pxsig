@@ -15,6 +15,7 @@
     - text: "Fix the components, then re-run the check: pxsig check ui-date-range-picker--with-presets-and-time ui-date-range-picker--with-presets-and-time@light ui-navigation-menu--nested-with-descriptions ui-navigation-menu--nested-with-descriptions@light"
     - button "Copy pxsig check ui-date-range-picker--with-presets-and-time ui-date-range-picker--with-presets-and-time@light ui-navigation-menu--nested-with-descriptions ui-navigation-menu--nested-with-descriptions@light"
     - status
+    - button "Copy for an agent"
   - button "Back to overview"
   - button "View rejected"
   - button "Back to entries"

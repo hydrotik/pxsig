@@ -8,6 +8,7 @@
  * An id is a baseline: a step is never renumbered; a new step takes the next number or a new flow.
  *
  * A step's actions: `{ click }` and `{ press }` as in fixtures/screens.json, and the live ones:
+ * `{ type: 'text' }` type into the focused field (the reason's) ·
  * `{ link: '#hash' }` open a fresh dashboard link (the ticket traded by the page) · `{ cli: [...] }`
  * run the pxsig CLI in the staged folder, against this server · `{ change: true }` the scripted
  * change (Badge.jsx written, Storybook swapped for the "after" build) · `{ react: true }` the
@@ -49,7 +50,8 @@ export const FEATURES = [
   {
     id: 'live.reject',
     title: 'Reject an entry',
-    purpose: 'Reject moves on; back on the entry, its Rejected note and Undo.',
+    purpose:
+      "Reject opens the reason's row; the reason typed, Enter rejects and moves on; back on the entry, its reason, Edit reason, Copy for an agent and Undo.",
     covers: ['reject'],
   },
   {
@@ -84,6 +86,13 @@ export const FEATURES = [
     purpose:
       'Analyse finds the component the React Compiler now skips; Measure renders counts renders in a visual check; Cancel stops one part way.',
     covers: ['react', 'check'],
+  },
+  {
+    id: 'live.dismiss',
+    title: 'Dismiss an earlier reason',
+    purpose:
+      'A changed entry rejected with a reason, checked again while it still differs: Rejected earlier, with the reason; Dismiss reason closes it.',
+    covers: ['reject', 'check', 'rejection-dismiss'],
   },
   {
     id: 'live.read-only',
@@ -124,9 +133,11 @@ export const STEPS = [
     n: 1,
     actions: [
       { click: { role: 'button', name: 'Reject', exact: true } },
+      { type: 'The badge text is cut off' },
+      { press: 'Enter' },
       { click: { role: 'button', name: 'Previous story (←)' } },
     ],
-    wait: { text: 'Rejected. Fix the component' },
+    wait: { text: 'Rejected. Reason: The badge text is cut off' },
   },
   {
     feature: 'live.undo',
@@ -205,6 +216,26 @@ export const STEPS = [
     n: 1,
     actions: [{ readOnly: '#overview' }],
     wait: { text: 'Read only', exact: true },
+  },
+  {
+    feature: 'live.dismiss',
+    n: 1,
+    // On the inspector live.changed left open: reject with a reason (the next changed entry
+    // opens), check everything again (the decision goes, the reason stays), back on the entry.
+    actions: [
+      { click: { role: 'button', name: 'Reject', exact: true } },
+      { type: 'The badge colour is too pale' },
+      { press: 'Enter' },
+      { cli: ['check', '--full'] },
+      { click: { role: 'button', name: 'Previous story (←)' } },
+    ],
+    wait: { text: 'Rejected earlier: The badge colour is too pale' },
+  },
+  {
+    feature: 'live.dismiss',
+    n: 2,
+    actions: [{ click: { role: 'button', name: 'Dismiss reason', exact: true } }],
+    wait: { text: 'Reason dismissed', exact: false },
   },
   {
     feature: 'live.offline',

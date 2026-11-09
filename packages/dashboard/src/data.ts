@@ -26,6 +26,8 @@ export type {
   BenchReport,
   HistoryRun,
   ReviewEntry,
+  A11yDecision,
+  Rejection,
   IntegrityIssue,
   IntegrityEntry,
   IntegrityComponent,
@@ -52,7 +54,15 @@ export {
   type ReactActivity,
 } from './data/react';
 export { served } from './data/request';
-export { reviewAction, a11yAction, recheck, approveStory, repairSafe } from './data/actions';
+export {
+  reviewAction,
+  a11yAction,
+  dismissRejection,
+  recheck,
+  approveStory,
+  repairSafe,
+  type DecisionAnswer,
+} from './data/actions';
 export {
   integrityOf,
   rowsWithPending,
@@ -224,6 +234,8 @@ export function useData(): { data: Data | null; error: string | null; live: bool
       es.addEventListener('data', mine);
       es.addEventListener('review', decided);
       es.addEventListener('integrity', mine);
+      // An open rejection opened, changed (its packet written, a check since) or closed.
+      es.addEventListener('rejection', mine);
       // Check runs: shown while they run, and their errors (Storybook down) reach the page.
       es.addEventListener('check', (e: MessageEvent<string>) => {
         try {

@@ -77,11 +77,14 @@ export async function load(page, url) {
 }
 
 /**
- * A screen's target: `{ role, name?, exact? }` or `{ text, exact? }`.
- * @param {Page} page
+ * A screen's target: `{ role, name?, exact? }` or `{ text, exact? }`, inside the first `within`
+ * target when it has one (the side panel's Reject, not the header's).
+ * @param {Page | import('playwright').Locator} page
  * @param {ScreenTarget} t
+ * @returns {import('playwright').Locator}
  */
 export function locate(page, t) {
+  if (t.within) return locate(locate(page, t.within), { ...t, within: undefined });
   if (t.role)
     return page
       .getByRole(
@@ -167,8 +170,10 @@ export async function scrollTo(page, t) {
   if (problem) throw new Error(`scroll to ${describe(t)}: ${problem}`);
 }
 
-export const describe = (/** @type {ScreenTarget} */ t) =>
-  t.role ? `${t.role}${t.name != null ? ` "${t.name}"` : ''}` : `text "${t.text}"`;
+/** @param {ScreenTarget} t @returns {string} */
+export const describe = (t) =>
+  (t.role ? `${t.role}${t.name != null ? ` "${t.name}"` : ''}` : `text "${t.text}"`) +
+  (t.within ? ` in ${describe(t.within)}` : '');
 
 /**
  * The layout findings (layout.mjs) at VIEWPORT, then the page's overflow at NARROW_WIDTH. Leaves

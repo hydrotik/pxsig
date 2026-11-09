@@ -220,6 +220,7 @@ async function runOnce({ browser, theme, dashboard, axe, out, log, want, text })
       await load(page, address(a.readOnly, null));
     } else if (a.click) await locate(page, a.click).click({ timeout: LANDMARK_MS });
     else if (a.press) await page.keyboard.press(a.press);
+    else if (a.type) await page.keyboard.type(a.type);
     else if (a.cli) {
       const r = pxsigIn(a.cli, dir, { ...NO_IMAGE, PXSIG_URL: url, PXSIG_STORYBOOK_URL: DEAD_URL });
       if (r.status !== 0 && r.status !== 1)

@@ -1,4 +1,7 @@
-/** The inspector's Files section (Inspector.tsx): the entry's files and the story. */
+/**
+ * The inspector's Files section (Inspector.tsx): the entry's files, its open rejections' packets
+ * (rejection.md, served to this origin only) and the story.
+ */
 import React from 'react';
 import { Button, Link } from '@ui';
 import { t } from '../../copy';
@@ -30,12 +33,33 @@ function CopyPath({ value, label }: { value: string; label: string }) {
   );
 }
 
+/**
+ * The rejection packets of `id`'s open rejections, as [label, URL of rejection.md]: the packet's
+ * store-relative folder (`reports/rejected/<id>/`) under the server's `paths.rejected`.
+ */
+export function packetsOf(data: Data, id: string): [string, string][] {
+  const base = data.paths.rejected;
+  if (!base || data.static) return [];
+  return (
+    [
+      ['visual', 'inspector.files.packet'],
+      ['a11y', 'inspector.files.a11yPacket'],
+    ] as const
+  ).flatMap(([kind, label]) => {
+    const folder = data.rejections?.[kind]?.[id]?.packet;
+    return folder
+      ? [[t(label), `${base}${folder.replace(/^reports\/rejected\//, '')}rejection.md`]]
+      : [];
+  }) as [string, string][];
+}
+
 export function FilesSection({
   data,
   p,
   hasArtifacts,
   sizes,
   sb,
+  packets = [],
 }: {
   data: Data;
   p: NonNullable<ReturnType<typeof pathsFor>>;
@@ -43,6 +67,8 @@ export function FilesSection({
   sizes: Record<string, string>;
   /** Null: no Storybook (pxsig's own screens). */
   sb: string | null;
+  /** The open rejections' packets: [label, URL] (packetsOf). */
+  packets?: [string, string][];
 }) {
   // A served URL (/p/<project>/renders/…) or a static one (./renders/…) → the file in the store.
   const repoPath = (u: string) =>
@@ -64,6 +90,7 @@ export function FilesSection({
                 ]
               : []),
             ...(p.record ? [[t('inspector.files.record'), p.record]] : []),
+            ...packets,
           ] as [string, string][]
         ).map(([label, url]) => (
           <li key={label}>

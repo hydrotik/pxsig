@@ -234,6 +234,35 @@ export interface ReviewEntry {
   state: 'approved' | 'rejected';
   at: string;
   sha256?: string;
+  /** A reject's reason: one line, at most 280 characters. */
+  note?: string;
+  /** False: the reason was not kept, the store's reports/ is not git-ignored. */
+  noteKept?: false;
+}
+/** An accessibility decision (a11y-review.json). */
+export interface A11yDecision {
+  state: 'accepted' | 'rejected';
+  at: string;
+  note?: string;
+  noteKept?: false;
+}
+/**
+ * An open rejection (the server's reports/rejections.json): kept past the entry's next check until
+ * it passes, is approved, undone or dismissed.
+ */
+export interface Rejection {
+  at: string;
+  via: string;
+  /** The leading reason; null: none given. */
+  note: string | null;
+  notes: { at: string; via: string; note: string | null }[];
+  checks: { at: string; pass: boolean; ssim?: number | null; new?: number }[];
+  /** The rejection packet's folder, store-relative (`reports/rejected/<id>/`); null: none yet. */
+  packet: string | null;
+  /** Why no packet was written. */
+  packetError?: string;
+  /** One paragraph for an assistant: what Copy for an agent copies. */
+  prompt?: string;
 }
 /** One issue on an entry (lib/integrity.mjs; codes and severities in INTEGRITY.md). */
 export interface IntegrityIssue {
@@ -317,11 +346,16 @@ export interface Data {
   /** The project's approval settings; `byStory` offers Approve story (off, or absent: one entry, one decision). */
   approvals?: { byStory?: boolean };
   /** Decisions on entries' accessibility violations (a11y-review.json); separate from the visual review. */
-  a11yReview?: Record<string, { state: 'accepted' | 'rejected'; at: string }>;
+  a11yReview?: Record<string, A11yDecision>;
+  /** The open rejections by kind, then entry id (served only; never in a static report). */
+  rejections?: { visual: Record<string, Rejection>; a11y: Record<string, Rejection> };
+  /** `rejections.note.ask` (pxsig.config.json): false, Reject decides at once with no reason. */
+  settings?: { rejections?: { note?: { ask?: boolean } } };
   storybook: { baseUrl: string };
   /** `dashboard-screens`: pxsig's own screens (no Storybook to open, nothing to re-check here). */
   source?: 'storybook' | 'dashboard-screens';
-  paths: { diffRoot: string; renders: string; baselines: string };
+  /** `rejected`: the rejection packets' folder (older servers omit it). */
+  paths: { diffRoot: string; renders: string; baselines: string; rejected?: string };
   sigs: Record<string, string>;
   integrity?: IntegrityLedger | null;
   /** The React analysis (always when served; in a static report only with results to show). */

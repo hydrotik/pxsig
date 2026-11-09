@@ -12,6 +12,8 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { buildData } from '../src/report.mjs';
+import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, hasRust } from './fixture.mjs';
 import { serve } from './server-helpers.mjs';
 import { skipUnless } from './strict.mjs';
@@ -23,6 +25,8 @@ import { skipUnless } from './strict.mjs';
  *   versions: { pxsig: string }, check: { rows: { id: string, pass: boolean }[] },
  *   review: Record<string, unknown>, storybook: { baseUrl: string },
  *   paths: Record<string, string>, sigs: Record<string, string>, error?: string,
+ *   settings: { rejections: { note: { ask: boolean } } },
+ *   rejections?: { visual: Record<string, { note: string | null, prompt: string }>, a11y: Record<string, unknown> },
  * }} Data
  */
 
@@ -63,7 +67,12 @@ test(
         diffRoot: '/p/fixture/diffs/',
         renders: '/p/fixture/renders/',
         baselines: '/p/fixture/baselines/',
+        rejected: '/p/fixture/reports/rejected/',
       });
+      // What the dashboard asks on Reject (`rejections.note.ask`, on by default), and no open
+      // rejection yet.
+      assert.deepEqual(d.settings, { rejections: { note: { ask: true } } });
+      assert.deepEqual(d.rejections, { visual: {}, a11y: {} });
       assert.deepEqual(Object.keys(d.sigs).sort(), f.manifest.stories.map((e) => e.id).sort());
       assert.equal(d.sigs[f.ids.ok], `/p/fixture/sig/${f.ids.ok}`);
       // The signature link answers the baseline's header.
@@ -81,6 +90,21 @@ test(
       writeFileSync(join(f.px, 'reports', 'check.json'), JSON.stringify(report));
       const again = await data(S.base, '?project=fixture');
       assert.equal(again.body.check.rows.find((x) => x.id === f.ids.ok)?.pass, false);
+
+      // A reject with a reason: the open rejection carries the paragraph Copy for an agent copies
+      // (lib/rejections/prompt.mjs), store-relative, with no absolute path.
+      assert.equal((await S.post('reject', { id: f.ids.ok, note: 'the icon moved' })).status, 200);
+      const open = (await data(S.base, '?project=fixture')).body.rejections?.visual[f.ids.ok];
+      assert.equal(open?.note, 'the icon moved');
+      assert.match(
+        String(open?.prompt),
+        new RegExp(`^pxsig rejected ${f.ids.ok} \\(fixture\\): "the icon moved"\\. Goal: `)
+      );
+      assert.match(
+        String(open?.prompt),
+        new RegExp(`After the fix: pxsig check ${f.ids.ok}\\. Never approve\\.$`)
+      );
+      assert.ok(!String(open?.prompt).includes(f.repo), 'no absolute path');
     } finally {
       await S.stop();
     }
@@ -106,3 +130,12 @@ test(
     }
   }
 );
+
+test('the data says when Reject decides at once (`rejections.note.ask: false`)', () => {
+  const f = fixture({ withSigs: false });
+  const cfgPath = join(f.repo, 'pxsig.config.json');
+  const cfg = JSON.parse(readFileSync(cfgPath, 'utf8'));
+  writeFileSync(cfgPath, JSON.stringify({ ...cfg, rejections: { note: { ask: false } } }));
+  const d = buildData(openProject({ cwd: f.repo }));
+  assert.deepEqual(d.settings, { rejections: { note: { ask: false } } });
+});

@@ -165,9 +165,9 @@
   - term: Entry
   - definition: The entry ID, its mode, and the reason it failed the gate.
   - term: Approve, Reject, Undo
-  - definition: Approve writes the latest render as the baseline. Reject marks the change as unwanted. Undo reverses either; for an approval it restores the previous baseline.
+  - definition: "Approve writes the latest render as the baseline. Reject marks the change as unwanted, with an optional reason: Enter rejects, Esc cancels. Undo reverses either; for an approval it restores the previous baseline."
   - term: Rejected note
-  - definition: The command to re-check the entry once it is fixed.
+  - definition: "The reason, the command to re-check the entry once it is fixed, Edit reason, and Copy for an agent: one paragraph for an assistant with the reason and the re-check command. After a re-check that still differs, Rejected earlier keeps the reason until the entry passes or is approved, or Dismiss reason closes it."
   - term: Compare modes
   - definition: Side by side, swipe, onion skin, pixel diff, or the signature cells the gate compares.
   - term: Originals
@@ -232,7 +232,7 @@
   - term: A
   - definition: Approve
   - term: R
-  - definition: Reject
+  - definition: Reject, with an optional reason
   - term: Esc
   - definition: Close
   - img "Drawing of the inspector": Review progress Entry Status ‹ 1/12 › Reject · Approve · Undo Close Rejected note Compare modes Zoom View options Changes ‹ › Baseline and latest render Shortcuts Pixel Pixel Changes Metrics Signatures Accessibility Files

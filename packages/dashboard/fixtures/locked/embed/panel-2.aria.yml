@@ -1,0 +1,28 @@
+- main:
+  - heading "pxsig • ui-button--primary" [level=1]
+  - group "Reject with a reason":
+    - text: Reason
+    - textbox "Reason":
+      - /placeholder: Optional. What is wrong, in one line
+    - button "Reject"
+    - button "Cancel"
+  - text: Changed
+  - group "Compare mode":
+    - radio "Side by side" [checked]: Side
+    - radio "Swipe"
+    - radio "Onion skin": Onion
+    - radio "Pixel diff": Diff
+    - radio "Signature cells": Cells
+  - button "Zoom out (−)": −
+  - text: 1200%
+  - button "Zoom in (+)": +
+  - button "Fit"
+  - button "1:1"
+  - switch "Show details"
+  - text: Details
+  - group "Mode":
+    - radio "dark" [checked]
+    - radio "light"
+  - button "Reject"
+  - button "Approve"
+  - group "Image comparison. Drag to pan, scroll to zoom.": Baseline render Latest render

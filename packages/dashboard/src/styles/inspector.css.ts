@@ -94,6 +94,23 @@ export const note = style({
   backgroundColor: `color-mix(in srgb, ${v.color.danger} 8%, transparent)`,
   fontSize: v.fontSize.sm,
 });
+// The reason's row (inspector/RejectNote.tsx), in the rejected note's place: the field takes the
+// width, its Reject and Cancel sit on the field's line.
+export const noteRow = style({
+  // A fieldset: none of its own border, margin or minimum width.
+  margin: 0,
+  border: 0,
+  minInlineSize: 0,
+  display: 'flex',
+  alignItems: 'flex-end',
+  flexWrap: 'wrap',
+  gap: v.space['2'],
+  paddingInline: v.space['4'],
+  paddingBlock: v.space['3'],
+  borderBlockEnd: `1px solid ${v.color.border}`,
+  backgroundColor: `color-mix(in srgb, ${v.color.danger} 8%, transparent)`,
+});
+export const noteField = style({ flex: '1 1 20rem', minInlineSize: 0 });
 export const summaryDialog = style({ inlineSize: 'min(100%, 40rem)', padding: 0, gap: 0 });
 // No wider than the dialog: a design system's Dialog may lay its content out in a grid, where an
 // item is as wide as its widest unbreakable line (a long `pxsig check …` command) unless it may shrink.

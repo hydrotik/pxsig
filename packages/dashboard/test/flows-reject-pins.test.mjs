@@ -2,7 +2,9 @@
  * The Reject paths in a real browser, against a mocked server (flows-helpers.mjs), pinned before a
  * rejection carries a reason (design: the rejection packet, PR 2): the header's Reject posts
  * `reject`, the side panel's Accessibility section's Reject posts `a11y-reject`, each with the
- * project and the entry id. (flows-decisions.test.mjs pins the buttons' boxes.)
+ * project and the entry id. With `rejections.note.ask: false` they still do, at once, with no
+ * reason (flows-reject-note.test.mjs has the reason's row). (flows-decisions.test.mjs pins the
+ * buttons' boxes.)
  * Skips when no Chromium is available (PXSIG_CHROMIUM names an executable).
  */
 import assert from 'node:assert/strict';
@@ -22,6 +24,8 @@ const contrast = {
   targets: ['.label'],
 };
 const approving = { allowed: true, folder: 'demo', command: 'pnpm exec pxsig serve --link' };
+/** One-key reject, as before reasons (`rejections.note.ask: false`). */
+const oneKey = { rejections: { note: { ask: false } } };
 
 /** @param {import('playwright').Page} page */
 const ready = async (page) => {
@@ -41,7 +45,10 @@ const posted = async (posts, name) => {
 
 test("the header's Reject posts reject with the project and the id", async (t) => {
   if (skip) return t.skip(skip);
-  const d = data({ rows: [row(story, changed)], entries: [entry(story, issue)] });
+  const d = {
+    ...data({ rows: [row(story, changed)], entries: [entry(story, issue)] }),
+    settings: oneKey,
+  };
   const { page, posts } = await open(d, { hash: `#inspect=${story}`, images: true, approving });
   try {
     await ready(page);
@@ -54,6 +61,7 @@ test("the header's Reject posts reject with the project and the id", async (t) =
     assert.ok(p, 'a reject was posted');
     assert.equal(p.body.project, 'demo');
     assert.equal(p.body.id, story);
+    assert.deepEqual(Object.keys(p.body).sort(), ['id', 'project'], 'no reason in the body');
   } finally {
     await page.close();
   }
@@ -61,10 +69,13 @@ test("the header's Reject posts reject with the project and the id", async (t) =
 
 test("the Accessibility section's Reject posts a11y-reject", async (t) => {
   if (skip) return t.skip(skip);
-  const d = data({
-    rows: [row(story, { ...changed, a11y: { violations: [contrast], new: 1, baseline: [] } })],
-    entries: [entry(story, issue)],
-  });
+  const d = {
+    ...data({
+      rows: [row(story, { ...changed, a11y: { violations: [contrast], new: 1, baseline: [] } })],
+      entries: [entry(story, issue)],
+    }),
+    settings: oneKey,
+  };
   const { page, posts } = await open(d, { hash: `#inspect=${story}`, images: true, approving });
   try {
     await ready(page);

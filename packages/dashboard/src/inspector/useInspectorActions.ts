@@ -1,6 +1,7 @@
 /**
- * The inspector's decisions (Inspector.tsx): approve, reject and undo, take a rule off the
- * accepted list, re-check the entry, approve the story; and the note they leave under the header.
+ * The inspector's decisions (Inspector.tsx): approve, reject (with its reason) and undo, dismiss
+ * an earlier rejection's reason, take a rule off the accepted list, re-check the entry, approve the
+ * story; and the note they leave under the header.
  */
 import React from 'react';
 import {
@@ -8,6 +9,7 @@ import {
   type Row,
   a11yAction,
   approveStory,
+  dismissRejection,
   recheck,
   reviewAction,
   statusOf,
@@ -48,15 +50,28 @@ export function useInspectorActions({
       : alert(t('inspector.review.failed', { action, error: (e as Error).message }));
   // The decision under way, which its button names ("Approving…") until the server answers.
   const [pending, setPending] = React.useState<'approve' | 'reject' | null>(null);
-  const act = async (action: 'approve' | 'reject' | 'unreview', a11y = a11yMode) => {
+  // What the server said it did not keep (a reject's reason while reports/ is not git-ignored):
+  // shown under the header until the next decision, past the move to the next entry.
+  const [notice, setNotice] = React.useState<string | null>(null);
+  /**
+   * `note`: a reject's reason. `stay`: an edited reason, on the entry already rejected, keeps the
+   * inspector on it.
+   */
+  const act = async (
+    action: 'approve' | 'reject' | 'unreview',
+    a11y = a11yMode,
+    { note, stay = false }: { note?: string; stay?: boolean } = {}
+  ) => {
     if (!row) return;
     setBusy(true);
+    setNotice(null);
     if (action !== 'unreview') setPending(action);
     try {
-      await (a11y
-        ? a11yAction(action === 'approve' ? 'accept' : action, row.id)
-        : reviewAction(action, row.id));
-      if (action !== 'unreview' && a11y === a11yMode) {
+      const answer = await (a11y
+        ? a11yAction(action === 'approve' ? 'accept' : action, row.id, undefined, note)
+        : reviewAction(action, row.id, note));
+      setNotice(answer?.notice ?? null);
+      if (action !== 'unreview' && a11y === a11yMode && !stay) {
         // The next undecided entry after this one, wrapping to the start of the list.
         const open = (r: Row) =>
           (a11yMode ? !data.a11yReview?.[r.id] : !r.pass && !data.review[r.id]) && r.id !== row.id;
@@ -68,6 +83,22 @@ export function useInspectorActions({
     } finally {
       setBusy(false);
       setPending(null);
+    }
+  };
+
+  // Close an open rejection after a re-check, with no decision (Dismiss reason). `dismissed`
+  // names it, so the rejected note can say so once the rejection is gone from the data.
+  const [dismissed, setDismissed] = React.useState<string | null>(null);
+  const dismiss = async (kind: 'visual' | 'a11y') => {
+    if (!row) return;
+    setBusy(true);
+    try {
+      await dismissRejection(row.id, kind);
+      setDismissed(`${kind}:${row.id}`);
+    } catch (e) {
+      refused(e, t('inspector.rejection.dismiss'));
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -168,5 +199,18 @@ export function useInspectorActions({
       setBusy(false);
     }
   };
-  return { siblings, storyOpen, note, checking, pending, act, unaccept, recheckOne, approveAll };
+  return {
+    siblings,
+    storyOpen,
+    note,
+    notice,
+    checking,
+    pending,
+    act,
+    dismiss,
+    dismissed,
+    unaccept,
+    recheckOne,
+    approveAll,
+  };
 }

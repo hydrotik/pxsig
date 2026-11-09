@@ -5,6 +5,8 @@ import type { ScreenTarget } from '../../packages/pxsig/src/types/t4.js';
 export interface LiveAction {
   click?: ScreenTarget;
   press?: string;
+  /** Typed into the focused field (the reason's row). */
+  type?: string;
   /** Open a fresh dashboard link on this hash. */
   link?: string;
   /** The pxsig CLI in the staged folder, against the live server. */

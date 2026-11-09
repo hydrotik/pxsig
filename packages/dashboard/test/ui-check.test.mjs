@@ -140,22 +140,42 @@ test('a contract change without a version bump and a changes entry fails', async
 });
 
 test('a contract component no feature renders passes only while NOT_YET_RENDERED names it', async () => {
-  const problems = await check(({ read, write }) => {
-    const t = read('ui-tools.mjs');
-    write('ui-tools.mjs', t.replace(/^ {2}TextField: .*\n/m, ''));
-  });
+  const features = 'src/ui/features/inspector.ts';
+  const empty = 'export const NOT_YET_RENDERED = {};';
+  const unrendered = await check(({ read, write }) =>
+    write(features, read(features).replace(/,?\s*'TextField'/g, ''))
+  );
   assert.ok(
-    problems.includes(
+    unrendered.includes(
       'TextField is in the contract but no feature in src/ui/features.ts renders it'
     ),
-    problems.join('\n')
+    unrendered.join('\n')
   );
-  const stale = await check(({ read, write }) => {
-    const t = read('ui-tools.mjs');
-    write('ui-tools.mjs', t.replace(/^ {2}TextField: (.*)\n/m, "  TextField: $1\n  Nope: 'x',\n"));
+  const named = await check(({ read, write }) => {
+    write(features, read(features).replace(/,?\s*'TextField'/g, ''));
+    write(
+      'ui-tools.mjs',
+      read('ui-tools.mjs').replace(empty, "export const NOT_YET_RENDERED = { TextField: 'x' };")
+    );
   });
+  assert.ok(!named.some((p) => p.includes('TextField')), named.join('\n'));
+  const stale = await check(({ read, write }) =>
+    write(
+      'ui-tools.mjs',
+      read('ui-tools.mjs').replace(
+        empty,
+        "export const NOT_YET_RENDERED = { TextField: 'x', Nope: 'x' };"
+      )
+    )
+  );
   assert.ok(
     stale.includes('NOT_YET_RENDERED (ui-tools.mjs) names Nope, which is not in the contract'),
+    stale.join('\n')
+  );
+  assert.ok(
+    stale.includes(
+      'TextField is rendered by a feature now: remove it from NOT_YET_RENDERED (ui-tools.mjs)'
+    ),
     stale.join('\n')
   );
 });
