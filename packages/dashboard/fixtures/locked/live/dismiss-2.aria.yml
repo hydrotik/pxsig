@@ -1,0 +1,135 @@
+- main:
+  - status
+- dialog "components-badge--success@dark":
+  - strong: Reviewing changes
+  - progressbar "Review progress": x
+  - text: 0 of 2 reviewed · 2 left Changed
+  - group "Mode":
+    - radio "light"
+    - radio "dark" [checked]
+  - text: Latest check · dark
+  - heading "components-badge--success@dark" [level=2]
+  - paragraph: ssim 0.9468 < min 0.99 · changedCellsPct 26.56 > max 2 · changedCells 68 >= 3 (off by > 24)
+  - button "Previous story (←)": ‹
+  - text: 1 / 2
+  - button "Next story (→)": ›
+  - button "Re-check"
+  - button "Reject"
+  - button "Approve"
+  - button "Close"
+  - status: Reason dismissed. The store's log keeps it.
+  - group "Compare mode":
+    - radio "Side by side" [checked]
+    - radio "Swipe"
+    - radio "Onion skin"
+    - radio "Pixel diff"
+    - radio "Signature cells"
+  - button "Zoom out (−)": −
+  - text: 881%
+  - button "Zoom in (+)": +
+  - button "Fit"
+  - button "1:1"
+  - switch "Show the original images without analysis"
+  - text: Originals
+  - switch "Highlight changed pixels" [checked]
+  - text: Highlight
+  - switch "Outline changed regions" [checked]
+  - text: Regions
+  - button "Previous change (⇧N)": ‹
+  - text: Change 1 / 1
+  - button "Next change (N)": ›
+  - group "Image comparison. Drag to pan, scroll to zoom.": Baseline render Latest render
+  - text: 1–5 mode F fit 0 1:1 + − zoom N ⇧N next / previous change O originals ← → story A approve R reject Esc close
+  - complementary:
+    - heading "Pixel" [level=3]
+    - link "Storybook":
+      - /url: http://127.0.0.1:1/?path=/story/components-badge--success&globals=theme:dark
+    - text: Hover over the image to read pixel values. Before — After — Max channel Δ —
+    - heading "Pixel Changes" [level=3]
+    - text: Tolerance
+    - group "Tolerance":
+      - slider "Tolerance": "16"
+    - term: Changed pixels
+    - definition: 910 (24.59%)
+    - term: Regions
+    - definition: "1"
+    - term: Max channel Δ
+    - definition: "91"
+    - term: Size
+    - definition: 74×50
+    - list:
+      - listitem:
+        - button "48×32 @ 16,8 910 px" [pressed]
+    - heading "Text" [level=3]
+    - paragraph: No text changed. The change is outside text.
+    - text: Labels only. The gate and the decision are unchanged.
+    - heading "Metrics" [level=3]
+    - term: SSIM
+    - definition: 0.9468 < 0.99
+    - term: Cells over 24
+    - definition: 68 (26.56%)
+    - term: Max cell Δ
+    - definition: "74"
+    - term: Edge Δ
+    - definition: 2.125%
+    - term: Detail tiles changed
+    - definition: "0"
+    - term: New edges
+    - definition: "0"
+    - term: Max block Δ
+    - definition: "22"
+    - figure "Baseline signature":
+      - img "Baseline signature"
+      - text: Baseline signature
+    - figure "Current signature":
+      - img "Current signature"
+      - text: Current signature
+    - figure "Cell heatmap":
+      - img "Cell heatmap"
+      - text: Cell heatmap
+    - heading "React" [level=3]
+    - heading "Compiler alerts (1)" [level=4]
+    - strong: Badge
+    - text: Newly skipped src/Badge/Badge.jsx · refs, line 5
+    - button "Open in React"
+    - text: From the check at 12:00:00 PM
+    - heading "Files" [level=3]
+    - list:
+      - listitem:
+        - link "Baseline render (opens in a new tab)":
+          - /url: /p/example-single/renders/base/components-badge--success@dark.png
+        - text: 0.7 KB
+        - 'button "Copy path: Baseline render"': Copy path
+      - listitem:
+        - link "Latest render (opens in a new tab)":
+          - /url: /p/example-single/renders/latest/components-badge--success@dark.png
+        - text: 0.7 KB
+        - 'button "Copy path: Latest render"': Copy path
+      - listitem:
+        - link "Baseline signature (PNG) (opens in a new tab)":
+          - /url: /p/example-single/diffs/latest/components-badge--success@dark.baseline.png
+        - text: 2.3 KB
+        - 'button "Copy path: Baseline signature (PNG)"': Copy path
+      - listitem:
+        - link "Current signature (PNG) (opens in a new tab)":
+          - /url: /p/example-single/diffs/latest/components-badge--success@dark.current.png
+        - text: 2.3 KB
+        - 'button "Copy path: Current signature (PNG)"': Copy path
+      - listitem:
+        - link "Cell heatmap (PNG) (opens in a new tab)":
+          - /url: /p/example-single/diffs/latest/components-badge--success@dark.diff.png
+        - text: 2.3 KB
+        - 'button "Copy path: Cell heatmap (PNG)"': Copy path
+      - listitem:
+        - link "Diff page (HTML) (opens in a new tab)":
+          - /url: /p/example-single/diffs/latest/components-badge--success@dark.diff.html
+        - text: 1.6 KB
+        - 'button "Copy path: Diff page (HTML)"': Copy path
+      - listitem:
+        - link "Baseline record (JSON) (opens in a new tab)":
+          - /url: /p/example-single/sig/components-badge--success%40dark
+        - text: 0.0 KB
+        - 'button "Copy path: Baseline record (JSON)"': Copy path
+      - listitem:
+        - link "Open in Storybook (opens in a new tab)":
+          - /url: http://127.0.0.1:1/?path=/story/components-badge--success&globals=theme:dark

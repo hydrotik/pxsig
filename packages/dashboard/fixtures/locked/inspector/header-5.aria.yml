@@ -1,0 +1,121 @@
+- main:
+  - status
+- dialog "ui-button--primary@light":
+  - text: Changed
+  - group "Mode":
+    - radio "dark"
+    - radio "light" [checked]
+  - text: Latest check · light
+  - heading "ui-button--primary@light" [level=2]
+  - paragraph: ssim 0.8 < min 0.99
+  - button "Previous story (←)": ‹
+  - text: 2 / 2
+  - button "Next story (→)": ›
+  - button "Re-check"
+  - button "Reject"
+  - button "Approve"
+  - button "Close"
+  - text: "Rejected earlier: The border is lighter than in the baseline"
+  - button "Dismiss reason"
+  - button "Copy for an agent"
+  - group "Compare mode":
+    - radio "Side by side" [checked]
+    - radio "Swipe"
+    - radio "Onion skin"
+    - radio "Pixel diff"
+    - radio "Signature cells"
+  - button "Zoom out (−)": −
+  - text: 1200%
+  - button "Zoom in (+)": +
+  - button "Fit"
+  - button "1:1"
+  - switch "Show the original images without analysis"
+  - text: Originals
+  - switch "Highlight changed pixels" [checked]
+  - text: Highlight
+  - switch "Outline changed regions" [checked]
+  - text: Regions
+  - button "Previous change (⇧N)": ‹
+  - text: Change 1 / 2
+  - button "Next change (N)": ›
+  - group "Image comparison. Drag to pan, scroll to zoom.": Baseline render Latest render
+  - text: 1–5 mode F fit 0 1:1 + − zoom N ⇧N next / previous change O originals ← → story A approve R reject Esc close
+  - complementary:
+    - heading "Pixel" [level=3]
+    - link "Storybook":
+      - /url: http://127.0.0.1:1/?path=/story/ui-button--primary
+    - text: Hover over the image to read pixel values. Before — After — Max channel Δ —
+    - heading "Pixel Changes" [level=3]
+    - text: Tolerance
+    - group "Tolerance":
+      - slider "Tolerance": "16"
+    - term: Changed pixels
+    - definition: 1.0K (1.60%)
+    - term: Regions
+    - definition: "2"
+    - term: Max channel Δ
+    - definition: "180"
+    - term: Size
+    - definition: 320×200
+    - list:
+      - listitem:
+        - button "24×32 @ 56,120 512 px" [pressed]
+      - listitem:
+        - button "24×32 @ 176,120 512 px"
+    - heading "Metrics" [level=3]
+    - term: SSIM
+    - definition: 0.8 < 0.99
+    - term: Cells over
+    - definition: 12 (3%)
+    - term: Max cell Δ
+    - definition
+    - term: Edge Δ
+    - definition: "%"
+    - figure "Baseline signature":
+      - img "Baseline signature"
+      - text: Baseline signature
+    - figure "Current signature":
+      - img "Current signature"
+      - text: Current signature
+    - figure "Cell heatmap":
+      - img "Cell heatmap"
+      - text: Cell heatmap
+    - heading "Files" [level=3]
+    - list:
+      - listitem:
+        - link "Baseline render (opens in a new tab)":
+          - /url: /p/demo/renders/base/ui-button--primary@light.png
+        - text: 0.0 KB
+        - 'button "Copy path: Baseline render"': Copy path
+      - listitem:
+        - link "Latest render (opens in a new tab)":
+          - /url: /p/demo/renders/latest/ui-button--primary@light.png
+        - text: 0.0 KB
+        - 'button "Copy path: Latest render"': Copy path
+      - listitem:
+        - link "Baseline signature (PNG) (opens in a new tab)":
+          - /url: /p/demo/diffs/latest/ui-button--primary@light.baseline.png
+        - text: 0.0 KB
+        - 'button "Copy path: Baseline signature (PNG)"': Copy path
+      - listitem:
+        - link "Current signature (PNG) (opens in a new tab)":
+          - /url: /p/demo/diffs/latest/ui-button--primary@light.current.png
+        - text: 0.0 KB
+        - 'button "Copy path: Current signature (PNG)"': Copy path
+      - listitem:
+        - link "Cell heatmap (PNG) (opens in a new tab)":
+          - /url: /p/demo/diffs/latest/ui-button--primary@light.diff.png
+        - text: 0.0 KB
+        - 'button "Copy path: Cell heatmap (PNG)"': Copy path
+      - listitem:
+        - link "Diff page (HTML) (opens in a new tab)":
+          - /url: /p/demo/diffs/latest/ui-button--primary@light.diff.html
+        - text: missing
+        - 'button "Copy path: Diff page (HTML)"': Copy path
+      - listitem:
+        - link "Rejection packet (opens in a new tab)":
+          - /url: /p/demo/reports/rejected/ui-button--primary@light/rejection.md
+        - 'button "Copy path: Rejection packet"': Copy path
+      - listitem:
+        - link "Open in Storybook (opens in a new tab)":
+          - /url: http://127.0.0.1:1/?path=/story/ui-button--primary
