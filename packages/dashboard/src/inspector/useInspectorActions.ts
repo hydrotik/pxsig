@@ -53,6 +53,11 @@ export function useInspectorActions({
   // What the server said it did not keep (a reject's reason while reports/ is not git-ignored):
   // shown under the header until the next decision, past the move to the next entry.
   const [notice, setNotice] = React.useState<string | null>(null);
+  // The entries decided here (`render:<id>`, `a11y:<id>` → the action), before the server's
+  // refreshed data says so: a quick decision after another must not move back to the one just
+  // decided, nor approve it twice.
+  const decidedHere = React.useRef(new Map<string, string>());
+  const key = (a11y: boolean, id: string) => `${a11y ? 'a11y' : 'render'}:${id}`;
   /**
    * `note`: a reject's reason. `stay`: an edited reason, on the entry already rejected, keeps the
    * inspector on it.
@@ -63,6 +68,13 @@ export function useInspectorActions({
     { note, stay = false }: { note?: string; stay?: boolean } = {}
   ) => {
     if (!row) return;
+    // As the button: an entry already approved is not approved again (the A key).
+    const current = a11y ? data.a11yReview?.[row.id] : data.review[row.id];
+    if (
+      action === 'approve' &&
+      (current?.state === 'approved' || decidedHere.current.get(key(a11y, row.id)) === 'approve')
+    )
+      return;
     setBusy(true);
     setNotice(null);
     if (action !== 'unreview') setPending(action);
@@ -71,10 +83,13 @@ export function useInspectorActions({
         ? a11yAction(action === 'approve' ? 'accept' : action, row.id, undefined, note)
         : reviewAction(action, row.id, note));
       setNotice(answer?.notice ?? null);
+      if (action === 'unreview') decidedHere.current.delete(key(a11y, row.id));
+      else decidedHere.current.set(key(a11y, row.id), action);
       if (action !== 'unreview' && a11y === a11yMode && !stay) {
         // The next undecided entry after this one, wrapping to the start of the list.
         const open = (r: Row) =>
-          (a11yMode ? !data.a11yReview?.[r.id] : !r.pass && !data.review[r.id]) && r.id !== row.id;
+          (a11yMode ? !data.a11yReview?.[r.id] : !r.pass && !data.review[r.id]) &&
+          !decidedHere.current.has(key(a11yMode, r.id));
         const next = [...list.slice(index + 1), ...list.slice(0, Math.max(index, 0))].find(open);
         if (next) onNavigate({ ...target!, row: next });
       }
@@ -176,6 +191,7 @@ export function useInspectorActions({
     setBusy(true);
     try {
       const r = await approveStory(row.story);
+      for (const id of r.approved) decidedHere.current.set(key(false, id), 'approve');
       const left = r.skipped.filter((x) => storyOpen.some((o) => o.id === x.id));
       setNote(
         [
@@ -190,7 +206,11 @@ export function useInspectorActions({
           .join(' · ')
       );
       // On to the next undecided entry of another story.
-      const open = (x: Row) => !x.pass && !data.review[x.id] && x.story !== row.story;
+      const open = (x: Row) =>
+        !x.pass &&
+        !data.review[x.id] &&
+        !decidedHere.current.has(key(false, x.id)) &&
+        x.story !== row.story;
       const next = [...list.slice(index + 1), ...list.slice(0, Math.max(index, 0))].find(open);
       if (next && target) onNavigate({ ...target, row: next });
     } catch (e) {

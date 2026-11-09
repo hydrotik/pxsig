@@ -255,14 +255,21 @@ export function App() {
     deepLinked.current = true;
     const id = h.get('inspect');
     const row = id && data.check.rows.find((r) => r.id === id);
-    if (row) setTarget({ row, scenario: null, list: data.check.rows.filter((r) => !r.skipped) });
+    // A reload during a review session: the session again, on its first undecided entry.
+    const kind = h.get('session') as Queue | null;
+    const list = kind && ['changed', 'new', 'a11y'].includes(kind) ? reviewQueue(data, kind) : null;
+    if (row && kind && list?.length) {
+      const first = list.find((r) => !decisionOf(data, kind, r.id)) ?? list[0];
+      setTarget({ row: first, list, scenario: null, session: kind });
+    } else if (row)
+      setTarget({ row, scenario: null, list: data.check.rows.filter((r) => !r.skipped) });
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     if (target && !target.scenario)
       history.replaceState(
         null,
         '',
-        `${location.pathname}${location.search}#inspect=${encodeURIComponent(target.row.id)}`
+        `${location.pathname}${location.search}#inspect=${encodeURIComponent(target.row.id)}${target.session ? `&session=${target.session}` : ''}`
       );
   }, [target]);
   // Keep an open inspector on the fresh row when live data arrives.
