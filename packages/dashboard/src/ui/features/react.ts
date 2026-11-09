@@ -9,7 +9,7 @@ export const REACT: Feature[] = [
     section: 'diagnostics',
     title: 'React Compiler',
     purpose:
-      "The React Compiler's verdict on the changed component and hook files, at the merge base and now: alerts first (newly skipped, new and skipped, a new reason, a new finding), every function analysed on demand, and one function's diagnostics, base and entries in a side panel. Alerts only: nothing here fails a check or asks for a decision.",
+      "The React Compiler's verdict on the changed component and hook files, at the merge base and now: alerts first (newly skipped, new and skipped, a new reason, a new finding), every function analysed on demand, and one function's diagnostics, base and entries in a side panel. The title names the compiler that ran: the project's babel-plugin-react-compiler, or the built-in one (oxc, experimental). Alerts only: nothing here fails a check or asks for a decision.",
     states: {
       loading: 'Analysing: a progress row with Skip; the table keeps the last results, busy.',
       empty: 'No results yet, with Analyse; no alerts, or no changed files, in the table.',
@@ -89,6 +89,16 @@ export const REACT: Feature[] = [
           { click: { role: 'button', name: 'All analysed (9)' } },
           { click: { text: 'Button', exact: true } },
           { click: { role: 'heading', name: 'Button', exact: true } },
+        ],
+        wait: { role: 'complementary', name: 'Button' },
+      },
+      // react.compiler: "oxc": the title and the side panel name the built-in compiler.
+      {
+        scenario: 'react-oxc',
+        hash: '#react',
+        actions: [
+          { click: { role: 'button', name: 'All analysed (9)' } },
+          { click: { text: 'Button', exact: true } },
         ],
         wait: { role: 'complementary', name: 'Button' },
       },

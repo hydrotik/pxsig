@@ -215,10 +215,11 @@ const summaryOf = (base) => ({
 });
 
 /**
- * reports/react.json for the sample; `base: null` compares nothing (no merge base).
- * @param {{ base?: typeof MAIN | null }} [o]
+ * reports/react.json for the sample; `base: null` compares nothing (no merge base); `oxc`: the
+ * built-in compiler ran it (react.compiler: "oxc").
+ * @param {{ base?: typeof MAIN | null, oxc?: boolean }} [o]
  */
-export function report({ base = MAIN } = {}) {
+export function report({ base = MAIN, oxc = false } = {}) {
   const fns = functions().map((f) => (base ? f : { ...f, base: null, change: null, alert: false }));
   return {
     v: 1,
@@ -226,9 +227,9 @@ export function report({ base = MAIN } = {}) {
     project: 'demo',
     mode: 'alert',
     backend: {
-      name: 'babel',
-      compiler: '1.0.0',
-      babel: '7.29.7',
+      name: oxc ? 'oxc' : 'babel',
+      compiler: oxc ? '0.143.0' : '1.0.0',
+      babel: oxc ? null : '7.29.7',
       options: { compilationMode: 'infer', target: '19', lint: true },
     },
     base,
@@ -383,6 +384,9 @@ export const REACT_SCENARIOS = {
   // The analysis just ended with alerts: the strip's result line.
   'react-done': () =>
     withReact({ react: { status: status(), report: report(), source: 'server' } }),
+  // react.compiler: "oxc": the built-in compiler, no Babel packages.
+  'react-oxc': () =>
+    withReact({ react: { status: status(), report: report({ oxc: true }), source: 'check' } }),
   'react-no-base': () =>
     withReact({
       react: { status: status(), report: report({ base: null }), source: 'check' },

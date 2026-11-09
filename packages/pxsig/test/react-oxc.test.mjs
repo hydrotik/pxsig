@@ -2,7 +2,8 @@
  * react-oxc.test.mjs — `react.compiler: "oxc"`, the engine's built-in React Compiler
  * (lib/react/backend.mjs): a run with no Babel installed, the same alerts as the Babel plugin, the
  * cache, the choice over an installed Babel plugin, "babel" without it, an engine built without
- * the `react-oxc` feature, and the compiler named in doctor, `pxsig react`, pxsig_react and SARIF.
+ * the `react-oxc` feature, the dashboard's status (no "not installed" for "oxc"), and the compiler
+ * named in doctor, `pxsig react`, pxsig_react and SARIF.
  *
  *   node --test packages/pxsig/test/react-oxc.test.mjs
  */
@@ -13,6 +14,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { compilerName, oxcVersion } from '../src/lib/react/backend.mjs';
+import { reactData } from '../src/lib/react/data.mjs';
 import { reactFindings } from '../src/lib/react/doctor.mjs';
 import { analyse } from '../src/lib/react/index.mjs';
 import { reactSarifLog } from '../src/lib/sarif-react.mjs';
@@ -73,6 +75,20 @@ test(
     );
   }
 );
+
+test('the dashboard: "oxc" needs no packages; "babel" without them is not installed', (t) => {
+  const status = (/** @type {Record<string, unknown>} */ config) => {
+    // A check that counted renders: data.react without a server or a react.json.
+    const P = projectAt(reactProject(t, { babel: null, config }));
+    const d = reactData(P, { check: { rows: [{ renders: null }] } });
+    return d && [d.status.compiler, d.status.missing];
+  };
+  assert.deepEqual(status(OXC), ['ready', []]);
+  assert.deepEqual(status({ react: { compiler: 'babel' } }), [
+    'not-installed',
+    ['babel-plugin-react-compiler', '@babel/core'],
+  ]);
+});
 
 test(
   '"oxc" over an installed Babel plugin; "babel" without one is not installed',

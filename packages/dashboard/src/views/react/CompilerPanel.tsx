@@ -152,11 +152,15 @@ export function CompilerPanel({
             {report.base ? `${report.base.since} (${report.base.commit})` : '—'}
           </KeyValueItem>
           <KeyValueItem label={t('diagnostics.react.side.compiler')}>
-            {report.backend.compiler}
+            {report.backend.name === 'oxc'
+              ? t('diagnostics.react.side.builtIn', { version: report.backend.compiler })
+              : report.backend.compiler}
           </KeyValueItem>
-          <KeyValueItem label={t('diagnostics.react.side.babel')}>
-            {report.backend.babel}
-          </KeyValueItem>
+          {report.backend.babel ? (
+            <KeyValueItem label={t('diagnostics.react.side.babel')}>
+              {report.backend.babel}
+            </KeyValueItem>
+          ) : null}
           <KeyValueItem label={t('diagnostics.react.side.options')}>
             {t('diagnostics.react.side.optionsValue', {
               mode: opts.compilationMode ?? 'infer',

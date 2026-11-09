@@ -116,6 +116,34 @@ test('Analyse posts with the link, and is disabled while read only; no merge bas
   }
 });
 
+test('Compiler: the title and the side panel name the compiler that ran, Babel or built in', async (t) => {
+  if (skip) return t.skip(skip);
+  for (const [name, title, compiler, babel] of [
+    ['react', 'React Compiler (babel-plugin-react-compiler 1.0.0)', '1.0.0', true],
+    [
+      'react-oxc',
+      'React Compiler (built-in, oxc 0.143.0, experimental)',
+      'Built-in, oxc 0.143.0, experimental',
+      false,
+    ],
+  ]) {
+    const { page, errors } = await open(scenarioData(name), { hash: '#react', approving: CAN });
+    try {
+      await page.getByRole('heading', { name: title, exact: true }).waitFor();
+      await page.getByRole('button', { name: 'All analysed (9)' }).click();
+      await page.getByText('Button', { exact: true }).click();
+      const panel = page.getByRole('complementary', { name: 'Button' });
+      await panel.waitFor();
+      assert.ok(await panel.getByText(compiler, { exact: true }).isVisible(), name);
+      assert.equal(await panel.getByText('Babel', { exact: true }).count(), babel ? 1 : 0, name);
+      assert.equal(await page.getByText(/not installed/i).count(), 0, name);
+      assert.deepEqual(errors, []);
+    } finally {
+      await page.close();
+    }
+  }
+});
+
 test('Renders: Measure renders posts a visual check with counting on for the scope; Cancel stops it', async (t) => {
   if (skip) return t.skip(skip);
   {

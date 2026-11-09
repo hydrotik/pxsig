@@ -50,6 +50,20 @@ export function fromLabel(r: ReactReport, source: ReactData['source']) {
   });
 }
 
+/**
+ * The compiler card's title, naming the compiler of the run: "React Compiler
+ * (babel-plugin-react-compiler 1.0.0)" or "React Compiler (built-in, oxc 0.143.0, experimental)".
+ */
+export function compilerTitle(b: ReactReport['backend']) {
+  if (!b.compiler) return t('diagnostics.react.compiler.title');
+  return t(
+    b.name === 'oxc'
+      ? 'diagnostics.react.compiler.titleOxc'
+      : 'diagnostics.react.compiler.titleBabel',
+    { version: b.compiler }
+  );
+}
+
 /** An outcome's label, or "—" when the function is absent on that side. */
 export const outcomeLabel = (o: string | undefined | null) =>
   t(

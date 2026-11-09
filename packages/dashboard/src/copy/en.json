@@ -742,6 +742,8 @@
         },
         "progressLabel": "React analysis progress",
         "title": "React Compiler",
+        "titleBabel": "React Compiler (babel-plugin-react-compiler {version})",
+        "titleOxc": "React Compiler (built-in, oxc {version}, experimental)",
         "summary": "{files} files · {functions} functions · compiled {compiled} · skipped {skipped} · opted out {optedOut} · fixed {fixed} · {time} ({cached} cached)",
         "filterAlerts": "Alerts ({count})",
         "filterAll": "All analysed ({count})",
@@ -821,6 +823,7 @@
         "base": "Base",
         "compiler": "Compiler",
         "babel": "Babel",
+        "builtIn": "Built-in, oxc {version}, experimental",
         "options": "Options",
         "optionsValue": "{mode} · target {target} · lint {lint}",
         "on": "on",
@@ -1154,7 +1157,15 @@
       "rows": {
         "compiler": {
           "term": "Compiler",
-          "meaning": "Each changed component and hook file is compiled with the project's React Compiler at the merge base and now. A function compiled before and skipped now is an alert, with the compiler's rule and line."
+          "meaning": "Each changed component and hook file is compiled with the React Compiler that react.compiler picks, at the merge base and now. A function compiled before and skipped now is an alert, with the compiler's rule and line."
+        },
+        "choice": {
+          "term": "Compiler choice",
+          "meaning": "react.compiler in pxsig.config.json, or defaults.react.compiler in pxsig.workspace.json: \"auto\" (the default, also true) and \"babel\" use the project's babel-plugin-react-compiler; \"oxc\" uses the compiler built into the pxsig engine (oxc_react_compiler), which needs no packages in the project. Diagnostics › React names the compiler of the last analysis."
+        },
+        "experimental": {
+          "term": "Experimental",
+          "meaning": "The built-in compiler is a port of the React Compiler and is experimental: for some functions its verdict, rule or memo slots can differ from the Babel plugin's. \"auto\" keeps using the Babel plugin."
         },
         "changes": {
           "term": "Newly skipped · New, skipped · New reason · New finding · Fixed",
@@ -1178,7 +1189,7 @@
         },
         "install": {
           "term": "Compiler packages",
-          "meaning": "The compiler analysis uses babel-plugin-react-compiler and @babel/core from the project: npm install -D babel-plugin-react-compiler @babel/core. pxsig installs neither."
+          "meaning": "The compiler analysis uses babel-plugin-react-compiler and @babel/core from the project: npm install -D babel-plugin-react-compiler @babel/core. pxsig installs neither. With react.compiler \"oxc\", neither is needed."
         }
       }
     },
