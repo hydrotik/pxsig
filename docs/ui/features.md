@@ -440,7 +440,7 @@ Components: `Dialog`, `DialogTitle`, `DialogDescription`, `StatusBadge`, `Segmen
 
 Copy: `inspector.review`, `inspector.nav`, `inspector.variant`, `inspector.contextLatest`, `inspector.contextScenario`, `inspector.withinGate`, `inspector.close`, `inspector.rejectedNote`, `inspector.a11yRejectedNote`, `inspector.rejection`
 
-Files: `src/inspector/Inspector`, `src/inspector/Header`, `src/inspector/controls`, `src/parts/StatusOf`, `src/inspector/RejectNote`, `src/inspector/RejectedNote`
+Files: `src/inspector/Inspector`, `src/inspector/Header`, `src/inspector/controls`, `src/parts/StatusOf`, `src/inspector/RejectNote`, `src/inspector/RejectedNote`, `src/inspector/side/A11ySection`
 
 ### Image stage
 
@@ -485,7 +485,7 @@ Components: `KeyValueList`, `KeyValueItem`, `Badge`, `StatusBadge`, `Button`, `L
 
 Copy: `inspector.sections`, `inspector.pixel`, `inspector.changes`, `inspector.sliders.tolerance`, `inspector.metrics`, `inspector.a11y`, `inspector.files`, `inspector.storybook`, `inspector.artifacts`
 
-Files: `src/inspector/Inspector`, `src/inspector/RejectNote`, `src/inspector/side/PixelSection`, `src/inspector/side/ChangesSection`, `src/inspector/side/MetricsSection`, `src/inspector/side/A11ySection`, `src/inspector/side/FilesSection`
+Files: `src/inspector/Inspector`, `src/inspector/side/PixelSection`, `src/inspector/side/ChangesSection`, `src/inspector/side/MetricsSection`, `src/inspector/side/A11ySection`, `src/inspector/side/FilesSection`
 
 ### Text labels
 

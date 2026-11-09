@@ -1015,6 +1015,33 @@
             "name": "Dismiss reason",
             "exact": true
           }
+        },
+        {
+          "scenario": "a11y",
+          "hash": "#inspect=ui-button--primary",
+          "actions": [
+            {
+              "click": {
+                "role": "button",
+                "name": "Reject",
+                "exact": true,
+                "within": {
+                  "role": "complementary"
+                }
+              }
+            },
+            {
+              "scroll": {
+                "role": "heading",
+                "name": "Pixel",
+                "exact": true
+              }
+            }
+          ],
+          "wait": {
+            "role": "group",
+            "name": "Reject the violations with a reason"
+          }
         }
       ],
       "anchors": [
@@ -1138,33 +1165,6 @@
             "role": "heading",
             "name": "Metrics",
             "exact": true
-          }
-        },
-        {
-          "scenario": "a11y",
-          "hash": "#inspect=ui-button--primary",
-          "actions": [
-            {
-              "click": {
-                "role": "button",
-                "name": "Reject",
-                "exact": true,
-                "within": {
-                  "role": "complementary"
-                }
-              }
-            },
-            {
-              "scroll": {
-                "role": "heading",
-                "name": "Pixel",
-                "exact": true
-              }
-            }
-          ],
-          "wait": {
-            "role": "group",
-            "name": "Reject the violations with a reason"
           }
         }
       ],

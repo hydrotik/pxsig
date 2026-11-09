@@ -51,6 +51,7 @@ export const INSPECTOR: Feature[] = [
       'parts/StatusOf',
       'inspector/RejectNote',
       'inspector/RejectedNote',
+      'inspector/side/A11ySection',
     ],
     screens: [
       {
@@ -81,6 +82,25 @@ export const INSPECTOR: Feature[] = [
         scenario: 'rejected',
         hash: '#inspect=ui-button--primary@light',
         wait: { role: 'button', name: 'Dismiss reason', exact: true },
+      },
+      {
+        // The side panel's Accessibility Reject opens the reason's row for the violations; then the
+        // side panel back at its top (the click scrolled it to the section), as it opens. Here,
+        // not in inspector.details: the row moves the side panel down, and its box is locked there.
+        scenario: 'a11y',
+        hash: '#inspect=ui-button--primary',
+        actions: [
+          {
+            click: {
+              role: 'button',
+              name: 'Reject',
+              exact: true,
+              within: { role: 'complementary' },
+            },
+          },
+          { scroll: { role: 'heading', name: 'Pixel', exact: true } },
+        ],
+        wait: { role: 'group', name: 'Reject the violations with a reason' },
       },
     ],
     anchors: [
@@ -196,7 +216,6 @@ export const INSPECTOR: Feature[] = [
     ],
     files: [
       'inspector/Inspector',
-      'inspector/RejectNote',
       'inspector/side/PixelSection',
       'inspector/side/ChangesSection',
       'inspector/side/MetricsSection',
@@ -208,24 +227,6 @@ export const INSPECTOR: Feature[] = [
         scenario: 'changed',
         hash: '#inspect=ui-button--primary',
         wait: { role: 'heading', name: 'Metrics', exact: true },
-      },
-      {
-        // The Accessibility section's Reject opens the reason's row for the violations; then the
-        // side panel back at its top (the click scrolled it to the section), as it opens.
-        scenario: 'a11y',
-        hash: '#inspect=ui-button--primary',
-        actions: [
-          {
-            click: {
-              role: 'button',
-              name: 'Reject',
-              exact: true,
-              within: { role: 'complementary' },
-            },
-          },
-          { scroll: { role: 'heading', name: 'Pixel', exact: true } },
-        ],
-        wait: { role: 'group', name: 'Reject the violations with a reason' },
       },
     ],
     anchors: [
