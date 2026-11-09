@@ -38,6 +38,7 @@ import { CompilerPanel } from './CompilerPanel';
 import {
   ALERT_ORDER,
   ChangeBadge,
+  compilerTitle,
   fromLabel,
   OffNote,
   offersRuns,
@@ -197,7 +198,7 @@ export function Compiler({
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>{t('diagnostics.react.compiler.title')}</CardTitle>
+            <CardTitle>{compilerTitle(report.backend)}</CardTitle>
             {sm ? (
               <CardDescription>
                 {t('diagnostics.react.compiler.summary', {

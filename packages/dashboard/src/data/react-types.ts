@@ -69,10 +69,11 @@ export interface ReactReport {
   v: number;
   generatedAt: string;
   project: string | null;
+  /** The run's compiler: `babel` (babel-plugin-react-compiler, @babel/core) or `oxc` (built in: oxc_react_compiler, `babel` null). */
   backend: {
-    name: string;
+    name: 'babel' | 'oxc';
     compiler: string;
-    babel: string;
+    babel: string | null;
     options: { compilationMode?: string; target?: string; lint?: boolean };
   };
   base: { since: string; commit: string } | null;

@@ -338,7 +338,7 @@ Files: `src/views/Diagnostics`, `src/views/Scenarios`, `src/views/Calibration`, 
 
 ### React Compiler
 
-`diagnostics.react-compiler` · The React Compiler's verdict on the changed component and hook files, at the merge base and now: alerts first (newly skipped, new and skipped, a new reason, a new finding), every function analysed on demand, and one function's diagnostics, base and entries in a side panel. Alerts only: nothing here fails a check or asks for a decision.
+`diagnostics.react-compiler` · The React Compiler's verdict on the changed component and hook files, at the merge base and now: alerts first (newly skipped, new and skipped, a new reason, a new finding), every function analysed on demand, and one function's diagnostics, base and entries in a side panel. The title names the compiler that ran: the project's babel-plugin-react-compiler, or the built-in one (oxc, experimental). Alerts only: nothing here fails a check or asks for a decision.
 
 States:
 

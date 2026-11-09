@@ -41,7 +41,7 @@
   - progressbar "React analysis progress": x
   - text: Analysing 3 of 4 files…
   - button "Skip"
-  - heading "React Compiler" [level=3]
+  - heading "React Compiler (babel-plugin-react-compiler 1.0.0)" [level=3]
   - paragraph: 4 files · 9 functions · compiled 5 · skipped 3 · opted out 1 · fixed 1 · 0.3 s (2 cached)
   - button "Alerts (4)"
   - button "All analysed (9)"

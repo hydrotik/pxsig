@@ -1060,6 +1060,38 @@
       "a11y": false
     },
     {
+      "id": "diagnostics--react-compiler-8@dark",
+      "story": "diagnostics--react-compiler-8",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-8@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-compiler-8@light",
+      "story": "diagnostics--react-compiler-8",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-8@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
       "id": "diagnostics--react-renders-1@dark",
       "story": "diagnostics--react-renders-1",
       "mode": "dark",

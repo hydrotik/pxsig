@@ -151,6 +151,8 @@ const KEYS: [string, CopyKey, string[]][] = [
 /** The React Analysis rows (help.react.rows). */
 const REACT_ROWS = [
   'compiler',
+  'choice',
+  'experimental',
   'changes',
   'renders',
   'still',
