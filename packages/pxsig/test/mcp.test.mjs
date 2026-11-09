@@ -122,6 +122,7 @@ test('initialize echoes the protocol version and declares tools', async () => {
     res.result.instructions,
     /never approve, never accept, and never call `\/__pxsig\/approve`; ask the person to review in the dashboard/
   );
+  assert.match(res.result.instructions, /Before a visual fix, read pxsig_rejected/);
 });
 
 test('notifications get no reply; ping does', async () => {
@@ -138,6 +139,7 @@ test('tools/list exposes every tool with a JSON schema and no handler', async ()
     'pxsig_status',
     'pxsig_list',
     'pxsig_entry',
+    'pxsig_rejected',
     'pxsig_a11y',
     'pxsig_affected',
     'pxsig_stale',

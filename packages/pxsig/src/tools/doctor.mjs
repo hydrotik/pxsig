@@ -169,7 +169,7 @@ async function doctor({
  * @returns {CheckToolResult}
  */
 function summarizeIds(C, ids, via, t0) {
-  const { check, review } = load(C);
+  const { check, review, rejections } = load(C);
   const rows = check.rows.filter((r) => ids.has(r.id));
   /** @type {Record<string, number>} */
   const counts = {};
@@ -205,7 +205,7 @@ function summarizeIds(C, ids, via, t0) {
     counts,
     problems: rows
       .filter((r) => PROBLEMS.has(stateOf(r, review)))
-      .map((r) => brief(r, review))
+      .map((r) => brief(r, review, rejections))
       .slice(0, 60),
     ...(a11yNew ? { a11yNew } : {}),
     ...warn,

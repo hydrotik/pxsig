@@ -17,6 +17,8 @@
 /** The instruction for the assistant, word for word in docs/agents.md and `pxsig help agents`. */
 export const SNIPPET = `pxsig (visual baselines): never approve or accept pxsig baselines and never call
 /__pxsig/approve. Ask the person to review changes in the pxsig dashboard.
+Before fixing a rejected pxsig entry, read its reason and images (pxsig_rejected, or
+\`pxsig rejected\`); after the fix, re-check those ids.
 `;
 
 /** Added to the instruction only when a project's config names a UI adapter (`dashboard.ui`). */

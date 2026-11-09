@@ -159,3 +159,97 @@ export interface PacketFacts {
   violations?: import('./run.js').A11yViolation[];
   writtenAt: string;
 }
+
+// --- reading them (tools/rejected.mjs: pxsig_rejected, pxsig rejected) ---------------------------
+
+/** `pxsig_rejected`. */
+export interface RejectedArgs {
+  project?: string;
+  ids?: string[];
+  kind?: RejectionKind | 'all';
+  /** `none` (default): file references only; `crops`: the crops inline; `full`: also the images. */
+  images?: 'none' | 'crops' | 'full';
+  closed?: boolean;
+  limit?: number;
+}
+
+/** One reason, as `pxsig_rejected` gives it: `from` says who gave it, in words. */
+export interface RejectedNote extends RejectionNote {
+  from: string;
+}
+
+/** A changed region of an open rejection; `crops` are store-relative (null: too large to crop). */
+export interface RejectedRegion {
+  n: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  px: number;
+  scale?: number;
+  crops: { baseline: string; current: string; diff: string } | null;
+}
+
+/** One open rejection, as `pxsig_rejected` and `pxsig rejected` give it. Paths are store-relative. */
+export interface RejectedEntry {
+  id: string;
+  kind: RejectionKind;
+  /** The entry's state now (pxsig_list's), or for accessibility its decision or violations. */
+  state: string | null;
+  note: string | null;
+  via: string;
+  from: string;
+  at: string;
+  notes: RejectedNote[];
+  checks: RejectionCheck[];
+  goal: string;
+  metrics: PacketFacts['metrics'];
+  regions: RejectedRegion[];
+  text: string[];
+  structure: string | null;
+  violations?: PacketFacts['violations'];
+  packet: string | null;
+  packetError?: string;
+  files: {
+    rejection: string | null;
+    baseline: string | null;
+    current: string | null;
+    mask: string | null;
+  };
+  prompt: string;
+  next: string;
+}
+
+/** A closed rejection, from reports/rejections.ndjson: text only. */
+export interface ClosedRejection {
+  id: string;
+  kind: RejectionKind;
+  at: string | null;
+  closedAt: string;
+  as: RejectionClose;
+  note: string | null;
+  notes: RejectedNote[];
+  checks: RejectionCheck[];
+}
+
+/** What `pxsig_check` says of each checked entry that had an open rejection. */
+export interface CheckRejection {
+  id: string;
+  kind: RejectionKind;
+  rejection: string;
+}
+
+/** One line of reports/rejections.ndjson (lib/rejections.mjs): an event of one rejection. */
+export interface RejectionLogLine {
+  event: 'rejected' | 'note' | 'checked' | 'closed';
+  kind: RejectionKind;
+  id: string;
+  at: string;
+  via?: string;
+  ref?: string;
+  note?: string | null;
+  pass?: boolean;
+  ssim?: number | null;
+  new?: number;
+  as?: RejectionClose;
+}
