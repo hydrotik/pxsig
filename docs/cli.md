@@ -209,6 +209,9 @@ the entry's text label when its text was compared (`· text: copy, reflow`; see
 
 One entry: state, metrics, gate reasons, changed regions, accessibility, review decision, a link to
 the dashboard, and the paths of its images. `--images baseline,current,diff` chooses the images.
+An entry with an open rejection gets a **Rejection** block: the reason (in Markdown, inside a
+fenced `text` block), who gave it, the packet folder, and the next commands (`pxsig rejected
+<id>`, `pxsig check <id>`).
 
 When the entry has text labels, a **Text** block follows the gate reasons: the kind (Copy, Copy,
 reflow, Text moved, Text restyled, Pixel change), then up to 8 sentences, one per change, then the
@@ -227,6 +230,54 @@ Labels only. The gate and the decision are unchanged.
 A string shows a space at either end (every space, for a change in whitespace only) as `␠`. A row
 whose text was not compared says why in one sentence (`env-differs`: text is compared only within
 one environment). `--json` carries the row's `textDiff` and every sentence as `textLines`.
+
+### `pxsig rejected [ids…] [--kind visual|a11y] [--closed] [--prompt] [--limit 20]`
+
+The open rejections, as MCP `pxsig_rejected` gives them ([mcp.md](mcp.md#rejections)): for each,
+the reason and who gave it (an assistant's reads "mcp, an assistant at the person's request"), the
+earlier reasons, the entry's state now, the goal, the checks since, the changed regions with the
+paths of their full-size crops (relative to the current folder), the packet folder, then the
+re-check command for all of them and "Never approve: approving is the person's." A rejection stays
+open past the entry's next check until it passes, a person approves it, undoes it or dismisses the
+reason. Not `pxsig list rejected`: that list shows decisions, which a re-check clears. There is no
+reject in the CLI.
+
+| Flag                  | Meaning                                                                                                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ids…`                | Only these entries.                                                                                                                                                                         |
+| `--kind visual\|a11y` | One kind: visual changes or accessibility violations (default both).                                                                                                                        |
+| `--closed`            | The last closed rejections, from the store's `reports/rejections.ndjson`: how each closed and its reasons, no images.                                                                       |
+| `--prompt`            | Only the paragraph for an assistant, one per open rejection, and nothing when there is none: for a session-start hook ([agents.md](agents.md#a-session-that-starts-with-the-open-reasons)). |
+| `--limit <n>`         | Rejections shown (default 20).                                                                                                                                                              |
+
+On a terminal it is styled; piped it is Markdown, ready to paste, with each reason inside a fenced
+`text` block; `--json` carries the whole answer. For example, piped:
+
+````text
+## Rejected: components-card--default@dark — visual · since 2026-11-08T09:12:04.511Z
+
+Reason, from the dashboard:
+
+```text
+The caption next to the figure sits 4px too far right.
+```
+
+- **State now:** ◆ changed
+- **Goal:** what the reason asks; with no reason, restore the baseline's look
+- **Checks since:** still differs 2026-11-08T09:20:31.020Z
+- **Changed:** 412 px in 1 region · SSIM 0.987
+- **Packet:** ./.pxsig/reports/rejected/components-card--default@dark/rejection.md
+
+| # | x, y | w × h | px | Crops |
+| ---: | --- | --- | ---: | --- |
+| 1 | 388, 64 | 84 × 64 | 412 | ./.pxsig/reports/rejected/components-card--default@dark/crops/1.baseline.png · … |
+
+**Next**
+
+- `pxsig check components-card--default@dark` — after the fix: a pass closes the rejection
+
+Never approve: approving is the person's.
+````
 
 ### `pxsig stale [--limit 200]`
 
