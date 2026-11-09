@@ -39,7 +39,10 @@
  *   list [state] [--component x] [--mode dark] [--limit 30]
  *                               entries by state (problems | changed | error | flaky | drift | pass | a11y | all)
  *   entry <id> [--images baseline,current,diff]
- *                               one entry: verdict, metrics, regions, a11y, and its images
+ *                               one entry: verdict, metrics, regions, a11y, open rejection, images
+ *   rejected [ids…] [--kind visual|a11y] [--closed] [--prompt]
+ *                               open rejections: the reasons, the checks since, the crops and the re-check
+ *                               command (--prompt: one paragraph each, for an assistant)
  *   check [ids…] [--changed a.tsx,b.css.ts] [--since main] [--all]
  *                               re-render and re-check (server if up, else in-process); never writes baselines
  *   check --full [--suite x] [--modes a,b] [--update] …

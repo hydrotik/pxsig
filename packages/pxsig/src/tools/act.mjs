@@ -10,6 +10,8 @@ import { ctxOf, here, http, ID_RE, load, PROJECT, server } from './context.mjs';
 import { affected } from './staleness.mjs';
 import { doctor, summarizeIds } from './doctor.mjs';
 import { checkReact } from './react.mjs';
+import { checkedRejections } from './rejected.mjs';
+import { NOTE_MAX, readRejections, sanitizeNote } from '../lib/rejections.mjs';
 
 /** @import { Readable } from 'node:stream' */
 /** @import { LockError } from '../lib/lock.mjs' */
@@ -21,7 +23,7 @@ export const actTools = /** @type {const} */ ([
   {
     name: 'pxsig_check',
     description:
-      'Re-render and re-check entries, then report their results. Select by `ids`, `stories`, `changed_files` (import graph), `since` (git ref), or `all`. A story (or entry) not in the manifest yet is registered first when Storybook is healthy: its entries arrive NEW, with no signature, for a person to approve; anything that cannot be registered is listed in `skipped` with the reason. Uses the running pxsig server (fast, warm browsers); without it, runs the check itself (needs the project Storybook). With `since` or `changed_files`, `react` carries the React Compiler alerts for those files (alerts only, see pxsig_react). Never writes baselines.',
+      'Re-render and re-check entries, then report their results. Select by `ids`, `stories`, `changed_files` (import graph), `since` (git ref), or `all`. A story (or entry) not in the manifest yet is registered first when Storybook is healthy: its entries arrive NEW, with no signature, for a person to approve; anything that cannot be registered is listed in `skipped` with the reason. Uses the running pxsig server (fast, warm browsers); without it, runs the check itself (needs the project Storybook). With `since` or `changed_files`, `react` carries the React Compiler alerts for those files (alerts only, see pxsig_react). Each checked entry that had an open rejection comes back in `rejections`: `closed: passes` or `open: still differs` (accessibility: `closed: no new violations` or `open: new violations remain`). Never writes baselines.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -66,6 +68,16 @@ export const actTools = /** @type {const} */ ([
         return withReact({ checked: 0, note: 'nothing selected (the files affect no entries?)' });
       const srv = await server(C);
       const t0 = Date.now();
+      // The open rejections before: what the check did to each (tools/rejected.mjs).
+      const before = readRejections(C.P);
+      /**
+       * @param {CheckToolResult} out
+       * @param {Iterable<string>} checked
+       */
+      const withRejections = (out, checked) => {
+        const r = checkedRejections(C.P, before, checked);
+        return r.length ? { ...out, rejections: r } : out;
+      };
       if (srv.up) {
         reacting = checkReact(C, { since, changed_files });
         // Registering a new story reads its parameters in a browser first: allow for that.
@@ -101,7 +113,9 @@ export const actTools = /** @type {const} */ ([
               note: 'still running; call pxsig_status later',
             });
         }
-        return withReact({ ...summarizeIds(C, queued, 'server', t0), ...extra });
+        return withReact(
+          withRejections({ ...summarizeIds(C, queued, 'server', t0), ...extra }, queued)
+        );
       }
       const args = [join(here, 'check.mjs'), '--project', C.P.name, '--retries', '1'];
       // Ids and stories together (both name entries to --only; new ones are registered there).
@@ -136,19 +150,24 @@ export const actTools = /** @type {const} */ ([
         name: m[1],
         why: m[2],
       }));
-      return withReact({
-        ...summarizeIds(C, want, 'check', t0),
-        ...(skipped.length ? { skipped } : {}),
-        // Run here, not by the server on the port: it serves another workspace.
-        ...(srv.foreign ? { note: srv.foreign } : {}),
-        log: out.log,
-      });
+      return withReact(
+        withRejections(
+          {
+            ...summarizeIds(C, want, 'check', t0),
+            ...(skipped.length ? { skipped } : {}),
+            // Run here, not by the server on the port: it serves another workspace.
+            ...(srv.foreign ? { note: srv.foreign } : {}),
+            log: out.log,
+          },
+          want
+        )
+      );
     },
   },
   {
     name: 'pxsig_review',
     description:
-      "Mark entries for attention. reject: the entry's visual change is marked rejected (to be fixed); a11y-reject: its axe violations are marked for a fix; unreview / a11y-unreview: clear a rejection this assistant made. Approving and accepting are not here: they need a person (the dashboard, or `pxsig approve` in a terminal), and the server refuses an agent's unreview of a person's approval, accept or rejection. A decision lasts until the entry's next check and is logged as via: mcp. Pass confirm: true ONLY when the user explicitly asked for this action on these exact entries in this conversation. Needs the pxsig server.",
+      "Mark entries for attention. reject: the entry's visual change is marked rejected (to be fixed); a11y-reject: its axe violations are marked for a fix; unreview / a11y-unreview: clear a rejection this assistant made. `note` (reject and a11y-reject only): the reason in the person's words, one line, at most 280 characters, kept as an assistant's (via: mcp) and never in place of a person's reason. Approving and accepting are not here: they need a person (the dashboard, or `pxsig approve` in a terminal), and the server refuses an agent's unreview of a person's approval, accept or rejection. A decision lasts until the entry's next check and is logged as via: mcp; the open rejection and its reasons stay until the entry passes (pxsig_rejected lists them). Pass confirm: true ONLY when the user explicitly asked for this action on these exact entries in this conversation. Needs the pxsig server.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -159,12 +178,18 @@ export const actTools = /** @type {const} */ ([
           type: 'boolean',
           description: 'true only on an explicit user instruction for these ids.',
         },
+        note: {
+          type: 'string',
+          maxLength: NOTE_MAX,
+          description:
+            "reject and a11y-reject: the reason, as the person gave it. Kept as an assistant's.",
+        },
       },
       required: ['action', 'ids', 'confirm'],
       additionalProperties: false,
     },
     /** @param {ReviewArgs} args */
-    async run({ project, action, ids, confirm }) {
+    async run({ project, action, ids, confirm, note }) {
       if (!AGENT_DECISIONS.has(action))
         throw new Error(
           `refused: ${action} is not an agent's decision (${[...AGENT_DECISIONS].join(', ')}); ${NEEDS_PERSON}`
@@ -175,6 +200,10 @@ export const actTools = /** @type {const} */ ([
         );
       const bad = ids.filter((id) => !ID_RE.test(id));
       if (bad.length) throw new Error(`bad ids: ${bad.join(', ')}`);
+      // The server cuts it again where it is stored (lib/rejections.mjs `sanitizeNote`).
+      const reason = sanitizeNote(note);
+      if (reason && !action.endsWith('reject'))
+        throw new Error(`refused: a note goes with reject or a11y-reject, not ${action}`);
       const C = ctxOf(project);
       const srv = await server(C);
       if (!srv.up) throw new Error(`the pxsig server is not running (${C.serverUrl}); ${srv.hint}`);
@@ -184,17 +213,17 @@ export const actTools = /** @type {const} */ ([
         throw new Error(
           `no MCP token from the pxsig server at ${C.serverUrl} (it writes one when it starts): restart pxsig serve with this version`
         );
-      /** @type {{ id: string, entry: unknown }[]} */
+      /** @type {{ id: string, entry: unknown, notice?: string }[]} */
       const done = [];
       for (const id of ids) {
-        /** @type {{ entry?: unknown }} */
+        /** @type {{ entry?: unknown, notice?: string }} */
         const r = await http(C, `/__pxsig/${action}`, {
           method: 'POST',
-          body: { project: C.P.name, id },
+          body: { project: C.P.name, id, ...(reason ? { note: reason } : {}) },
           headers: { [TOKEN_HEADER]: token },
           timeout: 120_000,
         });
-        done.push({ id, entry: r.entry ?? null });
+        done.push({ id, entry: r.entry ?? null, ...(r.notice ? { notice: r.notice } : {}) });
       }
       return { action, done };
     },

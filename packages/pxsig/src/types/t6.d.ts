@@ -494,7 +494,8 @@ export type ImageKind = 'baseline' | 'current' | 'diff';
 /** `pxsig_entry`. */
 export interface EntryArgs extends ProjectArg {
   id: string;
-  images?: readonly ImageKind[];
+  /** `crops`: the open rejection's crops (tools/rejected.mjs). */
+  images?: readonly (ImageKind | 'crops')[];
 }
 
 /** `pxsig_a11y`. */
@@ -534,6 +535,7 @@ export interface ReviewArgs extends ProjectArg {
   action: string;
   ids: string[];
   confirm: boolean;
+  note?: string;
 }
 
 /** `pxsig_doctor`. */
@@ -632,6 +634,9 @@ export interface BriefEntry extends TextBrief {
   reasons?: string[];
   error?: string;
   a11yNew?: number;
+  /** The reason of a rejection, open or decided. */
+  note?: string;
+  rejectedBefore?: true;
 }
 
 /** An error a command fails with: some carry the exit code (2: usage or setup) or an HTTP status. */
@@ -683,6 +688,7 @@ export interface CheckToolResult {
   log?: string;
   /** With `since` / `changed_files`: the React Compiler's alerts (tools/react.mjs). */
   react?: import('./react.js').CheckReact;
+  rejections?: import('./rejections.js').CheckRejection[];
 }
 
 /** A value read out of a config (JSON): `pxsig config` prints it. */
