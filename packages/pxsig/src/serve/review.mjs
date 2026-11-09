@@ -27,6 +27,7 @@ import { httpError } from './http.mjs';
 import { needLock } from './projects.mjs';
 import { agentMayClearRejection, closeAfter, hasNote, rejectWithNote } from './rejections.mjs';
 import { checkPatch, updateCheckRows } from './report-rows.mjs';
+import { serialise } from './serialise.mjs';
 /**
  * @import { A11yBaseline, CheckReport, DecisionMeta, ReviewEntry, ReviewFile } from '../types/t5.js'
  */
@@ -163,13 +164,25 @@ export function unapprove(S, id, entry, via = 'dashboard') {
 }
 
 /**
+ * One visual decision, after the project's earlier ones (serve/serialise.mjs): it reads
+ * review.json, awaits the capture, and writes the file back.
  * @param {ServeContext} srv
  * @param {ProjectState} S
  * @param {string} action `approve`, `reject` or `unreview`
  * @param {string} id
  * @param {DecisionMeta} [meta]
  */
-export async function review(srv, S, action, id, meta = {}) {
+export const review = (srv, S, action, id, meta = {}) =>
+  serialise(S.reviewPath, () => decide(srv, S, action, id, meta));
+
+/**
+ * @param {ServeContext} srv
+ * @param {ProjectState} S
+ * @param {string} action
+ * @param {string} id
+ * @param {DecisionMeta} meta
+ */
+async function decide(srv, S, action, id, meta) {
   needLock(srv, S);
   // Asked before anything is read, and only for a reject with a note: no spawn otherwise.
   const ignored = action === 'reject' && hasNote(meta) ? await reportsIgnoredAsync(S.P) : false;
@@ -235,6 +248,16 @@ export async function review(srv, S, action, id, meta = {}) {
  */
 export async function approveStory(srv, S, story, meta = {}) {
   if (!byStory(S.P.config)) throw httpError(403, BY_STORY_OFF);
+  return serialise(S.reviewPath, () => approveEach(srv, S, story, meta));
+}
+
+/**
+ * @param {ServeContext} srv
+ * @param {ProjectState} S
+ * @param {string} story
+ * @param {DecisionMeta} meta
+ */
+async function approveEach(srv, S, story, meta) {
   needLock(srv, S);
   if (!S.running) S.reload();
   const entries = S.manifest.stories.filter((e) => (e.story ?? e.id) === story);
@@ -255,7 +278,7 @@ export async function approveStory(srv, S, story, meta = {}) {
       continue;
     }
     try {
-      await review(srv, S, 'approve', e.id, { ...meta, batch });
+      await decide(srv, S, 'approve', e.id, { ...meta, batch });
       approved.push(e.id);
     } catch (err) {
       // review throws Errors (httpError, or the engine's).
