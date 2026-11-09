@@ -1,5 +1,6 @@
 /** The report data's shape (data.ts re-exports every type), from the server or a static report. */
 import type { ReactData, RenderCounts } from './react-types';
+import type { TextDiff } from './text-types';
 
 export interface Metrics {
   ssim: number;
@@ -76,6 +77,8 @@ export interface Row {
   retry?: { attempt: number; metrics: Metrics };
   /** React render counts (`react.renders`, or Measure renders); null: no React on the page. */
   renders?: RenderCounts | null;
+  /** Text labels (text capture on, docs/spec.md "Text labels"): beside the verdict, never changing it. */
+  textDiff?: TextDiff;
 }
 export interface CheckReport {
   generatedAt: string;

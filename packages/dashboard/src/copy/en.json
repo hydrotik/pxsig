@@ -1181,6 +1181,36 @@
           "meaning": "The compiler analysis uses babel-plugin-react-compiler and @babel/core from the project: npm install -D babel-plugin-react-compiler @babel/core. pxsig installs neither."
         }
       }
+    },
+    "text": {
+      "title": "Text Labels",
+      "description": "Labels only: nothing here fails a check, changes an exit code or changes a decision. Shown as a badge in the inspector header and as its Text section.",
+      "rows": {
+        "recorded": {
+          "term": "Text record",
+          "meaning": "Right after each screenshot: every string the render draws, one box per line, with its font facts. Form fields, hidden text, canvas and iframes are left out. An approval stores the record in the baseline."
+        },
+        "compared": {
+          "term": "Compared",
+          "meaning": "Only when the render's environment is the baseline's: text boxes differ between operating systems. Otherwise the Text section says that nothing was compared."
+        },
+        "kinds": {
+          "term": "Copy · Copy, reflow · Text moved · Text restyled",
+          "meaning": "Copy: strings changed, nothing else. Copy, reflow: strings changed and pushed the text after them. Text moved: text in another place, not pushed by copy. Text restyled: a font fact changed. With changed pixels outside text there is no badge; the text changes are still listed."
+        },
+        "changes": {
+          "term": "Text changes",
+          "meaning": "Each change as a sentence, a space shown as ␠. Choosing one shows its box on the stage, as a region does."
+        },
+        "noRecord": {
+          "term": "No text record",
+          "meaning": "A baseline approved before text capture, or with it off. One is recorded at its next approval; nothing rewrites a baseline on its own."
+        },
+        "switches": {
+          "term": "Turning it off",
+          "meaning": "\"text\": false in pxsig.config.json, or defaults.text in pxsig.workspace.json; --no-text; PXSIG_TEXT=off. text.ignore lists selectors whose text is never recorded."
+        }
+      }
     }
   },
   "inspector": {
@@ -1308,7 +1338,8 @@
       "metrics": "Metrics",
       "a11y": "Accessibility ({count})",
       "files": "Files",
-      "react": "React"
+      "react": "React",
+      "text": "Text"
     },
     "pixel": {
       "needsServer": "Pixel values require the local server ({command}).",
@@ -1422,6 +1453,127 @@
       "alertWhere": "{path} · {rule}, line {line}",
       "openInReact": "Open in React",
       "from": "From the check at {time}"
+    },
+    "text": {
+      "kind": {
+        "copy": "Copy",
+        "copyReflow": "Copy, reflow",
+        "moved": "Text moved",
+        "restyled": "Text restyled",
+        "pixel": "Pixel change"
+      },
+      "summary": "{label}: {parts}.",
+      "summaryLabel": "Text",
+      "count": {
+        "copy": {
+          "one": "{count} copy change",
+          "other": "{count} copy changes"
+        },
+        "moved": {
+          "one": "{count} run moved",
+          "other": "{count} runs moved"
+        },
+        "rewrapped": {
+          "one": "{count} run rewrapped",
+          "other": "{count} runs rewrapped"
+        },
+        "restyled": {
+          "one": "{count} run restyled",
+          "other": "{count} runs restyled"
+        },
+        "added": {
+          "one": "{count} run added",
+          "other": "{count} runs added"
+        },
+        "removed": {
+          "one": "{count} run removed",
+          "other": "{count} runs removed"
+        }
+      },
+      "changed": "text changed",
+      "pixels": {
+        "outside": {
+          "one": "{count} changed pixel outside text",
+          "other": "{count} changed pixels outside text"
+        },
+        "besides": ", besides {count} in boxes a copy change moved or resized",
+        "elementsOnly": {
+          "one": "No pixels changed outside text apart from {count} changed pixel in boxes a copy change moved or resized.",
+          "other": "No pixels changed outside text apart from {count} changed pixels in boxes a copy change moved or resized."
+        },
+        "none": "No pixels changed outside text."
+      },
+      "noneChanged": "No text changed. The change is outside text.",
+      "noneChangedPlain": "No text changed.",
+      "noBaseline": "No text record in the baseline. One is recorded at its next approval.",
+      "envDiffers": "Text not compared: text is compared only within one environment, and this render's environment is not its baseline's. Labels appear once a render from this environment is approved as the baseline.",
+      "error": "Text record not read: {error}",
+      "more": {
+        "one": "And {count} more change.",
+        "other": "And {count} more changes."
+      },
+      "truncated": "Text past the capture cap (5,000 runs) is not compared.",
+      "labelOnly": "Labels only. The gate and the decision are unchanged.",
+      "changesLabel": "Text changes",
+      "quote": "\"{s}\"",
+      "change": {
+        "copy": "Copy: {was} → {now}",
+        "aside": " ({what})",
+        "factsToo": ", {facts} changed too",
+        "movedBy": ", moved {move}",
+        "moved": "{s} moved",
+        "movedTo": "{s} moved {move}",
+        "same": {
+          "one": ", and {count} more run the same way",
+          "other": ", and {count} more runs the same way"
+        },
+        "pushedByCopy": ", pushed by the copy change {was} → {now}",
+        "pushedByA": ", pushed by a copy change",
+        "rewrapped": "{s} rewrapped",
+        "restyled": "{s}: {facts} changed",
+        "style": "style",
+        "added": "Added: {s}",
+        "removed": "Removed: {s}",
+        "changed": "{s} changed"
+      },
+      "whitespace": {
+        "added": {
+          "one": "whitespace only: a space added",
+          "other": "whitespace only: {count} spaces added"
+        },
+        "removed": {
+          "one": "whitespace only: a space removed",
+          "other": "whitespace only: {count} spaces removed"
+        },
+        "same": "whitespace only"
+      },
+      "move": {
+        "right": "{px} right",
+        "left": "{px} left",
+        "down": "{px} down",
+        "up": "{px} up",
+        "both": "{x} and {y}",
+        "px": "{v}px"
+      },
+      "list": {
+        "two": "{a} and {b}",
+        "sep": ", "
+      },
+      "facts": {
+        "family": "font family",
+        "size": "font size",
+        "weight": "font weight",
+        "style": "font style",
+        "lineHeight": "line height",
+        "letterSpacing": "letter spacing",
+        "wordSpacing": "word spacing",
+        "transform": "text transform",
+        "decoration": "decoration",
+        "color": "colour",
+        "features": "font features",
+        "variation": "font variation",
+        "loaded": "font loading"
+      }
     }
   },
   "ui": {

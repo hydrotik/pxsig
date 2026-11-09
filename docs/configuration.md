@@ -393,7 +393,8 @@ off.
 The labels are shown in `pxsig entry` (a Text block: the kind and one sentence per change, such as
 `Copy: "1" → "1␠" (whitespace only: a space added)`), `pxsig list` (`· text: copy, reflow` after
 the first reason; `--text <kind>` keeps one kind), MCP `pxsig_list` and `pxsig_entry`
-([mcp.md](mcp.md#text-labels)), and summary.md (after a changed entry's reasons). A row whose
+([mcp.md](mcp.md#text-labels)), summary.md (after a changed entry's reasons), and the dashboard's
+inspector (a badge beside the verdict, and a Text section whose changes show their box on the stage). A row whose
 environment differs says that text is compared only within one environment: a render from that
 environment approved as the baseline gives it labels. The row's shape is in
 [spec.md](spec.md#text-labels).

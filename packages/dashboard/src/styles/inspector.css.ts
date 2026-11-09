@@ -431,3 +431,8 @@ globalStyle(`${decision}[aria-busy="true"], ${decision}[aria-busy="true"] *`, {
 export const labelStack = style({ display: 'inline-grid' });
 globalStyle(`${labelStack} > *`, { gridArea: '1 / 1', textAlign: 'center' });
 export const labelHidden = style({ visibility: 'hidden' });
+/** A text change (side/TextSection.tsx): a region button holding a sentence that wraps. */
+export const textChange = style([
+  region,
+  { display: 'block', textAlign: 'start', lineHeight: 1.45, overflowWrap: 'anywhere' },
+]);

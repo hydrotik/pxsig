@@ -1,0 +1,126 @@
+- main:
+  - status
+- dialog "ui-stat-tile--counts":
+  - text: Changed Copy, reflow Latest check · dark
+  - heading "ui-stat-tile--counts" [level=2]
+  - paragraph: ssim 0.8 < min 0.99
+  - button "Previous story (←)": ‹
+  - text: 1 / 7
+  - button "Next story (→)": ›
+  - button "Re-check"
+  - button "Reject"
+  - button "Approve"
+  - button "Close"
+  - group "Compare mode":
+    - radio "Side by side" [checked]
+    - radio "Swipe"
+    - radio "Onion skin"
+    - radio "Pixel diff"
+    - radio "Signature cells"
+  - button "Zoom out (−)": −
+  - text: 1200%
+  - button "Zoom in (+)": +
+  - button "Fit"
+  - button "1:1"
+  - switch "Show the original images without analysis"
+  - text: Originals
+  - switch "Highlight changed pixels" [checked]
+  - text: Highlight
+  - switch "Outline changed regions" [checked]
+  - text: Regions
+  - button "Previous change (⇧N)": ‹
+  - text: Change 1 / 2
+  - button "Next change (N)": ›
+  - group "Image comparison. Drag to pan, scroll to zoom.": Baseline render Latest render
+  - text: 1–5 mode F fit 0 1:1 + − zoom N ⇧N next / previous change O originals ← → story A approve R reject Esc close
+  - complementary:
+    - heading "Pixel" [level=3]
+    - link "Storybook":
+      - /url: http://127.0.0.1:1/?path=/story/ui-stat-tile--counts
+    - text: Hover over the image to read pixel values. Before — After — Max channel Δ —
+    - heading "Pixel Changes" [level=3]
+    - text: Tolerance
+    - group "Tolerance":
+      - slider "Tolerance": "16"
+    - term: Changed pixels
+    - definition: 1.0K (1.60%)
+    - term: Regions
+    - definition: "2"
+    - term: Max channel Δ
+    - definition: "180"
+    - term: Size
+    - definition: 320×200
+    - list:
+      - listitem:
+        - button "24×32 @ 56,120 512 px" [pressed]
+      - listitem:
+        - button "24×32 @ 176,120 512 px"
+    - heading "Text" [level=3]
+    - paragraph: "Copy, reflow: 3 copy changes, 3 runs moved. No pixels changed outside text."
+    - list "Text changes":
+      - listitem:
+        - 'button "Copy: \"1\" → \"1␠\" (whitespace only: a space added)"'
+      - listitem:
+        - 'button "Copy: \"12\" → \"12␠\" (whitespace only: a space added)"'
+      - listitem:
+        - 'button "Copy: \"0\" → \"0␠\" (whitespace only: a space added)"'
+      - listitem:
+        - button "\"new · of 1\" moved 4.2px right, pushed by the copy change \"1\" → \"1␠\""
+      - listitem:
+        - button "\"kept\" moved 4.2px right, pushed by the copy change \"12\" → \"12␠\""
+      - listitem:
+        - button "\"new edges\" moved 4.2px right, pushed by the copy change \"0\" → \"0␠\""
+    - text: Labels only. The gate and the decision are unchanged.
+    - heading "Metrics" [level=3]
+    - term: SSIM
+    - definition: 0.8 < 0.99
+    - term: Cells over
+    - definition: 12 (3%)
+    - term: Max cell Δ
+    - definition
+    - term: Edge Δ
+    - definition: "%"
+    - figure "Baseline signature":
+      - img "Baseline signature"
+      - text: Baseline signature
+    - figure "Current signature":
+      - img "Current signature"
+      - text: Current signature
+    - figure "Cell heatmap":
+      - img "Cell heatmap"
+      - text: Cell heatmap
+    - heading "Files" [level=3]
+    - list:
+      - listitem:
+        - link "Baseline render (opens in a new tab)":
+          - /url: /p/demo/renders/base/ui-stat-tile--counts.png
+        - text: 0.0 KB
+        - 'button "Copy path: Baseline render"': Copy path
+      - listitem:
+        - link "Latest render (opens in a new tab)":
+          - /url: /p/demo/renders/latest/ui-stat-tile--counts.png
+        - text: 0.0 KB
+        - 'button "Copy path: Latest render"': Copy path
+      - listitem:
+        - link "Baseline signature (PNG) (opens in a new tab)":
+          - /url: /p/demo/diffs/latest/ui-stat-tile--counts.baseline.png
+        - text: 0.0 KB
+        - 'button "Copy path: Baseline signature (PNG)"': Copy path
+      - listitem:
+        - link "Current signature (PNG) (opens in a new tab)":
+          - /url: /p/demo/diffs/latest/ui-stat-tile--counts.current.png
+        - text: 0.0 KB
+        - 'button "Copy path: Current signature (PNG)"': Copy path
+      - listitem:
+        - link "Cell heatmap (PNG) (opens in a new tab)":
+          - /url: /p/demo/diffs/latest/ui-stat-tile--counts.diff.png
+        - text: 0.0 KB
+        - 'button "Copy path: Cell heatmap (PNG)"': Copy path
+      - listitem:
+        - link "Diff page (HTML) (opens in a new tab)":
+          - /url: /p/demo/diffs/latest/ui-stat-tile--counts.diff.html
+        - text: missing
+        - 'button "Copy path: Diff page (HTML)"': Copy path
+      - listitem:
+        - link "Open in Storybook (opens in a new tab)":
+          - /url: http://127.0.0.1:1/?path=/story/ui-stat-tile--counts

@@ -105,6 +105,20 @@
   - definition: "\"react\": false (everything) or \"react\": { \"compiler\": false } in pxsig.config.json, or defaults.react in pxsig.workspace.json; pxsig serve --no-react; PXSIG_REACT=off."
   - term: Compiler packages
   - definition: "The compiler analysis uses babel-plugin-react-compiler and @babel/core from the project: npm install -D babel-plugin-react-compiler @babel/core. pxsig installs neither."
+  - heading "Text Labels" [level=3]
+  - paragraph: "Labels only: nothing here fails a check, changes an exit code or changes a decision. Shown as a badge in the inspector header and as its Text section."
+  - term: Text record
+  - definition: "Right after each screenshot: every string the render draws, one box per line, with its font facts. Form fields, hidden text, canvas and iframes are left out. An approval stores the record in the baseline."
+  - term: Compared
+  - definition: "Only when the render's environment is the baseline's: text boxes differ between operating systems. Otherwise the Text section says that nothing was compared."
+  - term: Copy · Copy, reflow · Text moved · Text restyled
+  - definition: "Copy: strings changed, nothing else. Copy, reflow: strings changed and pushed the text after them. Text moved: text in another place, not pushed by copy. Text restyled: a font fact changed. With changed pixels outside text there is no badge; the text changes are still listed."
+  - term: Text changes
+  - definition: Each change as a sentence, a space shown as ␠. Choosing one shows its box on the stage, as a region does.
+  - term: No text record
+  - definition: A baseline approved before text capture, or with it off. One is recorded at its next approval; nothing rewrites a baseline on its own.
+  - term: Turning it off
+  - definition: "\"text\": false in pxsig.config.json, or defaults.text in pxsig.workspace.json; --no-text; PXSIG_TEXT=off. text.ignore lists selectors whose text is never recorded."
   - heading "Coverage Statuses" [level=3]
   - paragraph: Shown in the Coverage section, and as extra badges on a card when an entry has a coverage issue.
   - term: Not registered

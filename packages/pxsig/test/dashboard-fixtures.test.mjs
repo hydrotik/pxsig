@@ -61,6 +61,9 @@ const NOT_IN_SCENARIOS = new Set([
   'rejections', // the open rejections (lib/rejections.mjs): no dashboard view reads them yet
 ]);
 
+/** The engine's text labels, from src/ (ONLY_SOME_RUNS paths are read relative to it). */
+const TEXT_RS = '../../../crates/pxsig-cli/src/batch/text.rs';
+
 /**
  * Fields the scenarios set that only some runs produce, so the fixture project's checks do not:
  * each names the source line that sets it, which must still be there.
@@ -71,6 +74,16 @@ const ONLY_SOME_RUNS = {
   'check.rows[].flaky': ['check/render.mjs', /\brow\.flaky = true;/],
   // React render counts: with `react.renders` on, or a Measure renders run.
   'check.rows[].renders': ['lib/rows.mjs', /\{ renders: rr\.renders \}/],
+  // Text labels compared (a baseline approved with text capture on, and a render from its
+  // environment) or a record not read: the fixture's baselines have no text record, so its rows
+  // say `no-baseline`. The engine writes both (crates/pxsig-cli/src/batch/text.rs).
+  ...Object.fromEntries(
+    ['kind', 'kinds', 'counts', 'outsidePx', 'insidePx', 'changes', 'changeCount'].map((k) => [
+      `check.rows[].textDiff.${k}`,
+      /** @type {[string, RegExp]} */ ([TEXT_RS, /let mut out = state\("compared"\);/]),
+    ])
+  ),
+  'check.rows[].textDiff.error': [TEXT_RS, /m\.insert\("error"\.into\(\), json!\(msg\)\);/],
 };
 
 /** @returns {Shape} */

@@ -1604,6 +1604,102 @@
       "a11y": false
     },
     {
+      "id": "inspector--text-1@dark",
+      "story": "inspector--text-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--text-1@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--text-1@light",
+      "story": "inspector--text-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--text-1@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--text-2@dark",
+      "story": "inspector--text-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--text-2@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--text-2@light",
+      "story": "inspector--text-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--text-2@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--text-3@dark",
+      "story": "inspector--text-3",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--text-3@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--text-3@light",
+      "story": "inspector--text-3",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--text-3@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
       "id": "inspector--session-1@dark",
       "story": "inspector--session-1",
       "mode": "dark",

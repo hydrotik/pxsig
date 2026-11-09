@@ -7,6 +7,7 @@ import * as s from '../dashboard.css';
 import { StatusOf } from '../parts/StatusOf';
 import type { storybookLink } from '../storybook-link.mjs';
 import type { InspectTarget } from './Inspector';
+import { textBadge, textSummary } from './textSay';
 
 export function Header({
   data,
@@ -54,6 +55,12 @@ export function Header({
               })}
             >
               {t('inspector.react.stillBadge')}
+            </Badge>
+          ) : null}
+          {/* Text labels (side/TextSection.tsx): beside the verdict too, never changing it. */}
+          {textBadge(row.textDiff) ? (
+            <Badge tone="info" title={textSummary(row.textDiff) ?? undefined}>
+              {textBadge(row.textDiff)}
             </Badge>
           ) : null}
           {siblingToggle}

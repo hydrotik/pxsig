@@ -390,7 +390,7 @@ Files: `src/views/Diagnostics`, `src/views/react/ReactView`, `src/views/react/sh
 
 ### Help
 
-`help.reference` · First, how approving works: the dashboard link, its timing, and the connection and approval badges. Then what each section, card icon, status, coverage code, inspector region and key means, beside a drawing of where it appears, and which pxsig, engine and UI contract versions drew the page.
+`help.reference` · First, how approving works: the dashboard link, its timing, and the connection and approval badges. Then what each section, card icon, status, React alert, text label, coverage code, inspector region and key means, beside a drawing of where it appears, and which pxsig, engine and UI contract versions drew the page.
 
 Interactions:
 
@@ -484,6 +484,24 @@ Components: `KeyValueList`, `KeyValueItem`, `Badge`, `StatusBadge`, `Button`, `L
 Copy: `inspector.sections`, `inspector.pixel`, `inspector.changes`, `inspector.sliders.tolerance`, `inspector.metrics`, `inspector.a11y`, `inspector.files`, `inspector.storybook`, `inspector.artifacts`
 
 Files: `src/inspector/Inspector`, `src/inspector/side/PixelSection`, `src/inspector/side/ChangesSection`, `src/inspector/side/MetricsSection`, `src/inspector/side/A11ySection`, `src/inspector/side/FilesSection`
+
+### Text labels
+
+`inspector.text` · What changed in the entry's text, from its text record: in the header, beside the verdict, a badge (Copy, Copy, reflow, Text moved or Text restyled; none for a pixel change); in the side panel, after Pixel Changes, a Text section with the summary and each change as a sentence (a space shown as ␠) that shows its box on the stage, or why nothing was compared. Labels only: the gate, the verdict, the decision buttons and the review queue are the same without them.
+
+States:
+
+- **empty**: No text record in the baseline, another environment, a record not read, or no text changed: one muted line instead of the changes.
+
+Interactions:
+
+- Choose a text change to show its box on the stage
+
+Components: `Badge`
+
+Copy: `inspector.sections.text`, `inspector.text`
+
+Files: `src/inspector/Header`, `src/inspector/textSay`, `src/inspector/side/TextSection`, `src/inspector/side/Side`, `src/inspector/Inspector`
 
 ### Review session
 

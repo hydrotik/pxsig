@@ -185,6 +185,50 @@ export const INSPECTOR: Feature[] = [
     ],
   },
   {
+    id: 'inspector.text',
+    section: 'inspector',
+    title: 'Text labels',
+    purpose:
+      "What changed in the entry's text, from its text record: in the header, beside the verdict, a badge (Copy, Copy, reflow, Text moved or Text restyled; none for a pixel change); in the side panel, after Pixel Changes, a Text section with the summary and each change as a sentence (a space shown as ␠) that shows its box on the stage, or why nothing was compared. Labels only: the gate, the verdict, the decision buttons and the review queue are the same without them.",
+    states: {
+      empty:
+        'No text record in the baseline, another environment, a record not read, or no text changed: one muted line instead of the changes.',
+    },
+    interactions: [{ action: 'Choose a text change to show its box on the stage' }],
+    copy: ['inspector.sections.text', 'inspector.text'],
+    components: ['Badge'],
+    files: [
+      'inspector/Header',
+      'inspector/textSay',
+      'inspector/side/TextSection',
+      'inspector/side/Side',
+      'inspector/Inspector',
+    ],
+    screens: [
+      {
+        // The Text section is below the side panel's fold: Pixel Changes, just above it, scrolled
+        // to the panel's top, so both show.
+        scenario: 'text',
+        hash: '#inspect=ui-stat-tile--counts',
+        actions: [{ scroll: { role: 'heading', name: 'Pixel Changes', exact: true } }],
+        wait: { text: 'Copy, reflow', exact: true },
+      },
+      {
+        scenario: 'text',
+        hash: '#inspect=ui-section-header--default',
+        actions: [{ scroll: { role: 'heading', name: 'Pixel Changes', exact: true } }],
+        wait: { text: 'Text restyled', exact: true },
+      },
+      {
+        scenario: 'text',
+        state: 'empty',
+        hash: '#inspect=ui-card--default',
+        actions: [{ scroll: { role: 'heading', name: 'Pixel Changes', exact: true } }],
+        wait: { text: 'No text record in the baseline. One is recorded at its next approval.' },
+      },
+    ],
+  },
+  {
     id: 'inspector.session',
     section: 'inspector',
     title: 'Review session',
