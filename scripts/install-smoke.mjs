@@ -186,6 +186,9 @@ try {
   const installed = join(project, 'node_modules', '@pxsig', `cli-${id}`, 'bin', exe);
   if (!existsSync(installed)) fail(`the platform package's engine is not at ${installed}`);
   log(`installed; engine at ${installed}`);
+  // The platform package's own self-test (test/binary.test.js) runs the installed engine.
+  run(process.execPath, ['--test'], { cwd: join(project, 'node_modules', '@pxsig', `cli-${id}`) });
+  log('platform package self-test: ok');
   // React analysis's packages are optional peers: installing pxsig installs neither.
   for (const peer of ['babel-plugin-react-compiler', '@babel/core'])
     if (existsSync(join(project, 'node_modules', peer, 'package.json')))

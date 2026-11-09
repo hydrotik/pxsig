@@ -8,6 +8,10 @@
     "url": "git+https://github.com/hydrotik/pxsig.git",
     "directory": "packages/storybook-addon"
   },
+  "homepage": "https://github.com/hydrotik/pxsig#readme",
+  "bugs": {
+    "url": "https://github.com/hydrotik/pxsig/issues"
+  },
   "author": "Donovan Adams (Hydrotik LLC)",
   "engines": {
     "node": ">=22"
