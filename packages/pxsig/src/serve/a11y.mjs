@@ -12,6 +12,7 @@ import { needLock } from './projects.mjs';
 import { checkPatch, updateCheckRows } from './report-rows.mjs';
 import { agentMayClearRejection, closeAfter, hasNote, rejectWithNote } from './rejections.mjs';
 import { agentMayClear } from './review.mjs';
+import { serialise } from './serialise.mjs';
 /** @import { Project } from '../types.js' */
 /**
  * @import { A11yBaseline, A11yReviewFile, CheckReport, DecisionMeta, RequestBody } from '../types/t5.js'
@@ -46,7 +47,18 @@ export const writeA11y = (P, base) => writeJson(P.store.a11y, base, { pretty: tr
  * @param {string} id
  * @param {DecisionMeta} [meta]
  */
-export async function a11yReview(srv, S, action, id, meta = {}) {
+export const a11yReview = (srv, S, action, id, meta = {}) =>
+  serialise(S.reviewPath, () => a11yDecide(srv, S, action, id, meta));
+
+/**
+ * One accessibility decision, after the project's earlier ones (serve/serialise.mjs).
+ * @param {ServeContext} srv
+ * @param {ProjectState} S
+ * @param {string} action
+ * @param {string} id
+ * @param {DecisionMeta} meta
+ */
+async function a11yDecide(srv, S, action, id, meta) {
   needLock(srv, S);
   const { P, manifest } = S;
   if (!manifest.stories.some((e) => e.id === id)) throw httpError(404, `unknown entry ${id}`);

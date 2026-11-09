@@ -79,7 +79,7 @@ test(
       assert.equal(ev.row?.approved, undefined);
       assert.deepEqual(ev.summary, d.check.summary);
 
-      a11yReview(srv, S, 'a11y-reject', id);
+      await a11yReview(srv, S, 'a11y-reject', id);
       ev = last();
       assert.deepEqual(ev.a11y, data().a11yReview[id]);
       assert.ok(!('row' in ev), 'an a11y reject leaves check.json as it was');
