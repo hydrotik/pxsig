@@ -33,7 +33,7 @@
   - text: From the check at 10/24/2026, 10:00:00 AM · no merge base
   - button "Analyse"
   - paragraph: "No merge base with main: nothing to compare with, so no alerts. Fetch the history (fetch-depth: 0) to compare."
-  - heading "React Compiler" [level=3]
+  - heading "React Compiler (babel-plugin-react-compiler 1.0.0)" [level=3]
   - paragraph: 4 files · 9 functions · compiled 5 · skipped 3 · opted out 1 · fixed 0 · 0.3 s (2 cached)
   - button "Alerts (0)" [disabled]
   - button "All analysed (9)"

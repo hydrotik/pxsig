@@ -45,7 +45,7 @@
     - radio "Renders"
   - text: From the analysis at 10/25/2026, 12:00:00 PM · base main (d3bdd51)
   - button "Analyse"
-  - heading "React Compiler" [level=3]
+  - heading "React Compiler (babel-plugin-react-compiler 1.0.0)" [level=3]
   - paragraph: 1 files · 1 functions · compiled 0 · skipped 1 · opted out 0 · fixed 0 · 1.0 s (0 cached)
   - button "Alerts (1)"
   - button "All analysed (1)"

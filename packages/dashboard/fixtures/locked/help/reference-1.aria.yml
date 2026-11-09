@@ -92,7 +92,11 @@
   - heading "React Analysis" [level=3]
   - paragraph: "Alerts only: nothing here fails a check, changes an exit code or asks for a decision."
   - term: Compiler
-  - definition: Each changed component and hook file is compiled with the project's React Compiler at the merge base and now. A function compiled before and skipped now is an alert, with the compiler's rule and line.
+  - definition: Each changed component and hook file is compiled with the React Compiler that react.compiler picks, at the merge base and now. A function compiled before and skipped now is an alert, with the compiler's rule and line.
+  - term: Compiler choice
+  - definition: "react.compiler in pxsig.config.json, or defaults.react.compiler in pxsig.workspace.json: \"auto\" (the default, also true) and \"babel\" use the project's babel-plugin-react-compiler; \"oxc\" uses the compiler built into the pxsig engine (oxc_react_compiler), which needs no packages in the project. Diagnostics › React names the compiler of the last analysis."
+  - term: Experimental
+  - definition: "The built-in compiler is a port of the React Compiler and is experimental: for some functions its verdict, rule or memo slots can differ from the Babel plugin's. \"auto\" keeps using the Babel plugin."
   - term: Newly skipped · New, skipped · New reason · New finding · Fixed
   - definition: "Newly skipped: compiled at the base, skipped now. New, skipped: a new function the compiler skips. New reason: still skipped, for a rule that was not there before. New finding: a Rules of React problem in a function that still compiles. Fixed: skipped at the base, compiled now."
   - term: Renders
@@ -104,7 +108,7 @@
   - term: Turning it off
   - definition: "\"react\": false (everything) or \"react\": { \"compiler\": false } in pxsig.config.json, or defaults.react in pxsig.workspace.json; pxsig serve --no-react; PXSIG_REACT=off."
   - term: Compiler packages
-  - definition: "The compiler analysis uses babel-plugin-react-compiler and @babel/core from the project: npm install -D babel-plugin-react-compiler @babel/core. pxsig installs neither."
+  - definition: "The compiler analysis uses babel-plugin-react-compiler and @babel/core from the project: npm install -D babel-plugin-react-compiler @babel/core. pxsig installs neither. With react.compiler \"oxc\", neither is needed."
   - heading "Text Labels" [level=3]
   - paragraph: "Labels only: nothing here fails a check, changes an exit code or changes a decision. Shown as a badge in the inspector header and as its Text section."
   - term: Text record
