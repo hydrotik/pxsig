@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { FEATURES, STEPS, UNCOVERED } from './live/flows.mjs';
 import { liveCatalogue } from './live/run.mjs';
 import { assertSafeUrl } from './live/server.mjs';
-import { FIXED_MS, routeOf, scrubber } from './live/volatile.mjs';
+import { FIXED_COMMIT, FIXED_MS, routeOf, scrubber } from './live/volatile.mjs';
 import { wantsLive } from './screens-container.mjs';
 import { screenEntries } from './screens-check.mjs';
 
@@ -80,6 +80,7 @@ test('the scrub rewrites what varies, and keeps the order of a displayed time', 
     },
     history: [{ at, summary: { elapsedMs: 4 } }],
     storybook: { baseUrl: 'http://127.0.0.1:52601' },
+    react: { report: { base: { since: 'main', commit: 'd3bdd51' } } },
     integrity: null,
   });
   const a = data('2026-11-04T02:40:38.573Z');
@@ -91,9 +92,11 @@ test('the scrub rewrites what varies, and keeps the order of a displayed time', 
   assert.equal(a.check.rows[0].checkedAt, '2026-10-25T12:00:00.000Z');
   assert.equal(a.check.rows[0].renderMs, FIXED_MS);
   assert.equal(a.storybook.baseUrl, 'http://127.0.0.1:1');
+  // The staged base's commit hashes the example's files: a dependency bump must not show.
+  assert.equal(a.react.report.base.commit, FIXED_COMMIT);
 });
 
-test('the scrub is strict: a missing field and a leftover time, port or duration fail', () => {
+test('the scrub is strict: a missing field and a leftover time, port, duration or commit fail', () => {
   const sc = scrubber();
   const problems = sc.scrub('data', {
     generatedAt: '2026-11-04T02:40:38.573Z',
@@ -102,12 +105,15 @@ test('the scrub is strict: a missing field and a leftover time, port or duration
     storybook: { baseUrl: 'http://127.0.0.1:52601' },
     review: { x: { at: '2026-11-04T02:40:38.573Z' } },
     other: { when: '2026-11-04T02:40:38.573Z', link: 'see http://127.0.0.1:52600/x', waitMs: 9 },
+    react: { report: { base: { since: 'main', commit: 'main' } }, plan: { sha: '6951869' } },
   });
   assert.deepEqual(problems, [
     'data: check.generatedAt is missing',
+    'data: react.report.base.commit is not a commit',
     'data: other.when holds a time no rule rewrites',
     'data: other.link holds a server address with its port',
     'data: other.waitMs is a duration no rule rewrites',
+    'data: react.plan.sha is a commit no rule rewrites',
   ]);
   assert.deepEqual(sc.scrub('status', { dashboard: 42 }), ['status: dashboard is not a URL']);
 });

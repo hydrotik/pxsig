@@ -1,20 +1,22 @@
 /**
  * live/volatile.mjs — the live screens' response scrub: what the real server answers that varies from
- * run to run (the times it writes, durations, its ports), rewritten at the HTTP boundary before the
+ * run to run (the times it writes, durations, its ports, the staged base's commit), rewritten at the HTTP boundary before the
  * page sees it, so a live screen is the same on every run (docs/releasing.md, "Live screens").
  *
  * Strict both ways:
  *   - every listed path must be present with its type (an ISO time, a number, a URL), unless it is
  *     optional; a server that stops sending a field fails the step, naming the path;
- *   - after the rewrite, an ISO time, a loopback URL with a port (other than the dead one) or a
- *     duration (`…Ms`) left anywhere in the answer fails the step, naming its path. A new volatile
+ *   - after the rewrite, an ISO time, a loopback URL with a port (other than the dead one), a
+ *     duration (`…Ms`) or a hash under a `commit` or `sha` key left anywhere in the answer fails
+ *     the step, naming its path. A new volatile
  *     field is added to RULES on purpose; it never turns into a flaky screen.
  * Everything else (rows, verdicts, review state, counts, errors, the ledger) passes untouched.
  *
  * A displayed time keeps its order: the k-th distinct value of a `rank` field in the run becomes
  * FIXED_TIME − 60 min + k min, so "Last check" still moves forward after a check. Other times become
  * FIXED_TIME, also inside a `text` field (an integrity reason); durations 1,000 ms; URLs the dead
- * URL, their path kept.
+ * URL, their path kept; a commit FIXED_COMMIT. The staged base's commit is a hash of the example's
+ * files, so without this a dependency bump to the example would change the live screens.
  *
  * Zero dependencies.
  */
@@ -24,7 +26,9 @@ import { FIXED_TIME } from '../../packages/pxsig/src/dashboard-check/capture.mjs
 
 export const DEAD_ORIGIN = 'http://127.0.0.1:1';
 export const FIXED_MS = 1000;
+export const FIXED_COMMIT = '0000000';
 const ISO = /\b\d{4}-\d\d-\d\dT\d\d:\d\d(:\d\d(\.\d+)?)?(Z|[+-]\d\d:?\d\d)?\b/;
+const HASH = /^[0-9a-f]{7,40}$/;
 const LOOPBACK = /\b(?:127\.0\.0\.1|localhost|\[::1\]):(\d+)/g;
 
 /** The integrity ledger's volatile fields (GET integrity, and `integrity` in GET data). */
@@ -73,6 +77,7 @@ export const RULES = {
     { path: 'react.status.stale.since', kind: 'time', optional: true },
     { path: 'react.report.generatedAt', kind: 'time', optional: true },
     { path: 'react.report.summary.ms', kind: 'ms', optional: true },
+    { path: 'react.report.base.commit', kind: 'commit', optional: true },
     { path: 'check.rows[].renders.at', kind: 'time', optional: true },
     { path: 'check.rows[].renders.prev.at', kind: 'time', optional: true },
     ...ledger('integrity.', true),
@@ -162,6 +167,10 @@ export function scrubber() {
         } else if (rule.kind === 'ms') {
           if (typeof v !== 'number') problems.push(`${route}: ${at} is not a number`);
           else parent[key] = FIXED_MS;
+        } else if (rule.kind === 'commit') {
+          if (typeof v !== 'string' || !HASH.test(v))
+            problems.push(`${route}: ${at} is not a commit`);
+          else parent[key] = FIXED_COMMIT;
         } else if (rule.kind === 'url') {
           if (typeof v !== 'string' || !/^https?:\/\//.test(v))
             problems.push(`${route}: ${at} is not a URL`);
@@ -206,6 +215,13 @@ function leftovers(v, at, done, route, problems) {
       const p = at ? `${at}.${k}` : k;
       if (typeof x === 'number' && k.endsWith('Ms') && !done.has(p))
         problems.push(`${route}: ${p} is a duration no rule rewrites`);
+      else if (
+        (k === 'commit' || k === 'sha') &&
+        typeof x === 'string' &&
+        HASH.test(x) &&
+        !done.has(p)
+      )
+        problems.push(`${route}: ${p} is a commit no rule rewrites`);
       else leftovers(x, p, done, route, problems);
     }
   else if (typeof v === 'string') {
