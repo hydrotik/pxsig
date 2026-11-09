@@ -96,6 +96,12 @@ test(
       assert.equal(entry.note, 'the block is too dark');
       assert.match(entry.ref, REF);
       assert.deepEqual(report(f, 'review')[id], entry);
+      // The packet is written after the answer: wait for the record to settle before comparing.
+      for (let i = 0; i < 200; i++) {
+        const o = report(f, 'rejections').visual[id];
+        if (o?.packet != null || o?.packetError != null) break;
+        await new Promise((r) => setTimeout(r, 50));
+      }
       const open = report(f, 'rejections').visual[id];
       assert.equal(open.note, 'the block is too dark');
       assert.equal(open.via, 'cli');
