@@ -9,6 +9,10 @@
     "url": "git+https://github.com/hydrotik/pxsig.git",
     "directory": "packages/pxsig"
   },
+  "homepage": "https://github.com/hydrotik/pxsig#readme",
+  "bugs": {
+    "url": "https://github.com/hydrotik/pxsig/issues"
+  },
   "type": "module",
   "engines": {
     "node": ">=22"

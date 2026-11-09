@@ -1,12 +1,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** @typedef {{ name: string, version: string, license?: string, repository?: { type: string, url: string }, os?: string[], cpu?: string[], libc?: string[], files?: string[], bin?: unknown }} PlatformManifest */
+/** @typedef {{ name: string, version: string, license?: string, repository?: { type: string, url: string }, os?: string[], cpu?: string[], libc?: string[], files?: string[], bin?: unknown, main?: string, author?: string, homepage?: string, bugs?: { url: string } }} PlatformManifest */
 
 const script = fileURLToPath(new URL('./make-platform-packages.mjs', import.meta.url));
 const repo = fileURLToPath(new URL('..', import.meta.url));
@@ -58,9 +66,15 @@ test('every platform package is named, restricted and laid out as rustBinary() r
       assert.deepEqual(m.libc, platform === 'linux' ? ['glibc'] : undefined, `${id}: libc`);
       // The engine is found by path, not run through a `bin` link.
       assert.equal(m.bin, undefined, `${id}: bin`);
-      assert.deepEqual(m.files, ['bin', 'LICENSE']);
+      assert.deepEqual(m.files, ['bin', 'index.js', 'test', 'LICENSE']);
       assert.equal(m.license, 'MIT');
       assert.equal(m.repository?.url, 'git+https://github.com/hydrotik/pxsig.git');
+      // Registry scanners (Socket) read these: author, website, bug tracker, an entry, a test.
+      assert.equal(m.author, 'Donovan Adams (Hydrotik LLC)');
+      assert.equal(m.homepage, 'https://github.com/hydrotik/pxsig#readme');
+      assert.deepEqual(m.bugs, { url: 'https://github.com/hydrotik/pxsig/issues' });
+      assert.equal(m.main, 'index.js');
+      assert.ok(existsSync(join(out, `cli-${id}`, 'test', 'binary.test.js')), `${id}: self-test`);
       const bin = join(out, `cli-${id}`, 'bin', exeOf(id));
       assert.equal(readFileSync(bin, 'utf8'), `engine for ${id}\n`, `${id}: bin/${exeOf(id)}`);
       assert.ok(existsSync(join(out, `cli-${id}`, 'README.md')));
@@ -110,8 +124,52 @@ test(
         'LICENSE',
         'README.md',
         'bin/pxsig',
+        'index.js',
         'package.json',
+        'test/binary.test.js',
       ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+);
+
+test(
+  "a platform package's entry is its binary's path, and its self-test runs the binary",
+  { skip: process.platform === 'win32' && 'the stand-in engine is a shell script' },
+  () => {
+    const dir = artifacts([]);
+    try {
+      const id = 'linux-x64';
+      const src = join(dir, 'artifacts', `pxsig-${id}`);
+      mkdirSync(src, { recursive: true });
+      writeFileSync(join(src, 'pxsig'), '#!/bin/sh\necho "pxsig 1.2.3"\n');
+      const out = join(dir, 'out');
+      const r = run([
+        '--version',
+        '1.2.3',
+        '--artifacts',
+        join(dir, 'artifacts'),
+        '--out',
+        out,
+        '--only',
+        id,
+      ]);
+      assert.equal(r.status, 0, r.stderr);
+      const pkg = join(out, `cli-${id}`);
+      const entry = spawnSync(process.execPath, ['-p', `require(${JSON.stringify(pkg)})`], {
+        encoding: 'utf8',
+      });
+      // __dirname is the real path (macOS's temp folder is behind a symlink).
+      assert.equal(entry.stdout.trim(), join(realpathSync(pkg), 'bin', 'pxsig'));
+      // A run of its own, not a subtest of this one (node:test sets NODE_TEST_CONTEXT).
+      const { NODE_TEST_CONTEXT: _, ...env } = process.env;
+      const self = spawnSync(process.execPath, ['--test'], { cwd: pkg, encoding: 'utf8', env });
+      assert.equal(self.status, 0, self.stdout + self.stderr);
+      assert.match(self.stdout, /^# pass 1$/m);
+      // A binary of another version fails it.
+      writeFileSync(join(pkg, 'bin', 'pxsig'), '#!/bin/sh\necho "pxsig 0.0.1"\n');
+      assert.notEqual(spawnSync(process.execPath, ['--test'], { cwd: pkg, env }).status, 0);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

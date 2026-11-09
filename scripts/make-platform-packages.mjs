@@ -7,8 +7,9 @@
  *     [--allow-missing] [--dry-run]
  *
  * For every platform it writes `<out>/cli-<platform>-<arch>/` holding a package.json
- * (`@pxsig/cli-<platform>-<arch>`, restricted by `os`/`cpu`), a README.md, the root LICENSE and
- * `bin/pxsig` (`bin/pxsig.exe` on win32), copied from
+ * (`@pxsig/cli-<platform>-<arch>`, restricted by `os`/`cpu`), a README.md, the root LICENSE,
+ * index.js (the binary's path, for `require`), test/binary.test.js (runs the binary: `node --test`)
+ * and `bin/pxsig` (`bin/pxsig.exe` on win32), copied from
  * `<artifacts>/pxsig-<platform>-<arch>/pxsig[.exe]` — the layout `actions/download-artifact`
  * produces for the release workflow's build artifacts.
  *
@@ -21,7 +22,7 @@
  * missing). The release workflow runs it on its own checkout; the result is never committed.
  *
  * The output directory is generated: put it under a git-ignored path (packages/cli-*\/ or dist/).
- * Repository and license come from the Cargo workspace ([workspace.package]).
+ * Repository, license and author come from the Cargo workspace ([workspace.package]).
  * Node >= 20, no dependencies. Exit 1 on a failure, 2 on a usage error.
  */
 import {
@@ -115,7 +116,7 @@ function parseArgs(argv) {
   return /** @type {Opts} */ (opts);
 }
 
-/** `key = "value"` lines of the [workspace.package] table of the root Cargo.toml. */
+/** `key = "value"` lines of the [workspace.package] table of the root Cargo.toml (`key = ["value", …]`: the first). */
 /** @returns {Record<string, string | undefined>} */
 function cargoWorkspacePackage() {
   const f = join(root, 'Cargo.toml');
@@ -127,7 +128,7 @@ function cargoWorkspacePackage() {
     const t = line.trim();
     if (t.startsWith('[')) inTable = t === '[workspace.package]';
     else if (inTable) {
-      const m = /^([A-Za-z0-9_-]+)\s*=\s*"([^"]*)"/.exec(t);
+      const m = /^([A-Za-z0-9_-]+)\s*=\s*\[?\s*"([^"]*)"/.exec(t);
       if (m) out[m[1]] = m[2];
     }
   }
@@ -139,6 +140,7 @@ const cargo = cargoWorkspacePackage();
 const license = cargo.license ?? 'MIT';
 const repoUrl = cargo.repository;
 const repository = repoUrl ? { type: 'git', url: `git+${repoUrl}.git` } : undefined;
+const author = cargo.authors;
 
 let targets = PLATFORMS;
 if (opts.only) {
@@ -191,14 +193,43 @@ function manifest(p) {
     version: opts.version,
     description: `The pxsig binary for ${p.platform} ${p.arch}. Installed automatically as an optional dependency of pxsig.`,
     license,
-    ...(repository ? { repository } : {}),
+    ...(author ? { author } : {}),
+    ...(repository
+      ? { repository, homepage: `${repoUrl}#readme`, bugs: { url: `${repoUrl}/issues` } }
+      : {}),
+    main: 'index.js',
     os: [p.platform],
     cpu: [p.arch],
     // The Linux binaries are built for *-unknown-linux-gnu: a musl host (Alpine) skips them.
     ...(p.platform === 'linux' ? { libc: ['glibc'] } : {}),
-    files: ['bin', 'LICENSE'],
+    files: ['bin', 'index.js', 'test', 'LICENSE'],
     preferUnplugged: true,
   };
+}
+
+/** @param {Plan} p */
+function entry(p) {
+  return `'use strict';
+// The path of this package's pxsig binary. pxsig resolves bin/${p.exe} itself; this is for tools
+// that require the package.
+module.exports = require('node:path').join(__dirname, 'bin', '${p.exe}');
+`;
+}
+
+/** @param {Plan} p */
+function selfTest(p) {
+  return `'use strict';
+// The binary in this package runs on this host and is the version the package says.
+const { test } = require('node:test');
+const assert = require('node:assert');
+const { execFileSync } = require('node:child_process');
+const bin = require('..');
+
+test('bin/${p.exe} prints the package version', () => {
+  const out = execFileSync(bin, ['--version'], { encoding: 'utf8' });
+  assert.equal(out.trim(), \`pxsig \${require('../package.json').version}\`);
+});
+`;
 }
 
 /** @param {Plan} p */
@@ -209,7 +240,8 @@ The \`pxsig\` command-line binary for ${p.platform} ${p.arch} (\`bin/${p.exe}\`)
 
 Do not install this package directly. The \`pxsig\` package lists it as an optional dependency, and the
 package manager installs the one that matches the host. pxsig finds it at
-\`${p.name}/bin/${p.exe}\`; set \`PXSIG_BIN\` to use a different binary.
+\`${p.name}/bin/${p.exe}\`; set \`PXSIG_BIN\` to use a different binary. \`require('${p.name}')\` gives the
+binary's path, and \`node --test\` in this folder runs it once (\`--version\`).
 
 ${license}${repoUrl ? `. Source: ${repoUrl}` : ''}
 `;
@@ -221,14 +253,19 @@ for (const p of plan) {
     console.log(`[dry-run] ${p.name}@${opts.version}`);
     console.log(`  ${rel('package.json')}  os=${p.platform} cpu=${p.arch}`);
     console.log(`  ${rel('README.md')}`);
+    console.log(`  ${rel('index.js')}`);
+    console.log(`  ${rel('test/binary.test.js')}`);
     console.log(`  ${rel('LICENSE')}  <- ${join(root, 'LICENSE')}`);
     console.log(`  ${rel(`bin/${p.exe}`)}  <- ${p.src}`);
     continue;
   }
   rmSync(p.dir, { recursive: true, force: true });
   mkdirSync(join(p.dir, 'bin'), { recursive: true });
+  mkdirSync(join(p.dir, 'test'), { recursive: true });
   writeFileSync(join(p.dir, 'package.json'), `${JSON.stringify(manifest(p), null, 2)}\n`);
   writeFileSync(join(p.dir, 'README.md'), readme(p));
+  writeFileSync(join(p.dir, 'index.js'), entry(p));
+  writeFileSync(join(p.dir, 'test', 'binary.test.js'), selfTest(p));
   copyFileSync(join(root, 'LICENSE'), join(p.dir, 'LICENSE'));
   const bin = join(p.dir, 'bin', p.exe);
   copyFileSync(p.src, bin);
