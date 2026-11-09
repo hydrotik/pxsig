@@ -272,19 +272,18 @@ export function App() {
         `${location.pathname}${location.search}#inspect=${encodeURIComponent(target.row.id)}${target.session ? `&session=${target.session}` : ''}`
       );
   }, [target]);
-  // Keep an open inspector on the fresh row when live data arrives.
+  // Keep an open inspector on the fresh row when live data arrives. The row is looked up for the
+  // target as it is when the update applies: a decision can move the inspector on between this
+  // render and the update, and the fresh copy of the entry it left must not bring it back.
   React.useEffect(() => {
-    if (!data?.check || !target || target.scenario) return;
-    const fresh = data.check.rows.find((r) => r.id === target.row.id);
-    if (fresh && fresh !== target.row)
-      setTarget(
-        (t) =>
-          t && {
-            ...t,
-            row: fresh,
-            list: t.list.map((r) => data.check!.rows.find((x) => x.id === r.id) ?? r),
-          }
-      );
+    const rows = data?.check?.rows;
+    if (!rows || !target || target.scenario) return;
+    setTarget((t) => {
+      if (!t || t.scenario) return t;
+      const fresh = rows.find((r) => r.id === t.row.id);
+      if (!fresh || fresh === t.row) return t;
+      return { ...t, row: fresh, list: t.list.map((r) => rows.find((x) => x.id === r.id) ?? r) };
+    });
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error && !data) return <Placeholder text={t('app.loadError', { error })} />;
