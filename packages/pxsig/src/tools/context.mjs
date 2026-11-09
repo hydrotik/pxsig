@@ -10,8 +10,10 @@ import { foreignServer, openProject } from '../lib/workspace.mjs';
 import { relPath } from '../lib/paths.mjs';
 import { readJson } from '../lib/files.mjs';
 import { textBrief } from '../lib/text/say.mjs';
+import { readRejections } from '../lib/rejections.mjs';
 
 /** @import { BriefEntry, CheckReport, McpContent, ReportRow, ReviewFile, ServerStatusReply } from '../types/t6.js' */
+/** @import { RejectionsFile } from '../types/rejections.js' */
 
 // The pxsig source folder (src/): check.mjs is run from it.
 const here = fileURLToPath(new URL('..', import.meta.url));
@@ -91,7 +93,8 @@ function load(C) {
     readJson(join(dirname(C.reviewPath), 'a11y-review.json'), {})
   );
   const updated = statSync(C.checkPath).mtime;
-  return { check, review, a11yReview, updated };
+  // The open rejections (reports/rejections.json): a rejection outlives the decision.
+  return { check, review, a11yReview, updated, rejections: readRejections(C.P) };
 }
 
 /**
@@ -101,14 +104,21 @@ function load(C) {
 const componentOf = (id) => id.split('--')[0].split('-').slice(-1)[0];
 
 /**
+ * An entry in brief. With the open rejections: a rejected entry's reason (`note`), and
+ * `rejectedBefore` on a changed one whose rejection a re-check left open, with its reason.
  * @param {ReportRow} row
  * @param {ReviewFile} review
+ * @param {RejectionsFile} [open]
  * @returns {BriefEntry}
  */
-function brief(row, review) {
+function brief(row, review, open) {
+  const state = stateOf(row, review);
+  const r = open?.visual[row.id];
+  const kept = review[row.id]?.note;
+  const note = (typeof kept === 'string' ? kept : null) ?? r?.note ?? null;
   return {
     id: row.id,
-    state: stateOf(row, review),
+    state,
     mode: row.mode,
     ...(row.state ? { interaction: row.state } : {}),
     ...(row.metrics
@@ -120,6 +130,8 @@ function brief(row, review) {
     ...(row.a11y?.new ? { a11yNew: row.a11y.new } : {}),
     // Text labels (lib/text/say.mjs): labels only, beside the state, never changing it.
     ...textBrief(row.textDiff),
+    ...(state === 'rejected' && note ? { note } : {}),
+    ...(state === 'changed' && r ? { rejectedBefore: true, ...(note ? { note } : {}) } : {}),
   };
 }
 

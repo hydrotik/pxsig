@@ -21,6 +21,7 @@ import {
 import { affected, editedSince, imageOf, renderedAt, verdictTimes } from './staleness.mjs';
 import { warnMode } from './doctor.mjs';
 import { TEXT_FILTERS, textLines, textMatches } from '../lib/text/say.mjs';
+import { rejectedEntry, rejectionImages } from './rejected.mjs';
 
 /** @import { EntryArgs, ListArgs, McpContent, ProjectArg } from '../types/t6.js' */
 
@@ -62,12 +63,14 @@ export const readTools = /** @type {const} */ ([
   {
     name: 'pxsig_status',
     description:
-      "Overview of the visual-regression state: when the report was last written, counts per state (pass, drift, changed, error, flaky, approved, rejected), accessibility totals, the components with the most changed entries, whether the pxsig server is up or busy, design-system files edited since the report (entries the report does not cover yet), the render environment (how many entries' baselines came from a different one), and warn mode (`enforcement`: each gate's setting from the committed config; no tool can change it). Start here.",
+      "Overview of the visual-regression state: when the report was last written, counts per state (pass, drift, changed, error, flaky, approved, rejected), accessibility totals, the components with the most changed entries, whether the pxsig server is up or busy, design-system files edited since the report (entries the report does not cover yet), the render environment (how many entries' baselines came from a different one), and warn mode (`enforcement`: each gate's setting from the committed config; no tool can change it), and the open rejections (`openRejections`: pxsig_rejected lists them with the reasons). Start here.",
     inputSchema: { type: 'object', properties: { project: PROJECT }, additionalProperties: false },
     /** @param {ProjectArg} [args] */
     async run({ project } = {}) {
       const C = ctxOf(project);
-      const { check, review, updated } = load(C);
+      const { check, review, updated, rejections } = load(C);
+      const openRejections =
+        Object.keys(rejections.visual).length + Object.keys(rejections.a11y).length;
       /** @type {Record<string, number>} */
       const counts = {};
       /** @type {Record<string, number>} */
@@ -123,13 +126,17 @@ export const readTools = /** @type {const} */ ([
           mismatched: check.summary?.envMismatch ?? 0,
         },
         ...warnMode(C),
+        openRejections,
+        ...(openRejections
+          ? { hint: 'pxsig_rejected lists them with the reasons and images' }
+          : {}),
       };
     },
   },
   {
     name: 'pxsig_list',
     description:
-      'List entries (story × mode × interaction state) by state, with their metrics and the gate reasons. `state` defaults to "problems" (changed, error, flaky, rejected). Filter by component name substring (e.g. "hovercard") and mode (dark, light, …). Each entry with text labels carries `textKind` (copy, copy-reflow, moved, restyled, pixel, or null when no text differs) and `textSummary`, or `textState` when text was not compared (env-differs, no-baseline, error). `text` keeps the entries of one text kind (`any`: any text change); with `text` and no `state`, every state is searched, since a copy change under the gate still passes. Labels only: they never change a state or a verdict.',
+      'List entries (story × mode × interaction state) by state, with their metrics and the gate reasons. `state` defaults to "problems" (changed, error, flaky, rejected). Filter by component name substring (e.g. "hovercard") and mode (dark, light, …). Each entry with text labels carries `textKind` (copy, copy-reflow, moved, restyled, pixel, or null when no text differs) and `textSummary`, or `textState` when text was not compared (env-differs, no-baseline, error). `text` keeps the entries of one text kind (`any`: any text change); with `text` and no `state`, every state is searched, since a copy change under the gate still passes. Labels only: they never change a state or a verdict. A rejected entry carries its reason (`note`); a changed entry whose rejection is still open carries `rejectedBefore: true` and the reason (pxsig_rejected has the details).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -171,7 +178,7 @@ export const readTools = /** @type {const} */ ([
     async run({ project, state, component, mode, limit = 50, text: kind }) {
       if (kind && !TEXT_FILTERS.includes(kind))
         throw new Error(`text must be one of ${TEXT_FILTERS.join(', ')}: ${kind}`);
-      const { check, review } = load(ctxOf(project));
+      const { check, review, rejections } = load(ctxOf(project));
       // A text filter searches every state unless one is named: passing entries carry labels too.
       state ??= kind ? 'all' : 'problems';
       const rows = check.rows.filter((r) => {
@@ -187,14 +194,14 @@ export const readTools = /** @type {const} */ ([
       return {
         total: rows.length,
         shown: Math.min(rows.length, limit),
-        entries: rows.slice(0, limit).map((r) => brief(r, review)),
+        entries: rows.slice(0, limit).map((r) => brief(r, review, rejections)),
       };
     },
   },
   {
     name: 'pxsig_entry',
     description:
-      "One entry in full: the gate's metrics and reasons, the changed pixel regions, accessibility violations, the review decision, the render environment against its baseline's (envMatch: same, compatible, mismatch or unknown), the text labels (`textDiff`: each changed string's old and new text, each moved run's string and move in px, its box, `path` and `key`; `textLines`: the same as sentences) — and the images, inline: the baseline render, the latest render and the diff heat map. Use it to see what actually changed. Text labels are labels only: they never change the verdict.",
+      "One entry in full: the gate's metrics and reasons, the changed pixel regions, accessibility violations, the review decision, the render environment against its baseline's (envMatch: same, compatible, mismatch or unknown), the text labels (`textDiff`: each changed string's old and new text, each moved run's string and move in px, its box, `path` and `key`; `textLines`: the same as sentences) — and the images, inline: the baseline render, the latest render and the diff heat map. Use it to see what actually changed. `rejection`: the entry's open rejection (pxsig_rejected's shape) or null; `images` with `crops` adds its crops. Text labels are labels only: they never change the verdict.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -205,7 +212,7 @@ export const readTools = /** @type {const} */ ([
         },
         images: {
           type: 'array',
-          items: { type: 'string', enum: ['baseline', 'current', 'diff'] },
+          items: { type: 'string', enum: ['baseline', 'current', 'diff', 'crops'] },
           default: ['baseline', 'current', 'diff'],
         },
       },
@@ -216,7 +223,7 @@ export const readTools = /** @type {const} */ ([
     async run({ project, id, images = ['baseline', 'current', 'diff'] }) {
       if (!ID_RE.test(id)) throw new Error(`bad id: ${id}`);
       const C = ctxOf(project);
-      const { check, review } = load(C);
+      const { check, review, a11yReview, rejections } = load(C);
       const row = check.rows.find((r) => r.id === id);
       if (!row) {
         const near = check.rows
@@ -227,10 +234,14 @@ export const readTools = /** @type {const} */ ([
           `no entry ${id}${near.length ? `; entries of that component: ${near.join(', ')}` : ''}`
         );
       }
+      const now = { row, review, a11yReview };
+      const open = rejections.visual[id];
+      const rejection = open ? rejectedEntry(C, 'visual', id, open, now) : null;
+      const a11y = rejections.a11y[id];
       /** @type {McpContent[]} */
       const content = [
         text({
-          ...brief(row, review),
+          ...brief(row, review, rejections),
           story: row.story,
           browser: row.browser,
           metrics: row.metrics,
@@ -251,9 +262,20 @@ export const readTools = /** @type {const} */ ([
           checkedAt: verdictTimes(C, check).get(id)?.at.toISOString() ?? null,
           renderedAt: renderedAt(C, id)?.toISOString() ?? null,
           diffPage: relPath(C.root, join(C.P.store.diffLatest, `${id}.diff.html`)),
+          // The open rejection (tools/rejected.mjs), store-relative paths: null when none.
+          rejection,
+          ...(a11y ? { a11yRejection: rejectedEntry(C, 'a11y', id, a11y, now) } : {}),
         }),
       ];
       for (const kind of images) {
+        if (kind === 'crops') {
+          content.push(
+            ...(rejection?.regions.length
+              ? rejectionImages(C, [rejection], 'crops')
+              : [text('crops: none (no open rejection with a packet)')])
+          );
+          continue;
+        }
         const { bytes, where } = imageOf(C, kind, id);
         if (!bytes) {
           content.push(text(`${kind}: none (${where})`));

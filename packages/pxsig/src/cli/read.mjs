@@ -8,8 +8,10 @@ import { emit, stateCell } from '../lib/term.mjs';
 import { herePath } from '../lib/machine.mjs';
 import { doctorParts } from './doctor.mjs';
 import { TEXT_FILTERS, TEXT_LABELS_ONLY, textKindLabel, textLines } from '../lib/text/say.mjs';
+import { reasonBlocks, rejectedCommand } from './rejected.mjs';
 
 /** @import { Block, EngineMetrics, EntryDetail, ToolOutput } from '../types/t6.js' */
+/** @import { RejectedEntry } from '../types/rejections.js' */
 /** @import { CliContext } from './context.mjs' */
 
 /** @param {CliContext} cli */
@@ -32,6 +34,35 @@ export function readCommands(cli) {
   /** @type {CliContext['fail']} */
   const fail = cli.fail;
   const { gate, entryTable } = doctorParts(cli);
+
+  /**
+   * `pxsig entry`'s Rejection block: the reason, the packet folder and the next command.
+   * @param {RejectedEntry | null | undefined} r
+   * @returns {Block[]}
+   */
+  const rejectionBlocks = (r) =>
+    r
+      ? [
+          { h: 'Rejection', sub: `open since ${r.at}` },
+          ...reasonBlocks(format, r.note, r.from),
+          {
+            kv: [
+              [
+                'Packet',
+                r.packet
+                  ? herePath(join(ctx().P.store.root, r.packet))
+                  : (r.packetError ?? 'not written yet'),
+              ],
+            ],
+          },
+          {
+            next: [
+              [`${CMD} rejected ${r.id}`, 'the reason, the changed regions and their crops'],
+              [`${CMD} check ${r.id}`, 'after the fix: a pass closes the rejection'],
+            ],
+          },
+        ]
+      : [];
 
   return {
     status: () =>
@@ -284,6 +315,9 @@ export function readCommands(cli) {
       });
     },
 
+    // pxsig_rejected (cli/rejected.mjs): open rejections, with their reasons and crops.
+    rejected: () => rejectedCommand(cli),
+
     async entry() {
       cli.current = oneProject();
       const id = rest[0] ?? fail('usage: entry <id>');
@@ -295,7 +329,7 @@ export function readCommands(cli) {
         fail(/** @type {Error} */ (e).message)
       );
       // pxsig_entry's first item is the entry's JSON text
-      const e = /** @type {EntryDetail} */ (
+      const e = /** @type {EntryDetail & { rejection: RejectedEntry | null }} */ (
         JSON.parse(/** @type {{ text: string }} */ (res.content[0]).text)
       );
       const m = /** @type {Partial<EngineMetrics>} */ (e.metrics ?? {});
@@ -335,6 +369,7 @@ export function readCommands(cli) {
         },
       ];
       if (e.reasons?.length) blocks.push({ h: 'Why' }, { list: e.reasons });
+      blocks.push(...rejectionBlocks(e.rejection));
       blocks.push(...textBlocks(e));
       if (regions.length)
         blocks.push(

@@ -220,7 +220,7 @@
       "seeAlso": ["entry", "status"]
     },
     "entry": {
-      "summary": "One entry: verdict, metrics, gate reasons, text labels, regions, accessibility, review decision, and where its images are.",
+      "summary": "One entry: verdict, metrics, gate reasons, text labels, regions, accessibility, review decision, its open rejection with the reason, and where its images are.",
       "usage": ["pxsig entry <id> [--images baseline,current,diff]"],
       "flags": [
         {
@@ -242,6 +242,52 @@
         }
       ],
       "seeAlso": ["list"]
+    },
+    "rejected": {
+      "summary": "The open rejections: each reviewer's reason (an assistant's labelled as one), the checks since, the changed regions with their full-size crops, the packet folder and the re-check command. Read-only; there is no reject in the CLI.",
+      "usage": ["pxsig rejected [ids…] [--kind visual|a11y] [--closed] [--prompt] [--limit 20]"],
+      "flags": [
+        {
+          "name": "kind",
+          "value": "visual|a11y",
+          "default": "both",
+          "meaning": "One kind of rejection: visual changes or accessibility violations."
+        },
+        {
+          "name": "closed",
+          "meaning": "The last closed rejections, from the store's reports/rejections.ndjson: how each closed and its reasons, no images."
+        },
+        {
+          "name": "prompt",
+          "meaning": "Only the paragraph for an assistant, one per open rejection, and nothing when there is none: for a session-start hook (docs/agents.md)."
+        },
+        {
+          "name": "limit",
+          "value": "n",
+          "default": "20",
+          "meaning": "Rejections shown."
+        }
+      ],
+      "effects": ["reads-only"],
+      "exits": {
+        "0": "OK",
+        "2": "Usage or setup error"
+      },
+      "examples": [
+        {
+          "cmd": "pxsig rejected",
+          "shows": "Every open rejection with its reason and crops"
+        },
+        {
+          "cmd": "pxsig rejected --prompt",
+          "shows": "One paragraph per open rejection, to hand to an assistant"
+        },
+        {
+          "cmd": "pxsig rejected --closed",
+          "shows": "How the last rejections closed, with their reasons"
+        }
+      ],
+      "seeAlso": ["entry", "list", "check"]
     },
     "check": {
       "summary": "Re-render and re-check entries: some through the running server, or the full check. Never writes baselines unless --update is given by a person.",

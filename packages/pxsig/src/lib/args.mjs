@@ -39,6 +39,8 @@ export const BOOLEAN_FLAGS = new Set([
   'warn',
   'enforce',
   'strict',
+  'closed',
+  'prompt',
 ]);
 
 /**

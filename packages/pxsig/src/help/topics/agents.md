@@ -19,11 +19,17 @@ pxsig gives assistants everything that reads or checks, and keeps approving for 
   ```
   pxsig (visual baselines): never approve or accept pxsig baselines and never call
   /__pxsig/approve. Ask the person to review changes in the pxsig dashboard.
+  Before fixing a rejected pxsig entry, read its reason and images (pxsig_rejected, or
+  `pxsig rejected`); after the fix, re-check those ids.
   ```
 
   With `dashboard.ui` set, `pxsig setup` adds the line that points at
   `node_modules/pxsig/docs/ui/build-adapter.md`.
 
+- **Rejections.** `pxsig rejected` (MCP `pxsig_rejected`) lists the open rejections with the
+  reviewer's reasons, the changed regions and their crops, and the re-check command;
+  `pxsig rejected --prompt` prints one paragraph each, for a session-start hook (docs only:
+  `pxsig setup` installs no hook). After the fix: `pxsig check <id>`. Never approve.
 - **MCP.** Start the server with the local install, `node node_modules/pxsig/bin/pxsig.mjs mcp`
   (no `npx`, no network). `pxsig setup --assistant <name> --print` prints the entry for each
   assistant. When a policy turns MCP off, the CLI gives the same answers.

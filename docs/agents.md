@@ -94,7 +94,12 @@ file when there is none):
 ```
 pxsig (visual baselines): never approve or accept pxsig baselines and never call
 /__pxsig/approve. Ask the person to review changes in the pxsig dashboard.
+Before fixing a rejected pxsig entry, read its reason and images (pxsig_rejected, or
+`pxsig rejected`); after the fix, re-check those ids.
 ```
+
+The last two lines are new in 0.7.6. `pxsig setup` never changes an instruction file that
+exists: add them by hand (`pxsig setup --print` prints the whole instruction).
 
 When a project's `pxsig.config.json` names a UI adapter (`dashboard.ui`), `pxsig setup` adds:
 
@@ -102,6 +107,53 @@ When a project's `pxsig.config.json` names a UI adapter (`dashboard.ui`), `pxsig
 To build pxsig's dashboard on our design system, follow
 node_modules/pxsig/docs/ui/build-adapter.md.
 ```
+
+## Fixing a rejection
+
+A person rejects an entry in the dashboard or the Storybook panel, with an optional one-line
+reason. The rejection stays open past the entry's next check, with its reason, the checks since
+and a packet of full-size crops of the changed regions, in the store's git-ignored `reports/`
+([configuration.md](configuration.md#rejections)). The loop for an assistant:
+
+1. **Find them.** `pxsig_status` says `openRejections`, and `pxsig_list` marks a changed entry
+   whose rejection is still open with `rejectedBefore: true` and its reason.
+2. **Read them.** `pxsig_rejected` (or `pxsig rejected`, Markdown when piped): the reasons, newest
+   first, with who gave each (an assistant's is labelled "mcp, an assistant at the person's
+   request" and never leads over a person's), the checks since, the changed regions, the packet
+   folder and the re-check command. Crops are file references; `images: "crops"` returns them
+   inline. The goal: what the reason asks; with no reason, restore the baseline's look.
+3. **Fix the code**, and nothing else.
+4. **Re-check those ids:** `pxsig_check` with `ids` (or `pxsig check <id>`, or `pxsig serve
+   --watch` on save). Each one comes back with `rejections`: `closed: passes` (the packet goes,
+   the reason stays in the log) or `open: still differs` (the packet's `current.png` and crops are
+   refreshed, and the entry waits for the person again).
+5. **Never approve.** The person reviews the result in the dashboard.
+
+An assistant may reject on the person's instruction (`pxsig_review` with `confirm: true`), with a
+`note` in the person's words, and may clear only a rejection it made: clearing a person's
+rejection is refused ([mcp.md](mcp.md#the-approval-guard)).
+
+### A session that starts with the open reasons
+
+`pxsig rejected --prompt` prints one paragraph per open rejection (the reason, the goal, where the
+details are and the re-check command), and nothing when there is none. A hook that runs it when a
+session starts hands the reasons to a new session. With Claude Code, in `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node node_modules/pxsig/bin/pxsig.mjs rejected --prompt" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Other assistants with a session-start hook take the same command. `pxsig setup` installs no hook.
 
 ## Recipes
 
