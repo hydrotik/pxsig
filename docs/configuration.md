@@ -184,6 +184,7 @@ The smallest config is `{}`: every key has a default. `pxsig init` writes
 | `approvals.identity`      | (none)                                                     | No longer read (0.7.6): no approval, accessibility or repair log line names a person, whatever this says; the commit that adds a line and the pull request say who (`pxsig approve log --trace`). A config that still has the key loads, and `pxsig doctor` reports it (`approvals-identity`: a warning for `git-email`, a note for `none`). Remove it.                                                                                                                                                                    |
 | `approvals.level`         | `standard`                                                 | `standard`: a typed phrase at a terminal, or the dashboard opened with the dashboard link. `strict` is reserved for a later release and refused for now (a setup error).                                                                                                                                                                                                                                                                                                                                                   |
 | `approvals.byStory`       | `false`                                                    | `true` lets the dashboard approve a story's waiting entries (each mode and state) together, in one batch (**Approve story**). `false`: each entry is approved on its own, after it is looked at; the server refuses `POST /__pxsig/approve-story`.                                                                                                                                                                                                                                                                         |
+| `rejections`              | see [below](#rejections)                                   | A rejection's note and its packet: the crops, `rejection.md` and `rejection.json` in the store's git-ignored `reports/`.                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `dashboard.ui`            | none                                                       | A UI adapter for `pxsig dashboard build` and `gaps`: a path to its module, relative to this folder, or a built-in adapter's name (see [ui/build-adapter.md](ui/build-adapter.md)). `pxsig serve` then serves this project's build while it is current.                                                                                                                                                                                                                                                                     |
 
 ### `gate`
@@ -431,6 +432,33 @@ number of 0 or more (`noisePx` a whole number) is a warning and its default; a k
 not know is a warning and ignored. `pxsig doctor` says whether it is on, and how many baselines have a text record. A
 baseline approved before text capture, or with it off, has none until it is approved again: nothing
 rewrites a baseline on its own.
+
+### `rejections`
+
+A rejection keeps its reason (the note) until it closes, and gets a **rejection packet**:
+`<store>/reports/rejected/<id>/` (`<id>.a11y/` for accessibility) with `rejection.md` (for a person
+and an assistant), `rejection.json` (the same facts, for tools), `baseline.png`, `current.png`,
+`mask.png` (the changed pixels, from the engine's `diff`) and full-size crops of the changed
+regions (`crops/<n>.baseline.png`, `.current.png`, `.diff.png`, largest first). The packet is
+written after a reject, refreshed after each check of the entry (the server's re-check and a full
+check), and removed when the rejection closes; the server removes left-over packets at start. It is
+written only while git leaves the store's `reports/` out: otherwise none is written, the open
+rejection says why (`packetError`), and `pxsig doctor` reports `reports-not-ignored`.
+
+| Key                        | Default  | Meaning                                                                                                                                                                                      |
+| -------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rejections.note.ask`      | `true`   | Reject asks for an optional reason in the dashboard; `false`: Reject and R reject at once.                                                                                                   |
+| `rejections.packet`        | `true`   | Write packets; `false`: the note only.                                                                                                                                                       |
+| `rejections.crop.pad`      | `24`     | Padding around each changed region, 0 to 256 px. Padded regions that overlap are merged into one crop.                                                                                       |
+| `rejections.crop.max`      | `6`      | Crops per packet, 1 to 20, the most changed pixels first.                                                                                                                                    |
+| `rejections.crop.scale`    | `"auto"` | Nearest-neighbour upscale: `"auto"` brings the short side to at least 160 px, at most 4×; or `1`, `2`, `4`. Never past 1,024 px on the long side; a crop larger than that at 1× is left out. |
+| `rejections.crop.annotate` | `true`   | Outline each changed region on the three crops.                                                                                                                                              |
+| `rejections.structure`     | none     | A folder, relative to the project, of committed structure locks (`<section>/<name>.aria.yml`) to compare with `<store>/reports/structure/`; `rejection.md` then has a Structure section.     |
+
+A bad value is a setup error. Fixed, and not configurable: the location inside `reports/` and the
+git-ignore check, the 280-character note, the file names, the goal line, the re-check command and
+the prompt wording. Every path in a packet is relative (to the packet, the store or the workspace),
+and nothing in it approves.
 
 ### `integrity`
 

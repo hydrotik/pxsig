@@ -107,7 +107,9 @@ reason, pxsig }`), and only when git leaves `reports/` out (`git check-ignore`; 
 repository nothing can be committed). Otherwise the reason is not kept, the command says so in one
 line, and the decision goes through: `pxsig doctor` reports `reports-not-ignored`. A rejection's
 note (`reports/rejections.json`, `rejections.ndjson`) is held to the same check: otherwise the
-rejection opens with `note: null` and the server's answer says the note was not kept. `approve log`
+rejection opens with `note: null` and the server's answer says the note was not kept. So is the
+rejection packet (`reports/rejected/`, [configuration.md](configuration.md#rejections)): none is
+written, and the open rejection says why (`packetError`). `approve log`
 shows a batch's reason from that file, else the one a line written before 0.7.6 carries; `pxsig
 snapshot` never gives one. Lines already committed stay as they are.
 

@@ -51,7 +51,7 @@ test(
       code: 'reports-not-ignored',
       severity: 'warn',
       reason:
-        '.pxsig/reports/ is not git-ignored: reasons given with a decision and rejection notes are not kept, so none can be committed. Add `reports/` to .pxsig/.gitignore (pxsig init writes it)',
+        '.pxsig/reports/ is not git-ignored: reasons given with a decision, rejection notes and rejection packets are not kept, so none can be committed. Add `reports/` to .pxsig/.gitignore (pxsig init writes it)',
     });
     assert.ok(!w.reason.includes(f.repo), 'store-relative, never absolute');
     const severity = { 'reports-not-ignored': 'info' };

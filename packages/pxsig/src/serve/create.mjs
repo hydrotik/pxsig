@@ -29,6 +29,7 @@ import { runIntegrity } from './integrity.mjs';
 import { startReact } from './react.mjs';
 import { projectFile, reportFile } from './pages.mjs';
 import { openState, takeLock } from './projects.mjs';
+import { sweepPackets } from '../lib/rejections.mjs';
 import { dashboardLink, dispatch, routes } from './routes.mjs';
 import { watchSources, watchStores } from './watch.mjs';
 /** @import { ServerResponse } from 'node:http' */
@@ -230,7 +231,8 @@ export function createPxsigServer({
       console.log(`[serve] Rust engine up (pxsig ${p.version}, ${p.threads} threads)`)
     );
     for (const S of states.values()) {
-      takeLock(srv, S);
+      // Packets whose rejection closed while no server ran go now (lib/rejections.mjs).
+      if (takeLock(srv, S)) sweepPackets(S.P);
       // No Storybook at storybook.url but a build in storybook.staticDir: serve it ourselves.
       const sb = await ensureStorybook(S.P, { log: (m) => console.log(`[serve] ${S.name}: ${m}`) });
       if (sb.served) {

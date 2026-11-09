@@ -115,12 +115,13 @@ line and the server is used.
 
 ### Files
 
-| Request                                    | Response                                    |
-| ------------------------------------------ | ------------------------------------------- |
-| `GET /p/<project>/renders/latest/<id>.png` | The latest render                           |
-| `GET /p/<project>/renders/base/<id>.png`   | The baseline image, read out of the `.psig` |
-| `GET /p/<project>/diffs/latest/<file>`     | Diff images                                 |
-| `GET /p/<project>/sig/<id>`                | The `.psig` header, as JSON                 |
+| Request                                             | Response                                                                                                                                                            |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /p/<project>/renders/latest/<id>.png`          | The latest render                                                                                                                                                   |
+| `GET /p/<project>/renders/base/<id>.png`            | The baseline image, read out of the `.psig`                                                                                                                         |
+| `GET /p/<project>/diffs/latest/<file>`              | Diff images                                                                                                                                                         |
+| `GET /p/<project>/sig/<id>`                         | The `.psig` header, as JSON                                                                                                                                         |
+| `GET /p/<project>/reports/rejected/<folder>/<file>` | A rejection packet's files (below). To the server's own origin only: a request another origin or site makes is refused (403), and the answer carries no CORS header |
 
 ### Writing
 
@@ -148,7 +149,12 @@ A new verdict for an entry clears its review decision. A rejection's reason stay
 opened, the reasons, newest first, and the checks since) lasts until the entry passes a check (or,
 for accessibility, has no new violations), a person approves it or accepts its violations, the
 rejection is undone (`unreview`), a person dismisses the reason (`rejection-dismiss`), or the entry
-leaves the manifest. `<store>/reports/rejections.ndjson` logs each event (`rejected`, `note`,
+leaves the manifest. While it is open it has a **rejection packet**, `<store>/reports/rejected/<id>/`
+(`<id>.a11y/` for accessibility; [configuration.md](configuration.md#rejections)): written after
+the reject's answer, refreshed after each check of the entry, removed when the rejection closes and,
+for any left over, at the server's start. When it is written, a `rejection` event carries the
+record with `packet` (store-relative); while `reports/` is not git-ignored none is, and the record's
+`packetError` says why. `<store>/reports/rejections.ndjson` logs each event (`rejected`, `note`,
 `checked`, `closed` with how). Both files are in the store's git-ignored `reports/`: the reason is
 never committed. A note is kept only when git leaves `reports/` out (asked only for a reject with
 a note, never blocking); otherwise the rejection opens all the same with `note: null`. Each decision also carries an opaque reference (`ref`: random, with no time, host,

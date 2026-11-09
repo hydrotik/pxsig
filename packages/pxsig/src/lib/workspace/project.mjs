@@ -114,6 +114,36 @@ function checkApprovals(config, ref) {
 }
 
 /**
+ * `rejections` (docs/configuration.md#rejections): each key's type and range.
+ * @param {Config} config
+ * @param {ProjectRef} ref
+ */
+function checkRejections(config, ref) {
+  const r = config.rejections;
+  if (r == null) return;
+  const bad = (/** @type {string} */ what) => {
+    throw new SetupError(`project "${ref.name}": rejections.${what}`);
+  };
+  if (!isObj(r)) throw new SetupError(`project "${ref.name}": rejections must be an object`);
+  const flag = (/** @type {unknown} */ v, /** @type {string} */ k) =>
+    v != null && typeof v !== 'boolean' && bad(`${k} must be true or false`);
+  flag(r.note?.ask, 'note.ask');
+  flag(r.packet, 'packet');
+  const c = r.crop ?? {};
+  const int = (/** @type {unknown} */ v, /** @type {string} */ k, lo = 0, hi = 0) =>
+    v != null &&
+    !(Number.isInteger(v) && Number(v) >= lo && Number(v) <= hi) &&
+    bad(`crop.${k} must be a whole number from ${lo} to ${hi}`);
+  int(c.pad, 'pad', 0, 256);
+  int(c.max, 'max', 1, 20);
+  if (c.scale != null && !['auto', 1, 2, 4].includes(c.scale))
+    bad('crop.scale must be "auto", 1, 2 or 4');
+  flag(c.annotate, 'crop.annotate');
+  if (r.structure != null && (typeof r.structure !== 'string' || !r.structure.trim()))
+    bad('structure must be a folder, relative to the project');
+}
+
+/**
  * @param {Workspace} ws
  * @param {ProjectRef} ref
  * @param {{ flags?: Obj, env?: NodeJS.ProcessEnv }} [opts]
@@ -146,6 +176,7 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
   const config = /** @type {Config} */ (merge(...layers.map((l) => l.value)));
   const sources = provenance(layers);
   checkApprovals(config, ref);
+  checkRejections(config, ref);
   try {
     checkEnforcementConfig(config.enforcement, `project "${ref.name}": enforcement`);
   } catch (e) {

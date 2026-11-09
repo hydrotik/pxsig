@@ -5,7 +5,7 @@
  * `rejection` event `{ project, id, kind, record | null }`.
  */
 import { decisionRef } from '../lib/approvals.mjs';
-import { notKept } from '../lib/decisions.mjs';
+import { notKept, reportsIgnoredAsync } from '../lib/decisions.mjs';
 import { NEEDS_PERSON } from '../lib/guard.mjs';
 import { readJson } from '../lib/files.mjs';
 import {
@@ -17,11 +17,14 @@ import {
   readRejections,
   sanitizeNote,
 } from '../lib/rejections.mjs';
+import { packetFor, refreshPackets } from '../lib/rejections/packet.mjs';
 import { httpError, json } from './http.mjs';
 import { needLock } from './projects.mjs';
 /** @import { CheckRow } from '../types.js' */
 /** @import { DecisionMeta, ReviewFile } from '../types/t5.js' */
-/** @import { Rejection, RejectionClose, RejectionKind } from '../types/rejections.js' */
+/**
+ * @import { AfterCheck, DiffFn, Rejection, RejectionClose, RejectionKind } from '../types/rejections.js'
+ */
 /** @import { Route, ServeContext } from '../types/serve.js' */
 /** @import { ProjectState } from './projects.mjs' */
 
@@ -61,6 +64,14 @@ export function rejectWithNote(srv, S, kind, id, meta, ignored) {
   const note = sanitizeNote(meta.note);
   const r = openRejection(S.P, kind, id, { via: meta.via ?? 'dashboard', note, ignored });
   tell(srv, S, kind, id, r);
+  void packetsLater(
+    srv,
+    S,
+    async (diff, yes) => [
+      { kind, id, ...(await packetFor(S.P, kind, id, { diff, ignored: yes })) },
+    ],
+    note ? ignored : null
+  );
   if (note && !ignored) console.error(`[serve] ${S.name}: ${notKept(S.P, 'Note')}`);
   const n = lead(r.notes);
   return {
@@ -114,9 +125,69 @@ export function closeAfter(srv, S, kind, id, as, by = {}) {
  * @param {Iterable<CheckRow>} rows
  */
 export function rejectionsAfterCheck(srv, S, rows) {
-  const r = afterCheck(S.P, rows, { known: new Set(S.manifest.stories.map((e) => e.id)) });
+  const list = [...rows];
+  /** @type {AfterCheck} */
+  const r = afterCheck(S.P, list, { known: new Set(S.manifest.stories.map((e) => e.id)) });
   for (const c of r.closed) tell(srv, S, c.kind, c.id, null);
   for (const c of r.checked) tell(srv, S, c.kind, c.id, c.record);
+  if (r.checked.length)
+    void packetsLater(srv, S, (diff, ignored) =>
+      refreshPackets(S.P, r, { diff, ignored, rows: list, entries: S.manifest.stories })
+    );
+}
+
+/**
+ * Whether the store's reports/ is git-ignored, for a packet: what git said for the reject's note,
+ * else the last integrity pass's `reports-not-ignored` finding (lib/integrity/problems.mjs), else
+ * git without blocking. A reject with no note starts no git of its own.
+ * @param {ProjectState} S
+ * @param {boolean | null} known
+ */
+function ignoredFor(S, known) {
+  if (known != null) return known;
+  if (S.integrity?.setup) return !S.integrity.setup.some((x) => x.code === 'reports-not-ignored');
+  return reportsIgnoredAsync(S.P);
+}
+
+/** Each project's packet work, one job after another (a WeakMap: no ProjectState field). */
+/** @type {WeakMap<ProjectState, Promise<void>>} */
+const queues = new WeakMap();
+
+/**
+ * Write or refresh packets after the answer has gone (a reject stays as fast as it was), one job
+ * per project at a time, under the store lock; each written packet is a `rejection` event with
+ * its record. A failure leaves the rejection standing, says why in the record (`packetError`)
+ * and logs one line with no path.
+ * @param {ServeContext} srv
+ * @param {ProjectState} S
+ * @param {(diff: DiffFn, ignored: boolean) => Promise<{ kind: RejectionKind, id: string, record: Rejection | null, error: unknown }[]>} job
+ * @param {boolean | null} [known] what git said for this reject's note, when it had one
+ */
+export function packetsLater(srv, S, job, known = null) {
+  /** @type {DiffFn} */
+  const diff = (a, b, mask) => srv.rust('diff', { a, b, mask });
+  const run = async () => {
+    try {
+      needLock(srv, S);
+      for (const p of await job(diff, await ignoredFor(S, known))) {
+        if (p.record) tell(srv, S, p.kind, p.id, p.record);
+        if (p.error) {
+          const e = /** @type {{ code?: unknown, name?: unknown } | null} */ (p.error);
+          const why = [e?.code, e?.name].find((x) => typeof x === 'string') ?? 'error';
+          console.error(`[serve] ${S.name}: packet of ${p.id} not written (${why})`);
+        }
+      }
+    } catch (e) {
+      // needLock's 409, or a store file that could not be read: the rejection stands.
+      const status = /** @type {{ status?: unknown }} */ (e).status;
+      console.error(
+        `[serve] ${S.name}: packets not written (${typeof status === 'number' ? status : 'error'})`
+      );
+    }
+  };
+  const next = (queues.get(S) ?? Promise.resolve()).then(run);
+  queues.set(S, next);
+  return next;
 }
 
 /** The entry id pattern (docs/spec.md#entry-id), as `decide` checks it. */

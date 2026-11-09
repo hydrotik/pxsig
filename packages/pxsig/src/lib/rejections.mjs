@@ -16,6 +16,7 @@
  * (`decisionRef`); no line has a user name, host name or path. An assistant's reason (via `mcp`) is
  * kept as its own note, and never leads over a person's.
  */
+import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { decisionRef, stamp } from './approvals.mjs';
 import { reasonText, reportsIgnored } from './decisions.mjs';
@@ -123,6 +124,7 @@ export function openRejection(
     notes,
     checks: was?.checks ?? [],
     packet: was?.packet ?? null,
+    ...(was?.packetError ? { packetError: was.packetError } : {}),
   };
   all[kind][id] = record;
   write(P, all);
@@ -146,6 +148,7 @@ export function closeRejection(P, kind, id, as, { via = null, ref = null } = {})
   if (!r) return null;
   delete all[kind][id];
   write(P, all);
+  removePacket(P, kind, id);
   log(P, closed(kind, id, as, r, { via, ref }));
   return r;
 }
@@ -214,6 +217,7 @@ export function afterCheck(P, rows, { known = null, at = new Date().toISOString(
       if (!r || !v) continue;
       if (v.pass) {
         delete all[kind][row.id];
+        removePacket(P, kind, row.id);
         lines.push(closed(kind, row.id, 'passed', r, {}));
         out.closed.push({ kind, id: row.id, as: 'passed' });
         continue;
@@ -227,6 +231,7 @@ export function afterCheck(P, rows, { known = null, at = new Date().toISOString(
       for (const [id, r] of Object.entries(all[kind]))
         if (!known.has(id)) {
           delete all[kind][id];
+          removePacket(P, kind, id);
           lines.push(closed(kind, id, 'removed', r, {}));
           out.closed.push({ kind, id, as: 'removed' });
         }
@@ -245,3 +250,71 @@ export function afterCheck(P, rows, { known = null, at = new Date().toISOString(
  */
 export const withoutNotes = (file) =>
   Object.fromEntries(Object.entries(file ?? {}).map(([id, { note: _note, ...d }]) => [id, d]));
+
+// --- the packet's folder (lib/rejections/packet.mjs writes it) -----------------------------------
+
+/** An entry id as a folder name may hold it (docs/spec.md#entry-id): nothing else is ever joined. */
+const SAFE_ID = /^[a-z0-9-]+--[a-z0-9-]+(__[a-z0-9-]+)?(@[a-z0-9-]+)?$/;
+
+/**
+ * The packet folder of an open rejection: `reports/rejected/<id>/`, `<id>.a11y/` for
+ * accessibility. Null for an id that is not an entry id.
+ * @param {{ store: { reports: string } }} P
+ * @param {RejectionKind} kind
+ * @param {string} id
+ */
+export const packetDir = (P, kind, id) =>
+  SAFE_ID.test(id)
+    ? join(P.store.reports, 'rejected', `${id}${kind === 'a11y' ? '.a11y' : ''}`)
+    : null;
+
+/**
+ * Remove a packet: its rejection closed. The reasons stay in rejections.ndjson.
+ * @param {{ store: { reports: string } }} P
+ * @param {RejectionKind} kind
+ * @param {string} id
+ */
+export function removePacket(P, kind, id) {
+  const dir = packetDir(P, kind, id);
+  if (dir) rmSync(dir, { recursive: true, force: true });
+}
+
+/**
+ * Record where an open rejection's packet is (store-relative), or why there is none. Null when
+ * the rejection closed meanwhile: the caller removes what it wrote.
+ * @param {{ store: { reports: string } }} P
+ * @param {RejectionKind} kind
+ * @param {string} id
+ * @param {{ packet: string | null, packetError?: string | null }} at
+ * @returns {Rejection | null}
+ */
+export function setPacket(P, kind, id, { packet, packetError = null }) {
+  const all = readRejections(P);
+  const r = all[kind][id];
+  if (!r) return null;
+  r.packet = packet;
+  if (packetError) r.packetError = packetError;
+  else delete r.packetError;
+  write(P, all);
+  return r;
+}
+
+/**
+ * Remove every packet whose rejection is no longer open (and any half-written one): the server
+ * does this at start. Returns how many went.
+ * @param {{ store: { reports: string } }} P
+ */
+export function sweepPackets(P) {
+  const root = join(P.store.reports, 'rejected');
+  if (!existsSync(root)) return 0;
+  const all = readRejections(P);
+  let n = 0;
+  for (const name of readdirSync(root)) {
+    const a11y = name.endsWith('.a11y');
+    const id = a11y ? name.slice(0, -'.a11y'.length) : name;
+    if (SAFE_ID.test(id) && all[a11y ? 'a11y' : 'visual'][id]) continue;
+    rmSync(join(root, name), { recursive: true, force: true });
+    n++;
+  }
+  return n;
+}

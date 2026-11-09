@@ -39,6 +39,8 @@ export interface Rejection {
   checks: RejectionCheck[];
   /** The rejection packet's folder, store-relative; null until one is written. */
   packet: string | null;
+  /** Why no packet was written (lib/rejections/packet.mjs); absent once one is. */
+  packetError?: string;
 }
 
 /** reports/rejections.json: the open rejections by kind, then entry id. */
@@ -60,4 +62,100 @@ export type RejectionClose =
 export interface AfterCheck {
   closed: { kind: RejectionKind; id: string; as: RejectionClose }[];
   checked: { kind: RejectionKind; id: string; record: Rejection }[];
+}
+
+// --- the packet (lib/rejections/packet.mjs) -----------------------------------------------------
+
+/** `rejections` in pxsig.config.json, resolved (lib/rejections/packet.mjs `rejectionOptions`). */
+export interface RejectionOptions {
+  /** Reject opens the dashboard's note row; false: one-key reject. */
+  noteAsk: boolean;
+  /** Write packets; false: reasons only. */
+  packet: boolean;
+  /** Padding around each changed region, in px. */
+  pad: number;
+  /** Crops per packet. */
+  max: number;
+  /** Nearest-neighbour upscale: `auto` (short side at least 160px, at most 4×), 1, 2 or 4. */
+  scale: 'auto' | 1 | 2 | 4;
+  /** A 1px outline of each changed region on every crop. */
+  annotate: boolean;
+  /** Committed structure locks, project-relative, compared with `reports/structure/`; null: none. */
+  structure: string | null;
+}
+
+/** The engine's `diff` (crates/pxsig-cli/src/cmd_check.rs `diff_json`): full-size pixels. */
+export interface PixelDiff {
+  width: number;
+  height: number;
+  changed: number;
+  changedPct?: number;
+  maxDelta: number;
+  regions: { x: number; y: number; w: number; h: number; px: number }[];
+}
+
+/** Baseline against current, with the mask written to `mask`. */
+export type DiffFn = (a: string, b: string, mask: string) => Promise<PixelDiff>;
+
+/** One crop: a padded box around one or more changed regions (merged where they overlap). */
+export interface PacketCrop {
+  n: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** Changed pixels inside it. */
+  px: number;
+  /** The changed regions inside it, unpadded. */
+  areas: { x: number; y: number; w: number; h: number }[];
+  /** The upscale; absent when the crop was left out (`tooLarge`). */
+  scale?: number;
+  /** Packet-relative: `crops/<n>.baseline.png`, `.current.png`, `.diff.png`. */
+  files?: { baseline: string; current: string; diff: string };
+  tooLarge?: true;
+}
+
+/** rejection.json: what rejection.md says, for tools. Paths are packet-, store- or workspace-relative. */
+export interface PacketFacts {
+  v: 1;
+  kind: RejectionKind;
+  id: string;
+  project: string;
+  story: string | null;
+  mode: string | null;
+  state: string | null;
+  at: string;
+  via: string;
+  ref: string;
+  note: string | null;
+  notes: RejectionNote[];
+  checks: RejectionCheck[];
+  goal: string;
+  /** The re-check command. */
+  next: string;
+  /** One paragraph for an assistant (lib/rejections/prompt.mjs). */
+  prompt: string;
+  /** The store, workspace-relative. */
+  store: string;
+  /** This folder, store-relative. */
+  packet: string;
+  /** The baseline file, workspace-relative; null for a new entry. */
+  baseline: string | null;
+  images: { baseline: string | null; current: string | null; mask: string | null };
+  metrics: {
+    ssim: number | null;
+    changedCellsPct: number | null;
+    changedPx: number;
+    maxDelta: number;
+    regions: number;
+    gate: string[];
+  } | null;
+  regions: PacketCrop[];
+  /** The text labels as sentences (lib/text/say.mjs `textLines`). */
+  text: string[];
+  /** Against the structure lock: "Same as the lock", or the first differing line; null: no lock. */
+  structure: string | null;
+  /** Accessibility: the violations not on the accepted list. */
+  violations?: import('./run.js').A11yViolation[];
+  writtenAt: string;
 }

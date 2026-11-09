@@ -45,15 +45,37 @@ export function projectFile(srv, req, res, name, rest) {
     const h = e && readHeader(resolve(P.workspaceRoot, e.sig));
     return h ? json(res, 200, h) : json(res, 404, { error: 'no baseline' });
   }
-  const roots = { 'renders/': join(P.store.root, 'renders'), 'diffs/': P.store.diffs };
+  // reports/rejected/: the rejection packets (lib/rejections/packet.mjs), which hold the reasons.
+  const roots = {
+    'renders/': join(P.store.root, 'renders'),
+    'diffs/': P.store.diffs,
+    'reports/rejected/': join(P.store.reports, 'rejected'),
+  };
   for (const [prefix, root] of Object.entries(roots)) {
     if (!rest.startsWith(prefix)) continue;
+    if (prefix === 'reports/rejected/' && !sameOrigin(req, res))
+      return json(res, 403, { error: 'rejection packets are served to the dashboard only' });
     const file = resolve(root, rest.slice(prefix.length));
     if (!inside(root, file) || !existsSync(file) || statSync(file).isDirectory())
       return json(res, 404, { error: 'not found' });
     return sendFile(req, res, file);
   }
   return json(res, 404, { error: 'not found' });
+}
+
+/**
+ * A packet is the reviewer's own words: never to another origin (a Storybook's, which CORS lets
+ * read the API). Drops the CORS header `cors` set, and refuses a request a browser marks as from
+ * another site or origin.
+ * @param {IncomingMessage} req
+ * @param {ServerResponse} res
+ */
+function sameOrigin(req, res) {
+  res.removeHeader('access-control-allow-origin');
+  const site = req.headers['sec-fetch-site'];
+  if (site && site !== 'same-origin' && site !== 'none') return false;
+  const origin = req.headers.origin;
+  return !origin || origin === `http://${req.headers.host}`;
 }
 
 /**
