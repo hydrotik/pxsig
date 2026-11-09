@@ -1153,6 +1153,13 @@
                   "role": "complementary"
                 }
               }
+            },
+            {
+              "scroll": {
+                "role": "heading",
+                "name": "Pixel",
+                "exact": true
+              }
             }
           ],
           "wait": {

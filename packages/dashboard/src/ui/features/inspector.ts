@@ -210,7 +210,8 @@ export const INSPECTOR: Feature[] = [
         wait: { role: 'heading', name: 'Metrics', exact: true },
       },
       {
-        // The Accessibility section's Reject opens the reason's row for the violations.
+        // The Accessibility section's Reject opens the reason's row for the violations; then the
+        // side panel back at its top (the click scrolled it to the section), as it opens.
         scenario: 'a11y',
         hash: '#inspect=ui-button--primary',
         actions: [
@@ -222,6 +223,7 @@ export const INSPECTOR: Feature[] = [
               within: { role: 'complementary' },
             },
           },
+          { scroll: { role: 'heading', name: 'Pixel', exact: true } },
         ],
         wait: { role: 'group', name: 'Reject the violations with a reason' },
       },
