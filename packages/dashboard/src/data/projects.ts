@@ -15,20 +15,23 @@ export interface ProjectInfo {
 }
 
 let asked: Promise<ProjectInfo[]> | null = null;
+/** The answer once it is in: the picker then renders with the page's first data, in one layout. */
+let known: ProjectInfo[] | null = null;
 /** The server's projects, in pxsig.workspace.json's order (empty for a static report, or on a failure). */
 export function projectList(): Promise<ProjectInfo[]> {
   if (!served) return Promise.resolve([]);
   asked ??= fetch('/__pxsig/projects', { cache: 'no-store' })
     .then((r) => r.json() as Promise<{ projects?: ProjectInfo[] }>)
-    .then((b) => b.projects ?? [])
-    .catch(() => []);
+    .then((b) => (known = b.projects ?? []))
+    .catch(() => (known = []));
   return asked;
 }
 
 /** The server's projects (empty for a static report). */
 export function useProjects(): ProjectInfo[] {
-  const [list, setList] = React.useState<ProjectInfo[]>([]);
+  const [list, setList] = React.useState<ProjectInfo[]>(() => known ?? []);
   React.useEffect(() => {
+    if (known) return;
     let alive = true;
     void projectList().then((l) => alive && setList(l));
     return () => {
