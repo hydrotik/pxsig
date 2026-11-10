@@ -2,6 +2,11 @@
 
 ## Upgrading to 0.7
 
+0.7.7: `@babel/core` and `babel-plugin-react-compiler` are no longer optional peers of pxsig, so
+package managers no longer list them with it. Nothing to do: the React Compiler analysis resolves
+both from the project as before, and a project that wants it installs both
+(`npm install -D babel-plugin-react-compiler @babel/core`).
+
 0.7.6: no committed log line says who decided or why, Reject asks for an optional reason, and text
 capture is on by default. Lines written before 0.7.6 keep their `by` and `reason`; nothing rewrites
 them. Each change has its `To update:` line in `CHANGELOG.md` under 0.7.6; by who acts:

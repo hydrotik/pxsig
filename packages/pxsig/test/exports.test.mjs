@@ -67,14 +67,15 @@ test('the manifest keeps the TypeScript entries and declares React and Playwrigh
   // Optional, so npm does not install the newest Playwright on its own; renders need it.
   assert.match(manifest.peerDependencies.playwright, /^>=\d+\.\d+$/);
   assert.equal(manifest.peerDependenciesMeta.playwright.optional, true);
-  // React analysis runs the project's own compiler and Babel: optional peers, never dependencies,
-  // so npm, pnpm and Yarn install neither with pxsig (scripts/install-smoke.mjs checks npm).
+  // React analysis runs the project's own compiler and Babel, resolved from the project: neither is
+  // a dependency or a peer, so no package manager installs or lists them with pxsig (supply-chain
+  // scanners count optional peers' trees; scripts/install-smoke.mjs checks npm installs neither).
   const fields = /** @type {Record<string, Record<string, unknown> | undefined>} */ (
     /** @type {unknown} */ (manifest)
   );
   for (const peer of ['babel-plugin-react-compiler', '@babel/core']) {
-    assert.match(String(fields.peerDependencies?.[peer]), /^>=\d+\.\d+(\.\d+)?$/, peer);
-    assert.deepEqual(fields.peerDependenciesMeta?.[peer], { optional: true }, peer);
+    assert.equal(fields.peerDependencies?.[peer], undefined, peer);
+    assert.equal(fields.peerDependenciesMeta?.[peer], undefined, peer);
     assert.equal(fields.dependencies?.[peer], undefined, peer);
     assert.equal(fields.devDependencies?.[peer], undefined, peer);
   }

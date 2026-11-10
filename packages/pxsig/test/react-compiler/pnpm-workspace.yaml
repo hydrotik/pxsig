@@ -1,7 +1,7 @@
 # Test fixtures only, outside pxsig's workspace (its own lockfile, like the examples): the React
 # Compiler under Babel 7 and 8, for packages/pxsig/test/react-*.test.mjs. CI installs them with
 # `pnpm --dir packages/pxsig/test/react-compiler install --frozen-lockfile` (ci.yml, node job).
-# Neither package is a dependency of pxsig, which declares both as optional peers.
+# Neither package is a dependency or peer of pxsig, which resolves both from the project.
 packages:
   - babel7
   - babel8

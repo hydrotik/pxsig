@@ -1,7 +1,8 @@
 /**
  * lib/react/peers.mjs — the React Compiler, Babel and React as the project has them installed.
  *
- * Optional peers: pxsig installs none of them. Each is looked up from the project's folder to the
+ * None is a dependency of pxsig (React is an optional peer, the compiler and Babel are not
+ * declared at all): pxsig installs none of them. Each is looked up from the project's folder to the
  * workspace root, never in pxsig's own folder or above the workspace (a parent folder's
  * node_modules), so a project that does not have them never gets them by accident. Paths stay in this process: outputs name the
  * package and its version only.
