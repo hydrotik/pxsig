@@ -27,6 +27,7 @@
     "panel-style.mjs",
     "server-pick.mjs",
     "snapshot-view.mjs",
+    "test/installed",
     "README.md",
     "LICENSE"
   ],

@@ -7,12 +7,14 @@
  *
  * 1. The release's own scripts build what it ships, for this machine only: make-platform-packages
  *    (`@pxsig/cli-<platform>-<arch>`, version 0.0.0-ci, from the engine), sync-dashboard-source,
- *    pack-manifest, then `npm pack --ignore-scripts` (release.yml, pack job). The pxsig package is
- *    packed from a copy, so the two package.json edits the release makes in its checkout never
- *    touch this one.
- * 2. In an empty folder whose path has a space: `npm install <pxsig.tgz> <cli-*.tgz>` (Playwright
- *    at the version this checkout tests with, so the installed Chromium matches); React analysis's
- *    packages (babel-plugin-react-compiler, @babel/core) are not installed. Then
+ *    pack-manifest, then `npm pack --ignore-scripts` (release.yml, pack job). pxsig and the
+ *    Storybook addon are packed from copies, so the package.json edits the release makes in its
+ *    checkout never touch these.
+ * 2. In an empty folder whose path has a space: `npm install <pxsig.tgz> <cli-*.tgz> <addon.tgz>`
+ *    (Playwright at the version this checkout tests with, so the installed Chromium matches);
+ *    React analysis's packages (babel-plugin-react-compiler, @babel/core) are not installed. Each
+ *    installed package's own self-test runs there (`node --test`: the platform package's
+ *    test/binary.test.js, pxsig's and the addon's test/installed/). Then
  *    `npm exec -- pxsig --version`: the CLI is 0.0.0-ci and its engine resolves.
  * 3. `PXSIG_DEBUG=spawn npm exec -- pxsig doctor --ci` on a one-story project: every `[spawn]` line
  *    names node, git or the engine in that platform package, and the engine is among them.
@@ -142,13 +144,28 @@ try {
     '--write-optional-deps',
     join(stage, 'pxsig', 'package.json'),
   ]);
-  runScript('pack-manifest.mjs', [join(stage, 'pxsig')]);
+  // The addon at its own version, as the release packs it.
+  copyTree(join(repo, 'packages', 'storybook-addon'), join(stage, 'storybook-addon'), {
+    filter: (p) => !p.split(/[\\/]/).includes('node_modules'),
+  });
+  const addonVersion = /** @type {{ version: string }} */ (
+    JSON.parse(readFileSync(join(stage, 'storybook-addon', 'package.json'), 'utf8'))
+  ).version;
+  runScript('pack-manifest.mjs', [join(stage, 'pxsig'), join(stage, 'storybook-addon')]);
   const packed = join(tmp, 'packed');
   mkdirSync(packed);
-  for (const dir of [join(stage, 'cli-dist', `cli-${id}`), join(stage, 'pxsig')])
+  for (const dir of [
+    join(stage, 'cli-dist', `cli-${id}`),
+    join(stage, 'pxsig'),
+    join(stage, 'storybook-addon'),
+  ])
     runNpm(['pack', '--ignore-scripts', '--pack-destination', packed], { cwd: dir });
   const tarballs = readdirSync(packed).filter((f) => f.endsWith('.tgz'));
-  const expected = [`pxsig-${VERSION}.tgz`, `pxsig-cli-${id}-${VERSION}.tgz`];
+  const expected = [
+    `pxsig-${VERSION}.tgz`,
+    `pxsig-cli-${id}-${VERSION}.tgz`,
+    `pxsig-storybook-addon-${addonVersion}.tgz`,
+  ];
   for (const f of expected)
     if (!tarballs.includes(f)) fail(`npm pack did not write ${f} (wrote ${tarballs.join(', ')})`);
   // Relative names: GNU tar (Git for Windows) reads "C:\…" as a remote host.
@@ -186,9 +203,26 @@ try {
   const installed = join(project, 'node_modules', '@pxsig', `cli-${id}`, 'bin', exe);
   if (!existsSync(installed)) fail(`the platform package's engine is not at ${installed}`);
   log(`installed; engine at ${installed}`);
-  // The platform package's own self-test (test/binary.test.js) runs the installed engine.
-  run(process.execPath, ['--test'], { cwd: join(project, 'node_modules', '@pxsig', `cli-${id}`) });
-  log('platform package self-test: ok');
+  // Each package's own self-test, in its installed folder: the platform package's
+  // (test/binary.test.js) runs the installed engine; pxsig's and the addon's (test/installed/)
+  // check the CLI, the exports, the preset and the manager entry. A nested `node --test` that
+  // inherits NODE_TEST_CONTEXT runs nothing, so it is dropped.
+  /** @type {NodeJS.ProcessEnv} */
+  const testEnv = { ...process.env };
+  delete testEnv.NODE_TEST_CONTEXT;
+  for (const [name, args] of /** @type {[string, string[]][]} */ ([
+    [`@pxsig/cli-${id}`, []],
+    ['pxsig', ['test/installed/*.test.mjs']],
+    ['@pxsig/storybook-addon', ['test/installed/*.test.mjs']],
+  ])) {
+    const r = run(process.execPath, ['--test', ...args], {
+      cwd: join(project, 'node_modules', ...name.split('/')),
+      env: testEnv,
+    });
+    const passed = /^# pass (\d+)$/m.exec(r.stdout)?.[1];
+    if (!passed || passed === '0') fail(`${name} self-test ran no tests\n${r.stdout}`);
+    log(`${name} self-test: ${passed} passed`);
+  }
   // React analysis's packages are not dependencies of pxsig: installing pxsig installs neither.
   for (const peer of ['babel-plugin-react-compiler', '@babel/core'])
     if (existsSync(join(project, 'node_modules', peer, 'package.json')))

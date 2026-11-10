@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { copyTree } from './lib/copy-tree.mjs';
 import { devOnlyKeys, publishedManifest, readmeSource } from './pack-manifest.mjs';
@@ -120,8 +120,14 @@ test(
     try {
       for (const name of ['pxsig', 'storybook-addon']) {
         const pkg = join(dir, name);
-        copyTree(join(repo, 'packages', name), pkg, {
-          filter: (p) => !p.split(/[\\/]/).some((s) => s === 'node_modules' || s === 'test'),
+        const src = join(repo, 'packages', name);
+        // The package's own tests stay behind, except the self-test it ships (test/installed/).
+        copyTree(src, pkg, {
+          filter: (p) => {
+            const segs = relative(src, p).split(/[\\/]/);
+            if (segs.includes('node_modules')) return false;
+            return segs[0] !== 'test' || segs.length === 1 || segs[1] === 'installed';
+          },
         });
         assert.equal(spawnSync(process.execPath, [script, pkg]).status, 0, name);
         const r = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
@@ -135,6 +141,12 @@ test(
         assert.ok(
           packed.files.some((f) => f.path === 'LICENSE'),
           `${name}: LICENSE is in the tarball`
+        );
+        // The installed self-test ships (install-smoke.mjs runs it), and no other test file.
+        assert.deepEqual(
+          packed.files.filter((f) => f.path.startsWith('test/')).map((f) => f.path),
+          ['test/installed/package.test.mjs'],
+          name
         );
         // A package.json: an object with `files`.
         const pj = /** @type {{ files: string[] }} */ (
