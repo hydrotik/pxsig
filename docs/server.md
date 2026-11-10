@@ -71,7 +71,10 @@ The top bar links each section by its id in the URL hash: `overview`, `stories`,
 `a11y`, `history`, `diagnostics` and `help`; the older `#scenarios`, `#calibration` and
 `#performance` open Diagnostics.
 
-With several projects, a switcher in the top bar picks one. URL parameters:
+With several projects, a switcher in the top bar picks one. A `/report/` that names no project
+opens on the first project in `pxsig.workspace.json`'s `projects` and adds `?project=<name>` to its
+URL, so a reload or a shared link keeps it; the API itself never picks one (below). URL
+parameters:
 
 | Parameter             | Meaning                                                          |
 | --------------------- | ---------------------------------------------------------------- |

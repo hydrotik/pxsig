@@ -4,7 +4,15 @@
  */
 import React from 'react';
 import { t } from './copy';
-import { currentProject, type Refusal, scope, served, setCurrentProject } from './data/request';
+import {
+  currentProject,
+  query,
+  type Refusal,
+  scope,
+  served,
+  setCurrentProject,
+} from './data/request';
+import { nameFirstProject } from './data/projects';
 import { applyReviewEvent, type ReviewEvent } from './data/live';
 import { noteReact, type ReactEvent } from './data/react';
 import type { CheckReport, Data } from './data/types';
@@ -54,6 +62,7 @@ export {
   type ReactActivity,
 } from './data/react';
 export { served } from './data/request';
+export { useProjects, type ProjectInfo } from './data/projects';
 export {
   reviewAction,
   a11yAction,
@@ -123,6 +132,8 @@ export function normalizeData(d: Data): Data {
 }
 
 async function fetchData(): Promise<Data> {
+  // Neither a project nor a story named: with several projects, the first one (data/projects.ts).
+  if (!currentProject && !query.get('story')) await nameFirstProject();
   const r = await fetch(`/__pxsig/data${scope()}`, { cache: 'no-store' });
   // The report data, or `error` on a refusal (server.md); a body that is not JSON reads as {}.
   const body = await (r.json() as Promise<Partial<Data> & Refusal>).catch(
@@ -132,28 +143,6 @@ async function fetchData(): Promise<Data> {
   setCurrentProject(body.project ?? currentProject);
   // An ok answer is the report data; normalizeData fills in what an older or partial one lacks.
   return normalizeData(body as Data);
-}
-
-export interface ProjectInfo {
-  name: string;
-  /** The project's `label`, when it has one. */
-  label?: string | null;
-  root: string;
-  entries: number;
-  integrity: { status: string; headline: string } | null;
-}
-
-/** The server's projects (empty for a static report). */
-export function useProjects(): ProjectInfo[] {
-  const [list, setList] = React.useState<ProjectInfo[]>([]);
-  React.useEffect(() => {
-    if (!served) return;
-    fetch('/__pxsig/projects', { cache: 'no-store' })
-      .then((r) => r.json() as Promise<{ projects?: ProjectInfo[] }>)
-      .then((b) => setList(b.projects ?? []))
-      .catch(() => {});
-  }, []);
-  return list;
 }
 
 /** Show another project: the URL carries it, so a reload or a shared link keeps it. */

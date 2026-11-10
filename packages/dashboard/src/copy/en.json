@@ -482,6 +482,10 @@
         "title": "Project missing",
         "help": "A project listed in the workspace has no config file."
       },
+      "project-empty": {
+        "title": "Project without stories",
+        "help": "The project has no stories in its story index and none in its manifest. A dashboard adapter, or a package without stories, registered as a project has none."
+      },
       "version-skew": {
         "title": "Version mismatch",
         "help": "Packages in the workspace depend on different pxsig versions."

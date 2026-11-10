@@ -532,7 +532,7 @@ export async function reconcile(ctx, opts = {}) {
       staleness,
     },
     setup: [
-      ...setupProblems(index),
+      ...setupProblems(index, ctx, entries.length),
       ...(ctx.project ? workspaceProblems(ctx.project) : []),
       ...portabilityProblems({
         repoRoot: ctx.repoRoot,

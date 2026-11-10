@@ -132,7 +132,9 @@ export async function open(
     if (name === 'projects')
       return route.fulfill({
         json: {
-          projects: [{ name: 'demo', root: '.', entries: d.check.rows.length, integrity: null }],
+          projects: [
+            { name: 'demo', root: '.', entries: d.check?.rows.length ?? 0, integrity: null },
+          ],
         },
       });
     if (req.method() === 'POST') {
