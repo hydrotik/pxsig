@@ -5,6 +5,391 @@ semantic versioning.
 
 ## Unreleased
 
+## 0.7.6 - 2026-11-10
+
+The decisions release. No committed log line says who decided or why: approval, accessibility,
+repair and integrity records drop `by`, a decision's batch name is pxsig's own, and a reason stays
+on the machine in the store's git-ignored `reports/`, beside an opaque `ref` in the committed line.
+Reject asks for an optional reason, which opens a rejection that lasts until the entry passes or a
+person approves it or dismisses the reason: a packet of full-size crops and `rejection.md` in
+`reports/rejected/`, a "Rejected" note with Copy for an agent in the dashboard, and `pxsig
+rejected` and `pxsig_rejected` for assistants. Text capture is on by default: each render records
+the text it draws, and `pxsig check`, the inspector, `pxsig entry`, `pxsig list` and MCP label a
+change as copy, reflow, moved or restyled text, labels only, never a verdict. The dashboard names
+the React Compiler, the engine's built-in `oxc` compiler included. The published packages carry the
+metadata registry scanners such as Socket look for. The server runs each project's decisions one
+after another, and a fast review session no longer returns to the entry just approved or stalls
+with Approve disabled.
+
+### Upgrading from 0.7.5
+
+- **`approvals.identity` is no longer read.** Remove `approvals.identity` from pxsig.config.json; who approved is the commit's author and the pull request's reviewer (`pxsig approve log --trace`).
+- **New approval log lines carry no `reason`.** A tool that read `reason` from approvals.ndjson reads it from `pxsig approve log --json` (`reason`) on the machine where the decision was made, or keeps its own record keyed by the line's `ref`.
+- **New accessibility log lines carry no `reason`.** Read the reason from `<store>/reports/decisions.ndjson` (`log: "a11y"`, by `ref`) on the machine where the decision was made.
+- **Undo lines carry `undo: { in, from }` instead of the reason text.** A tool that parsed "undo <batch>" from `reason` reads the undone batch from `batch` (`<batch>-undo`) and `undo.from` for snapshot or git.
+- **A decision's batch name is pxsig's own.** A client that sent its own batch names reads the batch from the answer (`entry.batch` for an approve, `batch` for a prune); pxsig's CLI, dashboard and Storybook panel need nothing.
+- **`approve log` has no "By" column; `--json` rows have no `by`.** A script that read `by` from `approve log --json` uses `--trace` for the commit and pull request.
+- **The integrity entry's `approval` is `{ at, via, batch }`.** Use `pxsig approve log --trace` for who approved.
+- **Doctor gains the setup findings `approvals-identity` and `log-legacy-personal`.** Remove `approvals.identity` from pxsig.config.json, or set `integrity.severity` for the code; old lines stay (the log is append-only, and git history keeps them either way).
+- **Doctor gains the setup finding `reports-not-ignored` (warn).** Add `reports/` to the store's .gitignore, or set `integrity.severity` for the code.
+- **The instruction `pxsig setup` prints gains one line.** Add the line to the assistant's instruction file (`pxsig setup --print` prints the whole instruction).
+- **Reject asks for an optional reason.** A script that clicks Reject (or presses R) then presses Enter, or clicks the row's Reject; or set `rejections.note.ask: false` in `pxsig.config.json` to reject at once, as before.
+- **`unreview` and `a11y-unreview` also close the entry's open rejection, and an assistant cannot clear a person's rejection.** An assistant that cleared rejections asks the person, who clears it in the dashboard.
+- **`/__pxsig/status` and the static report carry no reasons.** Read the reasons from `/__pxsig/data` (same-origin).
+- **Nothing to do:** `pxsig migrate` lines carry no old path; the trail it copies loses `reason`; `approval-plan.json` and `repairs.ndjson` have no `by`; A reason is kept in `<store>/reports/decisions.ndjson`, only when `reports/` is git-ignored; otherwise the CLI says it was not kept; `approve log` reads a batch's reason from the local file; `pxsig snapshot` always gives `reason: null`; the Storybook addon panel has no "Reason" column; An approve or prune reason is stored as one line; Each React analysis names its compiler; The published engine is about 3 MB larger; The approval and accessibility logs gain a `ref` key on each new line; The store writes `reports/rejections.json` and `reports/rejections.ndjson`; A rejection's note is kept only when the store's `reports/` is git-ignored; The store writes `reports/rejected/` while a rejection is open; Text capture is on by default; `pxsig doctor` has a Text row; check.json rows carry `textDiff`; The check cache starts afresh; `pxsig list`'s Why column and summary.md name the text kind; MCP `pxsig_list` and `pxsig_check` entries carry `textKind`, `textState` or `textSummary`.
+
+### Breaking changes
+
+- **`approvals.identity` is no longer read.** No approval, accessibility or repair log line, approval
+  plan or integrity entry carries a `by`, whatever the key says: pxsig no longer reads the git
+  email or `$USER` for any of them. A config that still has the key loads as before (any value),
+  and `pxsig doctor` reports it (below). Lines written before 0.7.6 keep their `by`; nothing
+  rewrites them, and `approve verify --since` passes on a log with both.
+  To update: remove `approvals.identity` from pxsig.config.json; who approved is the commit's author
+  and the pull request's reviewer (`pxsig approve log --trace`).
+- **New approval log lines carry no `reason`.** `approvals.ndjson` is committed; a reason given
+  with an approval (`approve plan --reason`, `check --update --reason`, a `reason` sent to
+  `/__pxsig/approve` or `/approve-story`) now stays on the machine, beside the line's `ref`
+  (below). `check --update` without `--reason` and `approve verify --adopt` no longer write a
+  fixed text: `via` (`check-update`, `adopt`) says how. Lines written before 0.7.6 keep their
+  `reason`; nothing rewrites them, and `approve verify --since` passes on a log with both.
+  To update: a tool that read `reason` from approvals.ndjson reads it from
+  `pxsig approve log --json` (`reason`) on the machine where the decision was made, or keeps its
+  own record keyed by the line's `ref`.
+- **New accessibility log lines carry no `reason`.** An `a11y-accept` reason and the
+  `pxsig a11y --prune --reason` text leave `a11y-decisions.ndjson` for the local file.
+  To update: read the reason from `<store>/reports/decisions.ndjson` (`log: "a11y"`, by `ref`) on
+  the machine where the decision was made.
+- **Undo lines carry `undo: { in, from }` instead of the reason text.** `in` is `terminal`
+  (`pxsig approve undo`) or `dashboard` (`unreview`); `from` is `snapshot` or `git`. The PR
+  summary's count by route reads the field (and an old line's "(dashboard)" reason).
+  To update: a tool that parsed "undo <batch>" from `reason` reads the undone batch from `batch`
+  (`<batch>-undo`) and `undo.from` for snapshot or git.
+- **`pxsig migrate` lines carry no old path; the trail it copies loses `reason`.** Each migrated
+  baseline's line has a `ref` and the pxsig version, and no "moved from <old path>" reason; each
+  copied line gains a `ref`, and its reason is kept beside it in the new store's
+  `reports/decisions.ndjson`.
+  To update: nothing to do; the old paths are in the migration's commit.
+
+### Behaviour changes
+
+- **A decision's batch name is pxsig's own.** `POST /__pxsig/approve` and `/__pxsig/a11y-prune`
+  keep a request's `batch` only when it has the shape pxsig makes (`<time>-<via>`, as
+  `pxsig approve apply` and `pxsig a11y --prune` send, or an undo's `-undo`). Any other batch is
+  replaced by the server's own name (`<time>-<via>`, `<time>-prune` for a prune), never refused,
+  so a client cannot write free text into the committed `approvals.ndjson` or
+  `a11y-decisions.ndjson`. Until now the server cut it to letters, digits, `_`, `.` and `-` and
+  logged it.
+  To update: a client that sent its own batch names reads the batch from the answer
+  (`entry.batch` for an approve, `batch` for a prune); pxsig's CLI, dashboard and Storybook panel
+  need nothing.
+- **`approve log` has no "By" column; `--json` rows have no `by`.** The table is When, Via,
+  Entries, Reason, Batch, and `--trace` adds Commit and PR. A `by` on a line written before 0.7.6
+  is never shown. `pxsig migrate` writes no `by` on its lines and drops `by`
+  from the trail it copies.
+  To update: a script that read `by` from `approve log --json` uses `--trace` for the commit and
+  pull request.
+- **The integrity entry's `approval` is `{ at, via, batch }`.** In `reports/integrity.json`,
+  `/__pxsig/integrity` and `pxsig doctor --json`; it no longer has `by`.
+  To update: use `pxsig approve log --trace` for who approved.
+- **`approval-plan.json` and `repairs.ndjson` have no `by`.** Both are in the store's git-ignored
+  `reports/`.
+  To update: nothing to do; both are local.
+- **Doctor gains the setup findings `approvals-identity` and `log-legacy-personal`.**
+  `approvals-identity` (warn for `git-email`, info for `none` or any other value) while the config
+  still sets the key; `log-legacy-personal` (info, with a count) while `approvals.ndjson` or
+  `a11y-decisions.ndjson` has lines from before 0.7.6 that carry a person's reason or a `by` (a
+  reason pxsig wrote itself, such as an undo's or `check --update`'s default, is not counted).
+  Shown by `pxsig doctor`, `pxsig_doctor` and Diagnostics. Like every setup warning they do not
+  change `doctor`'s exit code, `--fail-on` included; `integrity.severity` can change either
+  severity (`error` makes `doctor` exit 2).
+  To update: remove `approvals.identity` from pxsig.config.json, or set `integrity.severity` for
+  the code; old lines stay (the log is append-only, and git history keeps them either way).
+- **A reason is kept in `<store>/reports/decisions.ndjson`, only when `reports/` is git-ignored;
+  otherwise the CLI says it was not kept.** One line per decision reference:
+  `{ at, ref, log, id, batch, via, reason, pxsig }`, no name, host or path. pxsig asks
+  `git check-ignore` only when a reason is given (never for a dashboard approval, and the server
+  never blocks on it); outside a repository the reason is kept. When `reports/` is not ignored,
+  `approve apply`, `check --update` and `a11y --prune` print
+  `Reason not kept: <store>/reports/ is not git-ignored. pxsig doctor shows the fix.` once, the
+  decision goes through and exit codes are unchanged; `approve plan` writes no reason into
+  `approval-plan.json` and shows `Reason: not kept (reports/ is not git-ignored)`.
+  To update: nothing to do when the store's reports/ is git-ignored (every store pxsig init made);
+  otherwise add `reports/` to the store's .gitignore.
+- **`approve log` reads a batch's reason from the local file.** By any of the batch's refs in
+  `reports/decisions.ndjson`, else the reason a line written before 0.7.6 carries, else none; a
+  clean clone, or a local file that is missing or broken, shows no reasons and exits 0.
+  To update: nothing to do; reasons show only on the machine where they were given.
+- **`pxsig snapshot` always gives `reason: null`; the Storybook addon panel has no "Reason"
+  column.** The snapshot is published with `storybook build`; it never reads the local file, and
+  shows no reason from older lines either. The key stays (snapshot version 1).
+  To update: nothing to do; the reason for a baseline change is in the pull request that
+  committed it.
+- **Doctor gains the setup finding `reports-not-ignored` (warn).** Shown by `pxsig doctor`,
+  `pxsig_doctor` and Diagnostics while git would pick up the store's `reports/`. Like every setup
+  warning it does not change `doctor`'s exit code; `integrity.severity` can change its severity
+  (`error` makes `doctor` exit 2).
+  To update: add `reports/` to the store's .gitignore, or set `integrity.severity` for the code.
+- **An approve or prune reason is stored as one line.** Control characters, line breaks and
+  bidirectional overrides become spaces, as a rejection note's do; the limit stays 500 characters.
+  To update: nothing to do.
+- **Each React analysis names its compiler.** `pxsig react` prints a `compiler:` line
+  (`babel-plugin-react-compiler 1.0.0 with @babel/core 7.29.7`, or `oxc_react_compiler 0.143.0
+  (built-in, experimental)`); `pxsig doctor`'s `react-compiler` finding says which compiler a run
+  would use and why; `pxsig_react`'s `backend` adds `name` and `label`; the React SARIF file
+  names the compiler as its tool extension; `react.json`'s `backend.name` is `babel` or `oxc`, and
+  `backend.babel` is null for `oxc`.
+  To update: nothing to do for a project that keeps the default; a script that matched the
+  doctor line `babel-plugin-react-compiler <v> with @babel/core <v>` exactly matches its start.
+- **The published engine is about 3 MB larger** (the built-in compiler, cargo feature
+  `react-oxc`, now in every release build and in the engine's SBOM).
+  To update: nothing to do.
+- **The instruction `pxsig setup` prints gains one line:** "Before fixing a rejected pxsig entry,
+  read its reason and images (pxsig_rejected, or `pxsig rejected`); after the fix, re-check those
+  ids." `pxsig setup` never changes an instruction file that exists.
+  To update: add the line to the assistant's instruction file (`pxsig setup --print` prints the
+  whole instruction).
+- **Reject asks for an optional reason.** In the dashboard and the Storybook panel, Reject, R and
+  the Accessibility section's Reject open a row under the header with one field, Reason (one line,
+  at most 280 characters). Enter or the row's Reject rejects, with or without a reason; Esc or
+  Cancel closes the row with no decision. Before, Reject and R rejected at once.
+  To update: a script that clicks Reject (or presses R) then presses Enter, or clicks the row's
+  Reject; or set `rejections.note.ask: false` in `pxsig.config.json` to reject at once, as before.
+- **`unreview` and `a11y-unreview` also close the entry's open rejection, and an assistant cannot
+  clear a person's rejection.** The MCP's token may still reject and clear a rejection it made;
+  clearing a rejection a person made, or gave a reason for, is refused (403, "clearing a person's
+  rejection needs a person: …"), as clearing a person's approval or accept already was.
+  To update: an assistant that cleared rejections asks the person, who clears it in the dashboard.
+- **`/__pxsig/status` and the static report carry no reasons.** `/status` is read by Storybook's
+  origins, so its `review` entries leave `note` out; `pxsig report` leaves out every `note` and the
+  open rejections, since a static report is made to be shared.
+  To update: read the reasons from `/__pxsig/data` (same-origin).
+- **The approval and accessibility logs gain a `ref` key on each new line.** Lines already written
+  are unchanged, and `pxsig approve verify`, `log` and `undo` read both.
+  To update: nothing to do; a tool that matched a log line's keys exactly allows `ref`.
+- **The store writes `reports/rejections.json` and `reports/rejections.ndjson`** once an entry is
+  rejected.
+  To update: nothing to do when the store's `reports/` is git-ignored (every store `pxsig init`
+  made); otherwise add `reports/` to the store's `.gitignore`, so notes are kept (while it is not
+  ignored, a rejection opens with no note).
+- **A rejection's note is kept only when the store's `reports/` is git-ignored.** The open
+  rejection (`reports/rejections.json`, `rejections.ndjson`) is held to the same check as a
+  decision's reason: while git would pick up `reports/`, a reject or a11y-reject with a `note`
+  still opens the rejection, with `note: null`, and the server's answer says the note was not kept
+  (`notice`: `Note not kept: <store>/reports/ is not git-ignored. pxsig doctor shows the fix.`,
+  and `noteKept: false` on the decision), with the same line in the server's log. pxsig asks
+  `git check-ignore` only for a reject with a note, never blocking; outside a repository the note
+  is kept.
+  To update: nothing to do when the store's reports/ is git-ignored (every store pxsig init made);
+  otherwise add `reports/` to the store's .gitignore.
+- **The store writes `reports/rejected/` while a rejection is open.** Only while git leaves the
+  store's `reports/` out: otherwise no packet is written, the open rejection says why
+  (`packetError`), and `pxsig doctor`'s `reports-not-ignored` finding now names rejection packets
+  too.
+  To update: nothing to do when the store's `reports/` is git-ignored (every store `pxsig init`
+  made); otherwise add `reports/` to the store's `.gitignore`, or set `rejections.packet: false`.
+- **Text capture is on by default.** Every render writes its text record beside its PNG
+  (`renders/latest/<id>.boxes.json`, git-ignored with the rest of `renders/`), and every baseline
+  approved after upgrading carries it as a `boxes` section: the strings the baseline image already
+  shows, committed with it, never a form field's value. Baselines approved before stay as they are
+  ("no text record" until next approved). A story's render takes about 2 ms more (a
+  dashboard-sized screen about 9 ms; about 1% of the render or less), and its baseline about
+  0.5 KB more (a dashboard-sized screen about 2.4 KB).
+  To update: nothing to do to keep checking as before: gates, verdicts and exit codes are
+  unchanged. To keep text out of new baselines, set `"text": false` in `pxsig.config.json` (or
+  `defaults.text` in `pxsig.workspace.json`); `--no-text` or `PXSIG_TEXT=off` turns it off for one
+  run, `parameters.pxsig.text: false` for one story's entries.
+
+- **`pxsig doctor` has a Text row** (and `text` in `--json`): whether text capture is on, and how
+  many of the manifest's baselines carry a text record.
+  To update: nothing to do; a script that reads `pxsig doctor --json` gets one more key.
+- **check.json rows carry `textDiff`** when the render has a text record (text capture is on by
+  default).
+  To update: nothing to do; a script that reads check.json rows gets one more key, and nothing
+  else in the row changes.
+- **The check cache starts afresh.** Its key now covers each render's text record, environment and
+  the text tolerances, so the first check after upgrading compares every entry again. A passing
+  entry whose text changed also gets a full-resolution pixel diff for its label.
+  To update: nothing to do.
+- **`pxsig list`'s Why column and summary.md name the text kind.** After an entry's first reason
+  (`pxsig list`) or its reasons (summary.md's table of changed entries) comes `· text: copy,
+  reflow` (or `copy`, `moved`, `restyled`) when its text was compared; nothing for a pixel change.
+  To update: nothing to do; a script that parses the Why column or summary.md's table sees the
+  suffix after the reasons, and every count, verdict and exit code is unchanged.
+- **MCP `pxsig_list` and `pxsig_check` entries carry `textKind`, `textState` or `textSummary`**
+  when the row has text labels; `pxsig_entry` also carries `textDiff` and `textLines`.
+  To update: nothing to do; a client gets more keys, and no key it read before changes.
+
+### Added
+
+- **The dashboard names the React Compiler.** Diagnostics › React › Compiler's title names the
+  compiler of the last analysis: "React Compiler (babel-plugin-react-compiler 1.0.0)", or "React
+  Compiler (built-in, oxc 0.143.0, experimental)" for `react.compiler: "oxc"`, whose side panel
+  shows no Babel row. With `"oxc"` the "not installed" message does not appear, since the built-in
+  compiler needs no packages. Help › React Analysis has the compiler choice (`"auto"`, `"babel"`,
+  `"oxc"`) and what "experimental" means.
+- **`"react": { "compiler": "oxc" }`: the compiler analysis without Babel.** The engine has a
+  built-in React Compiler, `oxc_react_compiler` 0.143.0 (the React Compiler's Rust port,
+  experimental), and `react.compiler: "oxc"` runs the analysis with it: no
+  `babel-plugin-react-compiler` or `@babel/core` needed, several times faster, in an engine process
+  of its own, so a file that crashes the compiler is a `compiler-error` and the others still
+  compile. It answers each component and hook as the Babel analysis does (compiled with its memo
+  cache size, skipped and why, opted out, a compiler error), and the alerts, `react.json`, the
+  dashboard and `pxsig_react` keep their shape. It follows the React Compiler's main branch, so it
+  can differ from the released Babel plugin on a few functions: a project that builds with the
+  Babel plugin keeps the default. `react.compiler: "babel"` names the Babel plugin, which `"auto"`
+  (the default) still means. The engine also answers `pxsig react-compile` directly.
+- **pxsig_rejected and pxsig rejected: open rejections with reasons and crops.** The MCP tool
+  `pxsig_rejected` (read-only, no server needed) and the command `pxsig rejected [ids…]
+  [--kind visual|a11y] [--closed] [--prompt]` list the open rejections: each reason, newest first,
+  with who gave it (an assistant's is labelled as one), the checks since, the metrics, the changed
+  regions with their full-size crops, the packet folder, one paragraph for the fix (`prompt`) and
+  the re-check command, which the answer repeats for every entry shown. Crops are file references
+  (store-relative; relative to the current folder in the CLI); `images: "crops"` returns them
+  inline, `full` also the baseline, current and mask images, at most 18 per call. `closed: true`
+  (`--closed`) reads the last closed rejections from the log, text only. `pxsig rejected --prompt`
+  prints one paragraph per open rejection, for a session-start hook (docs/agents.md; `pxsig setup`
+  installs none). `pxsig_status` gains `openRejections`; `pxsig_list` gives a rejected entry's
+  `note`, and `rejectedBefore: true` on a changed entry whose rejection is still open;
+  `pxsig_entry` gains `rejection` and `images: ["crops"]`; `pxsig_check` gives each checked entry
+  that had an open rejection as `closed: passes` or `open: still differs`; `pxsig_review` takes a
+  `note` with `reject` and `a11y-reject`, kept as an assistant's; `pxsig entry` shows a Rejection
+  block. The MCP server's instructions say to read `pxsig_rejected` before a visual fix.
+- **The dashboard shows a rejection's reason and hands it on.** A rejected entry's note reads
+  "Rejected. Reason: …" with the re-check command, **Edit reason** (the reason's row again,
+  prefilled; the inspector stays on the entry) and **Copy for an agent**: one paragraph with the
+  reason, the goal, where the rejection packet is and the re-check command, in the words the
+  packet, the CLI and MCP use. An entry checked again since its rejection, which still differs,
+  shows "Rejected earlier: …" with **Dismiss reason** (`rejection-dismiss`). The review session's
+  summary copies every rejected entry's paragraph, and the inspector's Files section links the
+  entry's rejection packet. A reason the server did not keep (the store's `reports/` is not
+  git-ignored) and a packet it could not write say so under the header. `/__pxsig/data` carries
+  `settings.rejections.note.ask`, `paths.rejected` and each open rejection's `prompt`.
+- **A rejection keeps its reason.** `POST /__pxsig/reject` and `/a11y-reject` take an optional
+  `note`: one line of plain text, at most 280 characters (control characters and line breaks
+  become spaces). The reason is stored with the decision and opens the entry's **open rejection**
+  (`<store>/reports/rejections.json`), which outlives the decision: a re-check still clears the
+  decision and the entry waits for a person again, but the rejection, its reasons and the checks
+  since stay until the entry passes (or has no new accessibility violations), a person approves
+  it or accepts its violations, the rejection is undone, a person dismisses the reason
+  (`POST /__pxsig/rejection-dismiss {id, kind}`, a person's only), or the entry leaves the
+  manifest. `<store>/reports/rejections.ndjson` logs every event, so a reason outlives its
+  rejection. `/__pxsig/data` carries the open rejections (`rejections`) and the reasons. A reason
+  sent through the MCP's token is kept as an assistant's (`via: mcp`) and never replaces a
+  person's.
+- **Every decision carries an opaque reference.** Approve, reject, accept, unaccept, prune, undo
+  and dismiss get a `ref` (`d_` and 16 random characters, with no time, host, user or entry in
+  it), kept in the decision files and in the `approvals.ndjson` and `a11y-decisions.ndjson` lines.
+  A rejection's reason stays in the store's git-ignored `reports/` only, never in a committed file.
+  Nothing sends the reference anywhere.
+- **Rejection packets: full-size crops of the changed regions and rejection.md, in the store's
+  reports/, never committed.** An open rejection gets `<store>/reports/rejected/<id>/`
+  (`<id>.a11y/` for accessibility): `rejection.md` (the reason in a fenced block, the goal, what
+  changed, the changed regions with their crops, the text labels, the checks since and the re-check
+  command), `rejection.json` (the same facts, for tools), `baseline.png`, `current.png`, `mask.png`
+  and `crops/<n>.baseline.png`, `.current.png`, `.diff.png`, cut at full size from the engine's
+  `diff`, padded, merged where they overlap and upscaled so a shift of a few pixels shows. Written
+  after a reject, refreshed after each check of the entry (the server's and a full check), removed
+  when the rejection closes; the server serves the files to its own origin only
+  (`/p/<project>/reports/rejected/…`). Configured by `rejections` in `pxsig.config.json`
+  (`note.ask`, `packet`, `crop.pad`, `crop.max`, `crop.scale`, `crop.annotate`, `structure`;
+  docs/configuration.md#rejections). Every path in a packet is relative, and nothing in it
+  approves.
+- **Text capture records the text each render draws (on by default).** Right after the screenshot,
+  pxsig reads every DOM Text node the render draws (its string, a box per line in the screenshot's
+  frame, its font facts, a path and a unique key) and the painted element boxes around it
+  (backgrounds, borders, shadows, `svg`, `img`), and writes them beside the PNG as
+  `renders/latest/<id>.boxes.json`, the render's text record. A baseline approved from that render
+  (in the dashboard, `pxsig approve`, or `check --update`) stores the record as its `boxes`
+  section, deflated, and `pxsig cat` prints its strings, so `git diff` of a baseline shows a copy
+  change. It is the groundwork for labelling a change as copy, reflow, moved or restyled text, and
+  labels nothing yet. Reading changes no pixel: renders, gates, verdicts, exit codes and check.json
+  rows are the same with it on or off. Left out: text outside the frame or clipped by an `overflow`
+  ancestor, invisible text, text under an open dialog it is not part of, text under the entry's
+  `ignore` masks and the new `text.ignore` selectors, iframes, and every form field (a field's value
+  is never read). Off for one run with `--no-text` or `PXSIG_TEXT=off`, for one story with
+  `parameters.pxsig.text: false`. In pxsig's own repository, the dashboard's screens record theirs.
+- **`pxsig check` labels the text change in each row (`textDiff`).** When a render has a text
+  record and its baseline has one too, the engine compares the two and the row in check.json gains
+  `textDiff`: the entry's kind (`copy`, `copy-reflow`, `moved`, `restyled`, or `pixel` when changed
+  pixels lie outside every text change), the changes (a string's old and new text, a run's move,
+  the font facts that differ, a run added or removed, and which copy change pushed a moved run),
+  their counts, and the changed pixels inside and outside the changed text. A painted box (a card,
+  a tile, a pill) or the capture itself grown or moved by a copy change counts as part of the
+  reflow, and a change that drew no changed pixel (text under a dialog) gets no label. Text is
+  compared only when the render and its baseline were made in the same environment (the
+  environment id the pixel check reports): otherwise `textDiff` is `{ "v": 1, "state":
+  "env-differs" }`, since text boxes differ across operating systems and fonts. A baseline with no
+  text record reads `no-baseline`; a record that does not read, `error`. A passing entry whose text
+  changed is labelled too and still passes. Labels only: the gate, its reasons, `pass`, every
+  verdict and exit code are the same with text capture on or off. The dashboard, `pxsig entry`,
+  `pxsig list` and MCP do not show the labels yet.
+- **`text.movePx`, `text.edgePx` and `text.noisePx`.** The tolerances the labels use: how far a
+  box may move and still be in place (0.5 px), how far around a text run a changed pixel still
+  belongs to it (2 px), and how many changed pixels outside text a text label still allows (0). A
+  bad value is a warning and its default. Labels only.
+- **The engine's `check` takes `--env`** (an env plan, as `baseline --env` takes; the server's
+  `check` takes it as `env`), naming each render's environment.
+- **Text labels in the dashboard's inspector.** An entry whose check row has text labels shows a
+  badge beside its verdict (Copy, Copy, reflow, Text moved or Text restyled; none for a pixel
+  change), and a Text section in the side panel after Pixel Changes: the summary, then each change
+  as one sentence in the words `pxsig entry` uses (a space shown as `␠`). Choosing a change shows
+  its box on the stage, as a region does. When nothing was compared the section says why: no text
+  record in the baseline (one is recorded at its next approval), another environment, or a record
+  not read; or that no text changed. Help has a Text Labels section. Labels only: the gate, every
+  verdict, the decision buttons and the review queue are the same with or without them.
+- **Text labels in `pxsig entry`, `pxsig list`, MCP and summary.md.** A check row's `textDiff` is
+  now said in the same words everywhere: `pxsig entry` shows a Text block after the gate reasons
+  (the kind, then one sentence per change, such as `Copy: "1" → "1␠" (whitespace only: a space
+  added)` or `"new · of 1" moved 4.2px right, and 2 more runs the same way, pushed by the copy
+  change "1" → "1␠"`, then the changed pixels outside text), and `--json` carries `textDiff` and
+  `textLines`. MCP `pxsig_entry` carries `textDiff` in full and `textLines`; each listed entry
+  carries `textKind` and `textSummary`, or `textState` when text was not compared. A row whose
+  environment differs from its baseline's says that text is compared only within one environment,
+  and that a render from this environment approved as the baseline gives it labels. Labels only:
+  every state, verdict, exit code, SARIF result and JUnit outcome is the same with or without them.
+- **`pxsig list --text <kind>` and `pxsig_list`'s `text`.** Keep the entries whose text labels are
+  one kind (`copy`, `copy-reflow`, `moved`, `restyled`), or `any` text change. With no state named,
+  every state is searched, since a copy change under the gate still passes.
+
+### Changed
+
+- **Package metadata for registry scanners.** `pxsig`, `@pxsig/storybook-addon` and the
+  `@pxsig/cli-<platform>-<arch>` packages name their website (`homepage`) and bug tracker
+  (`bugs`); the platform packages also name their author. Each platform package now has an entry,
+  `require('@pxsig/cli-<platform>-<arch>')`, which gives its binary's path, and a self-test,
+  `node --test` in its folder, which runs the binary once (`--version`). pxsig still finds the
+  binary by its path, so installs work as before. Scanners such as Socket no longer report these
+  packages as empty or as having no author, website, bug tracker or tests.
+
+### Fixed
+
+- **Typing in a field in the Storybook panel's inspector no longer triggers A or R.** The panel's
+  keys skip text fields, as the dialog's already did, so typing a reason cannot approve or reject.
+- **A review session no longer goes back to the entry just approved.** The server's decision
+  event arrives just before its answer; the inspector's refresh from that event could run after
+  the move to the next entry and put the entry just approved back, with Approve disabled. The
+  refresh now applies to the entry the inspector is on when it runs.
+- **Approving quickly no longer stalls a review session.** The next entry was picked from the data
+  shown before the server's refresh arrived, so a quick approve could land back on an entry just
+  approved, with Approve disabled. The session now skips the entries decided in it, A no longer
+  approves an entry already approved, and a reload during a session reopens the session on its
+  first undecided entry (the address carries `&session=`).
+- **Overlapping decisions on the same project are no longer able to lose one.** Two decisions sent
+  at the same time (two dashboard tabs, or MCP and the dashboard) each read the project's
+  `review.json`, waited for the capture, and wrote the file back, so the later write could drop
+  the earlier decision. The server now runs each project's decisions (visual and accessibility,
+  and approving a whole story) one after another; a decision that fails does not hold up the next.
+
+### Documentation
+
+- **npm's pxsig page shows the full README.** The published `pxsig` package carries the
+  repository's README (the introduction, screenshots, comparison and features GitHub shows) instead
+  of a shorter reference. Its links lead to GitHub at the release's tag and its screenshots load
+  from raw.githubusercontent.com at that tag. What the package holds and exports, its peer
+  dependencies and the network it uses moved to `docs/package.md`. Nothing changes
+  for code that uses pxsig.
+
 ## 0.7.5 - 2026-11-07
 
 The React release. `pxsig react` and `pxsig check --since` compare the project's own React

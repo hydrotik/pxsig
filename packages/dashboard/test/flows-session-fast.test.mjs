@@ -102,3 +102,74 @@ test('a reload during a session reopens the session on its first undecided entry
     await page.close();
   }
 });
+
+// An EventSource the page drives, and the server's order for a decision: the answer to POST
+// /__pxsig/approve carries `event`, which is delivered as the `review` event as the answer arrives,
+// before the page reads it (the server broadcasts, then answers).
+const FAKE_EVENTS = `(() => {
+  const all = [];
+  const emit = (type, data) => {
+    for (const es of all) for (const f of es.l[type] ?? []) f(new MessageEvent(type, { data }));
+  };
+  window.EventSource = class {
+    constructor() {
+      this.l = {};
+      all.push(this);
+      setTimeout(() => emit('hello', '{}'));
+    }
+    addEventListener(type, f) {
+      (this.l[type] ??= []).push(f);
+    }
+    close() {}
+  };
+  const real = window.fetch.bind(window);
+  window.fetch = async (url, init) => {
+    const r = await real(url, init);
+    if (!String(url).endsWith('/__pxsig/approve')) return r;
+    const body = await r.clone().json();
+    emit('review', JSON.stringify(body.event));
+    // The answer is read in the next task: the event's data is drawn, its effects not yet run.
+    await new Promise((ok) => setTimeout(ok, 0));
+    return r;
+  };
+})();`;
+
+test('a decision event just before the answer: the session still moves on', async (t) => {
+  if (skip) return t.skip(skip);
+  const d = three();
+  const sent = [];
+  const routes = (page) =>
+    page.route('**/__pxsig/approve', async (route) => {
+      const { id } = route.request().postDataJSON();
+      sent.push(id);
+      const event = {
+        project: 'demo',
+        id,
+        entry: { state: 'approved', at: AT, via: 'dashboard' },
+        row: { ...d.check.rows.find((r) => r.id === id) },
+        summary: d.check.summary,
+      };
+      await route.fulfill({ json: { ok: true, event } });
+    });
+  const { page, errors } = await open(d, { approving, images: true, init: FAKE_EVENTS, routes });
+  try {
+    await page.getByRole('button', { name: 'Review 3 changes' }).click();
+    for (let i = 0; i < 2; i++) {
+      await approveButton(page).waitFor();
+      await approveButton(page).click();
+      for (let n = 0; sent.length < i + 1 && n < 50; n++) await page.waitForTimeout(20);
+      await page.waitForTimeout(150);
+      assert.equal(
+        new URL(page.url()).hash,
+        `#inspect=${IDS[i + 1]}&session=changed`,
+        `after approving ${IDS[i]}, on the next entry`
+      );
+    }
+    await approveButton(page).click();
+    await page.getByText('Review complete').first().waitFor();
+    assert.deepEqual(sent, IDS);
+    assert.deepEqual(errors, []);
+  } finally {
+    await page.close();
+  }
+});
