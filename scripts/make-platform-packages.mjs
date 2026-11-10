@@ -7,7 +7,8 @@
  *     [--allow-missing] [--dry-run]
  *
  * For every platform it writes `<out>/cli-<platform>-<arch>/` holding a package.json
- * (`@pxsig/cli-<platform>-<arch>`, restricted by `os`/`cpu`), a README.md, the root LICENSE,
+ * (`@pxsig/cli-<platform>-<arch>`, restricted by `os`/`cpu`), a README.md (scripts/platform-readme.md,
+ * filled in; each `target` is the Rust target release.yml builds), the root LICENSE,
  * index.js (the binary's path, for `require`), test/binary.test.js (`node --test`: runs the binary)
  * and `bin/pxsig` (`bin/pxsig.exe` on win32), copied from
  * `<artifacts>/pxsig-<platform>-<arch>/pxsig[.exe]` — the layout `actions/download-artifact`
@@ -42,16 +43,16 @@ import { fileURLToPath } from 'node:url';
  * @typedef {'version' | 'artifacts' | 'out' | 'only' | 'optionalDeps'} ValuedKey
  * @typedef {{ only: string | null, dryRun: boolean, allowMissing: boolean } & Partial<Record<Exclude<ValuedKey, 'only'>, string>>} RawOpts
  * @typedef {RawOpts & { version: string, artifacts: string, out: string }} Opts
- * @typedef {{ id: string, platform: string, arch: string, exe: string, src: string, dir: string, name: string }} Plan
+ * @typedef {{ id: string, platform: string, arch: string, target: string, exe: string, src: string, dir: string, name: string }} Plan
  */
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PLATFORMS = [
-  { platform: 'darwin', arch: 'arm64' },
-  { platform: 'darwin', arch: 'x64' },
-  { platform: 'linux', arch: 'x64' },
-  { platform: 'linux', arch: 'arm64' },
-  { platform: 'win32', arch: 'x64' },
+  { platform: 'darwin', arch: 'arm64', target: 'aarch64-apple-darwin' },
+  { platform: 'darwin', arch: 'x64', target: 'x86_64-apple-darwin' },
+  { platform: 'linux', arch: 'x64', target: 'x86_64-unknown-linux-gnu' },
+  { platform: 'linux', arch: 'arm64', target: 'aarch64-unknown-linux-gnu' },
+  { platform: 'win32', arch: 'x64', target: 'x86_64-pc-windows-msvc' },
 ];
 const USAGE = `usage: node scripts/make-platform-packages.mjs --version <x.y.z> --artifacts <dir> --out <dir>
          [--only <platform-arch,...>] [--write-optional-deps <package.json>] [--allow-missing] [--dry-run]
@@ -163,7 +164,7 @@ if (!existsSync(artifacts)) fail(`artifacts directory not found: ${opts.artifact
 const plan = [];
 /** @type {string[]} */
 const missing = [];
-for (const { platform, arch } of targets) {
+for (const { platform, arch, target } of targets) {
   const id = `${platform}-${arch}`;
   const exe = platform === 'win32' ? 'pxsig.exe' : 'pxsig';
   const src = join(artifacts, `pxsig-${id}`, exe);
@@ -175,6 +176,7 @@ for (const { platform, arch } of targets) {
     id,
     platform,
     arch,
+    target,
     exe,
     src,
     dir: join(out, `cli-${id}`),
@@ -232,19 +234,39 @@ test('bin/${p.exe} runs and prints its version', () => {
 `;
 }
 
-/** @param {Plan} p */
+/** @type {Record<string, string>} */
+const OS = { darwin: 'macOS', linux: 'Linux', win32: 'Windows' };
+/** By id, else by arch. @type {Record<string, string>} */
+const CPU = {
+  'darwin-arm64': 'Apple silicon (arm64)',
+  'darwin-x64': 'Intel (x64)',
+  arm64: 'arm64 (AArch64)',
+  x64: 'x64 (x86-64)',
+};
+const README = readFileSync(join(root, 'scripts', 'platform-readme.md'), 'utf8');
+
+/**
+ * scripts/platform-readme.md with its `{{key}}`s filled in. Its links are pinned to the version's
+ * tag: `pack-manifest.mjs --check` refuses a packed README that links to `main`.
+ * @param {Plan} p
+ */
 function readme(p) {
-  return `# ${p.name}
-
-The \`pxsig\` command-line binary for ${p.platform} ${p.arch} (\`bin/${p.exe}\`).
-
-Do not install this package directly. The \`pxsig\` package lists it as an optional dependency, and the
-package manager installs the one that matches the host. pxsig finds it at
-\`${p.name}/bin/${p.exe}\`; set \`PXSIG_BIN\` to use a different binary. \`require('${p.name}')\` gives the
-binary's path, and \`node --test\` in this folder runs it once (\`--version\`).
-
-${license}${repoUrl ? `. Source: ${repoUrl}` : ''}
-`;
+  /** @type {Record<string, string>} */
+  const values = {
+    name: p.name,
+    platform: p.platform,
+    arch: p.arch,
+    exe: p.exe,
+    target: p.target,
+    asset: `pxsig-${p.id}${p.platform === 'win32' ? '.exe' : ''}`,
+    os: OS[p.platform] ?? p.platform,
+    cpu: CPU[p.id] ?? CPU[p.arch] ?? p.arch,
+    version: opts.version,
+    license,
+  };
+  return README.replace(/\{\{(\w+)\}\}/g, (/** @type {string} */ whole, /** @type {string} */ k) =>
+    Object.hasOwn(values, k) ? values[k] : whole
+  );
 }
 
 for (const p of plan) {

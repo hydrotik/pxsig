@@ -13,6 +13,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { leftLinks } from './lib/doc-links.mjs';
 
 /** @typedef {{ name: string, version: string, license?: string, repository?: { type: string, url: string }, os?: string[], cpu?: string[], libc?: string[], files?: string[], bin?: unknown, main?: string, author?: string, homepage?: string, bugs?: { url: string } }} PlatformManifest */
 
@@ -93,6 +94,45 @@ test('every platform package is named, restricted and laid out as rustBinary() r
       workspace.includes('`@pxsig/cli-${process.platform}-${process.arch}/bin/${exe}`'),
       'rustBinary resolves @pxsig/cli-<platform>-<arch>/bin/<exe>'
     );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('each README names its package, platform, target and binary, with links pinned to the version', () => {
+  const dir = artifacts(PLATFORMS);
+  try {
+    const out = join(dir, 'out');
+    const r = run(['--version', '1.2.3', '--artifacts', join(dir, 'artifacts'), '--out', out]);
+    assert.equal(r.status, 0, r.stderr);
+    const release = readFileSync(join(repo, '.github/workflows/release.yml'), 'utf8');
+    for (const id of PLATFORMS) {
+      const [platform, arch] = id.split('-');
+      const md = readFileSync(join(out, `cli-${id}`, 'README.md'), 'utf8');
+      assert.doesNotMatch(md, /\{\{\w+\}\}/, `${id}: every placeholder is filled`);
+      assert.match(md, new RegExp(`^# @pxsig/cli-${id}$`, 'm'), `${id}: title`);
+      assert.ok(
+        md.replace(/\s+/g, ' ').includes(`\`os: ["${platform}"]\` and \`cpu: ["${arch}"]\``),
+        `${id}: os/cpu`
+      );
+      assert.ok(md.includes(`\`@pxsig/cli-${id}/bin/${exeOf(id)}\``), `${id}: binary path`);
+      assert.ok(md.includes('`PXSIG_BIN`'), `${id}: the override`);
+      const target = /the target `([^`]+)`/.exec(md)?.[1];
+      assert.ok(
+        target && release.includes(`target: ${target},`),
+        `${id}: release.yml builds ${target}`
+      );
+      const asset = `pxsig-${id}${platform === 'win32' ? '.exe' : ''}`;
+      assert.ok(md.includes(`release's \`${asset}\``), `${id}: release asset`);
+      assert.ok(md.includes('/blob/v1.2.3/docs/releasing.md#verifying-a-release'), `${id}: pinned`);
+      // What `pack-manifest.mjs --check` refuses in a packed README: links to main, or to a file
+      // the package does not hold.
+      assert.deepEqual(
+        leftLinks(md, (p) => ['LICENSE', 'index.js'].includes(p)),
+        [],
+        id
+      );
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

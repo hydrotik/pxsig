@@ -238,7 +238,7 @@ Each binary ships in its own package, `@pxsig/cli-<platform>-<arch>`, with `os` 
 package manager installs only the one that matches the host. The binary is at
 `bin/pxsig` (`bin/pxsig.exe` on Windows).
 
-The CLI finds it in `rustBinary()` (`packages/pxsig/src/lib/workspace.mjs`): `PXSIG_BIN` if set,
+The CLI finds it in `rustBinary()` (`packages/pxsig/src/lib/workspace/peers.mjs`): `PXSIG_BIN` if set,
 otherwise `@pxsig/cli-${process.platform}-${process.arch}/bin/<exe>` resolved from the `pxsig`
 package, otherwise `target/release/` of a source checkout. Package names and paths in
 `scripts/make-platform-packages.mjs` must stay in step with that function.
