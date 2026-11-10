@@ -2,6 +2,44 @@
 
 ## Upgrading to 0.7
 
+0.7.6: no committed log line says who decided or why, Reject asks for an optional reason, and text
+capture is on by default. Lines written before 0.7.6 keep their `by` and `reason`; nothing rewrites
+them. Each change has its `To update:` line in `CHANGELOG.md` under 0.7.6; by who acts:
+
+**Project setup.**
+
+- Remove `approvals.identity` from `pxsig.config.json` (doctor's `approvals-identity` finding);
+  who approved is the commit's author and the pull request's reviewer (`pxsig approve log
+  --trace`).
+- Keep the store's `reports/` git-ignored (every store `pxsig init` made already does; doctor's
+  `reports-not-ignored` finding). Otherwise reasons, rejection notes and rejection packets are not
+  kept.
+- To keep text out of new baselines, set `"text": false` (or `defaults.text` in
+  `pxsig.workspace.json`); gates, verdicts and exit codes are the same either way.
+- Add the new line from `pxsig setup --print` to an assistant's instruction file that exists.
+
+**Scripts and tools that read the logs.**
+
+- A reason is no longer in `approvals.ndjson` or `a11y-decisions.ndjson`: read it from
+  `pxsig approve log --json` (`reason`), or `<store>/reports/decisions.ndjson` by the line's
+  `ref`, on the machine where the decision was made.
+- `approve log --json` rows and the integrity entry's `approval` have no `by`: use `--trace` for
+  the commit and pull request.
+- An undo line carries `undo: { in, from }`; read the undone batch from `batch` (`<batch>-undo`).
+
+**Clients of the HTTP API.**
+
+- A request's own `batch` name is replaced by the server's unless it has pxsig's shape: read the
+  batch from the answer (`entry.batch`, or `batch` for a prune).
+- `/__pxsig/status` and `pxsig report` carry no reasons: read them from `/__pxsig/data`.
+
+**Dashboard automation and assistants.**
+
+- Reject (and R) open a reason row: press Enter or click the row's Reject, or set
+  `rejections.note.ask: false` to reject at once, as before.
+- An assistant cannot clear a person's rejection; it asks the person, who clears it in the
+  dashboard.
+
 0.7.5: no command, message or answer prints an absolute path, and `pxsig doctor` reads the
 Storybook build after a first check. A script that matched an absolute path matches the relative
 path (or the name) instead, and one that matched doctor's "No errors" reads the exit code. The
