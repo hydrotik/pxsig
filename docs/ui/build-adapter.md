@@ -54,6 +54,52 @@ adapter; anything else is a path. The build prints the adapter and the rule that
 by the same pxsig version. Otherwise it serves the prebuilt dashboard and prints one line with the
 command to run; it never builds by itself. `PXSIG_DASHBOARD_DIR` overrides both.
 
+## An adapter is not a project
+
+A project is a package under test: its own stories, its own store, and an entry in `projects` in
+`pxsig.workspace.json` (`docs/monorepo.md`). An adapter has none of these. It is source code that
+`pxsig dashboard build` compiles into the dashboard; nothing reviews it.
+
+- **No config of its own.** The adapter's folder has no `pxsig.config.json`, and
+  `pxsig.workspace.json` has no `projects` entry for it. Registered as a project, it shows in the
+  project picker with no entries. In a workspace, `pxsig doctor` reports a `pxsig.config.json`
+  that no entry lists as `project-unlisted`; in an adapter's folder, the fix is to delete that
+  file.
+- **Where it lives.** Usually a folder inside the project whose dashboard it builds (`pxsig-ui/`).
+  Any folder a relative path reaches also works, a package of its own in a monorepo among them; it
+  is still not a project.
+- **The one registration.** `dashboard.ui` in that project's `pxsig.config.json`: a path relative
+  to the project's folder, or a built-in adapter's name. `pxsig.workspace.json` has no adapter
+  setting. `--ui` and `PXSIG_UI_ADAPTER` override `dashboard.ui` for one build.
+
+How the dashboard finds and loads it:
+
+1. `pxsig dashboard build`, run in the project's folder, reads `dashboard.ui` from the
+   `pxsig.config.json` in that folder only: it does not look in parent folders or in
+   `pxsig.workspace.json`. A path to a folder loads its `index.tsx` (or `index.ts`, `index.jsx`,
+   `index.js`); `conformance.json` and `vite.mjs` are read from the same folder. Vite and the
+   other build tools resolve from the project's `node_modules` or a parent's. The build goes to
+   `node_modules/.cache/pxsig/dashboard` in the project's folder, with a `pxsig-build.json` stamp.
+2. `pxsig serve` reads `dashboard.ui` from each project it serves and serves the build in the
+   folder of the first one (in the order of `projects`) that names an adapter, while that build is
+   current. When projects name different adapters, it serves the prebuilt dashboard and prints a
+   note; `PXSIG_DASHBOARD_DIR` then names the build to serve.
+
+A worked example, a monorepo with one project and its adapter:
+
+```text
+pxsig.workspace.json        { "version": 1, "projects": { "ui": "packages/ui" } }
+packages/ui/                the project: stories, store (.pxsig/)
+  pxsig.config.json         { "dashboard": { "ui": "./pxsig-ui" } }   <- the one registration
+  pxsig-ui/                 the adapter: no pxsig.config.json, no projects entry
+    index.tsx               exports name, tokens and the contract's components
+    conformance.json        { "adapter": "acme-ui", "contract": "1.5.0", "components": { … } }
+    vite.mjs                optional: aliases and folders the design system's build needs
+```
+
+Then, in `packages/ui/`: `pxsig dashboard gaps`, `pxsig dashboard build`, and `pxsig serve` from
+anywhere in the workspace.
+
 ## Set up
 
 1. Create a folder in your project, for example `pxsig-ui/`, with an `index.tsx`.
@@ -128,6 +174,27 @@ the adapter for in `conformance.json`. When pxsig moves on:
 
 Every component that takes `className` must put it on its root element: the dashboard positions
 those components with its own classes.
+
+## What a faithful adapter keeps
+
+A summary of what the rules above and the component sections below already require; where they
+differ from this list, they win.
+
+- **The dashboard's words and numbers.** Labels, values and counts render as given; verdicts arrive
+  as a tone, an icon and a label (rule 2, `StatGroup`).
+- **The tone vocabulary.** Each tone and emphasis maps to the nearest variant; no new colour
+  (rule 1).
+- **One size per toolbar.** A control in a `Toolbar` with no `size` takes the toolbar's (rule 3);
+  in a `ToolbarField`, labels share a top edge and controls a bottom edge.
+- **A one-row top bar.** Links that do not fit move into an overflow menu; a `keep` link stays
+  (`TopNav`, `NavLink`).
+- **`className` on the root element**, so the dashboard's own layout holds.
+- **The runtime's theme mode**, with colours from variables that follow it (rule 7,
+  [Tokens](#tokens)).
+- **Each component's accessibility**, as its section states.
+
+`pxsig dashboard check` measures part of this (`overflow`, `clipped`, `controls`, `edge`,
+`overlap`: [Verify](#verify)); the rest is read from its gallery.
 
 ## Build order
 
