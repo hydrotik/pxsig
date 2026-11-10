@@ -43,7 +43,7 @@
   - group "React part":
     - radio "Compiler" [checked]
     - radio "Renders"
-  - text: From the analysis at 10/25/2026, 12:00:00 PM · base main (d3bdd51)
+  - text: From the analysis at 10/25/2026, 12:00:00 PM · base main (0000000)
   - button "Analyse"
   - heading "React Compiler (babel-plugin-react-compiler 1.0.0)" [level=3]
   - paragraph: 1 files · 1 functions · compiled 0 · skipped 1 · opted out 0 · fixed 0 · 1.0 s (0 cached)

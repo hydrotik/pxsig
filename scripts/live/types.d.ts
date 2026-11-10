@@ -46,7 +46,7 @@ export interface ScrubRule {
   /** Dotted path; `[]` walks every element of an array, `*` every value of an object. */
   path: string;
   /** time: FIXED_TIME · rank: FIXED_TIME − 60 min + k min, k the value's rank in the run · text: every time in it FIXED_TIME · ms: 1,000 · url: the dead URL (path kept). */
-  kind: 'time' | 'rank' | 'text' | 'ms' | 'url';
+  kind: 'time' | 'rank' | 'text' | 'ms' | 'url' | 'commit';
   /** Absent or null is allowed (otherwise the path must be present). */
   optional?: boolean;
 }

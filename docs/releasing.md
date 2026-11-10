@@ -138,9 +138,11 @@ image's engine.
   The staged example also has the React Compiler and Babel (pxsig's own test fixtures,
   `packages/pxsig/test/react-compiler`, installed and linked in) and a git repository whose `main`
   is the example as committed: the base the analysis compares with.
-- What varies from run to run (the times the server writes, durations, its ports) is rewritten at
-  the HTTP boundary (`scripts/live/volatile.mjs`), strictly: a listed field that goes missing, or a
-  time, port or duration no rule rewrites, fails the step and names the field.
+- What varies from run to run (the times the server writes, durations, its ports, the staged base's
+  commit) is rewritten at the HTTP boundary (`scripts/live/volatile.mjs`), strictly: a listed field
+  that goes missing, or a time, port, duration or commit no rule rewrites, fails the step and names
+  the field. The base's commit is a hash of the example's files, so a dependency bump to an example
+  (Dependabot) changes no live screen.
 - Approvals in the flows are clicks on the page of the server the run started, in its scratch
   store, with a link minted from that server's own CLI token. Nothing in `packages/dashboard/.pxsig`
   is approved by a run; ports 6006 and 6070 are never used.
