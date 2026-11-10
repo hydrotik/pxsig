@@ -50,6 +50,7 @@
     "dashboard",
     "!dashboard/fixtures/locked",
     "docs",
+    "test/installed",
     "README.md",
     "LICENSE"
   ],
