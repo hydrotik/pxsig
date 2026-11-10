@@ -209,3 +209,6 @@ entry lists, or an entry can point at a folder that is gone.
 - The doctor codes `project-unlisted` (a config no entry points at) and `project-missing` (an entry
   without a config, an error) appear in the ledger's `setup` list, with `version-skew` (a pxsig
   install in the workspace on another major version).
+- A listed project with no stories at all reports `project-empty` (a warning): most often a
+  package that is not a project, such as a dashboard adapter, was given its own entry
+  ([integrity.md](integrity.md#setup-problems)).

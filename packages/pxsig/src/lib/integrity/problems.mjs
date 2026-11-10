@@ -236,10 +236,16 @@ export function tornProblems(file, torn) {
 }
 
 /**
+ * The story index's problems, and `project-empty`: a project with no entries at all (no story in
+ * its index, none in its manifest, no signature), most often a package registered as a project
+ * that is not one, such as a dashboard adapter (docs/integrity.md#setup-problems). A broken index
+ * says why it is empty itself. `integrity.severity['project-empty']` overrides the severity.
  * @param {StoryIndex} index
+ * @param {IntegrityContext} [ctx]
+ * @param {number} [entries] the ledger's entry count
  * @returns {LedgerSetup[]}
  */
-export function setupProblems(index) {
+export function setupProblems(index, ctx, entries = 1) {
   /** @type {LedgerSetup[]} */
   const out = [];
   if (index.storybook?.reachable && !index.storybook.healthy)
@@ -254,6 +260,12 @@ export function setupProblems(index) {
       code: 'storybook-unreachable',
       severity: 'info',
       reason: `${index.storybook?.error ?? 'not reachable'}: reconciled against a static scan of the story files`,
+    });
+  if (ctx && !entries && out[0]?.code !== 'storybook-index-broken')
+    out.push({
+      code: 'project-empty',
+      severity: ctx.integrity?.severity?.['project-empty'] ?? 'warn',
+      reason: `project "${ctx.project?.name ?? ctx.config.name}" has no stories: none in its story index under ${ctx.srcRoot || '.'}, none in its manifest. A package registered as a project that is not one (a dashboard adapter, a package without stories) has none: an adapter belongs to a project's dashboard.ui, not to pxsig.workspace.json's projects (docs/ui/build-adapter.md). For a project whose stories are elsewhere, srcRoot names their folder`,
     });
   return out;
 }
