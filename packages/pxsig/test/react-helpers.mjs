@@ -2,7 +2,7 @@
  * react-helpers.mjs — fixture projects for the React analysis tests: a git repository with a
  * component, its story and a manifest, and the React Compiler with Babel 7 or 8 linked in from the
  * test fixture packages (packages/pxsig/test/react-compiler/babel7|babel8, workspace members
- * whose devDependencies they are; pxsig itself only declares them as optional peers).
+ * whose devDependencies they are; pxsig itself does not declare them).
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';

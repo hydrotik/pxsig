@@ -75,15 +75,9 @@ importers:
 
   packages/pxsig:
     dependencies:
-      '@babel/core':
-        specifier: '>=7.24'
-        version: 7.29.7
       axe-core:
         specifier: ^4.10.0
         version: 4.14.0
-      babel-plugin-react-compiler:
-        specifier: '>=1.0.0'
-        version: 1.0.0
       pngjs:
         specifier: ^7.0.0
         version: 7.0.0
@@ -3148,6 +3142,7 @@ snapshots:
   babel-plugin-react-compiler@1.0.0:
     dependencies:
       '@babel/types': 7.29.8
+    optional: true
 
   baseline-browser-mapping@2.11.29: {}
 

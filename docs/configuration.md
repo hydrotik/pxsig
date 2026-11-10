@@ -359,8 +359,9 @@ Off switches, for every React feature at once: `"react": false` (or `"off"`) in
 `renders` turns render counting off, any other bad key the compiler analysis, and a `react` that
 is neither `false` nor an object everything.
 
-The compiler and Babel are optional peer dependencies: installing pxsig installs neither, and a
-project that already uses the compiler adds nothing. pxsig resolves them from the project's
+The compiler and Babel are not dependencies of pxsig, optional or peer: installing pxsig installs
+neither, a project that already uses the compiler adds nothing, and a project that wants the
+analysis installs both (`npm install -D babel-plugin-react-compiler @babel/core`). pxsig resolves them from the project's
 folder up to the workspace root, never from its own install. Tested with
 `babel-plugin-react-compiler` 1.0.0 under `@babel/core` 7.29 and 8.1. See
 [`pxsig react`](cli.md#pxsig-react---since-----files-ab----all).
