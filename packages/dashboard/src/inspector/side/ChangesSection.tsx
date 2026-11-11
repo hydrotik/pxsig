@@ -76,9 +76,9 @@ export function ChangesSection({
         </KeyValueItem>
       </KeyValueList>
       {detailOnly ? (
-        <p className={s.muted}>
+        <span className={s.muted}>
           {t('inspector.changes.detailOnly', { count: regions.length, tol })}
-        </p>
+        </span>
       ) : null}
       <ol className={s.regions}>
         {regions.length ? (
