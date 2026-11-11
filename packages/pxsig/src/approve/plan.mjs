@@ -9,6 +9,7 @@ import { notKept, reportsIgnored } from '../lib/decisions.mjs';
 import { readToken, TOKEN_HEADER } from '../lib/guard.mjs';
 import { readImage } from '../lib/psig.mjs';
 import { classify } from '../lib/shape.mjs';
+import { blockedWords, maskChange } from '../lib/mask-words.mjs';
 import { ask, emit, progress } from '../lib/term.mjs';
 import { writeJson } from '../lib/files.mjs';
 import { serverStatus } from '../lib/repair/apply.mjs';
@@ -21,7 +22,9 @@ const NOT_KEPT = 'not kept (reports/ is not git-ignored)';
 
 /**
  * One entry of an approval plan (`approval-plan.json`).
- * @typedef {{ id: string, status: string, why: string, state?: string, latestSha?: string | null, baseSha?: string | null, kind?: string, shape?: string, shapePct?: number | null, first?: true }} PlanEntry
+ * `kind` is `colour`, `shape` or `masks` (a masks change is its own class, whatever its pixels:
+ * `change` keeps their kind, `masks` what changed).
+ * @typedef {{ id: string, status: string, why: string, state?: string, latestSha?: string | null, baseSha?: string | null, kind?: string, change?: string, masks?: import('../types/run.js').MasksChanged, shape?: string, shapePct?: number | null, first?: true }} PlanEntry
  */
 
 /**
@@ -36,6 +39,15 @@ export async function planCommand(cx) {
   const all = (await run('list', { state: 'all', limit: 100000 }).catch(() => ({ entries: [] })))
     .entries;
   const state = new Map(all.map((e) => [e.id, e.state]));
+  // Each entry's masks findings, as the brief carries them (tools/masks.mjs).
+  const brief = new Map(
+    all.map((e) => [
+      e.id,
+      /** @type {Pick<import('../types/run.js').EngineResult, 'masksBlocked' | 'masksChanged'>} */ (
+        e
+      ),
+    ])
+  );
   // An entry with no baseline and no row yet, but a latest render, is NEW too.
   for (const e of manifest.stories)
     if (!state.has(e.id) && !existsSync(paths(P, e).sig) && existsSync(paths(P, e).latestPng))
@@ -65,11 +77,10 @@ export async function planCommand(cx) {
       'nothing to plan: name ids, --component <name>, --all-changed or --new (only changed and NEW entries are approvable)'
     );
   const firstBaselines = !!flags['first-baselines'];
-  const allowShape = new Set(
-    typeof flags['allow-shape'] === 'string'
-      ? flags['allow-shape'].split(',').map((s) => s.trim())
-      : []
-  );
+  /** @param {unknown} v ids, comma-separated */
+  const named = (v) => new Set(typeof v === 'string' ? v.split(',').map((s) => s.trim()) : []);
+  const allowShape = named(flags['allow-shape']);
+  const allowMasks = named(flags['allow-masks']);
   const stale = new Set(
     // The fallback `{}` has no ids.
     /** @type {{ ids?: string[] }} */ (await run('stale', { limit: 100000 }).catch(() => ({})))
@@ -94,6 +105,12 @@ export async function planCommand(cx) {
     else if (!base.latestSha) entries.push({ ...base, status: 'blocked', why: 'no latest render' });
     else if (stale.has(id))
       entries.push({ ...base, status: 'blocked', why: 'verdict is stale: re-check first' });
+    else if (brief.get(id)?.masksBlocked)
+      entries.push({
+        ...base,
+        status: 'blocked',
+        why: `${blockedWords(/** @type {import('../types/run.js').MasksBlocked} */ (brief.get(id)?.masksBlocked)).join('; ')}: no approval passes it until the masks are smaller`,
+      });
     else {
       /** @type {{ kind: string, reason: string, shapePct?: number | null }} */
       const c = baseImg
@@ -104,7 +121,26 @@ export async function planCommand(cx) {
               ? 'the baseline has no image to compare'
               : 'no baseline yet (a first baseline)',
           };
-      const allowed = c.kind === 'colour' || allowShape.has(id) || (fresh && firstBaselines);
+      const pixels = c.kind === 'colour' || allowShape.has(id) || (fresh && firstBaselines);
+      const ch = brief.get(id)?.masksChanged;
+      if (ch) {
+        // A masks change is its own class: never passed as colour or shape, only by name.
+        const ok = allowMasks.has(id) && pixels;
+        entries.push({
+          ...base,
+          kind: 'masks',
+          change: c.kind,
+          masks: ch,
+          shape: c.reason,
+          shapePct: c.shapePct ?? null,
+          status: ok ? 'ok' : 'blocked',
+          why: ok
+            ? `allowed by name: ${maskChange(ch)}`
+            : `${maskChange(ch)}: review the masks, then name it in --allow-masks${pixels ? '' : ` (and, ${c.reason}, in --allow-shape)`}`,
+        });
+        continue;
+      }
+      const allowed = pixels;
       entries.push({
         ...base,
         kind: c.kind,
@@ -144,6 +180,7 @@ export async function planCommand(cx) {
           ['Reason', plan.reason ?? NOT_KEPT],
           ['Colour only', String(n('colour'))],
           ['Shape changes', String(n('shape'))],
+          ['Mask changes', String(n('masks'))],
           ['First baselines', String(entries.filter((e) => e.first).length)],
           ['Written', rel(planPath)],
         ],
@@ -173,6 +210,14 @@ export async function planCommand(cx) {
       },
       {
         next: [
+          ...(entries.some((e) => e.kind === 'masks' && e.status === 'blocked')
+            ? [
+                /** @type {[string, string]} */ ([
+                  `${CMD} entry <id>`,
+                  'look at each blocked masks change; re-plan with --allow-masks <ids> for the intended ones',
+                ]),
+              ]
+            : []),
           ...(entries.some((e) => e.kind === 'shape' && e.status === 'blocked')
             ? [
                 /** @type {[string, string]} */ ([
@@ -255,8 +300,9 @@ export async function applyCommand(cx) {
     );
   const shape = ok.filter((e) => e.kind === 'shape' && !e.first);
   const first = ok.filter((e) => e.first);
+  const masked = ok.filter((e) => e.kind === 'masks');
   process.stdout.write(
-    `\nApprove ${ok.length} baselines (${ok.length - shape.length - first.length} colour only, ${shape.length} shape changes allowed by name, ${first.length} first baselines).\nReason: ${plan.reason ?? NOT_KEPT}\n`
+    `\nApprove ${ok.length} baselines (${ok.length - shape.length - first.length - masked.length} colour only, ${shape.length} shape changes allowed by name, ${masked.length} masks changes allowed by name, ${first.length} first baselines).\nReason: ${plan.reason ?? NOT_KEPT}\n`
   );
   // The server keeps it beside each line's ref when reports/ is git-ignored (lib/decisions.mjs).
   if (!plan.reason || !reportsIgnored(P)) process.stderr.write(`${notKept(P)}\n`);
@@ -265,6 +311,8 @@ export async function applyCommand(cx) {
       `First baselines (nothing to compare them with): ${first.map((e) => e.id).join(', ')}\n`
     );
   if (shape.length) process.stdout.write(`Shape changes: ${shape.map((e) => e.id).join(', ')}\n`);
+  for (const e of masked)
+    process.stdout.write(`Masks changed: ${e.id}: ${maskChange(e.masks ?? {})}\n`);
   const phrase = `APPROVE ${ok.length} ENTRIES`;
   const typed = await ask(`Type "${phrase}" to continue: `);
   if (typed !== phrase) fail('not confirmed: nothing was written', 1);

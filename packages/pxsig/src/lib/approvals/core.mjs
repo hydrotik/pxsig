@@ -7,6 +7,19 @@ import { appendLine, fault, readLines } from '../files.mjs';
 import { agentName } from '../agents.mjs';
 import { keepReason } from '../decisions.mjs';
 import { PXSIG_VERSION } from '../workspace.mjs';
+
+/**
+ * A masks change as an approval line keeps it: each kind's selectors, every kind present.
+ * @param {Partial<import('../../types/run.js').MasksChanged>} ch
+ * @returns {import('../../types/run.js').MasksChanged}
+ */
+export const maskDiff = (ch) => ({
+  added: ch.added ?? [],
+  removed: ch.removed ?? [],
+  grew: ch.grew ?? [],
+  moved: ch.moved ?? [],
+  count: ch.count ?? [],
+});
 /** @import { ApprovalLine, Project } from '../../types.js' */
 /** @import { ApprovalProject, EntryPaths, RecordOptions } from '../../types/t2.js' */
 
@@ -126,7 +139,7 @@ export function snapshot(P, entry, batch) {
 export function record(
   P,
   entry,
-  { batch, via, reason = null, ignored = false, before, kind = null, undo, person, gitHead }
+  { batch, via, reason = null, ignored = false, before, kind = null, masks, undo, person, gitHead }
 ) {
   const p = paths(P, entry);
   fault('after-psig');
@@ -141,6 +154,8 @@ export function record(
       gitHead: gitHead ?? git(P.workspaceRoot, 'rev-parse', '--short', 'HEAD'),
       before,
       after: sha256(p.sig),
+      // An approval of a masks change: its own kind, and what changed (selectors only).
+      ...(masks ? { kind: 'masks', masks: maskDiff(masks) } : {}),
       ...(undo ? { undo } : {}),
     },
     process.env,

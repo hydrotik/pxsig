@@ -4,7 +4,7 @@
  * passes the entry (crates/pxsig-cli/src/batch/masks.rs decides both). Selectors and shares only.
  */
 
-/** @import { MasksChanged } from '../types/run.js' */
+/** @import { MasksBlocked, MasksChanged } from '../types/run.js' */
 
 /** The kinds of mask change, and how each is said. */
 const KINDS = /** @type {const} */ ([
@@ -42,6 +42,26 @@ const BLOCKED = [
  */
 export const blockedReasons = (row) =>
   (row.reasons ?? []).filter((r) => BLOCKED.some((b) => r.startsWith(b)));
+
+/** How the engine words each problem the capture found (`masksBlocked.problems`). */
+const PROBLEM = {
+  container: 'mask on a container',
+  reason: 'mask needs a reason',
+  unmeasured: 'mask not measured',
+};
+
+/**
+ * Why no approval passes, from `masksBlocked` alone (a list's brief has no reasons), in the
+ * engine's words.
+ * @param {MasksBlocked} b
+ */
+export const blockedWords = (b) => [
+  ...(b.problems ?? []).map((p) => `${PROBLEM[p.kind] ?? p.kind}: ${p.element}`),
+  ...(b.coverage != null
+    ? [`masks cover ${Math.round(b.coverage * 100)}% of the capture, over 50%`]
+    : []),
+  ...(b.root?.length ? [`a mask covers the story root: ${b.root.join(', ')}`] : []),
+];
 
 /** All of an entry's masks together over this share of the capture: a warning. */
 export const LARGE_SHARE = 0.25;

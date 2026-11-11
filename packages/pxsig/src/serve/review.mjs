@@ -23,6 +23,7 @@ import { readJson, writeJson } from '../lib/files.mjs';
 import { boxesFile } from '../lib/capture/boxes.mjs';
 import { textSettings } from '../lib/text/config.mjs';
 import { NEEDS_PERSON } from '../lib/guard.mjs';
+import { blockedReasons } from '../lib/mask-words.mjs';
 import { httpError } from './http.mjs';
 import { needLock } from './projects.mjs';
 import { agentMayClearRejection, closeAfter, hasNote, rejectWithNote } from './rejections.mjs';
@@ -74,6 +75,12 @@ export async function approve(srv, S, id, meta = {}) {
       409,
       `${id} did not render (${current.error}); fix it and re-check before approving`
     );
+  // Masks no approval passes (crates/pxsig-cli/src/batch/masks.rs): the engine refuses too.
+  if (current?.masksBlocked)
+    throw httpError(
+      409,
+      `${id}: ${blockedReasons(current).join('; ')}: no approval passes it until the masks are smaller`
+    );
   const batch = meta.batch ?? newBatch(meta.via ?? 'dashboard');
   // The log line's HEAD, read beside the engine call instead of blocking the event loop.
   const head = headOf(P.workspaceRoot);
@@ -115,6 +122,8 @@ export async function approve(srv, S, id, meta = {}) {
     // Asked only with a reason (the dashboard sends none): no spawn otherwise.
     ignored: meta.reason ? await reportsIgnoredAsync(P) : false,
     kind: meta.kind ?? null,
+    // A masks change is logged as one, with what changed, however it was approved.
+    masks: current?.masksChanged ?? null,
     before,
     gitHead: await head,
   });
