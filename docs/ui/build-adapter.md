@@ -13,15 +13,15 @@ chosen once, at build time.
 
 Read, in `node_modules/pxsig/` (or `packages/dashboard/` in a clone of pxsig):
 
-| File                                  | What it gives you                                                                                                                                                                                                               |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dashboard/src/ui/contract.ts`        | Every component's props, as TypeScript (the interfaces are in `contract/props.ts`, re-exported from here), and the 11 contract rules. The source of truth: where this page and the contract differ, the contract wins.          |
-| `dashboard/src/ui/tokens.ts`          | The neutral theme tokens your adapter must map.                                                                                                                                                                                 |
-| `docs/ui/features.md`                 | Every dashboard feature and the components it renders: what your components will be used for.                                                                                                                                   |
-| `dashboard/src/ui/adapters/hydrotik/` | The reference adapter: a worked mapping onto a real design system.                                                                                                                                                              |
-| `dashboard/src/ui/adapters/plain/`    | The plain adapter: semantic HTML and one stylesheet, the shape an adapter starts from. The default build when nothing names an adapter.                                                                                         |
-| `dashboard/src/ui/fallbacks.tsx`      | What each optional component looks like when you leave it out.                                                                                                                                                                  |
-| `docs/ui/catalog/`                    | The reference design system's components: what each does, which ones the reference adapter uses, and the equivalent in 11 other design systems. A starting point for the mapping questions below ([README](catalog/README.md)). |
+| File                                  | What it gives you                                                                                                                                                                                                                         |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dashboard/src/ui/contract.ts`        | Every component's props, as TypeScript (the interfaces are in `contract/props.ts`, re-exported from here), the 11 contract rules and the 4 region rules. The source of truth: where this page and the contract differ, the contract wins. |
+| `dashboard/src/ui/tokens.ts`          | The neutral theme tokens your adapter must map.                                                                                                                                                                                           |
+| `docs/ui/features.md`                 | Every dashboard feature and the components it renders: what your components will be used for.                                                                                                                                             |
+| `dashboard/src/ui/adapters/hydrotik/` | The reference adapter: a worked mapping onto a real design system.                                                                                                                                                                        |
+| `dashboard/src/ui/adapters/plain/`    | The plain adapter: semantic HTML and one stylesheet, the shape an adapter starts from. The default build when nothing names an adapter.                                                                                                   |
+| `dashboard/src/ui/fallbacks.tsx`      | What each optional component looks like when you leave it out.                                                                                                                                                                            |
+| `docs/ui/catalog/`                    | The reference design system's components: what each does, which ones the reference adapter uses, and the equivalent in 11 other design systems. A starting point for the mapping questions below ([README](catalog/README.md)).           |
 
 The types are importable: `import type * as C from 'pxsig/dashboard'`. That export is types only:
 loading it at run time throws.
@@ -176,6 +176,25 @@ the adapter for in `conformance.json`. When pxsig moves on:
 Every component that takes `className` must put it on its root element: the dashboard positions
 those components with its own classes.
 
+## Region rules
+
+The layout each region keeps, whatever your design system looks like. Your adapter maps tones,
+sizes and words onto its components; it does not change these. They are in `contract.ts` as R1 to
+R4.
+
+| Region                                  | Rule                                                                                                                                                                                                                           |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Top bar (`TopNav`, `NavList`, `NavEnd`) | **R1** One line at every width: the mark, the links and the pinned controls. Links that do not fit move into an overflow menu; a `keep` link stays in the bar.                                                                 |
+| Toolbar (`Toolbar` and its parts)       | **R1** The controls on one line at the dashboard's working width (1280 CSS px). **R2** One height for every control on that line: a control with no `size` takes the toolbar's (every toolbar the dashboard draws is `sm`).    |
+| A row of actions (a card's buttons)     | **R1** One line at 1280 CSS px. **R2** One height on that line.                                                                                                                                                                |
+| Table (`DataTable`)                     | **R2** A cell's actions are the small size (`sm`, the dashboard passes it), the same height as a toolbar's controls, and one height in the table. **R3** Column headers in the case of `header`.                               |
+| Headings and labels                     | **R3** `CardTitle`, `DialogTitle`, column headers, `NavLink`, `Button`, `Badge`, `StatusBadge` and field labels are drawn in the case of the text passed: no `text-transform`, no re-casing. The words come from pxsig's copy. |
+| Stat cards (`StatGroup`)                | **R3** An item's label is a micro label in capitals: the contract's one casing, the same in every adapter. **R4** A tone colours the item's value; its border, edge, background and label stay neutral.                        |
+| Badges (`Badge`)                        | **R4** A tone colours the text; the wash (`subtle`), border (`outline`) and fill (`solid`) stay neutral.                                                                                                                       |
+| Status badges (`StatusBadge`)           | **R4** A tone colours the glyph; the label stays in the text colour, with no wash or border.                                                                                                                                   |
+
+R4 is how the plain adapter (`adapters/plain/`) draws tones: compare yours with it.
+
 ## What a faithful adapter keeps
 
 A summary of what the rules above and the component sections below already require; where they
@@ -189,6 +208,12 @@ differ from this list, they win.
   in a `ToolbarField`, labels share a top edge and controls a bottom edge.
 - **A one-row top bar.** Links that do not fit move into an overflow menu; a `keep` link stays
   (`TopNav`, `NavLink`).
+- **One line, one size, per row.** A toolbar's controls and a card's actions on one line, at one
+  height; a table's actions at the small size (R1, R2).
+- **The copy's casing.** Headers, headings and labels in the case of the text passed; only stat
+  labels are capitals, by the contract (R3).
+- **One way to show a tone.** The value, the text or the glyph takes the tone's colour; borders,
+  edges and washes stay neutral (R4). The adapter chooses the colours, not where they go.
 - **`className` on the root element**, so the dashboard's own layout holds.
 - **The runtime's theme mode**, with colours from variables that follow it (rule 7,
   [Tokens](#tokens)).
@@ -281,8 +306,8 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Purpose**: the top bar: the report's mark, the section links, the pinned controls.
 - **Props**: `label` (the navigation landmark's name), `brand` (the mark: a heading and a tag),
   `className`, `children` (a `NavList`, then a `NavEnd`).
-- **Behaviour**: one row. When the links do not fit, the ones that do not fit move into an
-  overflow menu if your navigation has one.
+- **Behaviour**: one row at every width (R1). When the links do not fit, the ones that do not fit
+  move into an overflow menu. Without one, the bar wraps, which breaks R1.
 - **Accessibility**: a `<nav>` named by `label`.
 - **Mapping questions**: Does your navbar take a logo slot? Does it handle overflow, and how does
   it find its items (some measure children by element type: then translate `NavLink`s inside
@@ -333,7 +358,8 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Props**: `emphasis` (`solid` default, `outline`, `ghost`), `size`, `disabled`, `title`,
   `aria-label`, `onClick`, `href` + `external`, `children`.
 - **Behaviour**: with `href`, render an `<a>` styled as the button; `external` opens a new tab
-  (`target="_blank" rel="noreferrer"`). Without `size`, inherit the toolbar's.
+  (`target="_blank" rel="noreferrer"`). Without `size`, inherit the toolbar's. `sm` is the size of a
+  toolbar's controls and of a table's actions (R2). The label in the case it is passed (R3).
 - **Accessibility**: a native `<button type="button">` or `<a>`; visible focus outline; disabled is
   `disabled`, not just styled.
 - **Mapping questions**: Which variants are solid, outline and ghost? How does your button render as
@@ -373,7 +399,7 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 
 - **Purpose**: the card's heading.
 - **Props**: `children`.
-- **Behaviour**: one line of heading text.
+- **Behaviour**: one line of heading text, in the case it is passed (R3).
 - **Accessibility**: a heading element at your design system's level for a card.
 - **Mapping questions**: Which heading level does your card title use?
 - **Acceptance**: the headings outline of a section reads sensibly. Required.
@@ -401,8 +427,9 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Purpose**: a row of key figures; some are buttons that filter or navigate.
 - **Props**: `label`, `items` (`label`, `value`, `unit`, `tone`, `onSelect`, `active`, `icon`),
   `layout` (`cards` default, `strip`: one band inside a card), `className`.
-- **Behaviour**: items wrap; a `tone` colours the value or edge; an item with `onSelect` is a
-  button (`active` is pressed); `icon` sits in its corner.
+- **Behaviour**: items wrap; a `tone` colours the value, never the tile's border, edge or
+  background (R4); the label is a micro label in capitals (R3); an item with `onSelect` is a button
+  (`active` is pressed); `icon` sits in its corner.
 - **Accessibility**: a region named by `label`; selectable items are buttons with `aria-pressed`
   when they filter. A value that a unit follows arrives ending in a space that is read, not drawn,
   so a tile's name keeps them apart ("Findings 1 new · of 1"): render `value` as given.
@@ -418,7 +445,8 @@ accessibility, the questions to answer when mapping, and the acceptance check.
   `onRowClick`, `search`, `paginate` (`false`: every row).
 - **Behaviour**: a column with `field` sorts by it; `cell` renders the cell, else the field's value;
   `onRowClick` makes rows activatable; `search` adds a search field (and a column chooser if you
-  have one). Use compact density.
+  have one). Use compact density. Headers in the case of `header` (R3); a cell's buttons come with
+  `size="sm"`: draw them at your small size (R2).
 - **Accessibility**: a real `<table>` or the ARIA table pattern; sortable headers announce their
   sort; activatable rows respond to Enter as well as a click.
 - **Mapping questions**: What is your grid's column type? How are row clicks and keyboard row
@@ -473,7 +501,8 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 
 - **Purpose**: a state: icon, tone and label (verdicts, impacts, coverage codes).
 - **Props**: `tone`, `icon` (an `IconName`), `label`, `title`, `className`.
-- **Behaviour**: icon then label, the icon in the tone's colour; the label in text colour.
+- **Behaviour**: icon then label, the icon in the tone's colour; the label in text colour, in the
+  case it is passed; no wash or border in the tone's colour (R3, R4).
 - **Accessibility**: the label is always visible text; the icon is decorative.
 - **Mapping questions**: Does your status component take a custom icon and tone, or only presets?
   If only presets, map (tone, icon) to the nearest preset and say so in the conformance note.
@@ -485,7 +514,8 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Purpose**: a short tag (mode, state, "New", connection), not a count of work.
 - **Props**: `tone` (`neutral` default), `emphasis` (`subtle` default, `outline`, `solid`), `pulse`
   (live indicator), `title`, `className`, `children`.
-- **Behaviour**: inline, small type.
+- **Behaviour**: inline, small type, in the case it is passed (R3). A `tone` colours the text; the
+  wash, border and fill of the emphasis stay neutral (R4).
 - **Accessibility**: text; `pulse` must respect reduced motion.
 - **Mapping questions**: Which of your badge variants is subtle, outline and solid? Is there a live
   or pulsing dot?
@@ -586,8 +616,9 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 
 - **Purpose**: a row of controls sharing one size and one line.
 - **Props**: `size`, `className`, `children` (`ToolbarStart`, `ToolbarEnd`).
-- **Behaviour**: wraps on narrow widths; passes `size` to the controls inside. The fallback sets
-  `data-size` on its root for a stylesheet that sizes your controls from it.
+- **Behaviour**: one line at 1280 CSS px (R1), wrapping only on narrower widths; passes `size` to
+  the controls inside, so they share one height (R2). The fallback sets `data-size` on its root for
+  a stylesheet that sizes your controls from it.
 - **Accessibility**: `role="toolbar"` if your design system adds it.
 - **Mapping questions**: Does your toolbar propagate a size to its controls?
 - **Acceptance**: the Stories filters, their labels and the count line up. Optional.

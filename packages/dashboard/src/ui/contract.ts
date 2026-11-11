@@ -25,6 +25,18 @@
  *     without one maps it to literal values.
  * 11. Links take a `render` prop for router integration.
  *
+ * Region rules (docs/ui/build-adapter.md, "Region rules"): the layout an adapter keeps whatever its
+ * design system looks like.
+ *  R1. One line: the top bar at every width (links that do not fit go into an overflow menu); a
+ *      toolbar's controls and a row of actions at the dashboard's working width (1280 CSS px).
+ *  R2. One size per row: the controls on one line share one height; a table's actions are `sm`.
+ *  R3. Casing is the copy's: headers, headings, links, buttons, badges and labels are drawn in the
+ *      case of the text passed, with no `text-transform`; a `StatGroup` item's label alone is a
+ *      micro label in capitals, which the contract sets, not the adapter.
+ *  R4. Tone is shown one way: a `StatGroup` item colours its value, a `Badge` its text, a
+ *      `StatusBadge` its glyph; borders, edges, washes and fills stay neutral. The adapter maps each
+ *      tone to its colour roles only.
+ *
  * Every component accepts `className` where the dashboard positions it; an adapter forwards it to
  * the component's root element. Props not listed here are never passed.
  */
