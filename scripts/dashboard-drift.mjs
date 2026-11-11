@@ -73,15 +73,16 @@ export function driftSummary(summary, gallery) {
 }
 
 /**
- * Run a program; throw with its output when it fails.
+ * Run a program; throw with its output when it fails (`passed` says whether an exit other than 0
+ * still counts as done).
  * @param {string} cmd
  * @param {string[]} args
- * @param {{ cwd?: string, env?: NodeJS.ProcessEnv }} [o]
+ * @param {{ cwd?: string, env?: NodeJS.ProcessEnv, passed?: (status: number | null) => boolean }} [o]
  */
-function step(cmd, args, { cwd = repo, env = process.env } = {}) {
+function step(cmd, args, { cwd = repo, env = process.env, passed = (x) => x === 0 } = {}) {
   console.log(`[drift] ${cmd} ${args.join(' ')}${cwd === repo ? '' : `  (in ${cwd})`}`);
   const r = spawnSync(cmd, args, { cwd, env, stdio: 'inherit', shell: false });
-  if (r.status !== 0)
+  if (!passed(r.status))
     throw new Error(`${cmd} ${args[0]} failed (exit ${r.status ?? r.error?.message})`);
 }
 
@@ -102,18 +103,34 @@ function build(root, adapter, outDir) {
 /** @param {string} buildDir @param {string} out @param {string[]} [more] */
 function check(buildDir, out, more = []) {
   // The build is its own reference: the gallery has no second column, and the run takes half as long.
-  step(process.execPath, [
-    join(repo, 'packages', 'pxsig', 'bin', 'pxsig.mjs'),
-    'dashboard',
-    'check',
-    '--build',
-    buildDir,
-    '--reference',
-    buildDir,
-    '--out',
-    out,
-    ...more,
-  ]);
+  // Exit 1 with every screen rendered is a broken region rule: the check's own report, not drift.
+  const rendered = () => {
+    try {
+      // report.json, as the check writes it.
+      const report = /** @type {{ summary: { failed: number } }} */ (
+        JSON.parse(readFileSync(join(out, 'report.json'), 'utf8'))
+      );
+      return report.summary.failed === 0;
+    } catch {
+      return false;
+    }
+  };
+  step(
+    process.execPath,
+    [
+      join(repo, 'packages', 'pxsig', 'bin', 'pxsig.mjs'),
+      'dashboard',
+      'check',
+      '--build',
+      buildDir,
+      '--reference',
+      buildDir,
+      '--out',
+      out,
+      ...more,
+    ],
+    { passed: (x) => x === 0 || (x === 1 && rendered()) }
+  );
 }
 
 /** @param {DriftPlan} plan */

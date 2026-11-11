@@ -25,8 +25,10 @@ import { herePath } from './lib/machine.mjs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 /** @import { Flags } from './types.js' */
-/** @import { DashboardBuildConfig, DashboardPostbuild, DashboardUiTools, GapsReport, PackageExports } from './types/t4.js' */
+/** @import { DashboardBuildConfig, DashboardPostbuild, DashboardUiTools, GapsReport, PackageExports, ScreenResult } from './types/t4.js' */
 
+/** `pxsig dashboard check` prints at most this many region-rule findings; summary.md has them all. */
+const FIDELITY_LINES = 20;
 const pkg = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const NEEDS = [
   'vite',
@@ -226,6 +228,18 @@ export async function dashboardCommand(
     return 0;
   }
   if (sub === 'check') {
+    /** Each region rule an adapter breaks, a line each (FIDELITY_LINES at most), with its screen. */
+    const fidelityLines = (/** @type {ScreenResult[]} */ screens) => {
+      const all = screens.flatMap((x) =>
+        x.fidelity.map((f) => `  ${f.rule}: ${x.feature} #${x.index + 1} (${x.theme}): ${f.text}`)
+      );
+      return all.length > FIDELITY_LINES
+        ? [
+            ...all.slice(0, FIDELITY_LINES),
+            `  and ${all.length - FIDELITY_LINES} more in summary.md`,
+          ]
+        : all;
+    };
     const { CheckSetupError, dashboardCheck } = await import('./dashboard-check.mjs');
     try {
       const { code, report, outDir } = await dashboardCheck(flags);
@@ -234,10 +248,11 @@ export async function dashboardCommand(
         flags.json
           ? JSON.stringify(report, null, 2)
           : [
-              `${s.rendered} of ${s.screens} screens rendered${s.failed ? `, ${s.failed} failed` : ''} · ${s.withAxe} with axe violations · ${s.withLayout} with layout findings${report.strict ? '' : ' (advisory; --strict makes them fail)'}`,
+              `${s.rendered} of ${s.screens} screens rendered${s.failed ? `, ${s.failed} failed` : ''} · ${s.withFidelity} breaking a region rule · ${s.withAxe} with axe violations · ${s.withLayout} with layout findings${report.strict ? '' : ' (advisory; --strict makes them fail)'}`,
               ...report.screens
                 .filter((x) => !x.rendered)
                 .map((x) => `  failed: ${x.feature} #${x.index + 1} (${x.theme}): ${x.reason}`),
+              ...fidelityLines(report.screens),
               report.reference.used ? null : `no reference column: ${report.reference.note}`,
               report.compare
                 ? `compared with ${report.compare.dir}: ${report.compare.changed} changed${report.compare.removed.length ? `, ${report.compare.removed.length} gone` : ''} (advisory)`

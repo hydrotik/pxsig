@@ -7,6 +7,7 @@ import { dirname } from 'node:path';
 import { injectAxe } from '../lib/capture.mjs';
 import { boxesFile, writeBoxes } from '../lib/capture/boxes.mjs';
 import { navErrorCode, retryOnce } from '../lib/retry.mjs';
+import { inspectFidelity } from './fidelity.mjs';
 import { inspectLayout, MAX_PER_RULE, NARROW_WIDTH, pageOverflow } from './layout.mjs';
 /** @import { Browser, Page } from 'playwright' */
 /** @import { LayoutFinding, Screen, ScreenCapture, ScreenTarget, ScreenViolation } from '../types/t4.js' */
@@ -222,18 +223,28 @@ export async function screenContext(browser, colorScheme, { bypassCSP = false } 
 /**
  * Capture a page already showing its screen (its landmark visible): wait until its images are
  * drawn, its fonts loaded and its layout still, then take the screenshot, the accessibility
- * snapshot (`aria`), the anchors' boxes, axe's violations and (`layout`) the layout findings.
- * Never throws for a page error (`errors`, collected by the caller): the result says it.
+ * snapshot (`aria`), the anchors' boxes, axe's violations and (`layout`) the layout findings, with
+ * (`copy`: the dashboard's copy, fidelity.mjs) the fidelity findings. Never throws for a page error (`errors`, collected by the caller): the result says it.
  * `restore`: after the layout measure, put the page back at VIEWPORT and let it settle, so a flow
  * goes on on the same page (scripts/live/run.mjs). `text`: also write the screen's text record
  * beside the shot (`<name>.boxes.json`, lib/capture/boxes.mjs), right after the screenshot.
  * @param {Page} page
- * @param {{ shot: string, axe: string, layout?: boolean, aria?: boolean, anchors?: { name: string, target: ScreenTarget }[], errors: string[], restore?: boolean, text?: { ignore: string[] } | null }} opts
+ * @param {{ shot: string, axe: string, layout?: boolean, copy?: string[] | null, aria?: boolean, anchors?: { name: string, target: ScreenTarget }[], errors: string[], restore?: boolean, text?: { ignore: string[] } | null }} opts
  * @returns {Promise<Omit<ScreenCapture, 'ms' | 'retried'>>}
  */
 export async function snap(
   page,
-  { shot, axe, layout = false, aria = false, anchors = [], errors, restore = false, text = null }
+  {
+    shot,
+    axe,
+    layout = false,
+    copy = null,
+    aria = false,
+    anchors = [],
+    errors,
+    restore = false,
+    text = null,
+  }
 ) {
   await ready(page);
   const settled = await settle(page);
@@ -270,6 +281,9 @@ export async function snap(
     });
   }
   const measured = layout && !errors.length;
+  // At VIEWPORT, before the layout measure leaves the page at NARROW_WIDTH.
+  const fidelity =
+    measured && copy ? await page.evaluate(inspectFidelity, { max: MAX_PER_RULE, copy }) : null;
   const found = measured ? await measureLayout(page) : [];
   if (measured && restore) {
     await page.setViewportSize(VIEWPORT);
@@ -291,6 +305,7 @@ export async function snap(
     errors,
     axe: violations,
     layout: found,
+    ...(fidelity ? { fidelity } : {}),
     ...(structure != null ? { aria: structure } : {}),
     ...(anchors.length ? { anchors: boxes } : {}),
     ...unsettled,
@@ -299,11 +314,12 @@ export async function snap(
 
 /**
  * Render one screen in one theme; never throws (a failure is the result). `layout`: also measure
- * the layout findings (the adapter's screens; not the reference's). `aria`: also take the page's
+ * the layout findings (the adapter's screens; not the reference's), and with `copy` the fidelity
+ * findings. `aria`: also take the page's
  * accessibility snapshot (Playwright's `ariaSnapshot`), the structure scripts/screens-check.mjs locks.
  * `anchors`: measure these elements' boxes, the geometry it locks.
  * @param {Browser} browser
- * @param {{ url: string, screen: Screen, shot: string, axe: string, initScript?: string | null, layout?: boolean, aria?: boolean, anchors?: { name: string, target: ScreenTarget }[], text?: { ignore: string[] } | null }} opts
+ * @param {{ url: string, screen: Screen, shot: string, axe: string, initScript?: string | null, layout?: boolean, copy?: string[] | null, aria?: boolean, anchors?: { name: string, target: ScreenTarget }[], text?: { ignore: string[] } | null }} opts
  * @returns {Promise<ScreenCapture>}
  */
 export async function capture(
@@ -315,6 +331,7 @@ export async function capture(
     axe,
     initScript = null,
     layout = false,
+    copy = null,
     aria = false,
     anchors = [],
     text = null,
@@ -354,7 +371,7 @@ export async function capture(
       };
     }
     return {
-      ...(await snap(page, { shot, axe, layout, aria, anchors, errors, text })),
+      ...(await snap(page, { shot, axe, layout, copy, aria, anchors, errors, text })),
       ms: Date.now() - started,
       ...(retried ? { retried } : {}),
     };
