@@ -6,10 +6,13 @@
  *
  * One result per entry and rule that is not on the entry's accepted list (`a11y.json`), located at
  * the entry's story file, with the entry id as the logical location. Rules carry axe's help text and
- * its documentation link. With `masks`, also one warning (`pxsig/large-mask`) per mask over a quarter
- * of an entry's capture (`masksLarge`, lib/capture/masks.mjs): such a mask lets most changes pass.
+ * its documentation link. With `masks`, also the masks findings (crates/pxsig-cli/src/batch/masks.rs),
+ * one per entry: an error (`pxsig/mask-limit`) where masks cover over half the capture together or
+ * the story root, which no approval clears; a warning (`pxsig/masks-changed`) where they differ from
+ * the baseline's; a warning (`pxsig/large-mask`) where they cover over a quarter of it together.
  */
 import { writeAtomic } from './files.mjs';
+import { blockedReasons, LARGE_SHARE, maskChange } from './mask-words.mjs';
 /** @import { A11yResult, CheckRow, ManifestEntry, SarifLog, SarifResult, SarifRule } from '../types.js' */
 
 /** @type {Record<string, string>} */
@@ -17,15 +20,25 @@ const LEVEL = { critical: 'error', serious: 'error', moderate: 'warning', minor:
 /** @param {string} id */
 const helpUri = (id) => `https://dequeuniversity.com/rules/axe/latest/${encodeURIComponent(id)}`;
 
-/** The large-mask rule: a mask over this share of the capture. */
-const LARGE_MASK = {
-  id: 'pxsig/large-mask',
-  shortDescription: { text: 'A mask covers more than 25% of the capture' },
+/**
+ * A masks rule.
+ * @param {string} id
+ * @param {string} text
+ */
+const maskRule = (id, text) => ({
+  id,
+  shortDescription: { text },
   helpUri: 'https://github.com/hydrotik/pxsig/blob/main/docs/configuration.md#masks',
   properties: { tags: ['visual', 'pxsig'] },
-};
+});
+const MASK_LIMIT = maskRule(
+  'pxsig/mask-limit',
+  'Masks cover more than 50% of the capture, or the story root: no approval passes the entry'
+);
+const MASKS_CHANGED = maskRule('pxsig/masks-changed', 'The masks differ from the baseline’s');
+const LARGE_MASK = maskRule('pxsig/large-mask', 'Masks cover more than 25% of the capture');
 
-/** `masks`: also the large-mask warnings (`check --sarif`; `pxsig a11y --sarif` stays a11y only). */
+/** `masks`: also the masks findings (`check --sarif`; `pxsig a11y --sarif` stays a11y only). */
 /** @typedef {{ entries?: Map<string, Pick<ManifestEntry, 'importPath'>>, version?: string | null, masks?: boolean }} SarifOptions */
 
 /**
@@ -77,25 +90,40 @@ export function sarifLog(rows, { entries = new Map(), version = null, masks = fa
       });
     }
   }
-  for (const r of masks ? rows : [])
-    for (const m of r.masksLarge ?? []) {
-      rules.set(LARGE_MASK.id, LARGE_MASK);
-      results.push({
-        ruleId: LARGE_MASK.id,
-        level: 'warning',
-        message: {
-          text: `${r.id}: ${m.selector} (${m.source}) masks ${Math.round(m.area * 100)}% of the capture, which hides most changes under it`,
-        },
-        locations: locations(r),
-        properties: {
-          entry: r.id,
-          mode: r.mode ?? null,
-          selector: m.selector,
-          source: m.source,
-          area: m.area,
-        },
+  /**
+   * @param {CheckRow} r
+   * @param {SarifRule} rule
+   * @param {'error' | 'warning'} level
+   * @param {string} text
+   * @param {{ coverage?: number, masks?: CheckRow['masksChanged'] }} props
+   */
+  const mask = (r, rule, level, text, props) => {
+    rules.set(rule.id, rule);
+    results.push({
+      ruleId: rule.id,
+      level,
+      message: { text: `${r.id}: ${text}` },
+      locations: locations(r),
+      properties: { entry: r.id, mode: r.mode ?? null, ...props },
+    });
+  };
+  for (const r of masks ? rows : []) {
+    const coverage = r.masksCoverage ?? 0;
+    if (r.masksBlocked)
+      mask(r, MASK_LIMIT, 'error', `${blockedReasons(r).join('; ')}: no approval passes it`, {
+        coverage,
       });
-    }
+    if (r.masksChanged)
+      mask(r, MASKS_CHANGED, 'warning', maskChange(r.masksChanged), { masks: r.masksChanged });
+    if (!r.masksBlocked && coverage > LARGE_SHARE)
+      mask(
+        r,
+        LARGE_MASK,
+        'warning',
+        `masks cover ${Math.round(coverage * 100)}% of the capture, which hides most changes under them`,
+        { coverage }
+      );
+  }
   return {
     $schema: 'https://json.schemastore.org/sarif-2.1.0.json',
     version: '2.1.0',

@@ -552,6 +552,10 @@ export interface TrimResult {
 export interface BaselineResult {
   summary: { stories: number; failed: number; elapsedMs: number };
   errors: string[];
+  /** The entries not written. */
+  failedIds: string[];
+  /** Entries whose masks changed from the baseline replaced, written (`--allow-masks`) or not. */
+  masksChanged: (import('./run.js').MasksChanged & { id: string; written: boolean })[];
 }
 
 /** One entry of `pxsig check --json` `results`. */

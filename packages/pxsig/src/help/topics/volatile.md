@@ -18,15 +18,19 @@ each run shows a change that nobody made. Fixed data first; a mask when the valu
   (`pxsig.config.json`), or of every project (`defaults` in `pxsig.workspace.json`).
   `capture.ignore` replaces the inherited list; `capture.addIgnore` adds to it. `pxsig config`
   names the layer of each selector. A story's own `parameters.pxsig.ignore` masks that story only.
-- **Recorded and reviewed.** Each render records its masks (selector, source, reason, share of
-  the capture); an approved baseline keeps them. A mask added, removed or grown since the baseline
-  fails the entry as `masks changed: …`, for a person to approve, whatever the pixels. The
-  dashboard's inspector lists the masks; when no pixel differs, it shows each mask's share in the
-  baseline and in the render.
-- **Masks over 25%.** A mask over 25% of the capture is a warning (`[check] mask:`, summary.md,
-  `check --sarif`, the dashboard), never a failure: most changes under it would pass.
+- **Recorded and reviewed.** Each render records its masks (selector, source, reason, the
+  elements matched and their boxes); every approved baseline keeps them, none as an empty list. A
+  mask added, removed, grown by any pixel, moved or matching another number of elements since the
+  baseline fails the entry as `masks changed: …`, for a person to approve, whatever the pixels.
+  `check --update` writes such a baseline only with `--allow-masks`. The dashboard's inspector
+  lists the masks; when no pixel differs, it shows each mask's share in the baseline and in the
+  render.
+- **Limits.** All of an entry's masks together over 25% of the capture are a warning
+  (`[check] mask:`, summary.md, `check --sarif`, the dashboard): most changes under them would
+  pass. Over 50%, or a mask on the story root, the entry fails, and no approval passes it until the
+  masks are smaller.
 - **Adopting masks.** Marking a component, or a new `capture.ignore`, gives one "masks changed"
-  entry per entry it applies to, approved once. Story masks against a baseline approved before
-  masks were recorded are not a change.
+  entry per entry it applies to, approved once. A story's `ignore` against a baseline approved
+  with 0.7.6 or earlier is not a change where that baseline's image shows it painted.
 
 See also: `pxsig help capture.ignore`, `pxsig help approvals`, docs/configuration.md (Masks).
