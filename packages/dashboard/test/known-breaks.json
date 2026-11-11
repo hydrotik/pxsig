@@ -1,5 +1,5 @@
 {
-  "$comment": "The region rules (docs/ui/build-adapter.md, \"Region rules\") the plain example adapter (examples/custom-ui/pxsig-ui, the same as src/ui/adapters/plain) breaks today, as `<feature> #<n> (<theme>): <rule>`. Reported, not exempted: `pxsig dashboard check` fails on them. The tests fail on any break not listed here. plain's TopNav has no overflow menu (its conformance says partial), so the top bar wraps: at 1280 px with the project picker, and on the two React screens rendered at 900 px, where it fits or not by a few pixels depending on the platform's fonts (so a run shows some of the 900 px entries, not always all).",
+  "$comment": "The region rules (docs/ui/build-adapter.md, \"Region rules\") the plain example adapter (examples/custom-ui/pxsig-ui, the same as src/ui/adapters/plain) breaks today, as `<feature> #<n> (<theme>): <rule>`. Reported, not exempted: `pxsig dashboard check` fails on them. The tests fail on any break not listed here. plain's TopNav has no overflow menu (its conformance says partial), so the top bar wraps: at 1280 px with the project picker, and on the two React screens rendered at 900 px. Each fits or wraps by a few pixels, depending on the platform's fonts: a run shows some of these, or none (Windows).",
   "plain": [
     "shell.top-bar #7 (dark): one-line",
     "shell.top-bar #7 (light): one-line",

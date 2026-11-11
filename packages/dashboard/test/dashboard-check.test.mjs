@@ -133,7 +133,6 @@ test('every screen renders on the example adapter in both themes, beside the ref
     [],
     'no region rule broken but the known ones'
   );
-  assert.ok(broken.includes('shell.top-bar #7 (dark): one-line'), 'the known break is found');
   assert.equal(code, broken.length ? 1 : 0);
   assert.equal(report.reference.used, true);
   for (const x of report.screens) {
