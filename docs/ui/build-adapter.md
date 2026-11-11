@@ -515,8 +515,9 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Purpose**: a short tag (mode, state, "New", connection), not a count of work.
 - **Props**: `tone` (`neutral` default), `emphasis` (`subtle` default, `outline`, `solid`), `pulse`
   (live indicator), `title`, `className`, `children`.
-- **Behaviour**: inline, small type, in the case it is passed (R3). A `tone` colours the text; the
-  wash, border and fill of the emphasis stay neutral (R4).
+- **Behaviour**: inline, small type, in the case it is passed (R3). A `tone` colours the text in
+  that tone's own colour (`info`: the accent; `neutral`: the text colour); the wash, border and fill
+  of the emphasis stay neutral (R4): the plain adapter draws `solid` like `subtle`.
 - **Accessibility**: text; `pulse` must respect reduced motion.
 - **Mapping questions**: Which of your badge variants is subtle, outline and solid? Is there a live
   or pulsing dot?

@@ -98,11 +98,18 @@
   background: transparent;
   border-color: var(--plain-border);
 }
-.plain-badge[data-tone='danger'] {
-  color: var(--plain-danger);
+/* A tone colours the text only; the wash, border and fill stay neutral (R4: solid draws as subtle). */
+.plain-badge[data-tone='info'] {
+  color: var(--plain-accent);
 }
 .plain-badge[data-tone='success'] {
   color: var(--plain-success);
+}
+.plain-badge[data-tone='warning'] {
+  color: var(--plain-warning);
+}
+.plain-badge[data-tone='danger'] {
+  color: var(--plain-danger);
 }
 .plain-status {
   display: inline-flex;
