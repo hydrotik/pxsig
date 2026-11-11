@@ -31,8 +31,8 @@
  * And custom-ui (no Storybook): `pxsig dashboard gaps` reports the plain adapter's gaps,
  * `pxsig dashboard build` rebuilds the dashboard on it from the installed pxsig, and `pxsig
  * dashboard check --strict` renders every feature's screens on that build in both themes, with no
- * axe violation or layout finding and no broken region rule but the known ones
- * (packages/dashboard/test/known-breaks.json); its summary goes to the job summary on GitHub Actions.
+ * axe violation, layout finding or broken region rule (its summary goes to the job summary on
+ * GitHub Actions).
  * Needs pnpm, network access for the installs, Playwright's Chromium, and the Rust binary
  * (`cargo build --release`, or PXSIG_BIN).
  */

@@ -1,6 +1,6 @@
 /**
  * The region rules end to end: `pxsig dashboard check` on the plain example adapter
- * (examples/custom-ui) passes them, but for the breaks known-breaks.json lists, and on a copy broken
+ * (examples/custom-ui) passes them, and on a copy broken
  * on purpose (one change per rule) it fails, naming the element that breaks each. The rules one by
  * one are dashboard-fidelity.test.mjs. Skips when no Chromium is available (PXSIG_CHROMIUM names
  * an executable).
@@ -20,15 +20,15 @@ const dashboard = path.dirname(here);
 const repo = path.resolve(dashboard, '..', '..');
 const require = createRequire(path.join(dashboard, '../pxsig/package.json'));
 const { dashboardCheck } = await import('../../pxsig/src/dashboard-check.mjs');
-const known = JSON.parse(readFileSync(path.join(here, 'known-breaks.json'), 'utf8')).plain;
 
 /** The screens checked: the top bar, stat cards, a table with actions, a toolbar, badges. */
 const ONLY = 'shell.top-bar,overview.counts,overview.open-items,review.filters,coverage.ledger';
 
 /** Each change breaks one region rule (docs/ui/build-adapter.md, "Region rules"). */
 const BROKEN_CSS = `
-/* R1: the links wrap onto a second line. */
-.plain-nav ul { max-inline-size: 16rem; }
+/* R1: the links on a line of their own, below the mark and the pinned controls. */
+.plain-nav { flex-wrap: wrap; }
+.plain-nav > ul { order: 1; flex-basis: 100%; }
 /* R2: a select taller than the fields beside it, and full-size buttons in a table. */
 .plain-select { block-size: 2.25rem; }
 td .plain-button[data-size] { block-size: 2.25rem; }
@@ -131,17 +131,12 @@ const found = (report) =>
     x.fidelity.map((f) => `${x.feature} #${x.index + 1}: ${f.rule}: ${f.text}`)
   );
 
-test('the plain example adapter keeps the region rules, but for its known breaks', async (t) => {
+test('the plain example adapter keeps the region rules', async (t) => {
   if (skip) return t.skip(skip);
   const { code, report } = await run(good, 'out-good');
-  assert.deepEqual(
-    report.screens
-      .flatMap((x) => x.fidelity.map((f) => `${x.feature} #${x.index + 1} (${x.theme}): ${f.rule}`))
-      .filter((b) => !known.includes(b)),
-    []
-  );
-  assert.equal(code, report.summary.withFidelity ? 1 : 0, 'a broken region rule fails the check');
-  assert.equal(report.summary.withFidelity, report.screens.filter((x) => x.fidelity.length).length);
+  assert.deepEqual(found(report), []);
+  assert.equal(code, 0);
+  assert.equal(report.summary.withFidelity, 0);
 });
 
 test('an adapter that breaks a region rule fails the check, naming the element', async (t) => {

@@ -308,7 +308,10 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Props**: `label` (the navigation landmark's name), `brand` (the mark: a heading and a tag),
   `className`, `children` (a `NavList`, then a `NavEnd`).
 - **Behaviour**: one row at every width (R1). When the links do not fit, the ones that do not fit
-  move into an overflow menu. Without one, the bar wraps, which breaks R1.
+  move into an overflow menu. Without one, the bar wraps, which breaks R1. A design system with no
+  overflow navbar can follow the plain adapter (`adapters/plain/nav.tsx`): it measures the links,
+  moves the last ones that do not fit (never a `keep` link) into a More menu button, and keeps the
+  menu button pattern (arrow keys, Escape returns focus to the button).
 - **Accessibility**: a `<nav>` named by `label`.
 - **Mapping questions**: Does your navbar take a logo slot? Does it handle overflow, and how does
   it find its items (some measure children by element type: then translate `NavLink`s inside

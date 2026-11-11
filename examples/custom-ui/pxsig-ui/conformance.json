@@ -4,8 +4,8 @@
   "designSystem": "none: semantic HTML and theme.css",
   "components": {
     "UiProvider": { "status": "bespoke", "note": "sets data-theme on <html>; no density" },
-    "TopNav": { "status": "partial", "note": "no overflow menu: links wrap on a narrow window" },
-    "NavList": { "status": "full", "note": "a list of links" },
+    "TopNav": { "status": "full", "note": "one line: links that do not fit move into a More menu" },
+    "NavList": { "status": "full", "note": "a list of links, then the More menu" },
     "NavLink": { "status": "full", "note": "count as a plain badge" },
     "Button": { "status": "full", "note": "native button, or a link styled as one" },
     "IconButton": { "status": "full" },

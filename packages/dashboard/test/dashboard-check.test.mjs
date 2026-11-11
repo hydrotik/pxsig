@@ -122,18 +122,15 @@ test('every screen renders on the example adapter in both themes, beside the ref
     report.screens.filter((x) => !x.rendered).map((x) => `${x.feature} ${x.theme}: ${x.reason}`),
     []
   );
-  // The region rules it breaks are reported (known-breaks.json), and fail the check; axe findings
-  // are advisory without --strict.
-  const known = JSON.parse(readFileSync(path.join(here, 'known-breaks.json'), 'utf8')).plain;
-  const broken = report.screens.flatMap((x) =>
-    x.fidelity.map((f) => `${x.feature} #${x.index + 1} (${x.theme}): ${f.rule}`)
-  );
+  // A broken region rule would fail the check; axe findings are advisory without --strict.
   assert.deepEqual(
-    broken.filter((b) => !known.includes(b)),
+    report.screens.flatMap((x) =>
+      x.fidelity.map((f) => `${x.feature} #${x.index + 1} (${x.theme}): ${f.rule}: ${f.text}`)
+    ),
     [],
-    'no region rule broken but the known ones'
+    'no region rule broken'
   );
-  assert.equal(code, broken.length ? 1 : 0);
+  assert.equal(code, 0);
   assert.equal(report.reference.used, true);
   for (const x of report.screens) {
     assert.ok(existsSync(path.join(out, x.shot)), x.shot);
