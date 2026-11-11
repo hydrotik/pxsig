@@ -3,12 +3,11 @@
 // fail the build.
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
+import { staticDirs } from '../preset.mjs';
 
-const { staticDirs } = createRequire(import.meta.url)('../preset.cjs');
 /** @type {string[]} */
 const made = [];
 after(() => made.forEach((d) => rmSync(d, { recursive: true, force: true })));
@@ -49,8 +48,10 @@ test('storybook build: the snapshot joins the static dirs at the root', async ()
   const dirs = await staticDirs(['public'], { configType: 'PRODUCTION', configDir }, q);
   assert.equal(dirs.length, 2);
   assert.equal(dirs[0], 'public');
-  assert.equal(dirs[1].to, '/');
-  const file = join(dirs[1].from, 'pxsig-snapshot.json');
+  const added = dirs[1];
+  assert.ok(typeof added === 'object', 'the snapshot folder is a { from, to } entry');
+  assert.equal(added.to, '/');
+  const file = join(added.from, 'pxsig-snapshot.json');
   assert.ok(existsSync(file));
   const argv = JSON.parse(readFileSync(file, 'utf8')).argv;
   assert.deepEqual(argv.slice(0, 2), ['snapshot', '--out']);

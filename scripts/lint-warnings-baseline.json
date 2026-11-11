@@ -82,7 +82,7 @@
     "packages/pxsig/test/ui-catalog.test.mjs": {
       "unicorn(no-thenable)": 1
     },
-    "packages/storybook-addon/preset.cjs": {
+    "packages/storybook-addon/preset.mjs": {
       "typescript(require-await)": 1
     },
     "scripts/bench/run.mjs": {

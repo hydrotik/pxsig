@@ -2,14 +2,13 @@
 // computes the same workspace id as pxsig, so a server's status answer can be matched to it.
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { acceptsServer, DEFAULT_SERVER } from '../server-pick.mjs';
 import { serverFile, serverUrlFor, workspaceId } from '../../pxsig/src/lib/workspace/peers.mjs';
+import { managerHead, workspaceIdOf } from '../preset.mjs';
 
-const { managerHead, workspaceIdOf } = createRequire(import.meta.url)('../preset.cjs');
 const ws = mkdtempSync(join(tmpdir(), 'pxsig-pick-'));
 after(() => rmSync(ws, { recursive: true, force: true }));
 writeFileSync(join(ws, 'pxsig.workspace.json'), '{"version":1,"projects":{}}');

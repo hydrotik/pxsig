@@ -9,14 +9,15 @@
  * For every platform it writes `<out>/cli-<platform>-<arch>/` holding a package.json
  * (`@pxsig/cli-<platform>-<arch>`, restricted by `os`/`cpu`), a README.md (scripts/platform-readme.md,
  * filled in; each `target` is the Rust target release.yml builds), the root LICENSE,
- * index.js (the binary's path, for `require`), test/binary.test.js (`node --test`: runs the binary)
- * and `bin/pxsig` (`bin/pxsig.exe` on win32), copied from
+ * index.js and index.cjs (the binary's path, for `import` and `require`), test/binary.test.js
+ * (`node --test`: runs the binary) and `bin/pxsig` (`bin/pxsig.exe` on win32), copied from
  * `<artifacts>/pxsig-<platform>-<arch>/pxsig[.exe]` — the layout `actions/download-artifact`
  * produces for the release workflow's build artifacts.
  *
  * The `pxsig` package lists these as optionalDependencies, so a package manager installs only the
  * one matching the host. `rustBinary()` in packages/pxsig/src/lib/workspace/peers.mjs resolves
- * `@pxsig/cli-${process.platform}-${process.arch}/bin/${exe}`; the names and paths here must match.
+ * `@pxsig/cli-${process.platform}-${process.arch}/bin/${exe}`; the names and paths here must match,
+ * and `exports` must keep `./bin/*` (a package with an exports map resolves no other subpath).
  *
  * --write-optional-deps <package.json> sets `version` and adds or updates an exact-version
  * optionalDependency for every package generated in this run (and fills `repository` when it is
@@ -199,37 +200,64 @@ function manifest(p) {
     ...(repository
       ? { repository, homepage: `${repoUrl}#readme`, bugs: { url: `${repoUrl}/issues` } }
       : {}),
-    main: 'index.js',
+    type: 'module',
+    main: 'index.cjs',
+    exports: {
+      '.': { import: './index.js', require: './index.cjs' },
+      // rustBinary() resolves bin/<exe> by name.
+      './bin/*': './bin/*',
+      './package.json': './package.json',
+    },
     os: [p.platform],
     cpu: [p.arch],
     // The Linux binaries are built for *-unknown-linux-gnu: a musl host (Alpine) skips them.
     ...(p.platform === 'linux' ? { libc: ['glibc'] } : {}),
-    files: ['bin', 'index.js', 'test', 'LICENSE'],
+    files: ['bin', 'index.js', 'index.cjs', 'test', 'LICENSE'],
     preferUnplugged: true,
   };
 }
 
 /** @param {Plan} p */
 function entry(p) {
+  return `// The path of this package's pxsig binary. pxsig resolves bin/${p.exe} itself; this is for tools
+// that import the package (index.cjs: for those that require it).
+import { fileURLToPath } from 'node:url';
+
+export default fileURLToPath(new URL('./bin/${p.exe}', import.meta.url));
+`;
+}
+
+/** @param {Plan} p */
+function entryCjs(p) {
   return `'use strict';
-// The path of this package's pxsig binary. pxsig resolves bin/${p.exe} itself; this is for tools
-// that require the package.
+// The path of this package's pxsig binary, for \`require\` (index.js: for \`import\`).
 module.exports = require('node:path').join(__dirname, 'bin', '${p.exe}');
 `;
 }
 
 /** @param {Plan} p */
 function selfTest(p) {
-  return `'use strict';
-// The binary in this package runs on this host.
-const { test } = require('node:test');
-const assert = require('node:assert');
-const { execFileSync } = require('node:child_process');
-const bin = require('..');
+  return `// The binary in this package runs on this host, and \`import\`, \`require\` and the bin/ subpath
+// resolve to it.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+import bin from '../index.js';
+
+const require = createRequire(import.meta.url);
 
 test('bin/${p.exe} runs and prints its version', () => {
   const out = execFileSync(bin, ['--version'], { encoding: 'utf8' });
   assert.match(out.trim(), /^pxsig \\d+\\.\\d+\\.\\d+/);
+});
+
+test('import and require of ${p.name} give that path, and its bin/${p.exe} resolves to it', async () => {
+  assert.equal((await import('${p.name}')).default, bin);
+  assert.equal(require('${p.name}'), bin);
+  assert.equal(require.resolve('${p.name}/bin/${p.exe}'), bin);
+  assert.equal(fileURLToPath(import.meta.resolve('${p.name}/bin/${p.exe}')), bin);
 });
 `;
 }
@@ -276,6 +304,7 @@ for (const p of plan) {
     console.log(`  ${rel('package.json')}  os=${p.platform} cpu=${p.arch}`);
     console.log(`  ${rel('README.md')}`);
     console.log(`  ${rel('index.js')}`);
+    console.log(`  ${rel('index.cjs')}`);
     console.log(`  ${rel('test/binary.test.js')}`);
     console.log(`  ${rel('LICENSE')}  <- ${join(root, 'LICENSE')}`);
     console.log(`  ${rel(`bin/${p.exe}`)}  <- ${p.src}`);
@@ -287,6 +316,7 @@ for (const p of plan) {
   writeFileSync(join(p.dir, 'package.json'), `${JSON.stringify(manifest(p), null, 2)}\n`);
   writeFileSync(join(p.dir, 'README.md'), readme(p));
   writeFileSync(join(p.dir, 'index.js'), entry(p));
+  writeFileSync(join(p.dir, 'index.cjs'), entryCjs(p));
   writeFileSync(join(p.dir, 'test', 'binary.test.js'), selfTest(p));
   copyFileSync(join(root, 'LICENSE'), join(p.dir, 'LICENSE'));
   const bin = join(p.dir, 'bin', p.exe);

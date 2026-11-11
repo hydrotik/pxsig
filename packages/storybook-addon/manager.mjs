@@ -2,7 +2,7 @@
  * pxsig in Storybook: a "PXSIG: Visual regression" panel and sidebar status dots.
  *
  * Thin client of the pxsig server (`pxsig serve`). Where it is comes from the preset (see
- * preset.cjs): the `server` option, the running server's address, or the configured port, then
+ * preset.mjs): the `server` option, the running server's address, or the configured port, then
  * the default port; a `pxsig-server` key in localStorage overrides them all. A server that serves
  * another workspace is passed over (server-pick.mjs).
  * - the panel embeds the dashboard's inspector for the current story
@@ -13,7 +13,7 @@
  * - one server can hold several projects; the server works out which one owns a story.
  * - on a Storybook not served from this computer (deployed to dev, UAT, pre-prod) none of the
  *   above: no request to any pxsig server, no sidebar dots; the panel shows the read-only snapshot
- *   `storybook build` wrote beside it (`pxsig-snapshot.json`, see preset.cjs), or says there is none.
+ *   `storybook build` wrote beside it (`pxsig-snapshot.json`, see preset.mjs), or says there is none.
  *
  * Status mapping: pass / drift / approved → success · changed / flaky / new → warning (needs review:
  * an expected change is not a failure) · rejected / error → error · unaffected → unknown.
@@ -48,7 +48,7 @@ const PANEL = `${ADDON}/panel`;
 // The localStorage value joins only when it is set: every candidate is a string.
 const OVERRIDE =
   (typeof window !== 'undefined' && window.localStorage?.getItem('pxsig-server')) || null;
-// The addresses the preset found for this workspace, and this workspace's id (preset.cjs).
+// The addresses the preset found for this workspace, and this workspace's id (preset.mjs).
 const PINNED = (typeof window !== 'undefined' && window.__PXSIG__?.servers) || [];
 const WORKSPACE = (typeof window !== 'undefined' && window.__PXSIG__?.workspaceId) || null;
 const CANDIDATES = [...new Set([...(OVERRIDE ? [OVERRIDE] : []), ...PINNED, DEFAULT_SERVER])];

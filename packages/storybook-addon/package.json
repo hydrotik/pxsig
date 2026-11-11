@@ -13,16 +13,17 @@
     "url": "https://github.com/hydrotik/pxsig/issues"
   },
   "author": "Donovan Adams (Hydrotik LLC)",
+  "type": "module",
   "engines": {
     "node": ">=22"
   },
-  "main": "preset.cjs",
+  "main": "preset.mjs",
   "exports": {
-    ".": "./preset.cjs",
-    "./preset": "./preset.cjs"
+    ".": "./preset.mjs",
+    "./preset": "./preset.mjs"
   },
   "files": [
-    "preset.cjs",
+    "preset.mjs",
     "manager.mjs",
     "panel-style.mjs",
     "server-pick.mjs",

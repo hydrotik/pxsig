@@ -50,9 +50,11 @@ manifest.
 ## Contents
 
 - `bin/{{exe}}`: the engine binary.
-- `index.js`: `require('{{name}}')` returns the binary's absolute path, for other tools.
-- `test/binary.test.js`: `node --test` in this folder runs the binary once (`--version`) and
-  checks its output.
+- `index.js` and `index.cjs`: the binary's absolute path, for other tools. The package is an ES
+  module: `import bin from '{{name}}'` loads `index.js`, `require('{{name}}')` loads `index.cjs`,
+  and `{{name}}/bin/{{exe}}` resolves to the binary itself.
+- `test/binary.test.js`: `node --test` in this folder runs the binary once (`--version`), checks
+  its output, and checks that `import`, `require` and the `bin/{{exe}}` path give the same file.
 - `LICENSE`: the {{license}} licence.
 - `package.json`: the manifest, with no `bin` entry (pxsig runs the binary by its path).
 
