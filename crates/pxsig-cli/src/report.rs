@@ -127,6 +127,8 @@ pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
             rs.len() - skipped
         ));
     }
+    // Masks over a quarter of a capture (docs/spec.md#masks): a warning, only when any is.
+    out.push_str(&crate::report_masks::lead(&rs, esc_md));
     // Baselines the pull request changed, by how each was approved
     // (docs/agents.md#what-a-marker-changes). Names no person.
     if let Some(ap) = v["summary"].get("approvals").filter(|x| x.is_object()) {

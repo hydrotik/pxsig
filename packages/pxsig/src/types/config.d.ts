@@ -113,6 +113,10 @@ export type Config = {
     target: string;
     waitFor: { selector: string; minMs?: number; stableMarkup?: string }[];
     browserEndpoint: string | null;
+    /** Selectors masked in every story; replaces the inherited list. */
+    ignore?: string[];
+    /** Selectors added to the inherited list. */
+    addIgnore?: string[];
   };
   grid: number;
   minCellPx: number;
@@ -209,6 +213,8 @@ export interface Project {
   config: Config;
   /** Which layer set each config key (dotted path → layer name). */
   configSources: Record<string, string>;
+  /** The masks `capture.ignore` / `capture.addIgnore` set, each with its layer (lib/capture/masks.mjs). */
+  masks: { selector: string; source: 'attribute' | 'story' | 'project' | 'workspace' }[];
   srcRoot: string;
   storybook: { url: string; configDir: string | null; staticDir: string | null };
   modes: Record<string, Mode>;

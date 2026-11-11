@@ -273,6 +273,8 @@ export async function buildManifest(P, { suite = null, write = true } = {}) {
 export function describeConfig(P) {
   return {
     sources: P.configSources,
+    // Each capture.ignore / capture.addIgnore selector with the layer that set it.
+    masks: P.masks,
     project: P.name,
     label: P.label,
     scope: P.scope,

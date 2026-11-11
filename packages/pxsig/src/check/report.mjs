@@ -266,10 +266,14 @@ export async function report(S, sel, prep, run, cmp, { t0, retryMs, react = null
     console.log(`  CHANGED ${r.id.padEnd(60)} ${r.error ?? (r.reasons ?? []).join('; ')}`);
   for (const l of reactLines(react, checked, P)) console.log(l);
   const sarif = str('sarif');
-  if (sarif)
+  if (sarif) {
+    const entries = new Map(manifest.stories.map((e) => [e.id, e]));
+    const n = writeSarif(resolve(sarif), out, { entries, version: PXSIG_VERSION, masks: true });
+    const big = out.reduce((a, r) => a + (r.masksLarge?.length ?? 0), 0);
     console.log(
-      `[check] wrote ${writeSarif(resolve(sarif), out, { entries: new Map(manifest.stories.map((e) => [e.id, e])), version: PXSIG_VERSION })} new a11y violations to ${sarif} (SARIF)`
+      `[check] wrote ${n - big} new a11y violations${big ? ` and ${big} large masks` : ''} to ${sarif} (SARIF)`
     );
+  }
   const reactSarifFile = str('react-sarif');
   if (reactSarifFile) console.log(reactSarif(reactSarifFile, react, out, manifest.stories));
   console.log(`[check] wrote ${rel(reports)}/${outName}.json, summary${sfx}.md, junit${sfx}.xml`);

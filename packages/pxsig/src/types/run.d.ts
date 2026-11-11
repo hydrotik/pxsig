@@ -27,6 +27,23 @@ export interface A11yResult {
   baseline?: string[] | null;
 }
 
+/** A mask that applied to a render, as the engine records it (crates/pxsig-cli/src/batch/masks.rs). */
+export interface MaskRecord {
+  selector: string;
+  source: 'attribute' | 'story' | 'project' | 'workspace';
+  /** The `data-volatile` attribute's value, when it has one. */
+  reason?: string;
+  /** The masked pixels' share of the capture, 0..1. */
+  area: number;
+}
+
+/** What changed from the baseline's masks to the render's: selectors. */
+export interface MasksChanged {
+  added: string[];
+  removed: string[];
+  grew: string[];
+}
+
 /** The engine's result for one entry (check.json metrics and verdict, section 4). */
 export interface EngineResult {
   pass?: boolean;
@@ -34,6 +51,12 @@ export interface EngineResult {
   error?: string | null;
   /** The text labels (crates/pxsig-cli/src/batch/text.rs): beside the verdict, never changing it. */
   textDiff?: import('./text.js').TextDiff;
+  /** The masks that applied to the render, when any. */
+  masks?: MaskRecord[];
+  /** Masks over a quarter of the capture: a warning, never a verdict. */
+  masksLarge?: Omit<MaskRecord, 'reason'>[];
+  /** Set when the masks differ from the baseline's: the row fails with `masks changed: …`. */
+  masksChanged?: MasksChanged;
   [metric: string]: unknown;
 }
 
@@ -77,6 +100,10 @@ export interface CheckRow {
   cached?: boolean;
   /** The engine's text labels, as it gave them (labels only). */
   textDiff?: import('./text.js').TextDiff;
+  /** The render's masks, the large ones and a change from the baseline's (EngineResult). */
+  masks?: MaskRecord[];
+  masksLarge?: Omit<MaskRecord, 'reason'>[];
+  masksChanged?: MasksChanged;
   /** The render's env id (lib/env.mjs `annotateRow`). */
   env?: string | null;
   baselineEnv?: string | null;
@@ -223,7 +250,7 @@ export interface SarifRule {
   properties: { tags: string[] };
 }
 
-/** One SARIF result: a new violation of one rule on one entry. */
+/** One SARIF result: a new violation of one rule on one entry, or a large mask on one entry. */
 export interface SarifResult {
   ruleId: string;
   level: string;
@@ -232,7 +259,9 @@ export interface SarifResult {
     physicalLocation?: { artifactLocation: { uri: string } };
     logicalLocations: { name: string; kind: string }[];
   }[];
-  properties: { entry: string; mode: string | null; impact: string | null };
+  properties:
+    | { entry: string; mode: string | null; impact: string | null }
+    | { entry: string; mode: string | null; selector: string; source: string; area: number };
 }
 
 /** What `sarifLog` returns. */
