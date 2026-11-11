@@ -17,6 +17,7 @@ import { rejectionOptions } from '../src/lib/rejections/packet.mjs';
 import { packetFolder, rejectionPrompt } from '../src/lib/rejections/prompt.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { tempDir } from './fixture.mjs';
+import { NO_MASK_FIX } from '../src/lib/assistants.mjs';
 /** @import { PacketFacts } from '../src/types/rejections.js' */
 
 /**
@@ -282,7 +283,8 @@ test('the prompt: one paragraph, store-relative, the goal, the re-check, never a
       store: 'web/.pxsig',
       packet: packetFolder('visual', 'overview--tiles-1@dark'),
     }),
-    'pxsig rejected overview--tiles-1@dark (web): "the caption shifts right". Goal: what the reason asks; with no reason, restore the baseline\'s look. Details and images: web/.pxsig/reports/rejected/overview--tiles-1@dark/rejection.md, or MCP pxsig_rejected. After the fix: pxsig check overview--tiles-1@dark. Never approve.'
+    'pxsig rejected overview--tiles-1@dark (web): "the caption shifts right". Goal: what the reason asks; with no reason, restore the baseline\'s look. Details and images: web/.pxsig/reports/rejected/overview--tiles-1@dark/rejection.md, or MCP pxsig_rejected. After the fix: pxsig check overview--tiles-1@dark. Never approve. ' +
+      NO_MASK_FIX
   );
   assert.equal(
     rejectionPrompt({
@@ -293,7 +295,8 @@ test('the prompt: one paragraph, store-relative, the goal, the re-check, never a
       store: '',
       packet: null,
     }),
-    'pxsig rejected a--b (p, accessibility): "No reason given.". Goal: fix the violations. Details: MCP pxsig_rejected. After the fix: pxsig check a--b. Never approve.'
+    'pxsig rejected a--b (p, accessibility): "No reason given.". Goal: fix the violations. Details: MCP pxsig_rejected. After the fix: pxsig check a--b. Never approve. ' +
+      NO_MASK_FIX
   );
   assert.equal(packetFolder('a11y', 'a--b@dark'), 'reports/rejected/a--b@dark.a11y/');
 });

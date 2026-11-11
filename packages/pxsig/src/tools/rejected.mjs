@@ -25,6 +25,7 @@ import {
   viaLabel,
 } from '../lib/rejections/prompt.mjs';
 import { ctxOf, ID_RE, MAX_IMAGE_BYTES, PROJECT, readJson, stateOf, text } from './context.mjs';
+import { NO_MASK_FIX } from '../lib/assistants.mjs';
 
 /** @import { McpContent, ReviewFile, CheckReport } from '../types/t6.js' */
 /**
@@ -277,7 +278,8 @@ export const rejectedTools = /** @type {const} */ ([
   {
     name: 'pxsig_rejected',
     description:
-      "The reviewer's rejections, with the reason and the changed regions at full size: read before a visual fix. Each open rejection: the reasons (newest first; `from` says who gave each, and an assistant's is labelled as one), the checks since, the metrics, the changed regions with their crops, the packet folder, a paragraph for the fix (`prompt`) and the re-check command (`next`). Paths are relative to the store (`store`, relative to the workspace). Crops are file references by default; `images: \"crops\"` returns them inline, `full` also the baseline, current and mask images (at most 18 images per call). `closed: true`: the last closed rejections, text only. Read-only; needs no server. Never approve: approving is the person's.",
+      "The reviewer's rejections, with the reason and the changed regions at full size: read before a visual fix. Each open rejection: the reasons (newest first; `from` says who gave each, and an assistant's is labelled as one), the checks since, the metrics, the changed regions with their crops, the packet folder, a paragraph for the fix (`prompt`) and the re-check command (`next`). Paths are relative to the store (`store`, relative to the workspace). Crops are file references by default; `images: \"crops\"` returns them inline, `full` also the baseline, current and mask images (at most 18 images per call). `closed: true`: the last closed rejections, text only. Read-only; needs no server. Never approve: approving is the person's. " +
+      NO_MASK_FIX,
     inputSchema: {
       type: 'object',
       properties: {
