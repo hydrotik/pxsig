@@ -12,10 +12,11 @@
  * there. Option `snapshot: false` leaves it out. The snapshot never fails a build: without pxsig,
  * or when the command fails, one warning line and no file.
  */
-const { spawnSync } = require('child_process');
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
+import { spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 /** @typedef {import('./types.js').PresetOptions} PresetOptions */
 /** @typedef {import('./types.js').ServerFile} ServerFile */
 /** @typedef {import('./types.js').WorkspaceFile} WorkspaceFile */
@@ -80,7 +81,7 @@ function servers(options) {
  * @param {PresetOptions | undefined} options
  * @returns {string | null}
  */
-function workspaceIdOf(options) {
+export function workspaceIdOf(options) {
   const ws = options?.configDir ? workspaceOf(options.configDir) : null;
   if (!ws) return null;
   let real = path.resolve(ws);
@@ -160,22 +161,21 @@ let made;
  * @param {SnapshotDeps} [deps]
  * @returns {Promise<StaticDir[]>}
  */
-async function staticDirs(dirs = [], options = {}, deps) {
+export async function staticDirs(dirs = [], options = {}, deps) {
   if (options.configType !== 'PRODUCTION' || options.snapshot === false) return dirs;
   if (deps || made === undefined) made = writeSnapshot(options, deps);
   return made ? [...dirs, { from: made, to: '/' }] : dirs;
 }
 
-module.exports = {
-  staticDirs,
-  workspaceIdOf,
-  managerEntries: (/** @type {string[]} */ entry = []) => [
-    ...entry,
-    path.join(__dirname, 'manager.mjs'),
-  ],
-  managerHead: (
-    /** @type {string | undefined} */ head,
-    /** @type {PresetOptions | undefined} */ options
-  ) =>
-    `${head ?? ''}<script>window.__PXSIG__=${JSON.stringify({ servers: servers(options), workspaceId: workspaceIdOf(options) })}</script>`,
-};
+/** @param {string[]} [entry] */
+export const managerEntries = (entry = []) => [
+  ...entry,
+  fileURLToPath(new URL('./manager.mjs', import.meta.url)),
+];
+
+/**
+ * @param {string | undefined} head
+ * @param {PresetOptions | undefined} options
+ */
+export const managerHead = (head, options) =>
+  `${head ?? ''}<script>window.__PXSIG__=${JSON.stringify({ servers: servers(options), workspaceId: workspaceIdOf(options) })}</script>`;

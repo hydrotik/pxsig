@@ -13,21 +13,34 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const pkg = fileURLToPath(new URL('../../', import.meta.url));
 const require = createRequire(import.meta.url);
-/** @type {{ name: string, main: string, files: string[] }} */
+/** @type {{ name: string, type: string, main: string, files: string[] }} */
 const manifest = JSON.parse(readFileSync(join(pkg, 'package.json'), 'utf8'));
-/** @type {typeof import('../../preset.cjs')} */
-const preset = require(manifest.name);
+/** @type {typeof import('../../preset.mjs')} */
+const preset = await import(manifest.name);
+const HOOKS = /** @type {const} */ (['managerEntries', 'managerHead', 'staticDirs']);
 
 test('every file the manifest lists is in the package', () => {
   for (const f of manifest.files) assert.ok(existsSync(join(pkg, f)), f);
   assert.ok(existsSync(join(pkg, manifest.main)), manifest.main);
 });
 
-test('the package and its ./preset export resolve to one preset with the hooks Storybook calls', () => {
-  assert.equal(require(`${manifest.name}/preset`), preset);
-  for (const hook of /** @type {const} */ (['managerEntries', 'managerHead', 'staticDirs']))
-    assert.equal(typeof preset[hook], 'function', hook);
+test('the package and its ./preset export resolve to one preset with the hooks Storybook calls', async () => {
+  assert.equal(manifest.type, 'module');
+  assert.equal(await import(`${manifest.name}/preset`), preset);
+  // Storybook imports the preset and uses `mod.default ?? mod`: the hooks are named exports.
+  assert.equal(/** @type {Record<string, unknown>} */ (preset).default, undefined);
+  for (const hook of HOOKS) assert.equal(typeof preset[hook], 'function', hook);
 });
+
+test(
+  'require() of the package gives the same preset',
+  { skip: !process.features.require_module && 'this Node cannot require an ES module' },
+  () => {
+    /** @type {typeof import('../../preset.mjs')} */
+    const required = require(manifest.name);
+    for (const hook of HOOKS) assert.equal(required[hook], preset[hook], hook);
+  }
+);
 
 test('managerEntries keeps the entries given and adds the shipped manager.mjs', () => {
   const entries = preset.managerEntries(['other-addon/manager']);

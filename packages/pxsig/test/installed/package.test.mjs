@@ -82,3 +82,24 @@ test('the UI catalog exports and the JSON schemas parse', () => {
   }
   assert.ok(existsSync(join(pkg, 'README.md')), 'README.md');
 });
+
+test("this host's engine package resolves as pxsig finds it, by require and by import", async (t) => {
+  const name = `@pxsig/cli-${process.platform}-${process.arch}`;
+  const exe = process.platform === 'win32' ? 'pxsig.exe' : 'pxsig';
+  /** @type {string} */
+  let bin;
+  try {
+    // As rustBinary() resolves it (lib/workspace/peers.mjs).
+    bin = require.resolve(`${name}/bin/${exe}`);
+  } catch {
+    t.skip(
+      `${name} is not installed (a source checkout, or an install without optional dependencies)`
+    );
+    return;
+  }
+  assert.ok(statSync(bin).isFile(), bin);
+  assert.equal(fileURLToPath(import.meta.resolve(`${name}/bin/${exe}`)), bin);
+  // The package's own entries: index.js for import, index.cjs for require.
+  assert.equal((await import(name)).default, bin);
+  assert.equal(require(name), bin);
+});

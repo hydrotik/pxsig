@@ -3,7 +3,7 @@
  * (manager.mjs). Several workspaces can each run `pxsig serve`, and the default port belongs to
  * whichever started first, so the server's `GET /__pxsig/status` answer names its workspace
  * (`workspaceId`, lib/workspace/peers.mjs in pxsig) and the preset hands the manager this
- * Storybook's own (preset.cjs).
+ * Storybook's own (preset.mjs).
  */
 
 /** The address every pxsig server tries first: any workspace's may be listening there. */

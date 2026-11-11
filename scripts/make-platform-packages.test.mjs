@@ -11,11 +11,11 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { leftLinks } from './lib/doc-links.mjs';
 
-/** @typedef {{ name: string, version: string, license?: string, repository?: { type: string, url: string }, os?: string[], cpu?: string[], libc?: string[], files?: string[], bin?: unknown, main?: string, author?: string, homepage?: string, bugs?: { url: string } }} PlatformManifest */
+/** @typedef {{ name: string, version: string, license?: string, repository?: { type: string, url: string }, os?: string[], cpu?: string[], libc?: string[], files?: string[], bin?: unknown, type?: string, main?: string, exports?: unknown, author?: string, homepage?: string, bugs?: { url: string } }} PlatformManifest */
 
 const script = fileURLToPath(new URL('./make-platform-packages.mjs', import.meta.url));
 const repo = fileURLToPath(new URL('..', import.meta.url));
@@ -67,14 +67,21 @@ test('every platform package is named, restricted and laid out as rustBinary() r
       assert.deepEqual(m.libc, platform === 'linux' ? ['glibc'] : undefined, `${id}: libc`);
       // The engine is found by path, not run through a `bin` link.
       assert.equal(m.bin, undefined, `${id}: bin`);
-      assert.deepEqual(m.files, ['bin', 'index.js', 'test', 'LICENSE']);
+      assert.deepEqual(m.files, ['bin', 'index.js', 'index.cjs', 'test', 'LICENSE']);
       assert.equal(m.license, 'MIT');
       assert.equal(m.repository?.url, 'git+https://github.com/hydrotik/pxsig.git');
       // Registry scanners (Socket) read these: author, website, bug tracker, an entry, a test.
       assert.equal(m.author, 'Donovan Adams (Hydrotik LLC)');
       assert.equal(m.homepage, 'https://github.com/hydrotik/pxsig#readme');
       assert.deepEqual(m.bugs, { url: 'https://github.com/hydrotik/pxsig/issues' });
-      assert.equal(m.main, 'index.js');
+      // ESM (Socket's check), with a CommonJS entry for `require` and the binary exported by path.
+      assert.equal(m.type, 'module');
+      assert.equal(m.main, 'index.cjs');
+      assert.deepEqual(m.exports, {
+        '.': { import: './index.js', require: './index.cjs' },
+        './bin/*': './bin/*',
+        './package.json': './package.json',
+      });
       assert.ok(existsSync(join(out, `cli-${id}`, 'test', 'binary.test.js')), `${id}: self-test`);
       const bin = join(out, `cli-${id}`, 'bin', exeOf(id));
       assert.equal(readFileSync(bin, 'utf8'), `engine for ${id}\n`, `${id}: bin/${exeOf(id)}`);
@@ -128,7 +135,7 @@ test('each README names its package, platform, target and binary, with links pin
       // What `pack-manifest.mjs --check` refuses in a packed README: links to main, or to a file
       // the package does not hold.
       assert.deepEqual(
-        leftLinks(md, (p) => ['LICENSE', 'index.js'].includes(p)),
+        leftLinks(md, (p) => ['LICENSE', 'index.js', 'index.cjs'].includes(p)),
         [],
         id
       );
@@ -164,6 +171,7 @@ test(
         'LICENSE',
         'README.md',
         'bin/pxsig',
+        'index.cjs',
         'index.js',
         'package.json',
         'test/binary.test.js',
@@ -184,7 +192,8 @@ test(
       const src = join(dir, 'artifacts', `pxsig-${id}`);
       mkdirSync(src, { recursive: true });
       writeFileSync(join(src, 'pxsig'), '#!/bin/sh\necho "pxsig 1.2.3"\n');
-      const out = join(dir, 'out');
+      // Where npm installs it, beside the pxsig that looks it up.
+      const out = join(dir, 'node_modules', '@pxsig');
       const r = run([
         '--version',
         '1.2.3',
@@ -197,16 +206,39 @@ test(
       ]);
       assert.equal(r.status, 0, r.stderr);
       const pkg = join(out, `cli-${id}`);
-      const entry = spawnSync(process.execPath, ['-p', `require(${JSON.stringify(pkg)})`], {
+      // __dirname and import.meta.url are the real path (macOS's temp folder is behind a symlink).
+      const binary = join(realpathSync(pkg), 'bin', 'pxsig');
+      const required = spawnSync(process.execPath, ['-p', `require(${JSON.stringify(pkg)})`], {
         encoding: 'utf8',
       });
-      // __dirname is the real path (macOS's temp folder is behind a symlink).
-      assert.equal(entry.stdout.trim(), join(realpathSync(pkg), 'bin', 'pxsig'));
+      assert.equal(required.stdout.trim(), binary, required.stderr);
+      // As rustBinary() resolves it (require) and as an ES module importer would (import).
+      const probe = join(dir, 'node_modules', 'pxsig', 'probe.mjs');
+      mkdirSync(dirname(probe), { recursive: true });
+      writeFileSync(
+        probe,
+        `import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+const name = '@pxsig/cli-${id}';
+console.log(JSON.stringify({
+  require: createRequire(import.meta.url).resolve(\`\${name}/bin/pxsig\`),
+  import: fileURLToPath(import.meta.resolve(\`\${name}/bin/pxsig\`)),
+  default: (await import(name)).default,
+}));
+`
+      );
+      const resolved = spawnSync(process.execPath, [probe], { encoding: 'utf8' });
+      assert.equal(resolved.status, 0, resolved.stderr);
+      assert.deepEqual(JSON.parse(resolved.stdout), {
+        require: binary,
+        import: binary,
+        default: binary,
+      });
       // A run of its own, not a subtest of this one (node:test sets NODE_TEST_CONTEXT).
       const { NODE_TEST_CONTEXT: _, ...env } = process.env;
       const self = spawnSync(process.execPath, ['--test'], { cwd: pkg, encoding: 'utf8', env });
       assert.equal(self.status, 0, self.stdout + self.stderr);
-      assert.match(self.stdout, /^# pass 1$/m);
+      assert.match(self.stdout, /^# pass 2$/m);
       // A binary that does not run fails it.
       writeFileSync(join(pkg, 'bin', 'pxsig'), '#!/bin/sh\nexit 1\n');
       assert.notEqual(spawnSync(process.execPath, ['--test'], { cwd: pkg, env }).status, 0);
