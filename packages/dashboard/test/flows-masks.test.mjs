@@ -152,3 +152,50 @@ test('large masks: an open item while there are any, the filter and the card bad
     await p2.close();
   }
 });
+
+test('a moved or recounted mask is named, and masks no approval passes say so first', async (t) => {
+  // Mask audit 7 (count and boxes compared) and decision 2 (over 50% or the story root fails).
+  if (skip) return t.skip(skip);
+  const id = 'ui-order-row--default';
+  const blocked = row(id, {
+    pass: false,
+    changed: true,
+    metrics: { ssim: 1, changedCells: 0, grid: 64, identical: true },
+    reasons: [
+      'masks changed: 1 moved, 1 changed count',
+      'masks cover 62% of the capture, over 50%',
+    ],
+    masks: [
+      { selector: '.id', source: 'project', area: 0.3 },
+      { selector: '.stamp', source: 'story', area: 0.32 },
+    ],
+    masksChanged: { added: [], removed: [], grew: [], moved: ['.id'], count: ['.stamp'] },
+    masksBaseline: [
+      { selector: '.id', source: 'project', area: 0.3 },
+      { selector: '.stamp', source: 'story', area: 0.32 },
+    ],
+    masksBlocked: { coverage: 0.62 },
+  });
+  const d = data({ rows: [blocked], entries: [entry(id, issue)] });
+  const { page, errors } = await open(d, { hash: `#inspect=${id}`, images: same });
+  try {
+    await ready(page);
+    const side = page.locator('aside');
+    assert.ok(
+      await side
+        .getByText(
+          'No approval passes this entry until the masks are smaller: masks cover 62% of the capture, over 50%.',
+          { exact: true }
+        )
+        .isVisible()
+    );
+    assert.ok(await side.getByText('2 masks changed since the baseline.').isVisible());
+    assert.deepEqual(await lines(page), [
+      'Moved.idProject · Baseline 30% · render 30%',
+      'Count changed.stampStory · Baseline 32% · render 32%',
+    ]);
+    assert.deepEqual(errors, []);
+  } finally {
+    await page.close();
+  }
+});

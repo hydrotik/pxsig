@@ -91,7 +91,19 @@ export interface Row {
   masks?: MaskRecord[];
   masksLarge?: Omit<MaskRecord, 'reason'>[];
   /** The masks differ from the baseline's (the row fails as "masks changed"): selectors. */
-  masksChanged?: { added: string[]; removed: string[]; grew: string[] };
+  masksChanged?: {
+    added: string[];
+    removed: string[];
+    grew: string[];
+    moved?: string[];
+    count?: string[];
+  };
+  /** Masks no approval passes (over 50% of the capture together, or on the story root). */
+  masksBlocked?: {
+    coverage?: number;
+    root?: string[];
+    problems?: { kind: 'container' | 'reason' | 'unmeasured'; element: string }[];
+  };
   /** The baseline's masks, set with `masksChanged`. */
   masksBaseline?: MaskRecord[];
 }

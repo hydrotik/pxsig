@@ -507,7 +507,7 @@ Files: `src/inspector/Header`, `src/inspector/textSay`, `src/inspector/side/Text
 
 ### Masks
 
-`inspector.masks` · The masks on the entry's render (`data-volatile` elements, a story's `ignore`, `capture.ignore` of the project or workspace): in the side panel, after Pixel Changes, a Masks section with each mask's selector, where it came from, its reason and its share of the capture; when the masks changed since the baseline, Added, Removed or Grew and both shares. A masks-only change (the masks failed the entry and no pixel differs) says so in the change stepper and Pixel Changes, and puts the Masks section first. In the header and on the entry's card, Masks changed and Large mask (a mask over 25% of the capture, a warning, never a verdict); Overview lists the entries with a large mask while there are any, and Review Stories filters them.
+`inspector.masks` · The masks on the entry's render (`data-volatile` elements, a story's `ignore`, `capture.ignore` of the project or workspace): in the side panel, after Pixel Changes, a Masks section with each mask's selector, where it came from, its reason and its share of the capture; when the masks changed since the baseline, Added, Removed, Grew, Count changed or Moved and both shares; masks no approval passes (over 50% of the capture together, or on the story root) say so first, with the reasons. A masks-only change (the masks failed the entry and no pixel differs) says so in the change stepper and Pixel Changes, and puts the Masks section first. In the header and on the entry's card, Masks changed and Large mask (a mask over 25% of the capture, a warning); Overview lists the entries with a large mask while there are any, and Review Stories filters them.
 
 Interactions:
 

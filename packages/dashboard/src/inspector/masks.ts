@@ -8,7 +8,7 @@ import type { MaskRecord, Row } from '../data';
 import type { Analysis } from './analyse';
 
 /** How a mask compares with the baseline's. */
-export type MaskState = 'added' | 'removed' | 'grew' | 'same';
+export type MaskState = 'added' | 'removed' | 'grew' | 'count' | 'moved' | 'same';
 
 /** One mask as the Masks section lists it: its area before (the baseline) and after (the render). */
 export interface MaskLine {
@@ -49,7 +49,11 @@ export function maskLines(row: Row): MaskLine[] {
         ? 'removed'
         : ch?.grew.includes(sel)
           ? 'grew'
-          : 'same';
+          : ch?.count?.includes(sel)
+            ? 'count'
+            : ch?.moved?.includes(sel)
+              ? 'moved'
+              : 'same';
   const now = (row.masks ?? []).map((m) => ({
     selector: m.selector,
     source: m.source,
@@ -76,3 +80,25 @@ export function maskLines(row: Row): MaskLine[] {
     });
   return [...now, ...gone];
 }
+
+/** Selectors that changed in any way since the baseline, each once. */
+export const changedMasks = (row: Row) => {
+  const ch = row.masksChanged;
+  return ch
+    ? new Set([...ch.added, ...ch.removed, ...ch.grew, ...(ch.count ?? []), ...(ch.moved ?? [])])
+        .size
+    : 0;
+};
+
+/** How the engine starts each reason no approval passes (crates/pxsig-cli/src/batch/masks.rs). */
+const BLOCKED = [
+  'masks cover ',
+  'a mask covers the story root',
+  'mask on a container',
+  'mask needs a reason',
+  'mask not measured',
+];
+
+/** Why no approval passes the entry: the row's reasons the masks gave it, as the engine wrote them. */
+export const blockedReasons = (row: Row) =>
+  row.masksBlocked ? (row.reasons ?? []).filter((r) => BLOCKED.some((b) => r.startsWith(b))) : [];

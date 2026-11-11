@@ -1,14 +1,15 @@
 /**
  * The inspector's Masks section (side/Side.tsx): the masks on the render (masks.ts), one item
- * each: how it compares with the baseline (Added, Removed, Grew) and Over 25% for a large one, the
- * selector, then where it came from, its reason and its share of the capture (the baseline's and
- * the render's when the masks changed). After Pixel Changes; first when the change is masks-only.
+ * each: how it compares with the baseline (Added, Removed, Grew, Count changed, Moved) and Over 25%
+ * for a large one, the selector, then where it came from, its reason and its share of the capture
+ * (the baseline's and the render's when the masks changed). Masks no approval passes say so first.
+ * After Pixel Changes; first when the change is masks-only.
  */
 import { Badge } from '@ui';
 import { t } from '../../copy';
 import * as s from '../../dashboard.css';
 import { fmt, type Row } from '../../data';
-import { maskLines } from '../masks';
+import { blockedReasons, changedMasks, maskLines } from '../masks';
 
 /** A share of the capture, with one decimal under 10%. */
 const share = (v: number | null) =>
@@ -18,10 +19,16 @@ export function MasksSection({ row }: { row: Row }) {
   const lines = maskLines(row);
   if (!lines.length) return null;
   const ch = row.masksChanged;
-  const changed = ch ? ch.added.length + ch.removed.length + ch.grew.length : 0;
+  const changed = changedMasks(row);
+  const blocked = blockedReasons(row);
   return (
     <section className={s.sideSection}>
       <h3 className={s.sectionTitle}>{t('inspector.sections.masks')}</h3>
+      {blocked.length ? (
+        <span className={s.small}>
+          {t('inspector.masks.blocked', { reasons: blocked.join('; ') })}
+        </span>
+      ) : null}
       {changed ? (
         <span className={s.small}>{t('inspector.masks.changed', { count: changed })}</span>
       ) : null}

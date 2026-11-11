@@ -1265,19 +1265,19 @@
         },
         "recorded": {
           "term": "Recorded",
-          "meaning": "Each render records its masks: the selector, where it came from (data-volatile, story, project or workspace), the reason and its share of the capture. An approved baseline keeps them. The inspector's Masks section lists them."
+          "meaning": "Each render records its masks: the selector, where it came from (data-volatile, story, project or workspace), the reason, the elements matched and their boxes. Every approved baseline keeps them, none as an empty list. The inspector's Masks section lists them."
         },
         "changed": {
           "term": "Masks changed",
-          "meaning": "A mask added, removed or grown since the baseline fails the entry with the reason masks changed, for a person to approve, whatever the pixels. When no pixel differs, the change stepper reads Masks changed and the Masks section, first in the side panel, gives each mask's share in the baseline and in the render."
+          "meaning": "A mask added, removed, grown by any pixel, moved or matching another number of elements since the baseline fails the entry with the reason masks changed, for a person to approve, whatever the pixels. When no pixel differs, the change stepper reads Masks changed and the Masks section, first in the side panel, gives each mask's share in the baseline and in the render."
         },
         "large": {
-          "term": "Masks over 25%",
-          "meaning": "A mask over 25% of the capture is a warning, never a failure: most changes under it would pass. Marked Large mask on the entry and its card, counted in Open items, listed by the Masks over 25% of the capture filter."
+          "term": "Masks over 25% and 50%",
+          "meaning": "One mask over 25% of the capture is a warning: most changes under it would pass. Marked Large mask on the entry and its card, counted in Open items, listed by the Masks over 25% of the capture filter. All of an entry's masks together over 50% of the capture, or a mask on the story root, fail the entry, and no approval passes it until the masks are smaller."
         },
         "adoption": {
           "term": "Adopting masks",
-          "meaning": "Marking a component data-volatile, or a new capture.ignore, gives one masks changed entry per entry it applies to, approved once. Story masks against a baseline approved before masks were recorded are not a change."
+          "meaning": "Marking a component data-volatile, or a new capture.ignore, gives one masks changed entry per entry it applies to, approved once. A story's ignore against a baseline approved with 0.7.6 or earlier is not a change where that baseline's image shows it painted."
         }
       }
     }
@@ -1687,6 +1687,9 @@
       "added": "Added",
       "removed": "Removed",
       "grew": "Grew",
+      "moved": "Moved",
+      "count": "Count changed",
+      "blocked": "No approval passes this entry until the masks are smaller: {reasons}.",
       "large": "Over 25%",
       "area": "{area} of the capture",
       "areas": "Baseline {before} · render {after}",
