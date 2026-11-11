@@ -62,9 +62,10 @@ A project is a package under test: its own stories, its own store, and an entry 
 
 - **No config of its own.** The adapter's folder has no `pxsig.config.json`, and
   `pxsig.workspace.json` has no `projects` entry for it. Registered as a project, it shows in the
-  project picker with no entries. In a workspace, `pxsig doctor` reports a `pxsig.config.json`
-  that no entry lists as `project-unlisted`; in an adapter's folder, the fix is to delete that
-  file.
+  project picker with no entries. `pxsig doctor` reports a project with no stories as
+  `project-empty`, and an adapter registered as a project is the usual cause. In a workspace,
+  `pxsig doctor` reports a `pxsig.config.json` that no entry lists as `project-unlisted`; in an
+  adapter's folder, the fix is to delete that file.
 - **Where it lives.** Usually a folder inside the project whose dashboard it builds (`pxsig-ui/`).
   Any folder a relative path reaches also works, a package of its own in a monorepo among them; it
   is still not a project.
