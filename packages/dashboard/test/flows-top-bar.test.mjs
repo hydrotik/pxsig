@@ -72,6 +72,8 @@ test('More is a menu button: arrows, Home, End and Escape, focus back on the but
     const items = menu.getByRole('menuitem');
     const focused = () => page.evaluate(() => document.activeElement?.firstChild?.textContent);
     const names = await items.evaluateAll((all) => all.map((a) => a.firstChild?.textContent));
+    // The menu focuses its first item on the frame after it opens.
+    await page.waitForFunction(() => document.activeElement?.getAttribute('role') === 'menuitem');
     assert.equal(await focused(), names[0], 'ArrowDown opens it on the first item');
     await page.keyboard.press('End');
     assert.equal(await focused(), names.at(-1));
