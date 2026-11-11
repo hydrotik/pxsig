@@ -46,6 +46,8 @@ export interface PsigHeader {
   record?: Record<string, unknown>;
   encryption?: string;
   sections?: PsigSection[];
+  /** 0.7.7 and later: the masks that applied to the render (crates/pxsig-cli/src/batch/masks.rs). */
+  masks?: { v: number; masks: import('./run.js').MaskRecord[] };
 }
 
 // --- manifest (lib/manifest.mjs; docs/spec.md section 6) -----------------------------------------

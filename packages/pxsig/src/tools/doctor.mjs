@@ -28,6 +28,7 @@ import { brief, ctxOf, load, PROBLEMS, stateOf } from './context.mjs';
 import { preflight } from './preflight.mjs';
 import { reactFindings } from '../lib/react/doctor.mjs';
 import { textFindings } from '../lib/text/doctor.mjs';
+import { maskFindings } from '../lib/capture/doctor.mjs';
 
 /** @import { CheckToolResult, DoctorOptions } from '../types/t6.js' */
 /** @import { ProjectContext } from './context.mjs' */
@@ -133,6 +134,8 @@ async function doctor({
     react: reactFindings(C.P),
     // Text capture (lib/text/doctor.mjs): on or off, the baselines with a text record; never the exit.
     text: textFindings(C.P),
+    // Masks (lib/capture/doctor.mjs): the attribute, the config's with their layer; never the exit.
+    masks: maskFindings(C.P),
     sources: ledger.sources,
     components: {
       total: comps.length,

@@ -9,6 +9,7 @@ import { ask, progress, stateCell } from '../lib/term.mjs';
 import { describeAgent } from '../lib/agents.mjs';
 import { preflightReport } from './preflight.mjs';
 import { textSuffix } from '../lib/text/say.mjs';
+import { maskLine, maskTable } from '../lib/capture/doctor.mjs';
 import {
   appendReadiness,
   describeEnforcement,
@@ -307,6 +308,7 @@ export function doctorParts(cli) {
           ...r.text
             .filter((x) => x.severity === 'info')
             .map((x) => /** @type {[string, Cell]} */ (['Text', x.text])),
+          ['Masks', maskLine(r.masks)],
           [
             'Running under',
             r.agent ? describeAgent(r.agent) : { text: 'no agent marker', color: 'gray' },
@@ -326,6 +328,7 @@ export function doctorParts(cli) {
         ],
       },
     ];
+    blocks.push(...maskTable(r.masks.config));
     if (r.components.total) {
       blocks.push({
         h: flags.component || flags.status ? 'Components' : 'Components needing attention',
