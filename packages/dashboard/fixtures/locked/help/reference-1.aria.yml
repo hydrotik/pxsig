@@ -123,6 +123,28 @@
   - definition: A baseline approved before text capture, or with it off. One is recorded at its next approval; nothing rewrites a baseline on its own.
   - term: Turning it off
   - definition: "\"text\": false in pxsig.config.json, or defaults.text in pxsig.workspace.json; --no-text; PXSIG_TEXT=off. text.ignore lists selectors whose text is never recorded."
+  - heading "Values That Vary" [level=3]
+  - paragraph: Times, relative dates, commit hashes, build numbers and generated ids differ from run to run. Fixed data first, so the value is still compared; a mask when it cannot be fixed.
+  - term: Fixed data first
+  - definition: A fixed value is compared like any other; a mask compares nothing inside it. Give the story the value instead of reading it at render time.
+  - term: A fixed clock
+  - definition: "Pass the time in as an arg (now: new Date('2026-01-01T00:00:00Z')), or set the clock before the story renders, and format relative times against it."
+  - term: Fixed ids
+  - definition: "Pass ids in (id: 'order-1001') or seed the generator, instead of crypto.randomUUID() or a counter shared between stories."
+  - term: A fixed hash
+  - definition: "The commit or build as an arg the story sets (commit: '0000000'), not one read from the build."
+  - term: data-volatile
+  - definition: "When the value cannot be fixed, the component's author marks the element that shows it: <time data-volatile=\"relative time\">. Every project that renders the component masks it, with no configuration. The inside of the box is painted over before the screenshot; its size and position are still compared. The value is the reason shown with the mask."
+  - term: capture.ignore · capture.addIgnore
+  - definition: Selectors masked in every story of a project (pxsig.config.json), or of every project (defaults in pxsig.workspace.json). capture.ignore replaces the inherited list; capture.addIgnore adds to it. A story's own ignore masks that story only.
+  - term: Recorded
+  - definition: "Each render records its masks: the selector, where it came from (data-volatile, story, project or workspace), the reason and its share of the capture. An approved baseline keeps them. The inspector's Masks section lists them."
+  - term: Masks changed
+  - definition: A mask added, removed or grown since the baseline fails the entry with the reason masks changed, for a person to approve, whatever the pixels. When no pixel differs, the change stepper reads Masks changed and the Masks section, first in the side panel, gives each mask's share in the baseline and in the render.
+  - term: Masks over 25%
+  - definition: "A mask over 25% of the capture is a warning, never a failure: most changes under it would pass. Marked Large mask on the entry and its card, counted in Open items, listed by the Masks over 25% of the capture filter."
+  - term: Adopting masks
+  - definition: Marking a component data-volatile, or a new capture.ignore, gives one masks changed entry per entry it applies to, approved once. Story masks against a baseline approved before masks were recorded are not a change.
   - heading "Coverage Statuses" [level=3]
   - paragraph: Shown in the Coverage section, and as extra badges on a card when an entry has a coverage issue.
   - term: Not registered

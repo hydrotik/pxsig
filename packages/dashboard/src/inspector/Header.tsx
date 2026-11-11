@@ -4,6 +4,7 @@ import { Badge, Button, type DialogDescription, type DialogTitle } from '@ui';
 import { type Data, type Row, statusOf } from '../data';
 import { t } from '../copy';
 import * as s from '../dashboard.css';
+import { MaskBadges } from '../parts/MaskBadges';
 import { StatusOf } from '../parts/StatusOf';
 import type { storybookLink } from '../storybook-link.mjs';
 import type { InspectTarget } from './Inspector';
@@ -63,6 +64,8 @@ export function Header({
               {textBadge(row.textDiff)}
             </Badge>
           ) : null}
+          {/* Masks (side/MasksSection.tsx): a change, or a mask over 25% of the capture. */}
+          <MaskBadges row={row} />
           {siblingToggle}
           <span className={`${s.micro} ${s.clip}`}>
             {target!.scenario

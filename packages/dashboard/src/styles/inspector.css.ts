@@ -394,6 +394,10 @@ globalStyle(`${resources} li`, {
 // A violation: impact and rule on the first line; its tag and action wrap below when narrow.
 export const a11yItem = style({ flexWrap: 'wrap', rowGap: v.space['1'] });
 export const a11yRule = style({ flex: '1 1 9rem', minInlineSize: 0, overflowWrap: 'anywhere' });
+// A mask's selector, and its source, reason and share: each its own line (side/MasksSection.tsx).
+export const maskMeta = style({ flexBasis: '100%' });
+// The masks apart from one another, each one's lines close (side/MasksSection.tsx).
+export const maskList = style({ gap: v.space['3'] });
 export const grow = style({
   flex: 1,
   minInlineSize: 0,

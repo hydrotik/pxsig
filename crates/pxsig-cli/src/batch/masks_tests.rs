@@ -134,6 +134,11 @@ fn the_same_masks_pass_and_a_changed_one_fails_with_its_reason() {
     );
     assert_eq!(r["reasons"], json!(["masks changed: 1 added, 1 grew"]));
     assert_eq!(r["note"], json!("masks changed: 1 added, 1 grew"));
+    // The baseline's masks beside the render's, for the reviewer to compare.
+    assert_eq!(
+        r["masksBaseline"],
+        json!([{ "selector": ".clock", "source": "project", "area": 0.0625 }])
+    );
     fs::remove_file(png.with_extension("masks.json")).unwrap();
     let r = row(&d, None);
     assert_eq!(r["masksChanged"]["removed"], json!([".clock"]), "{r}");

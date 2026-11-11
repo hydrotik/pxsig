@@ -1,7 +1,8 @@
 /**
  * The inspector's side panel (Inspector.tsx): its sections in order. View (in the Storybook panel
- * only), Pixel, Pixel Changes, Text (a row with text labels), Metrics, Accessibility, React (not in
- * the panel) and Files, each shown as Inspector.tsx decides from what it computed; nothing is
+ * only), Pixel, Pixel Changes, Masks (a row with masks; before Pixel Changes for a masks-only
+ * change, masks.ts), Text (a row with text labels), Metrics, Accessibility, React (not in the
+ * panel) and Files, each shown as Inspector.tsx decides from what it computed; nothing else is
  * computed here.
  */
 import * as s from '../../dashboard.css';
@@ -9,6 +10,8 @@ import type { Analysis } from '../analyse';
 import { A11ySection } from './A11ySection';
 import { ChangesSection } from './ChangesSection';
 import { FilesSection, packetsOf } from './FilesSection';
+import { masksOnly } from '../masks';
+import { MasksSection } from './MasksSection';
 import { MetricsSection } from './MetricsSection';
 import { PixelSection } from './PixelSection';
 import { ReactSection } from './ReactSection';
@@ -20,8 +23,11 @@ type P<T extends (props: never) => unknown> = Parameters<T>[0];
 
 /** What the sections take, from Inspector.tsx (`analysis` and `m` may be missing). */
 export type SideProps = P<typeof PixelSection> &
-  Omit<P<typeof ViewSection>, 'pixels'> &
-  Omit<P<typeof ChangesSection>, 'analysis' | 'loaded' | 'W' | 'H' | 'tol' | 'regions' | 'region'> &
+  Omit<P<typeof ViewSection>, 'pixels' | 'masksOnly'> &
+  Omit<
+    P<typeof ChangesSection>,
+    'analysis' | 'loaded' | 'W' | 'H' | 'tol' | 'regions' | 'region' | 'masksOnly'
+  > &
   Omit<P<typeof MetricsSection>, 'm'> &
   P<typeof A11ySection> &
   Omit<P<typeof FilesSection>, 'sb' | 'packets'> &
@@ -64,6 +70,8 @@ export function InspectorSide({
   focusBox,
   detailOnly,
 }: SideProps) {
+  const onlyMasks = masksOnly(row, analysis);
+  const masks = <MasksSection row={row} />;
   return (
     <aside className={s.insSide}>
       {embedded ? (
@@ -73,6 +81,7 @@ export function InspectorSide({
           regions={regions}
           region={region}
           stepRegion={stepRegion}
+          masksOnly={onlyMasks}
         />
       ) : null}
       <PixelSection
@@ -87,6 +96,7 @@ export function InspectorSide({
         tol={tol}
       />
 
+      {onlyMasks ? masks : null}
       {pixels && analysis ? (
         <ChangesSection
           analysis={analysis}
@@ -100,8 +110,10 @@ export function InspectorSide({
           setTol={setTol}
           originals={originals}
           detailOnly={detailOnly}
+          masksOnly={onlyMasks}
         />
       ) : null}
+      {onlyMasks ? null : masks}
 
       <TextSection key={row.id} row={row} focusBox={focusBox} />
 

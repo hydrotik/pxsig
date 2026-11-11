@@ -372,8 +372,10 @@ A rendered row whose render had masks ([configuration.md](configuration.md#masks
 `masksLarge` (`{ selector, source, area }`): a warning in the check's output, summary.md and
 `check --sarif` (rule `pxsig/large-mask`), never a verdict. When the render's masks differ from
 the baseline's header `masks` (a selector added or removed, or its `area` up by more than 0.001),
-the row has `masksChanged` (`{ added, removed, grew }`, selectors), `pass` is false and `reasons`
-ends with `masks changed: <n> added, <n> removed, <n> grew`. A selector is a mask's identity; its
+the row has `masksChanged` (`{ added, removed, grew }`, selectors) and `masksBaseline` (the
+baseline's masks, as its header keeps them; `[]` when it has none), `pass` is false and `reasons`
+ends with `masks changed: <n> added, <n> removed, <n> grew`. The single-entry `compare` (the
+command and the `serve` method) answers the same fields and verdict. A selector is a mask's identity; its
 source and reason are labels. A baseline without `masks` compares as having none, except that the
 render's story masks (`ignore`, older than the record) are left out against it.
 

@@ -279,6 +279,50 @@ export const INSPECTOR: Feature[] = [
     ],
   },
   {
+    id: 'inspector.masks',
+    section: 'inspector',
+    title: 'Masks',
+    purpose:
+      "The masks on the entry's render (`data-volatile` elements, a story's `ignore`, `capture.ignore` of the project or workspace): in the side panel, after Pixel Changes, a Masks section with each mask's selector, where it came from, its reason and its share of the capture; when the masks changed since the baseline, Added, Removed or Grew and both shares. A masks-only change (the masks failed the entry and no pixel differs) says so in the change stepper and Pixel Changes, and puts the Masks section first. In the header and on the entry's card, Masks changed and Large mask (a mask over 25% of the capture, a warning, never a verdict); Overview lists the entries with a large mask while there are any, and Review Stories filters them.",
+    states: {},
+    interactions: [{ action: 'Open the entries with a large mask from Open items' }],
+    copy: [
+      'inspector.sections.masks',
+      'inspector.masks',
+      'inspector.nav.masksOnly',
+      'inspector.changes.masksOnly',
+      'review.card.masksChanged',
+      'review.card.largeMask',
+      'review.card.largeMaskTitle',
+      'review.filters.masks',
+      'overview.items.masks',
+    ],
+    components: ['Badge'],
+    files: [
+      'inspector/masks',
+      'inspector/side/MasksSection',
+      'inspector/side/Side',
+      'parts/MaskBadges',
+      'inspector/Header',
+      'parts/StoryGrid',
+    ],
+    screens: [
+      {
+        // The Masks section is below the side panel's fold: Pixel Changes, just above it, scrolled
+        // to the panel's top, so both show.
+        scenario: 'masks',
+        hash: '#inspect=ui-activity-row--default',
+        actions: [{ scroll: { role: 'heading', name: 'Pixel Changes', exact: true } }],
+        wait: { role: 'heading', name: 'Masks', exact: true },
+      },
+      {
+        scenario: 'masks',
+        hash: '#overview',
+        wait: { text: 'Entries with masks over 25%', exact: true },
+      },
+    ],
+  },
+  {
     id: 'inspector.session',
     section: 'inspector',
     title: 'Review session',

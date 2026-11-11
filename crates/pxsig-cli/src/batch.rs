@@ -200,6 +200,7 @@ pub use baseline::{
     BaselineOpts, EnvPlan, TrimOpts,
 };
 pub use check::{check, compare_png, detail_json, metrics_json, Artifacts, CheckOpts};
+pub use masks::annotate as annotate_masks;
 
 #[cfg(test)]
 mod baseline_tests;

@@ -12,12 +12,15 @@ export function ViewSection({
   regions,
   region,
   stepRegion,
+  masksOnly,
 }: {
   viewControls: ReactNode;
   pixels: Loaded | null;
   regions: Analysis['regions'];
   region: number;
   stepRegion: (d: number) => unknown;
+  /** A masks-only change (masks.ts): said in place of "No changes". */
+  masksOnly: boolean;
 }) {
   return (
     <section className={s.sideSection}>
@@ -40,7 +43,7 @@ export function ViewSection({
                   index: region < 0 ? '–' : region + 1,
                   total: regions.length,
                 })
-              : t('inspector.nav.noChanges')}
+              : t(masksOnly ? 'inspector.nav.masksOnly' : 'inspector.nav.noChanges')}
           </span>
           <IconButton
             size="sm"

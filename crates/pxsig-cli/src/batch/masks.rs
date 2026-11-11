@@ -144,7 +144,9 @@ pub fn reason(ch: &Value) -> String {
 }
 
 /// Add the render's masks to a checked row: `masks` (when any), `masksLarge` (when any is over
-/// `LARGE`), and on a change `masksChanged`, a failing verdict and its reason.
+/// `LARGE`), and on a change `masksChanged`, `masksBaseline` (the baseline's masks, so a reviewer
+/// sees both), a failing verdict and its reason. `check` and the single-entry `compare` both call
+/// it, so the two never disagree.
 pub fn annotate(v: &mut Value, png: &Path, base: Option<&Value>) -> Result<()> {
     let cur = record(png)?;
     if let Some(c) = &cur {
@@ -161,6 +163,7 @@ pub fn annotate(v: &mut Value, png: &Path, base: Option<&Value>) -> Result<()> {
         v["note"] = json!(note.join("; "));
         v["reasons"] = json!(reasons);
         v["masksChanged"] = ch;
+        v["masksBaseline"] = json!(list(base));
         v["pass"] = json!(false);
     }
     Ok(())

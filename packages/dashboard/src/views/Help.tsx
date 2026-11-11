@@ -162,6 +162,19 @@ const REACT_ROWS = [
 ] as const;
 /** The Text Labels rows (help.text.rows). */
 const TEXT_ROWS = ['recorded', 'compared', 'kinds', 'changes', 'noRecord', 'switches'] as const;
+/** The Values That Vary rows (help.masks.rows): fixed data first, then masks. */
+const MASK_ROWS = [
+  'fixed',
+  'clock',
+  'ids',
+  'hash',
+  'attribute',
+  'config',
+  'recorded',
+  'changed',
+  'large',
+  'adoption',
+] as const;
 const COMMANDS: [string, CopyKey][] = [
   ['pxsig check --full', 'help.commands.check'],
   ['pxsig check --since main', 'help.commands.checkChanged'],
@@ -249,6 +262,15 @@ export function Help({ data }: { data: Data }) {
         items={TEXT_ROWS.map((k) => ({
           term: t(`help.text.rows.${k}.term`),
           meaning: t(`help.text.rows.${k}.meaning`),
+          at: [],
+        }))}
+      />
+      <Section
+        title={t('help.masks.title')}
+        description={t('help.masks.description')}
+        items={MASK_ROWS.map((k) => ({
+          term: t(`help.masks.rows.${k}.term`),
+          meaning: t(`help.masks.rows.${k}.meaning`),
           at: [],
         }))}
       />

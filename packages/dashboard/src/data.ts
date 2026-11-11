@@ -22,6 +22,7 @@ export type {
   DetailResult,
   Region,
   A11yViolation,
+  MaskRecord,
   Row,
   CheckReport,
   ScenarioRow,

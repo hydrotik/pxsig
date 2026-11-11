@@ -505,6 +505,20 @@ Copy: `inspector.sections.text`, `inspector.text`
 
 Files: `src/inspector/Header`, `src/inspector/textSay`, `src/inspector/side/TextSection`, `src/inspector/side/Side`, `src/inspector/Inspector`
 
+### Masks
+
+`inspector.masks` · The masks on the entry's render (`data-volatile` elements, a story's `ignore`, `capture.ignore` of the project or workspace): in the side panel, after Pixel Changes, a Masks section with each mask's selector, where it came from, its reason and its share of the capture; when the masks changed since the baseline, Added, Removed or Grew and both shares. A masks-only change (the masks failed the entry and no pixel differs) says so in the change stepper and Pixel Changes, and puts the Masks section first. In the header and on the entry's card, Masks changed and Large mask (a mask over 25% of the capture, a warning, never a verdict); Overview lists the entries with a large mask while there are any, and Review Stories filters them.
+
+Interactions:
+
+- Open the entries with a large mask from Open items
+
+Components: `Badge`
+
+Copy: `inspector.sections.masks`, `inspector.masks`, `inspector.nav.masksOnly`, `inspector.changes.masksOnly`, `review.card.masksChanged`, `review.card.largeMask`, `review.card.largeMaskTitle`, `review.filters.masks`, `overview.items.masks`
+
+Files: `src/inspector/masks`, `src/inspector/side/MasksSection`, `src/inspector/side/Side`, `src/parts/MaskBadges`, `src/inspector/Header`, `src/parts/StoryGrid`
+
 ### Review session
 
 `inspector.session` · A queue (changed, new or accessibility) opened in the inspector with progress, then a summary of what was decided and what to run next.

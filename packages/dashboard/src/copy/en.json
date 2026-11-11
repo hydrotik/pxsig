@@ -175,7 +175,8 @@
       "error": "Render errors",
       "coverage": "Components with coverage errors",
       "a11y": "Entries with new a11y violations",
-      "flaky": "Flaky"
+      "flaky": "Flaky",
+      "masks": "Entries with masks over 25%"
     },
     "components": {
       "one": "{count} component",
@@ -276,7 +277,8 @@
       "approved": "Approved",
       "rejected": "Rejected",
       "skipped": "Not run (unaffected by changes)",
-      "drift": "Any pixel drift (SSIM < 1)"
+      "drift": "Any pixel drift (SSIM < 1)",
+      "masks": "Masks over 25% of the capture"
     },
     "fields": {
       "story": "Story",
@@ -305,7 +307,13 @@
       "a11yAccepted": "A11y accepted",
       "a11yRejected": "A11y rejected",
       "recheck": "Re-check",
-      "recheckTitle": "Render and check this entry again"
+      "recheckTitle": "Render and check this entry again",
+      "masksChanged": "Masks changed",
+      "largeMask": "Large mask",
+      "largeMaskTitle": {
+        "one": "{count} mask over 25% of the capture: {selectors}",
+        "other": "{count} masks over 25% of the capture: {selectors}"
+      }
     },
     "group": {
       "label": "Group",
@@ -1226,6 +1234,52 @@
           "meaning": "\"text\": false in pxsig.config.json, or defaults.text in pxsig.workspace.json; --no-text; PXSIG_TEXT=off. text.ignore lists selectors whose text is never recorded."
         }
       }
+    },
+    "masks": {
+      "title": "Values That Vary",
+      "description": "Times, relative dates, commit hashes, build numbers and generated ids differ from run to run. Fixed data first, so the value is still compared; a mask when it cannot be fixed.",
+      "rows": {
+        "fixed": {
+          "term": "Fixed data first",
+          "meaning": "A fixed value is compared like any other; a mask compares nothing inside it. Give the story the value instead of reading it at render time."
+        },
+        "clock": {
+          "term": "A fixed clock",
+          "meaning": "Pass the time in as an arg (now: new Date('2026-01-01T00:00:00Z')), or set the clock before the story renders, and format relative times against it."
+        },
+        "ids": {
+          "term": "Fixed ids",
+          "meaning": "Pass ids in (id: 'order-1001') or seed the generator, instead of crypto.randomUUID() or a counter shared between stories."
+        },
+        "hash": {
+          "term": "A fixed hash",
+          "meaning": "The commit or build as an arg the story sets (commit: '0000000'), not one read from the build."
+        },
+        "attribute": {
+          "term": "data-volatile",
+          "meaning": "When the value cannot be fixed, the component's author marks the element that shows it: <time data-volatile=\"relative time\">. Every project that renders the component masks it, with no configuration. The inside of the box is painted over before the screenshot; its size and position are still compared. The value is the reason shown with the mask."
+        },
+        "config": {
+          "term": "capture.ignore · capture.addIgnore",
+          "meaning": "Selectors masked in every story of a project (pxsig.config.json), or of every project (defaults in pxsig.workspace.json). capture.ignore replaces the inherited list; capture.addIgnore adds to it. A story's own ignore masks that story only."
+        },
+        "recorded": {
+          "term": "Recorded",
+          "meaning": "Each render records its masks: the selector, where it came from (data-volatile, story, project or workspace), the reason and its share of the capture. An approved baseline keeps them. The inspector's Masks section lists them."
+        },
+        "changed": {
+          "term": "Masks changed",
+          "meaning": "A mask added, removed or grown since the baseline fails the entry with the reason masks changed, for a person to approve, whatever the pixels. When no pixel differs, the change stepper reads Masks changed and the Masks section, first in the side panel, gives each mask's share in the baseline and in the render."
+        },
+        "large": {
+          "term": "Masks over 25%",
+          "meaning": "A mask over 25% of the capture is a warning, never a failure: most changes under it would pass. Marked Large mask on the entry and its card, counted in Open items, listed by the Masks over 25% of the capture filter."
+        },
+        "adoption": {
+          "term": "Adopting masks",
+          "meaning": "Marking a component data-volatile, or a new capture.ignore, gives one masks changed entry per entry it applies to, approved once. Story masks against a baseline approved before masks were recorded are not a change."
+        }
+      }
     }
   },
   "inspector": {
@@ -1284,7 +1338,8 @@
       "nextChange": "Next change (N)",
       "change": "Change {index} / {total}",
       "noChanges": "No changes",
-      "position": "{index} / {total}"
+      "position": "{index} / {total}",
+      "masksOnly": "Masks changed"
     },
     "review": {
       "reject": "Reject",
@@ -1354,7 +1409,8 @@
       "a11y": "Accessibility ({count})",
       "files": "Files",
       "react": "React",
-      "text": "Text"
+      "text": "Text",
+      "masks": "Masks"
     },
     "pixel": {
       "needsServer": "Pixel values require the local server ({command}).",
@@ -1377,7 +1433,8 @@
         "one": "{count} detail tile changed below the pixel tolerance of {tol}.",
         "other": "{count} detail tiles changed below the pixel tolerance of {tol}."
       },
-      "tile": "Detail tile"
+      "tile": "Detail tile",
+      "masksOnly": "No pixel differs by more than {tol}. Only the masks changed."
     },
     "metrics": {
       "ssim": "SSIM",
@@ -1619,6 +1676,26 @@
         "features": "font features",
         "variation": "font variation",
         "loaded": "font loading"
+      }
+    },
+    "masks": {
+      "label": "Masks",
+      "changed": {
+        "one": "{count} mask changed since the baseline.",
+        "other": "{count} masks changed since the baseline."
+      },
+      "added": "Added",
+      "removed": "Removed",
+      "grew": "Grew",
+      "large": "Over 25%",
+      "area": "{area} of the capture",
+      "areas": "Baseline {before} · render {after}",
+      "absent": "none",
+      "source": {
+        "attribute": "data-volatile",
+        "story": "Story",
+        "project": "Project",
+        "workspace": "Workspace"
       }
     }
   },

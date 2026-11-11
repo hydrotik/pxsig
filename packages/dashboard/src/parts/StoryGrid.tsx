@@ -11,6 +11,7 @@ import {
   statusOf,
   useCheckActivity,
 } from '../data';
+import { MaskBadges } from './MaskBadges';
 import { StatusOf } from './StatusOf';
 import { Affordance } from './Affordance';
 import { codeCopy, t } from '../copy';
@@ -91,6 +92,7 @@ export function StoryCard({
           ) : row.a11y?.new ? (
             <Badge tone="danger">{t('review.card.newA11y', { count: row.a11y.new })}</Badge>
           ) : null}
+          <MaskBadges row={row} />
           {flags.map((i) => (
             <Badge
               key={i.code}

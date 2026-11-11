@@ -64,6 +64,8 @@ const NOT_IN_SCENARIOS = new Set([
 
 /** The engine's text labels, from src/ (ONLY_SOME_RUNS paths are read relative to it). */
 const TEXT_RS = '../../../crates/pxsig-cli/src/batch/text.rs';
+/** The engine's masks, the same way. */
+const MASKS_RS = '../../../crates/pxsig-cli/src/batch/masks.rs';
 
 /**
  * Fields the scenarios set that only some runs produce, so the fixture project's checks do not:
@@ -85,6 +87,12 @@ const ONLY_SOME_RUNS = {
     ])
   ),
   'check.rows[].textDiff.error': [TEXT_RS, /m\.insert\("error"\.into\(\), json!\(msg\)\);/],
+  // Masks: a render with a `data-volatile` element or a `capture.ignore` selector; the fixture
+  // project has none. The engine writes them (crates/pxsig-cli/src/batch/masks.rs).
+  'check.rows[].masks': [MASKS_RS, /v\["masks"\] = c\["masks"\]\.clone\(\);/],
+  'check.rows[].masksLarge': [MASKS_RS, /v\["masksLarge"\] = json!\(big\);/],
+  'check.rows[].masksChanged': [MASKS_RS, /v\["masksChanged"\] = ch;/],
+  'check.rows[].masksBaseline': [MASKS_RS, /v\["masksBaseline"\] = json!\(list\(base\)\);/],
 };
 
 /** @returns {Shape} */
