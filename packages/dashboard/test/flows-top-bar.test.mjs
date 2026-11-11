@@ -85,10 +85,14 @@ test('More is a menu button: arrows, Home, End and Escape, focus back on the but
     assert.ok(await more.evaluate((b) => b === document.activeElement), 'focus returns to More');
     // Choosing an item goes to its section and closes the menu.
     await more.click();
-    await items.filter({ hasText: names.at(-1) }).click();
+    const last = items.filter({ hasText: names.at(-1) });
+    const href = await last.getAttribute('href');
+    await last.click();
     await menu.waitFor({ state: 'hidden' });
     assert.equal(await more.getAttribute('aria-expanded'), 'false');
-    assert.equal(await page.locator('[aria-current="page"]').count(), 1);
+    assert.equal(await page.evaluate(() => location.hash), href);
+    // The current section is in the menu: More says so.
+    await page.locator('.plain-more > button[data-current]').waitFor();
     assert.deepEqual(errors, []);
   } finally {
     await page.close();
