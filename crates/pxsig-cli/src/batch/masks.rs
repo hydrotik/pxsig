@@ -35,10 +35,64 @@ pub fn key(png: &Path) -> Vec<u8> {
     )
 }
 
+/// Pixels the boxes `[x0, y0, x1, y1]` cover inside `w` × `h`, counted once where they overlap.
+/// Trim keeps a capture's top-left corner, so clipping the capture's boxes to the trimmed size
+/// leaves exactly the masked pixels that are still in the image.
+fn covered(rects: &[[f64; 4]], w: f64, h: f64) -> f64 {
+    let r: Vec<[f64; 4]> = rects
+        .iter()
+        .map(|b| {
+            [
+                b[0].clamp(0.0, w),
+                b[1].clamp(0.0, h),
+                b[2].clamp(0.0, w),
+                b[3].clamp(0.0, h),
+            ]
+        })
+        .filter(|b| b[2] > b[0] && b[3] > b[1])
+        .collect();
+    let mut xs: Vec<f64> = r.iter().flat_map(|b| [b[0], b[2]]).collect();
+    xs.sort_by(f64::total_cmp);
+    xs.dedup();
+    let mut px = 0.0;
+    for x in xs.windows(2) {
+        let mut spans: Vec<(f64, f64)> = r
+            .iter()
+            .filter(|b| b[0] <= x[0] && b[2] >= x[1])
+            .map(|b| (b[1], b[3]))
+            .collect();
+        spans.sort_by(|a, b| a.0.total_cmp(&b.0));
+        let (mut cover, mut end) = (0.0, f64::NEG_INFINITY);
+        for (y0, y1) in spans {
+            if y1 > end {
+                cover += y1 - y0.max(end);
+                end = y1;
+            }
+        }
+        px += cover * (x[1] - x[0]);
+    }
+    px
+}
+
+/// A mask's boxes, `rects` (`[[x0, y0, x1, y1]]`): None for a record written before them.
+fn rects(m: &Value) -> Option<Vec<[f64; 4]>> {
+    m["rects"]
+        .as_array()?
+        .iter()
+        .map(|b| {
+            let b = b.as_array().filter(|b| b.len() == 4)?;
+            let n: Vec<f64> = b.iter().filter_map(Value::as_f64).collect();
+            (n.len() == 4).then(|| [n[0], n[1], n[2], n[3]])
+        })
+        .collect()
+}
+
 /// The render's masks as a baseline header keeps them, `{ v: 1, masks: [{ selector, source,
-/// reason?, area }] }`, `area` being the masked pixels' share of the PNG (after trim), to 4
-/// decimals. None without a record; a record that does not read is an error, so a baseline never
-/// stores what is not one.
+/// reason?, area }] }`, `area` being the masked pixels' share of the PNG, to 4 decimals. Both are
+/// of the PNG as it is compared, after trim: the mask's boxes (`rects`) are counted inside it, so
+/// a mask that trim cropped away counts only what is left (a record without `rects` falls back
+/// to `px`, counted before trim). None without a record; a record that does not read is an
+/// error, so a baseline never stores what is not one.
 pub fn record(png: &Path) -> Result<Option<Value>> {
     let Some(file) = beside(png) else {
         return Ok(None);
@@ -69,6 +123,7 @@ pub fn record(png: &Path) -> Result<Option<Value>> {
             if let Some(r) = m["reason"].as_str() {
                 o.insert("reason".into(), json!(r));
             }
+            let px = rects(m).map_or(px, |r| covered(&r, w as f64, h as f64));
             let area = ((px / total).min(1.0) * 10_000.0).round() / 10_000.0;
             o.insert("area".into(), json!(area));
             Ok(Value::Object(o))
