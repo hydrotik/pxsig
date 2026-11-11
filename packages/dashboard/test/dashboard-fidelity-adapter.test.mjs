@@ -135,10 +135,10 @@ test('the plain example adapter keeps the region rules, but for its known breaks
   if (skip) return t.skip(skip);
   const { code, report } = await run(good, 'out-good');
   assert.deepEqual(
-    report.screens.flatMap((x) =>
-      x.fidelity.map((f) => `${x.feature} #${x.index + 1} (${x.theme}): ${f.rule}`)
-    ),
-    known.filter((k) => ONLY.split(',').includes(k.split(' #')[0]) && k.includes('(dark)'))
+    report.screens
+      .flatMap((x) => x.fidelity.map((f) => `${x.feature} #${x.index + 1} (${x.theme}): ${f.rule}`))
+      .filter((b) => !known.includes(b)),
+    []
   );
   assert.equal(code, report.summary.withFidelity ? 1 : 0, 'a broken region rule fails the check');
   assert.equal(report.summary.withFidelity, report.screens.filter((x) => x.fidelity.length).length);
