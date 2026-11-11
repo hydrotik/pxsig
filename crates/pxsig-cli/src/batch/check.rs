@@ -264,19 +264,20 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
                 v["reasons"] = json!(r.reasons);
                 v["detail"] = detail_json(&r);
                 v["note"] = json!(if r.pass { "pass".to_string() } else { r.reasons.join("; ") });
-                // The render's masks against the baseline's: a change fails the row, whatever the pixels.
-                super::masks::annotate(&mut v, &png, b.masks.as_ref())?;
+                // The baseline image is inside a `.psig`, else `<base-png-dir>/<id>.png`.
+                let base_img = || b.image.clone().or_else(|| o.base_png_dir.as_ref().and_then(|bd| fs::read(bd.join(format!("{}.png", s.id))).ok()));
+                // The render's masks against the baseline's: a change fails the row, whatever the
+                // pixels. A baseline that records none has its image read for the story masks it shows.
+                let shown = if b.masks.is_none() { base_img() } else { None };
+                super::masks::annotate(&mut v, &png, b.masks.as_ref(), shown.as_deref())?;
                 // One pixel diff, for `pixels` (a failing row) and for `textDiff` (any row whose text
-                // differs): the baseline image is inside a `.psig`, else `<base-png-dir>/<id>.png`.
+                // differs).
                 let txt = text::prepare(&png, render_env, &b);
                 let identical = r.metrics.identical;
                 let wants = txt.wants_pixels(&tol, identical);
                 let mut diff = None;
                 if !r.pass || wants {
-                    let base_img = b.image.clone().or_else(|| {
-                        o.base_png_dir.as_ref().and_then(|bd| fs::read(bd.join(format!("{}.png", s.id))).ok())
-                    });
-                    if let Some(img) = base_img {
+                    if let Some(img) = shown.or_else(base_img) {
                         diff = Some(diff_of(&img, &png, o.tolerance));
                         if !r.pass {
                             v["pixels"] = diff.as_ref().and_then(|d| d.as_ref().ok()).map_or(Value::Null, |d| pixels_json(&d.0, o.tolerance));

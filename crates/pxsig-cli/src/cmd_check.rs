@@ -73,7 +73,7 @@ pub(super) fn cmd_compare(
         out["detail"] = batch::detail_json(&r);
     }
     // The masks as `check` weighs them: a masks change fails here too.
-    batch::annotate_masks(&mut out, png, b.masks.as_ref())?;
+    batch::annotate_masks(&mut out, png, b.masks.as_ref(), b.image.as_deref())?;
     let pass = out["pass"] == json!(true);
 
     if as_json {
@@ -189,8 +189,15 @@ pub(super) fn cmd_baseline(
     b: BatchArgs,
     no_detail: bool,
     env: Option<String>,
+    allow_masks: Option<Option<String>>,
     as_json: bool,
 ) -> Result<u8> {
+    // `--allow-masks` alone: every entry; with ids (or `@file`): those.
+    let allow_masks = match allow_masks {
+        None => None,
+        Some(None) => Some(None),
+        Some(Some(ids)) => Some(batch::parse_only(Some(&ids))?),
+    };
     let res = batch::baseline(&BaselineOpts {
         manifest: b.manifest,
         png_dir: b.png_dir,
@@ -198,6 +205,7 @@ pub(super) fn cmd_baseline(
         only: batch::parse_only(b.only.as_deref())?,
         no_detail,
         env: batch::parse_env_plan(env.as_deref())?,
+        allow_masks,
     })?;
     let failed = res["summary"]["failed"].as_u64().unwrap_or(0);
     if as_json {
@@ -205,6 +213,16 @@ pub(super) fn cmd_baseline(
     } else {
         for e in res["errors"].as_array().into_iter().flatten() {
             eprintln!("  FAIL {}", e.as_str().unwrap_or(""));
+        }
+        // Masks changes written under --allow-masks, named: never a silent one.
+        for c in res["masksChanged"].as_array().into_iter().flatten() {
+            if c["written"] == json!(true) {
+                eprintln!(
+                    "  MASKS {}: {}",
+                    c["id"].as_str().unwrap_or(""),
+                    crate::batch::describe_masks(c)
+                );
+            }
         }
         let s = &res["summary"];
         println!(

@@ -191,11 +191,14 @@ fn capture_stores_the_text_record_it_is_given_and_none_without_one() {
     let _ = fs::remove_dir_all(&d);
 }
 
-/// A masks record beside `png` (`masks.rs`): `(selector, source, px)` each.
-fn masks(png: &Path, list: &[(&str, &str, u32)]) {
+/// A masks record beside `png` (`masks.rs`): `(selector, source, box)` each, one element.
+fn masks(png: &Path, list: &[(&str, &str, [u32; 4])]) {
     let m: Vec<Value> = list
         .iter()
-        .map(|(s, src, px)| json!({ "selector": s, "source": src, "count": 1, "px": px }))
+        .map(|(s, src, b)| {
+            let px = (b[2] - b[0]) * (b[3] - b[1]);
+            json!({ "selector": s, "source": src, "count": 1, "px": px, "rects": [b] })
+        })
         .collect();
     fs::write(
         png.with_extension("masks.json"),
@@ -209,7 +212,7 @@ fn compare_weighs_the_masks_as_check_does() {
     let d = scratch("compare-masks");
     let a = d.join("png/a.png");
     png(&a, 10);
-    masks(&a, &[(".clock", "project", 64)]);
+    masks(&a, &[(".clock", "project", [0, 0, 8, 8])]);
     dispatch(
         "capture",
         &json!({ "png": p(&d, "png/a.png"), "out": p(&d, "a.psig") }),
@@ -232,8 +235,8 @@ fn compare_weighs_the_masks_as_check_does() {
     masks(
         &a,
         &[
-            (".clock", "project", 512),
-            ("[data-volatile]", "attribute", 4),
+            (".clock", "project", [0, 0, 16, 24]),
+            ("[data-volatile]", "attribute", [20, 20, 22, 22]),
         ],
     );
     let r = cmp();
@@ -241,17 +244,18 @@ fn compare_weighs_the_masks_as_check_does() {
     assert_eq!(r["metrics"]["identical"], true, "the pixels are the same");
     assert_eq!(
         r["masksChanged"],
-        json!({ "added": ["[data-volatile]"], "removed": [], "grew": [".clock"] })
+        json!({ "added": ["[data-volatile]"], "removed": [], "grew": [".clock"], "moved": [".clock"], "count": [] })
     );
-    assert_eq!(r["reasons"], json!(["masks changed: 1 added, 1 grew"]));
     assert_eq!(
-        r["masksBaseline"],
-        json!([{ "selector": ".clock", "source": "project", "area": 0.0625 }])
+        r["reasons"],
+        json!(["masks changed: 1 added, 1 grew, 1 moved"])
     );
+    assert_eq!(r["masksBaseline"][0]["area"], json!(0.0625));
+    assert_eq!(r["masksBaseline"][0]["rects"], json!([[0, 0, 8, 8]]));
     // A mask over a quarter of the capture: listed, never a verdict of its own.
     assert_eq!(
         r["masksLarge"],
-        json!([{ "selector": ".clock", "source": "project", "area": 0.5 }])
+        json!([{ "selector": ".clock", "source": "project", "area": 0.375 }])
     );
     let _ = fs::remove_dir_all(&d);
 }
