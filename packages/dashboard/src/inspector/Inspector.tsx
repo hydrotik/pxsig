@@ -30,6 +30,7 @@ import * as s from '../dashboard.css';
 import { MODES, useInspectorPrefs } from './prefs';
 import { useInspectorActions } from './useInspectorActions';
 import { useInspectorKeys } from './useInspectorKeys';
+import { useDetailOnly } from './detailOnly';
 import {
   ChangeNav,
   KeyHelp,
@@ -173,6 +174,9 @@ export function Inspector({
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pixels, tol]);
+  // A detail-only change: the detail tiles are the changes (detailOnly.ts).
+  const only = useDetailOnly({ row, analysis, key, showTiles, setShowTiles });
+  const regions = only.regions;
 
   // Fit on open, then land on the biggest change of a failing story.
   const fittedFor = React.useRef<string | null>(null);
@@ -186,16 +190,15 @@ export function Inspector({
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
         stage.current?.fit();
-        if (analysis?.regions.length && !row.pass && !originals) {
+        if (regions.length && !row.pass && !originals) {
           setRegion(0);
-          stage.current?.focus(analysis.regions[0]);
+          stage.current?.focus(regions[0]);
         }
         setSettledFor(key);
       })
     );
-  }, [loaded, analysis, row, pixels, key, originals]);
+  }, [loaded, analysis, regions, row, pixels, key, originals]);
 
-  const regions = analysis?.regions ?? [];
   const focusRegion = (i: number) => {
     const r = regions[i];
     if (!r) return;
@@ -302,8 +305,8 @@ export function Inspector({
       showBoxes={showBoxes}
       setShowBoxes={setShowBoxes}
       detail={detail}
-      showTiles={showTiles}
-      setShowTiles={setShowTiles}
+      showTiles={only.showTiles}
+      setShowTiles={only.setShowTiles}
       originals={originals}
       setOriginals={setOriginals}
       isNew={!!row.new}
@@ -537,7 +540,7 @@ export function Inspector({
                 tol={tol}
                 showBoxes={showBoxes}
                 showHighlight={showHighlight}
-                showTiles={showTiles}
+                showTiles={only.showTiles}
                 originals={originals}
               />
             ) : (
@@ -555,6 +558,7 @@ export function Inspector({
               {...{ hasArtifacts, p, row, newA11y, target, canReview, busy, unaccept, a11yMode }}
               {...{ a11yDecision, data, sizes, onGo, focusBox }}
               act={decide}
+              detailOnly={only.on}
             />
           ) : null}
         </div>

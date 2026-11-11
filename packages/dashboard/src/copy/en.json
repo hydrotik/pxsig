@@ -1372,7 +1372,12 @@
       "regions": "Regions",
       "maxDelta": "Max channel Δ",
       "size": "Size",
-      "noneOver": "No pixel differs by more than {tol}."
+      "noneOver": "No pixel differs by more than {tol}.",
+      "detailOnly": {
+        "one": "{count} detail tile changed below the pixel tolerance of {tol}.",
+        "other": "{count} detail tiles changed below the pixel tolerance of {tol}."
+      },
+      "tile": "Detail tile"
     },
     "metrics": {
       "ssim": "SSIM",

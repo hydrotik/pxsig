@@ -62,6 +62,7 @@ export function InspectorSide({
   sizes,
   onGo,
   focusBox,
+  detailOnly,
 }: SideProps) {
   return (
     <aside className={s.insSide}>
@@ -98,6 +99,7 @@ export function InspectorSide({
           tol={tol}
           setTol={setTol}
           originals={originals}
+          detailOnly={detailOnly}
         />
       ) : null}
 
