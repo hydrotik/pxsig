@@ -194,6 +194,8 @@ export function Overview({
   const rejected = having('rejected');
   const errors = having('error').filter((r) => !r.skipped);
   const flaky = having('flaky');
+  // A mask over 25% of the capture: a warning, never a verdict (side/MasksSection.tsx).
+  const largeMasks = rows.filter((r) => r.masksLarge?.length);
   // Entries whose new violations have no decision yet (an accessibility one, or a visual approval).
   const a11yOpen = rows.filter(
     (r) =>
@@ -261,6 +263,19 @@ export function Overview({
       action: 'overview.actions.view',
       open: () => go('stories', 'flaky'),
     },
+    // Listed only while there is one: a store without large masks shows the same items as before.
+    ...(largeMasks.length
+      ? [
+          {
+            id: 'masks',
+            label: t('overview.items.masks'),
+            count: largeMasks.length,
+            detail: byMode(largeMasks.map((r) => r.mode)),
+            action: 'overview.actions.view' as const,
+            open: () => go('stories', 'masks'),
+          },
+        ]
+      : []),
   ];
   const open = items.some((x) => x.count > 0);
   return (

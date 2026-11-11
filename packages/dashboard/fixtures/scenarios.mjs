@@ -22,6 +22,7 @@
  */
 
 import { REACT_EVENTS, REACT_SCENARIOS } from './react.mjs';
+import { MASK_SCENARIOS } from './masks.mjs';
 import { TEXT_SCENARIOS } from './text.mjs';
 
 export const AT = '2026-10-24T10:00:00.000Z';
@@ -433,6 +434,7 @@ export const SCENARIOS = {
   },
   ...REACT_SCENARIOS,
   ...TEXT_SCENARIOS,
+  ...MASK_SCENARIOS,
   'several-projects'() {
     // A workspace label names the application; the switcher names each project by its own label.
     return { ...SCENARIOS.clean(), label: 'Demo', scope: 'Demo workspace' };

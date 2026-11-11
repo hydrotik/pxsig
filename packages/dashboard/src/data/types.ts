@@ -36,6 +36,14 @@ export interface A11yViolation {
   nodes: number;
   targets: string[];
 }
+/** A mask that applied to a render (docs/spec.md "Masks"): its share of the capture, 0..1. */
+export interface MaskRecord {
+  selector: string;
+  source: 'attribute' | 'story' | 'project' | 'workspace';
+  /** The `data-volatile` attribute's value, when it has one. */
+  reason?: string;
+  area: number;
+}
 export interface Row {
   id: string;
   story: string;
@@ -79,6 +87,13 @@ export interface Row {
   renders?: RenderCounts | null;
   /** Text labels (text capture on, docs/spec.md "Text labels"): beside the verdict, never changing it. */
   textDiff?: TextDiff;
+  /** The render's masks, when any; those over 25% of the capture (a warning, never a verdict). */
+  masks?: MaskRecord[];
+  masksLarge?: Omit<MaskRecord, 'reason'>[];
+  /** The masks differ from the baseline's (the row fails as "masks changed"): selectors. */
+  masksChanged?: { added: string[]; removed: string[]; grew: string[] };
+  /** The baseline's masks, set with `masksChanged`. */
+  masksBaseline?: MaskRecord[];
 }
 export interface CheckReport {
   generatedAt: string;

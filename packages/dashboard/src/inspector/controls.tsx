@@ -63,10 +63,13 @@ export function ChangeNav({
   regions,
   region,
   stepRegion,
+  masksOnly = false,
 }: {
   regions: Analysis['regions'];
   region: number;
   stepRegion: (d: number) => unknown;
+  /** A masks-only change (masks.ts): said in place of "No changes". */
+  masksOnly?: boolean;
 }) {
   return (
     <span className={s.row}>
@@ -84,7 +87,7 @@ export function ChangeNav({
               index: region < 0 ? '–' : region + 1,
               total: regions.length,
             })
-          : t('inspector.nav.noChanges')}
+          : t(masksOnly ? 'inspector.nav.masksOnly' : 'inspector.nav.noChanges')}
       </span>
       <IconButton
         emphasis="outline"

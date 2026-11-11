@@ -468,6 +468,12 @@ entry, approved once. Masks from a story's `ignore` against a baseline approved 
 recorded are not a change. A mask over 25% of a capture is a warning (`[check] mask:`, summary.md,
 `check --sarif`), never a failure: such a mask would let most changes under it pass.
 
+The dashboard's inspector lists an entry's masks (selector, source, reason, share of the capture)
+in its Masks section, and marks Masks changed and Large mask beside the verdict and on the entry's
+card; Open items counts the entries with a large mask. A masks change with no pixel over the
+tolerance shows each mask's share in the baseline and in the render, first in the side panel.
+`pxsig help volatile` and the dashboard's Help ("Values That Vary") say the same, fixed data first.
+
 ### `rejections`
 
 A rejection keeps its reason (the note) until it closes, and gets a **rejection packet**:

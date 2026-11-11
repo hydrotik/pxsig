@@ -1,7 +1,8 @@
 /**
  * The inspector's Changes section (Inspector.tsx): the Tolerance that decides which pixels count as
  * changed (disabled while Originals is on), changed pixels, the size, the regions. A detail-only
- * change (detailOnly.ts) lists its detail tiles in the regions' place and says why.
+ * change (detailOnly.ts) lists its detail tiles in the regions' place and says why; a masks-only
+ * change (masks.ts) says that only the masks changed.
  */
 import { KeyValueItem, KeyValueList, Slider } from '@ui';
 import { t } from '../../copy';
@@ -22,6 +23,7 @@ export function ChangesSection({
   setTol,
   originals,
   detailOnly,
+  masksOnly,
 }: {
   analysis: Analysis;
   loaded: Loaded | null | 'missing';
@@ -35,6 +37,8 @@ export function ChangesSection({
   originals: boolean;
   /** The detail channel's change, under the tolerance: `regions` are its tiles. */
   detailOnly: boolean;
+  /** The masks failed the entry and no pixel differs: the Masks section shows the change. */
+  masksOnly: boolean;
 }) {
   const sizeNote =
     loaded &&
@@ -101,7 +105,11 @@ export function ChangesSection({
           ))
         ) : (
           <li className={s.muted}>
-            {analysis.changed ? '' : t('inspector.changes.noneOver', { tol })}
+            {analysis.changed
+              ? ''
+              : t(masksOnly ? 'inspector.changes.masksOnly' : 'inspector.changes.noneOver', {
+                  tol,
+                })}
           </li>
         )}
       </ol>

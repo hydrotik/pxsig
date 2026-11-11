@@ -31,6 +31,7 @@ import { MODES, useInspectorPrefs } from './prefs';
 import { useInspectorActions } from './useInspectorActions';
 import { useInspectorKeys } from './useInspectorKeys';
 import { useDetailOnly } from './detailOnly';
+import { masksOnly } from './masks';
 import {
   ChangeNav,
   KeyHelp,
@@ -514,7 +515,10 @@ export function Inspector({
             {/* Last: Approve at the right edge (controls.tsx ReviewButtons). */}
             {embedded ? reviewButtons : null}
             {pixels && !embedded ? (
-              <ChangeNav regions={regions} region={region} stepRegion={stepRegion} />
+              <ChangeNav
+                {...{ regions, region, stepRegion }}
+                masksOnly={masksOnly(row, analysis)}
+              />
             ) : null}
           </ToolbarEnd>
         </Toolbar>
