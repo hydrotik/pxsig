@@ -163,6 +163,10 @@
   color: var(--plain-accent);
   font-weight: 600;
 }
+/* A count's digits take its tone (R4): info the accent, neutral the text colour, on any link. */
+.plain-nav .plain-badge[data-tone='neutral'] {
+  color: var(--plain-text);
+}
 .plain-more {
   position: relative;
 }
