@@ -57,6 +57,8 @@ export interface EngineResult {
   masksLarge?: Omit<MaskRecord, 'reason'>[];
   /** Set when the masks differ from the baseline's: the row fails with `masks changed: …`. */
   masksChanged?: MasksChanged;
+  /** The baseline's masks, set with `masksChanged`: before and after, for the reviewer. */
+  masksBaseline?: MaskRecord[];
   [metric: string]: unknown;
 }
 
@@ -104,6 +106,7 @@ export interface CheckRow {
   masks?: MaskRecord[];
   masksLarge?: Omit<MaskRecord, 'reason'>[];
   masksChanged?: MasksChanged;
+  masksBaseline?: MaskRecord[];
   /** The render's env id (lib/env.mjs `annotateRow`). */
   env?: string | null;
   baselineEnv?: string | null;

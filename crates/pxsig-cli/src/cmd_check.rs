@@ -63,17 +63,20 @@ pub(super) fn cmd_compare(
     let metrics = batch::metrics_json(&r, gate.threshold);
     let stem = io::stem_of(sig);
     let (diff_html, diff_png) = io::write_diff_artifacts(&out_dir, &stem, &r, &metrics)?;
+    let mut out = json!({
+        "pass": r.pass,
+        "metrics": metrics,
+        "reasons": r.reasons,
+        "artifacts": { "diffHtml": diff_html, "diffPng": diff_png },
+    });
+    if r.detail.is_some() {
+        out["detail"] = batch::detail_json(&r);
+    }
+    // The masks as `check` weighs them: a masks change fails here too.
+    batch::annotate_masks(&mut out, png, b.masks.as_ref())?;
+    let pass = out["pass"] == json!(true);
 
     if as_json {
-        let mut out = json!({
-            "pass": r.pass,
-            "metrics": metrics,
-            "reasons": r.reasons,
-            "artifacts": { "diffHtml": diff_html, "diffPng": diff_png },
-        });
-        if r.detail.is_some() {
-            out["detail"] = batch::detail_json(&r);
-        }
         println!("{}", serde_json::to_string_pretty(&out)?);
     } else {
         println!(
@@ -95,8 +98,12 @@ pub(super) fn cmd_compare(
             out_dir.display()
         );
     }
-    if !r.pass {
-        eprintln!("[pxsig] FAIL: {}", r.reasons.join("; "));
+    if !pass {
+        let reasons: Vec<&str> = out["reasons"]
+            .as_array()
+            .map(|a| a.iter().filter_map(Value::as_str).collect())
+            .unwrap_or_default();
+        eprintln!("[pxsig] FAIL: {}", reasons.join("; "));
         return Ok(1);
     }
     if !as_json {

@@ -75,9 +75,10 @@ fn dispatch(method: &str, p: &Value) -> Result<Value> {
             if let Some(out) = p["outDir"].as_str() {
                 io::write_diff_artifacts(&PathBuf::from(out), &io::stem_of(&sig), &r, &metrics)?;
             }
-            Ok(
-                json!({ "pass": r.pass, "metrics": metrics, "reasons": r.reasons, "detail": batch::detail_json(&r) }),
-            )
+            let mut v = json!({ "pass": r.pass, "metrics": metrics, "reasons": r.reasons, "detail": batch::detail_json(&r) });
+            // The masks as `check` weighs them: a masks change fails here too.
+            batch::annotate_masks(&mut v, &PathBuf::from(s(p, "png")?), b.masks.as_ref())?;
+            Ok(v)
         }
         "check" => batch::check(&CheckOpts {
             manifest: s(p, "manifest")?.into(),

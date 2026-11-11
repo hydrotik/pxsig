@@ -73,6 +73,25 @@ fn capture_writes_next_to_the_png_and_compare_exits_by_the_gate() {
 }
 
 #[test]
+fn compare_exits_1_on_a_masks_change_with_the_same_pixels() {
+    let d = scratch("compare-masks");
+    let a = d.join("png/a.png");
+    png(&a, 10);
+    let sig = d.join("a.psig");
+    batch::capture_png_policy(&a, &sig, 16, None, true, None, None, None).unwrap();
+    let gate = GateArgs::default();
+    let out = Some(d.join("out"));
+    assert_eq!(cmd_compare(&a, &sig, out.clone(), true, &gate).unwrap(), 0);
+    // A `data-volatile` element marked since the baseline: the same pixels, a masks change.
+    std::fs::write(
+        a.with_extension("masks.json"),
+        r#"{"v":1,"masks":[{"selector":"[data-volatile]","source":"attribute","count":1,"px":8}]}"#,
+    )
+    .unwrap();
+    assert_eq!(cmd_compare(&a, &sig, out, true, &gate).unwrap(), 1);
+}
+
+#[test]
 fn baseline_exits_2_when_an_entry_has_no_render_and_check_exits_1_on_a_failed_entry() {
     let d = scratch("batch");
     store(&d, false);

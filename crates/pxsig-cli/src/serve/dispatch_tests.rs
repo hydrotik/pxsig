@@ -190,3 +190,68 @@ fn capture_stores_the_text_record_it_is_given_and_none_without_one() {
     assert!(b.sections.is_empty());
     let _ = fs::remove_dir_all(&d);
 }
+
+/// A masks record beside `png` (`masks.rs`): `(selector, source, px)` each.
+fn masks(png: &Path, list: &[(&str, &str, u32)]) {
+    let m: Vec<Value> = list
+        .iter()
+        .map(|(s, src, px)| json!({ "selector": s, "source": src, "count": 1, "px": px }))
+        .collect();
+    fs::write(
+        png.with_extension("masks.json"),
+        json!({ "v": 1, "masks": m }).to_string(),
+    )
+    .unwrap();
+}
+
+#[test]
+fn compare_weighs_the_masks_as_check_does() {
+    let d = scratch("compare-masks");
+    let a = d.join("png/a.png");
+    png(&a, 10);
+    masks(&a, &[(".clock", "project", 64)]);
+    dispatch(
+        "capture",
+        &json!({ "png": p(&d, "png/a.png"), "out": p(&d, "a.psig") }),
+    )
+    .unwrap();
+    let cmp = || {
+        dispatch(
+            "compare",
+            &json!({ "png": p(&d, "png/a.png"), "sig": p(&d, "a.psig") }),
+        )
+        .unwrap()
+    };
+    // The same pixels and masks: a pass, with the render's masks.
+    let same = cmp();
+    assert_eq!(same["pass"], true, "{same}");
+    assert_eq!(same["masks"][0]["area"], json!(0.0625));
+    assert!(same["masksChanged"].is_null());
+
+    // The same pixels, one mask grown and one added: "masks changed", as `check` says it.
+    masks(
+        &a,
+        &[
+            (".clock", "project", 512),
+            ("[data-volatile]", "attribute", 4),
+        ],
+    );
+    let r = cmp();
+    assert_eq!(r["pass"], false, "{r}");
+    assert_eq!(r["metrics"]["identical"], true, "the pixels are the same");
+    assert_eq!(
+        r["masksChanged"],
+        json!({ "added": ["[data-volatile]"], "removed": [], "grew": [".clock"] })
+    );
+    assert_eq!(r["reasons"], json!(["masks changed: 1 added, 1 grew"]));
+    assert_eq!(
+        r["masksBaseline"],
+        json!([{ "selector": ".clock", "source": "project", "area": 0.0625 }])
+    );
+    // A mask over a quarter of the capture: listed, never a verdict of its own.
+    assert_eq!(
+        r["masksLarge"],
+        json!([{ "selector": ".clock", "source": "project", "area": 0.5 }])
+    );
+    let _ = fs::remove_dir_all(&d);
+}
