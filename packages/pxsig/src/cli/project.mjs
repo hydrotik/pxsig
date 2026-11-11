@@ -264,6 +264,24 @@ export function projectCommands(cli) {
               rows,
             },
           },
+          // capture.ignore / capture.addIgnore, each selector with its layer (lib/capture/masks.mjs).
+          ...(d.masks.length
+            ? [
+                { h: 'Masks', sub: 'besides every [data-volatile] element and the stories’ own' },
+                {
+                  table: {
+                    cols: [
+                      { key: 'selector', label: 'Selector' },
+                      { key: 'from', label: 'Set by' },
+                    ],
+                    rows: d.masks.map((m) => ({
+                      selector: m.selector,
+                      from: m.source === 'workspace' ? 'workspace defaults' : 'project config',
+                    })),
+                  },
+                },
+              ]
+            : []),
           ...(enf
             ? enf.error
               ? [{ h: 'Enforcement' }, { note: enf.error, tone: 'bad' }]

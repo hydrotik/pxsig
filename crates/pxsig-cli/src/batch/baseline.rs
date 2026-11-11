@@ -133,7 +133,8 @@ pub fn grid_for(w: usize, h: usize, max_grid: usize, min_cell: Option<usize>) ->
 }
 
 /// One baseline under the grid policy. `boxes`: the render's text record, stored as the `boxes`
-/// section of a `.psig` (a `.pxsig.json` has no sections and never reads it).
+/// section of a `.psig` (a `.pxsig.json` has no sections and never reads it). The masks record
+/// beside the PNG (`masks.rs`) becomes the `.psig` header's `masks`.
 #[allow(clippy::too_many_arguments)]
 pub fn capture_png_policy(
     png: &Path,
@@ -146,18 +147,30 @@ pub fn capture_png_policy(
     boxes: Option<&Path>,
 ) -> Result<PxsigRecord> {
     let (_, w, h) = io::png_size(png)?;
-    let sections = if io::is_psig_path(out) {
+    let psig = io::is_psig_path(out);
+    let sections = if psig {
         super::boxes::sections_for(boxes)?
     } else {
         Vec::new()
     };
+    // The render's masks, when its capture recorded any, go into the header as `masks`.
+    let mut extra = extra.cloned();
+    if let Some(m) = psig
+        .then(|| super::masks::record(png))
+        .transpose()?
+        .flatten()
+    {
+        extra
+            .get_or_insert_with(Default::default)
+            .insert("masks".into(), m);
+    }
     capture_png_with(
         png,
         out,
         grid_for(w, h, max_grid, min_cell),
         detail,
         entry,
-        extra,
+        extra.as_ref(),
         &sections,
     )
 }

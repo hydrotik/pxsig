@@ -27,7 +27,8 @@ A value comes from the first layer that sets it:
 
 Objects merge key by key across layers. Arrays and other values replace. **Modes are the
 exception**: a project's `modes` replace the workspace's (or the built-in) set entirely, because
-modes are a set, not settings.
+modes are a set, not settings. `capture.addIgnore` adds selectors to the `capture.ignore` list a
+project inherits, where `capture.ignore` replaces it ([masks](#masks)).
 
 The CLI flags layer is the config flags every command accepts:
 
@@ -150,6 +151,8 @@ The smallest config is `{}`: every key has a default. `pxsig init` writes
 | `capture.viewport`        | `[900, 600]`                                               | Browser viewport, `[width, height]` in CSS pixels, at device scale 1.                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `capture.settleMs`        | `200`                                                      | Minimum wait after fonts load, before the layout-stability wait.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `capture.target`          | `"#storybook-root"`                                        | The element captured. A story can override it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `capture.ignore`          | `[]`                                                       | Selectors masked in every story of the project, besides every element with `data-volatile` ([masks](#masks)). Replaces the list inherited from the workspace `defaults`.                                                                                                                                                                                                                                                                                                                                                   |
+| `capture.addIgnore`       | `[]`                                                       | Selectors added to the inherited `capture.ignore` list instead of replacing it ([masks](#masks)).                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `capture.waitFor`         | `[]`                                                       | Extra waits for content that animates in script: `{ selector, minMs?, stableMarkup? }`. A rule applies when its `selector` matches. `minMs` raises the minimum wait; `stableMarkup` waits until the markup under that selector stops changing.                                                                                                                                                                                                                                                                             |
 | `capture.browserEndpoint` | `null`                                                     | A Playwright browser server (`ws://…`) to render with instead of launching a browser on this machine: usually the container's, from `pxsig browser start` ([container.md](container.md)). Every engine (Chromium, Firefox, WebKit) connects to it; Storybook on this machine's localhost stays reachable. The project's Playwright must be the server's major.minor. Also `--browser` and `PXSIG_BROWSER_WS`.                                                                                                              |
 | `grid`                    | `64`                                                       | Signature grid, cells per side (8..256).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
@@ -434,6 +437,37 @@ not know is a warning and ignored. `pxsig doctor` says whether it is on, and how
 baseline approved before text capture, or with it off, has none until it is approved again: nothing
 rewrites a baseline on its own.
 
+### Masks
+
+Some content varies from run to run: a time, "3 minutes ago", a commit hash, a build number, a
+generated id. Give the story fixed data first (a fixed clock, fixed ids): a fixed value is still
+compared. When that is not possible, mask it. A mask paints the inside of an element's box in one
+colour before the screenshot, so what is inside never differs; the box follows the element, so a
+change to its size or position still shows.
+
+| Where                         | Masks                                                                                                              |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `data-volatile` on an element | That element, in every project, with no configuration. Its value is the reason: `data-volatile="relative time"`.   |
+| a story's `ignore`            | These selectors in that story's captures ([story parameters](#story-parameters)).                                  |
+| `capture.ignore` (project)    | These selectors in every story of the project.                                                                     |
+| `capture.ignore` (workspace)  | The same key under the workspace file's `defaults`: every project, unless a project sets its own `capture.ignore`. |
+| `capture.addIgnore`           | Selectors added to the list inherited from the layer below, instead of replacing it.                               |
+
+The author of a component sets `data-volatile` once, on the element that shows the value, and every
+team that renders the component gets the mask. `pxsig config` lists each config selector with the
+layer that set it. Text under a mask is left out of the text record ([`text`](#text)); the a11y pass
+still runs on it.
+
+Each render records the masks that applied to it, `<id>.masks.json` beside the PNG (selector,
+source, reason, masked pixels), and a baseline approved from it keeps them in its header with each
+mask's share of the capture ([spec.md](spec.md#5-the-psig-container-version-1)); no paths. `pxsig
+check` compares a render's masks with its baseline's: a mask added, removed or grown fails the entry
+with the reason `masks changed: …`, for a person to approve, whatever the pixels. Adopting
+`data-volatile` (or a new `capture.ignore`) therefore gives one "masks changed" entry per affected
+entry, approved once. Masks from a story's `ignore` against a baseline approved before masks were
+recorded are not a change. A mask over 25% of a capture is a warning (`[check] mask:`, summary.md,
+`check --sarif`), never a failure: such a mask would let most changes under it pass.
+
 ### `rejections`
 
 A rejection keeps its reason (the note) until it closes, and gets a **rejection packet**:
@@ -548,7 +582,7 @@ export const Menu = {
 | `grid`     | Signature grid for this story. Turns the adaptive grid off.         |
 | `detail`   | `false`: no detail channel in this story's baselines.               |
 | `viewport` | `[width, height]`, overrides the mode's and the project's viewport. |
-| `ignore`   | CSS selectors masked before every capture.                          |
+| `ignore`   | CSS selectors masked before every capture ([masks](#masks)).        |
 | `states`   | Extra captures after an interaction, one entry each (below).        |
 | `delay`    | Extra settle time, in ms.                                           |
 | `target`   | The element to capture, instead of `capture.target`.                |

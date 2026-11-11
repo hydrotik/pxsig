@@ -140,7 +140,7 @@ fn hex(b: &[u8]) -> String {
 /// record, its environment and the text tolerances.
 fn cache_key(png: &[u8], sig: &[u8], gate: &Value, text: &[u8]) -> String {
     let mut h = Sha256::new();
-    h.update(b"pxsig-check-v4\0"); // v4: rows carry `textDiff`
+    h.update(b"pxsig-check-v5\0"); // v5: the render's masks record
     h.update(png);
     h.update(sig);
     h.update(gate.to_string().as_bytes());
@@ -236,7 +236,7 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
                 let sig_bytes = fs::read(&sig)?;
                 let render = hex(&Sha256::digest(&png_bytes));
                 let render_env = o.env.as_ref().and_then(|p| p.by_id.get(&s.id)).map(String::as_str);
-                let key = o.cache.as_ref().map(|_| cache_key(&png_bytes, &sig_bytes, &gate_json, &text_key(&png, render_env, &tol, o.tolerance)));
+                let key = o.cache.as_ref().map(|_| cache_key(&png_bytes, &sig_bytes, &gate_json, &[text_key(&png, render_env, &tol, o.tolerance), super::masks::key(&png)].concat()));
                 let stem = io::stem_of(&sig);
                 if let (Some(c), Some(k)) = (&o.cache, &key) {
                     let hit = c.join(format!("{k}.json"));
@@ -264,6 +264,8 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
                 v["reasons"] = json!(r.reasons);
                 v["detail"] = detail_json(&r);
                 v["note"] = json!(if r.pass { "pass".to_string() } else { r.reasons.join("; ") });
+                // The render's masks against the baseline's: a change fails the row, whatever the pixels.
+                super::masks::annotate(&mut v, &png, b.masks.as_ref())?;
                 // One pixel diff, for `pixels` (a failing row) and for `textDiff` (any row whose text
                 // differs): the baseline image is inside a `.psig`, else `<base-png-dir>/<id>.png`.
                 let txt = text::prepare(&png, render_env, &b);

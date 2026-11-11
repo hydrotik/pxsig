@@ -256,6 +256,7 @@ export interface BuiltManifest {
 /** What `describeConfig` returns (`pxsig config`). */
 export interface DescribedConfig {
   sources: Project['configSources'];
+  masks: Project['masks'];
   project: string;
   label: string | null;
   /** The dashboard title's scope (Project `scope`). */

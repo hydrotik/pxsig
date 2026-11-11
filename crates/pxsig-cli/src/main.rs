@@ -25,6 +25,7 @@ mod io;
 mod react;
 mod react_compile;
 mod report;
+mod report_masks;
 mod report_react;
 mod report_text;
 mod resolve;

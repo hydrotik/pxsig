@@ -75,7 +75,7 @@
     "capture": {
       "file": "pxsig.config.json",
       "meaning": "How each story is rendered and captured.",
-      "operation": "See capture.viewport, capture.settleMs, capture.target, capture.waitFor, capture.browserEndpoint."
+      "operation": "See capture.viewport, capture.settleMs, capture.target, capture.ignore, capture.addIgnore, capture.waitFor, capture.browserEndpoint."
     },
     "capture.viewport": {
       "file": "pxsig.config.json",
@@ -95,6 +95,18 @@
       "meaning": "The element captured. A story can override it.",
       "default": "\"#storybook-root\"",
       "operation": "What part of the page each baseline shows."
+    },
+    "capture.ignore": {
+      "file": "pxsig.config.json",
+      "meaning": "Selectors masked in every story of the project, besides every element with the data-volatile attribute. Only the inside of each element's box is painted over: a change to its size or position still shows. Also under the workspace file's `defaults`; this list replaces the one inherited from there.",
+      "default": "[]",
+      "operation": "Each render records the masks that applied (selector, source, area); a mask added, removed or grown reads as \"masks changed\" for a person to approve, and a mask over 25% of a capture is a warning. Text under a mask is left out of the text record; the a11y pass still runs on it."
+    },
+    "capture.addIgnore": {
+      "file": "pxsig.config.json",
+      "meaning": "Selectors added to the capture.ignore list inherited from the workspace file's `defaults`, instead of replacing it.",
+      "default": "[]",
+      "operation": "A team adds its own masks and keeps the workspace's. `pxsig config` lists each selector with the layer that set it."
     },
     "capture.waitFor": {
       "file": "pxsig.config.json",
