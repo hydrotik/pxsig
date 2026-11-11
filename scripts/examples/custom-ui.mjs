@@ -57,17 +57,7 @@ export function runCustomUi() {
     `gaps: the adapter is written for contract ${written}, this one or an older minor`
   );
   // Every feature on a design system other than the reference, from the shipped sample data.
-  // --strict: an axe violation or a layout finding fails it too. A broken region rule always does;
-  // the example's known breaks are reported (packages/dashboard/test/known-breaks.json), any other
-  // fails this test.
-  const known = /** @type {{ plain: string[] }} */ (
-    JSON.parse(
-      readFileSync(
-        new URL('../../packages/dashboard/test/known-breaks.json', import.meta.url),
-        'utf8'
-      )
-    )
-  ).plain;
+  // --strict: an axe violation or a layout finding fails it too; a broken region rule always does.
   r = pxsig(['dashboard', 'check', '--build', 'dashboard-build', '--strict', '--json'], dir);
   /** @type {DashboardCheckAnswer} */
   let c = {};
@@ -90,19 +80,17 @@ export function runCustomUi() {
     [
       ...(x.axe ?? []).map((a) => `axe ${a.id} (${a.count})`),
       ...(x.layout ?? []).map((l) => `${l.rule}: ${l.text}`),
-      ...(x.fidelity ?? [])
-        .filter((f) => !known.includes(`${x.feature} #${x.index + 1} (${x.theme}): ${f.rule}`))
-        .map((f) => `${f.rule}: ${f.text}`),
+      ...(x.fidelity ?? []).map((f) => `${f.rule}: ${f.text}`),
     ].map((f) => `${x.feature} #${x.index + 1} ${x.theme}: ${f}`)
   );
   expect(
     !found.length,
-    `check --strict: ${s.withFidelity ?? 0} screens breaking a region rule (${known.length} known), ${s.withAxe ?? 0} with axe violations, ${s.withLayout ?? 0} with layout findings${found.length ? `: ${found.slice(0, 8).join('; ')}${found.length > 8 ? ` and ${found.length - 8} more` : ''}` : ''}`
+    `check --strict: ${s.withFidelity ?? 0} screens breaking a region rule, ${s.withAxe ?? 0} with axe violations, ${s.withLayout ?? 0} with layout findings${found.length ? `: ${found.slice(0, 8).join('; ')}${found.length > 8 ? ` and ${found.length - 8} more` : ''}` : ''}`
   );
   expect(
     // With no summary, `undefined > 0` is false: the check fails, as it should. --strict exits 1
-    // on findings, which the expectation above names, and on the known breaks.
-    (r.status === 0 || (r.status === 1 && (found.length > 0 || known.length > 0))) &&
+    // on findings, which the expectation above names.
+    (r.status === 0 || (r.status === 1 && found.length > 0)) &&
       /** @type {number} */ (s.screens) > 0 &&
       s.failed === 0,
     `check: ${s.rendered ?? 0} of ${s.screens ?? 0} screens rendered, both themes${r.status ? ` (exit ${r.status}${failed.length ? `: ${failed.join('; ')}` : ''}${r.stderr ? `, ${r.stderr.trim()}` : ''})` : ''}`

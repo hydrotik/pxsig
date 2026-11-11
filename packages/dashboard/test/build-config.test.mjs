@@ -3,7 +3,7 @@
  * the built-in plain adapter, and that it matches the copy in examples/custom-ui.
  */
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, beforeEach, test } from 'node:test';
@@ -94,11 +94,9 @@ test('the built-in plain adapter and the example agree, but for the contract the
   const example = path.join(repo, 'examples/custom-ui/pxsig-ui');
   /** @param {string} dir @param {string} f */
   const read = (dir, f) => readFileSync(path.join(dir, f), 'utf8');
-  assert.equal(
-    read(built, 'theme.css'),
-    read(example, 'theme.css'),
-    'theme.css differs: copy one onto the other'
-  );
+  /** @param {string} dir */
+  const files = (dir) => readdirSync(dir).sort();
+  assert.deepEqual(files(built), files(example), 'the same files in both folders');
   /** @param {string} dir */
   const conformance = (dir) => read(dir, 'conformance.json').replace(/"contract": "[^"]*"/, '');
   assert.equal(
@@ -106,12 +104,13 @@ test('the built-in plain adapter and the example agree, but for the contract the
     conformance(example),
     'conformance.json differs beyond "contract": copy one onto the other'
   );
-  assert.equal(
-    read(built, 'index.tsx').replace(
-      "import type * as C from '../../contract';",
-      "import type * as C from 'pxsig/dashboard';"
-    ),
-    read(example, 'index.tsx'),
-    'index.tsx differs beyond its contract import: copy one onto the other'
-  );
+  for (const f of files(built).filter((x) => x !== 'conformance.json'))
+    assert.equal(
+      read(built, f).replace(
+        "import type * as C from '../../contract';",
+        "import type * as C from 'pxsig/dashboard';"
+      ),
+      read(example, f),
+      `${f} differs beyond its contract import: copy one onto the other`
+    );
 });
