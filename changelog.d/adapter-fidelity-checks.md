@@ -11,8 +11,8 @@
   `summary.withFidelity`), `summary.md` ("Region rules"), the gallery and the command's output.
   To find the regions in any adapter, the dashboard adds `pxsig-ui-TopNav`, `pxsig-ui-StatGroup`,
   `pxsig-ui-Badge` and `pxsig-ui-StatusBadge` to those components' `className`. The plain example
-  adapter's top bar has no overflow menu, so it still wraps on three screens (the project picker
-  at 1280 px, two React screens at 900 px) and fails there.
+  adapter's top bar has no overflow menu, so with some fonts it wraps on up to three screens (the
+  project picker at 1280 px, two React screens at 900 px) and fails there.
   To update: run `pxsig dashboard check` on your adapter's build. For each finding, change the
   adapter, not the dashboard: keep the top bar on one line (an overflow menu for the links), draw
   a toolbar's controls and a table's actions at your small size, drop `text-transform` and any
