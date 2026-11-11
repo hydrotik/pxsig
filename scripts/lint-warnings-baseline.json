@@ -1,6 +1,6 @@
 {
   "$description": "oxlint warnings per file and rule. A file may not gain a warning; lower with `node scripts/check-lint-warnings.mjs --update` after fixing some. See scripts/check-lint-warnings.mjs.",
-  "total": 44,
+  "total": 43,
   "files": {
     "packages/dashboard/src/App.tsx": {
       "jsx-a11y(prefer-tag-over-role)": 1,
@@ -60,9 +60,6 @@
     },
     "packages/pxsig/src/lib/spawn.mjs": {
       "typescript(no-unnecessary-type-assertion)": 1
-    },
-    "packages/pxsig/src/tools/context.mjs": {
-      "unicorn(no-invalid-fetch-options)": 1
     },
     "packages/pxsig/src/tools/info.mjs": {
       "typescript(require-await)": 2
