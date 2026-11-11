@@ -43,6 +43,23 @@ function pick<K extends ComponentName>(name: K): React.ComponentType<ComponentPr
     (fallbacks as Record<string, unknown>)[name]) as React.ComponentType<ComponentProps[K]>;
 }
 
+/**
+ * The adapter's component with `pxsig-ui-<name>` added to its `className`, which a contract
+ * component puts on its root: how `pxsig dashboard check` finds the regions whose rules an adapter
+ * keeps (docs/ui/build-adapter.md, "Region rules"). Draws nothing.
+ */
+function marked<K extends 'TopNav' | 'StatGroup' | 'StatusBadge' | 'Badge'>(
+  name: K,
+  Component: React.ComponentType<ComponentProps[K]> = pick(name)
+): React.ComponentType<ComponentProps[K]> {
+  const mark = `pxsig-ui-${name}`;
+  return (props) =>
+    React.createElement(Component, {
+      ...props,
+      className: props.className ? `${props.className} ${mark}` : mark,
+    } as ComponentProps[K] & React.Attributes);
+}
+
 /** The adapter in use, for diagnostics. */
 export const adapterName: string = adapter.name;
 
@@ -56,7 +73,7 @@ export function UiRoot({ children }: { children: React.ReactNode }) {
 
 export const AppShell = pick('AppShell');
 export const AppMain = pick('AppMain');
-export const TopNav = pick('TopNav');
+export const TopNav = marked('TopNav');
 export const NavList = pick('NavList');
 export const NavLink = pick('NavLink');
 export const NavEnd = pick('NavEnd');
@@ -67,7 +84,7 @@ export const CardHeader = pick('CardHeader');
 export const CardTitle = pick('CardTitle');
 export const CardDescription = pick('CardDescription');
 export const CardContent = pick('CardContent');
-const AdapterStatGroup = pick('StatGroup');
+const AdapterStatGroup = marked('StatGroup');
 /** Read, not drawn: a 1px box clipped to nothing and out of flow, so nothing around it moves. */
 const unseen: React.CSSProperties = {
   position: 'absolute',
@@ -109,8 +126,8 @@ const panelPart = <K extends (typeof PANEL)[number]>(name: K) =>
 export const SidePanelLayout = panelPart('SidePanelLayout');
 export const SidePanelMain = panelPart('SidePanelMain');
 export const SidePanel = panelPart('SidePanel');
-export const StatusBadge = pick('StatusBadge');
-export const Badge = pick('Badge');
+export const StatusBadge = marked('StatusBadge');
+export const Badge = marked('Badge');
 /** The contract version the adapter was written for (its conformance.json; the build defines it). */
 declare const __PXSIG_ADAPTER_CONTRACT__: string | undefined;
 const adapterContract =

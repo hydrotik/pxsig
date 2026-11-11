@@ -15,6 +15,8 @@ one design system; a team can build the same dashboard on its own, chosen once a
    The build is not minified, so it can be read as it runs; `PXSIG_DASHBOARD_MINIFY=1` minifies it.
 5. `pxsig dashboard check` renders every feature's screens on that build from sample data, in
    both themes, beside the prebuilt reference, with axe on each: a gallery to review in
-   `node_modules/.cache/pxsig/dashboard-check/index.html`. Exit 1 when a screen does not render.
+   `node_modules/.cache/pxsig/dashboard-check/index.html`. Exit 1 when a screen does not render,
+   or breaks a region rule an adapter may not change (one line, one size, the copy's casing, one
+   way to show a tone), naming the element.
 
 See `pxsig help dashboard`, docs/ui/build-adapter.md, docs/ui/features.md.

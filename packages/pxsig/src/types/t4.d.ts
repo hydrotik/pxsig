@@ -436,6 +436,12 @@ export interface LayoutFinding {
   text: string;
 }
 
+/** A rule an adapter may not change, broken on a screen (dashboard-check/fidelity.mjs). */
+export interface FidelityFinding {
+  rule: 'one-line' | 'size' | 'casing' | 'tone';
+  text: string;
+}
+
 /** What `capture` returns for one screen in one theme. */
 export interface ScreenCapture {
   rendered: boolean;
@@ -444,6 +450,8 @@ export interface ScreenCapture {
   axe: ScreenViolation[];
   /** Empty when the screen did not render, or for the reference build (not measured). */
   layout: LayoutFinding[];
+  /** Measured with the layout when the dashboard's copy is given; never for the reference build. */
+  fidelity?: FidelityFinding[];
   ms: number;
   /** Present only when the layout was still moving after SETTLE_MS: the screenshot was taken anyway. */
   settled?: false;
@@ -478,6 +486,7 @@ export interface ScreenResult extends ScreenCapture {
   scenario: string;
   theme: string;
   fallbacks: string[] | null;
+  fidelity: FidelityFinding[];
   shot: string | null;
   referenceShot: string | null;
   /** Only with --compare. */
@@ -501,6 +510,7 @@ export interface DashboardCheckReport {
     failed: number;
     withAxe: number;
     withLayout: number;
+    withFidelity: number;
     posts: number;
   };
   screens: ScreenResult[];

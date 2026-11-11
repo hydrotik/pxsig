@@ -219,8 +219,9 @@ differ from this list, they win.
   [Tokens](#tokens)).
 - **Each component's accessibility**, as its section states.
 
-`pxsig dashboard check` measures part of this (`overflow`, `clipped`, `controls`, `edge`,
-`overlap`: [Verify](#verify)); the rest is read from its gallery.
+`pxsig dashboard check` measures part of this: the region rules (`one-line`, `size`, `casing`,
+`tone`), which fail it, and the layout (`overflow`, `clipped`, `controls`, `edge`, `overlap`)
+([Verify](#verify)); the rest is read from its gallery.
 
 ## Build order
 
@@ -846,9 +847,32 @@ draw them with your own segmented control and buttons.
    screen on the prebuilt reference dashboard. It reads none of your project's data and writes
    nothing but that folder. Review the gallery: layout and behaviour should match the reference;
    only the look differs.
-   - Exit 1: a screen did not render (its landmark never appeared, or the page threw); the report
-     names the screen and the reason. Exit 2: no build, no Chromium, or an adapter written for an
-     older major contract version.
+   - Exit 1: a screen did not render (its landmark never appeared, or the page threw), or breaks a
+     region rule (below); the report names the screen and the reason. Exit 2: no build, no
+     Chromium, or an adapter written for an older major contract version.
+   - Each screen is measured against the [region rules](#region-rules) after it renders, at 1280 CSS
+     px (a screen with its own width at that width), and each finding names the element that
+     breaks the rule (`fidelity` in `report.json`; the gallery, `summary.md` and the command's own
+     output list them). Unlike axe and layout findings, any one fails the check:
+     - `one-line` (R1): the top bar's controls, a toolbar's, or a row of actions (two or more
+       control-sized controls side by side in one flex row) take more than one line.
+     - `size` (R2): the controls on one line of a toolbar or a row of actions differ in height; a
+       table's controls differ in height, or one is taller than the page's small size (its smallest
+       control outside the tables and stat cards: the dashboard draws toolbars, the top bar's
+       buttons and a card's actions at `sm`).
+     - `casing` (R3): a column header, heading, top-bar link, button, badge or field label is drawn
+       in another case than its text (`text-transform`), or its text is a string of the dashboard's
+       copy in another case. Stat labels, the contract's micro labels, are not measured.
+     - `tone` (R4): a stat card, badge or status badge has a border, background, edge (`::before`,
+       `::after`) or shadow in a tone colour (`--pxsig-color-success`, `warning`, `danger`, and
+       `accent` for `info`), drawn or mixed with `color-mix()`. A selected (pressed) tile is not
+       measured.
+
+     The dashboard adds `pxsig-ui-<Name>` to the `className` of `TopNav`, `StatGroup`, `Badge` and
+     `StatusBadge`, so the rules find those regions in any adapter: keep `className` on the root
+     element. Everything else is found by role and the box model, as for the layout rules, and
+     `data-layout-allow="<reason>"` opts an element out of both.
+
    - Each screen's axe violations are listed in the gallery, `summary.md` and `report.json`
      (whose `axe` is the axe-core version that ran). They are advisory; `--strict` makes any
      violation exit 1.

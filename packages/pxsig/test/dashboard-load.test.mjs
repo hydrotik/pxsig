@@ -57,6 +57,7 @@ const report = (/** @type {object[]} */ screens) =>
       failed: 0,
       withAxe: 0,
       withLayout: 0,
+      withFidelity: 0,
     },
     build: 'dist',
     contract: { adapter: 1, current: 1 },
@@ -74,6 +75,7 @@ test('summary.md lists the retried screens, and has no section when there are no
     rendered: true,
     axe: [],
     layout: [],
+    fidelity: [],
   };
   const md = summaryMarkdown(report([screen, { ...screen, index: 1, retried: NO_BUFFER_SPACE }]));
   assert.match(md, /### Retried\n\n.*\n\n- `overview.stats` #2 \(dark\)\n/);

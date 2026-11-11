@@ -122,7 +122,18 @@ test('every screen renders on the example adapter in both themes, beside the ref
     report.screens.filter((x) => !x.rendered).map((x) => `${x.feature} ${x.theme}: ${x.reason}`),
     []
   );
-  assert.equal(code, 0, 'axe findings are advisory without --strict');
+  // The region rules it breaks are reported (known-breaks.json), and fail the check; axe findings
+  // are advisory without --strict.
+  const known = JSON.parse(readFileSync(path.join(here, 'known-breaks.json'), 'utf8')).plain;
+  const broken = report.screens.flatMap((x) =>
+    x.fidelity.map((f) => `${x.feature} #${x.index + 1} (${x.theme}): ${f.rule}`)
+  );
+  assert.deepEqual(
+    broken.filter((b) => !known.includes(b)),
+    [],
+    'no region rule broken but the known ones'
+  );
+  assert.equal(code, broken.length ? 1 : 0);
   assert.equal(report.reference.used, true);
   for (const x of report.screens) {
     assert.ok(existsSync(path.join(out, x.shot)), x.shot);
@@ -343,10 +354,11 @@ test('the screenshot waits for the layout to hold still, up to a cap', async (t)
     rendered: true,
     axe: [],
     layout: [],
+    fidelity: [],
   };
   const md = summaryMarkdown(
     /** @type {any} */ ({
-      summary: { screens: 2, rendered: 2, failed: 0, withAxe: 0, withLayout: 0 },
+      summary: { screens: 2, rendered: 2, failed: 0, withAxe: 0, withLayout: 0, withFidelity: 0 },
       build: 'dist',
       contract: { adapter: 1, current: 1 },
       themes: ['dark'],

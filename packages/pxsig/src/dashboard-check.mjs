@@ -14,14 +14,16 @@
  *   - Playwright's Chromium (docs/platforms.md#programs-pxsig-starts), 1280×900, reduced motion,
  *     the clock fixed and the caret hidden. For each screen and theme: load, run its actions, wait
  *     for its landmark, take a screenshot, run axe-core, record page errors, and measure the
- *     layout (dashboard-check/layout.mjs: overflow, clipping, control rows, frame edges, overlap).
+ *     layout (dashboard-check/layout.mjs: overflow, clipping, control rows, frame edges, overlap)
+ *     and the rules an adapter may not change (dashboard-check/fidelity.mjs: one line, table rows,
+ *     casing, tone).
  *   - --compare <dir>: each screen against the same screen of an earlier check's output (its
  *     --out), with the engine (dashboard-check/compare.mjs). Advisory: changes never fail.
  *   - Writes only under --out (default node_modules/.cache/pxsig/dashboard-check): index.html (the
  *     gallery), report.json, summary.md and the screenshots.
  *
- * Exit: 0 every screen rendered with no page error · 1 a screen failed, or (with --strict) axe
- * violations or layout findings · 2 setup: no build, no Chromium, or an adapter for an older major UI contract.
+ * Exit: 0 every screen rendered with no page error and no fidelity finding · 1 a screen failed or
+ * has a fidelity finding, or (with --strict) axe violations or layout findings · 2 setup: no build, no Chromium, or an adapter for an older major UI contract.
  */
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
@@ -69,6 +71,17 @@ export function isDashboardBuild(dir) {
   return /<!--pxsig:data-->|<script id="pxsig-data">/.test(
     readFileSync(join(dir, 'index.html'), 'utf8')
   );
+}
+
+/**
+ * Every string of a copy file (src/copy/en.json), plural forms included, placeholders as written.
+ * @param {unknown} node
+ * @returns {string[]}
+ */
+export function copyStrings(node) {
+  if (typeof node === 'string') return [node];
+  if (!node || typeof node !== 'object') return [];
+  return Object.values(node).flatMap(copyStrings);
 }
 
 /**
@@ -130,6 +143,8 @@ export async function dashboardCheck(
     throw new CheckSetupError(
       `--only names no feature: ${unknown.join(', ')} (features: ${catalogue.features.map((f) => f.id).join(', ')})`
     );
+  // The fidelity rules compare casing with the copy (dashboard-check/fidelity.mjs).
+  const copy = copyStrings(readJson(join(src, 'src', 'copy', 'en.json')));
   const features = only
     ? catalogue.features.filter((f) => only.includes(f.id))
     : catalogue.features;
@@ -274,6 +289,7 @@ export async function dashboardCheck(
         axe,
         initScript,
         layout: true,
+        copy,
         aria,
         anchors: anchors ? (j.f.anchors ?? []) : [],
         text,
@@ -303,6 +319,7 @@ export async function dashboardCheck(
         errors: r.errors,
         axe: r.axe,
         layout: r.layout,
+        fidelity: r.fidelity ?? [],
         fallbacks: gapRows ? j.f.components.filter((c) => fallback.has(c)) : null,
         ms: r.ms,
         ...(r.settled === false ? { settled: r.settled } : {}),
@@ -332,6 +349,7 @@ export async function dashboardCheck(
   const failed = screens.filter((x) => !x.rendered).length;
   const withAxe = screens.filter((x) => x.axe.length).length;
   const withLayout = screens.filter((x) => x.layout.length).length;
+  const withFidelity = screens.filter((x) => x.fidelity.length).length;
   const report = {
     pxsig: PXSIG_VERSION,
     axe: axeVersion({ root: cwd, workspaceRoot: cwd }),
@@ -357,6 +375,7 @@ export async function dashboardCheck(
       failed,
       withAxe,
       withLayout,
+      withFidelity,
       posts: posts.length,
     },
     screens,
@@ -364,6 +383,6 @@ export async function dashboardCheck(
   writeFileSync(join(outDir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
   writeFileSync(join(outDir, 'summary.md'), summaryMarkdown(report));
   writeFileSync(join(outDir, 'index.html'), galleryHtml(report));
-  const code = failed || (report.strict && (withAxe || withLayout)) ? 1 : 0;
+  const code = failed || withFidelity || (report.strict && (withAxe || withLayout)) ? 1 : 0;
   return { code, report, outDir };
 }
