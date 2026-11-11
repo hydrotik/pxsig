@@ -1,6 +1,7 @@
 /**
  * The inspector's Changes section (Inspector.tsx): the Tolerance that decides which pixels count as
- * changed (disabled while Originals is on), changed pixels, the size, the regions.
+ * changed (disabled while Originals is on), changed pixels, the size, the regions. A detail-only
+ * change (detailOnly.ts) lists its detail tiles in the regions' place and says why.
  */
 import { KeyValueItem, KeyValueList, Slider } from '@ui';
 import { t } from '../../copy';
@@ -20,6 +21,7 @@ export function ChangesSection({
   tol,
   setTol,
   originals,
+  detailOnly,
 }: {
   analysis: Analysis;
   loaded: Loaded | null | 'missing';
@@ -31,6 +33,8 @@ export function ChangesSection({
   tol: number;
   setTol: (v: number) => void;
   originals: boolean;
+  /** The detail channel's change, under the tolerance: `regions` are its tiles. */
+  detailOnly: boolean;
 }) {
   const sizeNote =
     loaded &&
@@ -62,7 +66,7 @@ export function ChangesSection({
           </span>
         </KeyValueItem>
         <KeyValueItem label={t('inspector.changes.regions')}>
-          <span className={s.mono}>{regions.length}</span>
+          <span className={s.mono}>{analysis.regions.length}</span>
         </KeyValueItem>
         <KeyValueItem label={t('inspector.changes.maxDelta')}>
           <span className={s.mono}>{analysis.maxD}</span>
@@ -71,6 +75,11 @@ export function ChangesSection({
           <span className={s.mono}>{sizeNote}</span>
         </KeyValueItem>
       </KeyValueList>
+      {detailOnly ? (
+        <p className={s.muted}>
+          {t('inspector.changes.detailOnly', { count: regions.length, tol })}
+        </p>
+      ) : null}
       <ol className={s.regions}>
         {regions.length ? (
           regions.slice(0, 50).map((r, i) => (
@@ -84,7 +93,9 @@ export function ChangesSection({
                 <span className={s.mono}>
                   {r.w}×{r.h} @ {r.x},{r.y}
                 </span>
-                <span className={s.muted}>{fmt.num(r.px)} px</span>
+                <span className={s.muted}>
+                  {detailOnly ? t('inspector.changes.tile') : `${fmt.num(r.px)} px`}
+                </span>
               </button>
             </li>
           ))
