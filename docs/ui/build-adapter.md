@@ -129,7 +129,11 @@ anywhere in the workspace.
    [The contract version](#the-contract-version)); without it, 1.0.0.
 
 6. Optional: a `vite.mjs` whose default export returns build settings your design system needs:
-   `{ alias: { name: path }, allow: [folders], optimizeDepsExclude: [names] }`.
+   `{ alias: { name: path }, allow: [folders], optimizeDepsExclude: [names], classPrefixes: { folder: prefix } }`.
+   `classPrefixes` starts every class the vanilla-extract stylesheets in that folder define with
+   the prefix, so a rule can select the design system's elements and nothing else: the reference
+   adapter gives them its design system's border-box reset that way (`box-sizing.css.ts`), because
+   the dashboard does not load that design system's global stylesheet.
 
 Run `pxsig dashboard gaps` at any point: it lists what is missing, partial and bespoke, and the
 dashboard files each one affects.

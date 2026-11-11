@@ -5,7 +5,7 @@
  * them, named by PXSIG_DS_SOURCE.
  *
  * An adapter folder may carry a `vite.mjs` like this one; the dashboard build merges what it
- * returns ({ alias, allow, dedupe, optimizeDepsExclude }) into its own config.
+ * returns ({ alias, allow, dedupe, optimizeDepsExclude, classPrefixes }) into its own config.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -38,7 +38,7 @@ export function packagesIn(root) {
 
 /**
  * The build settings the dashboard build merges into its config.
- * @returns {{ allow: string[], alias: Record<string, string>, optimizeDepsExclude: string[] }}
+ * @returns {{ allow: string[], alias: Record<string, string>, optimizeDepsExclude: string[], classPrefixes: Record<string, string> }}
  */
 export default function hydrotik() {
   const source = process.env.PXSIG_DS_SOURCE;
@@ -69,6 +69,9 @@ export default function hydrotik() {
       '@vanilla-extract/recipes': path.join(dsModules, '@vanilla-extract/recipes'),
       recharts: path.join(dsModules, 'recharts'),
     },
+    // Every class the design system's stylesheets define starts `ds-`: box-sizing.css.ts gives
+    // those elements the design system's border-box reset, and leaves the dashboard's own alone.
+    classPrefixes: { [ds]: 'ds-' },
     optimizeDepsExclude: [
       '@vanilla-extract/css',
       '@vanilla-extract/css/fileScope',
