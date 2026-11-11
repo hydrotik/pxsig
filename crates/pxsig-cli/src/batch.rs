@@ -141,6 +141,8 @@ pub struct Baseline {
     pub env: Option<Value>,
     /// The baseline's text record (its `boxes` section, as stored), when it has one.
     pub boxes: Option<pxsig_core::psig::Section>,
+    /// The masks its render had (the header's `masks`, `masks.rs`), when it records them.
+    pub masks: Option<Value>,
 }
 
 /// The `id` of a header's `env`, when it has one.
@@ -153,15 +155,16 @@ pub fn load_baseline(sig: &Path) -> Result<Baseline> {
         bail!("baseline signature not found: {}", sig.display());
     }
     let raw = fs::read(sig).with_context(|| format!("reading {}", sig.display()))?;
-    let (record, image, env, boxes) = if pxsig_core::psig::is_psig(&raw) {
+    let (record, image, env, boxes, masks) = if pxsig_core::psig::is_psig(&raw) {
         let p = pxsig_core::psig::decode(&raw).map_err(|e| anyhow!("{}: {e}", sig.display()))?;
         let env = p.header.get("env").filter(|e| e.is_object()).cloned();
+        let masks = p.header.get("masks").filter(|m| m.is_object()).cloned();
         let boxes = p.sections.into_iter().find(|s| s.name() == "boxes");
-        (p.record, p.image, env, boxes)
+        (p.record, p.image, env, boxes, masks)
     } else {
         let r: PxsigRecord = serde_json::from_slice(&raw)
             .map_err(|e| anyhow!("baseline is not valid JSON ({}): {e}", sig.display()))?;
-        (r, None, None, None)
+        (r, None, None, None, None)
     };
     if record.version != SPEC_VERSION {
         bail!(
@@ -182,12 +185,14 @@ pub fn load_baseline(sig: &Path) -> Result<Baseline> {
         image,
         env,
         boxes,
+        masks,
     })
 }
 
 mod baseline;
 mod boxes;
 mod check;
+mod masks;
 mod text;
 
 pub use baseline::{
@@ -200,5 +205,7 @@ pub use check::{check, compare_png, detail_json, metrics_json, Artifacts, CheckO
 mod baseline_tests;
 #[cfg(test)]
 mod check_tests;
+#[cfg(test)]
+mod masks_tests;
 #[cfg(test)]
 mod tests;

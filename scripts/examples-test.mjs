@@ -25,6 +25,9 @@
  *                    PXSIG_ENFORCEMENT=warn is refused; the env gate on warn renders past
  *                    --strict-env
  *   6. doctor --ci   no error-severity integrity codes
+ *   7. masks         (single-package) a Badge value that varies on every render, marked
+ *                    data-volatile: "masks changed" on exactly the Badge entries, then passes once
+ *                    approved; a mask over most of a capture warns (output, summary.md, SARIF)
  * And custom-ui (no Storybook): `pxsig dashboard gaps` reports the plain adapter's gaps,
  * `pxsig dashboard build` rebuilds the dashboard on it from the installed pxsig, and `pxsig
  * dashboard check --strict` renders every feature's screens on that build in both themes, with no
@@ -50,6 +53,7 @@ import {
 } from './examples/shared.mjs';
 import { baselineAll, checkJson, envSteps, warnSteps } from './examples/steps.mjs';
 import { rendersSteps } from './examples/renders.mjs';
+import { volatileSteps } from './examples/volatile.mjs';
 import { runCustomUi } from './examples/custom-ui.mjs';
 import { notNew } from './examples/verdicts.mjs';
 
@@ -151,6 +155,8 @@ async function run(name, { projects, storybookDir, change }) {
         `${p}: no error-severity integrity codes (${doc.summary.headline})`
       );
     }
+    // Masks: a value that varies on every render, marked data-volatile (scripts/examples/volatile.mjs).
+    if (name === 'single-package') for (const p of projects) volatileSteps(dir, p, build);
     if (name === 'monorepo') {
       const colocated = join(dir, 'packages/forms/src/TextField/__pxsig__');
       expect(

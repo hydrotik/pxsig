@@ -17,6 +17,7 @@ import { reactSettings } from '../react/config.mjs';
 import { RESET_RENDERS, STAYED_QUIET, reactHook, readRenders, rowRenders } from './react-hook.mjs';
 import { textSettings } from '../text/config.mjs';
 import { boxesFile, writeBoxes } from './boxes.mjs';
+import { maskShot, masksFor, measureMasks, writeMasks } from './masks.mjs';
 /** @import { BrowserContext, Page, PageScreenshotOptions } from 'playwright' */
 /** @import { RenderResult } from '../../types.js' */
 /** @import { BrowserSource, PxsigBrowser, RenderEntry, RenderOptions, RenderOutput, StorybookPreview } from '../../types/t4.js' */
@@ -72,17 +73,17 @@ async function resetPage(page) {
 /**
  * Render manifest entries to `<outDir>/<id>.png` on a pool of pages.
  *
- * An entry is `{ id }` (a plain story, using the run options) or a manifest v2
- * entry with its own `story`, `globals`, `colorScheme`, `viewport`, `browser`,
- * `ignore` (masked selectors), `interaction`, `delay`, `target`, `play`, `a11y`.
+ * An entry is `{ id }` (a plain story, using the run options) or a manifest v2 entry with its own
+ * `story`, `globals`, `colorScheme`, `viewport`, `browser`, `ignore`, `interaction`, `delay`,
+ * `target`, `play`, `a11y`. Masks, and their record `<id>.masks.json`: masks.mjs.
  * `browser` is a Browser (chromium) or a `browserPool()`.
  *
  * opts: { baseUrl, globals, viewport, colorScheme, settleMs, target, waitFor, concurrency,
  *         css, tokens, a11y, project, renders }
  * `renders` (default: the project's `react.renders`; never when React is off) counts React commits
- * and renders per entry. With the project's `text` on (lib/text/config.mjs), each render also writes
- * its text record, `<id>.boxes.json` (lib/capture/boxes.mjs), unless its entry has `text: false`. `signal` stops the run after the entries already started (the others'
- * slots stay empty); `onEntry(done)` follows the run.
+ * and renders per entry. With `text` on (lib/text/config.mjs), a render also writes its text record,
+ * `<id>.boxes.json` (boxes.mjs), unless its entry has `text: false`. `signal` stops the run after
+ * the entries started (the others' slots stay empty); `onEntry(done)` follows the run.
  * Returns [{ id, png, ms, error, a11y, renders }] in input order plus wall-clock ms.
  * @param {PxsigBrowser | BrowserSource} browser
  * @param {RenderEntry[]} stories
@@ -252,8 +253,8 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
           await page.evaluate(() => (document.fonts ? document.fonts.ready : null));
           // Capture once the layout stops moving, not after a fixed delay: components that
           // measure themselves (graphs, grids, overflow menus, charts) settle on their own clock.
-          // capture.waitFor rules add a minimum wait and a markup-stability wait for content that
-          // animates in JS: [{ selector, minMs?, stableMarkup? }], each applied when its selector matches.
+          // capture.waitFor rules ({ selector, minMs?, stableMarkup? }) add waits for content that
+          // animates in JS, each applied when its selector matches.
           const rules = [];
           for (const w of waitFor) if (await page.$(w.selector)) rules.push(w);
           await waitLayoutStable(page, e.target ?? target, {
@@ -286,27 +287,23 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
           const sel = e.target ?? target;
           const el = await page.$(sel);
           const box = el ? await el.boundingBox() : null;
-          const mask = (e.ignore ?? []).map((q) => page.locator(q));
-          /** @type {PageScreenshotOptions} */
-          const shot = {
-            animations: 'disabled',
-            timeout: 10000,
-            ...(mask.length ? { mask, maskColor: '#FF00FF' } : {}),
-          };
           // An opened popover/menu portals outside the root: capture the viewport for those states.
           const ofElement =
             !!el && !!box && box.width > 1 && box.height > 1 && !e.interaction?.fullPage;
+          const masks = await measureMasks(page, masksFor(project, e), ofElement ? box : null);
+          /** @type {PageScreenshotOptions} */
+          const shot = { animations: 'disabled', timeout: 10000, ...maskShot(page, masks) };
           const buf = ofElement ? await el.screenshot(shot) : await page.screenshot(shot);
           writeFileSync(png, buf);
-          // The text record of this render, read before anything else touches the page; an earlier
-          // render's is never left beside this one.
+          writeMasks(png, masks);
+          // The text record, read before anything else touches the page; never an earlier render's.
           const boxes = boxesFile(png);
           rmSync(boxes, { force: true });
           const textRes =
             text.on && e.text !== false
               ? await writeBoxes(page, boxes, {
                   root: ofElement ? sel : null,
-                  ignore: [...(e.ignore ?? []), ...text.ignore],
+                  ignore: [...masks.selectors, ...text.ignore],
                 })
               : undefined;
           let a11yRes = null;

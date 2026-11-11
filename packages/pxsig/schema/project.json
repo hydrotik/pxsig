@@ -180,6 +180,16 @@
           "default": null,
           "description": "A Playwright browser server (ws://…) to render with instead of launching a browser, e.g. the container's from `pxsig browser start`. Also --browser and PXSIG_BROWSER_WS."
         },
+        "ignore": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Selectors masked in every story of the project (the inside of each element's box), besides every [data-volatile] element. Replaces the list inherited from the workspace defaults; capture.addIgnore adds to it."
+        },
+        "addIgnore": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Selectors added to the inherited capture.ignore list instead of replacing it."
+        },
         "waitFor": {
           "type": "array",
           "default": [],

@@ -100,5 +100,11 @@ export function compare(S, sel, run, react = null, current = {}) {
     console.error(
       `[check] ${g.count} failing entries rendered the same image (${g.ids.slice(0, 3).join(', ')}…): the environment, not a design change. Marked as errors; nothing to approve.`
     );
+  // A mask over a quarter of a capture lets most changes under it pass: a warning, never a verdict.
+  for (const r of rustRes.results)
+    for (const m of r.masksLarge ?? [])
+      console.error(
+        `[check] mask: ${r.id}: ${m.selector} (${m.source}) covers ${Math.round(m.area * 100)}% of the capture, which hides most changes under it`
+      );
   return { checkArgs, rc, rustRes, rows };
 }

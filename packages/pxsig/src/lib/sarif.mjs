@@ -6,7 +6,8 @@
  *
  * One result per entry and rule that is not on the entry's accepted list (`a11y.json`), located at
  * the entry's story file, with the entry id as the logical location. Rules carry axe's help text and
- * its documentation link.
+ * its documentation link. With `masks`, also one warning (`pxsig/large-mask`) per mask over a quarter
+ * of an entry's capture (`masksLarge`, lib/capture/masks.mjs): such a mask lets most changes pass.
  */
 import { writeAtomic } from './files.mjs';
 /** @import { A11yResult, CheckRow, ManifestEntry, SarifLog, SarifResult, SarifRule } from '../types.js' */
@@ -16,7 +17,16 @@ const LEVEL = { critical: 'error', serious: 'error', moderate: 'warning', minor:
 /** @param {string} id */
 const helpUri = (id) => `https://dequeuniversity.com/rules/axe/latest/${encodeURIComponent(id)}`;
 
-/** @typedef {{ entries?: Map<string, Pick<ManifestEntry, 'importPath'>>, version?: string | null }} SarifOptions */
+/** The large-mask rule: a mask over this share of the capture. */
+const LARGE_MASK = {
+  id: 'pxsig/large-mask',
+  shortDescription: { text: 'A mask covers more than 25% of the capture' },
+  helpUri: 'https://github.com/hydrotik/pxsig/blob/main/docs/configuration.md#masks',
+  properties: { tags: ['visual', 'pxsig'] },
+};
+
+/** `masks`: also the large-mask warnings (`check --sarif`; `pxsig a11y --sarif` stays a11y only). */
+/** @typedef {{ entries?: Map<string, Pick<ManifestEntry, 'importPath'>>, version?: string | null, masks?: boolean }} SarifOptions */
 
 /**
  * The new violations of `rows` (check.json rows), as a SARIF log. `entries`: manifest stories by id.
@@ -24,11 +34,21 @@ const helpUri = (id) => `https://dequeuniversity.com/rules/axe/latest/${encodeUR
  * @param {SarifOptions} [opts]
  * @returns {SarifLog}
  */
-export function sarifLog(rows, { entries = new Map(), version = null } = {}) {
+export function sarifLog(rows, { entries = new Map(), version = null, masks = false } = {}) {
   /** @type {Map<string, SarifRule>} */
   const rules = new Map();
   /** @type {SarifResult[]} */
   const results = [];
+  /** @param {CheckRow} r */
+  const locations = (r) => {
+    const e = entries.get(r.id);
+    return [
+      {
+        ...(e?.importPath ? { physicalLocation: { artifactLocation: { uri: e.importPath } } } : {}),
+        logicalLocations: [{ name: r.id, kind: 'module' }],
+      },
+    ];
+  };
   for (const r of rows) {
     const vs = r.a11y?.violations;
     // A missing count compares as `undefined > 0`, false: no new violations.
@@ -45,7 +65,6 @@ export function sarifLog(rows, { entries = new Map(), version = null } = {}) {
           helpUri: helpUri(id),
           properties: { tags: ['accessibility', 'axe'] },
         });
-      const e = entries.get(r.id);
       results.push({
         ruleId: id,
         // No impact looks up `LEVEL[undefined]`: undefined, so a warning.
@@ -53,18 +72,30 @@ export function sarifLog(rows, { entries = new Map(), version = null } = {}) {
         message: {
           text: `${r.id}: ${v.help ?? id}${v.nodes ? ` (${v.nodes} element${v.nodes === 1 ? '' : 's'}${v.targets?.length ? `: ${v.targets.join(', ')}` : ''})` : ''}`,
         },
-        locations: [
-          {
-            ...(e?.importPath
-              ? { physicalLocation: { artifactLocation: { uri: e.importPath } } }
-              : {}),
-            logicalLocations: [{ name: r.id, kind: 'module' }],
-          },
-        ],
+        locations: locations(r),
         properties: { entry: r.id, mode: r.mode ?? null, impact: v.impact ?? null },
       });
     }
   }
+  for (const r of masks ? rows : [])
+    for (const m of r.masksLarge ?? []) {
+      rules.set(LARGE_MASK.id, LARGE_MASK);
+      results.push({
+        ruleId: LARGE_MASK.id,
+        level: 'warning',
+        message: {
+          text: `${r.id}: ${m.selector} (${m.source}) masks ${Math.round(m.area * 100)}% of the capture, which hides most changes under it`,
+        },
+        locations: locations(r),
+        properties: {
+          entry: r.id,
+          mode: r.mode ?? null,
+          selector: m.selector,
+          source: m.source,
+          area: m.area,
+        },
+      });
+    }
   return {
     $schema: 'https://json.schemastore.org/sarif-2.1.0.json',
     version: '2.1.0',

@@ -1,6 +1,7 @@
 /** Resolving one project (workspace.mjs): its layers, merged config, paths and store. */
 /** @import { Config, ConfigFile, Mode, PackageJson, Project, ProjectRef, Workspace } from '../../types.js' */
 /** @import { Obj } from './layers.mjs' */
+/** @import { Mask } from '../capture/masks.mjs' */
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, relative, sep } from 'node:path';
@@ -18,6 +19,7 @@ import {
   resolveModes,
 } from './layers.mjs';
 import { componentOfImport } from './run-manifest.mjs';
+import { configMasks } from '../capture/masks.mjs';
 import { rustBinary, serverUrlFor } from './peers.mjs';
 
 /**
@@ -175,6 +177,17 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
   // the environment or the flags (schema/project.json), checked below where pxsig relies on it.
   const config = /** @type {Config} */ (merge(...layers.map((l) => l.value)));
   const sources = provenance(layers);
+  // capture.ignore / capture.addIgnore, each selector with its layer (lib/capture/masks.mjs).
+  /** @type {Mask[]} */
+  let masks;
+  try {
+    masks = configMasks([
+      { source: 'workspace', value: wsDefaults },
+      { source: 'project', value: raw },
+    ]);
+  } catch (e) {
+    throw new SetupError(`project "${ref.name}": ${/** @type {Error} */ (e).message}`);
+  }
   checkApprovals(config, ref);
   checkRejections(config, ref);
   try {
@@ -261,6 +274,8 @@ export function loadProject(ws, ref, { flags = {}, env = process.env } = {}) {
     config,
     /** Which layer set each config key (`pxsig config`). */
     configSources: sources,
+    /** The masks `capture.ignore` / `capture.addIgnore` set, each with its layer. */
+    masks,
     srcRoot,
     storybook: {
       url: String(config.storybook.url).replace(/\/$/, ''),
