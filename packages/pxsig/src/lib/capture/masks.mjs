@@ -22,10 +22,14 @@ export const ATTRIBUTE = 'data-volatile';
 /** @typedef {'attribute' | 'story' | 'project' | 'workspace'} MaskSource */
 /** A mask to apply: a selector and its source. */
 /** @typedef {{ selector: string, source: MaskSource }} Mask */
-/** A mask that applied to a render: its elements (`count`) and masked pixels (`px`). */
-/** @typedef {Mask & { reason?: string, count: number, px: number }} AppliedMask */
 /** A box, `[x0, y0, x1, y1]` in CSS px. */
 /** @typedef {[number, number, number, number]} Rect */
+/**
+ * A mask that applied to a render: its elements (`count`), its boxes inside the frame (`rects`)
+ * and the pixels they cover (`px`). The engine counts `rects` again inside the trimmed PNG, so a
+ * mask's area is its share of the image that is compared.
+ */
+/** @typedef {Mask & { reason?: string, count: number, px: number, rects: Rect[] }} AppliedMask */
 
 /**
  * The capture's masks file beside `png`.
@@ -152,7 +156,8 @@ export async function measureMasks(page, masks, frame) {
       groups.set(key, [...(groups.get(key) ?? []), rect]);
     }
     for (const [v, rects] of groups) {
-      const px = unionPx(rects.filter((r) => r[2] > r[0] && r[3] > r[1]).slice(0, MAX_BOXES));
+      const kept = rects.filter((r) => r[2] > r[0] && r[3] > r[1]).slice(0, MAX_BOXES);
+      const px = unionPx(kept);
       if (!px) continue;
       const reason = v.trim();
       applied.push({
@@ -161,6 +166,7 @@ export async function measureMasks(page, masks, frame) {
         ...(reason ? { reason } : {}),
         count: rects.length,
         px,
+        rects: kept,
       });
     }
   }

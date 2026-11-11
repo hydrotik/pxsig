@@ -11,6 +11,7 @@ import { relPath } from '../lib/paths.mjs';
 import { readJson } from '../lib/files.mjs';
 import { textBrief } from '../lib/text/say.mjs';
 import { readRejections } from '../lib/rejections.mjs';
+import { maskBrief } from './masks.mjs';
 
 /** @import { BriefEntry, CheckReport, McpContent, ReportRow, ReviewFile, ServerStatusReply } from '../types/t6.js' */
 /** @import { RejectionsFile } from '../types/rejections.js' */
@@ -130,6 +131,8 @@ function brief(row, review, open) {
     ...(row.a11y?.new ? { a11yNew: row.a11y.new } : {}),
     // Text labels (lib/text/say.mjs): labels only, beside the state, never changing it.
     ...textBrief(row.textDiff),
+    // Masks (tools/masks.mjs): a change from the baseline's, and the ones over 25% (a warning).
+    ...maskBrief(row),
     ...(state === 'rejected' && note ? { note } : {}),
     ...(state === 'changed' && r ? { rejectedBefore: true, ...(note ? { note } : {}) } : {}),
   };

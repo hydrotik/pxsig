@@ -219,3 +219,75 @@ fn changes_large_and_reason() {
     );
     assert_eq!(large(Some(&m(&[("a", "project", 0.2501)]))).len(), 1);
 }
+
+/// A masks record with each mask's boxes, as the capture writes it: `(selector, px, rects)`.
+fn write_boxes(png: &Path, masks: &[(&str, u32, Value)]) {
+    let list: Vec<Value> = masks
+        .iter()
+        .map(|(s, px, r)| json!({ "selector": s, "source": "attribute", "count": 1, "px": px, "rects": r }))
+        .collect();
+    fs::write(
+        png.with_extension("masks.json"),
+        json!({ "v": 1, "masks": list }).to_string(),
+    )
+    .unwrap();
+}
+
+#[test]
+fn the_area_counts_the_boxes_inside_the_trimmed_png() {
+    // Captured at 200×100, then trimmed to 32×32: `px` was counted on the capture, the boxes are
+    // counted again inside what is left. Overlapping boxes count once.
+    let d = scratch("masks-trimmed");
+    let png = d.join("png/a.png");
+    write_png(&png, 10);
+    write_boxes(
+        &png,
+        &[
+            ("#all", 20_000, json!([[0, 0, 200, 100]])),
+            ("#gone", 480, json!([[100, 50, 140, 62]])),
+            ("#corner", 48, json!([[4, 4, 12, 8], [8, 4, 12, 12]])),
+        ],
+    );
+    let areas: Vec<Value> = record(&png).unwrap().unwrap()["masks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| m["area"].clone())
+        .collect();
+    assert_eq!(areas, [json!(1.0), json!(0.0), json!(0.0469)]);
+    // A record written before the boxes: `px`, as before.
+    write_masks(&png, &[("#gone", "attribute", 480)]);
+    assert_eq!(
+        record(&png).unwrap().unwrap()["masks"][0]["area"],
+        json!(0.4688)
+    );
+    let _ = fs::remove_dir_all(&d);
+}
+
+#[test]
+fn a_baseline_with_the_earlier_area_reads_no_change() {
+    // Baselines written before the boxes were recorded: an area from `px`, too large where trim
+    // cropped the mask away, the same where it did not. The new area is never larger: no "grew".
+    let d = scratch("masks-upgrade");
+    let png = store(
+        &d,
+        Some(&[("#gone", "attribute", 480), ("#kept", "attribute", 64)]),
+    );
+    write_boxes(
+        &png,
+        &[
+            ("#gone", 480, json!([[100, 50, 140, 62]])),
+            ("#kept", 64, json!([[0, 0, 8, 8]])),
+        ],
+    );
+    let r = row(&d, None);
+    assert_eq!(r["pass"], json!(true), "{r}");
+    assert!(r.get("masksChanged").is_none(), "{r}");
+    assert_eq!(r["masks"][0]["area"], json!(0.0));
+    assert_eq!(r["masks"][1]["area"], json!(0.0625));
+    assert!(
+        r.get("masksLarge").is_none(),
+        "the cropped mask no longer warns: {r}"
+    );
+    let _ = fs::remove_dir_all(&d);
+}

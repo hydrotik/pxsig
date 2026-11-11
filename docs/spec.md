@@ -260,9 +260,13 @@ container was packed from. `pxsig pack` checks that by reading every file back a
   baseline is not written. A render without one gets `sig` and `image` only, as before.
 - A render's masks record, `<id>.masks.json` beside `<id>.png` (written by the capture when a mask
   applied, [configuration.md](configuration.md#masks)): `{ "v": 1, "masks": [{ "selector",
-  "source", "reason"?, "count", "px" }] }`, `px` the masked pixels. `pxsig baseline` and the
-  server's approval write it as the header's `masks`, each `px` as a share of the image. A record
-  that does not read stops that entry's baseline. A render without one gets no `masks`.
+  "source", "reason"?, "count", "px", "rects"? }] }`, `px` the masked pixels and `rects` the
+  boxes they come from (`[x0, y0, x1, y1]` in pixels, clipped to the capture, at most 500), both
+  counted before the render is trimmed. `pxsig baseline` and the server's approval write it as
+  the header's `masks`, each mask's area being its boxes counted inside the trimmed image (trim
+  keeps the top-left, so a box is clipped to the image's width and height) as a share of that
+  image; a record without `rects` uses `px`. A record that does not read stops that entry's
+  baseline. A render without one gets no `masks`.
 
 ## 6. Manifest, version 2
 
