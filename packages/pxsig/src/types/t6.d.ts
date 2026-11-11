@@ -622,7 +622,7 @@ export interface Rendered {
 }
 
 /** One entry as `pxsig_list` and `pxsig_check` list it (mcp.mjs `brief`). */
-export interface BriefEntry extends TextBrief {
+export interface BriefEntry extends TextBrief, Pick<ReportRow, 'masksChanged' | 'masksLarge'> {
   id: string;
   state: string;
   mode?: string;
@@ -647,7 +647,8 @@ export type CliError = Error & { exit?: number; status?: number };
 export type DoctorResult = Awaited<ReturnType<(typeof import('../tools/doctor.mjs'))['doctor']>>;
 
 /** The JSON text `pxsig_entry` answers first: the entry in full (mcp.mjs). */
-export interface EntryDetail extends BriefEntry, TextDetail {
+export interface EntryDetail
+  extends BriefEntry, TextDetail, Pick<ReportRow, 'masks' | 'masksBaseline'> {
   story?: string;
   browser?: string;
   metrics?: EngineMetrics | null;
@@ -665,6 +666,8 @@ export interface EntryDetail extends BriefEntry, TextDetail {
   checkedAt: string | null;
   renderedAt: string | null;
   diffPage: string;
+  /** One sentence per mask over 25% of the capture (tools/masks.mjs). */
+  maskWarnings?: string[];
 }
 
 /** What `pxsig_check` answers (each case sets some of these). */

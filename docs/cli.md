@@ -566,6 +566,13 @@ new entry (`unbaselined`, as after a first check), Next is `pxsig serve`, to rev
 `--repair`. With nothing at `storybook.url`, doctor reads the index of the build in
 `storybook.staticDir` (the one `check` serves), shown as `index: Storybook build (<folder>)`.
 
+The details list has a `Masks` row: every `[data-volatile]` element is masked wherever it renders
+(a component sets it, so it is not listed per project), how many selectors the config adds, and
+how many baselines record masks. When the config sets `capture.ignore` or `capture.addIgnore`, a
+Masks table follows with each selector and the layer that set it (`workspace defaults` or
+`project config`, as in `pxsig config`). `--json` has the same as `masks: { attribute, note,
+config: [{ selector, source, layer }], baselines, recorded }`. Information only: never the exit.
+
 Before a manifest exists (a fresh `pxsig init`), `doctor` prints a setup preflight instead: the
 engine binary and its version (as `pxsig --version` finds them), the Playwright package that
 resolves and its version, whether Playwright's Chromium is at its `executablePath()` (a file check;

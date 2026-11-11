@@ -155,6 +155,10 @@ test(
     assert.equal(m.reason, 'relative time');
     assert.equal(m.count, 1);
     assert.equal(m.px, 80 * 20, 'the box of the element, in whole pixels');
+    // Its box too, inside the frame: the engine counts it again inside the trimmed PNG.
+    assert.equal(m.rects.length, 1);
+    const [[x0, y0, x1, y1]] = m.rects;
+    assert.equal((x1 - x0) * (y1 - y0), m.px);
     assert.ok(!JSON.stringify(rec).includes(base), 'no path in the record');
     assert.ok(!existsSync(masksFile(join(a.dir, 'plain--x.png'))), 'no mask, no record');
     const text = JSON.parse(readFileSync(join(a.dir, 'clock--live.boxes.json'), 'utf8'));

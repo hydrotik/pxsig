@@ -193,6 +193,12 @@ pxsig doctor [--project x] [--component name] [--status code,code] [--limit 40]
 | 2    | Setup error (no manifest, broken Storybook index, unknown project, bad flag)                                                                               |
 | 3    | `--prune` or `--only log-torn --apply` was used where no person is at a terminal, or the store lock's holder went quiet and only a person may take it over |
 
+The report also lists the masks in force ([configuration.md](configuration.md#masks)): every
+`[data-volatile]` element is masked wherever it renders (a component sets it, so it is not listed
+per project), then each `capture.ignore` / `capture.addIgnore` selector with its layer
+(`workspace defaults` or `project config`), and how many baselines record masks. `--json` and
+`pxsig_doctor` carry it as `masks`. Information only: it never changes the exit.
+
 The MCP tool `pxsig_doctor` and the server's `POST /__pxsig/repair` run the same repairs. Neither
 can prune. `pxsig_doctor` with `repair: 'apply'` takes the store lock like the CLI (through the
 server when the server holds the store) and refuses, changing nothing, while another process holds
