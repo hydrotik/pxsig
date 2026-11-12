@@ -24,7 +24,7 @@ import { componentOf, loadStoryIndex } from './stories.mjs';
 import {
   neverCheckedReason,
   unloggedProblems,
-  envProblems,
+  reportProblems,
   warnModeProblems,
   conflictProblems,
   decisionProblems,
@@ -543,7 +543,7 @@ export async function reconcile(ctx, opts = {}) {
       ...unloggedProblems(unlogged, ctx),
       ...conflictProblems(ctx),
       ...decisionProblems(ctx),
-      ...envProblems(report, ctx),
+      ...reportProblems(report, ctx),
       ...warnModeProblems(ctx),
     ],
     summary,

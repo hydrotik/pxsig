@@ -22,9 +22,13 @@ use pxsig_core::text::Pixels;
 use super::text::{self, Text};
 use super::{env_id, load_baseline, load_manifest, Baseline, Entry, EnvPlan, Manifest};
 
+/// Today's rules, then the colour rule (`super::colour`) when they pass.
 pub fn compare_png(png: &Path, b: &Baseline, gate: &GateThresholds) -> Result<CompareResult> {
-    let (data, w, h) = io::decode_png(png)?;
-    Ok(compare_rgba(&data, w, h, b, gate))
+    let bytes = fs::read(png).with_context(|| format!("PNG not found: {}", png.display()))?;
+    let (data, w, h) = io::decode_png_bytes(&bytes, png)?;
+    let mut r = compare_rgba(&data, w, h, b, gate);
+    super::colour::apply(&mut r, b, png, &bytes, (&data, w, h), gate)?;
+    Ok(r)
 }
 
 pub fn compare_rgba(
@@ -140,7 +144,7 @@ fn hex(b: &[u8]) -> String {
 /// record, its environment and the text tolerances.
 fn cache_key(png: &[u8], sig: &[u8], gate: &Value, text: &[u8]) -> String {
     let mut h = Sha256::new();
-    h.update(b"pxsig-check-v5\0"); // v5: the render's masks record
+    h.update(b"pxsig-check-v6\0"); // v6: the colour rule
     h.update(png);
     h.update(sig);
     h.update(gate.to_string().as_bytes());
@@ -263,6 +267,7 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
                 v["metrics"] = metrics;
                 v["reasons"] = json!(r.reasons);
                 v["detail"] = detail_json(&r);
+                v["colour"] = super::colour::colour_json(&r);
                 v["note"] = json!(if r.pass { "pass".to_string() } else { r.reasons.join("; ") });
                 // The render's masks against the baseline's: a change fails the row, whatever the pixels.
                 super::masks::annotate(&mut v, &png, b.masks.as_ref())?;

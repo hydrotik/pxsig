@@ -29,6 +29,7 @@ export const DEFAULTS = Object.freeze({
     minSsim: 0.99,
     maxChangedPct: 2,
     detail: { blockDelta: 32, energyDelta: 48, minTiles: 3 },
+    colour: { deltaE: 3, minArea: 64, cellDeltaE: 5, minCells: 3 },
   },
   modes: { default: { globals: '', colorScheme: 'light' } },
   defaultMode: null,

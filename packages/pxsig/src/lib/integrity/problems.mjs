@@ -84,6 +84,72 @@ export function envProblems(report, ctx) {
 }
 
 /**
+ * The setup problems the last check's report shows: `env-mismatch` and `gate-colour-off`.
+ * @param {IntegrityReport | null} report
+ * @param {IntegrityContext} ctx
+ * @returns {LedgerSetup[]}
+ */
+export const reportProblems = (report, ctx) => [
+  ...envProblems(report, ctx),
+  ...colourGateProblems(report, ctx),
+];
+
+/**
+ * The colour rule's limits (schema/project.json `$defs/colourGate`): past one, it misses the small
+ * colour changes it is there for (a badge tint, a status colour), so it counts as off.
+ */
+export const COLOUR_LIMITS = Object.freeze({
+  deltaE: 10,
+  minArea: 1024,
+  cellDeltaE: 15,
+  minCells: 16,
+});
+
+/**
+ * `gate-colour-off`: entries the last check judged with the colour rule off, with one of its two
+ * checks off (`minArea` or `minCells` 0), or loosened past [COLOUR_LIMITS]. Read from each row's
+ * resolved gate, so every layer counts (the project, the workspace defaults, a story's own gate).
+ * Rows from an engine before the rule (no `colour` key) are not counted.
+ * `integrity.severity['gate-colour-off']` overrides the severity.
+ * @param {IntegrityReport | null} report
+ * @param {IntegrityContext} ctx
+ * @returns {LedgerSetup[]}
+ */
+export function colourGateProblems(report, ctx) {
+  /** @type {string[]} */
+  const off = [];
+  /** @type {string[]} */
+  const loose = [];
+  for (const r of report?.rows ?? []) {
+    const g = /** @type {{ gate?: { colour?: Record<string, number> | null } }} */ (r).gate;
+    if (!g || !('colour' in g)) continue;
+    const c = g.colour;
+    if (c == null) off.push(r.id);
+    else if (
+      !c.minArea ||
+      !c.minCells ||
+      Object.entries(COLOUR_LIMITS).some(([k, max]) => (c[k] ?? 0) > max)
+    )
+      loose.push(r.id);
+  }
+  const n = off.length + loose.length;
+  if (!n) return [];
+  const ids = [...off, ...loose];
+  const parts = [
+    ...(off.length ? [`${off.length} with it off`] : []),
+    ...(loose.length ? [`${loose.length} with it loosened past its limits`] : []),
+  ];
+  return [
+    {
+      code: 'gate-colour-off',
+      severity: ctx.integrity?.severity?.['gate-colour-off'] ?? 'warn',
+      count: n,
+      reason: `${n} entries were checked without the colour rule (${parts.join(', ')}: ${ids.slice(0, 3).join(', ')}${n > 3 ? ', …' : ''}): a colour change in a small area, such as a badge tint or a status colour, passes them. \`pxsig config\` names the layer that sets gate.colour; its limits are deltaE ${COLOUR_LIMITS.deltaE}, minArea ${COLOUR_LIMITS.minArea}, cellDeltaE ${COLOUR_LIMITS.cellDeltaE} and minCells ${COLOUR_LIMITS.minCells}, and 0 turns a check off`,
+    },
+  ];
+}
+
+/**
  * Warn mode (lib/enforcement.mjs): `enforcement-warn`, `enforcement-ending`, `enforcement-expired`
  * when the committed config chose warn for a gate. The quiet built-in a11y default adds nothing
  * (docs/configuration.md#enforcement). A config this process cannot resolve

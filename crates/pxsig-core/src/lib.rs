@@ -12,6 +12,7 @@
 //!
 //! IO (PNG decode, files, diff artifacts) lives in `pxsig-cli`.
 
+pub mod colour;
 pub mod compare;
 pub mod detail;
 pub mod hash;
@@ -23,6 +24,7 @@ pub mod signature;
 pub mod text;
 pub mod trim;
 
+pub use colour::{apply_colour, ColourGate, ColourMetrics};
 pub use compare::{compare, compare_with_detail, CompareResult, GateThresholds, Metrics};
 pub use detail::{detail_of, Detail, DetailGate, DetailMetrics, DetailParams, DetailRecord};
 pub use pixeldiff::{pixel_diff, PixelDiff, Region};

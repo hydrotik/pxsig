@@ -193,16 +193,45 @@ The smallest config is `{}`: every key has a default. `pxsig init` writes
 
 ### `gate`
 
-| Key             | Default                                                  | Meaning                                                             |
-| --------------- | -------------------------------------------------------- | ------------------------------------------------------------------- |
-| `threshold`     | `24`                                                     | Per-cell mean RGB delta that counts a cell as changed.              |
-| `minCells`      | `3`                                                      | Fail when at least this many cells changed. `0` turns the rule off. |
-| `minSsim`       | `0.99`                                                   | Fail when SSIM is below this.                                       |
-| `maxChangedPct` | `2`                                                      | Fail when more than this percentage of cells changed.               |
-| `maxEdgePct`    | off                                                      | Fail when the edge-map difference is above this percentage.         |
-| `detail`        | `{ "blockDelta": 32, "energyDelta": 48, "minTiles": 3 }` | Detail-channel rule, or `false` to turn it off.                     |
+| Key             | Default                                                          | Meaning                                                             |
+| --------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `threshold`     | `24`                                                             | Per-cell mean RGB delta that counts a cell as changed.              |
+| `minCells`      | `3`                                                              | Fail when at least this many cells changed. `0` turns the rule off. |
+| `minSsim`       | `0.99`                                                           | Fail when SSIM is below this.                                       |
+| `maxChangedPct` | `2`                                                              | Fail when more than this percentage of cells changed.               |
+| `maxEdgePct`    | off                                                              | Fail when the edge-map difference is above this percentage.         |
+| `detail`        | `{ "blockDelta": 32, "energyDelta": 48, "minTiles": 3 }`         | Detail-channel rule, or `false` to turn it off.                     |
+| `colour`        | `{ "deltaE": 3, "minArea": 64, "cellDeltaE": 5, "minCells": 3 }` | The colour rule (below), or `false` to turn it off.                 |
 
 The metrics are defined in [spec.md](spec.md#4-metrics-and-gate).
+
+#### `gate.colour`
+
+The colour rule fails an entry the other rules pass when a small area changes colour at about the
+same lightness: a badge's tint, a status colour, a lost row highlight
+([spec.md](spec.md#the-colour-rule)). It is on by default since 0.7.7.
+
+| Key          | Default | Limit | Meaning                                                                                                    |
+| ------------ | ------- | ----- | ---------------------------------------------------------------------------------------------------------- |
+| `deltaE`     | `3`     | 10    | CIEDE2000 difference at which a flat pixel (3×3 luminance range under 8 in both images) counts as changed. |
+| `minArea`    | `64`    | 1024  | Fail when at least this many connected flat pixels changed. `0` turns the flat-area check off.             |
+| `cellDeltaE` | `5`     | 15    | CIEDE2000 difference of a cell's mean colour at which the cell counts as changed.                          |
+| `minCells`   | `3`     | 16    | Fail when at least this many cells changed colour. `0` turns the cell check off.                           |
+
+Loosen it for a project the way any gate key is set: in `pxsig.config.json`, in the workspace
+file's `defaults.gate`, or for one story in `parameters.pxsig.gate` (it has no `PXSIG_*` variable
+or binary flag). Each key set replaces the default for that key only:
+
+```json
+{ "gate": { "colour": { "deltaE": 5, "minArea": 128 } } }
+```
+
+It cannot be turned off quietly. The resolved rule is recorded on every row of `check.json`
+(`gate.colour`, `null` when off), `pxsig config` names the layer that set it, and an entry checked
+with the rule off, with either check off, or with a key past its limit (the schema allows no more,
+but a story's gate is not checked against it) is counted in the `gate-colour-off` warning that
+`pxsig doctor` and the dashboard's Coverage view show
+([integrity.md](integrity.md#setup-problems)). The defaults are calibrated on container renders.
 
 ### `modes`
 

@@ -1,6 +1,7 @@
 //! Comparison + gating: builds the metric set + per-cell heat map and evaluates the
 //! gate thresholds (docs/spec.md §3–4).
 
+use crate::colour::{ColourGate, ColourMetrics};
 use crate::detail::{compare_detail, Detail, DetailGate, DetailMetrics};
 use crate::hash::hamming;
 use crate::metrics::{edge_diff_pct, ssim};
@@ -17,6 +18,9 @@ pub struct GateThresholds {
     pub min_cells: usize,
     /// Detail-channel gate; applied only when the baseline carries a detail signature.
     pub detail: Option<DetailGate>,
+    /// The colour rule ([`crate::colour`]); applied by [`crate::colour::apply_colour`] after the
+    /// comparison, which has no baseline image.
+    pub colour: Option<ColourGate>,
 }
 
 impl Default for GateThresholds {
@@ -28,6 +32,7 @@ impl Default for GateThresholds {
             max_edge_pct: f64::INFINITY,
             min_cells: 0,
             detail: None,
+            colour: None,
         }
     }
 }
@@ -59,6 +64,8 @@ pub struct CompareResult {
     pub reasons: Vec<String>,
     /// Detail-channel result when both the baseline and the gate have one.
     pub detail: Option<DetailMetrics>,
+    /// The colour rule's measurements, once [`crate::colour::apply_colour`] ran.
+    pub colour: Option<ColourMetrics>,
 }
 
 /// Diff a current render (decoded RGBA + dims) against a baseline signature and
@@ -196,6 +203,7 @@ pub fn compare_with_detail(
     let pass = reasons.is_empty();
     CompareResult {
         detail,
+        colour: None,
         metrics,
         heat,
         base_sig: base_sig.to_vec(),
@@ -432,6 +440,8 @@ mod golden {
         assert_eq!(g.max_edge_pct, f64::INFINITY);
         assert_eq!(g.min_cells, 0);
         assert!(g.detail.is_none());
+        // Like the detail channel, the colour rule is the CLI's built-in (gate.rs), not the engine's.
+        assert!(g.colour.is_none());
     }
 
     /// Every gate off but the one under test.
@@ -443,6 +453,7 @@ mod golden {
             max_edge_pct: f64::INFINITY,
             min_cells: 0,
             detail: None,
+            colour: None,
         }
     }
 
