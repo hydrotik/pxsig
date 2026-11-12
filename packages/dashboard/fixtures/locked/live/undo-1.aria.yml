@@ -45,7 +45,7 @@
       - listitem:
         - link "Latest render (opens in a new tab)":
           - /url: /p/example-single/renders/latest/components-badge--neutral@dark.png
-        - text: 0.9 KB
+        - text: 0.8 KB
         - 'button "Copy path: Latest render"': Copy path
       - listitem:
         - link "Baseline record (JSON) (opens in a new tab)":

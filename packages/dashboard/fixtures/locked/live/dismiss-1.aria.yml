@@ -9,7 +9,7 @@
     - radio "dark" [checked]
   - text: Latest check · dark
   - heading "components-badge--success@dark" [level=2]
-  - paragraph: ssim 0.9468 < min 0.99 · changedCellsPct 26.56 > max 2 · changedCells 68 >= 3 (off by > 24)
+  - paragraph: ssim 0.9445 < min 0.99 · changedCellsPct 26.56 > max 2 · changedCells 68 >= 3 (off by > 24)
   - button "Previous story (←)": ‹
   - text: 1 / 2
   - button "Next story (→)": ›
@@ -27,7 +27,7 @@
     - radio "Pixel diff"
     - radio "Signature cells"
   - button "Zoom out (−)": −
-  - text: 881%
+  - text: 879%
   - button "Zoom in (+)": +
   - button "Fit"
   - button "1:1"
@@ -52,7 +52,7 @@
     - group "Tolerance":
       - slider "Tolerance": "16"
     - term: Changed pixels
-    - definition: 910 (24.59%)
+    - definition: 900 (24.32%)
     - term: Regions
     - definition: "1"
     - term: Max channel Δ
@@ -61,19 +61,19 @@
     - definition: 74×50
     - list:
       - listitem:
-        - button "48×32 @ 16,8 910 px" [pressed]
+        - button "48×32 @ 16,8 900 px" [pressed]
     - heading "Text" [level=3]
     - paragraph: No text changed. The change is outside text.
     - text: Labels only. The gate and the decision are unchanged.
     - heading "Metrics" [level=3]
     - term: SSIM
-    - definition: 0.9468 < 0.99
+    - definition: 0.9445 < 0.99
     - term: Cells over 24
     - definition: 68 (26.56%)
     - term: Max cell Δ
     - definition: "74"
     - term: Edge Δ
-    - definition: 2.125%
+    - definition: 2.099%
     - term: Detail tiles changed
     - definition: "0"
     - term: New edges
@@ -100,12 +100,12 @@
       - listitem:
         - link "Baseline render (opens in a new tab)":
           - /url: /p/example-single/renders/base/components-badge--success@dark.png
-        - text: 0.7 KB
+        - text: 0.6 KB
         - 'button "Copy path: Baseline render"': Copy path
       - listitem:
         - link "Latest render (opens in a new tab)":
           - /url: /p/example-single/renders/latest/components-badge--success@dark.png
-        - text: 0.7 KB
+        - text: 0.6 KB
         - 'button "Copy path: Latest render"': Copy path
       - listitem:
         - link "Baseline signature (PNG) (opens in a new tab)":
