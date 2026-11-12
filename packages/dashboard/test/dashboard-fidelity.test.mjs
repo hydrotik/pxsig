@@ -152,7 +152,7 @@ test("casing: a header drawn in another case, or the copy's text re-cased", asyn
   assert.deepEqual(await findings('<h3>OPEN ITEMS</h3><h3>Last check today</h3>', 'casing', copy), [
     '<h3 "OPEN ITEMS"> has the copy\'s text in another case',
   ]);
-  // A stat label is the contract's micro label; a badge inside a button is measured on its own.
+  // A stat label is the contract's micro label.
   assert.deepEqual(
     await findings(
       '<section class="pxsig-ui-StatGroup"><div><span style="text-transform:uppercase">Changed</span> 2</div></section>',
@@ -161,13 +161,41 @@ test("casing: a header drawn in another case, or the copy's text re-cased", asyn
     ),
     []
   );
+});
+
+test("casing: a badge may be micro caps; its text is still the copy's", async (t) => {
+  if (skip) return t.skip(skip);
+  const copy = ['Live', 'Pass', 'Story'];
+  // Capitals drawn by `text-transform: uppercase` on a badge or a status badge, or inside one.
+  assert.deepEqual(
+    await findings(
+      '<span class="pxsig-ui-Badge" style="text-transform:uppercase">Live</span><span class="pxsig-ui-StatusBadge"><i>✓</i><span style="text-transform:uppercase">Pass</span></span>',
+      'casing',
+      copy
+    ),
+    []
+  );
+  // A badge inside a button is measured on its own: its caps do not count against the button.
   assert.deepEqual(
     await findings(
       '<button>Story <span class="pxsig-ui-Badge" style="text-transform:uppercase">dark</span></button>',
       'casing',
       copy
     ),
-    ['<span "dark"> is drawn uppercase (text-transform on <span "dark">): its case is the copy\'s']
+    []
+  );
+  // Any other transform on a badge, the copy re-cased in its text, and caps on its button still fail.
+  assert.deepEqual(
+    await findings(
+      '<span class="pxsig-ui-Badge" style="text-transform:lowercase">Live</span><span class="pxsig-ui-StatusBadge">PASS</span><button style="text-transform:uppercase">Story <span class="pxsig-ui-Badge">dark</span></button>',
+      'casing',
+      copy
+    ),
+    [
+      '<span "Live"> is drawn lowercase (text-transform on <span "Live">): its case is the copy\'s',
+      '<span "PASS"> has the copy\'s text in another case',
+      '<button "Story dark"> is drawn uppercase (text-transform on <button "Story dark">): its case is the copy\'s',
+    ]
   );
 });
 

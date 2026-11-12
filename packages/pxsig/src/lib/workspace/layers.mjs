@@ -17,6 +17,7 @@ export const DEFAULTS = Object.freeze({
     target: '#storybook-root',
     waitFor: [],
     browserEndpoint: null,
+    launchArgs: [],
   },
   grid: 64,
   minCellPx: 8,

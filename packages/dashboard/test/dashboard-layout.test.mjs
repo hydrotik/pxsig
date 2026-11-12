@@ -104,6 +104,12 @@ test('clipped: content cut off by overflow hidden; truncation passes with its fu
     [],
     'opted out'
   );
+  // Visually hidden (a slider thumb's range input, screen-reader-only text) is clipped to nothing:
+  // none of its overflow is drawn.
+  const box = (clip) =>
+    `<div aria-label="box" style="width:100px;height:20px;overflow:hidden;clip-path:${clip}"><div style="width:300px">x</div></div>`;
+  assert.deepEqual(await findings(box('inset(50%)'), 'clipped'), [], 'visually hidden');
+  assert.equal((await findings(box('inset(10%)'), 'clipped')).length, 1, 'partly clipped is drawn');
 });
 
 test('controls: one height and one bottom edge per line of a toolbar', async (t) => {

@@ -23,5 +23,12 @@ export {
   waitLayoutStable,
   waitMarkupStable,
 } from './capture/page.mjs';
-export { browserPool, browserRecord, connectBrowser, launchBrowser } from './capture/browser.mjs';
+export {
+  browserPool,
+  browserRecord,
+  CHROMIUM_ARGS,
+  chromiumArgs,
+  connectBrowser,
+  launchBrowser,
+} from './capture/browser.mjs';
 export { renderStories } from './capture/render.mjs';

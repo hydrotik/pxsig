@@ -24,6 +24,7 @@ export type {
   Store,
   Project,
   SetupProblem,
+  LaunchBase,
   PeerBase,
   ImageTag,
   UnknownFlag,
