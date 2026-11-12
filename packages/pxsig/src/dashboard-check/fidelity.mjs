@@ -11,7 +11,8 @@
  *             buttons and a card's actions at `sm`, the size of a table's actions)
  *   casing    a column header, heading, top-bar link, button, badge or field label is drawn in
  *             another case than its text (`text-transform`), or its text is the copy's in another
- *             case; stat labels are the contract's own micro labels and are not measured
+ *             case; stat labels are the contract's own micro labels and are not measured, and a
+ *             badge may be drawn in capitals (`uppercase`: micro caps), its text still the copy's
  *   tone      a stat card, badge or status badge shows its tone as a border, an edge or a wash
  *             (a border, background or ::before / ::after in a tone colour): the contract shows it
  *             as the colour of the value, the text or the glyph
@@ -250,7 +251,8 @@ export function inspectFidelity({ max, copy }) {
       if (!badge && inner && el.contains(inner)) continue;
       for (let e = n.parentElement; e && !cased; e = e === el ? null : e.parentElement) {
         const tt = getComputedStyle(e).textTransform;
-        if (tt !== 'none' && visible(e)) cased = e;
+        // A badge may be micro caps: capitals drawn from the copy's text, which stays its own.
+        if (tt !== 'none' && visible(e) && !(badge && tt === 'uppercase')) cased = e;
       }
     }
     const key = `${el.tagName}|${text}`;

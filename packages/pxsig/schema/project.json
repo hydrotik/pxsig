@@ -180,6 +180,12 @@
           "default": null,
           "description": "A Playwright browser server (ws://…) to render with instead of launching a browser, e.g. the container's from `pxsig browser start`. Also --browser and PXSIG_BROWSER_WS."
         },
+        "launchArgs": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "default": [],
+          "description": "Chromium arguments added after pxsig's own (--disable-lcd-text, --font-render-hinting=none), so a later value of the same switch wins. Recorded in each render's environment (browser.launchArgs). Not passed to a browser server (capture.browserEndpoint), Firefox or WebKit."
+        },
         "ignore": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 },

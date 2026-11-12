@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { browserFile, resolvePeer, SetupError } from '../workspace.mjs';
 import { collectEnv, playwrightVersion } from '../env.mjs';
 import { axeVersion } from './page.mjs';
-/** @import { EnvRecord, PeerBase, Project } from '../../types.js' */
+/** @import { EnvRecord, LaunchBase, PeerBase, Project } from '../../types.js' */
 /** @import { BrowserName, BrowserRecordFile, PlaywrightLib, PxsigBrowser } from '../../types/t4.js' */
 
 /**
@@ -21,21 +21,41 @@ async function playwright(project) {
 }
 
 /**
+ * How every Chromium pxsig launches draws text: grayscale antialiasing, not LCD subpixel colour,
+ * and unhinted glyph advances, so a Linux render (the container, CI) draws text the way macOS does.
+ */
+export const CHROMIUM_ARGS = Object.freeze(['--disable-lcd-text', '--font-render-hinting=none']);
+
+/**
+ * The arguments Chromium launches with: pxsig's, then the project's `capture.launchArgs`, so a
+ * later value of the same switch wins.
+ * @param {LaunchBase} project
+ */
+export const chromiumArgs = (project) => [
+  ...CHROMIUM_ARGS,
+  ...(project?.config?.capture?.launchArgs ?? []),
+];
+
+/**
  * Launch Chromium from the project's Playwright: the given channel, else the bundled build, then
  * Chrome, then Edge.
- * @param {PeerBase} project
+ * @param {LaunchBase} project
  * @param {string} [channel]
  * @returns {Promise<PxsigBrowser>}
  */
 export async function launchBrowser(project, channel) {
   const chromium = (await playwright(project)).chromium;
+  const args = chromiumArgs(project);
   let lastErr;
   for (const ch of channel ? [channel] : [undefined, 'chrome', 'msedge']) {
     try {
       // A Browser; the keys pxsig adds are optional.
-      const b = /** @type {PxsigBrowser} */ (await chromium.launch(ch ? { channel: ch } : {}));
-      // The channel it launched with is part of the render environment (lib/env.mjs).
+      const b = /** @type {PxsigBrowser} */ (
+        await chromium.launch(ch ? { channel: ch, args } : { args })
+      );
+      // The channel and arguments it launched with are part of the render environment (lib/env.mjs).
       b.__pxsigChannel = ch ?? null;
+      b.__pxsigLaunchArgs = args;
       return b;
     } catch (e) {
       lastErr = e;
@@ -125,6 +145,7 @@ export function browserPool(
             collectEnv(b, {
               type,
               channel: b.__pxsigChannel ?? null,
+              launchArgs: b.__pxsigLaunchArgs ?? [],
               playwright: project
                 ? playwrightVersion(() => resolvePeer(project, 'playwright/package.json'))
                 : null,
