@@ -20,6 +20,18 @@ icon without a default. A major version's section starts with its migration note
 a version bump of the right size, or without a section here, fails. After the bump and the
 section, `node scripts/ui.mjs lock` records the new contract.
 
+## 1.6.0
+
+Minor: a region rule allows more; no component or prop changes.
+
+- **A `Badge` may show its tone as its design system draws it.** Region rule R4 allows either, for
+  badges only: a tone colours the badge's text (as before), or its wash, border and dot, in that
+  tone's own colour. Its text keeps WCAG AA contrast (4.5:1) on its background. A badge drawn in
+  another tone's colour than the one passed still breaks R4. Stat cards, status badges and top-bar
+  counts are unchanged. The dashboard adds `pxsig-ui-tone-<tone>` to a badge's `className`, so
+  `pxsig dashboard check` knows which tone it was given. An adapter written for 1.5.0 or earlier
+  keeps working: a badge whose tone colours its text still passes.
+
 ## 1.5.0
 
 Minor: one optional component.

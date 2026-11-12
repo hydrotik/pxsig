@@ -1,20 +1,19 @@
 /**
- * How the reference adapter shows a tone (R4 in the UI contract): in the colour of a badge's text,
- * a stat's value or a count's digits, never as a wash, a border, a fill or an edge. The design
- * system's tinted badge variants and its accent fill for counts are replaced by its neutral ones,
- * with the text in the tone's role (`info` is the primary colour, `neutral` the text colour).
+ * How the reference adapter shows a tone (R4 in the UI contract): in the colour of a stat's value
+ * or a count's digits, never as a wash, a border, a fill or an edge. A badge in `success`,
+ * `warning` or `danger` is the design system's own tinted variant (R4 allows either for badges);
+ * a `neutral` or `info` badge is its neutral variant with the text in the tone's role (`info` is
+ * the primary colour, `neutral` the text colour). The design system's accent fill for counts is
+ * replaced by its neutral one.
  */
 import { globalStyle, style } from '@vanilla-extract/css';
 import { vars } from '@hydrotik/tokens';
 
-/** A badge's text in its tone's colour, over the design system's neutral wash and border. */
+/** A `neutral` or `info` badge's text in its tone's colour, over a neutral wash and border. */
 export const badge = style({
   selectors: {
     '&[data-tone="neutral"]': { color: vars.color.text },
     '&[data-tone="info"]': { color: vars.color.primary },
-    '&[data-tone="success"]': { color: vars.color.success },
-    '&[data-tone="warning"]': { color: vars.color.warning },
-    '&[data-tone="danger"]': { color: vars.color.destructive },
   },
 });
 
