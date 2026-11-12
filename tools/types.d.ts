@@ -23,6 +23,13 @@ export interface EngineCheckResult {
   error?: string | null;
   metrics?: EngineMetrics;
   detail?: unknown;
+  /** The colour rule's measurements; `null` when it did not run (docs/spec.md, "The colour rule"). */
+  colour?: {
+    flatArea: number | null;
+    flatDeltaE: number;
+    cells: number;
+    maxCellDeltaE: number;
+  } | null;
   reasons?: unknown[];
 }
 
