@@ -32,7 +32,11 @@ export interface PlaywrightEngine {
 export type PlaywrightLib = Record<BrowserName, PlaywrightEngine>;
 
 /** A Browser with what pxsig records on it: the channel it launched with, the server it connected to. */
-export type PxsigBrowser = Browser & { __pxsigChannel?: string | null; __pxsigRemote?: string };
+export type PxsigBrowser = Browser & {
+  __pxsigChannel?: string | null;
+  __pxsigLaunchArgs?: string[];
+  __pxsigRemote?: string;
+};
 
 /** What hands `renderStories` a browser per engine: `browserPool()`. */
 export interface BrowserSource {

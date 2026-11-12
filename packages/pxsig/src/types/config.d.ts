@@ -113,6 +113,8 @@ export type Config = {
     target: string;
     waitFor: { selector: string; minMs?: number; stableMarkup?: string }[];
     browserEndpoint: string | null;
+    /** Chromium arguments passed after pxsig's own (`CHROMIUM_ARGS`). */
+    launchArgs: string[];
     /** Selectors masked in every story; replaces the inherited list. */
     ignore?: string[];
     /** Selectors added to the inherited list. */
@@ -241,6 +243,12 @@ export interface SetupProblem {
 
 /** Where a peer dependency is looked for (`resolvePeer`): a project, or any folders. */
 export type PeerBase = { root?: string; workspaceRoot?: string } | null | undefined;
+
+/** What launches Chromium (`launchBrowser`): a peer base, and the project's `capture.launchArgs`. */
+export type LaunchBase =
+  | (NonNullable<PeerBase> & { config?: { capture?: { launchArgs?: string[] } } })
+  | null
+  | undefined;
 
 /** `ghcr.io/hydrotik/pxsig:<pxsig>-pw<playwright>…`, read by `parseImageTag`. */
 export interface ImageTag {
