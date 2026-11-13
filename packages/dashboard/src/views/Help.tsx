@@ -184,6 +184,14 @@ const COMMANDS: [string, CopyKey][] = [
   ['pxsig doctor --repair', 'help.commands.repair'],
 ];
 
+/** The color rule as the manifest's gate sets it (`gate.color`: false, or its four values). */
+function colorRule(g: Record<string, unknown>): string {
+  const c = g.color;
+  if (c === false) return t('help.gate.colorOff');
+  const set = c && typeof c === 'object' ? (c as Record<string, number>) : {};
+  return t('help.gate.colorValue', { deltaE: 3, minArea: 64, cellDeltaE: 5, minCells: 3, ...set });
+}
+
 /** Reference: what each part of the dashboard shows, with a drawing of where it is. */
 export function Help({ data }: { data: Data }) {
   const m = data.check?.manifest;
@@ -325,6 +333,11 @@ export function Help({ data }: { data: Data }) {
             at: ['ins-metrics'],
           },
           { term: t('help.gate.detail'), meaning: t('help.gate.detailValue'), at: ['ins-metrics'] },
+          {
+            term: t('help.gate.color'),
+            meaning: colorRule(g),
+            at: ['ins-metrics'],
+          },
           {
             term: t('help.gate.modes'),
             meaning: m?.modes ? Object.keys(m.modes).join(', ') : '—',

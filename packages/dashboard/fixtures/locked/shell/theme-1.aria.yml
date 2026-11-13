@@ -134,7 +134,7 @@
   - term: A fixed hash
   - definition: "The commit or build as an arg the story sets (commit: '0000000'), not one read from the build."
   - term: data-volatile
-  - definition: "When the value cannot be fixed, the component's author marks the element that shows it: <time data-volatile=\"relative time\">. Every project that renders the component masks it, with no configuration. The inside of the box is painted over before the screenshot; its size and position are still compared. The value is the reason shown with the mask."
+  - definition: "When the value cannot be fixed, the component's author marks the element that shows it: <time data-volatile=\"relative time\">. Every project that renders the component masks it, with no configuration. The inside of the box is painted over before the screenshot, at the element's own place, so a popover above it still shows; its size and position are still compared. The value is the reason shown with the mask, and is required. Only on a leaf, with text and inline formatting inside: on a container, or with no value, the entry fails."
   - term: capture.ignore · capture.addIgnore
   - definition: Selectors masked in every story of a project (pxsig.config.json), or of every project (defaults in pxsig.workspace.json). capture.ignore replaces the inherited list; capture.addIgnore adds to it. A story's own ignore masks that story only.
   - term: Recorded
@@ -230,6 +230,8 @@
   - definition: Fails when SSIM < 0.99, more than 2% of cells differ, or ≥ 2 cells differ by more than 32
   - term: Detail channel
   - definition: 16 px tiles, 4 px blocks. Fails when ≥ 3 tiles change by more than 32 or gain an edge.
+  - term: Color rule
+  - definition: Fails when ≥ 64 connected flat pixels change color by ΔE00 ≥ 3, or ≥ 3 cells by ΔE00 ≥ 5 (CIEDE2000)
   - term: Modes
   - definition: —
   - term: Baseline format

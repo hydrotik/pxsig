@@ -3,6 +3,7 @@
 
 use super::tests::{scratch, write_png};
 use super::*;
+use crate::io;
 use serde_json::json;
 
 fn opts(d: &Path) -> CheckOpts {
@@ -267,4 +268,74 @@ fn the_cache_key_names_the_engine_build() {
         id.len() == 64 && id.bytes().all(|c| c.is_ascii_hexdigit()),
         "{id}"
     );
+}
+
+/// A 900×600 white render with a 40×16 badge filled with `fill`.
+fn badge_png(path: &Path, fill: [u8; 3]) {
+    let px: Vec<u8> = (0..900 * 600)
+        .flat_map(|i| {
+            let (x, y) = (i % 900, i / 900);
+            let c = if (400..440).contains(&x) && (300..316).contains(&y) {
+                fill
+            } else {
+                [255; 3]
+            };
+            [c[0], c[1], c[2], 255]
+        })
+        .collect();
+    io::encode_png_pub(path, 900, 600, &px).unwrap();
+}
+
+#[test]
+fn a_badge_changing_color_fails_on_the_color_rule_unless_the_project_turns_it_off() {
+    let d = scratch("check-color");
+    badge_png(&d.join("png/a.png"), [241, 242, 245]);
+    super::capture_png(
+        &d.join("png/a.png"),
+        &d.join("s/a.psig"),
+        64,
+        true,
+        None,
+        None,
+    )
+    .unwrap();
+    let write = |gate: Value| {
+        let m = json!({ "gate": gate, "stories": [{ "id": "a", "sig": "s/a.psig" }] });
+        fs::write(d.join("m.json"), m.to_string()).unwrap();
+    };
+    write(json!({ "threshold": 24, "minCells": 3 }));
+    let same = row(&check(&opts(&d)).unwrap(), "a");
+    assert_eq!(same["pass"], json!(true));
+    assert_eq!(
+        same["color"]["flatArea"],
+        json!(0),
+        "same file: measured, nothing moved"
+    );
+    // #327's wash: grey to the success tint, ΔE00 7.8, under every luminance rule; the flat area is
+    // the badge inside its 1px edge (38 × 14).
+    badge_png(&d.join("png/a.png"), [222, 233, 226]);
+    let r = row(&check(&opts(&d)).unwrap(), "a");
+    assert_eq!(r["pass"], json!(false), "{r}");
+    assert_eq!(
+        r["reasons"][0],
+        json!("color ΔE00 7.8 over 532 px (flat area) >= 3")
+    );
+    assert!(
+        r["reasons"][1]
+            .as_str()
+            .unwrap()
+            .starts_with("color cells "),
+        "{r}"
+    );
+    assert_eq!(r["color"]["flatArea"], json!(532));
+    assert_eq!(
+        r["gate"]["color"],
+        json!({ "deltaE": 3.0, "minArea": 64, "cellDeltaE": 5.0, "minCells": 3 })
+    );
+    // Off: the row passes and records the rule as off.
+    write(json!({ "threshold": 24, "minCells": 3, "color": false }));
+    let off = row(&check(&opts(&d)).unwrap(), "a");
+    assert_eq!(off["pass"], json!(true));
+    assert!(off["gate"]["color"].is_null() && off["color"].is_null());
+    let _ = fs::remove_dir_all(&d);
 }

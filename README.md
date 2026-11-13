@@ -34,7 +34,8 @@ including how approving from the dashboard works (the dashboard link and the top
   reason when one is given, and can be undone. In bulk, approvals are planned first, then applied
   by a person.
 - **Stable comparisons.** Coarse pixel signatures ignore anti-aliasing and font noise, while a
-  detail channel still catches thin borders and icons.
+  detail channel still catches thin borders and icons, and a color rule a small area's color
+  change (a badge tint, a status color).
 - **Fonts and browser held fixed.** A container image (`ghcr.io/hydrotik/pxsig`) renders the same
   pixels on every machine, and each render records the environment it was made in.
 - **Coding assistants.** `pxsig mcp` gives an assistant the status, images and re-checks. It can't

@@ -193,16 +193,46 @@ The smallest config is `{}`: every key has a default. `pxsig init` writes
 
 ### `gate`
 
-| Key             | Default                                                  | Meaning                                                             |
-| --------------- | -------------------------------------------------------- | ------------------------------------------------------------------- |
-| `threshold`     | `24`                                                     | Per-cell mean RGB delta that counts a cell as changed.              |
-| `minCells`      | `3`                                                      | Fail when at least this many cells changed. `0` turns the rule off. |
-| `minSsim`       | `0.99`                                                   | Fail when SSIM is below this.                                       |
-| `maxChangedPct` | `2`                                                      | Fail when more than this percentage of cells changed.               |
-| `maxEdgePct`    | off                                                      | Fail when the edge-map difference is above this percentage.         |
-| `detail`        | `{ "blockDelta": 32, "energyDelta": 48, "minTiles": 3 }` | Detail-channel rule, or `false` to turn it off.                     |
+| Key             | Default                                                          | Meaning                                                             |
+| --------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `threshold`     | `24`                                                             | Per-cell mean RGB delta that counts a cell as changed.              |
+| `minCells`      | `3`                                                              | Fail when at least this many cells changed. `0` turns the rule off. |
+| `minSsim`       | `0.99`                                                           | Fail when SSIM is below this.                                       |
+| `maxChangedPct` | `2`                                                              | Fail when more than this percentage of cells changed.               |
+| `maxEdgePct`    | off                                                              | Fail when the edge-map difference is above this percentage.         |
+| `detail`        | `{ "blockDelta": 32, "energyDelta": 48, "minTiles": 3 }`         | Detail-channel rule, or `false` to turn it off.                     |
+| `color`         | `{ "deltaE": 3, "minArea": 64, "cellDeltaE": 5, "minCells": 3 }` | The color rule (below), or `false` to turn it off.                  |
 
 The metrics are defined in [spec.md](spec.md#4-metrics-and-gate).
+
+#### `gate.color`
+
+The color rule fails an entry the other rules pass when a small area changes color at about the
+same lightness: a badge's tint, a status color, a lost row highlight
+([spec.md](spec.md#the-color-rule)). It is on by default since 0.7.7.
+
+| Key          | Default | Limit | Meaning                                                                                                                                                                                                          |
+| ------------ | ------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `deltaE`     | `3`     | 10    | CIEDE2000 difference at which a flat pixel (3×3 luminance range under 8 in both images) counts as changed. A render of another size than its baseline is compared over the region both cover, from the top-left. |
+| `minArea`    | `64`    | 1024  | Fail when at least this many connected flat pixels changed. `0` turns the flat-area check off.                                                                                                                   |
+| `cellDeltaE` | `5`     | 15    | CIEDE2000 difference of a cell's mean color at which the cell counts as changed.                                                                                                                                 |
+| `minCells`   | `3`     | 16    | Fail when at least this many cells changed color. `0` turns the cell check off. Not checked when the render's size is not the baseline's.                                                                        |
+
+Loosen it for a project the way any gate key is set: in `pxsig.config.json`, in the workspace
+file's `defaults.gate`, or for one story in `parameters.pxsig.gate` (it has no `PXSIG_*` variable
+or binary flag). Each key set replaces the default for that key only:
+
+```json
+{ "gate": { "color": { "deltaE": 5, "minArea": 128 } } }
+```
+
+It cannot be turned off quietly. The resolved rule is recorded on every row of `check.json`
+(`gate.color`, `null` when off), `pxsig config` names the layer that set it, and an entry checked
+with the rule off, with either check off, or with a key past its limit (the schema allows no more,
+but a story's gate is not checked against it) is counted in the `gate-color-off` warning that
+`pxsig doctor` and the dashboard's Coverage view show
+([integrity.md](integrity.md#setup-problems)). That warning cannot be lowered: `integrity.severity`
+can raise it to `error`, and a lower value is named in its reason instead of applied. The defaults are calibrated on container renders.
 
 ### `modes`
 
@@ -444,20 +474,28 @@ Some content varies from run to run: a time, "3 minutes ago", a commit hash, a b
 generated id. Give the story fixed data first (a fixed clock, fixed ids): a fixed value is still
 compared. When that is not possible, mask it. A mask paints the inside of an element's box in one
 colour before the screenshot, so what is inside never differs; the box follows the element, so a
-change to its size or position still shows.
+change to its size or position still shows. The box is painted at the element's own place in the
+page, so anything above it (an open popover, a tooltip) is still captured. Where that cannot be
+exact (an image or form control, a faded or filtered parent, a static element with offsets or
+absolutely positioned children) it is painted over everything instead, as before 0.7.7: never less
+than the element's box. Only the elements measured just before the screenshot are painted; an
+element a mask matches only at the screenshot, or a mask on more than 500 elements, fails the
+entry (`mask not measured: …`).
 
-| Where                         | Masks                                                                                                              |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `data-volatile` on an element | That element, in every project, with no configuration. Its value is the reason: `data-volatile="relative time"`.   |
-| a story's `ignore`            | These selectors in that story's captures ([story parameters](#story-parameters)).                                  |
-| `capture.ignore` (project)    | These selectors in every story of the project.                                                                     |
-| `capture.ignore` (workspace)  | The same key under the workspace file's `defaults`: every project, unless a project sets its own `capture.ignore`. |
-| `capture.addIgnore`           | Selectors added to the list inherited from the layer below, instead of replacing it.                               |
+| Where                         | Masks                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `data-volatile` on an element | That element, in every project, with no configuration. Its value is the reason, and is required: `data-volatile="relative time"`. Only on a leaf: text and inline formatting (`span`, `b`, `i`, `em`, `strong`, `code`, `time`, `abbr`, `sub`, `sup`, `small`, `mark`, `br`, `wbr`) inside, nothing else. On a container the entry fails as `mask on a container: …`, with no value as `mask needs a reason: …`; neither is painted. |
+| a story's `ignore`            | These selectors in that story's captures ([story parameters](#story-parameters)).                                                                                                                                                                                                                                                                                                                                                    |
+| `capture.ignore` (project)    | These selectors in every story of the project.                                                                                                                                                                                                                                                                                                                                                                                       |
+| `capture.ignore` (workspace)  | The same key under the workspace file's `defaults`: every project, unless a project sets its own `capture.ignore`.                                                                                                                                                                                                                                                                                                                   |
+| `capture.addIgnore`           | Selectors added to the list inherited from the layer below, instead of replacing it.                                                                                                                                                                                                                                                                                                                                                 |
 
 The author of a component sets `data-volatile` once, on the element that shows the value, and every
 team that renders the component gets the mask. `pxsig config` lists each config selector with the
-layer that set it. Text under a mask is left out of the text record ([`text`](#text)); the a11y pass
-still runs on it.
+layer that set it. Text under a painted mask is left out of the text record ([`text`](#text)); the
+a11y pass still runs on it. A mask on the story root (the root itself, or an element that is all of
+its content) is recorded as such (`root`), and fails the entry when it covers 95% of the capture or
+more; a smaller one is weighed by its share.
 
 Each render records the masks that applied to it, `<id>.masks.json` beside the PNG (selector,
 source, reason, the elements matched and their boxes), and every baseline approved from it keeps

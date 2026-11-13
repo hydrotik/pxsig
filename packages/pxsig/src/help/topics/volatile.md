@@ -11,9 +11,12 @@ each run shows a change that nobody made. Fixed data first; a mask when the valu
   - a fixed hash: the commit or build as an arg the story sets (`commit: '0000000'`).
 - **`data-volatile` on the component.** Its author marks the element that shows the value, once:
   `<time data-volatile="relative time">`. Every project that renders the component masks it, with
-  no configuration. The inside of the box is painted over before the screenshot; its size and
-  position are still compared. The value is the reason shown with the mask. Text under a mask
-  stays out of the text record; the a11y pass still runs.
+  no configuration. The inside of the box is painted over before the screenshot, at the element's
+  own place, so a popover above it still shows; its size and position are still compared. The
+  value is the reason shown with the mask, and is required. Only on a leaf (text and inline
+  formatting inside): on a container the entry fails as `mask on a container`, with no value as
+  `mask needs a reason`. Text under a painted mask stays out of the text record; the a11y pass
+  still runs.
 - **`capture.ignore` / `capture.addIgnore`.** Selectors masked in every story of a project
   (`pxsig.config.json`), or of every project (`defaults` in `pxsig.workspace.json`).
   `capture.ignore` replaces the inherited list; `capture.addIgnore` adds to it. `pxsig config`

@@ -84,6 +84,11 @@ export type Mode = {
 /** The gate's detail rule: off, on with the defaults, or tuned. */
 export type DetailGate = boolean | { blockDelta?: number; energyDelta?: number; minTiles?: number };
 
+/** The gate's color rule: off, on with the defaults, or tuned (schema `$defs/colorGate`). */
+export type ColorGate =
+  | boolean
+  | { deltaE?: number; minArea?: number; cellDeltaE?: number; minCells?: number };
+
 export interface Gate {
   threshold: number;
   minCells: number;
@@ -91,6 +96,7 @@ export interface Gate {
   maxChangedPct: number;
   maxEdgePct?: number;
   detail: DetailGate;
+  color: ColorGate;
 }
 
 export type GateMode = 'enforce' | 'warn';

@@ -10,7 +10,7 @@
 use clap::Args;
 use serde::{Deserialize, Serialize};
 
-use pxsig_core::{DetailGate, GateThresholds};
+use pxsig_core::{ColorGate, DetailGate, GateThresholds};
 
 /// The JSON gate shape used in manifests (`gate`) and `parameters.pxsig.gate`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -29,6 +29,30 @@ pub struct GateSpec {
     /// `false` turns the detail channel off; an object tunes it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub detail: Option<DetailSpec>,
+    /// The color rule: `false` turns it off (recorded, and reported by `pxsig doctor`), an object
+    /// loosens or tightens it. On by default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<ColorSpec>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum ColorSpec {
+    Enabled(bool),
+    Tuned(ColorTune),
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ColorTune {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delta_e: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min_area: Option<usize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cell_delta_e: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min_cells: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -86,15 +110,29 @@ impl GateSpec {
             }
             None => {}
         }
+        match &self.color {
+            Some(ColorSpec::Enabled(false)) => g.color = None,
+            Some(ColorSpec::Enabled(true)) => g.color = Some(g.color.unwrap_or_default()),
+            Some(ColorSpec::Tuned(t)) => {
+                let mut c = g.color.unwrap_or_default();
+                c.delta_e = t.delta_e.unwrap_or(c.delta_e);
+                c.min_area = t.min_area.unwrap_or(c.min_area);
+                c.cell_delta_e = t.cell_delta_e.unwrap_or(c.cell_delta_e);
+                c.min_cells = t.min_cells.unwrap_or(c.min_cells);
+                g.color = Some(c);
+            }
+            None => {}
+        }
         g
     }
 }
 
 /// The built-in gate: today's v1 rule plus the detail channel (used only when a
-/// baseline carries detail).
+/// baseline carries detail) and the color rule.
 pub fn builtin() -> GateThresholds {
     GateThresholds {
         detail: Some(DetailGate::default()),
+        color: Some(ColorGate::default()),
         ..GateThresholds::default()
     }
 }
@@ -134,6 +172,7 @@ impl GateArgs {
             } else {
                 None
             },
+            color: None,
         }
     }
 }
@@ -154,6 +193,7 @@ pub fn env_spec_from(get: impl Fn(&str) -> Option<String>) -> GateSpec {
         max_edge_pct: f("PXSIG_MAX_EDGE_PCT"),
         min_cells: get("PXSIG_MIN_CELLS").and_then(|v| v.trim().parse::<usize>().ok()),
         detail: None,
+        color: None,
     }
 }
 
@@ -184,6 +224,10 @@ pub fn to_json(g: &GateThresholds) -> serde_json::Value {
         "minCells": g.min_cells,
         "detail": g.detail.map(|d| serde_json::json!({
             "blockDelta": d.block_delta, "energyDelta": d.energy_delta, "minTiles": d.min_tiles
+        })),
+        // `null` when it is off: every row records it, and `pxsig doctor` reports it.
+        "color": g.color.map(|c| serde_json::json!({
+            "deltaE": c.delta_e, "minArea": c.min_area, "cellDeltaE": c.cell_delta_e, "minCells": c.min_cells
         })),
     })
 }
@@ -248,6 +292,33 @@ mod tests {
                 .unwrap()
                 .min_tiles,
             5
+        );
+    }
+
+    #[test]
+    fn the_color_rule_is_on_and_a_layer_loosens_or_ends_it() {
+        let none = GateSpec::default();
+        let g = resolve(None, &none, &none, None);
+        assert_eq!(g.color, Some(ColorGate::default()));
+        assert_eq!(
+            to_json(&g)["color"],
+            serde_json::json!({ "deltaE": 3.0, "minArea": 64, "cellDeltaE": 5.0, "minCells": 3 })
+        );
+        let m: GateSpec =
+            serde_json::from_str(r#"{"color": {"deltaE": 4, "minCells": 5}}"#).unwrap();
+        let c = resolve(Some(&m), &none, &none, None).color.unwrap();
+        assert_eq!(
+            (c.delta_e, c.min_area, c.cell_delta_e, c.min_cells),
+            (4.0, 64, 5.0, 5)
+        );
+        let off: GateSpec = serde_json::from_str(r#"{"color": false}"#).unwrap();
+        let g = resolve(Some(&m), &none, &none, Some(&off));
+        assert!(g.color.is_none());
+        assert!(to_json(&g)["color"].is_null(), "recorded as off");
+        let on: GateSpec = serde_json::from_str(r#"{"color": true}"#).unwrap();
+        assert_eq!(
+            resolve(Some(&off), &none, &none, Some(&on)).color,
+            Some(ColorGate::default())
         );
     }
 }

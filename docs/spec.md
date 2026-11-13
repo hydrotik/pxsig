@@ -119,10 +119,51 @@ An entry **fails** when any rule trips. Each tripped rule adds a line to `reason
 | `detail.blockDelta`  | see section 3                                | 32            | 32              |
 | `detail.energyDelta` | see section 3                                | 48            | 48              |
 | `detail.minTiles`    | see section 3                                | 3             | 3               |
+| `color.deltaE`       | see "The color rule" below                   | 3             | 3               |
+| `color.minArea`      | see "The color rule" below                   | 64            | 64              |
+| `color.cellDeltaE`   | see "The color rule" below                   | 5             | 5               |
+| `color.minCells`     | see "The color rule" below                   | 3             | 3               |
 
 "pxsig default" is the `gate` in the built-in project config, which every run sends to the engine.
 "Engine built-in" applies only when the `pxsig` binary runs without a manifest gate.
-`detail: false` turns the detail rule off; `detail: true` turns it on with the defaults.
+`detail: false` turns the detail rule off; `detail: true` turns it on with the defaults. `color`
+works the same way.
+
+### The color rule
+
+SSIM, the edge map and the detail channel read luminance only, and the cell rule needs a cell's
+mean RGB to move by more than `threshold`. A small area that changes hue at about the same
+lightness (a badge's tint, a status color on text, a row highlight) passes all of them. The color
+rule runs after them, only on an entry they passed, and fails it when either check trips:
+
+- **Flat area.** A pixel is flat when the range of its 3×3 neighbourhood's luminance
+  (`0.299R + 0.587G + 0.114B`, alpha flattened onto white) is under 8 in both the baseline image and
+  the render. Flat pixels whose CIEDE2000 difference (sRGB → CIELAB, D65; kL = kC = kH = 1) is at
+  least `deltaE` form 8-connected regions; the check trips when one has at least `minArea` pixels.
+  Reason: `color ΔE00 7.8 over 532 px (flat area) >= 3` (the largest region's mean difference, its
+  size, `deltaE`). Anti-aliased edges and sub-pixel text drift are never flat, so they do not count.
+  It needs the baseline image (a `.psig` holds it); it is skipped when the baseline has none (a
+  pre-0.2 `.pxsig.json`), and finds nothing when the render's file is the baseline image byte for
+  byte. When the render's size is not the baseline's, it compares the region both cover, anchored
+  at the top-left (where a trimmed render keeps its origin).
+- **Cells.** The CIEDE2000 difference of each cell's mean color, on the signature's grid (the cell
+  rule's cells). The check trips when at least `minCells` cells differ by `cellDeltaE` or more.
+  Reason: `color cells 4 >= 3 (ΔE00 >= 5)`. It sees a color change to thin strokes, which are
+  never flat. It is skipped when the render's size is not the baseline's (`cells` is then `null`):
+  the signature's cells, laid over a different size, no longer cover the same pixels, so a trimmed
+  component one pixel wider (a sub-pixel move) would read as many cells changing color.
+
+`minArea: 0` turns the flat-area check off, `minCells: 0` the cell check, and `color: false`
+both. Its limits are `deltaE` 10, `minArea` 1024, `cellDeltaE` 15 and `minCells` 16: the project
+schema allows no more, and an entry checked with the rule off, with either check off or past a limit
+(from any layer, a story's own gate included) is the `gate-color-off` setup warning in `pxsig
+doctor` and the dashboard ([integrity.md](integrity.md#setup-problems)). The measurements are on
+each row as `color: { flatArea, flatDeltaE, cells, maxCellDeltaE }` (`flatArea` is `null` when the
+flat-area check did not run, `cells` when the cell check did not), or `null` when the rule did not
+run (it is off, or another rule failed the entry first; the row's `gate.color` says which). Every
+row an engine compared carries the key: pxsig refuses a compared row without it (an engine older
+than 0.7.7, such as a stale `PXSIG_BIN`) instead of recording its verdict. `gate-color-off` is a warning at least: `integrity.severity` can raise it to `error`, never
+lower it.
 
 ### Gate resolution
 
@@ -132,6 +173,7 @@ For each entry the engine starts from its built-ins, then layers, last one winni
 2. the gate environment variables (`PXSIG_THRESHOLD`, `PXSIG_MIN_SSIM`, `PXSIG_MAX_CHANGED_PCT`,
    `PXSIG_MAX_EDGE_PCT`, `PXSIG_MIN_CELLS`);
 3. gate flags given to the `pxsig` binary (`--threshold`, `--min-ssim`, …, `--no-detail`);
+   the color rule has no variable or flag: it is set in the project config or a story's gate;
 4. the entry's own `gate` (from `parameters.pxsig.gate` on the story).
 
 A story's gate is written next to the story it judges, so nothing run-wide overrides it: a
