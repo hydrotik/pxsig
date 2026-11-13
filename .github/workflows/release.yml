@@ -299,7 +299,7 @@ jobs:
       # must match every committed baseline (docs/releasing.md, "pxsig's own baselines"). A screen
       # that changed, is new or did not render stops the release until it is approved on main.
       # The verdicts come from this release's engine, not the image's, so the gate the release
-      # ships (the colour rule included) is the one its own screens are held to.
+      # ships (the color rule included) is the one its own screens are held to.
       - if: steps.how.outputs.mode != 'placeholder'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:

@@ -267,8 +267,8 @@ fn badge_png(path: &Path, fill: [u8; 3]) {
 }
 
 #[test]
-fn a_badge_changing_colour_fails_on_the_colour_rule_unless_the_project_turns_it_off() {
-    let d = scratch("check-colour");
+fn a_badge_changing_color_fails_on_the_color_rule_unless_the_project_turns_it_off() {
+    let d = scratch("check-color");
     badge_png(&d.join("png/a.png"), [241, 242, 245]);
     super::capture_png(
         &d.join("png/a.png"),
@@ -287,7 +287,7 @@ fn a_badge_changing_colour_fails_on_the_colour_rule_unless_the_project_turns_it_
     let same = row(&check(&opts(&d)).unwrap(), "a");
     assert_eq!(same["pass"], json!(true));
     assert_eq!(
-        same["colour"]["flatArea"],
+        same["color"]["flatArea"],
         json!(0),
         "same file: measured, nothing moved"
     );
@@ -298,24 +298,24 @@ fn a_badge_changing_colour_fails_on_the_colour_rule_unless_the_project_turns_it_
     assert_eq!(r["pass"], json!(false), "{r}");
     assert_eq!(
         r["reasons"][0],
-        json!("colour ΔE00 7.8 over 532 px (flat area) >= 3")
+        json!("color ΔE00 7.8 over 532 px (flat area) >= 3")
     );
     assert!(
         r["reasons"][1]
             .as_str()
             .unwrap()
-            .starts_with("colour cells "),
+            .starts_with("color cells "),
         "{r}"
     );
-    assert_eq!(r["colour"]["flatArea"], json!(532));
+    assert_eq!(r["color"]["flatArea"], json!(532));
     assert_eq!(
-        r["gate"]["colour"],
+        r["gate"]["color"],
         json!({ "deltaE": 3.0, "minArea": 64, "cellDeltaE": 5.0, "minCells": 3 })
     );
     // Off: the row passes and records the rule as off.
-    write(json!({ "threshold": 24, "minCells": 3, "colour": false }));
+    write(json!({ "threshold": 24, "minCells": 3, "color": false }));
     let off = row(&check(&opts(&d)).unwrap(), "a");
     assert_eq!(off["pass"], json!(true));
-    assert!(off["gate"]["colour"].is_null() && off["colour"].is_null());
+    assert!(off["gate"]["color"].is_null() && off["color"].is_null());
     let _ = fs::remove_dir_all(&d);
 }

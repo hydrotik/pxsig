@@ -84,21 +84,21 @@ export function envProblems(report, ctx) {
 }
 
 /**
- * The setup problems the last check's report shows: `env-mismatch` and `gate-colour-off`.
+ * The setup problems the last check's report shows: `env-mismatch` and `gate-color-off`.
  * @param {IntegrityReport | null} report
  * @param {IntegrityContext} ctx
  * @returns {LedgerSetup[]}
  */
 export const reportProblems = (report, ctx) => [
   ...envProblems(report, ctx),
-  ...colourGateProblems(report, ctx),
+  ...colorGateProblems(report, ctx),
 ];
 
 /**
- * The colour rule's limits (schema/project.json `$defs/colourGate`): past one, it misses the small
- * colour changes it is there for (a badge tint, a status colour), so it counts as off.
+ * The color rule's limits (schema/project.json `$defs/colorGate`): past one, it misses the small
+ * color changes it is there for (a badge tint, a status color), so it counts as off.
  */
-export const COLOUR_LIMITS = Object.freeze({
+export const COLOR_LIMITS = Object.freeze({
   deltaE: 10,
   minArea: 1024,
   cellDeltaE: 15,
@@ -106,30 +106,30 @@ export const COLOUR_LIMITS = Object.freeze({
 });
 
 /**
- * `gate-colour-off`: entries the last check judged with the colour rule off, with one of its two
- * checks off (`minArea` or `minCells` 0), or loosened past [COLOUR_LIMITS]. Read from each row's
+ * `gate-color-off`: entries the last check judged with the color rule off, with one of its two
+ * checks off (`minArea` or `minCells` 0), or loosened past [COLOR_LIMITS]. Read from each row's
  * resolved gate, so every layer counts (the project, the workspace defaults, a story's own gate).
- * Rows from an engine before the rule (no `colour` key) are not counted.
- * Its severity is warn at least: `integrity.severity['gate-colour-off']` can raise it to error, and
+ * Rows from an engine before the rule (no `color` key) are not counted.
+ * Its severity is warn at least: `integrity.severity['gate-color-off']` can raise it to error, and
  * a lower value (info) is not applied but named in the reason, so it is never ignored quietly.
  * @param {IntegrityReport | null} report
  * @param {IntegrityContext} ctx
  * @returns {LedgerSetup[]}
  */
-export function colourGateProblems(report, ctx) {
+export function colorGateProblems(report, ctx) {
   /** @type {string[]} */
   const off = [];
   /** @type {string[]} */
   const loose = [];
   for (const r of report?.rows ?? []) {
-    const g = /** @type {{ gate?: { colour?: Record<string, number> | null } }} */ (r).gate;
-    if (!g || !('colour' in g)) continue;
-    const c = g.colour;
+    const g = /** @type {{ gate?: { color?: Record<string, number> | null } }} */ (r).gate;
+    if (!g || !('color' in g)) continue;
+    const c = g.color;
     if (c == null) off.push(r.id);
     else if (
       !c.minArea ||
       !c.minCells ||
-      Object.entries(COLOUR_LIMITS).some(([k, max]) => (c[k] ?? 0) > max)
+      Object.entries(COLOR_LIMITS).some(([k, max]) => (c[k] ?? 0) > max)
     )
       loose.push(r.id);
   }
@@ -140,17 +140,17 @@ export function colourGateProblems(report, ctx) {
     ...(off.length ? [`${off.length} with it off`] : []),
     ...(loose.length ? [`${loose.length} with it loosened past its limits`] : []),
   ];
-  const set = ctx.integrity?.severity?.['gate-colour-off'];
+  const set = ctx.integrity?.severity?.['gate-color-off'];
   const lowered =
     set && set !== 'warn' && set !== 'error'
-      ? `. integrity.severity sets gate-colour-off to "${set}", which is not applied: it is a warning at least, and can only be raised to error`
+      ? `. integrity.severity sets gate-color-off to "${set}", which is not applied: it is a warning at least, and can only be raised to error`
       : '';
   return [
     {
-      code: 'gate-colour-off',
+      code: 'gate-color-off',
       severity: set === 'error' ? 'error' : 'warn',
       count: n,
-      reason: `${n} entries were checked without the colour rule (${parts.join(', ')}: ${ids.slice(0, 3).join(', ')}${n > 3 ? ', …' : ''}): a colour change in a small area, such as a badge tint or a status colour, passes them. \`pxsig config\` names the layer that sets gate.colour; its limits are deltaE ${COLOUR_LIMITS.deltaE}, minArea ${COLOUR_LIMITS.minArea}, cellDeltaE ${COLOUR_LIMITS.cellDeltaE} and minCells ${COLOUR_LIMITS.minCells}, and 0 turns a check off${lowered}`,
+      reason: `${n} entries were checked without the color rule (${parts.join(', ')}: ${ids.slice(0, 3).join(', ')}${n > 3 ? ', …' : ''}): a color change in a small area, such as a badge tint or a status color, passes them. \`pxsig config\` names the layer that sets gate.color; its limits are deltaE ${COLOR_LIMITS.deltaE}, minArea ${COLOR_LIMITS.minArea}, cellDeltaE ${COLOR_LIMITS.cellDeltaE} and minCells ${COLOR_LIMITS.minCells}, and 0 turns a check off${lowered}`,
     },
   ];
 }

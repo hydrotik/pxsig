@@ -10,8 +10,8 @@ const stale = {
   pass: false,
   metrics: { ssim: 0.1 },
   reasons: ['ssim 0.1 < min 0.99'],
-  // The engine records the colour rule on every row it compared (null: it did not run).
-  colour: null,
+  // The engine records the color rule on every row it compared (null: it did not run).
+  color: null,
 };
 
 test('a render error carries no comparison of the image it left behind, and is not a change', () => {
@@ -59,11 +59,11 @@ test('a new entry and a real change are still reviewable', () => {
   assert.deepEqual(changed.metrics, { ssim: 0.1 });
 });
 
-test('a verdict made without the colour rule (an engine older than 0.7.7) is refused', () => {
-  const { colour: _colour, ...old } = stale;
+test('a verdict made without the color rule (an engine older than 0.7.7) is refused', () => {
+  const { color: _color, ...old } = stale;
   assert.throws(
     () => buildRow(entry, old, { ms: 5 }, null, manifest),
-    /a-b--c was checked by an engine without the colour rule \(older than 0\.7\.7/
+    /a-b--c was checked by an engine without the color rule \(older than 0\.7\.7/
   );
   // Nothing compared (a new entry, a render error): nothing to refuse.
   const fresh = {

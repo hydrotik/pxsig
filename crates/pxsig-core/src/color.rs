@@ -1,21 +1,21 @@
-//! The colour rule (docs/spec.md §4): colour changes the luminance-only rules cannot see.
+//! The color rule (docs/spec.md §4): color changes the luminance-only rules cannot see.
 //!
 //! SSIM, the edge map and the detail channel read luminance, and the cell rule needs a cell's mean
 //! RGB to move by more than `threshold`, so a small area changing hue at about the same lightness
-//! (a badge's tint, a row highlight, a status colour on text) passes them. Two checks close that:
+//! (a badge's tint, a row highlight, a status color on text) passes them. Two checks close that:
 //!
 //! - **flat area**: pixels whose 3×3 luminance range is under [`FLAT_RANGE`] in both images, and
 //!   whose CIEDE2000 difference (sRGB → CIELAB, D65) is at least `delta_e`, form 8-connected
 //!   regions; the rule trips when one region has at least `min_area` pixels. Flat pixels only, so
 //!   anti-aliased edges and sub-pixel text drift do not count;
-//! - **cells**: the CIEDE2000 difference of each grid cell's mean colour (the signature's cells,
+//! - **cells**: the CIEDE2000 difference of each grid cell's mean color (the signature's cells,
 //!   the same grid as the cell rule); the rule trips when at least `min_cells` cells move by
 //!   `cell_delta_e` or more. This one sees a change to thin strokes, which are never flat.
 //!
 //! The flat-area check needs the baseline image (a `.psig` holds it); the cell check needs only the
 //! signature. Both images are alpha-flattened onto white, like the signature. When the render's size
 //! is not the baseline's, only the flat-area check runs, over the region both cover
-//! ([`apply_colour`]).
+//! ([`apply_color`]).
 
 use std::collections::HashMap;
 use std::hash::{BuildHasherDefault, Hasher};
@@ -26,21 +26,21 @@ use crate::detail::luminance;
 /// Pixels whose 3×3 luminance range (0–255) is below this, in both images, are flat.
 pub const FLAT_RANGE: f32 = 8.0;
 
-/// The colour rule's settings. `min_area` 0 turns the flat-area check off, `min_cells` 0 the cell
+/// The color rule's settings. `min_area` 0 turns the flat-area check off, `min_cells` 0 the cell
 /// check.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ColourGate {
+pub struct ColorGate {
     /// CIEDE2000 difference at which a flat pixel counts as changed.
     pub delta_e: f64,
     /// Fewest connected changed flat pixels that fail the entry.
     pub min_area: usize,
-    /// CIEDE2000 difference of a cell's mean colour at which the cell counts as changed.
+    /// CIEDE2000 difference of a cell's mean color at which the cell counts as changed.
     pub cell_delta_e: f64,
     /// Fewest such cells that fail the entry.
     pub min_cells: usize,
 }
 
-impl Default for ColourGate {
+impl Default for ColorGate {
     fn default() -> Self {
         Self {
             delta_e: 3.0,
@@ -51,15 +51,15 @@ impl Default for ColourGate {
     }
 }
 
-/// What the colour rule measured.
+/// What the color rule measured.
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct ColourMetrics {
-    /// Pixels in the largest connected flat region that changed colour; `None` when the flat-area
+pub struct ColorMetrics {
+    /// Pixels in the largest connected flat region that changed color; `None` when the flat-area
     /// check did not run (no baseline image, a different size, or `min_area` 0).
     pub flat_area: Option<usize>,
     /// Mean CIEDE2000 difference over that region (0 when there is none).
     pub flat_delta_e: f64,
-    /// Cells whose mean colour moved by at least `cell_delta_e`; `None` when the cell check did not
+    /// Cells whose mean color moved by at least `cell_delta_e`; `None` when the cell check did not
     /// run (`min_cells` 0, or a render of another size than the baseline's).
     pub cells: Option<usize>,
     /// The largest cell difference.
@@ -94,7 +94,7 @@ pub fn lab(rgb: [u8; 3]) -> [f64; 3] {
     [116.0 * fy - 16.0, 500.0 * (fx - fy), 200.0 * (fy - fz)]
 }
 
-/// CIEDE2000 colour difference of two CIELAB colours (kL = kC = kH = 1).
+/// CIEDE2000 color difference of two CIELAB colors (kL = kC = kH = 1).
 pub fn delta_e00(p: [f64; 3], q: [f64; 3]) -> f64 {
     let [l1, a1, b1] = p;
     let [l2, a2, b2] = q;
@@ -145,7 +145,7 @@ pub fn delta_e00(p: [f64; 3], q: [f64; 3]) -> f64 {
 
 /// The cell check: how many of the signatures' cells moved by at least `threshold`, and the
 /// largest move. `a` and `b` are `grid*grid*3` RGB bytes.
-pub fn cell_colour(a: &[u8], b: &[u8], threshold: f64) -> (usize, f64) {
+pub fn cell_color(a: &[u8], b: &[u8], threshold: f64) -> (usize, f64) {
     let (mut n, mut max) = (0usize, 0f64);
     for (p, q) in a.as_chunks::<3>().0.iter().zip(b.as_chunks::<3>().0) {
         if p == q {
@@ -184,7 +184,7 @@ fn flat(lum: &[f32], w: usize, h: usize, x: usize, y: usize) -> bool {
     hi - lo < FLAT_RANGE
 }
 
-/// Whether two CIELAB colours can be `threshold` or more apart in CIEDE2000, from a bound that
+/// Whether two CIELAB colors can be `threshold` or more apart in CIEDE2000, from a bound that
 /// needs no trigonometry: S_L, S_C and S_H are all at least 1 (T > 0.07), |R_T| ≤ 2 so the rotation
 /// term adds at most ΔC'² + ΔH'², ΔC'² + ΔH'² = Δa'² + Δb², and a' = (1 + G)·a with G ≤ 0.5. So
 /// ΔE00² ≤ ΔL² + 4.5·Δa² + 2·Δb². It skips the one-step drift of noise, nearly every pixel there.
@@ -193,12 +193,12 @@ fn may_reach(p: [f64; 3], q: [f64; 3], threshold: f64) -> bool {
     dl * dl + 4.5 * da * da + 2.0 * db * db >= threshold * threshold
 }
 
-/// A multiplicative hash for the 24-bit colour keys of the Lab cache (the default SipHash is
+/// A multiplicative hash for the 24-bit color keys of the Lab cache (the default SipHash is
 /// several times slower, and these keys come from images, not from an adversary).
 #[derive(Default)]
-struct ColourHash(u64);
+struct ColorHash(u64);
 
-impl Hasher for ColourHash {
+impl Hasher for ColorHash {
     fn write(&mut self, bytes: &[u8]) {
         for &b in bytes {
             self.write_u32(u32::from(b) ^ (self.0 as u32).rotate_left(8));
@@ -214,14 +214,14 @@ impl Hasher for ColourHash {
 }
 
 /// The flat-area check over two same-size images: the largest 8-connected region of flat pixels
-/// whose colour moved by at least `threshold`, as (pixels, mean ΔE00).
+/// whose color moved by at least `threshold`, as (pixels, mean ΔE00).
 pub fn flat_change(base: Rgba, cur: Rgba, threshold: f64) -> (usize, f64) {
     let ((a, w, h), (b, ..)) = (base, cur);
     if a == b {
         return (0, 0.0);
     }
-    // Most of a UI is a few colours: convert each once.
-    let mut labs: HashMap<u32, [f64; 3], BuildHasherDefault<ColourHash>> = HashMap::default();
+    // Most of a UI is a few colors: convert each once.
+    let mut labs: HashMap<u32, [f64; 3], BuildHasherDefault<ColorHash>> = HashMap::default();
     let mut lab_of = |c: [u8; 3]| {
         let k = u32::from_be_bytes([0, c[0], c[1], c[2]]);
         *labs.entry(k).or_insert_with(|| lab(c))
@@ -309,7 +309,7 @@ fn top_left(data: &[u8], width: usize, w: usize, h: usize) -> Vec<u8> {
         .collect()
 }
 
-/// Apply the colour rule to a result the other rules passed: measure, record the metrics, and fail
+/// Apply the color rule to a result the other rules passed: measure, record the metrics, and fail
 /// it with a reason for each check that trips. `base` is the baseline image when there is one,
 /// `base_size` the size the baseline was made from (its record's), and `cur` the render the result
 /// was made from. Nothing runs when the result already failed (its verdict cannot change, and the
@@ -319,20 +319,20 @@ fn top_left(data: &[u8], width: usize, w: usize, h: usize) -> Vec<u8> {
 /// cover, anchored at the top-left (where a trimmed render keeps its origin), and the cell check is
 /// skipped: the signature's cells, laid over a different size, no longer cover the same pixels (a
 /// trimmed component one pixel wider moves every cell's edge).
-pub fn apply_colour(
+pub fn apply_color(
     r: &mut CompareResult,
     base: Option<Rgba>,
     base_size: (usize, usize),
     cur: Rgba,
-    g: &ColourGate,
+    g: &ColorGate,
 ) {
     if !r.pass {
         return;
     }
     let same = base_size == (cur.1, cur.2);
-    let mut m = ColourMetrics::default();
+    let mut m = ColorMetrics::default();
     if g.min_cells > 0 && same {
-        let (n, max) = cell_colour(&r.base_sig, &r.cur_sig, g.cell_delta_e);
+        let (n, max) = cell_color(&r.base_sig, &r.cur_sig, g.cell_delta_e);
         (m.cells, m.max_cell_delta_e) = (Some(n), max);
     }
     if let Some((bd, bw, bh)) = base.filter(|_| g.min_area > 0) {
@@ -348,21 +348,21 @@ pub fn apply_colour(
     }
     if let Some(area) = m.flat_area.filter(|&a| a >= g.min_area) {
         r.reasons.push(format!(
-            "colour ΔE00 {} over {area} px (flat area) >= {}",
+            "color ΔE00 {} over {area} px (flat area) >= {}",
             one_dp(m.flat_delta_e),
             g.delta_e
         ));
     }
     if let Some(n) = m.cells.filter(|&n| g.min_cells > 0 && n >= g.min_cells) {
         r.reasons.push(format!(
-            "colour cells {n} >= {} (ΔE00 >= {})",
+            "color cells {n} >= {} (ΔE00 >= {})",
             g.min_cells, g.cell_delta_e
         ));
     }
     r.pass = r.reasons.is_empty();
-    r.colour = Some(m);
+    r.color = Some(m);
 }
 
 #[cfg(test)]
-#[path = "colour_tests.rs"]
+#[path = "color_tests.rs"]
 mod tests;

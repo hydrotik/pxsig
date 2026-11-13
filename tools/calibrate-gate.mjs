@@ -10,11 +10,11 @@
  *   - `check` (daemon) scores every render at each cell threshold with the gate opened wide,
  *     returning raw metrics (ssim, changed cells, changed %);
  *   - `detail-sweep` measures every detail tile that moved.
- *   - `check` again with the colour rule measured (`.psig` baselines, which hold the image its
- *     flat-area check needs), once per pair of colour lines.
+ *   - `check` again with the color rule measured (`.psig` baselines, which hold the image its
+ *     flat-area check needs), once per pair of color lines.
  * This script then scores every rule combination on those numbers. A combination is admissible
  * only with zero false positives on every noise scenario; the best catches the most changed
- * regression renders (ties go to the one with more margin against noise). The colour rule is
+ * regression renders (ties go to the one with more margin against noise). The color rule is
  * chosen last, on top of the best gate: it only fails entries the other rules pass.
  *
  *   node tools/calibrate-gate.mjs [--project name] [--workspace dir] [--grid 64] [--min-cells-px 4,6,8]
@@ -74,8 +74,8 @@ const K = [2, 3, 4, 6, 8, Infinity];
 const DK = [2, 3, 4, 6, Infinity];
 const DT = [24, 32, 48, 64];
 const DE = [32, 48, 64, Infinity];
-const OPEN = { minSsim: 0, maxChangedPct: 100, minCells: 0, detail: false, colour: false };
-/** The colour rule's lines: one check per [deltaE, cellDeltaE] pair; areas and cell counts are scored after. */
+const OPEN = { minSsim: 0, maxChangedPct: 100, minCells: 0, detail: false, color: false };
+/** The color rule's lines: one check per [deltaE, cellDeltaE] pair; areas and cell counts are scored after. */
 const CDE = [
   [3, 5],
   [5, 8],
@@ -208,18 +208,18 @@ const sweep = new Map(
   )
 );
 
-// --- the colour rule (Rust) ---------------------------------------------------------------------
+// --- the color rule (Rust) ---------------------------------------------------------------------
 /** @type {Record<string, { area: number, cells: number }>[]} */
-const colourM = CDE.map(() => ({})); // colourM[i][key] = { area, cells }
+const colorM = CDE.map(() => ({})); // colorM[i][key] = { area, cells }
 const eng2 = engine(P);
 try {
   for (const s of suites) {
     const manifest = scratchManifest(
       P,
-      join(scratch, `${s.tag}-colour.json`),
+      join(scratch, `${s.tag}-color.json`),
       { grid: run.grid, minCellPx: run.minCellPx, detail: false },
       s.entries,
-      (e) => `sig-colour/${s.tag}/${e.id}.psig`
+      (e) => `sig-color/${s.tag}/${e.id}.psig`
     );
     rust(P, [
       'baseline',
@@ -244,14 +244,14 @@ try {
           gate: {
             ...OPEN,
             threshold: 255,
-            colour: { deltaE: de, cellDeltaE: cde, minArea: 1, minCells: 1 },
+            color: { deltaE: de, cellDeltaE: cde, minArea: 1, minCells: 1 },
           },
         });
         for (const r of out.results)
-          if (r.colour)
-            colourM[i][`${s.tag}/${sc.name}/${r.id}`] = {
-              area: r.colour.flatArea ?? 0,
-              cells: r.colour.cells ?? 0,
+          if (r.color)
+            colorM[i][`${s.tag}/${sc.name}/${r.id}`] = {
+              area: r.color.flatArea ?? 0,
+              cells: r.color.cells ?? 0,
             };
       }
     );
@@ -323,50 +323,50 @@ for (const policy of POLICIES)
                   best = { ...c, caught, margin };
               }
 
-// The colour rule on top of the best gate: the candidate with no false positive that catches most.
-/** @typedef {{ i: number, area: number, ck: number }} ColourRule */
-const colourFails = (/** @type {ColourRule} */ c) => (/** @type {Item} */ x) => {
-  const m = colourM[c.i][x.key];
+// The color rule on top of the best gate: the candidate with no false positive that catches most.
+/** @typedef {{ i: number, area: number, ck: number }} ColorRule */
+const colorFails = (/** @type {ColorRule} */ c) => (/** @type {Item} */ x) => {
+  const m = colorM[c.i][x.key];
   return !!m && (m.area >= c.area || m.cells >= c.ck);
 };
 const bestFails = best ? failsWith(best) : () => false;
-/** @type {(ColourRule & { caught: number, margin: number }) | null} */
-let colourBest = null;
+/** @type {(ColorRule & { caught: number, margin: number }) | null} */
+let colorBest = null;
 for (let i = 0; i < CDE.length; i++)
   for (const area of AREA)
     for (const ck of CK) {
       if (area === Infinity && ck === Infinity) continue;
-      const cf = colourFails({ i, area, ck });
+      const cf = colorFails({ i, area, ck });
       const fails = (/** @type {Item} */ x) => bestFails(x) || cf(x);
       if (noise.some(fails)) continue;
       const caught = regs.filter(fails).length;
       const margin = i * 10 + (area === Infinity ? 16 : area / 64) + (ck === Infinity ? 9 : ck);
       if (
-        !colourBest ||
-        caught > colourBest.caught ||
-        (caught === colourBest.caught && margin > colourBest.margin)
+        !colorBest ||
+        caught > colorBest.caught ||
+        (caught === colorBest.caught && margin > colorBest.margin)
       )
-        colourBest = { i, area, ck, caught, margin };
+        colorBest = { i, area, ck, caught, margin };
     }
-// The project's own colour rule (on by default), scored the same way: null when it is not one of
+// The project's own color rule (on by default), scored the same way: null when it is not one of
 // the lines measured above.
-const setColour = run.gate?.colour;
+const setColor = run.gate?.color;
 const cur =
-  setColour === false
+  setColor === false
     ? null
     : {
         deltaE: 3,
         minArea: 64,
         cellDeltaE: 5,
         minCells: 3,
-        ...(typeof setColour === 'object' ? setColour : {}),
+        ...(typeof setColor === 'object' ? setColor : {}),
       };
 const curI = cur ? CDE.findIndex(([de, cde]) => de === cur.deltaE && cde === cur.cellDeltaE) : -1;
-const currentColour =
+const currentColor =
   curI < 0 || !cur
     ? null
     : (() => {
-        const cf = colourFails({
+        const cf = colorFails({
           i: curI,
           area: cur.minArea || Infinity,
           ck: cur.minCells || Infinity,
@@ -378,7 +378,7 @@ const currentColour =
 /** @type {Record<string, { kind: Item['kind'], caught: number, of: number, fp: number }>} */
 const per = {};
 if (best) {
-  const cf = colourBest ? colourFails(colourBest) : () => false;
+  const cf = colorBest ? colorFails(colorBest) : () => false;
   const fails = (/** @type {Item} */ x) => bestFails(x) || cf(x);
   for (const x of items) {
     const n = `${x.suite}/${x.scenario}`;
@@ -421,12 +421,12 @@ const gate = best && {
           energyDelta: best.de === Infinity ? 255 : best.de,
           minTiles: best.dk,
         },
-  colour: colourBest
+  color: colorBest
     ? {
-        deltaE: CDE[colourBest.i][0],
-        minArea: colourBest.area === Infinity ? 0 : colourBest.area,
-        cellDeltaE: CDE[colourBest.i][1],
-        minCells: colourBest.ck === Infinity ? 0 : colourBest.ck,
+        deltaE: CDE[colorBest.i][0],
+        minArea: colorBest.area === Infinity ? 0 : colorBest.area,
+        cellDeltaE: CDE[colorBest.i][1],
+        minCells: colorBest.ck === Infinity ? 0 : colorBest.ck,
       }
     : false,
 };
@@ -447,9 +447,9 @@ const result = {
   detailBuild: build,
   current,
   gate,
-  caught: colourBest?.caught ?? best?.caught ?? 0,
-  caughtWithoutColour: best?.caught ?? 0,
-  currentColour,
+  caught: colorBest?.caught ?? best?.caught ?? 0,
+  caughtWithoutColor: best?.caught ?? 0,
+  currentColor,
   of: regs.length,
   bySuite,
   per,
@@ -461,11 +461,11 @@ if (!gate) log('  no zero-false-positive gate');
 else {
   // `gate` is set only when `best` is.
   log(
-    `  best: ${JSON.stringify(gate)} → ${result.caught}/${regs.length} (${result.caughtWithoutColour} without the colour rule)`
+    `  best: ${JSON.stringify(gate)} → ${result.caught}/${regs.length} (${result.caughtWithoutColor} without the color rule)`
   );
-  if (currentColour)
+  if (currentColor)
     log(
-      `  the project's colour rule on top: ${currentColour.caught}/${regs.length}, ${currentColour.falsePositives} false positives`
+      `  the project's color rule on top: ${currentColor.caught}/${regs.length}, ${currentColor.falsePositives} false positives`
     );
   for (const [n, p] of Object.entries(per))
     if (p.kind === 'regression') log(`    ${n.padEnd(36)} ${p.caught}/${p.of}`);

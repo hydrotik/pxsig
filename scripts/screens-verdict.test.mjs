@@ -1,5 +1,5 @@
 // The verdicts of pxsig's own screens (lib/screens-verdict.mjs): the dashboard project's gate, this
-// checkout's engine, and a badge wash failing on the colour rule; an engine without the rule refused.
+// checkout's engine, and a badge wash failing on the color rule; an engine without the rule refused.
 import { strict as assert } from 'node:assert';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -25,19 +25,19 @@ test("the verdict engine is this checkout's build when PXSIG_LIVE_BIN names one"
   assert.equal(verdictEngine({}, '/image/pxsig'), '/image/pxsig');
 });
 
-test('a verdict made without the colour rule is refused, naming the fix', () => {
+test('a verdict made without the color rule is refused, naming the fix', () => {
   assert.throws(
     () => assertVerdicts([{ id: 'overview--counts-1@dark', pass: true, metrics: { ssim: 1 } }]),
-    /overview--counts-1@dark was checked by an engine without the colour rule[\s\S]*set PXSIG_LIVE_BIN to a Linux build/
+    /overview--counts-1@dark was checked by an engine without the color rule[\s\S]*set PXSIG_LIVE_BIN to a Linux build/
   );
   assertVerdicts([
-    { id: 'a', pass: true, metrics: { ssim: 1 }, colour: null },
+    { id: 'a', pass: true, metrics: { ssim: 1 }, color: null },
     { id: 'b', error: 'no baseline sig' },
   ]);
 });
 
 test(
-  "the dashboard's screens: a badge wash fails on the colour rule, with the project's gate",
+  "the dashboard's screens: a badge wash fails on the color rule, with the project's gate",
   { skip: !hasRust && 'Rust binary not built' },
   (t) => {
     const d = tempDir('screens-verdict', t);
@@ -60,7 +60,7 @@ test(
         stories: [{ id: 'e', story: 'e', mode: 'dark', sig: 'e.psig' }],
       })
     );
-    assert.deepEqual(run.gate.colour, { deltaE: 3, minArea: 64, cellDeltaE: 5, minCells: 3 });
+    assert.deepEqual(run.gate.color, { deltaE: 3, minArea: 64, cellDeltaE: 5, minCells: 3 });
     writeFileSync(join(d, 'run.json'), JSON.stringify(run));
     const r = spawnSync(
       bin,
@@ -83,8 +83,8 @@ test(
     assertVerdicts(results);
     assert.equal(results[0].pass, false);
     assert.deepEqual(results[0].reasons, [
-      'colour ΔE00 7.8 over 532 px (flat area) >= 3',
-      'colour cells 4 >= 3 (ΔE00 >= 5)',
+      'color ΔE00 7.8 over 532 px (flat area) >= 3',
+      'color cells 4 >= 3 (ΔE00 >= 5)',
     ]);
   }
 );

@@ -125,7 +125,7 @@ A behaviour-free change to the server or the dashboard shows `0 to review`: that
 This commit's engine makes every screen's verdict and runs the live screens: the screens and
 release workflows build it for Linux and pass it to the container (`PXSIG_LIVE_BIN`, a path inside
 the checkout), so a change to the gate or the engine shows in pxsig's own screens too; the browser
-and fonts stay the image's. The image's own engine predates the colour rule (0.7.7), so without
+and fonts stay the image's. The image's own engine predates the color rule (0.7.7), so without
 `PXSIG_LIVE_BIN` the check refuses its verdicts (exit 2). A macOS build cannot run in the container;
 locally, build a Linux one first:
 

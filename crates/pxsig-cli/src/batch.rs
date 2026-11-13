@@ -192,7 +192,7 @@ pub fn load_baseline(sig: &Path) -> Result<Baseline> {
 mod baseline;
 mod boxes;
 mod check;
-mod colour;
+mod color;
 mod masks;
 mod text;
 
@@ -201,7 +201,7 @@ pub use baseline::{
     BaselineOpts, EnvPlan, TrimOpts,
 };
 pub use check::{check, compare_png, detail_json, metrics_json, Artifacts, CheckOpts};
-pub use colour::colour_json;
+pub use color::color_json;
 pub use masks::annotate as annotate_masks;
 
 #[cfg(test)]

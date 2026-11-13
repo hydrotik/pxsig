@@ -10,9 +10,9 @@ import { skipUnless } from './strict.mjs';
 
 const lenient = { threshold: 255, minSsim: 0, maxChangedPct: 100, minCells: 100000, detail: false };
 const strict = { threshold: 4, minSsim: 0.999, maxChangedPct: 0, minCells: 1, detail: false };
-// The colour rule has no PXSIG_* variable or flag (docs/spec.md, "Gate resolution"), so a variable or
+// The color rule has no PXSIG_* variable or flag (docs/spec.md, "Gate resolution"), so a variable or
 // flag cannot loosen it: the project gate here leaves it off, and these tests are about the rest.
-const project = { ...strict, colour: false };
+const project = { ...strict, color: false };
 
 function setup() {
   const dir = tempDir('gate');

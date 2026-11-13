@@ -39,7 +39,7 @@ node tools/bench.mjs [--runs 5] [--no-render] [--concurrency 1,2,4,8]
 
 The built-in scenarios are plain CSS, so they apply to any Storybook. `{target}` stands for the project's `capture.target`.
 
-- **Regressions:** root font size, web-font fallback, hue shift, small-area colour (a badge tint, a text colour, a lost row highlight), corner radius dropped, inline padding lost, borders gone, icons hidden, letter-spacing, a 12px layout shift, and `mode-swap` (each entry rendered with the next mode's globals and colour scheme; only when the project has two or more modes).
+- **Regressions:** root font size, web-font fallback, hue shift, small-area color (a badge tint, a text color, a lost row highlight), corner radius dropped, inline padding lost, borders gone, icons hidden, letter-spacing, a 12px layout shift, and `mode-swap` (each entry rendered with the next mode's globals and colour scheme; only when the project has two or more modes).
 - **Noise:** `control` (render again with no change), a 0.4px shift of the story content, opacity 0.99, and brightness(1.004), about one 8-bit step.
 
 Add or replace scenarios with `--scenarios <file.json>`:

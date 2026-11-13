@@ -1,11 +1,11 @@
 /**
- * colour-paths.test.mjs — the colour rule on every path that makes a verdict: `pxsig check` (no
+ * color-paths.test.mjs — the color rule on every path that makes a verdict: `pxsig check` (no
  * server), a re-check through `pxsig serve`, and the MCP tool pxsig_check through that server. Each
- * renders an entry with the stand-in Storybook, recolours that render (the box's blue moved at
+ * renders an entry with the stand-in Storybook, recolors that render (the box's blue moved at
  * about the same lightness, ΔE00 12.8, under every luminance rule) into its baseline, and checks it
- * again: the row fails with a colour reason and records the rule it was judged by.
+ * again: the row fails with a color reason and records the rule it was judged by.
  *
- *   node --test packages/pxsig/test/colour-paths.test.mjs
+ *   node --test packages/pxsig/test/color-paths.test.mjs
  *
  * Needs the Rust binary and Chromium.
  */
@@ -21,13 +21,13 @@ import { fixture, rustBin } from './fixture.mjs';
 import { fakeStorybook, needs, rowsOf, serve, src } from './server-helpers.mjs';
 
 /** @typedef {ReturnType<typeof fixture>} Fixture */
-/** @typedef {{ id: string, pass: boolean, reasons?: string[], gate?: { colour?: unknown }, colour?: unknown }} Row */
+/** @typedef {{ id: string, pass: boolean, reasons?: string[], gate?: { color?: unknown }, color?: unknown }} Row */
 
 const BOX = [42, 74, 122]; // the stand-in Storybook's box (#2a4a7a)
 const TINT = [42, 84, 100];
 
 /**
- * The entry's baseline, made from its latest render with the box recoloured.
+ * The entry's baseline, made from its latest render with the box recolored.
  * @param {Fixture} f
  * @param {string} id
  */
@@ -57,15 +57,15 @@ function tintBaseline(f, id) {
 }
 
 /** @param {Row | undefined} row */
-function assertColourFail(row) {
+function assertColorFail(row) {
   assert.ok(row, 'the entry has a row');
   assert.equal(row.pass, false, JSON.stringify(row));
   assert.ok(
-    row.reasons?.length && row.reasons.every((x) => x.startsWith('colour ')),
-    `only the colour rule fails it: ${JSON.stringify(row.reasons)}`
+    row.reasons?.length && row.reasons.every((x) => x.startsWith('color ')),
+    `only the color rule fails it: ${JSON.stringify(row.reasons)}`
   );
-  assert.deepEqual(row.gate?.colour, { deltaE: 3, minArea: 64, cellDeltaE: 5, minCells: 3 });
-  assert.ok(row.colour && typeof row.colour === 'object', 'its measurements are recorded');
+  assert.deepEqual(row.gate?.color, { deltaE: 3, minArea: 64, cellDeltaE: 5, minCells: 3 });
+  assert.ok(row.color && typeof row.color === 'object', 'its measurements are recorded');
 }
 
 /** @param {Fixture} f @param {string} url */
@@ -98,7 +98,7 @@ async function cliCheck(f, id) {
 }
 
 test(
-  'pxsig check: a recoloured baseline fails on the colour rule',
+  'pxsig check: a recolored baseline fails on the color rule',
   { skip: needs, timeout: 120_000 },
   async (t) => {
     const f = fixture({ t });
@@ -108,12 +108,12 @@ test(
     await cliCheck(f, f.ids.ok);
     tintBaseline(f, f.ids.ok);
     await cliCheck(f, f.ids.ok);
-    assertColourFail(rowsOf(f).find((/** @type {Row} */ x) => x.id === f.ids.ok));
+    assertColorFail(rowsOf(f).find((/** @type {Row} */ x) => x.id === f.ids.ok));
   }
 );
 
 test(
-  'pxsig serve: a re-check of a recoloured baseline fails on the colour rule',
+  'pxsig serve: a re-check of a recolored baseline fails on the color rule',
   { skip: needs, timeout: 120_000 },
   async (t) => {
     const f = fixture({ t });
@@ -125,12 +125,12 @@ test(
     tintBaseline(f, f.ids.ok);
     assert.equal((await S.post('check', { ids: [f.ids.ok] })).status, 202);
     await S.idle();
-    assertColourFail(rowsOf(f).find((/** @type {Row} */ x) => x.id === f.ids.ok));
+    assertColorFail(rowsOf(f).find((/** @type {Row} */ x) => x.id === f.ids.ok));
   }
 );
 
 test(
-  'pxsig_check (MCP, through the server): a recoloured baseline fails on the colour rule',
+  'pxsig_check (MCP, through the server): a recolored baseline fails on the color rule',
   { skip: needs, timeout: 180_000 },
   async (t) => {
     const f = fixture({ t });
@@ -158,6 +158,6 @@ test(
     const r = /** @type {{ isError?: boolean, content: { text: string }[] }} */ (await answer);
     assert.ok(!r.isError, r.content[0].text);
     assert.equal(JSON.parse(r.content[0].text).via, 'server');
-    assertColourFail(rowsOf(f).find((/** @type {Row} */ x) => x.id === f.ids.ok));
+    assertColorFail(rowsOf(f).find((/** @type {Row} */ x) => x.id === f.ids.ok));
   }
 );

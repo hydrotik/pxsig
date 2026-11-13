@@ -1,4 +1,4 @@
-//! The colour rule at check time (pxsig_core::colour): after the other rules passed, against the
+//! The color rule at check time (pxsig_core::color): after the other rules passed, against the
 //! baseline image the `.psig` holds.
 
 use std::path::Path;
@@ -6,17 +6,17 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use serde_json::{json, Value};
 
-use pxsig_core::{apply_colour, CompareResult, GateThresholds};
+use pxsig_core::{apply_color, CompareResult, GateThresholds};
 
 use super::Baseline;
 use crate::io;
 
-/// Apply the colour rule to `r`, made from the render `png` (its file bytes and decoded pixels).
-/// Nothing runs when the gate has no colour rule or `r` failed already; the flat-area check is
+/// Apply the color rule to `r`, made from the render `png` (its file bytes and decoded pixels).
+/// Nothing runs when the gate has no color rule or `r` failed already; the flat-area check is
 /// skipped when the render's file is byte for byte the baseline image, and runs on the cells alone
 /// when the baseline has no image (a pre-0.2 `.pxsig.json`). A render of another size than the
 /// baseline's gets the flat-area check alone, over the region both cover
-/// (`pxsig_core::colour::apply_colour`).
+/// (`pxsig_core::color::apply_color`).
 pub fn apply(
     r: &mut CompareResult,
     b: &Baseline,
@@ -25,14 +25,14 @@ pub fn apply(
     cur: (&[u8], usize, usize),
     gate: &GateThresholds,
 ) -> Result<()> {
-    let Some(g) = gate.colour.as_ref().filter(|_| r.pass) else {
+    let Some(g) = gate.color.as_ref().filter(|_| r.pass) else {
         return Ok(());
     };
     // The same file: every pixel is the same, so the render stands in for the baseline (no decode).
     let decoded = match b.image.as_deref() {
         Some(img) if img != bytes => Some(
             io::decode_png_bytes(img, Path::new("baseline image"))
-                .with_context(|| format!("the colour rule for {}", png.display()))?,
+                .with_context(|| format!("the color rule for {}", png.display()))?,
         ),
         _ => None,
     };
@@ -42,13 +42,13 @@ pub fn apply(
         (None, None) => None,
     };
     let size = (b.record.src_width as usize, b.record.src_height as usize);
-    apply_colour(r, base, size, cur, g);
+    apply_color(r, base, size, cur, g);
     Ok(())
 }
 
-/// The colour rule's measurements for a row (`null` when it did not run).
-pub fn colour_json(r: &CompareResult) -> Value {
-    r.colour.as_ref().map_or(Value::Null, |m| {
+/// The color rule's measurements for a row (`null` when it did not run).
+pub fn color_json(r: &CompareResult) -> Value {
+    r.color.as_ref().map_or(Value::Null, |m| {
         json!({
             "flatArea": m.flat_area,
             "flatDeltaE": (m.flat_delta_e * 100.0).round() / 100.0,

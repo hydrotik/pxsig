@@ -94,7 +94,7 @@ export const DEFAULT_SCENARIOS = [
     change: 'hue-rotate(90deg) on the story root',
     css: '{target}{filter:hue-rotate(90deg)!important}',
   },
-  // Small-area colour: what a whole-story hue shift does not test. Each keeps the lightness roughly
+  // Small-area color: what a whole-story hue shift does not test. Each keeps the lightness roughly
   // where it was, so the luminance rules (SSIM, edges, the detail channel) barely move.
   {
     name: 'badge-tint',
@@ -105,10 +105,10 @@ export const DEFAULT_SCENARIOS = [
     css: `{target} :is(${SMALL}):not(:is(${SMALL}) *){filter:sepia(.35) hue-rotate(70deg) saturate(1.6)!important}`,
   },
   {
-    name: 'text-colour',
+    name: 'text-color',
     kind: 'regression',
-    title: 'Text colour changed',
-    change: 'every text colour mixed 45% toward red',
+    title: 'Text color changed',
+    change: 'every text color mixed 45% toward red',
     css: '{target} *{-webkit-text-fill-color:color-mix(in srgb,currentColor 55%,#d00)!important}',
   },
   {

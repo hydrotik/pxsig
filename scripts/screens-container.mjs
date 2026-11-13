@@ -16,7 +16,7 @@
  * PXSIG_LIVE_BIN: a Linux build of this checkout's engine, inside the checkout (the container sees
  * it at the same path). Every screen's verdict is made by it, and the live screens run on it (the
  * screens and release workflows build it). Unset, the image's engine is used, which predates the
- * colour rule (0.7.7): screens-check refuses its verdicts (exit 2) rather than pass a colour change.
+ * color rule (0.7.7): screens-check refuses its verdicts (exit 2) rather than pass a color change.
  */
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';

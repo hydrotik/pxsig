@@ -72,8 +72,8 @@ pub(super) fn cmd_compare(
     if r.detail.is_some() {
         out["detail"] = batch::detail_json(&r);
     }
-    if r.colour.is_some() {
-        out["colour"] = batch::colour_json(&r);
+    if r.color.is_some() {
+        out["color"] = batch::color_json(&r);
     }
     // The masks as `check` weighs them: a masks change fails here too.
     batch::annotate_masks(&mut out, png, b.masks.as_ref())?;

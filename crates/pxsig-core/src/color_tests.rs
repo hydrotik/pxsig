@@ -1,4 +1,4 @@
-//! The colour rule on synthetic badges: the changes the luminance rules miss fail, and the noise
+//! The color rule on synthetic badges: the changes the luminance rules miss fail, and the noise
 //! the gate is calibrated against (a 0.4px shift, brightness ×1.004, opacity 0.99) passes.
 use super::*;
 use crate::compare::{compare_with_detail, GateThresholds};
@@ -61,19 +61,19 @@ fn ui() -> Vec<u8> {
     d
 }
 
-/// The project's gate (threshold 24, 3 cells, SSIM 0.99, 2%, the detail channel) with the colour
+/// The project's gate (threshold 24, 3 cells, SSIM 0.99, 2%, the detail channel) with the color
 /// rule's defaults.
 fn gate() -> GateThresholds {
     GateThresholds {
         threshold: 24.0,
         min_cells: 3,
         detail: Some(DetailGate::default()),
-        colour: Some(ColourGate::default()),
+        color: Some(ColorGate::default()),
         ..GateThresholds::default()
     }
 }
 
-/// Today's gate, then the colour rule, as `pxsig check` runs them.
+/// Today's gate, then the color rule, as `pxsig check` runs them.
 fn run(base: &[u8], cur: &[u8], g: &GateThresholds) -> CompareResult {
     let b = signature_of(base, W, H, GRID);
     let detail = detail_of(base, W, H, DetailParams::default());
@@ -89,19 +89,19 @@ fn run(base: &[u8], cur: &[u8], g: &GateThresholds) -> CompareResult {
         H,
         g,
     );
-    if let Some(c) = &g.colour {
-        apply_colour(&mut r, Some((base, W, H)), (W, H), (cur, W, H), c);
+    if let Some(c) = &g.color {
+        apply_color(&mut r, Some((base, W, H)), (W, H), (cur, W, H), c);
     }
     r
 }
 
 /// Today's gate alone.
-fn without_colour(base: &[u8], cur: &[u8]) -> CompareResult {
+fn without_color(base: &[u8], cur: &[u8]) -> CompareResult {
     run(
         base,
         cur,
         &GateThresholds {
-            colour: None,
+            color: None,
             ..gate()
         },
     )
@@ -170,15 +170,15 @@ fn a_grey_badge_turning_green_fails_on_its_flat_wash() {
     let base = badge(GREY, GREY_BORDER, GREEN_TEXT);
     let cur = badge([222, 233, 226], [187, 214, 196], GREEN_TEXT);
     assert!((delta_e00(lab(GREY), lab([222, 233, 226])) - 7.8).abs() < 0.05);
-    assert!(without_colour(&base, &cur).pass, "today's gate passes it");
+    assert!(without_color(&base, &cur).pass, "today's gate passes it");
     let r = run(&base, &cur, &gate());
     assert!(!r.pass);
-    let m = r.colour.as_ref().unwrap();
+    let m = r.color.as_ref().unwrap();
     assert!(m.flat_area.unwrap() >= 64, "{m:?}");
     assert_eq!(
         r.reasons[0],
         format!(
-            "colour ΔE00 7.8 over {} px (flat area) >= 3",
+            "color ΔE00 7.8 over {} px (flat area) >= 3",
             m.flat_area.unwrap()
         )
     );
@@ -189,17 +189,14 @@ fn text_turning_from_green_to_red_fails_on_its_cells() {
     // The strokes are never flat, so only the cell check sees them.
     let base = badge(GREY, GREY_BORDER, GREEN_TEXT);
     let cur = badge(GREY, GREY_BORDER, RED_TEXT);
-    assert!(without_colour(&base, &cur).pass, "today's gate passes it");
+    assert!(without_color(&base, &cur).pass, "today's gate passes it");
     let r = run(&base, &cur, &gate());
     assert!(!r.pass);
-    let m = r.colour.as_ref().unwrap();
+    let m = r.color.as_ref().unwrap();
     assert!(m.flat_area.unwrap() < 64, "{m:?}");
     let cells = m.cells.unwrap();
     assert!(cells >= 3, "{m:?}");
-    assert_eq!(
-        r.reasons,
-        [format!("colour cells {cells} >= 3 (ΔE00 >= 5)")]
-    );
+    assert_eq!(r.reasons, [format!("color cells {cells} >= 3 (ΔE00 >= 5)")]);
 }
 
 #[test]
@@ -211,8 +208,8 @@ fn the_calibration_noise_passes() {
     ] {
         for (name, cur) in noise(&page) {
             let r = run(&page, &cur, &gate());
-            assert!(r.pass, "{name}: {:?} {:?}", r.reasons, r.colour);
-            let m = r.colour.as_ref().unwrap();
+            assert!(r.pass, "{name}: {:?} {:?}", r.reasons, r.color);
+            let m = r.color.as_ref().unwrap();
             assert!(
                 m.flat_area.unwrap() < 64 && m.cells.unwrap() < 3,
                 "{name}: {m:?}"
@@ -227,11 +224,11 @@ fn identical_renders_measure_nothing() {
     let r = run(&page, &page, &gate());
     assert!(r.pass);
     assert_eq!(
-        r.colour,
-        Some(ColourMetrics {
+        r.color,
+        Some(ColorMetrics {
             flat_area: Some(0),
             cells: Some(0),
-            ..ColourMetrics::default()
+            ..ColorMetrics::default()
         })
     );
 }
@@ -242,35 +239,31 @@ fn a_result_that_failed_already_is_left_alone() {
     let cur = badge([220, 38, 38], [220, 38, 38], [255; 3]);
     let r = run(&base, &cur, &gate());
     assert!(!r.pass);
-    assert!(r.colour.is_none(), "not measured");
-    assert!(r.reasons.iter().all(|x| !x.starts_with("colour")));
+    assert!(r.color.is_none(), "not measured");
+    assert!(r.reasons.iter().all(|x| !x.starts_with("color")));
 }
 
 #[test]
 fn the_settings_move_the_lines() {
     let base = badge(GREY, GREY_BORDER, GREEN_TEXT);
     let cur = badge([222, 233, 226], [187, 214, 196], GREEN_TEXT);
-    let with = |c: ColourGate| {
+    let with = |c: ColorGate| {
         run(
             &base,
             &cur,
             &GateThresholds {
-                colour: Some(c),
+                color: Some(c),
                 ..gate()
             },
         )
     };
-    let area = with(ColourGate::default())
-        .colour
-        .unwrap()
-        .flat_area
-        .unwrap();
-    let cells_off = ColourGate {
+    let area = with(ColorGate::default()).color.unwrap().flat_area.unwrap();
+    let cells_off = ColorGate {
         min_cells: 0,
-        ..ColourGate::default()
+        ..ColorGate::default()
     };
     assert!(
-        !with(ColourGate {
+        !with(ColorGate {
             min_area: area,
             ..cells_off
         })
@@ -278,7 +271,7 @@ fn the_settings_move_the_lines() {
         "at the line: fails"
     );
     assert!(
-        with(ColourGate {
+        with(ColorGate {
             min_area: area + 1,
             ..cells_off
         })
@@ -286,21 +279,21 @@ fn the_settings_move_the_lines() {
         "one more: passes"
     );
     assert!(
-        with(ColourGate {
+        with(ColorGate {
             delta_e: 8.0,
             ..cells_off
         })
         .pass,
         "a 7.8 wash under an 8 line"
     );
-    let off = with(ColourGate {
+    let off = with(ColorGate {
         min_area: 0,
         min_cells: 0,
-        ..ColourGate::default()
+        ..ColorGate::default()
     });
     assert!(off.pass);
     assert_eq!(
-        off.colour.unwrap().flat_area,
+        off.color.unwrap().flat_area,
         None,
         "0 turns the flat-area check off"
     );
@@ -323,9 +316,9 @@ fn without_a_baseline_image_only_the_cells_are_checked() {
         H,
         &gate(),
     );
-    apply_colour(&mut r, None, (W, H), (&cur, W, H), &ColourGate::default());
+    apply_color(&mut r, None, (W, H), (&cur, W, H), &ColorGate::default());
     assert!(!r.pass);
-    assert_eq!(r.colour.unwrap().flat_area, None);
+    assert_eq!(r.color.unwrap().flat_area, None);
 }
 
 /// `d` (W × H) one pixel wider: a white column on the right, as a trimmed render grows.
@@ -338,7 +331,7 @@ fn wider(d: &[u8]) -> Vec<u8> {
     o
 }
 
-/// Today's gate on a render one pixel wider than the baseline, then the colour rule.
+/// Today's gate on a render one pixel wider than the baseline, then the color rule.
 fn run_wider(base: &[u8], cur: &[u8]) -> CompareResult {
     let b = signature_of(base, W, H, GRID);
     let detail = detail_of(base, W, H, DetailParams::default());
@@ -355,23 +348,23 @@ fn run_wider(base: &[u8], cur: &[u8]) -> CompareResult {
         H,
         &g,
     );
-    apply_colour(
+    apply_color(
         &mut r,
         Some((base, W, H)),
         (W, H),
         (cur, W + 1, H),
-        &ColourGate::default(),
+        &ColorGate::default(),
     );
     r
 }
 
 #[test]
-fn a_recolour_with_a_one_pixel_size_change_fails_on_the_region_both_cover() {
+fn a_recolor_with_a_one_pixel_size_change_fails_on_the_region_both_cover() {
     let base = badge(GREY, GREY_BORDER, GREEN_TEXT);
     let cur = wider(&badge([222, 233, 226], [187, 214, 196], GREEN_TEXT));
     let r = run_wider(&base, &cur);
-    assert!(!r.pass, "{:?}", r.colour);
-    let m = r.colour.as_ref().unwrap();
+    assert!(!r.pass, "{:?}", r.color);
+    let m = r.color.as_ref().unwrap();
     assert_eq!(
         m.cells, None,
         "the cells no longer cover the same pixels: not compared"
@@ -379,7 +372,7 @@ fn a_recolour_with_a_one_pixel_size_change_fails_on_the_region_both_cover() {
     assert_eq!(
         r.reasons,
         [format!(
-            "colour ΔE00 7.8 over {} px (flat area) >= 3",
+            "color ΔE00 7.8 over {} px (flat area) >= 3",
             m.flat_area.unwrap()
         )]
     );
@@ -394,8 +387,8 @@ fn sub_pixel_noise_with_a_one_pixel_size_change_passes() {
     ] {
         let [(_, shift), ..] = noise(&page);
         let r = run_wider(&page, &wider(&shift));
-        assert!(r.pass, "{:?} {:?}", r.reasons, r.colour);
-        let m = r.colour.as_ref().unwrap();
+        assert!(r.pass, "{:?} {:?}", r.reasons, r.color);
+        let m = r.color.as_ref().unwrap();
         assert!(m.flat_area.unwrap() < 64 && m.cells.is_none(), "{m:?}");
     }
 }
