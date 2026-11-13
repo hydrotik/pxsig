@@ -15,6 +15,7 @@ import { MaskBadges } from './MaskBadges';
 import { StatusOf } from './StatusOf';
 import { Affordance } from './Affordance';
 import { codeCopy, t } from '../copy';
+import { useFailure } from './Failure';
 import * as s from '../dashboard.css';
 
 export function StoryCard({
@@ -50,7 +51,12 @@ export function StoryCard({
   const offerRecheck = served && !scenario && !openable && (!!row.error || !!row.pending);
   const activity = useCheckActivity();
   const [queued, setQueued] = React.useState(false);
-  React.useEffect(() => setQueued(false), [row]);
+  const failure = useFailure();
+  const { clear } = failure;
+  React.useEffect(() => {
+    setQueued(false);
+    clear();
+  }, [row, clear]);
   const checking = queued || !!activity.running?.includes(row.id);
   const Card = offerRecheck ? 'div' : 'button';
   return (
@@ -123,21 +129,16 @@ export function StoryCard({
               emphasis="outline"
               disabled={checking}
               title={t('review.card.recheckTitle')}
-              onClick={() =>
+              onClick={() => {
+                failure.clear();
                 recheck([row.id])
                   .then(() => setQueued(true))
-                  .catch((e) =>
-                    alert(
-                      t('inspector.review.failed', {
-                        action: t('review.card.recheck'),
-                        error: (e as Error).message,
-                      })
-                    )
-                  )
-              }
+                  .catch((e) => failure.report(e, t('review.card.recheck')));
+              }}
             >
               {checking ? t('app.check.running', { count: 1 }) : t('review.card.recheck')}
             </Button>
+            {failure.note}
           </span>
         ) : null}
       </div>

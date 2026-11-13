@@ -2,8 +2,9 @@
 
 - **Masks over half a capture, or on the story root, fail the entry, and no approval passes it.**
   All of an entry's masks together over 50% of the capture, or a mask the capture found on the
-  story root (or one over 95% of the capture), fail the entry with `masks cover 62% of the capture,
-  over 50%` or `a mask covers the story root: …` and `masksBlocked` on the row. That depends on the
+  story root that covers 95% of the capture or more (a smaller one is weighed by its share), fail
+  the entry with `masks cover 62% of the capture, over 50%` or `a mask covers the story root: …`
+  and `masksBlocked` on the row. That depends on the
   render alone, and no baseline is written from such a render (nor from one whose capture reports
   a mask it may not apply as asked, `problems` in the masks record): not by the dashboard's approval,
   `check --update`, `pxsig baseline` or `--allow-masks`. The 25% warning now weighs all of an
@@ -56,9 +57,10 @@
   and the Masks section shows the line also when no mask was painted (a `data-volatile` with no
   reason or on a container).
   To update: nothing to do.
-- **A refused decision leaves the inspector usable.** The reason is said under the inspector's
-  header instead of in a browser alert, which held the page with the button reading "Approving…"
-  until it was closed.
+- **A refused request leaves the dashboard usable.** A refused decision or re-check in the
+  inspector is said under its header; a card's re-check, and the React analysis' Skip, Cancel,
+  Measure and Analyse, say it beside their button. None is a browser alert any more, which held
+  the page with the button reading "Approving…" until it was closed.
   To update: nothing to do.
 - **The engine's result cache names the engine build.** A cached verdict is reused only by the
   build that wrote it (the hash of its executable), so two builds of one version, a pull
