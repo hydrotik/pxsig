@@ -20,6 +20,7 @@ Each tool takes `--project <name>` and `--workspace <dir>` and otherwise resolve
 | `calibrate.mjs`        | Re-scores the saved scenario renders at several signature grids (32 to 128) under candidate whole-image rules (`default`, `cells>=k@t`). A rule counts only if it raises no false positives on any noise scenario.                                                                                                                                                                                                                                                | `reports/calibration[-<suite>].json` |
 | `calibrate-gate.mjs`   | Searches the whole gate (grid policy × cell threshold × ssim floor × changed % × min cells × detail rule) over every saved scenario render, all suites together, and reports the zero-false-positive gate that catches the most.                                                                                                                                                                                                                                  | `reports/calibration-gate.json`      |
 | `calibrate-detail.mjs` | Holds the project's whole-image gate fixed and searches the detail channel: build (tile, block, selection energy) × rule (≥ k tiles with block Δ > T or energy rise > E).                                                                                                                                                                                                                                                                                         | `reports/calibration-detail.json`    |
+| `gate-noise.mjs`       | The gate's false positives on renders of the same content: run to run on one machine and machine to machine on one OS, with today's rules, the color rule alone and the whole gate, and how close the same content comes to each rule. Needs no project of its own: it renders examples/single-package and the dashboard's fixture screens (see [Gate noise](#gate-noise)).                                                                                       | `--json` and `--summary` files       |
 | `bench.mjs`            | Batch `check` by thread count, batch `baseline` into scratch, one `compare` per process against one daemon request, peak RSS, render throughput at 1, 2, 4 and 8 pages, binary size.                                                                                                                                                                                                                                                                              | `reports/bench.json`                 |
 
 Run `scenarios.mjs` before the calibration tools, since they re-score its saved renders. `bench.mjs` needs only the latest renders from a `pxsig check`.
@@ -34,6 +35,33 @@ node tools/calibrate-gate.mjs [--min-cells-px 4,6,8]
 node tools/calibrate-detail.mjs
 node tools/bench.mjs [--runs 5] [--no-render] [--concurrency 1,2,4,8]
 ```
+
+## Gate noise
+
+`gate-noise.mjs` measures what the gate does with renders that should be the same, on the machines
+that render them, before a default ships (docs/releasing.md). The **gate noise** workflow
+(`.github/workflows/gate-noise.yml`, run by hand) runs it on GitHub's Linux, macOS and Windows
+runners, two jobs per OS, and on a GPU runner when the dispatch names one.
+
+```sh
+node tools/gate-noise.mjs render --label macos-a --out noise/macos-a   # each suite, twice, on this machine
+node tools/gate-noise.mjs compare --from noise --json report.json --summary summary.md
+```
+
+- **render** stages examples/single-package as `scripts/examples-test.mjs` does and renders it with
+  `pxsig check --full` on an empty store, and renders the dashboard's fixture screens on the plain
+  adapter with `pxsig dashboard check` (both themes; no design-system source). Each `--runs` times
+  (default 2), into `<out>/<suite>/run<n>/`, with `meta.json` (the label, OS, architecture,
+  Chromium, GPU class) and each suite's grid and gate.
+- **compare** reads every folder with a `meta.json`. For each suite it pairs run 1 with run 2 of
+  each machine, and run 1 of each two machines with the same OS and architecture. The first of a
+  pair becomes a throwaway baseline in a temporary folder (`pxsig baseline`); the second is checked
+  against it with today's rules (the gate without the color rule), with the color rule alone
+  (every other rule opened wide, so it measures every row) at its own values and at two lower
+  lines (ΔE00 2 and 1, cells 3 and 2), and with the whole gate. The tables give, per scenario, the
+  renders that differ byte for byte, the false positives of each, the lowest SSIM, the most changed
+  cells, the largest cell difference, the most detail tiles, and for the color rule the largest
+  flat area and cell count at each line, so the margins are visible.
 
 ## Scenarios
 
