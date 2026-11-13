@@ -68,6 +68,8 @@ export type {
   RenderResult,
   CheckRow,
   CheckSummary,
+  DriftSummary,
+  DriftWarnAt,
   MachineOptions,
   AgentMarker,
   DetectedAgent,

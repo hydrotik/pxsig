@@ -9,7 +9,16 @@ import {
   DataTable,
   StatGroup,
 } from '@ui';
-import { type Data, type Queue, type Row, fmt, rowsWithPending, served, statusOf } from '../data';
+import {
+  type Data,
+  type Queue,
+  type Row,
+  drifts,
+  fmt,
+  rowsWithPending,
+  served,
+  statusOf,
+} from '../data';
 import { Cmd, codeCopy, t, tx, type CopyKey } from '../copy';
 import { Affordance } from '../parts/Affordance';
 import { ChangedPerRun } from '../parts/RunCharts';
@@ -196,6 +205,8 @@ export function Overview({
   const flaky = having('flaky');
   // A mask over 25% of the capture: a warning, never a verdict (side/MasksSection.tsx).
   const largeMasks = rows.filter((r) => r.masksLarge?.length);
+  // Passing while the render differs from the baseline, which stays as it was (lib/drift.mjs).
+  const drifting = rows.filter(drifts);
   // Entries whose new violations have no decision yet (an accessibility one, or a visual approval).
   const a11yOpen = rows.filter(
     (r) =>
@@ -273,6 +284,19 @@ export function Overview({
             detail: byMode(largeMasks.map((r) => r.mode)),
             action: 'overview.actions.view' as const,
             open: () => go('stories', 'masks'),
+          },
+        ]
+      : []),
+    // Listed only while there is one, like the masks.
+    ...(drifting.length
+      ? [
+          {
+            id: 'drift',
+            label: t('overview.items.drift'),
+            count: drifting.length,
+            detail: byMode(drifting.map((r) => r.mode)),
+            action: 'overview.actions.view' as const,
+            open: () => go('stories', 'drift'),
           },
         ]
       : []),

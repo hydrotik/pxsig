@@ -19,6 +19,7 @@ import { engineDiff, refreshPackets } from '../lib/rejections/packet.mjs';
 import { buildRow, stampRenders, summarize } from '../lib/rows.mjs';
 import { writeJson } from '../lib/files.mjs';
 import { annotateRow, byId, envLine, envSummary } from '../lib/env.mjs';
+import { driftLine, driftSummary, warnAt } from '../lib/drift.mjs';
 import { PXSIG_VERSION } from '../lib/workspace.mjs';
 import {
   appendReadiness,
@@ -171,6 +172,7 @@ export async function report(S, sel, prep, run, cmp, { t0, retryMs, react = null
         }
       : {}),
     ...envSummary(out, envs),
+    ...driftSummary(out, warnAt(P.config)),
     totalMs: performance.now() - t0,
   });
   const now = new Date().toISOString();
@@ -258,6 +260,8 @@ export async function report(S, sel, prep, run, cmp, { t0, retryMs, react = null
 
   const envMsg = envLine(summary, summary.checked);
   if (envMsg) console.log(`[check] ${envMsg}`);
+  const driftMsg = driftLine(summary.drift);
+  if (driftMsg) console.log(`[check] ${driftMsg}`);
   console.log(
     `[check] ${summary.checked} checked · ${summary.passed} pass · ${summary.failed} changed · ${summary.flaky} flaky · ${summary.skipped} skipped · ` +
       `a11y ${summary.a11yViolations} violations (${summary.a11yNew} new) · ${(summary.totalMs / 1000).toFixed(1)} s total`
@@ -268,10 +272,17 @@ export async function report(S, sel, prep, run, cmp, { t0, retryMs, react = null
   const sarif = str('sarif');
   if (sarif) {
     const entries = new Map(manifest.stories.map((e) => [e.id, e]));
-    const n = writeSarif(resolve(sarif), out, { entries, version: PXSIG_VERSION, masks: true });
+    const drift = summary.drift;
+    const n = writeSarif(resolve(sarif), out, {
+      entries,
+      version: PXSIG_VERSION,
+      masks: true,
+      drift,
+    });
     const big = out.reduce((a, r) => a + (r.masksLarge?.length ?? 0), 0);
+    const dn = drift.count + drift.otherEnv ? 1 : 0;
     console.log(
-      `[check] wrote ${n - big} new a11y violations${big ? ` and ${big} large masks` : ''} to ${sarif} (SARIF)`
+      `[check] wrote ${n - big - dn} new a11y violations${big ? ` and ${big} large masks` : ''}${dn ? ' and the drift note' : ''} to ${sarif} (SARIF)`
     );
   }
   const reactSarifFile = str('react-sarif');

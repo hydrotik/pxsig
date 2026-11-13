@@ -185,6 +185,7 @@ The smallest config is `{}`: every key has a default. `pxsig init` writes
 | `env.strict`              | `false`                                                    | Refuse a check (exit 2, nothing rendered) when a selected baseline was approved in a different environment. Same as `check --strict-env` and `PXSIG_STRICT_ENV=1`.                                                                                                                                                                                                                                                                                                                                                         |
 | `enforcement`             | `{}`                                                       | Warn mode: per gate, `enforce` or `warn` (below).                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `integrity`               | `{}`                                                       | Integrity options (below).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `drift.warnAt`            | `{ "count": 5, "share": 0.2 }`                             | When the [drift alarm](#drift) warns (`drift-high`): at least `count` passing entries differ from their baseline, and they are at least `share` of the passing entries (below).                                                                                                                                                                                                                                                                                                                                            |
 | `approvals.identity`      | (none)                                                     | No longer read (0.7.6): no approval, accessibility or repair log line names a person, whatever this says; the commit that adds a line and the pull request say who (`pxsig approve log --trace`). A config that still has the key loads, and `pxsig doctor` reports it (`approvals-identity`: a warning for `git-email`, a note for `none`). Remove it.                                                                                                                                                                    |
 | `approvals.level`         | `standard`                                                 | `standard`: a typed phrase at a terminal, or the dashboard opened with the dashboard link. `strict` is reserved for a later release and refused for now (a setup error).                                                                                                                                                                                                                                                                                                                                                   |
 | `approvals.byStory`       | `false`                                                    | `true` lets the dashboard approve a story's waiting entries (each mode and state) together, in one batch (**Approve story**). `false`: each entry is approved on its own, after it is looked at; the server refuses `POST /__pxsig/approve-story`.                                                                                                                                                                                                                                                                         |
@@ -539,6 +540,26 @@ A bad value is a setup error. Fixed, and not configurable: the location inside `
 git-ignore check, the 280-character note, the file names, the goal line, the re-check command and
 the prompt wording. Every path in a packet is relative (to the packet, the store or the workspace),
 and nothing in it approves.
+
+### `drift`
+
+Entries that pass while their render differs from the baseline keep the old baseline; every check
+counts them ([integrity.md](integrity.md#drift)). `drift.warnAt` sets when that count is the
+`drift-high` setup warning in `pxsig doctor`, the dashboard and the check's output. It never
+changes a verdict or an exit code.
+
+```json
+{ "drift": { "warnAt": { "count": 5, "share": 0.2 } } }
+```
+
+| Key            | Default | Meaning                                                                                                                                        |
+| -------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `warnAt.count` | `5`     | Fewest passing entries that differ from their baseline, at most 100.                                                                           |
+| `warnAt.share` | `0.2`   | Smallest share of the passing entries they make up, above 0 and at most 0.5. Entries rendered in a different environment are left out of both. |
+
+Both must be reached. A value past its maximum (from any layer) is read as the maximum, so a
+project can loosen the alarm but not turn it off; `integrity.severity` can raise `drift-high` to
+`error`, never lower it.
 
 ### `integrity`
 

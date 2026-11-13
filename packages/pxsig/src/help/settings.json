@@ -523,6 +523,29 @@
       "default": "every manifest.<suite>.json",
       "operation": "Which baselines doctor counts as in use."
     },
+    "drift": {
+      "file": "pxsig.config.json",
+      "meaning": "The drift alarm: entries that pass while their render differs from the baseline.",
+      "operation": "See the drift.warnAt keys."
+    },
+    "drift.warnAt": {
+      "file": "pxsig.config.json",
+      "meaning": "When drift is the drift-high warning: { count, share }, both reached.",
+      "default": "{ \"count\": 5, \"share\": 0.2 }",
+      "operation": "Every check counts the passing entries whose render differs from the baseline (they keep the old baseline). At or over warnAt, pxsig doctor, the dashboard and the check's output warn (drift-high). Never changes a verdict."
+    },
+    "drift.warnAt.count": {
+      "file": "pxsig.config.json",
+      "meaning": "Fewest passing entries that differ from their baseline, at most 100.",
+      "default": "5",
+      "operation": "Keeps a small project from warning on two or three entries."
+    },
+    "drift.warnAt.share": {
+      "file": "pxsig.config.json",
+      "meaning": "Smallest share of the passing entries that differ, above 0 and at most 0.5.",
+      "default": "0.2",
+      "operation": "Entries rendered in a different environment than their baseline are left out. A value past its maximum reads as the maximum."
+    },
     "importPathPattern": {
       "file": "pxsig.config.json",
       "meaning": "Advanced: a regular expression selecting the story files, with the component folder as group 1.",

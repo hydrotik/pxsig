@@ -15,6 +15,7 @@
 import { ownBatch } from '../lib/approvals.mjs';
 import { notKept } from '../lib/decisions.mjs';
 import { readJson } from '../lib/files.mjs';
+import { drifts } from '../lib/drift.mjs';
 import { filterLedger } from '../lib/integrity.mjs';
 import { withoutNotes } from '../lib/rejections.mjs';
 import {
@@ -89,9 +90,7 @@ export function statuses(srv) {
             : r.flaky
               ? 'flaky'
               : r.pass
-                ? // check.json's `metrics` (docs/spec.md section 4): the engine's numbers.
-                  /** @type {{ ssim: number } | undefined} */ (r.metrics) &&
-                  /** @type {{ ssim: number }} */ (r.metrics).ssim < 1
+                ? drifts(r)
                   ? 'drift'
                   : 'pass'
                 : 'changed');

@@ -8,9 +8,12 @@
  * the entry's story file, with the entry id as the logical location. Rules carry axe's help text and
  * its documentation link. With `masks`, also one warning (`pxsig/large-mask`) per mask over a quarter
  * of an entry's capture (`masksLarge`, lib/capture/masks.mjs): such a mask lets most changes pass.
+ * With `drift` (check.json's `summary.drift`), one note for the run (`pxsig/drift`): how many
+ * entries pass while their render differs from the baseline (lib/drift.mjs).
  */
 import { writeAtomic } from './files.mjs';
-/** @import { A11yResult, CheckRow, ManifestEntry, SarifLog, SarifResult, SarifRule } from '../types.js' */
+/** @import { A11yResult, CheckRow, DriftSummary, ManifestEntry, SarifLog, SarifResult, SarifRule } from '../types.js' */
+import { driftLine } from './drift.mjs';
 
 /** @type {Record<string, string>} */
 const LEVEL = { critical: 'error', serious: 'error', moderate: 'warning', minor: 'note' };
@@ -25,8 +28,16 @@ const LARGE_MASK = {
   properties: { tags: ['visual', 'pxsig'] },
 };
 
-/** `masks`: also the large-mask warnings (`check --sarif`; `pxsig a11y --sarif` stays a11y only). */
-/** @typedef {{ entries?: Map<string, Pick<ManifestEntry, 'importPath'>>, version?: string | null, masks?: boolean }} SarifOptions */
+/** The drift note: one per run, never per entry. */
+const DRIFT = {
+  id: 'pxsig/drift',
+  shortDescription: { text: 'Entries pass while their render differs from the baseline' },
+  helpUri: 'https://github.com/hydrotik/pxsig/blob/main/docs/integrity.md#drift',
+  properties: { tags: ['visual', 'pxsig'] },
+};
+
+/** `masks`: also the large-mask warnings (`check --sarif`; `pxsig a11y --sarif` stays a11y only). `drift`: the drift note. */
+/** @typedef {{ entries?: Map<string, Pick<ManifestEntry, 'importPath'>>, version?: string | null, masks?: boolean, drift?: DriftSummary | null }} SarifOptions */
 
 /**
  * The new violations of `rows` (check.json rows), as a SARIF log. `entries`: manifest stories by id.
@@ -34,7 +45,10 @@ const LARGE_MASK = {
  * @param {SarifOptions} [opts]
  * @returns {SarifLog}
  */
-export function sarifLog(rows, { entries = new Map(), version = null, masks = false } = {}) {
+export function sarifLog(
+  rows,
+  { entries = new Map(), version = null, masks = false, drift = null } = {}
+) {
   /** @type {Map<string, SarifRule>} */
   const rules = new Map();
   /** @type {SarifResult[]} */
@@ -96,6 +110,18 @@ export function sarifLog(rows, { entries = new Map(), version = null, masks = fa
         },
       });
     }
+  const line = driftLine(drift);
+  if (drift && line) {
+    rules.set(DRIFT.id, DRIFT);
+    const { warnAt, ...counts } = drift;
+    results.push({
+      ruleId: DRIFT.id,
+      level: 'note',
+      message: { text: line.replace(/^drift: /, '').replace(/ → .*$/, '') },
+      locations: [{ logicalLocations: [{ name: 'check', kind: 'module' }] }],
+      properties: { ...counts, warnAt },
+    });
+  }
   return {
     $schema: 'https://json.schemastore.org/sarif-2.1.0.json',
     version: '2.1.0',

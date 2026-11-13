@@ -112,6 +112,16 @@ export function componentOf(d: Data, r: Row): string {
 }
 
 /** A review decision (made on this run's results; a new check clears them) wins over the verdict. */
+/**
+ * Passes while its render differs from the baseline, so it keeps its old baseline (the CLI's
+ * lib/drift.mjs `drifts`): the engine's `differs`, else, on a row from before 0.7.7, SSIM below 1.
+ */
+export function drifts(r: Row): boolean {
+  if (r.skipped || r.error || r.flaky || r.pass !== true) return false;
+  if (typeof r.differs === 'boolean') return r.differs;
+  return !!r.metrics && r.metrics.ssim < 1;
+}
+
 export function statusOf(
   r: Row,
   review: Record<string, ReviewEntry>

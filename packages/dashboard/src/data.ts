@@ -82,6 +82,7 @@ export {
   decisionOf,
   componentOf,
   statusOf,
+  drifts,
   type Queue,
 } from './data/select';
 
