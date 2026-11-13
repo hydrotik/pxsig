@@ -16,7 +16,8 @@
   loosens it per project, workspace or story (`deltaE`, `minArea`, `cellDeltaE`, `minCells`;
   docs/configuration.md, "gate.colour"); `false` turns it off. An entry checked with it off, or
   past its limits, is the new `gate-colour-off` warning in `pxsig doctor` and the dashboard's
-  Coverage view; `integrity.severity` can raise it to error but not lower it.
+  Coverage view; `integrity.severity` can raise it to error but not lower it. A verdict from an
+  engine older than the rule (a stale `PXSIG_BIN`) is refused, never recorded as a pass.
   To update: baselines whose colours drifted while the gate passed now show as changed, once.
   Review each in the dashboard and approve the ones that are intended. To loosen the rule for a
   project, set `gate.colour` in its `pxsig.config.json` (for example

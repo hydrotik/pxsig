@@ -160,7 +160,9 @@ schema allows no more, and an entry checked with the rule off, with either check
 doctor` and the dashboard ([integrity.md](integrity.md#setup-problems)). The measurements are on
 each row as `colour: { flatArea, flatDeltaE, cells, maxCellDeltaE }` (`flatArea` is `null` when the
 flat-area check did not run, `cells` when the cell check did not), or `null` when the rule did not
-run. `gate-colour-off` is a warning at least: `integrity.severity` can raise it to `error`, never
+run (it is off, or another rule failed the entry first; the row's `gate.colour` says which). Every
+row an engine compared carries the key: pxsig refuses a compared row without it (an engine older
+than 0.7.7, such as a stale `PXSIG_BIN`) instead of recording its verdict. `gate-colour-off` is a warning at least: `integrity.severity` can raise it to `error`, never
 lower it.
 
 ### Gate resolution

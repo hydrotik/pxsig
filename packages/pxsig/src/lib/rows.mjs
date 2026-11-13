@@ -14,6 +14,21 @@
 export const noBaseline = (r) => String(r?.error ?? '').startsWith('no baseline sig');
 
 /**
+ * Refuse a verdict made without the colour rule (docs/spec.md, "The colour rule"): since 0.7.7 the
+ * engine records `colour` on every row it compared (`null` when the rule did not run, and the
+ * row's `gate.colour` says whether it is on), so a compared row without the key comes from an
+ * older engine (a stale PXSIG_BIN, a container image's), which would pass a colour change.
+ * @param {string} id
+ * @param {EngineResult | null | undefined} r
+ */
+export function assertColourRule(id, r) {
+  if (r && /** @type {{ metrics?: unknown }} */ (r).metrics && !('colour' in r))
+    throw new Error(
+      `${id} was checked by an engine without the colour rule (older than 0.7.7: a stale PXSIG_BIN, or a container image's): its verdict would pass a colour change. Use this pxsig's engine`
+    );
+}
+
+/**
  * Merge the Rust verdict, the render (error, timing, axe) and the a11y baseline. Of the entry it
  * reads `id`, and the rest with fallbacks.
  * @param {Pick<ManifestEntry, 'id'> & Partial<ManifestEntry>} e
@@ -25,6 +40,8 @@ export const noBaseline = (r) => String(r?.error ?? '').startsWith('no baseline 
  * @returns {CheckRow}
  */
 export function buildRow(e, rust, render, a11yBase, manifest, js) {
+  // A render that failed carries no comparison (below): there is no verdict to check.
+  if (!render?.error) assertColourRule(e.id, rust);
   const r = rust ?? {};
   const rr = render ?? {};
   const violations = rr.a11y?.violations ?? null;

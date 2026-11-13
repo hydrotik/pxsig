@@ -13,9 +13,10 @@
  * The live screens' workspace is staged here, on the host, first (scripts/live/stage.mjs: the
  * container has no pnpm), unless `--no-live` or an `--only` that names no live feature.
  *
- * PXSIG_LIVE_BIN, when set: the engine the live screens run on, a Linux build of this checkout's
- * (the screens workflow builds it on the runner); the container sees it at the same path. Unset,
- * the live screens run on the image's engine, as the fixture screens' check always does.
+ * PXSIG_LIVE_BIN: a Linux build of this checkout's engine, inside the checkout (the container sees
+ * it at the same path). Every screen's verdict is made by it, and the live screens run on it (the
+ * screens and release workflows build it). Unset, the image's engine is used, which predates the
+ * colour rule (0.7.7): screens-check refuses its verdicts (exit 2) rather than pass a colour change.
  */
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
