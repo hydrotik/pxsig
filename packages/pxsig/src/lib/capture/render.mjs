@@ -17,7 +17,9 @@ import { reactSettings } from '../react/config.mjs';
 import { RESET_RENDERS, STAYED_QUIET, reactHook, readRenders, rowRenders } from './react-hook.mjs';
 import { textSettings } from '../text/config.mjs';
 import { boxesFile, writeBoxes } from './boxes.mjs';
-import { maskShot, masksFor, measureMasks, writeMasks } from './masks.mjs';
+import { MASKED, masksFor, writeMasks } from './masks.mjs';
+import { lateMasks, measureMasks } from './mask-measure.mjs';
+import { paintMasks, unmarkMasks, unpaintMasks } from './mask-paint.mjs';
 /** @import { BrowserContext, Page, PageScreenshotOptions } from 'playwright' */
 /** @import { RenderResult } from '../../types.js' */
 /** @import { BrowserSource, PxsigBrowser, RenderEntry, RenderOptions, RenderOutput, StorybookPreview } from '../../types/t4.js' */
@@ -290,10 +292,13 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
           // An opened popover/menu portals outside the root: capture the viewport for those states.
           const ofElement =
             !!el && !!box && box.width > 1 && box.height > 1 && !e.interaction?.fullPage;
-          const masks = await measureMasks(page, masksFor(project, e), ofElement ? box : null);
+          const masks = await measureMasks(page, masksFor(project, e), ofElement ? box : null, sel);
           /** @type {PageScreenshotOptions} */
-          const shot = { animations: 'disabled', timeout: 10000, ...maskShot(page, masks) };
-          const buf = ofElement ? await el.screenshot(shot) : await page.screenshot(shot);
+          const shot = { animations: 'disabled', timeout: 10000, ...(await paintMasks(page)) };
+          await lateMasks(page, masks);
+          const buf = await (ofElement ? el.screenshot(shot) : page.screenshot(shot)).finally(() =>
+            unpaintMasks(page)
+          );
           writeFileSync(png, buf);
           writeMasks(png, masks);
           // The text record, read before anything else touches the page; never an earlier render's.
@@ -303,9 +308,10 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             text.on && e.text !== false
               ? await writeBoxes(page, boxes, {
                   root: ofElement ? sel : null,
-                  ignore: [...masks.selectors, ...text.ignore],
+                  ignore: [MASKED, ...text.ignore],
                 })
               : undefined;
+          await unmarkMasks(page);
           let a11yRes = null;
           if (axe && e.a11y !== false) {
             a11yRes = await injectAxe(page, axe)
