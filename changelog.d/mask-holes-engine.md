@@ -7,9 +7,11 @@
   render alone, and no baseline is written from such a render (nor from one whose capture reports
   a mask it may not apply as asked, `problems` in the masks record): not by the dashboard's approval,
   `check --update`, `pxsig baseline` or `--allow-masks`. The 25% warning now weighs all of an
-  entry's masks together (`masksCoverage`). summary.md has a line for each; `check --sarif` reports
-  them as `pxsig/mask-limit` (error), `pxsig/masks-changed` and `pxsig/large-mask` (warnings, one
-  per entry instead of one per mask).
+  entry's masks together (`masksCoverage`), and so do the dashboard's Large mask badge (its title
+  names the masks and their share together), the Open items row and the Review Stories filter
+  "Masks over 25% of the capture" (were: one mask over 25%). summary.md has a line for each;
+  `check --sarif` reports them as `pxsig/mask-limit` (error), `pxsig/masks-changed` and
+  `pxsig/large-mask` (warnings, one per entry instead of one per mask).
   To update: make each such mask smaller (mask the value, not the component), or give the story
   fixed data instead (`pxsig help volatile`).
 - **`check --update` and `pxsig baseline` refuse a masks change without `--allow-masks`.** An entry

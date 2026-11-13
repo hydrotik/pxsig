@@ -9,6 +9,7 @@ import {
   ToolbarSummary,
 } from '@ui';
 import { type Data, type Row, rowsWithPending, statusOf } from '../data';
+import { masksLarge } from '../inspector/masks';
 import { StoryGrid } from '../parts/StoryGrid';
 import { Cmd, t, tx } from '../copy';
 import * as s from '../dashboard.css';
@@ -55,7 +56,7 @@ export function Stories({
         (r) => st(r) === 'changed' || st(r) === 'new' || (st(r) === 'error' && !r.skipped)
       );
     else if (filter === 'drift') rs = rs.filter((r) => r.metrics && r.metrics.ssim < 1);
-    else if (filter === 'masks') rs = rs.filter((r) => r.masksLarge?.length);
+    else if (filter === 'masks') rs = rs.filter(masksLarge);
     else if (filter !== 'all') rs = rs.filter((r) => st(r) === filter);
     const key = (r: Row) =>
       (r.metrics?.ssim ?? 2) -

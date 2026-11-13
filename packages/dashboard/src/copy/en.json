@@ -311,8 +311,8 @@
       "masksChanged": "Masks changed",
       "largeMask": "Large mask",
       "largeMaskTitle": {
-        "one": "{count} mask over 25% of the capture: {selectors}",
-        "other": "{count} masks over 25% of the capture: {selectors}"
+        "one": "{count} mask covers {share} of the capture, over 25%: {selectors}",
+        "other": "{count} masks cover {share} of the capture together, over 25%: {selectors}"
       }
     },
     "group": {
@@ -1273,7 +1273,7 @@
         },
         "large": {
           "term": "Masks over 25% and 50%",
-          "meaning": "One mask over 25% of the capture is a warning: most changes under it would pass. Marked Large mask on the entry and its card, counted in Open items, listed by the Masks over 25% of the capture filter. All of an entry's masks together over 50% of the capture, or a mask on the story root, fail the entry, and no approval passes it until the masks are smaller."
+          "meaning": "All of an entry's masks together over 25% of the capture are a warning: most changes under them would pass. Marked Large mask on the entry and its card, counted in Open items, listed by the Masks over 25% of the capture filter. Together over 50% of the capture, or a mask on the story root, they fail the entry, and no approval passes it until the masks are smaller."
         },
         "adoption": {
           "term": "Adopting masks",

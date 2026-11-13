@@ -21,6 +21,15 @@ export interface MaskLine {
   large: boolean;
 }
 
+/** All of an entry's masks together over this share of the capture are a warning (Large mask). */
+export const LARGE_SHARE = 0.25;
+
+/**
+ * Large mask: all of the entry's masks together cover over 25% of the capture (`masksCoverage`,
+ * as the engine, summary.md and SARIF weigh it), a warning, never a verdict.
+ */
+export const masksLarge = (row: Row) => (row.masksCoverage ?? 0) > LARGE_SHARE;
+
 /** The masks decided the verdict: a failed entry whose every reason is the masks' own. */
 export const masksDecided = (row: Row) =>
   !row.pass &&

@@ -11,6 +11,7 @@ import {
 } from '@ui';
 import { type Data, type Queue, type Row, fmt, rowsWithPending, served, statusOf } from '../data';
 import { Cmd, codeCopy, t, tx, type CopyKey } from '../copy';
+import { masksLarge } from '../inspector/masks';
 import { Affordance } from '../parts/Affordance';
 import { ChangedPerRun } from '../parts/RunCharts';
 import { StaleHeatmap } from '../parts/StaleHeatmap';
@@ -194,8 +195,8 @@ export function Overview({
   const rejected = having('rejected');
   const errors = having('error').filter((r) => !r.skipped);
   const flaky = having('flaky');
-  // A mask over 25% of the capture: a warning, never a verdict (side/MasksSection.tsx).
-  const largeMasks = rows.filter((r) => r.masksLarge?.length);
+  // Masks over 25% of the capture together: a warning, never a verdict (inspector/masks.ts).
+  const largeMasks = rows.filter(masksLarge);
   // Entries whose new violations have no decision yet (an accessibility one, or a visual approval).
   const a11yOpen = rows.filter(
     (r) =>
