@@ -142,7 +142,7 @@
   - term: Masks changed
   - definition: A mask added, removed, grown by any pixel, moved or matching another number of elements since the baseline fails the entry with the reason masks changed, for a person to approve, whatever the pixels. When no pixel differs, the change stepper reads Masks changed and the Masks section, first in the side panel, gives each mask's share in the baseline and in the render.
   - term: Masks over 25% and 50%
-  - definition: "One mask over 25% of the capture is a warning: most changes under it would pass. Marked Large mask on the entry and its card, counted in Open items, listed by the Masks over 25% of the capture filter. All of an entry's masks together over 50% of the capture, or a mask on the story root, fail the entry, and no approval passes it until the masks are smaller."
+  - definition: "All of an entry's masks together over 25% of the capture are a warning: most changes under them would pass. Marked Large mask on the entry and its card, counted in Open items, listed by the Masks over 25% of the capture filter. Together over 50% of the capture, or a mask on the story root, they fail the entry, and no approval passes it until the masks are smaller."
   - term: Adopting masks
   - definition: Marking a component data-volatile, or a new capture.ignore, gives one masks changed entry per entry it applies to, approved once. A story's ignore against a baseline approved with 0.7.6 or earlier is not a change where that baseline's image shows it painted.
   - heading "Coverage Statuses" [level=3]
