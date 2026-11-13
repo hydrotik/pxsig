@@ -148,8 +148,8 @@ test('every config key has a setting entry, and no other', () => {
     root = JSON.parse(read(pkg, 'schema', f));
     walk(root, '');
   }
-  // gate.detail is a $ref to an object whose keys are documented under gate.detail itself.
-  const own = [...new Set(keys)].filter((k) => !k.startsWith('gate.detail.')).sort();
+  // gate.detail and gate.color are $refs to objects whose keys are documented under the key itself.
+  const own = [...new Set(keys)].filter((k) => !/^gate\.(detail|color)\./.test(k)).sort();
   assert.deepEqual(own, Object.keys(settings).sort());
 });
 

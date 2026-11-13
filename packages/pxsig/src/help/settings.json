@@ -201,6 +201,12 @@
       "default": "{ \"blockDelta\": 32, \"energyDelta\": 48, \"minTiles\": 3 }",
       "operation": "How thin changes in the detail tiles fail an entry."
     },
+    "gate.color": {
+      "file": "pxsig.config.json",
+      "meaning": "The color rule: { deltaE, minArea, cellDeltaE, minCells }, or false. Fails when a flat area of at least minArea pixels changes color by deltaE (CIEDE2000) or more, or when at least minCells cells change by cellDeltaE or more.",
+      "default": "{ \"deltaE\": 3, \"minArea\": 64, \"cellDeltaE\": 5, \"minCells\": 3 }",
+      "operation": "Catches a color change in a small area (a badge tint, a status color) that the luminance rules miss. Off, or past its maximum (deltaE 10, minArea 1024, cellDeltaE 15, minCells 16), shows in pxsig doctor as gate-color-off."
+    },
     "modes": {
       "file": "pxsig.config.json",
       "meaning": "Named render settings: { globals, colorScheme, viewport, browser, extends }.",

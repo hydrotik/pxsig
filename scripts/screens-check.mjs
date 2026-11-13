@@ -55,6 +55,7 @@ import { annotateRow, byId, envConfig, envSummary } from '../packages/pxsig/src/
 import { writeJson } from '../packages/pxsig/src/lib/files.mjs';
 import { takeLock } from '../packages/pxsig/src/lib/lock.mjs';
 import { buildRow, summarize } from '../packages/pxsig/src/lib/rows.mjs';
+import { assertVerdicts, verdictEngine } from './lib/screens-verdict.mjs';
 import { boxesFile } from '../packages/pxsig/src/lib/capture/boxes.mjs';
 import { textSettings } from '../packages/pxsig/src/lib/text/config.mjs';
 import { envPlan } from '../packages/pxsig/src/lib/text/env-plan.mjs';
@@ -318,11 +319,13 @@ async function main() {
   // engine may predate `check --env` (it then labels no text): the plan goes only to one that takes it.
   const envFile = join(reports, '.check-env.json');
   writeFileSync(envFile, JSON.stringify(envPlan(entries, current)));
-  const takesEnv = spawnSync(P.rustBin, ['check', '--help'], { encoding: 'utf8' }).stdout?.includes(
+  // The verdicts: this checkout's engine when there is a build of it (lib/screens-verdict.mjs).
+  const checkBin = verdictEngine(process.env, P.rustBin);
+  const takesEnv = spawnSync(checkBin, ['check', '--help'], { encoding: 'utf8' }).stdout?.includes(
     '--env'
   );
   const engineRun = (/** @type {string[]} */ a) => {
-    const r = spawnSync(P.rustBin, a, {
+    const r = spawnSync(checkBin, a, {
       encoding: 'utf8',
       maxBuffer: 512 * 1024 * 1024,
       cwd: P.workspaceRoot,
@@ -353,6 +356,11 @@ async function main() {
     )
   );
   const rows = new Map(rustRes.results.map((r) => [r.id, r]));
+  try {
+    assertVerdicts(rustRes.results);
+  } catch (e) {
+    die(/** @type {Error} */ (e).message);
+  }
 
   // check.json: this run's rows, and the earlier verdict of any screen --only left out.
   const reportPath = join(reports, 'check.json');
