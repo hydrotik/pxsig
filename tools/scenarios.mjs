@@ -57,6 +57,10 @@ import {
 
 const log = logger('scenarios');
 
+/** Badge-like elements: by class name, or any span (inline-styled components have no class). */
+const SMALL =
+  '[class*=badge i],[class*=tag i],[class*=chip i],[class*=pill i],[class*=status i],span';
+
 /**
  * Built-in scenarios: plain CSS, so they apply to any Storybook. `{target}` is the project's
  * capture target (capture.target, `#storybook-root` by default).
@@ -89,6 +93,30 @@ export const DEFAULT_SCENARIOS = [
     title: 'Colours shifted',
     change: 'hue-rotate(90deg) on the story root',
     css: '{target}{filter:hue-rotate(90deg)!important}',
+  },
+  // Small-area color: what a whole-story hue shift does not test. Each keeps the lightness roughly
+  // where it was, so the luminance rules (SSIM, edges, the detail channel) barely move.
+  {
+    name: 'badge-tint',
+    kind: 'regression',
+    title: 'Badge tint changed',
+    change: 'badges, tags, chips, pills and spans get a green wash (sepia + hue-rotate)',
+    // The outermost match only: a filter inside a filtered element would apply twice.
+    css: `{target} :is(${SMALL}):not(:is(${SMALL}) *){filter:sepia(.35) hue-rotate(70deg) saturate(1.6)!important}`,
+  },
+  {
+    name: 'text-color',
+    kind: 'regression',
+    title: 'Text color changed',
+    change: 'every text color mixed 45% toward red',
+    css: '{target} *{-webkit-text-fill-color:color-mix(in srgb,currentColor 55%,#d00)!important}',
+  },
+  {
+    name: 'highlight-lost',
+    kind: 'regression',
+    title: 'Row highlight lost',
+    change: 'selected, current and striped rows lose their background',
+    css: '{target} :is([aria-selected=true],[aria-current],[data-selected],[data-highlighted],[data-state=active],[data-state=checked],tr:nth-child(even)){background-color:transparent!important}',
   },
   {
     name: 'radius-zero',

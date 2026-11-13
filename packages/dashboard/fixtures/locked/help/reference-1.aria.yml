@@ -230,6 +230,8 @@
   - definition: Fails when SSIM < 0.99, more than 2% of cells differ, or ≥ 2 cells differ by more than 32
   - term: Detail channel
   - definition: 16 px tiles, 4 px blocks. Fails when ≥ 3 tiles change by more than 32 or gain an edge.
+  - term: Color rule
+  - definition: Fails when ≥ 64 connected flat pixels change color by ΔE00 ≥ 3, or ≥ 3 cells by ΔE00 ≥ 5 (CIEDE2000)
   - term: Modes
   - definition: —
   - term: Baseline format

@@ -122,10 +122,17 @@ measurement cancelled part way), a browser without the link (Read only), the ser
 `live--<flow>-<n>@<theme>` (`live--approve-2@dark`), with its locked structure in
 `fixtures/locked/live/`, checked with the fixture screens in the same run and reviewed the same way.
 A behaviour-free change to the server or the dashboard shows `0 to review`: that is its proof.
-The live screens run this commit's engine: the workflow builds it on the runner and passes it to the
-container (`PXSIG_LIVE_BIN`), so a change to the engine shows in them too; the browser and fonts
-stay the image's. Run locally without it (a macOS build cannot run in the container), they use the
-image's engine.
+This commit's engine makes every screen's verdict and runs the live screens: the screens and
+release workflows build it for Linux and pass it to the container (`PXSIG_LIVE_BIN`, a path inside
+the checkout), so a change to the gate or the engine shows in pxsig's own screens too; the browser
+and fonts stay the image's. The image's own engine predates the color rule (0.7.7), so without
+`PXSIG_LIVE_BIN` the check refuses its verdicts (exit 2). A macOS build cannot run in the container;
+locally, build a Linux one first:
+
+```sh
+docker run --rm -v "$PWD:$PWD" -w "$PWD" rust:1.99 cargo build --release --locked --target-dir target/linux
+PXSIG_LIVE_BIN="$PWD/target/linux/release/pxsig" pnpm screens:check
+```
 
 - The flows are `scripts/live/flows.mjs`. An id is a baseline: a step is never renumbered; a new
   step takes the next number or a new flow. `scripts/live-screens.test.mjs` fails when the
