@@ -35,6 +35,21 @@ git tag v0.2.0 && git push origin v0.2.0
 A tag with a prerelease suffix (`v0.2.0-dev.0`, `v0.2.0-rc.1`) publishes under the npm dist-tag
 `next`. Any other tag publishes under `latest`.
 
+## Gate noise, before a release that changes the gate
+
+A release that changes the gate's defaults (a rule, a threshold, the color rule's values) changes
+every project's verdicts, and the evidence for the defaults must cover more than one machine.
+Before tagging it, run the **gate noise** workflow (`.github/workflows/gate-noise.yml`, Actions →
+gate noise → Run workflow, on the release commit; `gpu-runner` names a runner with a GPU when the
+account has one). On Linux, macOS and Windows, two jobs each render examples/single-package and
+the dashboard's fixture screens (plain adapter) twice; one job compares them with the commit's
+engine: run to run on one machine, and machine to machine on one OS, with today's rules, the color
+rule alone and the whole gate ([tools/README.md](../tools/README.md#gate-noise)). Every failure
+there is a false positive. The tables are on the run's summary page and the numbers in its
+`gate-noise-report` artifact; a default ships when every scenario has none, and the margins (the
+closest flat area and cell change) are far enough from the rule. It is a measurement, never a
+required check, and it also runs once on a pull request that edits the workflow.
+
 ## The changelog
 
 Pull requests add fragments to `changelog.d/` ([changelog.d/README.md](../changelog.d/README.md))

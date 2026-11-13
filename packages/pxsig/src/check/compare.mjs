@@ -8,6 +8,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { historyExtra } from './react.mjs';
 import { envPlan } from '../lib/text/env-plan.mjs';
+import { blockedFixes, blockedReasons, LARGE_SHARE, maskChange } from '../lib/mask-words.mjs';
 /** @import { CheckSetup } from './setup.mjs' */
 /** @import { Selection } from './select.mjs' */
 /** @import { Rendered } from './render.mjs' */
@@ -100,11 +101,19 @@ export function compare(S, sel, run, react = null, current = {}) {
     console.error(
       `[check] ${g.count} failing entries rendered the same image (${g.ids.slice(0, 3).join(', ')}…): the environment, not a design change. Marked as errors; nothing to approve.`
     );
-  // A mask over a quarter of a capture lets most changes under it pass: a warning, never a verdict.
-  for (const r of rustRes.results)
-    for (const m of r.masksLarge ?? [])
+  // Masks: over half a capture or on the story root, a failure no approval clears; changed, for a
+  // person to review; over a quarter (all of an entry's masks together), a warning.
+  for (const r of rustRes.results) {
+    const pct = (/** @type {number} */ n) => `${Math.round(n * 100)}%`;
+    if (r.masksBlocked)
       console.error(
-        `[check] mask: ${r.id}: ${m.selector} (${m.source}) covers ${Math.round(m.area * 100)}% of the capture, which hides most changes under it`
+        `[check] mask: ${r.id}: ${blockedReasons(r).join('; ')}: no approval passes it; ${blockedFixes(r).join('; ')}`
       );
+    if (r.masksChanged) console.error(`[check] mask: ${r.id}: ${maskChange(r.masksChanged)}`);
+    if (!r.masksBlocked && (r.masksCoverage ?? 0) > LARGE_SHARE)
+      console.error(
+        `[check] mask: ${r.id}: masks cover ${pct(r.masksCoverage ?? 0)} of the capture (${(r.masks ?? []).map((m) => `${m.selector} ${pct(m.area)}`).join(', ')}), which hides most changes under them`
+      );
+  }
   return { checkArgs, rc, rustRes, rows };
 }

@@ -4,11 +4,12 @@
  * (the masks changed and no pixel differs by more than the tolerance) has nothing for the pixel
  * analysis to show: the inspector then says so and puts the masks, before and after, first.
  */
+import { t } from '../copy';
 import type { MaskRecord, Row } from '../data';
 import type { Analysis } from './analyse';
 
 /** How a mask compares with the baseline's. */
-export type MaskState = 'added' | 'removed' | 'grew' | 'same';
+export type MaskState = 'added' | 'removed' | 'grew' | 'count' | 'moved' | 'same';
 
 /** One mask as the Masks section lists it: its area before (the baseline) and after (the render). */
 export interface MaskLine {
@@ -20,6 +21,15 @@ export interface MaskLine {
   after: number | null;
   large: boolean;
 }
+
+/** All of an entry's masks together over this share of the capture are a warning (Large mask). */
+export const LARGE_SHARE = 0.25;
+
+/**
+ * Large mask: all of the entry's masks together cover over 25% of the capture (`masksCoverage`,
+ * as the engine, summary.md and SARIF weigh it), a warning, never a verdict.
+ */
+export const masksLarge = (row: Row) => (row.masksCoverage ?? 0) > LARGE_SHARE;
 
 /** The masks decided the verdict: a failed entry whose every reason is the masks' own. */
 export const masksDecided = (row: Row) =>
@@ -49,7 +59,11 @@ export function maskLines(row: Row): MaskLine[] {
         ? 'removed'
         : ch?.grew.includes(sel)
           ? 'grew'
-          : 'same';
+          : ch?.count?.includes(sel)
+            ? 'count'
+            : ch?.moved?.includes(sel)
+              ? 'moved'
+              : 'same';
   const now = (row.masks ?? []).map((m) => ({
     selector: m.selector,
     source: m.source,
@@ -75,4 +89,48 @@ export function maskLines(row: Row): MaskLine[] {
       };
     });
   return [...now, ...gone];
+}
+
+/** Selectors that changed in any way since the baseline, each once. */
+export const changedMasks = (row: Row) => {
+  const ch = row.masksChanged;
+  return ch
+    ? new Set([...ch.added, ...ch.removed, ...ch.grew, ...(ch.count ?? []), ...(ch.moved ?? [])])
+        .size
+    : 0;
+};
+
+/**
+ * How the engine starts each reason no approval passes (crates/pxsig-cli/src/batch/masks.rs), and
+ * what to do about it (`inspector.masks.fix.*`, the engine's `blocked_fixes` in words).
+ */
+const BLOCKED = [
+  ['mask on a container', 'container'],
+  ['mask needs a reason', 'reason'],
+  ['mask not measured', 'unmeasured'],
+  ['masks cover ', 'coverage'],
+  ['a mask covers the story root', 'root'],
+] as const;
+
+const causeOf = (r: string) => BLOCKED.find(([b]) => r.startsWith(b))?.[1];
+
+/** Why no approval passes the entry: the row's reasons the masks gave it, as the engine wrote them. */
+export const blockedReasons = (row: Row) =>
+  row.masksBlocked ? (row.reasons ?? []).filter((r) => causeOf(r)) : [];
+
+/** The causes of the entry's block, each once, in the engine's order (`blocked_fixes`). */
+export const blockedCauses = (row: Row) => {
+  const reasons = blockedReasons(row);
+  return BLOCKED.filter(([b]) => reasons.some((r) => r.startsWith(b))).map(([, c]) => c);
+};
+/**
+ * The line that says why no approval passes the entry and what to do about each cause, the same
+ * words as the CLI and the tools; null for an entry no mask blocks. The Masks section shows it,
+ * and the disabled Approve button describes itself with it.
+ */
+export function blockedLine(row: Row): string | null {
+  const reasons = blockedReasons(row);
+  if (!reasons.length) return null;
+  const fixes = blockedCauses(row).map((c) => t(`inspector.masks.fix.${c}`));
+  return t('inspector.masks.blocked', { reasons: reasons.join('; '), fixes: fixes.join('; ') });
 }

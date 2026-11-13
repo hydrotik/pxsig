@@ -42,12 +42,15 @@ export function useInspectorActions({
     t(
       `inspector.review.${action === 'unreview' ? 'undo' : a11y && action === 'approve' ? 'accept' : action}`
     );
-  // A decision the server refused: without the dashboard link, the line under the header says how
-  // to get it; anything else is an alert, as before.
+  // A decision the server refused: the line under the header says why (without the dashboard link,
+  // how to get it), and the inspector stays usable. Never a browser alert: one blocks the page with
+  // the button still reading "Approving…" until it is closed.
   const refused = (e: unknown, action: string) =>
-    e instanceof NeedsLinkError
-      ? setNote(t('inspector.review.needsLink'))
-      : alert(t('inspector.review.failed', { action, error: (e as Error).message }));
+    setNote(
+      e instanceof NeedsLinkError
+        ? t('inspector.review.needsLink')
+        : t('inspector.review.failed', { action, error: (e as Error).message })
+    );
   // The decision under way, which its button names ("Approving…") until the server answers.
   const [pending, setPending] = React.useState<'approve' | 'reject' | null>(null);
   // What the server said it did not keep (a reject's reason while reports/ is not git-ignored):
@@ -75,8 +78,12 @@ export function useInspectorActions({
       (current?.state === 'approved' || decidedHere.current.get(key(a11y, row.id)) === 'approve')
     )
       return;
+    // Masks no approval passes: no decision is sent (the A and R keys), as the buttons are not
+    // offered; the server refuses them too.
+    if (action !== 'unreview' && row.masksBlocked && !row.pass) return;
     setBusy(true);
     setNotice(null);
+    setNote(null);
     if (action !== 'unreview') setPending(action);
     try {
       const answer = await (a11y
@@ -139,7 +146,9 @@ export function useInspectorActions({
   // Entries of this story waiting for a decision (every mode and state): one click approves them,
   // only when the project allows it (`approvals.byStory`, off by default: one entry, one decision).
   const storyOpen = data.approvals?.byStory
-    ? siblings.filter((r) => ['changed', 'new'].includes(statusOf(r, data.review)) && !r.error)
+    ? siblings.filter(
+        (r) => ['changed', 'new'].includes(statusOf(r, data.review)) && !r.error && !r.masksBlocked
+      )
     : [];
   // What the last re-check or story approval did, shown under the header until the entry changes.
   const [note, setNote] = React.useState<string | null>(null);
@@ -176,12 +185,7 @@ export function useInspectorActions({
         .join(' · ');
       setNote(mine.ended ? mine.after || null : mine.note);
     } catch (e) {
-      alert(
-        t('inspector.review.failed', {
-          action: t('inspector.review.recheck'),
-          error: (e as Error).message,
-        })
-      );
+      refused(e, t('inspector.review.recheck'));
     } finally {
       setBusy(false);
     }

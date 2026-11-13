@@ -113,10 +113,15 @@ the build when a tracked file breaks one of these rules, and CI runs it on every
 request:
 
 - **No images, fonts or binaries.** No `.png`, `.jpg`, `.woff2`, `.wasm` and the like.
-  One exemption: product screenshots in [`docs/product-shots/`](docs/product-shots/README.md),
-  shot from the examples' demo data (no names, no paths), compressed, at most 1.5 MB each.
-- **No baselines or run output.** No `.psig`, `.pxsig.json`, stores (`.pxsig/`, `__pxsig__/`),
-  renders, diffs, reports, `target/` or `dist/`. Those belong to the projects under test.
+  Two exemptions: product screenshots in [`docs/product-shots/`](docs/product-shots/README.md),
+  shot from the examples' demo data (no names, no paths), compressed, at most 1.5 MB each; and
+  the baselines of pxsig's own dashboard screens (below), whose `.psig` files hold their images.
+- **No baselines or run output, except pxsig's own.** No `.psig`, `.pxsig.json`, stores
+  (`.pxsig/`, `__pxsig__/`), renders, diffs, reports, `target/` or `dist/`: those belong to the
+  projects under test. One store is committed: `packages/dashboard/.pxsig/`, the dashboard's own
+  screens (`baselines/**/*.psig`, `approvals.ndjson` and `manifest.json`;
+  [releasing.md, "pxsig's own baselines"](docs/releasing.md#pxsigs-own-baselines)). `.gitignore`
+  and the clean-repo check allow exactly those files.
 - **No absolute home-directory paths.**
 - **No names from other repositories or organisations.** The script also checks a denylist of
   names. The list is never committed or uploaded anywhere, because that would publish the names:

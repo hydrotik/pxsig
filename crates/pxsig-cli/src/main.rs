@@ -137,6 +137,10 @@ enum Cmd {
         /// `@file` (or inline JSON) holding `{ "envs": { <envId>: env }, "byId": { <entryId>: <envId> } }`.
         #[arg(long)]
         env: Option<String>,
+        /// Write a baseline whose masks differ from the one it replaces: alone, every entry's;
+        /// with ids (`a,b` or `@file`), those. Without it such an entry is refused and named.
+        #[arg(long, num_args = 0..=1)]
+        allow_masks: Option<Option<String>>,
         #[arg(long)]
         json: bool,
     },
@@ -374,8 +378,9 @@ fn run(cmd: Cmd) -> anyhow::Result<u8> {
             batch,
             no_detail,
             env,
+            allow_masks,
             json,
-        } => cmd_baseline(batch, no_detail, env, json),
+        } => cmd_baseline(batch, no_detail, env, allow_masks, json),
         Cmd::Diff {
             a,
             b,

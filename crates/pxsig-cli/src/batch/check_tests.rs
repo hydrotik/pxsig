@@ -250,6 +250,26 @@ fn artifacts_parse_and_reject_an_unknown_value() {
     );
 }
 
+// Mask audit follow-up: two engine builds of one version (a pull request's, main's) shared the
+// cache, so one reused the other's verdicts. The key now carries the engine's build.
+#[test]
+fn the_cache_key_names_the_engine_build() {
+    use super::check::{cache_key, engine_id};
+    let gate = json!({});
+    let a = cache_key("build-a", b"png", b"sig", &gate, b"");
+    assert_ne!(
+        a,
+        cache_key("build-b", b"png", b"sig", &gate, b""),
+        "another build, another key"
+    );
+    assert_eq!(a, cache_key("build-a", b"png", b"sig", &gate, b""));
+    let id = engine_id();
+    assert!(
+        id.len() == 64 && id.bytes().all(|c| c.is_ascii_hexdigit()),
+        "{id}"
+    );
+}
+
 /// A 900×600 white render with a 40×16 badge filled with `fill`.
 fn badge_png(path: &Path, fill: [u8; 3]) {
     let px: Vec<u8> = (0..900 * 600)

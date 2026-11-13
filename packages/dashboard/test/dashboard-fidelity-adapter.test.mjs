@@ -34,10 +34,11 @@ const BROKEN_CSS = `
 td .plain-button[data-size] { block-size: 2.25rem; }
 /* R3: card titles re-cased by the adapter. */
 .plain-card h3 { text-transform: uppercase; }
-/* R4: a danger badge shows its tone as a wash and a border. */
+/* R4: a danger badge shows another tone (success) as a wash and a border, its text under AA. */
 .plain-badge[data-tone='danger'] {
-  border-color: var(--plain-danger);
-  background: color-mix(in srgb, var(--plain-danger) 14%, transparent);
+  color: color-mix(in srgb, var(--plain-danger) 30%, var(--plain-bg));
+  border-color: var(--plain-success);
+  background: color-mix(in srgb, var(--plain-success) 14%, transparent);
 }
 `;
 /** R4: stat cards that show their tone as a coloured top border, the value in the text colour. */
@@ -169,8 +170,12 @@ test('an adapter that breaks a region rule fails the check, naming the element',
   );
   has(/^overview\.open-items #1: casing: <h3 "Open Items"> is drawn uppercase/, 'R3');
   has(
-    /^coverage\.ledger #1: tone: badge <span "[^"]+"> shows its tone as a danger background/,
-    'R4 badge'
+    /^coverage\.ledger #1: tone: badge <span "[^"]+"> shows its tone as a success background.*own tone \(danger\)$/,
+    'R4 badge, another tone'
+  );
+  has(
+    /^coverage\.ledger #1: tone: badge <span "[^"]+">: its text is [\d.]+:1 on its background, under AA/,
+    'R4 badge, contrast'
   );
   has(
     /^overview\.counts #1: tone: stat card <div "Passed[^"]*"> shows its tone as a success top border/,

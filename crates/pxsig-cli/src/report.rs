@@ -127,7 +127,8 @@ pub fn markdown(v: &Value, link_base: Option<&str>) -> String {
             rs.len() - skipped
         ));
     }
-    // Masks over a quarter of a capture (docs/spec.md#masks): a warning, only when any is.
+    // Masks no approval passes, masks changed, masks over a quarter of a capture
+    // (docs/spec.md#masks): a line each, only when any is.
     out.push_str(&crate::report_masks::lead(&rs, esc_md));
     // Passing entries whose render differs from the baseline (docs/integrity.md#drift).
     out.push_str(&crate::report_drift::lead(v));

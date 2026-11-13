@@ -238,16 +238,16 @@ One file per baseline: the record, the raw signature bytes and, optionally, the 
 }
 ```
 
-| Field        | Meaning                                                                                                                                                                                                                                                                                                                                                     |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `format`     | Always `"psig"`.                                                                                                                                                                                                                                                                                                                                            |
-| `container`  | Container version, the same number as bytes 4..6.                                                                                                                                                                                                                                                                                                           |
-| `entry`      | Optional. The manifest entry the baseline belongs to: `id`, `story`, `mode`, `state`.                                                                                                                                                                                                                                                                       |
-| `env`        | Optional (0.5 and later). The environment the baseline's render was made in, `v` 1: browser, OS, font probe, render settings, versions, and `id` over the major fields ([configuration.md](configuration.md#env)). Always the render's, never the approving machine's. A baseline without it compares as `unknown`.                                         |
-| `masks`      | Optional (0.7.7 and later). The masks that applied to the baseline's render, `{ "v": 1, "masks": [{ "selector", "source", "reason"?, "area" }] }`: `source` is `attribute`, `story`, `project` or `workspace`; `reason` the `data-volatile` value; `area` the masked pixels' share of the image, 0..1 to 4 decimals. Absent when no mask applied. No paths. |
-| `record`     | The spec v1 record, without `sig`.                                                                                                                                                                                                                                                                                                                          |
-| `encryption` | `"none"`. Reserved: encryption is not implemented, and a reader refuses any other value.                                                                                                                                                                                                                                                                    |
-| `sections`   | One object per section: `name`, `length` in bytes, `sha256` hex of its bytes as stored. The image section adds `type`, and `width` / `height` read from the PNG header. Any other section may add `type`, `encoding` and keys of its own (`boxes`: `runs`).                                                                                                 |
+| Field        | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `format`     | Always `"psig"`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `container`  | Container version, the same number as bytes 4..6.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `entry`      | Optional. The manifest entry the baseline belongs to: `id`, `story`, `mode`, `state`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `env`        | Optional (0.5 and later). The environment the baseline's render was made in, `v` 1: browser, OS, font probe, render settings, versions, and `id` over the major fields ([configuration.md](configuration.md#env)). Always the render's, never the approving machine's. A baseline without it compares as `unknown`.                                                                                                                                                                                                                                                                                                                                                                           |
+| `masks`      | 0.7.7 and later. The masks that applied to the baseline's render, `{ "v": 1, "masks": [{ "selector", "source", "reason"?, "area", "count", "px", "rects", "root"? }], "coverage" }`: `source` is `attribute`, `story`, `project` or `workspace`; `reason` the `data-volatile` value; `count` the elements matched; `rects` their boxes inside the image (`[x0, y0, x1, y1]`, whole pixels), `px` the pixels they cover and `area` that share of the image, 0..1 to 4 decimals; `root` the capture found it on the story root; `coverage` every mask's share together. `{ "v": 1, "masks": [] }` when no mask applied; absent only in a baseline written before (0.7.6 and earlier). No paths. |
+| `record`     | The spec v1 record, without `sig`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `encryption` | `"none"`. Reserved: encryption is not implemented, and a reader refuses any other value.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `sections`   | One object per section: `name`, `length` in bytes, `sha256` hex of its bytes as stored. The image section adds `type`, and `width` / `height` read from the PNG header. Any other section may add `type`, `encoding` and keys of its own (`boxes`: `runs`).                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
 ### Sections
 
@@ -302,13 +302,19 @@ container was packed from. `pxsig pack` checks that by reading every file back a
   baseline is not written. A render without one gets `sig` and `image` only, as before.
 - A render's masks record, `<id>.masks.json` beside `<id>.png` (written by the capture when a mask
   applied, [configuration.md](configuration.md#masks)): `{ "v": 1, "masks": [{ "selector",
-  "source", "reason"?, "count", "px", "rects"? }] }`, `px` the masked pixels and `rects` the
-  boxes they come from (`[x0, y0, x1, y1]` in pixels, clipped to the capture, at most 500), both
-  counted before the render is trimmed. `pxsig baseline` and the server's approval write it as
-  the header's `masks`, each mask's area being its boxes counted inside the trimmed image (trim
-  keeps the top-left, so a box is clipped to the image's width and height) as a share of that
-  image; a record without `rects` uses `px`. A record that does not read stops that entry's
-  baseline. A render without one gets no `masks`.
+  "source", "reason"?, "count", "px", "rects", "root"? }], "problems"? }`, `count` the elements
+  matched and `rects` their boxes (`[x0, y0, x1, y1]` in pixels, clipped to the capture), counted
+  before the render is trimmed; `problems` (`[{ "kind", "element" }]`, `kind` `container`, `reason`
+  or `unmeasured`) the masks the capture may not apply as asked. Every writer of a `.psig` (`pxsig baseline`, `pxsig capture` and the server's
+  approval) writes the header's `masks` from it: each mask's boxes clipped to the trimmed image
+  (trim keeps the top-left), the pixels they cover and that share of the image; a render without
+  one gets `{ "v": 1, "masks": [] }`. A record that does not read (no `count` or `rects` among
+  them) stops that entry's baseline. So do masks no approval may write (over 50% of the image
+  together, on the story root, or with `problems`), and a `.pxsig.json` output from a render with masks, which
+  cannot record them. `pxsig baseline` also refuses an entry whose masks differ from those of the
+  baseline it replaces (as `check` weighs them, [Masks](#masks)) unless `--allow-masks` names it,
+  and answers every such entry in `masksChanged` (`{ id, written, added, removed, grew, moved,
+  count }`) beside `errors` and `failedIds`.
 
 ## 6. Manifest, version 2
 
@@ -414,16 +420,26 @@ its masks record beside it, `<id>.masks.json` (section 5, and [Masks](#masks) be
 ### Masks
 
 A rendered row whose render had masks ([configuration.md](configuration.md#masks)) carries `masks`
-(the record as the header keeps it) and, for each mask over 25% of the capture, an item in
-`masksLarge` (`{ selector, source, area }`): a warning in the check's output, summary.md and
-`check --sarif` (rule `pxsig/large-mask`), never a verdict. When the render's masks differ from
-the baseline's header `masks` (a selector added or removed, or its `area` up by more than 0.001),
-the row has `masksChanged` (`{ added, removed, grew }`, selectors) and `masksBaseline` (the
-baseline's masks, as its header keeps them; `[]` when it has none), `pass` is false and `reasons`
-ends with `masks changed: <n> added, <n> removed, <n> grew`. The single-entry `compare` (the
-command and the `serve` method) answers the same fields and verdict. A selector is a mask's identity; its
-source and reason are labels. A baseline without `masks` compares as having none, except that the
-render's story masks (`ignore`, older than the record) are left out against it.
+(the record as the header keeps it), `masksCoverage` (every mask's share of the capture together)
+and, for each mask over 25% of the capture, an item in `masksLarge` (`{ selector, source, area }`).
+Masks over 25% together are a warning in the check's output, summary.md and `check --sarif` (rule
+`pxsig/large-mask`). When the render's masks differ from the baseline's header `masks`, the row has
+`masksChanged` (`{ added, removed, grew, moved, count }`, selectors: a selector added or removed,
+covering any pixel more, a box more than a pixel from where it was, or another number of
+elements) and `masksBaseline` (the baseline's masks, as its header keeps them; `[]` when it has
+none), `pass` is false and `reasons` gains `masks changed: <n> added, <n> removed, <n> grew, <n>
+moved, <n> changed count` (the kinds that apply); SARIF `pxsig/masks-changed`, a warning. When the
+masks cover over 50% of the capture together, or one covers the story root (the capture found it
+there, and it covers 95% of the capture or more), or the record has `problems`, the row has
+`masksBlocked` (`{ coverage?, root?, problems? }`), `pass` is false and `reasons` gains `masks cover <n>% of the
+capture, over 50%`, `a mask covers the story root: <selectors>`, `mask on a container: <element>`,
+`mask needs a reason: <element>` or `mask not measured: <element>`; SARIF `pxsig/mask-limit`, an
+error. That depends on the render alone: no
+baseline is written from it, so no approval clears it. The single-entry `compare` (the command and
+the `serve` method) answers the same fields and verdict. A selector is a mask's identity; its source
+and reason are labels. A baseline without `masks` (0.7.6 and earlier) compares as having none,
+except that a render's story mask (`ignore`, painted `#FF00FF` then as now) is left out where every
+pixel inside its boxes, one in from each edge, is that colour in the baseline image.
 
 ### Drift
 

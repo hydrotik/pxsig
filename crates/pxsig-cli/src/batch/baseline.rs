@@ -25,6 +25,9 @@ pub struct BaselineOpts {
     pub no_detail: bool,
     /// The environment each render was made in: written into its baseline's header as `env`.
     pub env: Option<EnvPlan>,
+    /// Entries whose baseline may be written although its masks changed (`--allow-masks`): None,
+    /// no entry; `Some(None)`, every entry; else these ids.
+    pub allow_masks: Option<Option<HashSet<String>>>,
 }
 
 /// `pxsig baseline --env @file`: `{ envs: { <envId>: env }, byId: { <entryId>: <envId> } }`.
@@ -83,9 +86,10 @@ pub fn baseline(o: &BaselineOpts) -> Result<Value> {
         .iter()
         .filter(|s| o.only.as_ref().is_none_or(|only| only.contains(&s.id)))
         .collect();
-    let errors: Vec<String> = entries
+    // Per entry: its id, why it was not written (None: written) and how its masks changed.
+    let results: Vec<(&str, Option<String>, Option<Value>)> = entries
         .par_iter()
-        .filter_map(|s| {
+        .map(|s| {
             let max_grid = s.grid.or(m.grid).unwrap_or(64).clamp(8, 256);
             let detail = !o.no_detail && s.detail.or(m.detail).unwrap_or(true);
             let png = o.png_dir.join(format!("{}.png", s.id));
@@ -99,18 +103,54 @@ pub fn baseline(o: &BaselineOpts) -> Result<Value> {
             let extra = o.env.as_ref().and_then(|p| p.extra_for(&s.id));
             // The render's text record, when its capture wrote one, goes into the baseline.
             let boxes = super::boxes::beside(&png);
-            capture_png_policy(
+            let out = o.root.join(&s.sig);
+            let changed = match masks_changed(&png, &out) {
+                Ok(c) => c,
+                Err(e) => return (s.id.as_str(), Some(format!("{e:#}")), None),
+            };
+            let allowed = o
+                .allow_masks
+                .as_ref()
+                .is_some_and(|ids| ids.as_ref().is_none_or(|ids| ids.contains(&s.id)));
+            if let (Some(ch), false) = (&changed, allowed) {
+                let why = format!(
+                    "masks changed ({}): not written; review the masks, then pass --allow-masks",
+                    super::masks::describe(ch)
+                );
+                return (s.id.as_str(), Some(why), changed);
+            }
+            match capture_png_policy(
                 &png,
-                &o.root.join(&s.sig),
+                &out,
                 max_grid,
                 min_cell,
                 detail,
                 Some(&entry),
                 extra.as_ref(),
                 boxes.as_deref(),
-            )
-            .err()
-            .map(|e| format!("{}: {e:#}", s.id))
+            ) {
+                Ok(_) => (s.id.as_str(), None, changed),
+                Err(e) => (s.id.as_str(), Some(format!("{e:#}")), changed),
+            }
+        })
+        .collect();
+    let errors: Vec<String> = results
+        .iter()
+        .filter_map(|(id, e, _)| e.as_ref().map(|e| format!("{id}: {e}")))
+        .collect();
+    let failed_ids: Vec<&str> = results
+        .iter()
+        .filter(|r| r.1.is_some())
+        .map(|r| r.0)
+        .collect();
+    // Every entry whose masks changed, written or not, with what changed.
+    let masks: Vec<Value> = results
+        .iter()
+        .filter_map(|(id, e, ch)| {
+            let mut c = ch.clone()?;
+            c["id"] = json!(id);
+            c["written"] = json!(e.is_none());
+            Some(c)
         })
         .collect();
     Ok(json!({
@@ -121,7 +161,24 @@ pub fn baseline(o: &BaselineOpts) -> Result<Value> {
             "elapsedMs": t0.elapsed().as_secs_f64() * 1000.0,
         },
         "errors": errors,
+        "failedIds": failed_ids,
+        "masksChanged": masks,
     }))
+}
+
+/// How the render's masks differ from those of the baseline already at `out`, as `check` would
+/// weigh them; None when they do not, or there is no baseline yet (a new entry is reviewed as new).
+fn masks_changed(png: &Path, out: &Path) -> Result<Option<Value>> {
+    if !out.is_file() {
+        return Ok(None);
+    }
+    let b = super::load_baseline(out)?;
+    let cur = super::masks::record(png)?;
+    Ok(super::masks::changes(
+        b.masks.as_ref(),
+        cur.as_ref(),
+        b.image.as_deref(),
+    ))
 }
 
 /// Grid for a render under the min-cell policy: `ceil(max side / min_cell)`, within 16..=max.
@@ -133,8 +190,7 @@ pub fn grid_for(w: usize, h: usize, max_grid: usize, min_cell: Option<usize>) ->
 }
 
 /// One baseline under the grid policy. `boxes`: the render's text record, stored as the `boxes`
-/// section of a `.psig` (a `.pxsig.json` has no sections and never reads it). The masks record
-/// beside the PNG (`masks.rs`) becomes the `.psig` header's `masks`.
+/// section of a `.psig` (a `.pxsig.json` has no sections and never reads it).
 #[allow(clippy::too_many_arguments)]
 pub fn capture_png_policy(
     png: &Path,
@@ -153,30 +209,20 @@ pub fn capture_png_policy(
     } else {
         Vec::new()
     };
-    // The render's masks, when its capture recorded any, go into the header as `masks`.
-    let mut extra = extra.cloned();
-    if let Some(m) = psig
-        .then(|| super::masks::record(png))
-        .transpose()?
-        .flatten()
-    {
-        extra
-            .get_or_insert_with(Default::default)
-            .insert("masks".into(), m);
-    }
     capture_png_with(
         png,
         out,
         grid_for(w, h, max_grid, min_cell),
         detail,
         entry,
-        extra.as_ref(),
+        extra,
         &sections,
     )
 }
 
 /// Build and write one baseline (optionally with the detail channel). A `.psig` output also
-/// carries the render itself, byte for byte, as its baseline image.
+/// carries the render itself, byte for byte, as its baseline image, and the render's masks (the
+/// record beside the PNG, `masks.rs`) as its header's `masks`.
 pub fn capture_png(
     png: &Path,
     out: &Path,
@@ -198,6 +244,14 @@ fn capture_png_with(
     extra: Option<&serde_json::Map<String, Value>>,
     sections: &[pxsig_core::psig::Section],
 ) -> Result<PxsigRecord> {
+    // The render's masks go into a `.psig` header as `masks`, none recorded as `[]`; masks no
+    // approval may write stop it here, before anything is written (masks.rs).
+    let mut extra = extra.cloned();
+    if let Some(m) = super::masks::for_baseline(png, io::is_psig_path(out))? {
+        extra
+            .get_or_insert_with(Default::default)
+            .insert("masks".into(), m);
+    }
     let bytes = fs::read(png).with_context(|| format!("PNG not found: {}", png.display()))?;
     let (data, w, h) = io::decode_png_bytes(&bytes, png)?;
     let s = signature_of(&data, w, h, grid);
@@ -210,7 +264,7 @@ fn capture_png_with(
         record.detail = Some(detail_of(&data, w, h, DetailParams::default()).to_record());
     }
     let image = io::is_psig_path(out).then_some(bytes.as_slice());
-    io::write_baseline(out, &record, image, entry, extra, sections)?;
+    io::write_baseline(out, &record, image, entry, extra.as_ref(), sections)?;
     Ok(record)
 }
 

@@ -19,7 +19,7 @@ import {
   warnAt,
 } from '../src/lib/drift.mjs';
 import { reportProblems } from '../src/lib/integrity/problems.mjs';
-import { sarifLog } from '../src/lib/sarif.mjs';
+import { sarifLog, sarifWrote } from '../src/lib/sarif.mjs';
 import { DEFAULTS } from '../src/lib/workspace/layers.mjs';
 /** @import { CheckRow } from '../src/types.js' */
 
@@ -174,4 +174,9 @@ test('the check line, the doctor cell and the SARIF note', () => {
     0
   );
   assert.equal(sarifLog(rows(161, 136)).runs[0].results.length, 0, 'without the option');
+  // The note is not an a11y violation in the check line.
+  assert.equal(
+    sarifWrote(log, 'out.sarif'),
+    '[check] wrote 0 new a11y violations, the drift note to out.sarif (SARIF)'
+  );
 });

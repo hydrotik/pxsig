@@ -35,13 +35,36 @@ export interface MaskRecord {
   reason?: string;
   /** The masked pixels' share of the capture, 0..1. */
   area: number;
+  /** The elements the mask matched (absent in a header written before 0.7.7 was released). */
+  count?: number;
+  /** The masked pixels, and the boxes they come from (`[x0, y0, x1, y1]`, inside the capture). */
+  px?: number;
+  rects?: [number, number, number, number][];
+  /** The capture found the mask on the story root: no approval passes the entry. */
+  root?: boolean;
 }
 
 /** What changed from the baseline's masks to the render's: selectors. */
 export interface MasksChanged {
   added: string[];
   removed: string[];
+  /** Covers any pixel more. */
   grew: string[];
+  /** A box differs by more than a pixel on a side. */
+  moved: string[];
+  /** Matches another number of elements. */
+  count: string[];
+}
+
+/**
+ * Masks no approval passes: all of them over half the capture (`coverage`), one on the story root
+ * (`root`), or one the capture may not apply as asked (`problems`: a `data-volatile` container, one
+ * with no reason, an element matched and not measured).
+ */
+export interface MasksBlocked {
+  coverage?: number;
+  root?: string[];
+  problems?: { kind: 'container' | 'reason' | 'unmeasured'; element: string }[];
 }
 
 /** The engine's result for one entry (check.json metrics and verdict, section 4). */
@@ -51,10 +74,15 @@ export interface EngineResult {
   error?: string | null;
   /** The text labels (crates/pxsig-cli/src/batch/text.rs): beside the verdict, never changing it. */
   textDiff?: import('./text.js').TextDiff;
-  /** The masks that applied to the render, when any. */
+  /** Why the row failed, as the engine words it. */
+  reasons?: string[];
+  /** The masks that applied to the render, when any, and the share they cover together. */
   masks?: MaskRecord[];
-  /** Masks over a quarter of the capture: a warning, never a verdict. */
+  masksCoverage?: number;
+  /** Masks over a quarter of the capture each (together: `masksCoverage`): a warning. */
   masksLarge?: Omit<MaskRecord, 'reason'>[];
+  /** Masks no approval passes: the row fails until the masks are smaller. */
+  masksBlocked?: MasksBlocked;
   /** Set when the masks differ from the baseline's: the row fails with `masks changed: …`. */
   masksChanged?: MasksChanged;
   /** The baseline's masks, set with `masksChanged`: before and after, for the reviewer. */
@@ -104,7 +132,9 @@ export interface CheckRow {
   textDiff?: import('./text.js').TextDiff;
   /** The render's masks, the large ones and a change from the baseline's (EngineResult). */
   masks?: MaskRecord[];
+  masksCoverage?: number;
   masksLarge?: Omit<MaskRecord, 'reason'>[];
+  masksBlocked?: MasksBlocked;
   masksChanged?: MasksChanged;
   masksBaseline?: MaskRecord[];
   /** The render's env id (lib/env.mjs `annotateRow`). */
@@ -281,7 +311,7 @@ export interface SarifRule {
   properties: { tags: string[] };
 }
 
-/** One SARIF result: a new violation of one rule on one entry, a large mask on one entry, or the run's drift note. */
+/** One SARIF result: a new violation of one rule on one entry, a mask finding on one entry, or the run's drift note. */
 export interface SarifResult {
   ruleId: string;
   level: string;
@@ -293,6 +323,7 @@ export interface SarifResult {
   properties:
     | { entry: string; mode: string | null; impact: string | null }
     | { entry: string; mode: string | null; selector: string; source: string; area: number }
+    | { entry: string; mode: string | null; coverage?: number; masks?: Partial<MasksChanged> }
     | (Omit<DriftSummary, 'warnAt'> & { warnAt: DriftWarnAt });
 }
 

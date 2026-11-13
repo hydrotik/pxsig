@@ -34,6 +34,7 @@ import {
 } from '../../data';
 import { useApproving } from '../../link';
 import * as s from '../../dashboard.css';
+import { useFailure } from '../../parts/Failure';
 import { CompilerPanel } from './CompilerPanel';
 import {
   ALERT_ORDER,
@@ -106,12 +107,14 @@ export function Compiler({
   const off = status.compiler === 'off' || status.compiler === 'not-installed';
   const offers = offersRuns(data) && !off;
   const [asking, setAsking] = React.useState(false);
+  const failure = useFailure();
   const analyse = async () => {
     setAsking(true);
+    failure.clear();
     try {
       await analyseReact();
     } catch (e) {
-      alert((e as Error).message);
+      failure.report(e);
     } finally {
       setAsking(false);
     }
@@ -149,6 +152,7 @@ export function Compiler({
           ) : null}
         </ToolbarEnd>
       </Toolbar>
+      {failure.note}
       <OffNote react={react} whole={false} />
       {running ? (
         <div className={s.runBar}>
@@ -170,7 +174,9 @@ export function Compiler({
               emphasis="outline"
               disabled={readOnly}
               title={readOnly ? readOnlyTitle() : t('diagnostics.react.skipTitle')}
-              onClick={() => void skipReact().catch((e: Error) => alert(e.message))}
+              onClick={() =>
+                void skipReact().catch((e: Error) => failure.report(e, t('diagnostics.react.skip')))
+              }
             >
               {t('diagnostics.react.skip')}
             </Button>

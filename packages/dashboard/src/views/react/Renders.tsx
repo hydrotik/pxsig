@@ -36,6 +36,7 @@ import {
 } from '../../data';
 import { useApproving } from '../../link';
 import * as s from '../../dashboard.css';
+import { useFailure } from '../../parts/Failure';
 import { RendersPanel } from './RendersPanel';
 import { num, OffNote, offersRuns, PartChoice, type ReactPart, readOnlyTitle } from './shared';
 
@@ -114,12 +115,14 @@ export function Renders({
   const measuring = !!activity.running && activity.renders;
   const progress = measuring ? activity.progress : null;
   const [asking, setAsking] = React.useState(false);
+  const failure = useFailure();
   const measure = async (ids: string[]) => {
     setAsking(true);
+    failure.clear();
     try {
       await measureRenders(ids);
     } catch (e) {
-      alert((e as Error).message);
+      failure.report(e);
     } finally {
       setAsking(false);
     }
@@ -177,6 +180,7 @@ export function Renders({
           {t('diagnostics.react.renders.measureNote', { count: scoped.length })}
         </span>
       ) : null}
+      {failure.note}
       {off ? <OffNote react={react} whole /> : null}
       {progress ? (
         <div className={s.runBar}>
@@ -197,7 +201,11 @@ export function Renders({
             emphasis="outline"
             disabled={readOnly}
             title={readOnly ? readOnlyTitle() : t('diagnostics.react.renders.cancelTitle')}
-            onClick={() => void cancelCheck().catch((e: Error) => alert(e.message))}
+            onClick={() =>
+              void cancelCheck().catch((e: Error) =>
+                failure.report(e, t('diagnostics.react.renders.cancel'))
+              )
+            }
           >
             {t('diagnostics.react.renders.cancel')}
           </Button>

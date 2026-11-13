@@ -30,7 +30,7 @@ import {
   readinessTally,
   reportBlock,
 } from '../lib/enforcement.mjs';
-import { writeSarif } from '../lib/sarif.mjs';
+import { sarifLog, sarifWrote, writeSarifLog } from '../lib/sarif.mjs';
 import { gitHead } from './via-server.mjs';
 import { reactBlock, reactLines, reactSarif } from './react.mjs';
 /** @import { CheckSetup } from './setup.mjs' */
@@ -272,18 +272,14 @@ export async function report(S, sel, prep, run, cmp, { t0, retryMs, react = null
   const sarif = str('sarif');
   if (sarif) {
     const entries = new Map(manifest.stories.map((e) => [e.id, e]));
-    const drift = summary.drift;
-    const n = writeSarif(resolve(sarif), out, {
+    const log = sarifLog(out, {
       entries,
       version: PXSIG_VERSION,
       masks: true,
-      drift,
+      drift: summary.drift,
     });
-    const big = out.reduce((a, r) => a + (r.masksLarge?.length ?? 0), 0);
-    const dn = drift.count + drift.otherEnv ? 1 : 0;
-    console.log(
-      `[check] wrote ${n - big - dn} new a11y violations${big ? ` and ${big} large masks` : ''}${dn ? ' and the drift note' : ''} to ${sarif} (SARIF)`
-    );
+    writeSarifLog(resolve(sarif), log);
+    console.log(sarifWrote(log, sarif));
   }
   const reactSarifFile = str('react-sarif');
   if (reactSarifFile) console.log(reactSarif(reactSarifFile, react, out, manifest.stories));

@@ -41,6 +41,7 @@ fn baseline_env_plan_writes_env_and_check_returns_its_id() {
         only: None,
         no_detail: true,
         env: Some(plan),
+        allow_masks: None,
     };
     assert_eq!(baseline(&o).unwrap()["summary"]["failed"], json!(0));
     let ha = pxsig_core::psig::header(&fs::read(d.join("store/a.psig")).unwrap()).unwrap();

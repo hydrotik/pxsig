@@ -622,7 +622,10 @@ export interface Rendered {
 }
 
 /** One entry as `pxsig_list` and `pxsig_check` list it (mcp.mjs `brief`). */
-export interface BriefEntry extends TextBrief, Pick<ReportRow, 'masksChanged' | 'masksLarge'> {
+export interface BriefEntry
+  extends
+    TextBrief,
+    Pick<ReportRow, 'masksBlocked' | 'masksChanged' | 'masksCoverage' | 'masksLarge'> {
   id: string;
   state: string;
   mode?: string;

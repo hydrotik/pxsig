@@ -24,6 +24,7 @@ fn opts(d: &Path) -> BaselineOpts {
         only: None,
         no_detail: false,
         env: None,
+        allow_masks: None,
     }
 }
 
