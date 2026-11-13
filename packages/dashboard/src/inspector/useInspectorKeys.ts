@@ -45,6 +45,8 @@ export function useInspectorKeys({
   ) => {
     if (blockKeys.current || e.metaKey || e.ctrlKey || e.altKey) return;
     const t = e.target as HTMLElement;
+    // While a dialog over the inspector is open (Report to pxsig), A and R decide nothing.
+    if (document.querySelector('[data-own-keys]')) return;
     // Typing in a text field (the reason's) is text: A and R in it decide nothing, in the dialog
     // and in the Storybook panel alike. A switch or a checkbox in the panel still takes the keys.
     if (t instanceof HTMLElement && t.closest(TYPING)) return;

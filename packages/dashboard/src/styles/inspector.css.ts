@@ -121,6 +121,39 @@ export const summary = style({
   padding: v.space['6'],
   minInlineSize: 0,
 });
+// Report to pxsig (inspector/GateReport.tsx): a dialog over the inspector, as wide as its preview.
+export const reportDialog = style({ inlineSize: 'min(100%, 56rem)', padding: 0, gap: 0 });
+export const reportBody = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: v.space['3'],
+  padding: v.space['6'],
+  minInlineSize: 0,
+  maxBlockSize: 'calc(100dvh - 4rem)',
+  overflowY: 'auto',
+});
+// The composite, scaled down to the dialog's width when wider (the copy is the full PNG).
+export const reportImage = style({
+  alignSelf: 'flex-start',
+  maxInlineSize: '100%',
+  background: checker,
+  border: `1px solid ${v.color.border}`,
+  borderRadius: v.radius.sm,
+});
+globalStyle(`${reportImage} img`, { display: 'block', maxInlineSize: '100%', blockSize: 'auto' });
+// Exactly the text a copy takes, read-only, in a box that scrolls.
+export const reportText = style({
+  margin: 0,
+  padding: v.space['3'],
+  resize: 'vertical',
+  color: v.color.text,
+  fontFamily: v.font.mono,
+  fontSize: v.fontSize.xs,
+  whiteSpace: 'pre',
+  border: `1px solid ${v.color.border}`,
+  borderRadius: v.radius.sm,
+  backgroundColor: v.color.surface,
+});
 // --- help: term rows beside a drawing of the screen -----------------------------------------
 export const helpSection = style({
   display: 'flex',

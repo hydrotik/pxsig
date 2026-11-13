@@ -1341,6 +1341,89 @@
       ]
     },
     {
+      "id": "inspector.report",
+      "section": "inspector",
+      "title": "Report to pxsig",
+      "purpose": "A gate report for a public issue on hydrotik/pxsig, when the gate got an entry wrong (the header's Report to pxsig button, beside Re-check). The dialog first re-renders the entry on this machine and says whether it still fails the gate, then previews exactly what is copied: one image (baseline, render and diff, cropped to the changed regions) or the image-free summary, and the text in the issue form's shape, with the story ID replaced by entry-1. It says the issue is public and cannot be fully removed. Copy text, Copy image (one PNG; Save image where the clipboard takes no images), Open issue (the prefilled form, in a new tab) and Cancel; nothing is copied until a copy button is pressed, and nothing is posted.",
+      "states": {
+        "readOnly": "Available: preparing a report decides nothing.",
+        "static": "No Report to pxsig button: a static report has no server to re-render or compare.",
+        "loading": "The re-render on this machine, then the report, each with a line saying so.",
+        "error": "Why there is no report (no baseline, no render), or why the re-render failed."
+      },
+      "components": [
+        "IconButton",
+        "Icon",
+        "Dialog",
+        "DialogTitle",
+        "DialogDescription",
+        "Alert",
+        "AlertTitle",
+        "AlertDescription",
+        "Switch",
+        "Button"
+      ],
+      "screens": [
+        {
+          "scenario": "changed",
+          "hash": "#inspect=ui-button--primary",
+          "actions": [
+            {
+              "click": {
+                "role": "button",
+                "name": "Report to pxsig",
+                "exact": true
+              }
+            }
+          ],
+          "wait": {
+            "role": "img",
+            "name": "Baseline, render and diff side by side"
+          }
+        },
+        {
+          "scenario": "changed",
+          "hash": "#inspect=ui-button--primary",
+          "actions": [
+            {
+              "click": {
+                "role": "button",
+                "name": "Report to pxsig",
+                "exact": true
+              }
+            },
+            {
+              "click": {
+                "role": "switch",
+                "name": "No image: the changed regions and their average colours only"
+              }
+            }
+          ],
+          "wait": {
+            "text": "No image. The text lists each changed region"
+          }
+        },
+        {
+          "scenario": "read-only",
+          "state": "readOnly",
+          "hash": "#inspect=ui-button--primary",
+          "actions": [
+            {
+              "click": {
+                "role": "button",
+                "name": "Report to pxsig",
+                "exact": true
+              }
+            }
+          ],
+          "wait": {
+            "role": "img",
+            "name": "Baseline, render and diff side by side"
+          }
+        }
+      ]
+    },
+    {
       "id": "embed.panel",
       "section": "embed",
       "title": "Storybook panel",
