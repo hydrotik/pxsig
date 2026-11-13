@@ -15,7 +15,8 @@
  *             badge may be drawn in capitals (`uppercase`: micro caps), its text still the copy's
  *   tone      a stat card, badge or status badge shows its tone as a border, an edge or a wash
  *             (a border, background or ::before / ::after in a tone colour): the contract shows it
- *             as the colour of the value, the text or the glyph
+ *             as the colour of the value, the text or the glyph (a badge: or its own tone,
+ *             `pxsig-ui-tone-<tone>`), and a badge's text under AA (4.5:1)
  *
  * The rules read roles and the box model, and the `pxsig-ui-<name>` classes the dashboard adds to
  * a contract component's root (src/ui/index.ts); never an adapter's own class names. An element
@@ -310,12 +311,16 @@ export function inspectFidelity({ max, copy }) {
     }
     return [255, 255, 255, 1];
   };
-  /** The tone a colour is drawn in, over `back`: on the line from the backdrop to the tone. */
+  /** `c` (alpha) over `b`. */
+  const over = (/** @type {number[]} */ c, /** @type {number[]} */ b) =>
+    [0, 1, 2].map((i) => c[3] * c[i] + (1 - c[3]) * b[i]);
+  /** The tone a colour is drawn in, over `back`, other than `own`: on the line to the tone. */
   const toneOf = (/** @type {string} */ css, /** @type {number[]} */ back) => {
     const c = rgba(css);
     if (!c || c[3] < 0.05) return null;
-    const mixed = [0, 1, 2].map((i) => c[3] * c[i] + (1 - c[3]) * back[i]);
+    const mixed = over(c, back);
     for (const [tone, t] of Object.entries(tones)) {
+      if (tone === own) continue;
       const d = [0, 1, 2].map((i) => t[i] - back[i]);
       const len = d[0] ** 2 + d[1] ** 2 + d[2] ** 2;
       if (len < 900) continue;
@@ -328,7 +333,14 @@ export function inspectFidelity({ max, copy }) {
     }
     return null;
   };
+  const lum = (/** @type {number[]} */ c) =>
+    [0.2126, 0.7152, 0.0722].reduce((sum, k, i) => {
+      const v = c[i] / 255;
+      return sum + k * (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+    }, 0);
   const SIDES = ['top', 'right', 'bottom', 'left'];
+  /** @type {string | null} */
+  let own = null;
   for (const root of document.querySelectorAll(
     '.pxsig-ui-StatGroup, .pxsig-ui-Badge, .pxsig-ui-StatusBadge'
   )) {
@@ -338,6 +350,23 @@ export function inspectFidelity({ max, copy }) {
       : root.matches('.pxsig-ui-Badge')
         ? 'badge'
         : 'status badge';
+    // A badge may show the tone it was given (R4), not another.
+    own =
+      kind === 'badge'
+        ? ([...root.classList].find((c) => c.startsWith('pxsig-ui-tone-'))?.slice(14) ?? 'neutral')
+        : null;
+    const fg = own && rgba(getComputedStyle(root).color);
+    if (fg) {
+      const wash = rgba(getComputedStyle(root).backgroundColor);
+      const bg = wash ? over(wash, backdrop(root)) : backdrop(root);
+      const [x, y] = [lum(over(fg, bg)), lum(bg)];
+      const ratio = (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+      if (ratio < 4.5)
+        out.push({
+          rule: 'tone',
+          text: `badge ${name(root).slice(0, 48)}: its text is ${Math.floor(ratio * 100) / 100}:1 on its background, under AA (4.5:1)`,
+        });
+    }
     for (const el of [root, ...root.querySelectorAll('*')]) {
       if (el !== root && !visible(el)) continue;
       // A selected filter tile shows that it is selected, not a tone.
@@ -368,7 +397,7 @@ export function inspectFidelity({ max, copy }) {
       const item = kind === 'stat card' ? el : root;
       out.push({
         rule: 'tone',
-        text: `${kind} ${name(item).slice(0, 48)} shows its tone as ${[...new Set(how)].join(', ')}: the contract shows a tone as the colour of its ${kind === 'stat card' ? 'value' : kind === 'badge' ? 'text' : 'glyph'}`,
+        text: `${kind} ${name(item).slice(0, 48)} shows its tone as ${[...new Set(how)].join(', ')}: the contract shows a tone as the colour of its ${kind === 'stat card' ? 'value' : kind === 'badge' ? `text, or a badge's own tone (${own})` : 'glyph'}`,
       });
       if (kind !== 'stat card') break;
     }
