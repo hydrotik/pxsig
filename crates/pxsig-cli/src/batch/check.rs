@@ -137,8 +137,9 @@ fn hex(b: &[u8]) -> String {
 }
 
 /// The row's inputs: the render, the baseline, the gate, and for `textDiff` the render's text
-/// record, its environment and the text tolerances.
-fn cache_key(png: &[u8], sig: &[u8], gate: &Value, text: &[u8]) -> String {
+/// record, its environment and the text tolerances; and the engine that checks them (`engine`,
+/// [`engine_id`]), so another build's verdicts are never reused.
+pub(super) fn cache_key(engine: &str, png: &[u8], sig: &[u8], gate: &Value, text: &[u8]) -> String {
     let mut h = Sha256::new();
     h.update(b"pxsig-check-v5\0"); // v5: the render's masks record
     h.update(png);
@@ -146,7 +147,21 @@ fn cache_key(png: &[u8], sig: &[u8], gate: &Value, text: &[u8]) -> String {
     h.update(gate.to_string().as_bytes());
     h.update(b"\0");
     h.update(text);
+    h.update(b"\0engine:");
+    h.update(engine.as_bytes());
     hex(&h.finalize())
+}
+
+/// This engine build: the SHA-256 of its own executable, read once. Two builds with one version
+/// (a pull request's and main's) differ here; the version alone when the executable is unreadable.
+pub(super) fn engine_id() -> &'static str {
+    static ID: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    ID.get_or_init(|| {
+        std::env::current_exe().and_then(fs::read).map_or_else(
+            |_| format!("version {}", env!("CARGO_PKG_VERSION")),
+            |b| hex(&Sha256::digest(&b)),
+        )
+    })
 }
 
 /// The text inputs of a row's cache key: its text record's bytes (or none), its environment id,
@@ -236,7 +251,7 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
                 let sig_bytes = fs::read(&sig)?;
                 let render = hex(&Sha256::digest(&png_bytes));
                 let render_env = o.env.as_ref().and_then(|p| p.by_id.get(&s.id)).map(String::as_str);
-                let key = o.cache.as_ref().map(|_| cache_key(&png_bytes, &sig_bytes, &gate_json, &[text_key(&png, render_env, &tol, o.tolerance), super::masks::key(&png)].concat()));
+                let key = o.cache.as_ref().map(|_| cache_key(engine_id(), &png_bytes, &sig_bytes, &gate_json, &[text_key(&png, render_env, &tol, o.tolerance), super::masks::key(&png)].concat()));
                 let stem = io::stem_of(&sig);
                 if let (Some(c), Some(k)) = (&o.cache, &key) {
                     let hit = c.join(format!("{k}.json"));

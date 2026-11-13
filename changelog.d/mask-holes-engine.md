@@ -46,3 +46,21 @@
   changes the trimmed size. A mask over the whole capture no longer trims it to 16 × 16.
   To update: entries whose story mask reaches the capture's bottom-right corner change size once:
   review and approve them.
+- **A blocked entry says what to do, and the dashboard does not offer Approve.** Every refusal and
+  every line about masks no approval passes names the fix for its cause: `make the masks smaller`
+  (over 50%), `mask the value, not the story root`, `give data-volatile a reason, e.g.
+  data-volatile="relative time"`, `put data-volatile on the element that shows the value (a
+  leaf)` (was: `reduce the masks` or `until the masks are smaller` for every cause), in the
+  engine's refusal, `[check] mask:`, SARIF and the tools. In the inspector, Approve is disabled on
+  such an entry with that line as its title, the A key sends nothing, Approve story leaves it out,
+  and the Masks section shows the line also when no mask was painted (a `data-volatile` with no
+  reason or on a container).
+  To update: nothing to do.
+- **A refused decision leaves the inspector usable.** The reason is said under the inspector's
+  header instead of in a browser alert, which held the page with the button reading "Approving…"
+  until it was closed.
+  To update: nothing to do.
+- **The engine's result cache names the engine build.** A cached verdict is reused only by the
+  build that wrote it (the hash of its executable), so two builds of one version, a pull
+  request's and main's, never reuse each other's verdicts.
+  To update: nothing to do; the first check after an upgrade runs uncached.
