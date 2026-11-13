@@ -65,8 +65,8 @@ export function openCheck(argv) {
     die(
       `--kind takes a short lower-case word (up to 16 characters, e.g. environment); got "${kind}"`
     );
-  if ((kind != null || str('reason') != null) && !flags.update)
-    die('--kind and --reason go with --update');
+  if ((kind != null || str('reason') != null || flags['allow-masks'] != null) && !flags.update)
+    die('--kind, --reason and --allow-masks go with --update');
   if (flags.update && !humanAtTerminal())
     die(
       `--update writes baselines without review: run it yourself in a terminal (${whyNotPerson()})`,
@@ -92,17 +92,19 @@ export function openCheck(argv) {
   mkdirSync(reports, { recursive: true });
 
   /**
+   * `partial`: exit 2 with a JSON answer is some entries failing (`baseline`), not the command.
    * @param {string[]} args
-   * @param {{ allowFail?: boolean }} [opts]
+   * @param {{ allowFail?: boolean, partial?: boolean }} [opts]
    */
-  const rust = (args, { allowFail = true } = {}) => {
+  const rust = (args, { allowFail = true, partial = false } = {}) => {
     const t = performance.now();
     const r = spawnSync(rustBin, args, {
       encoding: 'utf8',
       maxBuffer: 512 * 1024 * 1024,
       cwd: P.workspaceRoot,
     });
-    if (r.status === 2 || (!allowFail && r.status !== 0))
+    const answered = partial && r.stdout.trimStart().startsWith('{');
+    if ((r.status === 2 && !answered) || (!allowFail && r.status !== 0))
       die(`pxsig ${args[0]} failed: ${r.stderr || r.stdout}`);
     return { out: r.stdout, ms: performance.now() - t, status: r.status };
   };

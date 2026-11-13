@@ -124,10 +124,20 @@ test(
     );
     assert.ok(!JSON.stringify(local).includes(EMAIL), 'the local file names no person');
     assert.ok(!readFileSync(P.store.approvals, 'utf8').includes(REASON));
-    // Pin 13 (stays): a baseline's header names the render, never a person.
+    // Pin 13 (stays): a baseline's header names the render, never a person. `masks` (every
+    // baseline from 0.7.7) holds selectors and boxes only.
     for (const sig of [f.sig(f.ids.ok), f.sig(f.ids.changed)]) {
       const h = /** @type {Record<string, any>} */ (readHeader(sig));
-      const all = ['format', 'container', 'entry', 'env', 'record', 'encryption', 'sections'];
+      const all = [
+        'format',
+        'container',
+        'entry',
+        'env',
+        'masks',
+        'record',
+        'encryption',
+        'sections',
+      ];
       assert.deepEqual(
         Object.keys(h),
         all.filter((k) => k in h)

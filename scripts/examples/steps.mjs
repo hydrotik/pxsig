@@ -11,14 +11,19 @@ import { repo, expect, sh, pxsig, pxsigIn, tail, projectStore } from './shared.m
 /**
  * Write baselines from the latest renders: what approving every NEW entry does. `withEnv`: each
  * baseline records its row's render environment from check.json, as approving in the dashboard does.
- * `only`: these entry ids alone (the engine's `baseline --only`).
+ * `only`: these entry ids alone (the engine's `baseline --only`). `allowMasks`: also the entries
+ * whose masks changed (`--allow-masks`), as a person who reviewed them would.
  * @param {string} dir
  * @param {string} project
- * @param {{ withEnv?: boolean, only?: string[] | null }} [opts]
+ * @param {{ withEnv?: boolean, only?: string[] | null, allowMasks?: boolean }} [opts]
  * @returns {BaselineAnswer}
  */
-export function baselineAll(dir, project, { withEnv = false, only = null } = {}) {
-  let extra = '';
+export function baselineAll(
+  dir,
+  project,
+  { withEnv = false, only = null, allowMasks = false } = {}
+) {
+  let extra = allowMasks ? `, '--allow-masks'` : '';
   if (only) {
     const file = join(dir, '.only.json');
     writeFileSync(file, JSON.stringify(only));
@@ -45,7 +50,10 @@ export function baselineAll(dir, project, { withEnv = false, only = null } = {})
     process.stdout.write(r.stdout); process.exit(r.status);`;
   // The engine's `baseline --json` answer, printed by the script above.
   return /** @type {BaselineAnswer} */ (
-    JSON.parse(sh(process.execPath, ['--input-type=module', '-e', code], dir).stdout)
+    JSON.parse(
+      // Exit 2: some entries were not written; the answer says which.
+      sh(process.execPath, ['--input-type=module', '-e', code], dir, { allow: [2] }).stdout
+    )
   );
 }
 

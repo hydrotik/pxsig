@@ -71,6 +71,8 @@ export interface ExampleCheckJson {
 /** The engine's `baseline --json` answer: its summary. */
 export interface BaselineAnswer {
   summary: { failed: number; stories: number };
+  errors: string[];
+  masksChanged?: { id: string; written: boolean }[];
 }
 
 /** `pxsig doctor --json`: the keys read. */

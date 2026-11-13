@@ -109,6 +109,7 @@ export {
   chartBox,
   embed,
   decision,
+  blockedNote,
   labelStack,
   labelHidden,
 } from './styles/inspector.css';

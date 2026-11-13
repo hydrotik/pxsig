@@ -141,8 +141,9 @@ fn hex(b: &[u8]) -> String {
 }
 
 /// The row's inputs: the render, the baseline, the gate, and for `textDiff` the render's text
-/// record, its environment and the text tolerances.
-fn cache_key(png: &[u8], sig: &[u8], gate: &Value, text: &[u8]) -> String {
+/// record, its environment and the text tolerances; and the engine that checks them (`engine`,
+/// [`engine_id`]), so another build's verdicts are never reused.
+pub(super) fn cache_key(engine: &str, png: &[u8], sig: &[u8], gate: &Value, text: &[u8]) -> String {
     let mut h = Sha256::new();
     h.update(b"pxsig-check-v6\0"); // v6: the color rule
     h.update(png);
@@ -150,7 +151,21 @@ fn cache_key(png: &[u8], sig: &[u8], gate: &Value, text: &[u8]) -> String {
     h.update(gate.to_string().as_bytes());
     h.update(b"\0");
     h.update(text);
+    h.update(b"\0engine:");
+    h.update(engine.as_bytes());
     hex(&h.finalize())
+}
+
+/// This engine build: the SHA-256 of its own executable, read once. Two builds with one version
+/// (a pull request's and main's) differ here; the version alone when the executable is unreadable.
+pub(super) fn engine_id() -> &'static str {
+    static ID: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    ID.get_or_init(|| {
+        std::env::current_exe().and_then(fs::read).map_or_else(
+            |_| format!("version {}", env!("CARGO_PKG_VERSION")),
+            |b| hex(&Sha256::digest(&b)),
+        )
+    })
 }
 
 /// The text inputs of a row's cache key: its text record's bytes (or none), its environment id,
@@ -240,7 +255,7 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
                 let sig_bytes = fs::read(&sig)?;
                 let render = hex(&Sha256::digest(&png_bytes));
                 let render_env = o.env.as_ref().and_then(|p| p.by_id.get(&s.id)).map(String::as_str);
-                let key = o.cache.as_ref().map(|_| cache_key(&png_bytes, &sig_bytes, &gate_json, &[text_key(&png, render_env, &tol, o.tolerance), super::masks::key(&png)].concat()));
+                let key = o.cache.as_ref().map(|_| cache_key(engine_id(), &png_bytes, &sig_bytes, &gate_json, &[text_key(&png, render_env, &tol, o.tolerance), super::masks::key(&png)].concat()));
                 let stem = io::stem_of(&sig);
                 if let (Some(c), Some(k)) = (&o.cache, &key) {
                     let hit = c.join(format!("{k}.json"));
@@ -269,19 +284,20 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
                 v["detail"] = detail_json(&r);
                 v["color"] = super::color::color_json(&r);
                 v["note"] = json!(if r.pass { "pass".to_string() } else { r.reasons.join("; ") });
-                // The render's masks against the baseline's: a change fails the row, whatever the pixels.
-                super::masks::annotate(&mut v, &png, b.masks.as_ref())?;
+                // The baseline image is inside a `.psig`, else `<base-png-dir>/<id>.png`.
+                let base_img = || b.image.clone().or_else(|| o.base_png_dir.as_ref().and_then(|bd| fs::read(bd.join(format!("{}.png", s.id))).ok()));
+                // The render's masks against the baseline's: a change fails the row, whatever the
+                // pixels. A baseline that records none has its image read for the story masks it shows.
+                let shown = if b.masks.is_none() { base_img() } else { None };
+                super::masks::annotate(&mut v, &png, b.masks.as_ref(), shown.as_deref())?;
                 // One pixel diff, for `pixels` (a failing row) and for `textDiff` (any row whose text
-                // differs): the baseline image is inside a `.psig`, else `<base-png-dir>/<id>.png`.
+                // differs).
                 let txt = text::prepare(&png, render_env, &b);
                 let identical = r.metrics.identical;
                 let wants = txt.wants_pixels(&tol, identical);
                 let mut diff = None;
                 if !r.pass || wants {
-                    let base_img = b.image.clone().or_else(|| {
-                        o.base_png_dir.as_ref().and_then(|bd| fs::read(bd.join(format!("{}.png", s.id))).ok())
-                    });
-                    if let Some(img) = base_img {
+                    if let Some(img) = shown.or_else(base_img) {
                         diff = Some(diff_of(&img, &png, o.tolerance));
                         if !r.pass {
                             v["pixels"] = diff.as_ref().and_then(|d| d.as_ref().ok()).map_or(Value::Null, |d| pixels_json(&d.0, o.tolerance));

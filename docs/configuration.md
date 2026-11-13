@@ -498,14 +498,29 @@ its content) is recorded as such (`root`), and fails the entry when it covers 95
 more; a smaller one is weighed by its share.
 
 Each render records the masks that applied to it, `<id>.masks.json` beside the PNG (selector,
-source, reason, masked pixels), and a baseline approved from it keeps them in its header with each
-mask's share of the capture ([spec.md](spec.md#5-the-psig-container-version-1)); no paths. `pxsig
-check` compares a render's masks with its baseline's: a mask added, removed or grown fails the entry
-with the reason `masks changed: …`, for a person to approve, whatever the pixels. Adopting
-`data-volatile` (or a new `capture.ignore`) therefore gives one "masks changed" entry per affected
-entry, approved once. Masks from a story's `ignore` against a baseline approved before masks were
-recorded are not a change. A mask over 25% of a capture is a warning (`[check] mask:`, summary.md,
-`check --sarif`), never a failure: such a mask would let most changes under it pass.
+source, reason, the elements matched and their boxes), and every baseline approved from it keeps
+them in its header, with each mask's share of the capture, or an empty list when none applied
+([spec.md](spec.md#5-the-psig-container-version-1)); no paths. `pxsig check` compares a render's
+masks with its baseline's: a mask added, removed, grown by any pixel, moved by more than a pixel,
+or matching another number of elements fails the entry with the reason `masks changed: …`, for a
+person to approve, whatever the pixels. Adopting `data-volatile` (or a new `capture.ignore`)
+therefore gives one "masks changed" entry per affected entry, approved once. Against a baseline
+approved before every baseline recorded its masks (0.7.6 and earlier), a story's `ignore` is not a
+change where the baseline image shows it painted; anywhere else it is added.
+
+Masks are content, so trimming a capture never crops one away: a component that grows under a mask
+in its bottom-right corner still changes the trimmed size.
+
+Limits, over all of an entry's masks together:
+
+| Masks cover                                | Result                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| over 25% of the capture                    | A warning (`[check] mask:`, summary.md, `check --sarif` `pxsig/large-mask`): such masks let most changes under them pass.                                                                                                                                                                                                                                       |
+| over 50% of the capture, or the story root | The entry fails (`masks cover 62% of the capture, over 50%`, `a mask covers the story root: …`; SARIF `pxsig/mask-limit`, an error). No approval writes its baseline, `--update` and `--allow-masks` included: the entry fails until the masks are smaller, and every refusal says what to do (`make the masks smaller`, `mask the value, not the story root`). |
+
+`pxsig check --update` and the engine's `pxsig baseline` never write a masks change unnamed: an
+entry whose masks differ from its baseline's is refused, with what changed, unless `--allow-masks`
+names it (alone: every entry).
 
 The dashboard's inspector lists an entry's masks (selector, source, reason, share of the capture)
 in its Masks section, and marks Masks changed and Large mask beside the verdict and on the entry's

@@ -1,8 +1,10 @@
 /**
  * volatile.mjs — the masks step of examples-test.mjs (single-package): the Badge gains a value that
  * differs on every render, marked `data-volatile`. The first check fails exactly the Badge entries as
- * "masks changed" (nothing approves itself); once approved, renders whose value differs pass; a
- * `capture.ignore` mask over most of a capture is a warning in the output, summary.md and SARIF.
+ * "masks changed" (nothing approves itself); the engine's `baseline` refuses those entries without
+ * `--allow-masks`, and names them; once approved, renders whose value differs pass; a
+ * `capture.ignore` mask over the whole component fails each entry, no baseline is written from it
+ * even with `--allow-masks`, and the output, summary.md and SARIF (an error) say so.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -51,7 +53,20 @@ export function volatileSteps(dir, p, build) {
       ),
     `masks: data-volatile fails exactly the ${badges.length} Badge entries as masks changed (${changed.length})${r.status === 1 ? '' : tail(r)}`
   );
-  baselineAll(dir, p);
+  // Mask audit 11: the engine's `baseline` no longer writes a masks change unnamed.
+  const refused = baselineAll(dir, p);
+  expect(
+    refused.summary.failed === badges.length &&
+      refused.errors.every((e) =>
+        /masks changed \(1 added: \[data-volatile="build time"\]\)/.test(e)
+      ),
+    `masks: without --allow-masks the ${badges.length} Badge baselines are refused and named (${refused.summary.failed})`
+  );
+  const allowed = baselineAll(dir, p, { allowMasks: true });
+  expect(
+    allowed.summary.failed === 0 && allowed.masksChanged?.length === badges.length,
+    `masks: with --allow-masks they are written, each named (${allowed.masksChanged?.length ?? 0})`
+  );
   r = pxsig(['check', '--full', '--project', p, '--retries', '0'], dir);
   rows = checkJson(dir, p).rows;
   expect(
@@ -80,20 +95,36 @@ export function volatileSteps(dir, p, build) {
     );
     // The SARIF log the check just wrote: the keys read.
     const log = existsSync(sarif)
-      ? /** @type {{ runs: { results: { ruleId: string }[] }[] }} */ (
+      ? /** @type {{ runs: { results: { ruleId: string, level: string }[] }[] }} */ (
           JSON.parse(readFileSync(sarif, 'utf8'))
         )
       : null;
-    const warned = log?.runs[0].results.filter((x) => x.ruleId === 'pxsig/large-mask');
-    const large = rows.filter((x) => x.masksLarge?.length);
+    const limit = log?.runs[0].results.filter(
+      (x) => x.ruleId === 'pxsig/mask-limit' && x.level === 'error'
+    );
+    const blocked = rows.filter((x) => x.masksBlocked);
+    // Decision 2: a mask over the whole component fails the entry, and no approval passes it.
     expect(
       r.status === 1 &&
-        large.length > 0 &&
-        large.every((x) => x.masksChanged?.added.includes('#storybook-root > *')) &&
-        /\[check\] mask: /.test(r.stderr) &&
-        summary.includes('a mask over 25% of the capture') &&
-        warned?.length === large.reduce((n, x) => n + (x.masksLarge?.length ?? 0), 0),
-      `masks: a mask over most of a capture warns in the output, summary.md and SARIF (${warned?.length ?? 0} results)${r.status === 1 ? '' : tail(r)}`
+        blocked.length === rows.length &&
+        blocked.every(
+          (x) =>
+            !x.pass &&
+            x.masksChanged?.added.includes('#storybook-root > *') &&
+            (x.reasons ?? []).some((y) =>
+              /^masks cover \d+(\.\d)?% of the capture, over 50%$/.test(y)
+            )
+        ) &&
+        /\[check\] mask: .*no approval passes it/.test(r.stderr) &&
+        summary.includes('on masks no approval passes until they are smaller') &&
+        limit?.length === blocked.length,
+      `masks: a mask over the whole component fails every entry, in the output, summary.md and SARIF (${blocked.length}/${rows.length}, coverage ${[...new Set(rows.map((x) => x.masksCoverage))].join(', ')}, ${limit?.length ?? 0} errors)${r.status === 1 ? '' : tail(r)}`
+    );
+    const none = baselineAll(dir, p, { allowMasks: true });
+    expect(
+      none.summary.failed === rows.length &&
+        none.errors.every((e) => e.includes('no approval writes this baseline')),
+      `masks: no baseline is written from them, --allow-masks or not (${none.summary.failed} refused)`
     );
   } finally {
     writeFileSync(file, before);

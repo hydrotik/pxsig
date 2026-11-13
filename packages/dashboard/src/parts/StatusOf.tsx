@@ -17,6 +17,7 @@ export const VERDICT: Record<Verdict, { tone: Tone; icon: IconName; label: CopyK
   flaky: { tone: 'warning', icon: 'pause', label: 'status.flaky' },
   skipped: { tone: 'neutral', icon: 'dashed', label: 'status.skipped' },
   error: { tone: 'danger', icon: 'cross', label: 'status.error' },
+  blocked: { tone: 'danger', icon: 'ban', label: 'status.blocked' },
 };
 
 /** One verdict → one status badge, so every view says it the same way. */

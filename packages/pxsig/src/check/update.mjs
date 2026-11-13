@@ -1,7 +1,9 @@
 /**
  * check/update.mjs — `--update`: writes baselines from this run's renders instead of checking (a
  * person at a terminal, a typed phrase, every old baseline snapshotted and logged), and the a11y
- * baseline unless `--kind environment`. Always exits.
+ * baseline unless `--kind environment`. A baseline whose masks changed is written only under
+ * `--allow-masks` (alone: every entry; with ids: those), and each one is named either way. Always
+ * exits.
  */
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -10,6 +12,7 @@ import { notKept, reportsIgnored } from '../lib/decisions.mjs';
 import { ask } from '../lib/term.mjs';
 import { writeJson } from '../lib/files.mjs';
 import { byId } from '../lib/env.mjs';
+import { maskChange } from '../lib/mask-words.mjs';
 /** @import { CheckSetup, Die } from './setup.mjs' */
 /** @import { Selection } from './select.mjs' */
 /** @import { Prepared } from './prepare.mjs' */
@@ -25,7 +28,7 @@ import { byId } from '../lib/env.mjs';
  * @returns {Promise<never>}
  */
 export async function update(S, sel, prep, run) {
-  const { P, reports, rust, runPath, pngDir, str, kind, a11yBaselinePath } = S;
+  const { P, reports, rust, runPath, pngDir, str, kind, a11yBaselinePath, flags } = S;
   const { entries } = sel;
   const { pool, fence, current } = prep;
   const { results, renderErrors, onlyFile } = run;
@@ -78,27 +81,33 @@ export async function update(S, sel, prep, run) {
       ),
     })
   );
-  const b = rust([
-    'baseline',
-    '--manifest',
-    runPath,
-    '--png-dir',
-    pngDir,
-    '--root',
-    P.workspaceRoot,
-    '--only',
-    `@${onlyFile}`,
-    '--env',
-    `@${envFile}`,
-    '--json',
-  ]);
+  const b = rust(
+    [
+      'baseline',
+      '--manifest',
+      runPath,
+      '--png-dir',
+      pngDir,
+      '--root',
+      P.workspaceRoot,
+      '--only',
+      `@${onlyFile}`,
+      '--env',
+      `@${envFile}`,
+      ...allowMasks(flags['allow-masks']),
+      '--json',
+    ],
+    { partial: true }
+  );
   rmSync(envFile, { force: true });
   // `pxsig baseline --json`.
   const res = /** @type {BaselineResult} */ (JSON.parse(b.out));
+  // Only what was written is logged as approved.
+  const written = ok.filter((x) => !(res.failedIds ?? []).some((f) => f === x));
   // `--reason` stays local (lib/decisions.mjs); `via: "check-update"` says the rest.
   const reason = str('reason');
   const ignored = reason ? reportsIgnored(P) : false;
-  for (const id of ok)
+  for (const id of written)
     record(
       P,
       // `ok` holds ids of `entries`.
@@ -128,6 +137,16 @@ export async function update(S, sel, prep, run) {
     `[check] baselines: ${res.summary.stories - res.summary.failed} written in ${res.summary.elapsedMs.toFixed(0)} ms (Rust) · ${res.summary.failed} failed · render errors ${renderErrors}`
   );
   for (const e of res.errors) console.error(`  ${e}`);
+  // A masks change is never written unnamed (crates/pxsig-cli/src/batch/masks.rs).
+  for (const m of res.masksChanged ?? [])
+    if (m.written) console.error(`  ${m.id}: ${maskChange(m)} (written under --allow-masks)`);
   if (reason && ok.length && !ignored) console.error(notKept(P));
   process.exit(res.summary.failed || renderErrors ? 2 : 0);
 }
+
+/**
+ * The engine's `--allow-masks` for the flag as given: alone, every entry; with ids, those.
+ * @param {string | boolean | undefined} v
+ */
+const allowMasks = (v) =>
+  v === true ? ['--allow-masks'] : typeof v === 'string' ? [`--allow-masks=${v}`] : [];

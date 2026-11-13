@@ -152,3 +152,99 @@ test('large masks: an open item while there are any, the filter and the card bad
     await p2.close();
   }
 });
+
+// The 25% warning weighs all of an entry's masks together (masksCoverage), as the engine does.
+test('large mask: two masks of 15% each are one, a single 20% mask is not', async (t) => {
+  if (skip) return t.skip(skip);
+  /** @param {string} id @param {number[]} areas */
+  const masked = (id, areas) =>
+    row(id, {
+      masks: areas.map((area, i) => ({
+        selector: `[data-volatile="v${i}"]`,
+        source: 'attribute',
+        reason: `v${i}`,
+        area,
+      })),
+      masksCoverage: areas.reduce((a, b) => a + b, 0),
+    });
+  const two = 'ui-chart--two-masks';
+  const one = 'ui-chart--one-mask';
+  const d = data({
+    rows: [masked(two, [0.15, 0.15]), masked(one, [0.2])],
+    entries: [entry(two), entry(one)],
+  });
+  const { page } = await open(d, { hash: '#overview' });
+  try {
+    const item = page.getByText('Entries with masks over 25%', { exact: true });
+    await item.waitFor();
+    await item.click();
+    await page.getByRole('combobox', { name: 'Result' }).waitFor();
+    await page.waitForFunction(() => document.querySelectorAll('[data-status]').length === 1);
+    const card = page.locator('[data-status]');
+    assert.ok(await card.getByText(two).first().isVisible());
+    const badge = card.getByText('Large mask', { exact: true });
+    assert.ok(await badge.isVisible());
+    assert.equal(
+      await badge.getAttribute('title'),
+      '2 masks cover 30% of the capture together, over 25%: [data-volatile="v0"], [data-volatile="v1"]'
+    );
+  } finally {
+    await page.close();
+  }
+  const single = data({ rows: [masked(one, [0.2])], entries: [entry(one)] });
+  const { page: p2 } = await open(single, { hash: '#overview' });
+  try {
+    await p2.getByText('Open Items').first().waitFor();
+    assert.equal(await p2.getByText('Entries with masks over 25%').count(), 0);
+    assert.equal(await p2.getByText('Large mask', { exact: true }).count(), 0);
+  } finally {
+    await p2.close();
+  }
+});
+
+test('a moved or recounted mask is named, and masks no approval passes say so first', async (t) => {
+  // Mask audit 7 (count and boxes compared) and decision 2 (over 50% or the story root fails).
+  if (skip) return t.skip(skip);
+  const id = 'ui-order-row--default';
+  const blocked = row(id, {
+    pass: false,
+    changed: true,
+    metrics: { ssim: 1, changedCells: 0, grid: 64, identical: true },
+    reasons: [
+      'masks changed: 1 moved, 1 changed count',
+      'masks cover 62% of the capture, over 50%',
+    ],
+    masks: [
+      { selector: '.id', source: 'project', area: 0.3 },
+      { selector: '.stamp', source: 'story', area: 0.32 },
+    ],
+    masksChanged: { added: [], removed: [], grew: [], moved: ['.id'], count: ['.stamp'] },
+    masksBaseline: [
+      { selector: '.id', source: 'project', area: 0.3 },
+      { selector: '.stamp', source: 'story', area: 0.32 },
+    ],
+    masksBlocked: { coverage: 0.62 },
+  });
+  const d = data({ rows: [blocked], entries: [entry(id, issue)] });
+  const { page, errors } = await open(d, { hash: `#inspect=${id}`, images: same });
+  try {
+    await ready(page);
+    const side = page.locator('aside');
+    assert.ok(
+      await side
+        .getByText(
+          'No approval passes this entry: masks cover 62% of the capture, over 50%; make the masks smaller.',
+          { exact: true }
+        )
+        .isVisible()
+    );
+    assert.ok(await side.getByText('2 masks changed since the baseline.').isVisible());
+    assert.deepEqual(await lines(page), [
+      'Moved.idProject · Baseline 30% · render 30%',
+      'Count changed.stampStory · Baseline 32% · render 32%',
+    ]);
+    assert.deepEqual(errors, []);
+  } finally {
+    await page.close();
+  }
+});
