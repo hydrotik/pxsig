@@ -21,6 +21,7 @@ import {
 import { reportProblems } from '../src/lib/integrity/problems.mjs';
 import { sarifLog } from '../src/lib/sarif.mjs';
 import { DEFAULTS } from '../src/lib/workspace/layers.mjs';
+/** @import { CheckRow } from '../src/types.js' */
 
 const schema = JSON.parse(readFileSync(new URL('../schema/project.json', import.meta.url), 'utf8'));
 const ctx = /** @type {any} */ ({ integrity: {} });
@@ -29,7 +30,8 @@ const ctx = /** @type {any} */ ({ integrity: {} });
  * `n` passing rows, the first `differ` of them differing from their baseline.
  * @param {number} n
  * @param {number} differ
- * @param {Record<string, unknown>} [extra]
+ * @param {Partial<CheckRow>} [extra]
+ * @returns {CheckRow[]}
  */
 const rows = (n, differ, extra = {}) =>
   Array.from({ length: n }, (_, i) => ({
@@ -37,7 +39,7 @@ const rows = (n, differ, extra = {}) =>
     pass: true,
     differs: i < differ,
     metrics: { ssim: 1 },
-    envMatch: 'same',
+    envMatch: /** @type {const} */ ('same'),
     ...extra,
   }));
 
@@ -57,6 +59,7 @@ test('a row drifts when it passes while its pixels differ; older rows fall back 
 });
 
 test('summary.drift counts the checked passing entries, other environments apart', () => {
+  /** @type {Partial<CheckRow>[]} */
   const out = [
     ...rows(10, 3),
     ...rows(2, 2, { envMatch: 'mismatch' }),
