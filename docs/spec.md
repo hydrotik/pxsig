@@ -388,8 +388,8 @@ elements) and `masksBaseline` (the baseline's masks, as its header keeps them; `
 none), `pass` is false and `reasons` gains `masks changed: <n> added, <n> removed, <n> grew, <n>
 moved, <n> changed count` (the kinds that apply); SARIF `pxsig/masks-changed`, a warning. When the
 masks cover over 50% of the capture together, or one covers the story root (the capture found it
-there, or it covers 95% of the capture), or the record has `problems`, the row has `masksBlocked`
-(`{ coverage?, root?, problems? }`), `pass` is false and `reasons` gains `masks cover <n>% of the
+there, and it covers 95% of the capture or more), or the record has `problems`, the row has
+`masksBlocked` (`{ coverage?, root?, problems? }`), `pass` is false and `reasons` gains `masks cover <n>% of the
 capture, over 50%`, `a mask covers the story root: <selectors>`, `mask on a container: <element>`,
 `mask needs a reason: <element>` or `mask not measured: <element>`; SARIF `pxsig/mask-limit`, an
 error. That depends on the render alone: no

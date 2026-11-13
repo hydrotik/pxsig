@@ -67,35 +67,47 @@ fn masks_over_half_the_capture_together_fail_and_no_baseline_is_written() {
 }
 
 #[test]
-fn a_mask_on_the_story_root_fails_whatever_its_share() {
-    // Mask audit 4: `#storybook-root > *` masked everything and was only a warning.
+fn a_mask_on_the_story_root_fails_from_95_percent_of_the_capture() {
+    // Mask audit 4: `#storybook-root > *` masked everything and was only a warning. Owner decision
+    // after the Ready to try: on the story root means at the end of the single-child chain the
+    // capture found (`root`) and over 95% of the capture; a smaller one is weighed by its share.
     let d = scratch("masks-root");
     let png = store(&d, None);
-    fs::write(
-        png.with_extension("masks.json"),
-        json!({ "v": 1, "masks": [{ "selector": "#storybook-root > *", "source": "story", "count": 1,
-            "px": 16, "rects": [[0, 0, 4, 4]], "root": true }] })
-        .to_string(),
-    )
-    .unwrap();
+    let root = |rect: [u32; 4], px: u32| {
+        let m = json!({ "selector": "#storybook-root > *", "source": "story", "count": 1,
+            "px": px, "rects": [rect], "root": true });
+        fs::write(
+            png.with_extension("masks.json"),
+            json!({ "v": 1, "masks": [m] }).to_string(),
+        )
+        .unwrap();
+    };
+    // A single-chain mask at 31% of the 32 × 32 capture: a large mask, approvable.
+    root([0, 0, 32, 10], 320);
+    let r = row(&d, None);
+    assert!(r.get("masksBlocked").is_none(), "{r}");
+    assert_eq!(
+        r["masksLarge"][0]["selector"],
+        json!("#storybook-root > *"),
+        "{r}"
+    );
+    // At 97%: on the story root.
+    root([0, 0, 32, 31], 992);
     let r = row(&d, None);
     assert_eq!(r["pass"], json!(false));
     assert_eq!(
         r["masksBlocked"],
-        json!({ "root": ["#storybook-root > *"] })
+        json!({ "coverage": 0.9688, "root": ["#storybook-root > *"] }),
+        "{r}"
     );
     assert!(r["reasons"]
         .as_array()
         .unwrap()
         .contains(&json!("a mask covers the story root: #storybook-root > *")));
-    // A mask over nearly all of the capture covers the root, whatever the capture recorded.
+    // A mask over all of the capture that the capture did not find on the root: its share fails it.
     write_masks(&png, &[("#all", "project", &[[0, 0, 32, 32]])]);
     let r = row(&d, None);
-    assert_eq!(
-        r["masksBlocked"],
-        json!({ "coverage": 1.0, "root": ["#all"] }),
-        "{r}"
-    );
+    assert_eq!(r["masksBlocked"], json!({ "coverage": 1.0 }), "{r}");
     let _ = fs::remove_dir_all(&d);
 }
 

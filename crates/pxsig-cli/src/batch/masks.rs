@@ -20,8 +20,7 @@ pub const LARGE: f64 = 0.25;
 /// Masks over more than this share of the capture, together, fail the entry (`masksBlocked`), and
 /// no approval clears it: only smaller masks do.
 pub const LIMIT: f64 = 0.5;
-/// One mask over at least this share of the capture covers the story root, whatever the capture
-/// recorded.
+/// A mask the capture found on the story root covers it from this share of the capture on.
 const ROOT: f64 = 0.95;
 /// A box may differ by this many pixels on a side (rounding) and still be the same box.
 const SLACK: f64 = 1.0;
@@ -335,7 +334,7 @@ fn pct(x: f64, limit: f64) -> String {
 
 /// What no approval can pass: `{ coverage?, root?, problems? }`, when the masks together cover
 /// more than `LIMIT` of the capture (`coverage`, their share), one covers the story root (`root`,
-/// selectors: the capture found it there, or it covers `ROOT` of the capture), or the capture
+/// selectors: the capture found it there and it covers `ROOT` of the capture), or the capture
 /// found a mask it may not apply as asked (`problems`, as the record has them). None otherwise.
 pub fn blocked(cur: Option<&Value>) -> Option<Value> {
     let cur = cur?;
@@ -351,7 +350,7 @@ pub fn blocked(cur: Option<&Value>) -> Option<Value> {
         .as_array()
         .into_iter()
         .flatten()
-        .filter(|m| m["root"] == json!(true) || m["area"].as_f64().unwrap_or(0.0) >= ROOT)
+        .filter(|m| m["root"] == json!(true) && m["area"].as_f64().unwrap_or(0.0) >= ROOT)
         .map(|m| &m["selector"])
         .collect();
     if !root.is_empty() {
