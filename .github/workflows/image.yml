@@ -244,6 +244,11 @@ jobs:
   # A pull request that changes the image: build it, run the smoke test and the in-image examples
   # on amd64 (the release build's checks), with the latest pxsig on npm. Read-only: nothing is
   # pushed or attested.
+  #
+  # The examples run this checkout's CLI, so they run this checkout's engine too (built here, on the
+  # runner: Ubuntu, as the image), not the image's: an engine from an earlier release can lack what
+  # the CLI requires (the color rule, 0.7.7), and the CLI refuses its verdicts. A release build
+  # needs no such engine: its checkout is the release tag, the same version as the image's engine.
   pr:
     name: Build and smoke-test (no push)
     timeout-minutes: 60
@@ -251,6 +256,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable branch, 2026-10-26
+        with:
+          toolchain: 1.99.0 # rust-toolchain.toml
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Build this checkout's engine
+        run: cargo build --release --locked -p pxsig-cli
       - name: Build and smoke-test
         shell: bash
         run: |
@@ -265,9 +276,9 @@ jobs:
           docker run --rm pxsig-local sh -c '"$PXSIG_BIN" --version && playwright --version'
           docker run --rm -v "$PWD/docker:/smoke:ro" pxsig-local node /smoke/smoke.mjs env --arch x64 --fonts "$fonts" --image "$REPO:$pxsig-pw$pw"
           docker image inspect pxsig-local --format '{{json .Config.Labels}}' | jq .
-          # The examples end to end inside the image, as the release build runs them: its browsers,
-          # fonts and engine, the checkout's CLI (root, for the bind-mounted checkout and the pnpm install).
-          docker run --rm -u root -e CI=1 -v "$PWD:/repo" -w /repo pxsig-local bash -c \
+          # The examples end to end inside the image: its browsers and fonts, the checkout's CLI and
+          # engine (above), as root (for the bind-mounted checkout and the pnpm install).
+          docker run --rm -u root -e CI=1 -e PXSIG_BIN=/repo/target/release/pxsig -v "$PWD:/repo" -w /repo pxsig-local bash -c \
             'corepack enable pnpm && pnpm install --frozen-lockfile && node scripts/examples-test.mjs single-package'
 
   # Weekly: a Playwright release with no image for the latest pxsig. Reports; never builds.
