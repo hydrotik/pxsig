@@ -27,8 +27,9 @@ each run shows a change that nobody made. Fixed data first; a mask when the valu
   render.
 - **Limits.** All of an entry's masks together over 25% of the capture are a warning
   (`[check] mask:`, summary.md, `check --sarif`, the dashboard): most changes under them would
-  pass. Over 50%, or a mask on the story root, the entry fails, and no approval passes it until the
-  masks are smaller.
+  pass. Over 50%, or a mask on the story root, the entry fails, and no approval passes it: the
+  output and the dashboard say what to do (make the masks smaller, or mask the value, not the
+  story root).
 - **Adopting masks.** Marking a component, or a new `capture.ignore`, gives one "masks changed"
   entry per entry it applies to, approved once. A story's `ignore` against a baseline approved
   with 0.7.6 or earlier is not a change where that baseline's image shows it painted.

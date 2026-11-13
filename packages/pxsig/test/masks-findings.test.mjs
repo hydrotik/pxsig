@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { sarifLog, sarifWrote } from '../src/lib/sarif.mjs';
-import { blockedReasons, maskChange } from '../src/lib/mask-words.mjs';
+import { blockedFixes, blockedReasons, maskChange } from '../src/lib/mask-words.mjs';
 import { maskBrief, maskDetail } from '../src/tools/masks.mjs';
 /** @import { CheckRow } from '../src/types.js' */
 
@@ -45,7 +45,7 @@ test('SARIF: the limit is an error, a masks change and masks over 25% together a
     [
       'pxsig/mask-limit',
       'error',
-      'page--all: masks cover 88% of the capture, over 50%; a mask covers the story root: #root: no approval passes it',
+      'page--all: masks cover 88% of the capture, over 50%; a mask covers the story root: #root: no approval passes it; make the masks smaller; mask the value, not the story root',
     ],
     [
       'pxsig/masks-changed',
@@ -86,8 +86,8 @@ test('the tools: the brief carries the limit and the share together; the detail 
   assert.deepEqual(maskBrief(card), { masksChanged: changed, masksCoverage: 0.3 });
   assert.deepEqual(maskBrief(clock), {});
   assert.deepEqual(maskDetail(all).maskWarnings, [
-    'masks cover 88% of the capture, over 50%: no approval passes this entry until the masks are smaller; flag it for a person',
-    'a mask covers the story root: #root: no approval passes this entry until the masks are smaller; flag it for a person',
+    'masks cover 88% of the capture, over 50%: no approval passes this entry; make the masks smaller; flag it for a person',
+    'a mask covers the story root: #root: no approval passes this entry; mask the value, not the story root; flag it for a person',
   ]);
   assert.deepEqual(maskDetail(card).maskWarnings, [
     'the masks cover 30% of the capture together, over 25%: changes under them are not compared',
@@ -131,4 +131,33 @@ test('check --sarif: the line counts entries over 25% together, one per entry', 
     sarifWrote(sarifLog(rows, { masks: true }), 'out.sarif'),
     '[check] wrote 0 new a11y violations, 1 entry over the mask limits, 1 entry with masks changed, 1 entry with large masks to out.sarif (SARIF)'
   );
+});
+
+// Try-store finding: every block ended "until the masks are smaller", which says nothing to do for
+// a data-volatile with no reason or on a container. Each cause now says its own fix, once.
+test('a block says what to do about its own cause, each fix once', () => {
+  const problem = /** @type {CheckRow} */ (
+    /** @type {unknown} */ ({
+      id: 'row--x',
+      mode: null,
+      pass: false,
+      reasons: [
+        'mask needs a reason: span[data-volatile]',
+        'mask on a container: div[data-volatile="a"]: element children div',
+        'mask on a container: p[data-volatile="b"]: element children svg',
+      ],
+      masks: [],
+      masksBlocked: {
+        problems: [{ kind: 'reason' }, { kind: 'container' }, { kind: 'container' }],
+      },
+    })
+  );
+  assert.deepEqual(blockedFixes(problem), [
+    'put data-volatile on the element that shows the value (a leaf)',
+    'give data-volatile a reason, e.g. data-volatile="relative time"',
+  ]);
+  assert.deepEqual(maskDetail(problem).maskWarnings?.slice(0, 2), [
+    'mask needs a reason: span[data-volatile]: no approval passes this entry; give data-volatile a reason, e.g. data-volatile="relative time"; flag it for a person',
+    'mask on a container: div[data-volatile="a"]: element children div: no approval passes this entry; put data-volatile on the element that shows the value (a leaf); flag it for a person',
+  ]);
 });

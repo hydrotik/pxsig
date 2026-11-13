@@ -12,7 +12,7 @@
  * the baseline's; a warning (`pxsig/large-mask`) where they cover over a quarter of it together.
  */
 import { writeAtomic } from './files.mjs';
-import { blockedReasons, LARGE_SHARE, maskChange } from './mask-words.mjs';
+import { blockedFixes, blockedReasons, LARGE_SHARE, maskChange } from './mask-words.mjs';
 /** @import { A11yResult, CheckRow, ManifestEntry, SarifLog, SarifResult, SarifRule } from '../types.js' */
 
 /** @type {Record<string, string>} */
@@ -110,9 +110,15 @@ export function sarifLog(rows, { entries = new Map(), version = null, masks = fa
   for (const r of masks ? rows : []) {
     const coverage = r.masksCoverage ?? 0;
     if (r.masksBlocked)
-      mask(r, MASK_LIMIT, 'error', `${blockedReasons(r).join('; ')}: no approval passes it`, {
-        coverage,
-      });
+      mask(
+        r,
+        MASK_LIMIT,
+        'error',
+        `${blockedReasons(r).join('; ')}: no approval passes it; ${blockedFixes(r).join('; ')}`,
+        {
+          coverage,
+        }
+      );
     if (r.masksChanged)
       mask(r, MASKS_CHANGED, 'warning', maskChange(r.masksChanged), { masks: r.masksChanged });
     if (!r.masksBlocked && coverage > LARGE_SHARE)

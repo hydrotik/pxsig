@@ -53,7 +53,7 @@ fn masks_over_half_the_capture_together_fail_and_no_baseline_is_written() {
     let err = res["errors"][0].as_str().unwrap();
     assert!(
         err.contains("masks cover 88% of the capture, over 50%")
-            && err.contains("no approval writes this baseline"),
+            && err.ends_with("no approval writes this baseline; make the masks smaller"),
         "{err}"
     );
     let e = capture_png_policy(&png, &d.join("s/a.psig"), 64, None, false, None, None, None);
@@ -327,4 +327,33 @@ fn a_mask_the_capture_may_not_apply_fails_and_no_baseline_is_written() {
         .unwrap()
         .contains("each problem needs a known kind"));
     let _ = fs::remove_dir_all(&d);
+}
+
+#[test]
+fn each_block_says_what_to_do_about_its_own_cause() {
+    // Try-store finding: every refusal ended "reduce the masks", which says nothing to do for a
+    // `data-volatile` with no reason, or one on a container.
+    use super::masks::blocked_fixes;
+    let fix = |b: serde_json::Value| blocked_fixes(&b).join("; ");
+    assert_eq!(fix(json!({ "coverage": 0.6 })), "make the masks smaller");
+    assert_eq!(
+        fix(json!({ "root": ["#r > *"] })),
+        "mask the value, not the story root"
+    );
+    assert_eq!(
+        fix(json!({ "problems": [{ "kind": "reason", "element": "span" }] })),
+        "give data-volatile a reason, e.g. data-volatile=\"relative time\""
+    );
+    assert_eq!(
+        fix(json!({ "problems": [
+            { "kind": "container", "element": "div" },
+            { "kind": "container", "element": "p" }
+        ] })),
+        "put data-volatile on the element that shows the value (a leaf)",
+        "each fix once"
+    );
+    assert_eq!(
+        fix(json!({ "coverage": 1.0, "root": ["#r > *"] })),
+        "make the masks smaller; mask the value, not the story root"
+    );
 }

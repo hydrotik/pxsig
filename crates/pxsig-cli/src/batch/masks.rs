@@ -3,8 +3,8 @@
 //! the record as its header's `masks`, `{ v: 1, masks: [] }` when none applied (docs/spec.md,
 //! section 5). `check` compares the render's masks with its baseline's: a mask added, removed,
 //! grown, moved or matching another number of elements is "masks changed", a change for a person
-//! to approve, never a pass. Masks over a quarter of the capture, together, are a warning; over
-//! half of it, or over the story root, the entry fails and no baseline is written from it.
+//! to approve, never a pass. All masks over a quarter of the capture warn; over half, or on the
+//! story root, fail the entry and no baseline is written from it.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -391,6 +391,32 @@ pub fn blocked_reasons(b: &Value) -> Vec<String> {
     out
 }
 
+/// The fix for each cause of a block (lib/mask-words.mjs says the same).
+pub fn blocked_fixes(b: &Value) -> Vec<&'static str> {
+    let p = b["problems"].as_array();
+    let has = |k: &str| p.is_some_and(|p| p.iter().any(|x| x["kind"] == k));
+    let root = b["root"].as_array().is_some_and(|r| !r.is_empty());
+    [
+        (
+            has("container"),
+            "put data-volatile on the element that shows the value (a leaf)",
+        ),
+        (
+            has("reason"),
+            "give data-volatile a reason, e.g. data-volatile=\"relative time\"",
+        ),
+        (
+            has("unmeasured"),
+            "mask at most 500 elements, all there when the story is ready",
+        ),
+        (b["coverage"].is_number(), "make the masks smaller"),
+        (root, "mask the value, not the story root"),
+    ]
+    .into_iter()
+    .filter_map(|(on, fix)| on.then_some(fix))
+    .collect()
+}
+
 /// The kinds of change, and how a reason words each.
 const KINDS: [(&str, &str); 5] = [
     ("added", "added"),
@@ -473,15 +499,15 @@ pub fn annotate(
     Ok(())
 }
 
-/// Refuse to write a baseline no approval may write: masks over the limits (`blocked`), or a
-/// `.pxsig.json` baseline (`psig` false) from a render with masks, which it cannot record. The
-/// header `masks` for a `.psig` otherwise: the render's, or `none()`.
+/// Refuse a baseline no approval may write (`blocked`, naming each cause and its fix), or a
+/// `.pxsig.json` one (`psig` false) from a render with masks; else the `.psig` header's `masks`.
 pub fn for_baseline(png: &Path, psig: bool) -> Result<Option<Value>> {
     let cur = record(png)?;
     if let Some(b) = blocked(cur.as_ref()) {
         bail!(
-            "{}: no approval writes this baseline; reduce the masks",
-            blocked_reasons(&b).join("; ")
+            "{}: no approval writes this baseline; {}",
+            blocked_reasons(&b).join("; "),
+            blocked_fixes(&b).join("; ")
         );
     }
     if !psig {
