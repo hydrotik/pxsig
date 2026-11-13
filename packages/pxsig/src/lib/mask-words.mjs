@@ -62,3 +62,11 @@ export const blockedFixes = (row) => {
 };
 /** All of an entry's masks together over this share of the capture: a warning. */
 export const LARGE_SHARE = 0.25;
+
+/**
+ * Why no decision is recorded on a blocked row (the server's refusal of approve, reject and the
+ * a11y decisions; `pxsig approve plan`): the masks block it, the author fixes it, and how.
+ * @param {{ reasons?: string[] }} row
+ */
+export const blockedSay = (row) =>
+  `the masks block this entry, and the author fixes it (no decision is needed): ${blockedReasons(row).join('; ')}; ${blockedFixes(row).join('; ')}`;
