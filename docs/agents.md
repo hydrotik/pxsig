@@ -155,6 +155,17 @@ session starts hands the reasons to a new session. With Claude Code, in `.claude
 
 Other assistants with a session-start hook take the same command. `pxsig setup` installs no hook.
 
+## Reporting a gate problem
+
+When the gate got an entry wrong (a change flagged when nothing visible changed, or a visible change
+it passed), `pxsig_gate_report` (or `pxsig report <id>`) prepares a report for an issue on
+hydrotik/pxsig ([gate-issues.md](gate-issues.md)): the text, one image or the image-free summary, and
+the link to the prefilled issue form. It never posts anything. The issue is public and cannot be
+fully removed, so an assistant asks the person before anything is posted: the person looks at the
+images, decides whether they show anything confidential, and opens the link and posts it
+themselves. An assistant never opens the issue form for the person, and never posts the images or
+the text anywhere.
+
 ## Recipes
 
 Every recipe starts the MCP server with the local install,

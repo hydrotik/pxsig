@@ -242,4 +242,8 @@ licence outside `deny.toml`'s `allow` list fails; adding one is a decision for t
 
 ## Reporting issues
 
-Use GitHub issues for bugs and ideas. For security problems, see [SECURITY.md](SECURITY.md).
+Use GitHub issues for bugs and ideas: the forms are Bug, The gate got it wrong, Feature and
+Documentation. For a gate that flagged nothing, or missed a change, `pxsig report <id>` (or Report
+to pxsig in the dashboard's inspector) prepares the report: see [docs/gate-issues.md](docs/gate-issues.md).
+Issues are public: leave out paths, names and anything from a private project. For security
+problems, see [SECURITY.md](SECURITY.md).

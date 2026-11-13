@@ -1,0 +1,93 @@
+name: The gate got it wrong
+description: A change flagged when nothing changed (false positive), or missed when something did (false negative).
+title: '[gate] '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        `pxsig report <id>`, or "Report to pxsig" in the dashboard's inspector, prepares this
+        report for one entry and fills the fields below. It replaces the story id with `entry-1`
+        unless asked to keep it, and holds no paths or user names.
+
+        This issue is public: anyone can see it, and it cannot be fully removed. Post images only
+        when they show nothing confidential. The image-free report (`pxsig report <id>
+        --no-image`) gives the changed regions and their average colours instead, which is often
+        enough to build a test case. See docs/gate-issues.md.
+  - type: dropdown
+    id: direction
+    attributes:
+      label: Direction
+      options:
+        - 'False positive: flagged when nothing visible changed'
+        - 'False negative: passed when something visible changed'
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What changed, or did not
+      description: What the images show, in a sentence or two.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: pxsig version and engine build
+      placeholder: pxsig 0.8.0 · engine 0.8.0
+    validations:
+      required: true
+  - type: input
+    id: entry
+    attributes:
+      label: Entry and mode
+      placeholder: entry-1 · mode dark
+  - type: textarea
+    id: gate
+    attributes:
+      label: Gate settings
+      description: The gate the entry was checked with, as resolved (the color rule included).
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Metrics
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: reasons
+    attributes:
+      label: Reasons
+      description: Every reason the gate gave; none when it passed.
+      render: text
+  - type: textarea
+    id: regions
+    attributes:
+      label: Changed regions
+      description: The pixel diff's region boxes (x, y, width × height, changed pixels), and their average colours in the image-free report.
+      render: text
+  - type: input
+    id: environment
+    attributes:
+      label: Environment class
+      description: OS family, browser major version, GPU class. No host names or paths.
+      placeholder: 'render: macOS arm64 · chromium 141 · GPU angle-metal'
+    validations:
+      required: true
+  - type: textarea
+    id: images
+    attributes:
+      label: Images
+      description: >-
+        Paste the composite (baseline | render | diff) copied from the report, or drop the PNG
+        here. Leave empty for an image-free report.
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Public
+      options:
+        - label: These images contain nothing confidential, and I'm fine posting them publicly.
+          required: true

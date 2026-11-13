@@ -62,6 +62,7 @@ function readFlags() {
     'cli/a11y-prune.mjs',
     'cli/read.mjs',
     'cli/rejected.mjs',
+    'cli/gate-report.mjs',
     'cli/check.mjs',
     'cli/project.mjs',
     'cli/tools.mjs',

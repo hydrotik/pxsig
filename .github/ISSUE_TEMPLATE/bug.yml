@@ -1,0 +1,57 @@
+name: Bug
+description: Something in pxsig does not work as documented.
+title: '[bug] '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue is public. Leave out paths, user names, host names, story ids and anything
+        else from a private project. For a wrong verdict of the gate (a change flagged when
+        nothing changed, or missed), use "The gate got it wrong" instead. Security problems go to
+        private vulnerability reporting (SECURITY.md), never here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: The command or the dashboard action, and what it did.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What was expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest set of steps that shows it.
+      placeholder: |
+        1. pxsig init
+        2. pxsig check --full
+        3. …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versions
+      description: The output of `pxsig version`.
+      placeholder: pxsig 0.8.0 (engine 0.8.0, UI contract 1.5.0)
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: pxsig doctor
+      description: >-
+        The output of `pxsig doctor --plain`, with paths and names taken out.
+      render: text
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Node.js, the browser (Playwright's Chromium or the container image), CI or local.
+      placeholder: macOS 15 arm64 · Node 22 · Playwright Chromium · local
