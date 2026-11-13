@@ -19,6 +19,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 import { PNG } from 'pngjs';
 import { tools } from '../src/tools/index.mjs';
@@ -26,6 +27,17 @@ import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture
 import { ID, reportProject } from './gate-report-helpers.mjs';
 import { fakeStorybook, needs, serve, src } from './server-helpers.mjs';
 import { skipUnless } from './strict.mjs';
+
+/**
+ * Whether `dir` is anywhere in `v`'s JSON, as JSON writes it (a Windows path's backslashes are
+ * escaped there) or with forward slashes.
+ * @param {unknown} v
+ * @param {string} dir
+ */
+const inJson = (v, dir) => {
+  const s = JSON.stringify(v);
+  return [JSON.stringify(dir).slice(1, -1), dir.replaceAll('\\', '/')].some((x) => s.includes(x));
+};
 
 const rust = skipUnless(hasRust, 'Rust binary not built');
 const cli = join(src, '..', 'bin', 'pxsig.mjs');
@@ -47,11 +59,15 @@ globalThis.fetch = refuse;
  * @param {string[]} args
  */
 const pxsig = (cwd, args) =>
-  spawnSync(process.execPath, ['--import', offline, cli, ...args], {
-    cwd,
-    encoding: 'utf8',
-    env: testEnv(testHome, { PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' }),
-  });
+  spawnSync(
+    process.execPath, // A file URL: on Windows an absolute path is not a module specifier.
+    ['--import', pathToFileURL(offline).href, cli, ...args],
+    {
+      cwd,
+      encoding: 'utf8',
+      env: testEnv(testHome, { PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' }),
+    }
+  );
 
 test('pxsig report <id>: the files, the link, no path, no network', { skip: rust }, (t) => {
   const { root, px } = reportProject(t);
@@ -116,7 +132,7 @@ test(
         String(r.note),
         /Nothing was posted\. .*Ask the person before anything is posted/
       );
-      assert.ok(!JSON.stringify(r).includes(root), 'no absolute path');
+      assert.ok(!inJson(r, root), 'no absolute path');
       assert.ok(existsSync(join(P.store.root, String(r.image))));
       await assert.rejects(tool.run({ id: '../x' }), /bad id/);
     } finally {
@@ -146,7 +162,7 @@ test('the server: GET gate-report and POST gate-report/self-check', { skip: rust
     const png = PNG.sync.read(Buffer.from(String(a.body.image).split(',')[1], 'base64'));
     assert.ok(png.width > png.height, 'three panels side by side');
     assert.match(String(a.body.text), /entry-1 · mode dark/);
-    assert.ok(!JSON.stringify(a.body).includes(root), 'no absolute path');
+    assert.ok(!inJson(a.body, root), 'no absolute path');
     const b = await get(`id=${encodeURIComponent(ID)}&noImage=1&keepId=1`);
     assert.equal(b.body.image, null);
     assert.match(String(b.body.text), new RegExp(ID));
@@ -158,7 +174,7 @@ test('the server: GET gate-report and POST gate-report/self-check', { skip: rust
     assert.equal(c.status, 200);
     const body = /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (c.body));
     assert.ok(['error', 'not-checked'].includes(String(body.state)), String(body.state));
-    assert.ok(!JSON.stringify(body).includes(root), 'no absolute path');
+    assert.ok(!inJson(body, root), 'no absolute path');
     assert.equal((await S.post('gate-report/self-check', { id: '../x' })).status, 400);
   } finally {
     S.stop();

@@ -217,11 +217,11 @@ test('config.yml: no blank issues; private vulnerability reporting and the docs'
   const y = form('config.yml');
   assert.equal(y.blank_issues_enabled, false);
   const urls = y.contact_links.map((/** @type {{ url: string }} */ l) => l.url);
-  assert.ok(urls.includes('https://github.com/hydrotik/pxsig/security/advisories/new'));
-  assert.ok(
-    urls.some((/** @type {string} */ u) =>
-      u.startsWith('https://github.com/hydrotik/pxsig/tree/main/docs')
-    )
-  );
+  const at = urls.map((/** @type {string} */ u) => {
+    const x = new URL(u);
+    return `${x.origin}${x.pathname}`;
+  });
+  assert.ok(at.includes('https://github.com/hydrotik/pxsig/security/advisories/new'));
+  assert.ok(at.includes('https://github.com/hydrotik/pxsig/tree/main/docs'));
   for (const l of y.contact_links) assert.ok(l.name && l.about, 'name and about');
 });
