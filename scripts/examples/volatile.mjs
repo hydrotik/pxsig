@@ -5,12 +5,11 @@
  * `--allow-masks`, and names them; once approved, renders whose value differs pass; a
  * `capture.ignore` mask over the whole component fails each entry, no baseline is written from it
  * even with `--allow-masks`, and the output, summary.md and SARIF (an error) say so.
- * Skipped with an engine from a release that predates masks (PXSIG_BIN, as in pxsig's image).
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { expect, log, projectStore, pxsig, tail } from './shared.mjs';
+import { expect, projectStore, pxsig, tail } from './shared.mjs';
 import { baselineAll, checkJson } from './steps.mjs';
 
 /**
@@ -39,13 +38,6 @@ export function volatileSteps(dir, p, build) {
   build();
   let r = pxsig(['check', '--full', '--project', p, '--retries', '0'], dir);
   let rows = checkJson(dir, p).rows;
-  // An engine from a release (PXSIG_BIN: pxsig's image, on a pull request) may predate masks: the
-  // capture wrote the records, but the engine reads none of them. The step needs one that does.
-  if (process.env.PXSIG_BIN && !rows.some((x) => 'masks' in x)) {
-    log('masks: skipped, the engine (PXSIG_BIN) predates masks');
-    writeFileSync(badge, source);
-    return;
-  }
   const badges = rows.filter((x) => x.id.startsWith('components-badge--'));
   const changed = rows.filter((x) => (x.reasons ?? []).includes('masks changed: 1 added'));
   expect(
