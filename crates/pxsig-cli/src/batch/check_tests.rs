@@ -291,6 +291,11 @@ fn a_badge_changing_color_fails_on_the_color_rule_unless_the_project_turns_it_of
         json!(0),
         "same file: measured, nothing moved"
     );
+    assert_eq!(
+        same["differs"],
+        json!(false),
+        "the same file differs in nothing"
+    );
     // #327's wash: grey to the success tint, ΔE00 7.8, under every luminance rule; the flat area is
     // the badge inside its 1px edge (38 × 14).
     badge_png(&d.join("png/a.png"), [222, 233, 226]);
@@ -308,6 +313,7 @@ fn a_badge_changing_color_fails_on_the_color_rule_unless_the_project_turns_it_of
         "{r}"
     );
     assert_eq!(r["color"]["flatArea"], json!(532));
+    assert!(r["differs"].is_null(), "a failing row is not measured");
     assert_eq!(
         r["gate"]["color"],
         json!({ "deltaE": 3.0, "minArea": 64, "cellDeltaE": 5.0, "minCells": 3 })
@@ -317,5 +323,42 @@ fn a_badge_changing_color_fails_on_the_color_rule_unless_the_project_turns_it_of
     let off = row(&check(&opts(&d)).unwrap(), "a");
     assert_eq!(off["pass"], json!(true));
     assert!(off["gate"]["color"].is_null() && off["color"].is_null());
+    assert_eq!(
+        off["differs"],
+        json!(true),
+        "passes, while its pixels are not the baseline's"
+    );
+    let _ = fs::remove_dir_all(&d);
+}
+
+#[test]
+fn differs_says_whether_a_passing_render_is_the_baseline_image_pixel_for_pixel() {
+    let d = scratch("check-differs");
+    badge_png(&d.join("png/a.png"), [241, 242, 245]);
+    super::capture_png(
+        &d.join("png/a.png"),
+        &d.join("s/a.psig"),
+        64,
+        true,
+        None,
+        None,
+    )
+    .unwrap();
+    let m = json!({ "gate": { "threshold": 24, "minCells": 3 }, "stories": [{ "id": "a", "sig": "s/a.psig" }] });
+    fs::write(d.join("m.json"), m.to_string()).unwrap();
+    let cache = d.join("cache");
+    let o = CheckOpts {
+        cache: Some(cache.clone()),
+        ..opts(&d)
+    };
+    assert_eq!(row(&check(&o).unwrap(), "a")["differs"], json!(false));
+    // One step on one channel of the badge: every rule passes it, and the pixels are not the same.
+    badge_png(&d.join("png/a.png"), [241, 242, 244]);
+    let r = row(&check(&o).unwrap(), "a");
+    assert_eq!(r["pass"], json!(true), "{r}");
+    assert_eq!(r["differs"], json!(true));
+    let again = row(&check(&o).unwrap(), "a");
+    assert_eq!(again["cached"], json!(true));
+    assert_eq!(again["differs"], json!(true), "a cached row keeps it");
     let _ = fs::remove_dir_all(&d);
 }
