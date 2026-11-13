@@ -464,7 +464,8 @@ The author of a component sets `data-volatile` once, on the element that shows t
 team that renders the component gets the mask. `pxsig config` lists each config selector with the
 layer that set it. Text under a painted mask is left out of the text record ([`text`](#text)); the
 a11y pass still runs on it. A mask on the story root (the root itself, or an element that is all of
-its content) is recorded as such (`root`), and fails the entry.
+its content) is recorded as such (`root`), and fails the entry when it covers 95% of the capture or
+more; a smaller one is weighed by its share.
 
 Each render records the masks that applied to it, `<id>.masks.json` beside the PNG (selector,
 source, reason, masked pixels), and a baseline approved from it keeps them in its header with each

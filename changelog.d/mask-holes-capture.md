@@ -19,7 +19,8 @@
   as before. Only the elements measured just before the screenshot are painted: an element a mask
   matches only at the screenshot, or a mask on more than 500 elements, is a problem
   (`mask not measured: …`) instead of a mask that was never weighed. A mask on the story root (the
-  root, or an element that is all of its content) is recorded as `root`.
+  root, or an element that is all of its content) is recorded as `root`; it fails the entry when it
+  also covers 95% of the capture or more, and a smaller one is weighed by its share.
   To update: nothing to do; entries with a popover over a masked element read as changed once
   (the popover is now in the capture): review and approve them.
 - **Text is left out of the text record only where a mask is painted.** An element a mask selector
