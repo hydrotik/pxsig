@@ -78,8 +78,9 @@ export function useInspectorActions({
       (current?.state === 'approved' || decidedHere.current.get(key(a11y, row.id)) === 'approve')
     )
       return;
-    // As the button: masks no approval passes are not sent (the A key); the server refuses them too.
-    if (action === 'approve' && !a11y && row.masksBlocked) return;
+    // Masks no approval passes: no decision is sent (the A and R keys), as the buttons are not
+    // offered; the server refuses them too.
+    if (action !== 'unreview' && row.masksBlocked && !row.pass) return;
     setBusy(true);
     setNotice(null);
     setNote(null);

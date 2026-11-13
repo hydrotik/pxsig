@@ -20,6 +20,7 @@ const FILTERS = [
   'changed',
   'new',
   'error',
+  'blocked',
   'flaky',
   'approved',
   'rejected',

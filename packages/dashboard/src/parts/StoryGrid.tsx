@@ -149,6 +149,7 @@ export function StoryCard({
 /** "Changed 3 · New 1": a group's entries counted by status, problems first. */
 const ORDER = [
   'error',
+  'blocked',
   'changed',
   'new',
   'rejected',

@@ -154,7 +154,8 @@
     "rejected": "Rejected",
     "flaky": "Flaky",
     "skipped": "Not run",
-    "error": "Error"
+    "error": "Error",
+    "blocked": "Blocked"
   },
   "empty": {
     "noCheck": "No check results. Run {command}."
@@ -176,7 +177,8 @@
       "coverage": "Components with coverage errors",
       "a11y": "Entries with new a11y violations",
       "flaky": "Flaky",
-      "masks": "Entries with masks over 25%"
+      "masks": "Entries with masks over 25%",
+      "blocked": "Blocked by masks, the author fixes them"
     },
     "components": {
       "one": "{count} component",
@@ -278,7 +280,8 @@
       "rejected": "Rejected",
       "skipped": "Not run (unaffected by changes)",
       "drift": "Any pixel drift (SSIM < 1)",
-      "masks": "Masks over 25% of the capture"
+      "masks": "Masks over 25% of the capture",
+      "blocked": "Blocked by masks"
     },
     "fields": {
       "story": "Story",
@@ -952,6 +955,7 @@
       "flaky": "Failed, then passed on a second render.",
       "skipped": "Left out of a partial check: no edited file affects it.",
       "error": "The render failed.",
+      "blocked": "Masks no approval passes. No decision is needed: the author fixes the masks, and the entry fails until a re-check passes.",
       "description": "The badge on each card and in the inspector header. The card's left edge uses the same colour."
     },
     "coverage": {
@@ -1273,7 +1277,7 @@
         },
         "large": {
           "term": "Masks over 25% and 50%",
-          "meaning": "All of an entry's masks together over 25% of the capture are a warning: most changes under them would pass. Marked Large mask on the entry and its card, counted in Open items, listed by the Masks over 25% of the capture filter. Together over 50% of the capture, or a mask on the story root, they fail the entry, and no approval passes it: Approve is disabled, and the Masks section says what to do (make the masks smaller, or mask the value, not the story root)."
+          "meaning": "All of an entry's masks together over 25% of the capture are a warning: most changes under them would pass. Marked Large mask on the entry and its card, counted in Open items, listed by the Masks over 25% of the capture filter. Together over 50% of the capture, or a mask on the story root, they fail the entry, and no approval passes it: the entry is Blocked, out of the review (no decision is needed, the author fixes it), and the Masks section says what to do (make the masks smaller, or mask the value, not the story root)."
         },
         "adoption": {
           "term": "Adopting masks",
@@ -1347,6 +1351,7 @@
       "approve": "Approve",
       "approveTitle": "Use the latest render as the baseline (A)",
       "approving": "Approving…",
+      "blocked": "Blocked: no decision is needed, the author fixes it.",
       "rejecting": "Rejecting…",
       "accepting": "Accepting…",
       "undo": "Undo",

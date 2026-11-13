@@ -47,16 +47,21 @@
   changes the trimmed size. A mask over the whole capture no longer trims it to 16 × 16.
   To update: entries whose story mask reaches the capture's bottom-right corner change size once:
   review and approve them.
-- **A blocked entry says what to do, and the dashboard does not offer Approve.** Every refusal and
-  every line about masks no approval passes names the fix for its cause: `make the masks smaller`
-  (over 50%), `mask the value, not the story root`, `give data-volatile a reason, e.g.
+- **A blocked entry says what to do, and takes no decision.** Every refusal and every line about
+  masks no approval passes names the fix for its cause: `make the masks smaller` (over 50%),
+  `mask the value, not the story root`, `give data-volatile a reason, e.g.
   data-volatile="relative time"`, `put data-volatile on the element that shows the value (a
   leaf)` (was: `reduce the masks` or `until the masks are smaller` for every cause), in the
-  engine's refusal, `[check] mask:`, SARIF and the tools. In the inspector, Approve is disabled on
-  such an entry with that line as its title, the A key sends nothing, Approve story leaves it out,
-  and the Masks section shows the line also when no mask was painted (a `data-volatile` with no
-  reason or on a container).
-  To update: nothing to do.
+  engine's refusal, `[check] mask:`, SARIF and the tools. The server refuses approve, reject and
+  the a11y decisions on such an entry (409, `the masks block this entry, and the author fixes it
+  (no decision is needed): …`), and `pxsig approve plan` leaves it out with the same words. In the
+  dashboard it is Blocked: out of the review (not in "to review", a session's progress or its
+  arrows, nor the a11y queue), with no Reject or Approve in the inspector (the line is in their
+  place; the A and R keys send nothing; Re-check stays), in Overview's "Blocked by masks, the
+  author fixes them" item and the Review Stories filter "Blocked by masks". It still fails the
+  check, CI and doctor. The Masks section shows the line also when no mask was painted (a
+  `data-volatile` with no reason or on a container).
+  To update: nothing to do; a rejection recorded before on such an entry stays in the log.
 - **A refused request leaves the dashboard usable.** A refused decision or re-check in the
   inspector is said under its header; a card's re-check, and the React analysis' Skip, Cancel,
   Measure and Analyse, say it beside their button. None is a browser alert any more, which held

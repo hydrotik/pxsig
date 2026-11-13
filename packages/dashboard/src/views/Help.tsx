@@ -82,6 +82,7 @@ const STATUSES = [
   'flaky',
   'skipped',
   'error',
+  'blocked',
 ] as const;
 /** Coverage codes in the order the ledger ranks them. */
 const CODES = [

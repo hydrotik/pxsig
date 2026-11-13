@@ -195,6 +195,8 @@ export function Overview({
   const rejected = having('rejected');
   const errors = having('error').filter((r) => !r.skipped);
   const flaky = having('flaky');
+  // Masks no approval passes: out of the review, still failing, for the author to fix.
+  const blocked = having('blocked');
   // Masks over 25% of the capture together: a warning, never a verdict (inspector/masks.ts).
   const largeMasks = rows.filter(masksLarge);
   // Entries whose new violations have no decision yet (an accessibility one, or a visual approval).
@@ -264,6 +266,19 @@ export function Overview({
       action: 'overview.actions.view',
       open: () => go('stories', 'flaky'),
     },
+    // Listed only while there is one, as large masks below.
+    ...(blocked.length
+      ? [
+          {
+            id: 'blocked',
+            label: t('overview.items.blocked'),
+            count: blocked.length,
+            detail: byMode(blocked.map((r) => r.mode)),
+            action: 'overview.actions.view' as const,
+            open: () => go('stories', 'blocked'),
+          },
+        ]
+      : []),
     // Listed only while there is one: a store without large masks shows the same items as before.
     ...(largeMasks.length
       ? [
