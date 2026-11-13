@@ -15,7 +15,8 @@ use crate::io;
 /// Nothing runs when the gate has no colour rule or `r` failed already; the flat-area check is
 /// skipped when the render's file is byte for byte the baseline image, and runs on the cells alone
 /// when the baseline has no image (a pre-0.2 `.pxsig.json`). A render of another size than the
-/// baseline's is not measured (`pxsig_core::colour::apply_colour`).
+/// baseline's gets the flat-area check alone, over the region both cover
+/// (`pxsig_core::colour::apply_colour`).
 pub fn apply(
     r: &mut CompareResult,
     b: &Baseline,

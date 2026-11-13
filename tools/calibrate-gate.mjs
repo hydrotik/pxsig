@@ -251,7 +251,7 @@ try {
           if (r.colour)
             colourM[i][`${s.tag}/${sc.name}/${r.id}`] = {
               area: r.colour.flatArea ?? 0,
-              cells: r.colour.cells,
+              cells: r.colour.cells ?? 0,
             };
       }
     );

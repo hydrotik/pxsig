@@ -194,10 +194,11 @@ fn text_turning_from_green_to_red_fails_on_its_cells() {
     assert!(!r.pass);
     let m = r.colour.as_ref().unwrap();
     assert!(m.flat_area.unwrap() < 64, "{m:?}");
-    assert!(m.cells >= 3, "{m:?}");
+    let cells = m.cells.unwrap();
+    assert!(cells >= 3, "{m:?}");
     assert_eq!(
         r.reasons,
-        [format!("colour cells {} >= 3 (ΔE00 >= 5)", m.cells)]
+        [format!("colour cells {cells} >= 3 (ΔE00 >= 5)")]
     );
 }
 
@@ -212,7 +213,10 @@ fn the_calibration_noise_passes() {
             let r = run(&page, &cur, &gate());
             assert!(r.pass, "{name}: {:?} {:?}", r.reasons, r.colour);
             let m = r.colour.as_ref().unwrap();
-            assert!(m.flat_area.unwrap() < 64 && m.cells < 3, "{name}: {m:?}");
+            assert!(
+                m.flat_area.unwrap() < 64 && m.cells.unwrap() < 3,
+                "{name}: {m:?}"
+            );
         }
     }
 }
@@ -226,6 +230,7 @@ fn identical_renders_measure_nothing() {
         r.colour,
         Some(ColourMetrics {
             flat_area: Some(0),
+            cells: Some(0),
             ..ColourMetrics::default()
         })
     );
@@ -323,33 +328,76 @@ fn without_a_baseline_image_only_the_cells_are_checked() {
     assert_eq!(r.colour.unwrap().flat_area, None);
 }
 
-#[test]
-fn a_render_of_another_size_is_left_to_the_other_rules() {
-    // A trimmed component one pixel wider: every cell's edge moves, so the cells cannot be compared.
-    let base = badge(GREY, GREY_BORDER, GREEN_TEXT);
-    let b = signature_of(&base, W, H, GRID);
+/// `d` (W × H) one pixel wider: a white column on the right, as a trimmed render grows.
+fn wider(d: &[u8]) -> Vec<u8> {
+    let mut o = Vec::with_capacity((W + 1) * H * 4);
+    for y in 0..H {
+        o.extend_from_slice(&d[y * W * 4..(y + 1) * W * 4]);
+        o.extend_from_slice(&[255; 4]);
+    }
+    o
+}
+
+/// Today's gate on a render one pixel wider than the baseline, then the colour rule.
+fn run_wider(base: &[u8], cur: &[u8]) -> CompareResult {
+    let b = signature_of(base, W, H, GRID);
+    let detail = detail_of(base, W, H, DetailParams::default());
+    let g = gate();
     let mut r = compare_with_detail(
         &b.sig,
         &b.ahash,
         &b.dhash,
         &b.sha256,
         GRID,
-        None,
-        &base,
-        W,
+        Some(&detail),
+        cur,
+        W + 1,
         H,
-        &gate(),
+        &g,
     );
-    let wide = vec![255u8; (W + 1) * H * 4];
     apply_colour(
         &mut r,
-        Some((&base, W, H)),
+        Some((base, W, H)),
         (W, H),
-        (&wide, W + 1, H),
+        (cur, W + 1, H),
         &ColourGate::default(),
     );
-    assert!(r.pass);
-    assert!(r.colour.is_none(), "not measured");
+    r
+}
+
+#[test]
+fn a_recolour_with_a_one_pixel_size_change_fails_on_the_region_both_cover() {
+    let base = badge(GREY, GREY_BORDER, GREEN_TEXT);
+    let cur = wider(&badge([222, 233, 226], [187, 214, 196], GREEN_TEXT));
+    let r = run_wider(&base, &cur);
+    assert!(!r.pass, "{:?}", r.colour);
+    let m = r.colour.as_ref().unwrap();
+    assert_eq!(
+        m.cells, None,
+        "the cells no longer cover the same pixels: not compared"
+    );
+    assert_eq!(
+        r.reasons,
+        [format!(
+            "colour ΔE00 7.8 over {} px (flat area) >= 3",
+            m.flat_area.unwrap()
+        )]
+    );
+}
+
+#[test]
+fn sub_pixel_noise_with_a_one_pixel_size_change_passes() {
+    for page in [
+        badge(GREY, GREY_BORDER, GREEN_TEXT),
+        badge([22, 163, 74], [22, 163, 74], [255; 3]),
+        ui(),
+    ] {
+        let [(_, shift), ..] = noise(&page);
+        let r = run_wider(&page, &wider(&shift));
+        assert!(r.pass, "{:?} {:?}", r.reasons, r.colour);
+        let m = r.colour.as_ref().unwrap();
+        assert!(m.flat_area.unwrap() < 64 && m.cells.is_none(), "{m:?}");
+    }
 }
 
 #[test]

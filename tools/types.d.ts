@@ -27,7 +27,7 @@ export interface EngineCheckResult {
   colour?: {
     flatArea: number | null;
     flatDeltaE: number;
-    cells: number;
+    cells: number | null;
     maxCellDeltaE: number;
   } | null;
   reasons?: unknown[];

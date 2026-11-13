@@ -110,7 +110,8 @@ export const COLOUR_LIMITS = Object.freeze({
  * checks off (`minArea` or `minCells` 0), or loosened past [COLOUR_LIMITS]. Read from each row's
  * resolved gate, so every layer counts (the project, the workspace defaults, a story's own gate).
  * Rows from an engine before the rule (no `colour` key) are not counted.
- * `integrity.severity['gate-colour-off']` overrides the severity.
+ * Its severity is warn at least: `integrity.severity['gate-colour-off']` can raise it to error, and
+ * a lower value (info) is not applied but named in the reason, so it is never ignored quietly.
  * @param {IntegrityReport | null} report
  * @param {IntegrityContext} ctx
  * @returns {LedgerSetup[]}
@@ -139,12 +140,17 @@ export function colourGateProblems(report, ctx) {
     ...(off.length ? [`${off.length} with it off`] : []),
     ...(loose.length ? [`${loose.length} with it loosened past its limits`] : []),
   ];
+  const set = ctx.integrity?.severity?.['gate-colour-off'];
+  const lowered =
+    set && set !== 'warn' && set !== 'error'
+      ? `. integrity.severity sets gate-colour-off to "${set}", which is not applied: it is a warning at least, and can only be raised to error`
+      : '';
   return [
     {
       code: 'gate-colour-off',
-      severity: ctx.integrity?.severity?.['gate-colour-off'] ?? 'warn',
+      severity: set === 'error' ? 'error' : 'warn',
       count: n,
-      reason: `${n} entries were checked without the colour rule (${parts.join(', ')}: ${ids.slice(0, 3).join(', ')}${n > 3 ? ', …' : ''}): a colour change in a small area, such as a badge tint or a status colour, passes them. \`pxsig config\` names the layer that sets gate.colour; its limits are deltaE ${COLOUR_LIMITS.deltaE}, minArea ${COLOUR_LIMITS.minArea}, cellDeltaE ${COLOUR_LIMITS.cellDeltaE} and minCells ${COLOUR_LIMITS.minCells}, and 0 turns a check off`,
+      reason: `${n} entries were checked without the colour rule (${parts.join(', ')}: ${ids.slice(0, 3).join(', ')}${n > 3 ? ', …' : ''}): a colour change in a small area, such as a badge tint or a status colour, passes them. \`pxsig config\` names the layer that sets gate.colour; its limits are deltaE ${COLOUR_LIMITS.deltaE}, minArea ${COLOUR_LIMITS.minArea}, cellDeltaE ${COLOUR_LIMITS.cellDeltaE} and minCells ${COLOUR_LIMITS.minCells}, and 0 turns a check off${lowered}`,
     },
   ];
 }

@@ -13,8 +13,9 @@
 //!   `cell_delta_e` or more. This one sees a change to thin strokes, which are never flat.
 //!
 //! The flat-area check needs the baseline image (a `.psig` holds it); the cell check needs only the
-//! signature. Both images are alpha-flattened onto white, like the signature. Neither runs when the
-//! render's size is not the baseline's ([`apply_colour`]).
+//! signature. Both images are alpha-flattened onto white, like the signature. When the render's size
+//! is not the baseline's, only the flat-area check runs, over the region both cover
+//! ([`apply_colour`]).
 
 use std::collections::HashMap;
 use std::hash::{BuildHasherDefault, Hasher};
@@ -58,8 +59,9 @@ pub struct ColourMetrics {
     pub flat_area: Option<usize>,
     /// Mean CIEDE2000 difference over that region (0 when there is none).
     pub flat_delta_e: f64,
-    /// Cells whose mean colour moved by at least `cell_delta_e`.
-    pub cells: usize,
+    /// Cells whose mean colour moved by at least `cell_delta_e`; `None` when the cell check did not
+    /// run (`min_cells` 0, or a render of another size than the baseline's).
+    pub cells: Option<usize>,
     /// The largest cell difference.
     pub max_cell_delta_e: f64,
 }
@@ -299,14 +301,24 @@ fn one_dp(v: f64) -> f64 {
     (v * 10.0).round() / 10.0
 }
 
+/// The top-left `w × h` of an RGBA image `width` pixels wide.
+fn top_left(data: &[u8], width: usize, w: usize, h: usize) -> Vec<u8> {
+    (0..h)
+        .flat_map(|y| &data[y * width * 4..(y * width + w) * 4])
+        .copied()
+        .collect()
+}
+
 /// Apply the colour rule to a result the other rules passed: measure, record the metrics, and fail
 /// it with a reason for each check that trips. `base` is the baseline image when there is one,
 /// `base_size` the size the baseline was made from (its record's), and `cur` the render the result
 /// was made from. Nothing runs when the result already failed (its verdict cannot change, and the
-/// flat-area check costs a pass over every pixel), or when the render's size is not the baseline's:
-/// that is a layout change for the other rules, and the signature's cells, laid over a different
-/// size, no longer cover the same pixels (a trimmed component one pixel wider moves every cell's
-/// edge, which a colour difference reads as many changed cells).
+/// flat-area check costs a pass over every pixel).
+///
+/// When the render's size is not the baseline's, the flat-area check compares the region both
+/// cover, anchored at the top-left (where a trimmed render keeps its origin), and the cell check is
+/// skipped: the signature's cells, laid over a different size, no longer cover the same pixels (a
+/// trimmed component one pixel wider moves every cell's edge).
 pub fn apply_colour(
     r: &mut CompareResult,
     base: Option<Rgba>,
@@ -314,15 +326,23 @@ pub fn apply_colour(
     cur: Rgba,
     g: &ColourGate,
 ) {
-    if !r.pass || base_size != (cur.1, cur.2) {
+    if !r.pass {
         return;
     }
+    let same = base_size == (cur.1, cur.2);
     let mut m = ColourMetrics::default();
-    if g.min_cells > 0 {
-        (m.cells, m.max_cell_delta_e) = cell_colour(&r.base_sig, &r.cur_sig, g.cell_delta_e);
+    if g.min_cells > 0 && same {
+        let (n, max) = cell_colour(&r.base_sig, &r.cur_sig, g.cell_delta_e);
+        (m.cells, m.max_cell_delta_e) = (Some(n), max);
     }
-    if let Some(base) = base.filter(|b| g.min_area > 0 && (b.1, b.2) == base_size) {
-        let (area, de) = flat_change(base, cur, g.delta_e);
+    if let Some((bd, bw, bh)) = base.filter(|_| g.min_area > 0) {
+        let (area, de) = if (bw, bh) == (cur.1, cur.2) {
+            flat_change((bd, bw, bh), cur, g.delta_e)
+        } else {
+            let (w, h) = (bw.min(cur.1), bh.min(cur.2));
+            let (a, b) = (top_left(bd, bw, w, h), top_left(cur.0, cur.1, w, h));
+            flat_change((&a, w, h), (&b, w, h), g.delta_e)
+        };
         m.flat_area = Some(area);
         m.flat_delta_e = de;
     }
@@ -333,10 +353,10 @@ pub fn apply_colour(
             g.delta_e
         ));
     }
-    if g.min_cells > 0 && m.cells >= g.min_cells {
+    if let Some(n) = m.cells.filter(|&n| g.min_cells > 0 && n >= g.min_cells) {
         r.reasons.push(format!(
-            "colour cells {} >= {} (ΔE00 >= {})",
-            m.cells, g.min_cells, g.cell_delta_e
+            "colour cells {n} >= {} (ΔE00 >= {})",
+            g.min_cells, g.cell_delta_e
         ));
     }
     r.pass = r.reasons.is_empty();

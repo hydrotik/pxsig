@@ -57,9 +57,23 @@ test('gate-colour-off: rows checked with the rule off or past its limits, from a
     /^3 entries were checked without the colour rule \(1 with it off, 2 with it loosened past its limits: off, wide, no-flat\)/
   );
   assert.match(w.reason, /deltaE 10, minArea 1024, cellDeltaE 15 and minCells 16/);
-  const [i] = colourGateProblems(
-    report([['off', null]]),
-    /** @type {any} */ ({ integrity: { severity: { 'gate-colour-off': 'info' } } })
-  );
-  assert.equal(i.severity, 'info', 'integrity.severity overrides it');
+  /** @param {string} severity */
+  const at = (severity) =>
+    colourGateProblems(
+      report([['off', null]]),
+      /** @type {any} */ ({ integrity: { severity: { 'gate-colour-off': severity } } })
+    )[0];
+  assert.equal(at('error').severity, 'error', 'integrity.severity can raise it');
+  assert.doesNotMatch(at('error').reason, /not applied/);
+  assert.equal(at('warn').severity, 'warn');
+  for (const low of ['info', 'off']) {
+    const w = at(low);
+    assert.equal(w.severity, 'warn', `${low}: never lowered`);
+    assert.ok(
+      w.reason.endsWith(
+        `. integrity.severity sets gate-colour-off to "${low}", which is not applied: it is a warning at least, and can only be raised to error`
+      ),
+      'and the lowered value is named, not ignored quietly'
+    );
+  }
 });

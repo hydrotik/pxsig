@@ -211,12 +211,12 @@ The colour rule fails an entry the other rules pass when a small area changes co
 same lightness: a badge's tint, a status colour, a lost row highlight
 ([spec.md](spec.md#the-colour-rule)). It is on by default since 0.7.7.
 
-| Key          | Default | Limit | Meaning                                                                                                    |
-| ------------ | ------- | ----- | ---------------------------------------------------------------------------------------------------------- |
-| `deltaE`     | `3`     | 10    | CIEDE2000 difference at which a flat pixel (3×3 luminance range under 8 in both images) counts as changed. |
-| `minArea`    | `64`    | 1024  | Fail when at least this many connected flat pixels changed. `0` turns the flat-area check off.             |
-| `cellDeltaE` | `5`     | 15    | CIEDE2000 difference of a cell's mean colour at which the cell counts as changed.                          |
-| `minCells`   | `3`     | 16    | Fail when at least this many cells changed colour. `0` turns the cell check off.                           |
+| Key          | Default | Limit | Meaning                                                                                                                                                                                                          |
+| ------------ | ------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `deltaE`     | `3`     | 10    | CIEDE2000 difference at which a flat pixel (3×3 luminance range under 8 in both images) counts as changed. A render of another size than its baseline is compared over the region both cover, from the top-left. |
+| `minArea`    | `64`    | 1024  | Fail when at least this many connected flat pixels changed. `0` turns the flat-area check off.                                                                                                                   |
+| `cellDeltaE` | `5`     | 15    | CIEDE2000 difference of a cell's mean colour at which the cell counts as changed.                                                                                                                                |
+| `minCells`   | `3`     | 16    | Fail when at least this many cells changed colour. `0` turns the cell check off. Not checked when the render's size is not the baseline's.                                                                       |
 
 Loosen it for a project the way any gate key is set: in `pxsig.config.json`, in the workspace
 file's `defaults.gate`, or for one story in `parameters.pxsig.gate` (it has no `PXSIG_*` variable
@@ -231,7 +231,8 @@ It cannot be turned off quietly. The resolved rule is recorded on every row of `
 with the rule off, with either check off, or with a key past its limit (the schema allows no more,
 but a story's gate is not checked against it) is counted in the `gate-colour-off` warning that
 `pxsig doctor` and the dashboard's Coverage view show
-([integrity.md](integrity.md#setup-problems)). The defaults are calibrated on container renders.
+([integrity.md](integrity.md#setup-problems)). That warning cannot be lowered: `integrity.severity`
+can raise it to `error`, and a lower value is named in its reason instead of applied. The defaults are calibrated on container renders.
 
 ### `modes`
 
