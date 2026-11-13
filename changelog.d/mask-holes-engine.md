@@ -11,7 +11,9 @@
   names the masks and their share together), the Open items row and the Review Stories filter
   "Masks over 25% of the capture" (were: one mask over 25%). summary.md has a line for each;
   `check --sarif` reports them as `pxsig/mask-limit` (error), `pxsig/masks-changed` and
-  `pxsig/large-mask` (warnings, one per entry instead of one per mask).
+  `pxsig/large-mask` (warnings, one per entry instead of one per mask), and its `[check] wrote …`
+  line counts them that way: entries over the mask limits, with masks changed and with large
+  masks (was: each mask over 25% on its own, the other masks results counted as a11y violations).
   To update: make each such mask smaller (mask the value, not the component), or give the story
   fixed data instead (`pxsig help volatile`).
 - **`check --update` and `pxsig baseline` refuse a masks change without `--allow-masks`.** An entry

@@ -9,7 +9,7 @@
  */
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { sarifLog } from '../src/lib/sarif.mjs';
+import { sarifLog, sarifWrote } from '../src/lib/sarif.mjs';
 import { blockedReasons, maskChange } from '../src/lib/mask-words.mjs';
 import { maskBrief, maskDetail } from '../src/tools/masks.mjs';
 /** @import { CheckRow } from '../src/types.js' */
@@ -92,4 +92,43 @@ test('the tools: the brief carries the limit and the share together; the detail 
   assert.deepEqual(maskDetail(card).maskWarnings, [
     'the masks cover 30% of the capture together, over 25%: changes under them are not compared',
   ]);
+});
+
+// Owner decision on masks together: the line counts entries as the log has them, not masks on
+// their own (masksLarge), and the masks findings are never counted as a11y violations.
+test('check --sarif: the line counts entries over 25% together, one per entry', () => {
+  const two = /** @type {CheckRow} */ (
+    /** @type {unknown} */ ({
+      id: 'chart--pair',
+      mode: null,
+      pass: true,
+      masksCoverage: 0.3,
+      masks: [
+        { selector: '.a', source: 'story', area: 0.15 },
+        { selector: '.b', source: 'story', area: 0.15 },
+      ],
+    })
+  );
+  // Before: masksLarge counted, so 1 large mask and the other result read as an a11y violation.
+  const one = /** @type {CheckRow} */ (
+    /** @type {unknown} */ ({
+      id: 'chart--one',
+      mode: null,
+      pass: true,
+      masksCoverage: 0.45,
+      masks: [
+        { selector: '.big', source: 'story', area: 0.3 },
+        { selector: '.small', source: 'story', area: 0.15 },
+      ],
+      masksLarge: [{ selector: '.big', source: 'story', area: 0.3 }],
+    })
+  );
+  assert.equal(
+    sarifWrote(sarifLog([two, one], { masks: true }), 'out.sarif'),
+    '[check] wrote 0 new a11y violations, 2 entries with large masks to out.sarif (SARIF)'
+  );
+  assert.equal(
+    sarifWrote(sarifLog(rows, { masks: true }), 'out.sarif'),
+    '[check] wrote 0 new a11y violations, 1 entry over the mask limits, 1 entry with masks changed, 1 entry with large masks to out.sarif (SARIF)'
+  );
 });
