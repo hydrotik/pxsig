@@ -478,6 +478,8 @@ globalStyle(`${insToolbar} > *`, { alignItems: 'center' });
 // Reject and Approve, each in a box: while its request runs the box is aria-busy and shows the
 // progress cursor (the disabled button inside may take no pointer, so the box is what it is over).
 export const decision = style({ display: 'inline-flex', alignItems: 'center' });
+/** A blocked entry's line, in Reject and Approve's place (inspector/controls.tsx): running text. */
+export const blockedNote = style({ maxInlineSize: '60ch' });
 globalStyle(`${decision}[aria-busy="true"], ${decision}[aria-busy="true"] *`, {
   cursor: 'progress',
 });

@@ -202,12 +202,17 @@ pub use baseline::{
 };
 pub use check::{check, compare_png, detail_json, metrics_json, Artifacts, CheckOpts};
 pub use color::color_json;
-pub use masks::annotate as annotate_masks;
+pub use masks::{
+    annotate as annotate_masks, blocked_reasons as masks_blocked_reasons,
+    describe as describe_masks,
+};
 
 #[cfg(test)]
 mod baseline_tests;
 #[cfg(test)]
 mod check_tests;
+#[cfg(test)]
+mod masks_limits_tests;
 #[cfg(test)]
 mod masks_tests;
 #[cfg(test)]

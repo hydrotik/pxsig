@@ -1,13 +1,22 @@
 /**
- * The reference adapter's Badge and StatGroup, which show a tone one way (R4 in the UI contract):
- * a badge in the design system's neutral variants with its text in the tone's colour, and a stat
- * card with no accent edge, its value in the tone's colour (tones.css.ts). index.tsx passes the
- * design-system components in, so every part the adapter uses is named in that one file.
+ * The reference adapter's Badge and StatGroup, which show a tone as R4 in the UI contract allows:
+ * a badge as the design system draws it (`success`, `warning` and `danger` in its tinted variants:
+ * a wash, a border and a dot in the tone's colour; `neutral` and `info` in its neutral ones, the
+ * text in the tone's colour), and a stat card with no accent edge, its value in the tone's colour
+ * (tones.css.ts). index.tsx passes the design-system components in, so every part the adapter
+ * uses is named in that one file.
  */
 import React from 'react';
 import type * as DS from '@hydrotik/design-system';
 import type * as C from '../../contract';
 import * as t from './tones.css';
+
+/** A tone the design system has a tinted variant for; it has one look, whatever the emphasis. */
+const BADGE_VARIANT: Partial<Record<C.Tone, 'success' | 'warning' | 'destructive'>> = {
+  success: 'success',
+  warning: 'warning',
+  danger: 'destructive',
+};
 
 export const toneBadge = (Base: typeof DS.Badge) =>
   function Badge({
@@ -20,7 +29,7 @@ export const toneBadge = (Base: typeof DS.Badge) =>
   }: C.BadgeProps) {
     return (
       <Base
-        variant={emphasis === 'outline' ? 'outline' : 'secondary'}
+        variant={BADGE_VARIANT[tone] ?? (emphasis === 'outline' ? 'outline' : 'secondary')}
         data-tone={tone}
         pulse={pulse}
         title={title}

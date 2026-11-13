@@ -23,6 +23,7 @@ export const masksChangedRow = () => ({
     { selector: TIME, source: 'attribute', reason: 'relative time', area: 0.3125 },
     { selector: '.build-id', source: 'project', area: 0.025 },
   ],
+  masksCoverage: 0.3375,
   masksLarge: [{ selector: TIME, source: 'attribute', area: 0.3125 }],
   masksChanged: { added: [TIME], removed: ['.clock'], grew: ['.build-id'] },
   masksBaseline: [

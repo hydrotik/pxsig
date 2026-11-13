@@ -11,6 +11,7 @@ import * as s from '../dashboard.css';
 import type { ModeGroupState, ZoomState } from '../diff-viewer';
 import type { Analysis } from './analyse';
 import type { InspectTarget, Loaded } from './Inspector';
+import { blockedLine } from './masks';
 import { MODES } from './prefs';
 import type { Mode } from './Stage';
 
@@ -411,6 +412,9 @@ export function ReviewButtons({
       {button}
     </span>
   );
+  // Masks no approval passes (over half the capture, the story root, a data-volatile problem): no
+  // decision for a person. Reject and Approve are not offered; the line says why and what to do.
+  const blocked = blockedLine(row);
   const rejectLabel = (
     <DecisionLabel
       label={t('inspector.review.reject')}
@@ -454,6 +458,13 @@ export function ReviewButtons({
           />
         </Button>
       )}
+    </>
+  ) : blocked ? (
+    <>
+      {undo}
+      <span className={`${s.small} ${s.blockedNote}`}>
+        {t('inspector.review.blocked')} {blocked}
+      </span>
     </>
   ) : (
     <>

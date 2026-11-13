@@ -293,7 +293,7 @@
       "summary": "Re-render and re-check entries: some through the running server, or the full check. Never writes baselines unless --update is given by a person.",
       "usage": [
         "pxsig check [ids…] [--changed a.tsx,b.ts] [--since <ref>] [--all]",
-        "pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] [--only id,id] [--concurrency 8] [--retries 2] [--no-a11y] [--link-base <url>] [--out <name>] [--no-server] [--strict-env] [--sarif file] [--react-sarif file] [--warn[=gates]] [--enforce[=gates]] [--update [--kind word] [--reason text]]"
+        "pxsig check --full [--suite name] [--since <ref> | --changed a,b] [--modes a,b] [--only id,id] [--concurrency 8] [--retries 2] [--no-a11y] [--link-base <url>] [--out <name>] [--no-server] [--strict-env] [--sarif file] [--react-sarif file] [--warn[=gates]] [--enforce[=gates]] [--update [--kind word] [--reason text] [--allow-masks [ids]]]"
       ],
       "flags": [
         {
@@ -374,6 +374,11 @@
         {
           "name": "update",
           "meaning": "Write baselines from the renders instead of checking. A person at a terminal only, after typing UPDATE <n> BASELINES."
+        },
+        {
+          "name": "allow-masks",
+          "value": "[ids]",
+          "meaning": "With --update: also write the baselines whose masks changed (added, removed, grew, moved or matching another number of elements); alone, every entry's, with ids, those. Without it such an entry is not written, and each one is named. Masks over 50% of the capture, or on the story root, are never written."
         },
         {
           "name": "kind",

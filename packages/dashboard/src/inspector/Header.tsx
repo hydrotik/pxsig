@@ -65,7 +65,7 @@ export function Header({
               {textBadge(row.textDiff)}
             </Badge>
           ) : null}
-          {/* Masks (side/MasksSection.tsx): a change, or a mask over 25% of the capture. */}
+          {/* Masks (side/MasksSection.tsx): a change, or masks over 25% of the capture together. */}
           <MaskBadges row={row} />
           {siblingToggle}
           <span className={`${s.micro} ${s.clip}`}>

@@ -85,7 +85,7 @@ fn compare_exits_1_on_a_masks_change_with_the_same_pixels() {
     // A `data-volatile` element marked since the baseline: the same pixels, a masks change.
     std::fs::write(
         a.with_extension("masks.json"),
-        r#"{"v":1,"masks":[{"selector":"[data-volatile]","source":"attribute","count":1,"px":8}]}"#,
+        r#"{"v":1,"masks":[{"selector":"[data-volatile]","source":"attribute","count":1,"px":8,"rects":[[0,0,4,2]]}]}"#,
     )
     .unwrap();
     assert_eq!(cmd_compare(&a, &sig, out, true, &gate).unwrap(), 1);
@@ -96,11 +96,11 @@ fn baseline_exits_2_when_an_entry_has_no_render_and_check_exits_1_on_a_failed_en
     let d = scratch("batch");
     store(&d, false);
     assert_eq!(
-        cmd_baseline(batch_args(&d, None), false, None, false).unwrap(),
+        cmd_baseline(batch_args(&d, None), false, None, None, false).unwrap(),
         0
     );
     assert_eq!(
-        cmd_baseline(batch_args(&d, Some("a")), true, None, true).unwrap(),
+        cmd_baseline(batch_args(&d, Some("a")), true, None, None, true).unwrap(),
         0
     );
 
@@ -148,7 +148,7 @@ fn baseline_exits_2_when_an_entry_has_no_render_and_check_exits_1_on_a_failed_en
     fs::create_dir_all(e.join("png")).unwrap();
     store(&e, true);
     assert_eq!(
-        cmd_baseline(batch_args(&e, None), false, None, false).unwrap(),
+        cmd_baseline(batch_args(&e, None), false, None, None, false).unwrap(),
         2
     );
 }
@@ -172,7 +172,7 @@ fn diff_exits_1_on_a_change_and_writes_the_mask() {
 fn report_writes_markdown_or_junit_and_refuses_another_format() {
     let d = scratch("report");
     store(&d, false);
-    cmd_baseline(batch_args(&d, None), false, None, false).unwrap();
+    cmd_baseline(batch_args(&d, None), false, None, None, false).unwrap();
     let res = batch::check(&CheckOpts {
         manifest: d.join("m.json"),
         png_dir: d.join("png"),

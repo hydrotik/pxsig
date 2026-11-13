@@ -77,7 +77,12 @@ fn dispatch(method: &str, p: &Value) -> Result<Value> {
             }
             let mut v = json!({ "pass": r.pass, "metrics": metrics, "reasons": r.reasons, "detail": batch::detail_json(&r), "color": batch::color_json(&r) });
             // The masks as `check` weighs them: a masks change fails here too.
-            batch::annotate_masks(&mut v, &PathBuf::from(s(p, "png")?), b.masks.as_ref())?;
+            batch::annotate_masks(
+                &mut v,
+                &PathBuf::from(s(p, "png")?),
+                b.masks.as_ref(),
+                b.image.as_deref(),
+            )?;
             Ok(v)
         }
         "check" => batch::check(&CheckOpts {
@@ -115,6 +120,12 @@ fn dispatch(method: &str, p: &Value) -> Result<Value> {
                 Some(serde_json::from_value(p["env"].clone())?)
             } else {
                 None
+            },
+            // `allowMasks`: true, every entry; ids, those (as `pxsig baseline --allow-masks`).
+            allow_masks: match &p["allowMasks"] {
+                Value::Bool(true) => Some(None),
+                Value::Array(_) => only(&json!({ "only": p["allowMasks"] })).map(Some),
+                _ => None,
             },
         }),
         "diff" => {

@@ -20,6 +20,7 @@ import {
 import { reportsIgnoredAsync } from '../lib/decisions.mjs';
 import { BY_STORY_OFF, byStory, storySkip } from '../lib/approvals/story.mjs';
 import { readJson, writeJson } from '../lib/files.mjs';
+import { blockedSay } from '../lib/mask-words.mjs';
 import { boxesFile } from '../lib/capture/boxes.mjs';
 import { textSettings } from '../lib/text/config.mjs';
 import { NEEDS_PERSON } from '../lib/guard.mjs';
@@ -176,6 +177,20 @@ export const review = (srv, S, action, id, meta = {}) =>
   serialise(S.reviewPath, () => decide(srv, S, action, id, meta));
 
 /**
+ * Masks no approval passes (`masksBlocked` on the entry's row): no decision is recorded on the
+ * entry, approve, reject or an a11y one; the author fixes it (lib/mask-words.mjs `blockedSay`).
+ * @param {ProjectState} S
+ * @param {string} id
+ */
+export function refuseBlocked(S, id) {
+  // check.json is pxsig's own file.
+  const row = /** @type {CheckReport} */ (readJson(S.checkPath, { rows: [] })).rows.find(
+    (r) => r.id === id
+  );
+  if (row?.masksBlocked && !row.pass) throw httpError(409, `${id}: ${blockedSay(row)}`);
+}
+
+/**
  * @param {ServeContext} srv
  * @param {ProjectState} S
  * @param {string} action
@@ -184,6 +199,7 @@ export const review = (srv, S, action, id, meta = {}) =>
  */
 async function decide(srv, S, action, id, meta) {
   needLock(srv, S);
+  if (action !== 'unreview') refuseBlocked(S, id);
   // Asked before anything is read, and only for a reject with a note: no spawn otherwise.
   const ignored = action === 'reject' && hasNote(meta) ? await reportsIgnoredAsync(S.P) : false;
   // review.json is this server's own file.
