@@ -1,6 +1,7 @@
 /**
  * The inspector's Report to pxsig (inspector/GateReport.tsx) through the server (server.md): the
- * self-check, the entry re-rendered and checked on this machine, then the report itself. Neither
+ * self-check, the entry re-rendered on this machine and judged (a dry re-render: no result or
+ * decision changes), then the report itself. Neither
  * decides anything, so a read-only page (no dashboard link) may prepare one. Nothing here posts
  * anything anywhere but this pxsig server.
  */

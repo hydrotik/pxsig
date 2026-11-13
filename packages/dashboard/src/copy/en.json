@@ -1074,7 +1074,7 @@
         },
         "report": {
           "term": "Report to pxsig",
-          "meaning": "For an entry the gate got wrong: flagged when nothing visible changed, or passed when something did. It first re-renders the entry on this machine and says whether it still fails the gate: a pass there usually means the earlier difference came from this machine's environment, not from the gate. Then it prepares a report for a public issue on hydrotik/pxsig, previewed in full: the text and one image (baseline, render and diff, cropped to the changed regions). Full capture takes the whole image, Keep story ID keeps the ID (replaced with entry-1 by default), Image-free gives the changed regions and their average colours instead of any image. Nothing is copied until a copy button is pressed, and nothing is posted: Open issue opens the issue form with the text fields filled in. pxsig report <id> writes the same report from a terminal."
+          "meaning": "For an entry the gate got wrong: flagged when nothing visible changed, or passed when something did. It first re-renders the entry on this machine and says whether it still fails the gate: a pass there usually means the earlier difference came from this machine's environment, not from the gate. Then it prepares a report for a public issue on hydrotik/pxsig, previewed in full: the text and one image (baseline, render and diff, cropped to the changed regions). Full capture takes the whole image, Keep story ID keeps the ID (replaced with entry-1 by default), Image-free gives the changed regions and their average colors instead of any image. Nothing is copied until a copy button is pressed, and nothing is posted: Open issue opens the issue form with the text fields filled in. pxsig report <id> writes the same report from a terminal."
         },
         "modes": {
           "term": "Compare modes",
@@ -1726,12 +1726,12 @@
       "keepId": "Keep story ID",
       "keepIdLabel": "Keep the story ID instead of entry-1",
       "noImage": "Image-free",
-      "noImageLabel": "No image: the changed regions and their average colours only",
+      "noImageLabel": "No image: the changed regions and their average colors only",
       "preparing": "Preparing the report…",
       "failed": "No report: {error}",
       "imageHeading": "Image",
       "imageAlt": "Baseline, render and diff side by side",
-      "noImageNote": "No image. The text lists each changed region with its average colour in the baseline and the render.",
+      "noImageNote": "No image. The text lists each changed region with its average color in the baseline and the render.",
       "textHeading": "Text",
       "trimmed": "The issue link holds a shortened {fields}; the copied text has all of it.",
       "copyText": "Copy text",

@@ -104,8 +104,8 @@ export const FEATURES = [
     id: 'live.report',
     title: 'Report to pxsig',
     purpose:
-      "Report to pxsig on a changed entry: the self-check re-renders it on the server and it still fails the gate; the report's preview (the composite and the text) follows.",
-    covers: ['gate-report', 'check'],
+      "Report to pxsig on a changed entry: the self-check re-renders it on the server (a dry re-render: no decision or result changes) and it still fails the gate; the report's preview (the composite and the text) follows.",
+    covers: ['gate-report'],
   },
   {
     id: 'live.offline',

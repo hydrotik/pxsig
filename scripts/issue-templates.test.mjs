@@ -20,7 +20,10 @@ const dir = fileURLToPath(new URL('../.github/ISSUE_TEMPLATE/', import.meta.url)
 
 /** @typedef {string | boolean | number | null | YamlValue[] | { [k: string]: YamlValue }} YamlValue */
 
-/** @param {string} s */
+/**
+ * @param {string} s
+ * @returns {YamlValue}
+ */
 function scalar(s) {
   const v = s.trim();
   if (v === '') return null;
@@ -169,7 +172,11 @@ test('every issue form: name, description, a body of known fields with unique id
 test('gate.yml: every field the report fills, the direction, the images and the public checkbox', () => {
   const y = form('gate.yml');
   /** @type {Map<string, { [k: string]: any }>} */
-  const byId = new Map(y.body.filter((b) => b.id).map((b) => [b.id, b]));
+  const byId = new Map(
+    y.body
+      .filter((/** @type {{ id?: string }} */ b) => b.id)
+      .map((/** @type {{ id: string }} */ b) => [b.id, b])
+  );
   const sample = fields(
     /** @type {Parameters<typeof fields>[0]} */ (
       /** @type {unknown} */ ({
@@ -185,8 +192,16 @@ test('gate.yml: every field the report fills, the direction, the images and the 
   for (const k of Object.keys(sample))
     assert.ok(byId.has(k), `gate.yml has a field "${k}" for the link`);
   assert.equal(byId.get('direction')?.type, 'dropdown');
-  assert.ok(byId.get('direction')?.attributes.options.some((o) => o.startsWith('False positive')));
-  assert.ok(byId.get('direction')?.attributes.options.some((o) => o.startsWith('False negative')));
+  assert.ok(
+    byId
+      .get('direction')
+      ?.attributes.options.some((/** @type {string} */ o) => o.startsWith('False positive'))
+  );
+  assert.ok(
+    byId
+      .get('direction')
+      ?.attributes.options.some((/** @type {string} */ o) => o.startsWith('False negative'))
+  );
   assert.equal(byId.get('images')?.type, 'textarea');
   const confirm = byId.get('confirm');
   assert.equal(confirm?.type, 'checkboxes');

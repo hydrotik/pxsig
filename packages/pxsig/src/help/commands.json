@@ -1134,7 +1134,7 @@
         },
         {
           "name": "no-image",
-          "meaning": "With an id: no image; the changed regions and their average colours instead."
+          "meaning": "With an id: no image; the changed regions and their average colors instead."
         }
       ],
       "effects": ["writes-files"],
@@ -1153,7 +1153,7 @@
         },
         {
           "cmd": "pxsig report components-button--primary --no-image",
-          "shows": "The same with no image: regions and average colours only"
+          "shows": "The same with no image: regions and average colors only"
         }
       ],
       "seeAlso": ["ci", "entry"]

@@ -9,7 +9,7 @@
  *           changed regions' boxes, the environment class (OS family, browser major, GPU class)
  *   image   one PNG: baseline | render | diff, cropped to the changed regions with a small margin
  *           (`full`: the whole capture); none with `noImage`, which lists each region's average
- *           colours in the baseline and the render instead
+ *           colors in the baseline and the render instead
  *   url     the form, opened with those fields filled (lib/gate-report/text.mjs)
  *
  * Minimal by default: the story id becomes `entry-1` (`keepId` keeps it, with its state), and no
@@ -38,7 +38,7 @@ import {
   cropBox,
   cropScale,
   MARGIN,
-  regionColours,
+  regionColors,
   topRegions,
 } from './gate-report/image.mjs';
 import { gateText, issueUrl } from './gate-report/text.mjs';
@@ -214,7 +214,7 @@ export async function gateReport(
       mask: existsSync(join(tmp, 'mask.png')) ? readPng(readFileSync(join(tmp, 'mask.png'))) : null,
     };
     const listed = topRegions(d.regions ?? []);
-    const colours = noImage ? regionColours(images, listed) : null;
+    const colors = noImage ? regionColors(images, listed) : null;
     const W = d.width || Math.max(images.baseline.width, images.current.width);
     const H = d.height || Math.max(images.baseline.height, images.current.height);
     const crop = full ? null : cropBox(d.regions ?? [], W, H);
@@ -248,7 +248,7 @@ export async function gateReport(
         w: r.w,
         h: r.h,
         px: r.px,
-        ...(colours ? colours[i] : {}),
+        ...(colors ? colors[i] : {}),
       })),
       environment: {
         render: envClass(row.env ? envs[row.env] : null),

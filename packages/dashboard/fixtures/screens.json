@@ -1395,7 +1395,7 @@
             {
               "click": {
                 "role": "switch",
-                "name": "No image: the changed regions and their average colours only"
+                "name": "No image: the changed regions and their average colors only"
               }
             }
           ],

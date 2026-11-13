@@ -134,7 +134,7 @@ const ENV = {
 };
 
 /**
- * The project: a 200×100 capture whose 40×20 bar at (60, 40) changed colour (green to purple), or
+ * The project: a 200×100 capture whose 40×20 bar at (60, 40) changed color (green to purple), or
  * `opts` for another change. `row` is laid over the check row.
  * @param {{ after: (fn: () => void) => void }} t
  * @param {{ row?: Record<string, unknown>, base?: Buffer, render?: Buffer, sig?: boolean }} [opts]

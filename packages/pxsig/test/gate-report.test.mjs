@@ -2,7 +2,7 @@
  * gate-report.test.mjs — the gate report (lib/gate-report.mjs) with no engine and no server: the
  * story id replaced by default and kept on request, no path or user name anywhere in what it hands
  * out, the composite cropped to the changed regions with its margin (or the full capture), the
- * image-free report with no image and each region's average colours, the issue link within its
+ * image-free report with no image and each region's average colors, the issue link within its
  * length, the refusals, and the files `writeGateReport` keeps.
  *
  *   node --test packages/pxsig/test/gate-report.test.mjs
@@ -110,6 +110,7 @@ test('the composite: baseline | render | diff, cropped to the change with its ma
   const at = (/** @type {number} */ x, /** @type {number} */ y) => [
     ...png.data.subarray((y * png.width + x) * 4, (y * png.width + x) * 4 + 3),
   ];
+  /** @returns {[number, number]} */
   const mid = (/** @type {number} */ panel) => [
     panel * (img.box.w * img.scale + 8) + Math.floor((img.box.w * img.scale) / 2),
     Math.floor((img.box.h * img.scale) / 2),
@@ -158,7 +159,7 @@ test('full: the whole capture, unscaled; nothing changed falls back to the full 
   assert.match(s.text, /None: the images are the same pixel for pixel\./);
 });
 
-test('image-free: no image at all, each region with its average colours', async (t) => {
+test('image-free: no image at all, each region with its average colors', async (t) => {
   const { P, root } = reportProject(t);
   const r = await gateReport(P, ID, { diff: jsDiff, noImage: true, user: null });
   assert.equal(r.image, null);

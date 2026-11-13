@@ -401,7 +401,7 @@ export const INSPECTOR: Feature[] = [
         wait: { role: 'img', name: 'Baseline, render and diff side by side' },
       },
       {
-        // Image-free: no image, the regions with their average colours in the text.
+        // Image-free: no image, the regions with their average colors in the text.
         scenario: 'changed',
         hash: '#inspect=ui-button--primary',
         actions: [
@@ -409,7 +409,7 @@ export const INSPECTOR: Feature[] = [
           {
             click: {
               role: 'switch',
-              name: 'No image: the changed regions and their average colours only',
+              name: 'No image: the changed regions and their average colors only',
             },
           },
         ],

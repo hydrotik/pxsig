@@ -2,7 +2,7 @@
  * lib/gate-report/image.mjs — the gate report's one image: the baseline, the render and the diff
  * side by side in a single PNG, cropped to the changed regions with a small margin (or the full
  * capture), so one paste into an issue carries all three. And, for the image-free report, each
- * changed region's average colour in the baseline and in the render.
+ * changed region's average color in the baseline and in the render.
  *
  * The regions are the engine's `diff` (crates/pxsig-core/src/pixeldiff.rs), as the rejection
  * packet's crops use them (lib/rejections/crops.mjs). The diff panel is the baseline at 30%
@@ -120,13 +120,13 @@ export const cropScale = (box) => scaleFor(box.w, box.h, 'auto') || 1;
 const hex = (rgb) => `#${rgb.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
 
 /**
- * Each region's average colour in the baseline and in the render, over its changed pixels (over
+ * Each region's average color in the baseline and in the render, over its changed pixels (over
  * the whole box when the mask marks none), as `#rrggbb`. Alpha is left out.
  * @param {{ baseline: PNG, current: PNG, mask: PNG | null }} images
  * @param {Region[]} regions
  * @returns {{ baseline: string, render: string }[]}
  */
-export function regionColours({ baseline, current, mask }, regions) {
+export function regionColors({ baseline, current, mask }, regions) {
   return regions.map((r) => {
     const sum = { baseline: [0, 0, 0], render: [0, 0, 0] };
     let n = 0;

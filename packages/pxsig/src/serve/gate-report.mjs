@@ -6,20 +6,21 @@
  *        null for an image-free report). Writes nothing; answers 409 when there is nothing to
  *        report (no check, no baseline, a render error).
  *   POST /__pxsig/gate-report/self-check {id}
- *        the report's self-check: the entry re-rendered and checked on this machine (the server's
- *        re-check, as Re-check queues it: never a baseline), answered once its run has ended with
- *        `state`: `differs` (it still fails the gate), `passes`, `error` or `not-checked`.
+ *        the report's self-check: the entry re-rendered on this machine into a temporary folder and
+ *        judged against its baseline (a dry re-render: the store, check.json and any decision stay
+ *        as they are), answered with `state`: `differs` (it still fails the gate), `passes`,
+ *        `error` or `not-checked`.
  *
  * Neither decides anything, so neither needs the dashboard link: a read-only page may prepare a
  * report. No answer holds a path or a user name; nothing is sent anywhere: the person posts.
  */
-import { homedir } from 'node:os';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readJson } from '../lib/files.mjs';
+import { browserPool, renderStories } from '../lib/capture.mjs';
 import { gateReport, GateReportError, scrub } from '../lib/gate-report.mjs';
-import { enqueue } from './checks.mjs';
+import { fetchStoryIndex } from '../lib/integrity.mjs';
 import { json } from './http.mjs';
-/** @import { CheckReport } from '../types/t5.js' */
 /** @import { Route, ServeContext } from '../types/serve.js' */
 /** @import { ProjectState } from './projects.mjs' */
 
@@ -29,17 +30,7 @@ const ID = /^[a-z0-9-]+--[a-z0-9-]+(__[a-z0-9-]+)?(@[a-z0-9-]+)?$/;
 const on = (v) => v === '1' || v === 'true';
 
 /**
- * The entry's row in check.json (the server's own file), or null.
- * @param {ProjectState} S
- * @param {string} id
- */
-const rowOf = (S, id) =>
-  /** @type {CheckReport | null} */ (
-    readJson(join(S.P.store.reports, 'check.json'), null)
-  )?.rows?.find((r) => r.id === id) ?? null;
-
-/**
- * A message for the page: an error from the check may name a file.
+ * A message for the page: an error from a render may name a file.
  * @param {ProjectState} S
  * @param {string} id
  * @param {string} s
@@ -48,37 +39,69 @@ const safe = (S, id, s) =>
   scrub(s, { id, keepId: true, roots: [S.P.workspaceRoot, homedir()] }).slice(0, 400);
 
 /**
- * Wait until `id` is neither queued nor being checked: its run (and any it waited for) has ended.
- * @param {ProjectState} S
- * @param {string} id
- */
-async function settled(S, id) {
-  while (S.queued.has(id) || S.checking?.has(id))
-    await (S.running ?? new Promise((ok) => setTimeout(ok, 100)));
-}
-
-/**
+ * The self-check: a dry re-render. The entry is rendered into a temporary folder and judged by
+ * the engine against its baseline, as a check judges it, but nothing of the store changes: not
+ * its render, not check.json, not the history, and never a person's decision (a re-check clears
+ * one; a report must not).
  * @param {ServeContext} srv
  * @param {ProjectState} S
  * @param {string} id
  */
 async function selfCheck(srv, S, id) {
-  const before = rowOf(S, id)?.checkedAt ?? null;
-  const q = await enqueue(srv, S, { ids: [id] });
-  if (!q.queued.includes(id))
+  const entry = S.manifest?.stories?.find((e) => e.id === id);
+  if (!entry || !S.runPath)
     return {
       state: 'not-checked',
-      error: safe(S, id, q.skipped[0]?.why ?? 'not in the manifest'),
+      error: entry ? 'the manifest did not load' : 'not in the manifest',
     };
-  await settled(S, id);
-  const row = rowOf(S, id);
-  if (!row || (row.checkedAt ?? null) === before)
+  const idx = await fetchStoryIndex(S.manifest.baseUrl);
+  if (!idx.healthy)
     return {
-      state: 'error',
-      error: safe(S, id, S.lastFailure?.error ?? 'the re-check did not finish'),
+      state: 'not-checked',
+      error: safe(
+        S,
+        id,
+        idx.reachable ? "Storybook's story index is broken" : 'Storybook is not reachable'
+      ),
     };
-  if (row.error) return { state: 'error', error: safe(S, id, String(row.error)) };
-  return { state: row.pass ? 'passes' : 'differs', reasons: row.reasons ?? [] };
+  srv.pool ??= browserPool(S.P);
+  const tmp = mkdtempSync(join(tmpdir(), 'pxsig-self-check-'));
+  try {
+    const out = join(tmp, 'renders');
+    const { results } = await renderStories(srv.pool, [entry], out, {
+      ...S.manifest,
+      concurrency: 1,
+      project: S.P,
+      a11y: false,
+    });
+    const r = results.find(Boolean);
+    if (!r || r.error) return { state: 'error', error: safe(S, id, r?.error ?? 'no render') };
+    const trim = S.manifest.trim;
+    if (trim)
+      await srv.rust('trim', {
+        dir: out,
+        only: [id],
+        pad: trim.pad ?? 16,
+        tolerance: trim.tolerance ?? 8,
+      });
+    const res = await srv.rust('check', {
+      manifest: S.runPath,
+      pngDir: out,
+      root: S.P.workspaceRoot,
+      only: [id],
+      outDir: join(tmp, 'diffs'),
+      cache: join(tmp, 'cache'),
+      history: join(tmp, 'history.ndjson'),
+    });
+    const row = res.results.find((x) => x.id === id);
+    if (!row) return { state: 'error', error: 'the engine judged nothing' };
+    if (row.error) return { state: 'error', error: safe(S, id, String(row.error)) };
+    return { state: row.pass ? 'passes' : 'differs', reasons: row.reasons ?? [] };
+  } catch (e) {
+    return { state: 'error', error: safe(S, id, /** @type {Error} */ (e).message ?? 'error') };
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 }
 
 /** @type {[string, Route][]} */

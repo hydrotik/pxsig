@@ -144,7 +144,7 @@ test('options change the preview: Image-free shows no image; Keep story ID keeps
     await page.getByRole('button', { name: 'Report to pxsig', exact: true }).click();
     await page.getByRole('img', { name: 'Baseline, render and diff side by side' }).waitFor();
     await page
-      .getByRole('switch', { name: 'No image: the changed regions and their average colours only' })
+      .getByRole('switch', { name: 'No image: the changed regions and their average colors only' })
       .click();
     await page.getByText('No image. The text lists each changed region').waitFor();
     assert.equal(

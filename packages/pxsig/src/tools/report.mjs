@@ -23,7 +23,7 @@ export const reportTools = /** @type {const} */ ([
   {
     name: 'pxsig_gate_report',
     description:
-      "Prepares a gate report for one entry, for an issue on hydrotik/pxsig when the gate got it wrong (a change flagged when nothing changed, or one it missed). Writes the text, one image (baseline | render | diff, cropped to the changed regions; `full`: the whole capture) or with `noImage` the changed regions and their average colours instead, to the store's reports/gate-report/<id>/, and returns the text, the folder (relative to the store) and the link to the prefilled issue form. The story id is replaced with entry-1 unless `keepId`. Never posts anything: the issue is public and cannot be fully removed, so ask the person before anything is posted; the person checks the images and posts it.",
+      "Prepares a gate report for one entry, for an issue on hydrotik/pxsig when the gate got it wrong (a change flagged when nothing changed, or one it missed). Writes the text, one image (baseline | render | diff, cropped to the changed regions; `full`: the whole capture) or with `noImage` the changed regions and their average colors instead, to the store's reports/gate-report/<id>/, and returns the text, the folder (relative to the store) and the link to the prefilled issue form. The story id is replaced with entry-1 unless `keepId`. Never posts anything: the issue is public and cannot be fully removed, so ask the person before anything is posted; the person checks the images and posts it.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -38,7 +38,7 @@ export const reportTools = /** @type {const} */ ([
         noImage: {
           type: 'boolean',
           default: false,
-          description: 'No image: the changed regions and their average colours instead.',
+          description: 'No image: the changed regions and their average colors instead.',
         },
       },
       required: ['id'],

@@ -12,7 +12,7 @@ body:
 
         This issue is public: anyone can see it, and it cannot be fully removed. Post images only
         when they show nothing confidential. The image-free report (`pxsig report <id>
-        --no-image`) gives the changed regions and their average colours instead, which is often
+        --no-image`) gives the changed regions and their average colors instead, which is often
         enough to build a test case. See docs/gate-issues.md.
   - type: dropdown
     id: direction
@@ -67,7 +67,7 @@ body:
     id: regions
     attributes:
       label: Changed regions
-      description: The pixel diff's region boxes (x, y, width × height, changed pixels), and their average colours in the image-free report.
+      description: The pixel diff's region boxes (x, y, width × height, changed pixels), and their average colors in the image-free report.
       render: text
   - type: input
     id: environment

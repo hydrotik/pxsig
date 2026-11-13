@@ -17,14 +17,14 @@
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { PNG } from 'pngjs';
 import { tools } from '../src/tools/index.mjs';
-import { hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
+import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 import { ID, reportProject } from './gate-report-helpers.mjs';
-import { serve, src } from './server-helpers.mjs';
+import { fakeStorybook, needs, serve, src } from './server-helpers.mjs';
 import { skipUnless } from './strict.mjs';
 
 const rust = skipUnless(hasRust, 'Rust binary not built');
@@ -129,7 +129,12 @@ test(
 
 test('the server: GET gate-report and POST gate-report/self-check', { skip: rust }, async (t) => {
   const { root } = reportProject(t);
-  const S = await serve({ repo: root, env: testEnv(testHome) });
+  // serve() reads only the fixture's folder and environment.
+  const S = await serve(
+    /** @type {Parameters<typeof serve>[0]} */ (
+      /** @type {unknown} */ ({ repo: root, env: testEnv(testHome) })
+    )
+  );
   try {
     const get = async (/** @type {string} */ q) => {
       const r = await fetch(`${S.base}/__pxsig/gate-report?${q}`);
@@ -159,3 +164,33 @@ test('the server: GET gate-report and POST gate-report/self-check', { skip: rust
     S.stop();
   }
 });
+
+test(
+  'the self-check is a dry re-render: a decision, the render and check.json all stay',
+  {
+    skip: needs,
+    timeout: 120_000,
+  },
+  async (t) => {
+    const f = fixture({ t });
+    const id = f.ids.changed;
+    const review = join(f.px, 'reports', 'review.json');
+    writeFileSync(
+      review,
+      JSON.stringify({
+        [id]: { state: 'rejected', at: '2026-11-13T10:00:00.000Z', via: 'dashboard', ref: 'r1' },
+      })
+    );
+    const files = [review, join(f.px, 'reports', 'check.json'), f.latest(id)];
+    const before = files.map((p) => readFileSync(p));
+    const sb = await fakeStorybook(f.index.stories);
+    const S = await serve(f, { storybook: sb.url });
+    t.after(async () => (await S.stop(), sb.close()));
+    const r = await S.post('gate-report/self-check', { id });
+    assert.equal(r.status, 200);
+    const body = /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (r.body));
+    assert.ok(['differs', 'passes'].includes(String(body.state)), JSON.stringify(body));
+    await S.idle();
+    files.forEach((p, i) => assert.ok(readFileSync(p).equals(before[i]), `${p} unchanged`));
+  }
+);

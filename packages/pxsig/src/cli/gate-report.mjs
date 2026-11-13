@@ -34,7 +34,7 @@ export async function gateReportCommand(cli) {
     {
       kv: [
         ['Text', here(`${r.folder}report.md`)],
-        ['Image', r.image ? here(r.image) : 'none: image-free (average colours in the text)'],
+        ['Image', r.image ? here(r.image) : 'none: image-free (average colors in the text)'],
         ['Facts', here(`${r.folder}report.json`)],
       ],
     },

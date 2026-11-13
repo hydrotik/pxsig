@@ -8,10 +8,11 @@
   one PNG with the baseline, the render and the diff side by side, cropped to the changed regions
   (or the full capture), and the link that opens the form with its fields filled. The story id is
   replaced with `entry-1` unless it is kept, and no path, user name or host name is ever in it. An
-  image-free report lists each changed region's average colours instead of any image. pxsig opens
+  image-free report lists each changed region's average colors instead of any image. pxsig opens
   no network connection for it and posts nothing: the person opens the link and posts.
   - The dashboard's inspector has **Report to pxsig** beside Re-check: it re-renders the entry on
-    this machine first and says whether it still fails the gate, then previews exactly what is
+    this machine first and says whether it still fails the gate (a dry re-render: the entry's
+    render, its result and any review decision stay as they are), then previews exactly what is
     copied, with Full capture, Keep story ID and Image-free, and says the issue is public and
     cannot be fully removed. Copy text, Copy image (one PNG; Save image where the clipboard takes
     no images), Open issue and Cancel; nothing is copied until a copy button is pressed. A page

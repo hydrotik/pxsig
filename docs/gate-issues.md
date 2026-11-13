@@ -14,12 +14,14 @@ issue and posts it.
 
 The most common false positive is the machine, not the gate: a different browser version, fonts or
 GPU between the baseline and the render. Before it offers a report, the dashboard re-renders the
-entry on this machine and says whether it still fails the gate. When it passes there, the earlier
+entry on this machine and says whether it still fails the gate. It is a dry re-render: the
+entry's render, its result and any decision on it stay as they are. When it passes there, the earlier
 difference most likely came from the environment: `pxsig doctor` names an environment mismatch
 (`env-mismatch`, [configuration.md](configuration.md#env)), and rendering in pxsig's container
 ([container.md](container.md)) removes it.
 
-From a terminal, `pxsig check <id>` is the same re-render.
+From a terminal, `pxsig check <id>` re-renders the entry too, and records the result (which
+clears a decision on the old one).
 
 ## What a report holds
 
@@ -41,7 +43,7 @@ the changed regions with a 16 px margin and upscaled when small. A browser clipb
 at a time, and GitHub takes a pasted image, so one paste carries all three. **Full capture** takes
 the whole image instead of the crop.
 
-**Image-free** gives no image at all. Each changed region is listed with its average colour in the
+**Image-free** gives no image at all. Each changed region is listed with its average color in the
 baseline and in the render, over its changed pixels: often enough to build a test case without
 seeing the screen.
 
@@ -86,7 +88,7 @@ static report (`pxsig report --out …`) has no server, so no Report to pxsig.
 
 ```bash
 pxsig report components-button--primary              # text, image and the issue link
-pxsig report components-button--primary --no-image   # regions and average colours, no image
+pxsig report components-button--primary --no-image   # regions and average colors, no image
 pxsig report components-button--primary --full --keep-id
 ```
 

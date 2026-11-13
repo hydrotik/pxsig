@@ -81,7 +81,7 @@ export function fields(f) {
  */
 export function imageLine(f) {
   const i = f.image;
-  if (!i) return 'None: an image-free report. The average colours are under Changed regions.';
+  if (!i) return 'None: an image-free report. The average colors are under Changed regions.';
   const what =
     i.crop === 'full'
       ? 'the full capture'
