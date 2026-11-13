@@ -35,7 +35,9 @@ const stories = {
   'popover--faded': `<div style="position:relative;width:200px;height:40px;opacity:0.9">
       <span data-volatile="relative time" style="display:inline-block;width:100px;height:20px">3 min</span>
     </div>`,
-  'volatile--container': `<div data-volatile="card" class="card" style="width:120px"><div>Total</div><svg width="10" height="10"></svg></div>`,
+  // Two divs, a p inside inline formatting, an svg with a circle of its own (try-store finding:
+  // the circle was listed, and each div once per div).
+  'volatile--container': `<div data-volatile="card" class="card" style="width:120px"><div>Total</div><div>Tax</div><b><p>Net</p></b><svg width="10" height="10"><circle cx="5" cy="5" r="4"></circle></svg></div>`,
   'volatile--no-reason': `<p>At <span data-volatile style="display:inline-block;width:40px">noon</span></p>`,
   'volatile--empty-reason': `<p>At <span data-volatile=" " style="display:inline-block;width:40px">noon</span></p>`,
   'volatile--leaf': `<p>Updated <span data-volatile="relative time" style="display:inline-block;width:90px"><b>3</b> <em>min</em> ago</span></p>`,
@@ -123,7 +125,10 @@ test(
     const box = c.record('volatile--container');
     assert.deepEqual(box.masks, []);
     assert.deepEqual(box.problems, [
-      { kind: 'container', element: 'div.card[data-volatile="card"]: element children div, svg' },
+      {
+        kind: 'container',
+        element: 'div.card[data-volatile="card"]: elements inside: div, p, svg',
+      },
     ]);
     assert.ok(c.text('volatile--container').includes('Total'), 'not masked: its text is recorded');
     assert.deepEqual(c.record('volatile--no-reason').problems, [

@@ -39,8 +39,9 @@ export const INLINE = [
 const cssString = (v) => `"${v.replace(/["\\]/g, '\\$&').replace(/\n/g, '\\a ')}"`;
 
 /**
- * Each element a selector matches, in the page: its attribute value, its box, the elements inside
- * it that are not inline formatting (open shadow roots included), whether it covers the story root
+ * Each element a selector matches, in the page: its attribute value, its box, the outermost
+ * elements inside it that are not inline formatting (through inline formatting and open shadow
+ * roots, never into such an element: an svg is named, not its circle), whether it covers the story root
  * (it is the root, or holds it, or is the root's whole content: every element from the root down
  * to it is its parent's only element, with no text beside it), and a short name for it.
  * @param {Element[]} els
@@ -50,10 +51,11 @@ function inPage(els, { attr, root, inline }) {
   const top = document.querySelector(root);
   /** @param {Element | ShadowRoot} n @returns {string[]} */
   const others = (n) =>
-    [...n.querySelectorAll('*')].flatMap((c) => [
-      ...(inline.includes(c.localName) ? [] : [c.localName]),
-      ...(c.shadowRoot ? others(c.shadowRoot) : []),
-    ]);
+    [...n.children].flatMap((c) =>
+      inline.includes(c.localName)
+        ? [...others(c), ...(c.shadowRoot ? others(c.shadowRoot) : [])]
+        : [c.localName]
+    );
   /** @param {Element} el */
   const coversRoot = (el) => {
     if (!top) return false;
@@ -96,7 +98,7 @@ function inPage(els, { attr, root, inline }) {
  * (`frame`, the captured element's box; null: the viewport). A mask with no pixel there does not
  * apply. Each element that applies is marked for painting (mask-paint.mjs `MARK`): only what was
  * measured is ever painted. What may not be masked is a problem instead, and is never painted:
- *   container   a `data-volatile` element with element children other than `INLINE` ones
+ *   container   a `data-volatile` element with elements inside other than `INLINE` ones
  *   reason      a `data-volatile` element with no reason (an empty value)
  *   unmeasured  a mask on more than `MAX_BOXES` elements (the rest would go unweighed)
  * An invalid selector throws, as the screenshot's mask would.
@@ -136,7 +138,7 @@ export async function measureMasks(page, masks, frame, root = '#storybook-root')
       if (m.source === 'attribute' && shows && bad.length) {
         problems.push({
           kind: 'container',
-          element: `${name}: element children ${bad.join(', ')}`,
+          element: `${name}: elements inside: ${bad.join(', ')}`,
         });
         continue;
       }

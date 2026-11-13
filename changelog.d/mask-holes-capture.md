@@ -4,8 +4,9 @@
   text and inline formatting inside (`span`, `b`, `i`, `em`, `strong`, `code`, `time`, `abbr`,
   `sub`, `sup`, `small`, `mark`, `br`, `wbr`), and its value, the reason, is required. Otherwise the
   element is not painted, and the capture records the problem (`problems` in `<id>.masks.json`):
-  the entry fails as `mask on a container: …` or `mask needs a reason: …`, naming the element,
-  and no approval passes it.
+  the entry fails as `mask on a container: …` or `mask needs a reason: …`, naming the element
+  (for a container, also the outermost elements inside it that are not inline formatting, each
+  once: `elements inside: div, svg`), and no approval passes it.
   To update: move `data-volatile` onto the element that shows the value, and give it a reason
   (`data-volatile="relative time"`).
 
