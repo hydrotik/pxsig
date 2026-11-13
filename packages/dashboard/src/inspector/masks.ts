@@ -4,6 +4,7 @@
  * (the masks changed and no pixel differs by more than the tolerance) has nothing for the pixel
  * analysis to show: the inspector then says so and puts the masks, before and after, first.
  */
+import { t } from '../copy';
 import type { MaskRecord, Row } from '../data';
 import type { Analysis } from './analyse';
 
@@ -99,15 +100,37 @@ export const changedMasks = (row: Row) => {
     : 0;
 };
 
-/** How the engine starts each reason no approval passes (crates/pxsig-cli/src/batch/masks.rs). */
+/**
+ * How the engine starts each reason no approval passes (crates/pxsig-cli/src/batch/masks.rs), and
+ * what to do about it (`inspector.masks.fix.*`, the engine's `blocked_fixes` in words).
+ */
 const BLOCKED = [
-  'masks cover ',
-  'a mask covers the story root',
-  'mask on a container',
-  'mask needs a reason',
-  'mask not measured',
-];
+  ['mask on a container', 'container'],
+  ['mask needs a reason', 'reason'],
+  ['mask not measured', 'unmeasured'],
+  ['masks cover ', 'coverage'],
+  ['a mask covers the story root', 'root'],
+] as const;
+
+const causeOf = (r: string) => BLOCKED.find(([b]) => r.startsWith(b))?.[1];
 
 /** Why no approval passes the entry: the row's reasons the masks gave it, as the engine wrote them. */
 export const blockedReasons = (row: Row) =>
-  row.masksBlocked ? (row.reasons ?? []).filter((r) => BLOCKED.some((b) => r.startsWith(b))) : [];
+  row.masksBlocked ? (row.reasons ?? []).filter((r) => causeOf(r)) : [];
+
+/** The causes of the entry's block, each once, in the engine's order (`blocked_fixes`). */
+export const blockedCauses = (row: Row) => {
+  const reasons = blockedReasons(row);
+  return BLOCKED.filter(([b]) => reasons.some((r) => r.startsWith(b))).map(([, c]) => c);
+};
+/**
+ * The line that says why no approval passes the entry and what to do about each cause, the same
+ * words as the CLI and the tools; null for an entry no mask blocks. The Masks section shows it,
+ * and the disabled Approve button describes itself with it.
+ */
+export function blockedLine(row: Row): string | null {
+  const reasons = blockedReasons(row);
+  if (!reasons.length) return null;
+  const fixes = blockedCauses(row).map((c) => t(`inspector.masks.fix.${c}`));
+  return t('inspector.masks.blocked', { reasons: reasons.join('; '), fixes: fixes.join('; ') });
+}

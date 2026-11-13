@@ -1273,7 +1273,7 @@
         },
         "large": {
           "term": "Masks over 25% and 50%",
-          "meaning": "All of an entry's masks together over 25% of the capture are a warning: most changes under them would pass. Marked Large mask on the entry and its card, counted in Open items, listed by the Masks over 25% of the capture filter. Together over 50% of the capture, or a mask on the story root, they fail the entry, and no approval passes it until the masks are smaller."
+          "meaning": "All of an entry's masks together over 25% of the capture are a warning: most changes under them would pass. Marked Large mask on the entry and its card, counted in Open items, listed by the Masks over 25% of the capture filter. Together over 50% of the capture, or a mask on the story root, they fail the entry, and no approval passes it: Approve is disabled, and the Masks section says what to do (make the masks smaller, or mask the value, not the story root)."
         },
         "adoption": {
           "term": "Adopting masks",
@@ -1689,7 +1689,14 @@
       "grew": "Grew",
       "moved": "Moved",
       "count": "Count changed",
-      "blocked": "No approval passes this entry until the masks are smaller: {reasons}.",
+      "blocked": "No approval passes this entry: {reasons}; {fixes}.",
+      "fix": {
+        "coverage": "make the masks smaller",
+        "root": "mask the value, not the story root",
+        "container": "put data-volatile on the element that shows the value (a leaf)",
+        "reason": "give data-volatile a reason, e.g. data-volatile=\"relative time\"",
+        "unmeasured": "mask at most 500 elements, all there when the story is ready"
+      },
       "large": "Over 25%",
       "area": "{area} of the capture",
       "areas": "Baseline {before} · render {after}",

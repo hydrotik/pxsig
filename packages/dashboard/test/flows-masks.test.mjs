@@ -233,7 +233,7 @@ test('a moved or recounted mask is named, and masks no approval passes say so fi
     assert.ok(
       await side
         .getByText(
-          'No approval passes this entry until the masks are smaller: masks cover 62% of the capture, over 50%.',
+          'No approval passes this entry: masks cover 62% of the capture, over 50%; make the masks smaller.',
           { exact: true }
         )
         .isVisible()

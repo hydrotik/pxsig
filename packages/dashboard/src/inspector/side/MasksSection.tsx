@@ -9,7 +9,7 @@ import { Badge } from '@ui';
 import { t } from '../../copy';
 import * as s from '../../dashboard.css';
 import { fmt, type Row } from '../../data';
-import { blockedReasons, changedMasks, maskLines } from '../masks';
+import { blockedLine, changedMasks, maskLines } from '../masks';
 
 /** A share of the capture, with one decimal under 10%. */
 const share = (v: number | null) =>
@@ -17,45 +17,44 @@ const share = (v: number | null) =>
 
 export function MasksSection({ row }: { row: Row }) {
   const lines = maskLines(row);
-  if (!lines.length) return null;
+  const blocked = blockedLine(row);
+  // A block with no mask painted (a `data-volatile` with no reason, or on a container) still says so.
+  if (!lines.length && !blocked) return null;
   const ch = row.masksChanged;
   const changed = changedMasks(row);
-  const blocked = blockedReasons(row);
   return (
     <section className={s.sideSection}>
       <h3 className={s.sectionTitle}>{t('inspector.sections.masks')}</h3>
-      {blocked.length ? (
-        <span className={s.small}>
-          {t('inspector.masks.blocked', { reasons: blocked.join('; ') })}
-        </span>
-      ) : null}
+      {blocked ? <span className={s.small}>{blocked}</span> : null}
       {changed ? (
         <span className={s.small}>{t('inspector.masks.changed', { count: changed })}</span>
       ) : null}
-      <ul className={`${s.resources} ${s.maskList}`} aria-label={t('inspector.masks.label')}>
-        {lines.map((m) => (
-          <li key={m.selector} className={s.a11yItem}>
-            {m.state === 'same' ? null : (
-              <Badge tone="warning">{t(`inspector.masks.${m.state}`)}</Badge>
-            )}
-            {m.large ? <Badge tone="warning">{t('inspector.masks.large')}</Badge> : null}
-            <span className={`${s.a11yRule} ${s.mono} ${s.maskMeta}`} title={m.selector}>
-              {m.selector}
-            </span>
-            <span className={`${s.small} ${s.muted} ${s.maskMeta}`}>
-              {[
-                t(`inspector.masks.source.${m.source}`),
-                m.reason,
-                ch
-                  ? t('inspector.masks.areas', { before: share(m.before), after: share(m.after) })
-                  : t('inspector.masks.area', { area: share(m.after) }),
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {lines.length ? (
+        <ul className={`${s.resources} ${s.maskList}`} aria-label={t('inspector.masks.label')}>
+          {lines.map((m) => (
+            <li key={m.selector} className={s.a11yItem}>
+              {m.state === 'same' ? null : (
+                <Badge tone="warning">{t(`inspector.masks.${m.state}`)}</Badge>
+              )}
+              {m.large ? <Badge tone="warning">{t('inspector.masks.large')}</Badge> : null}
+              <span className={`${s.a11yRule} ${s.mono} ${s.maskMeta}`} title={m.selector}>
+                {m.selector}
+              </span>
+              <span className={`${s.small} ${s.muted} ${s.maskMeta}`}>
+                {[
+                  t(`inspector.masks.source.${m.source}`),
+                  m.reason,
+                  ch
+                    ? t('inspector.masks.areas', { before: share(m.before), after: share(m.after) })
+                    : t('inspector.masks.area', { area: share(m.after) }),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </section>
   );
 }

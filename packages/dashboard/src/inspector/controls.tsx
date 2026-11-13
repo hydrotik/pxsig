@@ -11,6 +11,7 @@ import * as s from '../dashboard.css';
 import type { ModeGroupState, ZoomState } from '../diff-viewer';
 import type { Analysis } from './analyse';
 import type { InspectTarget, Loaded } from './Inspector';
+import { blockedLine } from './masks';
 import { MODES } from './prefs';
 import type { Mode } from './Stage';
 
@@ -406,11 +407,14 @@ export function ReviewButtons({
   const off = readOnly || busy || !armed;
   // Each decision button in a box that shows the progress cursor and is aria-busy while its request
   // runs (the button itself is disabled then, and a disabled button takes no pointer).
-  const decision = (action: 'approve' | 'reject', button: ReactNode) => (
-    <span className={s.decision} aria-busy={pending === action || undefined}>
+  const decision = (action: 'approve' | 'reject', button: ReactNode, title?: string) => (
+    <span className={s.decision} aria-busy={pending === action || undefined} title={title}>
       {button}
     </span>
   );
+  // Masks no approval passes (over half the capture, the story root, a data-volatile problem):
+  // Approve stays in place, disabled, and its title (also its description) says why.
+  const blocked = blockedLine(row);
   const rejectLabel = (
     <DecisionLabel
       label={t('inspector.review.reject')}
@@ -488,16 +492,23 @@ export function ReviewButtons({
         'approve',
         <Button
           size="sm"
-          disabled={off || review?.state === 'approved' || !!row.error || (row.pass && !changed)}
+          disabled={
+            off ||
+            !!blocked ||
+            review?.state === 'approved' ||
+            !!row.error ||
+            (row.pass && !changed)
+          }
           onClick={() => act('approve')}
-          title={why ?? t('inspector.review.approveTitle')}
+          title={why ?? blocked ?? t('inspector.review.approveTitle')}
         >
           <DecisionLabel
             label={t('inspector.review.approve')}
             busyLabel={t('inspector.review.approving')}
             busy={pending === 'approve'}
           />
-        </Button>
+        </Button>,
+        blocked ?? undefined
       )}
     </>
   );
