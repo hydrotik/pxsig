@@ -107,6 +107,8 @@ export async function update(S, sel, prep, run) {
   // `--reason` stays local (lib/decisions.mjs); `via: "check-update"` says the rest.
   const reason = str('reason');
   const ignored = reason ? reportsIgnored(P) : false;
+  /** @type {Map<string, BaselineResult['masksChanged'][number]>} */
+  const masked = new Map((res.masksChanged ?? []).map((m) => [m.id, m]));
   for (const id of written)
     record(
       P,
@@ -118,6 +120,7 @@ export async function update(S, sel, prep, run) {
         reason,
         ignored,
         kind,
+        masks: masked.get(/** @type {string} */ (id)) ?? null,
         before: before.get(id),
       }
     );
