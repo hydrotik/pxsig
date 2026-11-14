@@ -219,3 +219,15 @@ test('at most `max` findings per rule, and a count of the rest', async (t) => {
     await page.close();
   }
 });
+
+test('data-layout-allow scoped to the alignment rules leaves the layout rules on', async (t) => {
+  if (skip) return t.skip(skip);
+  const cut =
+    '<div style="width:100px;height:20px;overflow:hidden"><div style="width:300px">x</div></div>';
+  assert.equal(
+    (await findings(`<div data-layout-allow="aligned, whole-pixel: test">${cut}</div>`, 'clipped'))
+      .length,
+    1
+  );
+  assert.equal((await findings(`<div data-layout-allow="test">${cut}</div>`, 'clipped')).length, 0);
+});

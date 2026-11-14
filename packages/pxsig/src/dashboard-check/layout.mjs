@@ -83,7 +83,21 @@ export function inspectLayout({ max }) {
   /** @type {Side[]} */
   const SIDES = ['top', 'right', 'bottom', 'left'];
   const px = (/** @type {number} */ n) => `${Math.round(n * 10) / 10}px`;
-  const allowed = (/** @type {Element} */ el) => !!el.closest('[data-layout-allow]');
+  // An opt-out scoped to the alignment rules (`aligned, whole-pixel: <reason>`) is not one here.
+  const allowed = (/** @type {Element} */ el) => {
+    for (
+      let a = el.closest('[data-layout-allow]');
+      a;
+      a = a.parentElement?.closest('[data-layout-allow]') ?? null
+    )
+      if (
+        !/^\s*(aligned|whole-pixel)(\s*,\s*(aligned|whole-pixel))*\s*:/.test(
+          a.getAttribute('data-layout-allow') ?? ''
+        )
+      )
+        return true;
+    return false;
+  };
   // A modal <dialog> makes the rest of the page inert without an `inert` attribute.
   const modal = document.querySelector('dialog:modal');
   // Visually hidden (a slider thumb's range input, screen-reader-only text): clipped to nothing,

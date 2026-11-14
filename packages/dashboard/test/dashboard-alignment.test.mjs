@@ -15,7 +15,7 @@ import { noChromium } from './flows-helpers.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(path.join(here, '../../pxsig/package.json'));
-const { measureAlignment, inkBand, ALIGN_TOLERANCE } =
+const { alignedFinding, measureAlignment, inkBand, ALIGN_TOLERANCE } =
   await import('../../pxsig/src/dashboard-check/alignment.mjs');
 const { CHROMIUM_ARGS } = await import('../../pxsig/src/lib/capture/browser.mjs');
 
@@ -154,4 +154,46 @@ test('inkBand: sub-pixel edges from coverage', () => {
   assert.ok(Math.abs(band.top - 1.5) < 0.01, `top ${band.top}`);
   assert.ok(Math.abs(band.bottom - 4.25) < 0.01, `bottom ${band.bottom}`);
   assert.equal(ALIGN_TOLERANCE, 0.5);
+});
+
+test('data-layout-allow: scoped to the rules it names; a half pixel an opted-out element causes is its own', async (t) => {
+  if (skip) return t.skip(skip);
+  // Opted out of `aligned` only: the half pixel is still reported.
+  const scoped = await findings(
+    `<div data-layout-allow="aligned: a test">${pill(43, { dot: 'margin-top:4px' })}</div>`
+  );
+  assert.deepEqual(
+    scoped.map((f) => f.rule),
+    ['whole-pixel']
+  );
+  // A header of fractional height opted out of `whole-pixel`: the buttons after it are not reported.
+  const head = '<p style="margin:0;font-size:13px;line-height:1.25">Heading</p>';
+  const buttons =
+    '<div><button style="height:28px;border:1px solid #888">One</button><button style="height:28px;border:1px solid #888">Two</button></div>';
+  assert.equal((await findings(`${head}${buttons}`)).length, 1);
+  assert.deepEqual(
+    await findings(
+      `<p data-layout-allow="whole-pixel: a header of the design system" style="margin:0;font-size:13px;line-height:1.25">Heading</p>${buttons}`
+    ),
+    []
+  );
+});
+
+test('aligned: an offset within the measure’s precision past 0.5px is not a finding', () => {
+  const pair = {
+    name: '<span "X">',
+    graphic: 'dot',
+    boxCentre: 10,
+    lineCentre: 10,
+    lineHeight: '12px',
+    half: null,
+  };
+  const at = (offset) =>
+    alignedFinding(
+      { pair, caps: { top: 0, bottom: 9 }, graphic: { top: 0, bottom: 4 }, offset },
+      1
+    );
+  assert.equal(at(0.55), null);
+  assert.equal(at(-0.6), null);
+  assert.match(String(at(0.7)?.text), /0\.7px above the capitals' centre/);
 });
