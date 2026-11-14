@@ -353,7 +353,20 @@ export async function capture(
     let pointer = false;
     for (const a of screen.actions ?? []) {
       if (a.click) {
-        await locate(page, a.click).click({ timeout: LANDMARK_MS });
+        const target = locate(page, a.click);
+        // Click once the target can be clicked, as a person does. Playwright retries a click on a
+        // target that is not enabled yet (the inspector's Reject waits for the entry's images), and
+        // its later attempts scroll the target with block end, center, then start: in a dialog
+        // that clips its overflow, `start` moves the whole dialog up, and which attempt is the
+        // first to pass depended on how soon the images loaded (inspector--header-3).
+        await target.waitFor({ state: 'visible', timeout: LANDMARK_MS });
+        await page.waitForFunction(
+          (el) => !!el && !el.matches(':disabled') && el.getAttribute('aria-disabled') !== 'true',
+          await target.elementHandle({ timeout: LANDMARK_MS }),
+          { timeout: LANDMARK_MS }
+        );
+        await settle(page);
+        await target.click({ timeout: LANDMARK_MS });
         pointer = true;
       } else if (a.press) await page.keyboard.press(a.press);
       // The target at the top of its scroll container (a section below a panel's fold), as a
