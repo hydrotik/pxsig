@@ -17,6 +17,7 @@ import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, hasRust } from './fixture.mjs';
 import { serve } from './server-helpers.mjs';
 import { skipUnless } from './strict.mjs';
+import { NO_MASK_FIX } from '../src/lib/assistants.mjs';
 
 /**
  * The keys of the answer these tests read (src/report.mjs buildData).
@@ -100,9 +101,11 @@ test(
         String(open?.prompt),
         new RegExp(`^pxsig rejected ${f.ids.ok} \\(fixture\\): "the icon moved"\\. Goal: `)
       );
-      assert.match(
-        String(open?.prompt),
-        new RegExp(`After the fix: pxsig check ${f.ids.ok}\\. Never approve\\.$`)
+      assert.ok(
+        String(open?.prompt).endsWith(
+          `After the fix: pxsig check ${f.ids.ok}. Never approve. ${NO_MASK_FIX}`
+        ),
+        String(open?.prompt)
       );
       assert.ok(!String(open?.prompt).includes(f.repo), 'no absolute path');
     } finally {

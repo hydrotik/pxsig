@@ -19,6 +19,8 @@ pxsig gives assistants everything that reads or checks, and keeps approving for 
   ```
   pxsig (visual baselines): never approve or accept pxsig baselines and never call
   /__pxsig/approve. Ask the person to review changes in the pxsig dashboard.
+  Never add a mask, ignore, `data-volatile` or raise a threshold to make an entry pass;
+  flag the entry for a person instead.
   Before fixing a rejected pxsig entry, read its reason and images (pxsig_rejected, or
   `pxsig rejected`); after the fix, re-check those ids.
   ```

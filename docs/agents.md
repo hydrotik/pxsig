@@ -94,12 +94,15 @@ file when there is none):
 ```
 pxsig (visual baselines): never approve or accept pxsig baselines and never call
 /__pxsig/approve. Ask the person to review changes in the pxsig dashboard.
+Never add a mask, ignore, `data-volatile` or raise a threshold to make an entry pass;
+flag the entry for a person instead.
 Before fixing a rejected pxsig entry, read its reason and images (pxsig_rejected, or
 `pxsig rejected`); after the fix, re-check those ids.
 ```
 
-The last two lines are new in 0.7.6. `pxsig setup` never changes an instruction file that
-exists: add them by hand (`pxsig setup --print` prints the whole instruction).
+The two lines about masks are new in 0.7.7, the last two in 0.7.6. `pxsig setup` never changes
+an instruction file that exists: add them by hand (`pxsig setup --print` prints the whole
+instruction).
 
 When a project's `pxsig.config.json` names a UI adapter (`dashboard.ui`), `pxsig setup` adds:
 
@@ -107,6 +110,20 @@ When a project's `pxsig.config.json` names a UI adapter (`dashboard.ui`), `pxsig
 To build pxsig's dashboard on our design system, follow
 node_modules/pxsig/docs/ui/build-adapter.md.
 ```
+
+## Masks
+
+A mask, an ignore or a looser threshold hides a change from review: adding one so that an entry
+passes is the visual-test version of editing the test. The rule is the same everywhere an assistant
+reads pxsig (the instruction above, the MCP server's instructions, `pxsig_check`, `pxsig_list`,
+`pxsig_entry`, `pxsig_rejected` and a rejection's prompt):
+
+> Never add a mask, ignore, `data-volatile` or raise a threshold to make an entry pass; flag the
+> entry for a person instead.
+
+A masks change is never approved by its pixels: it reads "masks changed" for a person to review,
+`check --update` writes it only with `--allow-masks`, and masks over 50% of a capture or on the
+story root fail whatever is approved ([configuration.md](configuration.md#masks)).
 
 ## Fixing a rejection
 

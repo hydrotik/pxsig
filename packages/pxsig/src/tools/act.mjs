@@ -11,6 +11,7 @@ import { affected } from './staleness.mjs';
 import { doctor, summarizeIds } from './doctor.mjs';
 import { checkReact } from './react.mjs';
 import { checkedRejections } from './rejected.mjs';
+import { NO_MASK_FIX } from '../lib/assistants.mjs';
 import { NOTE_MAX, readRejections, sanitizeNote } from '../lib/rejections.mjs';
 
 /** @import { Readable } from 'node:stream' */
@@ -23,7 +24,8 @@ export const actTools = /** @type {const} */ ([
   {
     name: 'pxsig_check',
     description:
-      'Re-render and re-check entries, then report their results. Select by `ids`, `stories`, `changed_files` (import graph), `since` (git ref), or `all`. A story (or entry) not in the manifest yet is registered first when Storybook is healthy: its entries arrive NEW, with no signature, for a person to approve; anything that cannot be registered is listed in `skipped` with the reason. Uses the running pxsig server (fast, warm browsers); without it, runs the check itself (needs the project Storybook). With `since` or `changed_files`, `react` carries the React Compiler alerts for those files (alerts only, see pxsig_react). Each checked entry that had an open rejection comes back in `rejections`: `closed: passes` or `open: still differs` (accessibility: `closed: no new violations` or `open: new violations remain`). Never writes baselines.',
+      'Re-render and re-check entries, then report their results. Select by `ids`, `stories`, `changed_files` (import graph), `since` (git ref), or `all`. A story (or entry) not in the manifest yet is registered first when Storybook is healthy: its entries arrive NEW, with no signature, for a person to approve; anything that cannot be registered is listed in `skipped` with the reason. Uses the running pxsig server (fast, warm browsers); without it, runs the check itself (needs the project Storybook). With `since` or `changed_files`, `react` carries the React Compiler alerts for those files (alerts only, see pxsig_react). Each checked entry that had an open rejection comes back in `rejections`: `closed: passes` or `open: still differs` (accessibility: `closed: no new violations` or `open: new violations remain`). Never writes baselines. ' +
+      NO_MASK_FIX,
     inputSchema: {
       type: 'object',
       properties: {

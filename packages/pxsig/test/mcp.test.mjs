@@ -16,6 +16,7 @@ import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { fixture, rustBin, testEnv, testHome } from './fixture.mjs';
+import { NO_MASK_FIX, SNIPPET } from '../src/lib/assistants.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const { repo } = fixture({ withSigs: false });
@@ -123,6 +124,20 @@ test('initialize echoes the protocol version and declares tools', async () => {
     /never approve, never accept, and never call `\/__pxsig\/approve`; ask the person to review in the dashboard/
   );
   assert.match(res.result.instructions, /Before a visual fix, read pxsig_rejected/);
+  // Mask audit 9 (owner decision 4): never pass an entry by masking it; flag it instead.
+  assert.ok(res.result.instructions.endsWith(NO_MASK_FIX), res.result.instructions);
+});
+
+test('the tools that list, explain, check or hand on a change say the masks rule', async () => {
+  const { result } = await rpc('tools/list', {});
+  // The listing carries each tool's description beside its name.
+  const said = /** @type {{ name: string, description: string }[]} */ (
+    /** @type {unknown} */ (result.tools)
+  );
+  const say = new Map(said.map((t) => [t.name, t.description]));
+  for (const n of ['pxsig_check', 'pxsig_list', 'pxsig_entry', 'pxsig_rejected'])
+    assert.ok(say.get(n)?.includes(NO_MASK_FIX), n);
+  assert.ok(SNIPPET.includes(NO_MASK_FIX.replace('pass; ', 'pass;\n')), 'the instruction');
 });
 
 test('notifications get no reply; ping does', async () => {
