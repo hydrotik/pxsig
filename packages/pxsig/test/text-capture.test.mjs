@@ -14,6 +14,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { collectBoxes, MAX_RECORDED } from '../src/lib/capture/boxes.mjs';
+import { CHROMIUM_ARGS } from '../src/lib/capture/browser.mjs';
 import { readText } from '../src/lib/text/config.mjs';
 import { tempDir } from './fixture.mjs';
 import { needs } from './server-helpers.mjs';
@@ -221,7 +222,12 @@ test(
       'text--story':
         '<p>1 <b>new</b> · of 9 analysed</p><div style="border:1px solid #888">Card</div>',
     });
-    const browser = await pw.chromium.launch();
+    // Two renders are compared byte for byte, so both must take one raster path: pxsig's own text
+    // switches, and no GPU process. On a macOS runner Chromium can rasterise through the GPU
+    // process and fall back to software when that process is lost, which redraws text with other
+    // antialiasing bytes between one render and the next; with the GPU off there is nothing to
+    // fall back from. Text capture never touches the raster path, so this hides nothing it does.
+    const browser = await pw.chromium.launch({ args: [...CHROMIUM_ARGS, '--disable-gpu'] });
     t.after(async () => {
       await browser.close();
       sb.close();

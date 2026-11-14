@@ -80,8 +80,8 @@ A minor or major release (`X.Y.0`) ships new README screenshots of its own dashb
 branch, after setting the versions:
 
 ```bash
-PXSIG_DS_SOURCE=<design-system checkout> pnpm build:dashboard   # the release's dashboard
-node scripts/showcase-shots.mjs                                  # docs/product-shots/*.png + shots.json
+pnpm build:dashboard              # the release's dashboard: the pinned design system
+node scripts/showcase-shots.mjs   # docs/product-shots/*.png + shots.json
 ```
 
 The script serves that build with mock data (a design system in the middle of a review), shoots the
@@ -100,7 +100,7 @@ check` renders, in each theme, is one entry, `<section>--<feature>-<n>@<theme>`
 image pinned by digest in `docker/screens-image.json`, whose fonts and browser stay fixed:
 
 ```bash
-PXSIG_UI_ADAPTER=hydrotik PXSIG_DS_SOURCE=<design-system checkout> pnpm build:dashboard
+pnpm build:dashboard                      # hydrotik, at the commit design-system.json pins
 pnpm screens:check [--only <feature,…>]   # exit 1: a screen changed, is new or did not render
 ```
 
@@ -196,8 +196,8 @@ PXSIG_LIVE_BIN="$PWD/target/linux/release/pxsig" pnpm screens:check
   `--no-live` leaves the live screens out; `--only` takes live features (`live.approve`) too.
 
 **Where it runs.** The `screens` workflow (`.github/workflows/screens.yml`) builds the dashboard on
-the design system at the `PXSIG_DS_REF` variable (a full commit SHA, fetched with the
-`PXSIG_DS_SOURCE` secret) and checks it on every pull request and push to `main`; a pull request
+the design system at the commit `design-system.json` pins (fetched with the `PXSIG_DS_SOURCE`
+secret by `scripts/ds-fetch.mjs`, as `pnpm ds:fetch` does in a worktree) and checks it on every pull request and push to `main`; a pull request
 without the secret (a fork, Dependabot) is not checked. The release's Dashboard job checks the
 dashboard it ships, built or attached, the same way (its fixture screens, `--no-live` for now) and
 stops the release on any difference.
@@ -304,11 +304,13 @@ The dashboard compiles against a design system that is not public (see
 of these that is available, and fails with a message naming both if neither is:
 
 1. **The `PXSIG_DS_SOURCE` secret.** A git URL, credentials included, of the design-system
-   monorepo. The job fetches the commit named by the `PXSIG_DS_REF` variable, which must be a
-   full 40-character commit SHA (the job fails on a branch, a tag or an empty value), installs its
-   dependencies and runs `pnpm --filter @pxsig/dashboard build` with `PXSIG_UI_ADAPTER=hydrotik`
-   and `PXSIG_DS_SOURCE` set. The adapter is named rather than left to the default, which without
-   `PXSIG_DS_SOURCE` is the plain adapter.
+   monorepo. The job runs `node scripts/ds-fetch.mjs` with it, which fetches the commit pinned in
+   `design-system.json` (a full 40-character lower-case commit SHA; it fails on anything else)
+   into the runner's temp folder (`PXSIG_DS_DIR`, outside anything cached) and installs its
+   dependencies, never printing the source or leaving it in a file; then
+   `pnpm --filter @pxsig/dashboard build`, whose default in this repository is `hydrotik` on that
+   checkout. The pin is bumped by a reviewed commit (CONTRIBUTING.md, "The design system"), so a
+   worktree and CI build the same design system.
 2. **A release asset** named `pxsig-dashboard.tar.gz` on the GitHub release for the tag.
 
 There is no input that fetches a dashboard from any other URL. The job writes which source it used,
@@ -320,8 +322,7 @@ that this workflow packed it.
 For 2, build the dashboard locally and pack it:
 
 ```bash
-PXSIG_UI_ADAPTER=hydrotik PXSIG_DS_SOURCE=<path to the design-system checkout> \
-  pnpm --filter @pxsig/dashboard build
+pnpm build:dashboard   # the pinned design system (git config pxsig.dsSource, CONTRIBUTING.md)
 COPYFILE_DISABLE=1 tar czf pxsig-dashboard.tar.gz -C packages/pxsig/dist dashboard
 ```
 
@@ -334,7 +335,7 @@ package: the adapter, the design-system commit with whether its checkout had cha
 (`SOURCE_DATE_EPOCH` when set) and the third-party packages compiled into the bundle with their
 versions and licences. Either way the job checks it (`scripts/check-dashboard-build.mjs`): it must
 exist, name the `hydrotik` adapter, list the bundled packages and record a full design-system
-commit (with the secret, `PXSIG_DS_REF`), or the release fails; a checkout with changes is a
+commit, the one `design-system.json` pins (a release asset too), or the release fails; a checkout with changes is a
 warning. A release asset built with pxsig 0.6.0 or earlier has no `BUILD.json`: rebuild it. The pack job then appends those packages to `pxsig-npm.cdx.json`
 as bundled components (`scripts/bundle-sbom.mjs`, read from the module paths the unminified
 bundle keeps), so the npm SBOM covers the dashboard too.

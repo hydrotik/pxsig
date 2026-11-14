@@ -5,7 +5,7 @@
  * renders on each runner and compares in one job; run it before a release that changes the gate's
  * defaults (docs/releasing.md).
  *
- *   node tools/gate-noise.mjs render --label <name> --out <dir> [--runs 2] [--suites example,dashboard]
+ *   node tools/gate-noise.mjs render --label <name> --out <dir> [--runs 2] [--suites example,dashboard] [--build <dashboard>]
  *   node tools/gate-noise.mjs compare --from <dir> [--json <file>] [--summary <file>]
  *
  * render: each suite rendered `--runs` times on this machine, into <out>/<suite>/run<n>/<id>.png,
@@ -13,8 +13,9 @@
  * and <out>/<suite>/settings.json (grid, cell policy, gate). Suites:
  *   example    examples/single-package, staged and built as scripts/examples-test.mjs does, rendered
  *              by `pxsig check --full` on an empty store (every entry NEW: renders, no baseline);
- *   dashboard  the dashboard's fixture screens on the built-in plain adapter (no design-system
- *              source needed), `pxsig dashboard check`, both themes.
+ *   dashboard  the dashboard's fixture screens, `pxsig dashboard check`, both themes: the build
+ *              `--build` names, else this repository's own (`pnpm build:dashboard`: the hydrotik
+ *              design system at the pinned commit, scripts/dashboard-build.mjs).
  * compare: every machine folder under --from (each has a meta.json), scored by the engine
  * (lib/noise-compare.mjs). Writes the numbers as JSON and the tables as Markdown (append; GitHub's
  * job summary when --summary is $GITHUB_STEP_SUMMARY). Never writes a baseline into a store.
@@ -107,23 +108,26 @@ async function renderExample(out, runs) {
 }
 
 /**
- * The dashboard's fixture screens, on the built-in plain adapter, rendered `runs` times.
+ * The dashboard's fixture screens, rendered `runs` times: of the build in `prebuilt`, else of
+ * this repository's build (the hydrotik design system at the pinned commit).
  * @param {string} out
  * @param {number} runs
+ * @param {string} [prebuilt]
  */
-function renderDashboard(out, runs) {
+function renderDashboard(out, runs, prebuilt) {
   const tmp = mkdtempSync(join(process.env.RUNNER_TEMP || tmpdir(), 'pxsig-noise-dash-'));
-  const build = join(tmp, 'build');
-  // pnpm is a .cmd shim on Windows, which Node starts only through a shell (a CI runner's harness).
-  const win = process.platform === 'win32';
-  const b = spawnSync(win ? 'pnpm.cmd' : 'pnpm', ['--filter', '@pxsig/dashboard', 'build'], {
-    cwd: repo,
-    stdio: 'inherit',
-    shell: win,
-    // No adapter and no design-system source: the plain adapter.
-    env: { ...process.env, PXSIG_DASHBOARD_OUT: build, PXSIG_UI_ADAPTER: '', PXSIG_DS_SOURCE: '' },
-  });
-  if (b.status !== 0) throw new Error(`dashboard build → ${b.status}`);
+  const build = prebuilt ? resolve(prebuilt) : join(tmp, 'build');
+  if (!prebuilt) {
+    // pnpm is a .cmd shim on Windows, which Node starts only through a shell (a CI runner's harness).
+    const win = process.platform === 'win32';
+    const b = spawnSync(win ? 'pnpm.cmd' : 'pnpm', ['--filter', '@pxsig/dashboard', 'build'], {
+      cwd: repo,
+      stdio: 'inherit',
+      shell: win,
+      env: { ...process.env, PXSIG_DASHBOARD_OUT: build },
+    });
+    if (b.status !== 0) throw new Error(`dashboard build → ${b.status}`);
+  }
   const cli = join(repo, 'packages', 'pxsig', 'bin', 'pxsig.mjs');
   for (let i = 1; i <= runs; i++) {
     const shots = join(tmp, `run${i}`);
@@ -147,7 +151,9 @@ function renderDashboard(out, runs) {
 async function render() {
   const label = flags.label ?? '';
   if (!/^[a-z0-9-]{1,40}$/.test(label) || !flags.out) {
-    console.error('usage: gate-noise.mjs render --label <a-z0-9-> --out <dir> [--runs 2]');
+    console.error(
+      'usage: gate-noise.mjs render --label <a-z0-9-> --out <dir> [--runs 2] [--build <dashboard>]'
+    );
     process.exit(2);
   }
   const out = resolve(flags.out);
@@ -165,7 +171,7 @@ async function render() {
   };
   if (suites.includes('example'))
     Object.assign(meta, await renderExample(join(out, 'example'), runs));
-  if (suites.includes('dashboard')) renderDashboard(join(out, 'dashboard'), runs);
+  if (suites.includes('dashboard')) renderDashboard(join(out, 'dashboard'), runs, flags.build);
   writeFileSync(join(out, 'meta.json'), JSON.stringify(meta, null, 2));
   log(
     `${suites.join(', ')} rendered ${runs}× as ${label} (${meta.platform}-${meta.arch}, GPU ${meta.gpu ?? 'unknown'})`

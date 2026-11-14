@@ -49,8 +49,11 @@ node tools/gate-noise.mjs compare --from noise --json report.json --summary summ
 ```
 
 - **render** stages examples/single-package as `scripts/examples-test.mjs` does and renders it with
-  `pxsig check --full` on an empty store, and renders the dashboard's fixture screens on the plain
-  adapter with `pxsig dashboard check` (both themes; no design-system source). Each `--runs` times
+  `pxsig check --full` on an empty store, and renders the dashboard's fixture screens with
+  `pxsig dashboard check` (both themes): the build `--build` names, else this repository's own
+  `pnpm build:dashboard`, the hydrotik design system at the pinned commit (`pnpm ds:fetch`;
+  CONTRIBUTING.md, "The design system"). The workflow builds it once and every runner renders that
+  build (the plain adapter, said in the run, when the `PXSIG_DS_SOURCE` secret is absent). Each `--runs` times
   (default 2), into `<out>/<suite>/run<n>/`, with `meta.json` (the label, OS, architecture,
   Chromium, GPU class) and each suite's grid and gate.
 - **compare** reads every folder with a `meta.json`. For each suite it pairs run 1 with run 2 of

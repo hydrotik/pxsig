@@ -56,16 +56,19 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       pxsig: ${{ steps.p.outputs.pxsig }}
-      ref: ${{ steps.p.outputs.ref }}
+      sha: ${{ steps.p.outputs.sha }}
       suffix: ${{ steps.p.outputs.suffix }}
       playwright: ${{ steps.p.outputs.playwright }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - id: p
         shell: bash
         env:
           EVENT: ${{ github.event_name }}
           RUN_TAG: ${{ github.event.workflow_run.head_branch }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
           IN_PXSIG: ${{ github.event.inputs.pxsig }}
           IN_PLAYWRIGHT: ${{ github.event.inputs.playwright }}
           IN_REBUILD: ${{ github.event.inputs.rebuild }}
@@ -81,9 +84,18 @@ jobs:
           else
             pw="$(node -p 'JSON.stringify(require("./docker/playwright-versions.json").versions)')"
           fi
+          # The build checks out a commit, never a name: an unqualified `v1.2.3` resolves to a branch of
+          # that name before the tag, and v* branches are not protected as v* tags are (admins only).
+          # The commit is the protected release tag's; on workflow_run it must also be the commit the
+          # release run built.
+          sha="$(git ls-remote origin "refs/tags/v$pxsig^{}" "refs/tags/v$pxsig" | awk 'NR==1 || /\^\{\}$/ {s=$1} END {print s}')"
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::no release tag v$pxsig"; exit 1; }
+          if [ "$EVENT" = workflow_run ] && [ "$sha" != "$RUN_SHA" ]; then
+            echo "::error::tag v$pxsig is $sha, but the release run built $RUN_SHA"; exit 1
+          fi
           {
             echo "pxsig=$pxsig"
-            echo "ref=v$pxsig"
+            echo "sha=$sha"
             echo "suffix=${rebuild:+-$rebuild}"
             echo "playwright=$pw"
           } >> "$GITHUB_OUTPUT"
@@ -118,10 +130,13 @@ jobs:
     outputs:
       digest: ${{ steps.push.outputs.digest }}
     steps:
-      # The release's own sources, so smoke.mjs and the examples match the published pxsig.
+      # The release's own sources, so smoke.mjs and the examples match the published pxsig: the
+      # release tag's commit, resolved and checked by the plan. No credentials stay in the checkout,
+      # which the in-image examples step mounts.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.plan.outputs.ref }}
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
       - name: Log in to ghcr.io
         shell: bash
         env:
@@ -256,6 +271,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable branch, 2026-10-26
         with:
           toolchain: 1.99.0 # rust-toolchain.toml

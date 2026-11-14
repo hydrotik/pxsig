@@ -26,6 +26,12 @@ const three = (review = {}) => ({
 /** @param {import('playwright').Page} page */
 const approveButton = (page) =>
   page.getByRole('dialog').getByRole('button', { name: 'Approve', exact: true, disabled: false });
+/**
+ * The page's own hash. `page.url()` follows the page's same-document navigations by events, which
+ * can arrive after the page has moved.
+ * @param {import('playwright').Page} page
+ */
+const hash = (page) => page.evaluate(() => location.hash);
 /** The ids approved so far, in order. */
 const approved = (posts) => posts.filter((p) => p.name === 'approve').map((p) => p.body.id);
 /** Up to a second for `n` approves to reach the server. */
@@ -155,12 +161,20 @@ test('a decision event just before the answer: the session still moves on', asyn
   try {
     await page.getByRole('button', { name: 'Review 3 changes' }).click();
     for (let i = 0; i < 2; i++) {
+      const on = `#inspect=${IDS[i]}&session=changed`;
       await approveButton(page).waitFor();
+      assert.equal(await hash(page), on, `on ${IDS[i]} before approving it`);
       await approveButton(page).click();
       for (let n = 0; sent.length < i + 1 && n < 50; n++) await page.waitForTimeout(20);
-      await page.waitForTimeout(150);
+      assert.equal(sent.length, i + 1, `approving ${IDS[i]} reached the server`);
+      // The move follows the answer, which crosses from this process to the page: wait for the
+      // inspector to leave the entry (a fixed wait raced it on slow runners), then check where it
+      // went. Staying, or coming back later, fails the next round: its approve is never sent.
+      await page
+        .waitForFunction((h) => location.hash !== h, on, { timeout: 10000 })
+        .catch(() => {});
       assert.equal(
-        new URL(page.url()).hash,
+        await hash(page),
         `#inspect=${IDS[i + 1]}&session=changed`,
         `after approving ${IDS[i]}, on the next entry`
       );

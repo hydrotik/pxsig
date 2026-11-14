@@ -14,6 +14,9 @@
  * Windows starts nothing else: no shell, no PowerShell, no cmd.exe. Playwright starts its own
  * browser; that is the library's process, listed in the docs. `PXSIG_DEBUG=spawn` (set by
  * `pxsig serve --debug`) prints every start on stderr.
+ *
+ * Every start passes `shell: false` to node: its arguments (paths, ids) reach the program as argv,
+ * never through a command line a shell would read.
  */
 import * as cp from 'node:child_process';
 
@@ -75,7 +78,7 @@ function explain(program, e) {
  */
 export function spawn(program, args = [], opts = {}) {
   check(program, args, opts);
-  return cp.spawn(program, args, opts);
+  return cp.spawn(program, args, { ...opts, shell: false });
 }
 
 /**
@@ -99,7 +102,7 @@ export function spawn(program, args = [], opts = {}) {
  */
 export function spawnSync(program, args = [], opts = {}) {
   check(program, args, opts);
-  const r = cp.spawnSync(program, args, opts);
+  const r = cp.spawnSync(program, args, { ...opts, shell: false });
   if (r.error) explain(program, r.error);
   return r;
 }
@@ -114,7 +117,7 @@ export function spawnSync(program, args = [], opts = {}) {
 export function execFile(program, args = [], opts = {}, done = () => {}) {
   if (typeof opts === 'function') [opts, done] = [{}, opts];
   check(program, args, opts);
-  return cp.execFile(program, args, opts, (err, ...rest) =>
+  return cp.execFile(program, args, { ...opts, shell: false }, (err, ...rest) =>
     done(err && explain(program, err), ...rest)
   );
 }

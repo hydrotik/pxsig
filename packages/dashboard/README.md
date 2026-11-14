@@ -6,24 +6,32 @@ package is private. Its build goes into the `pxsig` package, so users get the da
 ## Building
 
 The dashboard renders through a UI contract (`src/ui/`, see [its README](src/ui/README.md)): views
-import components from `@ui`, and a UI adapter chosen at build time supplies them. With nothing
-set, the build uses the built-in `plain` adapter (semantic HTML and one stylesheet), which builds
-from a clone of this repository alone.
+import components from `@ui`, and a UI adapter chosen at build time supplies them.
 
-The prebuilt dashboard in the `pxsig` package uses the reference adapter, `hydrotik`, built on the
-author's design system, `@hydrotik/design-system`, which is not published to npm. The build
-compiles it, its tokens and its theme provider from a local checkout of the monorepo that contains
-them; setting `PXSIG_DS_SOURCE` makes `hydrotik` the default:
+pxsig has one UI: the reference adapter, `hydrotik`, built on the author's design system,
+`@hydrotik/design-system`, which is not published to npm. Every build in this repository uses it
+(scripts/dashboard-build.mjs): the build compiles the design system, its tokens and its theme
+provider from a checkout of the monorepo that contains them, at the commit pinned in the root
+`design-system.json`, which the build fetches into the git-ignored `target/design-system` when it
+is missing or stale (`pnpm ds:fetch`). Name where to fetch it from once per clone:
 
 ```bash
-pnpm --filter @pxsig/dashboard build                                      # plain
-PXSIG_DS_SOURCE=<path to the design-system monorepo> pnpm --filter @pxsig/dashboard build
-PXSIG_UI_ADAPTER=<name or path> pnpm --filter @pxsig/dashboard build   # another adapter
+git config pxsig.dsSource <git URL or local checkout of the design-system monorepo>
+pnpm build:dashboard                      # hydrotik, at the pinned commit (fetched first)
+PXSIG_DS_SOURCE=<design-system checkout> pnpm build:dashboard   # hydrotik, from that checkout as it is
+PXSIG_UI_ADAPTER=plain pnpm build:dashboard   # another adapter, by name or path, on purpose
 ```
 
-The order is `PXSIG_UI_ADAPTER`, then `dashboard.ui` in a `pxsig.config.json` in the folder the
-command runs from, then `hydrotik` when `PXSIG_DS_SOURCE` is set, then `plain`
-(`build-config.mjs` `adapterSpec`).
+With no source and no fetched checkout the build fails and says how to fix it; it never falls back
+to `plain`. `PXSIG_DS_SOURCE` set to something that is not a folder (a git URL) is used as the
+fetch's source instead. Bumping the pin is a reviewed commit to `design-system.json`
+([CONTRIBUTING.md](../../CONTRIBUTING.md#the-design-system)).
+
+The adapter order is `PXSIG_UI_ADAPTER`, then `dashboard.ui` in a `pxsig.config.json` in the folder
+the command runs from, then this repository's default, `hydrotik`. `pxsig dashboard build` in a
+consumer project keeps its own default (`build-config.mjs` `adapterSpec`): `hydrotik` when
+`PXSIG_DS_SOURCE` is set, else the built-in `plain` adapter (semantic HTML and one stylesheet),
+since the design system is not on npm.
 
 The build writes a single classic script plus `index.html` to `packages/pxsig/dist/dashboard/` (or
 `PXSIG_DASHBOARD_OUT`), so a static report also opens from disk. That folder is git-ignored and

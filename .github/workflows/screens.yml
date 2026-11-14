@@ -1,5 +1,5 @@
 # pxsig's own baselines (docs/releasing.md, "pxsig's own baselines"): the dashboard, built on the
-# design system at PXSIG_DS_REF, rendered in pxsig's container (docker/screens-image.json) and
+# design system at the commit design-system.json pins, rendered in pxsig's container (docker/screens-image.json) and
 # checked against packages/dashboard/.pxsig: its fixture screens, and its live screens (the real
 # `pxsig serve` on a staged example, driven through the reviewer's flows; "Live screens"). A screen
 # that changed, is new or did not render fails the run until its baseline is approved and committed. The renders are uploaded as the
@@ -30,7 +30,6 @@ jobs:
       # included) is set. Pull requests from forks and from Dependabot get no secrets: the job says
       # so and checks nothing. The secret itself reaches only the step that fetches.
       HAS_DS: ${{ secrets.PXSIG_DS_SOURCE != '' }}
-      DS_REF: ${{ vars.PXSIG_DS_REF }}
     steps:
       - id: has
         name: Design system source
@@ -55,31 +54,28 @@ jobs:
           cache-dependency-path: |
             pnpm-lock.yaml
             examples/single-package/pnpm-lock.yaml
+      # The commit design-system.json pins (40 lower-case hex, checked), fetched as `pnpm ds:fetch`
+      # does in a worktree: one code path, so CI and worktrees build the same design system. The
+      # script never prints the source and leaves it in no file. PXSIG_DS_DIR keeps the checkout in
+      # the runner's temp folder, outside ./target, which the Rust cache saves.
       - if: steps.has.outputs.ds == 'true'
         name: Fetch the design system
         shell: bash
         env:
-          DS_SOURCE: ${{ secrets.PXSIG_DS_SOURCE }}
-        run: |
-          set -euo pipefail
-          if ! [[ "${DS_REF}" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "::error::the PXSIG_DS_REF variable must be the design system's full 40-character commit SHA (lower-case hex); got '${DS_REF}'"
-            exit 1
-          fi
-          ds="${RUNNER_TEMP}/design-system"
-          git init -q "$ds"
-          git -C "$ds" fetch -q --depth 1 "${DS_SOURCE}" "${DS_REF}"
-          git -C "$ds" checkout -q --detach FETCH_HEAD
+          PXSIG_DS_SOURCE: ${{ secrets.PXSIG_DS_SOURCE }}
+          PXSIG_DS_DIR: ${{ runner.temp }}/design-system
+        run: node scripts/ds-fetch.mjs
       - if: steps.has.outputs.ds == 'true'
         name: Build the dashboard on the design system
         shell: bash
+        env:
+          PXSIG_DS_DIR: ${{ runner.temp }}/design-system
         run: |
           set -euo pipefail
-          ds="${RUNNER_TEMP}/design-system"
-          (cd "$ds" && pnpm install --frozen-lockfile)
           pnpm install --frozen-lockfile
-          PXSIG_UI_ADAPTER=hydrotik PXSIG_DS_SOURCE="$ds" pnpm --filter @pxsig/dashboard build
-          node scripts/check-dashboard-build.mjs packages/pxsig/dist/dashboard --adapter hydrotik --commit "${DS_REF}"
+          # No adapter named: this repository's build is hydrotik, on the PXSIG_DS_DIR checkout.
+          pnpm --filter @pxsig/dashboard build
+          node scripts/check-dashboard-build.mjs packages/pxsig/dist/dashboard --adapter hydrotik --commit "$(node scripts/ds-fetch.mjs --pin)"
       # `pnpm typecheck` with the design system: the reference adapter against its sources, and the
       # committed adapters/hydrotik/design-system.d.ts against a fresh `ui.mjs types`, which reads
       # the design system's built declarations (CONTRIBUTING.md).
@@ -88,9 +84,10 @@ jobs:
         shell: bash
         env:
           TURBO_TELEMETRY_DISABLED: '1'
+          PXSIG_DS_DIR: ${{ runner.temp }}/design-system
         run: |
           set -euo pipefail
-          ds="${RUNNER_TEMP}/design-system"
+          ds="${PXSIG_DS_DIR}"
           (cd "$ds" && pnpm turbo run build --filter=@hydrotik/design-system)
           PXSIG_DS_SOURCE="$ds" node scripts/typecheck.mjs
       # The live screens run on this commit's engine (docs/releasing.md, "Live screens"): built here,

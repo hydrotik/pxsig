@@ -17,7 +17,7 @@ A shot that shows a staged or mocked state, rather than a real run on an example
 ## Re-shooting
 
 ```bash
-PXSIG_DS_SOURCE=<design-system checkout> pnpm build:dashboard   # see packages/dashboard/README.md
+pnpm build:dashboard   # the pinned design system; see packages/dashboard/README.md
 node scripts/showcase-shots.mjs
 ```
 
