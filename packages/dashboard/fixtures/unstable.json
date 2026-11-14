@@ -1,0 +1,4 @@
+{
+  "$description": "Fixture screens allowed to render differently twice in one screens run (scripts/lib/screens-repeat.mjs, docs/releasing.md \"pxsig's own baselines\"). Each key is an entry id (`<section>--<feature>-<n>@<theme>`), each value why that screen may differ and where its fix belongs. An unstable screen not listed here fails pnpm screens:check. Reviewed like a baseline: a screen is added only by the owner's decision, and removed once its fix lands.",
+  "screens": {}
+}

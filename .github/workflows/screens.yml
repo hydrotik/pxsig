@@ -3,7 +3,8 @@
 # checked against packages/dashboard/.pxsig: its fixture screens, and its live screens (the real
 # `pxsig serve` on a staged example, driven through the reviewer's flows; "Live screens"). A screen
 # that changed, is new or did not render fails the run until its baseline is approved and committed. The renders are uploaded as the
-# `pxsig-screens` artifact, which the review starts from.
+# `pxsig-screens` artifact, which the review starts from. Each fixture screen renders twice in the
+# run, and one whose two renders differ (unstable) fails it too (scripts/lib/screens-repeat.mjs).
 name: screens
 
 on:
@@ -117,6 +118,9 @@ jobs:
           if [ -f packages/dashboard/.pxsig/reports/summary.md ]; then
             cat packages/dashboard/.pxsig/reports/summary.md >> "$GITHUB_STEP_SUMMARY"
           fi
+          if [ -f packages/dashboard/.pxsig/reports/fixture-repeat/summary.md ]; then
+            cat packages/dashboard/.pxsig/reports/fixture-repeat/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
           echo "code=$code" >> "$GITHUB_OUTPUT"
           [ "$code" -le 1 ]
       # The review: download this artifact into packages/dashboard/.pxsig, run `pxsig serve` in
@@ -136,5 +140,5 @@ jobs:
         name: Screens to review
         shell: bash
         run: |
-          echo "::error::screens changed, are new or did not render: review the pxsig-screens artifact and commit the approved baselines (docs/releasing.md, \"pxsig's own baselines\")"
+          echo "::error::screens changed, are new, did not render or rendered differently twice: review the pxsig-screens artifact and commit the approved baselines (docs/releasing.md, \"pxsig's own baselines\")"
           exit 1
