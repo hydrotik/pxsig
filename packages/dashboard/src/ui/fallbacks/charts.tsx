@@ -55,6 +55,8 @@ const heat = (step: number) =>
   step
     ? `color-mix(in srgb, ${v.color.accent} ${HEAT_MIX[step]}%, ${v.color.surface})`
     : v.color.surface;
+/** A text box trimmed to the capitals and the baseline (CSS text-box), for centring on them. */
+const capitals = { textBox: 'trim-both cap alphabetic' } as React.CSSProperties;
 const swatch = (step: number): React.CSSProperties => ({
   flexShrink: 0,
   inlineSize: '0.75rem',
@@ -154,12 +156,13 @@ export const Heatmap: F<'Heatmap'> = ({ label, cells, legend, onSelect, classNam
         color: v.color.textMuted,
       }}
     >
-      <span style={{ marginInlineEnd: v.space['1'] }}>{legend.label}</span>
-      <span>{legend.low}</span>
+      {/* Each text trimmed to its capitals, so the swatches centre on them whatever the font. */}
+      <span style={{ ...capitals, marginInlineEnd: v.space['1'] }}>{legend.label}</span>
+      <span style={capitals}>{legend.low}</span>
       {[1, 2, 3, 4, 5].map((n) => (
         <span key={n} aria-hidden="true" style={swatch(n)} />
       ))}
-      <span>{legend.high}</span>
+      <span style={capitals}>{legend.high}</span>
     </div>
   </div>
 );

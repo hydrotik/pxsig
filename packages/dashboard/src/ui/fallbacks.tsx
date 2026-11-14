@@ -160,7 +160,15 @@ function DataTableFallback<T>({
           style={{ ...control, maxInlineSize: '20rem' }}
         />
       ) : null}
-      <table style={{ borderCollapse: 'collapse', inlineSize: '100%', fontSize: v.fontSize.sm }}>
+      {/* Separate borders: collapsed ones are split half to each row, which puts rows on half pixels. */}
+      <table
+        style={{
+          borderCollapse: 'separate',
+          borderSpacing: 0,
+          inlineSize: '100%',
+          fontSize: v.fontSize.sm,
+        }}
+      >
         <thead>
           <tr>
             {columns.map((c) => (
