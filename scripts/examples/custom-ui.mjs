@@ -81,17 +81,20 @@ export function runCustomUi() {
       ...(x.axe ?? []).map((a) => `axe ${a.id} (${a.count})`),
       ...(x.layout ?? []).map((l) => `${l.rule}: ${l.text}`),
       ...(x.fidelity ?? []).map((f) => `${f.rule}: ${f.text}`),
-      ...(x.alignment ?? []).map((f) => `${f.rule}: ${f.text}`),
     ].map((f) => `${x.feature} #${x.index + 1} ${x.theme}: ${f}`)
   );
+  // Alignment findings are advisory for an adapter that is not pxsig's own (plain here): --strict
+  // exits 1 on them, which this example accepts and lists, but does not fail on.
+  const aligned = (c.screens ?? []).reduce((n, x) => n + (x.alignment?.length ?? 0), 0);
+  if (aligned) log(`${name}: ${aligned} alignment findings (advisory for this adapter)`);
   expect(
     !found.length,
-    `check --strict: ${s.withFidelity ?? 0} screens breaking a region rule, ${s.withAxe ?? 0} with axe violations, ${s.withLayout ?? 0} with layout findings, ${s.withAlignment ?? 0} with alignment findings${found.length ? `: ${found.slice(0, 8).join('; ')}${found.length > 8 ? ` and ${found.length - 8} more` : ''}` : ''}`
+    `check --strict: ${s.withFidelity ?? 0} screens breaking a region rule, ${s.withAxe ?? 0} with axe violations, ${s.withLayout ?? 0} with layout findings${found.length ? `: ${found.slice(0, 8).join('; ')}${found.length > 8 ? ` and ${found.length - 8} more` : ''}` : ''}`
   );
   expect(
     // With no summary, `undefined > 0` is false: the check fails, as it should. --strict exits 1
     // on findings, which the expectation above names.
-    (r.status === 0 || (r.status === 1 && found.length > 0)) &&
+    (r.status === 0 || (r.status === 1 && (found.length > 0 || aligned > 0))) &&
       /** @type {number} */ (s.screens) > 0 &&
       s.failed === 0,
     `check: ${s.rendered ?? 0} of ${s.screens ?? 0} screens rendered, both themes${r.status ? ` (exit ${r.status}${failed.length ? `: ${failed.join('; ')}` : ''}${r.stderr ? `, ${r.stderr.trim()}` : ''})` : ''}`

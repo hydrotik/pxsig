@@ -55,8 +55,6 @@ const heat = (step: number) =>
   step
     ? `color-mix(in srgb, ${v.color.accent} ${HEAT_MIX[step]}%, ${v.color.surface})`
     : v.color.surface;
-/** A text box trimmed to the capitals and the baseline (CSS text-box), for centring on them. */
-const capitals = { textBox: 'trim-both cap alphabetic' } as React.CSSProperties;
 const swatch = (step: number): React.CSSProperties => ({
   flexShrink: 0,
   inlineSize: '0.75rem',
@@ -120,8 +118,6 @@ export const Heatmap: F<'Heatmap'> = ({ label, cells, legend, onSelect, classNam
           color: v.color.text,
           font: 'inherit',
           fontSize: v.fontSize.xs,
-          // Whole-pixel lines, whatever the platform's font metrics: the swatch centres on whole pixels.
-          lineHeight: '1rem',
         };
         const name = c.accessibleLabel ?? `${c.label}, ${c.text}`;
         return (
@@ -151,18 +147,15 @@ export const Heatmap: F<'Heatmap'> = ({ label, cells, legend, onSelect, classNam
         alignItems: 'center',
         gap: v.space['1'],
         fontSize: v.fontSize['2xs'],
-        // A whole-pixel line: the 12px swatches centre on whole pixels.
-        lineHeight: '1rem',
         color: v.color.textMuted,
       }}
     >
-      {/* Each text trimmed to its capitals, so the swatches centre on them whatever the font. */}
-      <span style={{ ...capitals, marginInlineEnd: v.space['1'] }}>{legend.label}</span>
-      <span style={capitals}>{legend.low}</span>
+      <span style={{ marginInlineEnd: v.space['1'] }}>{legend.label}</span>
+      <span>{legend.low}</span>
       {[1, 2, 3, 4, 5].map((n) => (
         <span key={n} aria-hidden="true" style={swatch(n)} />
       ))}
-      <span style={capitals}>{legend.high}</span>
+      <span>{legend.high}</span>
     </div>
   </div>
 );

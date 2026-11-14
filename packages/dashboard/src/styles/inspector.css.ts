@@ -329,14 +329,7 @@ export const insSide = style({
   // A whole-pixel line: its sections stack to whole heights, so what follows them stays on whole pixels.
   lineHeight: '1.25rem',
 });
-// A whole-pixel line wherever a side section sits (the inspector, the React panels): its rows of
-// text and badges are then whole pixels tall on every platform's fonts.
-export const sideSection = style({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: v.space['2'],
-  lineHeight: '1.25rem',
-});
+export const sideSection = style({ display: 'flex', flexDirection: 'column', gap: v.space['2'] });
 // A side section's title, with its action (the Storybook link on Pixel) at the end of the row.
 export const sectionHead = style({
   display: 'flex',

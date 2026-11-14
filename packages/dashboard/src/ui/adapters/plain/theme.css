@@ -88,15 +88,7 @@
   color: var(--plain-muted);
   font-size: 0.8125rem;
 }
-/* A badge exactly one 20px line tall, at the line's top: on the text's baseline it would grow the
-   line by a font's rounding on some platforms, and land on a half pixel (pxsig dashboard check,
-   whole-pixel). Status lines and table cells use 20px lines too. */
 .plain-badge {
-  display: inline-block;
-  box-sizing: border-box;
-  block-size: 1.25rem;
-  line-height: 1.125rem;
-  vertical-align: top;
   font-size: 0.6875rem;
   padding: 0 0.375rem;
   border-radius: 0.25rem;
@@ -125,7 +117,6 @@
   gap: 0.25rem;
   align-items: center;
   font-size: 0.8125rem;
-  line-height: 1.25rem;
 }
 .plain-status[data-tone='success'] > span:first-child {
   color: var(--plain-success);
@@ -144,8 +135,6 @@
 .plain-nav {
   display: flex;
   align-items: center;
-  /* A whole-pixel line on every platform: the links' row, and the counts in it, on whole pixels. */
-  line-height: 1.25rem;
   gap: 1rem;
   padding: 0.5rem 1rem;
   border-block-end: 1px solid var(--plain-border);
@@ -162,17 +151,6 @@
 }
 .plain-nav li {
   white-space: nowrap;
-}
-/* A link and its count side by side, centred: a count on the text's baseline grows the line. A
-   link moved into More keeps its `hidden`. */
-.plain-nav li:not([hidden]) {
-  display: flex;
-  align-items: center;
-}
-.plain-nav li > a {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
 }
 .plain-nav a,
 .plain-more > button {
@@ -226,10 +204,7 @@
 .plain-more [role='menuitem']:focus-visible {
   background: var(--plain-hover);
 }
-/* At a whole distance from the top, not centred: centring an odd or fractional height in the
-   window puts the dialog, and all in it, on a half pixel. */
 .plain-dialog {
-  margin-block: 3rem auto;
   border: 1px solid var(--plain-border);
   background: var(--plain-bg);
   color: var(--plain-text);

@@ -145,10 +145,6 @@ function DataTableFallback<T>({
     textAlign: align === 'end' ? 'end' : 'start',
     paddingBlock: v.space['1_5'],
     paddingInline: v.space['2'],
-    // A whole-pixel line, and each cell's content from its top: a row a font's rounding makes one
-    // pixel taller than a cell's content would centre that content on a half pixel.
-    lineHeight: '1.25rem',
-    verticalAlign: 'top',
     borderBlockEnd: border,
   });
   return (
@@ -162,15 +158,7 @@ function DataTableFallback<T>({
           style={{ ...control, maxInlineSize: '20rem' }}
         />
       ) : null}
-      {/* Separate borders: collapsed ones are split half to each row, which puts rows on half pixels. */}
-      <table
-        style={{
-          borderCollapse: 'separate',
-          borderSpacing: 0,
-          inlineSize: '100%',
-          fontSize: v.fontSize.sm,
-        }}
-      >
+      <table style={{ borderCollapse: 'collapse', inlineSize: '100%', fontSize: v.fontSize.sm }}>
         <thead>
           <tr>
             {columns.map((c) => (
