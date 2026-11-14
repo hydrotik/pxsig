@@ -88,12 +88,15 @@
   color: var(--plain-muted);
   font-size: 0.8125rem;
 }
-/* Badges and status lines on whole-pixel lines: an 18px badge centres on whole pixels in a 28px
-   row and a 20px line (pxsig dashboard check, whole-pixel). */
+/* A badge exactly one 20px line tall, at the line's top: on the text's baseline it would grow the
+   line by a font's rounding on some platforms, and land on a half pixel (pxsig dashboard check,
+   whole-pixel). Status lines and table cells use 20px lines too. */
 .plain-badge {
   display: inline-block;
   box-sizing: border-box;
-  line-height: 1rem;
+  block-size: 1.25rem;
+  line-height: 1.125rem;
+  vertical-align: top;
   font-size: 0.6875rem;
   padding: 0 0.375rem;
   border-radius: 0.25rem;
