@@ -310,6 +310,8 @@ export interface IntegrityEntry {
   severity: 'error' | 'warn' | 'info';
   issues: IntegrityIssue[];
   files: { sig: string; sigExists: boolean; baseImage: boolean; latestRender: boolean } | null;
+  /** No person approved its baseline: its place in the review queue, or written since it closed. */
+  unreviewed?: { queue?: number; new?: boolean; by: string };
 }
 export interface IntegrityComponent {
   component: string;
@@ -318,6 +320,8 @@ export interface IntegrityComponent {
   entries: number;
   stories: number;
   counts: Record<string, number>;
+  /** How many of its baselines no person approved. Older servers omit it. */
+  unreviewed?: number;
 }
 export interface IntegrityLedger {
   schemaVersion: number;
@@ -341,6 +345,14 @@ export interface IntegrityLedger {
     componentsBySeverity: Record<'error' | 'warn' | 'info', number>;
     bySeverity: Record<'error' | 'warn' | 'info', number>;
     byCode: Record<string, number>;
+    /** Baselines no person approved: the queue, the growth past it. Older servers omit it. */
+    unreviewed?: {
+      count: number;
+      queue: number;
+      new: number;
+      order: 'file' | 'name';
+      next: string[];
+    };
   };
   components: IntegrityComponent[];
   entries: IntegrityEntry[];

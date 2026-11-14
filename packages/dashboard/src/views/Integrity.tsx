@@ -274,16 +274,37 @@ export function Integrity({
         })}
       </div>
     );
+  // The review queue: with its tile chosen, components and entries in the queue's order (a
+  // baseline written since the queue closed first).
+  const queued = code === 'unreviewed';
+  const place = (e: (typeof L.entries)[number]) =>
+    e.unreviewed ? (e.unreviewed.queue ?? 0) : Number.MAX_SAFE_INTEGER;
+  const firstOf = new Map<string, number>();
+  for (const e of L.entries)
+    firstOf.set(e.component, Math.min(firstOf.get(e.component) ?? Infinity, place(e)));
   const comps = [...L.components]
     .filter((c) =>
-      only ? c.component === only : code ? (c.counts[code] ?? 0) > 0 : all || c.severity !== 'info'
+      only
+        ? c.component === only
+        : queued
+          ? (c.unreviewed ?? 0) > 0
+          : code
+            ? (c.counts[code] ?? 0) > 0
+            : all || c.severity !== 'info'
     )
-    .sort(
-      (a, b) => order[a.severity] - order[b.severity] || a.component.localeCompare(b.component)
+    .sort((a, b) =>
+      queued
+        ? (firstOf.get(a.component) ?? 0) - (firstOf.get(b.component) ?? 0)
+        : order[a.severity] - order[b.severity] || a.component.localeCompare(b.component)
     );
   const entries = L.entries
     .filter((x) => x.component === selected)
-    .sort((a, b) => order[a.severity] - order[b.severity] || a.id.localeCompare(b.id));
+    .sort((a, b) =>
+      queued
+        ? place(a) - place(b)
+        : order[a.severity] - order[b.severity] || a.id.localeCompare(b.id)
+    );
+  const unreviewed = L.summary.unreviewed;
   const rows = rowsWithPending(data);
   const byId = new Map(rows.map((r) => [r.id, r]));
   const sm = L.summary;
@@ -323,6 +344,24 @@ export function Integrity({
                 }
               : { label: codeCopy(c).title, value: 0 }
           ),
+          // Shown only while baselines wait for a person (older servers send no count).
+          ...(unreviewed?.count
+            ? [
+                {
+                  label: t('coverage.stats.unreviewed'),
+                  value: unreviewed.count,
+                  ...(unreviewed.new
+                    ? {
+                        unit: t('coverage.stats.unreviewedUnit', { count: unreviewed.new }),
+                        tone: 'warning' as const,
+                      }
+                    : {}),
+                  active: queued,
+                  onSelect: () => (setOnly(null), setCode(queued ? null : 'unreviewed')),
+                  icon: <Affordance kind="filter" />,
+                },
+              ]
+            : []),
         ]}
       />
       <StaleHeatmap data={data} onSelect={show} />
@@ -474,9 +513,19 @@ export function Integrity({
                     header: t('coverage.entries.detail'),
                     cell: (e) => (
                       <span className={s.muted}>
-                        {e.issues
-                          .map((i) => `${codeCopy(i.code).title}: ${i.reason}`)
-                          .join(' · ') || t('coverage.entries.noIssues')}
+                        {[
+                          ...e.issues.map((i) => `${codeCopy(i.code).title}: ${i.reason}`),
+                          ...(e.unreviewed
+                            ? [
+                                e.unreviewed.queue != null
+                                  ? t('coverage.entries.unreviewedQueue', {
+                                      by: e.unreviewed.by,
+                                      place: e.unreviewed.queue,
+                                    })
+                                  : t('coverage.entries.unreviewedNew', { by: e.unreviewed.by }),
+                              ]
+                            : []),
+                        ].join(' · ') || t('coverage.entries.noIssues')}
                       </span>
                     ),
                   },

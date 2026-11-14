@@ -637,6 +637,10 @@
           "default": "standard",
           "description": "standard: a typed phrase at a terminal, or the dashboard with the dashboard link. strict is reserved for a later release and refused for now."
         },
+        "reviewOrder": {
+          "type": "string",
+          "description": "A workspace-relative JSON file that orders the review queue of baselines no person approved: `{ \"first\": [component, …], \"usage\": { component: count } }` (the components an adapter uses first, then the most used, then the rest). Unset: by component name. docs/integrity.md, \"Unreviewed baselines\"."
+        },
         "byStory": {
           "type": "boolean",
           "default": false,

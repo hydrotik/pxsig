@@ -211,6 +211,11 @@ export interface LedgerEntry {
   name?: string;
   /** An orphan's files. */
   orphanFiles?: string[];
+  /**
+   * Present when no person approved its baseline (lib/integrity/unreviewed.mjs): `queue`, its place
+   * in the review queue (from 1), or `new` when it was written past the ratchet; `by`, what wrote it.
+   */
+  unreviewed?: { queue?: number; new?: boolean; by: string };
 }
 
 /** A ledger entry for a manifest entry: one with `files`. */
@@ -224,6 +229,8 @@ export interface LedgerComponent {
   entries: number;
   stories: number;
   counts: Partial<Record<IntegrityCode, number>>;
+  /** How many of its baselines no person approved, when any. */
+  unreviewed?: number;
 }
 
 /** A setup problem in the ledger's `setup` (docs/integrity.md, "Setup problems"). */
@@ -245,6 +252,16 @@ export interface LedgerSummary {
   infoFindings: number;
   byStatus: Partial<Record<IntegrityCode, number>>;
   byCode: Partial<Record<IntegrityCode, number>>;
+  /** Baselines no person approved (lib/integrity/unreviewed.mjs): the queue, the growth past it. */
+  unreviewed?: {
+    count: number;
+    queue: number;
+    new: number;
+    /** `file`: approvals.reviewOrder ordered the queue; `name`: by component name. */
+    order: 'file' | 'name';
+    /** The first ids of the queue, in order. */
+    next: string[];
+  };
 }
 
 /** How staleness was decided. */

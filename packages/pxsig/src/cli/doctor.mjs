@@ -280,6 +280,15 @@ export function doctorParts(cli) {
             ],
           ],
           ['Codes', issueText(sm.byCode) || 'none'],
+          // Baselines no person approved (docs/integrity.md, "Unreviewed baselines"): never a finding.
+          ...(sm.unreviewed?.count
+            ? /** @type {[string, Cell][]} */ ([
+                [
+                  'Unreviewed',
+                  `${sm.unreviewed.queue} queued, ${sm.unreviewed.new} new · next: ${sm.unreviewed.next.slice(0, 3).join(', ')}${sm.unreviewed.queue > 3 ? ', …' : ''}`,
+                ],
+              ])
+            : []),
           [
             'Report',
             r.sources.report.missing

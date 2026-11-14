@@ -2,6 +2,8 @@
  * tools/read.mjs — the read tools: pxsig_projects, pxsig_status, pxsig_list, pxsig_entry.
  */
 import { join } from 'node:path';
+import { resolveContext } from '../lib/integrity.mjs';
+import { unreviewedSummary } from '../lib/integrity/unreviewed.mjs';
 import { findWorkspace } from '../lib/workspace.mjs';
 import { relPath } from '../lib/paths.mjs';
 import {
@@ -65,7 +67,7 @@ export const readTools = /** @type {const} */ ([
   {
     name: 'pxsig_status',
     description:
-      "Overview of the visual-regression state: when the report was last written, counts per state (pass, drift, changed, error, flaky, approved, rejected), accessibility totals, the components with the most changed entries, whether the pxsig server is up or busy, design-system files edited since the report (entries the report does not cover yet), the render environment (how many entries' baselines came from a different one), and warn mode (`enforcement`: each gate's setting from the committed config; no tool can change it), and the open rejections (`openRejections`: pxsig_rejected lists them with the reasons). Start here.",
+      "Overview of the visual-regression state: when the report was last written, counts per state (pass, drift, changed, error, flaky, approved, rejected), accessibility totals, the components with the most changed entries, whether the pxsig server is up or busy, design-system files edited since the report (entries the report does not cover yet), the render environment (how many entries' baselines came from a different one), and warn mode (`enforcement`: each gate's setting from the committed config; no tool can change it), the open rejections (`openRejections`: pxsig_rejected lists them with the reasons), and the baselines no person approved (`unreviewed`: count, the review queue, the ones written since it closed, the next ids to review; nothing fails on them). Start here.",
     inputSchema: { type: 'object', properties: { project: PROJECT }, additionalProperties: false },
     /** @param {ProjectArg} [args] */
     async run({ project } = {}) {
@@ -129,6 +131,14 @@ export const readTools = /** @type {const} */ ([
         },
         ...warnMode(C),
         openRejections,
+        // Baselines no person approved: the review queue and the growth past it (docs/integrity.md).
+        unreviewed: (() => {
+          try {
+            return unreviewedSummary(resolveContext(C.P));
+          } catch {
+            return null;
+          }
+        })(),
         ...(openRejections
           ? { hint: 'pxsig_rejected lists them with the reasons and images' }
           : {}),
