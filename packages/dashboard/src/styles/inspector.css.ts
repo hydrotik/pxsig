@@ -138,7 +138,8 @@ export const reportBody = style({
   maxBlockSize: 'calc(100dvh - 4rem)',
   overflowY: 'auto',
 });
-// The composite, scaled down to the dialog's width when wider (the copy is the full PNG).
+// The composite, at a fixed height and scaled to fit (the copy is the full PNG): a height scaled
+// from the dialog's width is fractional, and would put everything after it on a half pixel.
 export const reportImage = style({
   alignSelf: 'flex-start',
   maxInlineSize: '100%',
@@ -146,7 +147,13 @@ export const reportImage = style({
   border: `1px solid ${v.color.border}`,
   borderRadius: v.radius.sm,
 });
-globalStyle(`${reportImage} img`, { display: 'block', maxInlineSize: '100%', blockSize: 'auto' });
+globalStyle(`${reportImage} img`, {
+  display: 'block',
+  blockSize: '7rem',
+  inlineSize: 'auto',
+  maxInlineSize: '100%',
+  objectFit: 'contain',
+});
 // Exactly the text a copy takes, read-only, in a box that scrolls.
 export const reportText = style({
   margin: 0,
@@ -319,6 +326,8 @@ export const insSide = style({
   gap: v.space['5'],
   borderInlineStart: `1px solid ${v.color.border}`,
   boxSizing: 'border-box',
+  // A whole-pixel line: its sections stack to whole heights, so what follows them stays on whole pixels.
+  lineHeight: '1.25rem',
 });
 export const sideSection = style({ display: 'flex', flexDirection: 'column', gap: v.space['2'] });
 // A side section's title, with its action (the Storybook link on Pixel) at the end of the row.
@@ -496,5 +505,6 @@ export const labelHidden = style({ visibility: 'hidden' });
 /** A text change (side/TextSection.tsx): a region button holding a sentence that wraps. */
 export const textChange = style([
   region,
-  { display: 'block', textAlign: 'start', lineHeight: 1.45, overflowWrap: 'anywhere' },
+  // 18px a line (1.45 of 12px was 17.4px): whole-pixel rows, and whole pixels after them.
+  { display: 'block', textAlign: 'start', lineHeight: '1.125rem', overflowWrap: 'anywhere' },
 ]);

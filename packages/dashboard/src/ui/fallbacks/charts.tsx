@@ -147,6 +147,8 @@ export const Heatmap: F<'Heatmap'> = ({ label, cells, legend, onSelect, classNam
         alignItems: 'center',
         gap: v.space['1'],
         fontSize: v.fontSize['2xs'],
+        // A whole-pixel line: the 12px swatches centre on whole pixels.
+        lineHeight: '1rem',
         color: v.color.textMuted,
       }}
     >
