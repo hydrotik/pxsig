@@ -7,8 +7,8 @@
  *   node scripts/screens-check.mjs [--build <dir>] [--only <feature,…>] [--update-locks] [--no-live] [--repeat <n>]
  *   pnpm screens:check …   (the same, in pxsig's container: scripts/screens-container.mjs)
  *
- * --build is the dashboard to check: the reference build (`PXSIG_UI_ADAPTER=hydrotik
- * PXSIG_DS_SOURCE=<design system> pnpm build:dashboard`), by default packages/pxsig/dist/dashboard.
+ * --build is the dashboard to check: the reference build (`pnpm build:dashboard`, the design
+ * system pinned in design-system.json), by default packages/pxsig/dist/dashboard.
  * The baselines are rendered in pxsig's container (docs/releasing.md, "pxsig's own baselines");
  * a render elsewhere differs in fonts, and its rows say so (`envMatch`).
  *
