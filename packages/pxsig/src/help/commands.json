@@ -1194,7 +1194,7 @@
     },
     "dashboard": {
       "summary": "The dashboard on this project's design system, through a UI adapter.",
-      "usage": ["pxsig dashboard build|gaps|check"],
+      "usage": ["pxsig dashboard build|gaps|check|parity"],
       "subcommands": {
         "build": {
           "summary": "Rebuild the dashboard through a UI adapter with the project's own Vite. pxsig serve then serves it while it is current. Refused when the adapter is written for an older major version of the UI contract.",
@@ -1319,12 +1319,61 @@
               "shows": "One feature while working on it"
             }
           ]
+        },
+        "parity": {
+          "summary": "Each contract component the adapter's conformance.json pairs with a story of its design system, rendered beside that story in one Chromium (pxsig's capture flags, both themes) and compared element by element: box model, font, and the rendered alignment of a dot or icon on its label's capitals. Colour is the region rules' business. Needs the design system's built Storybook and, unless --build, the project's Vite to build the parity page. Reads no project data, writes only --out.",
+          "usage": [
+            "pxsig dashboard parity --storybook dir [--ui path] [--build dir] [--out dir] [--themes dark,light] [--json]"
+          ],
+          "flags": [
+            {
+              "name": "storybook",
+              "value": "dir",
+              "meaning": "The design system's built Storybook (the output of `storybook build`: the folder holding iframe.html), with the stories conformance.json pairs."
+            },
+            {
+              "name": "ui",
+              "value": "path",
+              "meaning": "The adapter, whose conformance.json lists the pairs (`parity` on each component).",
+              "setting": "dashboard.ui",
+              "env": "PXSIG_UI_ADAPTER"
+            },
+            {
+              "name": "build",
+              "value": "dir",
+              "meaning": "The parity page already built with the adapter (a folder with index.html); without it the page is built into --out with the project's Vite."
+            },
+            {
+              "name": "out",
+              "value": "dir",
+              "default": "node_modules/.cache/pxsig/dashboard-parity",
+              "meaning": "Where report.json, summary.md, the screenshots and the built page go."
+            },
+            {
+              "name": "themes",
+              "value": "list",
+              "default": "dark,light",
+              "meaning": "The themes to render each pair in."
+            }
+          ],
+          "effects": ["writes-files"],
+          "exits": {
+            "0": "Every pair rendered and matches its story, or differs only as its `expect` says",
+            "1": "A difference, a pair that did not render, or a malformed `parity` entry",
+            "2": "No --storybook (or not a built Storybook), no pairs in conformance.json, no Chromium, no Vite, or a usage error"
+          },
+          "examples": [
+            {
+              "cmd": "pxsig dashboard parity --storybook ../design-system/storybook-static",
+              "shows": "Each paired component beside its story, with what differs"
+            }
+          ]
         }
       },
       "effects": ["see each subcommand"],
       "exits": {
         "0": "OK",
-        "1": "See gaps and check",
+        "1": "See gaps, check and parity",
         "2": "Usage or setup error"
       },
       "examples": [

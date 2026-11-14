@@ -54,10 +54,18 @@ export function pinnedImage(/** @type {string} */ repo) {
 
 /**
  * The `docker run` arguments.
- * @param {{ image: string, repo: string, user: string | null, args: string[], liveBin?: string | null }} o
- *   user `uid:gid`, or null where there is none (Windows); liveBin: the live screens' engine
+ * @param {{ image: string, repo: string, user: string | null, args: string[], liveBin?: string | null, script?: string }} o
+ *   user `uid:gid`, or null where there is none (Windows); liveBin: the live screens' engine;
+ *   script: what runs in the image (scripts/parity-check.mjs runs there too)
  */
-export function dockerArgs({ image, repo, user, args, liveBin = null }) {
+export function dockerArgs({
+  image,
+  repo,
+  user,
+  args,
+  liveBin = null,
+  script = 'scripts/screens-check.mjs',
+}) {
   return [
     'run',
     '--rm',
@@ -75,7 +83,7 @@ export function dockerArgs({ image, repo, user, args, liveBin = null }) {
     repo,
     image,
     'node',
-    'scripts/screens-check.mjs',
+    script,
     ...args,
   ];
 }

@@ -6,6 +6,9 @@
  *   pxsig dashboard build [--ui <path>] [--out <dir>]
  *   pxsig dashboard check [--ui <path>] [--build <dir>] [--out <dir>] [--themes dark,light] [--strict]
  *                                                  every feature's screens on that build (dashboard-check.mjs)
+ *   pxsig dashboard parity --storybook <dir> [--ui <path>] [--build <dir>] [--out <dir>]
+ *                                                  the adapter's components beside the design
+ *                                                  system's stories (dashboard-parity.mjs)
  *
  * --ui defaults to `dashboard.ui` in the current folder's pxsig.config.json. The dashboard's source
  * ships in this package (`dashboard/`, or `../dashboard` in a source checkout); the build runs Vite
@@ -64,7 +67,7 @@ const load = (dir, file) => import(pathToFileURL(join(dir, file)).href);
  * @param {Flags} flags
  * @param {string} cwd
  */
-async function adapterOf(flags, cwd) {
+export async function adapterOf(flags, cwd) {
   // The dashboard source's own module (packages/dashboard/build-config.mjs).
   const { resolveAdapter } = /** @type {DashboardBuildConfig} */ (
     await load(dashboardSource(), 'build-config.mjs')
@@ -89,34 +92,18 @@ export async function gaps(flags, cwd = process.cwd()) {
 }
 
 /**
- * @param {Flags} flags
- * @param {string} [cwd]
- * @param {(m: string) => unknown} [log]
+ * Vite's module, @vitejs/plugin-react's default export and the vanilla-extract plugin, from the
+ * project in `cwd` (each package's ESM entry, so Vite's CJS shim and its warning stay out). Throws,
+ * naming what to install, when one is missing.
+ * @param {string} cwd
+ * @param {DashboardBuildConfig['packageDir']} packageDir
+ * @param {string} command what needs them, for the message (`build`, `parity`)
  */
-export async function build(
-  flags,
-  cwd = process.cwd(),
-  log = (m) => process.stderr.write(`${m}\n`)
-) {
-  const src = dashboardSource();
-  const ui = await adapterOf(flags, cwd);
-  // The dashboard source's own modules (packages/dashboard).
-  const { dashboardConfig, packageDir } = /** @type {DashboardBuildConfig} */ (
-    await load(src, 'build-config.mjs')
-  );
-  const { contractStatus, readConformance } = /** @type {DashboardUiTools} */ (
-    await load(src, 'ui-tools.mjs')
-  );
-  const contract = contractStatus(readConformance(ui.dir)?.contract ?? '1.0.0');
-  if (contract.status === 'older-major')
-    throw new Error(
-      [`the "${ui.name}" adapter is ${contract.line}.`, ...(contract.notes ?? [])].join('\n\n')
-    );
-  if (contract.status !== 'same') log(`[dashboard] the "${ui.name}" adapter is ${contract.line}`);
+export async function projectVite(cwd, packageDir, command) {
   const missing = NEEDS.filter((n) => !packageDir(n, [cwd]));
   if (missing.length)
     throw new Error(
-      `pxsig dashboard build runs Vite from this project and needs: ${missing.join(', ')}. Install them as devDependencies (e.g. pnpm add -D ${missing.join(' ')}).`
+      `pxsig dashboard ${command} runs Vite from this project and needs: ${missing.join(', ')}. Install them as devDependencies (e.g. pnpm add -D ${missing.join(' ')}).`
     );
   // The package's ESM entry (its `import` export), so Vite's CJS shim and its warning stay out.
   /** @type {(n: string) => Promise<unknown>} */
@@ -155,6 +142,35 @@ export async function build(
   const { vanillaExtractPlugin } = /** @type {{ vanillaExtractPlugin: unknown }} */ (
     await imp('@vanilla-extract/vite-plugin')
   );
+  return { vite, react, vanillaExtractPlugin };
+}
+
+/**
+ * @param {Flags} flags
+ * @param {string} [cwd]
+ * @param {(m: string) => unknown} [log]
+ */
+export async function build(
+  flags,
+  cwd = process.cwd(),
+  log = (m) => process.stderr.write(`${m}\n`)
+) {
+  const src = dashboardSource();
+  const ui = await adapterOf(flags, cwd);
+  // The dashboard source's own modules (packages/dashboard).
+  const { dashboardConfig, packageDir } = /** @type {DashboardBuildConfig} */ (
+    await load(src, 'build-config.mjs')
+  );
+  const { contractStatus, readConformance } = /** @type {DashboardUiTools} */ (
+    await load(src, 'ui-tools.mjs')
+  );
+  const contract = contractStatus(readConformance(ui.dir)?.contract ?? '1.0.0');
+  if (contract.status === 'older-major')
+    throw new Error(
+      [`the "${ui.name}" adapter is ${contract.line}.`, ...(contract.notes ?? [])].join('\n\n')
+    );
+  if (contract.status !== 'same') log(`[dashboard] the "${ui.name}" adapter is ${contract.line}`);
+  const { vite, react, vanillaExtractPlugin } = await projectVite(cwd, packageDir, 'build');
   const { classicScript } = /** @type {DashboardPostbuild} */ (await load(src, 'postbuild.mjs'));
   // The default folder is where `pxsig serve` looks for this project's build.
   const outDir = typeof flags.out === 'string' ? resolve(cwd, flags.out) : buildDirFor(cwd);
@@ -271,7 +287,22 @@ export async function dashboardCommand(
       throw e;
     }
   }
+  if (sub === 'parity') {
+    const { ParitySetupError, dashboardParity, parityText } =
+      await import('./dashboard-parity.mjs');
+    try {
+      const r = await dashboardParity(flags, process.cwd(), (m) => process.stderr.write(`${m}\n`));
+      emit(flags.json ? JSON.stringify(r.report, null, 2) : parityText(r, process.cwd()));
+      return r.code;
+    } catch (e) {
+      if (e instanceof ParitySetupError) {
+        process.stderr.write(`[dashboard] setup error: ${e.message}\n`);
+        return 2;
+      }
+      throw e;
+    }
+  }
   throw new Error(
-    'usage: pxsig dashboard build [--ui <path>] [--out <dir>] | pxsig dashboard gaps [--ui <path>] [--json] | pxsig dashboard check [--build <dir>] [--out <dir>] [--themes dark,light] [--strict]'
+    'usage: pxsig dashboard build [--ui <path>] [--out <dir>] | pxsig dashboard gaps [--ui <path>] [--json] | pxsig dashboard check [--build <dir>] [--out <dir>] [--themes dark,light] [--strict] | pxsig dashboard parity --storybook <dir> [--ui <path>] [--build <dir>] [--out <dir>] [--themes dark,light] [--json]'
   );
 }

@@ -213,3 +213,26 @@ export const screenFindings = (screens, idOf) =>
           ...x.layout.map((l) => `layout ${l.rule}: ${l.text}`),
         ].join('; ')}`
     );
+
+/**
+ * Each rendered screen's alignment findings (dashboard-check/alignment.mjs), written to
+ * `<reports>/alignment.json` as `{ id, findings }` per screen that has any; the lines to print.
+ * Advisory on pxsig's own screens until today's are fixed: never failing the check.
+ * @template {{ rendered: boolean, alignment?: { rule: string, text: string }[] }} S
+ * @param {S[]} screens
+ * @param {(s: S) => string} idOf
+ * @param {string} reports
+ * @returns {string[]}
+ */
+export function alignmentNotes(screens, idOf, reports) {
+  const notes = screens
+    .filter((x) => x.rendered && x.alignment?.length)
+    .map((x) => ({ id: idOf(x), findings: x.alignment ?? [] }));
+  mkdirSync(reports, { recursive: true });
+  writeFileSync(join(reports, 'alignment.json'), `${JSON.stringify(notes, null, 2)}\n`);
+  return notes.length
+    ? [
+        `[screens] ${notes.length} screens with alignment findings (advisory): reports/alignment.json`,
+      ]
+    : [];
+}

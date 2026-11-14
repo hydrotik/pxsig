@@ -26,6 +26,8 @@
  *                               rebuild the dashboard on this project's design system through a UI adapter
  *                               (--ui, else dashboard.ui in pxsig.config.json; docs/ui/build-adapter.md)
  *   dashboard gaps [--ui path]  what that adapter covers of the UI contract, and what it does not
+ *   dashboard parity --storybook <dir> [--ui path]
+ *                               that adapter's components beside the design system's own stories
  *   browser start [--image tag] [--port 3000] | stop | status
  *                               Playwright's browser in the pxsig container image, for --browser <ws>
  *                               (the only commands that start docker; docs/container.md)

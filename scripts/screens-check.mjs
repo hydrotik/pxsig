@@ -64,6 +64,7 @@ import { textSettings } from '../packages/pxsig/src/lib/text/config.mjs';
 import { envPlan } from '../packages/pxsig/src/lib/text/env-plan.mjs';
 import { SCREENS } from '../packages/pxsig/src/lib/source.mjs';
 import {
+  alignmentNotes,
   checkGeometry,
   checkStructure,
   screenFindings,
@@ -290,6 +291,7 @@ async function main() {
     }
   // Strict: an accessibility or layout finding on any screen fails, as `dashboard check --strict`.
   const findings = screenFindings(checked.report.screens, idOf);
+  const aligned = alignmentNotes(checked.report.screens, idOf, P.store.reports);
   const lockArgs = {
     screens: checked.report.screens,
     update: args.includes('--update-locks'),
@@ -435,6 +437,7 @@ async function main() {
   for (const f of findings) console.log(`  finding ${f}`.slice(0, 400));
   for (const p of [...(repeated?.problems ?? []), ...(repeated?.notes ?? [])])
     console.log(`  ${p}`);
+  for (const l of aligned) console.log(l);
   const locksFailed = structure.problems.length + geometry.problems.length;
   if (locksFailed)
     console.log(
