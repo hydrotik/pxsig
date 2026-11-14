@@ -112,6 +112,11 @@ export function alignmentTargets({ max, graphicMax, small, edgeTolerance, within
     }
     return false;
   };
+  /** Whether a half pixel `cause` gives is an opted-out component's: it is one, or holds one. */
+  const attributed = (/** @type {Element | null} */ cause) =>
+    !!cause &&
+    (allowedFor(cause, 'whole-pixel') ||
+      [...cause.querySelectorAll('[data-layout-allow]')].some((d) => allowedFor(d, 'whole-pixel')));
   /** The element the last `causeOf` named as the cause (its parent, a sibling, itself). */
   /** @type {Element | null} */
   let culprit = null;
@@ -225,9 +230,9 @@ export function alignmentTargets({ max, graphicMax, small, edgeTolerance, within
     if (allowedFor(el, 'whole-pixel')) continue;
     culprit = el;
     const cause = causeOf(el, 'y') ?? 'its own size is fractional';
-    // A half pixel whose cause is opted out (a design-system component, with its reason) is that
-    // component's, not this element's.
-    if (allowedFor(culprit, 'whole-pixel')) continue;
+    // A half pixel whose cause is opted out (a design-system component, with its reason), or a box
+    // of fractional size that holds one, is that component's, not this element's.
+    if (attributed(culprit)) continue;
     const at = off.map(([s, v]) => `${s} ${r1(/** @type {number} */ (v))}`).join(', ');
     byCause.set(cause, [...(byCause.get(cause) ?? []), `${name(el)} (${at})`]);
   }
@@ -301,7 +306,7 @@ export function alignmentTargets({ max, graphicMax, small, edgeTolerance, within
     culprit = row;
     const half = frac(rr.top) || frac(rr.bottom) ? causeOf(row, 'y') : null;
     // On a half pixel an opted-out component put it on: that component's finding, not this row's.
-    if (half && allowedFor(culprit, 'whole-pixel')) continue;
+    if (half && attributed(culprit)) continue;
     const rcs = getComputedStyle(row);
     const lh = rcs.lineHeight;
     // The content box's rows: a border or a wash's edge is not ink of the label.

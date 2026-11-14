@@ -81,11 +81,12 @@ export function runCustomUi() {
       ...(x.axe ?? []).map((a) => `axe ${a.id} (${a.count})`),
       ...(x.layout ?? []).map((l) => `${l.rule}: ${l.text}`),
       ...(x.fidelity ?? []).map((f) => `${f.rule}: ${f.text}`),
+      ...(x.alignment ?? []).map((f) => `${f.rule}: ${f.text}`),
     ].map((f) => `${x.feature} #${x.index + 1} ${x.theme}: ${f}`)
   );
   expect(
     !found.length,
-    `check --strict: ${s.withFidelity ?? 0} screens breaking a region rule, ${s.withAxe ?? 0} with axe violations, ${s.withLayout ?? 0} with layout findings${found.length ? `: ${found.slice(0, 8).join('; ')}${found.length > 8 ? ` and ${found.length - 8} more` : ''}` : ''}`
+    `check --strict: ${s.withFidelity ?? 0} screens breaking a region rule, ${s.withAxe ?? 0} with axe violations, ${s.withLayout ?? 0} with layout findings, ${s.withAlignment ?? 0} with alignment findings${found.length ? `: ${found.slice(0, 8).join('; ')}${found.length > 8 ? ` and ${found.length - 8} more` : ''}` : ''}`
   );
   expect(
     // With no summary, `undefined > 0` is false: the check fails, as it should. --strict exits 1
