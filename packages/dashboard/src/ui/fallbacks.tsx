@@ -145,8 +145,10 @@ function DataTableFallback<T>({
     textAlign: align === 'end' ? 'end' : 'start',
     paddingBlock: v.space['1_5'],
     paddingInline: v.space['2'],
-    // A whole-pixel line, so rows are whole pixels tall and what they hold centres on whole pixels.
+    // A whole-pixel line, and each cell's content from its top: a row a font's rounding makes one
+    // pixel taller than a cell's content would centre that content on a half pixel.
     lineHeight: '1.25rem',
+    verticalAlign: 'top',
     borderBlockEnd: border,
   });
   return (
