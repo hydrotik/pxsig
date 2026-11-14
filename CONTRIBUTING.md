@@ -172,7 +172,10 @@ pnpm build:dashboard    # hydrotik, at the pinned commit
 else (a git URL) is fetched from. Without either, the build fails and names the fix; it never builds
 plain by default. Name another adapter only where it is the subject:
 `PXSIG_UI_ADAPTER=plain pnpm build:dashboard` (or a path, as for the custom-UI example). Keep the
-checkout inside the worktree: the Vite build fails on a design system under a system temp folder.
+checkout inside the worktree: the Vite build fails on a design system under a system temp folder
+on a Mac. `PXSIG_DS_DIR` moves it (the fetch and the build both read it); CI sets it to the
+runner's temp folder, so no cache saves it. The source is never left on disk: the fetch removes
+`.git/FETCH_HEAD` and the reflogs, and the checkout has no remote.
 
 `pnpm ds:fetch` also says how far the pin is behind the design system's default branch, and whether
 the design-system files the reference adapter imports changed since (a warning past 20 commits or 14

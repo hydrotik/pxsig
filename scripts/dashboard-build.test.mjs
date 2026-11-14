@@ -38,7 +38,7 @@ test('no adapter named: hydrotik, on the pinned design system in target/', (t) =
     PXSIG_DS_SOURCE: '/fetched/design-system',
   });
   assert.equal(f.calls.n, 1);
-  assert.match(why, /hydrotik \(this repository\), design system from target\/design-system/);
+  assert.match(why, /hydrotik \(this repository\), design system from the pinned checkout/);
 });
 
 test('PXSIG_DS_SOURCE naming a checkout: that checkout, nothing fetched', (t) => {

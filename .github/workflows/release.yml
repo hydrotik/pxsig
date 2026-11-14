@@ -229,20 +229,24 @@ jobs:
           node-version: 22
       # The design system is pinned by commit (design-system.json, 40 lower-case hex, checked), so
       # BUILD.json (written by the build) names exactly what the bundle was compiled from. Fetched
-      # into target/design-system as `pnpm ds:fetch` does in a worktree; the source is never printed.
+      # as `pnpm ds:fetch` does in a worktree; the source is never printed and left in no file.
+      # PXSIG_DS_DIR keeps the checkout in the runner's temp folder, outside anything cached.
       - if: steps.how.outputs.mode == 'build'
         name: Fetch the design system
         shell: bash
         env:
           PXSIG_DS_SOURCE: ${{ secrets.PXSIG_DS_SOURCE }}
+          PXSIG_DS_DIR: ${{ runner.temp }}/design-system
         run: node scripts/ds-fetch.mjs
       - if: steps.how.outputs.mode == 'build'
         name: Build the dashboard
         shell: bash
+        env:
+          PXSIG_DS_DIR: ${{ runner.temp }}/design-system
         run: |
           set -euo pipefail
           pnpm install --frozen-lockfile
-          # No adapter named: this repository's build is hydrotik, on target/design-system.
+          # No adapter named: this repository's build is hydrotik, on the PXSIG_DS_DIR checkout.
           pnpm --filter @pxsig/dashboard build
           node scripts/check-dashboard-build.mjs packages/pxsig/dist/dashboard --adapter hydrotik --commit "$(node scripts/ds-fetch.mjs --pin)"
 

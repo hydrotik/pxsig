@@ -284,8 +284,9 @@ of these that is available, and fails with a message naming both if neither is:
 
 1. **The `PXSIG_DS_SOURCE` secret.** A git URL, credentials included, of the design-system
    monorepo. The job runs `node scripts/ds-fetch.mjs` with it, which fetches the commit pinned in
-   `design-system.json` into `target/design-system` (a full 40-character lower-case commit SHA;
-   it fails on anything else) and installs its dependencies, never printing the source; then
+   `design-system.json` (a full 40-character lower-case commit SHA; it fails on anything else)
+   into the runner's temp folder (`PXSIG_DS_DIR`, outside anything cached) and installs its
+   dependencies, never printing the source or leaving it in a file; then
    `pnpm --filter @pxsig/dashboard build`, whose default in this repository is `hydrotik` on that
    checkout. The pin is bumped by a reviewed commit (CONTRIBUTING.md, "The design system"), so a
    worktree and CI build the same design system.

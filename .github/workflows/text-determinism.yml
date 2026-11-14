@@ -47,14 +47,18 @@ jobs:
       # The dashboard: this repository's build, the hydrotik design system at the commit
       # design-system.json pins (scripts/ds-fetch.mjs; the source is never printed). Without the
       # PXSIG_DS_SOURCE secret (a fork, Dependabot) the plain adapter, named, and the run says so.
+      # PXSIG_DS_DIR: the checkout in the runner's temp folder, outside anything cached or uploaded.
       - name: Fetch the design system
         if: env.HAS_DS == 'true'
         shell: bash
         env:
           PXSIG_DS_SOURCE: ${{ secrets.PXSIG_DS_SOURCE }}
+          PXSIG_DS_DIR: ${{ runner.temp }}/design-system
         run: node scripts/ds-fetch.mjs
       - name: Build the dashboard
         shell: bash
+        env:
+          PXSIG_DS_DIR: ${{ runner.temp }}/design-system
         run: |
           set -euo pipefail
           if [ "${HAS_DS}" = true ]; then

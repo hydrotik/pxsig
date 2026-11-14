@@ -8,7 +8,7 @@
  * `dashboard.ui` in the pxsig.config.json of the folder pnpm ran in) the build is the `hydrotik`
  * adapter, compiled from:
  *   1. PXSIG_DS_SOURCE, when it names a folder (a design-system checkout, used as it is), else
- *   2. target/design-system at the commit pinned in design-system.json, fetched first when it is
+ *   2. target/design-system (or PXSIG_DS_DIR) at the commit pinned in design-system.json, fetched first when it is
  *      missing or stale (scripts/ds-fetch.mjs; PXSIG_DS_SOURCE, when set to a git URL, or
  *      `git config pxsig.dsSource` names where from).
  * When neither can be had the build fails and says how to fix it; it never falls back to plain.
@@ -62,7 +62,7 @@ export function repoBuildEnv({
   const ds = local ?? ensure();
   return {
     add: { PXSIG_UI_ADAPTER: 'hydrotik', PXSIG_DS_SOURCE: ds },
-    why: `hydrotik (${named ? picked.from : 'this repository'}), design system from ${local ? 'PXSIG_DS_SOURCE' : 'target/design-system'}`,
+    why: `hydrotik (${named ? picked.from : 'this repository'}), design system from ${local ? 'PXSIG_DS_SOURCE' : 'the pinned checkout (ds-fetch)'}`,
   };
 }
 

@@ -18,6 +18,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { packagesIn } from '../../packages/dashboard/src/ui/adapters/hydrotik/vite.mjs';
 import { adapterImports } from './hydrotik-types.mjs';
+import { scrubSource } from './ds-scrub.mjs';
 
 /** Warn when the pin is more than this many commits behind the default branch (first-parent). */
 export const MAX_BEHIND_COMMITS = 20;
@@ -135,7 +136,12 @@ export function behind({ dir, source, commit, imports }) {
       throw new Error(`git ${args[0]} failed (exit ${r.status}): ${r.stderr.trim()}`);
     return r.stdout.trim();
   };
-  git('fetch', '-q', '--no-tags', source, `+HEAD:${UPSTREAM}`);
+  try {
+    git('fetch', '-q', '--no-tags', source, `+HEAD:${UPSTREAM}`);
+  } finally {
+    // FETCH_HEAD holds the source (scripts/lib/ds-scrub.mjs).
+    scrubSource(dir);
+  }
   // First-parent: the default branch's own line from its head down to the pin, all of it fetched
   // (a shallow checkout has no older history to walk).
   const commits = Number(git('rev-list', '--count', '--first-parent', `${commit}..${UPSTREAM}`));

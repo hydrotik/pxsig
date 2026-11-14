@@ -27,9 +27,13 @@
  * changed since the pin; `::warning::` / `::notice::` in GitHub Actions. It never fails the run.
  * The build (scripts/dashboard-build.mjs) fetches without this check.
  *
- * Keep the checkout inside the worktree (target/ is the place): with the design system under a
- * system temp folder such as /private/tmp, the dashboard's Vite build fails, because it resolves
- * that path as a relative one.
+ * PXSIG_DS_DIR puts the checkout elsewhere (relative to the repository); the build reads it too. CI
+ * sets it to the runner's temp folder, outside anything a cache saves. On a Mac keep the checkout
+ * inside the worktree (target/ is the place): with the design system under a system temp folder such
+ * as /private/tmp, the dashboard's Vite build fails, because it resolves that path as a relative one.
+ *
+ * The source never stays on disk either: .git/FETCH_HEAD and the reflogs are removed after every
+ * fetch (scripts/lib/ds-scrub.mjs), and the checkout has no remote.
  *
  * Exit: 0 in place · 1 no source, a bad pin, or a fetch or install that failed · 2 usage.
  */
@@ -38,6 +42,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { behind, describe } from './lib/ds-behind.mjs';
+import { scrubSource } from './lib/ds-scrub.mjs';
 
 const here = fileURLToPath(new URL('..', import.meta.url));
 const SHA = /^[0-9a-f]{40}$/;
@@ -46,10 +51,14 @@ export const PIN_FILE = 'design-system.json';
 /** A setup problem a person fixes: its message is the whole report. */
 export class DsFetchError extends Error {}
 
-/** @param {string} repo */
-export const dsDir = (repo) => join(repo, 'target', 'design-system');
-/** @param {string} repo */
-export const stampFile = (repo) => join(repo, 'target', 'design-system.stamp.json');
+/**
+ * The checkout's folder: PXSIG_DS_DIR (relative to the repository), else target/design-system.
+ * @param {string} repo @param {NodeJS.ProcessEnv} [env]
+ */
+export const dsDir = (repo, env = process.env) =>
+  env.PXSIG_DS_DIR ? resolve(repo, env.PXSIG_DS_DIR) : join(repo, 'target', 'design-system');
+/** The stamp, beside the folder. @param {string} repo @param {NodeJS.ProcessEnv} [env] */
+export const stampFile = (repo, env = process.env) => `${dsDir(repo, env)}.stamp.json`;
 
 /**
  * The pinned commit, checked: 40 lower-case hex.
@@ -130,18 +139,21 @@ export function redact(text, source) {
  * Whether target/design-system is the pinned commit, installed.
  * @param {string} repo
  * @param {string} commit
+ * @param {NodeJS.ProcessEnv} [env]
  */
-export function isCurrent(repo, commit) {
+export function isCurrent(repo, commit, env = process.env) {
   try {
     // The stamp, as `fetchDesignSystem` writes it.
     const stamp = /** @type {{ commit?: unknown }} */ (
-      JSON.parse(readFileSync(stampFile(repo), 'utf8'))
+      JSON.parse(readFileSync(stampFile(repo, env), 'utf8'))
     );
     if (stamp.commit !== commit) return false;
   } catch {
     return false;
   }
-  const head = spawnSync('git', ['-C', dsDir(repo), 'rev-parse', 'HEAD'], { encoding: 'utf8' });
+  const head = spawnSync('git', ['-C', dsDir(repo, env), 'rev-parse', 'HEAD'], {
+    encoding: 'utf8',
+  });
   return head.status === 0 && head.stdout.trim() === commit;
 }
 
@@ -174,6 +186,7 @@ export function pnpmInstall(dir) {
  * @param {string} o.commit
  * @param {(dir: string) => void} [o.install]  default: `pnpm install --frozen-lockfile --ignore-scripts`
  * @param {(line: string) => void} [o.log]
+ * @param {NodeJS.ProcessEnv} [o.env]  PXSIG_DS_DIR
  */
 export function fetchDesignSystem({
   repo,
@@ -181,9 +194,10 @@ export function fetchDesignSystem({
   commit,
   install = pnpmInstall,
   log = console.log,
+  env: outer = process.env,
 }) {
-  const dir = dsDir(repo);
-  rmSync(stampFile(repo), { force: true });
+  const dir = dsDir(repo, outer);
+  rmSync(stampFile(repo, outer), { force: true });
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
   // No prompt for credentials (CI has no terminal), no pager.
@@ -200,12 +214,19 @@ export function fetchDesignSystem({
   };
   log(`[ds-fetch] fetching the design system at ${commit}`);
   git('init', ['init', '-q']);
-  git('fetch', ['fetch', '-q', '--depth', '1', '--no-tags', source, commit]);
-  git('checkout', ['-c', 'advice.detachedHead=false', 'checkout', '-q', '--detach', 'FETCH_HEAD']);
+  // No reflog: a log line could carry the source.
+  git('config', ['config', 'core.logAllRefUpdates', 'false']);
+  try {
+    git('fetch', ['fetch', '-q', '--depth', '1', '--no-tags', source, commit]);
+    git('checkout', ['-c', 'advice.detachedHead=false', 'checkout', '-q', '--detach', commit]);
+  } finally {
+    // FETCH_HEAD holds the source: never left on disk, after a failed fetch too.
+    scrubSource(dir);
+  }
   log('[ds-fetch] installing its dependencies');
   install(dir);
-  writeFileSync(stampFile(repo), `${JSON.stringify({ commit }, null, 2)}\n`);
-  log(`[ds-fetch] target/design-system is at ${commit}`);
+  writeFileSync(stampFile(repo, outer), `${JSON.stringify({ commit }, null, 2)}\n`);
+  log(`[ds-fetch] the design-system checkout is at ${commit}`);
 }
 
 /**
@@ -225,14 +246,14 @@ export function ensureDesignSystem({
   log = console.log,
 } = {}) {
   const commit = readPin(repo);
-  if (isCurrent(repo, commit)) {
-    log(`[ds-fetch] target/design-system is at ${commit}: nothing to fetch`);
-    return dsDir(repo);
+  if (isCurrent(repo, commit, env)) {
+    log(`[ds-fetch] the design-system checkout is at ${commit}: nothing to fetch`);
+    return dsDir(repo, env);
   }
   const source = dsSource({ repo, env });
   if (!source) throw new DsFetchError(NO_SOURCE);
-  fetchDesignSystem({ repo, source, commit, install, log });
-  return dsDir(repo);
+  fetchDesignSystem({ repo, source, commit, install, log, env });
+  return dsDir(repo, env);
 }
 
 /**
@@ -252,7 +273,7 @@ export function reportBehind({ repo = here, env = process.env, log = console.log
     return null;
   }
   try {
-    const b = behind({ dir: dsDir(repo), source, commit: readPin(repo) });
+    const b = behind({ dir: dsDir(repo, env), source, commit: readPin(repo) });
     const { level, text } = describe(b);
     log(gh ? `::${level}::${text}` : `[ds-fetch] ${level === 'warning' ? 'warning: ' : ''}${text}`);
     return b;

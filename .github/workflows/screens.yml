@@ -53,22 +53,26 @@ jobs:
           cache-dependency-path: |
             pnpm-lock.yaml
             examples/single-package/pnpm-lock.yaml
-      # The commit design-system.json pins (40 lower-case hex, checked), into target/design-system,
-      # as `pnpm ds:fetch` does in a worktree: one code path, so CI and worktrees build the same
-      # design system. The script never prints the source.
+      # The commit design-system.json pins (40 lower-case hex, checked), fetched as `pnpm ds:fetch`
+      # does in a worktree: one code path, so CI and worktrees build the same design system. The
+      # script never prints the source and leaves it in no file. PXSIG_DS_DIR keeps the checkout in
+      # the runner's temp folder, outside ./target, which the Rust cache saves.
       - if: steps.has.outputs.ds == 'true'
         name: Fetch the design system
         shell: bash
         env:
           PXSIG_DS_SOURCE: ${{ secrets.PXSIG_DS_SOURCE }}
+          PXSIG_DS_DIR: ${{ runner.temp }}/design-system
         run: node scripts/ds-fetch.mjs
       - if: steps.has.outputs.ds == 'true'
         name: Build the dashboard on the design system
         shell: bash
+        env:
+          PXSIG_DS_DIR: ${{ runner.temp }}/design-system
         run: |
           set -euo pipefail
           pnpm install --frozen-lockfile
-          # No adapter named: this repository's build is hydrotik, on target/design-system.
+          # No adapter named: this repository's build is hydrotik, on the PXSIG_DS_DIR checkout.
           pnpm --filter @pxsig/dashboard build
           node scripts/check-dashboard-build.mjs packages/pxsig/dist/dashboard --adapter hydrotik --commit "$(node scripts/ds-fetch.mjs --pin)"
       # `pnpm typecheck` with the design system: the reference adapter against its sources, and the
@@ -79,9 +83,10 @@ jobs:
         shell: bash
         env:
           TURBO_TELEMETRY_DISABLED: '1'
+          PXSIG_DS_DIR: ${{ runner.temp }}/design-system
         run: |
           set -euo pipefail
-          ds="$PWD/target/design-system"
+          ds="${PXSIG_DS_DIR}"
           (cd "$ds" && pnpm turbo run build --filter=@hydrotik/design-system)
           PXSIG_DS_SOURCE="$ds" node scripts/typecheck.mjs
       # The live screens run on this commit's engine (docs/releasing.md, "Live screens"): built here,
