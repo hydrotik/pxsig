@@ -21,7 +21,7 @@ export const esc = (/** @type {string | number | null | undefined} */ s) =>
 
 /**
  * summary.md: the counts, then every screen that failed, breaks a region rule, or has axe
- * violations or layout findings.
+ * violations, layout or alignment findings.
  * @param {DashboardCheckReport} report
  */
 export function summaryMarkdown(report) {
@@ -33,9 +33,9 @@ export function summaryMarkdown(report) {
     `Adapter build: \`${report.build}\` · contract ${report.contract.adapter} (this pxsig: ${report.contract.current}) · themes ${report.themes.join(', ')}`,
     `Reference: ${report.reference.used ? `\`${report.reference.dir}\`` : `not shown (${report.reference.note})`}`,
     '',
-    '| Screens | Rendered | Failed | Breaking a region rule | With axe violations | With layout findings |',
-    '| --- | --- | --- | --- | --- | --- |',
-    `| ${s.screens} | ${s.rendered} | ${s.failed} | ${s.withFidelity} | ${s.withAxe}${mode} | ${s.withLayout}${mode} |`,
+    '| Screens | Rendered | Failed | Breaking a region rule | With axe violations | With layout findings | With alignment findings |',
+    '| --- | --- | --- | --- | --- | --- | --- |',
+    `| ${s.screens} | ${s.rendered} | ${s.failed} | ${s.withFidelity} | ${s.withAxe}${mode} | ${s.withLayout}${mode} | ${s.withAlignment ?? 0}${mode} |`,
   ];
   const bad = report.screens.filter((x) => !x.rendered);
   if (bad.length)
@@ -125,6 +125,19 @@ export function summaryMarkdown(report) {
         ...x.layout.map((f) => `  - ${f.rule}: ${f.text}`),
       ])
     );
+  const aligned = report.screens.filter((x) => x.alignment?.length);
+  if (aligned.length)
+    lines.push(
+      '',
+      '### Alignment',
+      '',
+      "Measured from the screenshot: a dot or icon centred on its label's capitals (within 0.5 px), and small components on whole pixels. Each names its cause.",
+      '',
+      ...aligned.flatMap((x) => [
+        `- \`${x.feature}\` #${x.index + 1} (${x.theme}):`,
+        ...x.alignment.map((f) => `  - ${f.rule}: ${f.text}`),
+      ])
+    );
   return `${lines.join('\n')}\n`;
 }
 
@@ -153,7 +166,7 @@ export function galleryHtml(report) {
         (
           x
         ) => `<figure class="${x.rendered ? 'ok' : 'bad'}${x.fidelity.length ? ' broke' : ''}${x.compare?.status === 'changed' ? ' changed' : ''}">
-  <figcaption>#${x.index + 1} · ${esc(x.theme)} · ${esc(x.scenario)} · ${x.rendered ? 'rendered' : esc(x.reason)}${x.axe.length ? ` · axe: ${esc(x.axe.map((v) => `${v.id} (${v.count})`).join(', '))}` : ''}${x.fallbacks?.length ? ` · fallbacks: ${esc(x.fallbacks.join(', '))}` : ''}${x.fidelity.length ? ` · <strong>region rules: ${x.fidelity.length}</strong>` : ''}${x.layout.length ? ` · layout: ${x.layout.length}` : ''}${compared(x)}</figcaption>${x.fidelity.length ? `\n  <details open><summary>Region rules broken</summary><ul>${x.fidelity.map((f) => `<li>${esc(f.rule)}: ${esc(f.text)}</li>`).join('')}</ul></details>` : ''}${x.layout.length ? `\n  <details><summary>Layout findings</summary><ul>${x.layout.map((f) => `<li>${esc(f.rule)}: ${esc(f.text)}</li>`).join('')}</ul></details>` : ''}
+  <figcaption>#${x.index + 1} · ${esc(x.theme)} · ${esc(x.scenario)} · ${x.rendered ? 'rendered' : esc(x.reason)}${x.axe.length ? ` · axe: ${esc(x.axe.map((v) => `${v.id} (${v.count})`).join(', '))}` : ''}${x.fallbacks?.length ? ` · fallbacks: ${esc(x.fallbacks.join(', '))}` : ''}${x.fidelity.length ? ` · <strong>region rules: ${x.fidelity.length}</strong>` : ''}${x.layout.length ? ` · layout: ${x.layout.length}` : ''}${x.alignment?.length ? ` · alignment: ${x.alignment.length}` : ''}${compared(x)}</figcaption>${x.fidelity.length ? `\n  <details open><summary>Region rules broken</summary><ul>${x.fidelity.map((f) => `<li>${esc(f.rule)}: ${esc(f.text)}</li>`).join('')}</ul></details>` : ''}${x.layout.length ? `\n  <details><summary>Layout findings</summary><ul>${x.layout.map((f) => `<li>${esc(f.rule)}: ${esc(f.text)}</li>`).join('')}</ul></details>` : ''}${x.alignment?.length ? `\n  <details><summary>Alignment findings</summary><ul>${x.alignment.map((f) => `<li>${esc(f.rule)}: ${esc(f.text)}</li>`).join('')}</ul></details>` : ''}
   <div class="pair">${img(x.shot, x.rendered ? 'adapter' : 'not rendered')}${report.reference.used ? img(x.referenceShot, 'reference not rendered') : ''}${x.compare?.status === 'changed' ? `${img(x.compare.earlier, 'earlier')}${img(x.compare.diff, 'no diff image')}` : ''}</div>
 </figure>`
       )
@@ -171,7 +184,7 @@ body.only-changed figure:not(.changed),body.only-changed section:not(:has(figure
 .pair img{inline-size:100%;block-size:auto;border:1px solid color-mix(in srgb,currentColor 15%,transparent)}.none{opacity:.7}
 </style></head><body>
 <h1>pxsig dashboard check</h1>
-<p>${esc(report.summary.rendered)} of ${esc(report.summary.screens)} screens rendered · ${esc(report.summary.failed)} failed · ${esc(report.summary.withFidelity)} breaking a region rule · ${esc(report.summary.withAxe)} with axe violations · ${esc(report.summary.withLayout)} with layout findings${report.strict ? ' (strict)' : ' (advisory)'}.</p>
+<p>${esc(report.summary.rendered)} of ${esc(report.summary.screens)} screens rendered · ${esc(report.summary.failed)} failed · ${esc(report.summary.withFidelity)} breaking a region rule · ${esc(report.summary.withAxe)} with axe violations · ${esc(report.summary.withLayout)} with layout findings · ${esc(report.summary.withAlignment ?? 0)} with alignment findings${report.strict ? ' (strict)' : ' (advisory)'}.</p>
 <p>Left: the adapter build <code>${esc(report.build)}</code>. ${report.reference.used ? 'Right: the prebuilt reference dashboard.' : `No reference column: ${esc(report.reference.note)}.`}</p>
 ${
   report.compare

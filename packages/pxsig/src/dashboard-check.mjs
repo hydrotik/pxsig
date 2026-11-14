@@ -16,14 +16,15 @@
  *     for its landmark, take a screenshot, run axe-core, record page errors, and measure the
  *     layout (dashboard-check/layout.mjs: overflow, clipping, control rows, frame edges, overlap)
  *     and the rules an adapter may not change (dashboard-check/fidelity.mjs: one line, table rows,
- *     casing, tone).
+ *     casing, tone), and the alignment the screenshot shows (dashboard-check/alignment.mjs: a dot
+ *     or icon centred on its label's capitals, small components on whole pixels).
  *   - --compare <dir>: each screen against the same screen of an earlier check's output (its
  *     --out), with the engine (dashboard-check/compare.mjs). Advisory: changes never fail.
  *   - Writes only under --out (default node_modules/.cache/pxsig/dashboard-check): index.html (the
  *     gallery), report.json, summary.md and the screenshots.
  *
  * Exit: 0 every screen rendered with no page error and no fidelity finding · 1 a screen failed or
- * has a fidelity finding, or (with --strict) axe violations or layout findings · 2 setup: no build, no Chromium, or an adapter for an older major UI contract.
+ * has a fidelity finding, or (with --strict) axe violations, layout or alignment findings · 2 setup: no build, no Chromium, or an adapter for an older major UI contract.
  */
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
@@ -320,6 +321,7 @@ export async function dashboardCheck(
         axe: r.axe,
         layout: r.layout,
         fidelity: r.fidelity ?? [],
+        alignment: r.alignment ?? [],
         fallbacks: gapRows ? j.f.components.filter((c) => fallback.has(c)) : null,
         ms: r.ms,
         ...(r.settled === false ? { settled: r.settled } : {}),
@@ -350,6 +352,7 @@ export async function dashboardCheck(
   const withAxe = screens.filter((x) => x.axe.length).length;
   const withLayout = screens.filter((x) => x.layout.length).length;
   const withFidelity = screens.filter((x) => x.fidelity.length).length;
+  const withAlignment = screens.filter((x) => x.alignment.length).length;
   const report = {
     pxsig: PXSIG_VERSION,
     axe: axeVersion({ root: cwd, workspaceRoot: cwd }),
@@ -376,6 +379,7 @@ export async function dashboardCheck(
       withAxe,
       withLayout,
       withFidelity,
+      withAlignment,
       posts: posts.length,
     },
     screens,
@@ -383,6 +387,7 @@ export async function dashboardCheck(
   writeFileSync(join(outDir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
   writeFileSync(join(outDir, 'summary.md'), summaryMarkdown(report));
   writeFileSync(join(outDir, 'index.html'), galleryHtml(report));
-  const code = failed || withFidelity || (report.strict && (withAxe || withLayout)) ? 1 : 0;
+  const code =
+    failed || withFidelity || (report.strict && (withAxe || withLayout || withAlignment)) ? 1 : 0;
   return { code, report, outDir };
 }
