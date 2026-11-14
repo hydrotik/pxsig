@@ -37,4 +37,7 @@ each run shows a change that nobody made. Fixed data first; a mask when the valu
   entry per entry it applies to, approved once. A story's `ignore` against a baseline approved
   with 0.7.6 or earlier is not a change where that baseline's image shows it painted.
 
+- **Assistants.** Never add a mask, ignore, `data-volatile` or raise a threshold to make an entry
+  pass; flag the entry for a person instead (`pxsig help agents`).
+
 See also: `pxsig help capture.ignore`, `pxsig help approvals`, docs/configuration.md (Masks).

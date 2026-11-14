@@ -117,6 +117,8 @@ export interface RecordOptions {
   /** sha256 of the baseline before (`snapshot`); null for a first baseline. */
   before?: string | null;
   kind?: string | null;
+  /** The entry's masks changed (its check row's `masksChanged`): the line's kind is `masks`. */
+  masks?: Partial<import('./run.js').MasksChanged> | null;
   /** A person's decision (no `agent`); by default, when `via` is `dashboard` or `cli`. */
   person?: boolean;
   /** The short HEAD, read beforehand (`headOf`); by default `record` reads it itself. */

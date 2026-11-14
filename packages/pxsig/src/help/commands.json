@@ -713,7 +713,7 @@
         "plan": {
           "summary": "Classify each selected change as colour or shape, block shape changes and stale verdicts, pin every render's hash, write approval-plan.json. Safe for anyone.",
           "usage": [
-            "pxsig approve plan <ids…> | --component text | --all-changed | --new  --reason \"why\" [--allow-shape id,id] [--first-baselines]"
+            "pxsig approve plan <ids…> | --component text | --all-changed | --new  --reason \"why\" [--allow-shape id,id] [--allow-masks id,id] [--first-baselines]"
           ],
           "flags": [
             {
@@ -738,6 +738,11 @@
               "name": "allow-shape",
               "value": "id,id",
               "meaning": "Shape changes allowed in this plan."
+            },
+            {
+              "name": "allow-masks",
+              "value": "id,id",
+              "meaning": "Masks changes allowed in this plan: a masks change is its own class, blocked unless named here, whatever its pixels (a shape change also needs --allow-shape). Masks no approval passes stay blocked."
             },
             {
               "name": "first-baselines",

@@ -14,9 +14,20 @@
 
 /** @import { Assistant } from '../types.js' */
 
+/**
+ * The rule about masks, word for word wherever an assistant reads pxsig: the instruction below, the
+ * MCP server's instructions, the tools that list or explain a change, and a rejection's prompt. A
+ * mask, an ignore or a looser threshold hides a change from review; adding one to pass an entry is
+ * the visual-test version of editing the test (docs/agents.md#masks).
+ */
+export const NO_MASK_FIX =
+  'Never add a mask, ignore, `data-volatile` or raise a threshold to make an entry pass; flag the entry for a person instead.';
+
 /** The instruction for the assistant, word for word in docs/agents.md and `pxsig help agents`. */
 export const SNIPPET = `pxsig (visual baselines): never approve or accept pxsig baselines and never call
 /__pxsig/approve. Ask the person to review changes in the pxsig dashboard.
+Never add a mask, ignore, \`data-volatile\` or raise a threshold to make an entry pass;
+flag the entry for a person instead.
 Before fixing a rejected pxsig entry, read its reason and images (pxsig_rejected, or
 \`pxsig rejected\`); after the fix, re-check those ids.
 `;

@@ -5,6 +5,7 @@
  * same thing. Not configurable (docs/configuration.md#rejections). Neutral copy: no "you", no
  * questions; nothing here approves, and every form says so.
  */
+import { NO_MASK_FIX } from '../assistants.mjs';
 /** @import { RejectionKind } from '../../types/rejections.js' */
 
 /** What a fix aims at. With no reason, the baseline; a reason decides, and the reviewer judges. */
@@ -62,5 +63,6 @@ export function rejectionPrompt({ id, project, kind, note, store, packet }) {
     `Details${packet ? ' and images' : ''}: ${where}.`,
     `After the fix: ${recheck(id)}.`,
     'Never approve.',
+    NO_MASK_FIX,
   ].join(' ');
 }

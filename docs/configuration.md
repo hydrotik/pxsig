@@ -519,6 +519,10 @@ Limits, over all of an entry's masks together:
 | over 25% of the capture                    | A warning (`[check] mask:`, summary.md, `check --sarif` `pxsig/large-mask`): such masks let most changes under them pass.                                                                                                                                                                                                                                       |
 | over 50% of the capture, or the story root | The entry fails (`masks cover 62% of the capture, over 50%`, `a mask covers the story root: …`; SARIF `pxsig/mask-limit`, an error). No approval writes its baseline, `--update` and `--allow-masks` included: the entry fails until the masks are smaller, and every refusal says what to do (`make the masks smaller`, `mask the value, not the story root`). |
 
+A mask is for content that varies from run to run, never for a change: an assistant is told,
+wherever it reads pxsig, "Never add a mask, ignore, `data-volatile` or raise a threshold to make an
+entry pass; flag the entry for a person instead." ([agents.md](agents.md#masks)).
+
 `pxsig check --update` and the engine's `pxsig baseline` never write a masks change unnamed: an
 entry whose masks differ from its baseline's is refused, with what changed, unless `--allow-masks`
 names it (alone: every entry).

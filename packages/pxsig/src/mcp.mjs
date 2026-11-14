@@ -29,6 +29,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { findWorkspace } from './lib/workspace.mjs';
+import { NO_MASK_FIX } from './lib/assistants.mjs';
 import { ctxOf, doctor, imageOf, PROBLEMS, prunePlan, tools } from './tools/index.mjs';
 import { text } from './tools/context.mjs';
 
@@ -59,7 +60,8 @@ async function handle(msg) {
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: 'pxsig', version: VERSION },
           instructions:
-            "pxsig is the visual-regression harness for this repo. Start with pxsig_projects (when there are several) and pxsig_status; pxsig_list then pxsig_entry show what changed, with images. Before a visual fix, read pxsig_rejected: the reviewer's reason and the changed regions at full size; after the fix, re-check those ids with pxsig_check. Approving and accepting are the person's: never approve, never accept, and never call `/__pxsig/approve`; ask the person to review in the dashboard.",
+            "pxsig is the visual-regression harness for this repo. Start with pxsig_projects (when there are several) and pxsig_status; pxsig_list then pxsig_entry show what changed, with images. Before a visual fix, read pxsig_rejected: the reviewer's reason and the changed regions at full size; after the fix, re-check those ids with pxsig_check. Approving and accepting are the person's: never approve, never accept, and never call `/__pxsig/approve`; ask the person to review in the dashboard. " +
+            NO_MASK_FIX,
         },
       });
     }
