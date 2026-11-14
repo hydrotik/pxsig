@@ -5,3 +5,5 @@
   header was 94.25px tall and everything below it, the stage and the side panel, sat on a quarter
   pixel, with the review buttons centred on 41.625px. They are now 18px and 16px: the header is
   95px and the buttons sit on a whole pixel.
+- **The Overview's Changed Entries per Run chart is 85px tall, a whole pixel.** It was a third of
+  the Runs page's 16rem, 85.33px, which the chart's axes then laid out on a fraction of a pixel.
