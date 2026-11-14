@@ -143,10 +143,11 @@ const pad = (s, n, right = false) => {
   return right ? fill + s : s + fill;
 };
 /** @param {string} s */
+// A backslash is escaped too: `a\|b` must not end as `a\\|b`, where the pipe splits the cell.
 const mdCell = (s) =>
   String(s ?? '')
-    .replace(/\|/g, '\\|')
-    .replace(/\n/g, ' ');
+    .replace(/[\\|]/g, '\\$&')
+    .replace(/\r?\n/g, ' ');
 
 // --- blocks -------------------------------------------------------------------------------------
 
