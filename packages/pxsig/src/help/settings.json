@@ -124,7 +124,7 @@
     },
     "capture.launchArgs": {
       "file": "pxsig.config.json",
-      "meaning": "Chromium arguments added after pxsig's own: --disable-lcd-text and --font-render-hinting=none, which draw text in grayscale with unhinted glyph advances.",
+      "meaning": "Chromium arguments added after pxsig's own: --disable-lcd-text and --font-render-hinting=none, which draw text in grayscale with unhinted glyph advances, and --disable-partial-raster, which rasters every tile in full so a page renders the same pixels every time.",
       "default": "[]",
       "operation": "A later value of the same switch wins (--font-render-hinting=full). Each render records the arguments it launched with (browser.launchArgs), so changing them reads as an environment mismatch. Not passed to a browser server, Firefox or WebKit."
     },

@@ -221,7 +221,7 @@
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
           "default": [],
-          "description": "Chromium arguments added after pxsig's own (--disable-lcd-text, --font-render-hinting=none), so a later value of the same switch wins. Recorded in each render's environment (browser.launchArgs). Not passed to a browser server (capture.browserEndpoint), Firefox or WebKit."
+          "description": "Chromium arguments added after pxsig's own (--disable-lcd-text, --font-render-hinting=none, --disable-partial-raster), so a later value of the same switch wins. Recorded in each render's environment (browser.launchArgs). Not passed to a browser server (capture.browserEndpoint), Firefox or WebKit."
         },
         "ignore": {
           "type": "array",
