@@ -294,11 +294,6 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
           const ofElement =
             !!el && !!box && box.width > 1 && box.height > 1 && !e.interaction?.fullPage;
           const masks = await measureMasks(page, masksFor(project, e), ofElement ? box : null, sel);
-          await overflowMasks(page, masks, ofElement ? box : null, () =>
-            ofElement
-              ? el.screenshot({ animations: 'disabled' })
-              : page.screenshot({ animations: 'disabled' })
-          );
           /** @type {PageScreenshotOptions} */
           const shot = { animations: 'disabled', timeout: 10000, ...(await paintMasks(page)) };
           await lateMasks(page, masks);
@@ -306,7 +301,6 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             unpaintMasks(page)
           );
           writeFileSync(png, buf);
-          writeMasks(png, masks);
           // The text record, read before anything else touches the page; never an earlier render's.
           const boxes = boxesFile(png);
           rmSync(boxes, { force: true });
@@ -317,6 +311,13 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
                   ignore: [MASKED, ...text.ignore],
                 })
               : undefined;
+          // After the screenshot and the text record: hiding and showing the values touches neither.
+          await overflowMasks(page, masks, ofElement ? box : null, () =>
+            ofElement
+              ? el.screenshot({ animations: 'disabled' })
+              : page.screenshot({ animations: 'disabled' })
+          );
+          writeMasks(png, masks);
           await unmarkMasks(page);
           let a11yRes = null;
           if (axe && e.a11y !== false) {

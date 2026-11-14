@@ -2,10 +2,11 @@
  * mask-overflow.mjs — a `data-volatile` element whose content paints outside its box (the
  * `overflow` mask problem). A mask paints its element's box (mask-paint.mjs), never more, so
  * whatever the value paints outside the box would be compared: the check would pass or fail by
- * which value rendered. Measured on the pixels, before the masks are painted: the frame with every
- * such element's content hidden, then shown again; a pixel outside every painted box that differs
- * is content outside its box. The masks themselves are never changed: what is painted and
- * recorded stays the element's box.
+ * which value rendered. Measured on the pixels, after the capture's screenshot and text record (so
+ * neither is touched), with the masks put back: the frame with every such element's content
+ * hidden, then shown again; a pixel outside every painted box that differs is content outside its
+ * box. The masks themselves are never changed: what is painted and recorded stays the element's
+ * box.
  *
  * Hidden: the element's own text (transparent, no text shadow) and every element inside it
  * (`visibility: hidden`), inline and important, put back after. Its own background, border,
@@ -100,9 +101,10 @@ export function outside(a, b, boxes, scale) {
 
 /**
  * Add an `overflow` problem to `measured` for each painted `data-volatile` element whose content
- * paints outside its box. Run after `measureMasks` (it marks what is painted) and before
- * `paintMasks`; `shoot` takes the capture's screenshot (the element's or the page's), and `frame`
- * is what `measureMasks` measured in (null: the viewport).
+ * paints outside its box. Run after the capture's screenshot and `unpaintMasks`, while the marks
+ * `measureMasks` set are still there, and before `writeMasks`; `shoot` takes the capture's
+ * screenshot (the element's or the page's), and `frame` is what `measureMasks` measured in (null:
+ * the viewport).
  * @param {Page} page
  * @param {MeasuredMasks} measured
  * @param {{ x: number, y: number, width: number } | null} frame
