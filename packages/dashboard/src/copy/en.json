@@ -1076,6 +1076,10 @@
           "term": "Rejected note",
           "meaning": "The reason, the command to re-check the entry once it is fixed, Edit reason, and Copy for an agent: one paragraph for an assistant with the reason and the re-check command. After a re-check that still differs, Rejected earlier keeps the reason until the entry passes or is approved, or Dismiss reason closes it."
         },
+        "report": {
+          "term": "Report to pxsig",
+          "meaning": "For an entry the gate got wrong: flagged when nothing visible changed, or passed when something did. It first re-renders the entry on this machine and says whether it still fails the gate: a pass there usually means the earlier difference came from this machine's environment, not from the gate. Then it prepares a report for a public issue on hydrotik/pxsig, previewed in full: the text and one image (baseline, render and diff, cropped to the changed regions). Full capture takes the whole image, Keep story ID keeps the ID (replaced with entry-1 by default), Image-free gives the changed regions and their average colors instead of any image. Nothing is copied until a copy button is pressed, and nothing is posted: Open issue opens the issue form with the text fields filled in. pxsig report <id> writes the same report from a terminal."
+        },
         "modes": {
           "term": "Compare modes",
           "meaning": "Side by side, swipe, onion skin, pixel diff, or the signature cells the gate compares."
@@ -1719,6 +1723,41 @@
         "project": "Project",
         "workspace": "Workspace"
       }
+    },
+    "report": {
+      "open": "Report to pxsig",
+      "openTitle": "Report to pxsig: a report for an issue on hydrotik/pxsig, when the gate got this entry wrong",
+      "title": "Report to pxsig",
+      "description": "A gate report for an issue on hydrotik/pxsig: the text in the shape of the issue form, and one image. The story ID is replaced with entry-1; no paths or user names.",
+      "checking": "Re-rendering this entry on this machine…",
+      "differs": "Re-rendered on this machine: still fails the gate.",
+      "passes": "Re-rendered on this machine: passes the gate.",
+      "checkError": "Re-render failed: {error}. The report uses the last check.",
+      "notChecked": "Not re-rendered: {error}. The report uses the last check.",
+      "publicLabel": "Public",
+      "public": "This goes in a public GitHub issue on hydrotik/pxsig. Anyone can see it, and it can't be fully removed. Copy it only if the images show nothing confidential.",
+      "full": "Full capture",
+      "fullLabel": "Full capture instead of the changed regions",
+      "keepId": "Keep story ID",
+      "keepIdLabel": "Keep the story ID instead of entry-1",
+      "noImage": "Image-free",
+      "noImageLabel": "No image: the changed regions and their average colors only",
+      "preparing": "Preparing the report…",
+      "failed": "No report: {error}",
+      "imageHeading": "Image",
+      "imageAlt": "Baseline, render and diff side by side",
+      "noImageNote": "No image. The text lists each changed region with its average color in the baseline and the render.",
+      "textHeading": "Text",
+      "trimmed": "The issue link holds a shortened {fields}; the copied text has all of it.",
+      "copyText": "Copy text",
+      "copyImage": "Copy image",
+      "saveImage": "Save image",
+      "openIssue": "Open issue",
+      "openIssueTitle": "The issue form on github.com, in a new tab, with the text fields filled in. The image is pasted there.",
+      "cancel": "Cancel",
+      "copiedText": "Text copied.",
+      "copiedImage": "Image copied: one PNG.",
+      "copyFailed": "Not copied: {error}"
     }
   },
   "ui": {

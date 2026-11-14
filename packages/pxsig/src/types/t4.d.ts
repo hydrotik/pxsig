@@ -405,6 +405,10 @@ export interface DashboardFixtures {
   approvingOf: (name: string) => { allowed: boolean; folder: string; command: string };
   /** Events sent after `hello` (a run going on); older fixture modules lack it. */
   eventsOf?: (name: string) => [string, Record<string, unknown>][];
+  /** Report to pxsig: a sample report's facts (lib/gate-report.mjs `GateFacts`); older modules lack it. */
+  gateFacts?: (o: { full: boolean; keepId: boolean; noImage: boolean }) => Record<string, unknown>;
+  /** Report to pxsig: the self-check's answer in a scenario; older modules lack it. */
+  selfCheckOf?: (name: string) => Record<string, unknown>;
 }
 
 /** The sample PNGs the check's server answers with. */

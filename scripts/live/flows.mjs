@@ -101,6 +101,13 @@ export const FEATURES = [
     covers: ['status'],
   },
   {
+    id: 'live.report',
+    title: 'Report to pxsig',
+    purpose:
+      "Report to pxsig on a changed entry: the self-check re-renders it on the server (a dry re-render: no decision or result changes) and it still fails the gate; the report's preview (the composite and the text) follows.",
+    covers: ['gate-report'],
+  },
+  {
     id: 'live.offline',
     title: 'The server stops',
     purpose: 'The inspector closed, the server stops: the page keeps its data and says Offline.',
@@ -238,9 +245,20 @@ export const STEPS = [
     wait: { text: 'Reason dismissed', exact: false },
   },
   {
+    feature: 'live.report',
+    n: 1,
+    // On the inspector live.dismiss left open (a changed badge).
+    actions: [{ click: { role: 'button', name: 'Report to pxsig', exact: true } }],
+    wait: { role: 'img', name: 'Baseline, render and diff side by side' },
+  },
+  {
     feature: 'live.offline',
     n: 1,
-    actions: [{ click: { role: 'button', name: 'Close', exact: true } }, { stop: true }],
+    actions: [
+      { click: { role: 'button', name: 'Cancel', exact: true } },
+      { click: { role: 'button', name: 'Close', exact: true } },
+      { stop: true },
+    ],
     wait: { text: 'Offline', exact: true },
   },
 ];

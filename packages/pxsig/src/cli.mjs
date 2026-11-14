@@ -19,6 +19,9 @@
  *   serve [--watch] [--port n]  the server and dashboard, for every project
  *   mcp                         the MCP server (stdio)
  *   report [--out dir]          a static dashboard for one project
+ *   report <id> [--full] [--keep-id] [--no-image]
+ *                               a gate report for an issue on hydrotik/pxsig (reports/gate-report/<id>/)
+ *                               and the prefilled issue link; it posts nothing
  *   dashboard build [--ui path] [--out dir]
  *                               rebuild the dashboard on this project's design system through a UI adapter
  *                               (--ui, else dashboard.ui in pxsig.config.json; docs/ui/build-adapter.md)

@@ -25,6 +25,8 @@ import { REACT_EVENTS, REACT_SCENARIOS } from './react.mjs';
 import { MASK_SCENARIOS } from './masks.mjs';
 import { TEXT_SCENARIOS } from './text.mjs';
 
+export { gateFacts, selfCheckOf } from './gate-report.mjs';
+
 export const AT = '2026-10-24T10:00:00.000Z';
 
 // --- builders -----------------------------------------------------------------------------------

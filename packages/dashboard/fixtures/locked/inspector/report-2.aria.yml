@@ -1,0 +1,24 @@
+- main:
+  - status
+- dialog "ui-button--primary": 1200%
+- dialog "Report to pxsig":
+  - heading "Report to pxsig" [level=2]
+  - paragraph: "A gate report for an issue on hydrotik/pxsig: the text in the shape of the issue form, and one image. The story ID is replaced with entry-1; no paths or user names."
+  - status: "Re-rendered on this machine: still fails the gate."
+  - alert "Public": Public This goes in a public GitHub issue on hydrotik/pxsig. Anyone can see it, and it can't be fully removed. Copy it only if the images show nothing confidential.
+  - switch "Full capture instead of the changed regions" [disabled]
+  - text: Full capture
+  - switch "Keep the story ID instead of entry-1"
+  - text: Keep story ID
+  - 'switch "No image: the changed regions and their average colors only" [checked]'
+  - text: Image-free
+  - heading "Image" [level=3]
+  - paragraph: No image. The text lists each changed region with its average color in the baseline and the render.
+  - heading "Text" [level=3]
+  - textbox "Text": "### pxsig version and engine build pxsig 0.0.0-sample · engine 0.0.0-sample ### Entry and mode entry-1 · mode dark ### Gate settings ```json { \"threshold\": 24, \"minSsim\": 0.99, \"maxChangedPct\": 2, \"maxEdgePct\": null, \"minCells\": 3, \"detail\": { \"blockDelta\": 32, \"energyDelta\": 48, \"minTiles\": 3 }, \"color\": { \"deltaE\": 3, \"minArea\": 64, \"cellDeltaE\": 5, \"minCells\": 3 } } ``` ### Metrics ```text verdict: fails the gate ssim 0.8 · changedCells 12 · changedCellsPct 3 · grid 64 · threshold 24 color: did not run detail: changedTiles 4 · newEdgeTiles 2 · maxBlockDelta 61 pixels: 1024 changed of 320×200 · max delta 180 · 1 region ``` ### Reasons ```text - ssim 0.8 < min 0.99 ``` ### Changed regions ```text 1. x 60, y 120 · 136×32 · 1024 px · baseline #5d7dc8 → render #9aa6c4 ``` ### Environment class render: Linux x64 · chromium 140 · GPU swiftshader · container · baseline: Linux x64 · chromium 140 · GPU swiftshader · container · environments same ### Images None: an image-free report. The average colors are under Changed regions."
+  - status
+  - button "Copy text"
+  - button "Copy image" [disabled]
+  - link "Open issue":
+    - /url: https://github.com/hydrotik/pxsig/issues/new?template=gate.yml&version=pxsig+0.0.0-sample+%C2%B7+engine+0.0.0-sample&entry=entry-1+%C2%B7+mode+dark&gate=%7B%0A++%22threshold%22%3A+24%2C%0A++%22minSsim%22%3A+0.99%2C%0A++%22maxChangedPct%22%3A+2%2C%0A++%22maxEdgePct%22%3A+null%2C%0A++%22minCells%22%3A+3%2C%0A++%22detail%22%3A+%7B%0A++++%22blockDelta%22%3A+32%2C%0A++++%22energyDelta%22%3A+48%2C%0A++++%22minTiles%22%3A+3%0A++%7D%2C%0A++%22color%22%3A+%7B%0A++++%22deltaE%22%3A+3%2C%0A++++%22minArea%22%3A+64%2C%0A++++%22cellDeltaE%22%3A+5%2C%0A++++%22minCells%22%3A+3%0A++%7D%0A%7D&metrics=verdict%3A+fails+the+gate%0Assim+0.8+%C2%B7+changedCells+12+%C2%B7+changedCellsPct+3+%C2%B7+grid+64+%C2%B7+threshold+24%0Acolor%3A+did+not+run%0Adetail%3A+changedTiles+4+%C2%B7+newEdgeTiles+2+%C2%B7+maxBlockDelta+61%0Apixels%3A+1024+changed+of+320%C3%97200+%C2%B7+max+delta+180+%C2%B7+1+region&reasons=-+ssim+0.8+%3C+min+0.99&regions=1.+x+60%2C+y+120+%C2%B7+136%C3%9732+%C2%B7+1024+px+%C2%B7+baseline+%235d7dc8+%E2%86%92+render+%239aa6c4&environment=render%3A+Linux+x64+%C2%B7+chromium+140+%C2%B7+GPU+swiftshader+%C2%B7+container+%C2%B7+baseline%3A+Linux+x64+%C2%B7+chromium+140+%C2%B7+GPU+swiftshader+%C2%B7+container+%C2%B7+environments+same
+  - button "Cancel"

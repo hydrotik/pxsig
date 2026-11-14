@@ -1,0 +1,24 @@
+- main:
+  - status
+- dialog "components-badge--success@dark": 879%
+- dialog "Report to pxsig":
+  - heading "Report to pxsig" [level=2]
+  - paragraph: "A gate report for an issue on hydrotik/pxsig: the text in the shape of the issue form, and one image. The story ID is replaced with entry-1; no paths or user names."
+  - status: "Re-rendered on this machine: still fails the gate."
+  - alert "Public": Public This goes in a public GitHub issue on hydrotik/pxsig. Anyone can see it, and it can't be fully removed. Copy it only if the images show nothing confidential.
+  - switch "Full capture instead of the changed regions"
+  - text: Full capture
+  - switch "Keep the story ID instead of entry-1"
+  - text: Keep story ID
+  - 'switch "No image: the changed regions and their average colors only"'
+  - text: Image-free
+  - heading "Image" [level=3]
+  - img "Baseline, render and diff side by side"
+  - heading "Text" [level=3]
+  - textbox "Text": "### pxsig version and engine build pxsig 0.7.6 · engine 0.7.6 ### Entry and mode entry-1 · mode dark ### Gate settings ```json { \"threshold\": 24, \"minSsim\": 0.99, \"maxChangedPct\": 2, \"maxEdgePct\": null, \"minCells\": 3, \"detail\": { \"blockDelta\": 32, \"energyDelta\": 48, \"minTiles\": 3 }, \"color\": { \"deltaE\": 3, \"minArea\": 64, \"cellDeltaE\": 5, \"minCells\": 3 } } ``` ### Metrics ```text verdict: fails the gate ssim 0.9445 · matchScore 94.45 · colorDiffPct 6.637 · edgeDiffPct 2.099 · maxCellDiff 74 · changedCells 68 · changedCellsPct 26.56 · psnr 28.23 · ahashHamming 2 · dhashHamming 0 · identical false · grid 16 · threshold 24 color: did not run detail: changedTiles 0 · newEdgeTiles 0 · maxBlockDelta 22 pixels: 900 changed of 74×50 · max delta 91 · 1 region ``` ### Reasons ```text - ssim 0.9445 < min 0.99 - changedCellsPct 26.56 > max 2 - changedCells 68 >= 3 (off by > 24) ``` ### Changed regions ```text 1. x 16, y 8 · 48×32 · 900 px ``` ### Environment class render: Linux x64 · chromium 145 · GPU swiftshader · baseline: Linux x64 · chromium 145 · GPU swiftshader · environments same ### Images One PNG, 904×200: baseline | render | diff, cropped to the changed regions with a 16 px margin, at 4×. Pasted below."
+  - status
+  - button "Copy text"
+  - button "Copy image"
+  - link "Open issue":
+    - /url: https://github.com/hydrotik/pxsig/issues/new?template=gate.yml&version=pxsig+0.7.6+%C2%B7+engine+0.7.6&entry=entry-1+%C2%B7+mode+dark&gate=%7B%0A++%22threshold%22%3A+24%2C%0A++%22minSsim%22%3A+0.99%2C%0A++%22maxChangedPct%22%3A+2%2C%0A++%22maxEdgePct%22%3A+null%2C%0A++%22minCells%22%3A+3%2C%0A++%22detail%22%3A+%7B%0A++++%22blockDelta%22%3A+32%2C%0A++++%22energyDelta%22%3A+48%2C%0A++++%22minTiles%22%3A+3%0A++%7D%2C%0A++%22color%22%3A+%7B%0A++++%22deltaE%22%3A+3%2C%0A++++%22minArea%22%3A+64%2C%0A++++%22cellDeltaE%22%3A+5%2C%0A++++%22minCells%22%3A+3%0A++%7D%0A%7D&metrics=verdict%3A+fails+the+gate%0Assim+0.9445+%C2%B7+matchScore+94.45+%C2%B7+colorDiffPct+6.637+%C2%B7+edgeDiffPct+2.099+%C2%B7+maxCellDiff+74+%C2%B7+changedCells+68+%C2%B7+changedCellsPct+26.56+%C2%B7+psnr+28.23+%C2%B7+ahashHamming+2+%C2%B7+dhashHamming+0+%C2%B7+identical+false+%C2%B7+grid+16+%C2%B7+threshold+24%0Acolor%3A+did+not+run%0Adetail%3A+changedTiles+0+%C2%B7+newEdgeTiles+0+%C2%B7+maxBlockDelta+22%0Apixels%3A+900+changed+of+74%C3%9750+%C2%B7+max+delta+91+%C2%B7+1+region&reasons=-+ssim+0.9445+%3C+min+0.99%0A-+changedCellsPct+26.56+%3E+max+2%0A-+changedCells+68+%3E%3D+3+%28off+by+%3E+24%29&regions=1.+x+16%2C+y+8+%C2%B7+48%C3%9732+%C2%B7+900+px&environment=render%3A+Linux+x64+%C2%B7+chromium+145+%C2%B7+GPU+swiftshader+%C2%B7+baseline%3A+Linux+x64+%C2%B7+chromium+145+%C2%B7+GPU+swiftshader+%C2%B7+environments+same
+  - button "Cancel"

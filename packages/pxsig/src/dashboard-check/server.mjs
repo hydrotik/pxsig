@@ -6,9 +6,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, relative, resolve } from 'node:path';
 import { PNG } from 'pngjs';
+import { sampleGateReport } from './gate-report.mjs';
 /** @import { ServerResponse } from 'node:http' */
 /** @import { AddressInfo } from 'node:net' */
 /** @import { CheckPost, DashboardFixtures, SampleImages, ScenarioServer } from '../types/t4.js' */
+/** @import { GateFacts } from '../lib/gate-report.mjs' */
 
 /**
  * The sample images: a card with a button, and the same card with the button moved, so the
@@ -99,7 +101,12 @@ export function scenarioServer({ dir, scenario, fixtures, images, posts }) {
             parsed = body;
           }
           posts.push({ scenario, name, body: parsed });
-          send(200, 'application/json', JSON.stringify({ ok: true }));
+          // Report to pxsig's self-check: the scenario's answer, as the server gives it once run.
+          const answer =
+            name === 'gate-report/self-check' && fixtures.selfCheckOf
+              ? fixtures.selfCheckOf(scenario)
+              : { ok: true };
+          send(200, 'application/json', JSON.stringify(answer));
         });
         return;
       }
@@ -134,6 +141,21 @@ export function scenarioServer({ dir, scenario, fixtures, images, posts }) {
           'application/json',
           JSON.stringify({ approving: fixtures.approvingOf(scenario) })
         );
+      // Report to pxsig: the sample facts with the options asked for, made by the report's own code.
+      if (name === 'gate-report' && fixtures.gateFacts) {
+        const on = (/** @type {string} */ k) => u.searchParams.get(k) === '1';
+        const facts = fixtures.gateFacts({
+          full: on('full'),
+          keepId: on('keepId'),
+          noImage: on('noImage'),
+        });
+        // The fixture module's facts have GateFacts' shape (fixtures/gate-report.mjs).
+        const report = sampleGateReport(
+          /** @type {GateFacts} */ (/** @type {unknown} */ (facts)),
+          images
+        );
+        return send(200, 'application/json', JSON.stringify(report));
+      }
       if (name === 'projects')
         return send(
           200,

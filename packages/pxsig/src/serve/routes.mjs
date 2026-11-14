@@ -30,6 +30,7 @@ import { approving, LINK_EXPIRED } from '../lib/dashboard-link.mjs';
 import { buildData } from '../report.mjs';
 import { a11yPrune, a11yReview } from './a11y.mjs';
 import { enqueue } from './checks.mjs';
+import { gateReportRoutes } from './gate-report.mjs';
 import { json, readBody } from './http.mjs';
 import { runIntegrity, storyIntegrity } from './integrity.mjs';
 import { projectsList, stateFor } from './projects.mjs';
@@ -371,6 +372,8 @@ const table = [
   ...reactRoutes,
   // rejection-dismiss (serve/rejections.mjs)
   ...rejectionRoutes,
+  // gate-report, gate-report/self-check (serve/gate-report.mjs)
+  ...gateReportRoutes,
 ];
 /** The routes by action: `create.mjs` copies them into `srv.routes`. */
 export const routes = new Map(table);

@@ -178,6 +178,7 @@ include it, and `pnpm build:dashboard` builds it on the plain adapter (see
 | Design decisions                                                                       | [docs/decisions.md](docs/decisions.md)                                                           |
 | macOS, Linux and Windows: the programs pxsig starts, the browser, paths, line endings  | [docs/platforms.md](docs/platforms.md)                                                           |
 | Errors pxsig prints, their causes and fixes                                            | [docs/troubleshooting.md](docs/troubleshooting.md)                                               |
+| A gate that got an entry wrong: the report for an issue, and what it keeps private     | [docs/gate-issues.md](docs/gate-issues.md)                                                       |
 | Releases: platform binaries, npm packages, the dashboard build                         | [docs/releasing.md](docs/releasing.md)                                                           |
 | Research tools: scenarios, calibration, benchmarks                                     | [tools/README.md](tools/README.md)                                                               |
 

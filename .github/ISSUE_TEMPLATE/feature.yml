@@ -1,0 +1,28 @@
+name: Feature
+description: An idea for pxsig.
+title: '[feature] '
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue is public. Leave out paths, names and anything from a private project.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What is hard or impossible today, and in which part (CLI, server, dashboard, gate, MCP, Storybook addon).
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: The proposal
+      description: What pxsig could do instead.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Workarounds in use today, or other ways to solve it.

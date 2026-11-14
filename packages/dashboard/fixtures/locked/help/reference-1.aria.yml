@@ -192,6 +192,8 @@
   - definition: "Approve writes the latest render as the baseline. Reject marks the change as unwanted, with an optional reason: Enter rejects, Esc cancels. Undo reverses either; for an approval it restores the previous baseline."
   - term: Rejected note
   - definition: "The reason, the command to re-check the entry once it is fixed, Edit reason, and Copy for an agent: one paragraph for an assistant with the reason and the re-check command. After a re-check that still differs, Rejected earlier keeps the reason until the entry passes or is approved, or Dismiss reason closes it."
+  - term: Report to pxsig
+  - definition: "For an entry the gate got wrong: flagged when nothing visible changed, or passed when something did. It first re-renders the entry on this machine and says whether it still fails the gate: a pass there usually means the earlier difference came from this machine's environment, not from the gate. Then it prepares a report for a public issue on hydrotik/pxsig, previewed in full: the text and one image (baseline, render and diff, cropped to the changed regions). Full capture takes the whole image, Keep story ID keeps the ID (replaced with entry-1 by default), Image-free gives the changed regions and their average colors instead of any image. Nothing is copied until a copy button is pressed, and nothing is posted: Open issue opens the issue form with the text fields filled in. pxsig report <id> writes the same report from a terminal."
   - term: Compare modes
   - definition: Side by side, swipe, onion skin, pixel diff, or the signature cells the gate compares.
   - term: Originals

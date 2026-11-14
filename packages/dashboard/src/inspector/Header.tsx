@@ -1,13 +1,14 @@
 /** The inspector's header (Inspector.tsx): the entry's context, id and reasons, and its actions. */
 import type { ReactNode, RefObject } from 'react';
 import { Badge, Button, type DialogDescription, type DialogTitle } from '@ui';
-import { type Data, type Row, statusOf } from '../data';
+import { type Data, type Row, served, statusOf } from '../data';
 import { t } from '../copy';
 import * as s from '../dashboard.css';
 import { MaskBadges } from '../parts/MaskBadges';
 import { StatusOf } from '../parts/StatusOf';
 import type { storybookLink } from '../storybook-link.mjs';
 import type { InspectTarget } from './Inspector';
+import { GateReportButton } from './GateReport';
 import { textBadge, textSummary } from './textSay';
 
 export function Header({
@@ -88,6 +89,14 @@ export function Header({
       </div>
       <div className={s.insActions}>
         {storyNav}
+        {/* Report to pxsig: an entry with a baseline and a render, on a served page (not pxsig's own screens). */}
+        {served &&
+        !target?.scenario &&
+        data.source !== 'dashboard-screens' &&
+        !row.new &&
+        !row.error ? (
+          <GateReportButton row={row} />
+        ) : null}
         {/* Re-check's label changes while it runs: left of the review buttons, so they stay put. */}
         {recheckButton}
         {reviewButtons}

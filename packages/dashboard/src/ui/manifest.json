@@ -63,6 +63,7 @@
       "role": "a command, or a link styled as one",
       "usedBy": [
         "App",
+        "inspector/GateReport",
         "inspector/Header",
         "inspector/RejectNote",
         "inspector/RejectedNote",
@@ -90,6 +91,7 @@
       "role": "a square button with a glyph",
       "usedBy": [
         "App",
+        "inspector/GateReport",
         "inspector/controls",
         "inspector/side/ViewSection"
       ]
@@ -298,6 +300,7 @@
       "role": "a glyph from the closed set",
       "usedBy": [
         "App",
+        "inspector/GateReport",
         "inspector/side/PixelSection",
         "parts/Affordance",
         "views/Help"
@@ -308,6 +311,7 @@
       "required": true,
       "role": "a modal dialog (the inspector)",
       "usedBy": [
+        "inspector/GateReport",
         "inspector/Inspector",
         "inspector/SessionSummary"
       ]
@@ -317,6 +321,7 @@
       "required": true,
       "role": "the dialog's accessible name",
       "usedBy": [
+        "inspector/GateReport",
         "inspector/Inspector",
         "inspector/SessionSummary"
       ]
@@ -326,6 +331,7 @@
       "required": true,
       "role": "the dialog's description",
       "usedBy": [
+        "inspector/GateReport",
         "inspector/Inspector"
       ]
     },
@@ -343,6 +349,7 @@
       "required": false,
       "role": "an on / off control",
       "usedBy": [
+        "inspector/GateReport",
         "inspector/Inspector",
         "inspector/controls"
       ]
@@ -504,6 +511,7 @@
       "role": "a message about the whole page",
       "usedBy": [
         "App",
+        "inspector/GateReport",
         "parts/ReactStrip",
         "views/Integrity",
         "views/react/shared"
@@ -515,6 +523,7 @@
       "role": "an alert's title line, not a heading",
       "usedBy": [
         "App",
+        "inspector/GateReport",
         "parts/ReactStrip",
         "views/Integrity",
         "views/react/shared"
@@ -526,6 +535,7 @@
       "role": "an alert's body",
       "usedBy": [
         "App",
+        "inspector/GateReport",
         "parts/ReactStrip",
         "views/Integrity",
         "views/react/shared"

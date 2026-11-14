@@ -539,6 +539,28 @@ Copy: `inspector.session`, `inspector.rejection.copyPrompt`
 
 Files: `src/inspector/Inspector`, `src/inspector/SessionSummary`, `src/inspector/RejectedNote`
 
+### Report to pxsig
+
+`inspector.report` · A gate report for a public issue on hydrotik/pxsig, when the gate got an entry wrong (the header's Report to pxsig button, beside Re-check). The dialog first re-renders the entry on this machine and says whether it still fails the gate, then previews exactly what is copied: one image (baseline, render and diff, cropped to the changed regions) or the image-free summary, and the text in the issue form's shape, with the story ID replaced by entry-1. It says the issue is public and cannot be fully removed. Copy text, Copy image (one PNG; Save image where the clipboard takes no images), Open issue (the prefilled form, in a new tab) and Cancel; nothing is copied until a copy button is pressed, and nothing is posted.
+
+States:
+
+- **readOnly**: Available: preparing a report decides nothing.
+- **static**: No Report to pxsig button: a static report has no server to re-render or compare.
+- **loading**: The re-render on this machine, then the report, each with a line saying so.
+- **error**: Why there is no report (no baseline, no render), or why the re-render failed.
+
+Interactions:
+
+- Full capture, Keep story ID, Image-free: the preview follows
+- Copy text, Copy image or Save image; Open issue; Cancel (Esc)
+
+Components: `IconButton`, `Icon`, `Dialog`, `DialogTitle`, `DialogDescription`, `Alert`, `AlertTitle`, `AlertDescription`, `Switch`, `Button`
+
+Copy: `inspector.report`
+
+Files: `src/inspector/GateReport`, `src/inspector/Header`, `src/data/gate-report`
+
 ## Storybook panel
 
 ### Storybook panel

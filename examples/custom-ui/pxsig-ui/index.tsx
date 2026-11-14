@@ -191,7 +191,12 @@ export function Dialog({ open, onOpenChange, initialFocus, className, children }
       ref={ref}
       aria-labelledby={titleId}
       className={['plain-dialog', className].filter(Boolean).join(' ')}
-      onCancel={(e) => (e.preventDefault(), onOpenChange(false))}
+      onCancel={(e) => {
+        // Esc closes the top dialog only: a dialog's cancel reaches the dialogs around it in React.
+        if (e.target !== e.currentTarget) return;
+        e.preventDefault();
+        onOpenChange(false);
+      }}
     >
       <DialogTitleId.Provider value={titleId}>{children}</DialogTitleId.Provider>
     </dialog>

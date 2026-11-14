@@ -11,6 +11,7 @@
   - button "Previous story (←)": ‹
   - text: 1 / 2
   - button "Next story (→)": ›
+  - button "Report to pxsig"
   - button "Re-check"
   - text: Approving accepts 1 new a11y violation
   - button "Reject" [disabled]

@@ -120,6 +120,7 @@ const INSPECTOR: [string, string[]][] = [
   ['entry', ['ins-title']],
   ['review', ['ins-review']],
   ['note', ['ins-note']],
+  ['report', ['ins-review']],
   ['modes', ['ins-modes']],
   ['originals', ['ins-view']],
   ['changes', ['ins-changenav', 'ins-stage']],
