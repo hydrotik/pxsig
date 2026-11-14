@@ -88,7 +88,7 @@ test("gaps and build compare the adapter's contract version with this pxsig's", 
   const r = pxsig(['dashboard', 'gaps', '--ui', 'hydrotik', '--json']);
   const { status, current } = JSON.parse(r.stdout).contract;
   assert.equal(status, 'same');
-  const now = current.replace(/\./g, '\\.');
+  const now = current.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const dir = tempDir('ui');
   try {
     mkdirSync(join(dir, 'ui'));

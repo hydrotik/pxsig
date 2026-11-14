@@ -63,6 +63,15 @@ test('never a shell or a system tool', () => {
   assert.throws(() => spawnSync('cmd.exe', ['/c', 'echo']), /does not start "cmd\.exe"/);
 });
 
+test('an argument reaches the program as argv, whatever a shell would make of it', () => {
+  const arg = '$(echo no) `echo no` ; echo no | x > y & %PATH% "q" \'s\'';
+  const r = spawnSync(process.execPath, ['-e', 'process.stdout.write(process.argv[1])', arg], {
+    encoding: 'utf8',
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, arg);
+});
+
 test('every start goes through lib/spawn.mjs', () => {
   /** @type {string[]} */
   const offenders = [];

@@ -240,8 +240,10 @@ test('deployed: the read-only snapshot, and no request to any pxsig server', asy
     snap: snapshot,
   });
   await other.page.getByText('No visual baseline for this story.').waitFor();
-  for (const { url } of [...requests, ...other.requests])
-    assert.ok(!url.startsWith(SERVER) && !url.startsWith(DEFAULT), url);
+  for (const { url } of [...requests, ...other.requests]) {
+    const { origin } = new URL(url);
+    assert.ok(origin !== SERVER && origin !== DEFAULT, url);
+  }
   await page.close();
   await other.page.close();
 });

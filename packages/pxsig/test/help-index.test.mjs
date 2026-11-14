@@ -45,7 +45,7 @@ test('pxsig --help lists every command, subcommand and topic, with its summary a
   for (const n of names()) {
     const [c, s] = n.split(' ');
     const e = /** @type {HelpCommandEntry} */ (s ? commands[c].subcommands?.[s] : commands[c]);
-    assert.ok(rows.has(`| ${n} | ${e.summary.replace(/\|/g, '\\|')} |`), `${n}: its row`);
+    assert.ok(rows.has(`| ${n} | ${e.summary.replace(/[\\|]/g, '\\$&')} |`), `${n}: its row`);
     for (const u of e.usage) assert.ok(rows.has(`- ${u}`), `${n}: ${u}`);
   }
   assert.ok(r.stdout.includes(`Topics: ${Object.keys(topics).join(', ')}.`), 'Topics line');
