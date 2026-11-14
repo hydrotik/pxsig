@@ -177,6 +177,8 @@ export type Config = {
     byStory?: boolean;
   };
   dashboard?: { ui?: string };
+  /** The drift alarm (lib/drift.mjs): `drift-high` when both are reached. */
+  drift?: { warnAt?: { count?: number; share?: number } };
   /** Rejection notes and packets (lib/rejections/packet.mjs `rejectionOptions`). */
   rejections?: {
     note?: { ask?: boolean };
