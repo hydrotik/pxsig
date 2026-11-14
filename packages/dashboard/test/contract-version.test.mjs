@@ -67,7 +67,7 @@ test('major and minor changes', () => {
 const [M, m] = now.version.split('.').map(Number);
 const minorUp = (k) => `${M}.${m + k}.0`;
 const majorUp = `${M + 1}.0.0`;
-const esc = (v) => v.replace(/\./g, '\\.');
+const esc = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 test('ui:check asks a change for a bump of the right size and a changes entry', () => {
   const changes = { [now.version]: 'x', [minorUp(1)]: 'y', [majorUp]: 'z' };

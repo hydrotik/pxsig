@@ -98,7 +98,7 @@ test('a contract change without a version bump and a changes entry fails', async
   )[1];
   const [M, m] = version.split('.').map(Number);
   const next = `${M}.${m + 1}.0`;
-  const esc = (v) => v.replace(/\./g, '\\.');
+  const esc = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const removed = await check(({ read, write }) =>
     write(
       'src/ui/contract.ts',

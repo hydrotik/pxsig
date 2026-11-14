@@ -97,7 +97,7 @@ test('pxsig --version and pxsig version: the CLI, the engine it would run and th
   assert.match(
     text.stdout,
     new RegExp(
-      `^pxsig ${version.replace(/\./g, '\\.')} \\(engine not found, UI contract \\d+\\.\\d+\\.\\d+\\)\\n$`
+      `^pxsig ${version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\(engine not found, UI contract \\d+\\.\\d+\\.\\d+\\)\\n$`
     )
   );
   assert.equal(text.stderr, '', 'no warning: --version is a known flag');
