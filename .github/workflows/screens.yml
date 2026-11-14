@@ -116,28 +116,26 @@ jobs:
           fi
           echo "code=$code" >> "$GITHUB_OUTPUT"
           [ "$code" -le 1 ]
-      # Source parity (docs/ui/build-adapter.md, "Source parity"): each component the reference
-      # adapter's conformance.json pairs with a design-system story, beside that story, in pxsig's
-      # container. The design system's Storybook is built here from the same checkout. Advisory
-      # until the differences it reports today are fixed: its summary joins the job's, and it never
-      # fails the job.
+      # Source parity (docs/ui/build-adapter.md, "Source parity"): `pxsig dashboard parity` on the
+      # reference adapter, in pxsig's container, on the checkout the fetch step made (PXSIG_DS_DIR,
+      # as the build reads it). The design system's own Storybook build (its `build-storybook`
+      # script, wherever it is) is copied into this checkout, where the container sees it. Advisory
+      # here; it fails the job once pxsig's own screens are held at zero findings.
       - if: steps.has.outputs.ds == 'true'
         name: Source parity
         continue-on-error: true
         shell: bash
         env:
           STORYBOOK_DISABLE_TELEMETRY: '1'
+          PXSIG_DS_DIR: ${{ runner.temp }}/design-system
         run: |
           set -uo pipefail
-          ds="${RUNNER_TEMP}/design-system"
-          # The design system's own Storybook build (its `build-storybook` script, wherever it is),
-          # copied into this checkout so the container sees it.
-          pnpm -C "$ds" -r --if-present run build-storybook
-          built="$(find "$ds" -maxdepth 4 -type d -name storybook-static -not -path '*/node_modules/*' | head -n 1)"
+          pnpm -C "${PXSIG_DS_DIR}" -r --if-present run build-storybook
+          built="$(find "${PXSIG_DS_DIR}" -maxdepth 4 -type d -name storybook-static -not -path '*/node_modules/*' | head -n 1)"
           [ -n "$built" ] || { echo "::error::the design system built no Storybook"; exit 1; }
           rm -rf target/parity-storybook && cp -R "$built" target/parity-storybook
           code=0
-          PXSIG_UI_ADAPTER=hydrotik PXSIG_DS_SOURCE="$ds" node scripts/parity-check.mjs --storybook target/parity-storybook --container || code=$?
+          node scripts/parity-check.mjs --storybook target/parity-storybook --container || code=$?
           if [ -f target/parity/summary.md ]; then cat target/parity/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
           exit "$code"
       - if: steps.has.outputs.ds == 'true' && always()

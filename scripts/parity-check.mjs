@@ -8,7 +8,8 @@
  *   node scripts/parity-check.mjs --storybook <dir> [--ui <adapter>] [--out <dir>] [--themes dark,light] [--container]
  *
  * --storybook   the design system's built Storybook, inside this checkout (the container sees it)
- * --ui          the adapter (default: the one the dashboard build would use)
+ * --ui          the adapter (default: this repository's build, as `pnpm build:dashboard` picks it:
+ *               hydrotik on PXSIG_DS_SOURCE, else on the pinned design-system checkout)
  * --out         default target/parity: report.json, summary.md, shots/, and the page in page/
  *
  * Exit: `pxsig dashboard parity`'s (0 match · 1 a difference or a pair that did not render · 2
@@ -35,6 +36,12 @@ async function main() {
     process.exit(2);
   }
   const out = resolve(flag(args, 'out') ?? join(repo, 'target', 'parity'));
+  // The repository's build in force, as `pnpm build:dashboard` picks it (scripts/dashboard-build.mjs):
+  // hydrotik on PXSIG_DS_SOURCE, else on the pinned checkout (PXSIG_DS_DIR or target/design-system).
+  if (!flag(args, 'ui')) {
+    const { repoBuildEnv } = await import('./dashboard-build.mjs');
+    Object.assign(process.env, repoBuildEnv().add);
+  }
   const { resolveAdapter } = await import('../packages/dashboard/build-config.mjs');
   const ui = resolveAdapter({ adapter: flag(args, 'ui'), cwd: repo });
   const page = join(out, 'page');
