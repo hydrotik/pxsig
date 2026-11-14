@@ -29,6 +29,7 @@ import { preflight } from './preflight.mjs';
 import { reactFindings } from '../lib/react/doctor.mjs';
 import { textFindings } from '../lib/text/doctor.mjs';
 import { maskFindings } from '../lib/capture/doctor.mjs';
+import { driftOf } from '../lib/drift.mjs';
 
 /** @import { CheckToolResult, DoctorOptions } from '../types/t6.js' */
 /** @import { ProjectContext } from './context.mjs' */
@@ -136,6 +137,8 @@ async function doctor({
     text: textFindings(C.P),
     // Masks (lib/capture/doctor.mjs): the attribute, the config's with their layer; never the exit.
     masks: maskFindings(C.P),
+    // Drift (lib/drift.mjs): passing entries whose render differs from the baseline; never the exit.
+    drift: driftOf(C.P),
     sources: ledger.sources,
     components: {
       total: comps.length,

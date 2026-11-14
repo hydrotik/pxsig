@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { foreignServer, openProject } from '../lib/workspace.mjs';
 import { relPath } from '../lib/paths.mjs';
 import { readJson } from '../lib/files.mjs';
+import { drifts } from '../lib/drift.mjs';
 import { textBrief } from '../lib/text/say.mjs';
 import { readRejections } from '../lib/rejections.mjs';
 import { maskBrief } from './masks.mjs';
@@ -63,7 +64,7 @@ function stateOf(row, review) {
   if (row.error) return 'error';
   if (row.flaky) return 'flaky';
   if (!row.pass) return 'changed';
-  return row.metrics && row.metrics.ssim < 1 ? 'drift' : 'pass';
+  return drifts(row) ? 'drift' : 'pass';
 }
 const PROBLEMS = new Set(['changed', 'new', 'error', 'flaky', 'rejected']);
 

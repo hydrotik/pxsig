@@ -6,6 +6,7 @@ import { workspaceProblems } from '../workspace.mjs';
 import { toPosix } from '../paths.mjs';
 import { portabilityProblems } from '../portability.mjs';
 import { readLines } from '../files.mjs';
+import { driftReason, drifts } from '../drift.mjs';
 import { SCHEMA_VERSION, issue, byGravity, primaryOf, summarise } from './codes.mjs';
 import {
   readJson,
@@ -259,8 +260,7 @@ export async function reconcile(ctx, opts = {}) {
               rv === 'rejected' ? 'rejected in review' : ((row.reasons ?? [])[0] ?? 'gate failed')
             )
           );
-        else if (row.pass && row.metrics && row.metrics.ssim < 1)
-          issues.push(issue(ctx, 'drift', `ssim ${row.metrics.ssim}`));
+        else if (drifts(row)) issues.push(issue(ctx, 'drift', driftReason(row)));
         if (row.a11y?.new)
           issues.push(
             issue(ctx, 'a11y-new', `${row.a11y.new} violation(s) not in the a11y baseline`)
