@@ -56,7 +56,7 @@ async function capture(t) {
     browser,
     ids.map((id) => (id === 'overflow--selector' ? { id, ignore: ['.clock'] } : { id })),
     dir,
-    { baseUrl: sb.url, viewport: [400, 200], settleMs: 0, project: /** @type {never} */ ({}) }
+    { baseUrl: sb.url, viewport: [400, 200], settleMs: 0, project: {} }
   );
   for (const r of results) assert.ok(!r.error, String(r.error));
   return {
