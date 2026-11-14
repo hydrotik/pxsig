@@ -448,8 +448,9 @@ export function Overview({
           <div className={s.stack} data-column="end">
             <ErrorsCard data={data} renderErrors={errors} go={go} startReview={startReview} />
             <ReactCard data={data} openReact={openReact} />
-            {/* A third of the Runs page's height: on the Overview it is a trend, not the detail view. */}
-            <ChangedPerRun runs={data.history ?? []} height={16 / 3} />
+            {/* About a third of the Runs page's height (on the Overview it is a trend, not the
+                detail view), in whole pixels: 85px, where 16 / 3 rem was 85.33px. */}
+            <ChangedPerRun runs={data.history ?? []} height={5.3125} />
           </div>
         </div>
       </div>

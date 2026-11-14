@@ -29,7 +29,9 @@
  * Live screens (scripts/live/): the real `pxsig serve` on a staged example, driven through the
  * reviewer's flows, `live--<flow>-<n>@<theme>`, checked the same way after the fixture screens.
  * `--only` takes fixture and live features alike; `--no-live` leaves the live screens out;
- * `--repeat <n>` runs the flows n times (default 2) and fails a step whose runs differ.
+ * `--repeat <n>` runs the flows n times (default 2) and fails a step whose runs differ; with
+ * n > 1 each fixture screen renders twice, and one whose renders differ fails
+ * (lib/screens-repeat.mjs).
  * Every rendered screen must also have no accessibility (axe) or layout finding, as `pxsig dashboard
  * check --strict` requires.
  *
@@ -56,6 +58,7 @@ import { writeJson } from '../packages/pxsig/src/lib/files.mjs';
 import { takeLock } from '../packages/pxsig/src/lib/lock.mjs';
 import { buildRow, summarize } from '../packages/pxsig/src/lib/rows.mjs';
 import { assertVerdicts, verdictEngine } from './lib/screens-verdict.mjs';
+import { fixtureRepeat } from './lib/screens-repeat.mjs';
 import { boxesFile } from '../packages/pxsig/src/lib/capture/boxes.mjs';
 import { textSettings } from '../packages/pxsig/src/lib/text/config.mjs';
 import { envPlan } from '../packages/pxsig/src/lib/text/env-plan.mjs';
@@ -77,7 +80,7 @@ import {
 
 /** @import { CheckRow, ManifestEntry, Project } from '../packages/pxsig/src/types.js' */
 /** @import { EnvFields } from '../packages/pxsig/src/types/env.js' */
-/** @import { DashboardCheckReport, EngineCheckOutput, ScreenCatalogue } from '../packages/pxsig/src/types/t4.js' */
+/** @import { DashboardCheckReport, EngineCheckOutput, ScreenCatalogue, ScreenResult } from '../packages/pxsig/src/types/t4.js' */
 
 export const THEMES = ['dark', 'light'];
 /** `pxsig dashboard check`'s window (dashboard-check/capture.mjs). */
@@ -219,20 +222,17 @@ async function main() {
   rmSync(keep, { recursive: true, force: true });
   /** @type {{ report: { screens: DashboardCheckReport['screens'] }, outDir: string }} */
   let checked = { report: { screens: [] }, outDir: tmp };
+  const log = (/** @type {string} */ m) => console.log(m);
+  const idOf = (/** @type {ScreenResult} */ x) => screenId(x.feature, x.index + 1, x.theme).id;
+  /** @type {Awaited<ReturnType<typeof fixtureRepeat>> | null} */
+  let repeated = null;
   try {
     const browser = await pool.get('chromium');
-    if (runFixtures)
-      checked = await dashboardCheck(
-        { build, out: tmp, reference: build, ...(only ? { only } : {}) },
-        repo,
-        {
-          browser,
-          log: (/** @type {string} */ m) => console.log(m),
-          aria: true,
-          anchors: true,
-          text,
-        }
-      );
+    const flags = { build, out: tmp, reference: build, ...(only ? { only } : {}) };
+    const opts = { browser, log, aria: true, anchors: true, text };
+    if (runFixtures) checked = await dashboardCheck(flags, repo, opts);
+    if (runFixtures && repeat > 1)
+      repeated = await fixtureRepeat({ P, first: checked, flags, opts, idOf, log });
     if (runLiveScreens)
       checked.report.screens.push(
         ...(await runLive({
@@ -259,7 +259,7 @@ async function main() {
   /** @type {Map<string, { id: string, png?: string, error?: string, ms: number }>} */
   const render = new Map();
   for (const x of checked.report.screens) {
-    const { id } = screenId(x.feature, x.index + 1, x.theme);
+    const id = idOf(x);
     const png = join(P.store.latest, `${id}.png`);
     rmSync(png, { force: true });
     rmSync(boxesFile(png), { force: true });
@@ -289,10 +289,7 @@ async function main() {
       writeFileSync(file, `${x.aria.trimEnd()}\n`);
     }
   // Strict: an accessibility or layout finding on any screen fails, as `dashboard check --strict`.
-  const findings = screenFindings(
-    checked.report.screens,
-    (x) => screenId(x.feature, x.index + 1, x.theme).id
-  );
+  const findings = screenFindings(checked.report.screens, idOf);
   const lockArgs = {
     screens: checked.report.screens,
     update: args.includes('--update-locks'),
@@ -436,6 +433,8 @@ async function main() {
   for (const p of structure.problems) console.log(`  structure ${p}`);
   for (const p of geometry.problems) console.log(`  geometry ${p}`);
   for (const f of findings) console.log(`  finding ${f}`.slice(0, 400));
+  for (const p of [...(repeated?.problems ?? []), ...(repeated?.notes ?? [])])
+    console.log(`  ${p}`);
   const locksFailed = structure.problems.length + geometry.problems.length;
   if (locksFailed)
     console.log(
@@ -451,7 +450,9 @@ async function main() {
     console.log(
       '[screens] review them: cd packages/dashboard && node ../pxsig/bin/pxsig.mjs serve (approve with serve --link)'
     );
-  process.exit(failed.length || locksFailed || findings.length ? 1 : 0);
+  process.exit(
+    failed.length || locksFailed || findings.length || repeated?.problems.length ? 1 : 0
+  );
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();
