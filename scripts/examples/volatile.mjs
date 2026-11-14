@@ -2,7 +2,8 @@
  * volatile.mjs — the masks step of examples-test.mjs (single-package): the Badge gains a value that
  * differs on every render, marked `data-volatile`. The first check fails exactly the Badge entries as
  * "masks changed" (nothing approves itself); the engine's `baseline` refuses those entries without
- * `--allow-masks`, and names them; once approved, renders whose value differs pass; a
+ * `--allow-masks`, and names them; once approved, renders whose value differs pass, identical to
+ * their baselines (the mask covers all of the value); a
  * `capture.ignore` mask over the whole component fails each entry, no baseline is written from it
  * even with `--allow-masks`, and the output, summary.md and SARIF (an error) say so.
  */
@@ -25,12 +26,15 @@ export function volatileSteps(dir, p, build) {
   );
   const badge = join(dir, 'src/Badge/Badge.jsx');
   const source = readFileSync(badge, 'utf8');
+  // The value's box holds all of its text: four monospace digits and the Badge's letter-spacing.
+  // A fixed `width: 4ch` did not (each digit is 1ch plus the letter-spacing), so the last digit
+  // painted 3px past the box, outside the mask, and some values tripped the gate (2026-11-14).
   writeFileSync(
     badge,
     source.replace(
       '{children}',
       `{children}
-      <span data-volatile="build time" style={{ display: 'inline-block', width: '4ch', marginLeft: 4 }}>
+      <span data-volatile="build time" style={{ display: 'inline-block', marginLeft: 4 }}>
         {String(Date.now() % 10000).padStart(4, '0')}
       </span>`
     )
