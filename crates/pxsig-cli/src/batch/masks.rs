@@ -3,8 +3,8 @@
 //! the record as its header's `masks`, `{ v: 1, masks: [] }` when none applied (docs/spec.md,
 //! section 5). `check` compares the render's masks with its baseline's: a mask added, removed,
 //! grown, moved or matching another number of elements is "masks changed", a change for a person
-//! to approve, never a pass. Masks over a quarter of the capture, together, are a warning; over
-//! half of it, or over the story root, the entry fails and no baseline is written from it.
+//! to approve, never a pass. All masks over a quarter of the capture warn; over half, or on the
+//! story root, fail the entry and no baseline is written from it.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -20,8 +20,7 @@ pub const LARGE: f64 = 0.25;
 /// Masks over more than this share of the capture, together, fail the entry (`masksBlocked`), and
 /// no approval clears it: only smaller masks do.
 pub const LIMIT: f64 = 0.5;
-/// One mask over at least this share of the capture covers the story root, whatever the capture
-/// recorded.
+/// A mask the capture found on the story root covers it from this share of the capture on.
 const ROOT: f64 = 0.95;
 /// A box may differ by this many pixels on a side (rounding) and still be the same box.
 const SLACK: f64 = 1.0;
@@ -335,7 +334,7 @@ fn pct(x: f64, limit: f64) -> String {
 
 /// What no approval can pass: `{ coverage?, root?, problems? }`, when the masks together cover
 /// more than `LIMIT` of the capture (`coverage`, their share), one covers the story root (`root`,
-/// selectors: the capture found it there, or it covers `ROOT` of the capture), or the capture
+/// selectors: the capture found it there and it covers `ROOT` of the capture), or the capture
 /// found a mask it may not apply as asked (`problems`, as the record has them). None otherwise.
 pub fn blocked(cur: Option<&Value>) -> Option<Value> {
     let cur = cur?;
@@ -351,7 +350,7 @@ pub fn blocked(cur: Option<&Value>) -> Option<Value> {
         .as_array()
         .into_iter()
         .flatten()
-        .filter(|m| m["root"] == json!(true) || m["area"].as_f64().unwrap_or(0.0) >= ROOT)
+        .filter(|m| m["root"] == json!(true) && m["area"].as_f64().unwrap_or(0.0) >= ROOT)
         .map(|m| &m["selector"])
         .collect();
     if !root.is_empty() {
@@ -389,6 +388,32 @@ pub fn blocked_reasons(b: &Value) -> Vec<String> {
         out.push(format!("a mask covers the story root: {}", root.join(", ")));
     }
     out
+}
+
+/// The fix for each cause of a block (lib/mask-words.mjs says the same).
+pub fn blocked_fixes(b: &Value) -> Vec<&'static str> {
+    let p = b["problems"].as_array();
+    let has = |k: &str| p.is_some_and(|p| p.iter().any(|x| x["kind"] == k));
+    let root = b["root"].as_array().is_some_and(|r| !r.is_empty());
+    [
+        (
+            has("container"),
+            "put data-volatile on the element that shows the value (a leaf)",
+        ),
+        (
+            has("reason"),
+            "give data-volatile a reason, e.g. data-volatile=\"relative time\"",
+        ),
+        (
+            has("unmeasured"),
+            "mask at most 500 elements, all there when the story is ready",
+        ),
+        (b["coverage"].is_number(), "make the masks smaller"),
+        (root, "mask the value, not the story root"),
+    ]
+    .into_iter()
+    .filter_map(|(on, fix)| on.then_some(fix))
+    .collect()
 }
 
 /// The kinds of change, and how a reason words each.
@@ -473,15 +498,15 @@ pub fn annotate(
     Ok(())
 }
 
-/// Refuse to write a baseline no approval may write: masks over the limits (`blocked`), or a
-/// `.pxsig.json` baseline (`psig` false) from a render with masks, which it cannot record. The
-/// header `masks` for a `.psig` otherwise: the render's, or `none()`.
+/// Refuse a baseline no approval may write (`blocked`, naming each cause and its fix), or a
+/// `.pxsig.json` one (`psig` false) from a render with masks; else the `.psig` header's `masks`.
 pub fn for_baseline(png: &Path, psig: bool) -> Result<Option<Value>> {
     let cur = record(png)?;
     if let Some(b) = blocked(cur.as_ref()) {
         bail!(
-            "{}: no approval writes this baseline; reduce the masks",
-            blocked_reasons(&b).join("; ")
+            "{}: no approval writes this baseline; {}",
+            blocked_reasons(&b).join("; "),
+            blocked_fixes(&b).join("; ")
         );
     }
     if !psig {

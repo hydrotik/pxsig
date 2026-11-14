@@ -82,7 +82,7 @@ export type Queue = 'changed' | 'new' | 'a11y';
 
 /** An entry with new axe violations whose visual verdict needs no review: the accessibility queue. */
 const a11yOnly = (r: Row) =>
-  (r.a11y?.new ?? 0) > 0 && !['changed', 'new'].includes(statusOf(r, {}));
+  (r.a11y?.new ?? 0) > 0 && !['changed', 'new', 'blocked'].includes(statusOf(r, {}));
 
 /**
  * The entries a review session walks: every changed (or new, rendered, or a11y-only) entry of the
@@ -115,7 +115,19 @@ export function componentOf(d: Data, r: Row): string {
 export function statusOf(
   r: Row,
   review: Record<string, ReviewEntry>
-): 'approved' | 'rejected' | 'changed' | 'new' | 'flaky' | 'skipped' | 'error' | 'pass' {
+):
+  | 'approved'
+  | 'rejected'
+  | 'changed'
+  | 'new'
+  | 'flaky'
+  | 'skipped'
+  | 'error'
+  | 'pass'
+  | 'blocked' {
+  // Masks no approval passes: no decision for a person, the author fixes it. Out of every review
+  // queue, still failing (inspector/masks.ts says why).
+  if (r.masksBlocked && !r.pass && !r.skipped) return 'blocked';
   const rv = review[r.id];
   if (rv) return rv.state;
   if (r.skipped) return 'skipped';

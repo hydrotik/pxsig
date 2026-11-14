@@ -90,6 +90,7 @@ const ONLY_SOME_RUNS = {
   // Masks: a render with a `data-volatile` element or a `capture.ignore` selector; the fixture
   // project has none. The engine writes them (crates/pxsig-cli/src/batch/masks.rs).
   'check.rows[].masks': [MASKS_RS, /v\["masks"\] = c\["masks"\]\.clone\(\);/],
+  'check.rows[].masksCoverage': [MASKS_RS, /v\["masksCoverage"\] = c\["coverage"\]\.clone\(\);/],
   'check.rows[].masksLarge': [MASKS_RS, /v\["masksLarge"\] = json!\(big\);/],
   'check.rows[].masksChanged': [MASKS_RS, /v\["masksChanged"\] = ch;/],
   'check.rows[].masksBaseline': [MASKS_RS, /v\["masksBaseline"\] = json!\(list\(base\)\);/],

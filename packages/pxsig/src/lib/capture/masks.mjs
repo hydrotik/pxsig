@@ -1,6 +1,7 @@
 /**
  * Masks (lib/capture/render.mjs): what a capture paints over, where each mask comes from, and the
- * record of the masks that applied, `<id>.masks.json` beside `<id>.png`.
+ * record of the masks that applied, `<id>.masks.json` beside `<id>.png`. Measuring them as the
+ * capture is taken: mask-measure.mjs; painting them: mask-paint.mjs.
  *
  * Sources, in this order (a selector counts once, from its first source):
  *   attribute  every element with `data-volatile`, in every project; its value is the reason
@@ -8,12 +9,13 @@
  *   project    `capture.ignore` / `capture.addIgnore` in pxsig.config.json
  *   workspace  the same keys in the workspace file's `defaults`
  *
- * A mask paints the inside of each element's box, so the box itself (its size, its position) is
- * still compared. Text under a mask is left out of the text record; the a11y pass still sees it.
- * The record names selectors, sources, reasons and pixel counts: never a path.
+ * A mask paints the inside of each element's box, at the element's own place in the paint order
+ * (mask-paint.mjs), so the box itself (its size, its position) and whatever sits above it are still
+ * compared. `data-volatile` marks a leaf only (text and `INLINE` formatting), with a reason. Text
+ * under a painted mask is left out of the text record; the a11y pass still sees it. The record
+ * names selectors, sources, reasons, pixel counts and short element names: never a path.
  */
 import { rmSync, writeFileSync } from 'node:fs';
-/** @import { Page, PageScreenshotOptions } from 'playwright' */
 /** @import { RenderEntry } from '../../types/t4.js' */
 
 /** The attribute a component sets on an element whose content varies from run to run. */
@@ -29,7 +31,14 @@ export const ATTRIBUTE = 'data-volatile';
  * and the pixels they cover (`px`). The engine counts `rects` again inside the trimmed PNG, so a
  * mask's area is its share of the image that is compared.
  */
-/** @typedef {Mask & { reason?: string, count: number, px: number, rects: Rect[] }} AppliedMask */
+/** @typedef {Mask & { reason?: string, count: number, px: number, rects: Rect[], root?: true }} AppliedMask */
+/** What may not be masked as asked (the engine fails the entry with it, and writes no baseline). */
+/** @typedef {{ kind: 'container' | 'reason' | 'unmeasured', element: string }} MaskProblem */
+/**
+ * A capture's masks: those that apply, the problems found, and each mask asked for with the
+ * number of elements it matched when measured.
+ */
+/** @typedef {{ applied: AppliedMask[], problems: MaskProblem[], masks: Mask[], counts: number[] }} MeasuredMasks */
 
 /**
  * The capture's masks file beside `png`.
@@ -108,90 +117,27 @@ export function unionPx(rects) {
   return px;
 }
 
-/** At most this many boxes are counted per mask (the overlap count is quadratic in them). */
-const MAX_BOXES = 500;
+/** The attribute on each element a mask paints (`self` or `over`: lib/capture/mask-paint.mjs). */
+export const MARK = 'data-pxsig-masked';
+/** The attribute on each box the paint adds. */
+export const OVERLAY = 'data-pxsig-mask-box';
+/** The mask colour (the engine's trim and its check of older baselines read it: crates/pxsig-cli). */
+export const COLOR = '#FF00FF';
+/** What the text record leaves out: only the elements a mask painted. */
+export const MASKED = `[${MARK}]`;
 
 /**
- * A value as a CSS string, for an attribute selector.
- * @param {string} v
- */
-const cssString = (v) => `"${v.replace(/["\\]/g, '\\$&').replace(/\n/g, '\\a ')}"`;
-
-/**
- * Which masks apply to the page as it is about to be captured: each mask's elements, grouped by
- * the attribute's value for `data-volatile`, with the pixels their boxes cover inside the frame
- * (`frame`, the captured element's box; null: the viewport). A mask with no pixel there does not
- * apply. An invalid selector throws, as the screenshot's mask would.
- * @param {Page} page
- * @param {Mask[]} masks
- * @param {{ x: number, y: number, width: number, height: number } | null} frame
- * @returns {Promise<{ applied: AppliedMask[], selectors: string[] }>}
- */
-export async function measureMasks(page, masks, frame) {
-  const vp = page.viewportSize() ?? { width: 0, height: 0 };
-  const f = frame ?? { x: 0, y: 0, width: vp.width, height: vp.height };
-  const clip = (/** @type {number} */ v, /** @type {number} */ max) =>
-    Math.min(max, Math.max(0, Math.round(v)));
-  /** @type {AppliedMask[]} */
-  const applied = [];
-  for (const m of masks) {
-    const found = await page.locator(m.selector).evaluateAll(
-      (els, attr) =>
-        els.map((el) => {
-          const r = el.getBoundingClientRect();
-          return { v: el.getAttribute(attr), r: [r.left, r.top, r.right, r.bottom] };
-        }),
-      ATTRIBUTE
-    );
-    /** @type {Map<string, Rect[]>} */
-    const groups = new Map();
-    for (const { v, r } of found) {
-      const key = m.source === 'attribute' ? (v ?? '') : '';
-      const rect = /** @type {Rect} */ ([
-        clip(r[0] - f.x, f.width),
-        clip(r[1] - f.y, f.height),
-        clip(r[2] - f.x, f.width),
-        clip(r[3] - f.y, f.height),
-      ]);
-      groups.set(key, [...(groups.get(key) ?? []), rect]);
-    }
-    for (const [v, rects] of groups) {
-      const kept = rects.filter((r) => r[2] > r[0] && r[3] > r[1]).slice(0, MAX_BOXES);
-      const px = unionPx(kept);
-      if (!px) continue;
-      const reason = v.trim();
-      applied.push({
-        selector: v ? `[${ATTRIBUTE}=${cssString(v)}]` : m.selector,
-        source: m.source,
-        ...(reason ? { reason } : {}),
-        count: rects.length,
-        px,
-        rects: kept,
-      });
-    }
-  }
-  return { applied, selectors: masks.map((m) => m.selector) };
-}
-
-/**
- * The screenshot's mask options for the masks that apply; none when nothing does.
- * @param {Page} page
- * @param {{ applied: AppliedMask[] }} masks
- * @returns {Pick<PageScreenshotOptions, 'mask' | 'maskColor'>}
- */
-export const maskShot = (page, { applied }) =>
-  applied.length
-    ? { mask: applied.map((m) => page.locator(m.selector)), maskColor: '#FF00FF' }
-    : {};
-
-/**
- * Write the record of the masks that applied beside `png` (version 1); none when nothing applied,
- * and never an earlier render's.
+ * Write the record of the masks that applied beside `png` (version 1), with the problems found;
+ * none when there is neither, and never an earlier render's.
  * @param {string} png
- * @param {{ applied: AppliedMask[] }} masks
+ * @param {Pick<MeasuredMasks, 'applied' | 'problems'>} masks
  */
-export function writeMasks(png, { applied }) {
+export function writeMasks(png, { applied, problems }) {
   const file = masksFile(png);
   rmSync(file, { force: true });
-  if (applied.length) writeFileSync(file, JSON.stringify({ v: 1, masks: applied }));
+  if (applied.length || problems.length)
+    writeFileSync(
+      file,
+      JSON.stringify({ v: 1, masks: applied, ...(problems.length ? { problems } : {}) })
+    );
 }

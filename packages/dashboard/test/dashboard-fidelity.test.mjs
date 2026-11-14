@@ -152,7 +152,7 @@ test("casing: a header drawn in another case, or the copy's text re-cased", asyn
   assert.deepEqual(await findings('<h3>OPEN ITEMS</h3><h3>Last check today</h3>', 'casing', copy), [
     '<h3 "OPEN ITEMS"> has the copy\'s text in another case',
   ]);
-  // A stat label is the contract's micro label; a badge inside a button is measured on its own.
+  // A stat label is the contract's micro label.
   assert.deepEqual(
     await findings(
       '<section class="pxsig-ui-StatGroup"><div><span style="text-transform:uppercase">Changed</span> 2</div></section>',
@@ -161,33 +161,55 @@ test("casing: a header drawn in another case, or the copy's text re-cased", asyn
     ),
     []
   );
+});
+
+test("casing: a badge may be micro caps; its text is still the copy's", async (t) => {
+  if (skip) return t.skip(skip);
+  const copy = ['Live', 'Pass', 'Story'];
+  // Capitals drawn by `text-transform: uppercase` on a badge or a status badge, or inside one.
+  assert.deepEqual(
+    await findings(
+      '<span class="pxsig-ui-Badge" style="text-transform:uppercase">Live</span><span class="pxsig-ui-StatusBadge"><i>✓</i><span style="text-transform:uppercase">Pass</span></span>',
+      'casing',
+      copy
+    ),
+    []
+  );
+  // A badge inside a button is measured on its own: its caps do not count against the button.
   assert.deepEqual(
     await findings(
       '<button>Story <span class="pxsig-ui-Badge" style="text-transform:uppercase">dark</span></button>',
       'casing',
       copy
     ),
-    ['<span "dark"> is drawn uppercase (text-transform on <span "dark">): its case is the copy\'s']
+    []
+  );
+  // Any other transform on a badge, the copy re-cased in its text, and caps on its button still fail.
+  assert.deepEqual(
+    await findings(
+      '<span class="pxsig-ui-Badge" style="text-transform:lowercase">Live</span><span class="pxsig-ui-StatusBadge">PASS</span><button style="text-transform:uppercase">Story <span class="pxsig-ui-Badge">dark</span></button>',
+      'casing',
+      copy
+    ),
+    [
+      '<span "Live"> is drawn lowercase (text-transform on <span "Live">): its case is the copy\'s',
+      '<span "PASS"> has the copy\'s text in another case',
+      '<button "Story dark"> is drawn uppercase (text-transform on <button "Story dark">): its case is the copy\'s',
+    ]
   );
 });
 
 test('tone: shown as a border, an edge or a wash fails; as the text colour passes', async (t) => {
   if (skip) return t.skip(skip);
-  const badge = (style) =>
-    `<span class="pxsig-ui-Badge" style="padding:0 6px;border:1px solid #c8c8c8;${style}">Live</span>`;
+  const badge = (style, tone = 'success') =>
+    `<span class="pxsig-ui-Badge pxsig-ui-tone-${tone}" style="padding:0 6px;border:1px solid #c8c8c8;${style}">Live</span>`;
   // The plain adapter's badge: the tone in the text, a neutral wash and border.
   assert.deepEqual(await findings(badge('color:#17703a;background:#ececec'), 'tone'), []);
-  assert.deepEqual(
-    await findings(
-      badge(
-        'color:#17703a;background:color-mix(in srgb,#17703a 14%,transparent);border-color:color-mix(in srgb,#17703a 40%,transparent)'
-      ),
-      'tone'
-    ),
-    [
-      'badge <span "Live"> shows its tone as a success background, a success top border, a success right border, a success bottom border, a success left border: the contract shows a tone as the colour of its text',
-    ]
-  );
+  const tinted =
+    'color:#17703a;background:color-mix(in srgb,#17703a 14%,transparent);border-color:color-mix(in srgb,#17703a 40%,transparent)';
+  assert.deepEqual(await findings(badge(tinted, 'danger'), 'tone'), [
+    'badge <span "Live"> shows its tone as a success background, a success top border, a success right border, a success bottom border, a success left border: the contract shows a tone as the colour of its text, or a badge\'s own tone (danger)',
+  ]);
   const tile = (style, attrs = '') =>
     `<section class="pxsig-ui-StatGroup" style="display:flex"><div ${attrs} style="padding:12px;border:1px solid #c8c8c8;${style}">Changed <b style="color:#b3261e">2</b></div></section>`;
   assert.deepEqual(await findings(tile(''), 'tone'), []);
@@ -203,6 +225,37 @@ test('tone: shown as a border, an edge or a wash fails; as the text colour passe
   assert.deepEqual(
     await findings(tile('border-color:#1747c2', 'role="button" aria-pressed="true"'), 'tone'),
     []
+  );
+});
+
+test('tone: a badge may show its own tone as a wash, a border and a dot, with its text at AA', async (t) => {
+  if (skip) return t.skip(skip);
+  const dot = (c) =>
+    `<i style="display:inline-block;inline-size:4px;block-size:4px;margin-inline-end:4px;background:${c}"></i>`;
+  const badge = (tone, style, c = '#17703a') =>
+    `<span class="pxsig-ui-Badge pxsig-ui-tone-${tone}" style="padding:0 6px;border:1px solid;${style}">${dot(c)}Live</span>`;
+  // A design system's tinted variant: the wash, border and dot in the tone it was given.
+  const tinted =
+    'color:#17703a;background:color-mix(in srgb,#17703a 14%,transparent);border-color:color-mix(in srgb,#17703a 40%,transparent)';
+  assert.deepEqual(await findings(badge('success', tinted), 'tone'), []);
+  // Another tone's hue fails, and so does a tinted neutral badge (it was given no tone).
+  assert.deepEqual(await findings(badge('warning', tinted), 'tone'), [
+    'badge <span "Live"> shows its tone as a success background, a success top border, a success right border, a success bottom border, a success left border: the contract shows a tone as the colour of its text, or a badge\'s own tone (warning)',
+  ]);
+  assert.match(
+    (await findings(badge('neutral', 'color:#1a1a1a;border-color:#c8c8c8', '#b3261e'), 'tone'))[0],
+    /^badge <span "Live"> shows its tone as a danger background: .*own tone \(neutral\)$/
+  );
+  // Its own tone, but text too faint on its wash: under AA.
+  assert.deepEqual(
+    await findings(
+      badge(
+        'success',
+        'color:color-mix(in srgb,#17703a 45%,#fff);background:color-mix(in srgb,#17703a 14%,transparent);border-color:#17703a'
+      ),
+      'tone'
+    ),
+    ['badge <span "Live">: its text is 1.66:1 on its background, under AA (4.5:1)']
   );
 });
 

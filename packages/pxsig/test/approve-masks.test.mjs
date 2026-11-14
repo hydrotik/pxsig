@@ -162,14 +162,14 @@ test('plan and the server: masks no approval passes stay blocked', { skip }, asy
   assert.equal(e.status, 'blocked');
   assert.equal(
     e.why,
-    'masks cover 62% of the capture, over 50%; a mask covers the story root: #storybook-root > *: no approval passes it until the masks are smaller'
+    'the masks block this entry, and the author fixes it (no decision is needed): masks cover 62% of the capture, over 50%; a mask covers the story root: #storybook-root > *; make the masks smaller; mask the value, not the story root'
   );
   // The server's approve refuses it before anything is written, whoever asks.
   const S = await serve(f);
   try {
     const res = await S.post('approve', { id });
     assert.equal(res.status, 409, JSON.stringify(res.body));
-    assert.match(String(res.body.error), /no approval passes it until the masks are smaller/);
+    assert.match(String(res.body.error), /the masks block this entry, and the author fixes it/);
   } finally {
     await S.stop();
   }

@@ -75,7 +75,7 @@
     "capture": {
       "file": "pxsig.config.json",
       "meaning": "How each story is rendered and captured.",
-      "operation": "See capture.viewport, capture.settleMs, capture.target, capture.ignore, capture.addIgnore, capture.waitFor, capture.browserEndpoint."
+      "operation": "See capture.viewport, capture.settleMs, capture.target, capture.ignore, capture.addIgnore, capture.waitFor, capture.browserEndpoint, capture.launchArgs."
     },
     "capture.viewport": {
       "file": "pxsig.config.json",
@@ -121,6 +121,12 @@
       "operation": "Screenshots come from that browser (its fonts, its build); Storybook and the engine stay on this machine. The project's Playwright must match the server's major.minor.",
       "flag": "--browser",
       "env": "PXSIG_BROWSER_WS"
+    },
+    "capture.launchArgs": {
+      "file": "pxsig.config.json",
+      "meaning": "Chromium arguments added after pxsig's own: --disable-lcd-text and --font-render-hinting=none, which draw text in grayscale with unhinted glyph advances.",
+      "default": "[]",
+      "operation": "A later value of the same switch wins (--font-render-hinting=full). Each render records the arguments it launched with (browser.launchArgs), so changing them reads as an environment mismatch. Not passed to a browser server, Firefox or WebKit."
     },
     "grid": {
       "file": "pxsig.config.json",
@@ -194,6 +200,12 @@
       "meaning": "The detail-channel rule: { blockDelta, energyDelta, minTiles }, or false.",
       "default": "{ \"blockDelta\": 32, \"energyDelta\": 48, \"minTiles\": 3 }",
       "operation": "How thin changes in the detail tiles fail an entry."
+    },
+    "gate.color": {
+      "file": "pxsig.config.json",
+      "meaning": "The color rule: { deltaE, minArea, cellDeltaE, minCells }, or false. Fails when a flat area of at least minArea pixels changes color by deltaE (CIEDE2000) or more, or when at least minCells cells change by cellDeltaE or more.",
+      "default": "{ \"deltaE\": 3, \"minArea\": 64, \"cellDeltaE\": 5, \"minCells\": 3 }",
+      "operation": "Catches a color change in a small area (a badge tint, a status color) that the luminance rules miss. Off, or past its maximum (deltaE 10, minArea 1024, cellDeltaE 15, minCells 16), shows in pxsig doctor as gate-color-off."
     },
     "modes": {
       "file": "pxsig.config.json",

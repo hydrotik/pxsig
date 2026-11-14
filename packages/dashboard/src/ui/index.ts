@@ -46,18 +46,24 @@ function pick<K extends ComponentName>(name: K): React.ComponentType<ComponentPr
 /**
  * The adapter's component with `pxsig-ui-<name>` added to its `className`, which a contract
  * component puts on its root: how `pxsig dashboard check` finds the regions whose rules an adapter
- * keeps (docs/ui/build-adapter.md, "Region rules"). Draws nothing.
+ * keeps (docs/ui/build-adapter.md, "Region rules"). A badge also takes `pxsig-ui-tone-<tone>`, the
+ * tone it was given, which its wash and border may show (R4). Draws nothing.
  */
 function marked<K extends 'TopNav' | 'StatGroup' | 'StatusBadge' | 'Badge'>(
   name: K,
   Component: React.ComponentType<ComponentProps[K]> = pick(name)
 ): React.ComponentType<ComponentProps[K]> {
-  const mark = `pxsig-ui-${name}`;
-  return (props) =>
-    React.createElement(Component, {
+  return (props) => {
+    const tone =
+      name === 'Badge'
+        ? ` pxsig-ui-tone-${(props as ComponentProps['Badge']).tone ?? 'neutral'}`
+        : '';
+    const mark = `pxsig-ui-${name}${tone}`;
+    return React.createElement(Component, {
       ...props,
       className: props.className ? `${props.className} ${mark}` : mark,
     } as ComponentProps[K] & React.Attributes);
+  };
 }
 
 /** The adapter in use, for diagnostics. */

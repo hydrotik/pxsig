@@ -1,14 +1,29 @@
 /**
  * build-config.mjs's adapter choice: each rule of `adapterSpec`, in order, and what `from` says;
- * the built-in plain adapter, and that it matches the copy in examples/custom-ui.
+ * the built-in plain adapter, and that it matches the copy in examples/custom-ui; an adapter's
+ * class prefixes.
  */
 import assert from 'node:assert/strict';
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, beforeEach, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { adapterSpec, builtinAdapters, resolveAdapter } from '../build-config.mjs';
+import {
+  adapterSpec,
+  builtinAdapters,
+  classIdentifiers,
+  resolveAdapter,
+} from '../build-config.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '../../..');
@@ -113,4 +128,28 @@ test('the built-in plain adapter and the example agree, but for the contract the
       read(example, f),
       `${f} differs beyond its contract import: copy one onto the other`
     );
+});
+
+test("an adapter's class prefixes name the classes its design system's stylesheets define", () => {
+  assert.equal(classIdentifiers(undefined, tmp), undefined, 'none: vanilla-extract names them');
+  assert.equal(classIdentifiers({}, tmp), undefined);
+  // Real paths, as vanilla-extract gives them (the temporary folder may itself be under a link).
+  const root = realpathSync(mkdtempSync(path.join(tmp, 'root-')));
+  const ds = path.join(realpathSync(tmp), 'ds');
+  mkdirSync(path.join(ds, 'src'), { recursive: true });
+  // The folder named through a link: vanilla-extract gives each file by its real path.
+  const link = path.join(tmp, 'ds-link');
+  symlinkSync(ds, link, 'junction');
+  const name = /** @type {NonNullable<ReturnType<typeof classIdentifiers>>} */ (
+    classIdentifiers({ [link]: 'ds-' }, root)
+  );
+  const rel = (/** @type {string} */ f) => path.relative(root, path.join(ds, f));
+  assert.equal(name({ hash: '1abc0', filePath: rel('src/Badge.css.ts') }), 'ds-1abc0');
+  assert.equal(name({ hash: 'abc0', filePath: 'src/styles/base.css.ts' }), 'abc0', 'the dashboard');
+  assert.equal(
+    name({ hash: '1abc0', filePath: 'src/styles/base.css.ts' }),
+    '_1abc0',
+    "vanilla-extract's own default for a hash that starts with a digit"
+  );
+  assert.equal(name({ hash: 'x0', filePath: rel('../ds-other/a.css.ts') }), 'x0', 'a sibling');
 });

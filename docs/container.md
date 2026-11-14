@@ -38,7 +38,7 @@ earlier.
 | Base        | `mcr.microsoft.com/playwright:v<playwright>-noble`: the browsers and their system libraries                                                                      |
 | pxsig       | `pxsig@<version>` from npm under `/opt/pxsig`, with its Linux engine (`PXSIG_BIN=/opt/pxsig/engine/pxsig`)                                                       |
 | Playwright  | the image's own `playwright@<version>` under `/opt/pxsig`; `PXSIG_PLAYWRIGHT` makes pxsig use it before the project's, so the driver always matches the browsers |
-| Fonts       | the base image's set; the label `io.pxsig.fonts` is the same digest a render reports as `fonts.system`                                                           |
+| Fonts       | the base image's set, drawn in grayscale and unhinted (`/etc/fonts/local.conf`); `io.pxsig.fonts` is the digest a render reports as `fonts.system`               |
 | Environment | `PXSIG_NO_DELEGATE=1` (the image's pxsig runs, not the mounted project's), `PXSIG_IMAGE`, `PXSIG_IMAGE_REVISION`, `TZ=UTC`, `LANG=C.UTF-8`                       |
 | Labels      | `org.opencontainers.image.*`, `io.pxsig.version`, `io.pxsig.playwright`, `io.pxsig.fonts`                                                                        |
 | User        | `pwuser`, from the base image                                                                                                                                    |

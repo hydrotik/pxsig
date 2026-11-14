@@ -87,8 +87,11 @@ export interface Row {
   renders?: RenderCounts | null;
   /** Text labels (text capture on, docs/spec.md "Text labels"): beside the verdict, never changing it. */
   textDiff?: TextDiff;
-  /** The render's masks, when any; those over 25% of the capture (a warning, never a verdict). */
+  /** The render's masks, when any. */
   masks?: MaskRecord[];
+  /** The share of the capture all of the render's masks cover together (over 25%: a warning). */
+  masksCoverage?: number;
+  /** Each mask over 25% of the capture on its own (the Masks section marks it Over 25%). */
   masksLarge?: Omit<MaskRecord, 'reason'>[];
   /** The masks differ from the baseline's (the row fails as "masks changed"): selectors. */
   masksChanged?: {

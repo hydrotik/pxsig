@@ -11,9 +11,12 @@ each run shows a change that nobody made. Fixed data first; a mask when the valu
   - a fixed hash: the commit or build as an arg the story sets (`commit: '0000000'`).
 - **`data-volatile` on the component.** Its author marks the element that shows the value, once:
   `<time data-volatile="relative time">`. Every project that renders the component masks it, with
-  no configuration. The inside of the box is painted over before the screenshot; its size and
-  position are still compared. The value is the reason shown with the mask. Text under a mask
-  stays out of the text record; the a11y pass still runs.
+  no configuration. The inside of the box is painted over before the screenshot, at the element's
+  own place, so a popover above it still shows; its size and position are still compared. The
+  value is the reason shown with the mask, and is required. Only on a leaf (text and inline
+  formatting inside): on a container the entry fails as `mask on a container`, with no value as
+  `mask needs a reason`. Text under a painted mask stays out of the text record; the a11y pass
+  still runs.
 - **`capture.ignore` / `capture.addIgnore`.** Selectors masked in every story of a project
   (`pxsig.config.json`), or of every project (`defaults` in `pxsig.workspace.json`).
   `capture.ignore` replaces the inherited list; `capture.addIgnore` adds to it. `pxsig config`
@@ -27,8 +30,9 @@ each run shows a change that nobody made. Fixed data first; a mask when the valu
   render.
 - **Limits.** All of an entry's masks together over 25% of the capture are a warning
   (`[check] mask:`, summary.md, `check --sarif`, the dashboard): most changes under them would
-  pass. Over 50%, or a mask on the story root, the entry fails, and no approval passes it until the
-  masks are smaller.
+  pass. Over 50%, or a mask on the story root, the entry fails, and no approval passes it: the
+  output and the dashboard say what to do (make the masks smaller, or mask the value, not the
+  story root).
 - **Adopting masks.** Marking a component, or a new `capture.ignore`, gives one "masks changed"
   entry per entry it applies to, approved once. A story's `ignore` against a baseline approved
   with 0.7.6 or earlier is not a change where that baseline's image shows it painted.

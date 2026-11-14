@@ -4,12 +4,12 @@
  * server, a person at a terminal confirming.
  */
 import { existsSync, readFileSync } from 'node:fs';
+import { blockedSay, maskChange } from '../lib/mask-words.mjs';
 import { newBatch, paths, sha256 } from '../lib/approvals.mjs';
 import { notKept, reportsIgnored } from '../lib/decisions.mjs';
 import { readToken, TOKEN_HEADER } from '../lib/guard.mjs';
 import { readImage } from '../lib/psig.mjs';
 import { classify } from '../lib/shape.mjs';
-import { blockedWords, maskChange } from '../lib/mask-words.mjs';
 import { ask, emit, progress } from '../lib/term.mjs';
 import { writeJson } from '../lib/files.mjs';
 import { serverStatus } from '../lib/repair/apply.mjs';
@@ -36,18 +36,19 @@ export async function planCommand(cx) {
   const reason = typeof flags.reason === 'string' ? flags.reason.trim() : '';
   if (reason.length < 8)
     fail('plan needs --reason "…" (at least a sentence: why these changes are intended)');
+  /** @type {import('../types/t6.js').BriefEntry[]} */
   const all = (await run('list', { state: 'all', limit: 100000 }).catch(() => ({ entries: [] })))
     .entries;
   const state = new Map(all.map((e) => [e.id, e.state]));
-  // Each entry's masks findings, as the brief carries them (tools/masks.mjs).
+  // Each entry's masks change, as the brief carries it (tools/masks.mjs).
   const brief = new Map(
     all.map((e) => [
       e.id,
-      /** @type {Pick<import('../types/run.js').EngineResult, 'masksBlocked' | 'masksChanged'>} */ (
-        e
-      ),
+      /** @type {Pick<import('../types/run.js').EngineResult, 'masksChanged'>} */ (e),
     ])
   );
+  // Masks no approval passes: never planned, the author fixes them (the server refuses them too).
+  const blocked = new Map(all.filter((e) => e.masksBlocked).map((e) => [e.id, blockedSay(e)]));
   // An entry with no baseline and no row yet, but a latest render, is NEW too.
   for (const e of manifest.stories)
     if (!state.has(e.id) && !existsSync(paths(P, e).sig) && existsSync(paths(P, e).latestPng))
@@ -100,17 +101,13 @@ export async function planCommand(cx) {
     const baseImg = readImage(p.sig);
     const base = { id, state: st, latestSha: sha256(p.latestPng), baseSha: sha256(p.sig) };
     const fresh = isNew(id) && !base.baseSha;
-    if (st !== 'changed' && !fresh)
+    if (blocked.has(id))
+      entries.push({ ...base, status: 'blocked', why: /** @type {string} */ (blocked.get(id)) });
+    else if (st !== 'changed' && !fresh)
       entries.push({ ...base, status: 'blocked', why: `state is ${st}, not changed or new` });
     else if (!base.latestSha) entries.push({ ...base, status: 'blocked', why: 'no latest render' });
     else if (stale.has(id))
       entries.push({ ...base, status: 'blocked', why: 'verdict is stale: re-check first' });
-    else if (brief.get(id)?.masksBlocked)
-      entries.push({
-        ...base,
-        status: 'blocked',
-        why: `${blockedWords(/** @type {import('../types/run.js').MasksBlocked} */ (brief.get(id)?.masksBlocked)).join('; ')}: no approval passes it until the masks are smaller`,
-      });
     else {
       /** @type {{ kind: string, reason: string, shapePct?: number | null }} */
       const c = baseImg

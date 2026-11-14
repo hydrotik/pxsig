@@ -1,6 +1,6 @@
 {
   "adapter": "hydrotik",
-  "contract": "1.5.0",
+  "contract": "1.6.0",
   "designSystem": "@hydrotik/design-system (built from source: PXSIG_DS_SOURCE)",
   "components": {
     "UiProvider": {
@@ -14,7 +14,10 @@
       "status": "full",
       "note": "NavItems; contract NavLinks become NavItemLinks so its More menu finds them"
     },
-    "NavLink": { "status": "full", "note": "NavItemLink; count tone info → attention" },
+    "NavLink": {
+      "status": "full",
+      "note": "NavItemLink; count tone info → attention, drawn as primary digits on a neutral pill"
+    },
     "NavEnd": { "status": "bespoke", "note": "a plain div inside the Navbar" },
     "Button": { "status": "full", "note": "Button; href renders the Button as an <a> (asChild)" },
     "IconButton": { "status": "full", "note": "Button size icon / icon-sm" },
@@ -23,7 +26,10 @@
     "CardTitle": { "status": "full" },
     "CardDescription": { "status": "full" },
     "CardContent": { "status": "full" },
-    "StatGroup": { "status": "full", "note": "StatPanel; selectable items are filter cards" },
+    "StatGroup": {
+      "status": "full",
+      "note": "StatPanel; selectable items are filter cards; a tone colours the value, no accent edge"
+    },
     "DataTable": { "status": "full", "note": "DataGrid, compact density" },
     "SidePanelLayout": { "status": "full", "note": "ContentLayout, as tall as its content" },
     "SidePanelMain": { "status": "full", "note": "ContentLayoutMain as a div, not scrolling" },
@@ -34,7 +40,7 @@
     "StatusBadge": { "status": "full", "note": "StatusBadge with an explicit tone and glyph" },
     "Badge": {
       "status": "full",
-      "note": "Badge variants: neutral → secondary / outline, danger → destructive"
+      "note": "Badge in its neutral variants (secondary, outline), the text in the tone's colour"
     },
     "Icon": { "status": "full", "note": "lucide glyphs (the design system's Icons)" },
     "Dialog": { "status": "full", "note": "Dialog + DialogContent, no close button" },

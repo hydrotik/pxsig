@@ -51,7 +51,7 @@ test(
 
 test('a check row never carries what else a render result holds', () => {
   const e = { id: 'a--b', story: 'a--b', mode: 'dark' };
-  const rust = { id: 'a--b', pass: true, reasons: [], metrics: { ssim: 1 } };
+  const rust = { id: 'a--b', pass: true, reasons: [], metrics: { ssim: 1 }, color: null };
   /** @type {RenderResult} */
   const render = { id: 'a--b', png: 'x.png', ms: 12, a11y: null };
   const strip = (/** @type {Record<string, unknown>} */ r) => ({ ...r, checkedAt: null });
