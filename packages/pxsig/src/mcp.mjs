@@ -60,7 +60,7 @@ async function handle(msg) {
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: 'pxsig', version: VERSION },
           instructions:
-            "pxsig is the visual-regression harness for this repo. Start with pxsig_projects (when there are several) and pxsig_status; pxsig_list then pxsig_entry show what changed, with images. Before a visual fix, read pxsig_rejected: the reviewer's reason and the changed regions at full size; after the fix, re-check those ids with pxsig_check. Approving and accepting are the person's: never approve, never accept, and never call `/__pxsig/approve`; ask the person to review in the dashboard. " +
+            "pxsig is the visual-regression harness for this repo. Start with pxsig_projects (when there are several) and pxsig_status; pxsig_list then pxsig_entry show what changed, with images. Before a visual fix, read pxsig_rejected: the reviewer's reason and the changed regions at full size; after the fix, re-check those ids with pxsig_check. Approving and accepting are the person's: never approve, never accept, and never call `/__pxsig/approve`; ask the person to review in the dashboard. pxsig_gate_report prepares a report for a public issue on hydrotik/pxsig and never posts: ask the person before anything is posted. " +
             NO_MASK_FIX,
         },
       });

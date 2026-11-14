@@ -1125,14 +1125,26 @@
       "seeAlso": ["agents", "setup", "approvals"]
     },
     "report": {
-      "summary": "A static dashboard for one project, which opens from disk.",
-      "usage": ["pxsig report [--out dir]"],
+      "summary": "A static dashboard for one project, which opens from disk. With an entry id: a gate report for an issue on hydrotik/pxsig when the gate got it wrong.",
+      "usage": ["pxsig report [--out dir]", "pxsig report <id> [--full] [--keep-id] [--no-image]"],
       "flags": [
         {
           "name": "out",
           "value": "dir",
           "default": "<store>/reports/site/",
-          "meaning": "Where to write it."
+          "meaning": "Where to write the static dashboard."
+        },
+        {
+          "name": "full",
+          "meaning": "With an id: the full capture in the image, not the crop around the changed regions."
+        },
+        {
+          "name": "keep-id",
+          "meaning": "With an id: keep the story id in the report (by default it is replaced with entry-1)."
+        },
+        {
+          "name": "no-image",
+          "meaning": "With an id: no image; the changed regions and their average colors instead."
         }
       ],
       "effects": ["writes-files"],
@@ -1144,9 +1156,17 @@
         {
           "cmd": "pxsig report --out site",
           "shows": "A dashboard to publish as a CI artifact"
+        },
+        {
+          "cmd": "pxsig report components-button--primary",
+          "shows": "A gate report in reports/gate-report/, and the link to the prefilled issue form"
+        },
+        {
+          "cmd": "pxsig report components-button--primary --no-image",
+          "shows": "The same with no image: regions and average colors only"
         }
       ],
-      "seeAlso": ["ci"]
+      "seeAlso": ["ci", "entry"]
     },
     "snapshot": {
       "summary": "A read-only summary of the committed store, for a Storybook deployed to a shared server: each entry's baseline, last approval (date, PR, commit, colour or shape), render environment and accepted a11y rules, and each story's history. Never who approved, how, or why (reason is always null).",

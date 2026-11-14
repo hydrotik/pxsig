@@ -63,6 +63,13 @@ export {
   type ReactActivity,
 } from './data/react';
 export { served } from './data/request';
+export {
+  gateReport,
+  selfCheck,
+  type GateReportAnswer,
+  type GateReportOptions,
+  type SelfCheck,
+} from './data/gate-report';
 export { useProjects, type ProjectInfo } from './data/projects';
 export {
   reviewAction,

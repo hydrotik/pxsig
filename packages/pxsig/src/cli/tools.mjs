@@ -21,6 +21,7 @@ import { ask, emit, humanAtTerminal, whyNotPerson } from '../lib/term.mjs';
 import { relPath } from '../lib/paths.mjs';
 import { openLink } from '../lib/open.mjs';
 import { copyText } from '../lib/clipboard.mjs';
+import { gateReportCommand } from './gate-report.mjs';
 
 /** @import { Block, CliError } from '../types/t6.js' */
 /** @import { CliContext } from './context.mjs' */
@@ -115,7 +116,9 @@ export function toolCommands(cli) {
       );
     },
 
-    report() {
+    async report() {
+      // With an id: the gate report of one entry (cli/gate-report.mjs); without, the static dashboard.
+      if (rest.length) return gateReportCommand(cli);
       const r = spawnSync(process.execPath, [join(here, 'report.mjs'), ...process.argv.slice(3)], {
         stdio: 'inherit',
       });
