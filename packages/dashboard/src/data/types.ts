@@ -109,6 +109,8 @@ export interface Row {
   };
   /** The baseline's masks, set with `masksChanged`. */
   masksBaseline?: MaskRecord[];
+  /** On a passing row: whether any pixel of the render is not the baseline image's (0.7.7 and later). */
+  differs?: boolean | null;
 }
 export interface CheckReport {
   generatedAt: string;

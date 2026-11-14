@@ -10,10 +10,13 @@
  * one per entry: an error (`pxsig/mask-limit`) where masks cover over half the capture together or
  * the story root, which no approval clears; a warning (`pxsig/masks-changed`) where they differ from
  * the baseline's; a warning (`pxsig/large-mask`) where they cover over a quarter of it together.
+ * With `drift` (check.json's `summary.drift`), one note for the run (`pxsig/drift`): how many
+ * entries pass while their render differs from the baseline (lib/drift.mjs).
  */
 import { writeAtomic } from './files.mjs';
 import { blockedFixes, blockedReasons, LARGE_SHARE, maskChange } from './mask-words.mjs';
-/** @import { A11yResult, CheckRow, ManifestEntry, SarifLog, SarifResult, SarifRule } from '../types.js' */
+/** @import { A11yResult, CheckRow, DriftSummary, ManifestEntry, SarifLog, SarifResult, SarifRule } from '../types.js' */
+import { driftLine } from './drift.mjs';
 
 /** @type {Record<string, string>} */
 const LEVEL = { critical: 'error', serious: 'error', moderate: 'warning', minor: 'note' };
@@ -38,8 +41,16 @@ const MASK_LIMIT = maskRule(
 const MASKS_CHANGED = maskRule('pxsig/masks-changed', 'The masks differ from the baseline’s');
 const LARGE_MASK = maskRule('pxsig/large-mask', 'Masks cover more than 25% of the capture');
 
-/** `masks`: also the masks findings (`check --sarif`; `pxsig a11y --sarif` stays a11y only). */
-/** @typedef {{ entries?: Map<string, Pick<ManifestEntry, 'importPath'>>, version?: string | null, masks?: boolean }} SarifOptions */
+/** The drift note: one per run, never per entry. */
+const DRIFT = {
+  id: 'pxsig/drift',
+  shortDescription: { text: 'Entries pass while their render differs from the baseline' },
+  helpUri: 'https://github.com/hydrotik/pxsig/blob/main/docs/integrity.md#drift',
+  properties: { tags: ['visual', 'pxsig'] },
+};
+
+/** `masks`: also the masks findings (`check --sarif`; `pxsig a11y --sarif` stays a11y only). `drift`: the drift note. */
+/** @typedef {{ entries?: Map<string, Pick<ManifestEntry, 'importPath'>>, version?: string | null, masks?: boolean, drift?: DriftSummary | null }} SarifOptions */
 
 /**
  * The new violations of `rows` (check.json rows), as a SARIF log. `entries`: manifest stories by id.
@@ -47,7 +58,10 @@ const LARGE_MASK = maskRule('pxsig/large-mask', 'Masks cover more than 25% of th
  * @param {SarifOptions} [opts]
  * @returns {SarifLog}
  */
-export function sarifLog(rows, { entries = new Map(), version = null, masks = false } = {}) {
+export function sarifLog(
+  rows,
+  { entries = new Map(), version = null, masks = false, drift = null } = {}
+) {
   /** @type {Map<string, SarifRule>} */
   const rules = new Map();
   /** @type {SarifResult[]} */
@@ -130,6 +144,18 @@ export function sarifLog(rows, { entries = new Map(), version = null, masks = fa
         { coverage }
       );
   }
+  const line = driftLine(drift);
+  if (drift && line) {
+    rules.set(DRIFT.id, DRIFT);
+    const { warnAt, ...counts } = drift;
+    results.push({
+      ruleId: DRIFT.id,
+      level: 'note',
+      message: { text: line.replace(/^drift: /, '').replace(/ → .*$/, '') },
+      locations: [{ logicalLocations: [{ name: 'check', kind: 'module' }] }],
+      properties: { ...counts, warnAt },
+    });
+  }
   return {
     $schema: 'https://json.schemastore.org/sarif-2.1.0.json',
     version: '2.1.0',
@@ -165,8 +191,10 @@ export function sarifWrote(log, file) {
     [count(MASKS_CHANGED.id), 'with masks changed'],
     [count(LARGE_MASK.id), 'with large masks'],
   ]).filter(([n]) => n > 0);
-  const a11y = results.length - masks.reduce((a, [n]) => a + n, 0);
+  const drift = count(DRIFT.id);
+  const a11y = results.length - drift - masks.reduce((a, [n]) => a + n, 0);
   const said = masks.map(([n, what]) => `${n} ${n === 1 ? 'entry' : 'entries'} ${what}`);
+  if (drift) said.push('the drift note');
   return `[check] wrote ${[`${a11y} new a11y violations`, ...said].join(', ')} to ${file} (SARIF)`;
 }
 

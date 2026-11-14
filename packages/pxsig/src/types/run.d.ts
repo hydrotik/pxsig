@@ -143,7 +143,33 @@ export interface CheckRow {
   envMatch?: EnvMatch;
   envDiff?: string[];
   envFonts?: string[];
+  /**
+   * On a passing row: whether any pixel of the render is not the baseline image's (the engine,
+   * 0.7.7 and later). null when a rule failed the entry or the baseline holds no image.
+   */
+  differs?: boolean | null;
   [key: string]: unknown;
+}
+
+/** `drift.warnAt` (lib/drift.mjs): `drift-high` when both are reached. */
+export interface DriftWarnAt {
+  count: number;
+  share: number;
+}
+
+/** check.json's `summary.drift` (lib/drift.mjs `driftSummary`). */
+export interface DriftSummary {
+  /** Checked entries that pass while their render differs from the baseline, same environment. */
+  count: number;
+  /** Checked entries that pass, rendered in their baseline's environment (or an unknown one). */
+  of: number;
+  /** `count / of`, to 3 decimals. */
+  share: number;
+  /** Passing, differing renders from a different environment than their baseline, not in `count`. */
+  otherEnv: number;
+  warnAt: DriftWarnAt;
+  /** `count` and `share` reach `warnAt`. */
+  warn: boolean;
 }
 
 /** check.json's `summary`, as `summarize` counts it (plus what the caller adds). */
@@ -164,6 +190,8 @@ export interface CheckSummary {
   modes: (string | undefined)[];
   /** Entries React was still committing at capture; present when renders were counted. */
   renderAlerts?: number;
+  /** Passing entries whose render differs from the baseline (0.7.7 and later). */
+  drift?: DriftSummary;
 }
 
 // --- machine (lib/machine.mjs) -------------------------------------------------------------------
@@ -283,7 +311,7 @@ export interface SarifRule {
   properties: { tags: string[] };
 }
 
-/** One SARIF result: a new violation of one rule on one entry, or a mask finding on one entry. */
+/** One SARIF result: a new violation of one rule on one entry, a mask finding on one entry, or the run's drift note. */
 export interface SarifResult {
   ruleId: string;
   level: string;
@@ -295,7 +323,8 @@ export interface SarifResult {
   properties:
     | { entry: string; mode: string | null; impact: string | null }
     | { entry: string; mode: string | null; selector: string; source: string; area: number }
-    | { entry: string; mode: string | null; coverage?: number; masks?: Partial<MasksChanged> };
+    | { entry: string; mode: string | null; coverage?: number; masks?: Partial<MasksChanged> }
+    | (Omit<DriftSummary, 'warnAt'> & { warnAt: DriftWarnAt });
 }
 
 /** What `sarifLog` returns. */

@@ -53,7 +53,7 @@ status among its entries.
 | `stale`                  | warn     | A source the entry depends on changed after its verdict, or its render was rewritten after it.                                                                                                                     | `recheck` with `--stale` (or where a later step needs a fresh render) |
 | `a11y-new`               | warn     | axe reports violations not in the a11y baseline.                                                                                                                                                                   | none                                                                  |
 | `skipped-unaffected`     | info     | A partial run (`check --since` / `--changed`) left it out because no edit it traced can change it, and there was no earlier verdict to carry forward. It has a baseline: ok, but not verified by a run of its own. | none (a full check verifies it)                                       |
-| `drift`                  | info     | Passes the gate, but SSIM is below 1.                                                                                                                                                                              | none                                                                  |
+| `drift`                  | info     | Passes the gate while its render differs from the baseline image (the row's `differs`; SSIM below 1 on a row from an engine before 0.7.7). Its baseline stays as it was: see [Drift](#drift).                      | none                                                                  |
 | `excluded`               | info     | Left out by `nonVisual`, `parameters.pxsig.disable` or the `no-pxsig` tag.                                                                                                                                         | none                                                                  |
 | `ok`                     | info     | Covered, rendered, checked, fresh and passing.                                                                                                                                                                     | none                                                                  |
 
@@ -90,6 +90,7 @@ Problems with the setup sit outside the entries, in `setup`:
 | `log-legacy-personal`    | info                              | Lines of `approvals.ndjson` and `a11y-decisions.ndjson` written before 0.7.6 that carry a reason or a `by` (`count`: both together; a reason pxsig wrote itself, such as an undo's, is not counted). New lines carry neither; old lines stay, as the log is append-only and git history keeps them either way. `integrity.severity` can change it.                                                                                                                                                                                                                                                  |
 | `env-mismatch`           | warn                              | Entries rendered in a different environment than their baseline (a major field differs: the browser's major version, the fonts, the GPU class, timezone, locale; [configuration.md](configuration.md#env)). The reason names the count and the fields. One setup finding, never a per-entry code, so story cards and `doctor`'s exit are unchanged; `integrity.severity` can raise it. Baselines that record no environment never count.                                                                                                                                                            |
 | `gate-color-off`         | warn                              | Entries the last check judged with the color rule off (`gate.color: false`), with one of its checks off (`minArea` or `minCells` 0), or with a key past its limit (`deltaE` 10, `minArea` 1024, `cellDeltaE` 15, `minCells` 16), from any layer: the project, the workspace `defaults`, a story's gate. Read from each row's resolved gate in `check.json`. A color change in a small area passes those entries ([configuration.md](configuration.md#gatecolor)). A warning at least: `integrity.severity` can raise it to `error`; a lower value (`info`) is not applied, and the reason names it. |
+| `drift-high`             | warn                              | The last check's [drift](#drift) is at or over `drift.warnAt`: at least `count` passing entries (default 5) differ from their baseline, and they are at least `share` (default 20%) of the passing entries. A change the gate does not see passes this way, and the baselines stay as they were. Read from `check.json`'s `summary.drift`. A warning at least, like `gate-color-off`: `integrity.severity` can raise it to `error`; a lower value is not applied, and the reason names it. Never a verdict.                                                                                         |
 | `engine-old`             | warn                              | The engine binary is older than the CLI (a stale `PXSIG_BIN`, a platform package left behind): baselines it writes carry no render environment.                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `enforcement-warn`       | info                              | The config sets gates to warn mode ([configuration.md](configuration.md#enforcement)): the reason names them, where they are set, `warnUntil`, and the would-fail runs so far. The quiet a11y default adds nothing.                                                                                                                                                                                                                                                                                                                                                                                 |
 | `enforcement-ending`     | warn                              | A gate on warn is enforced from `warnUntil`, within `noticeDays`: the reason says when. Extend the date in a pull request to keep warn mode.                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -101,6 +102,48 @@ Problems with the setup sit outside the entries, in `setup`:
 
 The workspace-level codes (`project-unlisted`, `project-missing`, `version-skew`) are in
 [monorepo.md](monorepo.md). A `warn` setup problem never changes `doctor`'s exit code.
+
+## Drift
+
+A passing entry keeps its baseline. When its render differs from that baseline (a color change
+in a small area that the gate does not see, a sub-pixel shift, noise), nothing records the
+difference: the next run compares with the same old baseline, and `approve plan` takes only
+changed and new entries. Every check counts these entries, so a run where many of them drift
+together is visible, not passed in silence. Nothing here changes a verdict or an exit code.
+
+An entry **drifts** when it passes (not skipped, flaky or a render error) and its row's `differs`
+is `true`: the engine compared the render with the baseline image in the `.psig`, and at least one
+pixel differs (a render of another size counts as different). `differs` is `null` on a failing
+row and when the baseline holds no image; a row from an engine before 0.7.7 has no `differs`, and
+drifts when its SSIM is below 1 ([spec.md](spec.md#verdicts)).
+
+Each check writes `summary.drift` to `check.json`:
+
+| Field      | Meaning                                                                                                                                                                       |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `count`    | Checked entries that drift, rendered in their baseline's environment (or an unknown one).                                                                                     |
+| `of`       | Checked entries that pass, in the same environments: the share's denominator.                                                                                                 |
+| `share`    | `count / of`, to 3 decimals.                                                                                                                                                  |
+| `otherEnv` | Entries that drift and were rendered in a different environment than their baseline (`envMatch: mismatch`). Not in `count`: the `env-mismatch` warning already explains them. |
+| `warnAt`   | The thresholds in force (`drift.warnAt`, [configuration.md](configuration.md#drift)).                                                                                         |
+| `warn`     | `count` and `share` both reach `warnAt`: the `drift-high` setup warning.                                                                                                      |
+
+The count shows wherever the run is read:
+
+- the check prints `[check] drift: 12 of 162 passing entries (7.4%) differ from their baseline,
+  within the gate → pxsig list drift` (only when one drifts), and at or over `warnAt` says so;
+- `summary.md` adds a `Drift:` line, `⚠️ Drift:` at or over `warnAt`;
+- `--sarif` adds one `pxsig/drift` note for the run, never one per entry;
+- `pxsig doctor` has a `Drift` row (`--json` and `pxsig_doctor`: `drift`, the summary above), and
+  `drift-high` among the setup problems when `warn`;
+- the dashboard's Overview lists "Passing, but differs from the baseline" in Open Items while
+  any entry drifts, opening Stories with that filter; `pxsig list drift` lists the same entries.
+
+**The defaults.** On pxsig's own dashboard screens, re-rendering the same content in CI made 7 to
+12 of 162 passing entries differ from their baselines (at most 7.4%), while a recolor of every badge,
+under the gate before the color rule, made 136 of 161 (84.5%) pass while differing. `share` 20%
+sits well above that noise and far below the miss; `count` 5 keeps a small project from warning
+on two or three entries. A project with more noise raises them, up to `count` 100 and `share` 50%.
 
 ## The ledger
 
@@ -241,6 +284,10 @@ The report also lists the masks in force ([configuration.md](configuration.md#ma
 per project), then each `capture.ignore` / `capture.addIgnore` selector with its layer
 (`workspace defaults` or `project config`), and how many baselines record masks. `--json` and
 `pxsig_doctor` carry it as `masks`. Information only: it never changes the exit.
+
+It also shows the last check's [drift](#drift) (`Drift`; `--json` and `pxsig_doctor`: `drift`,
+check.json's `summary.drift`, or counted from its rows for a report from before 0.7.7).
+Information only, beside the `drift-high` setup warning: it never changes the exit.
 
 The MCP tool `pxsig_doctor` and the server's `POST /__pxsig/repair` run the same repairs. Neither
 can prune. `pxsig_doctor` with `repair: 'apply'` takes the store lock like the CLI (through the

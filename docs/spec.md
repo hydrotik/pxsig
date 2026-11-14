@@ -184,16 +184,16 @@ The resolved gate is recorded on each result row, so a verdict can be explained 
 
 ### Verdicts
 
-| State                  | Meaning                                                                               |
-| ---------------------- | ------------------------------------------------------------------------------------- |
-| `pass`                 | The gate held and SSIM is 1.                                                          |
-| `drift`                | The gate held, but SSIM is below 1.                                                   |
-| `changed`              | The gate failed. Needs review.                                                        |
-| `flaky`                | Failed, then passed on a fresh render (`--retries`). Reported, does not fail the run. |
-| `new`                  | No baseline yet. Needs a person to approve its first render. Counts as failed.        |
-| `error`                | The render failed (timeout, missing selector, Storybook error page).                  |
-| `approved`, `rejected` | A review decision on the current result. A new verdict clears it.                     |
-| `skipped`              | Not selected by this run; its previous row is carried forward.                        |
+| State                  | Meaning                                                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `pass`                 | The gate held and the render is the baseline image (SSIM 1 for a row without `differs`).                      |
+| `drift`                | The gate held, and the render differs from the baseline image (`differs`; SSIM below 1 for a row without it). |
+| `changed`              | The gate failed. Needs review.                                                                                |
+| `flaky`                | Failed, then passed on a fresh render (`--retries`). Reported, does not fail the run.                         |
+| `new`                  | No baseline yet. Needs a person to approve its first render. Counts as failed.                                |
+| `error`                | The render failed (timeout, missing selector, Storybook error page).                                          |
+| `approved`, `rejected` | A review decision on the current result. A new verdict clears it.                                             |
+| `skipped`              | Not selected by this run; its previous row is carried forward.                                                |
 
 ### Exit codes
 
@@ -402,13 +402,13 @@ build in `storybook.staticDir`). Existing entries keep their
 
 A full check writes, under `<store>/reports/`:
 
-| File                                | Content                                                                                                                                                                                                                                                                                                                                                                                        |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `check.json` (`check-<suite>.json`) | `{ generatedAt, project, suite, manifest, summary, affected, envs, rows }`, one row per entry. `envs` maps every render environment a row names (its render's `env`, its baseline's `baselineEnv`) by id; each row adds `envMatch` (`same`, `compatible`, `mismatch`, `unknown`) and, when not `same`, `envDiff` (the differing field names); `summary.envMismatch` counts the mismatched rows |
-| `summary.md` (`summary-<suite>.md`) | Markdown summary, suitable for a pull request comment; a changed entry's reasons end with its text kind (`· text: copy, reflow`, [Text labels](#text-labels))                                                                                                                                                                                                                                  |
-| `junit.xml` (`junit-<suite>.xml`)   | JUnit results, one test case per entry                                                                                                                                                                                                                                                                                                                                                         |
-| `history.ndjson`                    | One line per run (full checks and server re-checks); a full check that analysed React or counted renders adds `react`: `{ alerts, newBailouts, renderAlerts }` (each present when known)                                                                                                                                                                                                       |
-| `integrity.json`                    | The integrity ledger (see [integrity.md](integrity.md))                                                                                                                                                                                                                                                                                                                                        |
+| File                                | Content                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `check.json` (`check-<suite>.json`) | `{ generatedAt, project, suite, manifest, summary, affected, envs, rows }`, one row per entry. `envs` maps every render environment a row names (its render's `env`, its baseline's `baselineEnv`) by id; each row adds `envMatch` (`same`, `compatible`, `mismatch`, `unknown`) and, when not `same`, `envDiff` (the differing field names); `summary.envMismatch` counts the mismatched rows; a passing row carries `differs` and `summary.drift` counts the passing rows that differ ([Drift](#drift)) |
+| `summary.md` (`summary-<suite>.md`) | Markdown summary, suitable for a pull request comment; a changed entry's reasons end with its text kind (`· text: copy, reflow`, [Text labels](#text-labels))                                                                                                                                                                                                                                                                                                                                             |
+| `junit.xml` (`junit-<suite>.xml`)   | JUnit results, one test case per entry                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `history.ndjson`                    | One line per run (full checks and server re-checks); a full check that analysed React or counted renders adds `react`: `{ alerts, newBailouts, renderAlerts }` (each present when known)                                                                                                                                                                                                                                                                                                                  |
+| `integrity.json`                    | The integrity ledger (see [integrity.md](integrity.md))                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
 Renders go to `<store>/renders/latest/<id>.png`; diff images for failures to
 `<store>/diffs/latest/`. With text capture on ([configuration.md](configuration.md#text)), each
@@ -440,6 +440,23 @@ the `serve` method) answers the same fields and verdict. A selector is a mask's 
 and reason are labels. A baseline without `masks` (0.7.6 and earlier) compares as having none,
 except that a render's story mask (`ignore`, painted `#FF00FF` then as now) is left out where every
 pixel inside its boxes, one in from each edge, is that colour in the baseline image.
+
+### Drift
+
+The engine adds `differs` to every row it compared: on an entry that passes (the color rule
+included), `true` when any pixel of the render is not the baseline image's (a render of another
+size counts as different), `false` when every pixel is the same (a render file byte for byte the
+baseline image is not decoded); `null` when a rule failed the entry or the baseline holds no image
+(a pre-0.2 `.pxsig.json`). A row cached before 0.7.7 is checked again (the content cache's key
+changed). A passing row with `differs: true` has the verdict `drift`.
+
+check.json's `summary.drift` is `{ count, of, share, otherEnv, warnAt, warn }`: the checked rows
+that pass with `differs: true` (`count`, leaving out those rendered in a different environment
+than their baseline, which are `otherEnv`), the passing rows in the same environments (`of`),
+`count / of` to 3 decimals (`share`), the project's `drift.warnAt` and whether both of its values
+are reached (`warn`). summary.md adds a line when `count` or `otherEnv` is above 0, and
+`check --sarif` one `pxsig/drift` note for the run ([integrity.md](integrity.md#drift)). Neither
+changes a verdict or an exit code.
 
 ### Text labels
 

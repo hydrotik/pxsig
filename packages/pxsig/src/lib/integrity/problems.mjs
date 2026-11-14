@@ -7,6 +7,7 @@ import { readJson, readLines } from '../files.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { iso } from './context.mjs';
+import { driftProblems } from '../drift.mjs';
 /** @import { EnvSummary, Project, StoryIndex, TornLine } from '../../types.js' */
 /** @import { IntegrityReport, IntegrityRow, LedgerSetup } from '../../types/t3.js' */
 /** @import { IntegrityContext } from './context.mjs' */
@@ -84,7 +85,8 @@ export function envProblems(report, ctx) {
 }
 
 /**
- * The setup problems the last check's report shows: `env-mismatch` and `gate-color-off`.
+ * The setup problems the last check's report shows: `env-mismatch`, `gate-color-off` and
+ * `drift-high` (lib/drift.mjs).
  * @param {IntegrityReport | null} report
  * @param {IntegrityContext} ctx
  * @returns {LedgerSetup[]}
@@ -92,6 +94,7 @@ export function envProblems(report, ctx) {
 export const reportProblems = (report, ctx) => [
   ...envProblems(report, ctx),
   ...colorGateProblems(report, ctx),
+  ...driftProblems(report, ctx),
 ];
 
 /**

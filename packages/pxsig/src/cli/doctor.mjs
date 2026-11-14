@@ -10,6 +10,7 @@ import { describeAgent } from '../lib/agents.mjs';
 import { preflightReport } from './preflight.mjs';
 import { textSuffix } from '../lib/text/say.mjs';
 import { maskLine, maskTable } from '../lib/capture/doctor.mjs';
+import { driftCell } from '../lib/drift.mjs';
 import {
   appendReadiness,
   describeEnforcement,
@@ -318,6 +319,7 @@ export function doctorParts(cli) {
             .filter((x) => x.severity === 'info')
             .map((x) => /** @type {[string, Cell]} */ (['Text', x.text])),
           ['Masks', maskLine(r.masks)],
+          ['Drift', { text: driftCell(r.drift), color: r.drift?.warn ? 'yellow' : 'gray' }],
           [
             'Running under',
             r.agent ? describeAgent(r.agent) : { text: 'no agent marker', color: 'gray' },

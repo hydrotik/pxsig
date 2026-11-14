@@ -39,6 +39,7 @@ export const DEFAULTS = Object.freeze({
   nonVisual: [],
   a11y: true,
   integrity: {},
+  drift: { warnAt: { count: 5, share: 0.2 } },
 });
 
 /** A plain object (a config layer, a JSON object): what `merge` merges. */

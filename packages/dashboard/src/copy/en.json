@@ -178,6 +178,7 @@
       "a11y": "Entries with new a11y violations",
       "flaky": "Flaky",
       "masks": "Entries with masks over 25%",
+      "drift": "Passing, but differs from the baseline",
       "blocked": "Blocked by masks, the author fixes them"
     },
     "components": {
@@ -279,7 +280,7 @@
       "approved": "Approved",
       "rejected": "Rejected",
       "skipped": "Not run (unaffected by changes)",
-      "drift": "Any pixel drift (SSIM < 1)",
+      "drift": "Passing, but differs from the baseline",
       "masks": "Masks over 25% of the capture",
       "blocked": "Blocked by masks"
     },
@@ -473,8 +474,8 @@
         "help": "Left out of a partial check because no edited file affects it. Baseline present, no result yet."
       },
       "drift": {
-        "title": "Pass (minor drift)",
-        "help": "Within the gate, with SSIM below 1."
+        "title": "Pass, differs from the baseline",
+        "help": "Within the gate, while the render differs from the baseline image. The baseline stays as it was."
       },
       "excluded": {
         "title": "Excluded",
@@ -515,6 +516,10 @@
       "gate-color-off": {
         "title": "Color rule off",
         "help": "Entries were checked with the color rule off, or loosened past its limits: a color change in a small area, such as a badge tint or a status color, passes them."
+      },
+      "drift-high": {
+        "title": "Many passing entries differ",
+        "help": "Entries pass while their render differs from the baseline, at or over drift.warnAt: a change the gate does not see, such as a color change in a small area, passes this way, and their baselines stay as they were."
       },
       "engine-old": {
         "title": "Engine older than the CLI",
