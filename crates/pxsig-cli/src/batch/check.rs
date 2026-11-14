@@ -24,11 +24,20 @@ use super::{env_id, load_baseline, load_manifest, Baseline, Entry, EnvPlan, Mani
 
 /// Today's rules, then the color rule (`super::color`) when they pass.
 pub fn compare_png(png: &Path, b: &Baseline, gate: &GateThresholds) -> Result<CompareResult> {
+    Ok(compare_png_differs(png, b, gate)?.0)
+}
+
+/// [compare_png], and the row's `differs` (`super::color::apply`).
+fn compare_png_differs(
+    png: &Path,
+    b: &Baseline,
+    gate: &GateThresholds,
+) -> Result<(CompareResult, Option<bool>)> {
     let bytes = fs::read(png).with_context(|| format!("PNG not found: {}", png.display()))?;
     let (data, w, h) = io::decode_png_bytes(&bytes, png)?;
     let mut r = compare_rgba(&data, w, h, b, gate);
-    super::color::apply(&mut r, b, png, &bytes, (&data, w, h), gate)?;
-    Ok(r)
+    let differs = super::color::apply(&mut r, b, png, &bytes, (&data, w, h), gate)?;
+    Ok((r, differs))
 }
 
 pub fn compare_rgba(
@@ -145,7 +154,7 @@ fn hex(b: &[u8]) -> String {
 /// [`engine_id`]), so another build's verdicts are never reused.
 pub(super) fn cache_key(engine: &str, png: &[u8], sig: &[u8], gate: &Value, text: &[u8]) -> String {
     let mut h = Sha256::new();
-    h.update(b"pxsig-check-v6\0"); // v6: the color rule
+    h.update(b"pxsig-check-v7\0"); // v7: `differs`
     h.update(png);
     h.update(sig);
     h.update(gate.to_string().as_bytes());
@@ -271,7 +280,7 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
                     }
                 }
                 let b = load_baseline(&sig)?;
-                let r = compare_png(&png, &b, &gate)?;
+                let (r, differs) = compare_png_differs(&png, &b, &gate)?;
                 let metrics = metrics_json(&r, gate.threshold);
                 if o.artifacts == Artifacts::All || (o.artifacts == Artifacts::Failed && !r.pass) {
                     io::write_diff_artifacts(&out_dir, &stem, &r, &metrics)?;
@@ -283,6 +292,7 @@ pub fn check(o: &CheckOpts) -> Result<Value> {
                 v["reasons"] = json!(r.reasons);
                 v["detail"] = detail_json(&r);
                 v["color"] = super::color::color_json(&r);
+                v["differs"] = json!(differs);
                 v["note"] = json!(if r.pass { "pass".to_string() } else { r.reasons.join("; ") });
                 // The baseline image is inside a `.psig`, else `<base-png-dir>/<id>.png`.
                 let base_img = || b.image.clone().or_else(|| o.base_png_dir.as_ref().and_then(|bd| fs::read(bd.join(format!("{}.png", s.id))).ok()));

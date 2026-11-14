@@ -175,8 +175,8 @@
   - definition: axe reports violations that are not on the entry's accepted list.
   - term: Not run
   - definition: Left out of a partial check because no edited file affects it. Baseline present, no result yet.
-  - term: Pass (minor drift)
-  - definition: Within the gate, with SSIM below 1.
+  - term: Pass, differs from the baseline
+  - definition: Within the gate, while the render differs from the baseline image. The baseline stays as it was.
   - term: Excluded
   - definition: "Excluded by configuration: a nonVisual folder, parameters.pxsig.disable or the no-pxsig tag."
   - term: OK

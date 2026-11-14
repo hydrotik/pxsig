@@ -5,6 +5,7 @@
 import { readJson, writeJson } from '../lib/files.mjs';
 import { dropStaleRows, summarize } from '../lib/rows.mjs';
 import { envSummary } from '../lib/env.mjs';
+import { driftSummary, warnAt } from '../lib/drift.mjs';
 /** @import { CheckRow, EnvRecord } from '../types.js' */
 /** @import { CheckReport, CheckTiming } from '../types/t5.js' */
 /** @import { ServeContext } from '../types/serve.js' */
@@ -50,6 +51,7 @@ export function updateCheckRows(S, mut, fresh = new Map(), timing = null, envs =
     ...check.summary,
     ...summarize(check.rows),
     ...envSummary(check.rows, check.envs ?? {}),
+    ...driftSummary(check.rows, warnAt(S.P.config)),
     ...timing,
   };
   if (!check.summary.envMismatch) delete check.summary.envFields;
