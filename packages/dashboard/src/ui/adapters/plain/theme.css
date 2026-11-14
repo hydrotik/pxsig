@@ -141,6 +141,8 @@
 .plain-nav {
   display: flex;
   align-items: center;
+  /* A whole-pixel line on every platform: the links' row, and the counts in it, on whole pixels. */
+  line-height: 1.25rem;
   gap: 1rem;
   padding: 0.5rem 1rem;
   border-block-end: 1px solid var(--plain-border);
@@ -157,6 +159,17 @@
 }
 .plain-nav li {
   white-space: nowrap;
+}
+/* A link and its count side by side, centred: a count on the text's baseline grows the line. A
+   link moved into More keeps its `hidden`. */
+.plain-nav li:not([hidden]) {
+  display: flex;
+  align-items: center;
+}
+.plain-nav li > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 .plain-nav a,
 .plain-more > button {

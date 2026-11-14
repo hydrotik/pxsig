@@ -118,6 +118,8 @@ export const Heatmap: F<'Heatmap'> = ({ label, cells, legend, onSelect, classNam
           color: v.color.text,
           font: 'inherit',
           fontSize: v.fontSize.xs,
+          // Whole-pixel lines, whatever the platform's font metrics: the swatch centres on whole pixels.
+          lineHeight: '1rem',
         };
         const name = c.accessibleLabel ?? `${c.label}, ${c.text}`;
         return (
