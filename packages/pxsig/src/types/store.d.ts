@@ -223,7 +223,9 @@ export interface ApprovalLine {
   ref?: string;
   /** Only on a line written before 0.7.6: since, the reason stays in `reports/decisions.ndjson`. */
   reason?: string | null;
+  /** `masks` (0.7.7): an approval of a masks change, with `masks`, what changed. */
   kind?: string | null;
+  masks?: import('./run.js').MasksChanged;
   gitHead?: string | null;
   /** sha256 of the baseline before (null: a first baseline) and after. */
   before?: string | null;

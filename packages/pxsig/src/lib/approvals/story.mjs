@@ -30,6 +30,10 @@ export const storySkip = (state, r) =>
         ? 'not checked yet'
         : r.error
           ? `did not render (${String(r.error).split('\n')[0]})`
-          : r.pass && !r.new
-            ? 'passes: nothing to approve'
-            : null;
+          : r.masksBlocked
+            ? 'masks no approval passes'
+            : r.masksChanged
+              ? 'masks changed: approve it on its own'
+              : r.pass && !r.new
+                ? 'passes: nothing to approve'
+                : null;
