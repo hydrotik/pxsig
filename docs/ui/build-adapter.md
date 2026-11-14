@@ -126,7 +126,8 @@ anywhere in the workspace.
    Status is `full` (your design system's component, all behaviour), `partial` (some behaviour
    missing: say which in the note), `bespoke` (built for the adapter from primitives) or `missing`.
    `contract` is the UI contract version you wrote the adapter for (see
-   [The contract version](#the-contract-version)); without it, 1.0.0.
+   [The contract version](#the-contract-version)); without it, 1.0.0. A component may also list the
+   design-system stories it is drawn like (`parity`, see [Source parity](#source-parity)).
 
 6. Optional: a `vite.mjs` whose default export returns build settings your design system needs:
    `{ alias: { name: path }, allow: [folders], optimizeDepsExclude: [names], classPrefixes: { folder: prefix } }`.
@@ -915,6 +916,25 @@ draw them with your own segmented control and buttons.
      element opts out with `data-layout-allow="<reason>"`. While a modal `<dialog>` is open, only
      what is inside it is measured: the page behind it is inert.
 
+   - Each screen's alignment is measured from its screenshot, not from the styles, and listed as
+     `alignment` in `report.json` (a column and a section of its own in `summary.md` and the
+     gallery). Advisory; `--strict` makes any finding exit 1:
+     - `aligned`: a dot or an icon (an `svg`, or a drawn box up to 16px) is centred on its label's
+       capitals within 0.5px. The capitals are found by character (capitals and digits; every
+       letter of a label drawn `text-transform: uppercase`), and both inks are read from the
+       screenshot with sub-pixel edges, so the measure is what the browser drew after snapping.
+       A label with no capital or digit is not measured.
+     - `whole-pixel`: a small component (at most 32px tall and 320px wide) that draws an edge (a
+       border, a background, a shadow) has its top and bottom on whole device pixels. Off them, the
+       browser snaps the border, the background and the text each its own way, and a dot drifts
+       off the text. Along a line a box after text starts where the text's advances end, which is
+       fractional in any design system, so the inline edges are not measured.
+
+     Each finding names its cause: where the half pixel comes from (centred in an odd space, as
+     `(43 − 22) / 2 = 10.5`; a fractional margin, padding or transform; an earlier sibling of
+     fractional height), or that the graphic is centred on its line box rather than on the
+     capitals. Components behind another layer are not measured; `data-layout-allow` opts out.
+
    - `--compare <dir>`: each screen against the same screen of an earlier check's output (its
      `--out`), compared by the pxsig engine with the gates stories get. Changed screens are listed
      in `summary.md` and `report.json` (`compare` per screen: status, SSIM, changed cells), and
@@ -931,3 +951,56 @@ draw them with your own segmented control and buttons.
    serve` without `PXSIG_DASHBOARD_DIR`), and run axe on each section and the open inspector.
 5. Run `tsc --noEmit` in your project: the contract's types catch prop-shape changes at compile time.
 6. Update `conformance.json` with what you found.
+
+## Source parity
+
+A screen can match its own baseline and still not match the design system: nothing compares the
+adapter's component with the design system's own story of it. Source parity does. In
+`conformance.json`, a component may list the stories it is drawn like, each with the contract props
+that draw it:
+
+```json
+"Badge": {
+  "status": "full",
+  "parity": [
+    {
+      "story": "components-badge--live",
+      "args": { "children": "Live" },
+      "props": { "tone": "success", "pulse": true },
+      "children": "Live"
+    }
+  ]
+},
+…
+"parity": { "storyRoot": "#storybook-root > div > *", "globals": { "dark": "theme:dark", "light": "theme:light" } }
+```
+
+- `story`: the Storybook story id. `args`: set in the story's URL (Storybook's `args=`: letters,
+  digits, spaces, `_` and `-`, numbers and booleans), so the story draws the dashboard's text.
+- `props` and `children`: the contract component's props, as JSON (an icon by its name).
+- `expect`: `[{ "element": "root/0 <span>", "property": "height", "reason": "…" }]`, a difference you
+  make on purpose. It is reported as expected, with its reason; `element` unset matches any.
+- At the top, `parity.storyRoot`: the selector of a story's component under your Storybook's
+  decorators (default `#storybook-root > *`); `parity.globals`: the Storybook globals for each
+  theme.
+
+Both sides render in one Chromium, launched as every pxsig capture is, at 1280×900, motion frozen,
+in each theme: the story in your built Storybook (its centred or padded layout set aside, so the
+root sits where your decorators put it), and the component on a page built with your adapter and
+the dashboard's own page styles, inset as the story is. For the root and every element under it,
+matched by position in the tree (an `svg` is one element), it compares:
+
+- the box model: `box-sizing`, `display`, alignment, gaps, paddings and border widths, and the box
+  relative to the root, within 0.5px;
+- the font: family, size, weight, style, line height, letter spacing, text transform, and whether
+  the face is loaded;
+- the rendered alignment: each dot or icon's offset from its label's capitals, read from the
+  screenshots as the `aligned` rule reads it, within 0.5px.
+
+Computed lengths match within 0.01px; strings exactly. Colour is not compared: how a tone shows is
+the region rules' (R4). A difference names the component, the story, the element, the property and
+both values. Inherited values count: a component that relies on your design system's global
+stylesheet (a reset, the body's line height) shows here when the dashboard does not load it.
+
+This repository runs it on the reference adapter (`node scripts/parity-check.mjs --storybook <built
+Storybook> [--container]`, in the screens workflow); it is not a `pxsig` command yet.

@@ -119,6 +119,40 @@ jobs:
           fi
           echo "code=$code" >> "$GITHUB_OUTPUT"
           [ "$code" -le 1 ]
+      # Source parity (docs/ui/build-adapter.md, "Source parity"): each component the reference
+      # adapter's conformance.json pairs with a design-system story, beside that story, in pxsig's
+      # container. The design system's Storybook is built here from the same checkout. Advisory
+      # until the differences it reports today are fixed: its summary joins the job's, and it never
+      # fails the job.
+      - if: steps.has.outputs.ds == 'true'
+        name: Source parity
+        continue-on-error: true
+        shell: bash
+        env:
+          STORYBOOK_DISABLE_TELEMETRY: '1'
+        run: |
+          set -uo pipefail
+          ds="${RUNNER_TEMP}/design-system"
+          # The design system's own Storybook build (its `build-storybook` script, wherever it is),
+          # copied into this checkout so the container sees it.
+          pnpm -C "$ds" -r --if-present run build-storybook
+          built="$(find "$ds" -maxdepth 4 -type d -name storybook-static -not -path '*/node_modules/*' | head -n 1)"
+          [ -n "$built" ] || { echo "::error::the design system built no Storybook"; exit 1; }
+          rm -rf target/parity-storybook && cp -R "$built" target/parity-storybook
+          code=0
+          PXSIG_UI_ADAPTER=hydrotik PXSIG_DS_SOURCE="$ds" node scripts/parity-check.mjs --storybook target/parity-storybook --container || code=$?
+          if [ -f target/parity/summary.md ]; then cat target/parity/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+          exit "$code"
+      - if: steps.has.outputs.ds == 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pxsig-parity
+          path: |
+            target/parity/report.json
+            target/parity/summary.md
+            target/parity/shots/
+          if-no-files-found: ignore
+          retention-days: 14
       # The review: download this artifact into packages/dashboard/.pxsig, run `pxsig serve` in
       # packages/dashboard and approve through `pxsig serve --link` (docs/releasing.md).
       - if: steps.has.outputs.ds == 'true' && always()
