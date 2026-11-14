@@ -303,7 +303,11 @@ export function inspectLayout({ max }) {
     const r = el.getBoundingClientRect();
     const x = r.left + r.width / 2;
     const y = r.top + r.height / 2;
-    if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
+    // Scrolled out of the window (under a sticky top bar, say): not drawn there, not measured.
+    if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) {
+      covered.add(el);
+      continue;
+    }
     const hit = document.elementFromPoint(x, y);
     if (!hit || el.contains(hit) || hit.contains(el)) continue;
     const other = hit.closest(CONTROL);
