@@ -440,7 +440,8 @@ export interface ScreenViolation {
 
 /** One layout finding on a screen (dashboard-check/layout.mjs). */
 export interface LayoutFinding {
-  rule: 'overflow' | 'clipped' | 'controls' | 'edge' | 'overlap';
+  /** `aligned` and `whole-pixel`: the alignment list (dashboard-check/alignment.mjs), not `layout`. */
+  rule: 'overflow' | 'clipped' | 'controls' | 'edge' | 'overlap' | 'aligned' | 'whole-pixel';
   text: string;
 }
 
@@ -460,6 +461,8 @@ export interface ScreenCapture {
   layout: LayoutFinding[];
   /** Measured with the layout when the dashboard's copy is given; never for the reference build. */
   fidelity?: FidelityFinding[];
+  /** Measured with the layout, from the screenshot (dashboard-check/alignment.mjs). */
+  alignment?: LayoutFinding[];
   ms: number;
   /** Present only when the layout was still moving after SETTLE_MS: the screenshot was taken anyway. */
   settled?: false;
@@ -495,6 +498,7 @@ export interface ScreenResult extends ScreenCapture {
   theme: string;
   fallbacks: string[] | null;
   fidelity: FidelityFinding[];
+  alignment: LayoutFinding[];
   shot: string | null;
   referenceShot: string | null;
   /** Only with --compare. */
@@ -519,6 +523,7 @@ export interface DashboardCheckReport {
     withAxe: number;
     withLayout: number;
     withFidelity: number;
+    withAlignment: number;
     posts: number;
   };
   screens: ScreenResult[];

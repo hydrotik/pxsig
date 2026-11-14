@@ -7,6 +7,7 @@ import { dirname } from 'node:path';
 import { injectAxe } from '../lib/capture.mjs';
 import { boxesFile, writeBoxes } from '../lib/capture/boxes.mjs';
 import { navErrorCode, retryOnce } from '../lib/retry.mjs';
+import { measureAlignment } from './alignment.mjs';
 import { inspectFidelity } from './fidelity.mjs';
 import { inspectLayout, MAX_PER_RULE, NARROW_WIDTH, pageOverflow } from './layout.mjs';
 /** @import { Browser, Page } from 'playwright' */
@@ -223,7 +224,8 @@ export async function screenContext(browser, colorScheme, { bypassCSP = false } 
 /**
  * Capture a page already showing its screen (its landmark visible): wait until its images are
  * drawn, its fonts loaded and its layout still, then take the screenshot, the accessibility
- * snapshot (`aria`), the anchors' boxes, axe's violations and (`layout`) the layout findings, with
+ * snapshot (`aria`), the anchors' boxes, axe's violations and (`layout`) the layout findings and
+ * the alignment measured from the screenshot (alignment.mjs), with
  * (`copy`: the dashboard's copy, fidelity.mjs) the fidelity findings. Never throws for a page error (`errors`, collected by the caller): the result says it.
  * `restore`: after the layout measure, put the page back at VIEWPORT and let it settle, so a flow
  * goes on on the same page (scripts/live/run.mjs). `text`: also write the screen's text record
@@ -284,6 +286,8 @@ export async function snap(
   // At VIEWPORT, before the layout measure leaves the page at NARROW_WIDTH.
   const fidelity =
     measured && copy ? await page.evaluate(inspectFidelity, { max: MAX_PER_RULE, copy }) : null;
+  // From the screenshot just taken: nothing has moved since (alignment.mjs).
+  const alignment = measured ? await measureAlignment(page, shot, { max: MAX_PER_RULE }) : null;
   const found = measured ? await measureLayout(page) : [];
   if (measured && restore) {
     await page.setViewportSize(VIEWPORT);
@@ -305,6 +309,7 @@ export async function snap(
     errors,
     axe: violations,
     layout: found,
+    ...(alignment ? { alignment } : {}),
     ...(fidelity ? { fidelity } : {}),
     ...(structure != null ? { aria: structure } : {}),
     ...(anchors.length ? { anchors: boxes } : {}),

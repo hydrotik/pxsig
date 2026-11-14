@@ -13,7 +13,8 @@
  *   diffs            <store>/diffs/latest/<id>.diff.png and the signature reconstruction
  *                    `<id>.baseline.png` the Rust check writes for failures
  *   report           <store>/reports/check.json rows (pass, error, flaky, checkedAt)
- *   review/approvals <store>/reports/review.json, <store>/approvals.ndjson
+ *   review/approvals <store>/reports/review.json, <store>/approvals.ndjson (which baselines a
+ *                    person approved: integrity/unreviewed.mjs)
  *   a11y baseline    <store>/a11y.json
  *   source freshness file mtimes under the source roots vs each verdict, traced through the
  *                    Rust import graph (`pxsig affected`) when available, else per story folder
@@ -56,5 +57,15 @@ export {
   scanStories,
   loadStoryIndex,
 } from './integrity/stories.mjs';
-export { reconcile } from './integrity/reconcile.mjs';
+import { reconcile as reconcileSources } from './integrity/reconcile.mjs';
+import { withReview } from './integrity/unreviewed.mjs';
+export { RATCHET_VERSION, reviewState } from './integrity/unreviewed.mjs';
+
+/**
+ * The ledger: every source joined (integrity/reconcile.mjs), then each baseline no person approved
+ * flagged (integrity/unreviewed.mjs).
+ * @param {import('./integrity/context.mjs').IntegrityContext} ctx
+ * @param {Parameters<typeof reconcileSources>[1]} [opts]
+ */
+export const reconcile = async (ctx, opts) => withReview(await reconcileSources(ctx, opts), ctx);
 /** @typedef {import('./integrity/context.mjs').IntegrityContext} IntegrityContext */

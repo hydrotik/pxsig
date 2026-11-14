@@ -139,6 +139,18 @@ export function readCommands(cli) {
                   };
                 })(),
               ],
+              // Baselines no person approved, when any: the queue and the growth past it.
+              ...(s.unreviewed?.count
+                ? [
+                    [
+                      'Unreviewed',
+                      {
+                        text: `${s.unreviewed.count} baselines no person approved: ${s.unreviewed.queue} in the review queue${s.unreviewed.new ? `, ${s.unreviewed.new} new since it closed` : ''} · ${CMD} doctor lists them`,
+                        color: s.unreviewed.new ? 'yellow' : 'dim',
+                      },
+                    ],
+                  ]
+                : []),
               // Warn mode, only when the config chose it: the gates, the date, the readiness tally.
               ...(s.enforcement?.warned?.length
                 ? [

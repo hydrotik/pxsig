@@ -213,3 +213,16 @@ export const screenFindings = (screens, idOf) =>
           ...x.layout.map((l) => `layout ${l.rule}: ${l.text}`),
         ].join('; ')}`
     );
+
+/**
+ * Each rendered screen's alignment findings (dashboard-check/alignment.mjs), `{ id, findings }` per
+ * screen that has any. Advisory on pxsig's own screens until today's are fixed: written to
+ * reports/alignment.json and counted, never failing the check.
+ * @template {{ rendered: boolean, alignment?: { rule: string, text: string }[] }} S
+ * @param {S[]} screens
+ * @param {(s: S) => string} idOf
+ */
+export const alignmentNotes = (screens, idOf) =>
+  screens
+    .filter((x) => x.rendered && x.alignment?.length)
+    .map((x) => ({ id: idOf(x), findings: x.alignment ?? [] }));

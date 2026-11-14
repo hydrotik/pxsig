@@ -3,8 +3,8 @@
  * sync-dashboard-source.mjs — copies what `pxsig dashboard build | gaps` and adapter authors need
  * into the pxsig package before it is packed (its `prepack` script):
  *
- *   packages/dashboard/{src, fixtures, index.html, build-config.mjs, postbuild.mjs, ui-tools.mjs,
- *                       ui-tools, README.md}
+ *   packages/dashboard/{src, fixtures, parity, index.html, build-config.mjs, postbuild.mjs,
+ *                       parity-page.mjs, ui-tools.mjs, ui-tools, README.md}
  *                                         → packages/pxsig/dashboard/
  *   docs/ui/                              → packages/pxsig/docs/ui/
  *   LICENSE                               → packages/pxsig/LICENSE
@@ -37,9 +37,11 @@ mkdirSync(to, { recursive: true });
 for (const f of [
   'src',
   'fixtures',
+  'parity',
   'index.html',
   'build-config.mjs',
   'postbuild.mjs',
+  'parity-page.mjs',
   'ui-tools.mjs',
   'ui-tools',
   'README.md',

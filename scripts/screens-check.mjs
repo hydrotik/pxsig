@@ -61,6 +61,7 @@ import { textSettings } from '../packages/pxsig/src/lib/text/config.mjs';
 import { envPlan } from '../packages/pxsig/src/lib/text/env-plan.mjs';
 import { SCREENS } from '../packages/pxsig/src/lib/source.mjs';
 import {
+  alignmentNotes,
   checkGeometry,
   checkStructure,
   screenFindings,
@@ -293,6 +294,10 @@ async function main() {
     checked.report.screens,
     (x) => screenId(x.feature, x.index + 1, x.theme).id
   );
+  const aligned = alignmentNotes(
+    checked.report.screens,
+    (x) => screenId(x.feature, x.index + 1, x.theme).id
+  );
   const lockArgs = {
     screens: checked.report.screens,
     update: args.includes('--update-locks'),
@@ -305,6 +310,7 @@ async function main() {
     file: join(projectDir, 'fixtures', 'locked', 'geometry.json'),
   });
   mkdirSync(structureDir, { recursive: true });
+  writeFileSync(join(P.store.reports, 'alignment.json'), `${JSON.stringify(aligned, null, 2)}\n`);
   writeFileSync(
     join(structureDir, 'geometry.json'),
     `${JSON.stringify(geometry.geometry, null, 2)}\n`
@@ -436,6 +442,10 @@ async function main() {
   for (const p of structure.problems) console.log(`  structure ${p}`);
   for (const p of geometry.problems) console.log(`  geometry ${p}`);
   for (const f of findings) console.log(`  finding ${f}`.slice(0, 400));
+  if (aligned.length)
+    console.log(
+      `[screens] ${aligned.length} screens with alignment findings (advisory): reports/alignment.json`
+    );
   const locksFailed = structure.problems.length + geometry.problems.length;
   if (locksFailed)
     console.log(
