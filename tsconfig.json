@@ -20,5 +20,5 @@
       "pxsig/diff-viewer": ["./packages/dashboard/src/diff-viewer/index.ts"]
     }
   },
-  "include": ["packages/dashboard/src", "packages/dashboard/test/harness", "examples/custom-ui/pxsig-ui", "types"]
+  "include": ["packages/dashboard/src", "packages/dashboard/parity", "packages/dashboard/test/harness", "examples/custom-ui/pxsig-ui", "types"]
 }

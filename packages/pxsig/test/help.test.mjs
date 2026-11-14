@@ -77,6 +77,7 @@ function readFlags() {
     'report.mjs',
     'dashboard.mjs',
     'dashboard-check.mjs',
+    'dashboard-parity.mjs',
     'browser.mjs',
     'lib/workspace/layers.mjs',
     'lib/term.mjs',

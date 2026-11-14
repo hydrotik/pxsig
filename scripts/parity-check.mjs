@@ -1,27 +1,22 @@
 #!/usr/bin/env node
 /**
- * parity-check.mjs — source parity for an adapter (packages/pxsig/src/dashboard-check/parity.mjs):
- * each contract component its conformance.json pairs with a design-system story, rendered beside
- * that story in one browser and compared (box model, font, rendered alignment; not colour).
+ * parity-check.mjs — `pxsig dashboard parity` on this repository's reference adapter, as the screens
+ * workflow runs it: the parity page built here with this checkout's own Vite (packages/dashboard),
+ * then the command run on it, in pxsig's image with `--container` (docker/screens-image.json), as
+ * pxsig's own screens are rendered.
  *
- *   node scripts/parity-check.mjs --storybook <dir> [--ui <adapter>] [--build <dir>] [--out <dir>]
- *                                 [--themes dark,light] [--container]
+ *   node scripts/parity-check.mjs --storybook <dir> [--ui <adapter>] [--out <dir>] [--themes dark,light] [--container]
  *
- * --storybook   the design system's built Storybook (`storybook build`), inside this checkout
- * --ui          the adapter (as the dashboard build takes it); default: the one the build would use
- * --build       the parity page already built with that adapter; default: built now, into
- *               <out>/adapter (packages/dashboard/test/harness/parity, the dashboard's Vite config)
- * --out         default target/parity: report.json, summary.md, shots/
- * --container   render in pxsig's image (docker/screens-image.json), as pxsig's own screens are:
- *               the page is built here first, then this script runs there on it
+ * --storybook   the design system's built Storybook, inside this checkout (the container sees it)
+ * --ui          the adapter (default: the one the dashboard build would use)
+ * --out         default target/parity: report.json, summary.md, shots/, and the page in page/
  *
- * Exit: 0 every pair rendered and matches, or differs only as its `expect` says · 1 a difference,
- * a pair that did not render, or a malformed `parity` entry · 2 setup (no Storybook, no Chromium,
- * no Docker).
+ * Exit: `pxsig dashboard parity`'s (0 match · 1 a difference or a pair that did not render · 2
+ * setup), or 2 when Docker fails.
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { rmSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repo = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
@@ -35,107 +30,55 @@ const flag = (args, name) => {
 async function main() {
   const args = process.argv.slice(2);
   const storybook = flag(args, 'storybook');
-  const out = resolve(flag(args, 'out') ?? join(repo, 'target', 'parity'));
-  /** @type {('dark' | 'light')[]} */
-  const themes = [];
-  for (const t of (flag(args, 'themes') ?? 'dark,light').split(','))
-    if (t === 'dark' || t === 'light') themes.push(t);
-  if (!storybook || !existsSync(join(storybook, 'iframe.html'))) {
-    console.error('[parity] --storybook must name a built Storybook (a folder with iframe.html)');
+  if (!storybook) {
+    console.error('[parity] usage: node scripts/parity-check.mjs --storybook <dir> [--container]');
     process.exit(2);
   }
+  const out = resolve(flag(args, 'out') ?? join(repo, 'target', 'parity'));
   const { resolveAdapter } = await import('../packages/dashboard/build-config.mjs');
   const ui = resolveAdapter({ adapter: flag(args, 'ui'), cwd: repo });
-  let built = flag(args, 'build');
-  if (!built) {
-    built = join(out, 'adapter');
-    rmSync(built, { recursive: true, force: true });
-    const { buildParityPage } = await import('../packages/dashboard/parity-page.mjs');
-    await buildParityPage({ adapter: flag(args, 'ui'), cwd: repo, outDir: built });
-    console.log(`[parity] built the parity page with the ${ui.name} adapter`);
-  }
+  const page = join(out, 'page');
+  rmSync(page, { recursive: true, force: true });
+  const { buildParityPage } = await import('../packages/dashboard/parity-page.mjs');
+  await buildParityPage({ adapter: ui.file, cwd: repo, outDir: page });
+  console.log(`[parity] built the parity page with the ${ui.name} adapter`);
+  // The adapter by its folder: the container sees neither PXSIG_UI_ADAPTER nor a config, and the
+  // checkout is mounted at its own path there.
+  const rest = [
+    'dashboard',
+    'parity',
+    '--storybook',
+    resolve(storybook),
+    '--ui',
+    ui.dir,
+    '--build',
+    page,
+    '--out',
+    out,
+    '--themes',
+    flag(args, 'themes') ?? 'dark,light',
+  ];
+  const bin = 'packages/pxsig/bin/pxsig.mjs';
   if (args.includes('--container')) {
     const { dockerArgs, pinnedImage } = await import('./screens-container.mjs');
-    const rest = ['--storybook', resolve(storybook), '--build', resolve(built), '--out', out];
-    // The adapter as resolved here: the container sees neither PXSIG_UI_ADAPTER nor the config.
-    // (the checkout is mounted at its own path, so the adapter's folder is the same there).
-    rest.push('--ui', flag(args, 'ui') ?? ui.dir);
-    rest.push('--themes', themes.join(','));
     const user =
       process.getuid && process.getgid ? `${process.getuid()}:${process.getgid()}` : null;
     const r = spawnSync(
       'docker',
-      dockerArgs({
-        image: pinnedImage(repo),
-        repo,
-        user,
-        args: rest,
-        script: 'scripts/parity-check.mjs',
-      }),
+      dockerArgs({ image: pinnedImage(repo), repo, user, args: rest, script: bin }),
       { stdio: 'inherit' }
     );
-    if (r.error) {
-      console.error(`[parity] docker: ${r.error.message}`);
+    if (r.error || r.status === null || r.status >= 125) {
+      console.error(`[parity] docker: ${r.error?.message ?? `exit ${r.status}`}`);
       process.exit(2);
     }
-    process.exit(r.status === null || r.status >= 125 ? 2 : r.status);
+    process.exit(r.status);
   }
-
-  const { launchBrowser } = await import('../packages/pxsig/src/lib/capture.mjs');
-  const { paritySummary, runParity } =
-    await import('../packages/pxsig/src/dashboard-check/parity.mjs');
-  // The adapter's conformance.json, as `pxsig dashboard gaps` reads it; runParity checks its pairs.
-  const conformance =
-    /** @type {import('../packages/pxsig/src/types/parity.js').ParityConformance} */ (
-      /** @type {unknown} */ (JSON.parse(readFileSync(join(ui.dir, 'conformance.json'), 'utf8')))
-    );
-  if (!Object.values(conformance.components ?? {}).some((c) => c.parity?.length)) {
-    console.error(
-      `[parity] the ${ui.name} adapter's conformance.json pairs no component with a story`
-    );
-    process.exit(2);
-  }
-  let browser;
-  try {
-    browser = await launchBrowser({ root: repo, workspaceRoot: repo });
-  } catch (e) {
-    console.error(`[parity] no Chromium: ${/** @type {Error} */ (e).message.split('\n')[0]}`);
-    process.exit(2);
-  }
-  mkdirSync(out, { recursive: true });
-  const started = Date.now();
-  const { results, problems } = await runParity(browser, {
-    conformance,
-    storybook: resolve(storybook),
-    adapter: resolve(built),
-    outDir: out,
-    themes,
-    log: (s) => console.log(s),
-  }).finally(() => browser.close());
-  const failing = results.filter((r) => !r.rendered || r.differences.some((d) => !d.expected));
-  const report = {
-    adapter: ui.name,
-    // Where it rendered: pxsig's image (PXSIG_PLAYWRIGHT is its Playwright) or this machine.
-    env: process.env.PXSIG_PLAYWRIGHT ? 'container' : 'local',
-    themes,
-    ms: Date.now() - started,
-    summary: {
-      pairs: results.length,
-      rendered: results.filter((r) => r.rendered).length,
-      differing: failing.length,
-      expected: results.reduce((n, r) => n + r.differences.filter((d) => d.expected).length, 0),
-    },
-    problems,
-    results,
-  };
-  writeFileSync(join(out, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
-  writeFileSync(join(out, 'summary.md'), paritySummary(results, problems));
-  const shown = relative(repo, out) || '.';
-  console.log(
-    `[parity] ${results.length} pairs · ${failing.length} differ or did not render · ${report.summary.expected} expected · ${shown}/summary.md`
-  );
-  for (const p of problems) console.log(`  conformance ${p}`);
-  process.exit(failing.length || problems.length ? 1 : 0);
+  const r = spawnSync(process.execPath, [join(repo, bin), ...rest], {
+    stdio: 'inherit',
+    cwd: repo,
+  });
+  process.exit(r.status ?? 2);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();

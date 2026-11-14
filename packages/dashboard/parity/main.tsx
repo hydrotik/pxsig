@@ -9,7 +9,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import * as UI from '@ui';
-import '../../../src/styles/base.css';
+import '../src/styles/base.css';
 
 interface ParitySpec {
   component: string;

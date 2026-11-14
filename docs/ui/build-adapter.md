@@ -133,7 +133,7 @@ anywhere in the workspace.
    `{ alias: { name: path }, allow: [folders], optimizeDepsExclude: [names], classPrefixes: { folder: prefix } }`.
    `classPrefixes` starts every class the vanilla-extract stylesheets in that folder define with
    the prefix, so a rule can select the design system's elements and nothing else: the reference
-   adapter gives them its design system's border-box reset that way (`box-sizing.css.ts`), because
+   adapter gives them its design system's reset and body type that way (`reset.css.ts`), because
    the dashboard does not load that design system's global stylesheet.
 
 Run `pxsig dashboard gaps` at any point: it lists what is missing, partial and bespoke, and the
@@ -1002,5 +1002,23 @@ the region rules' (R4). A difference names the component, the story, the element
 both values. Inherited values count: a component that relies on your design system's global
 stylesheet (a reset, the body's line height) shows here when the dashboard does not load it.
 
-This repository runs it on the reference adapter (`node scripts/parity-check.mjs --storybook <built
-Storybook> [--container]`, in the screens workflow); it is not a `pxsig` command yet.
+Run it in your project, beside `pxsig.config.json`:
+
+```bash
+npx storybook build -o storybook-static     # in your design system: its built Storybook
+pxsig dashboard parity --storybook <that folder> [--ui ./pxsig-ui] [--themes dark,light]
+```
+
+You supply three things: your design system's built Storybook (the folder holding `iframe.html`,
+with the stories your pairs name), the `parity` lists in your adapter's `conformance.json`, and
+the project's Vite (as for `pxsig dashboard build`; `--build <dir>` takes a parity page built
+before instead). Each setup problem says which is missing (exit 2). The output goes to
+`node_modules/.cache/pxsig/dashboard-parity` (`--out`): `summary.md`, `report.json` and the
+screenshots of both sides. Exit 1 on a difference not listed in `expect`, a pair that did not
+render (the message says whether the story or the adapter side failed, and what to check), or a
+malformed `parity` entry.
+
+Draw the difference away in the adapter rather than listing it: the reference adapter gives the
+design system's components their reset and body type, scoped to those components (`reset.css.ts`),
+so its pairs match. This repository runs the command on the reference adapter in pxsig's container
+(`node scripts/parity-check.mjs --storybook <built Storybook> --container`, the screens workflow).

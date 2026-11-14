@@ -1,7 +1,7 @@
 /**
  * Source parity (packages/pxsig/src/dashboard-check/parity.mjs): the pairs a conformance file
  * declares, Storybook's URL args, the comparison, and a whole run in Chromium. The run builds the
- * parity page (test/harness/parity) with the plain adapter, and stands a "Storybook" up from it:
+ * parity page (packages/dashboard/parity) with the plain adapter, and stands a "Storybook" up from it:
  * the same page as iframe.html draws the same component, so nothing differs; a hand-written story
  * with another padding and line height differs in exactly those. Skips the run when no Chromium is
  * available (PXSIG_CHROMIUM names an executable).
@@ -238,4 +238,44 @@ test('runParity: the same component on both sides matches; another padding and l
   const props = b.results[0].differences.map((x) => x.property);
   assert.ok(props.includes('padding-left'), JSON.stringify(b.results[0].differences));
   assert.ok(props.includes('line-height'), JSON.stringify(b.results[0].differences));
+});
+
+test('pxsig dashboard parity: builds the page with the project Vite, and says what an author must supply', async (t) => {
+  if (skip) return t.skip(skip);
+  const { ParitySetupError, dashboardParity, parityText } =
+    await import('../../pxsig/src/dashboard-parity.mjs');
+  const dashboard = path.resolve(here, '..');
+  // An adapter of the author's own: the plain one, with a pair in its conformance.json.
+  const ui = path.join(out, 'author-ui');
+  cpSync(path.join(dashboard, 'src', 'ui', 'adapters', 'plain'), ui, { recursive: true });
+  const conf = JSON.parse(readFileSync(path.join(ui, 'conformance.json'), 'utf8'));
+  conf.components.Badge.parity = [
+    { story: 'components-badge--new', props: { tone: 'warning' }, children: 'New' },
+  ];
+  conf.parity = { storyRoot: '[data-parity-frame] > *' };
+  writeFileSync(path.join(ui, 'conformance.json'), JSON.stringify(conf));
+  await assert.rejects(dashboardParity({ ui }, dashboard), (e) => {
+    assert.ok(e instanceof ParitySetupError);
+    assert.match(e.message, /pass --storybook <folder>: your design system's built Storybook/);
+    return true;
+  });
+  await assert.rejects(
+    dashboardParity({ ui, storybook: out }, dashboard),
+    /holds no iframe\.html: it is not a built Storybook/
+  );
+  await assert.rejects(
+    dashboardParity({ ui: 'plain', storybook: path.join(out, 'same') }, dashboard),
+    /pairs no component with a story: add a `parity` list/
+  );
+  // The "Storybook" of the run above: the parity page itself, so the pair matches.
+  const r = await dashboardParity(
+    { ui, storybook: path.join(out, 'same'), out: path.join(out, 'cli'), themes: 'light' },
+    dashboard
+  );
+  assert.equal(r.code, 0, parityText(r, dashboard));
+  assert.equal(r.report.summary.pairs, 1);
+  assert.match(
+    parityText(r, dashboard),
+    /1 pair \(story × theme\) on the "author-ui" adapter · 0 differ/
+  );
 });

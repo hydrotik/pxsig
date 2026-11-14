@@ -20,7 +20,7 @@
  * is reported as expected. A pair that does not render is a failure, never a pass.
  *
  * Both sides are static folders served through Playwright routes (no server): a built Storybook
- * and the parity page (packages/dashboard/test/harness/parity) built with the adapter. Nothing is
+ * and the parity page (packages/dashboard/parity, `parity-page.mjs`) built with the adapter. Nothing is
  * written but `outDir`'s report.json, summary.md and the screenshots.
  */
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
@@ -243,10 +243,24 @@ async function serveFolders(page, folders) {
  * One side of a pair: load it, wait for its root, fonts and stillness, take the screenshot, read
  * the tree and the rendered offsets. Throws (the pair fails) when it does not render.
  * @param {Page} page
+ * @param {{ label: string, url: string, selector: string, shot: string, story?: string | null, css?: string }} o
+ *   `label`: which side, named in the failure (`story: …`, `adapter: …`)
+ * @returns {Promise<ParitySide>}
+ */
+async function side(page, o) {
+  try {
+    return await measureSide(page, o);
+  } catch (e) {
+    throw new Error(`${o.label}: ${String(/** @type {Error} */ (e).message ?? e).split('\n')[0]}`);
+  }
+}
+
+/**
+ * @param {Page} page
  * @param {{ url: string, selector: string, shot: string, story?: string | null, css?: string }} o
  * @returns {Promise<ParitySide>}
  */
-async function side(page, { url, selector, shot, story = null, css = '' }) {
+async function measureSide(page, { url, selector, shot, story = null, css = '' }) {
   const errors = /** @type {string[]} */ ([]);
   page.on('pageerror', (e) => errors.push(String(e.message ?? e).split('\n')[0]));
   await page.goto(url, { waitUntil: 'load' });
@@ -255,7 +269,14 @@ async function side(page, { url, selector, shot, story = null, css = '' }) {
     await page.waitForSelector(selector, { state: 'attached', timeout: LOAD_MS });
   } catch {
     const why = story ? await page.evaluate(storybookSentinel, story).catch(() => null) : null;
-    throw new Error(why ?? errors[0] ?? `nothing matches ${selector}`);
+    throw new Error(
+      why
+        ? `${why}: check the story id in conformance.json against this Storybook's index.json`
+        : (errors[0] ??
+            (story
+              ? `nothing matches ${selector}: set parity.storyRoot in conformance.json (or the pair's storyRoot) to the selector of the story's component under your Storybook's decorators`
+              : `the adapter drew nothing for this pair: check its props in conformance.json`))
+    );
   }
   await page.evaluate(() => document.fonts?.ready);
   await settle(page);
@@ -317,6 +338,7 @@ export async function runParity(
         const page = await context.newPage();
         await serveFolders(page, { [STORY_ORIGIN]: storybook, [ADAPTER_ORIGIN]: adapter });
         const s = await side(page, {
+          label: 'story',
           url: storyUrl(pair, cfg.globals?.[theme] ?? ''),
           selector: pair.storyRoot ?? storyRoot,
           shot: join(outDir, 'shots', `${name}.story.png`),
@@ -326,6 +348,7 @@ export async function runParity(
         const page2 = await context.newPage();
         await serveFolders(page2, { [STORY_ORIGIN]: storybook, [ADAPTER_ORIGIN]: adapter });
         const a = await side(page2, {
+          label: 'adapter',
           url: `${ADAPTER_ORIGIN}/${entry}?theme=${theme}`,
           selector: '[data-parity-frame] > *',
           shot: join(outDir, 'shots', `${name}.adapter.png`),
