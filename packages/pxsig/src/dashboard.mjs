@@ -264,7 +264,7 @@ export async function dashboardCommand(
         flags.json
           ? JSON.stringify(report, null, 2)
           : [
-              `${s.rendered} of ${s.screens} screens rendered${s.failed ? `, ${s.failed} failed` : ''} · ${s.withFidelity} breaking a region rule · ${s.withAxe} with axe violations · ${s.withLayout} with layout findings${report.strict ? '' : ' (advisory; --strict makes them fail)'}`,
+              `${s.rendered} of ${s.screens} screens rendered${s.failed ? `, ${s.failed} failed` : ''} · ${s.withFidelity} breaking a region rule · ${s.withAxe} with axe violations · ${s.withLayout} with layout findings · ${s.withAlignment ?? 0} with alignment findings${report.strict ? '' : ' (advisory; --strict makes them fail)'}`,
               ...report.screens
                 .filter((x) => !x.rendered)
                 .map((x) => `  failed: ${x.feature} #${x.index + 1} (${x.theme}): ${x.reason}`),

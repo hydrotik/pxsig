@@ -198,26 +198,28 @@ export function checkGeometry({ screens, file, update = false, complete = false 
 }
 
 /**
- * Each rendered screen's accessibility and layout findings, one line per screen that has any.
- * @template {{ rendered: boolean, axe: { id: string, count: number }[], layout: { rule: string, text: string }[] }} S
+ * Each rendered screen's accessibility, layout and alignment findings, one line per screen that
+ * has any.
+ * @template {{ rendered: boolean, axe: { id: string, count: number }[], layout: { rule: string, text: string }[], alignment?: { rule: string, text: string }[] }} S
  * @param {S[]} screens
  * @param {(s: S) => string} idOf
  */
 export const screenFindings = (screens, idOf) =>
   screens
-    .filter((x) => x.rendered && (x.axe.length || x.layout.length))
+    .filter((x) => x.rendered && (x.axe.length || x.layout.length || x.alignment?.length))
     .map(
       (x) =>
         `${idOf(x)}: ${[
           ...x.axe.map((v) => `axe ${v.id} (${v.count})`),
           ...x.layout.map((l) => `layout ${l.rule}: ${l.text}`),
+          ...(x.alignment ?? []).map((l) => `alignment ${l.rule}: ${l.text}`),
         ].join('; ')}`
     );
 
 /**
  * Each rendered screen's alignment findings (dashboard-check/alignment.mjs), written to
  * `<reports>/alignment.json` as `{ id, findings }` per screen that has any; the lines to print.
- * Advisory on pxsig's own screens until today's are fixed: never failing the check.
+ * Each one also fails the check (`screenFindings`), as an axe or layout finding does.
  * @template {{ rendered: boolean, alignment?: { rule: string, text: string }[] }} S
  * @param {S[]} screens
  * @param {(s: S) => string} idOf
@@ -231,8 +233,6 @@ export function alignmentNotes(screens, idOf, reports) {
   mkdirSync(reports, { recursive: true });
   writeFileSync(join(reports, 'alignment.json'), `${JSON.stringify(notes, null, 2)}\n`);
   return notes.length
-    ? [
-        `[screens] ${notes.length} screens with alignment findings (advisory): reports/alignment.json`,
-      ]
+    ? [`[screens] ${notes.length} screens with alignment findings: reports/alignment.json`]
     : [];
 }
