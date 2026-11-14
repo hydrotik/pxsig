@@ -54,6 +54,7 @@ export {
   inspector,
   insHead,
   insTitle,
+  insDesc,
   insInfo,
   insContext,
   insActions,

@@ -34,11 +34,17 @@ export const insTitle = style({
   margin: 0,
   fontFamily: v.font.mono,
   fontSize: v.fontSize.sm,
+  // Whole pixels: the dialog title's ratio at this size is 17.5px, which put the header, and the
+  // stage and the side panel below it, on a quarter pixel. 18px title + 16px description keep
+  // the header's content even, so the 28px actions centre on a whole pixel too.
+  lineHeight: '1.125rem',
   outline: 'none',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
 });
+/** The header's description: whole pixels (the dialog description's ratio at 9px is 15.75px). */
+export const insDesc = style({ lineHeight: '1rem' });
 export const insInfo = style({
   display: 'flex',
   flexDirection: 'column',

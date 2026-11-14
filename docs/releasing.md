@@ -126,6 +126,26 @@ depend on fonts: take them from the container (`pnpm screens:check`, or CI's `re
 **No findings.** Every screen must also have no accessibility (axe) or layout finding, as `pxsig
 dashboard check --strict` requires; the run lists each one.
 
+**Rendered twice.** Every fixture screen renders twice in the same run
+(`scripts/lib/screens-repeat.mjs`): the same build, container and browser binary, but pass 2 in a
+browser launched for it (no cache, GPU or font state shared with pass 1, which could make two
+renders agree that a fresh run would not), with its own scenario servers and the features in
+reverse order (other neighbours in the parallel renders). The two renders must have the same pixels
+(decoded, exactly), the same accessibility snapshot and the same anchor boxes. A screen whose
+renders differ is **unstable**: the run names it with what differed (the pixel count and their
+region, whether the difference is within the gate, the first structure line that differs), keeps
+both renders in `reports/fixture-repeat/` (with `unstable.json` and `summary.md`, which CI adds to
+the job summary) and fails like a changed screen, so a screen that wobbles is caught in the run
+that renders it, not later as a spurious change against its baseline. A difference within the gate
+fails too: the gate hides it from one check, not from the next. (The wobbles it first found were
+Chromium's partial raster, which pxsig now turns off for every capture: `--disable-partial-raster`,
+docs/configuration.md, "Text rendering".) The one exception is
+`packages/dashboard/fixtures/unstable.json`, a committed list of entry ids, each with its reason; it
+starts empty, a screen goes on it only by the owner's decision, and comes off once its fix (in the
+design system's component, or a capture wait) lands. An entry naming no screen fails; one whose
+screen rendered the same twice is noted for removal. Pass 2 adds the fixture render time once more
+(about a minute in CI); `--repeat 1` renders once, for a quick local look.
+
 **Live screens.** The fixture screens answer the dashboard from sample data; the live screens run
 the real `pxsig serve`, the CLI a person runs, on a staged copy of `examples/single-package`, and
 drive it through the reviewer's flows on one page: open the dashboard link, approve the new
@@ -168,7 +188,8 @@ PXSIG_LIVE_BIN="$PWD/target/linux/release/pxsig" pnpm screens:check
 - Approvals in the flows are clicks on the page of the server the run started, in its scratch
   store, with a link minted from that server's own CLI token. Nothing in `packages/dashboard/.pxsig`
   is approved by a run; ports 6006 and 6070 are never used.
-- `--repeat <n>` (default 2) runs the flows n times per theme: a step whose structure differs
+- `--repeat <n>` (default 2) runs the flows n times per theme (and, above 1, renders the fixture
+  screens twice, "Rendered twice"): a step whose structure differs
   between runs, or whose screenshot differs beyond the gate (run 2 against run 1, as a render
   against its baseline), fails as "not deterministic". Any difference, within the gate too, keeps
   both renders in `reports/live-repeat/` and is logged.

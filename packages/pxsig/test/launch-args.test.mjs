@@ -26,16 +26,23 @@ const chromium = await (async () => {
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 test('pxsig draws text in grayscale with unhinted advances', () => {
-  assert.deepEqual(CHROMIUM_ARGS, ['--disable-lcd-text', '--font-render-hinting=none']);
+  assert.deepEqual(CHROMIUM_ARGS.slice(0, 2), ['--disable-lcd-text', '--font-render-hinting=none']);
   assert.deepEqual(DEFAULTS.capture.launchArgs, [], 'nothing added by default');
   assert.deepEqual(chromiumArgs(null), CHROMIUM_ARGS);
   assert.deepEqual(chromiumArgs({ root }), CHROMIUM_ARGS);
 });
 
+test('pxsig rasters every tile in full, so a page renders the same pixels every time', () => {
+  // Partial raster antialiased rounded corners differently depending on when a late change landed.
+  assert.ok(CHROMIUM_ARGS.includes('--disable-partial-raster'));
+  assert.ok(chromiumArgs(null).includes('--disable-partial-raster'));
+  assert.equal(CHROMIUM_ARGS.length, 3);
+});
+
 test("the project's capture.launchArgs come after pxsig's, so the same switch is overridden", () => {
   assert.deepEqual(
     chromiumArgs({ root, config: { capture: { launchArgs: ['--font-render-hinting=full'] } } }),
-    ['--disable-lcd-text', '--font-render-hinting=none', '--font-render-hinting=full']
+    [...CHROMIUM_ARGS, '--font-render-hinting=full']
   );
 });
 
