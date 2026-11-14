@@ -94,7 +94,7 @@ packages/ui/                the project: stories, store (.pxsig/)
   pxsig.config.json         { "dashboard": { "ui": "./pxsig-ui" } }   <- the one registration
   pxsig-ui/                 the adapter: no pxsig.config.json, no projects entry
     index.tsx               exports name, tokens and the contract's components
-    conformance.json        { "adapter": "acme-ui", "contract": "1.5.0", "components": { … } }
+    conformance.json        { "adapter": "acme-ui", "contract": "1.6.0", "components": { … } }
     vite.mjs                optional: aliases and folders the design system's build needs
 ```
 
@@ -129,7 +129,11 @@ anywhere in the workspace.
    [The contract version](#the-contract-version)); without it, 1.0.0.
 
 6. Optional: a `vite.mjs` whose default export returns build settings your design system needs:
-   `{ alias: { name: path }, allow: [folders], optimizeDepsExclude: [names] }`.
+   `{ alias: { name: path }, allow: [folders], optimizeDepsExclude: [names], classPrefixes: { folder: prefix } }`.
+   `classPrefixes` starts every class the vanilla-extract stylesheets in that folder define with
+   the prefix, so a rule can select the design system's elements and nothing else: the reference
+   adapter gives them its design system's border-box reset that way (`box-sizing.css.ts`), because
+   the dashboard does not load that design system's global stylesheet.
 
 Run `pxsig dashboard gaps` at any point: it lists what is missing, partial and bespoke, and the
 dashboard files each one affects.
@@ -182,18 +186,21 @@ The layout each region keeps, whatever your design system looks like. Your adapt
 sizes and words onto its components; it does not change these. They are in `contract.ts` as R1 to
 R4.
 
-| Region                                  | Rule                                                                                                                                                                                                                           |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Top bar (`TopNav`, `NavList`, `NavEnd`) | **R1** One line at every width: the mark, the links and the pinned controls. Links that do not fit move into an overflow menu; a `keep` link stays in the bar.                                                                 |
-| Toolbar (`Toolbar` and its parts)       | **R1** The controls on one line at the dashboard's working width (1280 CSS px). **R2** One height for every control on that line: a control with no `size` takes the toolbar's (every toolbar the dashboard draws is `sm`).    |
-| A row of actions (a card's buttons)     | **R1** One line at 1280 CSS px. **R2** One height on that line.                                                                                                                                                                |
-| Table (`DataTable`)                     | **R2** A cell's actions are the small size (`sm`, the dashboard passes it), the same height as a toolbar's controls, and one height in the table. **R3** Column headers in the case of `header`.                               |
-| Headings and labels                     | **R3** `CardTitle`, `DialogTitle`, column headers, `NavLink`, `Button`, `Badge`, `StatusBadge` and field labels are drawn in the case of the text passed: no `text-transform`, no re-casing. The words come from pxsig's copy. |
-| Stat cards (`StatGroup`)                | **R3** An item's label is a micro label in capitals: the contract's one casing, the same in every adapter. **R4** A tone colours the item's value; its border, edge, background and label stay neutral.                        |
-| Badges (`Badge`)                        | **R4** A tone colours the text; the wash (`subtle`), border (`outline`) and fill (`solid`) stay neutral.                                                                                                                       |
-| Status badges (`StatusBadge`)           | **R4** A tone colours the glyph; the label stays in the text colour, with no wash or border.                                                                                                                                   |
+| Region                                  | Rule                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Top bar (`TopNav`, `NavList`, `NavEnd`) | **R1** One line at every width: the mark, the links and the pinned controls. Links that do not fit move into an overflow menu; a `keep` link stays in the bar.                                                                                                                                                                                                                                                |
+| Toolbar (`Toolbar` and its parts)       | **R1** The controls on one line at the dashboard's working width (1280 CSS px). **R2** One height for every control on that line: a control with no `size` takes the toolbar's (every toolbar the dashboard draws is `sm`).                                                                                                                                                                                   |
+| A row of actions (a card's buttons)     | **R1** One line at 1280 CSS px. **R2** One height on that line.                                                                                                                                                                                                                                                                                                                                               |
+| Table (`DataTable`)                     | **R2** A cell's actions are the small size (`sm`, the dashboard passes it), the same height as a toolbar's controls, and one height in the table. **R3** Column headers in the case of `header`.                                                                                                                                                                                                              |
+| Headings and labels                     | **R3** `CardTitle`, `DialogTitle`, column headers, `NavLink`, `Button`, `Badge`, `StatusBadge` and field labels are drawn in the case of the text passed: no `text-transform` (badges excepted, below), no re-casing. The words come from pxsig's copy.                                                                                                                                                       |
+| Top bar counts (`NavLink` `count`)      | **R4** `countTone` colours the count's digits (`info`: the accent; `neutral`: the text colour); its pill stays neutral.                                                                                                                                                                                                                                                                                       |
+| Stat cards (`StatGroup`)                | **R3** An item's label is a micro label in capitals: a casing the contract sets, the same in every adapter. **R4** A tone colours the item's value; its border, edge, background and label stay neutral.                                                                                                                                                                                                      |
+| Badges (`Badge`)                        | **R3** May be drawn in tracked micro caps (`text-transform: uppercase`), the contract's second casing; the text passed stays as it is. **R4** Either a tone colours the text, the wash (`subtle`), border (`outline`) and fill (`solid`) staying neutral; or, as your design system draws its badges, it colours the wash, border and dot, in that tone's own colour only, with the text at AA (4.5:1) on it. |
+| Status badges (`StatusBadge`)           | **R3** May be drawn in micro caps, as a `Badge`. **R4** A tone colours the glyph; the label stays in the text colour, with no wash or border.                                                                                                                                                                                                                                                                 |
 
-R4 is how the plain adapter (`adapters/plain/`) draws tones: compare yours with it.
+R4 is how the plain adapter (`adapters/plain/`) draws tones: compare yours with it. The reference
+adapter (`adapters/hydrotik/`) takes the badge exception: its `success`, `warning` and `danger`
+badges are its design system's tinted variants.
 
 ## What a faithful adapter keeps
 
@@ -210,10 +217,12 @@ differ from this list, they win.
   (`TopNav`, `NavLink`).
 - **One line, one size, per row.** A toolbar's controls and a card's actions on one line, at one
   height; a table's actions at the small size (R1, R2).
-- **The copy's casing.** Headers, headings and labels in the case of the text passed; only stat
-  labels are capitals, by the contract (R3).
-- **One way to show a tone.** The value, the text or the glyph takes the tone's colour; borders,
-  edges and washes stay neutral (R4). The adapter chooses the colours, not where they go.
+- **The copy's casing.** Headers, headings and labels in the case of the text passed; stat labels
+  are capitals, and badges may be micro caps, by the contract (R3).
+- **One way to show a tone.** The value, the text, the count or the glyph takes the tone's colour;
+  borders, edges and washes stay neutral (R4). A badge may instead take its tone's colour in its
+  wash, border and dot, as your design system draws it. The adapter chooses the colours, not where
+  they go.
 - **`className` on the root element**, so the dashboard's own layout holds.
 - **The runtime's theme mode**, with colours from variables that follow it (rule 7,
   [Tokens](#tokens)).
@@ -334,8 +343,10 @@ accessibility, the questions to answer when mapping, and the acceptance check.
   `neutral`: a plain total), `countLabel` (the link's accessible name with its count), `keep`
   (since 1.4.0), `children`.
 - **Behaviour**: a plain link: the dashboard follows the hash. No count at zero; cap long counts
-  (99+). A `keep` link (Help) never moves into the overflow menu: it stays in the bar at every
-  width and the other links move first. Without overflow, `keep` changes nothing.
+  (99+). `countTone` colours the count's digits (`info`: the accent; `neutral`: the text colour);
+  its pill or wash stays neutral (R4). A `keep` link (Help) never moves into the overflow menu: it
+  stays in the bar at every width and the other links move first. Without overflow, `keep` changes
+  nothing.
 - **Accessibility**: `aria-current="page"` when `active`; when there is a count, the accessible name
   includes it (use `countLabel`).
 - **Mapping questions**: Does your nav item take a count or badge? Which tone is your attention
@@ -506,7 +517,8 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Purpose**: a state: icon, tone and label (verdicts, impacts, coverage codes).
 - **Props**: `tone`, `icon` (an `IconName`), `label`, `title`, `className`.
 - **Behaviour**: icon then label, the icon in the tone's colour; the label in text colour, in the
-  case it is passed; no wash or border in the tone's colour (R3, R4).
+  case it is passed or in micro caps (`text-transform: uppercase`); no wash or border in the tone's
+  colour (R3, R4).
 - **Accessibility**: the label is always visible text; the icon is decorative.
 - **Mapping questions**: Does your status component take a custom icon and tone, or only presets?
   If only presets, map (tone, icon) to the nearest preset and say so in the conformance note.
@@ -518,9 +530,13 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Purpose**: a short tag (mode, state, "New", connection), not a count of work.
 - **Props**: `tone` (`neutral` default), `emphasis` (`subtle` default, `outline`, `solid`), `pulse`
   (live indicator), `title`, `className`, `children`.
-- **Behaviour**: inline, small type, in the case it is passed (R3). A `tone` colours the text in
-  that tone's own colour (`info`: the accent; `neutral`: the text colour); the wash, border and fill
-  of the emphasis stay neutral (R4): the plain adapter draws `solid` like `subtle`.
+- **Behaviour**: inline, small type, in the case it is passed or in tracked micro caps
+  (`text-transform: uppercase`, R3). A `tone` colours the text in that tone's own colour (`info`:
+  the accent; `neutral`: the text colour); the wash, border and fill of the emphasis stay neutral
+  (R4): the plain adapter draws `solid` like `subtle`. Or, since 1.6.0, a tone colours the wash,
+  border and dot instead, as your design system's own tinted badges do, in that tone's colour only
+  and with the text at AA (4.5:1) on the wash; such a badge may ignore `emphasis`. The reference
+  adapter draws `success`, `warning` and `danger` this way.
 - **Accessibility**: text; `pulse` must respect reduced motion.
 - **Mapping questions**: Which of your badge variants is subtle, outline and solid? Is there a live
   or pulsing dot?
@@ -866,11 +882,14 @@ draw them with your own segmented control and buttons.
        buttons and a card's actions at `sm`).
      - `casing` (R3): a column header, heading, top-bar link, button, badge or field label is drawn
        in another case than its text (`text-transform`), or its text is a string of the dashboard's
-       copy in another case. Stat labels, the contract's micro labels, are not measured.
+       copy in another case. Stat labels, the contract's micro labels, are not measured; a badge
+       or status badge may be `uppercase` (micro caps), and its text is still compared with the copy.
      - `tone` (R4): a stat card, badge or status badge has a border, background, edge (`::before`,
        `::after`) or shadow in a tone colour (`--pxsig-color-success`, `warning`, `danger`, and
-       `accent` for `info`), drawn or mixed with `color-mix()`. A selected (pressed) tile is not
-       measured.
+       `accent` for `info`), drawn or mixed with `color-mix()`. A badge may have them in the tone
+       it was given (the dashboard adds `pxsig-ui-tone-<tone>` to its `className`), never in
+       another; and a badge's text is under 4.5:1 (AA) on its background. A selected (pressed)
+       tile is not measured.
 
      The dashboard adds `pxsig-ui-<Name>` to the `className` of `TopNav`, `StatGroup`, `Badge` and
      `StatusBadge`, so the rules find those regions in any adapter: keep `className` on the root

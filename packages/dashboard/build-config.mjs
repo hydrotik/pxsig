@@ -13,12 +13,15 @@
  *      is a path to an adapter module (a file, or a folder with an index.tsx / .ts / .jsx / .js);
  *   3. anything else fails the build at once, naming what it looked for.
  * Vite aliases `@ui-adapter` to the module. An adapter folder may carry a `vite.mjs` whose default
- * export returns build settings (aliases, folders to allow) for its design system.
+ * export returns build settings (aliases, folders to allow, class prefixes) for its design system.
  *
  * @typedef {{ adapter?: string, cwd?: string }} AdapterOptions
  * @typedef {{ name: string, file: string, dir: string, from: string }} ResolvedAdapter
- * @typedef {{ alias?: Record<string, string>, allow?: string[], dedupe?: string[], optimizeDepsExclude?: string[] }} AdapterBuildSettings
- *   what an adapter folder's `vite.mjs` default export returns
+ * @typedef {{ alias?: Record<string, string>, allow?: string[], dedupe?: string[], optimizeDepsExclude?: string[], classPrefixes?: Record<string, string> }} AdapterBuildSettings
+ *   what an adapter folder's `vite.mjs` default export returns; `classPrefixes` maps a folder to the
+ *   prefix of every class its stylesheets define, so a rule can select that design system's elements
+ * @typedef {{ hash: string, filePath: string }} StyleScope
+ *   what vanilla-extract names a class from: its hash, and its file relative to the build's root
  */
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -123,6 +126,28 @@ export function packageDir(name, fromDirs) {
 }
 
 /**
+ * vanilla-extract's `identifiers` for an adapter's `classPrefixes`: a class defined in one of those
+ * folders is `<prefix><hash>`, any other the short hash vanilla-extract gives it by default.
+ * @param {Record<string, string> | undefined} prefixes folder → prefix
+ * @param {string} root the build's root, which `filePath` is relative to
+ * @returns {((scope: StyleScope) => string) | undefined}
+ */
+export function classIdentifiers(prefixes, root) {
+  // Real paths: vanilla-extract names each file by its real path, whatever link led to the folder.
+  const dirs = Object.entries(prefixes ?? {}).map(([dir, prefix]) => [realpathSync(dir), prefix]);
+  if (!dirs.length) return undefined;
+  return ({ hash, filePath }) => {
+    const file = path.resolve(root, filePath);
+    const hit = dirs.find(([dir]) => {
+      const rel = path.relative(dir, file);
+      return !rel.startsWith('..') && !path.isAbsolute(rel);
+    });
+    // The default: a hash that starts with a digit is not a valid class name without the underscore.
+    return hit ? `${hit[1]}${hash}` : /^[0-9]/.test(hash) ? `_${hash}` : hash;
+  };
+}
+
+/**
  * `o.resolveFrom` lists the folders to resolve react, react-dom and the vanilla-extract css package
  * from; `o.react` is the default export of the Vite React plugin (`\@vitejs/plugin-react`), and
  * `o.vanillaExtractPlugin` the vanilla-extract Vite plugin.
@@ -132,7 +157,7 @@ export function packageDir(name, fromDirs) {
  * @param {string} o.outDir
  * @param {string[]} o.resolveFrom
  * @param {() => unknown} o.react
- * @param {(options: { unstable_pluginFilter: (plugin: { name: string }) => boolean }) => unknown} o.vanillaExtractPlugin
+ * @param {(options: { identifiers?: (scope: StyleScope) => string, unstable_pluginFilter: (plugin: { name: string }) => boolean }) => unknown} o.vanillaExtractPlugin
  * @param {string} [o.root]          the dashboard source folder (default: this one)
  * @param {boolean} [o.minify]       minify the bundle; default false (readable output that a reviewer
  *                                   can audit), true when PXSIG_DASHBOARD_MINIFY=1
@@ -173,6 +198,7 @@ export async function dashboardConfig({
     packageDir('@vanilla-extract/css', [...resolveFrom, ...(integration ? [integration] : [])]) ??
     need('@vanilla-extract/css');
   const allow = [root, ui.dir, ...(extra.allow ?? [])];
+  const identifiers = classIdentifiers(extra.classPrefixes, root);
   // The contract version the adapter was written for: icons added since are drawn as their defaults.
   let contract = '1.0.0';
   try {
@@ -193,6 +219,7 @@ export async function dashboardConfig({
       { name: 'pxsig-allow-design-system', config: () => ({ server: { fs: { allow } } }) },
       react(),
       vanillaExtractPlugin({
+        ...(identifiers ? { identifiers } : {}),
         unstable_pluginFilter: ({ name }) =>
           name === 'pxsig-allow-design-system' || name === 'vite-tsconfig-paths',
       }),

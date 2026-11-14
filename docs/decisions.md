@@ -13,7 +13,10 @@ SSIM catches structural change; the other metrics localise it and catch what SSI
 
 **Cost.** A coarse grid can average away a thin change. The detail channel (sparse, full-resolution
 tiles with edge energy) covers borders, strokes and icons; the adaptive grid keeps cells near
-`minCellPx` on small components.
+`minCellPx` on small components. Those rules read luminance, so a small area changing hue at about
+the same lightness (a badge's tint) passed them all: the color rule (0.7.7) compares CIEDE2000
+color over flat areas of the full-resolution baseline image and over the signature's cells
+([spec.md](spec.md#the-color-rule)).
 
 ## Pack the baseline image with its signature
 

@@ -44,6 +44,7 @@ globalStyle(`${storyCard}[data-status="flaky"]`, edge(v.color.warning));
 globalStyle(`${storyCard}[data-status="new"]`, edge(v.color.accent));
 globalStyle(`${storyCard}[data-status="error"]`, edge(v.color.danger));
 globalStyle(`${storyCard}[data-status="rejected"]`, edge(v.color.danger));
+globalStyle(`${storyCard}[data-status="blocked"]`, edge(v.color.danger));
 globalStyle(`${storyCard}[data-status="approved"]`, edge(v.color.success));
 // --- affordance: what a clickable card does, top-right ---------------------------------------
 export const affordance = style({

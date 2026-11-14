@@ -19,6 +19,7 @@ import {
 } from '../data';
 import { useApproving } from '../link';
 import * as s from '../dashboard.css';
+import { useFailure } from './Failure';
 
 /** The parts of an analysis' result line, the zero ones left out. */
 function resultParts(sm: {
@@ -52,6 +53,7 @@ export function ReactStrip({
   const approving = useApproving();
   const readOnly = approving?.allowed === false;
   const offline = !live;
+  const failure = useFailure();
   const box = React.useRef<HTMLElement>(null);
   const had = React.useRef(false);
   // A focused Skip or Cancel that goes away: focus moves to the line that replaced it, else to
@@ -93,10 +95,13 @@ export function ReactStrip({
           emphasis="outline"
           disabled={readOnly || offline}
           title={readOnly ? t('diagnostics.react.readOnlyTitle') : t('app.react.skipTitle')}
-          onClick={() => void skipReact().catch((e: Error) => alert(e.message))}
+          onClick={() =>
+            void skipReact().catch((e: Error) => failure.report(e, t('app.react.skip')))
+          }
         >
           {t('app.react.skip')}
         </Button>
+        {failure.note}
       </div>
     ) : done && parts.length ? (
       <div key="react" className={s.runBar}>
@@ -148,10 +153,13 @@ export function ReactStrip({
           emphasis="outline"
           disabled={readOnly || offline}
           title={readOnly ? t('diagnostics.react.readOnlyTitle') : t('app.react.cancelTitle')}
-          onClick={() => void cancelCheck().catch((e: Error) => alert(e.message))}
+          onClick={() =>
+            void cancelCheck().catch((e: Error) => failure.report(e, t('app.react.cancel')))
+          }
         >
           {t('app.react.cancel')}
         </Button>
+        {failure.note}
       </div>
     ) : m ? (
       <div key="measure" className={s.runBar}>

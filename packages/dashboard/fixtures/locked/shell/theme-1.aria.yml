@@ -88,6 +88,8 @@
   - definition: "Left out of a partial check: no edited file affects it."
   - term: Error
   - definition: The render failed.
+  - term: Blocked
+  - definition: "Masks no approval passes. No decision is needed: the author fixes the masks, and the entry fails until a re-check passes."
   - img "Drawing of the dashboard": Overview Review Stories Coverage Accessibility Runs Help Review Status Latest check Open Items Status Coverage
   - heading "React Analysis" [level=3]
   - paragraph: "Alerts only: nothing here fails a check, changes an exit code or asks for a decision."
@@ -134,17 +136,17 @@
   - term: A fixed hash
   - definition: "The commit or build as an arg the story sets (commit: '0000000'), not one read from the build."
   - term: data-volatile
-  - definition: "When the value cannot be fixed, the component's author marks the element that shows it: <time data-volatile=\"relative time\">. Every project that renders the component masks it, with no configuration. The inside of the box is painted over before the screenshot; its size and position are still compared. The value is the reason shown with the mask."
+  - definition: "When the value cannot be fixed, the component's author marks the element that shows it: <time data-volatile=\"relative time\">. Every project that renders the component masks it, with no configuration. The inside of the box is painted over before the screenshot, at the element's own place, so a popover above it still shows; its size and position are still compared. The value is the reason shown with the mask, and is required. Only on a leaf, with text and inline formatting inside: on a container, or with no value, the entry fails."
   - term: capture.ignore · capture.addIgnore
   - definition: Selectors masked in every story of a project (pxsig.config.json), or of every project (defaults in pxsig.workspace.json). capture.ignore replaces the inherited list; capture.addIgnore adds to it. A story's own ignore masks that story only.
   - term: Recorded
-  - definition: "Each render records its masks: the selector, where it came from (data-volatile, story, project or workspace), the reason and its share of the capture. An approved baseline keeps them. The inspector's Masks section lists them."
+  - definition: "Each render records its masks: the selector, where it came from (data-volatile, story, project or workspace), the reason, the elements matched and their boxes. Every approved baseline keeps them, none as an empty list. The inspector's Masks section lists them."
   - term: Masks changed
-  - definition: A mask added, removed or grown since the baseline fails the entry with the reason masks changed, for a person to approve, whatever the pixels. When no pixel differs, the change stepper reads Masks changed and the Masks section, first in the side panel, gives each mask's share in the baseline and in the render.
-  - term: Masks over 25%
-  - definition: "A mask over 25% of the capture is a warning, never a failure: most changes under it would pass. Marked Large mask on the entry and its card, counted in Open items, listed by the Masks over 25% of the capture filter."
+  - definition: A mask added, removed, grown by any pixel, moved or matching another number of elements since the baseline fails the entry with the reason masks changed, for a person to approve, whatever the pixels. When no pixel differs, the change stepper reads Masks changed and the Masks section, first in the side panel, gives each mask's share in the baseline and in the render.
+  - term: Masks over 25% and 50%
+  - definition: "All of an entry's masks together over 25% of the capture are a warning: most changes under them would pass. Marked Large mask on the entry and its card, counted in Open items, listed by the Masks over 25% of the capture filter. Together over 50% of the capture, or a mask on the story root, they fail the entry, and no approval passes it: the entry is Blocked, out of the review (no decision is needed, the author fixes it), and the Masks section says what to do (make the masks smaller, or mask the value, not the story root)."
   - term: Adopting masks
-  - definition: Marking a component data-volatile, or a new capture.ignore, gives one masks changed entry per entry it applies to, approved once. Story masks against a baseline approved before masks were recorded are not a change.
+  - definition: Marking a component data-volatile, or a new capture.ignore, gives one masks changed entry per entry it applies to, approved once. A story's ignore against a baseline approved with 0.7.6 or earlier is not a change where that baseline's image shows it painted.
   - heading "Coverage Statuses" [level=3]
   - paragraph: Shown in the Coverage section, and as extra badges on a card when an entry has a coverage issue.
   - term: Not registered
@@ -230,6 +232,8 @@
   - definition: Fails when SSIM < 0.99, more than 2% of cells differ, or ≥ 2 cells differ by more than 32
   - term: Detail channel
   - definition: 16 px tiles, 4 px blocks. Fails when ≥ 3 tiles change by more than 32 or gain an edge.
+  - term: Color rule
+  - definition: Fails when ≥ 64 connected flat pixels change color by ΔE00 ≥ 3, or ≥ 3 cells by ΔE00 ≥ 5 (CIEDE2000)
   - term: Modes
   - definition: —
   - term: Baseline format
@@ -270,4 +274,4 @@
   - definition: List coverage issues per component
   - term: pxsig doctor --repair
   - definition: Plan the safe repairs; add --apply to run them
-  - paragraph: "This page: UI contract 1.5.0."
+  - paragraph: "This page: UI contract 1.6.0."

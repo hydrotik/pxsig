@@ -1,8 +1,8 @@
 /**
  * The plain adapter's top bar (adapters/plain/nav.tsx) in a real browser, against a mocked server
  * (flows-helpers.mjs): one line at every width, the links that do not fit in a More menu, Help
- * (`keep`) in the bar, and the menu button pattern from the keyboard. Skips when no Chromium is
- * available (PXSIG_CHROMIUM names an executable).
+ * (`keep`) in the bar, the menu button pattern from the keyboard, and each count's digits in its
+ * tone's colour. Skips when no Chromium is available (PXSIG_CHROMIUM names an executable).
  */
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -95,6 +95,36 @@ test('More is a menu button: arrows, Home, End and Escape, focus back on the but
     assert.equal(await page.evaluate(() => location.hash), href);
     // The current section is in the menu: More says so.
     await page.locator('.plain-more > button[data-current]').waitFor();
+    assert.deepEqual(errors, []);
+  } finally {
+    await page.close();
+  }
+});
+
+test("a count's digits take its tone: info the accent, neutral the text colour", async (t) => {
+  if (skip || other) return t.skip(skip || other);
+  const { page, errors } = await open(scenarioData('changed'));
+  try {
+    const counts = await page.locator('nav.plain-nav').evaluate((nav) => {
+      const probe = document.createElement('span');
+      nav.append(probe);
+      const colour = (v) => ((probe.style.color = `var(${v})`), getComputedStyle(probe).color);
+      const want = { info: colour('--plain-accent'), neutral: colour('--plain-text') };
+      probe.remove();
+      return [...nav.querySelectorAll('a > .plain-badge')].map((b) => ({
+        tone: b.getAttribute('data-tone'),
+        ok: getComputedStyle(b).color === want[b.getAttribute('data-tone') ?? ''],
+      }));
+    });
+    assert.ok(
+      counts.some((c) => c.tone === 'info'),
+      'a count asks for action'
+    );
+    assert.deepEqual(
+      counts.filter((c) => !c.ok),
+      [],
+      'every count in its tone colour'
+    );
     assert.deepEqual(errors, []);
   } finally {
     await page.close();

@@ -86,6 +86,11 @@ export function inspectLayout({ max }) {
   const allowed = (/** @type {Element} */ el) => !!el.closest('[data-layout-allow]');
   // A modal <dialog> makes the rest of the page inert without an `inert` attribute.
   const modal = document.querySelector('dialog:modal');
+  // Visually hidden (a slider thumb's range input, screen-reader-only text): clipped to nothing,
+  // so none of it is drawn.
+  const clippedAway = (/** @type {CSSStyleDeclaration} */ cs) =>
+    /^inset\((5\d|[6-9]\d|100)(\.\d+)?%\)$/.test(cs.clipPath) ||
+    cs.clip === 'rect(0px, 0px, 0px, 0px)';
   const visible = (/** @type {Element} */ el) => {
     const r = el.getBoundingClientRect();
     const cs = getComputedStyle(el);
@@ -94,6 +99,7 @@ export function inspectLayout({ max }) {
       r.height > 1 &&
       cs.visibility !== 'hidden' &&
       cs.opacity !== '0' &&
+      !clippedAway(cs) &&
       !el.closest('[inert], [aria-hidden="true"]') &&
       (!modal || modal.contains(el))
     );

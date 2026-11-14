@@ -2,14 +2,19 @@
 
 - **Masks over half a capture, or on the story root, fail the entry, and no approval passes it.**
   All of an entry's masks together over 50% of the capture, or a mask the capture found on the
-  story root (or one over 95% of the capture), fail the entry with `masks cover 62% of the capture,
-  over 50%` or `a mask covers the story root: …` and `masksBlocked` on the row. That depends on the
+  story root that covers 95% of the capture or more (a smaller one is weighed by its share), fail
+  the entry with `masks cover 62% of the capture, over 50%` or `a mask covers the story root: …`
+  and `masksBlocked` on the row. That depends on the
   render alone, and no baseline is written from such a render (nor from one whose capture reports
   a mask it may not apply as asked, `problems` in the masks record): not by the dashboard's approval,
   `check --update`, `pxsig baseline` or `--allow-masks`. The 25% warning now weighs all of an
-  entry's masks together (`masksCoverage`). summary.md has a line for each; `check --sarif` reports
-  them as `pxsig/mask-limit` (error), `pxsig/masks-changed` and `pxsig/large-mask` (warnings, one
-  per entry instead of one per mask).
+  entry's masks together (`masksCoverage`), and so do the dashboard's Large mask badge (its title
+  names the masks and their share together), the Open items row and the Review Stories filter
+  "Masks over 25% of the capture" (were: one mask over 25%). summary.md has a line for each;
+  `check --sarif` reports them as `pxsig/mask-limit` (error), `pxsig/masks-changed` and
+  `pxsig/large-mask` (warnings, one per entry instead of one per mask), and its `[check] wrote …`
+  line counts them that way: entries over the mask limits, with masks changed and with large
+  masks (was: each mask over 25% on its own, the other masks results counted as a11y violations).
   To update: make each such mask smaller (mask the value, not the component), or give the story
   fixed data instead (`pxsig help volatile`).
 - **`check --update` and `pxsig baseline` refuse a masks change without `--allow-masks`.** An entry
@@ -42,3 +47,27 @@
   changes the trimmed size. A mask over the whole capture no longer trims it to 16 × 16.
   To update: entries whose story mask reaches the capture's bottom-right corner change size once:
   review and approve them.
+- **A blocked entry says what to do, and takes no decision.** Every refusal and every line about
+  masks no approval passes names the fix for its cause: `make the masks smaller` (over 50%),
+  `mask the value, not the story root`, `give data-volatile a reason, e.g.
+  data-volatile="relative time"`, `put data-volatile on the element that shows the value (a
+  leaf)` (was: `reduce the masks` or `until the masks are smaller` for every cause), in the
+  engine's refusal, `[check] mask:`, SARIF and the tools. The server refuses approve, reject and
+  the a11y decisions on such an entry (409, `the masks block this entry, and the author fixes it
+  (no decision is needed): …`), and `pxsig approve plan` leaves it out with the same words. In the
+  dashboard it is Blocked: out of the review (not in "to review", a session's progress or its
+  arrows, nor the a11y queue), with no Reject or Approve in the inspector (the line is in their
+  place; the A and R keys send nothing; Re-check stays), in Overview's "Blocked by masks, the
+  author fixes them" item and the Review Stories filter "Blocked by masks". It still fails the
+  check, CI and doctor. The Masks section shows the line also when no mask was painted (a
+  `data-volatile` with no reason or on a container).
+  To update: nothing to do; a rejection recorded before on such an entry stays in the log.
+- **A refused request leaves the dashboard usable.** A refused decision or re-check in the
+  inspector is said under its header; a card's re-check, and the React analysis' Skip, Cancel,
+  Measure and Analyse, say it beside their button. None is a browser alert any more, which held
+  the page with the button reading "Approving…" until it was closed.
+  To update: nothing to do.
+- **The engine's result cache names the engine build.** A cached verdict is reused only by the
+  build that wrote it (the hash of its executable), so two builds of one version, a pull
+  request's and main's, never reuse each other's verdicts.
+  To update: nothing to do; the first check after an upgrade runs uncached.

@@ -53,7 +53,7 @@ fn masks_over_half_the_capture_together_fail_and_no_baseline_is_written() {
     let err = res["errors"][0].as_str().unwrap();
     assert!(
         err.contains("masks cover 88% of the capture, over 50%")
-            && err.contains("no approval writes this baseline"),
+            && err.ends_with("no approval writes this baseline; make the masks smaller"),
         "{err}"
     );
     let e = capture_png_policy(&png, &d.join("s/a.psig"), 64, None, false, None, None, None);
@@ -67,35 +67,47 @@ fn masks_over_half_the_capture_together_fail_and_no_baseline_is_written() {
 }
 
 #[test]
-fn a_mask_on_the_story_root_fails_whatever_its_share() {
-    // Mask audit 4: `#storybook-root > *` masked everything and was only a warning.
+fn a_mask_on_the_story_root_fails_from_95_percent_of_the_capture() {
+    // Mask audit 4: `#storybook-root > *` masked everything and was only a warning. Owner decision
+    // after the Ready to try: on the story root means at the end of the single-child chain the
+    // capture found (`root`) and over 95% of the capture; a smaller one is weighed by its share.
     let d = scratch("masks-root");
     let png = store(&d, None);
-    fs::write(
-        png.with_extension("masks.json"),
-        json!({ "v": 1, "masks": [{ "selector": "#storybook-root > *", "source": "story", "count": 1,
-            "px": 16, "rects": [[0, 0, 4, 4]], "root": true }] })
-        .to_string(),
-    )
-    .unwrap();
+    let root = |rect: [u32; 4], px: u32| {
+        let m = json!({ "selector": "#storybook-root > *", "source": "story", "count": 1,
+            "px": px, "rects": [rect], "root": true });
+        fs::write(
+            png.with_extension("masks.json"),
+            json!({ "v": 1, "masks": [m] }).to_string(),
+        )
+        .unwrap();
+    };
+    // A single-chain mask at 31% of the 32 × 32 capture: a large mask, approvable.
+    root([0, 0, 32, 10], 320);
+    let r = row(&d, None);
+    assert!(r.get("masksBlocked").is_none(), "{r}");
+    assert_eq!(
+        r["masksLarge"][0]["selector"],
+        json!("#storybook-root > *"),
+        "{r}"
+    );
+    // At 97%: on the story root.
+    root([0, 0, 32, 31], 992);
     let r = row(&d, None);
     assert_eq!(r["pass"], json!(false));
     assert_eq!(
         r["masksBlocked"],
-        json!({ "root": ["#storybook-root > *"] })
+        json!({ "coverage": 0.9688, "root": ["#storybook-root > *"] }),
+        "{r}"
     );
     assert!(r["reasons"]
         .as_array()
         .unwrap()
         .contains(&json!("a mask covers the story root: #storybook-root > *")));
-    // A mask over nearly all of the capture covers the root, whatever the capture recorded.
+    // A mask over all of the capture that the capture did not find on the root: its share fails it.
     write_masks(&png, &[("#all", "project", &[[0, 0, 32, 32]])]);
     let r = row(&d, None);
-    assert_eq!(
-        r["masksBlocked"],
-        json!({ "coverage": 1.0, "root": ["#all"] }),
-        "{r}"
-    );
+    assert_eq!(r["masksBlocked"], json!({ "coverage": 1.0 }), "{r}");
     let _ = fs::remove_dir_all(&d);
 }
 
@@ -327,4 +339,33 @@ fn a_mask_the_capture_may_not_apply_fails_and_no_baseline_is_written() {
         .unwrap()
         .contains("each problem needs a known kind"));
     let _ = fs::remove_dir_all(&d);
+}
+
+#[test]
+fn each_block_says_what_to_do_about_its_own_cause() {
+    // Try-store finding: every refusal ended "reduce the masks", which says nothing to do for a
+    // `data-volatile` with no reason, or one on a container.
+    use super::masks::blocked_fixes;
+    let fix = |b: serde_json::Value| blocked_fixes(&b).join("; ");
+    assert_eq!(fix(json!({ "coverage": 0.6 })), "make the masks smaller");
+    assert_eq!(
+        fix(json!({ "root": ["#r > *"] })),
+        "mask the value, not the story root"
+    );
+    assert_eq!(
+        fix(json!({ "problems": [{ "kind": "reason", "element": "span" }] })),
+        "give data-volatile a reason, e.g. data-volatile=\"relative time\""
+    );
+    assert_eq!(
+        fix(json!({ "problems": [
+            { "kind": "container", "element": "div" },
+            { "kind": "container", "element": "p" }
+        ] })),
+        "put data-volatile on the element that shows the value (a leaf)",
+        "each fix once"
+    );
+    assert_eq!(
+        fix(json!({ "coverage": 1.0, "root": ["#r > *"] })),
+        "make the masks smaller; mask the value, not the story root"
+    );
 }

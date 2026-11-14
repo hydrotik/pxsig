@@ -350,12 +350,21 @@ export async function capture(
     page.on('pageerror', (e) => errors.push(String(e.message ?? e).split('\n')[0]));
     await page.clock.setFixedTime(new Date(FIXED_TIME));
     retried = await load(page, url);
+    let pointer = false;
     for (const a of screen.actions ?? []) {
-      if (a.click) await locate(page, a.click).click({ timeout: LANDMARK_MS });
-      else if (a.press) await page.keyboard.press(a.press);
+      if (a.click) {
+        await locate(page, a.click).click({ timeout: LANDMARK_MS });
+        pointer = true;
+      } else if (a.press) await page.keyboard.press(a.press);
       // The target at the top of its scroll container (a section below a panel's fold), as a
       // person scrolls: no click, so nothing is activated or focused.
-      else if (a.scroll) await scrollTo(page, a.scroll);
+      else if (a.scroll) {
+        await scrollTo(page, a.scroll);
+        // A click left the pointer where the scroll brings other content; the browser re-hovers
+        // it on a timer of its own, so the capture would show that hover only sometimes. The
+        // pointer goes to the corner instead (the backdrop: nothing hovers there).
+        if (pointer) await page.mouse.move(0, 0);
+      }
     }
     try {
       await locate(page, screen.wait).waitFor({ state: 'visible', timeout: LANDMARK_MS });

@@ -38,6 +38,23 @@ RUN printf '{ "name": "pxsig-image", "private": true }\n' > package.json \
  && engine/pxsig --version \
  && test "$(node -p "require('playwright/package.json').version")" = "$PLAYWRIGHT_VERSION"
 
+# Text in grayscale with unhinted glyph advances, as pxsig launches Chromium
+# (--disable-lcd-text --font-render-hinting=none; docs/configuration.md#text-rendering), so a
+# browser server started from this image draws text the same way.
+COPY --chmod=0644 <<'FONTS' /etc/fonts/local.conf
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <match target="font">
+    <edit name="antialias" mode="assign"><bool>true</bool></edit>
+    <edit name="hinting" mode="assign"><bool>false</bool></edit>
+    <edit name="hintstyle" mode="assign"><const>hintnone</const></edit>
+    <edit name="rgba" mode="assign"><const>none</const></edit>
+    <edit name="lcdfilter" mode="assign"><const>lcdnone</const></edit>
+  </match>
+</fontconfig>
+FONTS
+
 ENV PATH="/opt/pxsig/node_modules/.bin:${PATH}" \
     PXSIG_BIN=/opt/pxsig/engine/pxsig \
     PXSIG_NO_DELEGATE=1 \

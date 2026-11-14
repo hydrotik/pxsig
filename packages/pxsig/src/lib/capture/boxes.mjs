@@ -9,7 +9,8 @@
  * text the page draws in the frame is recorded: a run needs a box of at least 2×2 px inside the
  * frame and inside every overflow ancestor's clip, must be visible (`checkVisibility`), and must not
  * lie under an open dialog it is not part of. Form fields (input, textarea, select, option,
- * contenteditable) are never read, nor text under the entry's `ignore` masks or `text.ignore`.
+ * contenteditable) are never read, nor text under a mask the capture painted (masks.mjs `MASKED`)
+ * or `text.ignore`.
  */
 import { rmSync, writeFileSync } from 'node:fs';
 /** @import { Page } from 'playwright' */

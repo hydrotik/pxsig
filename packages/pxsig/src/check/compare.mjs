@@ -8,7 +8,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { historyExtra } from './react.mjs';
 import { envPlan } from '../lib/text/env-plan.mjs';
-import { blockedReasons, LARGE_SHARE, maskChange } from '../lib/mask-words.mjs';
+import { blockedFixes, blockedReasons, LARGE_SHARE, maskChange } from '../lib/mask-words.mjs';
 /** @import { CheckSetup } from './setup.mjs' */
 /** @import { Selection } from './select.mjs' */
 /** @import { Rendered } from './render.mjs' */
@@ -107,7 +107,7 @@ export function compare(S, sel, run, react = null, current = {}) {
     const pct = (/** @type {number} */ n) => `${Math.round(n * 100)}%`;
     if (r.masksBlocked)
       console.error(
-        `[check] mask: ${r.id}: ${blockedReasons(r).join('; ')}: no approval passes it until the masks are smaller`
+        `[check] mask: ${r.id}: ${blockedReasons(r).join('; ')}: no approval passes it; ${blockedFixes(r).join('; ')}`
       );
     if (r.masksChanged) console.error(`[check] mask: ${r.id}: ${maskChange(r.masksChanged)}`);
     if (!r.masksBlocked && (r.masksCoverage ?? 0) > LARGE_SHARE)

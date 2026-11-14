@@ -5,6 +5,7 @@
  */
 import React from 'react';
 import '@hydrotik/design-system/fonts';
+import './box-sizing.css';
 import * as DS from '@hydrotik/design-system';
 import {
   ChartContainer,
@@ -28,6 +29,7 @@ import type * as C from '../../contract';
 import { oneLineSlider } from './slider';
 import { sidePanel } from './side-panel';
 import { textField } from './text-field';
+import { toneBadge, toneStatGroup } from './tones';
 export { Heatmap } from './heatmap';
 
 export const name = 'hydrotik';
@@ -113,6 +115,7 @@ const navItemProps = ({ href, active, count, countTone, countLabel }: C.NavLinkP
   href,
   active,
   count,
+  // `attention` is drawn as primary digits on a neutral pill (tones.css.ts).
   countTone:
     countTone === undefined
       ? undefined
@@ -227,34 +230,7 @@ export const CardContent = ({ children }: C.CardContentProps) => (
   <DS.CardContent>{children}</DS.CardContent>
 );
 
-/** Tone → the stat card's accent (only the states it colours). */
-const ACCENT: Partial<Record<C.Tone, 'success' | 'error' | 'warning'>> = {
-  success: 'success',
-  danger: 'error',
-  warning: 'warning',
-};
-
-export const StatGroup = ({ label, items, layout, className }: C.StatGroupProps) => (
-  <DS.StatPanel
-    className={className}
-    variant={layout === 'strip' ? 'strip' : undefined}
-    aria-label={label}
-    cards={items.map((it) => ({
-      label: it.label,
-      value: it.value,
-      ...(it.unit !== undefined ? { unit: it.unit } : {}),
-      ...(it.tone ? { accent: ACCENT[it.tone] } : {}),
-      ...(it.onSelect
-        ? {
-            type: 'filter' as const,
-            onSelect: it.onSelect,
-            ...(it.active !== undefined ? { active: it.active } : {}),
-            icon: it.icon,
-          }
-        : {}),
-    }))}
-  />
-);
+export const StatGroup = toneStatGroup(DS.StatPanel);
 
 export function DataTable<T>(props: C.DataTableProps<T>) {
   return <Grid {...props} />;
@@ -323,30 +299,7 @@ export const StatusBadge = ({ tone, icon, label, title, className }: C.StatusBad
   />
 );
 
-export function Badge({
-  tone = 'neutral',
-  emphasis = 'subtle',
-  pulse,
-  title,
-  className,
-  children,
-}: C.BadgeProps) {
-  const variant =
-    tone === 'neutral'
-      ? emphasis === 'outline'
-        ? 'outline'
-        : 'secondary'
-      : tone === 'danger'
-        ? 'destructive'
-        : tone === 'info'
-          ? 'default'
-          : tone;
-  return (
-    <DS.Badge variant={variant} pulse={pulse} title={title} className={className}>
-      {children}
-    </DS.Badge>
-  );
-}
+export const Badge = toneBadge(DS.Badge);
 
 // The design system's size for an icon in a control: 14px in a 28px icon button, at lucide's
 // stroke. Without it lucide draws 24px, which nearly fills the button and makes the sun and the

@@ -12,7 +12,7 @@
  * the baseline's; a warning (`pxsig/large-mask`) where they cover over a quarter of it together.
  */
 import { writeAtomic } from './files.mjs';
-import { blockedReasons, LARGE_SHARE, maskChange } from './mask-words.mjs';
+import { blockedFixes, blockedReasons, LARGE_SHARE, maskChange } from './mask-words.mjs';
 /** @import { A11yResult, CheckRow, ManifestEntry, SarifLog, SarifResult, SarifRule } from '../types.js' */
 
 /** @type {Record<string, string>} */
@@ -110,9 +110,15 @@ export function sarifLog(rows, { entries = new Map(), version = null, masks = fa
   for (const r of masks ? rows : []) {
     const coverage = r.masksCoverage ?? 0;
     if (r.masksBlocked)
-      mask(r, MASK_LIMIT, 'error', `${blockedReasons(r).join('; ')}: no approval passes it`, {
-        coverage,
-      });
+      mask(
+        r,
+        MASK_LIMIT,
+        'error',
+        `${blockedReasons(r).join('; ')}: no approval passes it; ${blockedFixes(r).join('; ')}`,
+        {
+          coverage,
+        }
+      );
     if (r.masksChanged)
       mask(r, MASKS_CHANGED, 'warning', maskChange(r.masksChanged), { masks: r.masksChanged });
     if (!r.masksBlocked && coverage > LARGE_SHARE)
@@ -144,6 +150,36 @@ export function sarifLog(rows, { entries = new Map(), version = null, masks = fa
 }
 
 /**
+ * What `check --sarif` says it wrote: the new a11y violations, then the masks findings, each
+ * counted once per entry as the log has them (a large mask is an entry whose masks together cover
+ * over a quarter of the capture, never a mask on its own).
+ * @param {SarifLog} log
+ * @param {string} file
+ */
+export function sarifWrote(log, file) {
+  const results = log.runs[0].results;
+  /** @param {string} id */
+  const count = (id) => results.filter((r) => r.ruleId === id).length;
+  const masks = /** @type {[number, string][]} */ ([
+    [count(MASK_LIMIT.id), 'over the mask limits'],
+    [count(MASKS_CHANGED.id), 'with masks changed'],
+    [count(LARGE_MASK.id), 'with large masks'],
+  ]).filter(([n]) => n > 0);
+  const a11y = results.length - masks.reduce((a, [n]) => a + n, 0);
+  const said = masks.map(([n, what]) => `${n} ${n === 1 ? 'entry' : 'entries'} ${what}`);
+  return `[check] wrote ${[`${a11y} new a11y violations`, ...said].join(', ')} to ${file} (SARIF)`;
+}
+
+/**
+ * Write a log made with `sarifLog`.
+ * @param {string} path
+ * @param {SarifLog} log
+ */
+export function writeSarifLog(path, log) {
+  writeAtomic(path, `${JSON.stringify(log, null, 2)}\n`);
+}
+
+/**
  * Write the log; returns the number of results.
  * @param {string} path
  * @param {CheckRow[]} rows
@@ -151,6 +187,6 @@ export function sarifLog(rows, { entries = new Map(), version = null, masks = fa
  */
 export function writeSarif(path, rows, opts) {
   const log = sarifLog(rows, opts);
-  writeAtomic(path, `${JSON.stringify(log, null, 2)}\n`);
+  writeSarifLog(path, log);
   return log.runs[0].results.length;
 }

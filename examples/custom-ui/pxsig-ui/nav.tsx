@@ -26,6 +26,7 @@ const SectionLink = ({
   href,
   active,
   count,
+  countTone,
   countLabel,
   children,
   item,
@@ -40,7 +41,12 @@ const SectionLink = ({
     onClick={onClick}
   >
     {children}
-    {count ? <span className="plain-badge"> {count > 99 ? '99+' : count}</span> : null}
+    {count ? (
+      <span className="plain-badge" data-tone={countTone}>
+        {' '}
+        {count > 99 ? '99+' : count}
+      </span>
+    ) : null}
   </a>
 );
 export const NavLink = (p: C.NavLinkProps) => <SectionLink {...p} />;

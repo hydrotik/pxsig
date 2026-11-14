@@ -5,7 +5,7 @@
  * (`maskDetail`, pxsig_entry): the render's masks and the baseline's, and the findings as
  * sentences. Selectors and shares only.
  */
-import { blockedReasons, LARGE_SHARE } from '../lib/mask-words.mjs';
+import { blockedReasons, fixFor, LARGE_SHARE } from '../lib/mask-words.mjs';
 
 /** @import { ReportRow } from '../types/t6.js' */
 
@@ -34,7 +34,7 @@ export const maskBrief = (row) => ({
  */
 const warnings = (row) => [
   ...blockedReasons(row).map(
-    (r) => `${r}: no approval passes this entry until the masks are smaller; flag it for a person`
+    (r) => `${r}: no approval passes this entry; ${fixFor(r)}; flag it for a person`
   ),
   ...(!row.masksBlocked && (row.masksCoverage ?? 0) > LARGE_SHARE
     ? [
