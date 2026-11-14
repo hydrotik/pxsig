@@ -88,7 +88,12 @@ export const CODES = {
     title: 'Skipped: unaffected',
     help: 'A partial run (--since / --changed) left it out because no edit can change it (import graph). It has a baseline but no verdict of its own yet: ok, unverified.',
   },
-  drift: { severity: 'info', rank: 12, title: 'Drift', help: 'Passes the gate, but SSIM < 1.' },
+  drift: {
+    severity: 'info',
+    rank: 12,
+    title: 'Drift',
+    help: 'Passes the gate, while its render differs from the baseline image: the baseline stays as it was.',
+  },
   excluded: {
     severity: 'info',
     rank: 13,

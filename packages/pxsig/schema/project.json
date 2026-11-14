@@ -618,6 +618,34 @@
         }
       }
     },
+    "drift": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The drift alarm: entries that pass while their render differs from the baseline keep their old baseline. Past warnAt, pxsig doctor reports drift-high (a warning at least). Never changes a verdict.",
+      "properties": {
+        "warnAt": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "drift-high when both are reached: at least count passing entries differ from their baseline, and they are at least share of the passing entries (renders from a different environment than their baseline are left out). A value past its maximum reads as the maximum.",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 5,
+              "description": "Fewest drifting entries. Default 5, at most 100."
+            },
+            "share": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 0.5,
+              "default": 0.2,
+              "description": "Smallest share of the passing entries, 0..1. Default 0.2, at most 0.5."
+            }
+          }
+        }
+      }
+    },
     "importPathPattern": {
       "type": "string",
       "description": "Advanced: a regular expression selecting the project's story files, with the component folder as group 1. Default: files under srcRoot."

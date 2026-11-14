@@ -17,6 +17,10 @@ use crate::io;
 /// when the baseline has no image (a pre-0.2 `.pxsig.json`). A render of another size than the
 /// baseline's gets the flat-area check alone, over the region both cover
 /// (`pxsig_core::color::apply_color`).
+///
+/// Returns the row's `differs`: on an entry that passes (the color rule included), whether any
+/// pixel of the render is not the baseline image's (another size counts as different). `None` when
+/// a rule failed it, or the baseline holds no image.
 pub fn apply(
     r: &mut CompareResult,
     b: &Baseline,
@@ -24,26 +28,40 @@ pub fn apply(
     bytes: &[u8],
     cur: (&[u8], usize, usize),
     gate: &GateThresholds,
-) -> Result<()> {
-    let Some(g) = gate.color.as_ref().filter(|_| r.pass) else {
-        return Ok(());
-    };
+) -> Result<Option<bool>> {
+    if !r.pass {
+        return Ok(None);
+    }
     // The same file: every pixel is the same, so the render stands in for the baseline (no decode).
     let decoded = match b.image.as_deref() {
-        Some(img) if img != bytes => Some(
-            io::decode_png_bytes(img, Path::new("baseline image"))
-                .with_context(|| format!("the color rule for {}", png.display()))?,
-        ),
+        Some(img) if img != bytes => Some(io::decode_png_bytes(img, Path::new("baseline image"))),
         _ => None,
     };
-    let base = match (&decoded, &b.image) {
-        (Some((d, w, h)), _) => Some((d.as_slice(), *w, *h)),
-        (None, Some(_)) => Some(cur),
-        (None, None) => None,
+    // An image that does not decode fails the color rule's row, as before; without the rule it
+    // leaves `differs` unknown.
+    let decoded = match decoded {
+        Some(Err(e)) if gate.color.is_some() => {
+            return Err(e).with_context(|| format!("the color rule for {}", png.display()))
+        }
+        Some(Err(_)) => return Ok(None),
+        Some(Ok(d)) => Some(d),
+        None => None,
     };
-    let size = (b.record.src_width as usize, b.record.src_height as usize);
-    apply_color(r, base, size, cur, g);
-    Ok(())
+    let differs = b.image.as_ref().map(|_| {
+        decoded
+            .as_ref()
+            .is_some_and(|(d, w, h)| (*w, *h) != (cur.1, cur.2) || d.as_slice() != cur.0)
+    });
+    if let Some(g) = gate.color.as_ref() {
+        let base = match (&decoded, &b.image) {
+            (Some((d, w, h)), _) => Some((d.as_slice(), *w, *h)),
+            (None, Some(_)) => Some(cur),
+            (None, None) => None,
+        };
+        let size = (b.record.src_width as usize, b.record.src_height as usize);
+        apply_color(r, base, size, cur, g);
+    }
+    Ok(differs.filter(|_| r.pass))
 }
 
 /// The color rule's measurements for a row (`null` when it did not run).
