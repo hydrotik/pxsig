@@ -73,6 +73,13 @@ export function volatileSteps(dir, p, build) {
     r.status === 0 && rows.every((x) => x.pass),
     `masks: approved once, renders with another value pass (${rows.filter((x) => x.pass).length}/${rows.length})${r.status ? tail(r) : ''}`
   );
+  // Passing is not enough: a value that paints past its mask passes or fails by which value it
+  // is. With the mask over all of it, the render is the baseline's, byte for byte.
+  const leaks = rows.filter((x) => x.id.startsWith('components-badge--') && x.differs !== false);
+  expect(
+    leaks.length === 0,
+    `masks: another value renders identical to its baseline, nothing painted outside the mask (${badges.length - leaks.length}/${badges.length})${leaks.map((x) => `\n    ${x.id}: differs ${x.differs}`).join('')}`
+  );
   const file = join(dir, 'pxsig.config.json');
   const before = readFileSync(file, 'utf8');
   // The example's own config (pxsig.config.json).
