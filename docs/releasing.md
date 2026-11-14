@@ -137,7 +137,9 @@ region, whether the difference is within the gate, the first structure line that
 both renders in `reports/fixture-repeat/` (with `unstable.json` and `summary.md`, which CI adds to
 the job summary) and fails like a changed screen, so a screen that wobbles is caught in the run
 that renders it, not later as a spurious change against its baseline. A difference within the gate
-fails too: the gate hides it from one check, not from the next. The one exception is
+fails too: the gate hides it from one check, not from the next. (The wobbles it first found were
+Chromium's partial raster, which pxsig now turns off for every capture: `--disable-partial-raster`,
+docs/configuration.md, "Text rendering".) The one exception is
 `packages/dashboard/fixtures/unstable.json`, a committed list of entry ids, each with its reason; it
 starts empty, a screen goes on it only by the owner's decision, and comes off once its fix (in the
 design system's component, or a capture wait) lands. An entry naming no screen fails; one whose

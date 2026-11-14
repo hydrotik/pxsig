@@ -21,10 +21,19 @@ async function playwright(project) {
 }
 
 /**
- * How every Chromium pxsig launches draws text: grayscale antialiasing, not LCD subpixel colour,
- * and unhinted glyph advances, so a Linux render (the container, CI) draws text the way macOS does.
+ * How every Chromium pxsig launches draws: text with grayscale antialiasing, not LCD subpixel
+ * colour, and unhinted glyph advances, so a Linux render (the container, CI) draws text the way
+ * macOS does; and every tile rastered in full. Without `--disable-partial-raster`, a change after
+ * the first raster (a font swap, a canvas drawn, an action) re-rasters only the changed part of a
+ * tile, which antialiases edges at fractional positions (a rounded corner) slightly differently,
+ * and whether it lands before or after the first raster is timing: the same page then differs by
+ * a few pixels from one render to the next.
  */
-export const CHROMIUM_ARGS = Object.freeze(['--disable-lcd-text', '--font-render-hinting=none']);
+export const CHROMIUM_ARGS = Object.freeze([
+  '--disable-lcd-text',
+  '--font-render-hinting=none',
+  '--disable-partial-raster',
+]);
 
 /**
  * The arguments Chromium launches with: pxsig's, then the project's `capture.launchArgs`, so a
