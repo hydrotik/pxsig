@@ -161,3 +161,25 @@ test('a block says what to do about its own cause, each fix once', () => {
     'mask on a container: div[data-volatile="a"]: element children div: no approval passes this entry; put data-volatile on the element that shows the value (a leaf); flag it for a person',
   ]);
 });
+
+// The 0.7.7 masks flake: a data-volatile value painted past its box. The block names it and its fix.
+test('content outside a data-volatile box blocks the entry, with its fix', () => {
+  const reason =
+    'mask content outside its box: span[data-volatile="build time"]: 23 px outside, up to 3 px past its box';
+  const row = /** @type {CheckRow} */ (
+    /** @type {unknown} */ ({
+      id: 'row--x',
+      mode: null,
+      pass: false,
+      reasons: [reason],
+      masks: [],
+      masksBlocked: { problems: [{ kind: 'overflow' }] },
+    })
+  );
+  assert.deepEqual(blockedFixes(row), [
+    "let the data-volatile element's box hold all of its content",
+  ]);
+  assert.deepEqual(maskDetail(row).maskWarnings?.slice(0, 1), [
+    `${reason}: no approval passes this entry; let the data-volatile element's box hold all of its content; flag it for a person`,
+  ]);
+});

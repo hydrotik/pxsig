@@ -433,7 +433,7 @@ masks cover over 50% of the capture together, or one covers the story root (the 
 there, and it covers 95% of the capture or more), or the record has `problems`, the row has
 `masksBlocked` (`{ coverage?, root?, problems? }`), `pass` is false and `reasons` gains `masks cover <n>% of the
 capture, over 50%`, `a mask covers the story root: <selectors>`, `mask on a container: <element>`,
-`mask needs a reason: <element>` or `mask not measured: <element>`; SARIF `pxsig/mask-limit`, an
+`mask needs a reason: <element>`, `mask not measured: <element>` or `mask content outside its box: <element>: <n> px outside, up to <d> px past its box` (a `data-volatile` element whose content paints outside its box, found on the pixels before the masks are painted); SARIF `pxsig/mask-limit`, an
 error. That depends on the render alone: no
 baseline is written from it, so no approval clears it. The single-entry `compare` (the command and
 the `serve` method) answers the same fields and verdict. A selector is a mask's identity; its source

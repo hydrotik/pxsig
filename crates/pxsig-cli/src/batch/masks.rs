@@ -29,13 +29,29 @@ const PAINT: [u8; 3] = [255, 0, 255];
 const PAINT_TOL: u8 = 8;
 /// Where a mask may come from.
 const SOURCES: [&str; 4] = ["attribute", "story", "project", "workspace"];
-/// What the capture can find wrong with a mask, and the reason each gives (`problems`): a
-/// `data-volatile` element with element children of its own, one with no reason, and an element
-/// a mask matched that the capture could not measure (so it would be painted unweighed).
-const PROBLEMS: [(&str, &str); 3] = [
-    ("container", "mask on a container"),
-    ("reason", "mask needs a reason"),
-    ("unmeasured", "mask not measured"),
+/// What the capture can find wrong with a mask (`problems`, lib/capture/mask-measure.mjs and
+/// mask-overflow.mjs), the reason each gives and its fix.
+const PROBLEMS: [(&str, &str, &str); 4] = [
+    (
+        "container",
+        "mask on a container",
+        "put data-volatile on the element that shows the value (a leaf)",
+    ),
+    (
+        "reason",
+        "mask needs a reason",
+        "give data-volatile a reason, e.g. data-volatile=\"relative time\"",
+    ),
+    (
+        "unmeasured",
+        "mask not measured",
+        "mask at most 500 elements, all there when the story is ready",
+    ),
+    (
+        "overflow",
+        "mask content outside its box",
+        "let the data-volatile element's box hold all of its content",
+    ),
 ];
 
 /// The masks record that belongs to a render: `<dir>/<id>.masks.json` beside `<dir>/<id>.png`,
@@ -178,7 +194,7 @@ pub fn record(png: &Path) -> Result<Option<Value>> {
     if let Some(p) = v.get("problems") {
         let ok = p.as_array().is_some_and(|l| {
             l.iter()
-                .all(|x| PROBLEMS.iter().any(|(k, _)| x["kind"] == *k) && x["element"].is_string())
+                .all(|x| PROBLEMS.iter().any(|(k, ..)| x["kind"] == *k) && x["element"].is_string())
         });
         if !ok {
             bail!("{name}: each problem needs a known kind and an element");
@@ -367,7 +383,7 @@ pub fn blocked_reasons(b: &Value) -> Vec<String> {
         .into_iter()
         .flatten()
         .filter_map(|p| {
-            let (_, word) = PROBLEMS.iter().find(|(k, _)| p["kind"] == *k)?;
+            let (_, word, _) = PROBLEMS.iter().find(|(k, ..)| p["kind"] == *k)?;
             Some(format!("{word}: {}", p["element"].as_str().unwrap_or("")))
         })
         .collect();
@@ -395,25 +411,15 @@ pub fn blocked_fixes(b: &Value) -> Vec<&'static str> {
     let p = b["problems"].as_array();
     let has = |k: &str| p.is_some_and(|p| p.iter().any(|x| x["kind"] == k));
     let root = b["root"].as_array().is_some_and(|r| !r.is_empty());
-    [
-        (
-            has("container"),
-            "put data-volatile on the element that shows the value (a leaf)",
-        ),
-        (
-            has("reason"),
-            "give data-volatile a reason, e.g. data-volatile=\"relative time\"",
-        ),
-        (
-            has("unmeasured"),
-            "mask at most 500 elements, all there when the story is ready",
-        ),
-        (b["coverage"].is_number(), "make the masks smaller"),
-        (root, "mask the value, not the story root"),
-    ]
-    .into_iter()
-    .filter_map(|(on, fix)| on.then_some(fix))
-    .collect()
+    PROBLEMS
+        .iter()
+        .map(|(k, _, fix)| (has(k), *fix))
+        .chain([
+            (b["coverage"].is_number(), "make the masks smaller"),
+            (root, "mask the value, not the story root"),
+        ])
+        .filter_map(|(on, fix)| on.then_some(fix))
+        .collect()
 }
 
 /// The kinds of change, and how a reason words each.

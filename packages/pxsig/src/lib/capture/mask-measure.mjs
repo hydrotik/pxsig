@@ -101,6 +101,7 @@ function inPage(els, { attr, root, inline }) {
  *   container   a `data-volatile` element with elements inside other than `INLINE` ones
  *   reason      a `data-volatile` element with no reason (an empty value)
  *   unmeasured  a mask on more than `MAX_BOXES` elements (the rest would go unweighed)
+ * (and mask-overflow.mjs: `overflow`, a `data-volatile` element whose content paints outside its box)
  * An invalid selector throws, as the screenshot's mask would.
  * @param {Page} page
  * @param {Mask[]} masks

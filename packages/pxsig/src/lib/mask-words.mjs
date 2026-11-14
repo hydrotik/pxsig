@@ -35,6 +35,7 @@ const BLOCKED = /** @type {const} */ ([
   ['mask on a container', 'put data-volatile on the element that shows the value (a leaf)'],
   ['mask needs a reason', 'give data-volatile a reason, e.g. data-volatile="relative time"'],
   ['mask not measured', 'mask at most 500 elements, all there when the story is ready'],
+  ['mask content outside its box', "let the data-volatile element's box hold all of its content"],
   ['masks cover ', 'make the masks smaller'],
   ['a mask covers the story root', 'mask the value, not the story root'],
 ]);

@@ -15,7 +15,9 @@ each run shows a change that nobody made. Fixed data first; a mask when the valu
   own place, so a popover above it still shows; its size and position are still compared. The
   value is the reason shown with the mask, and is required. Only on a leaf (text and inline
   formatting inside): on a container the entry fails as `mask on a container`, with no value as
-  `mask needs a reason`. Text under a painted mask stays out of the text record; the a11y pass
+  `mask needs a reason`. The box must hold all of its content: text or a child that paints outside
+  it (a fixed `width` under `letter-spacing`, a shadow, a transform) fails the entry as `mask
+  content outside its box`, and the mask is never widened to cover it. Text under a painted mask stays out of the text record; the a11y pass
   still runs.
 - **`capture.ignore` / `capture.addIgnore`.** Selectors masked in every story of a project
   (`pxsig.config.json`), or of every project (`defaults` in `pxsig.workspace.json`).

@@ -19,6 +19,7 @@ import { textSettings } from '../text/config.mjs';
 import { boxesFile, writeBoxes } from './boxes.mjs';
 import { MASKED, masksFor, writeMasks } from './masks.mjs';
 import { lateMasks, measureMasks } from './mask-measure.mjs';
+import { overflowMasks } from './mask-overflow.mjs';
 import { paintMasks, unmarkMasks, unpaintMasks } from './mask-paint.mjs';
 /** @import { BrowserContext, Page, PageScreenshotOptions } from 'playwright' */
 /** @import { RenderResult } from '../../types.js' */
@@ -293,6 +294,11 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
           const ofElement =
             !!el && !!box && box.width > 1 && box.height > 1 && !e.interaction?.fullPage;
           const masks = await measureMasks(page, masksFor(project, e), ofElement ? box : null, sel);
+          await overflowMasks(page, masks, ofElement ? box : null, () =>
+            ofElement
+              ? el.screenshot({ animations: 'disabled' })
+              : page.screenshot({ animations: 'disabled' })
+          );
           /** @type {PageScreenshotOptions} */
           const shot = { animations: 'disabled', timeout: 10000, ...(await paintMasks(page)) };
           await lateMasks(page, masks);
