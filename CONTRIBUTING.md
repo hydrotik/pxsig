@@ -149,10 +149,45 @@ In examples and docs use neutral names: `packages/ui`, `apps/storybook`, `my-des
 ## The dashboard
 
 The dashboard is built from `packages/dashboard` into `packages/pxsig/dist/dashboard`, which is not
-committed. With nothing set it builds on the built-in plain adapter; the reference look needs a local
-checkout of its design system (`PXSIG_DS_SOURCE`); see
-[packages/dashboard/README.md](packages/dashboard/README.md). Changes to the server, the data it
+committed, on the hydrotik design system (below; see
+[packages/dashboard/README.md](packages/dashboard/README.md)). Changes to the server, the data it
 serves (`packages/pxsig/src/report.mjs`) and the API are testable without a build.
+
+### The design system
+
+pxsig has one UI, the hydrotik design system's, and every build of the dashboard in this
+repository uses it: each worktree, each local build and each CI job. It comes from a pinned commit
+committed in the repository, `design-system.json` (`{ "commit": "<40 lower-case hex>" }`), fetched
+into the worktree's git-ignored `target/design-system`. Set where it comes from once per clone (a
+git URL or a local checkout of the design-system monorepo; the clone's own git config, shared by
+every worktree, never committed):
+
+```bash
+git config pxsig.dsSource <git URL or local checkout>
+pnpm ds:fetch           # fetch the pinned commit and install it (the build does this when needed)
+pnpm build:dashboard    # hydrotik, at the pinned commit
+```
+
+`PXSIG_DS_SOURCE` overrides the setting for one command: a folder is built from as it is, anything
+else (a git URL) is fetched from. Without either, the build fails and names the fix; it never builds
+plain by default. Name another adapter only where it is the subject:
+`PXSIG_UI_ADAPTER=plain pnpm build:dashboard` (or a path, as for the custom-UI example). Keep the
+checkout inside the worktree: the Vite build fails on a design system under a system temp folder
+on a Mac. `PXSIG_DS_DIR` moves it (the fetch and the build both read it); CI sets it to the
+runner's temp folder, so no cache saves it. The source is never left on disk: the fetch removes
+`.git/FETCH_HEAD` and the reflogs, and the checkout has no remote.
+
+`pnpm ds:fetch` also says how far the pin is behind the design system's default branch, and whether
+the design-system files the reference adapter imports changed since (a warning past 20 commits or 14
+days; scripts/lib/ds-behind.mjs). It never fails.
+
+**Bumping the pin** is a reviewed commit: set `commit` in `design-system.json` to the design
+system's new commit (its full SHA), run `pnpm ds:fetch` and `pnpm build:dashboard`, then
+`pnpm screens:check` for the dashboard's own baselines, and refresh the reference adapter's
+declarations: build the design system (`pnpm turbo run build --filter=@hydrotik/design-system` in
+`target/design-system`), then `PXSIG_DS_SOURCE=target/design-system pnpm ui:types` (below). CI
+(`screens.yml`, `release.yml`) builds the commit the file names, fetched with the `PXSIG_DS_SOURCE`
+secret.
 
 Views import components only from `@ui`, the UI contract (`packages/dashboard/src/ui/`). A new
 contract component needs its section in `docs/ui/build-adapter.md`, an entry in the reference

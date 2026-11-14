@@ -30,8 +30,8 @@ The step-by-step instructions, one section per component, are in
 ## Building with one
 
 ```bash
-pnpm build:dashboard                                    # plain; hydrotik when PXSIG_DS_SOURCE is set
-PXSIG_UI_ADAPTER=hydrotik pnpm build:dashboard          # a built-in adapter, by name
+pnpm build:dashboard                                    # hydrotik, the design system pinned in design-system.json
+PXSIG_UI_ADAPTER=plain pnpm build:dashboard             # a built-in adapter, by name
 PXSIG_UI_ADAPTER=./path/to/adapter pnpm build:dashboard # a module, by path
 pnpm ui:gaps                                            # what the adapter covers, and what it does not
 ```

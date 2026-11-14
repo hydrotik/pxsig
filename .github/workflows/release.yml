@@ -195,7 +195,6 @@ jobs:
       # compiles from, credentials included) is set; when it is not, the dashboard comes from the
       # release asset. The secret itself reaches only the step that fetches.
       HAS_DS: ${{ secrets.PXSIG_DS_SOURCE != '' }}
-      DS_REF: ${{ vars.PXSIG_DS_REF }}
       DRY_RUN: ${{ needs.verify.outputs.dry_run }}
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -228,34 +227,28 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
+      # The design system is pinned by commit (design-system.json, 40 lower-case hex, checked), so
+      # BUILD.json (written by the build) names exactly what the bundle was compiled from. Fetched
+      # as `pnpm ds:fetch` does in a worktree; the source is never printed and left in no file.
+      # PXSIG_DS_DIR keeps the checkout in the runner's temp folder, outside anything cached.
       - if: steps.how.outputs.mode == 'build'
         name: Fetch the design system
         shell: bash
         env:
-          DS_SOURCE: ${{ secrets.PXSIG_DS_SOURCE }}
-        run: |
-          set -euo pipefail
-          # The design system is pinned by commit, so BUILD.json (written by the build) names
-          # exactly what the bundle was compiled from.
-          if ! [[ "${DS_REF}" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "::error::the PXSIG_DS_REF variable must be the design system's full 40-character commit SHA (lower-case hex); got '${DS_REF}'"
-            exit 1
-          fi
-          ds="${RUNNER_TEMP}/design-system"
-          git init -q "$ds"
-          git -C "$ds" fetch -q --depth 1 "${DS_SOURCE}" "${DS_REF}"
-          git -C "$ds" checkout -q --detach FETCH_HEAD
+          PXSIG_DS_SOURCE: ${{ secrets.PXSIG_DS_SOURCE }}
+          PXSIG_DS_DIR: ${{ runner.temp }}/design-system
+        run: node scripts/ds-fetch.mjs
       - if: steps.how.outputs.mode == 'build'
         name: Build the dashboard
         shell: bash
+        env:
+          PXSIG_DS_DIR: ${{ runner.temp }}/design-system
         run: |
           set -euo pipefail
-          ds="${RUNNER_TEMP}/design-system"
-          (cd "$ds" && pnpm install --frozen-lockfile)
           pnpm install --frozen-lockfile
-          # The adapter is named, not left to the default: the release ships the reference look.
-          PXSIG_UI_ADAPTER=hydrotik PXSIG_DS_SOURCE="$ds" pnpm --filter @pxsig/dashboard build
-          node scripts/check-dashboard-build.mjs packages/pxsig/dist/dashboard --adapter hydrotik --commit "${DS_REF}"
+          # No adapter named: this repository's build is hydrotik, on the PXSIG_DS_DIR checkout.
+          pnpm --filter @pxsig/dashboard build
+          node scripts/check-dashboard-build.mjs packages/pxsig/dist/dashboard --adapter hydrotik --commit "$(node scripts/ds-fetch.mjs --pin)"
 
       # Mode placeholder (dry run only): an index.html that says so.
       - if: steps.how.outputs.mode == 'placeholder'
@@ -287,7 +280,8 @@ jobs:
           tar xzf "$dl/pxsig-dashboard.tar.gz" -C packages/pxsig/dist --no-same-owner
           # `pnpm --filter @pxsig/dashboard build` writes dashboard/BUILD.json (docs/releasing.md):
           # without it nothing records how the bundle was built, and the SBOM misses what it inlines.
-          node scripts/check-dashboard-build.mjs packages/pxsig/dist/dashboard --adapter hydrotik
+          # Built from the pinned design system, like a build here would be.
+          node scripts/check-dashboard-build.mjs packages/pxsig/dist/dashboard --adapter hydrotik --commit "$(node scripts/ds-fetch.mjs --pin)"
           echo "release asset pxsig-dashboard.tar.gz: sha256 $(sha256sum "$dl/pxsig-dashboard.tar.gz" | cut -d' ' -f1)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check the dashboard
