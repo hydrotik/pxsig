@@ -918,7 +918,7 @@ draw them with your own segmented control and buttons.
 
    - Each screen's alignment is measured from its screenshot, not from the styles, and listed as
      `alignment` in `report.json` (a column and a section of its own in `summary.md` and the
-     gallery). Advisory; `--strict` makes any finding exit 1:
+     gallery). Advisory, `--strict` included: they never change the exit code.
      - `aligned`: a dot or an icon (an `svg`, or a drawn box up to 16px) is centred on its label's
        capitals within 0.5px. The capitals are found by character (capitals and digits; every
        letter of a label drawn `text-transform: uppercase`), and both inks are read from the

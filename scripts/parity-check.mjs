@@ -57,8 +57,9 @@ async function main() {
   if (args.includes('--container')) {
     const { dockerArgs, pinnedImage } = await import('./screens-container.mjs');
     const rest = ['--storybook', resolve(storybook), '--build', resolve(built), '--out', out];
-    const ui2 = flag(args, 'ui');
-    if (ui2) rest.push('--ui', ui2);
+    // The adapter as resolved here: the container sees neither PXSIG_UI_ADAPTER nor the config.
+    // (the checkout is mounted at its own path, so the adapter's folder is the same there).
+    rest.push('--ui', flag(args, 'ui') ?? ui.dir);
     rest.push('--themes', themes.join(','));
     const user =
       process.getuid && process.getgid ? `${process.getuid()}:${process.getgid()}` : null;
@@ -88,6 +89,12 @@ async function main() {
     /** @type {import('../packages/pxsig/src/types/parity.js').ParityConformance} */ (
       /** @type {unknown} */ (JSON.parse(readFileSync(join(ui.dir, 'conformance.json'), 'utf8')))
     );
+  if (!Object.values(conformance.components ?? {}).some((c) => c.parity?.length)) {
+    console.error(
+      `[parity] the ${ui.name} adapter's conformance.json pairs no component with a story`
+    );
+    process.exit(2);
+  }
   let browser;
   try {
     browser = await launchBrowser({ root: repo, workspaceRoot: repo });

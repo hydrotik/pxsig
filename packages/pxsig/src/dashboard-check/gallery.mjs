@@ -35,7 +35,7 @@ export function summaryMarkdown(report) {
     '',
     '| Screens | Rendered | Failed | Breaking a region rule | With axe violations | With layout findings | With alignment findings |',
     '| --- | --- | --- | --- | --- | --- | --- |',
-    `| ${s.screens} | ${s.rendered} | ${s.failed} | ${s.withFidelity} | ${s.withAxe}${mode} | ${s.withLayout}${mode} | ${s.withAlignment ?? 0}${mode} |`,
+    `| ${s.screens} | ${s.rendered} | ${s.failed} | ${s.withFidelity} | ${s.withAxe}${mode} | ${s.withLayout}${mode} | ${s.withAlignment ?? 0} (advisory) |`,
   ];
   const bad = report.screens.filter((x) => !x.rendered);
   if (bad.length)
@@ -184,7 +184,7 @@ body.only-changed figure:not(.changed),body.only-changed section:not(:has(figure
 .pair img{inline-size:100%;block-size:auto;border:1px solid color-mix(in srgb,currentColor 15%,transparent)}.none{opacity:.7}
 </style></head><body>
 <h1>pxsig dashboard check</h1>
-<p>${esc(report.summary.rendered)} of ${esc(report.summary.screens)} screens rendered · ${esc(report.summary.failed)} failed · ${esc(report.summary.withFidelity)} breaking a region rule · ${esc(report.summary.withAxe)} with axe violations · ${esc(report.summary.withLayout)} with layout findings · ${esc(report.summary.withAlignment ?? 0)} with alignment findings${report.strict ? ' (strict)' : ' (advisory)'}.</p>
+<p>${esc(report.summary.rendered)} of ${esc(report.summary.screens)} screens rendered · ${esc(report.summary.failed)} failed · ${esc(report.summary.withFidelity)} breaking a region rule · ${esc(report.summary.withAxe)} with axe violations · ${esc(report.summary.withLayout)} with layout findings · ${esc(report.summary.withAlignment ?? 0)} with alignment findings (advisory)${report.strict ? ' (strict)' : ' (advisory)'}.</p>
 <p>Left: the adapter build <code>${esc(report.build)}</code>. ${report.reference.used ? 'Right: the prebuilt reference dashboard.' : `No reference column: ${esc(report.reference.note)}.`}</p>
 ${
   report.compare

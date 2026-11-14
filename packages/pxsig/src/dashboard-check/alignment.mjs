@@ -12,9 +12,9 @@
  *
  * Each finding names the cause it can see: where a half pixel comes from (centred in an odd space,
  * a fractional margin or padding, an earlier sibling of fractional size), or that a graphic is
- * centred on its line box rather than on the capitals. They are layout findings (capture.mjs adds
- * them to the screen's `layout` list): `pxsig dashboard check --strict` and pxsig's own screens
- * fail on them. `data-layout-allow` opts an element out, as for the other layout rules.
+ * centred on its line box rather than on the capitals. They are listed beside the layout findings
+ * (the screen's `alignment`), and advisory: no exit code changes on them, `--strict` included.
+ * `data-layout-allow` opts an element out, as for the other layout rules.
  *
  * `alignmentTargets` runs in the page (`page.evaluate`) and is self-contained; `inkOffsets` reads the
  * screenshot in Node.

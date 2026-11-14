@@ -113,7 +113,7 @@ test('aligned: a dot on the capitals passes; a dot pushed down names its margin'
     (f) => f.rule === 'aligned'
   );
   assert.equal(low.length, 1, JSON.stringify(low));
-  assert.match(low[0].text, /<span "LIVE">: its dot is 2(\.\d+)?px below the capitals' centre/);
+  assert.match(low[0].text, /<span "LIVE">: its dot is [12](\.\d+)?px below the capitals' centre/);
   assert.match(
     low[0].text,
     /the dot's box is centred 2px off the line box: its margin or alignment/

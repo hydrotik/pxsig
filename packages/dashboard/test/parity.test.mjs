@@ -216,6 +216,9 @@ test('runParity: the same component on both sides matches; another padding and l
   const hand = path.join(out, 'hand');
   mkdirSync(hand);
   cpSync(path.join(adapter, 'assets'), path.join(hand, 'assets'), { recursive: true });
+  // A static page: the parity page's markup without its script (the one tag the build writes).
+  const script = '<script defer src="./assets/app.js"></script>';
+  assert.ok(page.includes(script), 'the parity page loads its bundle as a classic script');
   writeFileSync(
     path.join(hand, 'iframe.html'),
     page
@@ -223,7 +226,7 @@ test('runParity: the same component on both sides matches; another padding and l
         '<div id="root"></div>',
         `<div id="storybook-root"><div style="padding:2rem">${html}</div></div>`
       )
-      .replace(/<script[^>]*><\/script>/, '')
+      .replace(script, '')
   );
   const b = await runParity(browser, {
     conformance: { ...conformance, parity: { storyRoot: '#storybook-root > div > *' } },

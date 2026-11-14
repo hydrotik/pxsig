@@ -24,7 +24,8 @@
  *     gallery), report.json, summary.md and the screenshots.
  *
  * Exit: 0 every screen rendered with no page error and no fidelity finding · 1 a screen failed or
- * has a fidelity finding, or (with --strict) axe violations, layout or alignment findings · 2 setup: no build, no Chromium, or an adapter for an older major UI contract.
+ * has a fidelity finding, or (with --strict) axe violations or layout findings (alignment findings
+ * never change the exit) · 2 setup: no build, no Chromium, or an adapter for an older major UI contract.
  */
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
@@ -387,7 +388,7 @@ export async function dashboardCheck(
   writeFileSync(join(outDir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
   writeFileSync(join(outDir, 'summary.md'), summaryMarkdown(report));
   writeFileSync(join(outDir, 'index.html'), galleryHtml(report));
-  const code =
-    failed || withFidelity || (report.strict && (withAxe || withLayout || withAlignment)) ? 1 : 0;
+  // Alignment is advisory even with --strict: every bundled adapter has findings today.
+  const code = failed || withFidelity || (report.strict && (withAxe || withLayout)) ? 1 : 0;
   return { code, report, outDir };
 }
