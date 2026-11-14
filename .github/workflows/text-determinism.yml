@@ -1,6 +1,7 @@
 # Is a text record (packages/pxsig/src/lib/capture/boxes.mjs) the same on every OS? The same corpus
 # (pages with text of every kind, in the browser's default fonts and in one pinned web font, and the
-# dashboard's fixture screens, plain adapter) rendered with text capture on in pxsig's container
+# dashboard's fixture screens, on the hydrotik design system at the pinned commit; plain without the
+# PXSIG_DS_SOURCE secret) rendered with text capture on in pxsig's container
 # (docker/screens-image.json) and on the Linux, macOS and Windows runners; then each record compared
 # with the container's (scripts/text-determinism.mjs). The table goes to the run's summary page.
 # A measurement, never a gate: not a required check, and it never fails on a difference.
@@ -32,6 +33,9 @@ jobs:
     name: Text record inputs
     timeout-minutes: 15
     runs-on: ubuntu-latest
+    env:
+      # Whether the PXSIG_DS_SOURCE secret is set; the secret itself reaches only the fetch step.
+      HAS_DS: ${{ secrets.PXSIG_DS_SOURCE != '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
@@ -40,8 +44,26 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # The dashboard with the plain adapter (system-ui, no design system), as dashboard-drift builds it.
-      - run: pnpm --filter @pxsig/dashboard build
+      # The dashboard: this repository's build, the hydrotik design system at the commit
+      # design-system.json pins (scripts/ds-fetch.mjs; the source is never printed). Without the
+      # PXSIG_DS_SOURCE secret (a fork, Dependabot) the plain adapter, named, and the run says so.
+      - name: Fetch the design system
+        if: env.HAS_DS == 'true'
+        shell: bash
+        env:
+          PXSIG_DS_SOURCE: ${{ secrets.PXSIG_DS_SOURCE }}
+        run: node scripts/ds-fetch.mjs
+      - name: Build the dashboard
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${HAS_DS}" = true ]; then
+            pnpm --filter @pxsig/dashboard build
+          else
+            echo "::notice::no PXSIG_DS_SOURCE secret in this run: the dashboard is built on the plain adapter"
+            PXSIG_UI_ADAPTER=plain pnpm --filter @pxsig/dashboard build
+          fi
+          node -p "'dashboard adapter: ' + require('./packages/pxsig/dist/dashboard/BUILD.json').adapter" >> "$GITHUB_STEP_SUMMARY"
       - name: Fetch the web font
         shell: bash
         run: |

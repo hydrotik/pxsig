@@ -1,7 +1,8 @@
 # How often does the gate fail renders of the same content? On the Linux, macOS and Windows runners
 # (and on a GPU runner when one is named), two jobs per OS each render the same corpus twice:
-# examples/single-package's stories, and the dashboard's fixture screens on the plain adapter (no
-# design-system source). One job then compares, with this checkout's engine, run 1 with run 2 of
+# examples/single-package's stories, and the dashboard's fixture screens of one build made first
+# (the hydrotik design system at the commit design-system.json pins; plain without the
+# PXSIG_DS_SOURCE secret). One job then compares, with this checkout's engine, run 1 with run 2 of
 # each job (the same machine) and the two jobs of each OS with each other (machine to machine), with
 # today's rules, the color rule alone and the whole gate, and how close the same content comes to
 # each rule (tools/gate-noise.mjs). The tables go to the run's summary page, the numbers to the
@@ -50,9 +51,52 @@ jobs:
           path: target/release/pxsig${{ runner.os == 'Windows' && '.exe' || '' }}
           retention-days: 3
 
+  # One dashboard build that every runner renders, so the noise is the renderer's, not the build's.
+  dashboard:
+    name: Noise dashboard
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    env:
+      # Whether the PXSIG_DS_SOURCE secret is set; the secret itself reaches only the fetch step.
+      HAS_DS: ${{ secrets.PXSIG_DS_SOURCE != '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The dashboard: this repository's build, the hydrotik design system at the commit
+      # design-system.json pins (scripts/ds-fetch.mjs; the source is never printed). Without the
+      # PXSIG_DS_SOURCE secret (a fork, Dependabot) the plain adapter, named, and the run says so.
+      - name: Fetch the design system
+        if: env.HAS_DS == 'true'
+        shell: bash
+        env:
+          PXSIG_DS_SOURCE: ${{ secrets.PXSIG_DS_SOURCE }}
+        run: node scripts/ds-fetch.mjs
+      - name: Build the dashboard
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${HAS_DS}" = true ]; then
+            pnpm --filter @pxsig/dashboard build
+          else
+            echo "::notice::no PXSIG_DS_SOURCE secret in this run: the dashboard is built on the plain adapter"
+            PXSIG_UI_ADAPTER=plain pnpm --filter @pxsig/dashboard build
+          fi
+          node -p "'dashboard adapter: ' + require('./packages/pxsig/dist/dashboard/BUILD.json').adapter" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: noise-dashboard
+          path: packages/pxsig/dist/dashboard
+          if-no-files-found: error
+          retention-days: 3
+
   render:
     name: Noise render (${{ matrix.os }}, ${{ matrix.instance }})
-    needs: engine
+    needs: [engine, dashboard]
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -74,12 +118,16 @@ jobs:
           path: target/release
       - if: runner.os != 'Windows'
         run: chmod +x target/release/pxsig
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: noise-dashboard
+          path: noise-dashboard
       - run: pnpm --filter pxsig exec playwright install ${{ runner.os == 'Linux' && '--with-deps' || '' }} chromium
       - shell: bash
         run: |
           label="$(echo '${{ runner.os }}-${{ matrix.instance }}' | tr '[:upper:]' '[:lower:]')"
           echo "LABEL=$label" >> "$GITHUB_ENV"
-          node tools/gate-noise.mjs render --label "$label" --out "noise/$label" --runs 2
+          node tools/gate-noise.mjs render --label "$label" --out "noise/$label" --runs 2 --build noise-dashboard
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: noise-renders-${{ env.LABEL }}
@@ -90,7 +138,7 @@ jobs:
   # have none). Two jobs, as above.
   render-gpu:
     name: Noise render (GPU, ${{ matrix.instance }})
-    needs: engine
+    needs: [engine, dashboard]
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.gpu-runner != '' }}
     timeout-minutes: 40
     strategy:
@@ -111,8 +159,12 @@ jobs:
           name: noise-engine-ubuntu-latest
           path: target/release
       - run: chmod +x target/release/pxsig
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: noise-dashboard
+          path: noise-dashboard
       - run: pnpm --filter pxsig exec playwright install --with-deps chromium
-      - run: node tools/gate-noise.mjs render --label gpu-${{ matrix.instance }} --out noise/gpu-${{ matrix.instance }} --runs 2
+      - run: node tools/gate-noise.mjs render --label gpu-${{ matrix.instance }} --out noise/gpu-${{ matrix.instance }} --runs 2 --build noise-dashboard
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: noise-renders-gpu-${{ matrix.instance }}
