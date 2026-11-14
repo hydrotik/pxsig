@@ -97,6 +97,8 @@ Problems with the setup sit outside the entries, in `setup`:
 | `enforcement-expired`    | info                              | `warnUntil` passed: the gates that were on warn have been enforced since. Shown for `noticeDays` after the date.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `image-mismatch`         | warn                              | Inside the container image (`PXSIG_IMAGE` set): the image is built for a different Playwright than the one that resolves, or runs a different pxsig than the project pins. Use the image tag for the project's versions ([container.md](container.md)).                                                                                                                                                                                                                                                                                                                                             |
 | `path-portability`       | warn                              | A baseline path Windows cannot check out (a reserved name such as `CON` or `NUL`, a trailing dot or space, one of `<>:"\|?*`, over 240 characters), or two baseline paths that differ only in case.                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `unreviewed-new`         | warn                              | Baselines no person approved, written from 0.7.7 on (by `check --update`, an adoption, a migration, an assistant, or bytes no log line wrote): growth past the review queue ([Unreviewed baselines](#unreviewed-baselines)). The reason names the first three and what wrote them. `integrity.severity` can raise it.                                                                                                                                                                                                                                                                               |
+| `review-order`           | warn                              | `approvals.reviewOrder` names a file that is missing or not JSON: the review queue is ordered by component name.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
 The workspace-level codes (`project-unlisted`, `project-missing`, `version-skew`) are in
 [monorepo.md](monorepo.md). A `warn` setup problem never changes `doctor`'s exit code.
@@ -147,15 +149,55 @@ on two or three entries. A project with more noise raises them, up to `count` 10
 
 `<store>/reports/integrity.json`, rewritten atomically:
 
-| Field           | Content                                                                                                                                                |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `schemaVersion` | `1`                                                                                                                                                    |
-| `generatedAt`   | When it was computed                                                                                                                                   |
-| `sources`       | What was read: story index (live or static, counts), manifest, config, report, renders, signatures, approvals, review, a11y baseline, staleness method |
-| `setup`         | Setup problems (above)                                                                                                                                 |
-| `summary`       | `status` (`clean`, `warnings` or `attention`), `headline`, counts by severity, status and code                                                         |
-| `components`    | One row per component: status, severity, counts per code                                                                                               |
-| `entries`       | One row per entry: `id`, `story`, `component`, `status`, `severity`, `issues[]` with `code`, `severity`, `reason`                                      |
+| Field           | Content                                                                                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `schemaVersion` | `1`                                                                                                                                                                      |
+| `generatedAt`   | When it was computed                                                                                                                                                     |
+| `sources`       | What was read: story index (live or static, counts), manifest, config, report, renders, signatures, approvals, review, a11y baseline, staleness method                   |
+| `setup`         | Setup problems (above)                                                                                                                                                   |
+| `summary`       | `status` (`clean`, `warnings` or `attention`), `headline`, counts by severity, status and code                                                                           |
+| `components`    | One row per component: status, severity, counts per code                                                                                                                 |
+| `entries`       | One row per entry: `id`, `story`, `component`, `status`, `severity`, `issues[]` with `code`, `severity`, `reason`, and `unreviewed` when no person approved its baseline |
+
+## Unreviewed baselines
+
+A baseline is reviewed when a line of `approvals.ndjson` for its entry, made by a person, logged
+exactly the bytes it holds now (the line's `after` is the `.psig` file's sha256). A person's line
+came through the dashboard or the CLI (`via`), carries no assistant marker (`agent`) and is not an
+undo. Every other baseline is unreviewed:
+
+- written by `pxsig migrate`, `pxsig approve verify --adopt`, `pxsig check --update`, or an
+  assistant (MCP, or a process with a marker);
+- with no line in the log at all (from before pxsig kept one, or copied in);
+- holding bytes no line logged (changed outside pxsig; `approve verify` calls it a mismatch).
+
+An undo back to bytes a person approved is reviewed again; a migration that rewrote an approved
+baseline's format is not (the new bytes were never looked at).
+
+**The queue only shrinks.** An unreviewed baseline whose bytes were written before 0.7.7 (its line
+names an older pxsig) or that has no line at all is in the review queue; no newer pxsig adds to it.
+One written without review from 0.7.7 on, or holding bytes no line logged while its entry has
+lines, is new: the setup warning `unreviewed-new` names it. Nothing fails on either: an entry keeps
+its status and issues, and carries `unreviewed` beside them.
+
+**The order.** The components an adapter uses first, then the most used, then the rest. pxsig
+cannot know either, so `approvals.reviewOrder` in `pxsig.config.json` may name a
+workspace-relative JSON file:
+
+```json
+{ "first": ["Badge", "Button"], "usage": { "Badge": 14, "Card": 9 } }
+```
+
+Components in `first`, in that order, then by `usage` (most first), then by name; within a
+component, by entry id. A component matches by its ledger name or that name's last segment
+(`components/Badge` matches `Badge`). Without the file, by name.
+
+**Where it shows.** The ledger: `unreviewed` on each such entry (`queue`: its place from 1, or
+`new: true`; `by`: what wrote it), `unreviewed` on its component (the count), and
+`summary.unreviewed` (`count`, `queue`, `new`, `order`, `next`: the first ten ids). `pxsig doctor`
+and `pxsig status` print a line when there are any; the MCP `pxsig_status` returns `unreviewed`.
+The dashboard's Coverage view shows an "Unreviewed" tile; choosing it lists the components and
+their entries in queue order, and each entry's detail says what wrote it and its place.
 
 ## Repairs
 

@@ -7,9 +7,18 @@
       "status": "bespoke",
       "note": "ThemeProvider kept in step with the runtime's mode, plus TooltipProvider"
     },
-    "AppShell": { "status": "full", "note": "AppShell" },
-    "AppMain": { "status": "full", "note": "AppShellContent as a <main>" },
-    "TopNav": { "status": "full", "note": "Navbar, brand in its logo slot" },
+    "AppShell": {
+      "status": "full",
+      "note": "AppShell"
+    },
+    "AppMain": {
+      "status": "full",
+      "note": "AppShellContent as a <main>"
+    },
+    "TopNav": {
+      "status": "full",
+      "note": "Navbar, brand in its logo slot"
+    },
     "NavList": {
       "status": "full",
       "note": "NavItems; contract NavLinks become NavItemLinks so its More menu finds them"
@@ -18,60 +27,237 @@
       "status": "full",
       "note": "NavItemLink; count tone info → attention, drawn as primary digits on a neutral pill"
     },
-    "NavEnd": { "status": "bespoke", "note": "a plain div inside the Navbar" },
-    "Button": { "status": "full", "note": "Button; href renders the Button as an <a> (asChild)" },
-    "IconButton": { "status": "full", "note": "Button size icon / icon-sm" },
-    "Card": { "status": "full" },
-    "CardHeader": { "status": "full" },
-    "CardTitle": { "status": "full" },
-    "CardDescription": { "status": "full" },
-    "CardContent": { "status": "full" },
+    "NavEnd": {
+      "status": "bespoke",
+      "note": "a plain div inside the Navbar"
+    },
+    "Button": {
+      "status": "full",
+      "note": "Button; href renders the Button as an <a> (asChild)",
+      "parity": [
+        {
+          "story": "components-button--default",
+          "args": {
+            "children": "Approve",
+            "size": "sm"
+          },
+          "props": {
+            "size": "sm"
+          },
+          "children": "Approve"
+        },
+        {
+          "story": "components-button--outline",
+          "args": {
+            "children": "Reject",
+            "size": "md"
+          },
+          "props": {
+            "emphasis": "outline"
+          },
+          "children": "Reject"
+        }
+      ]
+    },
+    "IconButton": {
+      "status": "full",
+      "note": "Button size icon / icon-sm"
+    },
+    "Card": {
+      "status": "full"
+    },
+    "CardHeader": {
+      "status": "full"
+    },
+    "CardTitle": {
+      "status": "full"
+    },
+    "CardDescription": {
+      "status": "full"
+    },
+    "CardContent": {
+      "status": "full"
+    },
     "StatGroup": {
       "status": "full",
       "note": "StatPanel; selectable items are filter cards; a tone colours the value, no accent edge"
     },
-    "DataTable": { "status": "full", "note": "DataGrid, compact density" },
-    "SidePanelLayout": { "status": "full", "note": "ContentLayout, as tall as its content" },
-    "SidePanelMain": { "status": "full", "note": "ContentLayoutMain as a div, not scrolling" },
+    "DataTable": {
+      "status": "full",
+      "note": "DataGrid, compact density"
+    },
+    "SidePanelLayout": {
+      "status": "full",
+      "note": "ContentLayout, as tall as its content"
+    },
+    "SidePanelMain": {
+      "status": "full",
+      "note": "ContentLayoutMain as a div, not scrolling"
+    },
     "SidePanel": {
       "status": "full",
       "note": "SidePanel pushed in on the right, 20rem; no resize handle or expand button (their names are fixed English in the design system); focus moves into it on open"
     },
-    "StatusBadge": { "status": "full", "note": "StatusBadge with an explicit tone and glyph" },
+    "StatusBadge": {
+      "status": "full",
+      "note": "StatusBadge with an explicit tone and glyph"
+    },
     "Badge": {
       "status": "full",
-      "note": "Badge in its neutral variants (secondary, outline), the text in the tone's colour"
+      "note": "Badge in its neutral variants (secondary, outline), the text in the tone's colour",
+      "parity": [
+        {
+          "story": "components-badge--live",
+          "args": {
+            "children": "Live"
+          },
+          "props": {
+            "tone": "success",
+            "pulse": true
+          },
+          "children": "Live"
+        },
+        {
+          "story": "components-badge--default",
+          "args": {
+            "children": "Read only",
+            "variant": "secondary"
+          },
+          "props": {
+            "tone": "neutral"
+          },
+          "children": "Read only"
+        },
+        {
+          "story": "components-badge--default",
+          "args": {
+            "children": "New",
+            "variant": "warning"
+          },
+          "props": {
+            "tone": "warning"
+          },
+          "children": "New"
+        }
+      ]
     },
-    "Icon": { "status": "full", "note": "lucide glyphs (the design system's Icons)" },
-    "Dialog": { "status": "full", "note": "Dialog + DialogContent, no close button" },
-    "DialogTitle": { "status": "full" },
-    "DialogDescription": { "status": "full" },
+    "Icon": {
+      "status": "full",
+      "note": "lucide glyphs (the design system's Icons)"
+    },
+    "Dialog": {
+      "status": "full",
+      "note": "Dialog + DialogContent, no close button"
+    },
+    "DialogTitle": {
+      "status": "full"
+    },
+    "DialogDescription": {
+      "status": "full"
+    },
     "Slider": {
       "status": "full",
       "note": "Slider with one thumb, on one line: label, track, value"
     },
-    "Switch": { "status": "full" },
-    "SegmentedChoice": { "status": "full", "note": "ToggleGroup type single" },
-    "Toolbar": { "status": "full" },
-    "ToolbarStart": { "status": "full", "note": "ToolbarLeft" },
-    "ToolbarEnd": { "status": "full", "note": "ToolbarRight" },
-    "ToolbarField": { "status": "full", "note": "ToolbarFormField" },
-    "ToolbarSummary": { "status": "full" },
-    "CopyValue": { "status": "full" },
-    "Kbd": { "status": "full" },
+    "Switch": {
+      "status": "full"
+    },
+    "SegmentedChoice": {
+      "status": "full",
+      "note": "ToggleGroup type single"
+    },
+    "Toolbar": {
+      "status": "full"
+    },
+    "ToolbarStart": {
+      "status": "full",
+      "note": "ToolbarLeft"
+    },
+    "ToolbarEnd": {
+      "status": "full",
+      "note": "ToolbarRight"
+    },
+    "ToolbarField": {
+      "status": "full",
+      "note": "ToolbarFormField"
+    },
+    "ToolbarSummary": {
+      "status": "full"
+    },
+    "CopyValue": {
+      "status": "full",
+      "parity": [
+        {
+          "story": "components-copyvalue--default",
+          "args": {
+            "value": "pxsig check"
+          },
+          "props": {
+            "value": "pxsig check"
+          }
+        }
+      ]
+    },
+    "Kbd": {
+      "status": "full",
+      "parity": [
+        {
+          "story": "components-kbd--default",
+          "args": {
+            "children": "K",
+            "size": "sm"
+          },
+          "children": "K"
+        }
+      ]
+    },
     "Tooltip": {
       "status": "full",
       "note": "Tooltip, TooltipTrigger (asChild) and TooltipContent below the element"
     },
-    "Link": { "status": "full" },
-    "Progress": { "status": "full" },
-    "KeyValueList": { "status": "full", "note": "StaticList" },
-    "KeyValueItem": { "status": "full", "note": "StaticListItem" },
-    "Alert": { "status": "full" },
-    "AlertTitle": { "status": "full" },
-    "AlertDescription": { "status": "full" },
-    "SearchField": { "status": "full", "note": "SearchBar" },
-    "TextField": { "status": "full", "note": "Input with its own label, full width" },
+    "Link": {
+      "status": "full",
+      "parity": [
+        {
+          "story": "components-link--default",
+          "args": {
+            "children": "Documentation"
+          },
+          "props": {
+            "href": "#"
+          },
+          "children": "Documentation"
+        }
+      ]
+    },
+    "Progress": {
+      "status": "full"
+    },
+    "KeyValueList": {
+      "status": "full",
+      "note": "StaticList"
+    },
+    "KeyValueItem": {
+      "status": "full",
+      "note": "StaticListItem"
+    },
+    "Alert": {
+      "status": "full"
+    },
+    "AlertTitle": {
+      "status": "full"
+    },
+    "AlertDescription": {
+      "status": "full"
+    },
+    "SearchField": {
+      "status": "full",
+      "note": "SearchBar"
+    },
+    "TextField": {
+      "status": "full",
+      "note": "Input with its own label, full width"
+    },
     "Select": {
       "status": "full",
       "note": "Select with trigger, value and items built from options"
@@ -83,6 +269,13 @@
     "Heatmap": {
       "status": "bespoke",
       "note": "tiles on the design system's tokens: the first chart colour over the surface in five steps, text at 4.5:1 or better on every step in both themes"
+    }
+  },
+  "parity": {
+    "storyRoot": "#storybook-root > div > *",
+    "globals": {
+      "dark": "theme:dark",
+      "light": "theme:light"
     }
   }
 }

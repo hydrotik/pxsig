@@ -294,6 +294,7 @@ async function runOnce({ browser, theme, dashboard, axe, out, log, want, text })
           fallbacks: null,
           referenceShot: null,
           fidelity: [],
+          alignment: [],
           ...r,
           ms: Date.now() - started,
           shot: r.rendered ? shot : null,
