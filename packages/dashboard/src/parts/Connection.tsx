@@ -32,11 +32,14 @@ export function Connection({ live, lastCheck }: { live: boolean; lastCheck: stri
     : null;
   const tone = on ? 'success' : 'neutral';
   const emphasis = served ? undefined : 'outline';
+  // The badge says the connection; the last check follows it, read but not drawn.
   const first = (
-    <Badge tone={tone} pulse={on} emphasis={emphasis}>
-      {connection}
+    <>
+      <Badge tone={tone} pulse={on} emphasis={emphasis}>
+        {connection}
+      </Badge>
       {said ? <span className={s.srOnly}>{said.slice(connection.length)}</span> : null}
-    </Badge>
+    </>
   );
   const whole = [said ?? connection, ...(may ? [may] : [])].join(' · ');
   return (
