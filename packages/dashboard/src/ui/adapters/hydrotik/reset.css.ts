@@ -14,7 +14,10 @@
  *   - the outermost of its elements: the body's line height and letter spacing, which their parts
  *     inherit (unitless, so a component's own font size keeps its proportion);
  *   - its form controls: the font, line height and colour around them, as the stylesheet sets;
- *     its buttons: no border or background of the browser's own.
+ *     its buttons: no border or background of the browser's own;
+ *   - its images and icons, and those inside one: blocks, as the stylesheet makes every image. An
+ *     inline svg sits on the text's baseline in a line box taller than itself: a select's chevron
+ *     in a 20px line made its box 22px, the chevron at the top of it, 3px above the label.
  * `:where` keeps every rule at a reset's zero specificity, so a component's own style still wins.
  *
  * The stylesheet's file name is not spelled out above: in a comment it trips vanilla-extract's
@@ -28,6 +31,7 @@ export const dsElements = ':where([class^="ds-"], [class*=" ds-"])';
 /** Those not inside another one: where the body's type would reach them from. */
 const outermost = `${dsElements}:not(${dsElements} *)`;
 const controls = ':where(button, input, optgroup, select, textarea)';
+const media = ':where(img, svg, video, canvas, audio, iframe, embed, object)';
 
 globalStyle(`${dsElements}, ${dsElements}::before, ${dsElements}::after`, {
   boxSizing: 'border-box',
@@ -50,6 +54,11 @@ globalStyle(`:where(button${dsElements}, ${dsElements} button)`, {
   cursor: 'pointer',
   border: 'none',
   background: 'none',
+});
+globalStyle(`:where(${media}${dsElements}, ${dsElements} ${media})`, {
+  display: 'block',
+  verticalAlign: 'middle',
+  maxInlineSize: '100%',
 });
 // Last: an outermost control takes the body's line height, as it would inherit it from the body.
 globalStyle(outermost, {
