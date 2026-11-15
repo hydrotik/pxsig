@@ -30,7 +30,6 @@ import { oneLineSlider } from './slider';
 import { sidePanel } from './side-panel';
 import { textField } from './text-field';
 import { toneBadge, toneStatGroup } from './tones';
-import * as X from './ds-exceptions';
 export { Heatmap } from './heatmap';
 
 export const name = 'hydrotik';
@@ -219,7 +218,7 @@ export const IconButton = ({
 
 export const Card = ({ children }: C.CardProps) => <DS.Card>{children}</DS.Card>;
 export const CardHeader = ({ children }: C.CardHeaderProps) => (
-  <DS.CardHeader {...X.cardHeaderAllow}>{children}</DS.CardHeader>
+  <DS.CardHeader>{children}</DS.CardHeader>
 );
 export const CardTitle = ({ children }: C.CardTitleProps) => (
   <DS.CardTitle>{children}</DS.CardTitle>
@@ -238,27 +237,24 @@ export function DataTable<T>(props: C.DataTableProps<T>) {
 }
 
 function Grid<T>({ rows, rowId, columns, onRowClick, search, paginate }: C.DataTableProps<T>) {
-  // The grid takes no attributes of its own: the exception sits on a box that draws nothing.
   return (
-    <div {...X.dataGridAllow} style={{ display: 'contents' }}>
-      <DS.DataGrid
-        data={rows}
-        getRowId={rowId}
-        density="compact"
-        showToolbar={!!search}
-        {...(paginate === false ? { enablePagination: false } : {})}
-        {...(onRowClick ? { onRowClick: (row: { original: T }) => onRowClick(row.original) } : {})}
-        columns={columns.map((c) => ({
-          id: c.id,
-          ...(c.field ? { accessorKey: c.field } : {}),
-          header: c.header,
-          ...(c.align === 'end' ? { align: 'right' as const } : {}),
-          // The grid sizes columns in pixels: a px width maps; any other CSS width is left to the grid.
-          ...(c.width?.endsWith('px') ? { size: parseFloat(c.width) } : {}),
-          ...(c.cell ? { cell: ({ row }: { row: { original: T } }) => c.cell!(row.original) } : {}),
-        }))}
-      />
-    </div>
+    <DS.DataGrid
+      data={rows}
+      getRowId={rowId}
+      density="compact"
+      showToolbar={!!search}
+      {...(paginate === false ? { enablePagination: false } : {})}
+      {...(onRowClick ? { onRowClick: (row: { original: T }) => onRowClick(row.original) } : {})}
+      columns={columns.map((c) => ({
+        id: c.id,
+        ...(c.field ? { accessorKey: c.field } : {}),
+        header: c.header,
+        ...(c.align === 'end' ? { align: 'right' as const } : {}),
+        // The grid sizes columns in pixels: a px width maps; any other CSS width is left to the grid.
+        ...(c.width?.endsWith('px') ? { size: parseFloat(c.width) } : {}),
+        ...(c.cell ? { cell: ({ row }: { row: { original: T } }) => c.cell!(row.original) } : {}),
+      }))}
+    />
   );
 }
 
@@ -295,7 +291,6 @@ const STATUS_TONE: Record<C.Tone, 'neutral' | 'info' | 'success' | 'warning' | '
 
 export const StatusBadge = ({ tone, icon, label, title, className }: C.StatusBadgeProps) => (
   <DS.StatusBadge
-    {...X.statusBadgeAllow}
     label={label}
     tone={STATUS_TONE[tone]}
     icon={GLYPH[icon] as never}
@@ -322,7 +317,6 @@ export function Dialog({ open, onOpenChange, initialFocus, className, children }
   return (
     <DS.Dialog open={open} onOpenChange={onOpenChange}>
       <DS.DialogContent
-        {...X.dialogAllow}
         className={className}
         showCloseButton={false}
         aria-describedby={undefined}
@@ -416,9 +410,7 @@ export const ToolbarSummary = ({ live, children }: C.ToolbarSummaryProps) => (
   <DS.ToolbarSummary live={live}>{children}</DS.ToolbarSummary>
 );
 
-export const CopyValue = ({ value }: C.CopyValueProps) => (
-  <DS.CopyValue value={value} {...X.copyValueAllow} />
-);
+export const CopyValue = ({ value }: C.CopyValueProps) => <DS.CopyValue value={value} />;
 export const Kbd = ({ children }: C.KbdProps) => <DS.Kbd size="sm">{children}</DS.Kbd>;
 export const Tooltip = ({ content, children }: C.TooltipProps) => (
   <DS.Tooltip>
@@ -464,7 +456,6 @@ export const KeyValueItem = ({ label, children }: C.KeyValueItemProps) => (
 
 export const Alert = ({ tone, label, children }: C.AlertProps) => (
   <DS.Alert
-    {...X.alertAllow}
     variant={tone === 'danger' ? 'destructive' : 'default'}
     aria-label={label}
     style={{ boxSizing: 'border-box' }}
@@ -497,7 +488,6 @@ export const Select = ({
   // The root passes `id` on to its trigger (untyped), so a toolbar field's label names it.
   <DS.Select {...((id ? { id } : {}) as object)} value={value} onValueChange={onValueChange}>
     <DS.SelectTrigger
-      {...X.selectAllow}
       {...(size ? { size } : {})}
       {...(label ? { 'aria-label': label } : {})}
       {...(inlineSize ? { style: { inlineSize } } : {})}

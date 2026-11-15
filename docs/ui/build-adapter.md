@@ -939,8 +939,7 @@ draw them with your own segmented control and buttons.
      opts an element out of every layout rule; `data-layout-allow="aligned, whole-pixel: <reason>"`
      out of the rules it names only. A half pixel whose cause is an element opted out of
      `whole-pixel` (say, a design-system header of fractional height) is that element's, and is
-     not reported again on what follows it. The reference adapter opts its design system's
-     components out where the cause is theirs, each with its reason (`ds-exceptions.ts`).
+     not reported again on what follows it.
 
    - `--compare <dir>`: each screen against the same screen of an earlier check's output (its
      `--out`), compared by the pxsig engine with the gates stories get. Changed screens are listed

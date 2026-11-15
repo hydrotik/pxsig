@@ -7,7 +7,5 @@
   full PNG). Small components on pxsig's own screens no longer land on half pixels, where the
   browser draws their borders and text apart.
 - **pxsig's own screens hold source parity and alignment at zero.** The screens workflow fails on
-  any alignment finding and any source-parity difference on pxsig's own screens. Where the cause
-  is in the design system the reference adapter draws with (its StatusBadge, Select, DataGrid,
-  CopyValue, Alert, CardHeader and Dialog), the adapter opts that component out of the alignment
-  rules with the cause as its reason (`ds-exceptions.ts`), until the design system fixes it.
+  any alignment finding and any source-parity difference on pxsig's own screens, with no
+  exceptions: the design system the reference adapter draws with sits on whole pixels too.
