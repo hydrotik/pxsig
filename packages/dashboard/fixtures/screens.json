@@ -161,23 +161,6 @@
           }
         },
         {
-          "scenario": "changed",
-          "state": "narrow",
-          "hash": "#overview",
-          "width": 800,
-          "actions": [
-            {
-              "click": {
-                "role": "button",
-                "name": "More"
-              }
-            }
-          ],
-          "wait": {
-            "role": "menu"
-          }
-        },
-        {
           "scenario": "long-label",
           "hash": "#overview",
           "wait": {

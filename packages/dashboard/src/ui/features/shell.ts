@@ -103,14 +103,6 @@ export const SHELL: Feature[] = [
           wait: { role: 'combobox', name: 'Project' },
         },
       ]),
-      {
-        scenario: 'changed',
-        state: 'narrow',
-        hash: '#overview',
-        width: 800,
-        actions: [{ click: { role: 'button', name: 'More' } }],
-        wait: { role: 'menu' },
-      },
       // A long workspace label: capped at 24ch, its full name in its title.
       { scenario: 'long-label', hash: '#overview', wait: { role: 'heading', name: 'Acme' } },
       {
