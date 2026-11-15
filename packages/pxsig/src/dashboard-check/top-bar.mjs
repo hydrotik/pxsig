@@ -201,8 +201,8 @@ async function readMenu(page) {
 }
 
 /**
- * Wait until the bar holds still: the same probe three times in a row (an adapter moves links into
- * More a frame after a resize), or about 1.5 s.
+ * Wait until the bar holds still: the same probe six times in a row, 40ms apart (an adapter moves
+ * links into More a frame or more after a resize, later on a loaded machine), or about 5 s.
  * @param {Page} page
  */
 async function steady(page) {
@@ -210,8 +210,8 @@ async function steady(page) {
   let same = 0;
   /** @type {TopBarProbe} */
   let m = { mark: false, overflow: 0 };
-  for (let i = 0; i < 60 && same < 3; i++) {
-    await page.waitForTimeout(25);
+  for (let i = 0; i < 125 && same < 6; i++) {
+    await page.waitForTimeout(40);
     m = await page.evaluate(probeTopBar, KEPT);
     const k = JSON.stringify(m);
     same = k === last ? same + 1 : 0;
@@ -236,7 +236,14 @@ export async function sweepTopBar(page, widths = TOP_BAR_WIDTHS) {
   ])) {
     for (const width of ws) {
       await page.setViewportSize({ width, height: 900 });
-      const m = await steady(page);
+      let m = await steady(page);
+      // Opening More must not change the bar: when it did, the bar was still moving; look again.
+      for (let tries = 0; tries < 2 && m.mark && m.trigger; tries++) {
+        await readMenu(page).catch(() => null);
+        const again = await steady(page);
+        if (JSON.stringify(again) === JSON.stringify(m)) break;
+        m = again;
+      }
       const menu =
         m.mark && m.trigger
           ? await readMenu(page).catch((e) => ({
