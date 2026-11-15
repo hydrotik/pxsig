@@ -11,6 +11,44 @@ import { srcDir } from './paths.mjs';
 export const STATUSES = ['full', 'partial', 'bespoke', 'missing'];
 
 /**
+ * The top bar's adapter rules (docs/ui/build-adapter.md, "Top bar"), by the key an adapter's
+ * conformance.json declares each under in `topBar`: `true` when the adapter meets it, else a
+ * string saying what it does instead.
+ */
+export const TOP_BAR = {
+  root: 'TopNav puts className on the bar root; the brand, the NavList and the NavEnd sit side by side in it',
+  oneLine: 'each link and the More trigger one line at its natural width (nowrap, no shrinking)',
+  measure:
+    'links measured at their natural width, again on resize, font load and label or count change',
+  list: 'the list takes the free width, never less than More and the kept links, and clips',
+  more: 'More holds only the links not in the bar, in bar order, after the last one shown and before the kept link; shown only when it holds one; marked current when the current section is in it',
+  keyboard:
+    'the menu button pattern: opens on the first item (Enter, Space, ArrowDown) or the last (ArrowUp); arrows wrap; Home, End; Escape closes and returns focus; Tab closes; choosing navigates and closes',
+  moreLabel: "the More trigger's accessible name is NavList's moreLabel",
+  end: 'NavEnd after the list, one row that never wraps',
+};
+
+/**
+ * An adapter's top-bar rules as declared: the ones it meets, the ones it does not with its note,
+ * and the keys no rule has. Null when it declares none.
+ * @param {Conformance | null} conformance
+ * @returns {{ met: string[], unmet: { rule: string, note: string }[], unknown: string[] } | null}
+ */
+export function topBarOf(conformance) {
+  const declared = conformance?.topBar;
+  if (!declared || typeof declared !== 'object') return null;
+  const met = Object.keys(TOP_BAR).filter((k) => declared[k] === true);
+  const unmet = Object.keys(TOP_BAR)
+    .filter((k) => declared[k] !== true)
+    .map((k) => ({
+      rule: k,
+      note: typeof declared[k] === 'string' ? declared[k] : 'not declared',
+    }));
+  const unknown = Object.keys(declared).filter((k) => !(k in TOP_BAR) && k !== 'note');
+  return { met, unmet, unknown };
+}
+
+/**
  * Every source file under a folder (posix-relative paths), skipping `skip` folders.
  * @param {string} [dir]
  * @param {string[]} [skip]
@@ -160,14 +198,17 @@ export function gapsOf({ adapterFile, manifest = buildManifest() }) {
     if (!exported.has(t)) problems.push(`the adapter module does not export \`${t}\``);
   const contract = contractStatus(conformance?.contract ?? '1.0.0');
   if (contract.status === 'older-major') problems.push(`contract: ${contract.line}`);
-  return { adapter: conformance?.adapter ?? path.basename(dir), contract, rows, problems };
+  const topBar = topBarOf(conformance);
+  for (const k of topBar?.unknown ?? [])
+    problems.push(`conformance.json's topBar lists "${k}", which is not a top-bar rule`);
+  return { adapter: conformance?.adapter ?? path.basename(dir), contract, rows, problems, topBar };
 }
 
 /**
  * The gaps report as text: missing, partial and bespoke components, and what each affects.
  * @param {Gaps} gaps
  */
-export function gapsText({ adapter, contract, rows, problems }) {
+export function gapsText({ adapter, contract, rows, problems, topBar = null }) {
   /** @param {string} s */
   const count = (s) => rows.filter((r) => r.status === s).length;
   const lines = [
@@ -188,6 +229,14 @@ export function gapsText({ adapter, contract, rows, problems }) {
         `    used by: ${r.usedBy.join(', ') || 'nothing yet'}`
       );
   }
+  const rules = Object.keys(TOP_BAR).length;
+  lines.push(
+    '',
+    topBar
+      ? `top bar (docs/ui/build-adapter.md, "Top bar"): ${topBar.met.length} of ${rules} rules met`
+      : `top bar (docs/ui/build-adapter.md, "Top bar"): not declared (conformance.json, "topBar")`,
+    ...(topBar?.unmet ?? []).map((u) => `  ${u.rule}: ${u.note}`)
+  );
   if (problems.length) lines.push('', 'problems:', ...problems.map((p) => `  ${p}`));
   return lines.join('\n');
 }

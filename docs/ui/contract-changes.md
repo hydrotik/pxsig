@@ -20,6 +20,21 @@ icon without a default. A major version's section starts with its migration note
 a version bump of the right size, or without a section here, fails. After the bump and the
 section, `node scripts/ui.mjs lock` records the new contract.
 
+## 1.7.0
+
+Minor: one optional prop, and the top bar's rules written down.
+
+- **`NavList` `moreLabel`**: the More trigger's accessible name ("More sections"), from pxsig's copy.
+  The trigger may draw an icon or text, as the adapter chooses; its menu takes the same name. An
+  adapter written for 1.6.0 keeps working and names its trigger itself; `pxsig dashboard gaps` then
+  says so.
+- **The top bar's responsive rules** ([build-adapter.md, "Top bar"](build-adapter.md#top-bar)):
+  what an adapter's `TopNav`, `NavList` and `NavEnd` must do so that the bar stays one line from
+  1440px down to 390px, with every section reachable down to 640px. The dashboard now decides which
+  end controls show by measuring the bar (`data-collapse` and `data-compact` on its root), not by
+  container queries on `TopNav`'s class; `pxsig dashboard check` sweeps the bar over widths with a
+  new rule, `top-bar`. An adapter declares how it meets them in its conformance.json (`topBar`).
+
 ## 1.6.0
 
 Minor: a region rule allows more; no component or prop changes.

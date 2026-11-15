@@ -130,8 +130,9 @@
 .plain-status[data-tone='info'] > span:first-child {
   color: var(--plain-accent);
 }
-/* The top bar is one line (R1): the links take the free width, and those that do not fit move
-   into the More menu (nav.tsx). */
+/* The top bar is one line (R1; docs/ui/build-adapter.md, "Top bar"): the links take the free
+   width, never less than More and the kept link (nav.tsx sets the minimum), and clip; those that do
+   not fit move into the More menu. Each link and the button stay one line at their natural width. */
 .plain-nav {
   display: flex;
   align-items: center;
@@ -148,9 +149,12 @@
   padding: 0;
   flex: 1 1 0;
   min-inline-size: 0;
+  overflow-x: clip;
+  overflow-clip-margin: 0.25rem;
 }
 .plain-nav li {
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .plain-nav a,
 .plain-more > button {
@@ -158,10 +162,14 @@
   text-decoration: none;
   font-size: 0.875rem;
 }
-.plain-nav a[aria-current='page'],
-.plain-more > button[data-current] {
+.plain-nav a[aria-current='page'] {
   color: var(--plain-accent);
   font-weight: 600;
+}
+/* The current section is in the menu: More in the accent, at its own weight, so its width (which
+   the fit measures) does not change with the section. */
+.plain-more > button[data-current] {
+  color: var(--plain-accent);
 }
 /* A count's digits take its tone (R4): info the accent, neutral the text colour, on any link. */
 .plain-nav .plain-badge[data-tone='neutral'] {
@@ -177,10 +185,10 @@
   padding: 0;
   cursor: pointer;
 }
-.plain-more > [role='menu'] {
-  position: absolute;
-  inset-block-start: calc(100% + 0.5rem);
-  inset-inline-end: 0;
+/* In <body>, fixed under the button (nav.tsx places it): the list's clipping does not cut it.
+   Its items are the controls' small size (28px). */
+.plain-menu {
+  position: fixed;
   z-index: 10;
   min-inline-size: 10rem;
   margin: 0;
@@ -191,17 +199,28 @@
   background: var(--plain-bg);
   border: 1px solid var(--plain-border);
   border-radius: 0.25rem;
+  font-size: 0.875rem;
 }
-.plain-more > [role='menu'][hidden] {
+.plain-menu[hidden] {
   display: none;
 }
-.plain-more [role='menuitem'] {
-  display: block;
-  padding: 0.25rem 0.5rem;
+.plain-menu [role='menuitem'] {
+  display: flex;
+  align-items: center;
+  min-block-size: 1.75rem;
+  box-sizing: border-box;
+  padding: 0 0.5rem;
   border-radius: 0.25rem;
+  color: var(--plain-text);
+  text-decoration: none;
+  white-space: nowrap;
 }
-.plain-more [role='menuitem']:hover,
-.plain-more [role='menuitem']:focus-visible {
+.plain-menu [role='menuitem'][aria-current='page'] {
+  color: var(--plain-accent);
+  font-weight: 600;
+}
+.plain-menu [role='menuitem']:hover,
+.plain-menu [role='menuitem']:focus-visible {
   background: var(--plain-hover);
 }
 .plain-dialog {

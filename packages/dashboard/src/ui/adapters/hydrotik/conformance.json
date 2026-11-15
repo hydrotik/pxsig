@@ -1,7 +1,18 @@
 {
   "adapter": "hydrotik",
-  "contract": "1.6.0",
+  "contract": "1.7.0",
   "designSystem": "@hydrotik/design-system (built from source: PXSIG_DS_SOURCE)",
+  "topBar": {
+    "root": true,
+    "oneLine": true,
+    "measure": "partial: the design system's NavItems re-measures on resize, on the first font load and when its items change; a link in More keeps the width it had when last shown",
+    "list": "partial: the design system's list clips but has no minimum; the dashboard's fit keeps the room for More and Help",
+    "more": true,
+    "keyboard": true,
+    "moreLabel": "the pinned design system's More trigger names itself (\"More navigation\")",
+    "end": true,
+    "note": "Navbar and NavItems; NavEnd is a <div> after the list"
+  },
   "components": {
     "UiProvider": {
       "status": "bespoke",
