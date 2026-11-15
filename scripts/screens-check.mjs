@@ -33,7 +33,7 @@
  * n > 1 each fixture screen renders twice, and one whose renders differ fails
  * (lib/screens-repeat.mjs).
  * Every rendered screen must also have no accessibility (axe) or layout finding, as `pxsig dashboard
- * check --strict` requires.
+ * check --strict` requires, and the top bar no `top-bar` finding.
  *
  * Exit: 0 every screen matches its baseline and its locks, with no finding · 1 a screen changed, is
  * new, did not render, changed structure or geometry, or has a finding · 2 setup.
@@ -221,7 +221,7 @@ async function main() {
   const tmp = join(P.store.root, 'renders', '.screens');
   const keep = join(P.store.reports, 'live-repeat');
   rmSync(keep, { recursive: true, force: true });
-  /** @type {{ report: { screens: DashboardCheckReport['screens'] }, outDir: string }} */
+  /** @type {{ report: Pick<DashboardCheckReport, 'screens' | 'topBar'>, outDir: string }} */
   let checked = { report: { screens: [] }, outDir: tmp };
   const log = (/** @type {string} */ m) => console.log(m);
   const idOf = (/** @type {ScreenResult} */ x) => screenId(x.feature, x.index + 1, x.theme).id;
@@ -290,7 +290,7 @@ async function main() {
       writeFileSync(file, `${x.aria.trimEnd()}\n`);
     }
   // Strict: an accessibility or layout finding on any screen fails, as `dashboard check --strict`.
-  const findings = screenFindings(checked.report.screens, idOf);
+  const findings = screenFindings(checked.report.screens, idOf, checked.report.topBar);
   const aligned = alignmentNotes(checked.report.screens, idOf, P.store.reports);
   const lockArgs = {
     screens: checked.report.screens,

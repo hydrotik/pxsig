@@ -58,6 +58,16 @@ export function summaryMarkdown(report) {
         ...x.fidelity.map((f) => `  - ${f.rule}: ${f.text}`),
       ])
     );
+  const bar = report.topBar?.findings ?? [];
+  if (bar.length)
+    lines.push(
+      '',
+      '### Top bar',
+      '',
+      `The top bar swept over ${report.topBar?.widths.join(', ')} CSS px (docs/ui/build-adapter.md, "Top bar"). Each one fails the check.`,
+      '',
+      ...bar.map((f) => `- ${f.rule}: ${f.text}`)
+    );
   const moving = report.screens.filter((x) => x.settled === false);
   if (moving.length)
     lines.push(
@@ -184,7 +194,12 @@ body.only-changed figure:not(.changed),body.only-changed section:not(:has(figure
 .pair img{inline-size:100%;block-size:auto;border:1px solid color-mix(in srgb,currentColor 15%,transparent)}.none{opacity:.7}
 </style></head><body>
 <h1>pxsig dashboard check</h1>
-<p>${esc(report.summary.rendered)} of ${esc(report.summary.screens)} screens rendered · ${esc(report.summary.failed)} failed · ${esc(report.summary.withFidelity)} breaking a region rule · ${esc(report.summary.withAxe)} with axe violations · ${esc(report.summary.withLayout)} with layout findings · ${esc(report.summary.withAlignment ?? 0)} with alignment findings${report.strict ? ' (strict)' : ' (advisory)'}.</p>
+<p>${esc(report.summary.rendered)} of ${esc(report.summary.screens)} screens rendered · ${esc(report.summary.failed)} failed · ${esc(report.summary.withFidelity)} breaking a region rule · ${esc(report.summary.withAxe)} with axe violations · ${esc(report.summary.withLayout)} with layout findings · ${esc(report.summary.withAlignment ?? 0)} with alignment findings${report.strict ? ' (strict)' : ' (advisory)'}${report.topBar ? ` · top bar over ${esc(report.topBar.widths.length)} widths: ${esc(report.topBar.findings.length)} findings` : ''}.</p>${
+    report.topBar?.findings.length
+      ? `
+<details open><summary>Top bar rules broken</summary><ul>${report.topBar.findings.map((f) => `<li>${esc(f.rule)}: ${esc(f.text)}</li>`).join('')}</ul></details>`
+      : ''
+  }
 <p>Left: the adapter build <code>${esc(report.build)}</code>. ${report.reference.used ? 'Right: the prebuilt reference dashboard.' : `No reference column: ${esc(report.reference.note)}.`}</p>
 ${
   report.compare

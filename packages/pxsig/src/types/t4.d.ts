@@ -496,6 +496,8 @@ export interface ScreenResult extends ScreenCapture {
   index: number;
   scenario: string;
   theme: string;
+  /** The viewport's width, when the screen sets its own. */
+  width?: number;
   fallbacks: string[] | null;
   fidelity: FidelityFinding[];
   alignment: LayoutFinding[];
@@ -524,8 +526,10 @@ export interface DashboardCheckReport {
     withLayout: number;
     withFidelity: number;
     withAlignment: number;
+    topBar?: number;
     posts: number;
   };
+  topBar?: import('./top-bar.js').TopBarReport | null;
   screens: ScreenResult[];
 }
 
