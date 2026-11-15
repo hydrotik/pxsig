@@ -3427,6 +3427,11 @@ declare module 'pxsig:hydrotik-design-system' {
       offset: `var(--${string})`;
       field: `var(--${string})`;
     };
+    leading: {
+      '4': `var(--${string})`;
+      '5': `var(--${string})`;
+      '6': `var(--${string})`;
+    };
   };
   const colorways: readonly ['air', 'lime'];
   type ColorwayName = 'default' | (typeof colorways)[number];
