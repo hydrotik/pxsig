@@ -34,6 +34,7 @@
   - text: Components 2 1 with errors Errors 1 Warnings 1 Not registered 0
   - button "Never checked 1"
   - text: Baseline image missing 0 No baseline 0
+  - button "Unreviewed 1"
   - heading "Stale Entries by Component" [level=3]
   - paragraph: 1 of 2 components has stale entries. Highest share first.
   - list "Stale entries by component":

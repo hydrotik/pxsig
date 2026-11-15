@@ -79,6 +79,8 @@ export const legend = style({
   alignItems: 'center',
   gap: vars.space['1_5'],
   fontSize: vars.font.size['2xs'],
+  // A whole-pixel line, so the 8px swatches centre on whole pixels (an inherited 1.5 gives 16.5px).
+  lineHeight: '1rem',
   color: vars.color.textMuted,
 });
 export const legendLabel = style({

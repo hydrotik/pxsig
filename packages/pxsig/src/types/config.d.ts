@@ -175,6 +175,8 @@ export type Config = {
     level?: 'standard' | 'strict';
     /** The dashboard's Approve story (one batch for a story's waiting entries); off by default. */
     byStory?: boolean;
+    /** A workspace-relative JSON file ordering the review queue (lib/integrity/unreviewed.mjs). */
+    reviewOrder?: string;
   };
   dashboard?: { ui?: string };
   /** The drift alarm (lib/drift.mjs): `drift-high` when both are reached. */

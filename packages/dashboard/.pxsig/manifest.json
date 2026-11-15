@@ -1540,6 +1540,134 @@
       "a11y": false
     },
     {
+      "id": "inspector--header-3@dark",
+      "story": "inspector--header-3",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--header-3@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--header-3@light",
+      "story": "inspector--header-3",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--header-3@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--header-4@dark",
+      "story": "inspector--header-4",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--header-4@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--header-4@light",
+      "story": "inspector--header-4",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--header-4@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--header-5@dark",
+      "story": "inspector--header-5",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--header-5@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--header-5@light",
+      "story": "inspector--header-5",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--header-5@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--header-6@dark",
+      "story": "inspector--header-6",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--header-6@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--header-6@light",
+      "story": "inspector--header-6",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--header-6@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
       "id": "inspector--stage-1@dark",
       "story": "inspector--stage-1",
       "mode": "dark",
@@ -1732,6 +1860,70 @@
       "a11y": false
     },
     {
+      "id": "inspector--masks-1@dark",
+      "story": "inspector--masks-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--masks-1@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--masks-1@light",
+      "story": "inspector--masks-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--masks-1@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--masks-2@dark",
+      "story": "inspector--masks-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--masks-2@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--masks-2@light",
+      "story": "inspector--masks-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--masks-2@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
       "id": "inspector--session-1@dark",
       "story": "inspector--session-1",
       "mode": "dark",
@@ -1796,6 +1988,102 @@
       "a11y": false
     },
     {
+      "id": "inspector--report-1@dark",
+      "story": "inspector--report-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--report-1@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--report-1@light",
+      "story": "inspector--report-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--report-1@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--report-2@dark",
+      "story": "inspector--report-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--report-2@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--report-2@light",
+      "story": "inspector--report-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--report-2@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--report-3@dark",
+      "story": "inspector--report-3",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--report-3@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "inspector--report-3@light",
+      "story": "inspector--report-3",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/inspector/inspector--report-3@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
       "id": "embed--panel-1@dark",
       "story": "embed--panel-1",
       "mode": "dark",
@@ -1817,6 +2105,38 @@
       "mode": "light",
       "state": null,
       "sig": ".pxsig/baselines/embed/embed--panel-1@light.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "embed--panel-2@dark",
+      "story": "embed--panel-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/embed/embed--panel-2@dark.psig",
+      "importPath": "src/ui/features/inspector.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "embed--panel-2@light",
+      "story": "embed--panel-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/embed/embed--panel-2@light.psig",
       "importPath": "src/ui/features/inspector.ts",
       "globals": "",
       "colorScheme": "light",
@@ -2276,6 +2596,70 @@
       "a11y": false
     },
     {
+      "id": "live--dismiss-1@dark",
+      "story": "live--dismiss-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--dismiss-1@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--dismiss-1@light",
+      "story": "live--dismiss-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--dismiss-1@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--dismiss-2@dark",
+      "story": "live--dismiss-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--dismiss-2@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--dismiss-2@light",
+      "story": "live--dismiss-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--dismiss-2@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
       "id": "live--read-only-1@dark",
       "story": "live--read-only-1",
       "mode": "dark",
@@ -2297,6 +2681,38 @@
       "mode": "light",
       "state": null,
       "sig": ".pxsig/baselines/live/live--read-only-1@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--report-1@dark",
+      "story": "live--report-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--report-1@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--report-1@light",
+      "story": "live--report-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--report-1@light.psig",
       "importPath": "../../scripts/live/flows.mjs",
       "globals": "",
       "colorScheme": "light",

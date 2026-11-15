@@ -221,7 +221,7 @@
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
           "default": [],
-          "description": "Chromium arguments added after pxsig's own (--disable-lcd-text, --font-render-hinting=none), so a later value of the same switch wins. Recorded in each render's environment (browser.launchArgs). Not passed to a browser server (capture.browserEndpoint), Firefox or WebKit."
+          "description": "Chromium arguments added after pxsig's own (--disable-lcd-text, --font-render-hinting=none, --disable-partial-raster), so a later value of the same switch wins. Recorded in each render's environment (browser.launchArgs). Not passed to a browser server (capture.browserEndpoint), Firefox or WebKit."
         },
         "ignore": {
           "type": "array",
@@ -664,6 +664,10 @@
           "enum": ["standard", "strict"],
           "default": "standard",
           "description": "standard: a typed phrase at a terminal, or the dashboard with the dashboard link. strict is reserved for a later release and refused for now."
+        },
+        "reviewOrder": {
+          "type": "string",
+          "description": "A workspace-relative JSON file that orders the review queue of baselines no person approved: `{ \"first\": [component, …], \"usage\": { component: count } }` (the components an adapter uses first, then the most used, then the rest). Unset: by component name. docs/integrity.md, \"Unreviewed baselines\"."
         },
         "byStory": {
           "type": "boolean",

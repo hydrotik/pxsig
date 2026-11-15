@@ -83,7 +83,11 @@ export function Header({
         <Title ref={titleRef} tabIndex={-1} className={s.insTitle} title={row.id}>
           {row.id}
         </Title>
-        <Desc className={`${s.micro} ${s.clip}`} style={{ margin: 0 }} title={desc || undefined}>
+        <Desc
+          className={`${s.micro} ${s.clip} ${s.insDesc}`}
+          style={{ margin: 0 }}
+          title={desc || undefined}
+        >
           {desc || '\u00a0'}
         </Desc>
       </div>

@@ -185,6 +185,14 @@ test('overlap: controls drawn over each other, or covered by one', async (t) => 
     ),
     []
   );
+  // Scrolled out of the window under a sticky top bar: not drawn there, not reported.
+  assert.deepEqual(
+    await findings(
+      '<nav style="position:fixed;top:0;left:0;right:0;height:44px;background:#fff"><a href="#">Overview</a></nav><button style="position:absolute;top:-20px;left:0;height:28px">Part</button>',
+      'overlap'
+    ),
+    []
+  );
   // Behind a modal <dialog>: inert, though no element says so.
   assert.deepEqual(
     await findings(
@@ -210,4 +218,16 @@ test('at most `max` findings per rule, and a count of the rest', async (t) => {
   } finally {
     await page.close();
   }
+});
+
+test('data-layout-allow scoped to the alignment rules leaves the layout rules on', async (t) => {
+  if (skip) return t.skip(skip);
+  const cut =
+    '<div style="width:100px;height:20px;overflow:hidden"><div style="width:300px">x</div></div>';
+  assert.equal(
+    (await findings(`<div data-layout-allow="aligned, whole-pixel: test">${cut}</div>`, 'clipped'))
+      .length,
+    1
+  );
+  assert.equal((await findings(`<div data-layout-allow="test">${cut}</div>`, 'clipped')).length, 0);
 });
