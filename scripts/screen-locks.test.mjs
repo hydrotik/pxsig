@@ -126,7 +126,14 @@ test('geometry: a screen with a width of its own is compared with the screens at
   ];
   checkGeometry({ screens: s, file, update: true });
   assert.deepEqual(checkGeometry({ screens: s, file }).problems, []);
-  const off = s.map((x) => (x.index === 2 ? { ...x, anchors: { bar: [0, 0, 790, 44] } } : x));
+  const off = s.map((x) =>
+    x.index === 2
+      ? {
+          ...x,
+          anchors: { bar: /** @type {[number, number, number, number]} */ ([0, 0, 790, 44]) },
+        }
+      : x
+  );
   assert.match(
     checkGeometry({ screens: off, file }).problems[0],
     /anchor bar moves between screens \(#2 \[0, 0, 800, 44\], #3/
