@@ -445,6 +445,10 @@ export const SCENARIOS = {
   ...REACT_SCENARIOS,
   ...TEXT_SCENARIOS,
   ...MASK_SCENARIOS,
+  'long-label'() {
+    // A workspace label too long for the bar: capped at 24ch, its full name in its title.
+    return { ...SCENARIOS.changed(), scope: 'Acme Design System · Marketing Site Components' };
+  },
   'several-projects'() {
     // A workspace label names the application; the switcher names each project by its own label.
     return { ...SCENARIOS.clean(), label: 'Demo', scope: 'Demo workspace' };
