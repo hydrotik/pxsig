@@ -1,7 +1,8 @@
 /**
  * dashboard-check/alignment.mjs — two layout rules measured from what renders, not from the styles:
  *
- *   aligned      a dot or an icon is centred on its label's capitals, within ALIGN_TOLERANCE: the
+ *   aligned      a dot or an icon is centred on its label's capitals, within ALIGN_TOLERANCE (plus
+ *                MEASURE_PRECISION, what the measure can tell apart): the
  *                capitals' ink and the graphic's ink, read from the screenshot (sub-pixel, by
  *                coverage), not their boxes. A label with no capital or digit is not measured.
  *   whole-pixel  a small component that draws an edge (a border, a background, a shadow) has its
@@ -13,20 +14,29 @@
  * Each finding names the cause it can see: where a half pixel comes from (centred in an odd space,
  * a fractional margin or padding, an earlier sibling of fractional size), or that a graphic is
  * centred on its line box rather than on the capitals. They are listed beside the layout findings
- * (the screen's `alignment`), and advisory: no exit code changes on them, `--strict` included.
+ * (the screen's `alignment`): advisory, but `--strict` and pxsig's own screens fail on them.
  * `data-layout-allow` opts an element out, as for the other layout rules.
  *
- * `alignmentTargets` runs in the page (`page.evaluate`) and is self-contained; `inkOffsets` reads the
- * screenshot in Node.
+ * `alignmentTargets` runs in the page (`page.evaluate`) and is self-contained; `inkOffsets`
+ * (alignment-ink.mjs) reads the screenshot in Node.
  */
 import { readFileSync } from 'node:fs';
 import { PNG } from 'pngjs';
+import { alignedFinding, inkOffsets } from './alignment-ink.mjs';
+export { alignedFinding, inkBand, inkOffsets } from './alignment-ink.mjs';
 /** @import { Page } from 'playwright' */
 /** @import { LayoutFinding } from '../types/t4.js' */
-/** @import { AlignmentPair, AlignmentTargets, InkBand, InkOffset } from '../types/parity.js' */
+/** @import { AlignmentPair, AlignmentTargets } from '../types/parity.js' */
 
 /** A dot or icon further than this from its label's capitals' centre is a finding (CSS px). */
 export const ALIGN_TOLERANCE = 0.5;
+/**
+ * How finely the ink measure reads an edge (CSS px): sub-pixel edges come from anti-aliasing,
+ * whose coverage is good to about a tenth of a pixel. An offset is a finding only beyond the
+ * tolerance by more than this, so a row the layout centres exactly, whose text the browser snaps
+ * half a pixel to its baseline, is not one.
+ */
+export const MEASURE_PRECISION = 0.1;
 /** An edge further than this from a whole device pixel is a finding (device px). */
 export const EDGE_TOLERANCE = 0.01;
 /** The largest graphic measured as a dot or an icon, each way (CSS px). */
@@ -69,7 +79,7 @@ export function alignmentTargets({ max, graphicMax, small, edgeTolerance, within
       r.left < innerWidth &&
       cs.visibility !== 'hidden' &&
       cs.opacity !== '0' &&
-      !el.closest('[data-layout-allow], [inert]') &&
+      !el.closest('[inert]') &&
       (!modal || modal.contains(el)) &&
       uncovered(el, r)
     );
@@ -84,6 +94,33 @@ export function alignmentTargets({ max, graphicMax, small, edgeTolerance, within
   };
   const num = (/** @type {string} */ v) => parseFloat(v) || 0;
   /**
+   * Whether `el` is opted out of `rule`: an ancestor's `data-layout-allow="<reason>"` opts out of
+   * every rule, `data-layout-allow="aligned, whole-pixel: <reason>"` out of those named only.
+   * @param {Element | null} el
+   * @param {string} rule
+   */
+  const allowedFor = (el, rule) => {
+    for (
+      let a = el?.closest('[data-layout-allow]');
+      a;
+      a = a.parentElement?.closest('[data-layout-allow]') ?? null
+    ) {
+      const m = /^\s*([a-z-]+(?:\s*,\s*[a-z-]+)*)\s*:/.exec(
+        a.getAttribute('data-layout-allow') ?? ''
+      );
+      if (!m || m[1].split(/\s*,\s*/).includes(rule)) return true;
+    }
+    return false;
+  };
+  /** Whether a half pixel `cause` gives is an opted-out component's: it is one, or holds one. */
+  const attributed = (/** @type {Element | null} */ cause) =>
+    !!cause &&
+    (allowedFor(cause, 'whole-pixel') ||
+      [...cause.querySelectorAll('[data-layout-allow]')].some((d) => allowedFor(d, 'whole-pixel')));
+  /** The element the last `causeOf` named as the cause (its parent, a sibling, itself). */
+  /** @type {Element | null} */
+  let culprit = null;
+  /**
    * Why `el` is off a whole pixel on `axis`: the nearest element up the tree that is off by itself
    * (its parent is on whole pixels), and what puts it there. Null when nothing up the tree is.
    * @param {Element} el
@@ -94,8 +131,15 @@ export function alignmentTargets({ max, graphicMax, small, edgeTolerance, within
     const start = axis === 'y' ? 'top' : 'left';
     const size = axis === 'y' ? 'height' : 'width';
     const side = axis === 'y' ? ['top', 'bottom'] : ['left', 'right'];
-    for (let e = el; e && e.parentElement && e !== document.body; e = e.parentElement) {
-      const p = e.parentElement;
+    // The parent that lays it out: a `display: contents` box draws nothing and has no box.
+    const up = (/** @type {Element} */ x) => {
+      let p = x.parentElement;
+      while (p && p !== document.body && getComputedStyle(p).display === 'contents')
+        p = p.parentElement;
+      return p;
+    };
+    for (let e = el; e && up(e) && e !== document.body; e = /** @type {Element} */ (up(e))) {
+      const p = /** @type {Element} */ (up(e));
       const r = e.getBoundingClientRect();
       const pr = p.getBoundingClientRect();
       if (!frac(r[start])) return null;
@@ -123,6 +167,7 @@ export function alignmentTargets({ max, graphicMax, small, edgeTolerance, within
               : /center/.test(cs.alignSelf === 'auto' ? pcs.alignItems : cs.alignSelf)));
       const off = r1(r[start] - pr[start]);
       const where = `${name(e)} at ${off}px in ${name(p)}`;
+      culprit = centred || frac(num(pcs.getPropertyValue(`padding-${side[0]}`))) ? p : e;
       if (centred && frac((inner - r[size]) / 2) && !frac(inner - r[size] - 1))
         return `${where}: centred in an odd space, (${r1(inner)} − ${r1(r[size])}) / 2 = ${r1((inner - r[size]) / 2)}`;
       if (centred)
@@ -136,10 +181,13 @@ export function alignmentTargets({ max, graphicMax, small, edgeTolerance, within
         num(pcs.getPropertyValue(`padding-${side[0]}`)) +
         num(pcs.getPropertyValue(`border-${side[0]}-width`));
       if (frac(pad)) return `${where}: its parent's ${side[0]} padding and border are ${r1(pad)}px`;
-      const prev = e.previousElementSibling;
-      if (prev) {
+      // The nearest earlier sibling of fractional size (a gap or margin between is whole).
+      for (let prev = e.previousElementSibling; prev; prev = prev.previousElementSibling) {
         const b = prev.getBoundingClientRect();
-        if (frac(b[size])) return `${where}: after ${name(prev)}, ${r1(b[size])}px`;
+        if (frac(b[size])) {
+          culprit = prev;
+          return `${where}: after ${name(prev)}, ${r1(b[size])}px`;
+        }
       }
       return `${where}`;
     }
@@ -179,7 +227,12 @@ export function alignmentTargets({ max, graphicMax, small, edgeTolerance, within
     for (let a = el.parentElement; a && !inside; a = a.parentElement) inside = half.has(a);
     half.add(el);
     if (inside) continue;
+    if (allowedFor(el, 'whole-pixel')) continue;
+    culprit = el;
     const cause = causeOf(el, 'y') ?? 'its own size is fractional';
+    // A half pixel whose cause is opted out (a design-system component, with its reason), or a box
+    // of fractional size that holds one, is that component's, not this element's.
+    if (attributed(culprit)) continue;
     const at = off.map(([s, v]) => `${s} ${r1(/** @type {number} */ (v))}`).join(', ');
     byCause.set(cause, [...(byCause.get(cause) ?? []), `${name(el)} (${at})`]);
   }
@@ -216,7 +269,7 @@ export function alignmentTargets({ max, graphicMax, small, edgeTolerance, within
     let row = g.parentElement;
     while (row && row !== scope.parentElement && !(row.textContent ?? '').trim())
       row = row.parentElement;
-    if (!row || row === document.body) continue;
+    if (!row || row === document.body || allowedFor(g, 'aligned')) continue;
     const rr = row.getBoundingClientRect();
     if (rr.height > 40 || !shown(row)) continue;
     const gr = g.getBoundingClientRect();
@@ -250,7 +303,10 @@ export function alignmentTargets({ max, graphicMax, small, edgeTolerance, within
     // Columns the graphic covers are not the label's.
     const label = caps.filter(([a, b]) => b <= gr.left || a >= gr.right);
     if (!label.length) continue;
+    culprit = row;
     const half = frac(rr.top) || frac(rr.bottom) ? causeOf(row, 'y') : null;
+    // On a half pixel an opted-out component put it on: that component's finding, not this row's.
+    if (half && attributed(culprit)) continue;
     const rcs = getComputedStyle(row);
     const lh = rcs.lineHeight;
     // The content box's rows: a border or a wash's edge is not ink of the label.
@@ -278,140 +334,6 @@ export function alignmentTargets({ max, graphicMax, small, edgeTolerance, within
     if (pairs.length >= max * 4) break;
   }
   return { dpr, pairs, edges };
-}
-
-/**
- * The background of a box: its most common colour (quantised to 4 bits a channel).
- * @param {PNG} png
- * @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 device px, end exclusive
- * @returns {[number, number, number]}
- */
-function backdrop(png, x0, y0, x1, y1) {
-  /** @type {Map<number, { n: number, c: [number, number, number] }>} */
-  const seen = new Map();
-  for (let y = y0; y < y1; y++)
-    for (let x = x0; x < x1; x++) {
-      const i = (y * png.width + x) * 4;
-      const c = /** @type {[number, number, number]} */ ([
-        png.data[i],
-        png.data[i + 1],
-        png.data[i + 2],
-      ]);
-      const k = ((c[0] >> 4) << 8) | ((c[1] >> 4) << 4) | (c[2] >> 4);
-      const s = seen.get(k) ?? { n: 0, c };
-      s.n++;
-      seen.set(k, s);
-    }
-  let best = { n: -1, c: /** @type {[number, number, number]} */ ([0, 0, 0]) };
-  for (const s of seen.values()) if (s.n > best.n) best = s;
-  return best.c;
-}
-
-/**
- * The ink band of some columns over some rows: its top and bottom edges in device px, sub-pixel by
- * coverage (a row's coverage: its most covered pixel, against the backdrop and the inkiest pixel).
- * Null when there is no ink.
- * @param {PNG} png
- * @param {[number, number][]} cols device-px column ranges, end exclusive
- * @param {number} y0 @param {number} y1 device px rows, end exclusive
- * @param {[number, number, number]} bg
- * @returns {InkBand | null}
- */
-export function inkBand(png, cols, y0, y1, bg) {
-  const dist = (/** @type {number} */ i) =>
-    (Math.abs(png.data[i] - bg[0]) +
-      Math.abs(png.data[i + 1] - bg[1]) +
-      Math.abs(png.data[i + 2] - bg[2])) /
-    3;
-  /** @type {number[]} */
-  const rows = [];
-  let ink = 0;
-  for (let y = y0; y < y1; y++) {
-    let m = 0;
-    for (const [a, b] of cols)
-      for (let x = a; x < b; x++) m = Math.max(m, dist((y * png.width + x) * 4));
-    rows.push(m);
-    ink = Math.max(ink, m);
-  }
-  if (ink < 24) return null;
-  const cov = rows.map((v) => Math.min(1, v / ink));
-  const first = cov.findIndex((c) => c > 0.08);
-  let last = cov.length - 1;
-  while (last > first && !(cov[last] > 0.08)) last--;
-  return { top: y0 + first + (1 - cov[first]), bottom: y0 + last + cov[last] };
-}
-
-/**
- * Each pair's offset, measured on the screenshot: the capitals' centre minus the graphic's, in CSS
- * px (positive: the capitals sit lower). A pair whose ink cannot be read is left out.
- * @param {PNG} png
- * @param {AlignmentTargets} t
- * @returns {InkOffset[]}
- */
-export function inkOffsets(png, t) {
-  const d = t.dpr;
-  /** @type {InkOffset[]} */
-  const out = [];
-  for (const p of t.pairs) {
-    const [rx, ry, rw, rh] = p.row.map((v) => v * d);
-    const x0 = Math.max(0, Math.floor(rx));
-    const y0 = Math.max(0, Math.floor(ry));
-    const x1 = Math.min(png.width, Math.ceil(rx + rw));
-    const y1 = Math.min(png.height, Math.ceil(ry + rh));
-    if (x1 - x0 < 2 || y1 - y0 < 2) continue;
-    const bg = backdrop(png, x0, y0, x1, y1);
-    /** @param {number} a @param {number} b */
-    const span = (a, b) =>
-      /** @type {[number, number]} */ ([
-        Math.max(x0, Math.round(a * d)),
-        Math.min(x1, Math.round(b * d)),
-      ]);
-    const caps = inkBand(
-      png,
-      p.caps.map(([a, b]) => span(a, b)),
-      y0,
-      y1,
-      bg
-    );
-    const g = inkBand(png, [span(p.box[0], p.box[0] + p.box[2])], y0, y1, bg);
-    // A capitals band outside 0.45–1 em is not text read right (a glyph cut off, an overlay).
-    const capsHeight = caps ? (caps.bottom - caps.top) / d : 0;
-    if (!caps || !g || capsHeight < 0.45 * p.fontSize || capsHeight > p.fontSize) continue;
-    const capsCentre = (caps.top + caps.bottom) / 2 / d;
-    const graphicCentre = (g.top + g.bottom) / 2 / d;
-    out.push({
-      pair: p,
-      caps,
-      graphic: g,
-      offset: capsCentre - graphicCentre,
-      capsCentre,
-      graphicCentre,
-    });
-  }
-  return out;
-}
-
-/**
- * The `aligned` finding for a measured pair, or null within ALIGN_TOLERANCE.
- * @param {InkOffset} m
- * @param {number} dpr
- * @returns {LayoutFinding | null}
- */
-export function alignedFinding(m, dpr) {
-  // To the hundredth of a pixel the measure reads: "within 0.5 px" holds at 0.50.
-  if (Math.round(Math.abs(m.offset) * 100) / 100 <= ALIGN_TOLERANCE) return null;
-  const r = (/** @type {number} */ n) => Math.round(n * 100) / 100;
-  const p = m.pair;
-  const band = (/** @type {InkBand} */ b) => `${r(b.top / dpr)}–${r(b.bottom / dpr)}`;
-  const cause = p.half
-    ? `the row is on a half pixel (${p.half}), so the ${p.graphic} and the text snap apart`
-    : Math.abs(p.boxCentre - p.lineCentre) < 0.25
-      ? `the ${p.graphic} is centred on the line box (line-height ${p.lineHeight}), not on the capitals`
-      : `the ${p.graphic}'s box is centred ${r(p.boxCentre - p.lineCentre)}px off the line box: its margin or alignment`;
-  return {
-    rule: 'aligned',
-    text: `${p.name}: its ${p.graphic} is ${r(Math.abs(m.offset))}px ${m.offset > 0 ? 'above' : 'below'} the capitals' centre (capitals ${band(m.caps)}, ${p.graphic} ${band(m.graphic)}): ${cause}`,
-  };
 }
 
 /**

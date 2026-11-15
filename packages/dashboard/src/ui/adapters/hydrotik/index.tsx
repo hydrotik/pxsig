@@ -15,7 +15,7 @@ import {
   ChartTooltipContent,
 } from '@hydrotik/design-system/chart';
 import { ThemeProvider, useTheme } from '@hydrotik/theme-provider';
-import { vars } from '@hydrotik/tokens';
+import { themeClasses, vars } from '@hydrotik/tokens';
 import {
   Bar,
   BarChart as RBarChart,
@@ -88,7 +88,22 @@ function SyncMode({ mode }: { mode: C.ThemeMode }) {
   return null;
 }
 
+/**
+ * The theme's class on <html> at once, where the design system's ThemeScript puts it before a page
+ * draws. ThemeProvider adds it in an effect, after its children's first render: until then the
+ * body's font (a theme variable) is the browser's own, so a chart's wait for the text font
+ * (ChartContainer) found it loaded, and recharts measured its labels in the fallback.
+ */
+function themeOnRoot(mode: C.ThemeMode) {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  root.classList.remove(...Object.values(themeClasses));
+  root.classList.add(themeClasses[mode]);
+  root.setAttribute('data-theme', mode);
+}
+
 export function UiProvider({ mode, children }: C.UiProviderProps) {
+  React.useState(() => themeOnRoot(mode));
   return (
     <ThemeProvider defaultTheme={mode} storageKey="pxsig-dashboard-theme">
       <SyncMode mode={mode} />

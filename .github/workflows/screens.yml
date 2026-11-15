@@ -123,11 +123,10 @@ jobs:
       # Source parity (docs/ui/build-adapter.md, "Source parity"): `pxsig dashboard parity` on the
       # reference adapter, in pxsig's container, on the checkout the fetch step made (PXSIG_DS_DIR,
       # as the build reads it). The design system's own Storybook build (its `build-storybook`
-      # script, wherever it is) is copied into this checkout, where the container sees it. Advisory
-      # here; it fails the job once pxsig's own screens are held at zero findings.
+      # script, wherever it is) is copied into this checkout, where the container sees it. Any
+      # difference its pair does not `expect`, or a pair that does not render, fails the job.
       - if: steps.has.outputs.ds == 'true'
         name: Source parity
-        continue-on-error: true
         shell: bash
         env:
           STORYBOOK_DISABLE_TELEMETRY: '1'

@@ -918,11 +918,13 @@ draw them with your own segmented control and buttons.
 
    - Each screen's alignment is measured from its screenshot, not from the styles, and listed as
      `alignment` in `report.json` (a column and a section of its own in `summary.md` and the
-     gallery). Advisory, `--strict` included: they never change the exit code.
+     gallery). Advisory; `--strict` makes any finding exit 1.
      - `aligned`: a dot or an icon (an `svg`, or a drawn box up to 16px) is centred on its label's
        capitals within 0.5px. The capitals are found by character (capitals and digits; every
        letter of a label drawn `text-transform: uppercase`), and both inks are read from the
        screenshot with sub-pixel edges, so the measure is what the browser drew after snapping.
+       Those edges come from anti-aliasing, good to about 0.1px, so an offset counts past 0.6px:
+       a row centred exactly, whose text the browser snaps half a pixel to its baseline, passes.
        A label with no capital or digit is not measured.
      - `whole-pixel`: a small component (at most 32px tall and 320px wide) that draws an edge (a
        border, a background, a shadow) has its top and bottom on whole device pixels. Off them, the
@@ -933,7 +935,11 @@ draw them with your own segmented control and buttons.
      Each finding names its cause: where the half pixel comes from (centred in an odd space, as
      `(43 − 22) / 2 = 10.5`; a fractional margin, padding or transform; an earlier sibling of
      fractional height), or that the graphic is centred on its line box rather than on the
-     capitals. Components behind another layer are not measured; `data-layout-allow` opts out.
+     capitals. Components behind another layer are not measured. `data-layout-allow="<reason>"`
+     opts an element out of every layout rule; `data-layout-allow="aligned, whole-pixel: <reason>"`
+     out of the rules it names only. A half pixel whose cause is an element opted out of
+     `whole-pixel` (say, a design-system header of fractional height) is that element's, and is
+     not reported again on what follows it.
 
    - `--compare <dir>`: each screen against the same screen of an earlier check's output (its
      `--out`), compared by the pxsig engine with the gates stories get. Changed screens are listed
