@@ -30,7 +30,7 @@
       "required": true,
       "role": "the top bar: mark, section links, pinned controls",
       "usedBy": [
-        "App"
+        "parts/TopBar"
       ]
     },
     "NavList": {
@@ -38,7 +38,7 @@
       "required": true,
       "role": "the section links, with overflow",
       "usedBy": [
-        "App"
+        "parts/TopBar"
       ]
     },
     "NavLink": {
@@ -46,7 +46,7 @@
       "required": true,
       "role": "one section link with an optional count",
       "usedBy": [
-        "App"
+        "parts/TopBar"
       ]
     },
     "NavEnd": {
@@ -54,7 +54,7 @@
       "required": false,
       "role": "the controls pinned at the end of the top bar",
       "usedBy": [
-        "App"
+        "parts/TopBar"
       ]
     },
     "Button": {
@@ -76,6 +76,7 @@
         "parts/ReactStrip",
         "parts/StaleHeatmap",
         "parts/StoryGrid",
+        "parts/TopBar",
         "views/Accessibility",
         "views/Integrity",
         "views/Overview",
@@ -90,10 +91,10 @@
       "required": true,
       "role": "a square button with a glyph",
       "usedBy": [
-        "App",
         "inspector/GateReport",
         "inspector/controls",
-        "inspector/side/ViewSection"
+        "inspector/side/ViewSection",
+        "parts/TopBar"
       ]
     },
     "Card": {
@@ -262,9 +263,9 @@
       "required": true,
       "role": "a state: tone, icon and label",
       "usedBy": [
-        "App",
         "inspector/side/A11ySection",
         "parts/StatusOf",
+        "parts/TopBar",
         "views/Accessibility",
         "views/Diagnostics",
         "views/Integrity"
@@ -275,7 +276,6 @@
       "required": true,
       "role": "a short tag",
       "usedBy": [
-        "App",
         "inspector/Header",
         "inspector/side/A11ySection",
         "inspector/side/MasksSection",
@@ -285,6 +285,7 @@
         "parts/Connection",
         "parts/MaskBadges",
         "parts/StoryGrid",
+        "parts/TopBar",
         "views/Accessibility",
         "views/Integrity",
         "views/Scenarios",
@@ -299,10 +300,11 @@
       "required": true,
       "role": "a glyph from the closed set",
       "usedBy": [
-        "App",
         "inspector/GateReport",
         "inspector/side/PixelSection",
         "parts/Affordance",
+        "parts/Connection",
+        "parts/TopBar",
         "views/Help"
       ]
     },
@@ -451,8 +453,8 @@
       "required": false,
       "role": "a short hint on hover of one element",
       "usedBy": [
-        "App",
-        "parts/Connection"
+        "parts/Connection",
+        "parts/TopBar"
       ]
     },
     "Link": {
@@ -562,7 +564,7 @@
       "required": true,
       "role": "one value from a list",
       "usedBy": [
-        "App",
+        "parts/TopBar",
         "views/Scenarios",
         "views/Stories",
         "views/react/Renders"
