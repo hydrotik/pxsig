@@ -105,7 +105,7 @@ export interface Row {
   masksBlocked?: {
     coverage?: number;
     root?: string[];
-    problems?: { kind: 'container' | 'reason' | 'unmeasured'; element: string }[];
+    problems?: { kind: 'container' | 'reason' | 'unmeasured' | 'overflow'; element: string }[];
   };
   /** The baseline's masks, set with `masksChanged`. */
   masksBaseline?: MaskRecord[];

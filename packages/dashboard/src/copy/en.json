@@ -1299,7 +1299,7 @@
         },
         "attribute": {
           "term": "data-volatile",
-          "meaning": "When the value cannot be fixed, the component's author marks the element that shows it: <time data-volatile=\"relative time\">. Every project that renders the component masks it, with no configuration. The inside of the box is painted over before the screenshot, at the element's own place, so a popover above it still shows; its size and position are still compared. The value is the reason shown with the mask, and is required. Only on a leaf, with text and inline formatting inside: on a container, or with no value, the entry fails."
+          "meaning": "When the value cannot be fixed, the component's author marks the element that shows it: <time data-volatile=\"relative time\">. Every project that renders the component masks it, with no configuration. The inside of the box is painted over before the screenshot, at the element's own place, so a popover above it still shows; its size and position are still compared. The value is the reason shown with the mask, and is required. Only on a leaf, with text and inline formatting inside: on a container, or with no value, the entry fails. The box holds all of its content: content painted outside it fails the entry, and the mask is never widened to cover it."
         },
         "config": {
           "term": "capture.ignore · capture.addIgnore",
@@ -1738,7 +1738,8 @@
         "root": "mask the value, not the story root",
         "container": "put data-volatile on the element that shows the value (a leaf)",
         "reason": "give data-volatile a reason, e.g. data-volatile=\"relative time\"",
-        "unmeasured": "mask at most 500 elements, all there when the story is ready"
+        "unmeasured": "mask at most 500 elements, all there when the story is ready",
+        "overflow": "let the data-volatile element's box hold all of its content"
       },
       "large": "Over 25%",
       "area": "{area} of the capture",

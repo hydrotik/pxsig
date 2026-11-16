@@ -19,6 +19,7 @@ import { textSettings } from '../text/config.mjs';
 import { boxesFile, writeBoxes } from './boxes.mjs';
 import { MASKED, masksFor, writeMasks } from './masks.mjs';
 import { lateMasks, measureMasks } from './mask-measure.mjs';
+import { overflowMasks } from './mask-overflow.mjs';
 import { paintMasks, unmarkMasks, unpaintMasks } from './mask-paint.mjs';
 /** @import { BrowserContext, Page, PageScreenshotOptions } from 'playwright' */
 /** @import { RenderResult } from '../../types.js' */
@@ -300,7 +301,6 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             unpaintMasks(page)
           );
           writeFileSync(png, buf);
-          writeMasks(png, masks);
           // The text record, read before anything else touches the page; never an earlier render's.
           const boxes = boxesFile(png);
           rmSync(boxes, { force: true });
@@ -311,6 +311,13 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
                   ignore: [MASKED, ...text.ignore],
                 })
               : undefined;
+          // After the screenshot and the text record: hiding and showing the values touches neither.
+          await overflowMasks(page, masks, ofElement ? box : null, () =>
+            ofElement
+              ? el.screenshot({ animations: 'disabled' })
+              : page.screenshot({ animations: 'disabled' })
+          );
+          writeMasks(png, masks);
           await unmarkMasks(page);
           let a11yRes = null;
           if (axe && e.a11y !== false) {

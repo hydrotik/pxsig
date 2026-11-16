@@ -108,6 +108,7 @@ const BLOCKED = [
   ['mask on a container', 'container'],
   ['mask needs a reason', 'reason'],
   ['mask not measured', 'unmeasured'],
+  ['mask content outside its box', 'overflow'],
   ['masks cover ', 'coverage'],
   ['a mask covers the story root', 'root'],
 ] as const;

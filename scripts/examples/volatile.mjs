@@ -5,7 +5,8 @@
  * `--allow-masks`, and names them; once approved, renders whose value differs pass, identical to
  * their baselines (the mask covers all of the value); a
  * `capture.ignore` mask over the whole component fails each entry, no baseline is written from it
- * even with `--allow-masks`, and the output, summary.md and SARIF (an error) say so.
+ * even with `--allow-masks`, and the output, summary.md and SARIF (an error) say so; a value that
+ * paints past its box fails each entry as content outside its box.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -29,16 +30,7 @@ export function volatileSteps(dir, p, build) {
   // The value's box holds all of its text: four monospace digits and the Badge's letter-spacing.
   // A fixed `width: 4ch` did not (each digit is 1ch plus the letter-spacing), so the last digit
   // painted 3px past the box, outside the mask, and some values tripped the gate (2026-11-14).
-  writeFileSync(
-    badge,
-    source.replace(
-      '{children}',
-      `{children}
-      <span data-volatile="build time" style={{ display: 'inline-block', marginLeft: 4 }}>
-        {String(Date.now() % 10000).padStart(4, '0')}
-      </span>`
-    )
-  );
+  writeFileSync(badge, valued(source));
   build();
   let r = pxsig(['check', '--full', '--project', p, '--retries', '0'], dir);
   let rows = checkJson(dir, p).rows;
@@ -137,8 +129,43 @@ export function volatileSteps(dir, p, build) {
         none.errors.every((e) => e.includes('no approval writes this baseline')),
       `masks: no baseline is written from them, --allow-masks or not (${none.summary.failed} refused)`
     );
+    writeFileSync(file, before);
+    // The flake's own case, kept: a box 4ch wide under the letter-spacing. Its last digit paints
+    // past the box, so the entry fails as content outside the box, whatever the value, and no
+    // approval passes it.
+    writeFileSync(badge, valued(source, "width: '4ch', "));
+    build();
+    r = pxsig(['check', '--full', '--project', p, '--retries', '0'], dir);
+    rows = checkJson(dir, p).rows;
+    const leaking = rows.filter(
+      (x) =>
+        x.masksBlocked &&
+        (x.reasons ?? []).some((y) =>
+          y.startsWith('mask content outside its box: span[data-volatile="build time"]: ')
+        )
+    );
+    expect(
+      r.status === 1 &&
+        leaking.length === badges.length &&
+        leaking.every((x) => x.id.startsWith('components-badge--')),
+      `masks: a value painting past its box fails each Badge entry as content outside its box (${leaking.length}/${badges.length})${r.status === 1 ? '' : tail(r)}`
+    );
   } finally {
     writeFileSync(file, before);
     writeFileSync(badge, source);
   }
 }
+
+/**
+ * The Badge with a value that differs on every render, marked `data-volatile`.
+ * @param {string} source the Badge's source
+ * @param {string} [style] more of the value's style, before the rest
+ */
+const valued = (source, style = '') =>
+  source.replace(
+    '{children}',
+    `{children}
+      <span data-volatile="build time" style={{ ${style}display: 'inline-block', marginLeft: 4 }}>
+        {String(Date.now() % 10000).padStart(4, '0')}
+      </span>`
+  );

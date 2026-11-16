@@ -64,7 +64,7 @@ export interface MasksChanged {
 export interface MasksBlocked {
   coverage?: number;
   root?: string[];
-  problems?: { kind: 'container' | 'reason' | 'unmeasured'; element: string }[];
+  problems?: { kind: 'container' | 'reason' | 'unmeasured' | 'overflow'; element: string }[];
 }
 
 /** The engine's result for one entry (check.json metrics and verdict, section 4). */

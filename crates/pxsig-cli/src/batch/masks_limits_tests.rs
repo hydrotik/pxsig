@@ -300,6 +300,7 @@ fn a_mask_the_capture_may_not_apply_fails_and_no_baseline_is_written() {
         { "kind": "container", "element": "div.card [data-volatile=\"x\"]: element children div" },
         { "kind": "reason", "element": "span.id [data-volatile]" },
         { "kind": "unmeasured", "element": ".late: 3 matched, 2 measured" },
+        { "kind": "overflow", "element": "span[data-volatile=\"t\"]: 23 px outside, up to 3 px past its box" },
     ]);
     fs::write(
         png.with_extension("masks.json"),
@@ -315,6 +316,7 @@ fn a_mask_the_capture_may_not_apply_fails_and_no_baseline_is_written() {
             "mask on a container: div.card [data-volatile=\"x\"]: element children div",
             "mask needs a reason: span.id [data-volatile]",
             "mask not measured: .late: 3 matched, 2 measured",
+            "mask content outside its box: span[data-volatile=\"t\"]: 23 px outside, up to 3 px past its box",
         ])
     );
     let o = BaselineOpts {
@@ -363,6 +365,10 @@ fn each_block_says_what_to_do_about_its_own_cause() {
         ] })),
         "put data-volatile on the element that shows the value (a leaf)",
         "each fix once"
+    );
+    assert_eq!(
+        fix(json!({ "problems": [{ "kind": "overflow", "element": "span" }], "coverage": 0.6 })),
+        "let the data-volatile element's box hold all of its content; make the masks smaller"
     );
     assert_eq!(
         fix(json!({ "coverage": 1.0, "root": ["#r > *"] })),

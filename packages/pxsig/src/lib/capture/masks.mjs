@@ -33,7 +33,7 @@ export const ATTRIBUTE = 'data-volatile';
  */
 /** @typedef {Mask & { reason?: string, count: number, px: number, rects: Rect[], root?: true }} AppliedMask */
 /** What may not be masked as asked (the engine fails the entry with it, and writes no baseline). */
-/** @typedef {{ kind: 'container' | 'reason' | 'unmeasured', element: string }} MaskProblem */
+/** @typedef {{ kind: 'container' | 'reason' | 'unmeasured' | 'overflow', element: string }} MaskProblem */
 /**
  * A capture's masks: those that apply, the problems found, and each mask asked for with the
  * number of elements it matched when measured.
