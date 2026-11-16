@@ -10,7 +10,7 @@ publish = false
 # One exact version of the compiler and the oxc crates it is built on. A bump is its own pull
 # request, with the parity report (scripts/react-parity.mjs) in its body.
 [dependencies]
-oxc_allocator = "=0.143.0"
+oxc_allocator = "=0.158.0"
 oxc_ast = "=0.143.0"
 oxc_ast_visit = "=0.143.0"
 oxc_diagnostics = "=0.143.0"
