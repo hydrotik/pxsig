@@ -157,6 +157,40 @@ fn the_baseline_writer_refuses_a_masks_change_without_allow_masks() {
     let _ = fs::remove_dir_all(&d);
 }
 
+#[test]
+fn a_mask_snapped_outward_against_its_rounded_baseline_grew_and_needs_allow_masks() {
+    // A box at x 10.5..26.5 was recorded rounded, [11, .., 27, ..]; it is now every pixel it
+    // touches, [10, .., 27, ..]. Against the old baseline that is "grew", never "moved" alone (each
+    // edge moves by at most a pixel), and the baseline writer wants --allow-masks for it.
+    for (old, new) in [
+        ([11, 2, 27, 12], [10, 2, 27, 12]),
+        ([11, 2, 26, 12], [10, 2, 27, 13]),
+    ] {
+        let d = scratch("masks-snapped");
+        let png = store(&d, Some(&[("[data-volatile]", "attribute", &[old])]));
+        write_masks(&png, &[("[data-volatile]", "attribute", &[new])]);
+        let r = row(&d, None);
+        assert_eq!(r["pass"], json!(false), "{r}");
+        assert_eq!(
+            r["masksChanged"],
+            json!({ "added": [], "removed": [], "grew": ["[data-volatile]"], "moved": [], "count": [] }),
+            "{r}"
+        );
+        assert_eq!(r["reasons"], json!(["masks changed: 1 grew"]));
+        let res = baseline(&baseline_opts(&d)).unwrap();
+        assert_eq!(res["summary"]["failed"], json!(1), "{res}");
+        let allowed = BaselineOpts {
+            allow_masks: Some(None),
+            ..baseline_opts(&d)
+        };
+        let res = baseline(&allowed).unwrap();
+        assert_eq!(res["summary"]["failed"], json!(0), "{res}");
+        assert_eq!(res["masksChanged"][0]["grew"], json!(["[data-volatile]"]));
+        assert_eq!(row(&d, None)["pass"], json!(true));
+        let _ = fs::remove_dir_all(&d);
+    }
+}
+
 /// A baseline as 0.7.6 and earlier wrote it: no `masks` in the header. `paint`: the boxes its
 /// image shows painted over, as the capture paints a mask.
 fn old_baseline(d: &Path, paint: &[[usize; 4]]) -> PathBuf {

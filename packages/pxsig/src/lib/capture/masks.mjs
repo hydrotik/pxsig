@@ -38,7 +38,12 @@ export const ATTRIBUTE = 'data-volatile';
  * A capture's masks: those that apply, the problems found, and each mask asked for with the
  * number of elements it matched when measured.
  */
-/** @typedef {{ applied: AppliedMask[], problems: MaskProblem[], masks: Mask[], counts: number[] }} MeasuredMasks */
+/** @typedef {{ applied: AppliedMask[], problems: MaskProblem[], masks: Mask[], counts: number[], grid: Grid }} MeasuredMasks */
+/**
+ * The captured image's pixel grid, in the viewport's CSS px: where its first pixel starts and how
+ * many CSS px it spans. Masks are measured, painted and weighed on it (`pixelGrid`, `snapRect`).
+ */
+/** @typedef {{ x: number, y: number, width: number, height: number }} Grid */
 
 /**
  * The capture's masks file beside `png`.
@@ -115,6 +120,54 @@ export function unionPx(rects) {
     px += cover * (xs[i + 1] - xs[i]);
   }
   return px;
+}
+
+/**
+ * The pixel grid of a capture of `box` (the captured element's box in the viewport; null: the
+ * viewport). Playwright clips an element's screenshot to the whole CSS px around its box, counted
+ * in the document (`scroll`), so the image starts at the floor of the box's left and top, not at
+ * the box itself, and ends at the ceiling of its right and bottom (measured: a box at x = 8.5 gives
+ * an image whose first pixel is x = 8).
+ * @param {{ x: number, y: number, width: number, height: number } | null} box
+ * @param {{ width: number, height: number }} viewport
+ * @param {{ x: number, y: number }} [scroll]
+ * @returns {Grid}
+ */
+export function pixelGrid(box, viewport, scroll = { x: 0, y: 0 }) {
+  if (!box) return { x: 0, y: 0, width: viewport.width, height: viewport.height };
+  // Playwright's own rounding of the clip (its 1e-3 keeps a float error from adding a pixel).
+  const x = Math.floor(box.x + scroll.x + 1e-3);
+  const y = Math.floor(box.y + scroll.y + 1e-3);
+  const width = Math.ceil(box.x + scroll.x + box.width - 1e-3) - x;
+  const height = Math.ceil(box.y + scroll.y + box.height - 1e-3) - y;
+  return { x: x - scroll.x, y: y - scroll.y, width, height };
+}
+
+/**
+ * The pixels a mask covers: every whole pixel its box `r` touches (`[left, top, right, bottom]`
+ * in the viewport's CSS px), on the image's grid `g`: the left and top edges floored, the right and
+ * bottom ceiled, then clipped to the image. Never a pixel the box does not touch, and never less
+ * than one it does. The record, the paint (mask-paint.mjs) and the overflow check
+ * (mask-overflow.mjs) all use it, so what is recorded is what is painted and what is weighed.
+ * @param {ArrayLike<number>} r
+ * @param {Grid} g
+ * @returns {Rect}
+ */
+export function snapRect(r, g) {
+  const clip = (/** @type {number} */ v, /** @type {number} */ max) =>
+    Math.min(max, Math.max(0, v));
+  // A box with no width or height touches no pixel, wherever it lies.
+  if (!(r[2] > r[0] && r[3] > r[1])) {
+    const x = clip(Math.floor(r[0] - g.x), g.width);
+    const y = clip(Math.floor(r[1] - g.y), g.height);
+    return [x, y, x, y];
+  }
+  return [
+    clip(Math.floor(r[0] - g.x), g.width),
+    clip(Math.floor(r[1] - g.y), g.height),
+    clip(Math.ceil(r[2] - g.x), g.width),
+    clip(Math.ceil(r[3] - g.y), g.height),
+  ];
 }
 
 /** The attribute on each element a mask paints (`self` or `over`: lib/capture/mask-paint.mjs). */

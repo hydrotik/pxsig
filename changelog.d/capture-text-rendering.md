@@ -18,4 +18,6 @@
   every baseline reports `env-mismatch` (`browser.launchArgs`) until it is re-rendered. Re-render
   them all and approve them in one pull request (with `env.strict` or `--strict-env`, run that
   check without it). Baselines rendered on macOS change little or not at all; re-render them there
-  too to clear the mismatch.
+  too to clear the mismatch. In the same pass, review the entries marked "masks changed: grew"
+  (a mask edge on a fractional pixel now covers that whole pixel, so each grew by at most 1px
+  per edge) and approve them with `--allow-masks`. Nothing to change in stories or config.

@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { PNG } from 'pngjs';
 import { renderStories } from '../src/lib/capture.mjs';
 import { configMasks, masksFile, masksFor, unionPx } from '../src/lib/capture/masks.mjs';
 import { describeConfig } from '../src/lib/setup.mjs';
@@ -105,8 +106,8 @@ test('masked pixels count an overlap once', () => {
 });
 
 /** @param {string} text the volatile text */
-const clock = (text, width = 80) =>
-  `<p style="margin:0">Updated <span data-volatile="relative time" style="display:inline-block;width:${width}px;white-space:nowrap;overflow:hidden">${text}</span></p>
+const clock = (text, width = 80, bg = '') =>
+  `<p style="margin:0">Updated <span data-volatile="relative time" style="display:inline-block;width:${width}px;white-space:nowrap;overflow:hidden;${bg}">${text}</span></p>
    <p style="margin:0" class="stamp">build 1234</p>`;
 
 test(
@@ -154,7 +155,10 @@ test(
     assert.equal(m.source, 'attribute');
     assert.equal(m.reason, 'relative time');
     assert.equal(m.count, 1);
-    assert.equal(m.px, 80 * 20, 'the box of the element, in whole pixels');
+    // Every whole pixel the box touches: it starts after "Updated ", at a fractional x, so 81
+    // columns. It clips its content, so the part-covered column is not painted, and carries
+    // nothing of the element: another value renders the same bytes (below).
+    assert.equal(m.px, 81 * 20, 'every whole pixel the box touches');
     // Its box too, inside the frame: the engine counts it again inside the trimmed PNG.
     assert.equal(m.rects.length, 1);
     const [[x0, y0, x1, y1]] = m.rects;
@@ -170,6 +174,20 @@ test(
     stories['clock--live'] = clock('12 minutes ago');
     const b = await render('b');
     assert.ok(a.png('clock--live').equals(b.png('clock--live')), 'masked content is the same');
+    // With a background of its own too: the part-covered column carries nothing of the element.
+    stories['clock--live'] = clock('3 minutes ago', 80, 'background:#0a0');
+    const a2 = await render('a2');
+    stories['clock--live'] = clock('12 minutes ago', 80, 'background:#0a0');
+    const b2 = await render('b2');
+    assert.ok(a2.png('clock--live').equals(b2.png('clock--live')), 'the same, with a background');
+    const col = (/** @type {Buffer} */ buf, /** @type {number} */ x) => {
+      const p = PNG.sync.read(buf);
+      return Array.from({ length: y1 - y0 }, (_, k) => {
+        const i = ((y0 + k) * p.width + x) * 4;
+        return [...p.data.subarray(i, i + 3)].join(',');
+      });
+    };
+    assert.deepEqual(col(a2.png('clock--live'), x0), col(a.png('clock--live'), x0), 'edge column');
     stories['clock--live'] = clock('3 minutes ago', 120);
     const c = await render('c');
     assert.ok(!a.png('clock--live').equals(c.png('clock--live')), 'the box is still compared');

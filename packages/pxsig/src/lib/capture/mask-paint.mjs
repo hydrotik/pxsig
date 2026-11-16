@@ -11,21 +11,32 @@
  * painted the way Playwright's `mask` paints: over everything, as before. Never less than the
  * element's box. Everything is put back after the screenshot; the marks stay until the text
  * record has been read, so only text under a painted mask is left out of it.
+ *
+ * Every box covers each whole pixel the element's box touches on the image's grid (masks.mjs
+ * `snapRect`), the pixels the record counts: a box placed at a fractional edge would be painted on
+ * the rounded pixel, leaving a part-covered one unpainted. Playwright's `mask` paints the element's
+ * own box, so each `over` element also gets a box of pxsig's own at those pixels, in the top layer,
+ * above everything, as Playwright's is. An element that clips its own content also clips the box
+ * in its place, so a pixel its edge only partly covers stays unpainted: nothing of the element shows
+ * there either (its content and background share the clip), so the pixel is stable and compared.
  */
 
 import { COLOR, MARK, OVERLAY } from './masks.mjs';
 /** @import { Page, PageScreenshotOptions } from 'playwright' */
+/** @import { Grid } from './masks.mjs' */
 
 /**
- * Paint every marked element; the screenshot's options for those marked `over`.
+ * Paint every marked element; the screenshot's options for those marked `over`. `grid` is the
+ * image's pixel grid (mask-measure.mjs measured the masks on it).
  * @param {Page} page
+ * @param {Grid} grid
  * @returns {Promise<Pick<PageScreenshotOptions, 'mask' | 'maskColor'>>}
  */
-export async function paintMasks(page) {
+export async function paintMasks(page, grid) {
   const marked = page.locator(`[${MARK}]`);
   if (!(await marked.count())) return {};
   const over = await marked.evaluateAll(
-    (els, { MARK, OVERLAY, COLOR }) => {
+    (els, { MARK, OVERLAY, COLOR, grid }) => {
       const REPLACED =
         /^(img|input|textarea|select|button|video|audio|canvas|iframe|object|embed|picture|br|wbr|hr)$/i;
       /** @type {(() => void)[]} */
@@ -38,6 +49,28 @@ export async function paintMasks(page) {
         const v = el.style.getPropertyValue(p);
         const pr = el.style.getPropertyPriority(p);
         undo.push(() => (v ? el.style.setProperty(p, v, pr) : el.style.removeProperty(p)));
+      };
+      /**
+       * Every whole pixel a box touches, on the image's grid, in the viewport (masks.mjs
+       * `snapRect`, not clipped: what lies outside the image is not captured).
+       * @param {DOMRectReadOnly} b
+       */
+      const snap = (b) => {
+        const l = grid.x + Math.floor(b.left - grid.x);
+        const t = grid.y + Math.floor(b.top - grid.y);
+        return {
+          l,
+          t,
+          w: grid.x + Math.ceil(b.right - grid.x) - l,
+          h: grid.y + Math.ceil(b.bottom - grid.y) - t,
+        };
+      };
+      /** The box lands on `s`, within half a pixel on each side. @param {DOMRect} r @param {ReturnType<typeof snap>} s */
+      const lands = (r, s) =>
+        [r.left - s.l, r.top - s.t, r.width - s.w, r.height - s.h].every((d) => Math.abs(d) < 0.5);
+      /** Inline and important: no rule of the page's can restyle the box. @param {HTMLElement} o @param {Record<string, string>} css */
+      const style = (o, css) => {
+        for (const [k, v] of Object.entries(css)) o.style.setProperty(k, v, 'important');
       };
       /** Opacity, a filter or a blend on the way up would tint the box. @param {Element} el */
       const tinted = (el) => {
@@ -67,36 +100,68 @@ export async function paintMasks(page) {
         el.style.setProperty('isolation', 'isolate', 'important');
         for (const cr of el.getClientRects()) {
           if (cr.width <= 0 || cr.height <= 0) continue;
+          const s = snap(cr);
           const o = document.createElement('div');
           o.setAttribute(OVERLAY, '');
-          // Inline and important: no rule of the page's can restyle the box.
-          const css = {
+          style(o, {
             all: 'initial',
             position: 'absolute',
             display: 'block',
             left: '0',
             top: '0',
-          };
-          for (const [k, v] of Object.entries({
-            ...css,
-            width: `${cr.width}px`,
-            height: `${cr.height}px`,
+            width: `${s.w}px`,
+            height: `${s.h}px`,
             background: COLOR,
             'z-index': '2147483647',
             'pointer-events': 'none',
-          }))
-            o.style.setProperty(k, v, 'important');
+          });
           el.appendChild(o);
           undo.push(() => o.remove());
           const r0 = o.getBoundingClientRect();
-          if (Math.abs(r0.width - cr.width) > 0.5 || Math.abs(r0.height - cr.height) > 0.5)
-            return false;
-          o.style.setProperty('left', `${cr.left - r0.left}px`, 'important');
-          o.style.setProperty('top', `${cr.top - r0.top}px`, 'important');
-          const r = o.getBoundingClientRect();
-          if (Math.abs(r.left - cr.left) > 0.5 || Math.abs(r.top - cr.top) > 0.5) return false;
+          if (Math.abs(r0.width - s.w) > 0.5 || Math.abs(r0.height - s.h) > 0.5) return false;
+          style(o, { left: `${s.l - r0.left}px`, top: `${s.t - r0.top}px` });
+          if (!lands(o.getBoundingClientRect(), s)) return false;
         }
         return true;
+      };
+      /**
+       * A box of pxsig's own over an `over` element, in the top layer, above everything (as
+       * Playwright's mask is), at every pixel the element's box touches: Playwright's paints the
+       * box itself, rounded. Placed in the document, so it stays on the element when the
+       * screenshot scrolls it into view.
+       * @param {Element} el
+       */
+      const paintTop = (el) => {
+        const b = el.getBoundingClientRect();
+        if (b.width <= 0 || b.height <= 0) return;
+        const s = snap(b);
+        const o = document.createElement('div');
+        o.setAttribute(OVERLAY, '');
+        o.setAttribute('popover', 'manual');
+        style(o, {
+          all: 'initial',
+          position: 'absolute',
+          display: 'block',
+          inset: 'auto',
+          left: '0',
+          top: '0',
+          margin: '0',
+          width: `${s.w}px`,
+          height: `${s.h}px`,
+          background: COLOR,
+          'z-index': '2147483647',
+          'pointer-events': 'none',
+        });
+        document.documentElement.appendChild(o);
+        undo.push(() => o.remove());
+        if (typeof o.showPopover === 'function') o.showPopover();
+        const r0 = o.getBoundingClientRect();
+        style(o, { left: `${s.l - r0.left}px`, top: `${s.t - r0.top}px` });
+        // Fail closed: a box that is not where the record says would leave a pixel unpainted.
+        if (!lands(o.getBoundingClientRect(), s)) {
+          for (const u of undo.splice(0).reverse()) u();
+          throw new Error('a mask box over everything did not land on its element');
+        }
       };
       let over = 0;
       for (const el of els) {
@@ -109,9 +174,10 @@ export async function paintMasks(page) {
           over++;
         }
       }
+      for (const el of els) if (el.getAttribute(MARK) === 'over') paintTop(el);
       return over;
     },
-    { MARK, OVERLAY, COLOR }
+    { MARK, OVERLAY, COLOR, grid }
   );
   return over ? { mask: [page.locator(`[${MARK}="over"]`)], maskColor: COLOR } : {};
 }
