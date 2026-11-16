@@ -128,7 +128,9 @@ const showBox = (/** @type {Box | null | undefined} */ b) => (b ? `[${b.join(', 
 /**
  * Check (or, with `update`, write) the anchors' boxes against the JSON file `file`.
  * `complete`: every screen was rendered, so a committed feature or screen with none is stale.
- * @param {{ screens: { feature: string, index: number, theme: string, anchors?: Record<string, Box | null> }[], file: string, update?: boolean, complete?: boolean }} o
+ * An anchor keeps one box across the screens of its feature at one width: a screen with a `width`
+ * of its own (a narrow layout) is compared with the screens at that width only.
+ * @param {{ screens: { feature: string, index: number, theme: string, width?: number, anchors?: Record<string, Box | null> }[], file: string, update?: boolean, complete?: boolean }} o
  * @returns {{ problems: string[], written: boolean, geometry: Geometry }}
  */
 export function checkGeometry({ screens, file, update = false, complete = false }) {
@@ -136,9 +138,12 @@ export function checkGeometry({ screens, file, update = false, complete = false 
   const problems = [];
   /** @type {Geometry} */
   const now = {};
+  /** @type {Map<string, number | undefined>} feature and screen number → its width */
+  const widths = new Map();
   for (const s of [...screens].sort((a, b) => a.theme.localeCompare(b.theme))) {
     if (!s.anchors) continue;
     const n = String(s.index + 1);
+    widths.set(`${s.feature} ${n}`, s.width);
     const at = (now[s.feature] ??= {});
     const was = at[n];
     if (!was) at[n] = s.anchors;
@@ -152,8 +157,9 @@ export function checkGeometry({ screens, file, update = false, complete = false 
     for (const [n, anchors] of Object.entries(byScreen))
       for (const [name, box] of Object.entries(anchors)) {
         if (!box) continue;
-        const f = first.get(name);
-        if (!f) first.set(name, { n, box });
+        const key = `${name} ${widths.get(`${feature} ${n}`) ?? ''}`;
+        const f = first.get(key);
+        if (!f) first.set(key, { n, box });
         else if (f.box.join() !== box.join())
           problems.push(
             `${feature}: anchor ${name} moves between screens (#${f.n} ${showBox(f.box)}, #${n} ${showBox(box)})`
@@ -199,13 +205,14 @@ export function checkGeometry({ screens, file, update = false, complete = false 
 
 /**
  * Each rendered screen's accessibility, layout and alignment findings, one line per screen that
- * has any.
+ * has any, then each finding of the top-bar sweep (`topBar`, dashboard-check/top-bar.mjs).
  * @template {{ rendered: boolean, axe: { id: string, count: number }[], layout: { rule: string, text: string }[], alignment?: { rule: string, text: string }[] }} S
  * @param {S[]} screens
  * @param {(s: S) => string} idOf
+ * @param {{ findings: { rule: string, text: string }[] } | null} [topBar]
  */
-export const screenFindings = (screens, idOf) =>
-  screens
+export const screenFindings = (screens, idOf, topBar = null) => [
+  ...screens
     .filter((x) => x.rendered && (x.axe.length || x.layout.length || x.alignment?.length))
     .map(
       (x) =>
@@ -214,7 +221,9 @@ export const screenFindings = (screens, idOf) =>
           ...x.layout.map((l) => `layout ${l.rule}: ${l.text}`),
           ...(x.alignment ?? []).map((l) => `alignment ${l.rule}: ${l.text}`),
         ].join('; ')}`
-    );
+    ),
+  ...(topBar?.findings ?? []).map((f) => `${f.rule}: ${f.text}`),
+];
 
 /**
  * Each rendered screen's alignment findings (dashboard-check/alignment.mjs), written to

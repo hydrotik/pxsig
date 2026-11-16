@@ -28,40 +28,12 @@ export const page = style({
   isolation: 'isolate',
 });
 
-// The top bar: the report's mark, the section links, then the controls pinned at the end. It sits
-// above the scrolling <main>, so it needs no sticky positioning. The bar is a size container: at
-// narrow widths the modes tag, the last-check time and a repeated review status give their room to
-// the section links, and the links that still do not fit move into the bar's More menu.
-export const navbar = style({ flexShrink: 0, containerType: 'inline-size' });
-export const brand = style({
-  margin: 0,
-  fontSize: v.fontSize.sm,
-  fontWeight: v.fontWeight.semibold,
-  whiteSpace: 'nowrap',
-});
-export const modesTag = style({
-  whiteSpace: 'nowrap',
-  '@container': { '(inline-size < 64rem)': { display: 'none' } },
-});
-// The overflow menu holds the section links as menu items; they read as items, not underlined links.
+// The overflow menu holds the section links as menu items; they read as items, not underlined
+// links. The top bar's own styles are styles/top-bar.css.ts.
 globalStyle('[role="menuitem"]:is(a)', { textDecoration: 'none', color: 'inherit' });
 globalStyle('[role="menuitem"]:is(a)[aria-current="page"]', {
   fontWeight: v.fontWeight.semibold,
   color: v.color.accent,
-});
-export const navEnd = style({
-  display: 'flex',
-  flexShrink: 0,
-  alignItems: 'center',
-  gap: v.space['2'],
-});
-/** The review status, when the review button beside it already says what is waiting. */
-export const statusBeside = style({
-  '@container': { '(inline-size < 48rem)': { display: 'none' } },
-});
-export const lastCheck = style({
-  whiteSpace: 'nowrap',
-  '@container': { '(inline-size < 80rem)': { display: 'none' } },
 });
 
 export const stack = style({

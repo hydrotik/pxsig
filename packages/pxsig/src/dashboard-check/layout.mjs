@@ -10,7 +10,8 @@
  *             (`data-toolbar-field`) differ in top edge; a control made of parts (a switch and
  *             its text) is its outermost `data-control` element
  *   edge      text or a control within 2px of a drawn border of the region that frames it
- *   overlap   two controls drawn over each other, or a control covered by another one
+ *   overlap   two controls drawn over each other, or a control covered by another one (not the
+ *             page's controls under an open menu: a popup is drawn over the page)
  *
  * The rules follow the design system's own layout checks (controls in one row share one size and
  * one line; content clears its frame), written for any adapter: they read roles and the box
@@ -310,6 +311,8 @@ export function inspectLayout({ max }) {
 
   // --- overlap ---------------------------------------------------------------------------------
   const controls = controlsIn(document.body);
+  /** An open menu is a popup, drawn over the page by design. */
+  const inMenu = (/** @type {Element} */ el) => !!el.closest('[role="menu"]');
   /** @type {Set<Element>} */
   const covered = new Set();
   const pairs = new Set();
@@ -325,9 +328,11 @@ export function inspectLayout({ max }) {
     const hit = document.elementFromPoint(x, y);
     if (!hit || el.contains(hit) || hit.contains(el)) continue;
     const other = hit.closest(CONTROL);
-    // Under an overlay (a dialog's backdrop): not reachable, and not this rule's business.
+    // Under an overlay (a dialog's backdrop, or an open menu over the page): not reachable, and
+    // not this rule's business.
     covered.add(el);
-    if (other && controls.includes(other) && !other.contains(el)) {
+    const popup = other && inMenu(other) && !inMenu(el);
+    if (other && controls.includes(other) && !other.contains(el) && !popup) {
       pairs.add(`${name(other)}|${name(el)}`);
       out.push({ rule: 'overlap', text: `${name(el)} is covered by ${name(other)}` });
     }
@@ -337,6 +342,8 @@ export function inspectLayout({ max }) {
       const a = controls[i];
       const b = controls[j];
       if (covered.has(a) || covered.has(b) || a.contains(b) || b.contains(a)) continue;
+      // An open menu over the page's controls; its own items still may not overlap.
+      if (inMenu(a) !== inMenu(b)) continue;
       const ra = a.getBoundingClientRect();
       const rb = b.getBoundingClientRect();
       const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left);

@@ -121,6 +121,7 @@ export async function render({ out, build, font }) {
         browser,
         log: () => {},
         text: { ignore: [] },
+        topBar: false,
       });
       const shots = join(tmp, 'shots', 'adapter');
       for (const f of readdirSync(shots).filter((n) => n.endsWith('.boxes.json')))

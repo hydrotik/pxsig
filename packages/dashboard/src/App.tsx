@@ -1,23 +1,5 @@
 import React from 'react';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-  AppMain,
-  AppShell,
-  Badge,
-  Button,
-  Icon,
-  IconButton,
-  NavEnd,
-  NavLink,
-  NavList,
-  Select,
-  StatusBadge,
-  Tooltip,
-  TopNav,
-  useThemeMode,
-} from '@ui';
+import { Alert, AlertDescription, AlertTitle, AppMain, AppShell, Button } from '@ui';
 import {
   type Data,
   type Queue,
@@ -26,12 +8,9 @@ import {
   dismissCheckError,
   reviewQueue,
   rowsWithPending,
-  served,
   statusOf,
-  switchProject,
   useCheckActivity,
   useData,
-  useProjects,
 } from './data';
 import { Inspector, type InspectTarget } from './inspector/Inspector';
 import { Overview } from './views/Overview';
@@ -42,8 +21,7 @@ import { Help } from './views/Help';
 import { History } from './views/History';
 import { type CoverageFocus, Integrity, IntegrityBanner } from './views/Integrity';
 import { t, type CopyKey } from './copy';
-import { versionsText } from './versions';
-import { Connection } from './parts/Connection';
+import { type Section, TopBar } from './parts/TopBar';
 import { ReactStrip } from './parts/ReactStrip';
 import * as s from './dashboard.css';
 
@@ -73,22 +51,6 @@ const readHash = () =>
   new URLSearchParams(
     location.hash.slice(1).includes('=') ? location.hash.slice(1) : `tab=${location.hash.slice(1)}`
   );
-
-function ThemeToggle() {
-  const { mode, setMode } = useThemeMode();
-  const label = mode === 'dark' ? t('app.theme.toLight') : t('app.theme.toDark');
-  return (
-    <IconButton
-      size="sm"
-      emphasis="ghost"
-      label={label}
-      title={label}
-      onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}
-    >
-      <Icon name={mode === 'dark' ? 'sun' : 'moon'} />
-    </IconButton>
-  );
-}
 
 /**
  * A check the server is running, and the error of one that failed (Storybook down, a broken
@@ -154,25 +116,6 @@ function Placeholder({ text }: { text: string }) {
       <h1 className={s.srOnly}>{t('app.mark')}</h1>
       <div className={s.empty}>{text}</div>
     </main>
-  );
-}
-
-/** The project switcher: shown when the server holds more than one project. */
-function ProjectPicker({ current }: { current?: string }) {
-  const projects = useProjects();
-  if (projects.length < 2 || !current) return null;
-  return (
-    <Select
-      value={current}
-      onValueChange={switchProject}
-      size="sm"
-      label={t('app.project')}
-      inlineSize="14rem"
-      options={projects.map((p) => ({
-        value: p.name,
-        label: t('app.projectOption', { name: p.label ?? p.name, count: p.entries }),
-      }))}
-    />
   );
 }
 
@@ -323,89 +266,53 @@ export function App() {
     if (first) setTarget({ row: first, list, scenario: null, session: kind });
   };
   const nextQueue = (['changed', 'new', 'a11y'] as const).find((k) => undecided(k) > 0) ?? null;
-  const sm = data.check?.summary;
   // Diagnostics appears only when a research run wrote its data.
   const diagnostics = diagnosticsOf(data).length > 0;
   const shown = tab === 'diagnostics' && !diagnostics ? 'overview' : tab;
   const sectionTitle = t(
     `tabs.${({ stories: 'review', integrity: 'coverage', history: 'runs' } as Record<string, string>)[shown] ?? shown}` as CopyKey
   );
-  const status = !sm
-    ? undefined
-    : todo
-      ? ({ tone: 'warning', icon: 'alert', label: t('app.status.reviewRequired') } as const)
-      : ({ tone: 'success', icon: 'check', label: t('app.status.approved') } as const);
   // A count after a section's label (COUNTS.md): attention when it asks for action, neutral for a plain total.
-  type Count = { count: number; tone: 'info' | 'neutral'; label: string };
   const counted = (
     count: number,
-    tone: Count['tone'],
+    tone: 'info' | 'neutral',
     key: 'review' | 'coverage' | 'a11y' | 'runs'
-  ): Count => ({ count, tone, label: t(`tabs.counts.${key}`, { count }) });
-  const link = (id: Tab, label: string, c?: Count, keep?: boolean) => (
-    <NavLink
-      key={id}
-      href={`#${id}`}
-      active={shown === id}
-      keep={keep}
-      count={c?.count}
-      countTone={c?.tone}
-      countLabel={c?.label}
-    >
-      {label}
-    </NavLink>
-  );
+  ) => ({
+    count,
+    tone,
+    label: t(`tabs.counts.${key}`, { count }),
+  });
+  const sections: Section[] = [
+    { id: 'overview', label: t('tabs.overview') },
+    { id: 'stories', label: t('tabs.review'), count: counted(todo, 'info', 'review') },
+    {
+      id: 'integrity',
+      label: t('tabs.coverage'),
+      count: counted(integrityErrors, 'info', 'coverage'),
+    },
+    { id: 'a11y', label: t('tabs.a11y'), count: counted(undecided('a11y'), 'info', 'a11y') },
+    {
+      id: 'history',
+      label: t('tabs.runs'),
+      count: counted(data.history?.length ?? 0, 'neutral', 'runs'),
+    },
+    ...(diagnostics ? [{ id: 'diagnostics', label: t('tabs.diagnostics') }] : []),
+    // Help stays in the bar at every width; the other links move into the More menu.
+    { id: 'help', label: t('tabs.help'), keep: true },
+  ];
   return (
     <>
       <AppShell>
-        <TopNav
-          label={t('app.sections')}
-          className={s.navbar}
-          brand={
-            <h1 className={s.brand}>
-              {/* The versions on hover; the Help section shows them as text. */}
-              <Tooltip content={versionsText(data)}>
-                <span>{t('app.mark')}</span>
-              </Tooltip>
-              {scope ? t('app.titleLabel', { label: scope }) : null}
-            </h1>
-          }
-        >
-          <NavList>
-            {link('overview', t('tabs.overview'))}
-            {link('stories', t('tabs.review'), counted(todo, 'info', 'review'))}
-            {link('integrity', t('tabs.coverage'), counted(integrityErrors, 'info', 'coverage'))}
-            {link('a11y', t('tabs.a11y'), counted(undecided('a11y'), 'info', 'a11y'))}
-            {link('history', t('tabs.runs'), counted(data.history?.length ?? 0, 'neutral', 'runs'))}
-            {diagnostics ? link('diagnostics', t('tabs.diagnostics')) : null}
-            {/* Help stays in the bar at every width; the other links move into the More menu. */}
-            {link('help', t('tabs.help'), undefined, true)}
-          </NavList>
-          {/* Pinned controls sit beside the list, so the list's own resize tracking sees them change width. */}
-          <NavEnd className={s.navEnd}>
-            {served && nextQueue ? (
-              <Button size="sm" onClick={() => startReview(nextQueue)}>
-                {t(`app.startReview.${nextQueue}`, { count: undecided(nextQueue) })}
-              </Button>
-            ) : null}
-            <ProjectPicker current={data.project} />
-            {/* The report's modes, beside the connection: what this data covers, and how fresh it is. */}
-            {sm ? <Badge className={s.modesTag}>{sm.modes.join(' · ')}</Badge> : null}
-            <Connection live={live} />
-            {data.check ? (
-              <span className={[s.micro, s.lastCheck].join(' ')}>
-                {t('app.lastCheck', { date: new Date(data.check.generatedAt).toLocaleString() })}
-              </span>
-            ) : null}
-            <ThemeToggle />
-            {status ? (
-              <StatusBadge
-                {...status}
-                className={served && nextQueue ? s.statusBeside : undefined}
-              />
-            ) : null}
-          </NavEnd>
-        </TopNav>
+        <TopBar
+          data={data}
+          live={live}
+          scope={scope}
+          sections={sections}
+          current={shown}
+          todo={todo}
+          next={nextQueue ? { kind: nextQueue, count: undecided(nextQueue) } : null}
+          startReview={startReview}
+        />
         <AppMain ref={mainRef}>
           <div className={s.page}>
             {/* The section's heading, for the outline (the bar's link says it visibly). */}

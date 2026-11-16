@@ -157,10 +157,10 @@ const KeptNavItemLink = (p: React.ComponentProps<typeof DS.NavItemLink>) => (
 /**
  * The design system's NavItems finds its links by element type (to measure them and move the ones
  * that do not fit into its More menu), so each contract NavLink becomes a NavItemLink here, or a
- * KeptNavItemLink when it is kept.
+ * KeptNavItemLink when it is kept. `moreLabel` names the More trigger and its menu.
  */
-export const NavList = ({ children }: C.NavListProps) => (
-  <DS.NavItems>
+export const NavList = ({ moreLabel, children }: C.NavListProps) => (
+  <DS.NavItems moreLabel={moreLabel}>
     {React.Children.map(children, (c) => {
       if (!React.isValidElement<C.NavLinkProps>(c) || c.type !== NavLink) return c;
       const Item = c.props.keep ? KeptNavItemLink : DS.NavItemLink;

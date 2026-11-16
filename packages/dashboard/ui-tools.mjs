@@ -17,10 +17,11 @@
  *   when a token or icon first appeared: a version (an object with `since` is read too)
  * @typedef {{ $comment?: string, version: string, components: Record<string, { required: boolean, hash: string, since?: string }>, tokens: Record<string, LockMark>, icons: Record<string, LockMark> }} ContractLock
  * @typedef {{ adapter: string, current: string, status: 'same' | 'newer' | 'older-major' | 'older-minor', line: string, notes?: string[] }} ContractStatus
- * @typedef {{ adapter?: string, contract?: string, components?: Record<string, { status?: string, note?: string }> }} Conformance
- *   an adapter's conformance.json
+ * @typedef {{ adapter?: string, contract?: string, components?: Record<string, { status?: string, note?: string }>, topBar?: Record<string, boolean | string> }} Conformance
+ *   an adapter's conformance.json (`topBar`: the top-bar rules, ui-tools/gaps.mjs TOP_BAR)
  * @typedef {{ name: string, group: string, required: boolean, status: string, note: string, usedBy: string[] }} GapRow
- * @typedef {{ adapter: string, contract: ContractStatus, rows: GapRow[], problems: string[] }} Gaps
+ * @typedef {{ met: string[], unmet: { rule: string, note: string }[], unknown: string[] }} TopBarConformance
+ * @typedef {{ adapter: string, contract: ContractStatus, rows: GapRow[], problems: string[], topBar?: TopBarConformance | null }} Gaps
  * @typedef {{ role?: unknown, text?: unknown, name?: string, exact?: boolean, within?: unknown }} ScreenTarget
  * @typedef {{ scenario: string, state?: string, query?: string, hash?: string, actions?: { click?: ScreenTarget, scroll?: ScreenTarget, press?: unknown }[], wait: ScreenTarget }} FeatureScreen
  * @typedef {{ id: string, section: string, title: string, purpose: string, states: Record<string, string>, interactions: { action: string, keys?: string }[], copy: string[], components: string[], files: string[], screens: FeatureScreen[], anchors?: { name: string, target: ScreenTarget }[] }} FeatureDef
@@ -59,6 +60,8 @@ import {
   readConformance,
   sourceFiles,
   STATUSES,
+  TOP_BAR,
+  topBarOf,
   uiImports,
 } from './ui-tools/gaps.mjs';
 import {
@@ -96,6 +99,8 @@ export {
   readConformance,
   sourceFiles,
   STATUSES,
+  TOP_BAR,
+  topBarOf,
   uiImports,
 };
 export {
@@ -211,6 +216,22 @@ export async function checkAll() {
   const declared = readConformance(refDir)?.components ?? {};
   for (const n of names)
     if (!declared[n]) problems.push(`reference adapter: conformance.json has no entry for ${n}`);
+  // Each shipped adapter says how it keeps the top bar's rules, rule by rule.
+  for (const dir of [
+    refDir,
+    path.join(uiDir, 'adapters', 'plain'),
+    path.join(repoRoot, 'examples', 'custom-ui', 'pxsig-ui'),
+  ]) {
+    if (!existsSync(path.join(dir, 'conformance.json'))) continue;
+    const top = topBarOf(readConformance(dir));
+    const who = path.relative(repoRoot, dir);
+    if (!top)
+      problems.push(`${who}: conformance.json has no topBar (docs/ui/build-adapter.md, "Top bar")`);
+    else
+      for (const u of top.unmet)
+        if (u.note === 'not declared')
+          problems.push(`${who}: conformance.json's topBar does not declare ${u.rule}`);
+  }
   const refText = readFileSync(path.join(refDir, 'index.tsx'), 'utf8');
   const tokenText = readFileSync(path.join(uiDir, 'tokens.ts'), 'utf8');
   const tokenNames = [

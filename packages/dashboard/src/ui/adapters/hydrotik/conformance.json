@@ -1,7 +1,18 @@
 {
   "adapter": "hydrotik",
-  "contract": "1.6.0",
+  "contract": "1.7.0",
   "designSystem": "@hydrotik/design-system (built from source: PXSIG_DS_SOURCE)",
+  "topBar": {
+    "root": true,
+    "oneLine": true,
+    "measure": true,
+    "list": true,
+    "more": true,
+    "keyboard": true,
+    "moreLabel": true,
+    "end": true,
+    "note": "Navbar and NavItems; NavEnd is a <div> after the list"
+  },
   "components": {
     "UiProvider": {
       "status": "bespoke",

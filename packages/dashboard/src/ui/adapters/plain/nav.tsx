@@ -1,10 +1,16 @@
 /**
- * The plain adapter's top bar: one line at every width (region rule R1). The section links that do
- * not fit move into a More menu at the end of the list, the last link first; a `keep` link stays in
- * the bar. The menu follows the menu button pattern: the arrow keys, Home and End move through it,
- * Escape closes it and returns focus to the button.
+ * The plain adapter's top bar: one line at every width (region rule R1; docs/ui/build-adapter.md,
+ * "Top bar"). The section links that do not fit move into a More menu, the last link first; a
+ * `keep` link stays in the bar. The More button sits right after the last link shown, before the
+ * kept one, and the list never gets narrower than the two of them. Every link is measured at its
+ * natural width whenever the list resizes, fonts load or the links change. The menu follows the menu
+ * button pattern: the arrow keys (wrapping), Home and End move through it, Escape closes it and
+ * returns focus to the button, Tab closes it and goes on from the button. It is drawn in the bar's
+ * <nav> (a landmark, so axe's `region` holds) through a portal, fixed under the button, so the
+ * list's clipping does not cut it and the bar's line holds.
  */
 import React from 'react';
+import { createPortal } from 'react-dom';
 import type * as C from '../../contract';
 import copy from './copy.json';
 
@@ -69,7 +75,7 @@ function overflowing(widths: number[], kept: boolean[], more: number, room: numb
   return moved;
 }
 
-export function NavList({ children }: C.NavListProps) {
+export function NavList({ moreLabel = copy.more, children }: C.NavListProps) {
   const links = React.Children.toArray(children).filter(
     React.isValidElement
   ) as React.ReactElement<C.NavLinkProps>[];
@@ -79,6 +85,9 @@ export function NavList({ children }: C.NavListProps) {
   const [moved, setMoved] = React.useState<number[]>([]);
   const [open, setOpen] = React.useState(false);
   const menuId = React.useId();
+  // Where the menu is drawn: the bar's <nav>, once the list is in it.
+  const [host, setHost] = React.useState<Element | null>(null);
+  React.useLayoutEffect(() => setHost(list.current?.closest('nav') ?? document.body), []);
 
   // Measure every item at its natural width (each shown for the measure, before the paint), then
   // move the ones that do not fit. The list takes the bar's free width, so its own size is the room.
@@ -96,6 +105,10 @@ export function NavList({ children }: C.NavListProps) {
     const kept = items.map((li) => li.dataset.keep !== undefined);
     const gap = parseFloat(getComputedStyle(ul).columnGap) || 0;
     const next = overflowing(widths, kept, more, ul.clientWidth, gap);
+    // Never narrower than what stays: the kept links, and More while it holds any.
+    const stay = [...widths.filter((_, i) => kept[i]), ...(next.length ? [more] : [])];
+    const least = stay.reduce((sum, w) => sum + w, 0) + gap * Math.max(0, stay.length - 1);
+    ul.style.minInlineSize = `${Math.ceil(least)}px`;
     setMoved((was) => (was.join() === next.join() ? was : next));
     if (!next.length) setOpen(false);
   }, []);
@@ -105,9 +118,28 @@ export function NavList({ children }: C.NavListProps) {
     if (!ul || typeof ResizeObserver === 'undefined') return;
     const watch = new ResizeObserver(() => fit());
     watch.observe(ul);
+    // Web fonts change every width: measure again whenever some have loaded.
     void document.fonts?.ready.then(() => fit());
-    return () => watch.disconnect();
+    document.fonts?.addEventListener?.('loadingdone', fit);
+    return () => {
+      watch.disconnect();
+      document.fonts?.removeEventListener?.('loadingdone', fit);
+    };
   }, [fit]);
+  // The open menu sits under the button, its end edge at the button's, inside the window.
+  const place = React.useCallback(() => {
+    const b = button.current?.getBoundingClientRect();
+    const m = menu.current;
+    if (!b || !m) return;
+    m.style.insetBlockStart = `${b.bottom + 8}px`;
+    m.style.insetInlineStart = `${Math.max(8, Math.min(b.right, innerWidth - 8) - m.offsetWidth)}px`;
+  }, []);
+  React.useLayoutEffect(() => {
+    if (!open) return;
+    place();
+    addEventListener('resize', place);
+    return () => removeEventListener('resize', place);
+  }, [open, place]);
 
   const items = () => [...(menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
   const show = (at: 'first' | 'last') => {
@@ -147,9 +179,18 @@ export function NavList({ children }: C.NavListProps) {
     } else if (e.key === 'Escape') {
       e.preventDefault();
       close(true);
-    } else if (e.key === 'Tab') close(false);
+    } else if (e.key === 'Tab') {
+      // Tab goes on from the button, as if the menu were not there.
+      button.current?.focus();
+      setOpen(false);
+    }
   };
   const onButtonKey = (e: React.KeyboardEvent) => {
+    // Escape on the button (the menu open, its first item not focused yet) closes it too.
+    if (e.key === 'Escape' && open) {
+      e.preventDefault();
+      return close(true);
+    }
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     e.preventDefault();
     show(e.key === 'ArrowDown' ? 'first' : 'last');
@@ -163,6 +204,7 @@ export function NavList({ children }: C.NavListProps) {
         ref={button}
         type="button"
         aria-haspopup="menu"
+        aria-label={moreLabel}
         aria-expanded={open}
         aria-controls={menuId}
         data-current={moved.some((i) => links[i].props.active) || undefined}
@@ -172,20 +214,25 @@ export function NavList({ children }: C.NavListProps) {
         {copy.more}
         <span aria-hidden="true"> ▾</span>
       </button>
-      <ul
-        ref={menu}
-        id={menuId}
-        role="menu"
-        aria-label={copy.more}
-        hidden={!open}
-        onKeyDown={onMenuKey}
-      >
-        {moved.map((i) => (
-          <li key={links[i].key ?? i} role="none">
-            <SectionLink {...links[i].props} item onClick={() => close(false)} />
-          </li>
-        ))}
-      </ul>
+      {host &&
+        createPortal(
+          <ul
+            ref={menu}
+            id={menuId}
+            role="menu"
+            aria-label={moreLabel}
+            className="plain-menu"
+            hidden={!open}
+            onKeyDown={onMenuKey}
+          >
+            {moved.map((i) => (
+              <li key={links[i].key ?? i} role="none">
+                <SectionLink {...links[i].props} item onClick={() => close(false)} />
+              </li>
+            ))}
+          </ul>,
+          host
+        )}
     </li>
   );
   return (

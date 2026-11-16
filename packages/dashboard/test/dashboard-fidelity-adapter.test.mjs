@@ -2,8 +2,10 @@
  * The region rules end to end: `pxsig dashboard check` on the plain example adapter
  * (examples/custom-ui) passes them, and on a copy broken
  * on purpose (one change per rule) it fails, naming the element that breaks each. The rules one by
- * one are dashboard-fidelity.test.mjs. Skips when no Chromium is available (PXSIG_CHROMIUM names
- * an executable).
+ * one are dashboard-fidelity.test.mjs. The top bar's sweep (the `top-bar` rule) too: the example
+ * passes it, and two adapters the top bar breaks on fail it: one whose section links may wrap, and
+ * one whose TopNav does not put className on its root. Skips when no Chromium is available
+ * (PXSIG_CHROMIUM names an executable).
  */
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -20,6 +22,9 @@ const dashboard = path.dirname(here);
 const repo = path.resolve(dashboard, '..', '..');
 const require = createRequire(path.join(dashboard, '../pxsig/package.json'));
 const { dashboardCheck } = await import('../../pxsig/src/dashboard-check.mjs');
+const catalogue = JSON.parse(
+  readFileSync(path.join(dashboard, 'fixtures', 'screens.json'), 'utf8')
+);
 
 /** The screens checked: the top bar, stat cards, a table with actions, a toolbar, badges. */
 const ONLY = 'shell.top-bar,overview.counts,overview.open-items,review.filters,coverage.ledger';
@@ -68,11 +73,18 @@ export const StatGroup = ({ label, items, className }: C.StatGroupProps) => (
 );
 `;
 
+/** The top bar's links may wrap and shrink: a label on two lines. */
+const WRAPPING_CSS = `
+.plain-nav li { white-space: normal; flex-shrink: 1; }
+`;
+
 let browser = null;
 let skip = false;
 let tmp = null;
 let good = null;
 let broken = null;
+let wrapping = null;
+let unmarked = null;
 
 /** Build an adapter folder with the dashboard's own Vite setup, as dashboard-check.test.mjs does. */
 async function buildWith(adapterDir, outDir) {
@@ -115,6 +127,21 @@ before(async () => {
   const index = path.join(brokenUi, 'index.tsx');
   writeFileSync(index, `${readFileSync(index, 'utf8')}${BROKEN_STATS}`);
   broken = await buildWith(brokenUi, path.join(tmp, 'broken'));
+  const wrapUi = path.join(tmp, 'wrap-ui');
+  copyTree(example, wrapUi);
+  writeFileSync(
+    path.join(wrapUi, 'theme.css'),
+    `${readFileSync(path.join(wrapUi, 'theme.css'), 'utf8')}${WRAPPING_CSS}`
+  );
+  wrapping = await buildWith(wrapUi, path.join(tmp, 'wrap'));
+  const bareUi = path.join(tmp, 'bare-ui');
+  copyTree(example, bareUi);
+  const nav = path.join(bareUi, 'nav.tsx');
+  const text = readFileSync(nav, 'utf8');
+  const forwards = "className={['plain-nav', className].filter(Boolean).join(' ')}";
+  assert.ok(text.includes(forwards), 'the example TopNav forwards className');
+  writeFileSync(nav, text.replace(forwards, 'className="plain-nav"'));
+  unmarked = await buildWith(bareUi, path.join(tmp, 'bare'));
 });
 after(async () => {
   await browser?.close();
@@ -136,17 +163,56 @@ test('the plain example adapter keeps the region rules', async (t) => {
   if (skip) return t.skip(skip);
   const { code, report } = await run(good, 'out-good');
   assert.deepEqual(found(report), []);
+  assert.deepEqual(report.topBar?.findings, []);
+  assert.ok((report.topBar?.scenarios.length ?? 0) >= 3, 'the top bar swept in several scenarios');
   assert.equal(code, 0);
   assert.equal(report.summary.withFidelity, 0);
+});
+
+/** The top-bar sweep alone, in one scenario. */
+const sweepOnly = (build, out) =>
+  dashboardCheck({ build, out: path.join(tmp, out), only: 'shell.top-bar', themes: 'dark' }, tmp, {
+    log: () => {},
+    browser,
+    topBar: { scenarios: ['changed'] },
+  });
+
+test('an adapter whose section links wrap fails the top-bar rule, at the widths they wrap', async (t) => {
+  if (skip) return t.skip(skip);
+  const { code, report } = await sweepOnly(wrapping, 'out-wrap');
+  assert.equal(code, 1);
+  const texts = (report.topBar?.findings ?? []).map((f) => f.text);
+  assert.ok(
+    texts.some((x) => /^changed at \d+px: <a "Review Stories[^"]*"> takes 2 lines$/.test(x)),
+    texts.join('\n')
+  );
+  assert.equal(report.summary.topBar, texts.length);
+  assert.match(readFileSync(path.join(tmp, 'out-wrap', 'summary.md'), 'utf8'), /### Top bar\n/);
+});
+
+test('an adapter whose TopNav drops className fails the top-bar rule: the bar has no mark', async (t) => {
+  if (skip) return t.skip(skip);
+  const { code, report } = await sweepOnly(unmarked, 'out-bare');
+  assert.equal(code, 1);
+  assert.deepEqual(
+    report.topBar?.findings.map((f) => f.text),
+    ["changed: no element carries pxsig-ui-TopNav: TopNav must put its className on the bar's root"]
+  );
 });
 
 test('an adapter that breaks a region rule fails the check, naming the element', async (t) => {
   if (skip) return t.skip(skip);
   const { code, report } = await run(broken, 'out-broken');
   assert.equal(code, 1);
+  // The links on a line of their own: none moves into More, so the screen that opens it cannot.
+  const opensMore = (x) =>
+    x.feature === 'shell.top-bar' &&
+    catalogue.features
+      .find((f) => f.id === x.feature)
+      .screens[x.index].actions?.some((a) => a.click?.name === 'More');
   assert.deepEqual(
     report.screens
-      .filter((x) => !x.rendered)
+      .filter((x) => !x.rendered && !opensMore(x))
       .map((x) => `${x.feature} #${x.index + 1}: ${x.reason}`),
     []
   );

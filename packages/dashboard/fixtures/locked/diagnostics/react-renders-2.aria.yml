@@ -22,7 +22,7 @@
     - listitem:
       - link "Help":
         - /url: "#help"
-  - text: dark · light Live Can approve
+  - text: dark · light Live · last check 10/24/2026, 10:00:00 AM Can approve
   - button "Light theme"
   - text: Approved
 - main:

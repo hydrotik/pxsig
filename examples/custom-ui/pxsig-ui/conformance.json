@@ -1,11 +1,25 @@
 {
   "adapter": "plain",
-  "contract": "1.1.0",
+  "contract": "1.7.0",
   "designSystem": "none: semantic HTML and theme.css",
+  "topBar": {
+    "root": true,
+    "oneLine": true,
+    "measure": true,
+    "list": true,
+    "more": true,
+    "keyboard": true,
+    "moreLabel": true,
+    "end": true,
+    "note": "nav.tsx: measures every link at its natural width, sets the list's minimum to More and the kept link, and draws the menu fixed under its button"
+  },
   "components": {
     "UiProvider": { "status": "bespoke", "note": "sets data-theme on <html>; no density" },
     "TopNav": { "status": "full", "note": "one line: links that do not fit move into a More menu" },
-    "NavList": { "status": "full", "note": "a list of links, then the More menu" },
+    "NavList": {
+      "status": "full",
+      "note": "a list of links, then the More menu, named by moreLabel"
+    },
     "NavLink": {
       "status": "full",
       "note": "count as a plain badge, its text in the tone's colour"

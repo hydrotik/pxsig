@@ -12,14 +12,21 @@
       - link "Coverage":
         - /url: "#integrity"
     - listitem:
-      - button "More navigation"
+      - link "Accessibility":
+        - /url: "#a11y"
+    - listitem:
+      - link "Runs, 2 runs":
+        - /url: "#history"
+        - text: Runs
+    - listitem:
+      - link "Diagnostics":
+        - /url: "#diagnostics"
     - listitem:
       - link "Help":
         - /url: "#help"
   - button "Approve 3 new entries"
-  - text: light · dark Live Can approve
+  - text: Live · last check 10/25/2026, 11:01:00 AM Can approve
   - button "Light theme"
-  - text: Review required
 - main:
   - heading "Overview" [level=2]
   - text: Checked 12 light · dark Passed 9

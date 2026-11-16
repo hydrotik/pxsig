@@ -17,7 +17,8 @@
       "readOnly": "Read only",
       "canApprove": "Can approve",
       "readOnlyHint": "Approving needs the dashboard link. In a terminal, in the {folder} folder (where pxsig serve runs): {command}. 5 minutes to access the link; it works once. Once opened, that browser can approve, with no time limit, until pxsig serve stops or the browser closes.",
-      "canApproveHint": "This browser opened the dashboard link: it can approve, with no time limit, until pxsig serve stops or the browser closes."
+      "canApproveHint": "This browser opened the dashboard link: it can approve, with no time limit, until pxsig serve stops or the browser closes.",
+      "withLastCheck": "{connection} · last check {date}"
     },
     "lastCheck": "Last check {date}",
     "theme": {
@@ -30,6 +31,7 @@
       "other": "{name} · {count} entries"
     },
     "sections": "Report sections",
+    "moreSections": "More sections",
     "embedEmpty": "No result for this story. Run a check from the toolbar.",
     "decide": {
       "title": "pxsig: recording a decision",
@@ -51,6 +53,11 @@
       "a11y": {
         "one": "Review {count} accessibility entry",
         "other": "Review {count} accessibility entries"
+      },
+      "short": {
+        "changed": "Review {count}",
+        "new": "Approve {count}",
+        "a11y": "Review {count}"
       }
     },
     "status": {

@@ -26,6 +26,11 @@ export interface AppMainProps {
   children: React.ReactNode;
 }
 /** The top bar: the report's mark, the section links, then the controls pinned at the end. */
+/**
+ * The top bar: one line at every width. `className` goes on the bar's root element (the dashboard
+ * measures the bar from it and marks it `pxsig-ui-TopNav`); the brand, the `NavList` and the
+ * `NavEnd` are its children in that order, side by side.
+ */
 export interface TopNavProps extends WithClass {
   /** Accessible name of the navigation landmark. */
   label: string;
@@ -34,8 +39,20 @@ export interface TopNavProps extends WithClass {
   /** A `NavList`, then a `NavEnd`. */
   children: React.ReactNode;
 }
-/** The section links. Links that do not fit move into an overflow menu when the adapter has one. */
+/**
+ * The section links, one line at every width (docs/ui/build-adapter.md, "Top bar"): the links that do
+ * not fit move into an overflow menu (More), the last first, never a `keep` link. The list takes
+ * the bar's free width (`flex: 1 1 0`), never less than More and the kept links, and clips; each
+ * link and the trigger stay one line at their natural width (`white-space: nowrap`,
+ * `flex-shrink: 0`), measured again when the bar resizes, fonts load or a label or count changes.
+ */
 export interface NavListProps {
+  /**
+   * The More trigger's accessible name ("More sections"), from pxsig's copy (since 1.7.0): the
+   * trigger draws an icon or text of the adapter's choice, and its menu takes the same name. An
+   * adapter written for 1.6.0 names it itself.
+   */
+  moreLabel?: string;
   children: React.ReactNode;
 }
 /** One section link: a plain `#<id>` link, marked current with `aria-current="page"`. */
@@ -55,7 +72,10 @@ export interface NavLinkProps {
   keep?: boolean;
   children: React.ReactNode;
 }
-/** The controls pinned at the end of the top bar. */
+/**
+ * The controls pinned at the end of the top bar, after the list: one row that never wraps or
+ * shrinks. The dashboard decides which of them show at a width, by measuring the bar.
+ */
 export interface NavEndProps extends WithClass {
   children: React.ReactNode;
 }

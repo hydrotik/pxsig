@@ -114,6 +114,32 @@ test('geometry: an anchor that moves between screens, or everywhere at once, fai
   );
 });
 
+test('geometry: a screen with a width of its own is compared with the screens at that width', () => {
+  const file = join(fresh(), 'geometry.json');
+  const bar = /** @type {[number, number, number, number]} */ ([0, 0, 1280, 44]);
+  const narrow = /** @type {[number, number, number, number]} */ ([0, 0, 800, 44]);
+  const s = [
+    ...anchored([{ bar }]),
+    ...anchored([{}, { bar: narrow }, { bar: narrow }])
+      .filter((x) => x.index > 0)
+      .map((x) => ({ ...x, width: 800 })),
+  ];
+  checkGeometry({ screens: s, file, update: true });
+  assert.deepEqual(checkGeometry({ screens: s, file }).problems, []);
+  const off = s.map((x) =>
+    x.index === 2
+      ? {
+          ...x,
+          anchors: { bar: /** @type {[number, number, number, number]} */ ([0, 0, 790, 44]) },
+        }
+      : x
+  );
+  assert.match(
+    checkGeometry({ screens: off, file }).problems[0],
+    /anchor bar moves between screens \(#2 \[0, 0, 800, 44\], #3/
+  );
+});
+
 test('geometry: an anchor absent on one screen is locked as absent, not compared', () => {
   const file = join(fresh(), 'geometry.json');
   const s = anchored([{ approve }, { approve: null }]);
@@ -150,5 +176,12 @@ test('findings: a rendered screen with an axe or layout finding is one line; oth
   assert.deepEqual(
     screenFindings(screens, (s) => s.id),
     ['a: axe label (2); layout edge: x']
+  );
+  // The top-bar sweep's findings follow, one line each.
+  assert.deepEqual(
+    screenFindings(screens, (s) => s.id, {
+      findings: [{ rule: 'top-bar', text: 'changed at 390px: the bar takes 2 lines' }],
+    }),
+    ['a: axe label (2); layout edge: x', 'top-bar: changed at 390px: the bar takes 2 lines']
   );
 });
