@@ -128,7 +128,8 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
       : { get: async () => /** @type {PxsigBrowser} */ (browser) };
   mkdirSync(outDir, { recursive: true });
   // One slot per entry, each filled by the worker that renders it.
-  const results = /** @type {RenderResult[]} */ (Array.from({ length: stories.length }));
+  /** @type {RenderResult[]} */
+  const results = Array.from({ length: stories.length });
   const t0 = performance.now();
   const cfgOf = (/** @type {RenderEntry} */ e) => {
     const vp = e.viewport ?? viewport;

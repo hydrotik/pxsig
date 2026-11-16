@@ -428,7 +428,8 @@ export async function capture(
  */
 export async function pool(items, n, fn) {
   // One slot per item, each filled by the runner that takes it.
-  const out = /** @type {R[]} */ (Array.from({ length: items.length }));
+  /** @type {R[]} */
+  const out = Array.from({ length: items.length });
   let next = 0;
   await Promise.all(
     Array.from({ length: Math.min(n, items.length) }, async () => {
