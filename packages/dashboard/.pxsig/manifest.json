@@ -228,6 +228,326 @@
       "a11y": false
     },
     {
+      "id": "shell--top-bar-8@dark",
+      "story": "shell--top-bar-8",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-8@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1440,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-8@light",
+      "story": "shell--top-bar-8",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-8@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1440,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-9@dark",
+      "story": "shell--top-bar-9",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-9@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        800,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-9@light",
+      "story": "shell--top-bar-9",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-9@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        800,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-10@dark",
+      "story": "shell--top-bar-10",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-10@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        800,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-10@light",
+      "story": "shell--top-bar-10",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-10@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        800,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-11@dark",
+      "story": "shell--top-bar-11",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-11@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        640,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-11@light",
+      "story": "shell--top-bar-11",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-11@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        640,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-12@dark",
+      "story": "shell--top-bar-12",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-12@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        640,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-12@light",
+      "story": "shell--top-bar-12",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-12@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        640,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-13@dark",
+      "story": "shell--top-bar-13",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-13@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        390,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-13@light",
+      "story": "shell--top-bar-13",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-13@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        390,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-14@dark",
+      "story": "shell--top-bar-14",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-14@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        390,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-14@light",
+      "story": "shell--top-bar-14",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-14@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        390,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-15@dark",
+      "story": "shell--top-bar-15",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-15@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        800,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-15@light",
+      "story": "shell--top-bar-15",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-15@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        800,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-16@dark",
+      "story": "shell--top-bar-16",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-16@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-16@light",
+      "story": "shell--top-bar-16",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-16@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-17@dark",
+      "story": "shell--top-bar-17",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-17@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        800,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--top-bar-17@light",
+      "story": "shell--top-bar-17",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--top-bar-17@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        800,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
       "id": "shell--theme-1@dark",
       "story": "shell--theme-1",
       "mode": "dark",

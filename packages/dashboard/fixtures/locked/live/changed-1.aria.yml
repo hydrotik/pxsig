@@ -15,14 +15,18 @@
       - link "Accessibility":
         - /url: "#a11y"
     - listitem:
-      - button "More navigation"
+      - link "Runs, 7 runs":
+        - /url: "#history"
+        - text: Runs
+    - listitem:
+      - link "Diagnostics":
+        - /url: "#diagnostics"
     - listitem:
       - link "Help":
         - /url: "#help"
   - button "Review 2 changes"
-  - text: light · dark Live Can approve
+  - text: Live · last check 10/25/2026, 11:06:00 AM Can approve
   - button "Light theme"
-  - text: Review required
 - main:
   - heading "Overview" [level=2]
   - text: Checked 12 light · dark Passed 10

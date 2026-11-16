@@ -93,8 +93,7 @@ export function inspectFidelity({ max, copy }) {
   /** The outermost visible controls under `root`, not opted out. */
   const controlsIn = (/** @type {Element} */ root) =>
     [...root.querySelectorAll(CONTROL)].filter(
-      (el) =>
-        visible(el) && !allowed(el) && !(el.parentElement && el.parentElement.closest(CONTROL))
+      (el) => visible(el) && !allowed(el) && !el.parentElement?.closest(CONTROL)
     );
   /**
    * Boxes in lines, top to bottom, each line left to right: a box joins the line when it starts
@@ -136,9 +135,9 @@ export function inspectFidelity({ max, copy }) {
   };
   for (const nav of document.querySelectorAll('.pxsig-ui-TopNav')) {
     if (!visible(nav) || allowed(nav)) continue;
-    const label = nav.getAttribute('aria-label');
-    // Links, menus and toggles: one line, each at its own height.
-    oneLine(`the top bar${label ? ` "${label}"` : ''}`, controlsIn(nav), false);
+    // Its controls, not an open menu's: one line, each at its own height.
+    const bar = controlsIn(nav).filter((c) => !c.closest('[role=menu]'));
+    oneLine(`the top bar${nav.ariaLabel ? ` "${nav.ariaLabel}"` : ''}`, bar, false);
   }
   document.querySelectorAll(ROW).forEach((row, ri) => {
     if (!visible(row) || allowed(row)) return;

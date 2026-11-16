@@ -27,8 +27,9 @@
  *
  * Region rules (docs/ui/build-adapter.md, "Region rules"): the layout an adapter keeps whatever its
  * design system looks like.
- *  R1. One line: the top bar at every width (links that do not fit go into an overflow menu); a
- *      toolbar's controls and a row of actions at the dashboard's working width (1280 CSS px).
+ *  R1. One line: the top bar at every width (links that do not fit go into an overflow menu; the
+ *      top-bar rules in docs/ui/build-adapter.md, "Top bar"); a toolbar's controls and a row of
+ *      actions at the dashboard's working width (1280 CSS px).
  *  R2. One size per row: the controls on one line share one height; a table's actions are `sm`.
  *  R3. Casing is the copy's: headers, headings, links, buttons, badges and labels are drawn in the
  *      case of the text passed, with no `text-transform`. Two exceptions, set by the contract: a
@@ -56,7 +57,7 @@ export type { TokenMap, TokenName } from './tokens';
  * a default. An adapter records the version it was written for in its conformance.json
  * (`"contract"`); `pnpm ui:check` holds this number to src/ui/contract-lock.json.
  */
-export const CONTRACT_VERSION = '1.6.0';
+export const CONTRACT_VERSION = '1.7.0';
 
 // --- shared vocabulary ---------------------------------------------------------------------------
 

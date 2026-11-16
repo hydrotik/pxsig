@@ -20,6 +20,9 @@ States:
 - **static**: The connection badge reads Static report · Read only; nothing that writes is shown.
 - **readOnly**: Live · Read only: this page holds no dashboard link; the review buttons are disabled.
 - **canApprove**: Live · Can approve: this page opened the dashboard link.
+- **wide**: Every link and every end control in the bar, the last check among them, while they all fit.
+- **narrow**: One line at every width, what shows measured, never set by breakpoints: first the last check (then said in the connection's hint), the modes tag and the status beside the review button go; then the workspace label is capped at 24ch (always below 1024px); then the links move into More, the last first, Help kept; then the label truncates. Every section stays reachable, nothing covered or clipped, down to 640px. Widening reverses it, and a wider bar never shows fewer links or end controls.
+- **compact**: Below 640px, down to 390px: the project picker narrows, the review button takes a short label, the connection and the review status become glyphs (their words in their names), and the gaps tighten; still one line, with no sideways scroll.
 
 Interactions:
 
@@ -31,7 +34,7 @@ Components: `AppShell`, `AppMain`, `TopNav`, `NavList`, `NavLink`, `NavEnd`, `Ba
 
 Copy: `app`, `tabs`
 
-Files: `src/App`, `src/parts/Connection`, `src/link`
+Files: `src/App`, `src/parts/TopBar`, `src/parts/useTopBarFit`, `src/parts/Connection`, `src/link`
 
 ### Theme toggle
 
@@ -45,7 +48,7 @@ Components: `UiProvider`, `IconButton`, `Icon`
 
 Copy: `app.theme`
 
-Files: `src/App`, `src/main`
+Files: `src/parts/TopBar`, `src/main`
 
 ### Coverage banner
 

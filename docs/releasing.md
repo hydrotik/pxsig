@@ -119,7 +119,8 @@ writes the current snapshots to the store's `reports/structure/`.
 **Locked geometry.** A feature may name anchors in `src/ui/features.ts` (`anchors`: the inspector's
 Reject, Approve and Close, the top bar, the review filters, the inspector toolbar's controls, the
 side panel). Each anchor must sit in the same place and size on every screen of its feature where
-it shows, and its box is committed in `packages/dashboard/fixtures/locked/geometry.json`, so a
+it shows, among the screens at one width (a screen with a `width` of its own, such as the top bar
+at 800, 640 and 390 CSS px, is compared with the screens at that width), and its box is committed in `packages/dashboard/fixtures/locked/geometry.json`, so a
 change that moves it everywhere at once fails as well. `--update-locks` rewrites it too. Boxes
 depend on fonts: take them from the container (`pnpm screens:check`, or CI's `reports/structure/`).
 

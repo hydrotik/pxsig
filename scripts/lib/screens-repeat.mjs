@@ -217,6 +217,8 @@ export async function fixtureRepeat({ P, first, flags, opts, idOf, log }) {
       ...opts,
       browser,
       catalogue: { features: [...catalogue.features].reverse() },
+      // The screens again: the top-bar sweep ran in pass 1.
+      topBar: false,
     });
   } finally {
     await browser.close().catch(() => {});

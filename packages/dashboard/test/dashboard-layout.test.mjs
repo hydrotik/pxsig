@@ -201,6 +201,16 @@ test('overlap: controls drawn over each other, or covered by one', async (t) => 
     ),
     []
   );
+  // An open menu drawn over the page's controls (fully over one, partly over another): a popup,
+  // not reported; two of its own items drawn over each other still are.
+  const page =
+    '<button style="position:absolute;top:40px;left:0;width:60px">Under</button><button style="position:absolute;top:60px;left:50px;width:60px">Edge</button>';
+  const item = (top) =>
+    `<a role="menuitem" href="#" style="position:absolute;top:${top}px;left:0;width:100px;height:28px;display:block">Item ${top}</a>`;
+  const menu = (tops) =>
+    `<div role="menu" style="position:fixed;top:30px;left:0;width:104px;height:80px;background:#fff">${tops.map(item).join('')}</div>`;
+  assert.deepEqual(await findings(page + menu([0, 40]), 'overlap'), []);
+  assert.equal((await findings(page + menu([0, 10]), 'overlap')).length, 1);
 });
 
 test('at most `max` findings per rule, and a count of the rest', async (t) => {

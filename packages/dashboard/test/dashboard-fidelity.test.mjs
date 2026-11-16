@@ -70,6 +70,10 @@ test('one-line: a top bar that wraps names the first control of line 2', async (
   assert.deepEqual(await findings(bar(260), 'one-line'), [
     'the top bar "Report sections" takes 2 lines: <a "Help"> starts line 2',
   ]);
+  // An open More menu drawn inside the bar (a portal into the nav) is not part of its line.
+  const menu = `<div role="menu" style="position:fixed;top:48px;left:0;display:flex;flex-direction:column">${links.map((l) => l.replace('<a ', '<a role="menuitem" ')).join('')}</div>`;
+  const open = `<nav aria-label="Report sections" class="pxsig-ui-TopNav" style="display:flex;gap:12px;width:1000px">${links.join('')}${menu}</nav>`;
+  assert.deepEqual(await findings(open, 'one-line'), []);
 });
 
 test('one-line: a toolbar, and a row of actions, on two lines', async (t) => {

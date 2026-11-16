@@ -1,5 +1,5 @@
 /** The shell features (features.ts): the top bar, the theme and the coverage banner. */
-import type { Feature } from '../features.ts';
+import type { Feature, Screen } from '../features.ts';
 
 export const SHELL: Feature[] = [
   {
@@ -16,6 +16,11 @@ export const SHELL: Feature[] = [
       readOnly:
         'Live · Read only: this page holds no dashboard link; the review buttons are disabled.',
       canApprove: 'Live · Can approve: this page opened the dashboard link.',
+      wide: 'Every link and every end control in the bar, the last check among them, while they all fit.',
+      narrow:
+        "One line at every width, what shows measured, never set by breakpoints: first the last check (then said in the connection's hint), the modes tag and the status beside the review button go; then the workspace label is capped at 24ch (always below 1024px); then the links move into More, the last first, Help kept; then the label truncates. Every section stays reachable, nothing covered or clipped, down to 640px. Widening reverses it, and a wider bar never shows fewer links or end controls.",
+      compact:
+        'Below 640px, down to 390px: the project picker narrows, the review button takes a short label, the connection and the review status become glyphs (their words in their names), and the gaps tighten; still one line, with no sideways scroll.',
     },
     interactions: [
       { action: 'Open a section (a plain #<id> link; Back and Forward move between sections)' },
@@ -36,7 +41,7 @@ export const SHELL: Feature[] = [
       'Select',
       'Tooltip',
     ],
-    files: ['App', 'parts/Connection', 'link'],
+    files: ['App', 'parts/TopBar', 'parts/useTopBarFit', 'parts/Connection', 'link'],
     screens: [
       {
         scenario: 'clean',
@@ -74,6 +79,47 @@ export const SHELL: Feature[] = [
         hash: '#overview',
         wait: { role: 'combobox', name: 'Project' },
       },
+      // The bar as it narrows (`narrow`, `compact`), and wide enough for the last check.
+      {
+        scenario: 'clean',
+        state: 'wide',
+        hash: '#overview',
+        width: 1440,
+        wait: { text: 'Last check' },
+      },
+      ...[800, 640, 390].flatMap((width): Screen[] => [
+        {
+          scenario: 'changed',
+          state: width < 640 ? 'compact' : 'narrow',
+          hash: '#overview',
+          width,
+          wait: { role: 'navigation', name: 'Report sections' },
+        },
+        {
+          scenario: 'several-projects',
+          state: width < 640 ? 'compact' : 'narrow',
+          hash: '#overview',
+          width,
+          wait: { role: 'combobox', name: 'Project' },
+        },
+      ]),
+      {
+        scenario: 'changed',
+        state: 'narrow',
+        hash: '#overview',
+        width: 800,
+        actions: [{ click: { role: 'button', name: 'More' } }],
+        wait: { role: 'menu' },
+      },
+      // A long workspace label: capped at 24ch, its full name in its title.
+      { scenario: 'long-label', hash: '#overview', wait: { role: 'heading', name: 'Acme' } },
+      {
+        scenario: 'long-label',
+        state: 'narrow',
+        hash: '#overview',
+        width: 800,
+        wait: { role: 'heading', name: 'Acme' },
+      },
     ],
     anchors: [{ name: 'top-bar', target: { role: 'navigation', name: 'Report sections' } }],
   },
@@ -86,7 +132,7 @@ export const SHELL: Feature[] = [
     interactions: [{ action: 'Toggle light / dark' }],
     copy: ['app.theme'],
     components: ['UiProvider', 'IconButton', 'Icon'],
-    files: ['App', 'main'],
+    files: ['parts/TopBar', 'main'],
     screens: [{ scenario: 'clean', hash: '#help', wait: { role: 'button', name: 'theme' } }],
   },
   {

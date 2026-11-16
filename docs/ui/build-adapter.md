@@ -128,6 +128,7 @@ anywhere in the workspace.
    `contract` is the UI contract version you wrote the adapter for (see
    [The contract version](#the-contract-version)); without it, 1.0.0. A component may also list the
    design-system stories it is drawn like (`parity`, see [Source parity](#source-parity)).
+   `topBar` declares the top bar's adapter rules, one by one ([Top bar](#top-bar)).
 
 6. Optional: a `vite.mjs` whose default export returns build settings your design system needs:
    `{ alias: { name: path }, allow: [folders], optimizeDepsExclude: [names], classPrefixes: { folder: prefix } }`.
@@ -189,7 +190,7 @@ R4.
 
 | Region                                  | Rule                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Top bar (`TopNav`, `NavList`, `NavEnd`) | **R1** One line at every width: the mark, the links and the pinned controls. Links that do not fit move into an overflow menu; a `keep` link stays in the bar.                                                                                                                                                                                                                                                |
+| Top bar (`TopNav`, `NavList`, `NavEnd`) | **R1** One line at every width: the mark, the links and the pinned controls. Links that do not fit move into an overflow menu; a `keep` link stays in the bar. The responsive rules, and what the adapter's three components must do for them, are [Top bar](#top-bar).                                                                                                                                       |
 | Toolbar (`Toolbar` and its parts)       | **R1** The controls on one line at the dashboard's working width (1280 CSS px). **R2** One height for every control on that line: a control with no `size` takes the toolbar's (every toolbar the dashboard draws is `sm`).                                                                                                                                                                                   |
 | A row of actions (a card's buttons)     | **R1** One line at 1280 CSS px. **R2** One height on that line.                                                                                                                                                                                                                                                                                                                                               |
 | Table (`DataTable`)                     | **R2** A cell's actions are the small size (`sm`, the dashboard passes it), the same height as a toolbar's controls, and one height in the table. **R3** Column headers in the case of `header`.                                                                                                                                                                                                              |
@@ -203,6 +204,90 @@ R4 is how the plain adapter (`adapters/plain/`) draws tones: compare yours with 
 adapter (`adapters/hydrotik/`) takes the badge exception: its `success`, `warning` and `danger`
 badges are its design system's tinted variants.
 
+## Top bar
+
+The top bar is one line at every width (R1), from 1440 CSS px down to 390. Every section is
+reachable and nothing is covered or clipped down to **640px**, the narrowest width the dashboard
+fully supports; below it, down to 390px, the end controls go compact and the bar stays one line
+with no sideways scroll. The dashboard decides what its own parts show by measuring the bar; the
+adapter's `NavList` decides which links fit. Together they keep these rules.
+
+### What shows at a width
+
+As the bar narrows, in this order (and the reverse as it widens):
+
+1. The end details go, one at a time: the last check, the modes tag, then the review status beside
+   the review button. The last check shows whenever every link fits beside it; while it is hidden,
+   the connection badge's hint and accessible name carry it ("Live · last check …").
+2. The workspace label is capped at 24ch (always below a 1024px bar), its full name in its `title`
+   and in the heading's accessible name. The mark (`pxsig`) never truncates.
+3. The section links move into More, the last first, never the `keep` link (Help).
+4. The workspace label truncates further, with an ellipsis, down to a few characters.
+5. The end controls go compact, one at a time: the project picker narrows (its value truncates),
+   the review button takes its short label, the connection becomes its dot and the review status
+   its glyph (their words in their accessible names and `title`s), and the end group's gaps
+   tighten.
+
+A wider bar never shows fewer links or end controls than a narrower one, and the bar at a width is
+the same whether it got there by narrowing or by widening. These are measured, not breakpoints:
+the dashboard compares the room the bar has with the natural widths of what it holds (a
+`ResizeObserver` on the bar, its list, its end group and the brand, and again when the list's items
+change or fonts load), and writes what shows on the bar's root as `data-collapse` and
+`data-compact`. A different design system's padding, fonts or counts change the widths, never the
+order.
+
+### More
+
+- More holds only section links: the ones the bar does not show, in the bar's order, each section
+  exactly once across the bar and the menu. No other text in the menu.
+- It sits right after the last link shown, before the kept link, and exists only while it holds a
+  link. When the current section is in it, the trigger is marked current (`aria-current`,
+  `data-current` or `data-active` with a visible marker).
+- The trigger is a `button` with `aria-haspopup="menu"` and `aria-expanded`. Whether it draws an
+  icon or text is the adapter's choice; its accessible name is `NavList`'s `moreLabel` (since 1.7.0,
+  from pxsig's copy: "More sections"), and the menu takes the same name.
+- Keyboard: Enter, Space and ArrowDown open it on the first item, ArrowUp on the last; the arrows
+  wrap; Home and End go to the first and last item; Escape closes it and returns focus to the
+  trigger; Tab closes it; choosing an item goes to its section and closes it.
+
+### What the adapter must do
+
+- **`TopNav` puts `className` on the bar's root**, with the brand, the `NavList` and the `NavEnd`
+  side by side in it, in that order. The dashboard marks that root `pxsig-ui-TopNav` and measures
+  the bar from it; an adapter that drops `className` breaks the check (`top-bar`).
+- **Every label is one line box**: each link, the More trigger, every button, badge and the
+  select's value. Links and the trigger are `white-space: nowrap` and `flex-shrink: 0`.
+- **`NavList` measures the links at their natural width** (each shown for the measure, as the plain
+  adapter's `nav.tsx` does) and measures again when the list resizes, when fonts load
+  (`document.fonts` `loadingdone`), and when a label or a count changes. A link in More is measured
+  as it would be in the bar.
+- **The list takes the bar's free width**, `flex: 1 1 0`, never less than More and the kept link
+  side by side (`min-inline-size`), and clips what does not fit (`overflow-x: clip`). A control it
+  clips is never left in the tab order: a link that does not fit moves into More instead.
+- **The More menu is not cut by the list's clipping**: draw it in a portal or fixed under the
+  trigger. A portal into the nav itself (`position: fixed`) is fine: the bar's line is measured
+  without the open menu.
+- **`NavEnd` comes after the list**, one row that never wraps or shrinks. The dashboard decides
+  which of its children show.
+- **Declare it** in `conformance.json`, one key per rule, `true` or a note saying what the adapter
+  does instead; `pxsig dashboard gaps` reports it:
+
+  ```json
+  "topBar": {
+    "root": true,
+    "oneLine": true,
+    "measure": true,
+    "list": true,
+    "more": true,
+    "keyboard": true,
+    "moreLabel": true,
+    "end": true
+  }
+  ```
+
+`pxsig dashboard check` sweeps the bar over widths with the `top-bar` rule ([Verify](#verify)),
+and fails on any break of the rules above.
+
 ## What a faithful adapter keeps
 
 A summary of what the rules above and the component sections below already require; where they
@@ -215,7 +300,7 @@ differ from this list, they win.
 - **One size per toolbar.** A control in a `Toolbar` with no `size` takes the toolbar's (rule 3);
   in a `ToolbarField`, labels share a top edge and controls a bottom edge.
 - **A one-row top bar.** Links that do not fit move into an overflow menu; a `keep` link stays
-  (`TopNav`, `NavLink`).
+  ([Top bar](#top-bar)).
 - **One line, one size, per row.** A toolbar's controls and a card's actions on one line, at one
   height; a table's actions at the small size (R1, R2).
 - **The copy's casing.** Headers, headings and labels in the case of the text passed; stat labels
@@ -230,8 +315,8 @@ differ from this list, they win.
 - **Each component's accessibility**, as its section states.
 
 `pxsig dashboard check` measures part of this: the region rules (`one-line`, `size`, `casing`,
-`tone`), which fail it, and the layout (`overflow`, `clipped`, `controls`, `edge`, `overlap`)
-([Verify](#verify)); the rest is read from its gallery.
+`tone`) and the top bar over widths (`top-bar`), which fail it, and the layout (`overflow`,
+`clipped`, `controls`, `edge`, `overlap`) ([Verify](#verify)); the rest is read from its gallery.
 
 ## Build order
 
@@ -317,25 +402,36 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Purpose**: the top bar: the report's mark, the section links, the pinned controls.
 - **Props**: `label` (the navigation landmark's name), `brand` (the mark: a heading and a tag),
   `className`, `children` (a `NavList`, then a `NavEnd`).
-- **Behaviour**: one row at every width (R1). When the links do not fit, the ones that do not fit
-  move into an overflow menu. Without one, the bar wraps, which breaks R1. A design system with no
-  overflow navbar can follow the plain adapter (`adapters/plain/nav.tsx`): it measures the links,
-  moves the last ones that do not fit (never a `keep` link) into a More menu button, and keeps the
-  menu button pattern (arrow keys, Escape returns focus to the button).
+- **Behaviour**: one row at every width (R1), following [Top bar](#top-bar). Put `className` on
+  the bar's root element, with `brand`, the `NavList` and the `NavEnd` side by side in it. When the
+  links do not fit, the ones that do not fit move into an overflow menu. Without one, the bar
+  wraps, which breaks R1. A design system with no overflow navbar can follow the plain adapter
+  (`adapters/plain/nav.tsx`): it measures the links, moves the last ones that do not fit (never a
+  `keep` link) into a More menu button, and keeps the menu button pattern.
 - **Accessibility**: a `<nav>` named by `label`.
-- **Mapping questions**: Does your navbar take a logo slot? Does it handle overflow, and how does
-  it find its items (some measure children by element type: then translate `NavLink`s inside
-  `NavList`, as the reference adapter does)?
-- **Acceptance**: every section is reachable at 1280px and at 800px wide. Required.
+- **Mapping questions**: Does your navbar take a logo slot? Does it put a class on its root? Does
+  it handle overflow, and how does it find its items (some measure children by element type: then
+  translate `NavLink`s inside `NavList`, as the reference adapter does)?
+- **Acceptance**: one line from 1440px down to 390px with no sideways scroll; every section
+  reachable, nothing covered or clipped, down to 640px (`pxsig dashboard check`, `top-bar`).
+  Required.
 
 ### `NavList`
 
-- **Purpose**: the section links.
-- **Props**: `children` (`NavLink`s, possibly `null`).
-- **Behaviour**: ignore `null` children; keep the order.
-- **Accessibility**: a list of links.
-- **Mapping questions**: What is your navbar's item container?
-- **Acceptance**: the links render in order, with the current one marked. Required.
+- **Purpose**: the section links, and the More menu for those that do not fit.
+- **Props**: `children` (`NavLink`s, possibly `null`), `moreLabel` (since 1.7.0: the More
+  trigger's accessible name, and its menu's).
+- **Behaviour**: ignore `null` children; keep the order. Measure the links at their natural width
+  and again on resize, font load and a label or count change; move the last ones that do not fit
+  into More, never a `keep` link; take the free width (`flex: 1 1 0`), never less than More and the
+  kept link, and clip. More follows [Top bar](#top-bar), "More".
+- **Accessibility**: a list of links; More is a menu button (`aria-haspopup="menu"`,
+  `aria-expanded`) named by `moreLabel`, its items `menuitem`s.
+- **Mapping questions**: What is your navbar's item container? Does its overflow menu take a name
+  from the consumer? Does it re-measure when a count changes, and keep a minimum for More and a
+  pinned item?
+- **Acceptance**: the links render in order, with the current one marked; the More keyboard of
+  [Top bar](#top-bar). Required.
 
 ### `NavLink`
 
@@ -343,7 +439,8 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Props**: `href` (`#<section>`), `active`, `count`, `countTone` (`info`: asks for action;
   `neutral`: a plain total), `countLabel` (the link's accessible name with its count), `keep`
   (since 1.4.0), `children`.
-- **Behaviour**: a plain link: the dashboard follows the hash. No count at zero; cap long counts
+- **Behaviour**: a plain link: the dashboard follows the hash. One line at its natural width
+  (`white-space: nowrap`, `flex-shrink: 0`), its count included. No count at zero; cap long counts
   (99+). `countTone` colours the count's digits (`info`: the accent; `neutral`: the text colour);
   its pill or wash stays neutral (R4). A `keep` link (Help) never moves into the overflow menu: it
   stays in the bar at every width and the other links move first. Without overflow, `keep` changes
@@ -359,12 +456,13 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 
 - **Purpose**: the controls pinned at the end of the bar.
 - **Props**: `className`, `children`.
-- **Behaviour**: a row that does not shrink. The dashboard hides some of its children at narrow
-  widths with container queries on `className`.
+- **Behaviour**: a row after the list that never wraps or shrinks; put `className` on its root.
+  The dashboard decides which of its children show at a width by measuring the bar (the attributes
+  it sets on the bar's root, not container queries; [Top bar](#top-bar)).
 - **Accessibility**: none of its own.
-- **Mapping questions**: Does your navbar have an end slot?
-- **Acceptance**: the review button, connection badge, theme toggle and status stay on the right.
-  Optional (fallback: a `<div>`).
+- **Mapping questions**: Does your navbar have an end slot, after the item list?
+- **Acceptance**: the review button, connection badge, theme toggle and status stay on the right,
+  on the bar's one line, at every width. Optional (fallback: a `<div>`).
 
 ## Core components
 
@@ -868,15 +966,17 @@ draw them with your own segmented control and buttons.
    screen on the prebuilt reference dashboard. It reads none of your project's data and writes
    nothing but that folder. Review the gallery: layout and behaviour should match the reference;
    only the look differs.
-   - Exit 1: a screen did not render (its landmark never appeared, or the page threw), or breaks a
-     region rule (below); the report names the screen and the reason. Exit 2: no build, no
+   - Exit 1: a screen did not render (its landmark never appeared, or the page threw), breaks a
+     region rule (below), or the top bar breaks the `top-bar` rule; the report names the screen
+     (or the scenario and width) and the reason. Exit 2: no build, no
      Chromium, or an adapter written for an older major contract version.
    - Each screen is measured against the [region rules](#region-rules) after it renders, at 1280 CSS
      px (a screen with its own width at that width), and each finding names the element that
      breaks the rule (`fidelity` in `report.json`; the gallery, `summary.md` and the command's own
      output list them). Unlike axe and layout findings, any one fails the check:
-     - `one-line` (R1): the top bar's controls, a toolbar's, or a row of actions (two or more
-       control-sized controls side by side in one flex row) take more than one line.
+     - `one-line` (R1): the top bar's controls (not those of an open menu inside it), a
+       toolbar's, or a row of actions (two or more control-sized controls side by side in one flex
+       row) take more than one line.
      - `size` (R2): the controls on one line of a toolbar or a row of actions differ in height; a
        table's controls differ in height, or one is taller than the page's small size (its smallest
        control outside the tables and stat cards: the dashboard draws toolbars, the top bar's
@@ -897,6 +997,18 @@ draw them with your own segmented control and buttons.
      element. Everything else is found by role and the box model, as for the layout rules, and
      `data-layout-allow="<reason>"` opts an element out of both.
 
+   - `top-bar`: the top bar swept over widths, from 1440 down to 390 CSS px and back (1440, 1360,
+     1280, 1200, 1120, 1024, 960, 880, 800, 720, 640, 560, 480, 430, 390), in the `clean`,
+     `changed`, `several-projects` and `long-label` scenarios, while `shell.top-bar` is checked
+     (`topBar` in `report.json`; a section of its own in `summary.md` and the gallery). Any finding
+     fails the check. At each width: the bar's controls on one line and each label one line box;
+     the kept link and More in the bar, neither clipped nor covered, and no clipped control in the
+     tab order; More only while it holds a link, holding exactly the sections the bar does not
+     show, in the bar's order, between the last link shown and the kept one, and opening and
+     closing (Escape returns focus); the end details gone while links are in More; no sideways
+     scroll. Across widths: a wider bar never shows fewer links or end controls, and widening shows
+     the same bar as narrowing did. It reads `pxsig-ui-TopNav`, roles, the box model and the
+     dashboard's own `data-top-bar` marks.
    - Each screen's axe violations are listed in the gallery, `summary.md` and `report.json`
      (whose `axe` is the axe-core version that ran). They are advisory; `--strict` makes any
      violation exit 1.
@@ -910,7 +1022,8 @@ draw them with your own segmented control and buttons.
        and its text, a slider with its label and value, a segmented group) is measured as its
        outermost `data-control` element.
      - `edge`: text or a control within 2px of a drawn border of the region that frames it.
-     - `overlap`: two controls drawn over each other, or one covered by another.
+     - `overlap`: two controls drawn over each other, or one covered by another (an open menu
+       drawn over the page's controls is not).
 
      The rules read roles and the box model, not class names, so they apply to any adapter. An
      element opts out with `data-layout-allow="<reason>"`. While a modal `<dialog>` is open, only

@@ -12,7 +12,10 @@
         "offline": "The connection badge reads Offline; the review button is hidden.",
         "static": "The connection badge reads Static report · Read only; nothing that writes is shown.",
         "readOnly": "Live · Read only: this page holds no dashboard link; the review buttons are disabled.",
-        "canApprove": "Live · Can approve: this page opened the dashboard link."
+        "canApprove": "Live · Can approve: this page opened the dashboard link.",
+        "wide": "Every link and every end control in the bar, the last check among them, while they all fit.",
+        "narrow": "One line at every width, what shows measured, never set by breakpoints: first the last check (then said in the connection's hint), the modes tag and the status beside the review button go; then the workspace label is capped at 24ch (always below 1024px); then the links move into More, the last first, Help kept; then the label truncates. Every section stays reachable, nothing covered or clipped, down to 640px. Widening reverses it, and a wider bar never shows fewer links or end controls.",
+        "compact": "Below 640px, down to 390px: the project picker narrows, the review button takes a short label, the connection and the review status become glyphs (their words in their names), and the gaps tighten; still one line, with no sideways scroll."
       },
       "components": [
         "AppShell",
@@ -86,6 +89,110 @@
           "wait": {
             "role": "combobox",
             "name": "Project"
+          }
+        },
+        {
+          "scenario": "clean",
+          "state": "wide",
+          "hash": "#overview",
+          "width": 1440,
+          "wait": {
+            "text": "Last check"
+          }
+        },
+        {
+          "scenario": "changed",
+          "state": "narrow",
+          "hash": "#overview",
+          "width": 800,
+          "wait": {
+            "role": "navigation",
+            "name": "Report sections"
+          }
+        },
+        {
+          "scenario": "several-projects",
+          "state": "narrow",
+          "hash": "#overview",
+          "width": 800,
+          "wait": {
+            "role": "combobox",
+            "name": "Project"
+          }
+        },
+        {
+          "scenario": "changed",
+          "state": "narrow",
+          "hash": "#overview",
+          "width": 640,
+          "wait": {
+            "role": "navigation",
+            "name": "Report sections"
+          }
+        },
+        {
+          "scenario": "several-projects",
+          "state": "narrow",
+          "hash": "#overview",
+          "width": 640,
+          "wait": {
+            "role": "combobox",
+            "name": "Project"
+          }
+        },
+        {
+          "scenario": "changed",
+          "state": "compact",
+          "hash": "#overview",
+          "width": 390,
+          "wait": {
+            "role": "navigation",
+            "name": "Report sections"
+          }
+        },
+        {
+          "scenario": "several-projects",
+          "state": "compact",
+          "hash": "#overview",
+          "width": 390,
+          "wait": {
+            "role": "combobox",
+            "name": "Project"
+          }
+        },
+        {
+          "scenario": "changed",
+          "state": "narrow",
+          "hash": "#overview",
+          "width": 800,
+          "actions": [
+            {
+              "click": {
+                "role": "button",
+                "name": "More"
+              }
+            }
+          ],
+          "wait": {
+            "role": "menu"
+          }
+        },
+        {
+          "scenario": "long-label",
+          "hash": "#overview",
+          "wait": {
+            "role": "heading",
+            "name": "Acme"
+          }
+        },
+        {
+          "scenario": "long-label",
+          "state": "narrow",
+          "hash": "#overview",
+          "width": 800,
+          "wait": {
+            "role": "heading",
+            "name": "Acme"
           }
         }
       ],

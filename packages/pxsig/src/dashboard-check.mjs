@@ -18,13 +18,15 @@
  *     and the rules an adapter may not change (dashboard-check/fidelity.mjs: one line, table rows,
  *     casing, tone), and the alignment the screenshot shows (dashboard-check/alignment.mjs: a dot
  *     or icon centred on its label's capitals, small components on whole pixels).
+ *   - The top bar swept over widths, 1440 down to 390 CSS px and back, in a few scenarios
+ *     (dashboard-check/top-bar.mjs: the `top-bar` rule), when the top bar's feature is checked.
  *   - --compare <dir>: each screen against the same screen of an earlier check's output (its
  *     --out), with the engine (dashboard-check/compare.mjs). Advisory: changes never fail.
  *   - Writes only under --out (default node_modules/.cache/pxsig/dashboard-check): index.html (the
  *     gallery), report.json, summary.md and the screenshots.
  *
- * Exit: 0 every screen rendered with no page error and no fidelity finding · 1 a screen failed or
- * has a fidelity finding, or (with --strict) axe violations, layout or alignment findings · 2 setup: no build, no Chromium, or an adapter for an older major UI contract.
+ * Exit: 0 every screen rendered with no page error and no fidelity or top-bar finding · 1 a screen
+ * failed or has a fidelity finding, the top bar has a finding, or (with --strict) axe violations, layout or alignment findings · 2 setup: no build, no Chromium, or an adapter for an older major UI contract.
  */
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
@@ -44,6 +46,7 @@ import { compareScreens, readEarlier } from './dashboard-check/compare.mjs';
 import { rustBinary } from './lib/workspace/peers.mjs';
 import { galleryHtml, summaryMarkdown } from './dashboard-check/gallery.mjs';
 import { sampleImages, scenarioServer } from './dashboard-check/server.mjs';
+import { checkTopBar, TOP_BAR_SCENARIOS } from './dashboard-check/top-bar.mjs';
 
 export { FIXED_TIME, VIEWPORT } from './dashboard-check/capture.mjs';
 export { galleryHtml, summaryMarkdown } from './dashboard-check/gallery.mjs';
@@ -102,9 +105,10 @@ export function screenUrl(base, screen, theme) {
  * `browser` (tests) skips the launch. `aria`: each adapter screen also carries its accessibility
  * snapshot, and `anchors` the boxes of its feature's anchors (scripts/screens-check.mjs locks both).
  * `text`: each adapter screen also writes its text record beside its shot (`<shot>.boxes.json`).
+ * `topBar`: the top-bar sweep's scenarios and widths (dashboard-check/top-bar.mjs), or false for none.
  * @param {Flags} [flags]
  * @param {string} [cwd]
- * @param {{ log?: (m: string) => unknown, browser?: Browser | null, concurrency?: number, catalogue?: ScreenCatalogue | null, initScript?: string | null, aria?: boolean, anchors?: boolean, text?: { ignore: string[] } | null }} [opts]
+ * @param {{ log?: (m: string) => unknown, browser?: Browser | null, concurrency?: number, catalogue?: ScreenCatalogue | null, initScript?: string | null, aria?: boolean, anchors?: boolean, text?: { ignore: string[] } | null, topBar?: false | { scenarios?: string[], widths?: number[] } }} [opts]
  * @returns {Promise<{ code: number, report: DashboardCheckReport, outDir: string }>}
  */
 export async function dashboardCheck(
@@ -119,6 +123,7 @@ export async function dashboardCheck(
     aria = false,
     anchors = false,
     text = null,
+    topBar: sweep = {},
   } = {}
 ) {
   const src = dashboardSource();
@@ -279,6 +284,8 @@ export async function dashboardCheck(
     `${j.f.id}__${j.index + 1}__${j.theme}.png`;
   /** @type {ScreenResult[]} */
   let screens;
+  /** @type {DashboardCheckReport['topBar']} */
+  let topBar = null;
   try {
     screens = await pool(jobs, concurrency, async (j) => {
       const server = await serverFor(build, j.screen.scenario);
@@ -315,6 +322,7 @@ export async function dashboardCheck(
         index: j.index,
         scenario: j.screen.scenario,
         theme: j.theme,
+        ...(j.screen.width ? { width: j.screen.width } : {}),
         rendered: r.rendered,
         reason: r.reason,
         errors: r.errors,
@@ -332,6 +340,15 @@ export async function dashboardCheck(
         referenceShot,
       };
     });
+    // The top bar over widths, on the adapter's build (dashboard-check/top-bar.mjs).
+    if (sweep && features.some((f) => f.id === 'shell.top-bar')) {
+      const known = Object.keys(fixtures.SCENARIOS);
+      topBar = await checkTopBar(browser, {
+        ...sweep,
+        scenarios: (sweep.scenarios ?? TOP_BAR_SCENARIOS).filter((x) => known.includes(x)),
+        urlFor: async (x) => `${(await serverFor(build, x)).base}/report/?theme=dark#overview`,
+      });
+    }
   } finally {
     for (const s of servers.values()) (await s).close();
     if (!given) await browser.close().catch(() => {});
@@ -380,14 +397,21 @@ export async function dashboardCheck(
       withLayout,
       withFidelity,
       withAlignment,
+      topBar: topBar?.findings.length ?? 0,
       posts: posts.length,
     },
+    topBar,
     screens,
   };
   writeFileSync(join(outDir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
   writeFileSync(join(outDir, 'summary.md'), summaryMarkdown(report));
   writeFileSync(join(outDir, 'index.html'), galleryHtml(report));
   const code =
-    failed || withFidelity || (report.strict && (withAxe || withLayout || withAlignment)) ? 1 : 0;
+    failed ||
+    withFidelity ||
+    report.summary.topBar ||
+    (report.strict && (withAxe || withLayout || withAlignment))
+      ? 1
+      : 0;
   return { code, report, outDir };
 }

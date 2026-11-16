@@ -9,12 +9,6 @@
  */
 export {
   page,
-  navbar,
-  brand,
-  modesTag,
-  navEnd,
-  statusBeside,
-  lastCheck,
   stack,
   row,
   spacer,

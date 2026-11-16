@@ -34,7 +34,10 @@ export type State =
   | 'offline'
   | 'static'
   | 'readOnly'
-  | 'canApprove';
+  | 'canApprove'
+  | 'wide'
+  | 'narrow'
+  | 'compact';
 
 export interface Feature {
   id: string;
@@ -58,7 +61,8 @@ export interface Feature {
   screens: Screen[];
   /**
    * Elements that must not move: each is in the same place and size on every screen of the
-   * feature where it shows, and its box is committed (packages/dashboard/fixtures/locked/
+   * feature where it shows at one width (a screen with its own `width` is compared with the
+   * screens at that width), and its box is committed (packages/dashboard/fixtures/locked/
    * geometry.json, scripts/screens-check.mjs). Change one on purpose with
    * `pnpm screens:check --update-locks`.
    */

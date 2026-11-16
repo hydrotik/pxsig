@@ -18,9 +18,13 @@ test('the top bar: the title is the label (else the project), the versions on ho
       const badge = [...document.querySelectorAll('nav *')].find(
         (e) => e.children.length === 0 && e.textContent === 'dark · light'
       );
+      // The end item that holds it, then the next one: the connection (drawn in full).
+      const item = badge?.closest('[data-top-bar="modes"]') ?? badge;
       return {
         inTitle: Boolean(badge?.closest('h1')),
-        next: badge?.nextElementSibling?.textContent ?? null,
+        next:
+          item?.nextElementSibling?.querySelector('[data-top-bar="connection-full"]')
+            ?.firstElementChild?.textContent ?? null,
       };
     });
   const plain = data({ rows: [row('ui-button--ok')], entries: [entry('ui-button--ok')] });
@@ -37,7 +41,7 @@ test('the top bar: the title is the label (else the project), the versions on ho
       assert.match(m.next, /^(Live|Offline)$/, 'the connection badge comes right after');
       // An older server sends no versions: the contract the page was built against still shows.
       assert.match(
-        await h1.locator('span[title]').getAttribute('title'),
+        await h1.locator('span[title]').first().getAttribute('title'),
         /^UI contract \d+\.\d+\.\d+$/
       );
       assert.deepEqual(errors, []);
@@ -59,7 +63,7 @@ test('the top bar: the title is the label (else the project), the versions on ho
       assert.equal(await h1.innerText(), 'pxsig • Hydrotik');
       // The plain example adapter has no Tooltip: the fallback puts the text in the native title.
       assert.equal(
-        await h1.locator('span[title]').getAttribute('title'),
+        await h1.locator('span[title]').first().getAttribute('title'),
         'pxsig 9.8.7 · engine 9.8.6 · UI contract 1.1.0'
       );
       assert.deepEqual(errors, []);

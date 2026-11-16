@@ -1,0 +1,68 @@
+- navigation "Report sections":
+  - heading "pxsig • Demo workspace" [level=1]
+  - list:
+    - listitem:
+      - button "More sections"
+    - listitem:
+      - link "Help":
+        - /url: "#help"
+  - combobox "Project": Demo · 4 entries
+  - text: Live · last check 10/24/2026, 10:00:00 AM Can approve
+  - button "Light theme"
+  - text: Approved
+- main:
+  - heading "Overview" [level=2]
+  - text: Checked 4 dark · light Passed 4
+  - button "Changed 0"
+  - button "Flaky 0"
+  - button "New a11y 0 of 0 violations"
+  - text: Duration 200 ms 100 ms rendering
+  - heading "Open Items" [level=3]
+  - text: No open items.
+  - grid "Data grid":
+    - rowgroup:
+      - row "Item Count Action":
+        - columnheader "Item":
+          - button "Item"
+          - separator "Resize Item column"
+        - columnheader "Count":
+          - button "Count"
+          - separator "Resize Count column"
+        - columnheader "Action":
+          - text: Action
+          - separator "Resize Action column"
+    - rowgroup:
+      - row "Changed, awaiting review 0":
+        - gridcell "Changed, awaiting review"
+        - gridcell "0"
+        - gridcell
+      - row "New, no baseline 0":
+        - gridcell "New, no baseline"
+        - gridcell "0"
+        - gridcell
+      - row "Rejected, awaiting a fix 0":
+        - gridcell "Rejected, awaiting a fix"
+        - gridcell "0"
+        - gridcell
+      - row "Render errors 0":
+        - gridcell "Render errors"
+        - gridcell "0"
+        - gridcell
+      - row "Components with coverage errors 0":
+        - gridcell "Components with coverage errors"
+        - gridcell "0"
+        - gridcell
+      - row "Entries with new a11y violations 0":
+        - gridcell "Entries with new a11y violations"
+        - gridcell "0"
+        - gridcell
+      - row "Flaky 0":
+        - gridcell "Flaky"
+        - gridcell "0"
+        - gridcell
+  - status
+  - heading "Stale Entries by Component" [level=3]
+  - text: No stale entries
+  - heading "Changed Entries per Run" [level=3]
+  - paragraph: 4 runs.
+  - application: 1 2 3 4 0 1 2

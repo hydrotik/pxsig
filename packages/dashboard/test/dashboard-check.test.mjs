@@ -89,7 +89,7 @@ after(async () => {
 });
 
 const run = (flags, opts = {}) =>
-  dashboardCheck(flags, opts.cwd ?? tmp, { log: () => {}, browser, ...opts });
+  dashboardCheck(flags, opts.cwd ?? tmp, { log: () => {}, browser, topBar: false, ...opts });
 const tree = (dir) =>
   existsSync(dir) ? readdirSync(dir, { recursive: true }).map(String).sort() : [];
 
