@@ -265,7 +265,8 @@ order.
   side by side (`min-inline-size`), and clips what does not fit (`overflow-x: clip`). A control it
   clips is never left in the tab order: a link that does not fit moves into More instead.
 - **The More menu is not cut by the list's clipping**: draw it in a portal or fixed under the
-  trigger.
+  trigger. A portal into the nav itself (`position: fixed`) is fine: the bar's line is measured
+  without the open menu.
 - **`NavEnd` comes after the list**, one row that never wraps or shrinks. The dashboard decides
   which of its children show.
 - **Declare it** in `conformance.json`, one key per rule, `true` or a note saying what the adapter
@@ -973,8 +974,9 @@ draw them with your own segmented control and buttons.
      px (a screen with its own width at that width), and each finding names the element that
      breaks the rule (`fidelity` in `report.json`; the gallery, `summary.md` and the command's own
      output list them). Unlike axe and layout findings, any one fails the check:
-     - `one-line` (R1): the top bar's controls, a toolbar's, or a row of actions (two or more
-       control-sized controls side by side in one flex row) take more than one line.
+     - `one-line` (R1): the top bar's controls (not those of an open menu inside it), a
+       toolbar's, or a row of actions (two or more control-sized controls side by side in one flex
+       row) take more than one line.
      - `size` (R2): the controls on one line of a toolbar or a row of actions differ in height; a
        table's controls differ in height, or one is taller than the page's small size (its smallest
        control outside the tables and stat cards: the dashboard draws toolbars, the top bar's
