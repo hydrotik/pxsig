@@ -5,8 +5,9 @@
  * kept one, and the list never gets narrower than the two of them. Every link is measured at its
  * natural width whenever the list resizes, fonts load or the links change. The menu follows the menu
  * button pattern: the arrow keys (wrapping), Home and End move through it, Escape closes it and
- * returns focus to the button, Tab closes it and goes on from the button. It is drawn in <body>,
- * fixed under the button, so the list's clipping does not cut it and the bar's line holds.
+ * returns focus to the button, Tab closes it and goes on from the button. It is drawn in the bar's
+ * <nav> (a landmark, so axe's `region` holds) through a portal, fixed under the button, so the
+ * list's clipping does not cut it and the bar's line holds.
  */
 import React from 'react';
 import { createPortal } from 'react-dom';
@@ -84,6 +85,9 @@ export function NavList({ moreLabel = copy.more, children }: C.NavListProps) {
   const [moved, setMoved] = React.useState<number[]>([]);
   const [open, setOpen] = React.useState(false);
   const menuId = React.useId();
+  // Where the menu is drawn: the bar's <nav>, once the list is in it.
+  const [host, setHost] = React.useState<Element | null>(null);
+  React.useLayoutEffect(() => setHost(list.current?.closest('nav') ?? document.body), []);
 
   // Measure every item at its natural width (each shown for the measure, before the paint), then
   // move the ones that do not fit. The list takes the bar's free width, so its own size is the room.
@@ -210,24 +214,25 @@ export function NavList({ moreLabel = copy.more, children }: C.NavListProps) {
         {copy.more}
         <span aria-hidden="true"> ▾</span>
       </button>
-      {createPortal(
-        <ul
-          ref={menu}
-          id={menuId}
-          role="menu"
-          aria-label={moreLabel}
-          className="plain-menu"
-          hidden={!open}
-          onKeyDown={onMenuKey}
-        >
-          {moved.map((i) => (
-            <li key={links[i].key ?? i} role="none">
-              <SectionLink {...links[i].props} item onClick={() => close(false)} />
-            </li>
-          ))}
-        </ul>,
-        document.body
-      )}
+      {host &&
+        createPortal(
+          <ul
+            ref={menu}
+            id={menuId}
+            role="menu"
+            aria-label={moreLabel}
+            className="plain-menu"
+            hidden={!open}
+            onKeyDown={onMenuKey}
+          >
+            {moved.map((i) => (
+              <li key={links[i].key ?? i} role="none">
+                <SectionLink {...links[i].props} item onClick={() => close(false)} />
+              </li>
+            ))}
+          </ul>,
+          host
+        )}
     </li>
   );
   return (

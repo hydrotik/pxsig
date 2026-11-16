@@ -15,13 +15,14 @@
   fails the check on a label taking two lines, Help or More clipped or covered, a section missing
   from both the bar and More, More out of order, fewer links on a wider bar, or a sideways scroll;
   `pnpm screens:check` fails on it too. `pxsig dashboard gaps` reports an adapter's `topBar`
-  declaration. The plain adapter (and examples/custom-ui) draws its More menu in a portal, named
-  by `moreLabel`, with its items at the small control size, and closes it on Escape from the
-  trigger too. The hydrotik adapter (the bundled dashboard) now names More from pxsig's copy too:
+  declaration. The plain adapter (and examples/custom-ui) draws its More menu in a portal into
+  the bar's `<nav>` (a landmark), named by `moreLabel`, with its items at the small control size,
+  and closes it on Escape from the trigger too. The hydrotik adapter (the bundled dashboard) now names More from pxsig's copy too:
   it passes `moreLabel` to the design system's `NavItems`, so its trigger and menu are "More
   sections" (they were "More navigation"), and its `topBar` declaration meets every rule. The
   `one-line` region rule no longer counts an open More menu that an adapter draws inside the bar
-  (a portal into the nav) as part of the bar's line.
+  (a portal into the nav) as part of the bar's line, and the `overlap` layout rule no longer
+  reports the page's controls under an open menu (its own items still may not overlap).
   To update: an adapter written for 1.6.0 keeps building, but check its top bar against "Top bar"
   in docs/ui/build-adapter.md: `TopNav` must put `className` on the bar's root (with the brand, the
   `NavList` and the `NavEnd` side by side in it); each link and the More trigger one line at its

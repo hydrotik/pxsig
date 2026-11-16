@@ -185,7 +185,7 @@
   padding: 0;
   cursor: pointer;
 }
-/* In <body>, fixed under the button (nav.tsx places it): the list's clipping does not cut it.
+/* In the bar's <nav>, fixed under the button (nav.tsx places it): the list's clipping does not cut it.
    Its items are the controls' small size (28px). */
 .plain-menu {
   position: fixed;
