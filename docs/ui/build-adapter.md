@@ -1022,7 +1022,8 @@ draw them with your own segmented control and buttons.
        and its text, a slider with its label and value, a segmented group) is measured as its
        outermost `data-control` element.
      - `edge`: text or a control within 2px of a drawn border of the region that frames it.
-     - `overlap`: two controls drawn over each other, or one covered by another.
+     - `overlap`: two controls drawn over each other, or one covered by another (an open menu
+       drawn over the page's controls is not).
 
      The rules read roles and the box model, not class names, so they apply to any adapter. An
      element opts out with `data-layout-allow="<reason>"`. While a modal `<dialog>` is open, only
