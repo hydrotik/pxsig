@@ -14,11 +14,11 @@
       - link "Accessibility":
         - /url: "#a11y"
     - listitem:
-      - button "More navigation"
+      - button "More sections"
     - listitem:
       - link "Help":
         - /url: "#help"
-  - text: Live Can approve
+  - text: Live · last check 10/24/2026, 10:00:00 AM Can approve
   - button "Light theme"
   - text: Approved
 - main:

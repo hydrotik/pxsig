@@ -23,7 +23,7 @@
     - listitem:
       - link "Help":
         - /url: "#help"
-  - text: dark · light Offline
+  - text: dark · light Offline Last check 10/24/2026, 10:00:00 AM
   - button "Light theme"
   - text: Approved
 - main:

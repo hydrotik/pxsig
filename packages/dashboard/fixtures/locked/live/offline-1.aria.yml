@@ -19,12 +19,13 @@
         - /url: "#history"
         - text: Runs
     - listitem:
-      - button "More navigation"
+      - link "Diagnostics":
+        - /url: "#diagnostics"
     - listitem:
       - link "Help":
         - /url: "#help"
   - button "Review 2 changes"
-  - text: light · dark Offline
+  - text: Offline · last check 10/25/2026, 11:07:00 AM
   - button "Light theme"
   - text: Review required
 - main:
