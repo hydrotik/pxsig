@@ -1946,6 +1946,7 @@ declare module 'pxsig:hydrotik-design-system' {
   const NavItemLink: React$1.ForwardRefExoticComponent<NavItemLinkProps & React$1.RefAttributes<HTMLLIElement>>;
   interface NavItemsProps extends React$1.HTMLAttributes<HTMLUListElement> {
     responsive?: boolean;
+    moreLabel?: string;
   }
   const NavItems: React$1.ForwardRefExoticComponent<NavItemsProps & React$1.RefAttributes<HTMLUListElement>>;
   type StaticListOrientation = 'vertical' | 'horizontal';
