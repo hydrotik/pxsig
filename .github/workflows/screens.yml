@@ -3,7 +3,8 @@
 # checked against packages/dashboard/.pxsig: its fixture screens, and its live screens (the real
 # `pxsig serve` on a staged example, driven through the reviewer's flows; "Live screens"). A screen
 # that changed, is new or did not render fails the run until its baseline is approved and committed. The renders are uploaded as the
-# `pxsig-screens` artifact, which the review starts from.
+# `pxsig-screens` artifact, which the review starts from. Each fixture screen renders twice in the
+# run, and one whose two renders differ (unstable) fails it too (scripts/lib/screens-repeat.mjs).
 name: screens
 
 on:
@@ -114,8 +115,42 @@ jobs:
           if [ -f packages/dashboard/.pxsig/reports/summary.md ]; then
             cat packages/dashboard/.pxsig/reports/summary.md >> "$GITHUB_STEP_SUMMARY"
           fi
+          if [ -f packages/dashboard/.pxsig/reports/fixture-repeat/summary.md ]; then
+            cat packages/dashboard/.pxsig/reports/fixture-repeat/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
           echo "code=$code" >> "$GITHUB_OUTPUT"
           [ "$code" -le 1 ]
+      # Source parity (docs/ui/build-adapter.md, "Source parity"): `pxsig dashboard parity` on the
+      # reference adapter, in pxsig's container, on the checkout the fetch step made (PXSIG_DS_DIR,
+      # as the build reads it). The design system's own Storybook build (its `build-storybook`
+      # script, wherever it is) is copied into this checkout, where the container sees it. Any
+      # difference its pair does not `expect`, or a pair that does not render, fails the job.
+      - if: steps.has.outputs.ds == 'true'
+        name: Source parity
+        shell: bash
+        env:
+          STORYBOOK_DISABLE_TELEMETRY: '1'
+          PXSIG_DS_DIR: ${{ runner.temp }}/design-system
+        run: |
+          set -uo pipefail
+          pnpm -C "${PXSIG_DS_DIR}" -r --if-present run build-storybook
+          built="$(find "${PXSIG_DS_DIR}" -maxdepth 4 -type d -name storybook-static -not -path '*/node_modules/*' | head -n 1)"
+          [ -n "$built" ] || { echo "::error::the design system built no Storybook"; exit 1; }
+          rm -rf target/parity-storybook && cp -R "$built" target/parity-storybook
+          code=0
+          node scripts/parity-check.mjs --storybook target/parity-storybook --container || code=$?
+          if [ -f target/parity/summary.md ]; then cat target/parity/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+          exit "$code"
+      - if: steps.has.outputs.ds == 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pxsig-parity
+          path: |
+            target/parity/report.json
+            target/parity/summary.md
+            target/parity/shots/
+          if-no-files-found: ignore
+          retention-days: 14
       # The review: download this artifact into packages/dashboard/.pxsig, run `pxsig serve` in
       # packages/dashboard and approve through `pxsig serve --link` (docs/releasing.md).
       - if: steps.has.outputs.ds == 'true' && always()
@@ -133,5 +168,5 @@ jobs:
         name: Screens to review
         shell: bash
         run: |
-          echo "::error::screens changed, are new or did not render: review the pxsig-screens artifact and commit the approved baselines (docs/releasing.md, \"pxsig's own baselines\")"
+          echo "::error::screens changed, are new, did not render or rendered differently twice: review the pxsig-screens artifact and commit the approved baselines (docs/releasing.md, \"pxsig's own baselines\")"
           exit 1

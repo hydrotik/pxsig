@@ -367,7 +367,12 @@
       "components": "Components",
       "withErrors": "{count} with errors",
       "errors": "Errors",
-      "warnings": "Warnings"
+      "warnings": "Warnings",
+      "unreviewed": "Unreviewed",
+      "unreviewedUnit": {
+        "one": "{count} new",
+        "other": "{count} new"
+      }
     },
     "table": {
       "title": "Coverage by Component",
@@ -410,7 +415,9 @@
       "status": "Status",
       "entry": "Entry",
       "detail": "Detail",
-      "noIssues": "No issues"
+      "noIssues": "No issues",
+      "unreviewedQueue": "Unreviewed: no person approved this baseline (written by {by}); review queue #{place}",
+      "unreviewedNew": "Unreviewed: no person approved this baseline (written by {by}, after the queue closed)"
     },
     "empty": "No coverage data. Run {command} or {command2}.",
     "codes": {
@@ -533,6 +540,14 @@
       "enforcement-expired": {
         "title": "Warn mode ended",
         "help": "The warnUntil date passed: the gates that were on warn are enforced again."
+      },
+      "unreviewed-new": {
+        "title": "New unreviewed baselines",
+        "help": "Baselines no person approved, written since the review queue closed (by a migration, check --update, an adoption, an assistant or outside pxsig). Nothing fails on them; approve each after looking at it."
+      },
+      "review-order": {
+        "title": "Review order unreadable",
+        "help": "approvals.reviewOrder names a file that is missing or not JSON: the review queue is ordered by component name."
       }
     }
   },

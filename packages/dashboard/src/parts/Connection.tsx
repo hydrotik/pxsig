@@ -34,7 +34,9 @@ export function Connection({ live }: { live: boolean }) {
                 })
           }
         >
-          <span>
+          {/* A flex box, not a block: a block's line box (the inherited line height) would make
+              it taller than the badge, and the top bar would centre it on a half pixel. */}
+          <span className={s.pair}>
             <Badge
               tone={approving.allowed ? 'success' : 'neutral'}
               emphasis={approving.allowed ? 'subtle' : 'outline'}

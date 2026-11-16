@@ -34,11 +34,17 @@ export const insTitle = style({
   margin: 0,
   fontFamily: v.font.mono,
   fontSize: v.fontSize.sm,
+  // Whole pixels: the dialog title's ratio at this size is 17.5px, which put the header, and the
+  // stage and the side panel below it, on a quarter pixel. 18px title + 16px description keep
+  // the header's content even, so the 28px actions centre on a whole pixel too.
+  lineHeight: '1.125rem',
   outline: 'none',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
 });
+/** The header's description: whole pixels (the dialog description's ratio at 9px is 15.75px). */
+export const insDesc = style({ lineHeight: '1rem' });
 export const insInfo = style({
   display: 'flex',
   flexDirection: 'column',
@@ -82,6 +88,9 @@ export const sessionBar = style({
   paddingBlock: v.space['2'],
   borderBlockEnd: `1px solid ${v.color.border}`,
   fontSize: v.fontSize.sm,
+  // A whole-pixel line, even like the 8px progress bar and the 14px count it centres: the 1.5
+  // ratio at 14px is 21px, which put both on a half pixel.
+  lineHeight: '1.25rem',
 });
 export const note = style({
   display: 'flex',
@@ -132,7 +141,8 @@ export const reportBody = style({
   maxBlockSize: 'calc(100dvh - 4rem)',
   overflowY: 'auto',
 });
-// The composite, scaled down to the dialog's width when wider (the copy is the full PNG).
+// The composite, at a fixed height and scaled to fit (the copy is the full PNG): a height scaled
+// from the dialog's width is fractional, and would put everything after it on a half pixel.
 export const reportImage = style({
   alignSelf: 'flex-start',
   maxInlineSize: '100%',
@@ -140,7 +150,13 @@ export const reportImage = style({
   border: `1px solid ${v.color.border}`,
   borderRadius: v.radius.sm,
 });
-globalStyle(`${reportImage} img`, { display: 'block', maxInlineSize: '100%', blockSize: 'auto' });
+globalStyle(`${reportImage} img`, {
+  display: 'block',
+  blockSize: '7rem',
+  inlineSize: 'auto',
+  maxInlineSize: '100%',
+  objectFit: 'contain',
+});
 // Exactly the text a copy takes, read-only, in a box that scrolls.
 export const reportText = style({
   margin: 0,
@@ -313,8 +329,17 @@ export const insSide = style({
   gap: v.space['5'],
   borderInlineStart: `1px solid ${v.color.border}`,
   boxSizing: 'border-box',
+  // A whole-pixel line: its sections stack to whole heights, so what follows them stays on whole pixels.
+  lineHeight: '1.25rem',
 });
-export const sideSection = style({ display: 'flex', flexDirection: 'column', gap: v.space['2'] });
+// A whole-pixel line, as the inspector's side has: in a side panel that does not set one, the 1.5
+// ratio made a 19.5px line at 13px, and every section below it started on a half pixel.
+export const sideSection = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: v.space['2'],
+  lineHeight: '1.25rem',
+});
 // A side section's title, with its action (the Storybook link on Pixel) at the end of the row.
 export const sectionHead = style({
   display: 'flex',
@@ -390,10 +415,12 @@ export const region = style({
     },
   },
 });
+// Columns of whole pixels, so the square images are whole pixels tall: a third of the side's width
+// made them 90.48px, and every section below them started on a fraction of a pixel.
 export const sigs = style({
   display: 'grid',
   gap: v.space['2'],
-  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gridTemplateColumns: `repeat(3, round(down, calc((100% - 2 * ${v.space['2']}) / 3), 1px))`,
 });
 globalStyle(`${sigs} figure`, {
   margin: 0,
@@ -490,5 +517,6 @@ export const labelHidden = style({ visibility: 'hidden' });
 /** A text change (side/TextSection.tsx): a region button holding a sentence that wraps. */
 export const textChange = style([
   region,
-  { display: 'block', textAlign: 'start', lineHeight: 1.45, overflowWrap: 'anywhere' },
+  // 18px a line (1.45 of 12px was 17.4px): whole-pixel rows, and whole pixels after them.
+  { display: 'block', textAlign: 'start', lineHeight: '1.125rem', overflowWrap: 'anywhere' },
 ]);

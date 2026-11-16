@@ -19,4 +19,9 @@ one design system; a team can build the same dashboard on its own, chosen once a
    or breaks a region rule an adapter may not change (one line, one size, the copy's casing, one
    way to show a tone), naming the element.
 
+6. `pxsig dashboard parity --storybook <folder>` sets each component the adapter pairs with a
+   story of its design system (`parity` in its `conformance.json`) beside that story, built from
+   the design system's Storybook, and lists what differs: box model, font, the alignment of a dot
+   or icon on its label's capitals. Exit 1 on a difference that is not listed as expected.
+
 See `pxsig help dashboard`, docs/ui/build-adapter.md, docs/ui/features.md.

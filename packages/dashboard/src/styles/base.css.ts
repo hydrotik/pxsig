@@ -126,6 +126,8 @@ export const mono = style({ fontFamily: v.font.mono, fontVariantNumeric: 'tabula
 export const micro = style({
   fontFamily: v.font.mono,
   fontSize: v.fontSize['3xs'],
+  // A whole-pixel line: an inherited 1.5 makes a 13.5px label, and what follows a half pixel.
+  lineHeight: '0.875rem',
   letterSpacing: v.letterSpacing.caps,
   textTransform: 'uppercase',
   color: v.color.textMuted,
@@ -135,6 +137,7 @@ export const lede = style({
   maxInlineSize: '70ch',
   color: v.color.textMuted,
   fontSize: v.fontSize.sm,
-  lineHeight: v.lineHeight.relaxed,
+  // 22px: the relaxed 1.6 of 14px is 22.4px a line, and what follows two lines is off whole pixels.
+  lineHeight: '1.375rem',
 });
 export const h2 = style({ margin: 0, fontSize: v.fontSize.lg, fontWeight: v.fontWeight.semibold });

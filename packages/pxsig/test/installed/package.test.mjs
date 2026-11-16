@@ -83,6 +83,19 @@ test('the UI catalog exports and the JSON schemas parse', () => {
   assert.ok(existsSync(join(pkg, 'README.md')), 'README.md');
 });
 
+test('the dashboard source ships, the parity page with it', () => {
+  // What `pxsig dashboard build` and `pxsig dashboard parity` build from (scripts/sync-dashboard-source.mjs).
+  for (const f of [
+    'build-config.mjs',
+    'postbuild.mjs',
+    'parity-page.mjs',
+    'parity/index.html',
+    'parity/main.tsx',
+    'src/ui/contract.ts',
+  ])
+    assert.ok(statSync(join(pkg, 'dashboard', f)).isFile(), `dashboard/${f}`);
+});
+
 test("this host's engine package resolves as pxsig finds it, by require and by import", async (t) => {
   const name = `@pxsig/cli-${process.platform}-${process.arch}`;
   const exe = process.platform === 'win32' ? 'pxsig.exe' : 'pxsig';

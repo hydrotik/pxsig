@@ -385,6 +385,14 @@ export const SCENARIOS = {
       })
     );
     d.history = history(3);
+    // A baseline no person approved (a migration wrote it): the Coverage tile and the entry's detail.
+    const ok = d.integrity.entries.find((x) => x.id === 'ui-button--ok');
+    if (ok) Object.assign(ok, { unreviewed: { queue: 1, by: 'migrate' } });
+    for (const c of d.integrity.components)
+      if (c.component === 'Button') Object.assign(c, { unreviewed: 1 });
+    Object.assign(d.integrity.summary, {
+      unreviewed: { count: 1, queue: 1, new: 0, order: 'name', next: ['ui-button--ok'] },
+    });
     return d;
   },
   a11y() {

@@ -115,6 +115,8 @@ export type DashboardScreen = {
   layout?: { rule: string; text: string }[];
   /** The region rules it breaks (dashboard-check/fidelity.mjs). */
   fidelity?: { rule: string; text: string }[];
+  /** Its alignment findings (dashboard-check/alignment.mjs). */
+  alignment?: { rule: string; text: string }[];
 } & ({ rendered: true; reason: null } | { rendered: false; reason: string });
 
 /** `pxsig dashboard check --json`: the keys read. */
@@ -126,6 +128,7 @@ export interface DashboardCheckAnswer {
     withAxe?: number;
     withLayout?: number;
     withFidelity?: number;
+    withAlignment?: number;
   };
   screens?: DashboardScreen[];
 }
