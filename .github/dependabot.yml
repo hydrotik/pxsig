@@ -92,3 +92,9 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    ignore:
+      # oxc_react_compiler (the built-in React Compiler, crates/pxsig-react) stopped being published
+      # to crates.io at 0.143.0 (oxc-project/oxc#25389), and it needs the other oxc crates at the
+      # same version, so a bump of any one of them cannot build. They stay at 0.143.0 until the
+      # compiler is published again or pxsig moves off it.
+      - dependency-name: 'oxc_*'
