@@ -70,7 +70,9 @@ export function volatileSteps(dir, p, build) {
     `masks: approved once, renders with another value pass (${rows.filter((x) => x.pass).length}/${rows.length})${r.status ? tail(r) : ''}`
   );
   // Passing is not enough: a value that paints past its mask passes or fails by which value it
-  // is. With the mask over all of it, the render is the baseline's, byte for byte.
+  // is. With the mask over all of it, the render is the baseline's, byte for byte. That includes
+  // a box on a half pixel (the neutral value in the container image starts at x = 60.5): the mask
+  // covers every pixel the box touches, so its first digit's ink there is masked too.
   const leaks = rows.filter((x) => x.id.startsWith('components-badge--') && x.differs !== false);
   expect(
     leaks.length === 0,

@@ -480,7 +480,15 @@ change to its size or position still shows. The box is painted at the element's 
 page, so anything above it (an open popover, a tooltip) is still captured. Where that cannot be
 exact (an image or form control, a faded or filtered parent, a static element with offsets or
 absolutely positioned children) it is painted over everything instead, as before 0.7.7: never less
-than the element's box. Only the elements measured just before the screenshot are painted; an
+than the element's box. A mask covers every whole pixel its element's box touches: on the captured
+image's pixel grid (an element screenshot starts at the whole pixel left of and above the element),
+the left and top edges are floored and the right and bottom edges ceiled, then clipped to the
+capture. The record, the paint and the check for content outside the box use those same pixels, so
+a box on a fractional pixel leaves no part of the value compared; a mask never covers a pixel its
+box does not touch. One exception in the paint: an element that clips its own content (`overflow`
+other than `visible`) also clips the box painted in its place, so a pixel its edge only partly
+covers is recorded but not painted. Nothing of the element shows there, since its content and its
+own background share that clip; the pixel is compared as it is, the page behind the element. Only the elements measured just before the screenshot are painted; an
 element a mask matches only at the screenshot, or a mask on more than 500 elements, fails the
 entry (`mask not measured: …`).
 
