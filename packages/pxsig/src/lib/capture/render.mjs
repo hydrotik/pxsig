@@ -295,7 +295,11 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             !!el && !!box && box.width > 1 && box.height > 1 && !e.interaction?.fullPage;
           const masks = await measureMasks(page, masksFor(project, e), ofElement ? box : null, sel);
           /** @type {PageScreenshotOptions} */
-          const shot = { animations: 'disabled', timeout: 10000, ...(await paintMasks(page)) };
+          const shot = {
+            animations: 'disabled',
+            timeout: 10000,
+            ...(await paintMasks(page, masks.grid)),
+          };
           await lateMasks(page, masks);
           const buf = await (ofElement ? el.screenshot(shot) : page.screenshot(shot)).finally(() =>
             unpaintMasks(page)
@@ -312,7 +316,7 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
                 })
               : undefined;
           // After the screenshot and the text record: hiding and showing the values touches neither.
-          await overflowMasks(page, masks, ofElement ? box : null, () =>
+          await overflowMasks(page, masks, () =>
             ofElement
               ? el.screenshot({ animations: 'disabled' })
               : page.screenshot({ animations: 'disabled' })

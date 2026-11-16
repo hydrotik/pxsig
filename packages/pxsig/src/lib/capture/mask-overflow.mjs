@@ -5,8 +5,10 @@
  * which value rendered. Measured on the pixels, after the capture's screenshot and text record (so
  * neither is touched), with the masks put back: the frame with every such element's content
  * hidden, then shown again; a pixel outside every painted box that differs is content outside its
- * box. The masks themselves are never changed: what is painted and recorded stays the element's
- * box.
+ * box. The painted boxes are the pixels the paint covers (masks.mjs `snapRect`: every whole pixel
+ * an element's box touches, on the image's grid), so a pixel is weighed exactly when it is not
+ * painted. The masks themselves are never changed: what is painted and recorded stays the
+ * element's box.
  *
  * Hidden: the element's own text (transparent, no text shadow) and every element inside it
  * (`visibility: hidden`), inline and important, put back after. Its own background, border,
@@ -16,7 +18,7 @@
  * value); selector masks may match a container whose overflow is not the value.
  */
 import { PNG } from 'pngjs';
-import { ATTRIBUTE, MARK } from './masks.mjs';
+import { ATTRIBUTE, MARK, snapRect } from './masks.mjs';
 /** @import { Page } from 'playwright' */
 /** @import { MeasuredMasks } from './masks.mjs' */
 
@@ -68,7 +70,7 @@ const hide = (page, at) =>
  * differ by more than `TOLERANCE` in a channel, and how far the farthest is from the nearest box.
  * @param {Buffer} a
  * @param {Buffer} b
- * @param {number[][]} boxes CSS px, in the frame
+ * @param {number[][]} boxes CSS px, in the frame (the capture passes the painted pixels: masks.mjs `snapRect`)
  * @param {number} scale image pixels per CSS px
  */
 export function outside(a, b, boxes, scale) {
@@ -103,16 +105,14 @@ export function outside(a, b, boxes, scale) {
  * Add an `overflow` problem to `measured` for each painted `data-volatile` element whose content
  * paints outside its box. Run after the capture's screenshot and `unpaintMasks`, while the marks
  * `measureMasks` set are still there, and before `writeMasks`; `shoot` takes the capture's
- * screenshot (the element's or the page's), and `frame` is what `measureMasks` measured in (null:
- * the viewport).
+ * screenshot (the element's or the page's), on the grid `measureMasks` measured on.
  * @param {Page} page
  * @param {MeasuredMasks} measured
- * @param {{ x: number, y: number, width: number } | null} frame
  * @param {() => Promise<Buffer>} shoot
  */
-export async function overflowMasks(page, measured, frame, shoot) {
+export async function overflowMasks(page, measured, shoot) {
   if (!measured.applied.some((m) => m.source === 'attribute')) return;
-  const f = frame ?? { x: 0, y: 0, width: page.viewportSize()?.width ?? 0 };
+  const { grid } = measured;
   const info = await page.evaluate(
     ({ sel, mark, attr }) => {
       /** @param {Element} el */
@@ -128,9 +128,15 @@ export async function overflowMasks(page, measured, frame, shoot) {
         );
       };
       return {
-        // Every element a mask paints: content under any of them is masked.
+        // Every element a mask paints, as it is painted (mask-paint.mjs): each client rect, or
+        // for one painted over everything, its box. Content under any of them is masked.
         boxes: [...document.querySelectorAll(`[${mark}]`)].flatMap((el) =>
-          [...el.getClientRects()].map((r) => [r.left, r.top, r.right, r.bottom])
+          (el.getAttribute(mark) === 'over'
+            ? [el.getBoundingClientRect()]
+            : [...el.getClientRects()]
+          )
+            .filter((r) => r.width > 0 && r.height > 0)
+            .map((r) => [r.left, r.top, r.right, r.bottom])
         ),
         names: [...document.querySelectorAll(sel)].map(name),
       };
@@ -138,7 +144,7 @@ export async function overflowMasks(page, measured, frame, shoot) {
     { sel: `[${ATTRIBUTE}][${MARK}]`, mark: MARK, attr: ATTRIBUTE }
   );
   if (!info.names.length) return;
-  const boxes = info.boxes.map((r) => [r[0] - f.x, r[1] - f.y, r[2] - f.x, r[3] - f.y]);
+  const boxes = info.boxes.map((r) => snapRect(r, grid));
   /** @param {number[] | null} at */
   const leak = async (at) => {
     try {
@@ -146,7 +152,7 @@ export async function overflowMasks(page, measured, frame, shoot) {
       const hidden = await shoot();
       await hide(page);
       const shown = await shoot();
-      const scale = f.width ? PNG.sync.read(shown).width / f.width : 1;
+      const scale = grid.width ? PNG.sync.read(shown).width / grid.width : 1;
       return outside(hidden, shown, boxes, scale);
     } finally {
       await hide(page);

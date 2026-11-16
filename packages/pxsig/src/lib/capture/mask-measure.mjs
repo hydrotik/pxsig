@@ -3,7 +3,7 @@
  * which apply, what each covers inside the frame, which elements to paint (mask-paint.mjs), and
  * what may not be masked as asked. The record of it is masks.mjs `writeMasks`.
  */
-import { ATTRIBUTE, MARK, OVERLAY, unionPx } from './masks.mjs';
+import { ATTRIBUTE, MARK, OVERLAY, pixelGrid, snapRect, unionPx } from './masks.mjs';
 import { unmarkMasks } from './mask-paint.mjs';
 /** @import { Page } from 'playwright' */
 /** @import { AppliedMask, Mask, MaskProblem, MeasuredMasks, Rect } from './masks.mjs' */
@@ -95,7 +95,8 @@ function inPage(els, { attr, root, inline }) {
 /**
  * Which masks apply to the page as it is about to be captured: each mask's elements, grouped by
  * the attribute's value for `data-volatile`, with the pixels their boxes cover inside the frame
- * (`frame`, the captured element's box; null: the viewport). A mask with no pixel there does not
+ * (`frame`, the captured element's box; null: the viewport): every whole pixel a box touches on
+ * the image's grid (masks.mjs `snapRect`, `pixelGrid`). A mask with no pixel there does not
  * apply. Each element that applies is marked for painting (mask-paint.mjs `MARK`): only what was
  * measured is ever painted. What may not be masked is a problem instead, and is never painted:
  *   container   a `data-volatile` element with elements inside other than `INLINE` ones
@@ -111,9 +112,10 @@ function inPage(els, { attr, root, inline }) {
  */
 export async function measureMasks(page, masks, frame, root = '#storybook-root') {
   const vp = page.viewportSize() ?? { width: 0, height: 0 };
-  const f = frame ?? { x: 0, y: 0, width: vp.width, height: vp.height };
-  const clip = (/** @type {number} */ v, /** @type {number} */ max) =>
-    Math.min(max, Math.max(0, Math.round(v)));
+  const scroll = frame
+    ? await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }))
+    : { x: 0, y: 0 };
+  const grid = pixelGrid(frame, vp, scroll);
   /** @type {AppliedMask[]} */
   const applied = [];
   /** @type {MaskProblem[]} */
@@ -129,12 +131,7 @@ export async function measureMasks(page, masks, frame, root = '#storybook-root')
     /** @type {Map<string, { rects: Rect[], at: number[], root: boolean }>} */
     const groups = new Map();
     for (const [i, { v, r, bad, root: atRoot, name }] of found.entries()) {
-      const rect = /** @type {Rect} */ ([
-        clip(r[0] - f.x, f.width),
-        clip(r[1] - f.y, f.height),
-        clip(r[2] - f.x, f.width),
-        clip(r[3] - f.y, f.height),
-      ]);
+      const rect = snapRect(r, grid);
       const shows = rect[2] > rect[0] && rect[3] > rect[1];
       if (m.source === 'attribute' && shows && bad.length) {
         problems.push({
@@ -181,7 +178,7 @@ export async function measureMasks(page, masks, frame, root = '#storybook-root')
       );
     }
   }
-  return { applied, problems, masks, counts };
+  return { applied, problems, masks, counts, grid };
 }
 
 /**
@@ -189,7 +186,7 @@ export async function measureMasks(page, masks, frame, root = '#storybook-root')
  * since): a problem each, so the entry fails instead of being captured beside a mask that never
  * weighed them. The boxes the paint added are not the page's elements.
  * @param {Page} page
- * @param {MeasuredMasks} measured
+ * @param {Pick<MeasuredMasks, 'masks' | 'counts' | 'problems'>} measured
  */
 export async function lateMasks(page, measured) {
   for (const [i, m] of measured.masks.entries()) {
