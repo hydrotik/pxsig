@@ -22,6 +22,9 @@ const dashboard = path.dirname(here);
 const repo = path.resolve(dashboard, '..', '..');
 const require = createRequire(path.join(dashboard, '../pxsig/package.json'));
 const { dashboardCheck } = await import('../../pxsig/src/dashboard-check.mjs');
+const catalogue = JSON.parse(
+  readFileSync(path.join(dashboard, 'fixtures', 'screens.json'), 'utf8')
+);
 
 /** The screens checked: the top bar, stat cards, a table with actions, a toolbar, badges. */
 const ONLY = 'shell.top-bar,overview.counts,overview.open-items,review.filters,coverage.ledger';
@@ -201,9 +204,15 @@ test('an adapter that breaks a region rule fails the check, naming the element',
   if (skip) return t.skip(skip);
   const { code, report } = await run(broken, 'out-broken');
   assert.equal(code, 1);
+  // The links on a line of their own: none moves into More, so the screen that opens it cannot.
+  const opensMore = (x) =>
+    x.feature === 'shell.top-bar' &&
+    catalogue.features
+      .find((f) => f.id === x.feature)
+      .screens[x.index].actions?.some((a) => a.click?.name === 'More');
   assert.deepEqual(
     report.screens
-      .filter((x) => !x.rendered)
+      .filter((x) => !x.rendered && !opensMore(x))
       .map((x) => `${x.feature} #${x.index + 1}: ${x.reason}`),
     []
   );
