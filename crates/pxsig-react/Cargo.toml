@@ -12,7 +12,7 @@ publish = false
 [dependencies]
 oxc_allocator = "=0.143.0"
 oxc_ast = "=0.143.0"
-oxc_ast_visit = "=0.143.0"
+oxc_ast_visit = "=0.158.0"
 oxc_diagnostics = "=0.143.0"
 oxc_parser = "=0.143.0"
 oxc_react_compiler = "=0.143.0"
