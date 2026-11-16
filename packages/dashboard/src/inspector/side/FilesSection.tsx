@@ -45,12 +45,12 @@ export function packetsOf(data: Data, id: string): [string, string][] {
       ['visual', 'inspector.files.packet'],
       ['a11y', 'inspector.files.a11yPacket'],
     ] as const
-  ).flatMap(([kind, label]) => {
+  ).flatMap<[string, string]>(([kind, label]) => {
     const folder = data.rejections?.[kind]?.[id]?.packet;
     return folder
       ? [[t(label), `${base}${folder.replace(/^reports\/rejected\//, '')}rejection.md`]]
       : [];
-  }) as [string, string][];
+  });
 }
 
 export function FilesSection({
