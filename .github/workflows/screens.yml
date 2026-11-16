@@ -109,9 +109,18 @@ jobs:
           set -uo pipefail
           docker pull -q "$(node -p "require('./docker/screens-image.json').image")"
           # The runner's bash has -e on: catch the check's exit, so 1 (screens to review) still
-          # writes the summary and the output that "Screens to review" reads. Above 1 fails below.
+          # writes the summary and the output that "Screens to review" reads. Above 1 (an error:
+          # setup, Docker, or a crash of the harness, scripts/lib/crash.mjs) fails here, never as
+          # screens to review. A 1 is a review only with the check.json that run wrote: the fresh
+          # checkout has none before it (the container checks the same).
           code=0
+          report=packages/dashboard/.pxsig/reports/check.json
+          rm -f "$report"
           PXSIG_LIVE_BIN="$PWD/target/release/pxsig" node scripts/screens-container.mjs || code=$?
+          if [ "$code" -le 1 ] && [ ! -f "$report" ]; then
+            echo "::error::the screens check exited $code but wrote no check.json: the harness failed (an error, not screens to review)"
+            code=2
+          fi
           if [ -f packages/dashboard/.pxsig/reports/summary.md ]; then
             cat packages/dashboard/.pxsig/reports/summary.md >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -119,7 +128,7 @@ jobs:
             cat packages/dashboard/.pxsig/reports/fixture-repeat/summary.md >> "$GITHUB_STEP_SUMMARY"
           fi
           echo "code=$code" >> "$GITHUB_OUTPUT"
-          [ "$code" -le 1 ]
+          [ "$code" -le 1 ] || { echo "::error::the screens check failed (exit $code): an error (setup, Docker or the harness, see the log above), not screens to review"; exit 1; }
       # Source parity (docs/ui/build-adapter.md, "Source parity"): `pxsig dashboard parity` on the
       # reference adapter, in pxsig's container, on the checkout the fetch step made (PXSIG_DS_DIR,
       # as the build reads it). The design system's own Storybook build (its `build-storybook`

@@ -8,7 +8,8 @@
  * The checkout is mounted at its own path (pnpm's links stay valid) and the check runs as the
  * calling user, so what it writes in packages/dashboard/.pxsig belongs to them. The image's engine
  * and Playwright are used (PXSIG_BIN, PXSIG_PLAYWRIGHT), the checkout's pxsig sources and
- * dependencies (`pnpm install` first). Needs Docker. Exit: screens-check's, or 2 when Docker fails.
+ * dependencies (`pnpm install` first). Needs Docker. Exit: screens-check's (0 or 1 only with the
+ * check.json that run wrote), or 2: Docker failed, the check crashed, or this script did.
  *
  * The live screens' workspace is staged here, on the host, first (scripts/live/stage.mjs: the
  * container has no pnpm), unless `--no-live` or an `--only` that names no live feature.
@@ -22,6 +23,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { asMain, checkExit, reportStamp } from './lib/crash.mjs';
 import { FEATURES } from './live/flows.mjs';
 import { stageLive } from './live/stage.mjs';
 
@@ -88,7 +90,7 @@ export function dockerArgs({
   ];
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (asMain(import.meta.url, 'screens')) {
   const repo = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
   const user = process.getuid && process.getgid ? `${process.getuid()}:${process.getgid()}` : null;
   // A staging failure is setup (2), never a screen to review.
@@ -97,6 +99,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       console.error(`[screens] staging the live screens failed: ${e.message}`);
       process.exit(2);
     });
+  // The run's report, to tell its verdict from a crash that left none (lib/crash.mjs).
+  const report = join(repo, 'packages', 'dashboard', '.pxsig', 'reports', 'check.json');
+  const before = reportStamp(report);
   const r = spawnSync(
     'docker',
     dockerArgs({
@@ -112,6 +117,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.error(`[screens] docker: ${r.error.message}`);
     process.exit(2);
   }
-  // 125–127: Docker itself failed (no daemon, no image), not the check.
-  process.exit(r.status === null || r.status >= 125 ? 2 : r.status);
+  // 125–127: Docker itself failed (no daemon, no image), not the check; 0 or 1 with no new
+  // check.json: the check crashed. Either is an error (2), never screens to review.
+  const { code, why } = checkExit(r.status, before, reportStamp(report));
+  if (why) console.error(`[screens] the check failed (${why}): an error, not a screen to review`);
+  process.exit(code);
 }

@@ -230,3 +230,38 @@ function leftovers(v, at, done, route, problems) {
       if (m[1] !== '1') problems.push(`${route}: ${at} holds a server address with its port`);
   }
 }
+
+/**
+ * Route the scrubbed answers of `context` through `sc`, collecting its problems. A request that
+ * gets no answer (the server reset it: ECONNRESET) is aborted, so the page sees it fail as it
+ * would, and passed to `failed`: never an answer the scrub let through, never an unhandled
+ * rejection that ends the run as "screens to review" (scripts/lib/crash.mjs).
+ * @param {Awaited<ReturnType<typeof import('../../packages/pxsig/src/dashboard-check/capture.mjs').screenContext>>} context
+ * @param {ReturnType<typeof scrubber>} sc
+ * @param {string[]} problems
+ * @param {(m: string) => void} failed
+ */
+export async function scrubRoutes(context, sc, problems, failed) {
+  await context.route(
+    (u) => routeOf(u.href) != null,
+    async (route) => {
+      const req = route.request();
+      const at = `${req.method()} /__pxsig/${routeOf(req.url())}`;
+      try {
+        const res = await route.fetch();
+        /** @type {unknown} */
+        let body;
+        try {
+          body = await res.json();
+        } catch {
+          return await route.fulfill({ response: res });
+        }
+        problems.push(...sc.scrub(/** @type {string} */ (routeOf(req.url())), body));
+        await route.fulfill({ response: res, json: body });
+      } catch (e) {
+        failed(`${at}: ${String(/** @type {Error} */ (e).message ?? e).split('\n')[0]}`);
+        await route.abort('failed').catch(() => {});
+      }
+    }
+  );
+}

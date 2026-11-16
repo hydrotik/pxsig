@@ -44,7 +44,7 @@ import { copyTree } from '../lib/copy-tree.mjs';
 import { FEATURES, STEPS } from './flows.mjs';
 import { assertSafeUrl, DEAD_URL, idle, startLiveServer } from './server.mjs';
 import { CHANGE, LIVE_BASE, liveDir, pristineDir, REACT_CHANGE, repo } from './stage.mjs';
-import { routeOf, scrubber } from './volatile.mjs';
+import { scrubber, scrubRoutes } from './volatile.mjs';
 
 // Playwright's types, through capture.mjs (playwright resolves from packages/pxsig, not scripts/).
 /** @typedef {Parameters<typeof screenContext>[0]} Browser */
@@ -124,30 +124,6 @@ function swapStorybook(/** @type {string} */ dir, /** @type {string} */ build) {
 }
 
 /**
- * Route the scrubbed answers of `context` through `scrub`, collecting its problems.
- * @param {BrowserContext} context
- * @param {ReturnType<typeof scrubber>} sc
- * @param {string[]} problems
- */
-async function scrubRoutes(context, sc, problems) {
-  await context.route(
-    (u) => routeOf(u.href) != null,
-    async (route) => {
-      const res = await route.fetch();
-      /** @type {unknown} */
-      let body;
-      try {
-        body = await res.json();
-      } catch {
-        return route.fulfill({ response: res });
-      }
-      problems.push(...sc.scrub(/** @type {string} */ (routeOf(route.request().url())), body));
-      return route.fulfill({ response: res, json: body });
-    }
-  );
-}
-
-/**
  * Run the flows once in one theme. Returns one result per step, in STEPS order.
  * @param {{ browser: Browser, theme: 'dark' | 'light', dashboard: string, axe: string, out: string, log: (m: string) => void, want: (s: LiveStep) => boolean , text?: { ignore: string[] } | null }} o
  */
@@ -173,12 +149,18 @@ async function runOnce({ browser, theme, dashboard, axe, out, log, want, text })
   const problems = [];
   /** @type {string[]} */
   const errors = [];
+  // Requests the server dropped while it was meant to be up (not after a `stop`): each fails its
+  // step, and the run ends as an error, never as a screen to review (lib/crash.mjs).
+  /** @type {string[]} */
+  const dropped = [];
+  let down = false;
+  const drop = (/** @type {string} */ m) => void (down || dropped.push(m));
   /** @type {BrowserContext[]} */
   const contexts = [];
   const open = async () => {
     const c = await screenContext(browser, theme, { bypassCSP: true });
     contexts.push(c);
-    await scrubRoutes(c, sc, problems);
+    await scrubRoutes(c, sc, problems, drop);
     const p = await c.newPage();
     p.on('pageerror', (e) => errors.push(String(e.message ?? e).split('\n')[0]));
     await p.clock.setFixedTime(new Date(FIXED_TIME));
@@ -232,7 +214,7 @@ async function runOnce({ browser, theme, dashboard, axe, out, log, want, text })
     } else if (a.react) {
       const f = join(dir, REACT_CHANGE.file);
       writeFileSync(f, readFileSync(f, 'utf8').replace(REACT_CHANGE.from, REACT_CHANGE.to));
-    } else if (a.stop) await S.stop();
+    } else if (a.stop) await ((down = true), S.stop());
     if (!a.busy && S.proc.exitCode === null && S.proc.signalCode === null) await observe();
   };
   /** @type {ScreenResult[]} */
@@ -273,6 +255,7 @@ async function runOnce({ browser, theme, dashboard, axe, out, log, want, text })
             restore: true,
             text,
           });
+          if (dropped.length) throw new Error(`request failed: ${dropped[0]}`);
           if (problems.length) throw new Error(`scrub: ${problems[0]}`);
           if (c.aria && /\b(?:127\.0\.0\.1|localhost):(?!1\b)\d+/.test(c.aria))
             throw new Error('a server address with its port is on the page');
@@ -280,7 +263,11 @@ async function runOnce({ browser, theme, dashboard, axe, out, log, want, text })
           if (!c.rendered) failed = name;
         } catch (e) {
           failed = name;
-          r = notRendered(String(/** @type {Error} */ (e).message ?? e).split('\n')[0]);
+          const m = String(/** @type {Error} */ (e).message ?? e).split('\n')[0];
+          // A fetch of this run's (the ticket, the data) that the server dropped.
+          if (e instanceof TypeError && m === 'fetch failed')
+            drop(`${m}: ${/** @type {Error | undefined} */ (e.cause)?.message}`);
+          r = notRendered(m);
         }
       if (want(step))
         results.push({
@@ -302,9 +289,14 @@ async function runOnce({ browser, theme, dashboard, axe, out, log, want, text })
       if (failed === name) log(`[live] ${name}@${theme}: ${r.reason}`);
     }
   } finally {
+    down = true;
     for (const c of contexts) await c.close().catch(() => {});
     await S.stop();
   }
+  if (dropped.length)
+    throw new Error(
+      `[live] ${theme}: the server dropped ${dropped.length} request(s): ${dropped[0]}`
+    );
   return results;
 }
 
