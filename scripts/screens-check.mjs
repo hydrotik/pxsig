@@ -36,7 +36,7 @@
  * check --strict` requires, and the top bar no `top-bar` finding.
  *
  * Exit: 0 every screen matches its baseline and its locks, with no finding · 1 a screen changed, is
- * new, did not render, changed structure or geometry, or has a finding · 2 setup.
+ * new, did not render, changed structure or geometry, or has a finding · 2 setup or a crash.
  */
 import { spawnSync } from 'node:child_process';
 import {
@@ -57,6 +57,7 @@ import { annotateRow, byId, envConfig, envSummary } from '../packages/pxsig/src/
 import { writeJson } from '../packages/pxsig/src/lib/files.mjs';
 import { takeLock } from '../packages/pxsig/src/lib/lock.mjs';
 import { buildRow, summarize } from '../packages/pxsig/src/lib/rows.mjs';
+import { asMain } from './lib/crash.mjs';
 import { assertVerdicts, verdictEngine } from './lib/screens-verdict.mjs';
 import { fixtureRepeat } from './lib/screens-repeat.mjs';
 import { boxesFile } from '../packages/pxsig/src/lib/capture/boxes.mjs';
@@ -458,4 +459,4 @@ async function main() {
   );
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();
+if (asMain(import.meta.url, 'screens')) await main();

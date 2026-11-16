@@ -111,6 +111,11 @@ pnpm build:dashboard                      # hydrotik, at the commit design-syste
 pnpm screens:check [--only <feature,…>]   # exit 1: a screen changed, is new or did not render
 ```
 
+Exit 1 means screens to review, and only with the `reports/check.json` that run wrote. Exit 2 is
+an error, never a review: setup, Docker, or the harness itself (an uncaught error or rejection in
+any of its scripts, a run that wrote no check.json; `scripts/lib/crash.mjs`). The workflow fails an
+error at its check step, with the reason, and only a 1 at "Screens to review".
+
 `pnpm screens:check` runs `scripts/screens-check.mjs` in that image (Docker, with the checkout
 mounted and `pnpm install` done). It writes the store as `pxsig check` does and writes no baseline.
 `node scripts/screens-check.mjs` alone renders outside the container: its fonts differ, and its
@@ -193,6 +198,10 @@ PXSIG_LIVE_BIN="$PWD/target/linux/release/pxsig" pnpm screens:check
   that goes missing, or a time, port, duration or commit no rule rewrites, fails the step and names
   the field. The base's commit is a hash of the example's files, so a dependency bump to an example
   (Dependabot) changes no live screen.
+- A request the live server drops while it is meant to be up (a reset connection, `ECONNRESET`) is
+  aborted, so the page sees it fail, never answered: its step fails, and the run ends as an error
+  (exit 2) naming the request, never as a screen to review. After the Offline step stops the
+  server, failed requests are what the page should see.
 - Approvals in the flows are clicks on the page of the server the run started, in its scratch
   store, with a link minted from that server's own CLI token. Nothing in `packages/dashboard/.pxsig`
   is approved by a run; ports 6006 and 6070 are never used.
