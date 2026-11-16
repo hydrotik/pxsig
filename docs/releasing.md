@@ -35,6 +35,13 @@ git tag v0.2.0 && git push origin v0.2.0
 A tag with a prerelease suffix (`v0.2.0-dev.0`, `v0.2.0-rc.1`) publishes under the npm dist-tag
 `next`. Any other tag publishes under `latest`.
 
+## Assessment, before every tag
+
+Before a tag is pushed, the `release-assessor` agent (`.claude/agents/release-assessor.md`) grades
+the release commit against [the release rubric](quality/RUBRIC.md) and writes a scored report with
+its blockers. The report is private and never committed. The tag waits on the owner's go after
+reading it; it is not a CI gate.
+
 ## Gate noise, before a release that changes the gate
 
 A release that changes the gate's defaults (a rule, a threshold, the color rule's values) changes
