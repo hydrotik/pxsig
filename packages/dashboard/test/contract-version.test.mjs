@@ -144,3 +144,14 @@ test('a token with a default is filled in when the adapter map lacks it', async 
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("under reduced motion the dashboard's own motion token is 0s, whatever the adapter maps", async () => {
+  const { TOKEN_NAMES, tokenCss } = await import(pathToFileURL(path.join(uiDir, 'tokens.ts')).href);
+  const map = Object.fromEntries(TOKEN_NAMES.map((n) => [n, n === 'motion.fast' ? '120ms' : 'x']));
+  const css = tokenCss(map);
+  assert.match(css, /^:root\{[^}]*--pxsig-motion-fast:120ms;[^}]*\}/);
+  assert.ok(
+    css.endsWith('@media (prefers-reduced-motion: reduce){:root{--pxsig-motion-fast:0s;}}'),
+    css
+  );
+});

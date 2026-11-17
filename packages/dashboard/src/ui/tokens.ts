@@ -112,11 +112,16 @@ export const tokens = {
   motion: { fast: v('motion.fast') },
 } as const;
 
-/** The `:root { … }` rule that declares every token from an adapter's map. */
+/**
+ * The `:root { … }` rule that declares every token from an adapter's map, and, under
+ * `prefers-reduced-motion: reduce`, the dashboard's own motion at 0s (every transition of the
+ * dashboard's own styles reads `motion.fast`), whatever the adapter maps it to.
+ */
 export function tokenCss(map: TokenMap): string {
   const defaults: Partial<Record<TokenName, string>> = TOKEN_DEFAULTS;
   const value = (n: TokenName) => (typeof map[n] === 'string' && map[n] ? map[n] : defaults[n]);
   const missing = TOKEN_NAMES.filter((n) => !value(n));
   if (missing.length) throw new Error(`[pxsig ui] the adapter's token map lacks: ${missing.join(', ')}`);
-  return `:root{${TOKEN_NAMES.map((n) => `${cssVarName(n)}:${value(n)};`).join('')}}`;
+  const declared = `:root{${TOKEN_NAMES.map((n) => `${cssVarName(n)}:${value(n)};`).join('')}}`;
+  return `${declared}@media (prefers-reduced-motion: reduce){:root{${cssVarName('motion.fast')}:0s;}}`;
 }
