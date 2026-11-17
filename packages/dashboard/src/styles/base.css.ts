@@ -4,6 +4,16 @@ import { tokens as v } from '../ui/tokens';
 
 export const checker = `repeating-conic-gradient(${v.color.surfaceRaised} 0 25%, ${v.color.background} 0 50%) 0 0 / 1rem 1rem`;
 
+// The focus indicator of the dashboard's own controls: a 1px line in the focus colour, the weight of
+// a border, as the adapter's components draw theirs. An outline (not a box-shadow halo) keeps 3:1
+// against the surface (WCAG 1.4.11) and is painted in forced-colors mode. `insetFocusOutline` is for
+// an element its parent clips or that touches its neighbours (a list row in a scrolling panel).
+export const focusOutline = {
+  outline: `1px solid ${v.color.focus}`,
+  outlineOffset: v.space['0_5'],
+};
+export const insetFocusOutline = { outline: `1px solid ${v.color.focus}`, outlineOffset: '-1px' };
+
 globalStyle('html, body, #root', { blockSize: '100%', margin: 0 });
 globalStyle('body', {
   backgroundColor: v.color.background,

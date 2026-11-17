@@ -1,7 +1,7 @@
 /** The inspector: its dialog, stage, side panel, help and the Storybook panel embed. */
 import { globalStyle, style } from '@vanilla-extract/css';
 import { tokens as v } from '../ui/tokens';
-import { checker } from './base.css';
+import { checker, insetFocusOutline } from './base.css';
 
 // --- inspector ---------------------------------------------------------------
 export const inspector = style({
@@ -195,9 +195,7 @@ export const helpRow = style({
   outline: 'none',
   selectors: {
     '&[data-active]': { backgroundColor: `color-mix(in srgb, ${v.color.accent} 10%, transparent)` },
-    '&:focus-visible': {
-      boxShadow: `0 0 0 ${v.line.emphasis} color-mix(in srgb, ${v.color.focus} 50%, transparent)`,
-    },
+    '&:focus-visible': insetFocusOutline,
   },
 });
 globalStyle(`${helpRow} dt`, { color: v.color.textMuted });
@@ -410,9 +408,7 @@ export const region = style({
       borderColor: v.color.accent,
       backgroundColor: `color-mix(in srgb, ${v.color.accent} 10%, transparent)`,
     },
-    '&:focus-visible': {
-      boxShadow: `0 0 0 3px color-mix(in srgb, ${v.color.focus} 50%, transparent)`,
-    },
+    '&:focus-visible': insetFocusOutline,
   },
 });
 // Columns of whole pixels, so the square images are whole pixels tall: a third of the side's width
