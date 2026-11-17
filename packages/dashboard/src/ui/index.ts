@@ -53,7 +53,7 @@ function marked<K extends 'TopNav' | 'StatGroup' | 'StatusBadge' | 'Badge'>(
   name: K,
   Component: React.ComponentType<ComponentProps[K]> = pick(name)
 ): React.ComponentType<ComponentProps[K]> {
-  return (props) => {
+  const Marked = (props: ComponentProps[K]) => {
     const tone =
       name === 'Badge'
         ? ` pxsig-ui-tone-${(props as ComponentProps['Badge']).tone ?? 'neutral'}`
@@ -64,6 +64,9 @@ function marked<K extends 'TopNav' | 'StatGroup' | 'StatusBadge' | 'Badge'>(
       className: props.className ? `${props.className} ${mark}` : mark,
     } as ComponentProps[K] & React.Attributes);
   };
+  // Named in React's tools and render counts: `Marked(Badge)`, not an anonymous component.
+  Marked.displayName = `Marked(${name})`;
+  return Marked;
 }
 
 /** The adapter in use, for diagnostics. */

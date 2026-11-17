@@ -30,10 +30,18 @@ export function HOOK() {
   } catch {
     /* no long task timing */
   }
+  // An anonymous component is named by the nearest named component above it.
+  const labelOf = (f) => {
+    const n = nameOf(f);
+    if (n !== '(anonymous)') return n;
+    for (let p = f.return; p; p = p.return)
+      if (COMPOSITE.has(p.tag) && nameOf(p) !== '(anonymous)') return `(anonymous in ${nameOf(p)})`;
+    return n;
+  };
   const count = (f, mounted) => {
     stats.rendered++;
     if (mounted) stats.mounted++;
-    const n = nameOf(f);
+    const n = labelOf(f);
     stats.by[n] = (stats.by[n] ?? 0) + 1;
   };
   const mount = (f) => {
