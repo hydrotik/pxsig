@@ -7,6 +7,7 @@
  */
 import { join } from 'node:path';
 import { browserPool, renderStories, STORYBOOK_ERROR } from '../lib/capture.mjs';
+import { fontsOf } from '../lib/fonts-used.mjs';
 import { annotateRow, byId, envConfig } from '../lib/env.mjs';
 import { readJson, writeJson } from '../lib/files.mjs';
 import { envPlan } from '../lib/text/env-plan.mjs';
@@ -178,6 +179,7 @@ export async function runChecks(srv, S) {
                 current,
                 envs,
                 ignore: envCfg.ignore,
+                fonts: fontsOf(P, e, byRender.get(e.id)),
               }),
               before.get(e.id),
               at

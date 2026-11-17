@@ -57,3 +57,47 @@ export async function renderOn(browser, url, entries, dir, config = {}) {
   });
   return results;
 }
+
+/**
+ * A stand-in Storybook with one story whose markup the test sets (`html.body`), its text in the
+ * test font; `html.face` replaces that font's @font-face rule (another face under the same name).
+ * @param {{ id: string, title: string, name: string, importPath: string }} story
+ * @param {{ body: string, face?: string }} html
+ */
+export async function storybook(story, html) {
+  const FACE = fontFace();
+  const server = createServer((req, res) => {
+    res.setHeader('connection', 'close');
+    const u = new URL(/** @type {string} */ (req.url), 'http://x');
+    if (u.pathname === '/index.json')
+      return res.writeHead(200, { 'content-type': 'application/json' }).end(
+        JSON.stringify({
+          v: 5,
+          entries: {
+            [story.id]: {
+              type: 'story',
+              id: story.id,
+              title: story.title,
+              name: story.name,
+              importPath: `./${story.importPath}`,
+              tags: [],
+            },
+          },
+        })
+      );
+    if (u.pathname === '/iframe.html')
+      return res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }).end(
+        // In the test font (test-font.mjs): a verdict compared across checks never hangs on the
+        // font the OS gives `sans-serif`; the story finishes once that face has loaded.
+        `<!doctype html><html><head><meta charset="utf-8"><style>${html.face ?? FACE}body{margin:0;background:#fff;color:#111;font:16px/20px ${FAMILY}}#storybook-root{display:inline-block;padding:8px}</style></head>
+<body class="sb-show-main"><div id="storybook-root">${html.body}</div><pre id="error-message"></pre>
+${fontGate(story.id)}</body></html>`
+      );
+    res.writeHead(404).end();
+  });
+  await /** @type {Promise<void>} */ (new Promise((ok) => server.listen(0, '127.0.0.1', ok)));
+  return {
+    url: `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (server.address()).port}`,
+    close: () => server.close(),
+  };
+}

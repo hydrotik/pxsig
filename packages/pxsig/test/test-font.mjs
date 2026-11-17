@@ -7,7 +7,7 @@
  * Every printable ASCII character and `·` (U+00B7) has a glyph of square cells on a 5 × 7 grid,
  * its pattern and width (3–5 cells) drawn from its code point, so every character looks and
  * measures differently; the space is empty. `fontFace()` is the @font-face rule (a data: URL),
- * `FAMILY` its name, and `FONT_GATE` a script for a story page that holds the render until the face
+ * `FAMILY` its name, and `fontGate` a script for a story page that holds the render until the face
  * has loaded and shows Storybook's error display when it has not.
  */
 
@@ -31,15 +31,15 @@ function mix(/** @type {number} */ n) {
  * The glyph of code point `cp`: its advance and its cells' rectangles (font units, y up).
  * @param {number} cp
  */
-function glyphOf(cp) {
+function glyphOf(cp, seed = 0) {
   if (cp === 0x20) return { advance: 3 * CELL, rects: [] };
-  const h = mix(cp);
+  const h = mix(cp + seed * 0x10000);
   const cols = 3 + (h % 3);
   /** @type {[number, number, number, number][]} */
   const rects = [];
   for (let row = 0; row < 7; row++)
     for (let col = 0; col < cols; col++) {
-      const bit = (mix(cp * 64 + row * 8 + col) >>> 7) & 1;
+      const bit = (mix(cp * 64 + row * 8 + col + seed * 0x100000) >>> 7) & 1;
       // The middle dot keeps one centred cell, so it reads as a dot.
       const on = cp === 0xb7 ? row === 3 && col === 1 : bit === 1 || (row === 0 && col === 0);
       if (on) rects.push([50 + col * CELL, row * CELL, 50 + (col + 1) * CELL, (row + 1) * CELL]);
@@ -86,13 +86,18 @@ function checksum(/** @type {number[]} */ b) {
   return s;
 }
 
-/** The font's bytes: a TrueType (glyf) font with the tables Chromium's sanitizer asks for. */
-export function fontBytes() {
+/**
+ * The font's bytes: a TrueType (glyf) font with the tables Chromium's sanitizer asks for. `name`:
+ * the family its name table says (what Chromium reports drawing in); `seed`: another set of glyphs
+ * (a second, different face).
+ * @param {{ name?: string, seed?: number }} [opts]
+ */
+export function fontBytes({ name: family = FAMILY, seed = 0 } = {}) {
   const notdef = {
     advance: 500,
     rects: /** @type {[number, number, number, number][]} */ ([[50, 0, 450, 700]]),
   };
-  const glyphs = [notdef, ...CHARS.map(glyphOf)];
+  const glyphs = [notdef, ...CHARS.map((cp) => glyphOf(cp, seed))];
   // glyf and loca (long offsets).
   const glyf = new Out();
   /** @type {number[]} */
@@ -206,11 +211,11 @@ export function fontBytes() {
     .u32(0);
   // name: family, style, unique id, full name, PostScript name (Windows, Unicode, en-US).
   const names = [
-    [1, FAMILY],
+    [1, family],
     [2, 'Regular'],
-    [3, `${FAMILY}-1`],
-    [4, FAMILY],
-    [6, FAMILY],
+    [3, `${family}-1`],
+    [4, family],
+    [6, family],
   ];
   const strings = new Out();
   const name = new Out()
@@ -298,8 +303,13 @@ export function fontBytes() {
 }
 
 /** The @font-face rule for the font, from a data: URL. */
-export const fontFace = () =>
-  `@font-face{font-family:${FAMILY};src:url(data:font/ttf;base64,${fontBytes().toString('base64')}) format('truetype');font-display:block}`;
+/**
+ * The @font-face rule for the font, from a data: URL: CSS family `css` (default FAMILY), the face's
+ * own name and glyphs as `fontBytes` takes them.
+ * @param {{ css?: string, name?: string, seed?: number }} [opts]
+ */
+export const fontFace = ({ css = FAMILY, ...face } = {}) =>
+  `@font-face{font-family:${css};src:url(data:font/ttf;base64,${fontBytes(face).toString('base64')}) format('truetype');font-display:block}`;
 
 /**
  * A story page's script: the preview says its story finished only once the face has loaded (no

@@ -1,6 +1,6 @@
 /**
  * text-pins.test.mjs — what text capture must leave as it was (text-aware diffs, PR 2). With text
- * off, a render writes its PNG and nothing beside it, the same bytes every time; a check row is
+ * off, a render writes its PNG and no text record beside it, the same bytes every time; a check row is
  * built from the engine's verdict and the render's error, timing, axe and render counts only, so
  * anything else a render result carries never reaches check.json; and an entry carries no `text`
  * key unless its story turns text off.
@@ -23,7 +23,7 @@ import { renderOn, standIn } from './text-helpers.mjs';
 const STORY = '<p>1 <b>new</b> · of 9 analysed</p><div style="border:1px solid #888">Card</div>';
 
 test(
-  'text off: a render writes its PNG and nothing beside it, byte for byte the same each time',
+  'text off: a render writes its PNG and no text record beside it, byte for byte the same each time',
   { skip: needs },
   async (t) => {
     const pw = await import('playwright');
@@ -40,8 +40,9 @@ test(
     const [ra] = await renderOn(browser, sb.url, entries, a, { text: false });
     const [rb] = await renderOn(browser, sb.url, entries, b, { text: false });
     assert.equal(ra.error, undefined, ra.error);
-    assert.deepEqual(readdirSync(a), ['pins--text.png']);
-    assert.deepEqual(readdirSync(b), ['pins--text.png']);
+    // Nothing of text capture: the PNG, and the fonts it was drawn in (every Chromium render).
+    assert.deepEqual(readdirSync(a).sort(), ['pins--text.fonts.json', 'pins--text.png']);
+    assert.deepEqual(readdirSync(b).sort(), ['pins--text.fonts.json', 'pins--text.png']);
     assert.ok(
       readFileSync(join(a, 'pins--text.png')).equals(readFileSync(join(b, 'pins--text.png'))),
       'the same render twice'

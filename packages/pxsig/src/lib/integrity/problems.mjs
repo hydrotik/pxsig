@@ -79,7 +79,7 @@ export function envProblems(report, ctx) {
       code: 'env-mismatch',
       severity,
       count: n,
-      reason: `${n} entries were rendered in a different environment than their baseline${fields}: a change there can be the machine, not the code. Render where the baselines were made (the pinned container), or re-take them there (\`pxsig check --full --update --kind environment\`); \`--strict-env\` refuses such a run instead`,
+      reason: `${n} entries were rendered in a different environment than their baseline${fields}: a change there can be the machine, not the code. Render where the baselines were made (the pinned container), or re-take them there (\`pxsig check --full --update --kind environment\`); \`--strict-env\` refuses such a run instead (a font swap, \`fonts.used\`, once rendered)`,
     },
   ];
 }

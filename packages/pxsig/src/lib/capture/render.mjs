@@ -17,6 +17,7 @@ import { reactSettings } from '../react/config.mjs';
 import { RESET_RENDERS, STAYED_QUIET, reactHook, readRenders, rowRenders } from './react-hook.mjs';
 import { textSettings } from '../text/config.mjs';
 import { boxesFile, writeBoxes } from './boxes.mjs';
+import { writeFonts } from './fonts.mjs';
 import { MASKED, masksFor, writeMasks } from './masks.mjs';
 import { lateMasks, measureMasks } from './mask-measure.mjs';
 import { overflowMasks } from './mask-overflow.mjs';
@@ -324,6 +325,11 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
           );
           writeMasks(png, masks);
           await unmarkMasks(page);
+          // The fonts its text was drawn in, after every screenshot (fonts.mjs; Chromium only).
+          const fonts = await writeFonts(page, png, {
+            root: ofElement ? sel : null,
+            browser: cfg.browser,
+          });
           let a11yRes = null;
           if (axe && e.a11y !== false) {
             a11yRes = await injectAxe(page, axe)
@@ -359,6 +365,7 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             a11y: a11yRes,
             ...(renders !== undefined ? { renders } : {}),
             ...(textRes ? { text: textRes } : {}),
+            fonts,
           };
           // A commit just before the capture: settled only if React then stayed quiet.
           if (renders && !renders.settled)

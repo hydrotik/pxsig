@@ -136,5 +136,5 @@ export async function prepare(S, sel) {
       );
     }
   }
-  return { lock, fence, sbIndex, envCfg, pool, current, envRefused };
+  return { lock, fence, sbIndex, envCfg, pool, current, envRefused, strictEnv };
 }

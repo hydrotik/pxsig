@@ -9,7 +9,6 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { readText, textTolerances, TEXT_TOLERANCES } from '../src/lib/text/config.mjs';
@@ -17,7 +16,7 @@ import { envPlan } from '../src/lib/text/env-plan.mjs';
 import { openProject, writeRunManifest } from '../src/lib/workspace.mjs';
 import { fixture, rustBin, testEnv, testHome } from './fixture.mjs';
 import { env, needs, src } from './env-helpers.mjs';
-import { FAMILY, fontFace, fontGate } from './test-font.mjs';
+import { storybook } from './text-helpers.mjs';
 /** @import { CheckRow } from '../src/types.js' */
 
 test('the text tolerances: defaults, values, and a bad value is a warning and its default', () => {
@@ -68,50 +67,6 @@ test('the run manifest carries the text tolerances for the engine', () => {
 });
 
 // --- end to end, rendering in Chromium -------------------------------------------------------------
-
-const FACE = fontFace();
-
-/**
- * A stand-in Storybook with one story whose markup the test sets (`html.body`).
- * @param {{ id: string, title: string, name: string, importPath: string }} story
- * @param {{ body: string }} html
- */
-async function storybook(story, html) {
-  const server = createServer((req, res) => {
-    res.setHeader('connection', 'close');
-    const u = new URL(/** @type {string} */ (req.url), 'http://x');
-    if (u.pathname === '/index.json')
-      return res.writeHead(200, { 'content-type': 'application/json' }).end(
-        JSON.stringify({
-          v: 5,
-          entries: {
-            [story.id]: {
-              type: 'story',
-              id: story.id,
-              title: story.title,
-              name: story.name,
-              importPath: `./${story.importPath}`,
-              tags: [],
-            },
-          },
-        })
-      );
-    if (u.pathname === '/iframe.html')
-      return res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }).end(
-        // In the test font (test-font.mjs): a verdict compared across checks never hangs on the
-        // font the OS gives `sans-serif`; the story finishes once that face has loaded.
-        `<!doctype html><html><head><meta charset="utf-8"><style>${FACE}body{margin:0;background:#fff;color:#111;font:16px/20px ${FAMILY}}#storybook-root{display:inline-block;padding:8px}</style></head>
-<body class="sb-show-main"><div id="storybook-root">${html.body}</div><pre id="error-message"></pre>
-${fontGate(story.id)}</body></html>`
-      );
-    res.writeHead(404).end();
-  });
-  await /** @type {Promise<void>} */ (new Promise((ok) => server.listen(0, '127.0.0.1', ok)));
-  return {
-    url: `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (server.address()).port}`,
-    close: () => server.close(),
-  };
-}
 
 const TILE = (/** @type {string} */ figure) =>
   `<p style="margin:0"><span data-testid="figure">${figure}</span><span>new · of 9</span></p>`;

@@ -242,8 +242,13 @@ test(
     const off = tempDir('text-off', t);
     const [r] = await renderOn(browser, sb.url, entries, on, { text: true });
     await renderOn(browser, sb.url, entries, off, { text: false });
-    assert.deepEqual(readdirSync(on).sort(), ['text--story.boxes.json', 'text--story.png']);
-    assert.deepEqual(readdirSync(off), ['text--story.png']);
+    // Beside every Chromium render, its fonts (capture/fonts.mjs); the text record only with text on.
+    assert.deepEqual(readdirSync(on).sort(), [
+      'text--story.boxes.json',
+      'text--story.fonts.json',
+      'text--story.png',
+    ]);
+    assert.deepEqual(readdirSync(off).sort(), ['text--story.fonts.json', 'text--story.png']);
     assert.equal(
       sha(join(on, 'text--story.png')),
       sha(join(off, 'text--story.png')),
