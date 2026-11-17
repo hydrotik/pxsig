@@ -68,6 +68,10 @@ const TYPES = {
   '.json': 'application/json',
 };
 
+/** The sample entries' diff page (the engine's `<stem>.diff.html`). */
+const SAMPLE_DIFF_PAGE =
+  '<!doctype html><html lang="en"><title>Sample diff page</title><p>Sample diff page.</p></html>';
+
 /**
  * A server for one build and one scenario: the build under /report/, /__pxsig/ from the scenario,
  * images under /p/demo/. `posts` records every POST; none reaches anything that writes.
@@ -189,6 +193,10 @@ export function scenarioServer({ dir, scenario, fixtures, images, posts }) {
               ? images.baseline
               : images.render
         );
+      // The engine writes a diff page beside each changed entry's images: the inspector's Files
+      // section asks for its size.
+      if (u.pathname.endsWith('.diff.html'))
+        return send(200, 'text/html; charset=utf-8', SAMPLE_DIFF_PAGE);
       return send(404, 'text/plain', '');
     }
     if (!u.pathname.startsWith('/report')) return send(404, 'text/plain', '');
