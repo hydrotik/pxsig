@@ -211,14 +211,17 @@ which), adds that version's section to `contract-changes.md`, keeps the referenc
 pnpm ui:docs     # regenerate src/ui/manifest.json and docs/ui/features.md
 pnpm ui:check    # what CI runs: no design-system import outside the adapters; code and docs agree
 pnpm ui:gaps     # the conformance of the adapter a build would use (plain; hydrotik with PXSIG_DS_SOURCE)
-pnpm typecheck   # tsc over the dashboard and every adapter; with PXSIG_DS_SOURCE, the reference adapter against the design system's sources too
+pnpm typecheck   # tsc over the dashboard and every adapter; with a design-system source, the reference adapter against the pinned checkout too
 ```
 
 The reference adapter is type-checked (and linted) in CI against
 `adapters/hydrotik/design-system.d.ts`: the design system's own declarations for the names the
 adapter imports, generated from a built checkout. After the adapter imports a new name, or the
 design system changes, regenerate it with `PXSIG_DS_SOURCE=<checkout> pnpm ui:types` (`ui.mjs lock`
-does too when PXSIG_DS_SOURCE is set); `pnpm typecheck` with PXSIG_DS_SOURCE fails while it is stale.
+does too when PXSIG_DS_SOURCE is set). With a design-system source configured (`pxsig.dsSource` or
+`PXSIG_DS_SOURCE`), `pnpm typecheck` checks the adapter and the declarations against the pinned
+checkout `pnpm ds:fetch` makes (fetching it when needed), never the source's own head, and fails while
+the declarations are stale; build that checkout first, as for bumping the pin.
 
 ## Changelog fragments
 
