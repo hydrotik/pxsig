@@ -163,6 +163,52 @@ test('behind: commits and days since the pin, and the adapter files that changed
   assert.equal(git(dir, ['status', '--porcelain']), '');
 });
 
+test('behind: exact when the pin is off the default branch first-parent line (a shallow pin)', (t) => {
+  // Through a merge's second parent: the default branch's own commits since the pin are the merge
+  // and the commit it was merged onto; the root, which the pin already has, is not counted.
+  const source = tmp(t, 'merged');
+  git(source, ['init', '-q', '-b', 'main']);
+  commit(source, LAYOUT, T0);
+  git(source, ['checkout', '-q', '-b', 'topic']);
+  const pin = commit(source, { 'apps/site/README.md': 'topic\n' }, T0 + 60);
+  git(source, ['checkout', '-q', 'main']);
+  commit(source, { 'packages/tokens/src/index.ts': 'export const vars = { a: 1 };\n' }, T0 + 120);
+  git(source, ['merge', '-q', '--no-ff', '-m', 'merge', 'topic'], {
+    ...ENV,
+    GIT_AUTHOR_DATE: `@${T0 + 180} +0000`,
+    GIT_COMMITTER_DATE: `@${T0 + 180} +0000`,
+  });
+  const repo = tmp(t, 'merged-repo');
+  git(repo, ['init', '-q']);
+  writeFileSync(join(repo, 'design-system.json'), JSON.stringify({ commit: pin }));
+  const env = { ...ENV, PXSIG_DS_SOURCE: source };
+  ensureDesignSystem({ repo, env, install: () => {}, log: () => {} });
+  const dir = dsDir(repo);
+  assert.equal(git(dir, ['rev-parse', '--is-shallow-repository']), 'true');
+  assert.equal(behind({ dir, source, commit: pin, imports: IMPORTS }).commits, 2);
+  assert.equal(git(dir, ['rev-parse', 'HEAD']), pin, 'the checkout stays at the pin');
+
+  // A source whose head is behind the pin (a local checkout not yet pulled): 0, not its history.
+  const ahead = setup(t);
+  commit(ahead.source, { 'apps/site/README.md': 'two\n' }, T0 + 60);
+  const newer = commit(ahead.source, { 'apps/site/README.md': 'three\n' }, T0 + 120);
+  writeFileSync(join(ahead.repo, 'design-system.json'), JSON.stringify({ commit: newer }));
+  ensureDesignSystem({
+    repo: ahead.repo,
+    env: { ...ENV, PXSIG_DS_SOURCE: ahead.source },
+    install: () => {},
+    log: () => {},
+  });
+  git(ahead.source, ['checkout', '-q', '-b', 'stale', ahead.pin]);
+  const b = behind({
+    dir: dsDir(ahead.repo),
+    source: ahead.source,
+    commit: newer,
+    imports: IMPORTS,
+  });
+  assert.deepEqual([b.commits, b.days], [0, 0]);
+});
+
 test('describe: a warning past either threshold, a notice within them', () => {
   const b = { commits: MAX_BEHIND_COMMITS, days: MAX_BEHIND_DAYS, changed: [], unresolved: [] };
   assert.equal(describe(b).level, 'notice');

@@ -142,9 +142,23 @@ export function behind({ dir, source, commit, imports }) {
     // FETCH_HEAD holds the source (scripts/lib/ds-scrub.mjs).
     scrubSource(dir);
   }
-  // First-parent: the default branch's own line from its head down to the pin, all of it fetched
-  // (a shallow checkout has no older history to walk).
-  const commits = Number(git('rev-list', '--count', '--first-parent', `${commit}..${UPSTREAM}`));
+  // First-parent: the default branch's own line from its head down to the pin. The checkout is
+  // shallow (ds-fetch fetches the pin at depth 1), so git knows none of the pin's ancestors, and
+  // `pin..head` leaves out only the pin itself. When the line passes through the pin the walk stops
+  // there and the count is exact; otherwise (the pin came in through a merge's second parent, or
+  // the source's head is behind the pin or on another line) the walk runs on through history the
+  // pin already has and counts all of it. The pin's history is fetched first in that case.
+  const line = git('rev-list', '--first-parent', UPSTREAM).split('\n');
+  let commits = line.indexOf(commit);
+  if (commits < 0) {
+    if (git('rev-parse', '--is-shallow-repository') === 'true')
+      try {
+        git('fetch', '-q', '--no-tags', '--unshallow', source, commit);
+      } finally {
+        scrubSource(dir);
+      }
+    commits = Number(git('rev-list', '--count', '--first-parent', `${commit}..${UPSTREAM}`));
+  }
   const time = (/** @type {string} */ ref) => Number(git('log', '-1', '--format=%ct', ref));
   const days = Math.max(0, Math.floor((time(UPSTREAM) - time(commit)) / 86400));
   const { paths, unresolved } = usedPaths(dir, imports);
