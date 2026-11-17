@@ -45,7 +45,7 @@ function built(p, { version = VERSION, ageMs = 0, stamp = true } = {}) {
   if (stamp)
     writeFileSync(
       join(out, STAMP),
-      JSON.stringify({ pxsig: version, builtAt: Date.now() - ageMs })
+      JSON.stringify({ pxsig: version, builtAt: Date.now() - ageMs, files: ['index.html'] })
     );
   return out;
 }
@@ -98,6 +98,32 @@ test('dashboard.ui without a build: the prebuilt dashboard and the command to ru
   );
 });
 
+test('a build missing a file its stamp lists, or with no list: incomplete, so the prebuilt', () => {
+  const p = project('a', './pxsig-ui');
+  touch(join(p.dir, 'pxsig-ui', 'index.tsx'), Date.now() - 60_000);
+  touch(join(p.dir, 'pxsig-ui'), Date.now() - 60_000);
+  const out = built(p);
+  const stamp = (/** @type {object} */ more) =>
+    writeFileSync(
+      join(out, STAMP),
+      JSON.stringify({ pxsig: VERSION, builtAt: Date.now(), ...more })
+    );
+  stamp({ files: ['index.html', 'assets/Inspector.js'] });
+  let r = choose([p]);
+  assert.equal(r.dir, prebuilt);
+  assert.match(
+    // This branch always writes a note.
+    /** @type {string} */ (r.note),
+    /is incomplete \(assets\/Inspector\.js is missing\): run `pxsig dashboard build` in a/
+  );
+  stamp({});
+  r = choose([p]);
+  assert.equal(r.dir, prebuilt);
+  assert.match(/** @type {string} */ (r.note), /is incomplete: run `pxsig dashboard build`/);
+  stamp({ files: ['index.html'] });
+  assert.equal(choose([p]).dir, out);
+});
+
 test('an adapter edited after its build: stale, so the prebuilt dashboard and the command', () => {
   const p = project('a', './pxsig-ui');
   built(p, { ageMs: 60_000 });
@@ -120,7 +146,7 @@ test('a build for another major UI contract is not served; the same major is', (
   writeFileSync(join(out, 'index.html'), '<!doctype html>');
   writeFileSync(
     join(out, STAMP),
-    JSON.stringify({ pxsig: VERSION, contract: '1.2.0', builtAt: Date.now() })
+    JSON.stringify({ pxsig: VERSION, contract: '1.2.0', builtAt: Date.now(), files: [] })
   );
   /** @param {string | null} contract */
   const at = (contract) =>
@@ -251,7 +277,10 @@ test(
       join(out, 'index.html'),
       '<!doctype html><title>rebuilt</title><!--pxsig:data-->'
     );
-    writeFileSync(join(out, STAMP), JSON.stringify({ pxsig: PXSIG, builtAt: Date.now() }));
+    writeFileSync(
+      join(out, STAMP),
+      JSON.stringify({ pxsig: PXSIG, builtAt: Date.now(), files: ['index.html'] })
+    );
     await serving(f.repo, async ({ log, get }) => {
       assert.match(log, /\[serve\] dashboard: built with the UI adapter \.\/pxsig-ui/);
       assert.match(await (await get('/report/')).text(), /<title>rebuilt<\/title>/);
