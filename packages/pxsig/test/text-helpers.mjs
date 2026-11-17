@@ -4,20 +4,25 @@
  */
 import { createServer } from 'node:http';
 import { renderStories } from '../src/lib/capture.mjs';
+import { FAMILY, fontFace, fontGate } from './test-font.mjs';
 /** @import { RenderResult } from '../src/types.js' */
 
 /**
  * A stand-in Storybook: `/iframe.html?id=<id>` is `stories[id]` inside `#storybook-root`, on a page
- * whose preview says that story finished rendering.
+ * whose preview says that story finished rendering. `font`: the text is in the test font
+ * (test-font.mjs), never one the operating system picks, and the story finishes only once that
+ * face has loaded (else Storybook's error display says it did not).
  * @param {Record<string, string>} stories story id → the root's inner HTML
  * @param {string} [head] more markup for every page's head (styles)
+ * @param {{ font?: boolean }} [opts]
  */
-export async function standIn(stories, head = '') {
+export async function standIn(stories, head = '', { font = false } = {}) {
+  const face = font ? fontFace() : '';
   /** @param {string} id */
   const page = (id) => `<!doctype html><html><head><meta charset="utf-8">
-<style>body{margin:0;background:#fff;color:#111;font:16px/20px sans-serif}#storybook-root{display:inline-block;padding:8px}</style>${head}</head>
-<body class="sb-show-main"><div id="storybook-root">${stories[id] ?? ''}</div>
-<script>window.__STORYBOOK_PREVIEW__ = { storeInitializationPromise: Promise.resolve(), currentRender: { id: ${JSON.stringify(id)}, phase: 'finished' } };</script></body></html>`;
+<style>${face}body{margin:0;background:#fff;color:#111;font:16px/20px ${font ? FAMILY : 'sans-serif'}}#storybook-root{display:inline-block;padding:8px}</style>${head}</head>
+<body class="sb-show-main"><div id="storybook-root">${stories[id] ?? ''}</div>${font ? '<pre id="error-message"></pre>' : ''}
+${font ? fontGate(id) : `<script>window.__STORYBOOK_PREVIEW__ = { storeInitializationPromise: Promise.resolve(), currentRender: { id: ${JSON.stringify(id)}, phase: 'finished' } };</script>`}</body></html>`;
   const server = createServer((req, res) => {
     res.setHeader('connection', 'close');
     const u = new URL(/** @type {string} */ (req.url), 'http://x');

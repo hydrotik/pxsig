@@ -17,6 +17,7 @@ import { envPlan } from '../src/lib/text/env-plan.mjs';
 import { openProject, writeRunManifest } from '../src/lib/workspace.mjs';
 import { fixture, rustBin, testEnv, testHome } from './fixture.mjs';
 import { env, needs, src } from './env-helpers.mjs';
+import { FAMILY, fontFace, fontGate } from './test-font.mjs';
 /** @import { CheckRow } from '../src/types.js' */
 
 test('the text tolerances: defaults, values, and a bad value is a warning and its default', () => {
@@ -68,6 +69,8 @@ test('the run manifest carries the text tolerances for the engine', () => {
 
 // --- end to end, rendering in Chromium -------------------------------------------------------------
 
+const FACE = fontFace();
+
 /**
  * A stand-in Storybook with one story whose markup the test sets (`html.body`).
  * @param {{ id: string, title: string, name: string, importPath: string }} story
@@ -95,9 +98,11 @@ async function storybook(story, html) {
       );
     if (u.pathname === '/iframe.html')
       return res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }).end(
-        `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#fff;color:#111;font:16px/20px sans-serif}#storybook-root{display:inline-block;padding:8px}</style></head>
-<body class="sb-show-main"><div id="storybook-root">${html.body}</div>
-<script>window.__STORYBOOK_PREVIEW__ = { storeInitializationPromise: Promise.resolve(), currentRender: { id: ${JSON.stringify(story.id)}, phase: 'finished' } };</script></body></html>`
+        // In the test font (test-font.mjs): a verdict compared across checks never hangs on the
+        // font the OS gives `sans-serif`; the story finishes once that face has loaded.
+        `<!doctype html><html><head><meta charset="utf-8"><style>${FACE}body{margin:0;background:#fff;color:#111;font:16px/20px ${FAMILY}}#storybook-root{display:inline-block;padding:8px}</style></head>
+<body class="sb-show-main"><div id="storybook-root">${html.body}</div><pre id="error-message"></pre>
+${fontGate(story.id)}</body></html>`
       );
     res.writeHead(404).end();
   });

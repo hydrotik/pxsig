@@ -218,10 +218,15 @@ test(
   { skip: needs },
   async (t) => {
     const pw = await import('playwright');
-    const sb = await standIn({
-      'text--story':
-        '<p>1 <b>new</b> · of 9 analysed</p><div style="border:1px solid #888">Card</div>',
-    });
+    // In the test font (test-font.mjs): the bytes never hang on the OS's font matching.
+    const sb = await standIn(
+      {
+        'text--story':
+          '<p>1 <b>new</b> · of 9 analysed</p><div style="border:1px solid #888">Card</div>',
+      },
+      '',
+      { font: true }
+    );
     // Two renders are compared byte for byte, so both must take one raster path: pxsig's own text
     // switches, and no GPU process. On a macOS runner Chromium can rasterise through the GPU
     // process and fall back to software when that process is lost, which redraws text with other

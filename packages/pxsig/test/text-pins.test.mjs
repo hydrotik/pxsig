@@ -27,7 +27,8 @@ test(
   { skip: needs },
   async (t) => {
     const pw = await import('playwright');
-    const sb = await standIn({ 'pins--text': STORY });
+    // In the test font: the same bytes must not hang on which font the OS gives `sans-serif`.
+    const sb = await standIn({ 'pins--text': STORY }, '', { font: true });
     const browser = await pw.chromium.launch();
     t.after(async () => {
       await browser.close();
