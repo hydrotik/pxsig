@@ -10,6 +10,7 @@
  *     kept, nothing clipped or covered (the `top-bar` rule's sweep);
  *   - More as a menu button from the keyboard, named by NavList's `moreLabel` where the adapter's
  *     conformance.json says it takes it (`topBar.moreLabel`);
+ *   - an open More closing when the bar widens until it is empty, and staying closed after;
  *   - each count's digits in its tone's colour.
  *
  * Skips when no Chromium is available (PXSIG_CHROMIUM names an executable).
@@ -243,6 +244,33 @@ for (const a of ADAPTERS) {
             await more.evaluate((b) => b.matches('[data-current], [data-active], [aria-current]')),
             'More is marked current while it holds the current section'
           );
+        assert.deepEqual(errors, []);
+      } finally {
+        await page.close();
+      }
+    });
+
+    test('an open More closes when the bar widens until every section fits, and stays closed', async (t) => {
+      if (why()) return t.skip(why());
+      const { page, errors } = await open('changed', 800);
+      try {
+        const more = page.locator('.pxsig-ui-TopNav [aria-haspopup="menu"]:visible').first();
+        await more.click();
+        await page.locator('[role="menu"]:visible').first().waitFor();
+        // Wide enough for every section: More is hidden, and its menu must not stay on screen.
+        await page.setViewportSize({ width: 1920, height: 900 });
+        await page.waitForTimeout(300);
+        assert.equal(
+          await page.locator('.pxsig-ui-TopNav [aria-haspopup="menu"]:visible').count(),
+          0,
+          'every section fits at 1920px'
+        );
+        assert.equal(await page.locator('[role="menu"]:visible').count(), 0, 'no menu left open');
+        // Narrower again: More is back, closed.
+        await page.setViewportSize({ width: 800, height: 900 });
+        await page.waitForTimeout(300);
+        assert.equal(await more.getAttribute('aria-expanded'), 'false');
+        assert.equal(await page.locator('[role="menu"]:visible').count(), 0, 'More stays closed');
         assert.deepEqual(errors, []);
       } finally {
         await page.close();
