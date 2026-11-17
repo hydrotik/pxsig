@@ -108,10 +108,16 @@ function Embed({ data, story }: { data: Data; story: string }) {
   );
 }
 
-/** The browser tab names the application under review (`pxsig • <scope>`). */
+/**
+ * The browser tab names the application under review (`pxsig • <scope>`). It sets the page's one
+ * `<title>` (index.html's, which shows while the data loads): a React `<title>` would add a second.
+ */
 function PageTitle({ data }: { data: Data }) {
   const scope = data.scope ?? data.label ?? data.project ?? null;
-  return scope ? <title>{t('app.title', { scope })}</title> : null;
+  React.useEffect(() => {
+    if (scope) document.title = t('app.title', { scope });
+  }, [scope]);
+  return null;
 }
 
 /** Loading, or the report failed to load: a main region and a level-one heading, as on the full page. */
