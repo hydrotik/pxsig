@@ -179,23 +179,46 @@ function Dashboard({ data, live }: { data: Data; live: ReturnType<typeof useData
     if (!target) history.replaceState(null, '', `${location.pathname}${location.search}#${tab}`);
   }, [tab, target]);
   // The section links are plain `#<id>` links: follow them (and Back/Forward) through the hash.
+  // A section chosen in the bar: its heading takes focus (below), so a screen reader announces it
+  // and Tab goes on in the section. Not on load, a deep link or Back / Forward.
+  const chosen = React.useRef<Tab | null>(null);
+  const headingFocus = React.useRef(false);
   React.useEffect(() => {
     const onHash = () => {
       const next = asTab(readHash().get('tab'));
+      // Chosen in the bar (or its More menu), not Back / Forward: the heading takes focus.
+      headingFocus.current = !!next && chosen.current === next;
+      chosen.current = null;
       if (next) setTab(next);
     };
+    // A section link in the bar, clicked or entered: the hashchange it causes follows.
+    const onClick = (e: MouseEvent) => {
+      const a = e.target instanceof Element ? e.target.closest('a[href^="#"]') : null;
+      if (a?.closest('nav, [role="menu"]'))
+        chosen.current = asTab(a.getAttribute('href')!.slice(1));
+    };
     window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
+    document.addEventListener('click', onClick, true);
+    return () => {
+      window.removeEventListener('hashchange', onHash);
+      document.removeEventListener('click', onClick, true);
+    };
   }, []);
   // A new section starts at its top: <main> is the scroll container.
   const mainRef = React.useRef<HTMLElement>(null);
   const firstTab = React.useRef(true);
+  // The chosen section's heading takes focus after the frame: a menu that closed hands focus back
+  // to its button first.
   React.useEffect(() => {
     if (firstTab.current) {
       firstTab.current = false;
       return;
     }
     mainRef.current?.scrollTo({ top: 0 });
+    if (!headingFocus.current) return;
+    headingFocus.current = false;
+    const id = requestAnimationFrame(() => document.getElementById('section-title')?.focus());
+    return () => cancelAnimationFrame(id);
   }, [tab]);
 
   // #inspect=<id> deep link (PR comments link here): once, when the check is in.
