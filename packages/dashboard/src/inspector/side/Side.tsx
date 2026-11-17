@@ -43,6 +43,7 @@ const Text = React.memo(TextSection);
 const Metrics = React.memo(MetricsSection);
 const ReactPart = React.memo(ReactSection);
 const Files = React.memo(FilesSection);
+const A11y = React.memo(A11ySection);
 const NO_PACKETS: [string, string][] = [];
 
 export function InspectorSide({
@@ -135,7 +136,7 @@ export function InspectorSide({
 
       {m ? <Metrics m={m} detail={detail} hasArtifacts={hasArtifacts} p={p} /> : null}
 
-      <A11ySection
+      <A11y
         row={row}
         newA11y={newA11y}
         target={target}

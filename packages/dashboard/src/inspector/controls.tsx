@@ -41,7 +41,7 @@ export const ModeChoice = memo(function ModeChoice({
 });
 
 /** The toolbar's zoom buttons: the diff viewer's zoom controls, drawn with the contract's parts. */
-export function ZoomButtons({ z }: { z: ZoomState }) {
+export const ZoomButtons = memo(function ZoomButtons({ z }: { z: ZoomState }) {
   return (
     <span className={s.row}>
       <IconButton emphasis="outline" label={t('inspector.zoomOut')} onClick={z.zoomOut}>
@@ -65,10 +65,10 @@ export function ZoomButtons({ z }: { z: ZoomState }) {
       </Button>
     </span>
   );
-}
+});
 
 /** The toolbar's previous and next change. */
-export function ChangeNav({
+export const ChangeNav = memo(function ChangeNav({
   regions,
   region,
   stepRegion,
@@ -108,7 +108,7 @@ export function ChangeNav({
       </IconButton>
     </span>
   );
-}
+});
 
 /** The keys, under the stage. Memoised: it takes only flags, and the inspector renders several times per entry. */
 export const KeyHelp = memo(function KeyHelp({
@@ -267,7 +267,7 @@ export const ViewControls = memo(function ViewControls({
   );
 });
 
-export function SiblingToggle({
+export const SiblingToggle = memo(function SiblingToggle({
   siblings,
   row,
   target,
@@ -304,9 +304,9 @@ export function SiblingToggle({
       }))}
     />
   ) : null;
-}
+});
 
-export function StoryNav({
+export const StoryNav = memo(function StoryNav({
   list,
   index,
   step,
@@ -343,7 +343,7 @@ export function StoryNav({
       </IconButton>
     </span>
   ) : null;
-}
+});
 
 // Undo is always rendered, hidden while there is nothing to undo, so the buttons left of it keep
 // their place when a decision is made or undone.
@@ -371,7 +371,7 @@ export function Undo({
   );
 }
 
-export function ReviewButtons({
+export const ReviewButtons = memo(function ReviewButtons({
   canReview,
   idle,
   embedded,
@@ -521,7 +521,7 @@ export function ReviewButtons({
       )}
     </>
   );
-}
+});
 
 /**
  * A decision button's label and its "…ing" form, stacked in one cell: the button is as wide as the
@@ -545,7 +545,7 @@ function DecisionLabel({
 }
 
 // Render and check this entry again (the server queue; never writes a baseline).
-export function RecheckButton({
+export const RecheckButton = memo(function RecheckButton({
   canReview,
   target,
   busy,
@@ -569,4 +569,4 @@ export function RecheckButton({
       {checking ? t('app.check.running', { count: 1 }) : t('inspector.review.recheck')}
     </Button>
   ) : null;
-}
+});

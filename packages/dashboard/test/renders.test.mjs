@@ -16,15 +16,15 @@ import { demo } from './renders-demo.mjs';
 setupFlows();
 
 /**
- * Components rendered per step, at most (plain adapter). Measured: mount 83, review 592, open 319,
- * next 345, fit 6, close 2. Opening and the next entry wait on image loads, and a slower machine
- * can split their commits differently, so those two hold about one inspector render of room.
+ * Components rendered per step, at most (plain adapter). Measured: mount 83, review 592, open 273,
+ * next 273, fit 6, close 2. Opening and the next entry wait on image loads, and a slower machine
+ * can split their commits differently, so those two hold one inspector render (about 50) of room.
  */
 const CEILINGS = {
   mount: 83,
   review: 592,
-  open: 380,
-  next: 410,
+  open: 325,
+  next: 325,
   fit: 6,
   close: 2,
 };

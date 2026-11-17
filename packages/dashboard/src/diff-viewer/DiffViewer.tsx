@@ -35,6 +35,7 @@
  */
 import React from 'react';
 import { useViewMoves } from './view-moves';
+import { useZoomState } from './zoom-state';
 
 // --- types ---------------------------------------------------------------------------------------
 
@@ -788,13 +789,7 @@ export interface ZoomControlsProps {
 function ZoomControls({ labels = {}, step = 1.5, className, render }: ZoomControlsProps) {
   const c = useDiffViewer();
   const zoom = useStore((s) => s.zoom);
-  const state: ZoomState = {
-    zoom,
-    zoomIn: () => c.actions.zoomBy(step),
-    zoomOut: () => c.actions.zoomBy(1 / step),
-    fit: () => c.actions.fit(),
-    actual: () => c.actions.zoomTo(1),
-  };
+  const state = useZoomState(zoom, c.actions, step);
   const props = {
     role: 'group',
     'aria-label': labels.group ?? 'Zoom',

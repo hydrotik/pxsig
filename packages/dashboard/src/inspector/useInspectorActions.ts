@@ -18,6 +18,7 @@ import {
 import { t } from '../copy';
 import { NeedsLinkError } from '../link';
 import type { InspectTarget } from './Inspector';
+import { useStableCallback } from '../parts/useStableCallback';
 
 export function useInspectorActions({
   data,
@@ -42,6 +43,8 @@ export function useInspectorActions({
     t(
       `inspector.review.${action === 'unreview' ? 'undo' : a11y && action === 'approve' ? 'accept' : action}`
     );
+  // What the last re-check or story approval did, shown under the header until the entry changes.
+  const [note, setNote] = React.useState<string | null>(null);
   // A decision the server refused: the line under the header says why (without the dashboard link,
   // how to get it), and the inspector stays usable. Never a browser alert: one blocks the page with
   // the button still reading "Approving…" until it is closed.
@@ -65,52 +68,54 @@ export function useInspectorActions({
    * `note`: a reject's reason. `stay`: an edited reason, on the entry already rejected, keeps the
    * inspector on it.
    */
-  const act = async (
-    action: 'approve' | 'reject' | 'unreview',
-    a11y = a11yMode,
-    { note, stay = false }: { note?: string; stay?: boolean } = {}
-  ) => {
-    if (!row) return;
-    // As the button: an entry already approved is not approved again (the A key).
-    const current = a11y ? data.a11yReview?.[row.id] : data.review[row.id];
-    if (
-      action === 'approve' &&
-      (current?.state === 'approved' || decidedHere.current.get(key(a11y, row.id)) === 'approve')
-    )
-      return;
-    // Masks no approval passes: no decision is sent (the A and R keys), as the buttons are not
-    // offered; the server refuses them too.
-    if (action !== 'unreview' && row.masksBlocked && !row.pass) return;
-    setBusy(true);
-    setNotice(null);
-    setNote(null);
-    if (action !== 'unreview') setPending(action);
-    try {
-      const answer = await (a11y
-        ? a11yAction(action === 'approve' ? 'accept' : action, row.id, undefined, note)
-        : reviewAction(action, row.id, note));
-      setNotice(answer?.notice ?? null);
-      if (action === 'unreview') decidedHere.current.delete(key(a11y, row.id));
-      else decidedHere.current.set(key(a11y, row.id), action);
-      if (action !== 'unreview' && a11y === a11yMode && !stay) {
-        // The next undecided entry after this one, wrapping to the start of the list.
-        const open = (r: Row) =>
-          (a11yMode ? !data.a11yReview?.[r.id] : !r.pass && !data.review[r.id]) &&
-          !decidedHere.current.has(key(a11yMode, r.id));
-        const next = [...list.slice(index + 1), ...list.slice(0, Math.max(index, 0))].find(open);
-        if (next) onNavigate({ ...target!, row: next });
+  const act = useStableCallback(
+    async (
+      action: 'approve' | 'reject' | 'unreview',
+      a11y: boolean = a11yMode,
+      { note, stay = false }: { note?: string; stay?: boolean } = {}
+    ) => {
+      if (!row) return;
+      // As the button: an entry already approved is not approved again (the A key).
+      const current = a11y ? data.a11yReview?.[row.id] : data.review[row.id];
+      if (
+        action === 'approve' &&
+        (current?.state === 'approved' || decidedHere.current.get(key(a11y, row.id)) === 'approve')
+      )
+        return;
+      // Masks no approval passes: no decision is sent (the A and R keys), as the buttons are not
+      // offered; the server refuses them too.
+      if (action !== 'unreview' && row.masksBlocked && !row.pass) return;
+      setBusy(true);
+      setNotice(null);
+      setNote(null);
+      if (action !== 'unreview') setPending(action);
+      try {
+        const answer = await (a11y
+          ? a11yAction(action === 'approve' ? 'accept' : action, row.id, undefined, note)
+          : reviewAction(action, row.id, note));
+        setNotice(answer?.notice ?? null);
+        if (action === 'unreview') decidedHere.current.delete(key(a11y, row.id));
+        else decidedHere.current.set(key(a11y, row.id), action);
+        if (action !== 'unreview' && a11y === a11yMode && !stay) {
+          // The next undecided entry after this one, wrapping to the start of the list.
+          const open = (r: Row) =>
+            (a11yMode ? !data.a11yReview?.[r.id] : !r.pass && !data.review[r.id]) &&
+            !decidedHere.current.has(key(a11yMode, r.id));
+          const next = [...list.slice(index + 1), ...list.slice(0, Math.max(index, 0))].find(open);
+          if (next) onNavigate({ ...target!, row: next });
+        }
+      } catch (e) {
+        refused(e, label(action, a11y));
       }
-    } catch (e) {
-      refused(e, label(action, a11y));
+      setBusy(false);
+      setPending(null);
     }
-    setBusy(false);
-    setPending(null);
-  };
+  );
 
   // Close an open rejection after a re-check, with no decision (Dismiss reason). `dismissed`
   // names it, so the rejected note can say so once the rejection is gone from the data.
   const [dismissed, setDismissed] = React.useState<string | null>(null);
-  const dismiss = async (kind: 'visual' | 'a11y') => {
+  const dismiss = useStableCallback(async (kind: 'visual' | 'a11y') => {
     if (!row) return;
     setBusy(true);
     try {
@@ -120,10 +125,10 @@ export function useInspectorActions({
       refused(e, t('inspector.rejection.dismiss'));
     }
     setBusy(false);
-  };
+  });
 
   // Take one rule off this entry's accepted list: it is reported as new and can be accepted again.
-  const unaccept = async (rule: string) => {
+  const unaccept = useStableCallback(async (rule: string) => {
     if (!row) return;
     setBusy(true);
     try {
@@ -132,30 +137,42 @@ export function useInspectorActions({
       refused(e, t('inspector.a11y.unaccept'));
     }
     setBusy(false);
-  };
+  });
 
   // Other modes / states of the same story: switch between them in place.
-  const siblings =
-    row && !target?.scenario
-      ? (data.check?.rows ?? []).filter((r) => r.story === row.story && !r.skipped)
-      : [];
+  const scenario = !!target?.scenario;
+  const siblings = React.useMemo(
+    () =>
+      row && !scenario
+        ? (data.check?.rows ?? []).filter((r) => r.story === row.story && !r.skipped)
+        : [],
+    [data, row, scenario]
+  );
 
   // Entries of this story waiting for a decision (every mode and state): one click approves them,
   // only when the project allows it (`approvals.byStory`, off by default: one entry, one decision).
-  const storyOpen = data.approvals?.byStory
-    ? siblings.filter(
-        (r) => ['changed', 'new'].includes(statusOf(r, data.review)) && !r.error && !r.masksBlocked
-      )
-    : [];
-  // What the last re-check or story approval did, shown under the header until the entry changes.
-  const [note, setNote] = React.useState<string | null>(null);
+  const storyOpen = React.useMemo(
+    () =>
+      data.approvals?.byStory
+        ? siblings.filter(
+            (r) =>
+              ['changed', 'new'].includes(statusOf(r, data.review)) && !r.error && !r.masksBlocked
+          )
+        : [],
+    [data, siblings]
+  );
   // This entry's re-check, from the click until its run ends (the server's `check` events): then
   // "Queued" goes, and only what was not checked stays.
   const run = React.useRef<{ ran?: boolean; ended?: boolean; note?: string; after?: string }>(null);
   React.useEffect(() => {
     run.current = null;
-    setNote(null);
   }, [row?.id]);
+  // Another entry: the last one's note goes.
+  const [noteFor, setNoteFor] = React.useState(row?.id);
+  if (noteFor !== row?.id) {
+    setNoteFor(row?.id);
+    setNote(null);
+  }
   const activity = useCheckActivity();
   const checking = !!row && !!activity.running?.includes(row.id);
   React.useEffect(() => {
@@ -167,7 +184,7 @@ export function useInspectorActions({
       if (r.note) setNote((n) => (n === r.note ? r.after || null : n));
     }
   }, [checking]);
-  const recheckOne = async () => {
+  const recheckOne = useStableCallback(async () => {
     if (!row) return;
     setBusy(true);
     const mine: NonNullable<typeof run.current> = {};
@@ -185,8 +202,9 @@ export function useInspectorActions({
       refused(e, t('inspector.review.recheck'));
     }
     setBusy(false);
-  };
-  const approveAll = async () => {
+  });
+
+  const approveAll = useStableCallback(async () => {
     if (!row) return;
     setBusy(true);
     try {
@@ -217,7 +235,8 @@ export function useInspectorActions({
       refused(e, t('inspector.review.approveStory', { count: storyOpen.length }));
     }
     setBusy(false);
-  };
+  });
+
   return {
     siblings,
     storyOpen,

@@ -40,6 +40,7 @@ import { RejectNoteRow, useRejectNote } from './RejectNote';
 import { RejectedNote } from './RejectedNote';
 import { InspectorSide } from './side/Side';
 import { useEntryLinks } from './entryLinks';
+import { useInspectorNav } from './useInspectorNav';
 
 export interface InspectTarget {
   row: Row;
@@ -195,34 +196,10 @@ export function Inspector({
     );
   }, [loaded, analysis, regions, row, pixels, key, originals, setRegion]);
 
-  const focusRegion = (i: number) => {
-    const r = regions[i];
-    if (!r) return;
-    setRegion(i);
-    stage.current?.focus(r);
-  };
-  const focusBox = React.useCallback(
-    (r: { x: number; y: number; w: number; h: number }) => {
-      setRegion(-1);
-      stage.current?.focus(r);
-    },
-    [setRegion]
-  );
-  const stepRegion = (d: number) =>
-    regions.length &&
-    focusRegion(
-      region < 0 ? (d > 0 ? 0 : regions.length - 1) : (region + d + regions.length) % regions.length
-    );
-
   const list = target?.list ?? [];
   const index = row ? list.findIndex((r) => r.id === row.id) : -1;
-  const step = (d: number) => {
-    if (!target || list.length < 2) return;
-    let i = index;
-    do i = (i + d + list.length) % list.length;
-    while (!list[i].metrics && !(list[i].new && !list[i].pending) && i !== index);
-    onNavigate({ ...target, row: list[i] });
-  };
+  const nav = { regions, region, setRegion, stage, target, list, index, onNavigate };
+  const { focusRegion, focusBox, stepRegion, step } = useInspectorNav(nav);
 
   const canReview = served && !target?.scenario;
   // Known to hold no dashboard link: the buttons stay in place, disabled, and a note says how.
@@ -423,8 +400,8 @@ export function Inspector({
       id={row.id}
       a11y={a11yMode}
       dismissed={dismissed === `${a11yMode ? 'a11y' : 'visual'}:${row.id}`}
-      onEdit={(v) => edit(a11yMode, v)}
-      onDismiss={() => dismiss(a11yMode ? 'a11y' : 'visual')}
+      onEdit={edit}
+      onDismiss={dismiss}
     />
   );
   if (complete)
