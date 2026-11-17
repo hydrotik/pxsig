@@ -49,6 +49,7 @@
     "dist",
     "dashboard",
     "!dashboard/fixtures/locked",
+    "!dashboard/fixtures/unstable.json",
     "docs",
     "test/installed",
     "README.md",
