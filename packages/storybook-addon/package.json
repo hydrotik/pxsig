@@ -25,6 +25,7 @@
   "files": [
     "preset.mjs",
     "manager.mjs",
+    "panel-store.mjs",
     "panel-style.mjs",
     "server-pick.mjs",
     "snapshot-view.mjs",
