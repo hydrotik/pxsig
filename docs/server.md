@@ -227,6 +227,11 @@ clears the mark. `summary.changed` counts only real changes waiting for a decisi
 - **Page headers.** Dashboard pages carry a `Content-Security-Policy` (scripts, data and fonts
   from the server only, `object-src 'none'`, `frame-ancestors` as above) and every response
   `X-Content-Type-Options: nosniff`.
+- **Compression.** Text (the dashboard's script, styles and page, the reports' text files, JSON
+  answers) of 1 KiB or more is sent gzipped when the request's `Accept-Encoding` allows it, with
+  `Vary: Accept-Encoding` on every text response. Images, fonts and the event stream are sent as
+  they are. A file's gzipped bytes are kept by path and modification time (32 MiB at most); JSON
+  answers are compressed per request and never kept. The `dashboard check` server does the same.
 - **What this is not.** The link and the tokens are a guard, not authentication: a process running
   as you can read the token file. They stop an agent or a script from approving by posting to the
   server or reading the page, and a web page from posting to it at all; who approved what is in the

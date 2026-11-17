@@ -4,6 +4,7 @@
  */
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { encodeBody } from '../lib/encode.mjs';
 import { pageHeaders } from '../lib/guard.mjs';
 import { machinePath } from '../lib/machine.mjs';
 import { readHeader, readImage } from '../lib/psig.mjs';
@@ -101,13 +102,15 @@ export function reportFile(srv, req, res, path) {
       /<script id="pxsig-data">[\s\S]*?<\/script>/,
       ''
     );
+    // gzipped when the request takes it and the page is large enough (lib/encode.mjs).
+    const gz = encodeBody(req, res, html, TYPES['.html']);
     // No token is ever in the page: decisions carry the dashboard link's cookie instead.
     res.writeHead(200, {
       'content-type': TYPES['.html'],
       'cache-control': 'no-store',
       ...pageHeaders(srv.allowedOrigins),
     });
-    return res.end(html);
+    return res.end(gz ?? html);
   }
   return sendFile(req, res, file);
 }

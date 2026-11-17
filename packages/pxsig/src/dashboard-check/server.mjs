@@ -2,10 +2,11 @@
  * dashboard-check/server.mjs — the sample images and the server for one build and one scenario,
  * for `pxsig dashboard check` (dashboard-check.mjs).
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, relative, resolve } from 'node:path';
 import { PNG } from 'pngjs';
+import { encodeBody, encodeFile } from '../lib/encode.mjs';
 import { sampleGateReport } from './gate-report.mjs';
 /** @import { ServerResponse } from 'node:http' */
 /** @import { AddressInfo } from 'node:net' */
@@ -86,7 +87,11 @@ export function scenarioServer({ dir, scenario, fixtures, images, posts }) {
       /** @type {number} */ status,
       /** @type {string} */ type,
       /** @type {string | Buffer} */ body
-    ) => res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }).end(body);
+    ) => {
+      // gzipped when the request takes it, as `pxsig serve` does (lib/encode.mjs).
+      const gz = encodeBody(req, res, body, type);
+      res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }).end(gz ?? body);
+    };
     if (u.pathname.startsWith('/__pxsig/')) {
       const name = u.pathname.slice('/__pxsig/'.length);
       if (req.method === 'POST') {
@@ -211,7 +216,12 @@ export function scenarioServer({ dir, scenario, fixtures, images, posts }) {
         )
       );
     }
-    send(200, TYPES[extname(file)] ?? 'application/octet-stream', readFileSync(file));
+    // The build's files: gzipped bytes kept per path and mtime, as `pxsig serve` keeps them.
+    const type = TYPES[extname(file)] ?? 'application/octet-stream';
+    const gz = encodeFile(req, res, file, statSync(file), type);
+    res
+      .writeHead(200, { 'content-type': type, 'cache-control': 'no-store' })
+      .end(gz ?? readFileSync(file));
   });
   return new Promise((/** @type {(s: ScenarioServer) => void} */ ok, fail) => {
     server.once('error', fail);
