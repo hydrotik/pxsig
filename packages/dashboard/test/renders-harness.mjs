@@ -21,7 +21,15 @@ export function HOOK() {
     if (t.type) return t.displayName || t.type.name || '(anonymous)';
     return '(anonymous)';
   };
-  const stats = { commits: 0, rendered: 0, mounted: 0, last: 0, by: {} };
+  const stats = { commits: 0, rendered: 0, mounted: 0, last: 0, start: 0, longest: 0, by: {} };
+  // The longest main-thread task in a step (ms), where the browser reports long tasks.
+  try {
+    new PerformanceObserver((l) => {
+      for (const e of l.getEntries()) stats.longest = Math.max(stats.longest, e.duration);
+    }).observe({ type: 'longtask' });
+  } catch {
+    /* no long task timing */
+  }
   const count = (f, mounted) => {
     stats.rendered++;
     if (mounted) stats.mounted++;
@@ -73,7 +81,16 @@ export function HOOK() {
 const reset = (page) =>
   page.evaluate(() => {
     const s = window.__pxsigRenders;
-    Object.assign(s, { commits: 0, rendered: 0, mounted: 0, by: {}, last: performance.now() });
+    const now = performance.now();
+    Object.assign(s, {
+      commits: 0,
+      rendered: 0,
+      mounted: 0,
+      by: {},
+      last: now,
+      start: now,
+      longest: 0,
+    });
   });
 
 /** Waits until the page has not committed for `quiet` ms (at most `max` ms). */
@@ -100,7 +117,14 @@ export async function measure(page, step) {
   const top = Object.entries(s.by)
     .sort((a, b) => b[1] - a[1])
     .slice(0, Number(process.env.PXSIG_RENDERS_TOP ?? 8));
-  return { commits: s.commits, rendered: s.rendered, mounted: s.mounted, top };
+  return {
+    commits: s.commits,
+    rendered: s.rendered,
+    mounted: s.mounted,
+    ms: Math.round(s.last - s.start),
+    longest: Math.round(s.longest),
+    top,
+  };
 }
 
 /** Counts from the first commit to idle (the page's mount). */
@@ -110,5 +134,12 @@ export async function measureMount(page) {
   const top = Object.entries(s.by)
     .sort((a, b) => b[1] - a[1])
     .slice(0, Number(process.env.PXSIG_RENDERS_TOP ?? 8));
-  return { commits: s.commits, rendered: s.rendered, mounted: s.mounted, top };
+  return {
+    commits: s.commits,
+    rendered: s.rendered,
+    mounted: s.mounted,
+    ms: Math.round(s.last - s.start),
+    longest: Math.round(s.longest),
+    top,
+  };
 }

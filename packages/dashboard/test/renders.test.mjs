@@ -9,9 +9,9 @@
  */
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { changed, data, history, inComponent, row, spread } from '../fixtures/scenarios.mjs';
 import { setupFlows, skip, open } from './flows-helpers.mjs';
 import { HOOK, measure, measureMount } from './renders-harness.mjs';
+import { demo } from './renders-demo.mjs';
 
 setupFlows();
 
@@ -24,36 +24,6 @@ const CEILINGS = {
   fit: 6,
   close: 584,
 };
-
-const COMPONENTS = ['Button', 'Card', 'Dialog', 'Input', 'Menu', 'Table'];
-const STORIES = ['default', 'primary', 'disabled', 'long-label'];
-
-/** A demo project: 6 components × 4 stories × 2 modes, 8 of them changed. */
-function demo() {
-  const ids = COMPONENTS.flatMap((c) =>
-    STORIES.flatMap((st) => [`ui-${c.toLowerCase()}--${st}`, `ui-${c.toLowerCase()}--${st}@light`])
-  );
-  const isChanged = (i) => i % 6 === 1;
-  const d = spread(
-    data({
-      rows: ids.map((id, i) =>
-        row(
-          id,
-          isChanged(i) ? { ...changed, ...(id.includes('@light') ? { mode: 'light' } : {}) } : {}
-        )
-      ),
-      entries: ids.map((id, i) =>
-        inComponent(
-          COMPONENTS[Math.floor(i / (STORIES.length * 2))],
-          id,
-          isChanged(i) ? [{ code: 'changed', severity: 'warn', reason: 'gate failed' }] : []
-        )
-      ),
-    })
-  );
-  d.history = history(6);
-  return d;
-}
 
 const approving = { allowed: true, folder: 'demo', command: 'pxsig serve --link' };
 
