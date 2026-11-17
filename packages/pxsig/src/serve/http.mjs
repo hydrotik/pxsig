@@ -78,21 +78,50 @@ export const readBody = (req) =>
     });
   });
 /**
+ * A file, revalidated on every use (`no-cache`): a request whose If-None-Match names its ETag, or
+ * (without one) whose If-Modified-Since is not older than it, gets 304 and no body, with the same
+ * headers a 200 has bar the length. The ETag is weak: its size and modification time, no hashing.
  * @param {IncomingMessage} req
  * @param {ServerResponse} res
  * @param {string} file
  */
 export const sendFile = (req, res, file) => {
   const st = statSync(file);
+  const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}"`;
+  const headers = {
+    'cache-control': 'no-cache',
+    etag,
+    'last-modified': st.mtime.toUTCString(),
+    'x-content-type-options': 'nosniff',
+  };
+  if (notModified(req, etag, st.mtime)) {
+    res.writeHead(304, headers);
+    return res.end();
+  }
   res.writeHead(200, {
     'content-type': TYPES[extname(file)] ?? 'application/octet-stream',
     'content-length': st.size,
-    'cache-control': 'no-cache',
-    'last-modified': st.mtime.toUTCString(),
-    'x-content-type-options': 'nosniff',
+    ...headers,
   });
   if (req.method === 'HEAD') return res.end();
   createReadStream(file).pipe(res);
+};
+/**
+ * Whether a GET or HEAD's validators match the file (RFC 9110 §13.1: If-None-Match, when sent,
+ * decides alone; If-Modified-Since is compared in whole seconds, as Last-Modified is written).
+ * @param {IncomingMessage} req
+ * @param {string} etag
+ * @param {Date} mtime
+ */
+export const notModified = (req, etag, mtime) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return false;
+  const inm = req.headers['if-none-match'];
+  if (inm != null) {
+    const bare = (/** @type {string} */ t) => t.trim().replace(/^W\//, '');
+    return inm.trim() === '*' || inm.split(',').some((t) => bare(t) === bare(etag));
+  }
+  const ims = Date.parse(req.headers['if-modified-since'] ?? '');
+  return Number.isFinite(ims) && Math.floor(mtime.getTime() / 1000) * 1000 <= ims;
 };
 /**
  * @param {string} root
