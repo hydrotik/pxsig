@@ -18,7 +18,8 @@ import { codeCopy, t } from '../copy';
 import { useFailure } from './Failure';
 import * as s from '../dashboard.css';
 
-export function StoryCard({
+/** One entry. Memoised: a search or a filter keeps the cards still listed as they are. */
+export const StoryCard = React.memo(function StoryCard({
   data,
   row,
   scenario,
@@ -27,7 +28,7 @@ export function StoryCard({
   data: Data;
   row: Row;
   scenario: { tag: string; name: string } | null;
-  onOpen: () => void;
+  onOpen: (row: Row) => void;
 }) {
   const p = pathsFor(data, row.id, scenario);
   const m = row.metrics;
@@ -65,7 +66,7 @@ export function StoryCard({
     <Card
       {...(offerRecheck
         ? { role: 'group', 'aria-label': row.id }
-        : { type: 'button' as const, onClick: onOpen, disabled: !openable })}
+        : { type: 'button' as const, onClick: () => onOpen(row), disabled: !openable })}
       className={offerRecheck ? `${s.storyCard} ${s.storyCardStatic}` : s.storyCard}
       data-status={status}
     >
@@ -146,7 +147,7 @@ export function StoryCard({
       </div>
     </Card>
   );
-}
+});
 
 /** "Changed 3 · New 1": a group's entries counted by status, problems first. */
 const ORDER = [
@@ -183,10 +184,16 @@ export function StoryGrid({
     setListWas({ rows, page });
     setShown(page);
   }
+  // The list a card opens with, read on the click: one callback for every card, every render.
+  const listRef = React.useRef(rows);
+  React.useLayoutEffect(() => {
+    listRef.current = rows;
+  });
+  const openCard = React.useCallback((r: Row) => onOpen(r, listRef.current), [onOpen]);
   if (!rows.length) return <div className={s.empty}>{t('review.none')}</div>;
   const visible = rows.slice(0, shown);
   const card = (r: Row) => (
-    <StoryCard key={r.id} data={data} row={r} scenario={scenario} onOpen={() => onOpen(r, rows)} />
+    <StoryCard key={r.id} data={data} row={r} scenario={scenario} onOpen={openCard} />
   );
   // Grouped: one section per component, in the order the list first reaches it.
   const groups = new Map<string, Row[]>();
