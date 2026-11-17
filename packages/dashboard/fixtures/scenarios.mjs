@@ -176,6 +176,13 @@ export function data({ rows, entries, summary = {} }) {
         componentsBySeverity: { error: err ? 1 : 0, warn: !err && warn ? 1 : 0, info: 0 },
         bySeverity: { error: err, warn, info: entries.length - err - warn },
         byCode,
+        unreviewed: {
+          count: 0,
+          queue: 0,
+          new: 0,
+          order: 'file',
+          next: /** @type {string[]} */ ([]),
+        },
       },
       components: [
         {

@@ -350,8 +350,8 @@ export function Integrity({
                 }
               : { label: codeCopy(c).title, value: 0 }
           ),
-          // Shown only while baselines wait for a person (older servers send no count).
-          ...(unreviewed?.count
+          // Shown only while baselines wait for a person.
+          ...(unreviewed.count
             ? [
                 {
                   label: t('coverage.stats.unreviewed'),
