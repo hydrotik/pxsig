@@ -5,6 +5,654 @@ semantic versioning.
 
 ## Unreleased
 
+## 0.7.7 - 2026-11-17
+
+The masks and gate release. A mask is treated as an exclusion to review, not a convenience: every
+baseline records its masks, `data-volatile` marks only the leaf that shows a varying value and
+needs a reason, a mask covers every whole pixel its box touches, content that paints outside its
+box fails the entry, masks over half a capture or on the story root fail it outright, and no
+approval passes a masks change without `--allow-masks`. The gate sees colour: a ΔE00 rule fails
+a recoloured flat area or cell that SSIM and the edges missed, with no false positives in a gate
+noise run on Linux, macOS and Windows. Captures draw text in grayscale with unhinted advances and
+raster every tile in full, so renders repeat, once baselines are re-rendered in one pass. The
+drift alarm flags a passing entry whose image has moved from its baseline, and baselines no
+person approved are marked unreviewed. Adapters get UI contract 1.7.0, with responsive rules for
+the top bar and a name for More, and `pxsig dashboard check` now fails an adapter that breaks a
+region rule, with alignment measured from each screenshot and `pxsig dashboard parity` for source
+parity. pxsig's own screens hold parity and alignment at zero on the hydrotik design system.
+
+### Upgrading from 0.7.6
+
+- **`approve plan` treats a masks change as its own class.** Review each masks change, then re-plan with `--allow-masks <ids>`.
+- **`data-volatile` marks a leaf, with a reason.** Move `data-volatile` onto the element that shows the value, and give it a reason (`data-volatile="relative time"`).
+- **Masks over half a capture, or on the story root, fail the entry, and no approval passes it.** Make each such mask smaller (mask the value, not the component), or give the story fixed data instead (`pxsig help volatile`).
+- **`check --update` and `pxsig baseline` refuse a masks change without `--allow-masks`.** Review the masks, then add `--allow-masks` (or `--allow-masks <ids>`) to the `check --update` or `pxsig baseline` command.
+- **`pxsig dashboard check` fails an adapter that breaks a region rule.** Run `pxsig dashboard check` on your adapter's build. For each finding, change the adapter, not the dashboard: keep the top bar on one line (an overflow menu for the links), draw a toolbar's controls and a table's actions at your small size, drop `text-transform` and any re-casing from headers, headings, links, buttons, badges and labels, and show a tone as the colour of a stat card's value, a badge's text or a status badge's glyph, with neutral borders and washes. Keep `className` on each component's root element. An element that breaks a rule on purpose takes `data-layout-allow="<reason>"`.
+- **Captures draw text in grayscale, with unhinted glyph advances, and raster every tile in full.** Baselines shift once, where they show text (on Linux) and at some rounded edges, and every baseline reports `env-mismatch` (`browser.launchArgs`) until it is re-rendered. Re-render them all and approve them in one pull request (with `env.strict` or `--strict-env`, run that check without it). Baselines rendered on macOS change little or not at all; re-render them there too to clear the mismatch. In the same pass, review the entries marked "masks changed: grew" (a mask edge on a fractional pixel now covers that whole pixel, so each grew by at most 1px per edge) and approve them with `--allow-masks`. Nothing to change in stories or config.
+- **Color changes in flat areas and cells fail the gate.** Baselines whose colors drifted while the gate passed now show as changed, once. Review each in the dashboard and approve the ones that are intended. To loosen the rule for a project, set `gate.color` in its `pxsig.config.json` (for example `{ "deltaE": 5, "minArea": 128 }`); off or past its limits, `pxsig doctor` reports it (`gate-color-off`).
+- **A mask covers every whole pixel its box touches.** Part of the one re-approval under "Captures draw text in grayscale": approve the entries marked "masks changed: grew" with `--allow-masks`.
+- **Trim keeps masks.** Entries whose story mask reaches the capture's bottom-right corner change size once: review and approve them.
+- **A `data-volatile` element's box must hold all of its content.** Where an entry fails this way, change the element's CSS so its box holds its content (drop a fixed `width`, or allow for the `letter-spacing`, shadow or transform), then check the entry again. No baselines change.
+- **UI contract 1.7.0: the top bar's responsive rules, and a name for More.** An adapter written for 1.6.0 keeps building, but check its top bar against "Top bar" in docs/ui/build-adapter.md: `TopNav` must put `className` on the bar's root (with the brand, the `NavList` and the `NavEnd` side by side in it); each link and the More trigger one line at its natural width (`white-space: nowrap`, `flex-shrink: 0`); links measured again on resize, font load and a label or count change; the list `flex: 1 1 0`, never narrower than More and the kept link, clipping; the More menu not cut by that clipping; `NavEnd` after the list, never wrapping. Name the More trigger (and its menu) with `moreLabel`, add a `topBar` object to conformance.json (one key per rule: `root`, `oneLine`, `measure`, `list`, `more`, `keyboard`, `moreLabel`, `end`, each `true` or a note), set `"contract": "1.7.0"`, rebuild, and run `pxsig dashboard check`: fix any `top-bar` finding it lists.
+- **Elements marked `data-volatile` are masked, and masks are recorded and reviewed.** On the component that shows a varying value, set `data-volatile` (with a reason, if you like) on the element that shows it, e.g. `<time data-volatile="relative time">`. Adopting it (or `capture.ignore`) gives one "masks changed" entry per affected entry: review and approve them once, in the pull request that adds the attribute. Fixed story data (a fixed clock, fixed ids) stays the better answer where it is possible, since a fixed value is still compared.
+- **Nothing to do:** `pxsig dashboard check` measures alignment from each screenshot; `@babel/core` and `babel-plugin-react-compiler` are no longer optional peers of pxsig; UI contract 1.6.0: a badge may show its tone as its design system draws it; A bare `/report/` with several projects opens on the first project; The single-entry `compare` weighs masks as `check` does; `drift` means the render differs from the baseline image; The Storybook addon and the platform packages are ES modules; A detail-only change opens on its detail tiles; Approvals of a masks change say so; A mask paints only the masked element; Text is left out of the text record only where a mask is painted; Every baseline records its masks; A masks change is any change; A blocked entry says what to do, and takes no decision; A refused request leaves the dashboard usable; The engine's result cache names the engine build.
+
+### Breaking changes
+
+- **`approve plan` treats a masks change as its own class.** An entry whose masks changed is
+  planned as `kind: "masks"` (its pixels' kind kept as `change`), and is blocked unless named in
+  `--allow-masks id,id`, whatever its pixels: it is never passed as colour only. A shape change
+  under it also needs `--allow-shape`. Masks no approval passes (over 50% of the capture, or on the
+  story root) are always blocked, and the server refuses to approve them. The dashboard's Approve
+  story leaves such entries out, to be approved on their own.
+  To update: review each masks change, then re-plan with `--allow-masks <ids>`.
+- **`data-volatile` marks a leaf, with a reason.** The attribute may mark only an element with
+  text and inline formatting inside (`span`, `b`, `i`, `em`, `strong`, `code`, `time`, `abbr`,
+  `sub`, `sup`, `small`, `mark`, `br`, `wbr`), and its value, the reason, is required. Otherwise the
+  element is not painted, and the capture records the problem (`problems` in `<id>.masks.json`):
+  the entry fails as `mask on a container: …` or `mask needs a reason: …`, naming the element
+  (for a container, also the outermost elements inside it that are not inline formatting, each
+  once: `elements inside: div, svg`), and no approval passes it.
+  To update: move `data-volatile` onto the element that shows the value, and give it a reason
+  (`data-volatile="relative time"`).
+- **Masks over half a capture, or on the story root, fail the entry, and no approval passes it.**
+  All of an entry's masks together over 50% of the capture, or a mask the capture found on the
+  story root that covers 95% of the capture or more (a smaller one is weighed by its share), fail
+  the entry with `masks cover 62% of the capture, over 50%` or `a mask covers the story root: …`
+  and `masksBlocked` on the row. That depends on the
+  render alone, and no baseline is written from such a render (nor from one whose capture reports
+  a mask it may not apply as asked, `problems` in the masks record): not by the dashboard's approval,
+  `check --update`, `pxsig baseline` or `--allow-masks`. The 25% warning now weighs all of an
+  entry's masks together (`masksCoverage`), and so do the dashboard's Large mask badge (its title
+  names the masks and their share together), the Open items row and the Review Stories filter
+  "Masks over 25% of the capture" (were: one mask over 25%). summary.md has a line for each;
+  `check --sarif` reports them as `pxsig/mask-limit` (error), `pxsig/masks-changed` and
+  `pxsig/large-mask` (warnings, one per entry instead of one per mask), and its `[check] wrote …`
+  line counts them that way: entries over the mask limits, with masks changed and with large
+  masks (was: each mask over 25% on its own, the other masks results counted as a11y violations).
+  To update: make each such mask smaller (mask the value, not the component), or give the story
+  fixed data instead (`pxsig help volatile`).
+- **`check --update` and `pxsig baseline` refuse a masks change without `--allow-masks`.** An entry
+  whose masks differ from the baseline it replaces is not written and is named with what changed
+  (`masks changed (1 added: …)`); `--allow-masks` alone writes every such entry, with ids those, and
+  names each one written. The engine's `baseline --json` answers `failedIds` and `masksChanged`.
+  `check --update` no longer logs an approval for an entry it did not write.
+  To update: review the masks, then add `--allow-masks` (or `--allow-masks <ids>`) to the
+  `check --update` or `pxsig baseline` command.
+
+### Behaviour changes
+
+- **`pxsig dashboard check` fails an adapter that breaks a region rule.** Every screen is now
+  measured against the region rules of the UI contract (docs/ui/build-adapter.md, "Region rules"),
+  and each finding names the element that breaks one: `one-line` (the top bar, a toolbar or a row
+  of actions takes more than one line), `size` (controls on one line differ in height, or a
+  table's actions are taller than the page's small size), `casing` (a header, heading, link,
+  button, badge or label drawn in another case than pxsig's copy) and `tone` (a stat card, badge
+  or status badge showing its tone as a border, edge, wash or shadow). Unlike axe and layout
+  findings, any one exits 1 without `--strict`. They are in `report.json` (`fidelity` per screen,
+  `summary.withFidelity`), `summary.md` ("Region rules"), the gallery and the command's output.
+  To find the regions in any adapter, the dashboard adds `pxsig-ui-TopNav`, `pxsig-ui-StatGroup`,
+  `pxsig-ui-Badge` and `pxsig-ui-StatusBadge` to those components' `className`.
+  To update: run `pxsig dashboard check` on your adapter's build. For each finding, change the
+  adapter, not the dashboard: keep the top bar on one line (an overflow menu for the links), draw
+  a toolbar's controls and a table's actions at your small size, drop `text-transform` and any
+  re-casing from headers, headings, links, buttons, badges and labels, and show a tone as the
+  colour of a stat card's value, a badge's text or a status badge's glyph, with neutral borders
+  and washes. Keep `className` on each component's root element. An element that breaks a rule
+  on purpose takes `data-layout-allow="<reason>"`.
+- **`pxsig dashboard check` measures alignment from each screenshot.** Two rules, listed apart from
+  the layout findings (`alignment` per screen in `report.json`, `summary.withAlignment`, an
+  "Alignment" section in `summary.md`, the gallery): `aligned`, a dot or icon is centred on its
+  label's capitals within 0.5px (beyond the measure's 0.1px precision), read from the pixels the
+  browser drew; and `whole-pixel`, a small
+  component that draws an edge has its top and bottom on whole device pixels. Each finding names
+  its cause (centred in an odd space, a fractional margin, padding or transform, an earlier sibling
+  of fractional height, or a graphic centred on its line box). Like layout findings they are
+  advisory; `--strict` exits 1 on any. `data-layout-allow="aligned, whole-pixel: <reason>"` opts an
+  element out of the rules it names only, and a half pixel caused by an opted-out element is not
+  reported on what follows it.
+  To update: nothing to do unless you run `pxsig dashboard check --strict`; then fix each finding
+  in the adapter or its design system (even spaces around centred components, whole-pixel line
+  heights, a dot centred on the capitals), or opt the element out with its reason.
+- **`@babel/core` and `babel-plugin-react-compiler` are no longer optional peers of pxsig.** pxsig
+  never used its own copy: the React Compiler analysis resolves both from the project, as before,
+  and `pxsig doctor`, `check` and Diagnostics › React report them missing with the same messages.
+  Package managers and supply-chain scanners no longer list them, or their dependencies, with
+  pxsig.
+  To update: nothing to do for a project that has them. A project that wants the Babel compiler
+  analysis installs both itself, as before: `npm install -D babel-plugin-react-compiler @babel/core`.
+- **UI contract 1.6.0: a badge may show its tone as its design system draws it.** Region rule R4
+  now allows either, for `Badge` only: a tone colours the badge's text, or its wash, border and
+  dot, in that tone's own colour. `pxsig dashboard check`'s `tone` rule lets a badge pass whose
+  wash, border, background or shadow is in the tone it was given, still fails one drawn in another
+  tone's colour, and now also fails a badge whose text is under WCAG AA (4.5:1) on its background.
+  To know a badge's tone in any adapter, the dashboard adds `pxsig-ui-tone-<tone>` to its
+  `className`. Stat cards, status badges and top-bar counts keep R4 as it was. The plain adapter
+  is unchanged (the tone colours the text).
+  To update: nothing to do for an adapter that keeps the tone in the badge's text. An adapter that
+  wants its design system's tinted badges may now use them: keep `className` on the badge's root,
+  use the tone's own colour for the wash, border and dot, keep the text at 4.5:1 on the wash, and
+  set `"contract": "1.6.0"` in its conformance.json. Run `pxsig dashboard check` on its build.
+- **A bare `/report/` with several projects opens on the first project.** With more than one
+  project and none named in the URL, the dashboard showed only a load error ("name a project")
+  and no project picker. It now opens on the first project in `pxsig.workspace.json`'s
+  `projects`, shows the picker, and names the project in the URL (`?project=<name>`), so a reload
+  or a shared link keeps it. The server is unchanged: an API request with no project in a
+  multi-project workspace is still refused, and every write still names its project.
+  To update: nothing to do. To open on another project, list it first in `projects`, or link
+  `?project=<name>`.
+- **Captures draw text in grayscale, with unhinted glyph advances, and raster every tile in full.**
+  Every Chromium pxsig launches (checks, `pxsig serve`, `pxsig manifest`, `pxsig dashboard check`)
+  now runs with `--disable-lcd-text --font-render-hinting=none --disable-partial-raster`. On Linux,
+  and so in the container and on most CI runners, text was drawn with LCD subpixel antialiasing
+  (coloured fringes) and advances rounded to whole pixels (narrower text than macOS draws), so a
+  render did not look like the Storybook story it came from. pxsig's container image now sets the
+  same text settings in fontconfig (`rgba=none`, `hintstyle=hintnone`, `antialias=true`,
+  `lcdfilter=none`) from its next build, which also covers a browser server started from it.
+  Renders also differed between runs at antialiased edges: a change after the first raster (a web
+  font swapping in, a canvas drawn, a click or scroll) re-rastered only part of a tile, which
+  draws a rounded corner at a fractional position slightly differently, and whether it landed
+  before or after the first raster was timing. Each render records the arguments in its
+  environment (`browser.launchArgs`), and the new `capture.launchArgs` adds a project's own after
+  pxsig's, so a later value of the same switch wins (docs/configuration.md, "Text rendering").
+  To update: baselines shift once, where they show text (on Linux) and at some rounded edges, and
+  every baseline reports `env-mismatch` (`browser.launchArgs`) until it is re-rendered. Re-render
+  them all and approve them in one pull request (with `env.strict` or `--strict-env`, run that
+  check without it). Baselines rendered on macOS change little or not at all; re-render them there
+  too to clear the mismatch. In the same pass, review the entries marked "masks changed: grew"
+  (a mask edge on a fractional pixel now covers that whole pixel, so each grew by at most 1px
+  per edge) and approve them with `--allow-masks`. Nothing to change in stories or config.
+- **The single-entry `compare` weighs masks as `check` does.** `pxsig compare` and the `compare`
+  method of the long-lived engine (`pxsig serve`'s stdio protocol) read the render's masks record
+  beside the PNG and compare it with the baseline's header `masks`: a mask added, removed or grown
+  fails the comparison with the reason `masks changed: …` and the same `masks`, `masksLarge`,
+  `masksChanged` and `masksBaseline` fields as a check row, so a single comparison and `check`
+  never disagree. `pxsig compare` exits 1 on a masks change, as on a pixel change. A render
+  without a masks record compares as before.
+  To update: nothing to do; a script that calls `pxsig compare` on a render with masks now sees
+  the masks change that `pxsig check` already reports.
+- **`drift` means the render differs from the baseline image.** An entry was `drift` when it
+  passed with SSIM below 1, which a change too small for the signature's grid never reached. Each
+  compared row now carries `differs` (on a passing row: whether any pixel of the render is not the
+  baseline image's; `null` when a rule failed it or the baseline holds no image), and `drift` is a
+  passing row with `differs: true`: in `pxsig list drift`, the ledger's `drift` code, the
+  Storybook addon and the dashboard's Stories filter, now "Passing, but differs from the
+  baseline" instead of "Any pixel drift (SSIM < 1)" (which also listed changed entries). A row
+  without `differs` (written by an engine before 0.7.7) still drifts when its SSIM is below 1. The
+  content cache's key changed, so the first check after the upgrade compares every entry again.
+  To update: nothing to do; verdicts and exit codes are unchanged, and more entries can show as
+  drift than before.
+- **The Storybook addon and the platform packages are ES modules.** `@pxsig/storybook-addon` and
+  every `@pxsig/cli-<platform>-<arch>` package now set `"type": "module"`, so registry scanners
+  (Socket) no longer mark them "not ESM". The addon's preset is `preset.mjs`, with named exports;
+  Storybook 10 imports it as before, under the same names (`@pxsig/storybook-addon` and
+  `@pxsig/storybook-addon/preset`), and `require()` of it works on a Node that can require an ES
+  module (22.12 or later, which Storybook 10 needs too). A platform package now has `index.js`
+  (`export default` the binary's path) and `index.cjs` (the same path for `require`), chosen by an
+  `exports` map; `bin/<exe>` and `package.json` stay resolvable by name, so pxsig finds its engine as
+  before. Each platform package's self-test also checks that `import`, `require` and the `bin/`
+  path give the same file, and pxsig's installed self-test resolves this host's engine package the
+  way pxsig does.
+  To update: nothing to do for `.storybook/main`, `import`/`require` of the package names, or a
+  tool that resolves `@pxsig/cli-<platform>-<arch>/bin/<exe>`. A tool that loaded a platform
+  package's `index.js` by its path imports or requires the package name instead.
+- **Color changes in flat areas and cells fail the gate.** SSIM, the edge map and the detail
+  channel read luminance only, and the cell rule needs a cell's mean RGB to move by more than
+  `threshold` (24), so a small area changing hue at about the same lightness passed: a grey badge
+  turning to a green wash (CIEDE2000 7.8), a status color on text, a lost row highlight. The new
+  color rule runs after the other rules, on the entries they pass, and fails an entry when flat
+  pixels (3×3 luminance range under 8 in both images) change by ΔE00 3 or more over 64 connected
+  pixels, or when 3 or more grid cells change their mean color by ΔE00 5 or more. A render of
+  another size than its baseline (a trimmed component one pixel wider) is compared over the region
+  both cover, from the top-left, with the flat-area check alone. Its reasons read
+  `color ΔE00 7.8 over 532 px (flat area) >= 3` and `color cells 4 >= 3 (ΔE00 >= 5)`, and each
+  row carries its measurements as `color`. The flat-area check uses the baseline image in the
+  `.psig`; it adds about 2 ms to a changed 900×600 entry (and up to 4 ms when every pixel drifts by
+  one step), and well under 1 ms when the render's file is the baseline image. `gate.color`
+  loosens it per project, workspace or story (`deltaE`, `minArea`, `cellDeltaE`, `minCells`;
+  docs/configuration.md, "gate.color"); `false` turns it off. An entry checked with it off, or
+  past its limits, is the new `gate-color-off` warning in `pxsig doctor` and the dashboard's
+  Coverage view; `integrity.severity` can raise it to error but not lower it. A verdict from an
+  engine older than the rule (a stale `PXSIG_BIN`) is refused, never recorded as a pass.
+  To update: baselines whose colors drifted while the gate passed now show as changed, once.
+  Review each in the dashboard and approve the ones that are intended. To loosen the rule for a
+  project, set `gate.color` in its `pxsig.config.json` (for example
+  `{ "deltaE": 5, "minArea": 128 }`); off or past its limits, `pxsig doctor` reports it
+  (`gate-color-off`).
+- **A detail-only change opens on its detail tiles.** When the detail channel alone failed an entry
+  (every reason is `detail …`) and no pixel differs by more than the inspector's tolerance, the
+  inspector no longer opens on an empty pixel analysis ("No changes", "No pixel differs by more
+  than 16."). It draws the detail tiles whatever the saved Detail tiles switch says, steps through
+  them with N, ⇧N and the change arrows as it does through pixel regions, lands on the first one,
+  and Pixel Changes says why: "8 detail tiles changed below the pixel tolerance of 16.", listing
+  each tile. The Detail tiles switch still hides them for that entry without changing the saved
+  setting. A tolerance low enough for pixels to count as changed, a signature-gate failure and
+  every other entry keep the pixel analysis, as before.
+  To update: nothing to do; the change is in what the dashboard shows.
+- **A mask covers every whole pixel its box touches.** A box with a fractional edge (common with
+  unhinted text and `letter-spacing`) was recorded with its edges rounded, and painted on the same
+  rounded pixels, so the pixel its edge only partly covered was neither painted nor flagged as
+  content outside the box: up to half a pixel of the masked value was compared, and a check could
+  pass or fail by which value rendered. Now the record, the paint and the overflow check use one
+  definition: on the captured image's pixel grid, the left and top edges are floored and the right
+  and bottom edges ceiled, then clipped to the capture. An element painted over everything gets a
+  box of pxsig's own at those pixels too. The grid is the image's own: an element screenshot
+  starts at the whole pixel left of and above the element, not at its fractional position. A mask
+  never covers a pixel its box does not touch, and is never widened to cover content outside it.
+  The record keeps whole CSS pixels; a mask with whole-pixel edges is unchanged.
+  To update: part of the one re-approval under "Captures draw text in grayscale": approve the
+  entries marked "masks changed: grew" with `--allow-masks`.
+- **Approvals of a masks change say so.** Every approval of an entry whose masks changed (the
+  dashboard, `approve apply`, `check --update`) is logged with `kind: "masks"` and `masks`: what
+  changed, `{ added, removed, grew, moved, count }`, selectors only.
+  To update: nothing to do; tools that read `approvals.ndjson` can count masks approvals by `kind`.
+- **A mask paints only the masked element.** Its box is painted at the element's own place in the
+  page, so an open popover or tooltip above a masked element is captured and compared instead of
+  painted over. Where that cannot be exact (an image or form control, a faded or filtered parent, a
+  static element with offsets or absolutely positioned children), it is painted over everything,
+  as before. Only the elements measured just before the screenshot are painted: an element a mask
+  matches only at the screenshot, or a mask on more than 500 elements, is a problem
+  (`mask not measured: …`) instead of a mask that was never weighed. A mask on the story root (the
+  root, or an element that is all of its content) is recorded as `root`; it fails the entry when it
+  also covers 95% of the capture or more, and a smaller one is weighed by its share.
+  To update: nothing to do; entries with a popover over a masked element read as changed once
+  (the popover is now in the capture): review and approve them.
+- **Text is left out of the text record only where a mask is painted.** An element a mask selector
+  matches but does not paint (nothing of it in the frame, a container `data-volatile`) keeps its
+  text in the record.
+  To update: nothing to do.
+- **Every baseline records its masks.** A `.psig` written from a render with no masks has
+  `masks: { "v": 1, "masks": [] }` in its header, so a mask added later is always "masks changed".
+  Every writer records them, `pxsig capture` included; a `.pxsig.json` baseline cannot, so writing
+  one from a render with masks is refused. Each mask also keeps its `count`, its boxes (`rects`)
+  and its pixels (`px`), and the header the masks' share together (`coverage`). Against a baseline
+  written by 0.7.6 or earlier (no `masks`), a story's `ignore` is left out only where the
+  baseline image shows it painted; anywhere else it is "masks changed: added".
+  To update: nothing to do for most stores. Entries whose story masks a 0.7.6 baseline does not
+  show painted read "masks changed" once: review and approve them.
+- **A masks change is any change.** "masks changed" now also covers a mask that grew by any pixel
+  (was: over 0.1% of the capture), one whose boxes moved by more than a pixel (`moved`), and one
+  that matches another number of elements (`count`); `masksChanged` gains `moved` and `count`.
+  The dashboard's Masks section names them (Moved, Count changed) and says when no approval passes
+  the entry.
+  To update: nothing to do; an entry that reads "masks changed" for one of these is approved once.
+- **Trim keeps masks.** The mask colour (`#FF00FF`) is content when a render is trimmed, so a mask
+  in the bottom-right corner is no longer cropped away, and a component that grows under it
+  changes the trimmed size. A mask over the whole capture no longer trims it to 16 × 16.
+  To update: entries whose story mask reaches the capture's bottom-right corner change size once:
+  review and approve them.
+- **A blocked entry says what to do, and takes no decision.** Every refusal and every line about
+  masks no approval passes names the fix for its cause: `make the masks smaller` (over 50%),
+  `mask the value, not the story root`, `give data-volatile a reason, e.g.
+  data-volatile="relative time"`, `put data-volatile on the element that shows the value (a
+  leaf)` (was: `reduce the masks` or `until the masks are smaller` for every cause), in the
+  engine's refusal, `[check] mask:`, SARIF and the tools. The server refuses approve, reject and
+  the a11y decisions on such an entry (409, `the masks block this entry, and the author fixes it
+  (no decision is needed): …`), and `pxsig approve plan` leaves it out with the same words. In the
+  dashboard it is Blocked: out of the review (not in "to review", a session's progress or its
+  arrows, nor the a11y queue), with no Reject or Approve in the inspector (the line is in their
+  place; the A and R keys send nothing; Re-check stays), in Overview's "Blocked by masks, the
+  author fixes them" item and the Review Stories filter "Blocked by masks". It still fails the
+  check, CI and doctor. The Masks section shows the line also when no mask was painted (a
+  `data-volatile` with no reason or on a container).
+  To update: nothing to do; a rejection recorded before on such an entry stays in the log.
+- **A refused request leaves the dashboard usable.** A refused decision or re-check in the
+  inspector is said under its header; a card's re-check, and the React analysis' Skip, Cancel,
+  Measure and Analyse, say it beside their button. None is a browser alert any more, which held
+  the page with the button reading "Approving…" until it was closed.
+  To update: nothing to do.
+- **The engine's result cache names the engine build.** A cached verdict is reused only by the
+  build that wrote it (the hash of its executable), so two builds of one version, a pull
+  request's and main's, never reuse each other's verdicts.
+  To update: nothing to do; the first check after an upgrade runs uncached.
+- **A `data-volatile` element's box must hold all of its content.** A mask paints its element's
+  box, never more, so anything the value paints outside the box is compared: the check passed or
+  failed by which value rendered. Found in pxsig's own examples on Linux: a fixed `width: 4ch`
+  under `letter-spacing: 1px` let the last digit paint 3px past the box. The capture now checks the
+  pixels after its screenshot, which it leaves as it was: it renders the frame with each
+  `data-volatile` element's content hidden, then shown again, and counts any pixel outside the
+  painted boxes that differs.
+  Such an element is a problem (`overflow` in `<id>.masks.json`): the entry fails as
+  `mask content outside its box: <element>: <n> px outside, up to <d> px past its box`, and no
+  approval passes it (the fix: let the data-volatile element's box hold all of its content). The
+  mask is never widened: what is painted, recorded and compared is still the element's box.
+  Selector masks (`ignore`, `capture.ignore`) are not checked. Their elements may be containers
+  whose overflow is not the value.
+  To update: where an entry fails this way, change the element's CSS so its box holds its content
+  (drop a fixed `width`, or allow for the `letter-spacing`, shadow or transform), then check the
+  entry again. No baselines change.
+- **UI contract 1.7.0: the top bar's responsive rules, and a name for More.** The dashboard now
+  decides what its top bar shows by measuring the bar, not by fixed container-query widths: as it
+  narrows, the last check goes first, then the modes tag, then the review status beside the review
+  button; then the workspace label is capped at 24ch (always below 1024px); then the section links
+  move into More (Help kept); then the label truncates; then the end controls go compact (the
+  project picker narrows, the review button takes a short label, the connection and the status
+  become their glyphs). Widening reverses it, and a wider bar never shows fewer links or controls.
+  The last check now shows whenever every link fits beside it, and while it is hidden the
+  connection badge's hint and accessible name carry it. The bar is one line from 1440 down to 390
+  CSS px with no sideways scroll, and every section is reachable down to 640px. `NavList` takes a
+  new optional prop, `moreLabel`: the More trigger's accessible name from pxsig's copy ("More
+  sections"). `pxsig dashboard check` sweeps the bar over widths with a new rule, `top-bar`, which
+  fails the check on a label taking two lines, Help or More clipped or covered, a section missing
+  from both the bar and More, More out of order, fewer links on a wider bar, or a sideways scroll;
+  `pnpm screens:check` fails on it too. `pxsig dashboard gaps` reports an adapter's `topBar`
+  declaration. The plain adapter (and examples/custom-ui) draws its More menu in a portal into
+  the bar's `<nav>` (a landmark), named by `moreLabel`, with its items at the small control size,
+  and closes it on Escape from the trigger too. The hydrotik adapter (the bundled dashboard) now names More from pxsig's copy too:
+  it passes `moreLabel` to the design system's `NavItems`, so its trigger and menu are "More
+  sections" (they were "More navigation"), and its `topBar` declaration meets every rule. The
+  `one-line` region rule no longer counts an open More menu that an adapter draws inside the bar
+  (a portal into the nav) as part of the bar's line, and the `overlap` layout rule no longer
+  reports the page's controls under an open menu (its own items still may not overlap).
+  To update: an adapter written for 1.6.0 keeps building, but check its top bar against "Top bar"
+  in docs/ui/build-adapter.md: `TopNav` must put `className` on the bar's root (with the brand, the
+  `NavList` and the `NavEnd` side by side in it); each link and the More trigger one line at its
+  natural width (`white-space: nowrap`, `flex-shrink: 0`); links measured again on resize, font
+  load and a label or count change; the list `flex: 1 1 0`, never narrower than More and the kept
+  link, clipping; the More menu not cut by that clipping; `NavEnd` after the list, never wrapping.
+  Name the More trigger (and its menu) with `moreLabel`, add a `topBar` object to conformance.json
+  (one key per rule: `root`, `oneLine`, `measure`, `list`, `more`, `keyboard`, `moreLabel`, `end`,
+  each `true` or a note), set `"contract": "1.7.0"`, rebuild, and run `pxsig dashboard check`: fix
+  any `top-bar` finding it lists.
+- **Elements marked `data-volatile` are masked, and masks are recorded and reviewed.** Content that
+  varies from run to run (a time, "3 minutes ago", a commit hash, a build number) no longer fails a
+  check when the element that shows it carries `data-volatile`: the inside of its box is painted
+  over in every capture, in every project, with no configuration, while a change to the box's size
+  or position still shows. The attribute's value is the reason (`data-volatile="relative time"`).
+  Each render records the masks that applied (`<id>.masks.json`: selector, source, reason, masked
+  pixels; no paths), and a baseline approved from it keeps them in its `.psig` header (`masks`).
+  A mask added, removed or grown fails the entry with the reason `masks changed: …`, for a person
+  to approve; nothing is approved automatically. Text under a mask is left out of the text record,
+  and the a11y pass still runs on it. A project with no `data-volatile` element and no
+  `capture.ignore` renders and checks exactly as before; masks from a story's `ignore` against a
+  baseline approved before this version are not a change.
+  To update: on the component that shows a varying value, set `data-volatile` (with a reason, if
+  you like) on the element that shows it, e.g. `<time data-volatile="relative time">`. Adopting it
+  (or `capture.ignore`) gives one "masks changed" entry per affected entry: review and approve them
+  once, in the pull request that adds the attribute. Fixed story data (a fixed clock, fixed ids)
+  stays the better answer where it is possible, since a fixed value is still compared.
+
+### Added
+
+- **Check rows carry `masksBaseline`** beside `masksChanged`: the baseline's masks with their
+  areas (`[]` when it recorded none), for a reviewer to compare (docs/spec.md, Masks).
+- **`pxsig dashboard parity`.** Sets each contract component your adapter pairs with a story of
+  your design system beside that story, both rendered in one Chromium with pxsig's capture flags,
+  in both themes, and lists what differs element by element: box model, font (and whether the face
+  loaded), and the rendered alignment of a dot or icon on its label's capitals. Colour stays with
+  the region rules. You supply your design system's built Storybook (`--storybook`, the folder
+  holding `iframe.html`), a `parity` list on each component to compare in the adapter's
+  `conformance.json` (story id, URL args, the component's props, expected differences with their
+  reasons; `parity.storyRoot` and `parity.globals` at the top when your Storybook needs them), and
+  the project's Vite to build the comparison page (or `--build`). Each missing piece is named in a
+  setup error (exit 2); a difference not listed as expected, or a pair that did not render, exits 1.
+  The parity page ships in the package (`dashboard/parity/`). docs/ui/build-adapter.md, "Source
+  parity".
+- **The drift alarm.** A passing entry keeps its old baseline, so a change the gate does not see
+  passed with nothing recording it. Every check now counts the passing entries whose render
+  differs from the baseline: check.json's `summary.drift` (`count`, `of`, `share`, `otherEnv`,
+  `warnAt`, `warn`), a `[check] drift: 12 of 162 passing entries (7.4%) differ from their
+  baseline, within the gate` line, a `Drift:` line in summary.md, one `pxsig/drift` note in
+  `--sarif`, a `Drift` row in `pxsig doctor` (`drift` in `--json` and `pxsig_doctor`), and
+  "Passing, but differs from the baseline" in the dashboard's Open Items while any entry drifts.
+  Entries rendered in a different environment than their baseline are counted apart
+  (`otherEnv`). When at least 5 passing entries drift and they are at least 20% of the passing
+  entries, `pxsig doctor`, the dashboard's Coverage view, the check's line and summary.md warn
+  (`drift-high`); `drift.warnAt` (`{ "count": 5, "share": 0.2 }`, at most 100 and 0.5) tunes it,
+  and `integrity.severity` can raise it to error but not lower it. It changes no verdict and no
+  exit code ([docs/integrity.md](docs/integrity.md#drift)).
+- **Report to pxsig: a gate report for an issue, when the gate got an entry wrong.** A change
+  flagged when nothing visible changed, or a visible change that passed, is worth an issue on
+  hydrotik/pxsig, and pxsig now prepares it for one entry: the text in the shape of the new issue
+  form "The gate got it wrong" (the pxsig version and engine build, the resolved gate with the color
+  rule, the metrics, every reason, the changed regions' boxes, the environment class and the mode),
+  one PNG with the baseline, the render and the diff side by side, cropped to the changed regions
+  (or the full capture), and the link that opens the form with its fields filled. The story id is
+  replaced with `entry-1` unless it is kept, and no path, user name or host name is ever in it. An
+  image-free report lists each changed region's average colors instead of any image. pxsig opens
+  no network connection for it and posts nothing: the person opens the link and posts.
+  - The dashboard's inspector has **Report to pxsig** beside Re-check: it re-renders the entry on
+    this machine first and says whether it still fails the gate (a dry re-render: the entry's
+    render, its result and any review decision stay as they are), then previews exactly what is
+    copied, with Full capture, Keep story ID and Image-free, and says the issue is public and
+    cannot be fully removed. Copy text, Copy image (one PNG; Save image where the clipboard takes
+    no images), Open issue and Cancel; nothing is copied until a copy button is pressed. A page
+    without the dashboard link can prepare one too.
+  - `pxsig report <id> [--full] [--keep-id] [--no-image]` writes it to the store's
+    `reports/gate-report/<id>/` and prints the link. Without an id, `pxsig report` is the static
+    dashboard, as before.
+  - The MCP tool `pxsig_gate_report` prepares the same report and never posts; its description,
+    the MCP instructions and docs/agents.md say an assistant asks the person before anything is
+    posted publicly.
+  - The server's `GET /__pxsig/gate-report` and `POST /__pxsig/gate-report/self-check`
+    (docs/server.md).
+  - docs/gate-issues.md: what a report holds and never holds, and how to post one.
+- **Issue forms.** hydrotik/pxsig's issues start from a form: Bug, The gate got it wrong (with a
+  required checkbox that the images contain nothing confidential), Feature and Documentation.
+  Blank issues are off; security problems link to private vulnerability reporting.
+- **`pxsig doctor` reports `project-empty`.** A setup warning for a project with no stories (none
+  in its story index, none in its manifest), naming the likely cause: a package registered as a
+  project that is not one, such as a dashboard adapter. `integrity.severity['project-empty']`
+  changes its severity.
+- **Unreviewed baselines.** A baseline no person approved (written by `pxsig migrate`,
+  `approve verify --adopt`, `check --update`, an assistant, or outside pxsig) is flagged, told from
+  `approvals.ndjson`: reviewed means a person's line (the dashboard or the CLI, no assistant
+  marker, not an undo) logged exactly the bytes it holds now. The ledger carries `unreviewed` on
+  each such entry and `summary.unreviewed` (count, review queue, new, the next ids); `pxsig status`,
+  `pxsig doctor` and the MCP `pxsig_status` show them, and the Coverage view has an "Unreviewed"
+  tile that lists them in queue order. The queue (baselines written before 0.7.7, or never logged)
+  only shrinks; one written without review from 0.7.7 on is named in a `unreviewed-new` setup
+  warning. Nothing fails on either. `approvals.reviewOrder` may name a JSON file ordering the
+  queue (`first`: components first; `usage`: then the most used).
+- **Masks in the dashboard.** The inspector has a Masks section listing each mask on the render:
+  its selector, where it came from (`data-volatile`, the story, the project, the workspace), its
+  reason and its share of the capture; when the masks changed since the baseline, each is marked
+  Added, Removed or Grew with its share in the baseline and in the render. The header and the
+  entry's card show Masks changed and Large mask (a mask over 25% of the capture). Overview's Open
+  items lists the entries with a large mask while there are any, and Review Stories filters them
+  ("Masks over 25% of the capture").
+- **A masks-only change is not an empty view.** When the masks alone failed an entry and no pixel
+  differs by more than the tolerance, the change stepper reads "Masks changed", Pixel Changes says
+  "No pixel differs by more than 16. Only the masks changed.", and the Masks section comes first
+  in the side panel with the masks before and after.
+- **Help: "Values that vary".** `pxsig help volatile` and the dashboard's Help ("Values That
+  Vary"): fixed data first (a fixed clock, fixed ids, a fixed hash), then `data-volatile`,
+  `capture.ignore` / `capture.addIgnore`, how masks are recorded and reviewed, the 25% warning
+  and the one-time "masks changed" approvals on adoption.
+- **`capture.ignore` and `capture.addIgnore` mask selectors in every story.** Set in
+  `pxsig.config.json` or under the workspace file's `defaults`. `capture.ignore` replaces the list
+  inherited from the workspace, as arrays do; `capture.addIgnore` adds to it. `pxsig config` lists
+  each selector with the layer that set it. Both are off by default.
+- **A mask over 25% of a capture is a warning.** `pxsig check` prints `[check] mask:` lines,
+  summary.md gains a Masks line, and `check --sarif` adds a `pxsig/large-mask` warning per mask
+  (`pxsig a11y --sarif` is unchanged). Warning only: it changes no verdict or exit code. Check rows
+  carry `masks`, `masksLarge` and, on a change, `masksChanged` (docs/spec.md, section 7).
+- **Masks in the MCP tools.** `pxsig_list` (and every answer that lists entries in brief) carries
+  `masksChanged` (added, removed, grew: selectors) when the masks differ from the baseline's, and
+  `masksLarge` for a mask over 25% of the capture. `pxsig_entry` adds the render's masks in full
+  (`masks`: selector, source, reason, share of the capture), the baseline's beside a change
+  (`masksBaseline`) and one sentence per large mask (`maskWarnings`) (docs/mcp.md, Masks).
+- **`pxsig doctor` lists the masks in force.** A Masks row says that every `[data-volatile]`
+  element is masked wherever it renders, how many selectors the config adds and how many baselines
+  record masks; a Masks table lists each `capture.ignore` / `capture.addIgnore` selector with the
+  layer that set it (workspace defaults or project config), as `pxsig config` does. `--json` and
+  `pxsig_doctor` carry it as `masks`. Information only: the exit is unchanged.
+
+### Changed
+
+- **The bundled dashboard's badges follow its design system.** The reference adapter draws a
+  `success`, `warning` or `danger` badge as the design system's own tinted variant (a wash, a
+  border and a dot in the tone's colour, the text in the tone's colour); `emphasis` does not change
+  those. `neutral` and `info` badges are drawn as before.
+- **The reference dashboard's components take their design system's reset and body type.** The
+  prebuilt dashboard draws the design system's components as its own stories draw them: no
+  browser padding or margins on their elements, border-box inside them, their buttons and fields
+  in the surrounding font, and the body's line height (1.5) on the outermost of them, scoped to
+  those components and nothing else of the page. Buttons, links and the copy button's text sit as
+  in the design system; most screens move by a few pixels.
+- **Assistants are told never to pass an entry by masking it.** The instruction `pxsig setup`
+  prints, the MCP server's instructions, the descriptions of `pxsig_check`, `pxsig_list`,
+  `pxsig_entry` and `pxsig_rejected`, and a rejection's prompt all say, word for word: "Never add a
+  mask, ignore, `data-volatile` or raise a threshold to make an entry pass; flag the entry for a
+  person instead." docs/agents.md has a Masks section.
+  `pxsig setup` never edits an instruction file that exists: add the two lines by hand
+  (`pxsig setup --print` prints the whole instruction).
+- **pxsig and the Storybook addon ship a self-test.** Each tarball now holds
+  `test/installed/package.test.mjs` (Node built-ins only: no network, browser or engine), as the
+  platform packages hold `test/binary.test.js`. In pxsig it checks that `pxsig --version` reports
+  the installed version and the shipped UI contract, that every `bin` and `exports` target is in
+  the package, and that `pxsig/workspace`, `pxsig/psig`, `pxsig/dashboard` and the UI catalog
+  resolve by name; in the addon, that the preset gives Storybook its `managerEntries`,
+  `managerHead` and `staticDirs`, that `manager.mjs` parses and every helper it imports is shipped,
+  and that the helpers load without Storybook. Run it from a project with
+  `node --test "node_modules/pxsig/test/installed/*.test.mjs"` (or the addon's folder). The
+  install smoke test now packs and installs the addon too and runs all three self-tests.
+- **The bundled dashboard shows a tone one way.** pxsig's own dashboard (the reference adapter)
+  now keeps region rule R4: a badge draws its text in the tone's colour over a neutral wash and
+  border (it was a tinted wash and border), a stat card colours its value (it was a coloured start
+  edge with the value in the text colour), and a top-bar count that asks for action draws its
+  digits in the accent on a neutral pill (it was an accent fill). Every tone meets WCAG AA as text
+  on its background in both themes. `pxsig dashboard check` on it now reports no region-rule
+  finding.
+- **The plain adapter's top-bar counts take their tone.** A count that asks for action ("Review
+  Stories 2") draws its digits in the accent, a plain total in the text colour, as R4 says; the
+  plain adapter drew every count the same. The same change is in `examples/custom-ui`.
+- **The dashboard sits on whole pixels.** Its own text that other parts stack under now has whole-pixel
+  line heights (micro labels 14px, the lede 22px, the inspector's side panel 20px, its text
+  changes 18px, the heatmap legend 16px, the review session's progress row and every side-panel
+  section 20px), the inspector's signature images are whole pixels tall, the reference adapter
+  draws the design system's icons as blocks, as its stylesheet does (a select's chevron sat 3px
+  above its label), the top bar's approval badge is no taller than the badge, and the gate
+  report's preview is a fixed 7rem tall (scaled to fit; the copy is still the full PNG). Small components on pxsig's own screens no longer land on half pixels, where the
+  browser draws their borders and text apart.
+- **pxsig's own screens hold source parity and alignment at zero.** The screens workflow fails on
+  any alignment finding and any source-parity difference on pxsig's own screens, with no
+  exceptions: the design system the reference adapter draws with sits on whole pixels too.
+
+### Fixed
+
+- **`pxsig dashboard check`: a screen that clicks a control enabled late no longer scrolls only
+  sometimes.** Playwright retries a click on a control that is not enabled yet, and its later
+  attempts scroll the control into view; in a dialog that clips its overflow, one of them moved the
+  whole dialog up, depending on how soon the control was enabled (the inspector's Reject waits for
+  the entry's images). A `click` action now waits for its target to be enabled and the layout to
+  hold still, then clicks without a retry. Screens rendered as before match their baselines.
+- **`pxsig dashboard check`: a screen that clicks, then scrolls, no longer shows a hover only
+  sometimes.** The click left the pointer where the scroll brought other content, and the browser
+  re-hovers it on a timer of its own, so a row under the pointer was highlighted in some captures
+  and not in others. After a `scroll` action that follows a `click`, the pointer moves to the
+  page's corner, where nothing hovers. A screen like that shows nothing hovered from now on: its
+  baseline changes once, to be approved.
+- **`pxsig dashboard check` no longer reports a control scrolled out of the window as overlapping.**
+  A control whose centre is outside the window (scrolled under a sticky top bar) is not measured by
+  the `overlap` rule, as it is not drawn there.
+- **Esc in a dialog over a dialog closes only the top one** in the plain adapter (and the example
+  adapter in `examples/custom-ui`): a dialog's cancel no longer closes the dialogs around it.
+- **The inspector's header sits on whole pixels.** On the reference adapter its title and
+  description took the dialog's line-height ratios at pxsig's sizes (17.5px and 15.75px), so the
+  header was 94.25px tall and everything below it, the stage and the side panel, sat on a quarter
+  pixel, with the review buttons centred on 41.625px. They are now 18px and 16px: the header is
+  95px and the buttons sit on a whole pixel.
+- **The Overview's Changed Entries per Run chart is 85px tall, a whole pixel.** It was a third of
+  the Runs page's 16rem, 85.33px, which the chart's axes then laid out on a fraction of a pixel.
+- **`pxsig dashboard check`'s layout rules skip visually hidden elements.** An element clipped to
+  nothing (`clip-path: inset(50%)`, or `clip: rect(0 0 0 0)`) draws none of itself, but its
+  overflow counted as clipped content, so a slider's range input (Base UI hides it in the thumb at
+  the thumb's size) read as "cuts off its content" once the thumb was narrower than a range input's
+  minimum width. Such elements no longer count for any layout rule; one clipped only in part still
+  does.
+- **A Markdown table cell keeps a backslash before a pipe inside the cell.** Plain (Markdown)
+  output escaped a cell's pipes but not its backslashes, so a value such as `a\|b` printed as
+  `a\\|b`, where the pipe ended the cell and shifted the row's columns. Backslashes are now escaped
+  too, and a Windows line break becomes a space like a Unix one.
+- **A mask's share of the capture is measured on the image that is compared.** The masked pixels
+  were counted on the capture before trim and divided by the trimmed image, so a mask over the
+  whole component (which trim crops down to 16×16) made every mask on that entry read 100% of the
+  capture and warn. The capture now also records each mask's boxes, and the area is the part of
+  them inside the trimmed image, as a share of that image. Verdicts are unchanged; a baseline
+  approved with the earlier area reads no "masks changed", since the new area is never larger.
+- **The plain adapter colours every badge tone.** Its `Badge` drew `warning` and `info` in the
+  ordinary text colour; each tone now colours the badge's text in that tone's colour (`info`: the
+  accent), as region rule R4 says, with the wash, border and fill left neutral (`solid` still draws
+  as `subtle`). Each tone colour meets WCAG AA as text on the page, card and badge backgrounds in
+  both themes. The same change is in `examples/custom-ui`.
+- **The plain adapter's top bar stays on one line.** Its section links wrapped onto a second line
+  when the bar was narrow (with several projects at 1280 px, and at 900 px), which breaks region
+  rule R1, so `pxsig dashboard check` failed on it. The links that do not fit now move, the last
+  first, into a More menu at the end of the bar; Help (`keep`) stays in the bar at every width. The
+  menu is a menu button: Enter, Space or the arrow keys open it, the arrow keys, Home and End move
+  through it, and Escape closes it and returns focus to the button. Its `TopNav` is now `full` in
+  its conformance, and `pxsig dashboard check` passes on it with no known breaks. The same change is
+  in `examples/custom-ui`.
+- **The bundled dashboard's design-system components have their intended size.** The reference
+  adapter loaded its design system's fonts but not its global box-sizing reset, so every one of
+  its components was `content-box` and grew by its border and padding: a badge was 22px instead of
+  20px, a keyboard key 22px instead of 20px, a slider thumb 20px instead of 16px, a stat card 35px
+  wider, and data-grid cells and card edges off by a pixel or two. The adapter now applies that
+  reset to the design system's own elements only (the classes its stylesheets define, prefixed
+  through the new `classPrefixes` adapter build setting), and leaves the dashboard's own markup as
+  it was.
+- **An open More menu closes when the window widens and every section fits.** On the reference
+  adapter (the bundled dashboard) the menu stayed open with its trigger hidden: an empty box sat at
+  the top left of the window, and the menu came back open with its sections when the window
+  narrowed again. The design-system pin moves to hydrotik's fix, which also closes a section menu
+  that moves into More while open. The plain adapter and `examples/custom-ui` already closed it.
+  The top-bar flow test now checks this on every adapter.
+
+### Security
+
+- **The container image build checks out the release tag's commit, never a name.** The image
+  workflow resolved the release as the bare name `v<version>`, which a branch of the same name would
+  have shadowed (release tags are protected; branches named `v*` are not). It now checks out the
+  commit of the protected tag, and after a release run only if that is the commit the release built.
+  No checkout keeps the job's token in its git config, so the examples run inside the image cannot
+  read it.
+
+### Documentation
+
+- **The adapter guide says an adapter is not a project.** `docs/ui/build-adapter.md` gains "An
+  adapter is not a project": no `pxsig.config.json` in the adapter's folder and no `projects` entry
+  in `pxsig.workspace.json`, where the adapter lives, its one registration (`dashboard.ui` in the
+  project's `pxsig.config.json`), and how `pxsig dashboard build` and `pxsig serve` find and load
+  it, with a worked file tree for a monorepo. A short "What a faithful adapter keeps" list
+  summarises what the contract rules and component sections already require.
+- **The adapter guide names `project-empty`.** "An adapter is not a project" in
+  `docs/ui/build-adapter.md` says that `pxsig doctor` reports a project with no stories as
+  `project-empty`, and that an adapter registered as a project is the usual cause.
+- **The region rules an adapter keeps.** The UI contract (`contract.ts`) and
+  `docs/ui/build-adapter.md` now state, region by region, what an adapter may not change: the top
+  bar on one line at every width, and a toolbar's controls and a row of actions on one line at
+  1280 CSS px (R1); one control height per row, with a table's actions at the small size (R2);
+  headers, headings and labels in the case of pxsig's copy, never re-cased by the adapter, stat
+  labels in capitals (R3); and one way to show a tone, as the plain adapter draws it: the
+  value of a stat card, the text of a badge and the glyph of a status badge take the tone's
+  colour, while borders, edges and washes stay neutral (R4). "Region rules" in build-adapter.md is
+  the layout map; "What a faithful adapter keeps" and the `TopNav`, `Button`, `CardTitle`,
+  `StatGroup`, `DataTable`, `StatusBadge`, `Badge` and `Toolbar` sections say the same. No
+  component or prop changes, so the contract version stays 1.5.0.
+- **Source parity for adapters.** docs/ui/build-adapter.md, "Source parity": an adapter's
+  `conformance.json` may pair a contract component with its design system's story (`parity`:
+  story, args, the component's props, expected differences with reasons), and this repository
+  compares the reference adapter's components with those stories, box model, font and rendered
+  alignment, in its screens workflow.
+- **The platform packages and the Storybook addon have full READMEs on npm.** Each
+  `@pxsig/cli-<platform>-<arch>` README says what the package is, that `pxsig` installs it as an
+  optional dependency, how pxsig finds the binary (`PXSIG_BIN` first), which hosts have no package,
+  and how to verify the binary (`npm audit signatures`, `gh attestation verify`), with links pinned
+  to the release. `@pxsig/storybook-addon`'s README covers its options, how it finds the server,
+  the panel and sidebar, the deployed read-only snapshot, and the `pxsig snapshot` it runs on
+  `storybook build` (`snapshot: false` turns that off).
+- **Badges may be micro caps.** Region rule R3 now has a second exception, set by the contract: a
+  `Badge` or `StatusBadge` may be drawn in tracked micro caps (`text-transform: uppercase`), like a
+  stat label; the text passed stays as it is. `pxsig dashboard check`'s `casing` rule lets an
+  uppercase badge pass and still fails any other re-casing, of a badge or anything else. R4 now
+  names a `NavLink`'s count: `countTone` colours its digits.
+- **"Top bar" in docs/ui/build-adapter.md**: the collapse order, the minimum supported width (640px,
+  graceful to 390px), More's contents, placement and keyboard, and what an adapter's `TopNav`,
+  `NavList` and `NavEnd` must do; the `TopNav`, `NavList`, `NavLink` and `NavEnd` sections say the
+  same. `NavEnd`'s section no longer says the dashboard hides its children with container queries
+  on its `className`. docs/ui/features.md lists the top bar's wide, narrow and compact states.
+
 ## 0.7.6 - 2026-11-10
 
 The decisions release. No committed log line says who decided or why: approval, accessibility,
