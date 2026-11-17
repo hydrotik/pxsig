@@ -44,7 +44,7 @@ const framed = () => typeof window !== 'undefined' && window.top !== window.self
  * Whether this page can decide, before any click (`GET /__pxsig/status` → `approving`): `allowed`
  * when it holds the dashboard link's session, the folder to run the command in (its name, never a
  * path) and the command. Null while
- * unknown: a static report, a frame (it decides through the small window below), an older server.
+ * unknown: a static report, a frame (it decides through the small window below), no answer yet.
  */
 export type Approving = { allowed: boolean; folder: string; command: string } | null;
 let approving: Approving = null;
