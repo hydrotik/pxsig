@@ -122,4 +122,3 @@ export const lede = style({
   // 22px: the relaxed 1.6 of 14px is 22.4px a line, and what follows two lines is off whole pixels.
   lineHeight: '1.375rem',
 });
-export const h2 = style({ margin: 0, fontSize: v.fontSize.lg, fontWeight: v.fontWeight.semibold });

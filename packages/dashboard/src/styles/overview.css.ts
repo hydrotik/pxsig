@@ -115,7 +115,6 @@ globalStyle(`${thumb} img`, {
   blockSize: '100%',
   objectFit: 'contain',
 });
-export const thumbMask = style({ mixBlendMode: 'normal', opacity: 0.85 });
 export const cardBody = style({
   display: 'flex',
   flexDirection: 'column',
