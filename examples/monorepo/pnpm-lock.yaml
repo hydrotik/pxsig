@@ -7,6 +7,11 @@ settings:
 overrides:
   '@joshwooding/vite-plugin-react-docgen-typescript>glob': ^14.0.3
 
+patchedDependencies:
+  picomatch@4.0.7:
+    hash: 924be6acd8dc2d6d3ff9a87c18827273df0dda7bdc227c665c2b42172cb6de24
+    path: patches/picomatch@4.0.7.patch
+
 importers:
 
   .:
@@ -2165,7 +2170,7 @@ snapshots:
     dependencies:
       '@types/estree': 1.0.10
       estree-walker: 2.0.2
-      picomatch: 4.0.7
+      picomatch: 4.0.7(patch_hash=924be6acd8dc2d6d3ff9a87c18827273df0dda7bdc227c665c2b42172cb6de24)
     optionalDependencies:
       rollup: 4.68.3
 
@@ -2606,9 +2611,9 @@ snapshots:
 
   esutils@2.0.3: {}
 
-  fdir@6.5.0(picomatch@4.0.7):
+  fdir@6.5.0(picomatch@4.0.7(patch_hash=924be6acd8dc2d6d3ff9a87c18827273df0dda7bdc227c665c2b42172cb6de24)):
     optionalDependencies:
-      picomatch: 4.0.7
+      picomatch: 4.0.7(patch_hash=924be6acd8dc2d6d3ff9a87c18827273df0dda7bdc227c665c2b42172cb6de24)
 
   fsevents@2.3.3:
     optional: true
@@ -2747,7 +2752,7 @@ snapshots:
 
   picocolors@1.1.1: {}
 
-  picomatch@4.0.7: {}
+  picomatch@4.0.7(patch_hash=924be6acd8dc2d6d3ff9a87c18827273df0dda7bdc227c665c2b42172cb6de24): {}
 
   playwright-core@1.65.0: {}
 
@@ -2925,8 +2930,8 @@ snapshots:
 
   tinyglobby@0.2.17:
     dependencies:
-      fdir: 6.5.0(picomatch@4.0.7)
-      picomatch: 4.0.7
+      fdir: 6.5.0(picomatch@4.0.7(patch_hash=924be6acd8dc2d6d3ff9a87c18827273df0dda7bdc227c665c2b42172cb6de24))
+      picomatch: 4.0.7(patch_hash=924be6acd8dc2d6d3ff9a87c18827273df0dda7bdc227c665c2b42172cb6de24)
 
   tinyrainbow@2.0.0: {}
 
@@ -2978,8 +2983,8 @@ snapshots:
   vite@6.4.6:
     dependencies:
       esbuild: 0.25.12
-      fdir: 6.5.0(picomatch@4.0.7)
-      picomatch: 4.0.7
+      fdir: 6.5.0(picomatch@4.0.7(patch_hash=924be6acd8dc2d6d3ff9a87c18827273df0dda7bdc227c665c2b42172cb6de24))
+      picomatch: 4.0.7(patch_hash=924be6acd8dc2d6d3ff9a87c18827273df0dda7bdc227c665c2b42172cb6de24)
       postcss: 8.5.32
       rollup: 4.68.3
       tinyglobby: 0.2.17
