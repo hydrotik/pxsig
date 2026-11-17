@@ -1,6 +1,6 @@
 {
-  "pxsig": "0.7.5",
-  "measuredAt": "2026-11-10T03:37:50.139Z",
+  "pxsig": "0.7.6",
+  "measuredAt": "2026-11-16T03:41:55.635Z",
   "node": "v22.23.4",
   "runs": 5,
   "note": "Times in ms, per OS (os.platform()). linux: the nightly run's bench-results. darwin: run.mjs --out on the maintainer's Mac. Refreshed at each release (docs/releasing.md).",
@@ -13,22 +13,22 @@
       "data": 104
     },
     "linux": {
-      "affected": 199,
-      "list": 114,
-      "doctor": 416,
-      "plan": 669,
-      "data": 216
+      "affected": 129,
+      "list": 67,
+      "doctor": 278,
+      "plan": 393,
+      "data": 129
     }
   },
   "release": {
-    "pxsig": "0.7.5",
+    "pxsig": "0.7.6",
     "os": "linux",
     "times": {
-      "affected": 190,
-      "list": 105,
-      "doctor": 378,
-      "plan": 647,
-      "data": 201
+      "affected": 124,
+      "list": 63,
+      "doctor": 245,
+      "plan": 389,
+      "data": 127
     }
   }
 }

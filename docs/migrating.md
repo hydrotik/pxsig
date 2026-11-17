@@ -2,10 +2,56 @@
 
 ## Upgrading to 0.7
 
-0.7.7: `@babel/core` and `babel-plugin-react-compiler` are no longer optional peers of pxsig, so
-package managers no longer list them with it. Nothing to do: the React Compiler analysis resolves
-both from the project as before, and a project that wants it installs both
-(`npm install -D babel-plugin-react-compiler @babel/core`).
+0.7.7: masks are recorded and reviewed like any other change, the gate fails colour changes in
+flat areas and cells, and captures draw text in grayscale and raster every tile in full. Each
+change has its `To update:` line in `CHANGELOG.md` under 0.7.7; by who acts:
+
+**Baselines: one re-approval, in one pull request.**
+
+- Re-render every baseline where the baselines are made (the pinned container) and approve them
+  together: text shifts once on Linux, some rounded edges shift, and every baseline reports
+  `env-mismatch` (`browser.launchArgs`) until it is re-rendered. Baselines made on macOS change
+  little or not at all; re-render them there too to clear the mismatch. With `env.strict` or
+  `--strict-env`, run that check without it.
+- In the same pass, approve the entries marked "masks changed: grew" with `--allow-masks`: a mask
+  edge on a fractional pixel now covers that whole pixel (at most 1px per edge).
+- Entries whose colours drifted while the gate passed show as changed once: approve the intended
+  ones. To loosen the colour rule for a project, set `gate.color` in `pxsig.config.json` (for
+  example `{ "deltaE": 5, "minArea": 128 }`); `pxsig doctor` reports it off or past its limits.
+- Entries whose story mask reaches the capture's bottom-right corner change size once (trim keeps
+  masks): approve them.
+
+**Stories and components.**
+
+- `data-volatile` marks only the element that shows the value, with a reason:
+  `<time data-volatile="relative time">`. Adopting it (or `capture.ignore`) gives one "masks
+  changed" entry per affected entry: approve them once, in the pull request that adds it. Fixed
+  story data (a fixed clock, fixed ids) stays the better answer where it is possible.
+- A mask over half the capture or on the story root fails the entry, and no approval passes it:
+  mask the value, not the component, or give the story fixed data (`pxsig help volatile`).
+- A `data-volatile` element's box must hold all of its content: drop a fixed `width`, or allow
+  for its `letter-spacing`, shadow or transform.
+
+**Scripts and CI.**
+
+- `pxsig check --update` and `pxsig baseline` refuse a masks change without `--allow-masks` (or
+  `--allow-masks <ids>`); `approve plan` plans a masks change as its own class, blocked unless
+  named in `--allow-masks <ids>`.
+
+**Adapter authors** ([ui/build-adapter.md](ui/build-adapter.md)).
+
+- `pxsig dashboard check` fails an adapter that breaks a region rule: change the adapter for each
+  finding (the top bar on one line, a toolbar's controls and a table's actions at the small size,
+  no re-casing, a tone as the colour of a value, badge text or glyph), keep `className` on each
+  component's root, and mark a deliberate exception with `data-layout-allow="<reason>"`.
+- UI contract 1.7.0: check the top bar against "Top bar", name More with `moreLabel`, add a
+  `topBar` object to conformance.json, set `"contract": "1.7.0"`, rebuild and fix any `top-bar`
+  finding. An adapter written for 1.6.0 keeps building.
+
+**Nothing to do** for the rest, listed under "Upgrading from 0.7.6" in `CHANGELOG.md`. Among them,
+`@babel/core` and `babel-plugin-react-compiler` are no longer optional peers of pxsig: the React
+Compiler analysis resolves both from the project as before, and a project that wants it installs
+both (`npm install -D babel-plugin-react-compiler @babel/core`).
 
 0.7.6: no committed log line says who decided or why, Reject asks for an optional reason, and text
 capture is on by default. Lines written before 0.7.6 keep their `by` and `reason`; nothing rewrites
