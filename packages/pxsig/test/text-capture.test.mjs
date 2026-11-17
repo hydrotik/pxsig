@@ -18,7 +18,7 @@ import { CHROMIUM_ARGS } from '../src/lib/capture/browser.mjs';
 import { readText } from '../src/lib/text/config.mjs';
 import { tempDir } from './fixture.mjs';
 import { needs } from './server-helpers.mjs';
-import { renderOn, standIn } from './text-helpers.mjs';
+import { howDiffer, renderOn, standIn } from './text-helpers.mjs';
 /** @import { Page } from 'playwright' */
 /** @import { TextRecord } from '../src/types/text.js' */
 
@@ -239,11 +239,8 @@ test(
     await renderOn(browser, sb.url, entries, off, { text: false });
     assert.deepEqual(readdirSync(on).sort(), ['text--story.boxes.json', 'text--story.png']);
     assert.deepEqual(readdirSync(off), ['text--story.png']);
-    assert.equal(
-      sha(join(on, 'text--story.png')),
-      sha(join(off, 'text--story.png')),
-      'reading changes no pixel'
-    );
+    const differ = howDiffer(join(on, 'text--story.png'), join(off, 'text--story.png'));
+    assert.ok(!differ, `reading changes no pixel: ${differ}`);
     const rec = JSON.parse(readFileSync(join(on, 'text--story.boxes.json'), 'utf8'));
     assert.deepEqual(
       rec.runs.map((/** @type {{ s: string }} */ x) => x.s),
