@@ -99,7 +99,7 @@ export async function measure(page, step) {
   const s = await page.evaluate(() => structuredClone(window.__pxsigRenders));
   const top = Object.entries(s.by)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 8);
+    .slice(0, Number(process.env.PXSIG_RENDERS_TOP ?? 8));
   return { commits: s.commits, rendered: s.rendered, mounted: s.mounted, top };
 }
 
@@ -109,6 +109,6 @@ export async function measureMount(page) {
   const s = await page.evaluate(() => structuredClone(window.__pxsigRenders));
   const top = Object.entries(s.by)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 8);
+    .slice(0, Number(process.env.PXSIG_RENDERS_TOP ?? 8));
   return { commits: s.commits, rendered: s.rendered, mounted: s.mounted, top };
 }

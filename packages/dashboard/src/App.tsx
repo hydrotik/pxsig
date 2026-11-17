@@ -87,12 +87,12 @@ function Embed({ data, story }: { data: Data; story: string }) {
   const [target, setTarget] = React.useState<InspectTarget | null>(
     pick ? { row: pick, scenario: null, list: rows } : null
   );
-  React.useEffect(
-    () => setTarget(pick ? { row: pick, scenario: null, list: rows } : null),
-    // `rows` and `pick` derive from `story` and `data`.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [story, data]
-  );
+  // Another story or fresh data: the inspector starts again on its pick.
+  const [shownFor, setShownFor] = React.useState({ story, data });
+  if (shownFor.story !== story || shownFor.data !== data) {
+    setShownFor({ story, data });
+    setTarget(pick ? { row: pick, scenario: null, list: rows } : null);
+  }
   // Its own page (an iframe in the panel): one main region and a level-one heading, read but not drawn.
   return (
     <main>
@@ -121,9 +121,17 @@ function Placeholder({ text }: { text: string }) {
 
 export function App() {
   const { data, error, live } = useData();
+  if (error && !data) return <Placeholder text={t('app.loadError', { error })} />;
+  if (!data) return <Placeholder text={t('app.loading')} />;
   const params = new URLSearchParams(location.search);
-  // The hash as the page opened: the tab effect rewrites it before served data arrives.
-  const h = React.useRef(readHash()).current;
+  if (params.get('embed')) return <Embed data={data} story={params.get('story') ?? ''} />;
+  return <Dashboard data={data} live={live} />;
+}
+
+/** The full page, once the data is in: the bar, the section and the inspector over it. */
+function Dashboard({ data, live }: { data: Data; live: ReturnType<typeof useData>['live'] }) {
+  // The hash as the page opened: the tab effect rewrites it.
+  const [h] = React.useState(readHash);
   const [tab, setTab] = React.useState<Tab>(() => {
     const fromHash = asTab(h.get('tab'));
     if (fromHash) return fromHash;
@@ -134,30 +142,27 @@ export function App() {
     }
   });
   // The application under review (`pxsig • <scope>`), in the top bar and the browser tab.
-  const scope = data ? (data.scope ?? data.label ?? data.project ?? null) : null;
+  const scope = data.scope ?? data.label ?? data.project ?? null;
   React.useEffect(() => {
     if (scope) document.title = t('app.title', { scope });
   }, [scope]);
   const [filter, setFilter] = React.useState('all');
-  // Coverage opened on one component (a heatmap tile, an error row).
+  // Coverage opened on one component (a heatmap tile, an error row). It holds for that one visit:
+  // Coverage opened later from the bar starts unfiltered.
   const [coverageFocus, setCoverageFocus] = React.useState<CoverageFocus | null>(null);
-  // It holds for that one visit: Coverage opened later from the bar starts unfiltered.
-  React.useEffect(() => {
-    if (tab !== 'integrity') setCoverageFocus(null);
-  }, [tab]);
+  const shownFocus = tab === 'integrity' ? coverageFocus : null;
+  if (coverageFocus && tab !== 'integrity') setCoverageFocus(null);
   // A link to Diagnostics on a project without research data lands on the overview.
-  React.useEffect(() => {
-    if (data && tab === 'diagnostics' && !diagnosticsOf(data).length) setTab('overview');
-  }, [data, tab]);
+  if (tab === 'diagnostics' && !diagnosticsOf(data).length) setTab('overview');
   const [target, setTarget] = React.useState<InspectTarget | null>(null);
   // Diagnostics opened on React: an old link (#react, #react-renders) names the part.
-  const [reactFocus, setReactFocus] = React.useState(() => {
+  const [reactFocus, setReactFocus] = React.useState<ReactFocus | null>(() => {
     const v = readHash().get('tab');
     return v === 'react' || v === 'react-renders'
       ? {
-          part: v === 'react' ? ('compiler' as const) : ('renders' as const),
-          all: undefined as boolean | undefined,
-          fn: undefined as string | undefined,
+          part: v === 'react' ? 'compiler' : 'renders',
+          all: undefined,
+          fn: undefined,
           at: Date.now(),
         }
       : null;
@@ -191,22 +196,13 @@ export function App() {
     mainRef.current?.scrollTo({ top: 0 });
   }, [tab]);
 
-  // #inspect=<id> deep link (PR comments link here)
-  const deepLinked = React.useRef(false);
-  React.useEffect(() => {
-    if (!data?.check || deepLinked.current) return;
-    deepLinked.current = true;
-    const id = h.get('inspect');
-    const row = id && data.check.rows.find((r) => r.id === id);
-    // A reload during a review session: the session again, on its first undecided entry.
-    const kind = h.get('session') as Queue | null;
-    const list = kind && ['changed', 'new', 'a11y'].includes(kind) ? reviewQueue(data, kind) : null;
-    if (row && kind && list?.length) {
-      const first = list.find((r) => !decisionOf(data, kind, r.id)) ?? list[0];
-      setTarget({ row: first, list, scenario: null, session: kind });
-    } else if (row)
-      setTarget({ row, scenario: null, list: data.check.rows.filter((r) => !r.skipped) });
-  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  // #inspect=<id> deep link (PR comments link here): once, when the check is in.
+  const [deepLinked, setDeepLinked] = React.useState(false);
+  if (!deepLinked && data.check) {
+    setDeepLinked(true);
+    const linked = deepLinkOf(data, h);
+    if (linked) setTarget(linked);
+  }
   React.useEffect(() => {
     if (target && !target.scenario)
       history.replaceState(
@@ -218,40 +214,125 @@ export function App() {
   // Keep an open inspector on the fresh row when live data arrives. The row is looked up for the
   // target as it is when the update applies: a decision can move the inspector on between this
   // render and the update, and the fresh copy of the entry it left must not bring it back.
-  React.useEffect(() => {
-    const rows = data?.check?.rows;
-    if (!rows || !target || target.scenario) return;
-    setTarget((t) => {
-      if (!t || t.scenario) return t;
-      const fresh = rows.find((r) => r.id === t.row.id);
-      if (!fresh || fresh === t.row) return t;
-      return { ...t, row: fresh, list: t.list.map((r) => rows.find((x) => x.id === r.id) ?? r) };
-    });
-  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [seen, setSeen] = React.useState(data);
+  if (seen !== data) {
+    setSeen(data);
+    const rows = data.check?.rows;
+    if (rows)
+      setTarget((t) => {
+        if (!t || t.scenario) return t;
+        const fresh = rows.find((r) => r.id === t.row.id);
+        if (!fresh || fresh === t.row) return t;
+        return { ...t, row: fresh, list: t.list.map((r) => rows.find((x) => x.id === r.id) ?? r) };
+      });
+  }
 
-  if (error && !data) return <Placeholder text={t('app.loadError', { error })} />;
-  if (!data) return <Placeholder text={t('app.loading')} />;
-  if (params.get('embed')) return <Embed data={data} story={params.get('story') ?? ''} />;
+  // Stable (they only set state), so the memoised page does not render when the inspector moves.
+  // Diagnostics › React on a part (the strip, the Overview's React card).
+  const openReact = React.useCallback(
+    (part: 'compiler' | 'renders', all?: boolean, fn?: string) => (
+      setReactFocus({ part, all, fn, at: Date.now() }),
+      setTab('diagnostics')
+    ),
+    []
+  );
+  const open = React.useCallback(
+    (row: Row, list: Row[], scenario?: InspectTarget['scenario']) =>
+      setTarget({ row, list, scenario: scenario ?? null }),
+    []
+  );
+  // `f`: the Review filter, or for Coverage the component to open.
+  const go = React.useCallback(
+    (to: string, f?: string) => {
+      // The inspector's React section: Diagnostics › React on a function.
+      if (to === 'react') return openReact('compiler', true, f);
+      if (to === 'integrity') setCoverageFocus(f ? { component: f, at: Date.now() } : null);
+      else if (f) setFilter(f);
+      setTab(to as Tab);
+    },
+    [openReact]
+  );
 
+  return (
+    <>
+      <Page
+        {...{ data, live, scope, tab, filter, setFilter, reactFocus, mainRef }}
+        {...{ go, open, openReact, setTarget }}
+        coverageFocus={shownFocus}
+      />
+      {target ? (
+        <Inspector
+          data={data}
+          target={target}
+          onNavigate={setTarget}
+          onClose={() => (setTarget(null), history.replaceState(null, '', `#${tab}`))}
+          onGo={(t, f) => (setTarget(null), go(t, f))}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/** The inspector a `#inspect=<id>` link opens, with `&session=<queue>` on that review session. */
+function deepLinkOf(data: Data, h: URLSearchParams): InspectTarget | null {
+  const rows = data.check?.rows ?? [];
+  const id = h.get('inspect');
+  const row = id && rows.find((r) => r.id === id);
+  if (!row) return null;
+  // A reload during a review session: the session again, on its first undecided entry.
+  const kind = h.get('session') as Queue | null;
+  const list = kind && ['changed', 'new', 'a11y'].includes(kind) ? reviewQueue(data, kind) : null;
+  if (kind && list?.length) {
+    const first = list.find((r) => !decisionOf(data, kind, r.id)) ?? list[0];
+    return { row: first, list, scenario: null, session: kind };
+  }
+  return { row, scenario: null, list: rows.filter((r) => !r.skipped) };
+}
+
+interface ReactFocus {
+  part: 'compiler' | 'renders';
+  all: boolean | undefined;
+  fn: string | undefined;
+  at: number;
+}
+
+/**
+ * The bar and the section on screen. Memoised: an inspector move (the target) renders the
+ * inspector only, not the page behind it.
+ */
+const Page = React.memo(function Page({
+  data,
+  live,
+  scope,
+  tab,
+  filter,
+  setFilter,
+  coverageFocus,
+  reactFocus,
+  mainRef,
+  go,
+  open,
+  openReact,
+  setTarget,
+}: {
+  data: Data;
+  live: ReturnType<typeof useData>['live'];
+  scope: string | null;
+  tab: Tab;
+  filter: string;
+  setFilter: (f: string) => void;
+  coverageFocus: CoverageFocus | null;
+  reactFocus: ReactFocus | null;
+  mainRef: React.RefObject<HTMLElement | null>;
+  go: (t: string, f?: string) => void;
+  open: (row: Row, list: Row[], scenario?: InspectTarget['scenario']) => void;
+  openReact: (part: 'compiler' | 'renders', all?: boolean, fn?: string) => void;
+  setTarget: (t: InspectTarget) => void;
+}) {
   const todo = rowsWithPending(data).filter((r) =>
     ['changed', 'new'].includes(statusOf(r, data.review))
   ).length;
   const integrityErrors = data.integrity?.summary.componentsBySeverity.error ?? 0;
-  // Diagnostics › React on a part (the strip, the Overview's React card).
-  const openReact = (part: 'compiler' | 'renders', all?: boolean, fn?: string) => (
-    setReactFocus({ part, all, fn, at: Date.now() }),
-    setTab('diagnostics')
-  );
-  const open = (row: Row, list: Row[], scenario: InspectTarget['scenario'] = null) =>
-    setTarget({ row, list, scenario });
-  // `f`: the Review filter, or for Coverage the component to open.
-  const go = (t: string, f?: string) => {
-    // The inspector's React section: Diagnostics › React on a function.
-    if (t === 'react') return openReact('compiler', true, f);
-    if (t === 'integrity') setCoverageFocus(f ? { component: f, at: Date.now() } : null);
-    else if (f) setFilter(f);
-    setTab(t as Tab);
-  };
   // A review session: the inspector on the first undecided entry of a queue, with progress.
   const queues = {
     changed: reviewQueue(data, 'changed'),
@@ -301,67 +382,56 @@ export function App() {
     { id: 'help', label: t('tabs.help'), keep: true },
   ];
   return (
-    <>
-      <AppShell>
-        <TopBar
-          data={data}
-          live={live}
-          scope={scope}
-          sections={sections}
-          current={shown}
-          todo={todo}
-          next={nextQueue ? { kind: nextQueue, count: undecided(nextQueue) } : null}
-          startReview={startReview}
-        />
-        <AppMain ref={mainRef}>
-          <div className={s.page}>
-            {/* The section's heading, for the outline (the bar's link says it visibly). */}
-            <h2 id="section-title" tabIndex={-1} className={s.srOnly}>
-              {sectionTitle}
-            </h2>
-            <ReactStrip data={data} live={live} openReact={openReact} />
-            <CheckBanner />
-            {/* The Overview shows coverage errors in its own errors card, so the banner leaves them to it. */}
-            <IntegrityBanner
+    <AppShell>
+      <TopBar
+        data={data}
+        live={live}
+        scope={scope}
+        sections={sections}
+        current={shown}
+        todo={todo}
+        next={nextQueue ? { kind: nextQueue, count: undecided(nextQueue) } : null}
+        startReview={startReview}
+      />
+      <AppMain ref={mainRef}>
+        <div className={s.page}>
+          {/* The section's heading, for the outline (the bar's link says it visibly). */}
+          <h2 id="section-title" tabIndex={-1} className={s.srOnly}>
+            {sectionTitle}
+          </h2>
+          <ReactStrip data={data} live={live} openReact={openReact} />
+          <CheckBanner />
+          {/* The Overview shows coverage errors in its own errors card, so the banner leaves them to it. */}
+          <IntegrityBanner
+            data={data}
+            go={go}
+            startReview={startReview}
+            errorsShownElsewhere={shown === 'overview'}
+          />
+          {shown === 'overview' ? (
+            <Overview data={data} go={go} startReview={startReview} openReact={openReact} />
+          ) : null}
+          {shown === 'stories' ? (
+            <Stories
               data={data}
-              go={go}
-              startReview={startReview}
-              errorsShownElsewhere={shown === 'overview'}
+              filter={filter}
+              setFilter={setFilter}
+              onOpen={(r, l) => open(r, l)}
             />
-            {shown === 'overview' ? (
-              <Overview data={data} go={go} startReview={startReview} openReact={openReact} />
-            ) : null}
-            {shown === 'stories' ? (
-              <Stories
-                data={data}
-                filter={filter}
-                setFilter={setFilter}
-                onOpen={(r, l) => open(r, l)}
-              />
-            ) : null}
-            {shown === 'integrity' ? (
-              <Integrity data={data} focus={coverageFocus} onOpen={(r, l) => open(r, l)} />
-            ) : null}
-            {shown === 'a11y' ? (
-              <Accessibility data={data} onOpen={(r, l) => open(r, l)} startReview={startReview} />
-            ) : null}
-            {shown === 'history' ? <History data={data} /> : null}
-            {shown === 'diagnostics' ? (
-              <Diagnostics key={reactFocus?.at} data={data} onOpen={open} focus={reactFocus} />
-            ) : null}
-            {shown === 'help' ? <Help data={data} /> : null}
-          </div>
-        </AppMain>
-      </AppShell>
-      {target ? (
-        <Inspector
-          data={data}
-          target={target}
-          onNavigate={setTarget}
-          onClose={() => (setTarget(null), history.replaceState(null, '', `#${tab}`))}
-          onGo={(t, f) => (setTarget(null), go(t, f))}
-        />
-      ) : null}
-    </>
+          ) : null}
+          {shown === 'integrity' ? (
+            <Integrity data={data} focus={coverageFocus} onOpen={(r, l) => open(r, l)} />
+          ) : null}
+          {shown === 'a11y' ? (
+            <Accessibility data={data} onOpen={(r, l) => open(r, l)} startReview={startReview} />
+          ) : null}
+          {shown === 'history' ? <History data={data} /> : null}
+          {shown === 'diagnostics' ? (
+            <Diagnostics key={reactFocus?.at} data={data} onOpen={open} focus={reactFocus} />
+          ) : null}
+          {shown === 'help' ? <Help data={data} /> : null}
+        </div>
+      </AppMain>
+    </AppShell>
   );
-}
+});
