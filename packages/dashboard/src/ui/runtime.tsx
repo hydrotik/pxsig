@@ -39,11 +39,8 @@ export function useThemeMode(): ThemeModeValue {
   return React.useContext(ThemeModeContext);
 }
 
-export function ThemeModeProvider({
-  children,
-}: {
-  children: (mode: ThemeMode) => React.ReactNode;
-}) {
+/** Owns the theme mode; `render` draws the app in it. */
+export function ThemeModeProvider({ render }: { render: (mode: ThemeMode) => React.ReactNode }) {
   const [mode, setModeState] = React.useState<ThemeMode>(readMode);
   const setMode = React.useCallback((next: ThemeMode) => {
     setModeState(next);
@@ -54,7 +51,7 @@ export function ThemeModeProvider({
     }
   }, []);
   const value = React.useMemo(() => ({ mode, setMode }), [mode, setMode]);
-  return <ThemeModeContext value={value}>{children(mode)}</ThemeModeContext>;
+  return <ThemeModeContext value={value}>{render(mode)}</ThemeModeContext>;
 }
 
 /** Declares the adapter's token values as `--pxsig-*` on `:root`, once, before the first render. */

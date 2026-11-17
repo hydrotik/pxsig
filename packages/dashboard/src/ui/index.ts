@@ -73,7 +73,9 @@ const Provider = pick('UiProvider');
 /** The app's root: owns theme mode and hands it to the adapter's provider. */
 export function UiRoot({ children }: { children: React.ReactNode }) {
   return React.createElement(ThemeModeProvider, {
-    children: (mode: 'light' | 'dark') => React.createElement(Provider, { mode, children }),
+    render: (mode: 'light' | 'dark') =>
+      // The children as createElement's argument: they are the provider's children, not a prop.
+      React.createElement(Provider, { mode } as React.ComponentProps<typeof Provider>, children),
   });
 }
 
