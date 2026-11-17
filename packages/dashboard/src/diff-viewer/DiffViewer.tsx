@@ -34,6 +34,7 @@
  * Marker [data-visible]; ModeGroup items [data-mode] [data-checked]; SwipeHandle [data-dragging].
  */
 import React from 'react';
+import { useViewMoves } from './view-moves';
 
 // --- types ---------------------------------------------------------------------------------------
 
@@ -149,6 +150,13 @@ interface Ctx {
   probeAt: (clientX: number, clientY: number, pane: HTMLElement) => void;
   clearProbe: () => void;
   pending: React.MutableRefObject<(() => void) | null>;
+  /** The Viewport's: register its element, pan, drag, run a deferred fit / focus. */
+  setViewport: (el: HTMLElement | null) => void;
+  panBy: (dx: number, dy: number) => void;
+  dragStart: (x: number, y: number) => void;
+  dragMove: (x: number, y: number) => void;
+  dragEnd: () => void;
+  runPending: () => void;
 }
 const DiffViewerContext = React.createContext<Ctx | null>(null);
 
@@ -207,14 +215,17 @@ function Root(p: RootProps) {
     p.defaultActiveRegion ?? -1,
     p.onActiveRegionChange
   );
-  const store = React.useMemo(createStore, []);
+  const [store] = React.useState(createStore);
   const viewportRef = React.useRef<HTMLElement | null>(null);
   const view = React.useRef({ z: 1, tx: 0, ty: 0 });
   const pending = React.useRef<(() => void) | null>(null);
   const onZoom = React.useRef(p.onZoomChange);
-  onZoom.current = p.onZoomChange;
   const onProbe = React.useRef(p.onProbeChange);
-  onProbe.current = p.onProbeChange;
+  // The callbacks of the last render, before any layout effect (the Viewport's places the view).
+  React.useInsertionEffect(() => {
+    onZoom.current = p.onZoomChange;
+    onProbe.current = p.onProbeChange;
+  });
 
   const place = React.useCallback(() => {
     const el = viewportRef.current;
@@ -230,13 +241,6 @@ function Root(p: RootProps) {
     onZoom.current?.(z);
   }, [W, split, store]);
 
-  // The first pane's size, or null while it has none (a hidden iframe, a collapsed panel): calls
-  // made then wait in `pending` and run once it is laid out.
-  const paneSize = (): [number, number] | null => {
-    const v = viewportRef.current?.querySelector<HTMLElement>('[data-pane]');
-    if (!v) return [800, 600];
-    return v.clientWidth && v.clientHeight ? [v.clientWidth, v.clientHeight] : null;
-  };
   const zoomAround = React.useCallback(
     (z: number, cx: number, cy: number) => {
       z = Math.max(0.05, Math.min(64, z));
@@ -247,7 +251,14 @@ function Root(p: RootProps) {
     [place]
   );
   const actions = React.useMemo<DiffViewerActions>(() => {
-    const sized = (run: (w: number, h: number) => void) => () => {
+    // The first pane's size, or null while it has none (a hidden iframe, a collapsed panel): calls
+    // made then wait in `pending` and run once it is laid out.
+    const paneSize = (): [number, number] | null => {
+      const v = viewportRef.current?.querySelector<HTMLElement>('[data-pane]');
+      if (!v) return [800, 600];
+      return v.clientWidth && v.clientHeight ? [v.clientWidth, v.clientHeight] : null;
+    };
+    const sized = (run: (w: number, h: number) => void) => {
       const s = paneSize();
       if (!s) return void (pending.current = () => run(...(paneSize() ?? [800, 600])));
       pending.current = null;
@@ -256,25 +267,25 @@ function Root(p: RootProps) {
     return {
       // Fill the frame, anchored to the top: centred horizontally, a small top margin, upscale
       // capped at 2× for small images.
-      fit: sized((w, h) => {
-        const z = Math.min((w - 32) / W, (h - 32) / H, 2);
-        view.current = { z, tx: (w - W * z) / 2, ty: 16 };
-        place();
-      }),
-      zoomBy: (k) => sized((w, h) => zoomAround(view.current.z * k, w / 2, h / 2))(),
+      fit: () =>
+        sized((w, h) => {
+          const z = Math.min((w - 32) / W, (h - 32) / H, 2);
+          view.current = { z, tx: (w - W * z) / 2, ty: 16 };
+          place();
+        }),
+      zoomBy: (k) => sized((w, h) => zoomAround(view.current.z * k, w / 2, h / 2)),
       zoomTo: (z) =>
         sized((w, h) => {
           view.current = { z, tx: (w - W * z) / 2, ty: Math.min(16, (h - H * z) / 2) };
           place();
-        })(),
+        }),
       focus: (r) =>
         sized((w, h) => {
           const z = Math.max(0.25, Math.min((w - 48) / r.w, (h - 48) / r.h, 12));
           view.current = { z, tx: w / 2 - (r.x + r.w / 2) * z, ty: h / 2 - (r.y + r.h / 2) * z };
           place();
-        })(),
+        }),
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [W, H, place, zoomAround]);
   React.useImperativeHandle(p.actionsRef, () => actions, [actions]);
 
@@ -322,6 +333,8 @@ function Root(p: RootProps) {
     onProbe.current?.(null);
   }, [store]);
 
+  const moves = useViewMoves(viewportRef, view, pending, place);
+
   const modes = p.modes ?? DIFF_MODES;
   const value: Ctx = {
     W,
@@ -344,6 +357,7 @@ function Root(p: RootProps) {
     probeAt,
     clearProbe,
     pending,
+    ...moves,
   };
   return <DiffViewerContext.Provider value={value}>{p.children}</DiffViewerContext.Provider>;
 }
@@ -368,27 +382,15 @@ export interface ViewportProps {
 /** The interactive stage: drag to pan, wheel to zoom, pointer to probe. Holds the panes. */
 function Viewport({ label, className, style, keyboard = true, render, children }: ViewportProps) {
   const c = useDiffViewer();
-  const drag = React.useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
   const [grabbing, setGrabbing] = React.useState(false);
-  const local = React.useRef<HTMLElement | null>(null);
-  const ref = React.useCallback(
-    (el: HTMLElement | null) => {
-      local.current = el;
-      c.viewportRef.current = el;
-    },
-    [c.viewportRef]
-  );
-  React.useLayoutEffect(c.place);
+  const { setViewport: ref, place, viewportRef } = c;
+  React.useLayoutEffect(() => place());
   // A deferred fit / focus runs as soon as the first pane gets a size.
   React.useEffect(() => {
-    const v = local.current?.querySelector<HTMLElement>('[data-pane]');
+    const v = viewportRef.current?.querySelector<HTMLElement>('[data-pane]');
     if (!v) return;
     const ro = new ResizeObserver(() => {
-      if (c.pending.current && v.clientWidth && v.clientHeight) {
-        const run = c.pending.current;
-        c.pending.current = null;
-        run();
-      }
+      if (v.clientWidth && v.clientHeight) c.runPending();
     });
     ro.observe(v);
     return () => ro.disconnect();
@@ -396,7 +398,7 @@ function Viewport({ label, className, style, keyboard = true, render, children }
   }, []);
   // Wheel zoom needs a non-passive listener.
   React.useEffect(() => {
-    const el = local.current;
+    const el = viewportRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -429,23 +431,16 @@ function Viewport({ label, className, style, keyboard = true, render, children }
     ...(grabbing ? { 'data-grabbing': '' } : {}),
     onPointerDown: (e) => {
       if (e.button !== 0) return;
-      drag.current = { x: e.clientX, y: e.clientY, tx: c.view.current.tx, ty: c.view.current.ty };
+      c.dragStart(e.clientX, e.clientY);
       e.currentTarget.setPointerCapture?.(e.pointerId);
       setGrabbing(true);
     },
     onPointerUp: () => {
-      drag.current = null;
+      c.dragEnd();
       setGrabbing(false);
     },
     onPointerMove: (e) => {
-      if (drag.current) {
-        c.view.current = {
-          ...c.view.current,
-          tx: drag.current.tx + e.clientX - drag.current.x,
-          ty: drag.current.ty + e.clientY - drag.current.y,
-        };
-        c.place();
-      }
+      c.dragMove(e.clientX, e.clientY);
       const pane = (e.target as HTMLElement).closest<HTMLElement>('[data-pane]');
       if (pane) c.probeAt(e.clientX, e.clientY, pane);
     },
@@ -460,14 +455,7 @@ function Viewport({ label, className, style, keyboard = true, render, children }
         e.target !== e.currentTarget
       )
         return;
-      const pan = (dx: number, dy: number) => (
-        (c.view.current = {
-          ...c.view.current,
-          tx: c.view.current.tx + dx,
-          ty: c.view.current.ty + dy,
-        }),
-        c.place()
-      );
+      const pan = (dx: number, dy: number) => c.panBy(dx, dy);
       const k = e.key;
       const run = (f: () => void) => (e.preventDefault(), f());
       if (k === '+' || k === '=') return run(() => c.actions.zoomBy(1.5));

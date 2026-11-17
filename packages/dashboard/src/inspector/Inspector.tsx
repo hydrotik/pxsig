@@ -109,7 +109,8 @@ export function Inspector({
 
   // The images with the entry they belong to: after a move, the last entry's are not this one's.
   const [held, setLoaded] = React.useState<[string, Loaded | 'missing'] | null>(null);
-  const [region, setRegion] = React.useState(-1);
+  // The highlighted change with the entry it belongs to: another entry starts with none.
+  const [regionHeld, setRegionHeld] = React.useState<[string, number]>(['', -1]);
   const [busy, setBusy] = React.useState(false);
   // Embedded in Storybook's short panel the image gets the room; details open on demand.
   const [showSide, setShowSide] = React.useState<boolean>(!embedded);
@@ -122,11 +123,12 @@ export function Inspector({
   const p = row ? pathsFor(data, row.id, target!.scenario) : null;
   const key = `${row?.id}|${target?.scenario?.name ?? ''}`;
   const loaded = held?.[0] === key ? held[1] : null;
+  const region = regionHeld[0] === key ? regionHeld[1] : -1;
+  const setRegion = React.useCallback((i: number) => setRegionHeld([key, i]), [key]);
 
   React.useEffect(() => {
     if (!p) return;
     let alive = true;
-    setRegion(-1);
     void Promise.all([loadImg(p.before), loadImg(p.after), loadImg(p.heat)]).then(([a, b, h]) => {
       if (!alive) return;
       // A new entry has only its latest render; anything else needs both.
@@ -165,11 +167,13 @@ export function Inspector({
   }, [row?.id, target?.scenario?.name]);
 
   const pixels = loaded && loaded !== 'missing' && loaded.pa && loaded.pb ? loaded : null;
-  const [analysis, setAnalysis] = React.useState<Analysis | null>(null);
+  // The analysis with the images it was made from: other images (another entry) have none yet.
+  const [analysed, setAnalysed] = React.useState<[Loaded, Analysis] | null>(null);
+  const analysis = pixels && analysed?.[0] === pixels ? analysed[1] : null;
   React.useEffect(() => {
-    if (!pixels) return setAnalysis(null);
+    if (!pixels) return;
     const t = setTimeout(
-      () => setAnalysis(analyse(pixels.pa!, pixels.pb!, tol)),
+      () => setAnalysed([pixels, analyse(pixels.pa!, pixels.pb!, tol)]),
       analysis ? 120 : 0
     );
     return () => clearTimeout(t);
@@ -185,7 +189,7 @@ export function Inspector({
   const [settledFor, setSettledFor] = React.useState<string | null>(null);
   React.useEffect(() => {
     if (!loaded || !row) return;
-    if (loaded === 'missing') return setSettledFor(key);
+    if (loaded === 'missing') return;
     if (fittedFor.current === key || (pixels && !analysis)) return;
     fittedFor.current = key;
     requestAnimationFrame(() =>
@@ -198,7 +202,7 @@ export function Inspector({
         setSettledFor(key);
       })
     );
-  }, [loaded, analysis, regions, row, pixels, key, originals]);
+  }, [loaded, analysis, regions, row, pixels, key, originals, setRegion]);
 
   const focusRegion = (i: number) => {
     const r = regions[i];
@@ -250,8 +254,12 @@ export function Inspector({
   const { asking, setAsking, decide, edit, submit } = useRejectNote({ data, row, act, a11yMode });
   // Reject, Approve, A and R wait for the entry's images: a click meant for the last entry
   // cannot land on this one.
-  const settled = !!row && settledFor === key;
-  const { blockKeys, onKey } = useInspectorKeys({
+  const settled = !!row && (settledFor === key || loaded === 'missing');
+  // --- review session: progress while deciding, then a summary with the next steps ---------------
+  const session = embedded ? null : (target?.session ?? null);
+  const decided = session ? list.filter((r) => decisionOf(data, session, r.id)).length : 0;
+  const complete = !!session && list.length > 0 && decided === list.length && !stay;
+  const { onKey } = useInspectorKeys({
     embedded,
     setMode,
     stage,
@@ -263,6 +271,7 @@ export function Inspector({
     act: decide,
     originals,
     setOriginals,
+    blocked: complete,
   });
 
   // The dialog opens on its title, not on the first control: a control focused by script before any
@@ -389,9 +398,6 @@ export function Inspector({
   const Title = embedded ? 'h2' : DialogTitle;
   const Desc = embedded ? 'p' : DialogDescription;
 
-  // --- review session: progress while deciding, then a summary with the next steps ---------------
-  const session = embedded ? null : (target?.session ?? null);
-  const decided = session ? list.filter((r) => decisionOf(data, session, r.id)).length : 0;
   const approvedRows = session
     ? list.filter((r) =>
         ['approved', 'accepted'].includes(decisionOf(data, session, r.id)?.state ?? '')
@@ -400,8 +406,6 @@ export function Inspector({
   const rejectedRows = session
     ? list.filter((r) => decisionOf(data, session, r.id)?.state === 'rejected')
     : [];
-  const complete = !!session && list.length > 0 && decided === list.length && !stay;
-  blockKeys.current = complete;
   const progress = session ? (
     <div className={s.sessionBar}>
       <strong>{t(`inspector.session.${session}`)}</strong>

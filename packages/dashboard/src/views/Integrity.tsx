@@ -108,7 +108,11 @@ export function CoverageDetails({
   // The server pushes the repaired ledger, so the banner closes on its own once nothing is left
   // to repair (the result used to hold it open until a reload). The result belongs to the ledger
   // it was shown with, so it goes when the ledger turns clean or turns bad again.
-  React.useEffect(() => setMsg(null), [clean]);
+  const [cleanWas, setCleanWas] = React.useState(clean);
+  if (cleanWas !== clean) {
+    setCleanWas(clean);
+    setMsg(null);
+  }
   if (!L) return null;
   const orphans = L.summary.byCode.orphaned ?? 0;
   // New entries already rendered can be approved now; the rest need a render first (the repair).
@@ -128,9 +132,8 @@ export function CoverageDetails({
       );
     } catch (e) {
       setMsg(t('coverage.banner.failed', { error: (e as Error).message }));
-    } finally {
-      working(false);
     }
+    working(false);
   };
   return (
     <div className={s.stack}>
@@ -253,9 +256,12 @@ export function Integrity({
     setSelected(component);
     setCode(null);
   };
-  React.useEffect(() => {
+  // Opened again on a component (a new focus): show it.
+  const [focusAt, setFocusAt] = React.useState(focus?.at);
+  if (focusAt !== focus?.at) {
+    setFocusAt(focus?.at);
     if (focus) show(focus.component);
-  }, [focus?.at]); // eslint-disable-line react-hooks/exhaustive-deps
+  }
   // The component's entries open below the table: bring them into view (after the frame, so the
   // app's own scroll to the top of a newly opened section runs first).
   React.useEffect(() => {

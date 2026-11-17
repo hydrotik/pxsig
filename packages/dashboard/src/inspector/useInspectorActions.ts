@@ -102,10 +102,9 @@ export function useInspectorActions({
       }
     } catch (e) {
       refused(e, label(action, a11y));
-    } finally {
-      setBusy(false);
-      setPending(null);
     }
+    setBusy(false);
+    setPending(null);
   };
 
   // Close an open rejection after a re-check, with no decision (Dismiss reason). `dismissed`
@@ -119,9 +118,8 @@ export function useInspectorActions({
       setDismissed(`${kind}:${row.id}`);
     } catch (e) {
       refused(e, t('inspector.rejection.dismiss'));
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   // Take one rule off this entry's accepted list: it is reported as new and can be accepted again.
@@ -132,9 +130,8 @@ export function useInspectorActions({
       await a11yAction('unaccept', row.id, rule);
     } catch (e) {
       refused(e, t('inspector.a11y.unaccept'));
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   // Other modes / states of the same story: switch between them in place.
@@ -186,9 +183,8 @@ export function useInspectorActions({
       setNote(mine.ended ? mine.after || null : mine.note);
     } catch (e) {
       refused(e, t('inspector.review.recheck'));
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
   const approveAll = async () => {
     if (!row) return;
@@ -219,9 +215,8 @@ export function useInspectorActions({
       if (next && target) onNavigate({ ...target, row: next });
     } catch (e) {
       refused(e, t('inspector.review.approveStory', { count: storyOpen.length }));
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
   return {
     siblings,

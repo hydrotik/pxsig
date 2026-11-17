@@ -25,6 +25,7 @@ export function useInspectorKeys({
   act,
   originals,
   setOriginals,
+  blocked,
 }: {
   embedded: boolean;
   setMode: (mode: Mode) => void;
@@ -37,13 +38,13 @@ export function useInspectorKeys({
   act: (action: 'approve' | 'reject') => unknown;
   originals: boolean;
   setOriginals: (on: boolean) => void;
+  /** The summary screen takes no shortcuts (A would re-approve the last entry). */
+  blocked: boolean;
 }) {
-  // The summary screen takes no shortcuts (A would re-approve the last entry).
-  const blockKeys = React.useRef(false);
   const onKey = (
     e: Pick<KeyboardEvent, 'metaKey' | 'ctrlKey' | 'altKey' | 'key' | 'target' | 'preventDefault'>
   ) => {
-    if (blockKeys.current || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (blocked || e.metaKey || e.ctrlKey || e.altKey) return;
     const t = e.target as HTMLElement;
     // While a dialog over the inspector is open (Report to pxsig), A and R decide nothing.
     if (document.querySelector('[data-own-keys]')) return;
@@ -69,9 +70,8 @@ export function useInspectorKeys({
   };
   // In the dialog the shortcuts listen on the window: a button that disappears after a click
   // (Undo, Approve) drops focus to the page, and a listener on the inspector would miss them.
-  const keyRef = React.useRef(onKey);
-  // oxlint-disable-next-line react/refs -- the window listener calls this render's handler
-  keyRef.current = onKey;
+  // The window listener calls the handler of the last render.
+  const onWindowKey = React.useEffectEvent(onKey);
   React.useEffect(() => {
     if (embedded) return;
     const h = (e: KeyboardEvent) => {
@@ -80,11 +80,11 @@ export function useInspectorKeys({
         e.target.closest('input, textarea, select, [contenteditable="true"]')
       )
         return;
-      keyRef.current(e);
+      onWindowKey(e);
     };
     // Capture phase: controls inside the dialog stop some keys from bubbling.
     window.addEventListener('keydown', h, true);
     return () => window.removeEventListener('keydown', h, true);
   }, [embedded]);
-  return { blockKeys, onKey };
+  return { onKey };
 }

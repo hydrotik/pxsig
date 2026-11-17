@@ -52,11 +52,13 @@ export function StoryCard({
   const activity = useCheckActivity();
   const [queued, setQueued] = React.useState(false);
   const failure = useFailure();
-  const { clear } = failure;
-  React.useEffect(() => {
+  // Fresh data for the entry: a re-check queued or refused before is over.
+  const [rowWas, setRowWas] = React.useState(row);
+  if (rowWas !== row) {
+    setRowWas(row);
     setQueued(false);
-    clear();
-  }, [row, clear]);
+    failure.clear();
+  }
   const checking = queued || !!activity.running?.includes(row.id);
   const Card = offerRecheck ? 'div' : 'button';
   return (
@@ -175,7 +177,12 @@ export function StoryGrid({
   grouped?: boolean;
 }) {
   const [shown, setShown] = React.useState(page);
-  React.useEffect(() => setShown(page), [rows, page]);
+  // Another list (a filter, fresh data) starts again at one page.
+  const [listWas, setListWas] = React.useState({ rows, page });
+  if (listWas.rows !== rows || listWas.page !== page) {
+    setListWas({ rows, page });
+    setShown(page);
+  }
   if (!rows.length) return <div className={s.empty}>{t('review.none')}</div>;
   const visible = rows.slice(0, shown);
   const card = (r: Row) => (
