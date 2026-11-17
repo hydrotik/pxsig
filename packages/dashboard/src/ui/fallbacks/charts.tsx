@@ -11,6 +11,7 @@ export const Chart: F<'Chart'> = ({ data, series, x, format = String, className 
       <thead>
         <tr>
           {/* The corner over the row headers: a cell, since a header with no text names nothing. */}
+          {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- an empty data cell, not a control: it labels nothing and needs no label */}
           <td style={{ paddingInline: v.space['2'] }} />
           {series.map((s) => (
             <th
@@ -133,6 +134,7 @@ export const Heatmap: F<'Heatmap'> = ({ label, cells, legend, onSelect, classNam
                 {body}
               </button>
             ) : (
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a named tile of text, not a set of form controls: no fieldset
               <div aria-label={name} role="group" style={box}>
                 {body}
               </div>
