@@ -82,3 +82,25 @@ test('no pxsig, or a pxsig without the command: one warning, the build goes on',
     if (pxsig === 'old') assert.match(q.lines[0], /unknown command "snapshot"/);
   }
 });
+
+test('the one program the preset starts: node, on the workspace pxsig CLI, no shell', async () => {
+  const { ws, configDir } = workspace();
+  /** @type {unknown[][]} */
+  const starts = [];
+  /** @type {(program: string, args: string[], opts: Record<string, unknown>) => { status: number }} */
+  const run = (program, args, opts) => {
+    starts.push([program, args, opts]);
+    return { status: 1 };
+  };
+  const q = quiet();
+  await staticDirs([], { configType: 'PRODUCTION', configDir }, { ...q, run });
+  assert.equal(starts.length, 1);
+  const [program, args, opts] = /** @type {[string, string[], Record<string, unknown>]} */ (
+    starts[0]
+  );
+  assert.equal(program, process.execPath);
+  assert.equal(args[0], join(ws, 'node_modules', 'pxsig', 'bin', 'pxsig.mjs'));
+  assert.deepEqual(args.slice(1, 3), ['snapshot', '--out']);
+  assert.equal(opts.shell, undefined);
+  assert.equal(opts.cwd, ws);
+});

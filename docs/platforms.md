@@ -6,7 +6,10 @@ pxsig runs on macOS, Linux and Windows, and CI tests every pull request on all t
 ## Programs pxsig starts
 
 This is the whole list. pxsig starts programs through one module (`packages/pxsig/src/lib/spawn.mjs`),
-which refuses any program not listed here; a test fails if code anywhere else starts a process.
+which refuses any program not listed here; a test fails if code anywhere else starts a process. The
+one exception is the Storybook addon, which depends on nothing and so cannot use that module: its
+preset starts `node` on the workspace's own pxsig CLI (`pxsig snapshot`) on `storybook build`, and
+the same test allows that one file by name and checks what it starts.
 
 | Program                                                                                         | OS                                       | When                                                                                                                  | Why                                                                                                                                  | To avoid it                                           |
 | ----------------------------------------------------------------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |

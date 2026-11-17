@@ -72,16 +72,26 @@ test('an argument reaches the program as argv, whatever a shell would make of it
   assert.equal(r.stdout, arg);
 });
 
-test('every start goes through lib/spawn.mjs', () => {
+/**
+ * The one start outside lib/spawn.mjs, in a package that cannot import it (the Storybook addon
+ * depends on nothing): what it starts, exactly. SECURITY.md and docs/platforms.md list it.
+ */
+const ADDON_STARTS = {
+  '../storybook-addon/preset.mjs':
+    "node (process.execPath) running the workspace's own pxsig CLI, node_modules/pxsig/bin/pxsig.mjs snapshot, on `storybook build` only, with no shell",
+};
+
+test('every start goes through lib/spawn.mjs, or is the addon start listed above', () => {
   /** @type {string[]} */
   const offenders = [];
-  /** @param {string} d */
-  const walk = (d) => {
+  /** @param {string} d @param {boolean} [deep] */
+  const walk = (d, deep = true) => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const p = join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else if (
-        /\.m?js$/.test(e.name) &&
+      if (e.isDirectory()) {
+        if (deep) walk(p);
+      } else if (
+        /\.[mc]?js$/.test(e.name) &&
         /node:child_process|['"]child_process['"]/.test(readFileSync(p, 'utf8'))
       )
         offenders.push(relative(pkg, p).split('\\').join('/'));
@@ -89,7 +99,16 @@ test('every start goes through lib/spawn.mjs', () => {
   };
   walk(join(pkg, 'src'));
   walk(join(pkg, 'bin'));
-  assert.deepEqual(offenders, ['src/lib/spawn.mjs']);
+  // The addon's shipped modules are its top-level files (its package.json `files`); test/ is not.
+  walk(join(pkg, '..', 'storybook-addon'), false);
+  assert.deepEqual(offenders, ['src/lib/spawn.mjs', ...Object.keys(ADDON_STARTS)]);
+  // The preset takes spawnSync only, as the default of its one start (writeSnapshot's `run`),
+  // whose program and arguments its own test pins (storybook-addon/test/preset.test.mjs).
+  const preset = readFileSync(join(pkg, '..', 'storybook-addon', 'preset.mjs'), 'utf8');
+  assert.match(preset, /^import \{ spawnSync \} from 'node:child_process';$/m);
+  assert.equal(preset.match(/\bspawnSync\b/g)?.length, 2, 'the import and the default `run` only');
+  assert.match(preset, /\{ run = spawnSync,/);
+  assert.doesNotMatch(preset, /\bshell\s*:/);
 });
 
 test('PXSIG_DEBUG=spawn prints each start', () => {
