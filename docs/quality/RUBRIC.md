@@ -48,7 +48,7 @@ a release with any blocker waits, whatever the overall.
 Any one of these holds the release until it is fixed or the owner records an exception in
 writing:
 
-1. A required check (the 11 jobs of `ci.yml`, as `scripts/required-checks.mjs` lists them) is
+1. A required check (the 14 jobs of `ci.yml`, as `scripts/required-checks.mjs` lists them) is
    missing, failed or still running on the release commit.
 2. `node scripts/check-versions.mjs --tag vX.Y.Z` fails.
 3. A high or critical vulnerability in what ships (the `pxsig` package and its runtime

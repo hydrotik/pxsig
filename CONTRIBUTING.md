@@ -227,7 +227,7 @@ no fragment. A refactor or a test-only change that users cannot notice says so i
 ## CI job names
 
 The jobs in `.github/workflows/ci.yml` are required checks, matched by their exact names (with
-their matrix legs: eleven in all). Renaming, adding or removing a job, or changing its `name:`,
+their matrix legs: fourteen in all). Renaming, adding or removing a job, or changing its `name:`,
 leaves a required check waiting forever and blocks every pull request. New checks go in as steps
 inside an existing job. Every third-party action is pinned by its full commit SHA, with a
 `# vX.Y.Z` comment.
