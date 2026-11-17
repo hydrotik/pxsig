@@ -33,12 +33,21 @@ consumer project keeps its own default (`build-config.mjs` `adapterSpec`): `hydr
 `PXSIG_DS_SOURCE` is set, else the built-in `plain` adapter (semantic HTML and one stylesheet),
 since the design system is not on npm.
 
-The build writes a single classic script plus `index.html` to `packages/pxsig/dist/dashboard/` (or
-`PXSIG_DASHBOARD_OUT`), so a static report also opens from disk. That folder is git-ignored and
-ships only in the published `pxsig` package.
+The build writes two builds to `packages/pxsig/dist/dashboard/` (or `PXSIG_DASHBOARD_OUT`):
 
-The script is not minified, so the copy in the npm package can be read and audited as it ships.
-`PXSIG_DASHBOARD_MINIFY=1` at build time minifies it (smaller, harder to read); the same variable
+- at its top, `index.html` and ES-module chunks in `assets/`, which `pxsig serve` serves: the page
+  (`app.js`), the code it shares with the parts loaded on first use (`common-*.js`), and those parts,
+  the inspector with the diff viewer and the Review, Accessibility, Runs and Help sections
+  (`src/lazy.ts`; `Inspector.js`, `Stories.js`, …). One stylesheet loads with the page;
+- in `classic/`, `index.html` and one classic script (`assets/app.js`, the same parts inline), which
+  `pxsig report` copies into a static report: a classic script also runs from disk, where module
+  scripts are blocked.
+
+That folder is git-ignored and ships only in the published `pxsig` package. `pxsig dashboard build`
+writes the same two builds for an adapter.
+
+No file is minified, so the copy in the npm package can be read and audited as it ships.
+`PXSIG_DASHBOARD_MINIFY=1` at build time minifies them (smaller, harder to read); the same variable
 applies to `pxsig dashboard build`.
 
 Without a build, `pxsig serve` still answers its API, and `/report/` answers 404 with "the

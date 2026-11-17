@@ -343,8 +343,11 @@ pnpm build:dashboard   # the pinned design system (git config pxsig.dsSource, CO
 COPYFILE_DISABLE=1 tar czf pxsig-dashboard.tar.gz -C packages/pxsig/dist dashboard
 ```
 
-The build is unminified unless `PXSIG_DASHBOARD_MINIFY=1` is set; a release ships it unminified so
-reviewers can read what runs (packages/dashboard/README.md).
+The build holds two builds of the dashboard: the one `pxsig serve` serves (ES-module chunks in
+`dashboard/assets/`: the page, its common code, and the parts loaded on first use) and the one
+`pxsig report` copies into a static report (`dashboard/classic/`: one classic script, which also
+runs from disk). Every file is unminified unless `PXSIG_DASHBOARD_MINIFY=1` is set; a release ships
+them unminified so reviewers can read what runs (packages/dashboard/README.md).
 
 Every build writes `dashboard/BUILD.json` (`scripts/build-record.mjs`), which ships in the
 package: the adapter, the design-system commit with whether its checkout had changes and its
@@ -355,9 +358,13 @@ exist, name the `hydrotik` adapter, list the bundled packages and record a full 
 commit, the one `design-system.json` pins (a release asset too), or the release fails; a checkout with changes is a
 warning. A release asset built with pxsig 0.6.0 or earlier has no `BUILD.json`: rebuild it. The pack job then appends those packages to `pxsig-npm.cdx.json`
 as bundled components (`scripts/bundle-sbom.mjs`, read from the module paths the unminified
-bundle keeps), so the npm SBOM covers the dashboard too.
+bundle keeps, each with a `pxsig:bundled-in` property for every file it is in), so the npm SBOM
+covers the dashboard too. The check also fails a dashboard without both builds (`index.html` and
+`assets/app.js`, `classic/index.html` and `classic/assets/app.js`): a release asset built before
+the split has one; rebuild it.
 
-The tarball must contain only a top-level `dashboard/` folder with `index.html` in it; the job
+The tarball must contain only a top-level `dashboard/` folder with `index.html` in it (and
+`classic/`); the job
 rejects anything else. (`COPYFILE_DISABLE=1` keeps macOS `._*` files out.)
 
 **Drift since the last release.** The dashboard-drift job downloads `pxsig-dashboard.tar.gz` from the most

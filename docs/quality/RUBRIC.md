@@ -112,8 +112,9 @@ would.
 - **Top bar.** `pxsig dashboard check` sweeps the bar from 1440 down to 390 and back (the
   `top-bar` rule): one line, the documented collapse order, wider never shows fewer, no sideways
   scroll. Every adapter's `conformance.json` `topBar` field, as `pxsig dashboard gaps` reports it.
-- **Bundle.** The dashboard's size as shipped (the release's `pxsig-dashboard.tar.gz`, and
-  `assets/app.js`), against the previous release.
+- **Bundle.** The dashboard's size as shipped (the release's `pxsig-dashboard.tar.gz`; the
+  served first load, `assets/app.js` with the common chunks it imports; the parts loaded on first
+  use; the classic `classic/assets/app.js`), against the previous release.
 - **Crud and atrophy.** Dead exports, duplicated helpers, views that reach past the contract,
   stale flags, deprecated APIs still used, tests that assert nothing.
 
