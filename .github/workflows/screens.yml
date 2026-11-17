@@ -46,6 +46,7 @@ jobs:
       - if: steps.has.outputs.ds == 'true'
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - if: steps.has.outputs.ds == 'true'
+        id: node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
@@ -76,6 +77,15 @@ jobs:
           # No adapter named: this repository's build is hydrotik, on the PXSIG_DS_DIR checkout.
           pnpm --filter @pxsig/dashboard build
           node scripts/check-dashboard-build.mjs packages/pxsig/dist/dashboard --adapter hydrotik --commit "$(node scripts/ds-fetch.mjs --pin)"
+      # The design system's turbo cache, for its build in the next step (34 s uncached). Keyed on the
+      # pin (its sources and lockfile), the OS and the exact Node version; turbo also hashes every
+      # task's inputs itself and replays only a task whose hash matches, so a hit cannot serve a
+      # build of other sources. Restored after the fetch, which replaces the checkout.
+      - if: steps.has.outputs.ds == 'true'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/design-system/.turbo/cache
+          key: ds-turbo-${{ runner.os }}-node${{ steps.node.outputs.node-version }}-${{ hashFiles('design-system.json') }}
       # `pnpm typecheck` with the design system: the reference adapter against its sources, and the
       # committed adapters/hydrotik/design-system.d.ts against a fresh `ui.mjs types`, which reads
       # the design system's built declarations (CONTRIBUTING.md).
