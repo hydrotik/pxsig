@@ -359,7 +359,7 @@ function Root(p: RootProps) {
     pending,
     ...moves,
   };
-  return <DiffViewerContext.Provider value={value}>{p.children}</DiffViewerContext.Provider>;
+  return <DiffViewerContext value={value}>{p.children}</DiffViewerContext>;
 }
 
 // --- Viewport ------------------------------------------------------------------------------------
@@ -656,6 +656,7 @@ function SwipeHandle({ label, className, step = 2 }: SwipeHandleProps) {
       className={cls(className, { split: c.split, dragging })}
       data-handle=""
       {...(dragging ? { 'data-dragging': '' } : {})}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a drag handle: a range input draws a track
       role="slider"
       tabIndex={0}
       aria-label={label}
@@ -741,6 +742,7 @@ function ModeGroup({ label, labels, className, itemClassName, render }: ModeGrou
           key={m}
           ref={(el) => void (refs.current[i] = el)}
           type="button"
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a segment: a radio input has no content label
           role="radio"
           aria-checked={m === c.mode}
           tabIndex={m === c.mode ? 0 : -1}

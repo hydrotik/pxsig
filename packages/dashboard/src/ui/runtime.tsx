@@ -54,7 +54,7 @@ export function ThemeModeProvider({
     }
   }, []);
   const value = React.useMemo(() => ({ mode, setMode }), [mode, setMode]);
-  return <ThemeModeContext.Provider value={value}>{children(mode)}</ThemeModeContext.Provider>;
+  return <ThemeModeContext value={value}>{children(mode)}</ThemeModeContext>;
 }
 
 /** Declares the adapter's token values as `--pxsig-*` on `:root`, once, before the first render. */
