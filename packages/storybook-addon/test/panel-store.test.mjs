@@ -7,7 +7,7 @@ import { coalesce, createStore, postCheck, sameList } from '../panel-store.mjs';
 const tick = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 
 test('an update that changes nothing notifies no one and keeps the same state object', () => {
-  const store = createStore({ up: false, stories: /** @type {Record<string, unknown>} */ ({}) });
+  const store = createStore({ up: false, stories: {} });
   let calls = 0;
   const off = store.subscribe(() => calls++);
   const first = store.get();

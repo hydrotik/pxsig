@@ -108,15 +108,9 @@ const codesText = (/** @type {Record<string, number> | undefined} */ codes) =>
 
 // One shared connection: the panel reads the same store the status updater writes (panel-store.mjs:
 // an update that changes nothing re-renders nothing).
-const store = createStore(
-  /** @type {PanelState} */ ({
-    up: false,
-    running: false,
-    stories: {},
-    integrity: {},
-    integritySummary: null,
-  })
-);
+/** @type {PanelState} */
+const initial = { up: false, running: false, stories: {}, integrity: {}, integritySummary: null };
+const store = createStore(initial);
 
 addons.register(ADDON, () => {
   /** The status list last given to the status store (its JSON). */
