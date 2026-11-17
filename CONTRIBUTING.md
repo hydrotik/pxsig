@@ -19,9 +19,14 @@ You need:
 git clone https://github.com/hydrotik/pxsig
 cd pxsig
 pnpm install
+pnpm --dir packages/pxsig/test/react-compiler install --frozen-lockfile --ignore-scripts
 cargo build --release          # target/release/pxsig, which the CLI finds in a source checkout
 pnpm --filter pxsig exec playwright install chromium
 ```
+
+The second line installs the React Compiler test fixtures (under Babel 7 and 8): a workspace of its
+own, which the first `pnpm install` does not reach, and never a dependency of pxsig. Without it the
+React analysis tests skip, naming that command; CI runs the same step.
 
 The last line downloads Playwright's Chromium. The tests that render (the render environment, the
 server flows, the capture helpers) need it and the engine binary from `cargo build --release`;
@@ -30,9 +35,9 @@ in the output. A skip is not a pass, so CI installs both before the suite. On Li
 needs.
 
 `node scripts/bootstrap.mjs` (or `pnpm bootstrap`) checks each of these against the pins and runs
-the steps that are missing: `pnpm install --frozen-lockfile`, `rustup toolchain install`,
-`cargo build --release --locked` and the Chromium install. It never installs Node or pnpm, and it
-starts no shell. `--check` changes nothing and exits 1 naming what is missing.
+the steps that are missing: `pnpm install --frozen-lockfile`, the React Compiler fixtures' install
+above, `rustup toolchain install`, `cargo build --release --locked` and the Chromium install. It
+never installs Node or pnpm, and it starts no shell. `--check` changes nothing and exits 1 naming what is missing.
 
 Run the CLI from the clone:
 

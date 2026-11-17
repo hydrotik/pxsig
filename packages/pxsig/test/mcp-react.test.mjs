@@ -12,15 +12,12 @@ import { test } from 'node:test';
 import { ctxOf, tools } from '../src/tools/index.mjs';
 import { checkReact } from '../src/tools/react.mjs';
 import { hasRust } from './fixture.mjs';
-import { hasCompiler, reactProject } from './react-helpers.mjs';
+import { hasCompiler, NO_COMPILER, reactProject } from './react-helpers.mjs';
 import { skipUnless } from './strict.mjs';
 
 /** @import { ReactToolArgs, ReactToolResult } from '../src/types/react.js' */
 
-const skip = skipUnless(
-  hasRust && hasCompiler,
-  'the engine or the React Compiler test fixtures are missing'
-);
+const skip = skipUnless(hasRust, 'Rust binary not built') || skipUnless(hasCompiler, NO_COMPILER);
 
 /**
  * Run `fn` with the fixture project as the workspace, as the MCP server started there sees it.
