@@ -7,7 +7,9 @@ import { writeFileSync } from 'node:fs';
 import { request } from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { STAMP } from '../src/lib/dashboard-dir.mjs';
 import { authorize, linkCookie, Links } from '../src/lib/guard.mjs';
+import { PXSIG_VERSION } from '../src/lib/workspace.mjs';
 import { rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 import { startServer } from './server-proc.mjs';
 
@@ -111,8 +113,17 @@ export const dashboardDir = () => {
     join(dash, 'index.html'),
     '<!doctype html><html><head><title>pxsig</title></head><body></body></html>'
   );
+  stampDashboard(dash);
   return dash;
 };
+
+/**
+ * Stamp a stand-in dashboard folder as a build for this pxsig version, as `pxsig dashboard build`
+ * does: `pxsig serve` serves a PXSIG_DASHBOARD_DIR build only for its own version.
+ * @param {string} dash
+ */
+export const stampDashboard = (dash) =>
+  writeFileSync(join(dash, STAMP), JSON.stringify({ pxsig: PXSIG_VERSION }));
 
 /**
  * The cookie a page opened with a fresh dashboard link gets (as `pxsig serve --link`, then the page).

@@ -7,6 +7,8 @@
  *
  * The folder defaults to PXSIG_DASHBOARD_OUT, else packages/pxsig/dist/dashboard. The record:
  *   adapter       the UI adapter's name (build-config.mjs chooses it the same way as the build)
+ *   pxsig         the pxsig version the bundle is for (packages/pxsig/package.json): `pxsig serve`
+ *                 serves a build in PXSIG_DASHBOARD_DIR only for that version (lib/dashboard-dir.mjs)
  *   designSystem  for PXSIG_DS_SOURCE when it is the top of a git checkout: its commit, whether
  *                 the working tree had changes, and its pnpm-lock.yaml's sha256; otherwise null
  *   lockSha256    this repository's pnpm-lock.yaml sha256
@@ -25,6 +27,10 @@ import { resolveAdapter } from '../packages/dashboard/build-config.mjs';
 import { dashboardPackages } from './bundle-sbom.mjs';
 
 const repo = fileURLToPath(new URL('..', import.meta.url));
+/** The pxsig version this checkout builds the dashboard for. */
+const PXSIG = /** @type {{ version: string }} */ (
+  JSON.parse(readFileSync(join(repo, 'packages', 'pxsig', 'package.json'), 'utf8'))
+).version;
 
 /** @param {string} file @returns {string | null} */
 export const sha256File = (file) =>
@@ -73,6 +79,7 @@ export function buildRecord({
   const when = sourceDateEpoch ? new Date(Number(sourceDateEpoch) * 1000) : new Date();
   return {
     adapter,
+    pxsig: PXSIG,
     designSystem:
       ds && dsSource ? { ...ds, lockSha256: sha256File(join(dsSource, 'pnpm-lock.yaml')) } : null,
     lockSha256: sha256File(lockFile),

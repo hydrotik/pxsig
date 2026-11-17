@@ -25,6 +25,7 @@ import {
 } from '../src/lib/prune.mjs';
 import { openProject } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
+import { stampDashboard } from './guard-helpers.mjs';
 import { startServer } from './server-proc.mjs';
 import { skipUnless } from './strict.mjs';
 
@@ -410,6 +411,7 @@ const raw = (port, { method = 'POST', path, headers = {}, body }) =>
 async function serve(f) {
   const dash = tempDir('dash');
   writeFileSync(join(dash, 'index.html'), '<!doctype html><title>pxsig</title>');
+  stampDashboard(dash);
   const S = await startServer({
     cwd: f.repo,
     env: {
