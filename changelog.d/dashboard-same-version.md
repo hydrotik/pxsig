@@ -7,4 +7,4 @@
   prints one line with the command that rebuilds it. `pxsig doctor` reports such a build as the
   setup problem `dashboard-stale`, with the same command. The reference build's `BUILD.json`
   records the pxsig version (`pxsig`).
-  To update: after upgrading pxsig, run `pxsig dashboard build` again (only if you build a custom dashboard or set PXSIG_DASHBOARD_DIR).
+  To update: after upgrading pxsig, run `pxsig dashboard build` again (only for a custom dashboard build or a PXSIG_DASHBOARD_DIR build).
