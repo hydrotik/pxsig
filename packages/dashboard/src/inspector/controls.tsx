@@ -3,7 +3,7 @@
  * arrows, the view's sliders and switches, the story's other modes and states, the story arrows,
  * the review buttons with Undo, Re-check, and the keys under the stage.
  */
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import { Button, IconButton, Kbd, SegmentedChoice, Slider, Switch } from '@ui';
 import type { Data, Row } from '../data';
 import { t } from '../copy';
@@ -16,11 +16,19 @@ import { MODES } from './prefs';
 import type { Mode } from './Stage';
 
 /** The toolbar's view choice (the diff viewer's mode group, drawn with the contract's control). */
-export function ModeChoice({ g, embedded }: { g: ModeGroupState; embedded: boolean }) {
+export const ModeChoice = memo(function ModeChoice({
+  mode,
+  setMode,
+  embedded,
+}: {
+  mode: ModeGroupState['mode'];
+  setMode: ModeGroupState['setMode'];
+  embedded: boolean;
+}) {
   return (
     <SegmentedChoice
-      value={g.mode}
-      onValueChange={(v) => g.setMode(v as Mode)}
+      value={mode}
+      onValueChange={(v) => setMode(v as Mode)}
       label={t('inspector.modes.label')}
       options={MODES.map((k, i) => ({
         value: k,
@@ -30,7 +38,7 @@ export function ModeChoice({ g, embedded }: { g: ModeGroupState; embedded: boole
       }))}
     />
   );
-}
+});
 
 /** The toolbar's zoom buttons: the diff viewer's zoom controls, drawn with the contract's parts. */
 export function ZoomButtons({ z }: { z: ZoomState }) {
@@ -102,8 +110,8 @@ export function ChangeNav({
   );
 }
 
-/** The keys, under the stage. */
-export function KeyHelp({
+/** The keys, under the stage. Memoised: it takes only flags, and the inspector renders several times per entry. */
+export const KeyHelp = memo(function KeyHelp({
   canReview,
   a11yMode,
   embedded,
@@ -136,9 +144,10 @@ export function KeyHelp({
       ))}
     </div>
   );
-}
+});
 
-export function ViewControls({
+/** The view switches. Memoised: they change with the view settings and the images, not per render. */
+export const ViewControls = memo(function ViewControls({
   mode,
   split,
   setSplit,
@@ -256,7 +265,7 @@ export function ViewControls({
       ) : null}
     </>
   );
-}
+});
 
 export function SiblingToggle({
   siblings,

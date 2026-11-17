@@ -74,9 +74,7 @@ function CheckBanner() {
     );
   // A Measure renders run: the React strip says it.
   return running?.length && !renders ? (
-    <span className={s.muted} role="status">
-      {t('app.check.running', { count: running.length })}
-    </span>
+    <output className={s.muted}>{t('app.check.running', { count: running.length })}</output>
   ) : null;
 }
 
@@ -96,6 +94,7 @@ function Embed({ data, story }: { data: Data; story: string }) {
   // Its own page (an iframe in the panel): one main region and a level-one heading, read but not drawn.
   return (
     <main>
+      <PageTitle data={data} />
       <h1 className={s.srOnly}>
         {t('app.mark')}
         {story ? t('app.titleLabel', { label: story }) : null}
@@ -107,6 +106,12 @@ function Embed({ data, story }: { data: Data; story: string }) {
       )}
     </main>
   );
+}
+
+/** The browser tab names the application under review (`pxsig • <scope>`). */
+function PageTitle({ data }: { data: Data }) {
+  const scope = data.scope ?? data.label ?? data.project ?? null;
+  return scope ? <title>{t('app.title', { scope })}</title> : null;
 }
 
 /** Loading, or the report failed to load: a main region and a level-one heading, as on the full page. */
@@ -143,9 +148,6 @@ function Dashboard({ data, live }: { data: Data; live: ReturnType<typeof useData
   });
   // The application under review (`pxsig • <scope>`), in the top bar and the browser tab.
   const scope = data.scope ?? data.label ?? data.project ?? null;
-  React.useEffect(() => {
-    if (scope) document.title = t('app.title', { scope });
-  }, [scope]);
   const [filter, setFilter] = React.useState('all');
   // Coverage opened on one component (a heatmap tile, an error row). It holds for that one visit:
   // Coverage opened later from the bar starts unfiltered.
@@ -252,9 +254,15 @@ function Dashboard({ data, live }: { data: Data; live: ReturnType<typeof useData
     },
     [openReact]
   );
+  // The session summary's next steps: leave the inspector for a tab.
+  const leaveFor = React.useCallback(
+    (to: string, f?: string) => (setTarget(null), go(to, f)),
+    [go]
+  );
 
   return (
     <>
+      <PageTitle data={data} />
       <Page
         {...{ data, live, scope, tab, filter, setFilter, reactFocus, mainRef }}
         {...{ go, open, openReact, setTarget }}
@@ -266,7 +274,7 @@ function Dashboard({ data, live }: { data: Data; live: ReturnType<typeof useData
           target={target}
           onNavigate={setTarget}
           onClose={() => (setTarget(null), history.replaceState(null, '', `#${tab}`))}
-          onGo={(t, f) => (setTarget(null), go(t, f))}
+          onGo={leaveFor}
         />
       ) : null}
     </>

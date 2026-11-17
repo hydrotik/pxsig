@@ -5,6 +5,7 @@
  * panel) and Files, each shown as Inspector.tsx decides from what it computed; nothing else is
  * computed here.
  */
+import React from 'react';
 import * as s from '../../dashboard.css';
 import type { Analysis } from '../analyse';
 import { A11ySection } from './A11ySection';
@@ -33,6 +34,16 @@ export type SideProps = P<typeof PixelSection> &
   Omit<P<typeof FilesSection>, 'sb' | 'packets'> &
   Pick<P<typeof ReactSection>, 'onGo'> &
   Pick<P<typeof TextSection>, 'focusBox'> & { analysis: Analysis | null };
+
+// Memoised: the inspector renders several times per entry (images, analysis, fit) and most
+// sections take none of what changes then.
+const Pixel = React.memo(PixelSection);
+const Masks = React.memo(MasksSection);
+const Text = React.memo(TextSection);
+const Metrics = React.memo(MetricsSection);
+const ReactPart = React.memo(ReactSection);
+const Files = React.memo(FilesSection);
+const NO_PACKETS: [string, string][] = [];
 
 export function InspectorSide({
   embedded,
@@ -71,7 +82,12 @@ export function InspectorSide({
   detailOnly,
 }: SideProps) {
   const onlyMasks = masksOnly(row, analysis);
-  const masks = <MasksSection row={row} />;
+  const masks = <Masks row={row} />;
+  const scenario = !!target?.scenario;
+  const packets = React.useMemo(
+    () => (scenario ? NO_PACKETS : packetsOf(data, row.id)),
+    [scenario, data, row.id]
+  );
   return (
     <aside className={s.insSide}>
       {embedded ? (
@@ -84,7 +100,7 @@ export function InspectorSide({
           masksOnly={onlyMasks}
         />
       ) : null}
-      <PixelSection
+      <Pixel
         embedded={embedded}
         sb={sb}
         sbLink={sbLink}
@@ -115,9 +131,9 @@ export function InspectorSide({
       ) : null}
       {onlyMasks ? null : masks}
 
-      <TextSection key={row.id} row={row} focusBox={focusBox} />
+      <Text key={row.id} row={row} focusBox={focusBox} />
 
-      {m ? <MetricsSection m={m} detail={detail} hasArtifacts={hasArtifacts} p={p} /> : null}
+      {m ? <Metrics m={m} detail={detail} hasArtifacts={hasArtifacts} p={p} /> : null}
 
       <A11ySection
         row={row}
@@ -131,12 +147,9 @@ export function InspectorSide({
         act={act}
       />
 
-      {embedded ? null : <ReactSection data={data} row={row} onGo={onGo} />}
+      {embedded ? null : <ReactPart data={data} row={row} onGo={onGo} />}
 
-      <FilesSection
-        {...{ data, p, hasArtifacts, sizes, sb }}
-        packets={target?.scenario ? [] : packetsOf(data, row.id)}
-      />
+      <Files {...{ data, p, hasArtifacts, sizes, sb, packets }} />
     </aside>
   );
 }

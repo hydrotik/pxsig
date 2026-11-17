@@ -1,6 +1,6 @@
 /**
  * The inspector's shortcuts (Inspector.tsx): on the window in the dialog; on the panel when
- * embedded, where the caller passes `onKey` to its keydown. None fires while a field has focus. R
+ * embedded, on the element the caller gives `keysOn` as its ref. None fires while a field has focus. R
  * calls `act('reject')`, which opens the reason's row unless the project rejects at once.
  */
 import React from 'react';
@@ -72,6 +72,14 @@ export function useInspectorKeys({
   // (Undo, Approve) drops focus to the page, and a listener on the inspector would miss them.
   // The window listener calls the handler of the last render.
   const onWindowKey = React.useEffectEvent(onKey);
+  // Embedded (the Storybook panel) they listen on the inspector's own element, set by `keysOn`.
+  const [panel, keysOn] = React.useState<HTMLElement | null>(null);
+  React.useEffect(() => {
+    if (!panel) return;
+    const h = (e: KeyboardEvent) => onWindowKey(e);
+    panel.addEventListener('keydown', h);
+    return () => panel.removeEventListener('keydown', h);
+  }, [panel]);
   React.useEffect(() => {
     if (embedded) return;
     const h = (e: KeyboardEvent) => {
@@ -86,5 +94,5 @@ export function useInspectorKeys({
     window.addEventListener('keydown', h, true);
     return () => window.removeEventListener('keydown', h, true);
   }, [embedded]);
-  return { onKey };
+  return { keysOn };
 }

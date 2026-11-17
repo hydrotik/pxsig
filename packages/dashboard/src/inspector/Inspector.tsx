@@ -10,21 +10,11 @@ import {
   ToolbarEnd,
   ToolbarStart,
 } from '@ui';
-import {
-  type Data,
-  type Queue,
-  type Row,
-  decisionOf,
-  fmt,
-  pathsFor,
-  served,
-  statusOf,
-} from '../data';
+import { type Data, type Queue, type Row, decisionOf, fmt, served, statusOf } from '../data';
 import { analyse, cellsLayer, loadImg, readPixels, type Analysis } from './analyse';
 import { Stage } from './Stage';
 import { DiffViewer, type DiffViewerActions } from '../diff-viewer';
 import { StatusOf } from '../parts/StatusOf';
-import { storybookLink } from '../storybook-link.mjs';
 import { t } from '../copy';
 import * as s from '../dashboard.css';
 import { MODES, useInspectorPrefs } from './prefs';
@@ -49,6 +39,7 @@ import { SessionSummary } from './SessionSummary';
 import { RejectNoteRow, useRejectNote } from './RejectNote';
 import { RejectedNote } from './RejectedNote';
 import { InspectorSide } from './side/Side';
+import { useEntryLinks } from './entryLinks';
 
 export interface InspectTarget {
   row: Row;
@@ -120,7 +111,7 @@ export function Inspector({
   const stage = React.useRef<DiffViewerActions>(null);
 
   const row = target?.row ?? null;
-  const p = row ? pathsFor(data, row.id, target!.scenario) : null;
+  const { p, sbLink } = useEntryLinks(data, row, target?.scenario ?? null);
   const key = `${row?.id}|${target?.scenario?.name ?? ''}`;
   const loaded = held?.[0] === key ? held[1] : null;
   const region = regionHeld[0] === key ? regionHeld[1] : -1;
@@ -210,10 +201,13 @@ export function Inspector({
     setRegion(i);
     stage.current?.focus(r);
   };
-  const focusBox = (r: { x: number; y: number; w: number; h: number }) => {
-    setRegion(-1);
-    stage.current?.focus(r);
-  };
+  const focusBox = React.useCallback(
+    (r: { x: number; y: number; w: number; h: number }) => {
+      setRegion(-1);
+      stage.current?.focus(r);
+    },
+    [setRegion]
+  );
   const stepRegion = (d: number) =>
     regions.length &&
     focusRegion(
@@ -259,7 +253,7 @@ export function Inspector({
   const session = embedded ? null : (target?.session ?? null);
   const decided = session ? list.filter((r) => decisionOf(data, session, r.id)).length : 0;
   const complete = !!session && list.length > 0 && decided === list.length && !stay;
-  const { onKey } = useInspectorKeys({
+  const { keysOn } = useInspectorKeys({
     embedded,
     setMode,
     stage,
@@ -279,7 +273,7 @@ export function Inspector({
   // Above the early return: a hook after it is skipped on a render without a row, and React fails
   // on the next render that has one (rules of hooks).
   const titleRef = React.useRef<HTMLHeadingElement>(null);
-  if (!row || !p) return null;
+  if (!row || !p || !sbLink) return null;
   const m = row.metrics;
   // The engine writes signature images and the diff page only for entries that fail the gate.
   // Served, the size check says whether they exist; otherwise go by the verdict.
@@ -295,7 +289,6 @@ export function Inspector({
     loaded && loaded !== 'missing'
       ? Math.max(loaded.a?.naturalHeight ?? 0, loaded.b.naturalHeight)
       : 0;
-  const sbLink = storybookLink(data.storybook.baseUrl, row, data.check?.manifest?.modes);
   // pxsig's own screens come from its dashboard build: no story to open.
   const screens = data.source === 'dashboard-screens';
   const sb = screens ? null : sbLink.url;
@@ -384,9 +377,7 @@ export function Inspector({
     notice,
   ];
   const actionNote = shown.some(Boolean) ? (
-    <div className={s.note} role="status">
-      {shown.map((x) => (x ? <span key={x}>{x}</span> : null))}
-    </div>
+    <output className={s.note}>{shown.map((x) => (x ? <span key={x}>{x}</span> : null))}</output>
   ) : null;
   const desc = row.reasons?.length
     ? row.reasons.join(' · ')
@@ -452,10 +443,7 @@ export function Inspector({
 
   const stageImages = loaded && loaded !== 'missing' ? loaded : null;
   const body = (
-    <div
-      onKeyDown={embedded ? (e) => onKey(e.nativeEvent) : undefined}
-      style={{ display: 'contents' }}
-    >
+    <div ref={embedded ? keysOn : undefined} style={{ display: 'contents' }}>
       <DiffViewer.Root
         baseline={stageImages?.a ?? null}
         latest={stageImages?.b ?? null}
@@ -499,7 +487,9 @@ export function Inspector({
             {/* The diff viewer's mode group and zoom controls, rendered with the contract's components. */}
             <DiffViewer.ModeGroup
               label={t('inspector.modes.label')}
-              render={(_, g) => <ModeChoice g={g} embedded={embedded} />}
+              render={(_, g) => (
+                <ModeChoice mode={g.mode} setMode={g.setMode} embedded={embedded} />
+              )}
             />
             <DiffViewer.ZoomControls render={(_, z) => <ZoomButtons z={z} />} />
             {embedded ? null : viewControls}

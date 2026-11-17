@@ -45,8 +45,8 @@ const pngBlob = (url: string) => {
   return new Blob([bytes], { type: 'image/png' });
 };
 
-/** The header's Report to pxsig button and its dialog. */
-export function GateReportButton({ row }: { row: Row }) {
+/** The header's Report to pxsig button and its dialog. Memoised: it changes with the entry only. */
+export const GateReportButton = React.memo(function GateReportButton({ row }: { row: Row }) {
   const [open, setOpen] = React.useState(false);
   return (
     <>
@@ -62,7 +62,7 @@ export function GateReportButton({ row }: { row: Row }) {
       {open ? <GateReportDialog row={row} onClose={() => setOpen(false)} /> : null}
     </>
   );
-}
+});
 
 function GateReportDialog({ row, onClose }: { row: Row; onClose: () => void }) {
   const titleRef = React.useRef<HTMLHeadingElement>(null);
