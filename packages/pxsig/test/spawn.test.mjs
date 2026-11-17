@@ -88,11 +88,19 @@ test('every start goes through lib/spawn.mjs, in pxsig and in the Storybook addo
         offenders.push(relative(pkg, p).split('\\').join('/'));
     }
   };
+  const addon = join(pkg, '..', 'storybook-addon');
+  const dashboard = join(pkg, '..', 'dashboard');
+  // Everything each package publishes that runs: pxsig's src/ and bin/, the dashboard source pack
+  // copies into it (scripts/sync-dashboard-source.mjs), the addon's top-level modules (its
+  // package.json `files`), and both self-tests (test/installed/).
   walk(join(pkg, 'src'));
   walk(join(pkg, 'bin'));
-  // The addon's shipped modules are its top-level files (its package.json `files`); test/ is not.
-  walk(join(pkg, '..', 'storybook-addon'), false);
-  // The addon starts `pxsig snapshot` through the workspace pxsig's `pxsig/spawn` (preset.mjs).
+  walk(join(pkg, 'test', 'installed'));
+  for (const d of ['src', 'fixtures', 'parity', 'ui-tools']) walk(join(dashboard, d));
+  walk(dashboard, false);
+  walk(addon, false);
+  walk(join(addon, 'test', 'installed'));
+  // The addon starts `pxsig snapshot`, and both self-tests start node, through `pxsig/spawn`.
   assert.deepEqual(offenders, ['src/lib/spawn.mjs']);
 });
 

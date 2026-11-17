@@ -1,14 +1,15 @@
 // The installed package's self-test: what npm put in node_modules/pxsig works on this host. Node
-// built-ins and the package's own files only: no network, no browser, no engine needed.
+// built-ins and the package's own files only: no network, no browser, no engine needed. It starts
+// node through the package's own guarded start (`pxsig/spawn`), never Node's process module.
 //
 //   node --test "node_modules/pxsig/test/installed/*.test.mjs"
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'pxsig/spawn';
 
 const pkg = fileURLToPath(new URL('../../', import.meta.url));
 const require = createRequire(import.meta.url);
