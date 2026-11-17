@@ -45,7 +45,7 @@ import { rejectionPrompt } from './lib/rejections/prompt.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 /**
- * The dashboard (index.html + assets/): the prebuilt one, or PXSIG_DASHBOARD_DIR (a dashboard
+ * The dashboard (index.html + assets/, the classic build in classic/): the prebuilt one, or PXSIG_DASHBOARD_DIR (a dashboard
  * rebuilt on a project's own design system by `pxsig dashboard build`).
  */
 export const prebuiltDashboardDir = resolve(here, '..', 'dist', 'dashboard');
@@ -59,6 +59,16 @@ export let dashboardDir = process.env.PXSIG_DASHBOARD_DIR
 export function useDashboard(dir) {
   dashboardDir = dir;
 }
+
+/**
+ * The dashboard a static report is made from: the build's classic script (`classic/`, one file
+ * that also runs from disk, where the served build's module chunks cannot), else the folder as it
+ * is (one made by hand).
+ */
+export const reportDashboardDir = () =>
+  existsSync(join(dashboardDir, 'classic', 'index.html'))
+    ? join(dashboardDir, 'classic')
+    : dashboardDir;
 
 /**
  * @param {Project} P
@@ -236,7 +246,7 @@ function withPrompts(P, open) {
  * @param {Omit<ReturnType<typeof buildData>, 'rejections'>} data
  */
 export function pageWithData(data) {
-  const html = readFileSync(join(dashboardDir, 'index.html'), 'utf8');
+  const html = readFileSync(join(reportDashboardDir(), 'index.html'), 'utf8');
   const json = JSON.stringify({ ...data, static: true }).replace(/</g, '\\u003c');
   return html.replace(
     /<script id="pxsig-data">[\s\S]*?<\/script>|<!--pxsig:data-->/,
@@ -250,11 +260,12 @@ export function pageWithData(data) {
  * @param {string} out
  */
 export function writeStaticReport(P, out) {
-  if (!existsSync(join(dashboardDir, 'index.html')))
+  const dir = reportDashboardDir();
+  if (!existsSync(join(dir, 'index.html')))
     throw new Error(`the dashboard is not built (${shortPath(P.workspaceRoot, dashboardDir)})`);
   mkdirSync(join(out, 'assets'), { recursive: true });
-  for (const f of readdirSync(join(dashboardDir, 'assets')))
-    copyFileSync(join(dashboardDir, 'assets', f), join(out, 'assets', f));
+  for (const f of readdirSync(join(dir, 'assets')))
+    copyFileSync(join(dir, 'assets', f), join(out, 'assets', f));
   // A static report is made to be shared: the reasons belong to the live session.
   const { rejections: _open, ...shared } = buildData(P, { base: './' });
   const data = {

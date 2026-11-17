@@ -11,9 +11,10 @@
  *
  * Run by Vite directly with no adapter named and no PXSIG_DS_SOURCE, this config refuses to build
  * rather than build plain. The output goes to packages/pxsig/dist/dashboard/ (or
- * PXSIG_DASHBOARD_OUT), which ships in the `pxsig` npm package and is never committed. It is a
- * classic (IIFE) script so a static report also opens from disk, and unminified unless
- * PXSIG_DASHBOARD_MINIFY=1 is set.
+ * PXSIG_DASHBOARD_OUT), which ships in the `pxsig` npm package and is never committed. It is built
+ * twice: ES-module chunks (what `pxsig serve` serves), and with PXSIG_DASHBOARD_FORMAT=iife one
+ * classic script into its `classic/` folder, so a static report also opens from disk. Both are
+ * unminified unless PXSIG_DASHBOARD_MINIFY=1 is set.
  */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,6 +22,7 @@ import react from '@vitejs/plugin-react';
 import { version as viteVersion } from 'vite';
 import { vanillaExtractPlugin } from '@vanilla-extract/vite-plugin';
 import { adapterSpec, dashboardConfig } from './build-config.mjs';
+import { CLASSIC } from './postbuild.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -30,11 +32,14 @@ export default () => {
     throw new Error(
       '[pxsig ui] no adapter named: build with `pnpm build:dashboard` (scripts/dashboard-build.mjs), which builds the hydrotik design system at the pinned commit, or name one with PXSIG_UI_ADAPTER'
     );
+  const format = process.env.PXSIG_DASHBOARD_FORMAT === 'iife' ? 'iife' : 'es';
+  const out = process.env.PXSIG_DASHBOARD_OUT
+    ? path.resolve(process.env.PXSIG_DASHBOARD_OUT)
+    : path.resolve(here, '../pxsig/dist/dashboard');
   return dashboardConfig({
     cwd,
-    outDir: process.env.PXSIG_DASHBOARD_OUT
-      ? path.resolve(process.env.PXSIG_DASHBOARD_OUT)
-      : path.resolve(here, '../pxsig/dist/dashboard'),
+    outDir: format === 'iife' ? path.join(out, CLASSIC) : out,
+    format,
     resolveFrom: [here],
     react,
     vanillaExtractPlugin,

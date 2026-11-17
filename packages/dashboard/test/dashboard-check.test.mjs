@@ -39,7 +39,7 @@ async function buildWith(adapterDir, outDir) {
   const react = (await import('@vitejs/plugin-react')).default;
   const { vanillaExtractPlugin } = await import('@vanilla-extract/vite-plugin');
   const { dashboardConfig } = await import('../build-config.mjs');
-  const { classicScript } = await import('../postbuild.mjs');
+  // The served build (ES-module chunks), as at the top of `pxsig dashboard build`'s output.
   const config = await dashboardConfig({
     adapter: adapterDir,
     cwd: repo,
@@ -50,7 +50,6 @@ async function buildWith(adapterDir, outDir) {
     viteVersion: version,
   });
   await build({ ...config, configFile: false, logLevel: 'silent' });
-  classicScript(outDir);
   return outDir;
 }
 

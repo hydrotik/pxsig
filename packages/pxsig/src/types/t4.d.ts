@@ -328,6 +328,7 @@ export interface DashboardBuildConfig {
     vanillaExtractPlugin: unknown;
     root?: string;
     viteVersion?: string;
+    format?: 'es' | 'iife';
   }) => Promise<Record<string, unknown>>;
 }
 
@@ -343,7 +344,11 @@ export interface DashboardUiTools {
 
 /** postbuild.mjs. */
 export interface DashboardPostbuild {
-  classicScript: (outDir: string) => void;
+  buildBoth: (
+    vite: { build: (c: Record<string, unknown>) => Promise<unknown> },
+    configOf: (f: 'es' | 'iife', dir: string) => Promise<Record<string, unknown>>,
+    outDir: string
+  ) => Promise<void>;
 }
 
 /** A package.json `exports` value, as far as `build` reads it. */

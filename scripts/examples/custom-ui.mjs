@@ -28,13 +28,17 @@ export function runCustomUi() {
   r = pxsig(['dashboard', 'build', '--out', 'dashboard-build'], dir);
   expect(
     r.status === 0 &&
-      existsSync(join(dir, 'dashboard-build', 'index.html')) &&
-      existsSync(join(dir, 'dashboard-build', 'assets', 'app.js')),
-    `build: index.html and assets/app.js${r.status ? `\n${r.stdout}${r.stderr}` : ''}`
+      ['index.html', 'assets/app.js', 'classic/index.html', 'classic/assets/app.js'].every((f) =>
+        existsSync(join(dir, 'dashboard-build', f))
+      ),
+    `build: the served build and the classic one in classic/${r.status ? `\n${r.stdout}${r.stderr}` : ''}`
   );
   expect(
-    !/type="module"/.test(readFileSync(join(dir, 'dashboard-build', 'index.html'), 'utf8')),
-    'build: a classic script, so a static report opens from disk'
+    /type="module"/.test(readFileSync(join(dir, 'dashboard-build', 'index.html'), 'utf8')) &&
+      !/type="module"/.test(
+        readFileSync(join(dir, 'dashboard-build', 'classic', 'index.html'), 'utf8')
+      ),
+    'build: module chunks for serve, a classic script in classic/, so a static report opens from disk'
   );
   // The stamp `dashboard build` wrote.
   const stamp = /** @type {BuildStamp} */ (
