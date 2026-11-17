@@ -102,6 +102,8 @@ export {
   maskMeta,
   maskList,
   grow,
+  fileLink,
+  fileLabel,
   sliderCtl,
   ctl,
   empty,

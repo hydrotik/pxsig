@@ -465,6 +465,15 @@ export const grow = style({
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
 });
+// A file's link (side/FilesSection.tsx): its label, not the link, is cut short, so the link's
+// external icon is never clipped (a clipped icon reads off its capitals).
+export const fileLink = style({ flex: 1, minInlineSize: 0 });
+export const fileLabel = style({
+  minInlineSize: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+});
 export const sliderCtl = style({ inlineSize: '13rem' });
 // A switch and its text, one control (`data-control`) as tall as the toolbar's sm buttons.
 export const ctl = style({
