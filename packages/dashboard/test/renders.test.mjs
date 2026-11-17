@@ -15,14 +15,18 @@ import { demo } from './renders-demo.mjs';
 
 setupFlows();
 
-/** Components rendered per step, at most (plain adapter). */
+/**
+ * Components rendered per step, at most (plain adapter). Measured: mount 83, review 592, open 319,
+ * next 345, fit 6, close 2. Opening and the next entry wait on image loads, and a slower machine
+ * can split their commits differently, so those two hold about one inspector render of room.
+ */
 const CEILINGS = {
-  mount: 80,
-  review: 590,
-  open: 1047,
-  next: 1237,
+  mount: 83,
+  review: 592,
+  open: 380,
+  next: 410,
   fit: 6,
-  close: 584,
+  close: 2,
 };
 
 const approving = { allowed: true, folder: 'demo', command: 'pxsig serve --link' };
