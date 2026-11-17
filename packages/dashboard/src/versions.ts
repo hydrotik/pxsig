@@ -1,4 +1,4 @@
-import { CONTRACT_VERSION } from './ui/contract';
+import { CONTRACT_VERSION } from '@ui';
 import { t } from './copy';
 import type { Data } from './data';
 
