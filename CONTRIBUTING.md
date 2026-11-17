@@ -184,7 +184,8 @@ runner's temp folder, so no cache saves it. The source is never left on disk: th
 
 `pnpm ds:fetch` also says how far the pin is behind the design system's default branch, and whether
 the design-system files the reference adapter imports changed since (a warning past 20 commits or 14
-days; scripts/lib/ds-behind.mjs). It never fails.
+days; scripts/lib/ds-behind.mjs). It never fails. For a local checkout as the source, the default
+branch is that checkout's `origin/HEAD`, or its own `HEAD` when it has none; the line says which.
 
 **Bumping the pin** is a reviewed commit: set `commit` in `design-system.json` to the design
 system's new commit (its full SHA), run `pnpm ds:fetch` and `pnpm build:dashboard`, then

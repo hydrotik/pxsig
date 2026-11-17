@@ -134,6 +134,7 @@ test('behind: commits and days since the pin, and the adapter files that changed
     days: 0,
     changed: [],
     unresolved: ['@hydrotik/design-system:Gone'],
+    ref: 'local HEAD',
   });
   commit(
     source,
@@ -207,6 +208,28 @@ test('behind: exact when the pin is off the default branch first-parent line (a 
     imports: IMPORTS,
   });
   assert.deepEqual([b.commits, b.days], [0, 0]);
+});
+
+test('behind: a local checkout is compared with its origin/HEAD, else its HEAD, and says which', (t) => {
+  const { source, repo, pin } = setup(t);
+  // A clone whose own main stays at the pin while its origin/main (the default branch) moves on.
+  const clone = tmp(t, 'clone');
+  git(clone, ['clone', '-q', source, '.']);
+  commit(source, { 'apps/site/README.md': 'two\n' }, T0 + DAY);
+  git(clone, ['fetch', '-q']);
+  assert.equal(git(clone, ['rev-parse', 'HEAD']), pin);
+  const dir = dsDir(repo);
+  let b = behind({ dir, source: clone, commit: pin, imports: IMPORTS });
+  assert.deepEqual([b.commits, b.ref], [1, 'origin/HEAD']);
+  assert.match(
+    describe(b).text,
+    /behind its default branch \(the source checkout's origin\/HEAD\)/
+  );
+  // The source itself has no origin: its own HEAD, named as such.
+  b = behind({ dir, source, commit: pin, imports: IMPORTS });
+  assert.deepEqual([b.commits, b.ref], [1, 'local HEAD']);
+  assert.match(describe(b).text, /\(the source checkout's HEAD: it has no origin\/HEAD\)/);
+  assert.ok(!describe(b).text.includes(source), 'the source is never named');
 });
 
 test('describe: a warning past either threshold, a notice within them', () => {
