@@ -52,7 +52,7 @@ export const TOKEN_NAMES = [
   'lineHeight.relaxed',
   'letterSpacing.caps',
   // Lines.
-  'line.emphasis', // a status edge on a card; the focus ring of a help row
+  'line.emphasis', // a status edge on a card
   // Motion.
   'motion.fast', // hover colour changes
 ] as const;

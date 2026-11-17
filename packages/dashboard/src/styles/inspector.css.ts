@@ -192,10 +192,8 @@ export const helpRow = style({
   paddingInline: v.space['2'],
   borderRadius: v.radius.md,
   fontSize: v.fontSize.sm,
-  outline: 'none',
   selectors: {
     '&[data-active]': { backgroundColor: `color-mix(in srgb, ${v.color.accent} 10%, transparent)` },
-    '&:focus-visible': insetFocusOutline,
   },
 });
 globalStyle(`${helpRow} dt`, { color: v.color.textMuted });
