@@ -265,6 +265,8 @@ export interface LockBody {
   nonce: string;
   generation: number;
   heartbeatAt: string;
+  /** Names `<store>/reports/.lock-<token>`, which the holder keeps open (lib/lock/token.mjs). */
+  token?: string;
 }
 
 /**
