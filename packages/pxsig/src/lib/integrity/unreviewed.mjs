@@ -22,9 +22,10 @@
  * component matches by its ledger name or that name's last segment (`components/Badge` → Badge).
  * Without the file, by name.
  */
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { PERSON_VIA, sha256 } from '../approvals/core.mjs';
+import { PERSON_VIA } from '../approvals/core.mjs';
+import { hashOf } from './sig-read.mjs';
 import { readJson, readLines } from '../files.mjs';
 import { componentOf } from './stories.mjs';
 /** @import { ApprovalLine } from '../../types.js' */
@@ -76,20 +77,6 @@ export function reviewState(lines, hash) {
   return lines.length
     ? { reviewed: false, new: true, by: 'outside pxsig' }
     : { reviewed: false, new: false, by: 'unlogged' };
-}
-
-/** @type {Map<string, { key: string, hash: string | null }>} */
-const hashes = new Map();
-/** A file's sha256, cached by its size and mtime. @param {string} file */
-function hashOf(file) {
-  const st = statSync(file, { throwIfNoEntry: false });
-  if (!st) return null;
-  const key = `${st.size}:${st.mtimeMs}`;
-  const hit = hashes.get(file);
-  if (hit?.key === key) return hit.hash;
-  const hash = sha256(file);
-  hashes.set(file, { key, hash });
-  return hash;
 }
 
 /**
