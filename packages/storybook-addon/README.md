@@ -123,8 +123,8 @@ On `storybook build` only (never `storybook dev`), the preset runs the workspace
 to write the snapshot. The addon starts no program itself: it loads the workspace pxsig's guarded
 start, `pxsig/spawn` (the list of programs pxsig starts, never a shell), which starts the Node that
 runs Storybook on `node_modules/pxsig/bin/pxsig.mjs snapshot --out <file> --workspace <root>`, in
-the workspace root, with a 2 minute timeout. That needs pxsig 0.7.8 or later; with an older pxsig
-the build prints `pxsig: no snapshot in this build (the snapshot needs pxsig 0.7.8 or later; …)`
+the workspace root, with a 2 minute timeout. That needs pxsig 0.7.7 or later; with an older pxsig
+the build prints `pxsig: no snapshot in this build (the snapshot needs pxsig 0.7.7 or later; …)`
 and starts nothing. `pxsig snapshot` reads the committed store and git only
 and sends nothing over the network. The file is written to
 `node_modules/.cache/pxsig/storybook/pxsig-snapshot.json` and served from the root of the build.

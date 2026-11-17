@@ -33,7 +33,7 @@ function workspace({ pxsig = 'ok', spawn = 'guarded' } = {}) {
     const exports = spawn === 'none' ? {} : { './spawn': './spawn.mjs' };
     writeFileSync(
       join(pkg, 'package.json'),
-      JSON.stringify({ name: 'pxsig', version: '0.7.7', exports })
+      JSON.stringify({ name: 'pxsig', version: '0.7.6', exports })
     );
     if (spawn !== 'none')
       writeFileSync(
@@ -124,7 +124,7 @@ test('a pxsig without pxsig/spawn: no snapshot, one line naming the version it n
   const q = quiet();
   assert.deepEqual(await staticDirs([], { configType: 'PRODUCTION', configDir }, q), []);
   assert.deepEqual(q.lines, [
-    `pxsig: no snapshot in this build (the snapshot needs pxsig ${SNAPSHOT_PXSIG} or later; this workspace has pxsig 0.7.7)`,
+    `pxsig: no snapshot in this build (the snapshot needs pxsig ${SNAPSHOT_PXSIG} or later; this workspace has pxsig 0.7.6)`,
   ]);
   assert.ok(!existsSync(join(ws, 'node_modules', '.cache', 'pxsig', 'storybook')), 'nothing ran');
 });

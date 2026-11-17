@@ -116,7 +116,7 @@ function pxsigCli(configDir, ws) {
 }
 
 /** The first pxsig release with `pxsig/spawn`, which the snapshot starts through. */
-export const SNAPSHOT_PXSIG = '0.7.8';
+export const SNAPSHOT_PXSIG = '0.7.7';
 
 /**
  * The workspace pxsig's guarded `spawnSync` (`pxsig/spawn`), or why there is none.
