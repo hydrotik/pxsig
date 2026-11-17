@@ -106,6 +106,49 @@ test('licences and flat versions are read from package.json; BUILD.json wins whe
   }
 });
 
+test('each package names the files it is in: module chunks and the classic script', () => {
+  const { root, base, dash } = fixture();
+  try {
+    // The served build splits: immer@11 only in a chunk loaded on first use; the classic script
+    // in classic/ holds everything.
+    writeFileSync(join(dash, 'assets', 'app.js'), BUNDLE.replace(/.*immer@11.*\n/, ''));
+    writeFileSync(
+      join(dash, 'assets', 'Inspector.js'),
+      `// ${store}/immer@11.1.4/node_modules/immer/dist/immer.mjs\n`
+    );
+    mkdirSync(join(dash, 'classic', 'assets'), { recursive: true });
+    writeFileSync(join(dash, 'classic', 'assets', 'app.js'), BUNDLE);
+    const { file, packages } = dashboardPackages(dash, base);
+    const filesOf = (/** @type {string} */ k) =>
+      packages.find((p) => `${p.name}@${p.version}` === k)?.files;
+    assert.equal(file, 'dist/dashboard/assets/app.js');
+    assert.deepEqual(filesOf('immer@11.1.4'), [
+      'dist/dashboard/assets/Inspector.js',
+      'dist/dashboard/classic/assets/app.js',
+    ]);
+    assert.deepEqual(filesOf('flat-pkg@2.0.0'), [
+      'dist/dashboard/assets/app.js',
+      'dist/dashboard/classic/assets/app.js',
+    ]);
+    const [c] = /** @type {any[]} */ (
+      appendBundled(
+        SBOM,
+        packages.filter((p) => p.name === 'immer' && p.version === '11.1.4'),
+        file
+      ).components
+    ).slice(1);
+    assert.deepEqual(
+      c.properties.filter((/** @type {{ name: string }} */ x) => x.name === 'pxsig:bundled-in'),
+      [
+        { name: 'pxsig:bundled-in', value: 'dist/dashboard/assets/Inspector.js' },
+        { name: 'pxsig:bundled-in', value: 'dist/dashboard/classic/assets/app.js' },
+      ]
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('licenseOf reads `license` and the old `licenses` list', () => {
   assert.equal(licenseOf({ license: 'MIT' }), 'MIT');
   assert.equal(licenseOf({ license: { type: 'ISC' } }), 'ISC');
