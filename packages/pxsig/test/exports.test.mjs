@@ -1,7 +1,8 @@
 // The package's subpath exports as a consumer resolves them from node_modules: `pxsig/workspace`
 // gives the documented resolver functions and nothing else; `pxsig/dashboard` is types only and
 // says so when Node loads it; `pxsig/diff-viewer` stays TypeScript source for a bundler;
-// `pxsig/workspace` and `pxsig/psig` carry types a TypeScript consumer resolves.
+// `pxsig/workspace` and `pxsig/psig` carry types a TypeScript consumer resolves; `pxsig/spawn` is
+// the guarded start the Storybook addon uses, and nothing else.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -46,6 +47,22 @@ test('pxsig/workspace exports exactly the documented resolver functions', async 
   });
 });
 
+test('pxsig/spawn exports only the guarded spawnSync: listed programs, never a shell', async () => {
+  await installed(async (resolve) => {
+    const mod = await import(pathToFileURL(resolve('pxsig/spawn')).href);
+    assert.deepEqual(Object.keys(mod), ['spawnSync']);
+    const r = mod.spawnSync(process.execPath, ['-e', 'process.stdout.write("ok")'], {
+      encoding: 'utf8',
+    });
+    assert.equal(r.stdout, 'ok');
+    assert.throws(
+      () => mod.spawnSync(process.execPath, [], { shell: true }),
+      /does not start a shell/
+    );
+    assert.throws(() => mod.spawnSync('sh', ['-c', 'true']), /does not start "sh"/);
+  });
+});
+
 test('pxsig/dashboard is types only: loading it in Node throws a clear error', async () => {
   await installed(async (resolve) => {
     await assert.rejects(import(pathToFileURL(resolve('pxsig/dashboard')).href), {
@@ -81,7 +98,7 @@ test('the manifest keeps the TypeScript entries and declares React and Playwrigh
   }
 });
 
-test('pxsig/workspace and pxsig/psig carry types a TypeScript consumer resolves', async () => {
+test('pxsig/workspace, pxsig/psig and pxsig/spawn carry types a TypeScript consumer resolves', async () => {
   // tsc and @types/node from the repository's own install (scripts/typecheck.mjs runs it the same way).
   const repoRequire = createRequire(join(pkgDir, '..', '..', 'package.json'));
   const tsPkg = repoRequire.resolve('typescript/package.json');
@@ -94,13 +111,15 @@ test('pxsig/workspace and pxsig/psig carry types a TypeScript consumer resolves'
       [
         "import { SetupError, openProject } from 'pxsig/workspace';",
         "import { hasImage, readHeader, type PsigHeader } from 'pxsig/psig';",
+        "import { spawnSync } from 'pxsig/spawn';",
         '// @ts-expect-error: an internal name, not exported',
         "import { runManifest } from 'pxsig/workspace';",
         "const name: string = openProject({ cwd: '.' }).name;",
         "const header: PsigHeader | null = readHeader('x.psig');",
         "const image: boolean = hasImage('x.psig');",
         "const err: Error = new SetupError('no', { code: 'x' });",
-        'export { name, header, image, err, runManifest };',
+        "const out: string = spawnSync(process.execPath, ['-v'], { encoding: 'utf8' }).stdout;",
+        'export { name, header, image, err, out, runManifest };',
       ].join('\n')
     );
     writeFileSync(

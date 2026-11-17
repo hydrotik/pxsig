@@ -6,7 +6,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
-import { staticDirs } from '../preset.mjs';
+import { SNAPSHOT_PXSIG, staticDirs } from '../preset.mjs';
+
+/** pxsig's own guarded start, which a stand-in pxsig's `pxsig/spawn` re-exports. */
+const GUARDED = new URL('../../pxsig/src/public/spawn.mjs', import.meta.url).href;
 
 /** @type {string[]} */
 const made = [];
@@ -14,16 +17,35 @@ after(() => made.forEach((d) => rmSync(d, { recursive: true, force: true })));
 
 /**
  * A workspace with a Storybook config dir and, unless `pxsig` is false, a stand-in pxsig CLI.
- * @param {{ pxsig?: string | false }} [opts]
+ * `spawn`: its `pxsig/spawn` is pxsig's guarded start (`guarded`), the same with each start
+ * recorded in starts.json (`record`), or absent, as in a pxsig before SNAPSHOT_PXSIG (`none`).
+ * @param {{ pxsig?: string | false, spawn?: 'guarded' | 'record' | 'none' }} [opts]
  */
-function workspace({ pxsig = 'ok' } = {}) {
+function workspace({ pxsig = 'ok', spawn = 'guarded' } = {}) {
   const ws = mkdtempSync(join(tmpdir(), 'pxsig-preset-'));
   made.push(ws);
   writeFileSync(join(ws, 'pxsig.workspace.json'), '{"version":1,"projects":{}}');
   mkdirSync(join(ws, '.storybook'));
   if (pxsig) {
-    const bin = join(ws, 'node_modules', 'pxsig', 'bin');
+    const pkg = join(ws, 'node_modules', 'pxsig');
+    const bin = join(pkg, 'bin');
     mkdirSync(bin, { recursive: true });
+    const exports = spawn === 'none' ? {} : { './spawn': './spawn.mjs' };
+    writeFileSync(
+      join(pkg, 'package.json'),
+      JSON.stringify({ name: 'pxsig', version: '0.7.7', exports })
+    );
+    if (spawn !== 'none')
+      writeFileSync(
+        join(pkg, 'spawn.mjs'),
+        spawn === 'guarded'
+          ? `export { spawnSync } from ${JSON.stringify(GUARDED)};`
+          : `import { writeFileSync } from 'node:fs'; import { spawnSync as guarded } from ${JSON.stringify(GUARDED)};
+export function spawnSync(program, args, opts) {
+  writeFileSync(${JSON.stringify(join(ws, 'starts.json'))}, JSON.stringify({ program, args, opts }));
+  return guarded(program, args, opts);
+}`
+      );
     writeFileSync(
       join(bin, 'pxsig.mjs'),
       pxsig === 'ok'
@@ -83,24 +105,26 @@ test('no pxsig, or a pxsig without the command: one warning, the build goes on',
   }
 });
 
-test('the one program the preset starts: node, on the workspace pxsig CLI, no shell', async () => {
-  const { ws, configDir } = workspace();
-  /** @type {unknown[][]} */
-  const starts = [];
-  /** @type {(program: string, args: string[], opts: Record<string, unknown>) => { status: number }} */
-  const run = (program, args, opts) => {
-    starts.push([program, args, opts]);
-    return { status: 1 };
-  };
+test('the one program the preset starts, through pxsig/spawn: node on the workspace CLI', async () => {
+  const { ws, configDir } = workspace({ spawn: 'record' });
   const q = quiet();
-  await staticDirs([], { configType: 'PRODUCTION', configDir }, { ...q, run });
-  assert.equal(starts.length, 1);
-  const [program, args, opts] = /** @type {[string, string[], Record<string, unknown>]} */ (
-    starts[0]
-  );
+  const dirs = await staticDirs([], { configType: 'PRODUCTION', configDir }, q);
+  assert.equal(dirs.length, 1);
+  const { program, args, opts } = JSON.parse(readFileSync(join(ws, 'starts.json'), 'utf8'));
   assert.equal(program, process.execPath);
   assert.equal(args[0], join(ws, 'node_modules', 'pxsig', 'bin', 'pxsig.mjs'));
   assert.deepEqual(args.slice(1, 3), ['snapshot', '--out']);
   assert.equal(opts.shell, undefined);
   assert.equal(opts.cwd, ws);
+  assert.equal(opts.timeout, 120_000);
+});
+
+test('a pxsig without pxsig/spawn: no snapshot, one line naming the version it needs', async () => {
+  const { ws, configDir } = workspace({ spawn: 'none' });
+  const q = quiet();
+  assert.deepEqual(await staticDirs([], { configType: 'PRODUCTION', configDir }, q), []);
+  assert.deepEqual(q.lines, [
+    `pxsig: no snapshot in this build (the snapshot needs pxsig ${SNAPSHOT_PXSIG} or later; this workspace has pxsig 0.7.7)`,
+  ]);
+  assert.ok(!existsSync(join(ws, 'node_modules', '.cache', 'pxsig', 'storybook')), 'nothing ran');
 });
