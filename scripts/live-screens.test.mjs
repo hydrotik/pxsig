@@ -10,6 +10,9 @@ import { FEATURES, STEPS, UNCOVERED } from './live/flows.mjs';
 import { liveCatalogue } from './live/run.mjs';
 import { assertSafeUrl } from './live/server.mjs';
 import { FIXED_COMMIT, FIXED_MS, routeOf, scrubber } from './live/volatile.mjs';
+import { gateFacts } from '../packages/dashboard/fixtures/gate-report.mjs';
+/** @import { GateFacts } from '../packages/pxsig/src/lib/gate-report.mjs' */
+import { gateText, issueUrl } from '../packages/pxsig/src/lib/gate-report/text.mjs';
 import { wantsLive } from './screens-container.mjs';
 import { screenEntries } from './screens-check.mjs';
 
@@ -123,7 +126,37 @@ test('only the answers with something volatile are routed through the scrub', ()
   assert.equal(routeOf('http://127.0.0.1:5/__pxsig/data?project=x'), 'data');
   assert.equal(routeOf('http://127.0.0.1:5/__pxsig/status'), 'status');
   assert.equal(routeOf('http://127.0.0.1:5/__pxsig/events'), null);
+  assert.equal(routeOf('http://127.0.0.1:5/__pxsig/gate-report?id=a--b'), 'gate-report');
+  assert.equal(routeOf('http://127.0.0.1:5/__pxsig/gate-report/self-check'), null);
   assert.equal(routeOf('http://127.0.0.1:5/p/x/renders/latest/a.png'), null);
+});
+
+test("a live gate report shows fixed versions and machines, not the host's or the release's", () => {
+  const facts = (/** @type {string} */ arch, /** @type {string} */ v) => {
+    const f = /** @type {GateFacts} */ (gateFacts());
+    f.pxsig = v;
+    f.engine = v;
+    f.environment.render =
+      f.environment.baseline = `Linux ${arch} · chromium 145 · GPU swiftshader`;
+    return f;
+  };
+  const answer = (/** @type {string} */ arch, /** @type {string} */ v) => {
+    const f = facts(arch, v);
+    return { text: gateText(f), url: issueUrl(f).url, trimmed: [], facts: f, image: null };
+  };
+  const a = answer('x64', '0.7.7');
+  const b = answer('arm64', '0.7.8');
+  assert.notEqual(a.text, b.text);
+  assert.deepEqual(scrubber().scrub('gate-report', a), []);
+  assert.deepEqual(scrubber().scrub('gate-report', b), []);
+  assert.equal(a.text, b.text);
+  assert.equal(a.url, b.url);
+  assert.ok(!/0\.7\.|arm64/.test(a.text + a.url));
+  assert.match(a.text, /pxsig 0\.0\.0-live · engine 0\.0\.0-live/);
+  assert.match(a.text, /environments same/);
+  assert.deepEqual(scrubber().scrub('gate-report', { text: 'x', url: 'y' }), [
+    'gate-report: facts is missing',
+  ]);
 });
 
 test("a person's own servers are never talked to", () => {

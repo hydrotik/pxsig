@@ -94,8 +94,10 @@ export function FilesSection({
           ] as [string, string][]
         ).map(([label, url]) => (
           <li key={label}>
-            <Link href={url} external className={s.grow}>
-              {label}
+            <Link href={url} external className={s.fileLink}>
+              <span className={s.fileLabel} title={label}>
+                {label}
+              </span>
             </Link>
             <span className={`${s.mono} ${s.muted}`}>{sizes[url] ?? ''}</span>
             <CopyPath value={repoPath(url)} label={label} />
@@ -103,8 +105,10 @@ export function FilesSection({
         ))}
         {sb ? (
           <li>
-            <Link href={sb} external className={s.grow}>
-              {t('inspector.files.storybook')}
+            <Link href={sb} external className={s.fileLink}>
+              <span className={s.fileLabel} title={t('inspector.files.storybook')}>
+                {t('inspector.files.storybook')}
+              </span>
             </Link>
           </li>
         ) : null}

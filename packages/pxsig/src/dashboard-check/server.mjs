@@ -12,6 +12,8 @@ import { sampleGateReport } from './gate-report.mjs';
 /** @import { AddressInfo } from 'node:net' */
 /** @import { CheckPost, DashboardFixtures, SampleImages, ScenarioServer } from '../types/t4.js' */
 /** @import { GateFacts } from '../lib/gate-report.mjs' */
+/** @import { SampleSignatures } from './signatures.mjs' */
+/** @typedef {SampleImages & { sigs?: SampleSignatures | null }} ServedImages the sample images and, when the engine made them, its signatures */
 
 /**
  * The sample images: a card with a button, and the same card with the button moved, so the
@@ -70,9 +72,25 @@ const TYPES = {
 };
 
 /**
+ * A `/diffs/` image: the engine's signature or cell heatmap of the sample (square, as a check
+ * writes them), or the sample diff where the engine made none.
+ * @param {ServedImages} images
+ * @param {string} path
+ */
+function signatureOf(images, path) {
+  const kind = /\.(baseline|current|diff)\.png$/.exec(path)?.[1];
+  const sigs = images.sigs;
+  return sigs && kind ? sigs[/** @type {'baseline' | 'current' | 'diff'} */ (kind)] : images.diff;
+}
+
+/** The sample entries' diff page (the engine's `<stem>.diff.html`). */
+const SAMPLE_DIFF_PAGE =
+  '<!doctype html><html lang="en"><title>Sample diff page</title><p>Sample diff page.</p></html>';
+
+/**
  * A server for one build and one scenario: the build under /report/, /__pxsig/ from the scenario,
  * images under /p/demo/. `posts` records every POST; none reaches anything that writes.
- * @param {{ dir: string, scenario: string, fixtures: DashboardFixtures, images: SampleImages, posts: CheckPost[] }} opts
+ * @param {{ dir: string, scenario: string, fixtures: DashboardFixtures, images: ServedImages, posts: CheckPost[] }} opts
  * @returns {Promise<ScenarioServer>}
  */
 export function scenarioServer({ dir, scenario, fixtures, images, posts }) {
@@ -191,11 +209,15 @@ export function scenarioServer({ dir, scenario, fixtures, images, posts }) {
           200,
           'image/png',
           u.pathname.includes('/diffs/')
-            ? images.diff
+            ? signatureOf(images, u.pathname)
             : u.pathname.includes('/base')
               ? images.baseline
               : images.render
         );
+      // The engine writes a diff page beside each changed entry's images: the inspector's Files
+      // section asks for its size.
+      if (u.pathname.endsWith('.diff.html'))
+        return send(200, 'text/html; charset=utf-8', SAMPLE_DIFF_PAGE);
       return send(404, 'text/plain', '');
     }
     if (!u.pathname.startsWith('/report')) return send(404, 'text/plain', '');

@@ -114,7 +114,7 @@
       - listitem:
         - link "Diff page (HTML) (opens in a new tab)":
           - /url: /p/demo/diffs/latest/ui-button--primary.diff.html
-        - text: missing
+        - text: 0.0 KB
         - 'button "Copy path: Diff page (HTML)"': Copy path
       - listitem:
         - link "Rejection packet (opens in a new tab)":

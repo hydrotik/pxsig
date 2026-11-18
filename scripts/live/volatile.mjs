@@ -21,6 +21,7 @@
  * Zero dependencies.
  */
 import { FIXED_TIME } from '../../packages/pxsig/src/dashboard-check/capture.mjs';
+import { fixGateReport } from './gate-report.mjs';
 import { serverFetch } from './server.mjs';
 
 /** @import { ScrubRule } from './types.js' */
@@ -91,11 +92,17 @@ export const RULES = {
   ],
   projects: [{ path: 'projects[].storybook', kind: 'url', optional: true }],
   integrity: ledger(''),
+  // The report's versions and machine class (live/gate-report.mjs); its text and link follow.
+  'gate-report': [{ path: 'facts', kind: 'report' }],
 };
+
+/** Routes scrubbed on their own path only: `gate-report/self-check` holds nothing volatile. */
+const EXACT = new Set(['gate-report']);
 
 /** The route of a request URL (`/__pxsig/data?project=x` → `data`), or null when none is scrubbed. */
 export function routeOf(/** @type {string} */ url) {
-  const m = /\/__pxsig\/([a-z-]+)/.exec(new URL(url).pathname);
+  const m = /\/__pxsig\/([a-z-]+)(\/.*)?/.exec(new URL(url).pathname);
+  if (m && m[2] && EXACT.has(m[1])) return null;
   return m && RULES[m[1]] ? m[1] : null;
 }
 
@@ -162,7 +169,8 @@ export function scrubber() {
           if (!rule.optional) problems.push(`${route}: ${at} is missing`);
           continue;
         }
-        if (rule.kind === 'text') {
+        if (rule.kind === 'report') problems.push(...fixGateReport(parent, `${route}: ${at}`));
+        else if (rule.kind === 'text') {
           if (typeof v !== 'string') problems.push(`${route}: ${at} is not text`);
           else parent[key] = v.replace(new RegExp(ISO.source, 'g'), FIXED_TIME);
         } else if (rule.kind === 'ms') {
