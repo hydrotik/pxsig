@@ -42,7 +42,7 @@ import { readToken } from '../../packages/pxsig/src/lib/guard.mjs';
 import { rustBinary } from '../../packages/pxsig/src/lib/workspace/peers.mjs';
 import { copyTree } from '../lib/copy-tree.mjs';
 import { FEATURES, STEPS } from './flows.mjs';
-import { assertSafeUrl, DEAD_URL, idle, startLiveServer } from './server.mjs';
+import { assertSafeUrl, DEAD_URL, fetch, idle, startLiveServer } from './server.mjs';
 import { CHANGE, pristineDir, REACT_CHANGE, repo } from './stage.mjs';
 import { sideBySide, themeWorkspace } from './themes.mjs';
 import { scrubber, scrubRoutes } from './volatile.mjs';
@@ -187,7 +187,7 @@ async function runOnce({ browser, ws, dashboard, axe, out, log, want, text }) {
   /** @param {LiveAction} a */
   const act = async (a) => {
     if (a.link) {
-      // A link minted by this server from its own CLI token, as `pxsig serve --link` does.
+      // A link minted by this server from its CLI token, as `pxsig serve --link` does.
       const token = readToken(dir, url);
       if (!token) throw new Error('no CLI token for the live server');
       const r = await fetch(`${url}/__pxsig/ticket`, {

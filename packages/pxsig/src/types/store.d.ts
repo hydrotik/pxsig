@@ -48,6 +48,8 @@ export interface PsigHeader {
   sections?: PsigSection[];
   /** 0.7.7 and later: the masks that applied to the render (crates/pxsig-cli/src/batch/masks.rs). */
   masks?: { v: number; masks: import('./run.js').MaskRecord[] };
+  /** The fonts the render's text was drawn in (Chromium renders, lib/capture/fonts.mjs). */
+  fonts?: import('./fonts.js').UsedFonts;
 }
 
 // --- manifest (lib/manifest.mjs; docs/spec.md section 6) -----------------------------------------

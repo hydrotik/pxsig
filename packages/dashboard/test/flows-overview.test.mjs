@@ -36,6 +36,7 @@ test('the top bar: the title is the label (else the project), the versions on ho
       await h1.waitFor();
       assert.equal(await h1.innerText(), 'pxsig • demo', 'no label: the project name, as before');
       assert.equal(await page.title(), 'pxsig • demo', 'the browser tab names it too');
+      assert.equal(await page.locator('title').count(), 1, 'one <title>: the page keeps its own');
       const m = await modesBeside(page);
       assert.equal(m.inTitle, false);
       assert.match(m.next, /^(Live|Offline)$/, 'the connection badge comes right after');

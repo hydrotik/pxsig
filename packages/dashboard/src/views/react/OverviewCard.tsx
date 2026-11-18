@@ -8,11 +8,10 @@ import { t } from '../../copy';
 import { type Data, useReactActivity } from '../../data';
 import { Affordance } from '../../parts/Affordance';
 import * as s from '../../dashboard.css';
+import { when } from './shared';
 
 /** Diagnostics › React on a part, with its Alerts filter or every row. */
 export type OpenReact = (part: 'compiler' | 'renders', all?: boolean) => void;
-
-const when = (iso: string) => new Date(iso).toLocaleString();
 
 export function ReactCard({ data, openReact }: { data: Data; openReact: OpenReact }) {
   const activity = useReactActivity();

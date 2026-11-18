@@ -7,6 +7,7 @@
  * the staging folder, PXSIG_URL names this server once it is up, and the URL it answers on is the
  * one it printed.
  */
+import { request } from 'node:http';
 import { resolve, sep } from 'node:path';
 import { freePort, startServer } from '../../packages/pxsig/test/server-start.mjs';
 
@@ -59,6 +60,45 @@ export async function startLiveServer({ dir, base, dashboard, env }) {
   return S;
 }
 
+/**
+ * A request to the live server on a connection of its own (`Connection: close`), never a kept-alive
+ * one. The harness blocks its event loop at times (a CLI it runs with spawnSync, a screenshot it
+ * decodes), so fetch's pool can keep a socket idle past the server's keep-alive timeout (5 s) and
+ * send the next request on it as the server closes it: "other side closed", read as the server
+ * dropping a request. On a fresh connection, a failure is the server's. Rejects as fetch does
+ * (`TypeError('fetch failed')` with the cause), so a dropped request is told apart the same way.
+ * @param {string} url
+ * @param {{ method?: string, headers?: Record<string, string>, signal?: AbortSignal }} [init]
+ * @returns {Promise<Response>}
+ */
+export function serverFetch(url, { method = 'GET', headers = {}, signal } = {}) {
+  return new Promise((ok, fail) => {
+    const lost = (/** @type {Error} */ e) =>
+      fail(e.name === 'AbortError' ? e : new TypeError('fetch failed', { cause: e }));
+    const req = request(assertSafeUrl(url), { method, headers, agent: false, signal }, (res) => {
+      /** @type {Buffer[]} */
+      const body = [];
+      res.on('data', (/** @type {Buffer} */ c) => body.push(c));
+      res.on('error', lost);
+      res.on('end', () => {
+        const status = res.statusCode ?? 0;
+        const h = Object.entries(res.headers).map(([k, v]) => [k, [v ?? ''].flat().join(', ')]);
+        ok(
+          new Response([204, 304].includes(status) ? null : Buffer.concat(body), {
+            status,
+            headers: /** @type {[string, string][]} */ (h),
+          })
+        );
+      });
+    });
+    req.on('error', lost);
+    req.end();
+  });
+}
+
+/** run.mjs's `fetch`: the live harness talks to its server through `serverFetch` only. */
+export { serverFetch as fetch };
+
 /** @param {number} ms */
 const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
 
@@ -72,7 +112,7 @@ export async function idle(url) {
   let last = '';
   let since = Date.now();
   for (;;) {
-    const s = await fetch(`${assertSafeUrl(url)}/__pxsig/status`, {
+    const s = await serverFetch(`${url}/__pxsig/status`, {
       signal: AbortSignal.timeout(5000),
     })
       .then((r) => r.text())

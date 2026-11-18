@@ -193,6 +193,7 @@ mod baseline;
 mod boxes;
 mod check;
 mod color;
+mod fonts;
 mod masks;
 mod text;
 

@@ -11,7 +11,7 @@ import { asMain, CRASH, checkExit, reportStamp } from './lib/crash.mjs';
 import { scrubber, scrubRoutes } from './live/volatile.mjs';
 /**
  * The fake route: the part of Playwright's Route that scrubRoutes uses.
- * @typedef {{ request(): { url(): string, method(): string }, fetch(): Promise<{ json(): Promise<unknown> }>, fulfill(o: unknown): Promise<void>, abort(code?: string): Promise<void> }} FakeRoute
+ * @typedef {{ request(): { url(): string, method(): string, headers(): Record<string, string> }, fulfill(o: unknown): Promise<void>, abort(code?: string): Promise<void> }} FakeRoute
  * @typedef {Parameters<typeof scrubRoutes>[0]} Context
  */
 
@@ -78,7 +78,7 @@ test("a report's stamp is its generatedAt, or null", () => {
 
 /**
  * One routed request through scrubRoutes, with a fake context and route.
- * @param {{ fetch: () => Promise<{ json(): Promise<unknown> }>, abort?: () => Promise<void> }} o
+ * @param {{ fetch: () => Promise<Response>, abort?: () => Promise<void> }} o
  */
 async function routeOnce({ fetch, abort = async () => {} }) {
   /** @type {{ handler?: (route: FakeRoute) => Promise<void>, match?: (u: URL) => boolean }} */
@@ -102,7 +102,8 @@ async function routeOnce({ fetch, abort = async () => {} }) {
     /** @type {Context} */ (/** @type {unknown} */ (context)),
     scrubber(),
     problems,
-    (m) => failed.push(m)
+    (m) => failed.push(m),
+    fetch
   );
   const url = 'http://127.0.0.1:52600/__pxsig/status';
   const { match, handler } = got;
@@ -110,8 +111,7 @@ async function routeOnce({ fetch, abort = async () => {} }) {
   assert.ok(match(new URL(url)));
   assert.ok(!match(new URL('http://127.0.0.1:52600/__pxsig/events')));
   await handler({
-    request: () => ({ url: () => url, method: () => 'GET' }),
-    fetch,
+    request: () => ({ url: () => url, method: () => 'GET', headers: () => ({}) }),
     fulfill: async (/** @type {unknown} */ o) => void calls.fulfilled.push(o),
     abort: async (/** @type {string | undefined} */ code) => {
       calls.aborted.push(code);
@@ -122,27 +122,37 @@ async function routeOnce({ fetch, abort = async () => {} }) {
 }
 
 test('a request the server resets is aborted and recorded, never passed or left unhandled', async () => {
-  const reset = Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' });
+  // As server.mjs serverFetch rejects: fetch's TypeError, the socket error its cause.
+  const cause = Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' });
+  const reset = new TypeError('fetch failed', { cause });
   const r = await routeOnce({ fetch: () => Promise.reject(reset) });
   assert.deepEqual(r.fulfilled, []);
   assert.deepEqual(r.aborted, ['failed']);
-  assert.deepEqual(r.failed, ['GET /__pxsig/status: read ECONNRESET']);
+  assert.deepEqual(r.failed, ['GET /__pxsig/status: fetch failed: read ECONNRESET']);
   // An abort that fails too (the page closed) still settles the handler.
   const closed = await routeOnce({
     fetch: () => Promise.reject(reset),
     abort: () => Promise.reject(new Error('Target page, context or browser has been closed')),
   });
-  assert.deepEqual(closed.failed, ['GET /__pxsig/status: read ECONNRESET']);
+  assert.deepEqual(closed.failed, ['GET /__pxsig/status: fetch failed: read ECONNRESET']);
 });
 
 test('an answer is scrubbed and fulfilled, with nothing recorded as failed', async () => {
   const body = { dashboard: 'http://127.0.0.1:52600/report/' };
-  const r = await routeOnce({ fetch: async () => ({ json: async () => body }) });
+  const r = await routeOnce({
+    fetch: async () =>
+      new Response(JSON.stringify(body), {
+        headers: { 'content-type': 'application/json', 'content-length': '50' },
+      }),
+  });
   assert.deepEqual(r.failed, []);
   assert.deepEqual(r.aborted, []);
   assert.equal(r.fulfilled.length, 1);
-  assert.deepEqual(/** @type {{ json: unknown }} */ (r.fulfilled[0]).json, {
-    dashboard: 'http://127.0.0.1:1/report/',
+  assert.deepEqual(r.fulfilled[0], {
+    status: 200,
+    // The answer's own headers, but its length: the scrubbed body is another length.
+    headers: { 'content-type': 'application/json' },
+    json: { dashboard: 'http://127.0.0.1:1/report/' },
   });
 });
 

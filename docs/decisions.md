@@ -160,8 +160,11 @@ queue.
 
 **Why.** Two writers (a full check and a dashboard approval, two checks in two terminals) would
 interleave renders and reports, and an approval could land on a render another process was
-rewriting. A pid-and-start-time lock is enough on one machine, needs no daemon, and clears itself
-when its process is gone.
+rewriting. A lock whose holder proves it is alive by keeping a file named by
+the lock's random token open is enough on one machine, needs no daemon, no other program and no
+network port, and clears itself when its process ends, however it ends. A pid alone is not proof:
+Windows gives a freed pid to another process within seconds, and has no start time to tell them
+apart without starting PowerShell.
 
 ## A story's gate beats run-wide settings
 

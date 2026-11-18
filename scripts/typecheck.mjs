@@ -133,8 +133,8 @@ else {
   const fresh = spawnSync(
     process.execPath,
     [path.join(repo, 'scripts', 'ui.mjs'), 'types', '--check'],
-    // ui.mjs reads the checkout from PXSIG_DS_SOURCE: the pinned one, not the configured source.
-    { cwd: repo, stdio: 'inherit', env: { ...process.env, PXSIG_DS_SOURCE: source } }
+    // ui.mjs types reads the same pinned checkout.
+    { cwd: repo, stdio: 'inherit' }
   ).status;
   status ||= fresh ?? 1;
   if (fresh && !existsSync(path.join(ds, 'dist', 'index.d.mts')))

@@ -93,7 +93,8 @@ export function Renders({
   const rows = (data.check?.rows ?? []).filter((r) => !r.skipped);
   const measured = React.useMemo(
     () =>
-      rows
+      (data.check?.rows ?? [])
+        .filter((r) => !r.skipped)
         .filter((r): r is Measured => r.renders !== undefined)
         .sort(
           (a, b) =>
@@ -102,7 +103,7 @@ export function Renders({
             (b.renders?.mount.commits ?? 0) - (a.renders?.mount.commits ?? 0) ||
             a.id.localeCompare(b.id)
         ),
-    [data] // eslint-disable-line react-hooks/exhaustive-deps
+    [data]
   );
   const alerts = measured.filter(still);
   const [all, setAll] = React.useState<boolean | null>(initialAll ?? null);
@@ -123,9 +124,8 @@ export function Renders({
       await measureRenders(ids);
     } catch (e) {
       failure.report(e);
-    } finally {
-      setAsking(false);
     }
+    setAsking(false);
   };
   const offers = offersRuns(data) && !off;
   const busy = measuring || asking;

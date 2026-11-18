@@ -222,7 +222,7 @@ pub fn capture_png_policy(
 
 /// Build and write one baseline (optionally with the detail channel). A `.psig` output also
 /// carries the render itself, byte for byte, as its baseline image, and the render's masks (the
-/// record beside the PNG, `masks.rs`) as its header's `masks`.
+/// record beside the PNG, `masks.rs`) as its header's `masks`, and its fonts (`fonts.rs`) as `fonts`.
 pub fn capture_png(
     png: &Path,
     out: &Path,
@@ -251,6 +251,14 @@ fn capture_png_with(
         extra
             .get_or_insert_with(Default::default)
             .insert("masks".into(), m);
+    }
+    // The fonts its text was drawn in (fonts.rs), when the capture recorded them.
+    if io::is_psig_path(out) {
+        if let Some(f) = super::fonts::for_baseline(png)? {
+            extra
+                .get_or_insert_with(Default::default)
+                .insert("fonts".into(), f);
+        }
     }
     let bytes = fs::read(png).with_context(|| format!("PNG not found: {}", png.display()))?;
     let (data, w, h) = io::decode_png_bytes(&bytes, png)?;
