@@ -24,7 +24,7 @@
  * `gaps` problem and `build` refuses, with the migration notes; a newer one is a note.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { buildDirFor, buildFiles, STAMP } from './lib/dashboard-dir.mjs';
+import { buildDirFor, buildFiles, shellWord, STAMP } from './lib/dashboard-dir.mjs';
 import { PXSIG_VERSION } from './lib/workspace.mjs';
 import { herePath } from './lib/machine.mjs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
@@ -203,17 +203,6 @@ export async function build(
   );
   return { outDir, adapter: ui.name, fromConfig: ui.from === 'pxsig.config.json dashboard.ui' };
 }
-
-/**
- * `p` as one POSIX shell word: as it is when it needs no quoting, else single-quoted (after a
- * leading `~/`, which the shell expands only outside quotes).
- * @param {string} p
- */
-const shellWord = (p) => {
-  if (/^[\w./~@%+=:,-]+$/.test(p)) return p;
-  const home = p.startsWith('~/') ? '~/' : '';
-  return `${home}'${p.slice(home.length).replace(/'/g, `'\\''`)}'`;
-};
 
 /**
  * What `pxsig dashboard build` prints: the folder relative to the current one `cwd`, so the line

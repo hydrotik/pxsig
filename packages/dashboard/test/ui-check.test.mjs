@@ -1,7 +1,7 @@
 /**
  * `pnpm ui:check` on a copy of the dashboard and docs/ui: it passes as committed, and fails when a
  * documented feature is removed, a contract component is added without its documentation, or a
- * design-system import appears outside src/ui/adapters/.
+ * design-system import appears outside src/ui/adapters/ or a relative import reaches into src/ui/.
  */
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -88,6 +88,38 @@ test('a design-system import outside the adapters fails', async () => {
   );
   assert.ok(
     problems.some((p) => /src\/views\/Help\.tsx: imports "some-design-system"/.test(p)),
+    problems.join('\n')
+  );
+});
+
+test('outside src/ui/, a relative import into src/ui/ fails, except ../ui/tokens', async () => {
+  const reaching = [
+    ['src/views/Help.tsx', '../ui/adapters/hydrotik'],
+    ['src/views/Help.tsx', '../ui/fallbacks'],
+    ['src/parts/Schematic.tsx', '../ui/runtime'],
+    ['src/App.tsx', './ui'],
+    ['src/inspector/side/Side.tsx', '../../ui/contract'],
+  ];
+  const problems = await check(({ read, write }) => {
+    for (const [file, spec] of reaching) write(file, `import { X } from '${spec}';\n${read(file)}`);
+    // Allowed: the tokens by path, and any path inside src/ui/ itself.
+    write(
+      'src/views/Overview.tsx',
+      `import { tokens } from '../ui/tokens';\n${read('src/views/Overview.tsx')}`
+    );
+    write(
+      'src/ui/fallbacks.tsx',
+      `import { X } from './runtime';\n${read('src/ui/fallbacks.tsx')}`
+    );
+  });
+  for (const [file, spec] of reaching)
+    assert.ok(
+      problems.some((p) => p.startsWith(`${file}: imports "${spec}", inside src/ui/`)),
+      `${file} -> ${spec}\n${problems.join('\n')}`
+    );
+  assert.equal(
+    problems.filter((p) => /inside src\/ui\//.test(p)).length,
+    reaching.length,
     problems.join('\n')
   );
 });

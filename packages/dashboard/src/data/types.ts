@@ -322,7 +322,7 @@ export interface IntegrityComponent {
   entries: number;
   stories: number;
   counts: Record<string, number>;
-  /** How many of its baselines no person approved. Older servers omit it. */
+  /** How many of its baselines no person approved; absent when none. */
   unreviewed?: number;
 }
 export interface IntegrityLedger {
@@ -364,15 +364,15 @@ export interface Data {
   generatedAt: string;
   /** The project this data belongs to (one server can serve several). */
   project?: string;
-  /** The project switcher's name for it: the project's `label`, else its name. Older servers omit it. */
-  label?: string;
+  /** The project switcher's name for it: the project's `label`, else its name. */
+  label: string;
   /**
    * The application under review, after "pxsig •" in the title: the workspace's `label`, else the
-   * project's `label`, else its name. Older servers omit it.
+   * project's `label`, else its name.
    */
-  scope?: string;
-  /** What drew the page: pxsig, its engine and the UI contract (null when unknown). Older servers omit it. */
-  versions?: { pxsig: string | null; engine: string | null; contract: string | null };
+  scope: string;
+  /** What drew the page: pxsig, its engine and the UI contract (null when unknown). */
+  versions: { pxsig: string | null; engine: string | null; contract: string | null };
   /** The project's store, relative to the workspace root (for copyable paths). */
   store?: string;
   check: CheckReport | null;
@@ -398,8 +398,8 @@ export interface Data {
   storybook: { baseUrl: string };
   /** `dashboard-screens`: pxsig's own screens (no Storybook to open, nothing to re-check here). */
   source?: 'storybook' | 'dashboard-screens';
-  /** `rejected`: the rejection packets' folder (older servers omit it). */
-  paths: { diffRoot: string; renders: string; baselines: string; rejected?: string };
+  /** `rejected`: the rejection packets' folder. */
+  paths: { diffRoot: string; renders: string; baselines: string; rejected: string };
   sigs: Record<string, string>;
   integrity?: IntegrityLedger | null;
   /** The React analysis (always when served; in a static report only with results to show). */

@@ -301,6 +301,7 @@ const Slider: F<'Slider'> = ({
 const Switch: F<'Switch'> = ({ checked, onCheckedChange, label, disabled }) => (
   <input
     type="checkbox"
+    // oxlint-disable-next-line jsx-a11y/role-has-required-aria-props -- a native checkbox: its checked state is the switch's aria-checked
     role="switch"
     aria-label={label}
     checked={checked}
@@ -312,6 +313,7 @@ const Switch: F<'Switch'> = ({ checked, onCheckedChange, label, disabled }) => (
 
 const SegmentedChoice: F<'SegmentedChoice'> = ({ label, value, onValueChange, options }) => (
   <div
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a row of toggle buttons in one control box; a fieldset brings its own border, padding and min-inline-size, and wants a legend
     role="group"
     aria-label={label}
     data-control
@@ -442,7 +444,7 @@ const Link: F<'Link'> = ({ href, external, title, className, render, children })
     children,
     style: { color: v.color.accent },
   };
-  return render ? render(props) : <a {...props} />;
+  return render ? render(props) : <a {...props}>{children}</a>;
 };
 
 const Progress: F<'Progress'> = ({ value, label, showLabel, className }) => (

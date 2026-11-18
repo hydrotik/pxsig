@@ -266,6 +266,12 @@ test('BUILD.json records the design-system commit, a dirty tree, the lock hashes
     });
     assert.equal(r.lockSha256, '2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881');
     assert.equal(r.builtAt, '2023-11-14T22:13:20.000Z');
+    // The version pxsig serve compares a PXSIG_DASHBOARD_DIR build against (lib/dashboard-dir.mjs).
+    assert.equal(
+      r.pxsig,
+      JSON.parse(readFileSync(new URL('../packages/pxsig/package.json', import.meta.url), 'utf8'))
+        .version
+    );
     assert.equal(r.bundled.length, 6);
     assert.equal(buildRecord({ outDir: dash, adapter: 'plain', base }).designSystem, null);
     const text = format(r);

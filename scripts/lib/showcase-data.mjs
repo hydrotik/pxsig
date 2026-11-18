@@ -180,5 +180,5 @@ export function showcaseData(pixels) {
     summary: { stories: 42, failed, cached: 0, elapsedMs: 4400 },
     failedIds: [],
   }));
-  return { ...d, project: 'design-system', label: LABEL };
+  return { ...d, project: 'design-system', label: LABEL, scope: LABEL };
 }

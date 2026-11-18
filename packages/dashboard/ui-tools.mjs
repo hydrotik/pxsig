@@ -74,6 +74,7 @@ import {
   srcDir,
   uiDir,
 } from './ui-tools/paths.mjs';
+import { uiReachProblem } from './ui-tools/imports.mjs';
 
 export {
   compareVersions,
@@ -139,7 +140,8 @@ function copyExists(messages, key) {
 /**
  * Every rule `pnpm ui:check` enforces. Returns a list of problems (empty: all good).
  *  1. No design-system import outside src/ui/adapters/: dashboard files import only relative
- *     paths, `@ui`, React and vanilla-extract.
+ *     paths, `@ui`, React and vanilla-extract; outside src/ui/, no relative path into src/ui/ but
+ *     ../ui/tokens (ui-tools/imports.mjs).
  *  2. The generated manifest and feature catalogue match the code.
  *  3. Every contract component has a section in docs/ui/build-adapter.md, and the reference
  *     adapter declares it (full or bespoke) and exports it; it maps every token and icon.
@@ -178,6 +180,8 @@ export async function checkAll() {
         problems.push(
           `src/${f}: imports "${spec}"; outside src/ui/adapters/ the dashboard imports only @ui, React, vanilla-extract and its own files`
         );
+      const reach = uiReachProblem(f, spec);
+      if (reach) problems.push(reach);
     }
   }
 

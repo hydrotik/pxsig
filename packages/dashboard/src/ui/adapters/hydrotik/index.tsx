@@ -14,6 +14,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@hydrotik/design-system/chart';
+import { focusColor } from '@hydrotik/design-system/styles';
 import { ThemeProvider, useTheme } from '@hydrotik/theme-provider';
 import { themeClasses, vars } from '@hydrotik/tokens';
 import {
@@ -43,7 +44,7 @@ export const tokens: C.TokenMap = {
   'color.text': vars.color.text,
   'color.textMuted': vars.color.textMuted,
   'color.accent': vars.color.primary,
-  'color.focus': vars.color.focusRing,
+  'color.focus': focusColor,
   'color.hover': vars.color.ghostHover,
   'color.success': vars.color.success,
   'color.warning': vars.color.warning,

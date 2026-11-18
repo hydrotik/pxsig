@@ -65,9 +65,9 @@ export function pathsFor(d: Data, id: string, scenario?: { tag: string; name: st
 }
 
 export const fmt = {
-  // A report without a timing (written by an older server) shows a dash, not NaN.
-  ms: (v: number | null | undefined) =>
-    typeof v !== 'number' || !Number.isFinite(v)
+  // A timing that was not measured (null) shows a dash, not NaN.
+  ms: (v: number | null) =>
+    v === null || !Number.isFinite(v)
       ? '—'
       : v >= 1000
         ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)} s`
