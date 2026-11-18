@@ -19,6 +19,10 @@
  * Vite aliases `@ui-adapter` to the module. An adapter folder may carry a `vite.mjs` whose default
  * export returns build settings (aliases, folders to allow, class prefixes) for its design system.
  *
+ * A build is made twice (postbuild.mjs `buildBoth`): `format: 'es'`, the served dashboard as
+ * ES-module chunks, the parts in src/lazy.ts in chunks of their own; and `format: 'iife'`, one
+ * classic script in the build's classic/ folder, which a static report copies (it runs from disk).
+ *
  * @typedef {{ adapter?: string, cwd?: string }} AdapterOptions
  * @typedef {{ name: string, file: string, dir: string, from: string }} ResolvedAdapter
  * @typedef {{ alias?: Record<string, string>, allow?: string[], dedupe?: string[], optimizeDepsExclude?: string[], classPrefixes?: Record<string, string> }} AdapterBuildSettings
@@ -167,6 +171,10 @@ export function classIdentifiers(prefixes, root) {
  *                                   can audit), true when PXSIG_DASHBOARD_MINIFY=1
  * @param {string} [o.viteVersion]   the `version` the caller's vite exports; from 8 (Rolldown) an IIFE
  *                                   is one chunk already, so `inlineDynamicImports` is left out
+ * @param {'es' | 'iife'} [o.format] `es` (default): the served dashboard, ES-module chunks with the
+ *                                   parts loaded on first use (src/lazy.ts) in chunks of their own;
+ *                                   `iife`: one classic script, which also runs from file:// (the
+ *                                   static report; `CLASSIC` in postbuild.mjs)
  */
 export async function dashboardConfig({
   adapter,
@@ -178,6 +186,7 @@ export async function dashboardConfig({
   root = here,
   minify = process.env.PXSIG_DASHBOARD_MINIFY === '1',
   viteVersion,
+  format = 'es',
 }) {
   const ui = resolveAdapter({ adapter, cwd });
   const extraFile = path.join(ui.dir, 'vite.mjs');
@@ -256,13 +265,31 @@ export async function dashboardConfig({
       minify,
       chunkSizeWarningLimit: 4000,
       modulePreload: false,
+      // One stylesheet, loaded with the page: a lazy chunk brings no styles of its own to wait for.
+      cssCodeSplit: false,
       rollupOptions: {
-        output: {
-          format: 'iife',
-          ...(Number(viteVersion?.split('.')[0]) >= 8 ? {} : { inlineDynamicImports: true }),
-          entryFileNames: 'assets/app.js',
-          assetFileNames: 'assets/[name][extname]',
-        },
+        // The classic build inlines the parts loaded on first use; the module preload helper that
+        // wraps their imports reads import.meta, which a classic script has not: it falls back.
+        onwarn: (/** @type {{ code?: string }} */ w, /** @type {(w: unknown) => void} */ warn) =>
+          format === 'iife' && w.code === 'EMPTY_IMPORT_META' ? undefined : warn(w),
+        output:
+          format === 'iife'
+            ? {
+                format: 'iife',
+                ...(Number(viteVersion?.split('.')[0]) >= 8 ? {} : { inlineDynamicImports: true }),
+                entryFileNames: 'assets/app.js',
+                assetFileNames: 'assets/[name][extname]',
+              }
+            : {
+                format: 'es',
+                entryFileNames: 'assets/app.js',
+                // Named, not hashed: the same source gives the same files, and they read as what
+                // they hold: a part loaded on first use by its module (Inspector.js, Stories.js),
+                // code the page and those parts share as common-*.js. Serve answers with ETags.
+                chunkFileNames: (/** @type {{ isDynamicEntry: boolean }} */ c) =>
+                  c.isDynamicEntry ? 'assets/[name].js' : 'assets/common-[name].js',
+                assetFileNames: 'assets/[name][extname]',
+              },
       },
     },
   };

@@ -52,6 +52,8 @@ export async function buildParityPage({
     vanillaExtractPlugin: ve,
     root: here,
     viteVersion: v.version,
+    // One classic script, as the static report's: the page has no part loaded on first use.
+    format: 'iife',
   });
   // The config's plugins and output format are typed loosely by build-config.mjs.
   const inline = /** @type {import('vite').InlineConfig} */ ({
