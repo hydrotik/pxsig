@@ -191,7 +191,7 @@ branch is that checkout's `origin/HEAD`, or its own `HEAD` when it has none; the
 system's new commit (its full SHA), run `pnpm ds:fetch` and `pnpm build:dashboard`, then
 `pnpm screens:check` for the dashboard's own baselines, and refresh the reference adapter's
 declarations: build the design system (`pnpm turbo run build --filter=@hydrotik/design-system` in
-`target/design-system`), then `PXSIG_DS_SOURCE=target/design-system pnpm ui:types` (below). CI
+`target/design-system`), then `pnpm ui:types` (below). CI
 (`screens.yml`, `release.yml`) builds the commit the file names, fetched with the `PXSIG_DS_SOURCE`
 secret.
 
@@ -218,8 +218,9 @@ pnpm typecheck   # tsc over the dashboard and every adapter; with a design-syste
 The reference adapter is type-checked (and linted) in CI against
 `adapters/hydrotik/design-system.d.ts`: the design system's own declarations for the names the
 adapter imports, generated from a built checkout. After the adapter imports a new name, or the
-design system changes, regenerate it with `PXSIG_DS_SOURCE=<checkout> pnpm ui:types` (`ui.mjs lock`
-does too when PXSIG_DS_SOURCE is set). With a design-system source configured (`pxsig.dsSource` or
+design system changes, regenerate it with `pnpm ui:types` (`ui.mjs lock` does too when a source is
+configured): it reads the pinned checkout `pnpm ds:fetch` makes, built, never the source itself, so
+a local checkout of the design system at another commit cannot write another commit's API. With a design-system source configured (`pxsig.dsSource` or
 `PXSIG_DS_SOURCE`), `pnpm typecheck` checks the adapter and the declarations against the pinned
 checkout `pnpm ds:fetch` makes (fetching it when needed), never the source's own head, and fails while
 the declarations are stale; build that checkout first, as for bumping the pin.

@@ -23,6 +23,7 @@ import {
 import { affected, editedSince, imageOf, renderedAt, verdictTimes } from './staleness.mjs';
 import { warnMode } from './doctor.mjs';
 import { TEXT_FILTERS, textLines, textMatches } from '../lib/text/say.mjs';
+import { envSentence, NEW_TEXT_FALLBACK } from '../lib/fonts-used.mjs';
 import { rejectedEntry, rejectionImages } from './rejected.mjs';
 import { maskDetail } from './masks.mjs';
 import { NO_MASK_FIX } from '../lib/assistants.mjs';
@@ -215,7 +216,7 @@ export const readTools = /** @type {const} */ ([
   {
     name: 'pxsig_entry',
     description:
-      "One entry in full: the gate's metrics and reasons, the changed pixel regions, accessibility violations, the review decision, the render environment against its baseline's (envMatch: same, compatible, mismatch or unknown), the text labels (`textDiff`: each changed string's old and new text, each moved run's string and move in px, its box, `path` and `key`; `textLines`: the same as sentences) — and the images, inline: the baseline render, the latest render and the diff heat map. Use it to see what actually changed. The masks (painted over before the compare): `masks` (selector, source, reason, area: its share of the capture), `masksBaseline` (the baseline's, when they changed) and `maskWarnings` (masks over 25% or 50% of the capture, or on the story root). `rejection`: the entry's open rejection (pxsig_rejected's shape) or null; `images` with `crops` adds its crops. Text labels are labels only: they never change the verdict. " +
+      "One entry in full: the gate's metrics and reasons, the changed pixel regions, accessibility violations, the review decision, the render environment against its baseline's (envMatch: same, compatible, mismatch or unknown; envFontsUsed: the faces its text was drawn in that its baseline's were not, and back; envLine: the mismatch in one sentence, or a note that new text drew in a system fallback font), the text labels (`textDiff`: each changed string's old and new text, each moved run's string and move in px, its box, `path` and `key`; `textLines`: the same as sentences) — and the images, inline: the baseline render, the latest render and the diff heat map. Use it to see what actually changed. The masks (painted over before the compare): `masks` (selector, source, reason, area: its share of the capture), `masksBaseline` (the baseline's, when they changed) and `maskWarnings` (masks over 25% or 50% of the capture, or on the story root). `rejection`: the entry's open rejection (pxsig_rejected's shape) or null; `images` with `crops` adds its crops. Text labels are labels only: they never change the verdict. " +
       NO_MASK_FIX,
     inputSchema: {
       type: 'object',
@@ -274,6 +275,13 @@ export const readTools = /** @type {const} */ ([
           // Text labels (lib/text/say.mjs): the engine's textDiff, and the same as sentences.
           ...(row.textDiff ? { textDiff: row.textDiff, textLines: textLines(row.textDiff) } : {}),
           ...(row.envFonts ? { envFonts: row.envFonts } : {}),
+          // A font swap (lib/fonts-used.mjs): the faces, and the mismatch as one sentence.
+          ...(row.envFontsUsed ? { envFontsUsed: row.envFontsUsed } : {}),
+          ...(row.envMatch === 'mismatch'
+            ? { envLine: envSentence(row) }
+            : row.envFontsUsed?.newText
+              ? { envLine: NEW_TEXT_FALLBACK }
+              : {}),
           // Masks (tools/masks.mjs): the render's, the baseline's beside a change, the warnings.
           ...maskDetail(row),
           checkedAt: verdictTimes(C, check).get(id)?.at.toISOString() ?? null,

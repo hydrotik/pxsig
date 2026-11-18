@@ -15,6 +15,8 @@
  */
 import { readHeader } from './psig.mjs';
 import { canonical, major } from './env/id.mjs';
+import { annotateFonts, FONTS_USED, sayFontsUsed } from './fonts-used.mjs';
+/** @import { FontsUsedDiff, UsedFonts } from '../types/fonts.js' */
 /** @import { CheckRow, Config, EnvComparison, EnvFields, EnvRecord, EnvSettings, EnvSummary, EnvTier, ManifestEntry } from '../types.js' */
 
 export { CAPTURE_PIPELINE, canonical, ENV_VERSION, envId, majorView } from './env/id.mjs';
@@ -46,6 +48,8 @@ export const FIELDS = [
   ['os.distro', 'minor'],
   ['fonts.probe', 'major'],
   ['fonts.system', 'minor'],
+  // Per render, not in `env`: the faces its text was drawn in, against its baseline's (fonts-used.mjs).
+  [FONTS_USED, 'major'],
   ['render.dpr', 'major'],
   ['render.gpu', 'major'],
   ['render.colorGamut', 'major'],
@@ -146,7 +150,7 @@ export function compareEnv(base, cur, ignore = []) {
  * "browser.version 141→142", "fonts.probe: Inter", "render.gpu angle-metal→swiftshader".
  * @param {EnvFields | null | undefined} base
  * @param {EnvFields | null | undefined} cur
- * @param {{ diff?: string[], fonts?: string[] }} cmp
+ * @param {{ diff?: string[], fonts?: string[], fontsUsed?: FontsUsedDiff }} cmp
  * @param {{ majorOnly?: boolean }} [opts]
  * @returns {string[]}
  */
@@ -167,6 +171,7 @@ export function describeDiff(base, cur, cmp, { majorOnly = true } = {}) {
     .filter((f) => !majorOnly || tier[f] === 'major')
     .map((f) => {
       if (f === 'fonts.probe') return `fonts.probe: ${(cmp.fonts ?? []).join(', ') || 'changed'}`;
+      if (f === FONTS_USED) return sayFontsUsed(cmp.fontsUsed);
       if (f === 'browser.version')
         // `browser.version`: a version string, or missing.
         return `browser.version ${major(/** @type {string | null | undefined} */ (get(base, f))) || '?'}→${major(/** @type {string | null | undefined} */ (get(cur, f))) || '?'}`;
@@ -177,25 +182,30 @@ export function describeDiff(base, cur, cmp, { majorOnly = true } = {}) {
 /**
  * Fills a checked row's env fields from the run's env (by its browser) and the engine's
  * `baselineEnv` id: `env`, `baselineEnv`, `envMatch`, `envDiff` (and `envFonts`) when not `same`.
+ * `fonts`: the faces the render and its baseline's render drew (fonts-used.mjs); other faces are a
+ * `mismatch` with `fonts.used` (`envFontsUsed`), unless `ignore` names it.
  * @param {CheckRow} row
- * @param {{ current?: Record<string, EnvFields> | null, envs?: Record<string, EnvFields> | null, ignore?: string[] }} opts
+ * @param {{ current?: Record<string, EnvFields> | null, envs?: Record<string, EnvFields> | null, ignore?: string[], fonts?: { render?: UsedFonts | null, baseline?: UsedFonts | null } }} opts
  * @returns {CheckRow}
  */
-export function annotateRow(row, { current, envs, ignore = [] }) {
+export function annotateRow(row, { current, envs, ignore = [], fonts }) {
   if (!row || row.skipped) return row;
   const cur = current?.[row.browser ?? 'chromium'] ?? null;
   const baseId = row.baselineEnv ?? null;
   const out = { ...row, env: cur?.id ?? null, baselineEnv: baseId };
   delete out.envDiff;
   delete out.envFonts;
-  if (!cur || !baseId) return { ...out, envMatch: 'unknown' };
+  delete out.envFontsUsed;
+  const withFonts = (/** @type {CheckRow} */ r) =>
+    fonts && !ignore.includes(FONTS_USED) ? annotateFonts(r, fonts) : r;
+  if (!cur || !baseId) return withFonts({ ...out, envMatch: 'unknown' });
   const cmp = compareEnv(envs?.[baseId], cur, ignore);
-  return {
+  return withFonts({
     ...out,
     envMatch: cmp.match,
     ...(cmp.diff ? { envDiff: cmp.diff } : {}),
     ...(cmp.fonts ? { envFonts: cmp.fonts } : {}),
-  };
+  });
 }
 
 /**
@@ -218,9 +228,10 @@ export function envSummary(rows, envs = {}) {
       {
         diff: r.envDiff,
         fonts: r.envFonts,
+        fontsUsed: r.envFontsUsed,
       }
     )) {
-      const key = d.split(/[ :]/)[0] + (d.startsWith('fonts.probe') ? d : '');
+      const key = d.split(/[ :]/)[0] + (d.startsWith('fonts.') ? d : '');
       if (seen.has(key)) continue;
       seen.add(key);
       fields.push(d);
