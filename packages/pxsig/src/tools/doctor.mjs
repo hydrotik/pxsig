@@ -29,6 +29,7 @@ import { preflight } from './preflight.mjs';
 import { reactFindings } from '../lib/react/doctor.mjs';
 import { textFindings } from '../lib/text/doctor.mjs';
 import { maskFindings } from '../lib/capture/doctor.mjs';
+import { baselineFacts } from '../lib/baseline-facts.mjs';
 import { driftOf } from '../lib/drift.mjs';
 
 /** @import { CheckToolResult, DoctorOptions } from '../types/t6.js' */
@@ -126,6 +127,8 @@ async function doctor({
         /** @type {Record<string, { rank: number }>} */ (CODES)[a.status].rank -
           /** @type {Record<string, { rank: number }>} */ (CODES)[b.status].rank
     );
+  // Every baseline's facts, for the text and mask counts (lib/baseline-facts.mjs).
+  const facts = baselineFacts(C.P);
   return {
     schemaVersion: ledger.schemaVersion,
     generatedAt: ledger.generatedAt,
@@ -134,9 +137,9 @@ async function doctor({
     // React analysis (lib/react/doctor.mjs): information and config warnings, never the exit.
     react: reactFindings(C.P),
     // Text capture (lib/text/doctor.mjs): on or off, the baselines with a text record; never the exit.
-    text: textFindings(C.P),
+    text: textFindings(C.P, facts),
     // Masks (lib/capture/doctor.mjs): the attribute, the config's with their layer; never the exit.
-    masks: maskFindings(C.P),
+    masks: maskFindings(C.P, facts),
     // Drift (lib/drift.mjs): passing entries whose render differs from the baseline; never the exit.
     drift: driftOf(C.P),
     sources: ledger.sources,

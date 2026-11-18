@@ -32,7 +32,7 @@ test('REQUIRED is every job and matrix leg of ci.yml, by the name GitHub shows',
   const names = ciCheckNames(
     readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8')
   );
-  assert.equal(names.length, 11);
+  assert.equal(names.length, 14);
   assert.deepEqual([...REQUIRED].sort(), [...names].sort());
   assert.ok(REQUIRED.includes('Examples (end to end) (windows-latest)'));
 });
@@ -81,5 +81,5 @@ test('a missing, failed or running check is named; the latest re-run counts', ()
 test('anything but check-run pages reads as no runs', () => {
   assert.deepEqual(checkRuns(null), []);
   assert.deepEqual(checkRuns({ message: 'Not Found' }), []);
-  assert.equal(missingChecks([]).length, 11);
+  assert.equal(missingChecks([]).length, 14);
 });

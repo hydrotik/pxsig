@@ -8,10 +8,14 @@
  * Then the JavaScript (pxsig, the Storybook addon, scripts, tools): scripts/check-types.mjs, whose
  * error count per file may only go down (scripts/type-errors-baseline.json).
  *
- * With PXSIG_DS_SOURCE set (a checkout of the reference adapter's design system), it also checks
- * the reference adapter against that design system's sources and React types, and that the
- * committed declarations match a fresh `ui.mjs types`; without it, that step is skipped and says
- * so (CI has no checkout).
+ * With a design-system source configured (PXSIG_DS_SOURCE or `git config pxsig.dsSource`, as
+ * `pnpm ds:fetch` reads them), or the pinned checkout already in place, it also checks the
+ * reference adapter against the design system at the commit design-system.json pins (the checkout
+ * ds:fetch makes, target/design-system or PXSIG_DS_DIR, fetched first when missing or stale): its
+ * sources, its React types, and that the committed declarations match a fresh `ui.mjs types` of
+ * it, which needs that checkout built. The source is only where the pin is fetched from, never what
+ * is checked, so a checkout at another commit cannot pass or fail the check. Without either, that
+ * step is skipped and says so (CI has no source).
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
@@ -19,6 +23,14 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packagesIn } from '../packages/dashboard/src/ui/adapters/hydrotik/vite.mjs';
+import {
+  DsFetchError,
+  dsDir,
+  dsSource,
+  ensureDesignSystem,
+  isCurrent,
+  readPin,
+} from './ds-fetch.mjs';
 
 const repo = fileURLToPath(new URL('..', import.meta.url));
 const tsPkg = createRequire(path.join(repo, 'package.json')).resolve('typescript/package.json');
@@ -37,12 +49,31 @@ console.log(
     : '[typecheck] dashboard, reference adapter (committed declarations), test harness, plain example adapter: ok'
 );
 
-const source = process.env.PXSIG_DS_SOURCE;
+/**
+ * The pinned design-system checkout, fetched when a source is configured; null when there is
+ * neither a source nor a current checkout.
+ * @returns {string | null}
+ */
+function pinnedCheckout() {
+  if (!dsSource({ repo }) && !isCurrent(repo, readPin(repo))) return null;
+  try {
+    return ensureDesignSystem({ repo });
+  } catch (e) {
+    if (!(e instanceof DsFetchError)) throw e;
+    console.error(e.message);
+    process.exit(1);
+  }
+}
+
+const source = pinnedCheckout();
 if (!source)
   console.log(
-    '[typecheck] reference adapter against its design system: skipped (set PXSIG_DS_SOURCE to check it)'
+    '[typecheck] reference adapter against its design system: skipped (no design-system source: git config pxsig.dsSource or PXSIG_DS_SOURCE, then pnpm ds:fetch)'
   );
 else {
+  console.log(
+    `[typecheck] reference adapter against the design system at the pin (${path.relative(repo, dsDir(repo)).split(path.sep).join('/')})`
+  );
   const pkgs = packagesIn(source);
   /** @param {string} name */
   const need = (name) =>
@@ -102,12 +133,14 @@ else {
   const fresh = spawnSync(
     process.execPath,
     [path.join(repo, 'scripts', 'ui.mjs'), 'types', '--check'],
-    {
-      cwd: repo,
-      stdio: 'inherit',
-    }
+    // ui.mjs reads the checkout from PXSIG_DS_SOURCE: the pinned one, not the configured source.
+    { cwd: repo, stdio: 'inherit', env: { ...process.env, PXSIG_DS_SOURCE: source } }
   ).status;
   status ||= fresh ?? 1;
+  if (fresh && !existsSync(path.join(ds, 'dist', 'index.d.mts')))
+    console.error(
+      `[typecheck] the declarations are generated from a built checkout: run \`pnpm turbo run build --filter=@hydrotik/design-system\` in ${path.relative(repo, source).split(path.sep).join('/')}, then pnpm typecheck again`
+    );
 }
 const js = spawnSync(process.execPath, [path.join(repo, 'scripts', 'check-types.mjs')], {
   cwd: repo,

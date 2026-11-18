@@ -13,6 +13,7 @@ import {
   waitMarkupStable,
 } from './page.mjs';
 import { navErrorCode, retryOnce } from '../retry.mjs';
+import { saidFailed, watchRequests } from '../../dashboard-check/requests.mjs';
 import { reactSettings } from '../react/config.mjs';
 import { RESET_RENDERS, STAYED_QUIET, reactHook, readRenders, rowRenders } from './react-hook.mjs';
 import { textSettings } from '../text/config.mjs';
@@ -23,6 +24,7 @@ import { overflowMasks } from './mask-overflow.mjs';
 import { paintMasks, unmarkMasks, unpaintMasks } from './mask-paint.mjs';
 /** @import { BrowserContext, Page, PageScreenshotOptions } from 'playwright' */
 /** @import { RenderResult } from '../../types.js' */
+/** @import { FailedRequest } from '../../dashboard-check/requests.mjs' */
 /** @import { BrowserSource, PxsigBrowser, RenderEntry, RenderOptions, RenderOutput, StorybookPreview } from '../../types/t4.js' */
 /** @typedef {NonNullable<Window['axe']>} Axe */
 
@@ -168,6 +170,9 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
     let ctxKey = null;
     /** @type {string | null} */
     let loadedGlobals = null;
+    // The current entry's failed requests (a story's module that never loaded), said with its error.
+    /** @type {FailedRequest[]} */
+    const failed = [];
     for (;;) {
       const g = next++;
       if (g >= queue.length || signal?.aborted) break;
@@ -196,8 +201,10 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
             });
             if (counting) await context.addInitScript(reactHook);
             page = await context.newPage();
+            watchRequests(page, failed);
             ctxKey = cfg.key;
           }
+          failed.length = 0;
           const g = e.globals ?? globals;
           // Switch stories inside the loaded preview (~40 ms) instead of reloading the
           // Storybook bundle (~600 ms). A new page, new globals or a failed switch reloads.
@@ -216,6 +223,7 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
                 before: async () => {
                   await page.close().catch(() => {});
                   page = await /** @type {BrowserContext} */ (context).newPage();
+                  watchRequests(page, failed);
                 },
               }
             ).catch((err) => {
@@ -249,7 +257,7 @@ export async function renderStories(browser, stories, outDir, opts = {}) {
           const sentinel = await page
             .evaluate(storybookSentinel, { id: storyId, root: target })
             .catch(() => null);
-          if (sentinel) throw new Error(`${STORYBOOK_ERROR} ${sentinel}`);
+          if (sentinel) throw new Error(`${STORYBOOK_ERROR} ${sentinel}${saidFailed(failed)}`);
           if (!switched) {
             await page.addStyleTag({ content: FREEZE_CSS + css });
             if (tokens) await page.evaluate(applyTokenOverrides, tokens);

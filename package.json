@@ -36,6 +36,9 @@
     "overrides": {
       "vite": "^8.3.6",
       "vite-node": "^6.0.0"
+    },
+    "patchedDependencies": {
+      "picomatch@4.0.7": "patches/picomatch@4.0.7.patch"
     }
   },
   "devDependencies": {

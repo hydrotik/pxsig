@@ -6,7 +6,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { atLeast, newest, onPath, parseVersion, pins, pnpmCommand } from './bootstrap.mjs';
+import {
+  FIXTURES,
+  atLeast,
+  fixturesInstalled,
+  newest,
+  onPath,
+  parseVersion,
+  pins,
+  pnpmCommand,
+} from './bootstrap.mjs';
 
 /** @param {import('node:test').TestContext} t */
 const tmp = (t) => {
@@ -63,6 +72,19 @@ test('newest: the latest source time, skipping target/ and dot folders', (t) => 
   utimesSync(join(dir, 'target', 'b'), 5000, 5000);
   assert.equal(newest([dir]), 1000 * 1000);
   assert.equal(newest([join(dir, 'missing')]), 0);
+});
+
+test('fixtures: installed only when both React Compiler packages (Babel 7 and 8) are', (t) => {
+  const dir = tmp(t);
+  assert.equal(fixturesInstalled(dir), false);
+  const plugin = (/** @type {string} */ b) =>
+    join(dir, FIXTURES, b, 'node_modules', 'babel-plugin-react-compiler');
+  mkdirSync(plugin('babel7'), { recursive: true });
+  writeFileSync(join(plugin('babel7'), 'package.json'), '{}');
+  assert.equal(fixturesInstalled(dir), false);
+  mkdirSync(plugin('babel8'), { recursive: true });
+  writeFileSync(join(plugin('babel8'), 'package.json'), '{}');
+  assert.equal(fixturesInstalled(dir), true);
 });
 
 test('usage: an unknown flag exits 2 and changes nothing', () => {

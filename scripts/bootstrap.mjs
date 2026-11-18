@@ -9,6 +9,9 @@
  *   node       the running Node is at least `.nvmrc`'s version (checked, never installed)
  *   pnpm       pnpm runs, at the major `packageManager` pins (checked; `corepack enable` sets it up)
  *   install    node_modules matches pnpm-lock.yaml; else `pnpm install --frozen-lockfile`
+ *   fixtures   the React Compiler test fixtures (a workspace of their own, which the root install
+ *              does not reach) are installed; else `pnpm --dir packages/pxsig/test/react-compiler
+ *              install --frozen-lockfile --ignore-scripts`, the step ci.yml's node job runs
  *   rust       rustc is `rust-toolchain.toml`'s channel; else `rustup toolchain install`
  *   engine     target/release/pxsig is newer than the Rust sources; else `cargo build --release
  *              --locked`
@@ -107,6 +110,21 @@ export function newest(paths) {
   return t;
 }
 
+/** The React Compiler test fixtures: their own pnpm workspace, under the pxsig package's tests. */
+export const FIXTURES = join('packages', 'pxsig', 'test', 'react-compiler');
+
+/**
+ * Whether both React Compiler fixture packages (Babel 7 and 8) are installed in a checkout.
+ * @param {string} dir
+ */
+export function fixturesInstalled(dir) {
+  return ['babel7', 'babel8'].every((b) =>
+    existsSync(
+      join(dir, FIXTURES, b, 'node_modules', 'babel-plugin-react-compiler', 'package.json')
+    )
+  );
+}
+
 /**
  * Run a program, no shell, output to this terminal; true when it exits 0.
  * @param {string[]} cmd
@@ -183,6 +201,23 @@ function steps() {
       fix: () => {
         const cmd = pnpm();
         return !!cmd && run([...cmd, 'install', '--frozen-lockfile']);
+      },
+    },
+    {
+      name: 'fixtures',
+      check: () => {
+        const ok = fixturesInstalled(root);
+        return {
+          ok,
+          detail: ok
+            ? 'the React Compiler test fixtures are installed'
+            : 'the React Compiler test fixtures are not installed',
+        };
+      },
+      fix: () => {
+        const cmd = pnpm();
+        const args = ['--dir', FIXTURES, 'install', '--frozen-lockfile', '--ignore-scripts'];
+        return !!cmd && run([...cmd, ...args]);
       },
     },
     {

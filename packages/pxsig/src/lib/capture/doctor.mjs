@@ -10,11 +10,10 @@
  *
  * Story masks (`parameters.pxsig.ignore`) are per story: the render's record has them too.
  */
-import { resolve } from 'node:path';
-import { readJson } from '../files.mjs';
-import { readHeader } from '../psig.mjs';
+import { baselineFacts } from '../baseline-facts.mjs';
 import { ATTRIBUTE } from './masks.mjs';
 /** @import { Project } from '../../types.js' */
+/** @import { SigFacts } from '../integrity/sig-read.mjs' */
 /** @import { Block } from '../../types/t6.js' */
 /** @import { Mask } from './masks.mjs' */
 
@@ -24,21 +23,11 @@ export const MASK_LAYERS = { workspace: 'workspace defaults', project: 'project 
 /**
  * The masks in force for a project, and the baselines that record masks.
  * @param {Project} P
+ * @param {SigFacts[]} [facts] the manifest's baselines (baseline-facts.mjs)
  */
-export function maskFindings(P) {
-  // The committed manifest (pxsig's own file): every entry's baseline path, workspace-relative.
-  const m = /** @type {{ stories?: { sig?: string }[] } | null} */ (
-    readJson(P.manifestPath(), null)
-  );
-  let baselines = 0;
-  let recorded = 0;
-  for (const e of m?.stories ?? []) {
-    if (!e.sig?.endsWith('.psig')) continue;
-    const h = readHeader(resolve(P.workspaceRoot, e.sig));
-    if (!h) continue;
-    baselines++;
-    if (h.masks?.masks?.length) recorded++;
-  }
+export function maskFindings(P, facts = baselineFacts(P)) {
+  const baselines = facts.length;
+  const recorded = facts.filter((f) => f.masks).length;
   return {
     attribute: `[${ATTRIBUTE}]`,
     note: 'masked wherever it renders: a component sets it, so it is not listed per project',

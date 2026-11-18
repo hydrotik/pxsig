@@ -1,0 +1,104 @@
+diff --git a/lib/parse.js b/lib/parse.js
+index 29207512c60183b4bb9bf5112be3b9b5f4a9a9fd..0a037902cf7e9b9fdd83ebe500419e2955cc0e5b 100644
+--- a/lib/parse.js
++++ b/lib/parse.js
+@@ -270,6 +270,61 @@ const getStarExtglobSequenceChars = pattern => {
+   return chars;
+ };
+ 
++// A branch that *starts* with a bare (non-parenthesized) `*`/`?` quantifier
++// and has further content after it (e.g. `*a`, `?[ab]`) is unsafe to repeat
++// with an outer `+(...)`/`*(...)`: with no fixed prefix anchoring where the
++// quantifier ends, it compiles to a nested-quantifier regex (e.g.
++// `(?:[^/]*?a)+` for `+(*a)`) that is prone to catastrophic backtracking
++// (CVE-2026-112366). A bare quantifier with nothing else in the branch
++// (`+(*)`), a `*(...)`/`?(...)` group opener (its contents are analyzed
++// separately via recursion/char-class reduction above), and a quantifier
++// that only appears later in the branch behind a literal prefix (`a*`,
++// `W*, *`) are not ambiguous in the same way and are left alone.
++const hasUnsafeLeadingQuantifier = branch => {
++  let i = 0;
++
++  while (i < branch.length && (branch[i] === '*' || branch[i] === '?') && branch[i + 1] !== '(') {
++    i++;
++  }
++
++  // no leading bare quantifier run, or nothing follows it
++  return i > 0 && i < branch.length;
++};
++
++// What a branch holds outside brackets and nested extglobs: a bare `*` (not an
++// extglob opener) and a `/`. A single branch with a top-level `*` that is not
++// flattened at close (it holds a nested extglob, e.g. `@(a)*` or `*(a)**(a)`)
++// still nests the star inside the outer repeat and backtracks badly, unless a
++// top-level `/` fixes where each repetition ends (`[^/]*` cannot cross it).
++const scanTopLevel = branch => {
++  let bracket = 0;
++  let paren = 0;
++  let star = false;
++  let slash = false;
++
++  for (let i = 0; i < branch.length; i++) {
++    const ch = branch[i];
++
++    if (ch === '\\') {
++      i++;
++      continue;
++    }
++
++    if (bracket > 0) {
++      if (ch === ']') bracket--;
++      continue;
++    }
++
++    if (ch === '[') bracket++;
++    else if (ch === '(') paren++;
++    else if (ch === ')' && paren > 0) paren--;
++    else if (paren === 0 && ch === '/') slash = true;
++    else if (paren === 0 && ch === '*' && branch[i + 1] !== '(') star = true;
++  }
++
++  return { star, slash };
++};
++
+ const repeatedExtglobRecursion = pattern => {
+   let depth = 0;
+   let value = pattern.trim();
+@@ -332,6 +387,18 @@ const analyzeRepeatedExtglob = (body, options) => {
+ 
+     combinable = false;
+ 
++    // A single branch of fixed-width tokens around a `*` is flattened at close
++    // instead (it is closed under concatenation), which keeps its meaning.
++    if (branches.length === 1) {
++      const top = scanTopLevel(branch);
++      const flattened = !/[/()]/.test(branch);
++      if (!flattened && !top.slash && (top.star || hasUnsafeLeadingQuantifier(branch))) {
++        return { risky: true };
++      }
++    } else if (hasUnsafeLeadingQuantifier(branch)) {
++      return { risky: true };
++    }
++
+     if (repeatedExtglobRecursion(branch) > max) {
+       return { risky: true };
+     }
+@@ -565,7 +632,17 @@ const parse = (input, options) => {
+       return;
+     }
+ 
+-    let output = token.close + (opts.capture ? ')' : '');
++    // A single wildcard branch is closed under concatenation: P*S repeated
++    // one or more times still matches P*S. Remove the outer repeat instead of
++    // nesting its unbounded quantifier around the wildcard's own quantifier.
++    const bodyTokens = tokens.slice(token.tokensIndex + 2);
++    const singleWildcard = opts.maxExtglobRecursion !== false &&
++      (token.type === 'plus' || token.type === 'star') &&
++      splitTopLevel(body).length === 1 &&
++      bodyTokens.some(part => part.type === 'star' && !part.extglob) &&
++      bodyTokens.every(part => !part.extglob && !part.suffix &&
++        (part.type === 'text' || part.type === 'star' || part.type === 'qmark' || part.type === 'bracket'));
++    let output = (singleWildcard ? (token.type === 'star' ? ')?' : ')') : token.close) + (opts.capture ? ')' : '');
+     let rest;
+ 
+     if (token.type === 'negate') {
