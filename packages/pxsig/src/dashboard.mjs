@@ -25,6 +25,7 @@
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { pxsigSource, sourceFields } from './lib/build-identity.mjs';
+import { stampAdapter } from './lib/stamp-adapter.mjs';
 import { buildDirFor, buildFiles, shellWord, STAMP } from './lib/dashboard-dir.mjs';
 import { PXSIG_VERSION } from './lib/workspace.mjs';
 import { herePath } from './lib/machine.mjs';
@@ -199,9 +200,10 @@ export async function build(
   );
   // What serve compares: this pxsig's version, its checkout's commit and changes (none from an
   // installed package: lib/build-identity.mjs) and when the build ran (against the adapter's
-  // edits). `adapter` is the adapter's file, for dashboard check; `adapterName` is what the page shows.
+  // edits). `adapter` is the adapter for dashboard check (stampAdapter: never an absolute path);
+  // `adapterName` is what the page shows.
   const stamp = {
-    adapter: ui.file,
+    adapter: stampAdapter(ui, cwd, join(src, 'src', 'ui', 'adapters')),
     adapterName: ui.name,
     pxsig: PXSIG_VERSION,
     ...sourceFields(pxsigSource()),
