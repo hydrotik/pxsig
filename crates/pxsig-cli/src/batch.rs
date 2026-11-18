@@ -198,7 +198,7 @@ mod masks;
 mod text;
 
 pub use baseline::{
-    baseline, capture_png, capture_png_policy, parse_enforcement, parse_env_plan, trim,
+    baseline, capture_png, capture_png_policy, grid_for, parse_enforcement, parse_env_plan, trim,
     BaselineOpts, EnvPlan, TrimOpts,
 };
 pub use check::{check, compare_png, detail_json, metrics_json, Artifacts, CheckOpts};
