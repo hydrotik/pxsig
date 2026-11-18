@@ -64,6 +64,8 @@ function GridSweep({ cal, title }: { cal: CalibrationReport; title: string }) {
             { key: 'calibrated', label: t('diagnostics.calibration.seriesCalibrated') },
             { key: 'best', label: t('diagnostics.calibration.seriesBest') },
           ]}
+          label={t('diagnostics.calibration.gridTitle', { suite: title })}
+          summary={(v) => t('diagnostics.calibration.gridSummary', v)}
         />
         <DataTable
           rows={grids.map((g) => {

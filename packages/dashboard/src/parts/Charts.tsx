@@ -1,9 +1,11 @@
 /**
  * The dashboard's two chart shapes on the contract's `Chart`. Sizing is the dashboard's; colours,
- * axes, legend and tooltip are the adapter's.
+ * axes, legend and tooltip are the adapter's. Every chart is named (`label`, its card's title) and
+ * summarised in text (`summary`, its copy around the data's ranges: chart-summary.ts).
  */
 import { Chart, type SeriesDef } from '@ui';
 import * as s from '../dashboard.css';
+import { chartSummary, type SummaryVars } from './chart-summary';
 
 export type { SeriesDef };
 
@@ -18,7 +20,11 @@ export function HBars({
   format = plain,
   max,
   height = 16,
+  label,
+  summary,
 }: {
+  label: string;
+  summary: (vars: SummaryVars) => string;
   data: Record<string, unknown>[];
   series: SeriesDef[];
   category: string;
@@ -36,6 +42,8 @@ export function HBars({
       x={category}
       format={format}
       max={max}
+      label={label}
+      summary={chartSummary(summary, data, series, format)}
     />
   );
 }
@@ -47,7 +55,11 @@ export function Lines({
   x,
   format = plain,
   height = 16,
+  label,
+  summary,
 }: {
+  label: string;
+  summary: (vars: SummaryVars) => string;
   data: Record<string, unknown>[];
   series: SeriesDef[];
   x: string;
@@ -63,6 +75,8 @@ export function Lines({
       series={series}
       x={x}
       format={format}
+      label={label}
+      summary={chartSummary(summary, data, series, format)}
     />
   );
 }

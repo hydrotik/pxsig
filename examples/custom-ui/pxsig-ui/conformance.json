@@ -1,6 +1,6 @@
 {
   "adapter": "plain",
-  "contract": "1.7.0",
+  "contract": "1.8.0",
   "designSystem": "none: semantic HTML and theme.css",
   "topBar": {
     "root": true,

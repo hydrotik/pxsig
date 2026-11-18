@@ -138,6 +138,8 @@ export function Performance({ data }: { data: Data }) {
                   series={[{ key: 'ms', label: t('diagnostics.performance.renderSeries') }]}
                   format={(v) => `${v} ms`}
                   height={10}
+                  label={t('diagnostics.performance.renderTitle')}
+                  summary={(v) => t('diagnostics.performance.renderSummary', v)}
                 />
                 <DataTable
                   rows={pools.map((p) => ({
@@ -239,6 +241,8 @@ export function Performance({ data }: { data: Data }) {
               series={[{ key: 'ms', label: t('diagnostics.performance.perCallSeries') }]}
               format={(v) => `${v} ms`}
               height={6}
+              label={t('diagnostics.performance.perCallTitle')}
+              summary={(v) => t('diagnostics.performance.perCallSummary', v)}
             />
           </CardContent>
         </Card>

@@ -912,11 +912,16 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Purpose**: bar or line chart (Runs, Diagnostics).
 - **Props**: `kind` (`bar`: horizontal grouped bars, one row per `x` category; `line`: lines over an
   ordered `x`), `data`, `series` (`key`, `label`), `x`, `format`, `max`, `height` (CSS),
-  `className`.
+  `label` (the accessible name: the card's title; since 1.8.0), `summary` (the data in one line of
+  text, "Changed entries per run, 14 runs: 3 to 12."; since 1.8.0), `className`.
 - **Behaviour**: series take your categorical colours in order; a legend when there is more than one
   series; a tooltip on hover; `format` formats the value axis and tooltip.
 - **Accessibility**: the numbers must be reachable without the picture: a tooltip alone is not
-  enough. Give the chart an accessible summary, or a data table on demand.
+  enough. Name the chart by `label` and tie `summary` to it as visually hidden text, for example
+  `role="img"` with `aria-label` and `aria-describedby`, so the drawing inside is one named image
+  with a description. The chart is not a tab stop unless it is interactive: recharts 3 makes its
+  SVG a tab stop with `role="application"` unless `accessibilityLayer={false}`. The summary is
+  never drawn, so it moves no screen.
 - **Mapping questions**: Do you have a chart component, and on which library? Which tokens are your
   categorical colours?
 - **Points**: mark each point solid, in the series colour with no outline, small enough that the

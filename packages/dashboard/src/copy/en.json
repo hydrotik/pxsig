@@ -608,12 +608,20 @@
         "one": "{count} run.",
         "other": "{count} runs."
       },
-      "series": "Changed"
+      "series": "Changed",
+      "summary": {
+        "one": "Changed entries per run, {count} run: {range}.",
+        "other": "Changed entries per run, {count} runs: {range}."
+      }
     },
     "engine": {
       "title": "Engine Time per Run",
       "description": "Milliseconds.",
-      "series": "Engine (ms)"
+      "series": "Engine (ms)",
+      "summary": {
+        "one": "Engine time per run, {count} run: {range}.",
+        "other": "Engine time per run, {count} runs: {range}."
+      }
     },
     "table": {
       "title": "Runs",
@@ -641,7 +649,11 @@
       "whole": "Whole-image signature",
       "shipped": "Signature and detail channel",
       "detected": "{detected}/{changed} detected",
-      "falsePositives": "False positives"
+      "falsePositives": "False positives",
+      "summary": {
+        "one": "Detection rate by suite, {count} suite: {range}.",
+        "other": "Detection rate by suite, {count} suites: {range}."
+      }
     },
     "scenario": {
       "empty": "No scenario data. Run {command}.",
@@ -699,7 +711,11 @@
       "rule": "Rule",
       "detected": "Detected",
       "detailOnly": "Detail only",
-      "detailKb": "Detail per record (KB)"
+      "detailKb": "Detail per record (KB)",
+      "gridSummary": {
+        "one": "Detection rate by signature grid, {count} grid: {range}.",
+        "other": "Detection rate by signature grid, {count} grids: {range}."
+      }
     },
     "performance": {
       "empty": "No benchmark data. Run {command}.",
@@ -745,7 +761,12 @@
       "perCallDescription": "Median over {count} entries. The CLI starts a process per compare; {command} keeps one engine running.",
       "perCallSeries": "ms per compare",
       "cli": "CLI process",
-      "server": "Server request"
+      "server": "Server request",
+      "renderSummary": {
+        "one": "Render time per story, {count} page count: {range}.",
+        "other": "Render time per story, {count} page counts: {range}."
+      },
+      "perCallSummary": "Time per compare, CLI process and server request: {range}."
     },
     "react": {
       "parts": "React part",
@@ -1796,6 +1817,11 @@
       "previousPage": "Previous page",
       "nextPage": "Next page",
       "page": "Page {page} of {pages}"
+    },
+    "chart": {
+      "range": "{min} to {max}",
+      "seriesRange": "{series}: {range}",
+      "separator": "; "
     }
   }
 }

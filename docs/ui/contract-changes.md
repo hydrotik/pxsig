@@ -20,6 +20,19 @@ icon without a default. A major version's section starts with its migration note
 a version bump of the right size, or without a section here, fails. After the bump and the
 section, `node scripts/ui.mjs lock` records the new contract.
 
+## 1.8.0
+
+Minor: two optional props.
+
+- **`Chart` `label` and `summary`**: the chart's accessible name (the title of its card) and its
+  data in one line of text ("Changed entries per run, 14 runs: 3 to 12."), both from pxsig's copy
+  and the chart's own data. An adapter names the chart by `label` and ties `summary` to it as
+  visually hidden text, for example `role="img"` with `aria-label` and `aria-describedby`; the
+  chart stays out of the tab order unless it is interactive (recharts 3 makes its SVG a tab stop
+  with `role="application"` unless `accessibilityLayer={false}`). The text is never drawn, so no
+  screen moves. An adapter written for 1.7.0 keeps working and leaves the chart unnamed; the
+  fallback table takes both.
+
 ## 1.7.0
 
 Minor: one optional prop, and the top bar's rules written down.
