@@ -59,13 +59,18 @@ export {
 } from './integrity/stories.mjs';
 import { reconcile as reconcileSources } from './integrity/reconcile.mjs';
 import { withReview } from './integrity/unreviewed.mjs';
+import { pairProblems } from './integrity/pairs.mjs';
 export { RATCHET_VERSION, reviewState } from './integrity/unreviewed.mjs';
 
 /**
  * The ledger: every source joined (integrity/reconcile.mjs), then each baseline no person approved
- * flagged (integrity/unreviewed.mjs).
+ * flagged (integrity/unreviewed.mjs), and the baselines whose record and image are from different
+ * renders (integrity/pairs.mjs, a setup error).
  * @param {import('./integrity/context.mjs').IntegrityContext} ctx
  * @param {Parameters<typeof reconcileSources>[1]} [opts]
  */
-export const reconcile = async (ctx, opts) => withReview(await reconcileSources(ctx, opts), ctx);
+export const reconcile = async (ctx, opts) => {
+  const ledger = withReview(await reconcileSources(ctx, opts), ctx);
+  return { ...ledger, setup: [...ledger.setup, ...pairProblems(ctx)] };
+};
 /** @typedef {import('./integrity/context.mjs').IntegrityContext} IntegrityContext */

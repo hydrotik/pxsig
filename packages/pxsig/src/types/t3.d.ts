@@ -239,6 +239,10 @@ export interface LedgerSetup {
   severity: Severity;
   reason: string;
   count?: number;
+  /** Every entry the problem names (`baseline-pair-mismatch`). */
+  ids?: string[];
+  /** `baseline-pair-mismatch`: each entry's record and image sha256 (12 characters). */
+  pairs?: { id: string; record: string; image: string }[];
 }
 
 /** The ledger's `summary`. */
