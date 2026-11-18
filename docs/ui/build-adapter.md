@@ -919,7 +919,8 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Accessibility**: the numbers must be reachable without the picture: a tooltip alone is not
   enough. A chart is not a tab stop unless it is interactive, and the dashboard's are: the arrow
   keys move the tooltip from point to point. So the chart is one tab stop that has the name
-  (`label`) and the description (`summary`, as visually hidden text tied by `aria-describedby`),
+  (`label`) and the description (`summary`, text with the `hidden` attribute tied by `aria-describedby`, so it is read once, as
+  the description, and not again as text),
   with nothing else in it focusable or unnamed. On recharts 3, keep its keyboard layer
   (`accessibilityLayer`, on by default: the SVG is the tab stop, `role="application"` so a screen
   reader passes the arrow keys through) and pass `aria-label` and `aria-describedby` to the chart,

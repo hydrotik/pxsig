@@ -2,7 +2,7 @@
  * Chart `label` and `summary` (UI contract 1.8.0). The contract: both are optional props, recorded
  * by the lock, the changes entry and every shipped adapter's conformance.json. In a real browser
  * (test/harness/chart, built with the dashboard's own Vite setup, once per adapter): each chart is
- * in the accessibility tree by its label, described by its summary, which is visually hidden text.
+ * in the accessibility tree by its label, described by its summary, hidden text that is read once.
  * The fallback table is no tab stop; the reference adapter's chart is one, its arrow keys moving
  * the tooltip. The harness also checks the dashboard's summary wording. The reference adapter runs
  * only when PXSIG_DS_SOURCE names a design-system checkout. Skips when no Chromium is available.
@@ -107,8 +107,12 @@ const described = (page, role, name) =>
     };
   });
 
-/** The visually hidden summary: a 1px box, so it moves nothing. */
-const hidden = (box) => assert.ok(box && box.w <= 1 && box.h <= 1, JSON.stringify(box));
+/** The summary is hidden: no box, so it moves nothing. */
+const hidden = (box) => assert.ok(box && box.w === 0 && box.h === 0, JSON.stringify(box));
+
+/** Read once: the summary is the description, not also a text node in the tree. */
+const readOnce = async (page, summary) =>
+  assert.ok(!(await page.locator('body').ariaSnapshot()).includes(summary), summary);
 
 const CHARTS = [
   ['Changed Entries per Run', 'Changed entries per run, 3 runs: 3 to 12.'],
@@ -137,6 +141,7 @@ test('the plain adapter: the fallback table is named by label and described by s
     const d = await described(page, 'table', name);
     assert.equal(d.description, summary);
     hidden(d.box);
+    await readOnce(page, summary);
   }
   await page.getByRole('button', { name: 'Before' }).focus();
   await page.keyboard.press('Tab');
@@ -155,6 +160,7 @@ test('the reference adapter: Tab reaches each chart once, named and described, a
     assert.equal(d.tag, 'svg', "the name and description are on recharts' SVG, the tab stop");
     assert.equal(d.description, summary);
     hidden(d.box);
+    await readOnce(page, summary);
   }
   assert.equal(await page.getByRole('img').count(), 0, 'no image wraps the tab stop');
   // One tab stop per chart: Before, the two charts' SVGs, After.

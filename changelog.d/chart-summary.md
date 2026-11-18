@@ -8,12 +8,12 @@
   chart with no numbers says so ("Engine time per run: no data."). The dashboard passes both to
   every chart (Overview, Runs, Diagnostics), with the words in its copy. In the hydrotik adapter
   (the bundled dashboard) each chart stays one tab stop whose arrow keys move the tooltip, and
-  that tab stop is now named by `label` and described by the summary, visually hidden text, so no
+  that tab stop is now named by `label` and described by the summary, text with the `hidden` attribute (read once, as the description), so no
   screen moves; it was an unnamed `role="application"`. The fallback table, which the plain
   adapter and examples/custom-ui use, is named by `label` and described by `summary`.
   To update: an adapter written for 1.7.0 keeps building, with its charts unnamed. To adopt 1.8.0,
   give the chart's one tab stop (on recharts 3, the SVG of its keyboard layer, which recharts
   names from `aria-label` and `aria-describedby` passed to the chart) the name `label` and the
-  description `summary` as visually hidden text, with nothing else in it focusable or unnamed; a
+  description `summary` as text with the `hidden` attribute (tied by `aria-describedby`), with nothing else in it focusable or unnamed; a
   chart that is not interactive is no tab stop. Set `"contract": "1.8.0"` in conformance.json and
   rebuild ([build-adapter.md, "Chart"](../docs/ui/build-adapter.md#chart)).

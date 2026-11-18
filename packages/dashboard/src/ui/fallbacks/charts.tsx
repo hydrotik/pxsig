@@ -4,22 +4,10 @@ import { heatStep } from '../contract';
 import { tokens as v } from '../tokens';
 import { border, type Cell, type F } from './base';
 
-/** Read by assistive technology, not drawn: out of flow, so it moves nothing beside it. */
-const srOnly: React.CSSProperties = {
-  position: 'absolute',
-  inlineSize: '1px',
-  blockSize: '1px',
-  padding: 0,
-  margin: '-1px',
-  overflow: 'hidden',
-  clipPath: 'inset(50%)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
-
 /**
  * Without a chart library: the series as a table, so the numbers are still there. The table is
- * named by `label` and described by `summary`, visually hidden text (contract 1.8.0).
+ * named by `label` and described by `summary`, text with the `hidden` attribute, read once as the description
+ * (contract 1.8.0).
  */
 export const Chart: F<'Chart'> = ({
   data,
@@ -34,7 +22,7 @@ export const Chart: F<'Chart'> = ({
   return (
     <div className={className} style={{ overflowX: 'auto' }}>
       {summary ? (
-        <span id={id} style={srOnly}>
+        <span id={id} hidden>
           {summary}
         </span>
       ) : null}

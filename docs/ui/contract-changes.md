@@ -29,8 +29,8 @@ Minor: two optional props.
   series ("Changed entries per run, 14 runs: 3 to 12.", the value alone when flat), each bar's
   value ("Time per compare: CLI process 3 ms, Server request 120 ms."), or "no data". A chart is
   not a tab stop unless it is interactive. The dashboard's charts are: the arrow keys move the
-  tooltip. So the chart is one tab stop named by `label` and described by `summary`, visually
-  hidden text, with nothing else in it focusable or unnamed (on recharts 3: its keyboard layer,
+  tooltip. So the chart is one tab stop named by `label` and described by `summary`, text
+  with the `hidden` attribute (read once, as the description), with nothing else in it focusable or unnamed (on recharts 3: its keyboard layer,
   `accessibilityLayer`, on, which makes the SVG the tab stop with `role="application"`, and
   `aria-label` and `aria-describedby` on the chart, which recharts puts on that SVG). The text is
   never drawn, so no screen moves. An adapter written for 1.7.0 keeps working and leaves the chart
