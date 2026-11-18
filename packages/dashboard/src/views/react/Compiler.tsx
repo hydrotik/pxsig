@@ -244,11 +244,14 @@ export function Compiler({
                       search
                       paginate={false}
                       onRowClick={(f) => setPicked(f.id)}
+                      // The file path takes the room; the function, the outcomes, the rule and the
+                      // numbers get a width that fits them (the grid adds each cell's padding).
                       columns={[
                         {
                           id: 'function',
                           field: 'name',
                           header: t('diagnostics.react.compiler.columns.function'),
+                          width: '240px',
                           cell: (f) => (
                             <span className={s.cellLines}>
                               <strong>
@@ -271,16 +274,19 @@ export function Compiler({
                         {
                           id: 'before',
                           header: t('diagnostics.react.compiler.columns.before'),
+                          width: '96px',
                           cell: (f) => outcomeLabel(f.base?.outcome),
                         },
                         {
                           id: 'now',
                           header: t('diagnostics.react.compiler.columns.now'),
+                          width: '96px',
                           cell: (f) => outcomeLabel(f.head?.outcome),
                         },
                         {
                           id: 'rule',
                           header: t('diagnostics.react.compiler.columns.rule'),
+                          width: '216px',
                           cell: (f) => {
                             const r = rulesOf(f);
                             return (
@@ -301,12 +307,14 @@ export function Compiler({
                           id: 'line',
                           header: t('diagnostics.react.compiler.columns.line'),
                           align: 'end',
+                          width: '56px',
                           cell: (f) => rulesOf(f).line ?? '',
                         },
                         {
                           id: 'entries',
                           header: t('diagnostics.react.compiler.columns.entries'),
                           align: 'end',
+                          width: '64px',
                           cell: (f) => entriesOf(pathOf(f))?.entries ?? '',
                         },
                       ]}
