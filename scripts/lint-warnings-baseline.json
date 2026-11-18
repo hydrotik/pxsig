@@ -1,29 +1,7 @@
 {
   "$description": "oxlint warnings per file and rule. A file may not gain a warning; lower with `node scripts/check-lint-warnings.mjs --update` after fixing some. See scripts/check-lint-warnings.mjs.",
-  "total": 26,
+  "total": 16,
   "files": {
-    "packages/dashboard/src/parts/Schematic.tsx": {
-      "jsx-a11y(prefer-tag-over-role)": 1
-    },
-    "packages/dashboard/src/ui/fallbacks.tsx": {
-      "jsx-a11y(anchor-has-content)": 1,
-      "jsx-a11y(prefer-tag-over-role)": 1,
-      "jsx-a11y(role-has-required-aria-props)": 1
-    },
-    "packages/dashboard/src/ui/fallbacks/charts.tsx": {
-      "jsx-a11y(control-has-associated-label)": 1,
-      "jsx-a11y(prefer-tag-over-role)": 1
-    },
-    "packages/dashboard/src/views/Decide.tsx": {
-      "jsx-a11y(prefer-tag-over-role)": 1
-    },
-    "packages/dashboard/src/views/Help.tsx": {
-      "jsx-a11y(no-noninteractive-element-interactions)": 1,
-      "jsx-a11y(no-noninteractive-tabindex)": 1
-    },
-    "packages/dashboard/src/views/Scenarios.tsx": {
-      "jsx-a11y(prefer-tag-over-role)": 1
-    },
     "packages/pxsig/src/cli/a11y-prune.mjs": {
       "typescript(require-await)": 1
     },

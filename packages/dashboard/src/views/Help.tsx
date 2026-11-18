@@ -17,7 +17,8 @@ interface Item {
 
 /**
  * One reference section: its terms on the left, a drawing of the screen on the right. Pointing at
- * a row (or focusing it) highlights where that thing appears.
+ * a row highlights where that thing appears. The rows are text, not controls, so they take no
+ * focus: the drawing is a pointer aid, and each row's text says the same.
  */
 function Section({
   title,
@@ -45,17 +46,14 @@ function Section({
           <dl
             className={s.helpRows}
             style={{ gridTemplateColumns: `minmax(0, ${wide}) minmax(0, 1fr)` }}
-            onMouseLeave={() => setActive(null)}
           >
             {items.map((x, i) => (
               <div
                 key={i}
                 className={s.helpRow}
                 data-active={active === i || undefined}
-                tabIndex={layout ? 0 : undefined}
                 onMouseEnter={() => setActive(i)}
-                onFocus={() => setActive(i)}
-                onBlur={() => setActive(null)}
+                onMouseLeave={() => setActive(null)}
               >
                 <dt>{x.term}</dt>
                 <dd>{x.meaning}</dd>

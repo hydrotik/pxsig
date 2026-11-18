@@ -20,6 +20,7 @@ import { collectEnv } from '../src/lib/env.mjs';
 import { readToken } from '../src/lib/guard.mjs';
 import { openProject, PXSIG_VERSION, satisfies } from '../src/lib/workspace.mjs';
 import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
+import { stampDashboard } from './guard-helpers.mjs';
 import { startServer } from './server-proc.mjs';
 import { skipUnless } from './strict.mjs';
 /** @import { IncomingHttpHeaders } from 'node:http' */
@@ -226,6 +227,7 @@ test(
       join(dash, 'index.html'),
       '<!doctype html><html><head><title>pxsig</title></head><body></body></html>'
     );
+    stampDashboard(dash);
     const S = await startServer({
       cwd: f.repo,
       env: {

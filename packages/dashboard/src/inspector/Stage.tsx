@@ -11,7 +11,6 @@ import { t } from '../copy';
 import * as s from '../dashboard.css';
 
 export type { DiffMode as Mode, Probe } from '../diff-viewer';
-export { canvasOf } from './analyse';
 
 interface Props {
   analysis: Analysis | null;

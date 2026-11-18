@@ -52,7 +52,11 @@ adapter; anything else is a path. The build prints the adapter and the rule that
 
 `pxsig serve` uses the build while it is newer than every file in the adapter's folder and was made
 by the same pxsig version. Otherwise it serves the prebuilt dashboard and prints one line with the
-command to run; it never builds by itself. `PXSIG_DASHBOARD_DIR` overrides both.
+command to run; it never builds by itself. `PXSIG_DASHBOARD_DIR` overrides both, for a build made
+by the same pxsig version (`pxsig dashboard build --out <folder>`). A dashboard supports only the
+pxsig version that built it: after upgrading pxsig, run `pxsig dashboard build` again. A build from
+another version, or one that records none, is not served, and `pxsig doctor` reports it
+(`dashboard-stale`).
 
 ## An adapter is not a project
 

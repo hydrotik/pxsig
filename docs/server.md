@@ -89,7 +89,9 @@ the workspace, else `~/…` under the home folder.
 A project can rebuild the dashboard on its own design system (`dashboard.ui`, `pxsig dashboard
 build`: [ui/build-adapter.md](ui/build-adapter.md)). The server then serves that build while it is
 current (newer than the adapter's files, same pxsig version); otherwise it serves the prebuilt one
-and prints the command that rebuilds it. `PXSIG_DASHBOARD_DIR` names a dashboard folder outright.
+and prints the command that rebuilds it. `PXSIG_DASHBOARD_DIR` names a dashboard folder outright;
+a build there from another pxsig version (or one that records none) is not served either: the
+prebuilt one is, with the `pxsig dashboard build --out` command.
 
 ## HTTP API
 

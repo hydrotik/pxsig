@@ -64,6 +64,7 @@ export function Schematic({ layout, active }: { layout: Layout; active: string[]
     <svg
       className={s.schematic}
       viewBox="0 0 320 200"
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an inline drawing whose parts change with the row pointed at: an <img> cannot hold it
       role="img"
       aria-label={t(`help.schematic.${layout}`)}
     >

@@ -1,4 +1,4 @@
-import { CONTRACT_VERSION } from './ui/contract';
+import { CONTRACT_VERSION } from '@ui';
 import { t } from './copy';
 import type { Data } from './data';
 
@@ -9,10 +9,10 @@ import type { Data } from './data';
  */
 export function versionsText(data: Data): string {
   const v = data.versions;
-  const contract = v?.contract ?? CONTRACT_VERSION;
+  const contract = v.contract ?? CONTRACT_VERSION;
   return [
-    v?.pxsig ? t('app.versions.pxsig', { version: v.pxsig }) : null,
-    v?.engine ? t('app.versions.engine', { version: v.engine }) : null,
+    v.pxsig ? t('app.versions.pxsig', { version: v.pxsig }) : null,
+    v.engine ? t('app.versions.engine', { version: v.engine }) : null,
     t('app.versions.contract', { version: contract }),
   ]
     .filter(Boolean)

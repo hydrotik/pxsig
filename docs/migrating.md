@@ -48,6 +48,13 @@ change has its `To update:` line in `CHANGELOG.md` under 0.7.7; by who acts:
   `topBar` object to conformance.json, set `"contract": "1.7.0"`, rebuild and fix any `top-bar`
   finding. An adapter written for 1.6.0 keeps building.
 
+**Custom dashboards** (a project's `dashboard.ui`, or a build served with `PXSIG_DASHBOARD_DIR`).
+
+- After upgrading pxsig, run `pxsig dashboard build` again (with `--out <folder>` for a
+  `PXSIG_DASHBOARD_DIR` build). A dashboard is served only by the pxsig version that built it:
+  `pxsig serve` serves the prebuilt dashboard in place of a build from another version, or one that
+  records no version, and prints the command; `pxsig doctor` reports it (`dashboard-stale`).
+
 **Nothing to do** for the rest, listed under "Upgrading from 0.7.6" in `CHANGELOG.md`. Among them,
 `@babel/core` and `babel-plugin-react-compiler` are no longer optional peers of pxsig: the React
 Compiler analysis resolves both from the project as before, and a project that wants it installs

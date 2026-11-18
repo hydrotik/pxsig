@@ -69,9 +69,6 @@ function marked<K extends 'TopNav' | 'StatGroup' | 'StatusBadge' | 'Badge'>(
   return Marked;
 }
 
-/** The adapter in use, for diagnostics. */
-export const adapterName: string = adapter.name;
-
 const Provider = pick('UiProvider');
 /** The app's root: owns theme mode and hands it to the adapter's provider. */
 export function UiRoot({ children }: { children: React.ReactNode }) {

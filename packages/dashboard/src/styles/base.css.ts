@@ -4,6 +4,26 @@ import { tokens as v } from '../ui/tokens';
 
 export const checker = `repeating-conic-gradient(${v.color.surfaceRaised} 0 25%, ${v.color.background} 0 50%) 0 0 / 1rem 1rem`;
 
+// The focus indicator of the dashboard's own controls: a 1px line in the focus colour, the weight of
+// a border, as the adapter's components draw theirs. An outline (not a box-shadow halo) keeps 3:1
+// against the surface (WCAG 1.4.11) and is painted in forced-colors mode. `insetFocusOutline` is for
+// an element its parent clips or that touches its neighbours (a list row in a scrolling panel).
+export const focusOutline = {
+  outline: `1px solid ${v.color.focus}`,
+  outlineOffset: v.space['0_5'],
+};
+export const insetFocusOutline = { outline: `1px solid ${v.color.focus}`, outlineOffset: '-1px' };
+// Over an image (the inspector's stage and its swipe handle), whose pixels can be any colour: no
+// single line keeps 3:1 against all of them, and the focus colour, mid-way in lightness, fails
+// against colours near its own. So images get a dark and a light line instead: 1px of the text
+// colour with 1px of the page background inside it, one of which holds at least 3:1 against any
+// colour (about 4:1 at worst, in both themes). Every other focus line is the focus colour.
+export const twoToneFocus = {
+  outline: `1px solid ${v.color.text}`,
+  outlineOffset: '-1px',
+  boxShadow: `inset 0 0 0 2px ${v.color.background}`,
+};
+
 globalStyle('html, body, #root', { blockSize: '100%', margin: 0 });
 globalStyle('body', {
   backgroundColor: v.color.background,
@@ -112,4 +132,3 @@ export const lede = style({
   // 22px: the relaxed 1.6 of 14px is 22.4px a line, and what follows two lines is off whole pixels.
   lineHeight: '1.375rem',
 });
-export const h2 = style({ margin: 0, fontSize: v.fontSize.lg, fontWeight: v.fontWeight.semibold });

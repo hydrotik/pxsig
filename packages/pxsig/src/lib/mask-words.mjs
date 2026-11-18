@@ -40,6 +40,10 @@ const BLOCKED = /** @type {const} */ ([
   ['a mask covers the story root', 'mask the value, not the story root'],
 ]);
 
+/** The start of each reason no approval passes, in the engine's order (the dashboard's masks.ts
+ * holds the same list; test/dashboard-constants.test.mjs keeps them equal). */
+export const blockedPrefixes = BLOCKED.map(([b]) => b);
+
 /**
  * What to do about one reason no approval passes; null for any other reason.
  * @param {string} reason

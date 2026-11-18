@@ -117,6 +117,10 @@ export function data({ rows, entries, summary = {} }) {
   return {
     generatedAt: AT,
     project: 'demo',
+    label: 'demo',
+    scope: 'demo',
+    // As a served page gets them; null: unknown, so the page names only the UI contract.
+    versions: { pxsig: null, engine: null, contract: null },
     store: '.pxsig',
     check: {
       generatedAt: AT,

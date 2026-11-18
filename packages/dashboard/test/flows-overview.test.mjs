@@ -10,7 +10,7 @@ import { setupFlows, skip, open } from './flows-helpers.mjs';
 
 setupFlows();
 
-test('the top bar: the title is the label (else the project), the versions on hover of "pxsig", the modes beside the connection', async (t) => {
+test('the top bar: the title is the scope (the project label, else the project), the versions on hover of "pxsig", the modes beside the connection', async (t) => {
   if (skip) return t.skip(skip);
   // Beside the connection badge, not in the title.
   const modesBeside = (page) =>
@@ -34,13 +34,13 @@ test('the top bar: the title is the label (else the project), the versions on ho
       // The top bar's heading: the loading page has its own (read, not drawn) until the data is in.
       const h1 = page.locator('nav').getByRole('heading', { level: 1 });
       await h1.waitFor();
-      assert.equal(await h1.innerText(), 'pxsig • demo', 'no label: the project name, as before');
+      assert.equal(await h1.innerText(), 'pxsig • demo', 'no label: the project name');
       assert.equal(await page.title(), 'pxsig • demo', 'the browser tab names it too');
       assert.equal(await page.locator('title').count(), 1, 'one <title>: the page keeps its own');
       const m = await modesBeside(page);
       assert.equal(m.inTitle, false);
       assert.match(m.next, /^(Live|Offline)$/, 'the connection badge comes right after');
-      // An older server sends no versions: the contract the page was built against still shows.
+      // Versions unknown (null): the contract the page was built against still shows.
       assert.match(
         await h1.locator('span[title]').first().getAttribute('title'),
         /^UI contract \d+\.\d+\.\d+$/
@@ -52,7 +52,9 @@ test('the top bar: the title is the label (else the project), the versions on ho
   }
   const labelled = {
     ...plain,
+    // As the server sends them: the scope is the project's label when the workspace has none.
     label: 'Hydrotik',
+    scope: 'Hydrotik',
     versions: { pxsig: '9.8.7', engine: '9.8.6', contract: '1.1.0' },
   };
   {
