@@ -13,15 +13,12 @@ import { NEEDS_LINK_CODE } from '../src/lib/guard.mjs';
 import { hasRust } from './fixture.mjs';
 import { dashboardCookie, raw, serve } from './guard-helpers.mjs';
 import { readToken } from '../src/lib/guard.mjs';
-import { hasCompiler, reactProject } from './react-helpers.mjs';
+import { hasCompiler, NO_COMPILER, reactProject } from './react-helpers.mjs';
 import { skipUnless } from './strict.mjs';
 
 /** @import { ReactData } from '../src/types/react.js' */
 
-const skip = skipUnless(
-  hasRust && hasCompiler,
-  'the engine or the React Compiler test fixtures are missing'
-);
+const skip = skipUnless(hasRust, 'Rust binary not built') || skipUnless(hasCompiler, NO_COMPILER);
 
 /**
  * `pxsig serve` in a React fixture project.

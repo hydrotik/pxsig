@@ -41,18 +41,20 @@ export interface RunResult {
   error?: Error;
 }
 
-/** The preset's seams for tests: how pxsig is run and where a warning goes. */
+/** `spawnSync` from the workspace's `pxsig/spawn`, as far as the preset calls it. */
+export type SnapshotRun = (
+  command: string,
+  args: string[],
+  options: {
+    cwd: string;
+    encoding: 'utf8';
+    timeout: number;
+    env: NodeJS.ProcessEnv;
+  }
+) => RunResult;
+
+/** The preset's seam for tests: where a warning goes. */
 export interface SnapshotDeps {
-  run?: (
-    command: string,
-    args: string[],
-    options: {
-      cwd: string;
-      encoding: 'utf8';
-      timeout: number;
-      env: NodeJS.ProcessEnv;
-    }
-  ) => RunResult;
   warn?: (line: string) => void;
 }
 

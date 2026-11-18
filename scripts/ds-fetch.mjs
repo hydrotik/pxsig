@@ -22,7 +22,7 @@
  * this script's: anything changed in it is replaced on the next fetch.
  *
  * Then, when the source can be read, how far the pin is behind the design system's default branch
- * (scripts/lib/ds-behind.mjs): a warning past MAX_BEHIND_COMMITS (20) commits or MAX_BEHIND_DAYS (14)
+ * (scripts/lib/ds-behind.mjs; a local checkout's `origin/HEAD`, else its `HEAD`): a warning past MAX_BEHIND_COMMITS (20) commits or MAX_BEHIND_DAYS (14)
  * days, a notice otherwise, either naming whether the design-system files the reference adapter uses
  * changed since the pin; `::warning::` / `::notice::` in GitHub Actions. It never fails the run.
  * The build (scripts/dashboard-build.mjs) fetches without this check.

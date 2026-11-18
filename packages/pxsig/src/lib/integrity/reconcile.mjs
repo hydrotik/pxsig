@@ -1,7 +1,7 @@
 /** The reconciler (integrity.mjs): every source of truth joined, per entry and component. */
 import { existsSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
-import { hasImage } from '../psig.mjs';
+import { sigHasImage } from './sig-read.mjs';
 import { workspaceProblems } from '../workspace.mjs';
 import { toPosix } from '../paths.mjs';
 import { portabilityProblems } from '../portability.mjs';
@@ -160,7 +160,7 @@ export async function reconcile(ctx, opts = {}) {
     if (!lastApproval.has(e.id) && existsSync(sigAbs)) unlogged.push(e.id);
     const has = {
       sig: existsSync(sigAbs),
-      base: isPsig(sigAbs) && hasImage(sigAbs),
+      base: isPsig(sigAbs) && sigHasImage(sigAbs),
       latest: files.latest.has(e.id),
       diff: files.diff.has(e.id),
       reconstructed: files.reconstructed.has(e.id),

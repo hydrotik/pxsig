@@ -19,9 +19,14 @@ You need:
 git clone https://github.com/hydrotik/pxsig
 cd pxsig
 pnpm install
+pnpm --dir packages/pxsig/test/react-compiler install --frozen-lockfile --ignore-scripts
 cargo build --release          # target/release/pxsig, which the CLI finds in a source checkout
 pnpm --filter pxsig exec playwright install chromium
 ```
+
+The second line installs the React Compiler test fixtures (under Babel 7 and 8): a workspace of its
+own, which the first `pnpm install` does not reach, and never a dependency of pxsig. Without it the
+React analysis tests skip, naming that command; CI runs the same step.
 
 The last line downloads Playwright's Chromium. The tests that render (the render environment, the
 server flows, the capture helpers) need it and the engine binary from `cargo build --release`;
@@ -30,9 +35,9 @@ in the output. A skip is not a pass, so CI installs both before the suite. On Li
 needs.
 
 `node scripts/bootstrap.mjs` (or `pnpm bootstrap`) checks each of these against the pins and runs
-the steps that are missing: `pnpm install --frozen-lockfile`, `rustup toolchain install`,
-`cargo build --release --locked` and the Chromium install. It never installs Node or pnpm, and it
-starts no shell. `--check` changes nothing and exits 1 naming what is missing.
+the steps that are missing: `pnpm install --frozen-lockfile`, the React Compiler fixtures' install
+above, `rustup toolchain install`, `cargo build --release --locked` and the Chromium install. It
+never installs Node or pnpm, and it starts no shell. `--check` changes nothing and exits 1 naming what is missing.
 
 Run the CLI from the clone:
 
@@ -179,7 +184,8 @@ runner's temp folder, so no cache saves it. The source is never left on disk: th
 
 `pnpm ds:fetch` also says how far the pin is behind the design system's default branch, and whether
 the design-system files the reference adapter imports changed since (a warning past 20 commits or 14
-days; scripts/lib/ds-behind.mjs). It never fails.
+days; scripts/lib/ds-behind.mjs). It never fails. For a local checkout as the source, the default
+branch is that checkout's `origin/HEAD`, or its own `HEAD` when it has none; the line says which.
 
 **Bumping the pin** is a reviewed commit: set `commit` in `design-system.json` to the design
 system's new commit (its full SHA), run `pnpm ds:fetch` and `pnpm build:dashboard`, then
@@ -206,14 +212,17 @@ which), adds that version's section to `contract-changes.md`, keeps the referenc
 pnpm ui:docs     # regenerate src/ui/manifest.json and docs/ui/features.md
 pnpm ui:check    # what CI runs: no design-system import outside the adapters; code and docs agree
 pnpm ui:gaps     # the conformance of the adapter a build would use (plain; hydrotik with PXSIG_DS_SOURCE)
-pnpm typecheck   # tsc over the dashboard and every adapter; with PXSIG_DS_SOURCE, the reference adapter against the design system's sources too
+pnpm typecheck   # tsc over the dashboard and every adapter; with a design-system source, the reference adapter against the pinned checkout too
 ```
 
 The reference adapter is type-checked (and linted) in CI against
 `adapters/hydrotik/design-system.d.ts`: the design system's own declarations for the names the
 adapter imports, generated from a built checkout. After the adapter imports a new name, or the
 design system changes, regenerate it with `PXSIG_DS_SOURCE=<checkout> pnpm ui:types` (`ui.mjs lock`
-does too when PXSIG_DS_SOURCE is set); `pnpm typecheck` with PXSIG_DS_SOURCE fails while it is stale.
+does too when PXSIG_DS_SOURCE is set). With a design-system source configured (`pxsig.dsSource` or
+`PXSIG_DS_SOURCE`), `pnpm typecheck` checks the adapter and the declarations against the pinned
+checkout `pnpm ds:fetch` makes (fetching it when needed), never the source's own head, and fails while
+the declarations are stale; build that checkout first, as for bumping the pin.
 
 ## Changelog fragments
 
@@ -227,7 +236,7 @@ no fragment. A refactor or a test-only change that users cannot notice says so i
 ## CI job names
 
 The jobs in `.github/workflows/ci.yml` are required checks, matched by their exact names (with
-their matrix legs: eleven in all). Renaming, adding or removing a job, or changing its `name:`,
+their matrix legs: fourteen in all). Renaming, adding or removing a job, or changing its `name:`,
 leaves a required check waiting forever and blocks every pull request. New checks go in as steps
 inside an existing job. Every third-party action is pinned by its full commit SHA, with a
 `# vX.Y.Z` comment.

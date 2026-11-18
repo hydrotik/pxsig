@@ -5,35 +5,24 @@
  *                        record (a `boxes` section)
  *   text-config  (warn)  a bad `text` value, and what it does to this run
  */
-import { resolve } from 'node:path';
-import { readJson } from '../files.mjs';
-import { readHeader } from '../psig.mjs';
+import { baselineFacts } from '../baseline-facts.mjs';
 import { textConfig } from './config.mjs';
 /** @import { Project } from '../../types.js' */
+/** @import { SigFacts } from '../integrity/sig-read.mjs' */
 
 /** @typedef {{ code: 'text-capture' | 'text-config', severity: 'info' | 'warn', text: string }} TextFinding */
 
 /**
  * @param {Project} P
+ * @param {SigFacts[]} [facts] the manifest's baselines (baseline-facts.mjs)
  * @returns {TextFinding[]}
  */
-export function textFindings(P) {
+export function textFindings(P, facts = baselineFacts(P)) {
   const t = textConfig(P);
   /** @type {TextFinding[]} */
   const out = t.problems.map((p) => ({ code: 'text-config', severity: 'warn', text: p }));
-  // The committed manifest (pxsig's own file): every entry's baseline path, workspace-relative.
-  const m = /** @type {{ stories?: { sig?: string }[] } | null} */ (
-    readJson(P.manifestPath(), null)
-  );
-  let baselines = 0;
-  let recorded = 0;
-  for (const e of m?.stories ?? []) {
-    if (!e.sig?.endsWith('.psig')) continue;
-    const h = readHeader(resolve(P.workspaceRoot, e.sig));
-    if (!h) continue;
-    baselines++;
-    if (h.sections?.some((s) => s.name === 'boxes')) recorded++;
-  }
+  const baselines = facts.length;
+  const recorded = facts.filter((f) => f.boxes).length;
   out.push({
     code: 'text-capture',
     severity: 'info',

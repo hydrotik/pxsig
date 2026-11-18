@@ -1,10 +1,10 @@
 // The installed addon's self-test: what npm put in node_modules/@pxsig/storybook-addon gives
 // Storybook a working preset and manager entry. Node built-ins and the addon's own files only: no
-// Storybook, no network, no browser.
+// Storybook, no network, no browser. Its one start (node --check) goes through the installed pxsig's
+// guarded start (`pxsig/spawn`), never Node's process module; without pxsig that check is skipped.
 //
 //   node --test "node_modules/@pxsig/storybook-addon/test/installed/*.test.mjs"
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { isAbsolute, join } from 'node:path';
@@ -17,6 +17,24 @@ const require = createRequire(import.meta.url);
 const manifest = JSON.parse(readFileSync(join(pkg, 'package.json'), 'utf8'));
 /** @type {typeof import('../../preset.mjs')} */
 const preset = await import(manifest.name);
+/**
+ * `spawnSync` from `pxsig/spawn`, as far as this test calls it.
+ * @typedef {(program: string, args: string[], opts: { encoding: 'utf8' }) =>
+ *   { status: number | null, stderr: string }} GuardedSpawn
+ */
+/**
+ * The installed pxsig's guarded `spawnSync`, or null when pxsig is not installed beside the addon.
+ * @type {GuardedSpawn | null}
+ */
+const guarded = await (async () => {
+  try {
+    const file = createRequire(join(pkg, 'package.json')).resolve('pxsig/spawn');
+    const mod = /** @type {{ spawnSync: GuardedSpawn }} */ (await import(pathToFileURL(file).href));
+    return mod.spawnSync;
+  } catch {
+    return null;
+  }
+})();
 const HOOKS = /** @type {const} */ (['managerEntries', 'managerHead', 'staticDirs']);
 
 test('every file the manifest lists is in the package', () => {
@@ -62,11 +80,21 @@ test('staticDirs outside a production build returns the dirs as given', async ()
   assert.deepEqual(await preset.staticDirs(dirs, { configType: 'DEVELOPMENT' }), dirs);
 });
 
-test('manager.mjs parses, and each file it imports is shipped and exports the names it uses', async () => {
-  const check = spawnSync(process.execPath, ['--check', join(pkg, 'manager.mjs')], {
-    encoding: 'utf8',
-  });
-  assert.equal(check.status, 0, check.stderr);
+test(
+  'manager.mjs parses',
+  {
+    skip: guarded ? false : 'pxsig is not installed beside the addon (its pxsig/spawn starts node)',
+  },
+  () => {
+    if (!guarded) return;
+    const check = guarded(process.execPath, ['--check', join(pkg, 'manager.mjs')], {
+      encoding: 'utf8',
+    });
+    assert.equal(check.status, 0, check.stderr);
+  }
+);
+
+test('each file manager.mjs imports is shipped and exports the names it uses', async () => {
   const source = readFileSync(join(pkg, 'manager.mjs'), 'utf8');
   const local = [...source.matchAll(/^import\s*\{([^}]*)\}\s*from\s*'(\.\/[^']+)'/gm)];
   assert.ok(local.length > 0, 'manager.mjs imports its helpers');

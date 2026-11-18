@@ -14,5 +14,10 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "vite": "^6.4.6"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "picomatch@4.0.7": "patches/picomatch@4.0.7.patch"
+    }
   }
 }

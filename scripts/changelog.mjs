@@ -23,6 +23,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { relink } from './lib/md-relink.mjs';
 /** @import { Fragment } from './types.js' */
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -224,18 +225,24 @@ function fragmentFiles(dir = join(root, DIR)) {
     .sort();
 }
 
-function readFragments() {
+/**
+ * The fragments in `top`'s changelog.d/, parsed, with their relative links rewritten for
+ * CHANGELOG.md at the top (lib/md-relink.mjs), where a release puts their text.
+ * @param {string} [top] the checkout
+ */
+export function readFragments(top = root) {
   /** @type {string[]} */
   const problems = [];
   /** @type {{ name: string, sections: Map<string, string> }[]} */
   const fragments = [];
-  for (const n of fragmentFiles()) {
+  for (const n of fragmentFiles(join(top, DIR))) {
     const label = `${DIR}/${n}`;
     if (!NAME.test(n)) {
       problems.push(`${label}: name it <topic>.md (lower case, digits, dots and dashes)`);
       continue;
     }
-    const f = parseFragment(readFileSync(join(root, DIR, n), 'utf8'), label);
+    const text = relink(readFileSync(join(top, DIR, n), 'utf8'), { from: DIR, to: '' });
+    const f = parseFragment(text, label);
     problems.push(...f.problems);
     fragments.push({ name: n, sections: f.sections });
   }

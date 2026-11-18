@@ -15,15 +15,18 @@ import { reactData } from '../src/lib/react/data.mjs';
 import { createPool } from '../src/lib/react/pool.mjs';
 import { stampRenders } from '../src/lib/rows.mjs';
 import { hasRust } from './fixture.mjs';
-import { fixtureModules, hasCompiler, projectAt, reactProject } from './react-helpers.mjs';
+import {
+  fixtureModules,
+  hasCompiler,
+  NO_COMPILER,
+  projectAt,
+  reactProject,
+} from './react-helpers.mjs';
 import { skipUnless } from './strict.mjs';
 
 /** @import { ReactProgress, RenderCounts } from '../src/types/react.js' */
 
-const skip = skipUnless(
-  hasRust && hasCompiler,
-  'the engine or the React Compiler test fixtures are missing'
-);
+const skip = skipUnless(hasRust, 'Rust binary not built') || skipUnless(hasCompiler, NO_COMPILER);
 
 test('a run reports each file done; a second run is all cached', { skip }, async (t) => {
   const P = projectAt(reactProject(t));
