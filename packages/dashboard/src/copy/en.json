@@ -369,6 +369,28 @@
         "other": "{count} orphaned baselines. To move them to the store's trash/ folder, run {command} in a terminal."
       }
     },
+    "recordRepair": {
+      "title": "Repair Baseline Records",
+      "list": "Repair baseline records",
+      "listing": "Listing…",
+      "note": "Lists the baselines whose record and image differ, and which may have their record written again from their own image. Nothing is written before a confirm.",
+      "needsLink": "Needs the dashboard link: open the link pxsig serve printed.",
+      "summary": "{count} records differ from their image · {eligible} eligible · {others} not eligible",
+      "imageAlt": "Baseline image of {id}",
+      "notEligible": {
+        "one": "{count} not eligible",
+        "other": "{count} not eligible"
+      },
+      "reviewOthers": "Review each in the inspector, or list the reasons with pxsig approve repair-records.",
+      "confirm": {
+        "one": "Repair {count} record",
+        "other": "Repair {count} records"
+      },
+      "repairing": "Repairing…",
+      "cancel": "Cancel",
+      "done": "Repaired {count} · not written {skipped} · batch {batch}",
+      "failed": "Repair failed: {error}"
+    },
     "stats": {
       "label": "Coverage summary",
       "components": "Components",
@@ -555,6 +577,10 @@
       "review-order": {
         "title": "Review order unreadable",
         "help": "approvals.reviewOrder names a file that is missing or not JSON: the review queue is ordered by component name."
+      },
+      "baseline-pair-mismatch": {
+        "title": "Record and image differ",
+        "help": "Baselines whose record and image come from different renders: the gate reads the record, the inspector shows the image. Repair baseline records writes the eligible records again from their own images; the others are reviewed one entry at a time."
       }
     }
   },

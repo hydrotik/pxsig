@@ -2,7 +2,7 @@
  * guard.mjs — who may write through `pxsig serve`.
  *
  * Decisions (approve, approve a story, reject, unreview, the a11y decisions, pruning accepted a11y
- * rules, dismissing a rejection's reason) need a person: the dashboard (or the Storybook panel that embeds it), or `pxsig approve
+ * rules, dismissing a rejection's reason, repairing baseline records) need a person: the dashboard (or the Storybook panel that embeds it), or `pxsig approve
  * apply` / `pxsig a11y --prune` at a terminal.
  * The dashboard decides through the dashboard link: `pxsig serve` prints `<url>/report/#ticket=<t>`
  * for a person at a terminal (`pxsig serve --link` prints a new one). The page trades the ticket
@@ -54,6 +54,7 @@ export const DECISIONS = new Set([
   'a11y-unaccept',
   'a11y-prune',
   'rejection-dismiss',
+  'record-repair',
 ]);
 
 /** What an agent's (the MCP's) token may decide: rejections, and clearing its own. */

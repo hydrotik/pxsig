@@ -55,8 +55,34 @@ export function atLeast(v, min) {
   return true;
 }
 
-/** Whether a log line is a person's decision. @param {ApprovalLine} l */
-export const byPerson = (l) => PERSON_VIA.has(l.via) && !l.agent && !l.undo;
+/**
+ * Whether a log line is a person's decision. A record repair (`kind: record-repair`,
+ * lib/approvals/record-repair.mjs) is a person's line but approves no change: never a review.
+ * @param {ApprovalLine} l
+ */
+export const byPerson = (l) =>
+  PERSON_VIA.has(l.via) && !l.agent && !l.undo && l.kind !== 'record-repair';
+
+/**
+ * The line whose state the bytes `hash` carry: the last line that logged them, and for a record
+ * repair the line that logged the bytes it replaced (a repair keeps the entry's state).
+ * @param {ApprovalLine[]} lines
+ * @param {string} hash
+ * @returns {ApprovalLine | undefined}
+ */
+function wroteBy(lines, hash) {
+  let wrote = lines.filter((l) => l.after === hash).pop();
+  /** @type {Set<ApprovalLine>} */
+  const seen = new Set();
+  while (wrote?.kind === 'record-repair' && wrote.before && !seen.has(wrote)) {
+    seen.add(wrote);
+    const before = wrote.before;
+    const prior = lines.filter((l) => l.after === before).pop();
+    if (!prior) break;
+    wrote = prior;
+  }
+  return wrote;
+}
 
 /**
  * An entry's review state from its log lines and its baseline's current hash.
@@ -67,7 +93,7 @@ export const byPerson = (l) => PERSON_VIA.has(l.via) && !l.agent && !l.undo;
  */
 export function reviewState(lines, hash) {
   if (lines.some((l) => l.after === hash && byPerson(l))) return { reviewed: true };
-  const wrote = lines.filter((l) => l.after === hash).pop();
+  const wrote = wroteBy(lines, hash);
   if (wrote)
     return {
       reviewed: false,

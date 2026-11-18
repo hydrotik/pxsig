@@ -25,6 +25,10 @@
  *                         baselines as the starting point (terminal only). Under warn mode
  *                         (the `verify` gate) only baselines with no log line are warned; a
  *                         mismatch or a rewritten log fails in every mode
+ *   repair-records [--dry-run | --yes]
+ *                         baselines whose record and image are from different renders: lists the
+ *                         eligible ones (approve/repair-records.mjs) and, with --yes (terminal only),
+ *                         writes their records again from their own images; approves no change
  *
  * Per-entry approval in the dashboard / Storybook panel stays as it is (one entry, images on
  * screen) and is logged the same way.
@@ -34,6 +38,7 @@ import { join } from 'node:path';
 import { applyCommand, planCommand } from './approve/plan.mjs';
 import { logCommand, undoCommand } from './approve/log.mjs';
 import { verifyCommand } from './approve/verify.mjs';
+import { repairRecordsCommand } from './approve/repair-records.mjs';
 import { humanAtTerminal, whyNotPerson } from './lib/term.mjs';
 import { relPath } from './lib/paths.mjs';
 /** @import { Flags, Manifest, ManifestEntry, Project } from './types.js' */
@@ -107,8 +112,9 @@ export async function approveCommand({
   if (sub === 'log') return logCommand(cx);
   if (sub === 'undo') return undoCommand(cx);
   if (sub === 'verify') return verifyCommand(cx);
+  if (sub === 'repair-records') return repairRecordsCommand(cx);
 
   fail(
-    `usage: approve plan | apply | log [--trace] | undo <batch> | verify [--no-strict] [--since <ref>] [--suite <name> | --all-suites] [--adopt]`
+    `usage: approve plan | apply | log [--trace] | undo <batch> | verify [--no-strict] [--since <ref>] [--suite <name> | --all-suites] [--adopt] | repair-records [--dry-run | --yes]`
   );
 }
