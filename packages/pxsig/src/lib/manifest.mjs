@@ -32,7 +32,8 @@
  * Entry keys: `<storyId>[__<state>][@<mode>]`; the default mode keeps the bare id,
  * so existing baselines keep their names.
  */
-import { launchBrowser } from './capture.mjs';
+// The browser alone, not capture.mjs: its render pipeline is for `check`, not every command.
+import { launchBrowser } from './capture/browser.mjs';
 import { SetupError } from './workspace.mjs';
 /** @import { Browser } from 'playwright' */
 /** @import { EntryConfig, ManifestEntry, Mode, ManifestSkipped, Project, StoryParameters, StoryPxsigParameters, StorybookPreviewWindow, StoryRef } from '../types.js' */

@@ -8,7 +8,6 @@
  * removed, so the person reviews the images and posts it themselves. `pxsig report <id>` runs this
  * tool in-process. No answer holds an absolute path, a user name or (by default) the story id.
  */
-import { gateReport, GateReportError, writeGateReport } from '../lib/gate-report.mjs';
 import { relPath } from '../lib/paths.mjs';
 import { engineDiff } from '../lib/rejections/packet.mjs';
 import { ctxOf, ID_RE, PROJECT } from './context.mjs';
@@ -48,6 +47,9 @@ export const reportTools = /** @type {const} */ ([
     async run({ project, id, full = false, keepId = false, noImage = false }) {
       if (typeof id !== 'string' || !ID_RE.test(id)) throw new Error(`bad id: ${id}`);
       const C = ctxOf(project);
+      // Loaded here: the report and its image code are for this tool only, not every command.
+      const { gateReport, GateReportError, writeGateReport } =
+        await import('../lib/gate-report.mjs');
       try {
         const r = await gateReport(C.P, id, {
           full: !!full,
