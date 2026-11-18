@@ -2,7 +2,9 @@
  * text-helpers.mjs — a stand-in Storybook whose stories are HTML given by the test (the text
  * capture's pins and capture tests), and the one-entry render they share.
  */
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { PNG } from 'pngjs';
 import { renderStories } from '../src/lib/capture.mjs';
 /** @import { RenderResult } from '../src/types.js' */
 
@@ -51,4 +53,23 @@ export async function renderOn(browser, url, entries, dir, config = {}) {
     project: /** @type {never} */ ({ config }),
   });
   return results;
+}
+
+/**
+ * How two PNGs differ, for a failed byte-for-byte comparison: their sizes when those differ (the
+ * layout moved: a font, a width), else how many pixels differ (the same layout drawn differently:
+ * antialiasing, a raster path). Empty when the files are the same.
+ * @param {string} a
+ * @param {string} b
+ */
+export function howDiffer(a, b) {
+  const [x, y] = [readFileSync(a), readFileSync(b)];
+  if (x.equals(y)) return '';
+  const [p, q] = [PNG.sync.read(x), PNG.sync.read(y)];
+  if (p.width !== q.width || p.height !== q.height)
+    return `${p.width}x${p.height} and ${q.width}x${q.height}`;
+  let n = 0;
+  for (let i = 0; i < p.data.length; i += 4)
+    if (p.data.readUInt32BE(i) !== q.data.readUInt32BE(i)) n++;
+  return `${p.width}x${p.height}, ${n} pixels differ`;
 }
