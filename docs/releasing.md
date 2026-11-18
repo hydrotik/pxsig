@@ -211,6 +211,10 @@ PXSIG_LIVE_BIN="$PWD/target/linux/release/pxsig" pnpm screens:check
   against its baseline), fails as "not deterministic". Any difference, within the gate too, keeps
   both renders in `reports/live-repeat/` and is logged.
   `--no-live` leaves the live screens out; `--only` takes live features (`live.approve`) too.
+- The two themes run side by side, a process each (`scripts/live/themes.mjs`), each with its own
+  browser, server and port, and its own copy of the staged workspace (`target/pxsig-live-<theme>`)
+  with its store; a theme's runs stay one after another, so the repeat check is unchanged. Every
+  log line names its theme (`[live] dark: …`).
 
 **Where it runs.** The `screens` workflow (`.github/workflows/screens.yml`) builds the dashboard on
 the design system at the commit `design-system.json` pins (fetched with the `PXSIG_DS_SOURCE`

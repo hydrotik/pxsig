@@ -43,7 +43,8 @@ import { rustBinary } from '../../packages/pxsig/src/lib/workspace/peers.mjs';
 import { copyTree } from '../lib/copy-tree.mjs';
 import { FEATURES, STEPS } from './flows.mjs';
 import { assertSafeUrl, DEAD_URL, idle, startLiveServer } from './server.mjs';
-import { CHANGE, LIVE_BASE, liveDir, pristineDir, REACT_CHANGE, repo } from './stage.mjs';
+import { CHANGE, pristineDir, REACT_CHANGE, repo } from './stage.mjs';
+import { sideBySide, themeWorkspace } from './themes.mjs';
 import { scrubber, scrubRoutes } from './volatile.mjs';
 
 // Playwright's types, through capture.mjs (playwright resolves from packages/pxsig, not scripts/).
@@ -52,6 +53,7 @@ import { scrubber, scrubRoutes } from './volatile.mjs';
 /** @typedef {Parameters<typeof snap>[0]} Page */
 /** @import { ScreenCapture, ScreenResult } from '../../packages/pxsig/src/types/t4.js' */
 /** @import { LiveAction, LiveStep } from './types.js' */
+/** @import { LiveWorkspace, ThemeOptions } from './themes.mjs' */
 
 export const PROJECT = 'example-single';
 /**
@@ -87,7 +89,7 @@ export function liveCatalogue() {
 
 /**
  * A fresh scratch store: 9 entries pass, 3 are new.
- * @param {string} dir the staged example
+ * @param {string} dir the theme's staged example
  * @param {(m: string) => void} log
  */
 async function prepare(dir, log) {
@@ -125,15 +127,15 @@ function swapStorybook(/** @type {string} */ dir, /** @type {string} */ build) {
 
 /**
  * Run the flows once in one theme. Returns one result per step, in STEPS order.
- * @param {{ browser: Browser, theme: 'dark' | 'light', dashboard: string, axe: string, out: string, log: (m: string) => void, want: (s: LiveStep) => boolean , text?: { ignore: string[] } | null }} o
+ * @param {{ browser: Browser, ws: LiveWorkspace, dashboard: string, axe: string, out: string, log: (m: string) => void, want: (s: LiveStep) => boolean , text?: { ignore: string[] } | null }} o
  */
-async function runOnce({ browser, theme, dashboard, axe, out, log, want, text }) {
-  const dir = liveDir();
+async function runOnce({ browser, ws, dashboard, axe, out, log, want, text }) {
+  const { theme, dir } = ws;
   await prepare(dir, log);
   const { env: shEnv, stateHome, browsers, pxsigIn } = await import('../examples/shared.mjs');
   const S = await startLiveServer({
     dir,
-    base: LIVE_BASE,
+    base: ws.base,
     dashboard,
     env: {
       ...shEnv,
@@ -361,13 +363,13 @@ function samePixels(a, b) {
 }
 
 /**
- * The live screens, in each theme. `only`: the live features to keep (all when null); the flows
- * always run in full, since each step starts where the one before ended.
- * @param {{ browser: Browser, dashboard: string, axe: string, out: string, keep: string, themes: ('dark' | 'light')[], repeat?: number, only?: string[] | null, log?: (m: string) => void , text?: { ignore: string[] } | null }} o
+ * The live screens, in each theme, side by side (scripts/live/themes.mjs). `only`: the live
+ * features to keep (all when null); the flows always run in full, since each step starts where the
+ * one before ended.
+ * @param {{ dashboard: string, axe: string, out: string, keep: string, themes: ('dark' | 'light')[], repeat?: number, only?: string[] | null, log?: (m: string) => void , text?: { ignore: string[] } | null }} o
  * @returns {Promise<ScreenResult[]>}
  */
 export async function runLive({
-  browser,
   dashboard,
   axe,
   out,
@@ -382,7 +384,6 @@ export async function runLive({
     throw new Error(
       'the live workspace is not staged: run scripts/screens-container.mjs (it stages it)'
     );
-  const want = (/** @type {LiveStep} */ s) => !only || only.includes(s.feature);
   // The checkout's engine for everything the live run starts (server, CLI, the gate between runs),
   // until it returns; a run that throws ends the check.
   const image = process.env.PXSIG_BIN;
@@ -393,58 +394,67 @@ export async function runLive({
     log(`[live] engine: this checkout's (${v.stdout.trim()})`);
     process.env.PXSIG_BIN = live;
   }
-  /** @type {ScreenResult[]} */
-  const all = [];
-  for (const theme of themes) {
-    /** @type {ScreenResult[][]} */
-    const runs = [];
-    for (let k = 1; k <= repeat; k++) {
-      log(`[live] ${theme}: run ${k} of ${repeat}`);
-      const dirK = join(out, `run${k}`);
-      mkdirSync(dirK, { recursive: true });
-      runs.push(await runOnce({ browser, theme, dashboard, axe, out: dirK, log, want, text }));
-    }
-    const [first, ...rest] = runs;
-    let identical = 0;
-    first.forEach((r, i) => {
-      for (const [j, other] of rest.entries()) {
-        const o = other[i];
-        if (!r.rendered || !o.rendered || !r.shot || !o.shot) continue;
-        const pixels = samePixels(r.shot, o.shot);
-        if (pixels && r.aria === o.aria) {
-          identical++;
-          continue;
-        }
-        const id = `live--${r.feature.split('.')[1]}-${r.index + 1}@${theme}`;
-        mkdirSync(keep, { recursive: true });
-        copyFileSync(r.shot, join(keep, `${id}.run1.png`));
-        copyFileSync(o.shot, join(keep, `${id}.run${j + 2}.png`));
-        if (r.aria !== o.aria) {
-          writeFileSync(join(keep, `${id}.run1.aria.yml`), r.aria ?? '');
-          writeFileSync(join(keep, `${id}.run${j + 2}.aria.yml`), o.aria ?? '');
-        }
-        // Pixels that differ within the gate never show as a change against a baseline: kept,
-        // logged, and not a failure. Outside it, or a different structure, the step fails.
-        const gate = pixels ? null : withinGate(r.shot, o.shot, join(keep, `${id}.pxsig.json`));
-        if (r.aria === o.aria && gate?.pass) {
-          log(`[live] ${id}: run ${j + 2} differs in pixels within the gate (ssim ${gate.ssim})`);
-          continue;
-        }
-        Object.assign(r, {
-          rendered: false,
-          shot: null,
-          reason: `not deterministic: run ${j + 2} differs in ${r.aria !== o.aria ? 'its accessibility snapshot' : `pixels beyond the gate (ssim ${gate?.ssim})`} (both kept in reports/live-repeat)`,
-        });
-        break;
-      }
-    });
-    if (rest.length)
-      log(
-        `[live] ${theme}: ${repeat} runs, ${identical} of ${first.length} steps the same pixels and structure`
-      );
-    all.push(...first);
-  }
+  const all = await sideBySide(themes, { dashboard, axe, out, keep, repeat, only, text }, log);
   if (image === undefined) delete process.env.PXSIG_BIN;
   else process.env.PXSIG_BIN = image;
   return all;
+}
+
+/**
+ * One theme's live screens, in a workspace of its own: its runs one after another, then run 2
+ * onwards against run 1. Called by scripts/live/theme-run.mjs, in the theme's own process.
+ * @param {ThemeOptions & { browser: Browser, theme: 'dark' | 'light', log: (m: string) => void }} o
+ * @returns {Promise<ScreenResult[]>}
+ */
+export async function runTheme(o) {
+  const { browser, theme, dashboard, axe, out, keep, repeat, only, log, text } = o;
+  const want = (/** @type {LiveStep} */ s) => !only || only.includes(s.feature);
+  const ws = themeWorkspace(theme);
+  /** @type {ScreenResult[][]} */
+  const runs = [];
+  for (let k = 1; k <= repeat; k++) {
+    log(`[live] ${theme}: run ${k} of ${repeat}`);
+    const dirK = join(out, theme, `run${k}`);
+    mkdirSync(dirK, { recursive: true });
+    runs.push(await runOnce({ browser, ws, dashboard, axe, out: dirK, log, want, text }));
+  }
+  const [first, ...rest] = runs;
+  let identical = 0;
+  first.forEach((r, i) => {
+    for (const [j, other] of rest.entries()) {
+      const o = other[i];
+      if (!r.rendered || !o.rendered || !r.shot || !o.shot) continue;
+      const pixels = samePixels(r.shot, o.shot);
+      if (pixels && r.aria === o.aria) {
+        identical++;
+        continue;
+      }
+      const id = `live--${r.feature.split('.')[1]}-${r.index + 1}@${theme}`;
+      mkdirSync(keep, { recursive: true });
+      copyFileSync(r.shot, join(keep, `${id}.run1.png`));
+      copyFileSync(o.shot, join(keep, `${id}.run${j + 2}.png`));
+      if (r.aria !== o.aria) {
+        writeFileSync(join(keep, `${id}.run1.aria.yml`), r.aria ?? '');
+        writeFileSync(join(keep, `${id}.run${j + 2}.aria.yml`), o.aria ?? '');
+      }
+      // Pixels that differ within the gate never show as a change against a baseline: kept,
+      // logged, and not a failure. Outside it, or a different structure, the step fails.
+      const gate = pixels ? null : withinGate(r.shot, o.shot, join(keep, `${id}.pxsig.json`));
+      if (r.aria === o.aria && gate?.pass) {
+        log(`[live] ${id}: run ${j + 2} differs in pixels within the gate (ssim ${gate.ssim})`);
+        continue;
+      }
+      Object.assign(r, {
+        rendered: false,
+        shot: null,
+        reason: `not deterministic: run ${j + 2} differs in ${r.aria !== o.aria ? 'its accessibility snapshot' : `pixels beyond the gate (ssim ${gate?.ssim})`} (both kept in reports/live-repeat)`,
+      });
+      break;
+    }
+  });
+  if (rest.length)
+    log(
+      `[live] ${theme}: ${repeat} runs, ${identical} of ${first.length} steps the same pixels and structure`
+    );
+  return first;
 }
