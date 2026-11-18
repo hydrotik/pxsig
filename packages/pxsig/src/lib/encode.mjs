@@ -12,6 +12,9 @@
  *   (least recently used out first), so the 3 MB dashboard script is compressed once per build.
  *   Answers built per request (JSON) are compressed each time and never kept.
  * - gzip level 6 (node:zlib), synchronous: about 40 ms for the dashboard script, once per build.
+ * - A project's store files (`/p/<project>/…`: renders, diffs, their pages, baseline headers,
+ *   rejection packets) always go as they are (`sendAsIs`): the dashboard reads their sizes from
+ *   Content-Length, which must be the file's own, and images gain nothing.
  */
 import { readFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
@@ -23,6 +26,19 @@ export const MIN_BYTES = 1024;
 /** The most compressed file bytes kept at once. */
 export const CACHE_BYTES = 32 * 1024 * 1024;
 const LEVEL = 6;
+
+/** Marks a response that is never encoded (`sendAsIs`). */
+const AS_IS = Symbol('pxsig.sendAsIs');
+
+/**
+ * Send this response as it is, whatever its type and the request's Accept-Encoding: for a
+ * project's store files, whose Content-Length the dashboard shows as their size. Call before
+ * `writeHead`.
+ * @param {ServerResponse} res
+ */
+export function sendAsIs(res) {
+  /** @type {Record<symbol, boolean>} */ (/** @type {unknown} */ (res))[AS_IS] = true;
+}
 
 /**
  * Whether a content type is text worth compressing (never an event stream).
@@ -78,6 +94,7 @@ export function varyEncoding(res) {
  * @param {number} size
  */
 function negotiate(req, res, type, size) {
+  if (/** @type {Record<symbol, boolean>} */ (/** @type {unknown} */ (res))[AS_IS]) return false;
   if (!compressible(type)) return false;
   varyEncoding(res);
   if (res.getHeader('content-encoding') || size < MIN_BYTES || !acceptsGzip(req)) return false;

@@ -9,7 +9,7 @@
  * The `pxsig serve` test needs the Rust binary; skipped without it.
  */
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { request } from 'node:http';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -24,14 +24,15 @@ const SCRIPT = 'export const pxsig = "a readable script";\n'.repeat(400);
 const GZIP = { 'accept-encoding': 'gzip, deflate, br' };
 
 /**
- * A GET; the body as raw bytes.
+ * A GET (or `method`); the body as raw bytes.
  * @param {string} url
  * @param {Record<string, string>} [headers]
+ * @param {string} [method]
  * @returns {Promise<{ status: number | undefined, headers: import('node:http').IncomingHttpHeaders, body: Buffer }>}
  */
-const get = (url, headers = {}) =>
+const get = (url, headers = {}, method = 'GET') =>
   new Promise((ok, fail) => {
-    const req = request(url, { headers, agent: false }, (res) => {
+    const req = request(url, { headers, agent: false, method }, (res) => {
       /** @type {Buffer[]} */
       const parts = [];
       res.on('data', (c) => parts.push(c));
@@ -93,6 +94,45 @@ test(
       assert.match(String(ev.headers['content-type']), /^text\/event-stream/);
       assert.equal(ev.headers['content-encoding'], undefined, 'an event stream is never encoded');
       assert.match(ev.first, /event: hello/);
+    } finally {
+      await S.stop();
+    }
+  }
+);
+
+test(
+  "pxsig serve: a project's store files go as they are, so HEAD's Content-Length is the file's size (the inspector's Files)",
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
+  async () => {
+    const f = fixture();
+    const { ok } = f.ids;
+    // A diff page: text well over the floor, which the server would otherwise gzip.
+    const page = join(f.px, 'diffs', 'latest', `${ok}.diff.html`);
+    mkdirSync(join(f.px, 'diffs', 'latest'), { recursive: true });
+    writeFileSync(
+      page,
+      `<!doctype html><title>diff</title>${'<p>a changed region</p>'.repeat(200)}`
+    );
+    const S = await serve(f);
+    try {
+      for (const [path, size] of [
+        [`/p/fixture/diffs/latest/${ok}.diff.html`, statSync(page).size],
+        [`/p/fixture/renders/latest/${ok}.png`, statSync(f.latest(ok)).size],
+      ]) {
+        for (const method of ['HEAD', 'GET']) {
+          const r = await get(`${S.url}${path}`, GZIP, method);
+          assert.equal(r.status, 200, `${method} ${path}`);
+          assert.equal(r.headers['content-encoding'], undefined, `${method} ${path}: as it is`);
+          assert.equal(r.headers['content-length'], String(size), `${method} ${path}: its size`);
+          if (method === 'GET') assert.equal(r.body.length, size);
+        }
+      }
+      const sig = await get(`${S.url}/p/fixture/sig/${ok}`, GZIP);
+      assert.equal(sig.status, 200);
+      assert.equal(sig.headers['content-encoding'], undefined, 'a baseline header as it is');
+      // The API answers are still gzipped.
+      const data = await get(`${S.url}/__pxsig/data`, GZIP);
+      assert.equal(data.headers['content-encoding'], 'gzip');
     } finally {
       await S.stop();
     }

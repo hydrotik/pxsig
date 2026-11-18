@@ -4,7 +4,7 @@
  */
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { encodeBody } from '../lib/encode.mjs';
+import { encodeBody, sendAsIs } from '../lib/encode.mjs';
 import { pageHeaders } from '../lib/guard.mjs';
 import { machinePath } from '../lib/machine.mjs';
 import { readHeader, readImage } from '../lib/psig.mjs';
@@ -23,6 +23,8 @@ import { inside, json, sendFile, TYPES } from './http.mjs';
  * @param {string} rest
  */
 export function projectFile(srv, req, res, name, rest) {
+  // Never encoded: the dashboard shows each file's Content-Length as its size (lib/encode.mjs).
+  sendAsIs(res);
   const S = srv.states.get(name);
   if (!S) return json(res, 404, { error: `no project "${name}"` });
   const { P } = S;

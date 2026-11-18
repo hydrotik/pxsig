@@ -6,7 +6,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, relative, resolve } from 'node:path';
 import { PNG } from 'pngjs';
-import { encodeBody, encodeFile } from '../lib/encode.mjs';
+import { encodeBody, encodeFile, sendAsIs } from '../lib/encode.mjs';
 import { sampleGateReport } from './gate-report.mjs';
 /** @import { ServerResponse } from 'node:http' */
 /** @import { AddressInfo } from 'node:net' */
@@ -175,6 +175,8 @@ export function scenarioServer({ dir, scenario, fixtures, images, posts }) {
       return send(404, 'application/json', '{"error":"not found"}');
     }
     if (u.pathname.startsWith('/p/demo/')) {
+      // A project's files go as they are, as `pxsig serve` sends them (lib/encode.mjs).
+      sendAsIs(res);
       if (u.pathname.startsWith('/p/demo/sig/'))
         return send(
           200,
