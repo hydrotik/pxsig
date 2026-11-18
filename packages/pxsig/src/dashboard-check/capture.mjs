@@ -8,10 +8,13 @@ import { injectAxe } from '../lib/capture.mjs';
 import { boxesFile, writeBoxes } from '../lib/capture/boxes.mjs';
 import { navErrorCode, retryOnce } from '../lib/retry.mjs';
 import { measureAlignment } from './alignment.mjs';
+import { failedWith, saidFailed, watchRequests } from './requests.mjs';
 import { inspectFidelity } from './fidelity.mjs';
 import { inspectLayout, MAX_PER_RULE, NARROW_WIDTH, pageOverflow } from './layout.mjs';
 /** @import { Browser, Page } from 'playwright' */
 /** @import { LayoutFinding, Screen, ScreenCapture, ScreenTarget, ScreenViolation } from '../types/t4.js' */
+/** @import { FailedRequest } from './requests.mjs' */
+/** @typedef {{ url: string, screen: Screen, shot: string, axe: string, initScript?: string | null, layout?: boolean, copy?: string[] | null, aria?: boolean, anchors?: { name: string, target: ScreenTarget }[], text?: { ignore: string[] } | null }} CaptureOpts */
 
 export const VIEWPORT = { width: 1280, height: 900 };
 /** The clock every screen sees, so relative times ("2 days ago") are the same on every run. */
@@ -323,11 +326,38 @@ export async function snap(
  * findings. `aria`: also take the page's
  * accessibility snapshot (Playwright's `ariaSnapshot`), the structure scripts/screens-check.mjs locks.
  * `anchors`: measure these elements' boxes, the geometry it locks.
+ * A screen one of whose requests failed with NO_BUFFER_SPACE is taken again once, after RETRY_MS,
+ * and says `retried` (requests.mjs).
  * @param {Browser} browser
- * @param {{ url: string, screen: Screen, shot: string, axe: string, initScript?: string | null, layout?: boolean, copy?: string[] | null, aria?: boolean, anchors?: { name: string, target: ScreenTarget }[], text?: { ignore: string[] } | null }} opts
+ * @param {CaptureOpts} opts
  * @returns {Promise<ScreenCapture>}
  */
-export async function capture(
+export async function capture(browser, opts) {
+  /** @type {FailedRequest[]} */
+  const failed = [];
+  const r = await captureOnce(browser, opts, failed);
+  if (failedWith(failed, NO_BUFFER_SPACE)) {
+    // A request that never reached the server leaves the page without its state: once more.
+    await new Promise((ok) => setTimeout(ok, RETRY_MS));
+    failed.length = 0;
+    const again = await captureOnce(browser, opts, failed);
+    return { ...said(again, failed), retried: NO_BUFFER_SPACE };
+  }
+  return said(r, failed);
+}
+
+/** A screen that did not render names the requests that failed, which may be why. */
+const said = (/** @type {ScreenCapture} */ r, /** @type {FailedRequest[]} */ failed) =>
+  r.rendered ? r : { ...r, reason: `${r.reason}${saidFailed(failed)}` };
+
+/**
+ * One take of `capture`; the page's requests that failed go in `failed`.
+ * @param {Browser} browser
+ * @param {CaptureOpts} opts
+ * @param {FailedRequest[]} failed
+ * @returns {Promise<ScreenCapture>}
+ */
+async function captureOnce(
   browser,
   {
     url,
@@ -340,7 +370,8 @@ export async function capture(
     aria = false,
     anchors = [],
     text = null,
-  }
+  },
+  failed
 ) {
   const started = Date.now();
   const context = await screenContext(browser, url.includes('theme=light') ? 'light' : 'dark');
@@ -354,6 +385,7 @@ export async function capture(
     if (screen.width) await page.setViewportSize({ width: screen.width, height: VIEWPORT.height });
     page.on('pageerror', (e) => errors.push(String(e.message ?? e).split('\n')[0]));
     await page.clock.setFixedTime(new Date(FIXED_TIME));
+    watchRequests(page, failed);
     retried = await load(page, url);
     let pointer = false;
     for (const a of screen.actions ?? []) {

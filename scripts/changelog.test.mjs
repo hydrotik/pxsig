@@ -13,10 +13,12 @@ import {
   missingFragment,
   parseFragment,
   previousVersion,
+  readFragments,
   release,
   splitChangelog,
   upgrading,
 } from './changelog.mjs';
+import { relink } from './lib/md-relink.mjs';
 
 test('a fragment is one or more known sections, each a list', () => {
   const { sections, problems } = parseFragment(
@@ -203,4 +205,41 @@ test('changedSince finds a fragment a branch adds, against its base (the git cal
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('relink: relative targets rewritten for the new folder; URLs, anchors and root paths kept', () => {
+  const to = { from: 'changelog.d', to: '' };
+  assert.equal(
+    relink('See [drift](../docs/integrity.md#drift) and ![x](img/a.png "t").', to),
+    'See [drift](docs/integrity.md#drift) and ![x](changelog.d/img/a.png "t").'
+  );
+  const kept = '[a](https://example.com/x) [b](#here) [c](/docs/x.md) [d](mailto:a@b.invalid)';
+  assert.equal(relink(kept, to), kept);
+  assert.equal(relink('[ref]: ../SECURITY.md\n', to), '[ref]: SECURITY.md\n');
+  assert.equal(relink('[x](../docs/a.md)', { from: 'docs', to: 'docs' }), '[x](../docs/a.md)');
+  assert.equal(
+    relink('[x](a.md)', { from: '', to: 'changelog.d' }),
+    '[x](../a.md)',
+    'and the other way'
+  );
+});
+
+test("release: a fragment's relative links point from CHANGELOG.md at the top", (t) => {
+  const top = mkdtempSync(join(tmpdir(), 'pxsig-changelog-links-'));
+  t.after(() => rmSync(top, { recursive: true, force: true }));
+  mkdirSync(join(top, 'changelog.d'));
+  writeFileSync(
+    join(top, 'changelog.d', 'drift.md'),
+    '### Fixed\n\n- **Drift.** See [drift](../docs/integrity.md#drift).\n'
+  );
+  const { fragments, problems } = readFragments(top);
+  assert.deepEqual(problems, []);
+  const out = release(
+    '# Changelog\n\n## Unreleased\n\n## 0.1.0\n',
+    fragments,
+    '0.2.0',
+    '2026-01-01'
+  );
+  assert.match(out, /\[drift\]\(docs\/integrity\.md#drift\)/);
+  assert.doesNotMatch(out, /\.\.\/docs/);
 });

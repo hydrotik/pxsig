@@ -11,16 +11,21 @@
  * `pxsig snapshot`): what a deployed Storybook's panel shows, since no pxsig server is reachable
  * there. Option `snapshot: false` leaves it out. The snapshot never fails a build: without pxsig,
  * or when the command fails, one warning line and no file.
+ *
+ * The addon starts no program itself: it loads the workspace's own pxsig's guarded start
+ * (`pxsig/spawn`, the same list of programs as pxsig's, never a shell) and runs `pxsig snapshot`
+ * through it. A pxsig older than SNAPSHOT_PXSIG has no `pxsig/spawn`: then no snapshot, one line.
  */
-import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 /** @typedef {import('./types.js').PresetOptions} PresetOptions */
 /** @typedef {import('./types.js').ServerFile} ServerFile */
 /** @typedef {import('./types.js').WorkspaceFile} WorkspaceFile */
 /** @typedef {import('./types.js').SnapshotDeps} SnapshotDeps */
+/** @typedef {import('./types.js').SnapshotRun} SnapshotRun */
 /** @typedef {import('./types.js').StaticDir} StaticDir */
 
 /**
@@ -110,13 +115,41 @@ function pxsigCli(configDir, ws) {
   }
 }
 
+/** The first pxsig release with `pxsig/spawn`, which the snapshot starts through. */
+export const SNAPSHOT_PXSIG = '0.7.7';
+
+/**
+ * The workspace pxsig's guarded `spawnSync` (`pxsig/spawn`), or why there is none.
+ * @param {string} bin the workspace's node_modules/pxsig/bin/pxsig.mjs
+ * @returns {Promise<{ run: SnapshotRun } | { why: string }>}
+ */
+async function pxsigSpawn(bin) {
+  const pkg = path.dirname(path.dirname(bin));
+  try {
+    // Resolved from the folder that holds node_modules/pxsig, so it is that install's export.
+    const file = createRequire(import.meta.url).resolve('pxsig/spawn', {
+      paths: [path.dirname(path.dirname(pkg))],
+    });
+    const mod = /** @type {{ spawnSync?: unknown }} */ (await import(pathToFileURL(file).href));
+    if (typeof mod.spawnSync === 'function')
+      return { run: /** @type {SnapshotRun} */ (mod.spawnSync) };
+  } catch {
+    // an older pxsig: no such export
+  }
+  const v = /** @type {{ version?: string } | null} */ (readJson(path.join(pkg, 'package.json')))
+    ?.version;
+  return {
+    why: `the snapshot needs pxsig ${SNAPSHOT_PXSIG} or later; this workspace has pxsig ${v ?? 'of an unknown version'}`,
+  };
+}
+
 /**
  * Write the snapshot for a build; its folder, or null (with the reason on stderr).
  * @param {PresetOptions} options
  * @param {SnapshotDeps} [deps]
- * @returns {string | null}
+ * @returns {Promise<string | null>}
  */
-function writeSnapshot(options, { run = spawnSync, warn = console.warn } = {}) {
+async function writeSnapshot(options, { warn = console.warn } = {}) {
   const ws = options?.configDir ? workspaceOf(options.configDir) : null;
   // ws is set only when options.configDir is.
   const bin = ws ? pxsigCli(/** @type {string} */ (options.configDir), ws) : null;
@@ -124,11 +157,16 @@ function writeSnapshot(options, { run = spawnSync, warn = console.warn } = {}) {
     warn('pxsig: no snapshot in this build (pxsig is not installed in this workspace)');
     return null;
   }
+  const start = await pxsigSpawn(bin);
+  if ('why' in start) {
+    warn(`pxsig: no snapshot in this build (${start.why})`);
+    return null;
+  }
   // bin is found only inside a workspace: ws is set from here on (the casts below).
   const dir = path.join(/** @type {string} */ (ws), 'node_modules', '.cache', 'pxsig', 'storybook');
   const file = path.join(dir, 'pxsig-snapshot.json');
   fs.rmSync(file, { force: true });
-  const r = run(
+  const r = start.run(
     process.execPath,
     [bin, 'snapshot', '--out', file, '--workspace', /** @type {string} */ (ws)],
     {
@@ -153,7 +191,7 @@ function writeSnapshot(options, { run = spawnSync, warn = console.warn } = {}) {
  * `storybook build` (not `storybook dev`): the snapshot's folder joins the static dirs. Storybook
  * may ask for the static dirs more than once in a build; the snapshot is made once.
  */
-/** @type {string | null | undefined} */
+/** @type {Promise<string | null> | undefined} */
 let made;
 /**
  * @param {StaticDir[]} [dirs]
@@ -164,7 +202,8 @@ let made;
 export async function staticDirs(dirs = [], options = {}, deps) {
   if (options.configType !== 'PRODUCTION' || options.snapshot === false) return dirs;
   if (deps || made === undefined) made = writeSnapshot(options, deps);
-  return made ? [...dirs, { from: made, to: '/' }] : dirs;
+  const folder = await made;
+  return folder ? [...dirs, { from: folder, to: '/' }] : dirs;
 }
 
 /** @param {string[]} [entry] */

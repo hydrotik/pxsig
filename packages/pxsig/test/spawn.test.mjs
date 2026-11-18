@@ -72,23 +72,35 @@ test('an argument reaches the program as argv, whatever a shell would make of it
   assert.equal(r.stdout, arg);
 });
 
-test('every start goes through lib/spawn.mjs', () => {
+test('every start goes through lib/spawn.mjs, in pxsig and in the Storybook addon', () => {
   /** @type {string[]} */
   const offenders = [];
-  /** @param {string} d */
-  const walk = (d) => {
+  /** @param {string} d @param {boolean} [deep] */
+  const walk = (d, deep = true) => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const p = join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else if (
-        /\.m?js$/.test(e.name) &&
+      if (e.isDirectory()) {
+        if (deep) walk(p);
+      } else if (
+        /\.[mc]?js$/.test(e.name) &&
         /node:child_process|['"]child_process['"]/.test(readFileSync(p, 'utf8'))
       )
         offenders.push(relative(pkg, p).split('\\').join('/'));
     }
   };
+  const addon = join(pkg, '..', 'storybook-addon');
+  const dashboard = join(pkg, '..', 'dashboard');
+  // Everything each package publishes that runs: pxsig's src/ and bin/, the dashboard source pack
+  // copies into it (scripts/sync-dashboard-source.mjs), the addon's top-level modules (its
+  // package.json `files`), and both self-tests (test/installed/).
   walk(join(pkg, 'src'));
   walk(join(pkg, 'bin'));
+  walk(join(pkg, 'test', 'installed'));
+  for (const d of ['src', 'fixtures', 'parity', 'ui-tools']) walk(join(dashboard, d));
+  walk(dashboard, false);
+  walk(addon, false);
+  walk(join(addon, 'test', 'installed'));
+  // The addon starts `pxsig snapshot`, and both self-tests start node, through `pxsig/spawn`.
   assert.deepEqual(offenders, ['src/lib/spawn.mjs']);
 });
 

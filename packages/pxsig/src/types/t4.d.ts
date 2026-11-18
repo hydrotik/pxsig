@@ -466,7 +466,7 @@ export interface ScreenCapture {
   ms: number;
   /** Present only when the layout was still moving after SETTLE_MS: the screenshot was taken anyway. */
   settled?: false;
-  /** Present only when the page load failed with this error and was retried once. */
+  /** Present only when the page load, or a request the page made, failed with this error and the screen was taken again once. */
   retried?: 'ERR_NO_BUFFER_SPACE';
   /** The page's accessibility snapshot (YAML), when asked for (`aria`) and the screen rendered. */
   aria?: string;

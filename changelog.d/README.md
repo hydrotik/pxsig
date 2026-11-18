@@ -9,6 +9,8 @@ Every pull request that changes something a user can notice adds one file here i
   `CHANGELOG.md`. Headings, in the order a release prints them: `Breaking changes`,
   `Behaviour changes`, `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`,
   `Documentation`, `Not yet`.
+- **Links:** write relative links from the fragment (`../docs/integrity.md#drift`); a release
+  rewrites them for `CHANGELOG.md` at the top (`docs/integrity.md#drift`).
 - **Breaking changes** lists anything that removes or renames a command, flag, export, config key,
   HTTP endpoint or field, changes a default, or refuses input that used to work.
 - **Behaviour changes** lists anything else that changes existing output, exit codes or files

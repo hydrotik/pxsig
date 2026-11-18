@@ -14,15 +14,12 @@ import { compile, functions, load, records } from '../src/lib/react/worker.mjs';
 import { createPool } from '../src/lib/react/pool.mjs';
 import { findPeer } from '../src/lib/react/peers.mjs';
 import { tempDir } from './fixture.mjs';
-import { fixtureModules, hasCompiler } from './react-helpers.mjs';
+import { fixtureModules, hasCompiler, NO_COMPILER } from './react-helpers.mjs';
 import { skipUnless } from './strict.mjs';
 
 /** @import { ReactFunction } from '../src/types/react.js' */
 
-const skip = skipUnless(
-  hasCompiler,
-  'the React Compiler test fixtures are not installed (pnpm install)'
-);
+const skip = skipUnless(hasCompiler, NO_COMPILER);
 
 /** @param {7 | 8} major */
 function paths(major) {

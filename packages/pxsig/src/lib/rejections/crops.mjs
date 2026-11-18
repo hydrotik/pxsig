@@ -10,7 +10,8 @@
  * `<n>.diff.png` is the baseline at 30% luminance with the changed pixels in magenta; with
  * `annotate`, each changed region is outlined on all three.
  */
-import { PNG } from 'pngjs';
+import { PNG as pngClass } from '../png.mjs';
+/** @import { PNG } from 'pngjs' */
 /** @import { PacketCrop, PixelDiff } from '../../types/rejections.js' */
 
 /** `auto` scale: the short side at least this, in px. */
@@ -100,7 +101,7 @@ export function scaleFor(w, h, scale) {
 function cut(img, box, s, map = null) {
   const w = box.x1 - box.x0;
   const h = box.y1 - box.y0;
-  const out = new PNG({ width: w * s, height: h * s });
+  const out = new (pngClass())({ width: w * s, height: h * s });
   for (let y = 0; y < h * s; y++)
     for (let x = 0; x < w * s; x++) {
       const sx = box.x0 + Math.floor(x / s);
@@ -154,7 +155,7 @@ const OUTLINE = /** @type {[number, number, number]} */ ([255, 0, 170]);
 const OUTLINE_ON_DIFF = /** @type {[number, number, number]} */ ([0, 229, 255]);
 
 /** @param {Buffer} buf */
-export const readPng = (buf) => PNG.sync.read(buf);
+export const readPng = (buf) => pngClass().sync.read(buf);
 
 /**
  * The crops of one packet: their facts, and the PNG bytes to write under `crops/`.
@@ -196,7 +197,7 @@ export function makeCrops({ baseline, current, mask, diff }, opts) {
       diff: `crops/${n}.diff.png`,
     };
     for (const k of /** @type {const} */ (['baseline', 'current', 'diff']))
-      files.set(names[k], PNG.sync.write(pngs[k]));
+      files.set(names[k], pngClass().sync.write(pngs[k]));
     crops.push({ ...fact, scale: s, files: names });
   });
   return { crops, files };

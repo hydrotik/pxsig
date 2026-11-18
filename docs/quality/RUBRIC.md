@@ -48,7 +48,7 @@ a release with any blocker waits, whatever the overall.
 Any one of these holds the release until it is fixed or the owner records an exception in
 writing:
 
-1. A required check (the 11 jobs of `ci.yml`, as `scripts/required-checks.mjs` lists them) is
+1. A required check (the 14 jobs of `ci.yml`, as `scripts/required-checks.mjs` lists them) is
    missing, failed or still running on the release commit.
 2. `node scripts/check-versions.mjs --tag vX.Y.Z` fails.
 3. A high or critical vulnerability in what ships (the `pxsig` package and its runtime
@@ -258,6 +258,12 @@ pnpm build:dashboard
 pnpm screens:check
 cd packages/dashboard && node ../pxsig/bin/pxsig.mjs approve verify
 cd packages/dashboard && node ../pxsig/bin/pxsig.mjs doctor --offline
+
+# Screens image size, per platform (docker/screens-image.json; the previous image tag beside it)
+docker manifest inspect -v "$(node -p "require('./docker/screens-image.json').image")" | node -e \
+  'for (const m of JSON.parse(require("fs").readFileSync(0))) console.log(m.Descriptor.platform.architecture, m.SchemaV2Manifest.layers.reduce((n, l) => n + l.size, 0))'
+#   compressed bytes, from the registry with no pull; uncompressed, after a pull of each platform:
+docker pull --platform linux/<amd64|arm64> <image> && docker image inspect --format '{{.Size}}' <image>
 
 # Front end
 node packages/pxsig/bin/pxsig.mjs dashboard check --build packages/pxsig/dist/dashboard --strict

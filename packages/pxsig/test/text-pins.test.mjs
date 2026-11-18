@@ -10,14 +10,14 @@
  * The render pins need Chromium; the others run anywhere.
  */
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { expandEntries } from '../src/lib/manifest.mjs';
 import { buildRow } from '../src/lib/rows.mjs';
 import { tempDir } from './fixture.mjs';
 import { needs } from './server-helpers.mjs';
-import { renderOn, standIn } from './text-helpers.mjs';
+import { howDiffer, renderOn, standIn } from './text-helpers.mjs';
 /** @import { RenderResult, StoryParameters } from '../src/types.js' */
 
 const STORY = '<p>1 <b>new</b> · of 9 analysed</p><div style="border:1px solid #888">Card</div>';
@@ -43,10 +43,8 @@ test(
     // Nothing of text capture: the PNG, and the fonts it was drawn in (every Chromium render).
     assert.deepEqual(readdirSync(a).sort(), ['pins--text.fonts.json', 'pins--text.png']);
     assert.deepEqual(readdirSync(b).sort(), ['pins--text.fonts.json', 'pins--text.png']);
-    assert.ok(
-      readFileSync(join(a, 'pins--text.png')).equals(readFileSync(join(b, 'pins--text.png'))),
-      'the same render twice'
-    );
+    const differ = howDiffer(join(a, 'pins--text.png'), join(b, 'pins--text.png'));
+    assert.ok(!differ, `the same render twice: ${differ}`);
     assert.equal(rb.error, undefined, rb.error);
   }
 );

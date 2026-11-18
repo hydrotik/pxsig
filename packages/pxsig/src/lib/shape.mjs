@@ -11,7 +11,7 @@
  * a one-line copy edit 0.33 %, a dot grid crossing the threshold 0.9 %.
  */
 import { readFileSync } from 'node:fs';
-import { PNG } from 'pngjs';
+import { PNG } from './png.mjs';
 
 const SHAPE_PCT = 0.2; // % of the baseline's ink
 const SHAPE_PX = 20;
@@ -27,7 +27,7 @@ const INK_TOLERANCE = 24; // summed RGB distance from the background
  * @returns {Ink}
  */
 function ink(src) {
-  const img = PNG.sync.read(Buffer.isBuffer(src) ? src : readFileSync(src));
+  const img = PNG().sync.read(Buffer.isBuffer(src) ? src : readFileSync(src));
   const { width: w, height: h, data } = img;
   const o = (2 * w + 2) * 4;
   const bg = [data[o], data[o + 1], data[o + 2]];

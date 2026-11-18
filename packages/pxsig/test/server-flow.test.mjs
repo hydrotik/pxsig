@@ -33,7 +33,8 @@ test(
         stories: [f.ids.unregistered, 'components-nope--missing'],
       });
       assert.equal(r.status, 202, JSON.stringify(r.body));
-      assert.deepEqual(r.body.registered, [f.ids.unregistered]);
+      // With the answer: a story the server could not find says why in `skipped`.
+      assert.deepEqual(r.body.registered, [f.ids.unregistered], JSON.stringify(r.body));
       assert.deepEqual(r.body.queued, [f.ids.unregistered]);
       assert.deepEqual(
         r.body.skipped.map((x) => x.name),

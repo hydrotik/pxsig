@@ -114,8 +114,30 @@ export function usedPaths(root, imports = adapterImports()) {
 }
 
 /**
- * @typedef {{ commits: number, days: number, changed: string[], unresolved: string[] }} Behind
+ * `ref`: what the pin was compared with. `HEAD` for a git URL (the remote's default branch); for a
+ * local checkout its `origin/HEAD` (the default branch it was cloned from), else its own `HEAD`.
+ * @typedef {{ commits: number, days: number, changed: string[], unresolved: string[],
+ *   ref?: 'HEAD' | 'origin/HEAD' | 'local HEAD' }} Behind
  */
+
+/**
+ * The ref of `source` that stands for the design system's default branch. A git URL's `HEAD` is
+ * the remote's default branch; a local checkout's `HEAD` is whatever it has checked out, so its
+ * `origin/HEAD` (the branch it tracks, resolved to its name) is used when it has one.
+ * @param {string} source never printed
+ * @param {NodeJS.ProcessEnv} env
+ * @returns {{ refspec: string, ref: NonNullable<Behind['ref']> }}
+ */
+export function upstreamRef(source, env) {
+  if (!existsSync(source) || !statSync(source).isDirectory())
+    return { refspec: 'HEAD', ref: 'HEAD' };
+  const r = spawnSync('git', ['-C', source, 'symbolic-ref', '-q', 'refs/remotes/origin/HEAD'], {
+    encoding: 'utf8',
+    env,
+  });
+  const name = r.status === 0 ? r.stdout.trim() : '';
+  return name ? { refspec: name, ref: 'origin/HEAD' } : { refspec: 'HEAD', ref: 'local HEAD' };
+}
 
 /**
  * The default branch's head fetched from `source` into the checkout at `dir` (which holds the
@@ -136,15 +158,30 @@ export function behind({ dir, source, commit, imports }) {
       throw new Error(`git ${args[0]} failed (exit ${r.status}): ${r.stderr.trim()}`);
     return r.stdout.trim();
   };
+  const up = upstreamRef(source, env);
   try {
-    git('fetch', '-q', '--no-tags', source, `+HEAD:${UPSTREAM}`);
+    git('fetch', '-q', '--no-tags', source, `+${up.refspec}:${UPSTREAM}`);
   } finally {
     // FETCH_HEAD holds the source (scripts/lib/ds-scrub.mjs).
     scrubSource(dir);
   }
-  // First-parent: the default branch's own line from its head down to the pin, all of it fetched
-  // (a shallow checkout has no older history to walk).
-  const commits = Number(git('rev-list', '--count', '--first-parent', `${commit}..${UPSTREAM}`));
+  // First-parent: the default branch's own line from its head down to the pin. The checkout is
+  // shallow (ds-fetch fetches the pin at depth 1), so git knows none of the pin's ancestors, and
+  // `pin..head` leaves out only the pin itself. When the line passes through the pin the walk stops
+  // there and the count is exact; otherwise (the pin came in through a merge's second parent, or
+  // the source's head is behind the pin or on another line) the walk runs on through history the
+  // pin already has and counts all of it. The pin's history is fetched first in that case.
+  const line = git('rev-list', '--first-parent', UPSTREAM).split('\n');
+  let commits = line.indexOf(commit);
+  if (commits < 0) {
+    if (git('rev-parse', '--is-shallow-repository') === 'true')
+      try {
+        git('fetch', '-q', '--no-tags', '--unshallow', source, commit);
+      } finally {
+        scrubSource(dir);
+      }
+    commits = Number(git('rev-list', '--count', '--first-parent', `${commit}..${UPSTREAM}`));
+  }
   const time = (/** @type {string} */ ref) => Number(git('log', '-1', '--format=%ct', ref));
   const days = Math.max(0, Math.floor((time(UPSTREAM) - time(commit)) / 86400));
   const { paths, unresolved } = usedPaths(dir, imports);
@@ -153,8 +190,15 @@ export function behind({ dir, source, commit, imports }) {
         .split('\n')
         .filter(Boolean)
     : [];
-  return { commits, days, changed, unresolved };
+  return { commits, days, changed, unresolved, ref: up.ref };
 }
+
+/** How the message names what the pin was compared with. */
+const AGAINST = {
+  HEAD: " (the source's HEAD)",
+  'origin/HEAD': " (the source checkout's origin/HEAD)",
+  'local HEAD': " (the source checkout's HEAD: it has no origin/HEAD)",
+};
 
 /**
  * What to say: a warning when the pin is past either threshold, else a notice; with the used paths
@@ -169,6 +213,7 @@ export function describe(b) {
     folders.slice(0, 8).join(', ') + (folders.length > 8 ? `, and ${folders.length - 8} more` : '');
   const text =
     `the design-system pin is ${b.commits} commit${b.commits === 1 ? '' : 's'} and ${b.days} day${b.days === 1 ? '' : 's'} behind its default branch` +
+    (b.ref ? AGAINST[b.ref] : '') +
     (over ? ` (more than ${MAX_BEHIND_COMMITS} commits or ${MAX_BEHIND_DAYS} days)` : '') +
     (b.commits === 0
       ? ''
