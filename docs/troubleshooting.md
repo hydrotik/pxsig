@@ -95,8 +95,10 @@ The exit is 2.
 
 - Wait for that command to finish, or stop the server (Ctrl+C in its terminal). A full check
   against a store the server holds goes through the server, without this error.
-- A lock whose process is gone (a closed terminal, `kill -9`) is taken over by the next command,
-  with no error.
+- A lock whose process is gone (a closed terminal, `kill -9`, Task Manager) is taken over by the
+  next command, which prints "the store lock was stale (…): taken over" and goes on. This holds when
+  the process id now belongs to another program: the holder proves it holds the lock by keeping the
+  file `<store>/reports/.lock-<token>` open.
 - A holder with no heartbeat for 10 minutes (a laptop that slept) can be taken over by a person at
   a terminal: the command asks for `TAKE OVER`.
 

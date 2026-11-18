@@ -54,6 +54,8 @@ test('If-None-Match with the ETag: 304, no body, the same headers bar the length
     assert.equal(r.headers.get('cache-control'), 'no-cache');
     assert.equal(r.headers.get('x-content-type-options'), 'nosniff');
     assert.equal(r.headers.get('access-control-allow-origin'), 'http://127.0.0.1:56062');
+    // The same Vary as the 200 (a script may be gzipped: lib/encode.mjs).
+    assert.match(r.headers.get('vary') ?? '', /accept-encoding/i);
   }
   assert.equal((await get({ 'if-none-match': etag }, 'HEAD')).status, 304);
 });

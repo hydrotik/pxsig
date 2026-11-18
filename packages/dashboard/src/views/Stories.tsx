@@ -44,32 +44,38 @@ export function Stories({
   const [grouped, setGrouped] = React.useState(true);
   const [mode, setMode] = React.useState('all');
   const [sort, setSort] = React.useState('worst');
+  // The list follows the search and the choices a moment later, so typing in a large store
+  // does not wait for the list (the controls show the new values at once).
+  const shownQ = React.useDeferredValue(q);
+  const shownMode = React.useDeferredValue(mode);
+  const shownFilter = React.useDeferredValue(filter);
+  const shownSort = React.useDeferredValue(sort);
   const check = data.check;
   const all = React.useMemo(() => rowsWithPending(data), [data]);
   const modes = [...new Set(all.map((r) => r.mode))];
   const rows = React.useMemo(() => {
-    const needle = q.trim().toLowerCase();
+    const needle = shownQ.trim().toLowerCase();
     let rs = all.filter((r) => !needle || r.id.includes(needle));
-    if (mode !== 'all') rs = rs.filter((r) => r.mode === mode);
+    if (shownMode !== 'all') rs = rs.filter((r) => r.mode === shownMode);
     const st = (r: Row) => statusOf(r, data.review);
-    if (filter === 'todo')
+    if (shownFilter === 'todo')
       rs = rs.filter(
         (r) => st(r) === 'changed' || st(r) === 'new' || (st(r) === 'error' && !r.skipped)
       );
-    else if (filter === 'drift') rs = rs.filter(drifts);
-    else if (filter === 'masks') rs = rs.filter(masksLarge);
-    else if (filter !== 'all') rs = rs.filter((r) => st(r) === filter);
+    else if (shownFilter === 'drift') rs = rs.filter(drifts);
+    else if (shownFilter === 'masks') rs = rs.filter(masksLarge);
+    else if (shownFilter !== 'all') rs = rs.filter((r) => st(r) === shownFilter);
     const key = (r: Row) =>
       (r.metrics?.ssim ?? 2) -
       (r.detail ? (r.detail.changedTiles + r.detail.newEdgeTiles) / 1000 : 0);
     return [...rs].sort(
-      sort === 'id'
+      shownSort === 'id'
         ? (a, b) => a.id.localeCompare(b.id)
-        : sort === 'render'
+        : shownSort === 'render'
           ? (a, b) => (b.renderMs ?? 0) - (a.renderMs ?? 0)
           : (a, b) => key(a) - key(b)
     );
-  }, [all, q, mode, filter, sort, data.review]);
+  }, [all, shownQ, shownMode, shownFilter, shownSort, data.review]);
   if (!check)
     return (
       <div className={s.empty}>

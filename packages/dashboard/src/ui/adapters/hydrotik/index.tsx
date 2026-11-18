@@ -523,6 +523,9 @@ export const Select = ({
 // --- charts: the design system's Chart (recharts + tokens) ---------------------------------------
 
 /** Categorical colours from the chart tokens, in a fixed order; text stays in text tokens. */
+/** The default value format. Declared once: a default parameter that is a function stops the React Compiler. */
+const plain = (v: number) => String(v);
+
 const SERIES = [vars.color.chart1, vars.color.chart2, vars.color.chart3, vars.color.chart4];
 
 export function Chart({
@@ -530,7 +533,7 @@ export function Chart({
   data,
   series,
   x,
-  format = (v: number) => String(v),
+  format = plain,
   max,
   height,
   className,

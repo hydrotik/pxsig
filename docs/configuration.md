@@ -287,6 +287,7 @@ check compares each render's environment with its baseline's:
 | `os.release`, `os.distro`                                   | minor                                        | the kernel release; the Linux distribution, else the OS version string (on macOS without the kernel build)                                                                       |
 | `fonts.probe`                                               | major                                        | a digest of canvas text widths at three sizes for each probed family, with one 8-character digest per family so a difference names it                                            |
 | `fonts.system`                                              | minor                                        | a digest of the installed font list where `fc-list` exists (Linux, the container), else `null`                                                                                   |
+| `fonts.used`                                                | major                                        | per render, not in `env`: the faces its text was drawn in against its baseline's (below)                                                                                         |
 | `render.dpr`, `render.reducedMotion`                        | major                                        | the capture settings (1, `reduce`)                                                                                                                                               |
 | `render.gpu`                                                | major                                        | a class (`swiftshader`, `angle-metal`, `angle-gl`, `angle-vulkan`, `masked`, `none`), never the renderer string                                                                  |
 | `render.colorGamut`, `render.timezone`, `render.locale`     | major                                        | what the probe page reports                                                                                                                                                      |
@@ -296,6 +297,25 @@ check compares each render's environment with its baseline's:
 
 `id` is the first 16 hex characters of a sha256 over the major fields. Nothing in `env` names the
 machine or a person: no host name, user name, GPU model or font list.
+
+**`fonts.used`.** A Chromium render also records the faces its text was drawn in
+(`<id>.fonts.json`; a baseline keeps them in its header's `fonts`, [spec.md](spec.md#header)): one
+call per element under the capture root with text of its own, after the screenshot. A face is named
+only when the page's own CSS lists it (a family in the computed `font-family` of an element
+recorded) or it came from `@font-face`; any other face, the operating system's fallback, is kept as
+an 8-character digest and shown as "a system fallback font". When the render drew a face its
+baseline's did not, or not one it did, the row is a `mismatch` with `fonts.used` in `envDiff` and
+the faces in `envFontsUsed` (`fonts.used: +Arial, −a system fallback font`); its text is not
+compared (`textDiff.state` `env-differs`), and `--strict-env` fails the run after rendering (exit
+2): a font swap is known only once rendered. One exception, narrowly: when the row's text record
+shows a copy change (`textDiff.counts.copy` or `added`) and the only difference is system fallbacks
+added (no face removed, no named face added), the new text brought them (a character the page's
+fonts lack): the row stays a copy change in its environment, `envFontsUsed` carries `newText: true`,
+the `env` line notes `+ a system fallback font for new text` as information, and `--strict-env`
+does not fail it. Glyph counts are not compared. A baseline without
+`fonts` (written before pxsig recorded them), and a Firefox or WebKit render (not recorded),
+compare as unknown and say nothing; the next approval records them. `env.ignore: ["fonts.used"]`
+leaves it out.
 
 The environment is collected once per browser in a check (one probe page that is not a story),
 and once per browser launch in `pxsig serve`. Approving in the dashboard writes the environment

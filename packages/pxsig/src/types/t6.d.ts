@@ -664,6 +664,7 @@ export interface EntryDetail
   envMatch: string;
   envDiff: string[] | null;
   envFonts?: string[];
+  envLine?: string;
   /** React render counts (null: no React renderer); absent when not counted. */
   renders?: ReportRow['renders'];
   checkedAt: string | null;

@@ -441,7 +441,11 @@ baseline's (`baselineEnv`), compared as `envMatch` (`same`, `compatible`, `misma
 When any entry's baseline came from a different environment, one line follows the engine line,
 for example `[check] env: 12 of 1074 entries rendered in a different environment than their
 baseline (browser.version 141→142, fonts.probe: Inter) → pxsig doctor`, and `summary.md` gets a
-line too. It is a warning; the exit code is unchanged unless `--strict-env` is given.
+line too. It is a warning; the exit code is unchanged unless `--strict-env` is given. A render
+whose text was drawn in other faces than its baseline's is one of these (`fonts.used: +Arial,
+−a system fallback font`, [configuration.md](configuration.md#env)); `--strict-env` fails it after
+rendering, `[check] env: 1 renders drew their text in other fonts than their baselines;
+--strict-env fails the run (exit 2)`. `pxsig entry` adds an Environment line to a mismatched entry.
 
 With `--since` / `--changed`, a path the selection cannot trace selects every entry; the `check`
 line names each such path ([ci.md](ci.md#how-selection-decides)), and `summary.md` names the first.

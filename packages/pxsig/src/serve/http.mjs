@@ -4,6 +4,7 @@
  */
 import { createReadStream, statSync } from 'node:fs';
 import { extname, sep } from 'node:path';
+import { compressible, encodeBody, encodeFile, varyEncoding } from '../lib/encode.mjs';
 /** @import { IncomingMessage, ServerResponse } from 'node:http' */
 /** @import { HttpError, RequestBody } from '../types/t5.js' */
 
@@ -48,12 +49,15 @@ export const cors = (allowedOrigins, req, res) => {
  * @param {unknown} body
  */
 export const json = (res, status, body) => {
+  const text = JSON.stringify(body);
+  // gzipped when the request takes it (lib/encode.mjs); never kept.
+  const gz = encodeBody(res.req, res, text, TYPES['.json']);
   res.writeHead(status, {
     'content-type': TYPES['.json'],
     'cache-control': 'no-store',
     'x-content-type-options': 'nosniff',
   });
-  res.end(JSON.stringify(body));
+  res.end(gz ?? text);
 };
 /**
  * The request's JSON body (`{}` when empty); a body that does not parse rejects with status 400.
@@ -87,6 +91,7 @@ export const readBody = (req) =>
  */
 export const sendFile = (req, res, file) => {
   const st = statSync(file);
+  const type = TYPES[extname(file)];
   const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}"`;
   const headers = {
     'cache-control': 'no-cache',
@@ -95,15 +100,20 @@ export const sendFile = (req, res, file) => {
     'x-content-type-options': 'nosniff',
   };
   if (notModified(req, etag, st.mtime)) {
+    // A 304 says the same Vary its 200 would.
+    if (compressible(type)) varyEncoding(res);
     res.writeHead(304, headers);
     return res.end();
   }
+  // gzipped when the request takes it, kept per path and mtime (lib/encode.mjs).
+  const gz = encodeFile(req, res, file, st, type);
   res.writeHead(200, {
-    'content-type': TYPES[extname(file)] ?? 'application/octet-stream',
-    'content-length': st.size,
+    'content-type': type ?? 'application/octet-stream',
+    'content-length': gz ? gz.length : st.size,
     ...headers,
   });
   if (req.method === 'HEAD') return res.end();
+  if (gz) return res.end(gz);
   createReadStream(file).pipe(res);
 };
 /**

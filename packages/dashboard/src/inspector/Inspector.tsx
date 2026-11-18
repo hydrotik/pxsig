@@ -10,21 +10,11 @@ import {
   ToolbarEnd,
   ToolbarStart,
 } from '@ui';
-import {
-  type Data,
-  type Queue,
-  type Row,
-  decisionOf,
-  fmt,
-  pathsFor,
-  served,
-  statusOf,
-} from '../data';
+import { type Data, type Queue, type Row, decisionOf, fmt, served, statusOf } from '../data';
 import { analyse, cellsLayer, loadImg, readPixels, type Analysis } from './analyse';
 import { Stage } from './Stage';
 import { DiffViewer, type DiffViewerActions } from '../diff-viewer';
 import { StatusOf } from '../parts/StatusOf';
-import { storybookLink } from '../storybook-link.mjs';
 import { t } from '../copy';
 import * as s from '../dashboard.css';
 import { MODES, useInspectorPrefs } from './prefs';
@@ -49,6 +39,8 @@ import { SessionSummary } from './SessionSummary';
 import { RejectNoteRow, useRejectNote } from './RejectNote';
 import { RejectedNote } from './RejectedNote';
 import { InspectorSide } from './side/Side';
+import { useEntryLinks } from './entryLinks';
+import { useInspectorNav } from './useInspectorNav';
 
 export interface InspectTarget {
   row: Row;
@@ -109,7 +101,8 @@ export function Inspector({
 
   // The images with the entry they belong to: after a move, the last entry's are not this one's.
   const [held, setLoaded] = React.useState<[string, Loaded | 'missing'] | null>(null);
-  const [region, setRegion] = React.useState(-1);
+  // The highlighted change with the entry it belongs to: another entry starts with none.
+  const [regionHeld, setRegionHeld] = React.useState<[string, number]>(['', -1]);
   const [busy, setBusy] = React.useState(false);
   // Embedded in Storybook's short panel the image gets the room; details open on demand.
   const [showSide, setShowSide] = React.useState<boolean>(!embedded);
@@ -119,14 +112,15 @@ export function Inspector({
   const stage = React.useRef<DiffViewerActions>(null);
 
   const row = target?.row ?? null;
-  const p = row ? pathsFor(data, row.id, target!.scenario) : null;
+  const { p, sbLink } = useEntryLinks(data, row, target?.scenario ?? null);
   const key = `${row?.id}|${target?.scenario?.name ?? ''}`;
   const loaded = held?.[0] === key ? held[1] : null;
+  const region = regionHeld[0] === key ? regionHeld[1] : -1;
+  const setRegion = React.useCallback((i: number) => setRegionHeld([key, i]), [key]);
 
   React.useEffect(() => {
     if (!p) return;
     let alive = true;
-    setRegion(-1);
     void Promise.all([loadImg(p.before), loadImg(p.after), loadImg(p.heat)]).then(([a, b, h]) => {
       if (!alive) return;
       // A new entry has only its latest render; anything else needs both.
@@ -165,11 +159,13 @@ export function Inspector({
   }, [row?.id, target?.scenario?.name]);
 
   const pixels = loaded && loaded !== 'missing' && loaded.pa && loaded.pb ? loaded : null;
-  const [analysis, setAnalysis] = React.useState<Analysis | null>(null);
+  // The analysis with the images it was made from: other images (another entry) have none yet.
+  const [analysed, setAnalysed] = React.useState<[Loaded, Analysis] | null>(null);
+  const analysis = pixels && analysed?.[0] === pixels ? analysed[1] : null;
   React.useEffect(() => {
-    if (!pixels) return setAnalysis(null);
+    if (!pixels) return;
     const t = setTimeout(
-      () => setAnalysis(analyse(pixels.pa!, pixels.pb!, tol)),
+      () => setAnalysed([pixels, analyse(pixels.pa!, pixels.pb!, tol)]),
       analysis ? 120 : 0
     );
     return () => clearTimeout(t);
@@ -185,7 +181,7 @@ export function Inspector({
   const [settledFor, setSettledFor] = React.useState<string | null>(null);
   React.useEffect(() => {
     if (!loaded || !row) return;
-    if (loaded === 'missing') return setSettledFor(key);
+    if (loaded === 'missing') return;
     if (fittedFor.current === key || (pixels && !analysis)) return;
     fittedFor.current = key;
     requestAnimationFrame(() =>
@@ -198,33 +194,12 @@ export function Inspector({
         setSettledFor(key);
       })
     );
-  }, [loaded, analysis, regions, row, pixels, key, originals]);
-
-  const focusRegion = (i: number) => {
-    const r = regions[i];
-    if (!r) return;
-    setRegion(i);
-    stage.current?.focus(r);
-  };
-  const focusBox = (r: { x: number; y: number; w: number; h: number }) => {
-    setRegion(-1);
-    stage.current?.focus(r);
-  };
-  const stepRegion = (d: number) =>
-    regions.length &&
-    focusRegion(
-      region < 0 ? (d > 0 ? 0 : regions.length - 1) : (region + d + regions.length) % regions.length
-    );
+  }, [loaded, analysis, regions, row, pixels, key, originals, setRegion]);
 
   const list = target?.list ?? [];
   const index = row ? list.findIndex((r) => r.id === row.id) : -1;
-  const step = (d: number) => {
-    if (!target || list.length < 2) return;
-    let i = index;
-    do i = (i + d + list.length) % list.length;
-    while (!list[i].metrics && !(list[i].new && !list[i].pending) && i !== index);
-    onNavigate({ ...target, row: list[i] });
-  };
+  const nav = { regions, region, setRegion, stage, target, list, index, onNavigate };
+  const { focusRegion, focusBox, stepRegion, step } = useInspectorNav(nav);
 
   const canReview = served && !target?.scenario;
   // Known to hold no dashboard link: the buttons stay in place, disabled, and a note says how.
@@ -250,8 +225,12 @@ export function Inspector({
   const { asking, setAsking, decide, edit, submit } = useRejectNote({ data, row, act, a11yMode });
   // Reject, Approve, A and R wait for the entry's images: a click meant for the last entry
   // cannot land on this one.
-  const settled = !!row && settledFor === key;
-  const { blockKeys, onKey } = useInspectorKeys({
+  const settled = !!row && (settledFor === key || loaded === 'missing');
+  // --- review session: progress while deciding, then a summary with the next steps ---------------
+  const session = embedded ? null : (target?.session ?? null);
+  const decided = session ? list.filter((r) => decisionOf(data, session, r.id)).length : 0;
+  const complete = !!session && list.length > 0 && decided === list.length && !stay;
+  const { keysOn } = useInspectorKeys({
     embedded,
     setMode,
     stage,
@@ -263,6 +242,7 @@ export function Inspector({
     act: decide,
     originals,
     setOriginals,
+    blocked: complete,
   });
 
   // The dialog opens on its title, not on the first control: a control focused by script before any
@@ -270,7 +250,7 @@ export function Inspector({
   // Above the early return: a hook after it is skipped on a render without a row, and React fails
   // on the next render that has one (rules of hooks).
   const titleRef = React.useRef<HTMLHeadingElement>(null);
-  if (!row || !p) return null;
+  if (!row || !p || !sbLink) return null;
   const m = row.metrics;
   // The engine writes signature images and the diff page only for entries that fail the gate.
   // Served, the size check says whether they exist; otherwise go by the verdict.
@@ -286,7 +266,6 @@ export function Inspector({
     loaded && loaded !== 'missing'
       ? Math.max(loaded.a?.naturalHeight ?? 0, loaded.b.naturalHeight)
       : 0;
-  const sbLink = storybookLink(data.storybook.baseUrl, row, data.check?.manifest?.modes);
   // pxsig's own screens come from its dashboard build: no story to open.
   const screens = data.source === 'dashboard-screens';
   const sb = screens ? null : sbLink.url;
@@ -375,9 +354,7 @@ export function Inspector({
     notice,
   ];
   const actionNote = shown.some(Boolean) ? (
-    <div className={s.note} role="status">
-      {shown.map((x) => (x ? <span key={x}>{x}</span> : null))}
-    </div>
+    <output className={s.note}>{shown.map((x) => (x ? <span key={x}>{x}</span> : null))}</output>
   ) : null;
   const desc = row.reasons?.length
     ? row.reasons.join(' · ')
@@ -389,9 +366,6 @@ export function Inspector({
   const Title = embedded ? 'h2' : DialogTitle;
   const Desc = embedded ? 'p' : DialogDescription;
 
-  // --- review session: progress while deciding, then a summary with the next steps ---------------
-  const session = embedded ? null : (target?.session ?? null);
-  const decided = session ? list.filter((r) => decisionOf(data, session, r.id)).length : 0;
   const approvedRows = session
     ? list.filter((r) =>
         ['approved', 'accepted'].includes(decisionOf(data, session, r.id)?.state ?? '')
@@ -400,8 +374,6 @@ export function Inspector({
   const rejectedRows = session
     ? list.filter((r) => decisionOf(data, session, r.id)?.state === 'rejected')
     : [];
-  const complete = !!session && list.length > 0 && decided === list.length && !stay;
-  blockKeys.current = complete;
   const progress = session ? (
     <div className={s.sessionBar}>
       <strong>{t(`inspector.session.${session}`)}</strong>
@@ -428,8 +400,8 @@ export function Inspector({
       id={row.id}
       a11y={a11yMode}
       dismissed={dismissed === `${a11yMode ? 'a11y' : 'visual'}:${row.id}`}
-      onEdit={(v) => edit(a11yMode, v)}
-      onDismiss={() => dismiss(a11yMode ? 'a11y' : 'visual')}
+      onEdit={edit}
+      onDismiss={dismiss}
     />
   );
   if (complete)
@@ -448,10 +420,7 @@ export function Inspector({
 
   const stageImages = loaded && loaded !== 'missing' ? loaded : null;
   const body = (
-    <div
-      onKeyDown={embedded ? (e) => onKey(e.nativeEvent) : undefined}
-      style={{ display: 'contents' }}
-    >
+    <div ref={embedded ? keysOn : undefined} style={{ display: 'contents' }}>
       <DiffViewer.Root
         baseline={stageImages?.a ?? null}
         latest={stageImages?.b ?? null}
@@ -495,7 +464,9 @@ export function Inspector({
             {/* The diff viewer's mode group and zoom controls, rendered with the contract's components. */}
             <DiffViewer.ModeGroup
               label={t('inspector.modes.label')}
-              render={(_, g) => <ModeChoice g={g} embedded={embedded} />}
+              render={(_, g) => (
+                <ModeChoice mode={g.mode} setMode={g.setMode} embedded={embedded} />
+              )}
             />
             <DiffViewer.ZoomControls render={(_, z) => <ZoomButtons z={z} />} />
             {embedded ? null : viewControls}

@@ -38,9 +38,10 @@
  * Exit: 0 in place · 1 no source, a bad pin, or a fetch or install that failed · 2 usage.
  */
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { packagesIn } from '../packages/dashboard/src/ui/adapters/hydrotik/vite.mjs';
 import { behind, describe } from './lib/ds-behind.mjs';
 import { scrubSource } from './lib/ds-scrub.mjs';
 
@@ -257,6 +258,16 @@ export function ensureDesignSystem({
 }
 
 /**
+ * Whether the checkout's design system is built (its `dist` declarations, which `ui.mjs types`
+ * bundles). A fetch replaces the folder whenever the pin moves, so a build there is the pin's.
+ * @param {string} dir
+ */
+export function isBuilt(dir) {
+  const ds = packagesIn(dir)['@hydrotik/design-system'];
+  return !!ds && existsSync(join(ds, 'dist', 'index.d.mts'));
+}
+
+/**
  * Say how far the pin is behind the default branch (scripts/lib/ds-behind.mjs). Never throws; the
  * source is never in what it says.
  * @param {object} [o]
@@ -297,7 +308,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   try {
     if (rest.includes('--pin')) console.log(readPin(repo));
     else {
-      ensureDesignSystem({ repo });
+      const dir = ensureDesignSystem({ repo });
+      if (!isBuilt(dir))
+        console.log(
+          `[ds-fetch] the checkout is not built: \`pnpm ui:types\` and the declaration check in \`pnpm typecheck\` need \`pnpm turbo run build --filter=@hydrotik/design-system\` in ${relative(repo, dir).split(sep).join('/')}`
+        );
       reportBehind({ repo });
     }
   } catch (e) {

@@ -2,12 +2,12 @@
  * hydrotik-types.mjs — the declarations the reference adapter (packages/dashboard/src/ui/adapters/
  * hydrotik/) is type-checked and linted against without a design-system checkout.
  *
- * `node scripts/ui.mjs types` writes them, with PXSIG_DS_SOURCE naming a built checkout of the
- * design-system monorepo. Only the names the adapter imports are declared: its import lines and its
- * `DS.<name>` uses are read, and the design system's own `.d.mts` files (its `dist`) are bundled
- * for exactly those names by the checkout's rolldown and rolldown-plugin-dts, with everything they
- * reach inlined except React and vanilla-extract (this repository has their types). The bundle is
- * one ambient module; each import specifier the adapter uses re-exports its names from it.
+ * `node scripts/ui.mjs types` writes them from the built design-system checkout at the pin
+ * (target/design-system, which `pnpm ds:fetch` makes). Only the names the adapter imports are
+ * declared: its import lines and its `DS.<name>` uses are read, and the design system's own
+ * `.d.mts` files (its `dist`) are bundled for exactly those names by the checkout's rolldown and
+ * rolldown-plugin-dts, with everything they reach inlined except React and vanilla-extract (this
+ * repository has their types). The bundle is one ambient module; each import specifier the adapter uses re-exports its names from it.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';

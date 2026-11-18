@@ -2,7 +2,7 @@
 // stamp that makes a second run a no-op, a changed pin fetching again, and the source never printed.
 import { strict as assert } from 'node:assert';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -12,6 +12,7 @@ import {
   dsDir,
   dsSource,
   ensureDesignSystem,
+  isBuilt,
   readPin,
   redact,
   stampFile,
@@ -174,4 +175,17 @@ test('an install that fails leaves no stamp, so the next run tries again', (t) =
   let installed = 0;
   ensureDesignSystem({ repo, env, install: () => installed++, log: () => {} });
   assert.equal(installed, 1);
+});
+
+test('isBuilt: the design system has its dist declarations', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'pxsig-ds-built-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  assert.equal(isBuilt(dir), false, 'no design system');
+  const ds = join(dir, 'packages', 'ds');
+  mkdirSync(ds, { recursive: true });
+  writeFileSync(join(ds, 'package.json'), JSON.stringify({ name: '@hydrotik/design-system' }));
+  assert.equal(isBuilt(dir), false, 'not built');
+  mkdirSync(join(ds, 'dist'));
+  writeFileSync(join(ds, 'dist', 'index.d.mts'), 'export {};\n');
+  assert.equal(isBuilt(dir), true);
 });
