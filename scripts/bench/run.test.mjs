@@ -89,7 +89,13 @@ test('with no baseline for this OS, only the budgets apply', () => {
 
 test(
   "the synthetic store has hydrotik's size and is the same for the same seed",
-  { skip: !existsSync(process.env.PXSIG_BIN || rustBinary()) && 'the Rust engine is not built' },
+  {
+    // The benchmark runs on Linux only (bench.yml), and writing two stores of 2,742 renders takes
+    // about 112 s on Windows runners against about 3 s on Linux.
+    skip:
+      (process.platform !== 'linux' && 'the benchmark runs on Linux only') ||
+      (!existsSync(process.env.PXSIG_BIN || rustBinary()) && 'the Rust engine is not built'),
+  },
   () => {
     const a = mkdtempSync(join(tmpdir(), 'pxsig-bench-a-'));
     const b = mkdtempSync(join(tmpdir(), 'pxsig-bench-b-'));
