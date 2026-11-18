@@ -377,6 +377,7 @@
       "needsLink": "Needs the dashboard link: open the link pxsig serve printed.",
       "summary": "{count} records differ from their image · {eligible} eligible · {others} not eligible",
       "imageAlt": "Baseline image of {id}",
+      "qualifies": "Record and image differ · the latest render is this image · passes without the colour rule · approved only by pxsig migrate",
       "notEligible": {
         "one": "{count} not eligible",
         "other": "{count} not eligible"

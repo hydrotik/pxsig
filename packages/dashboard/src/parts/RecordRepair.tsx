@@ -89,7 +89,7 @@ export function RecordRepair({ data }: { data: Data }) {
                 <span className={s.cardId} title={x.id}>
                   {x.id}
                 </span>
-                <span className={s.muted}>{x.why}</span>
+                <span className={s.muted}>{t('coverage.recordRepair.qualifies')}</span>
               </div>
             </div>
           ))}

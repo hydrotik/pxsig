@@ -8,7 +8,8 @@
  * An id is a baseline: a step is never renumbered; a new step takes the next number or a new flow.
  *
  * A step's actions: `{ click }` and `{ press }` as in fixtures/screens.json, and the live ones:
- * `{ type: 'text' }` type into the focused field (the reason's) ·
+ * `{ type: 'text' }` type into the focused field (the reason's) · `{ pair: id }` make that baseline a
+ * record and an image from two renders, logged by migrate only (scripts/live/pair.mjs) ·
  * `{ link: '#hash' }` open a fresh dashboard link (the ticket traded by the page) · `{ cli: [...] }`
  * run the pxsig CLI in the staged folder, against this server · `{ change: true }` the scripted
  * change (Badge.jsx written, Storybook swapped for the "after" build) · `{ react: true }` the
@@ -106,6 +107,13 @@ export const FEATURES = [
     purpose:
       "Report to pxsig on a changed entry: the self-check re-renders it on the server (a dry re-render: no decision or result changes) and it still fails the gate; the report's preview (the composite and the text) follows.",
     covers: ['gate-report'],
+  },
+  {
+    id: 'live.record-repair',
+    title: 'Repair a baseline record',
+    purpose:
+      'A baseline whose record and image come from two renders, as an earlier migrate left them: the coverage banner lists it with its image, and Repair 1 record writes its record from that image, approving no change.',
+    covers: ['record-repair-plan', 'record-repair'],
   },
   {
     id: 'live.offline',
@@ -252,13 +260,26 @@ export const STEPS = [
     wait: { role: 'img', name: 'Baseline, render and diff side by side' },
   },
   {
+    feature: 'live.record-repair',
+    n: 1,
+    // A fresh page on Overview (live.report left a preview open), after the pair is staged.
+    actions: [
+      { pair: 'components-button--primary@light' },
+      { link: '#overview' },
+      { click: { role: 'button', name: 'Repair baseline records', exact: true } },
+    ],
+    wait: { role: 'button', name: 'Repair 1 record', exact: true },
+  },
+  {
+    feature: 'live.record-repair',
+    n: 2,
+    actions: [{ click: { role: 'button', name: 'Repair 1 record', exact: true } }],
+    wait: { text: 'Repaired 1 · not written 0', exact: false },
+  },
+  {
     feature: 'live.offline',
     n: 1,
-    actions: [
-      { click: { role: 'button', name: 'Cancel', exact: true } },
-      { click: { role: 'button', name: 'Close', exact: true } },
-      { stop: true },
-    ],
+    actions: [{ link: '#overview' }, { stop: true }],
     wait: { text: 'Offline', exact: true },
   },
 ];

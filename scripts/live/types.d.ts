@@ -15,6 +15,8 @@ export interface LiveAction {
   change?: true;
   /** A second browser context, without the link's cookie, on this hash. */
   readOnly?: string;
+  /** Make this entry's baseline a record and an image from two renders (scripts/live/pair.mjs). */
+  pair?: string;
   /** Stop the server. */
   stop?: true;
   /** The scripted React change (Badge reads a ref during render; nothing drawn changes). */
@@ -45,8 +47,8 @@ export interface LiveFeature {
 export interface ScrubRule {
   /** Dotted path; `[]` walks every element of an array, `*` every value of an object. */
   path: string;
-  /** time: FIXED_TIME · rank: FIXED_TIME − 60 min + k min, k the value's rank in the run · text: every time in it FIXED_TIME · ms: 1,000 · url: the dead URL (path kept) · report: a gate report's versions and environments fixed, its text and link made again. */
-  kind: 'time' | 'rank' | 'text' | 'ms' | 'url' | 'commit' | 'report';
+  /** time: FIXED_TIME · rank: FIXED_TIME − 60 min + k min, k the value's rank in the run · text: every time in it FIXED_TIME · ms: 1,000 · url: the dead URL (path kept) · report: a gate report's versions and environments fixed, its text and link made again · batch: a batch name's time fixed. */
+  kind: 'time' | 'rank' | 'text' | 'ms' | 'url' | 'commit' | 'report' | 'batch';
   /** Absent or null is allowed (otherwise the path must be present). */
   optional?: boolean;
 }
