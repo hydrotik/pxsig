@@ -3,7 +3,9 @@
  * `pxsig check --since` / `--changed` hands it over when this server holds the store: the request's
  * ref and files checked as the CLI checks its flags (lib/git-ref.mjs), and, beside the renders, what
  * the check without a server adds for them: `affected` and `react` in check.json (the React
- * Compiler compared with the merge base) and the history line's `react` counts.
+ * Compiler compared with the merge base) and the history line's `react` counts. Queued checks are
+ * batched by what they compare with: each run takes one batch, so it compares with the ref (or the
+ * files) its requests asked for; the checks with neither are one batch of their own.
  */
 import { filesFault, refFault } from '../lib/git-ref.mjs';
 import { reactBlock } from '../check/react.mjs';
@@ -76,3 +78,52 @@ export const compareKeys = (done) => ({
   affected: done.affected,
   react: /** @type {CheckReact} */ (reactBlock(done.run)),
 });
+
+/**
+ * One batch's key: the ref, or the changed files (in any order), and whether React is off.
+ * @param {Compare | null} compare
+ */
+const keyOf = (compare) =>
+  !compare
+    ? ''
+    : JSON.stringify(
+        'files' in compare
+          ? { files: [...compare.files].sort(), off: compare.off }
+          : { since: compare.since, off: compare.off }
+      );
+
+/**
+ * Queue `ids` in the batch of what they compare with (`S.queued` holds every queued id).
+ * @param {ProjectState} S
+ * @param {string[]} ids
+ * @param {Compare | null} compare
+ */
+export function queueBatch(S, ids, compare) {
+  if (!ids.length) return;
+  const key = keyOf(compare);
+  const batch = S.batches.get(key) ?? { compare, ids: new Set() };
+  S.batches.set(key, batch);
+  for (const id of ids) {
+    batch.ids.add(id);
+    S.queued.add(id);
+  }
+}
+
+/**
+ * The next run's batch, the one queued first, taken off the queue; `S.queued` keeps the others' ids.
+ * @param {ProjectState} S
+ * @returns {{ ids: string[], compare: Compare | null }}
+ */
+export function takeBatch(S) {
+  const first = S.batches.entries().next();
+  // Ids queued outside a batch (none today): one run without a ref.
+  if (first.done) {
+    const ids = [...S.queued];
+    S.queued = new Set();
+    return { ids, compare: null };
+  }
+  const [key, batch] = first.value;
+  S.batches.delete(key);
+  S.queued = new Set([...S.batches.values()].flatMap((b) => [...b.ids]));
+  return { ids: [...batch.ids], compare: batch.compare };
+}

@@ -19,7 +19,7 @@ import { scheduleIntegrity } from './integrity.mjs';
 import { needLock } from './projects.mjs';
 import { rejectionsAfterCheck } from './rejections.mjs';
 import { updateCheckRows } from './report-rows.mjs';
-import { compareKeys, startCompare } from './check-compare.mjs';
+import { compareKeys, queueBatch, startCompare, takeBatch } from './check-compare.mjs';
 import { historyExtra } from '../check/react.mjs';
 /**
  * @import { A11yBaseline, A11yReviewFile, CheckReport, Enqueued, RequestBody, ReviewFile, SetupError
@@ -35,15 +35,15 @@ import { historyExtra } from '../check/react.mjs';
  */
 export async function runChecks(srv, S) {
   if (S.running || !S.queued.size) return S.running;
-  let ids = [...S.queued];
-  S.queued = new Set();
+  // One batch: the checks queued with the same ref (or files), or with neither.
+  const batch = takeBatch(S);
+  let ids = batch.ids;
+  // What this run compares with (`since` / `changed`, serve/check-compare.mjs).
+  const compare = batch.compare;
   S.checking = new Set(ids);
   // Measure renders asked for this run; a check queued after it waits for the next run.
   const renders = S.measure;
   S.measure = false;
-  // What this run compares with (`since` / `changed`), likewise.
-  const compare = S.compare;
-  S.compare = null;
   const cancel = new AbortController();
   S.cancel = cancel;
   const { P } = S;
@@ -307,11 +307,10 @@ export async function enqueue(srv, S, body, compare = null) {
   }
   for (const e of S.manifest.stories) if (body.all || stories.has(e.story ?? e.id)) ids.add(e.id);
   const queued = [...ids].filter((id) => S.manifest.stories.some((e) => e.id === id));
-  queued.forEach((id) => S.queued.add(id));
+  // In the batch of what they compare with: the run that takes it compares with that alone.
+  queueBatch(S, queued, compare);
   // Measure renders: the run that takes these counts React renders.
   if (body.renders === true && queued.length) S.measure = true;
-  // A compared check: the run that takes these compares with the latest ref (or files) asked for.
-  if (compare && queued.length) S.compare = compare;
   void runChecks(srv, S);
   if (registered.added.length) scheduleIntegrity(srv, S, 'registered', 0);
   return { queued, registered: registered.added, skipped: registered.skipped };

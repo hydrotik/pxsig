@@ -9,6 +9,7 @@
   `pxsig check --since` (quick) and `pxsig_check` read the server's `react` back. The server checks
   a request's ref as the CLI checks `--since` (a commit here, never starting with `-`, no spaces or
   control characters) and its files as paths inside the workspace, and answers 400 with nothing
-  queued otherwise. A full re-check in the server without a ref now clears `affected` and `react`,
+  queued otherwise. Checks queued with different refs (or files) run one batch per ref, each
+  compared with its own. A full re-check in the server without a ref now clears `affected` and `react`,
   as a full check without `--since` writes none.
   To update: nothing to do; the server and the CLI must be the same version, as before.

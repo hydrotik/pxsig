@@ -12,6 +12,7 @@
  */
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { request } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -182,5 +183,60 @@ test(
     const answer = JSON.parse(/** @type {string} */ (quick));
     assert.equal(answer.via, 'server', /** @type {string} */ (quick));
     assert.deepEqual(comparable(answer.react), comparable(a.react));
+  }
+);
+
+test(
+  'queued checks are batched by ref: two refs queued behind a running check give two runs, each with its own',
+  { skip },
+  async (t) => {
+    const sb = await fakeStorybook(STORIES);
+    t.after(() => sb.close());
+    const dir = reactProject(t, { config: { storybook: { url: sb.url } } });
+    const S = await serve(/** @type {any} */ ({ repo: dir }));
+    t.after(() => S.stop());
+    const headers = { 'x-pxsig-token': /** @type {string} */ (readToken(dir, S.url)) };
+    // Each run's end, with check.json's React base as that run wrote it (the next run takes seconds).
+    /** @type {{ ids: string[], since: string | null | undefined }[]} */
+    const runs = [];
+    let buf = '';
+    const ev = request({ host: '127.0.0.1', port: S.port, path: '/__pxsig/events' }, (res) =>
+      res.on('data', (c) => {
+        buf += c;
+        for (let i = buf.indexOf('\n\n'); i >= 0; i = buf.indexOf('\n\n')) {
+          const block = buf.slice(0, i);
+          buf = buf.slice(i + 2);
+          const data = /^event: check\ndata: (.+)$/m.exec(block)?.[1];
+          const d = data ? JSON.parse(data) : null;
+          if (d?.state === 'done')
+            runs.push({ ids: d.ids, since: checkJson(dir).react?.base?.since ?? null });
+        }
+      })
+    );
+    ev.on('error', () => {});
+    ev.end();
+    t.after(() => ev.destroy());
+    await new Promise((r) => setTimeout(r, 200));
+    const post = (/** @type {Record<string, unknown>} */ body) =>
+      raw(S.port, {
+        method: 'POST',
+        path: '/__pxsig/check',
+        headers,
+        body: { ids: ['button--primary', 'button--small'], ...body },
+      });
+    // The first runs at once; the two compared ones queue behind it, one batch each.
+    for (const body of [{}, { since: 'main' }, { since: 'HEAD~1' }])
+      assert.equal((await post(body)).status, 202);
+    for (let i = 0; i < 600 && runs.length < 3; i++) await new Promise((r) => setTimeout(r, 100));
+    assert.deepEqual(
+      runs.map((r) => r.since),
+      [null, 'main', 'HEAD~1'],
+      `three runs, each compared with its own ref: ${JSON.stringify(runs)}\n${S.log()}`
+    );
+    for (const r of runs) assert.deepEqual([...r.ids].sort(), ['button--primary', 'button--small']);
+    // Both refs name the same commit here: the same React result, each under its own ref.
+    const last = checkJson(dir).react;
+    assert.equal(last.summary.newBailouts, 1);
+    assert.equal(last.base.since, 'HEAD~1');
   }
 );
