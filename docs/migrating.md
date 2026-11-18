@@ -243,6 +243,17 @@ The plan reports a problem, and `--apply` stops, when two old baselines would la
 path, or a manifest is not readable. `--apply` also refuses to write into a store that already has
 any of the target baselines: migrate into an empty store.
 
+## Records and images
+
+Each old record is packed with the old store's image (`.renders/base/<id>.png`) only when they are
+one render: the image, captured as `capture` would at the record's grid, has the record's
+`sha256`. A pair from two renders keeps the record alone, and the plan (dry run or `--apply`) names
+each such id under "Image left out" (`pairMismatch` in `--json`). Its entry then reads
+`missing-baseline-image` in `pxsig doctor`, whose safe repair attaches the latest render only when
+it passes that record's gate. An engine that cannot check the pairs refuses the migration. A store
+migrated before this check can hold such pairs: `pxsig doctor` reports them as
+`baseline-pair-mismatch` ([cli.md](cli.md#record-repairs)).
+
 ## The approvals trail
 
 The old trail is copied line by line without its reasons and without `by` (no line names a

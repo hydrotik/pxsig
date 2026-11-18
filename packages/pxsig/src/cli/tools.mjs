@@ -195,6 +195,10 @@ export function toolCommands(cli) {
         {
           kv: [
             ['Baselines', `${plan.summary.baselines} (${plan.summary.withImage} with an image)`],
+            [
+              'Image left out',
+              `${plan.summary.pairMismatch} (record and image from different renders)`,
+            ],
             ['Manifests', plan.summary.manifests.join(' · ')],
             ['Files copied', String(plan.summary.copies)],
             ['Approvals trail', plan.summary.approvals ? 'carried over' : 'none'],
@@ -204,6 +208,23 @@ export function toolCommands(cli) {
       ];
       if (plan.problems.length)
         blocks.push({ h: 'Problems' }, { list: plan.problems.slice(0, 20) });
+      if (plan.pairMismatch.length)
+        blocks.push(
+          {
+            note: `${plan.pairMismatch.length} records are packed without their image: the image is from another render. Each shows as missing-baseline-image in pxsig doctor, whose safe repair attaches the latest render only when it passes that record's gate.`,
+            tone: 'warn',
+          },
+          {
+            table: {
+              cols: [
+                { key: 'id', label: 'Image left out' },
+                { key: 'record', label: 'Record' },
+                { key: 'image', label: 'Image' },
+              ],
+              rows: plan.pairMismatch,
+            },
+          }
+        );
       if (plan.verify)
         blocks.push(
           { h: 'Verification' },
