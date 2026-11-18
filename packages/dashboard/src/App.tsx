@@ -12,13 +12,10 @@ import {
   useCheckActivity,
   useData,
 } from './data';
-import { Inspector, type InspectTarget } from './inspector/Inspector';
+import type { InspectTarget } from './inspector/Inspector';
+import { Accessibility, Help, History, Inspector, Stories } from './lazy';
 import { Overview } from './views/Overview';
-import { Stories } from './views/Stories';
-import { Accessibility } from './views/Accessibility';
 import { Diagnostics, diagnosticsOf } from './views/Diagnostics';
-import { Help } from './views/Help';
-import { History } from './views/History';
 import { type CoverageFocus, Integrity, IntegrityBanner } from './views/Integrity';
 import { t, type CopyKey } from './copy';
 import { type Section, TopBar } from './parts/TopBar';
@@ -100,7 +97,15 @@ function Embed({ data, story }: { data: Data; story: string }) {
         {story ? t('app.titleLabel', { label: story }) : null}
       </h1>
       {target ? (
-        <Inspector data={data} target={target} onNavigate={setTarget} onClose={() => {}} embedded />
+        <React.Suspense fallback={null}>
+          <Inspector
+            data={data}
+            target={target}
+            onNavigate={setTarget}
+            onClose={() => {}}
+            embedded
+          />
+        </React.Suspense>
       ) : (
         <div className={s.empty}>{t('app.embedEmpty')}</div>
       )}
@@ -195,7 +200,8 @@ function Dashboard({ data, live }: { data: Data; live: ReturnType<typeof useData
       // Chosen in the bar (or its More menu), not Back / Forward: the heading takes focus.
       headingFocus.current = !!next && chosen.current === next;
       chosen.current = null;
-      if (next) setTab(next);
+      // In a transition: a section loaded on first use replaces the one on screen once it is in.
+      if (next) React.startTransition(() => setTab(next));
     };
     // A section link in the bar, clicked or entered: the hashchange it causes follows.
     const onClick = (e: MouseEvent) => {
@@ -277,9 +283,12 @@ function Dashboard({ data, live }: { data: Data; live: ReturnType<typeof useData
     (to: string, f?: string) => {
       // The inspector's React section: Diagnostics › React on a function.
       if (to === 'react') return openReact('compiler', true, f);
-      if (to === 'integrity') setCoverageFocus(f ? { component: f, at: Date.now() } : null);
-      else if (f) setFilter(f);
-      setTab(to as Tab);
+      // One transition: the section and its focus or filter change together (lazy.ts).
+      React.startTransition(() => {
+        if (to === 'integrity') setCoverageFocus(f ? { component: f, at: Date.now() } : null);
+        else if (f) setFilter(f);
+        setTab(to as Tab);
+      });
     },
     [openReact]
   );
@@ -298,13 +307,16 @@ function Dashboard({ data, live }: { data: Data; live: ReturnType<typeof useData
         coverageFocus={shownFocus}
       />
       {target ? (
-        <Inspector
-          data={data}
-          target={target}
-          onNavigate={setTarget}
-          onClose={() => (setTarget(null), history.replaceState(null, '', `#${tab}`))}
-          onGo={leaveFor}
-        />
+        // No loading state: the inspector shows once its code is in (the first time it opens).
+        <React.Suspense fallback={null}>
+          <Inspector
+            data={data}
+            target={target}
+            onNavigate={setTarget}
+            onClose={() => (setTarget(null), history.replaceState(null, '', `#${tab}`))}
+            onGo={leaveFor}
+          />
+        </React.Suspense>
       ) : null}
     </>
   );
@@ -432,41 +444,46 @@ const Page = React.memo(function Page({
       />
       <AppMain ref={mainRef}>
         <div className={s.page}>
-          {/* The section's heading, for the outline (the bar's link says it visibly). */}
-          <h2 id="section-title" tabIndex={-1} className={s.srOnly}>
-            {sectionTitle}
-          </h2>
-          <ReactStrip data={data} live={live} openReact={openReact} />
-          <CheckBanner />
-          {/* The Overview shows coverage errors in its own errors card, so the banner leaves them to it. */}
-          <IntegrityBanner
-            data={data}
-            go={go}
-            startReview={startReview}
-            errorsShownElsewhere={shown === 'overview'}
-          />
-          {shown === 'overview' ? (
-            <Overview data={data} go={go} startReview={startReview} openReact={openReact} />
-          ) : null}
-          {shown === 'stories' ? (
-            <Stories
+          {/* Sections loaded on first use (lazy.ts): the change of section is a transition, so the
+              one on screen stays until the next is in; a first load shows the bar meanwhile. The
+              heading is inside too: it names the section once the section is there. */}
+          <React.Suspense fallback={null}>
+            {/* The section's heading, for the outline (the bar's link says it visibly). */}
+            <h2 id="section-title" tabIndex={-1} className={s.srOnly}>
+              {sectionTitle}
+            </h2>
+            <ReactStrip data={data} live={live} openReact={openReact} />
+            <CheckBanner />
+            {/* The Overview shows coverage errors in its own errors card, so the banner leaves them to it. */}
+            <IntegrityBanner
               data={data}
-              filter={filter}
-              setFilter={setFilter}
-              onOpen={(r, l) => open(r, l)}
+              go={go}
+              startReview={startReview}
+              errorsShownElsewhere={shown === 'overview'}
             />
-          ) : null}
-          {shown === 'integrity' ? (
-            <Integrity data={data} focus={coverageFocus} onOpen={(r, l) => open(r, l)} />
-          ) : null}
-          {shown === 'a11y' ? (
-            <Accessibility data={data} onOpen={(r, l) => open(r, l)} startReview={startReview} />
-          ) : null}
-          {shown === 'history' ? <History data={data} /> : null}
-          {shown === 'diagnostics' ? (
-            <Diagnostics key={reactFocus?.at} data={data} onOpen={open} focus={reactFocus} />
-          ) : null}
-          {shown === 'help' ? <Help data={data} /> : null}
+            {shown === 'overview' ? (
+              <Overview data={data} go={go} startReview={startReview} openReact={openReact} />
+            ) : null}
+            {shown === 'stories' ? (
+              <Stories
+                data={data}
+                filter={filter}
+                setFilter={setFilter}
+                onOpen={(r, l) => open(r, l)}
+              />
+            ) : null}
+            {shown === 'integrity' ? (
+              <Integrity data={data} focus={coverageFocus} onOpen={(r, l) => open(r, l)} />
+            ) : null}
+            {shown === 'a11y' ? (
+              <Accessibility data={data} onOpen={(r, l) => open(r, l)} startReview={startReview} />
+            ) : null}
+            {shown === 'history' ? <History data={data} /> : null}
+            {shown === 'diagnostics' ? (
+              <Diagnostics key={reactFocus?.at} data={data} onOpen={open} focus={reactFocus} />
+            ) : null}
+            {shown === 'help' ? <Help data={data} /> : null}
+          </React.Suspense>
         </div>
       </AppMain>
     </AppShell>

@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 /**
  * dashboard-build.mjs — this repository's dashboard build (`pnpm build:dashboard`, `pnpm --filter
- * @pxsig/dashboard build`): Vite with packages/dashboard/vite.config.mjs, then postbuild.mjs (a
- * classic script) and scripts/build-record.mjs (BUILD.json).
+ * @pxsig/dashboard build`): Vite with packages/dashboard/vite.config.mjs twice (the served
+ * dashboard as ES-module chunks, then with PXSIG_DASHBOARD_FORMAT=iife one classic script in its
+ * classic/ folder, for the static report), then postbuild.mjs (the classic page's script tag) and
+ * scripts/build-record.mjs (BUILD.json).
  *
  * pxsig has one UI, the hydrotik design system, so with no adapter named (no PXSIG_UI_ADAPTER, no
  * `dashboard.ui` in the pxsig.config.json of the folder pnpm ran in) the build is the `hydrotik`
@@ -89,12 +91,18 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   }
   console.log(`[dashboard-build] adapter: ${plan.why}`);
   const env = { ...process.env, ...plan.add };
-  for (const args of [
-    [viteBin(), 'build', '--config', 'vite.config.mjs'],
-    ['postbuild.mjs'],
-    [join(repo, 'scripts', 'build-record.mjs')],
-  ]) {
-    const r = spawnSync(process.execPath, args, { cwd: dashboard, env, stdio: 'inherit' });
+  // The module build (it empties the output), the classic one into classic/, then its page.
+  for (const [args, more] of /** @type {[string[], Record<string, string>][]} */ ([
+    [[viteBin(), 'build', '--config', 'vite.config.mjs'], {}],
+    [[viteBin(), 'build', '--config', 'vite.config.mjs'], { PXSIG_DASHBOARD_FORMAT: 'iife' }],
+    [['postbuild.mjs'], {}],
+    [[join(repo, 'scripts', 'build-record.mjs')], {}],
+  ])) {
+    const r = spawnSync(process.execPath, args, {
+      cwd: dashboard,
+      env: { ...env, ...more },
+      stdio: 'inherit',
+    });
     if (r.status !== 0) process.exit(r.status ?? 1);
   }
 }

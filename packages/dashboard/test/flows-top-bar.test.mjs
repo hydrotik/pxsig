@@ -82,12 +82,12 @@ async function buildWith(adapter, ds) {
   const react = (await import('@vitejs/plugin-react')).default;
   const { vanillaExtractPlugin } = await import('@vanilla-extract/vite-plugin');
   const { dashboardConfig } = await import('../build-config.mjs');
-  const { classicScript } = await import('../postbuild.mjs');
   const outDir = mkdtempSync(path.join(tmpdir(), 'pxsig-top-bar-'));
   const saved = process.env.PXSIG_DS_SOURCE;
   // The reference adapter's build reads its checkout from PXSIG_DS_SOURCE.
   if (ds) process.env.PXSIG_DS_SOURCE = ds;
   try {
+    // The served build (ES-module chunks), as at the top of `pxsig dashboard build`'s output.
     const config = await dashboardConfig({
       adapter,
       cwd: repo,
@@ -102,7 +102,6 @@ async function buildWith(adapter, ds) {
     if (ds && saved === undefined) delete process.env.PXSIG_DS_SOURCE;
     else if (ds) process.env.PXSIG_DS_SOURCE = saved;
   }
-  classicScript(outDir);
   return outDir;
 }
 

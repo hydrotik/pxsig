@@ -13,16 +13,18 @@
  * --ui defaults to `dashboard.ui` in the current folder's pxsig.config.json. The dashboard's source
  * ships in this package (`dashboard/`, or `../dashboard` in a source checkout); the build runs Vite
  * from the current project, which needs vite, @vitejs/plugin-react, @vanilla-extract/vite-plugin,
- * react and react-dom installed. The default output (node_modules/.cache/pxsig/dashboard, with a
- * pxsig-build.json stamp) is what `pxsig serve` serves while it is current (lib/dashboard-dir.mjs);
- * the prebuilt dashboard in dist/ is untouched.
+ * react and react-dom installed. A build holds the served dashboard (ES-module chunks) and, in
+ * classic/, one classic script for `pxsig report`. The default output
+ * (node_modules/.cache/pxsig/dashboard, with a pxsig-build.json stamp listing the build's files) is
+ * what `pxsig serve` serves while it is current (lib/dashboard-dir.mjs); the prebuilt dashboard in
+ * dist/ is untouched.
  *
  * Both compare the adapter's contract version (conformance.json `contract`) with this pxsig's
  * (docs/ui/contract-changes.md): an older minor builds, naming what falls back; an older major is a
  * `gaps` problem and `build` refuses, with the migration notes; a newer one is a note.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { buildDirFor, shellWord, STAMP } from './lib/dashboard-dir.mjs';
+import { buildDirFor, buildFiles, shellWord, STAMP } from './lib/dashboard-dir.mjs';
 import { PXSIG_VERSION } from './lib/workspace.mjs';
 import { herePath } from './lib/machine.mjs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
@@ -171,28 +173,33 @@ export async function build(
     );
   if (contract.status !== 'same') log(`[dashboard] the "${ui.name}" adapter is ${contract.line}`);
   const { vite, react, vanillaExtractPlugin } = await projectVite(cwd, packageDir, 'build');
-  const { classicScript } = /** @type {DashboardPostbuild} */ (await load(src, 'postbuild.mjs'));
+  const { buildBoth } = /** @type {DashboardPostbuild} */ (await load(src, 'postbuild.mjs'));
   // The default folder is where `pxsig serve` looks for this project's build.
   const outDir = typeof flags.out === 'string' ? resolve(cwd, flags.out) : buildDirFor(cwd);
   log(
     `[dashboard] building with the "${ui.name}" adapter (${relative(cwd, ui.file) || ui.file}; from ${ui.from}) into ${relative(cwd, outDir) || outDir}`
   );
-  const config = await dashboardConfig({
-    adapter: ui.file,
-    cwd,
-    outDir,
-    resolveFrom: [cwd],
-    react,
-    vanillaExtractPlugin,
-    root: src,
-    viteVersion: vite.version,
-  });
-  await vite.build({ ...config, configFile: false });
-  classicScript(outDir);
+  // The served dashboard (ES-module chunks) and, in classic/, the static report's classic script.
+  await buildBoth(
+    vite,
+    (format, dir) =>
+      dashboardConfig({
+        adapter: ui.file,
+        cwd,
+        outDir: dir,
+        resolveFrom: [cwd],
+        react,
+        vanillaExtractPlugin,
+        root: src,
+        viteVersion: vite.version,
+        format,
+      }),
+    outDir
+  );
   // What serve compares: this pxsig's version and when the build ran (against the adapter's edits).
   writeFileSync(
     join(outDir, STAMP),
-    `${JSON.stringify({ adapter: ui.file, pxsig: PXSIG_VERSION, contract: contract.current, adapterContract: contract.adapter, builtAt: Date.now() }, null, 2)}\n`
+    `${JSON.stringify({ adapter: ui.file, pxsig: PXSIG_VERSION, contract: contract.current, adapterContract: contract.adapter, builtAt: Date.now(), files: buildFiles(outDir) }, null, 2)}\n`
   );
   return { outDir, adapter: ui.name, fromConfig: ui.from === 'pxsig.config.json dashboard.ui' };
 }

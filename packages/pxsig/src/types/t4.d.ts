@@ -328,6 +328,7 @@ export interface DashboardBuildConfig {
     vanillaExtractPlugin: unknown;
     root?: string;
     viteVersion?: string;
+    format?: 'es' | 'iife';
   }) => Promise<Record<string, unknown>>;
 }
 
@@ -343,7 +344,11 @@ export interface DashboardUiTools {
 
 /** postbuild.mjs. */
 export interface DashboardPostbuild {
-  classicScript: (outDir: string) => void;
+  buildBoth: (
+    vite: { build: (c: Record<string, unknown>) => Promise<unknown> },
+    configOf: (f: 'es' | 'iife', dir: string) => Promise<Record<string, unknown>>,
+    outDir: string
+  ) => Promise<void>;
 }
 
 /** A package.json `exports` value, as far as `build` reads it. */
@@ -466,7 +471,7 @@ export interface ScreenCapture {
   ms: number;
   /** Present only when the layout was still moving after SETTLE_MS: the screenshot was taken anyway. */
   settled?: false;
-  /** Present only when the page load, or a request the page made, failed with this error and the screen was taken again once. */
+  /** Present only when the page load or one of its requests failed with this error; the screen was retaken once. */
   retried?: 'ERR_NO_BUFFER_SPACE';
   /** The page's accessibility snapshot (YAML), when asked for (`aria`) and the screen rendered. */
   aria?: string;

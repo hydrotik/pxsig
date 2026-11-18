@@ -25,13 +25,13 @@ setupFlows();
 const WIDTH = 1920;
 
 /**
- * Components rendered per step, at most (plain adapter). Measured: mount 83, review 592, open 273,
- * next 273, fit 6, close 2. Opening and the next entry wait on image loads, and a slower machine
+ * Components rendered per step, at most (plain adapter). Measured: mount 83, review 593, open 274,
+ * next 274, fit 6, close 2 (Review and the inspector render through their lazy part, src/lazy.ts). Opening and the next entry wait on image loads, and a slower machine
  * can split their commits differently, so those two hold one inspector render (about 50) of room.
  */
 const CEILINGS = {
   mount: 83,
-  review: 592,
+  review: 593,
   open: 325,
   next: 325,
   fit: 6,

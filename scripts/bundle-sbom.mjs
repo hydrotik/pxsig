@@ -2,8 +2,10 @@
 /**
  * bundle-sbom.mjs — the third-party packages compiled into the prebuilt dashboard, added to a
  * CycloneDX SBOM. The release's npm SBOM (`pxsig-npm.cdx.json`) lists what installing pxsig
- * brings in; the dashboard bundle (`dist/dashboard/assets/app.js`) inlines packages of its own
- * that npm never sees. This step appends those.
+ * brings in; the dashboard's bundle (the served build's chunks in `dist/dashboard/assets/`, the
+ * static report's classic script `dist/dashboard/classic/assets/app.js`) inlines packages of its
+ * own that npm never sees. This step appends those, each with a `pxsig:bundled-in` property for
+ * every file it is in.
  *
  *   node scripts/bundle-sbom.mjs --dashboard <dir> --sbom <file.cdx.json> [--base <dir>]
  *   node scripts/bundle-sbom.mjs --dashboard <dir> --list [--base <dir>]
@@ -16,7 +18,7 @@
  * run added, and the output is sorted, so the same inputs give the same file.
  * Node >= 22, no dependencies. Exit 1 on a failure, 2 on a usage error.
  *
- * @typedef {{ name: string, version: string | null, path: string, license?: string | null }} Bundled
+ * @typedef {{ name: string, version: string | null, path: string, license?: string | null, files?: string[] }} Bundled
  * @typedef {{ ref: string, dependsOn?: string[] }} CdxDependency
  * @typedef {{ 'bom-ref'?: string, purl?: string, [key: string]: unknown }} CdxComponent
  * @typedef {{ components?: CdxComponent[], dependencies?: CdxDependency[], [key: string]: unknown }} Cdx
@@ -124,7 +126,8 @@ const cdxLicense = (l) =>
 /**
  * One bundled package as a CycloneDX component (the scope as `group`, as cyclonedx-npm writes it).
  * @param {Bundled} p
- * @param {string} file  the bundle file, as a path inside the pxsig package
+ * @param {string} file  the bundle file, as a path inside the pxsig package, when `p.files` (each
+ *                       file the package is in) is not known
  * @returns {CdxComponent}
  */
 export function component(p, file) {
@@ -140,7 +143,7 @@ export function component(p, file) {
     purl,
     properties: [
       { name: 'cdx:npm:package:bundled', value: 'true' },
-      { name: 'pxsig:bundled-in', value: file },
+      ...(p.files ?? [file]).map((f) => ({ name: 'pxsig:bundled-in', value: f })),
     ],
   };
 }
@@ -192,14 +195,24 @@ export function bundleFiles(dir) {
 }
 
 /**
- * The packages bundled into a built dashboard, with versions and licences where known.
+ * The packages bundled into a built dashboard, with versions and licences where known, and the
+ * files each is in (`files`, paths inside the pxsig package). `file` is the entry script.
  * @param {string} dir
  * @param {string} [base]
  * @returns {{ file: string, packages: Bundled[] }}
  */
 export function dashboardPackages(dir, base = defaultBase) {
   const files = bundleFiles(dir);
-  const text = files.map((f) => readFileSync(join(dir, f), 'utf8')).join('\n');
+  const texts = files.map((f) => readFileSync(join(dir, f), 'utf8'));
+  const text = texts.join('\n');
+  const perFile = texts.map((t) => bundledPackages(t));
+  /** @param {Bundled} p */
+  const filesOf = (p) =>
+    files
+      .filter((_, i) =>
+        perFile[i].some((q) => q.name === p.name && (p.version === null || q.version === p.version))
+      )
+      .map((f) => `dist/dashboard/${f}`);
   /** @type {Bundled[]} */
   let known = [];
   const record = join(dir, 'BUILD.json');
@@ -213,8 +226,9 @@ export function dashboardPackages(dir, base = defaultBase) {
       // an unreadable record: licences come from disk only
     }
   }
-  const file = `dist/dashboard/${files.find((f) => f.endsWith('app.js')) ?? files[0] ?? ''}`;
-  return { file, packages: resolvePackages(bundledPackages(text), base, known) };
+  const file = `dist/dashboard/${files.find((f) => f === 'assets/app.js') ?? files.find((f) => f.endsWith('app.js')) ?? files[0] ?? ''}`;
+  const found = bundledPackages(text).map((p) => ({ ...p, files: filesOf(p) }));
+  return { file, packages: resolvePackages(found, base, known) };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

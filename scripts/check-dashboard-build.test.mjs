@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,8 +19,16 @@ const inDir = (fn) => {
     rmSync(dir, { recursive: true, force: true });
   }
 };
+/** Both builds' pages and entry scripts. */
+const BUILDS = ['index.html', 'assets/app.js', 'classic/index.html', 'classic/assets/app.js'];
 /** @param {string} dir @param {unknown} record */
-const write = (dir, record) => writeFileSync(join(dir, 'BUILD.json'), JSON.stringify(record));
+const write = (dir, record) => {
+  for (const f of BUILDS) {
+    mkdirSync(join(dir, f, '..'), { recursive: true });
+    writeFileSync(join(dir, f), '');
+  }
+  writeFileSync(join(dir, 'BUILD.json'), JSON.stringify(record));
+};
 const hydrotik = { adapter: 'hydrotik', designSystem: { commit: SHA, dirty: false }, bundled: [] };
 
 test('a dashboard without BUILD.json fails, and the CLI exits 1', () =>
@@ -66,3 +74,13 @@ test('usage errors exit 2', () => {
   assert.equal(spawnSync(process.execPath, [script]).status, 2);
   assert.equal(spawnSync(process.execPath, [script, '.', '--commit']).status, 2);
 });
+
+test('a dashboard without both builds fails: the served one and the classic one', () =>
+  inDir((dir) => {
+    write(dir, hydrotik);
+    rmSync(join(dir, 'classic'), { recursive: true });
+    assert.deepEqual(
+      checkBuild(dir).errors.map((e) => e.split(':')[0]),
+      ['no classic/index.html', 'no classic/assets/app.js']
+    );
+  }));

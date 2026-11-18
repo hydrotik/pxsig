@@ -7,7 +7,9 @@
  *
  *   node scripts/check-dashboard-build.mjs <dashboard dir> [--adapter <name>] [--commit <sha>]
  *
- * Fails (exit 1) when BUILD.json is missing or unreadable, has no `bundled` list (the release SBOM
+ * Fails (exit 1) when either build is missing (the served module build: index.html and
+ * assets/app.js; the static report's classic build: classic/index.html and classic/assets/app.js),
+ * when BUILD.json is missing or unreadable, has no `bundled` list (the release SBOM
  * reads it, scripts/bundle-sbom.mjs), names another adapter than `--adapter`, or, for a design
  * system adapter, records no full commit of the design system (or not `--commit`). A design system
  * checkout with changes is a warning. Exit 2 on a usage error.
@@ -50,6 +52,11 @@ export function checkBuild(dir, { adapter = null, commit = null } = {}) {
   }
   const errors = [];
   const warnings = [];
+  for (const f of ['index.html', 'assets/app.js', 'classic/index.html', 'classic/assets/app.js'])
+    if (!existsSync(join(dir, f)))
+      errors.push(
+        `no ${f}: the dashboard ships two builds, the served one and the classic one in classic/ (build it with \`pnpm --filter @pxsig/dashboard build\`)`
+      );
   if (!Array.isArray(b.bundled))
     errors.push('BUILD.json has no `bundled` list (the SBOM needs it)');
   if (typeof b.adapter !== 'string') errors.push('BUILD.json names no adapter');

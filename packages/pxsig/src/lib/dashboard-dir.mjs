@@ -4,11 +4,13 @@
  *   1. PXSIG_DASHBOARD_DIR, when set and its build is from this pxsig version.
  *   2. A project's own build, when its pxsig.config.json names a UI adapter (`dashboard.ui`) and
  *      `pxsig dashboard build` has written <project>/node_modules/.cache/pxsig/dashboard with this
- *      pxsig version, after the adapter's last edit.
+ *      pxsig version, after the adapter's last edit, and every file its stamp lists (the module
+ *      chunks, the classic build in classic/) is still there.
  *   3. Otherwise the prebuilt dashboard. When (1) or (2) was asked for but is missing or out of
  *      date, a note says so with the exact command. A build is for one pxsig version only: one
- *      from another version, or one that records none, is out of date. Serve never builds by itself: a build needs the
- *      project's Vite and can fail or take a while, and the prebuilt dashboard always works.
+ *      from another version, or one that records none, is out of date. Serve never builds by
+ *      itself: a build needs the project's Vite and can fail or take a while, and the prebuilt
+ *      dashboard always works.
  */
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
@@ -62,6 +64,26 @@ export function versionMismatch(dir, version) {
   return v
     ? `is from pxsig ${v} (this is ${version})`
     : `records no pxsig version (this is ${version})`;
+}
+
+/**
+ * The files of a build, as the stamp lists them: every file under `dir` but the stamp, as
+ * `/`-separated paths relative to it, sorted.
+ * @param {string} dir
+ * @returns {string[]}
+ */
+export function buildFiles(dir) {
+  /** @type {string[]} */
+  const out = [];
+  const walk = (/** @type {string} */ d, /** @type {string} */ rel) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const r = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) walk(join(d, e.name), r);
+      else if (r !== STAMP) out.push(r);
+    }
+  };
+  if (existsSync(dir)) walk(dir, '');
+  return out.sort();
 }
 
 /**
@@ -164,15 +186,25 @@ export function chooseDashboard({
       note: `dashboard: the build for ${where} ${off}: ${command}. Serving the prebuilt dashboard.`,
     };
   // pxsig-build.json, as `pxsig dashboard build` writes it (it names this version: checked above).
-  const stamp = /** @type {{ builtAt?: number, contract?: string } | null} */ (
-    readJson(join(out, STAMP), null)
-  );
+  const stamp =
+    /** @type {{ builtAt?: number, pxsig?: string, contract?: string, files?: string[] } | null} */ (
+      readJson(join(out, STAMP), null)
+    );
   const builtAt = stamp?.builtAt ?? statSync(join(out, 'index.html')).mtimeMs;
   if (stamp?.contract && contract && stamp.contract.split('.')[0] !== contract.split('.')[0])
     return {
       dir: prebuilt,
       source: 'prebuilt',
       note: `dashboard: the build for ${where} is for UI contract ${stamp.contract} (this pxsig has ${contract}): update the adapter (docs/ui/contract-changes.md), then ${command}. Serving the prebuilt dashboard.`,
+    };
+  // A build is its chunks too: one that lost a file (or, built before the stamp listed them, may
+  // have) is built again.
+  const lost = stamp?.files?.find((f) => !existsSync(join(out, f)));
+  if (stamp?.pxsig && (!stamp.files || lost))
+    return {
+      dir: prebuilt,
+      source: 'prebuilt',
+      note: `dashboard: the build for ${where} is incomplete${lost ? ` (${lost} is missing)` : ''}: ${command}. Serving the prebuilt dashboard.`,
     };
   const adapterDir = BUILTIN.test(ui) ? builtinDir(ui) : resolve(p.dir, ui);
   const edited = adapterDir ? newestMtime(adapterDir) : 0;
