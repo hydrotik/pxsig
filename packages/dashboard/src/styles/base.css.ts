@@ -13,11 +13,14 @@ export const focusOutline = {
   outlineOffset: v.space['0_5'],
 };
 export const insetFocusOutline = { outline: `1px solid ${v.color.focus}`, outlineOffset: '-1px' };
-// Over an image (the inspector's stage and its swipe handle), whose colours are anyone's: the 1px
-// focus line with a 1px line of the page background inside it, so the indicator reads over light
-// and dark pixels alike.
+// Over an image (the inspector's stage and its swipe handle), whose pixels can be any colour: no
+// single line keeps 3:1 against all of them, and the focus colour, mid-way in lightness, fails
+// against colours near its own. So images get a dark and a light line instead: 1px of the text
+// colour with 1px of the page background inside it, one of which holds at least 3:1 against any
+// colour (about 4:1 at worst, in both themes). Every other focus line is the focus colour.
 export const twoToneFocus = {
-  ...insetFocusOutline,
+  outline: `1px solid ${v.color.text}`,
+  outlineOffset: '-1px',
   boxShadow: `inset 0 0 0 2px ${v.color.background}`,
 };
 

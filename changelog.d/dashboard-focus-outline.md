@@ -9,4 +9,7 @@
 - **The inspector's image stage and its swipe handle show their keyboard focus over the images.**
   The stage's focus ring was an inset shadow the images covered, so focusing it showed nothing, and
   the swipe handle had the browser's default ring. Both now draw two 1px lines above the images, on
-  keyboard focus only: the focus colour, and the page background inside it.
+  keyboard focus only: one in the text colour and one in the page background inside it. An image can
+  hold any colour, and no single line, the focus colour included, keeps 3:1 against all of them; of a
+  dark and a light line, one does (at least 3.97:1 in the dark theme and 4.2:1 in the light one,
+  over every colour).

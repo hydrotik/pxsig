@@ -315,8 +315,8 @@ export const swipeHandle = style({
     inlineSize: '2px',
     backgroundColor: v.color.accent,
   },
-  // Over the images, like the stage's: the focus line and the background line inside it, in place
-  // of the browser's default ring.
+  // Over the images, like the stage's: the text-coloured and background lines (base.css.ts
+  // twoToneFocus), in place of the browser's default ring.
   selectors: { '&:focus-visible': twoToneFocus },
 });
 export const insHelp = style({
