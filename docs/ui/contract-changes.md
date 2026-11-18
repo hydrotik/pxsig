@@ -25,13 +25,16 @@ section, `node scripts/ui.mjs lock` records the new contract.
 Minor: two optional props.
 
 - **`Chart` `label` and `summary`**: the chart's accessible name (the title of its card) and its
-  data in one line of text ("Changed entries per run, 14 runs: 3 to 12."), both from pxsig's copy
-  and the chart's own data. An adapter names the chart by `label` and ties `summary` to it as
-  visually hidden text, for example `role="img"` with `aria-label` and `aria-describedby`; the
-  chart stays out of the tab order unless it is interactive (recharts 3 makes its SVG a tab stop
-  with `role="application"` unless `accessibilityLayer={false}`). The text is never drawn, so no
-  screen moves. An adapter written for 1.7.0 keeps working and leaves the chart unnamed; the
-  fallback table takes both.
+  data in one line of text, both from pxsig's copy and the chart's own data: a line's range per
+  series ("Changed entries per run, 14 runs: 3 to 12.", the value alone when flat), each bar's
+  value ("Time per compare: CLI process 3 ms, Server request 120 ms."), or "no data". A chart is
+  not a tab stop unless it is interactive. The dashboard's charts are: the arrow keys move the
+  tooltip. So the chart is one tab stop named by `label` and described by `summary`, visually
+  hidden text, with nothing else in it focusable or unnamed (on recharts 3: its keyboard layer,
+  `accessibilityLayer`, on, which makes the SVG the tab stop with `role="application"`, and
+  `aria-label` and `aria-describedby` on the chart, which recharts puts on that SVG). The text is
+  never drawn, so no screen moves. An adapter written for 1.7.0 keeps working and leaves the chart
+  unnamed; the fallback table takes both.
 
 ## 1.7.0
 

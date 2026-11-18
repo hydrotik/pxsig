@@ -442,8 +442,9 @@ export interface ChartProps extends WithClass {
   /**
    * The data in one line of text, from the same data as the chart (since 1.8.0): "Changed entries
    * per run, 14 runs: 3 to 12." Read by assistive technology, never drawn: tie it to the chart
-   * (`aria-describedby` on visually hidden text). The chart is not a tab stop unless it is
-   * interactive.
+   * (`aria-describedby` on visually hidden text). A chart is not a tab stop unless it is
+   * interactive; the dashboard's are (the arrow keys move the tooltip), so the chart is one tab
+   * stop that carries the name and the description, with nothing else in it focusable or unnamed.
    */
   summary?: string;
 }

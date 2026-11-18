@@ -82,7 +82,10 @@ function DetectionRate({ data }: { data: Data }) {
           }))}
           height={10}
           label={t('diagnostics.detection.title')}
-          summary={(v) => t('diagnostics.detection.summary', v)}
+          summary={{
+            summary: (v) => t('diagnostics.detection.summary', v),
+            noData: t('diagnostics.detection.noData'),
+          }}
         />
         <KeyValueList orientation="horizontal">
           {suites.map((x) => (

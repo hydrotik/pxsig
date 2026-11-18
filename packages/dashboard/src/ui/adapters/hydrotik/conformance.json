@@ -275,7 +275,7 @@
     },
     "Chart": {
       "status": "full",
-      "note": "the design system's Chart on recharts, chart tokens 1–4; solid points with no outline; one image named by label and described by summary (visually hidden), not a tab stop"
+      "note": "the design system's Chart on recharts, chart tokens 1–4; solid points with no outline; its SVG is the one tab stop (recharts' keyboard layer, role application: the arrow keys move the tooltip), named by label and described by summary (visually hidden)"
     },
     "Heatmap": {
       "status": "bespoke",

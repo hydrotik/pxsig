@@ -610,18 +610,20 @@
       },
       "series": "Changed",
       "summary": {
-        "one": "Changed entries per run, {count} run: {range}.",
-        "other": "Changed entries per run, {count} runs: {range}."
-      }
+        "one": "Changed entries per run, {count} run: {data}.",
+        "other": "Changed entries per run, {count} runs: {data}."
+      },
+      "noData": "Changed entries per run: no data."
     },
     "engine": {
       "title": "Engine Time per Run",
       "description": "Milliseconds.",
       "series": "Engine (ms)",
       "summary": {
-        "one": "Engine time per run, {count} run: {range}.",
-        "other": "Engine time per run, {count} runs: {range}."
-      }
+        "one": "Engine time per run, {count} run: {data}.",
+        "other": "Engine time per run, {count} runs: {data}."
+      },
+      "noData": "Engine time per run: no data."
     },
     "table": {
       "title": "Runs",
@@ -651,9 +653,10 @@
       "detected": "{detected}/{changed} detected",
       "falsePositives": "False positives",
       "summary": {
-        "one": "Detection rate by suite, {count} suite: {range}.",
-        "other": "Detection rate by suite, {count} suites: {range}."
-      }
+        "one": "Detection rate by suite, {count} suite: {data}.",
+        "other": "Detection rate by suite, {count} suites: {data}."
+      },
+      "noData": "Detection rate by suite: no data."
     },
     "scenario": {
       "empty": "No scenario data. Run {command}.",
@@ -713,9 +716,10 @@
       "detailOnly": "Detail only",
       "detailKb": "Detail per record (KB)",
       "gridSummary": {
-        "one": "Detection rate by signature grid, {count} grid: {range}.",
-        "other": "Detection rate by signature grid, {count} grids: {range}."
-      }
+        "one": "Detection rate by signature grid, {count} grid: {data}.",
+        "other": "Detection rate by signature grid, {count} grids: {data}."
+      },
+      "gridNoData": "Detection rate by signature grid: no data."
     },
     "performance": {
       "empty": "No benchmark data. Run {command}.",
@@ -762,11 +766,10 @@
       "perCallSeries": "ms per compare",
       "cli": "CLI process",
       "server": "Server request",
-      "renderSummary": {
-        "one": "Render time per story, {count} page count: {range}.",
-        "other": "Render time per story, {count} page counts: {range}."
-      },
-      "perCallSummary": "Time per compare, CLI process and server request: {range}."
+      "renderSummary": "Render time per story by page count: {data}.",
+      "perCallSummary": "Time per compare: {data}.",
+      "renderNoData": "Render time per story by page count: no data.",
+      "perCallNoData": "Time per compare: no data."
     },
     "react": {
       "parts": "React part",
@@ -1821,7 +1824,10 @@
     "chart": {
       "range": "{min} to {max}",
       "seriesRange": "{series}: {range}",
-      "separator": "; "
+      "value": "{name} {value}",
+      "categoryValues": "{category}: {values}",
+      "separator": "; ",
+      "listSeparator": ", "
     }
   }
 }

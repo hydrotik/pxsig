@@ -544,14 +544,14 @@ function ChartDrawing({
     series.map((sd, i) => [sd.key, { label: sd.label, color: SERIES[i % SERIES.length] }])
   );
   return (
-    <ChartContainer config={config} className={className} style={{ blockSize: height }} {...a11y}>
+    <ChartContainer config={config} className={className} style={{ blockSize: height }}>
       {kind === 'bar' ? (
         <RBarChart
           data={data}
           layout="vertical"
           margin={{ left: 8, right: 24 }}
           barGap={2}
-          accessibilityLayer={false}
+          {...a11y}
         >
           <CartesianGrid horizontal={false} />
           <XAxis
@@ -574,7 +574,7 @@ function ChartDrawing({
           ))}
         </RBarChart>
       ) : (
-        <RLineChart data={data} margin={{ left: 8, right: 24, top: 8 }} accessibilityLayer={false}>
+        <RLineChart data={data} margin={{ left: 8, right: 24, top: 8 }} {...a11y}>
           <CartesianGrid vertical={false} />
           <XAxis dataKey={x} tickLine={false} axisLine={false} />
           <YAxis tickFormatter={format} tickLine={false} axisLine={false} width={48} />
@@ -599,5 +599,5 @@ function ChartDrawing({
   );
 }
 
-/** No keyboard layer: it made recharts' SVG a tab stop (chart-a11y.tsx). */
+/** The chart's SVG, its one tab stop, named by label and described by summary (chart-a11y.tsx). */
 export const Chart = withChartSummary(ChartDrawing);

@@ -917,11 +917,15 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Behaviour**: series take your categorical colours in order; a legend when there is more than one
   series; a tooltip on hover; `format` formats the value axis and tooltip.
 - **Accessibility**: the numbers must be reachable without the picture: a tooltip alone is not
-  enough. Name the chart by `label` and tie `summary` to it as visually hidden text, for example
-  `role="img"` with `aria-label` and `aria-describedby`, so the drawing inside is one named image
-  with a description. The chart is not a tab stop unless it is interactive: recharts 3 makes its
-  SVG a tab stop with `role="application"` unless `accessibilityLayer={false}`. The summary is
-  never drawn, so it moves no screen.
+  enough. A chart is not a tab stop unless it is interactive, and the dashboard's are: the arrow
+  keys move the tooltip from point to point. So the chart is one tab stop that has the name
+  (`label`) and the description (`summary`, as visually hidden text tied by `aria-describedby`),
+  with nothing else in it focusable or unnamed. On recharts 3, keep its keyboard layer
+  (`accessibilityLayer`, on by default: the SVG is the tab stop, `role="application"` so a screen
+  reader passes the arrow keys through) and pass `aria-label` and `aria-describedby` to the chart,
+  which recharts puts on that SVG. Do not wrap it in `role="img"`: an image's children are
+  presentational, so the tab stop cannot sit inside one. The summary is never drawn, so it moves
+  no screen.
 - **Mapping questions**: Do you have a chart component, and on which library? Which tokens are your
   categorical colours?
 - **Points**: mark each point solid, in the series colour with no outline, small enough that the

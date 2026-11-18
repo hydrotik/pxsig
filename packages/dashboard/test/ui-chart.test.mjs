@@ -2,9 +2,10 @@
  * Chart `label` and `summary` (UI contract 1.8.0). The contract: both are optional props, recorded
  * by the lock, the changes entry and every shipped adapter's conformance.json. In a real browser
  * (test/harness/chart, built with the dashboard's own Vite setup, once per adapter): each chart is
- * in the accessibility tree by its label, described by its summary, which is visually hidden text,
- * and Tab goes from the button before the charts to the one after. The reference adapter runs only
- * when PXSIG_DS_SOURCE names a design-system checkout. Skips when no Chromium is available.
+ * in the accessibility tree by its label, described by its summary, which is visually hidden text.
+ * The fallback table is no tab stop; the reference adapter's chart is one, its arrow keys moving
+ * the tooltip. The harness also checks the dashboard's summary wording. The reference adapter runs
+ * only when PXSIG_DS_SOURCE names a design-system checkout. Skips when no Chromium is available.
  */
 import assert from 'node:assert/strict';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -102,61 +103,90 @@ const described = (page, role, name) =>
     return {
       description: desc.map((d) => d?.textContent ?? '').join(' '),
       box: box ? { w: box.width, h: box.height } : null,
-      focusable: el.querySelectorAll('[tabindex]:not([tabindex="-1"])').length,
-      application: el.querySelectorAll('[role="application"]').length,
+      tag: el.tagName.toLowerCase(),
     };
   });
-
-/** Tab from Before lands on After: nothing in between is a tab stop. */
-async function noTabStop(page) {
-  await page.getByRole('button', { name: 'Before' }).focus();
-  await page.keyboard.press('Tab');
-  assert.equal(
-    await page.evaluate(() => document.activeElement?.textContent),
-    'After',
-    'the charts are not tab stops'
-  );
-}
 
 /** The visually hidden summary: a 1px box, so it moves nothing. */
 const hidden = (box) => assert.ok(box && box.w <= 1 && box.h <= 1, JSON.stringify(box));
 
-test('the plain adapter: the fallback table is named by label and described by summary', async (t) => {
+const CHARTS = [
+  ['Changed Entries per Run', 'Changed entries per run, 3 runs: 3 to 12.'],
+  ['Changed by Run', 'Changed by run, 3 runs: 3 to 12.'],
+];
+
+test("the dashboard's summaries: ranges for lines, each value for bars, the value alone when flat, no data", async (t) => {
   if (skip) return t.skip(skip);
   const page = await open('plain');
-  for (const [name, summary] of [
-    ['Changed Entries per Run', 'Changed entries per run, 3 runs: 3 to 12.'],
-    ['Changed by Run', 'Changed by run, 3 runs: 3 to 12.'],
-  ]) {
+  assert.deepEqual(await page.evaluate(() => window.harness.summaries), {
+    line: 'Shown, 2: 3 to 12.',
+    flat: 'Shown, 1: 3.',
+    lines: 'Shown, 2: A: 1 to 2; B: 5.',
+    bars: 'Shown, 2: CLI process 3 ms, Server request 120 ms.',
+    groups: 'Shown, 2: S1: A 1, B 2; S2: A 3, B 4.',
+    empty: 'Shown: no data.',
+    noNumbers: 'Shown: no data.',
+  });
+  await page.close();
+});
+
+test('the plain adapter: the fallback table is named by label and described by summary, no tab stop', async (t) => {
+  if (skip) return t.skip(skip);
+  const page = await open('plain');
+  for (const [name, summary] of CHARTS) {
     const d = await described(page, 'table', name);
     assert.equal(d.description, summary);
     hidden(d.box);
   }
-  await noTabStop(page);
+  await page.getByRole('button', { name: 'Before' }).focus();
+  await page.keyboard.press('Tab');
+  assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'After');
   await page.close();
 });
 
-test('the reference adapter: each chart is one image named by label and described by summary, not a tab stop', async (t) => {
+test('the reference adapter: Tab reaches each chart once, named and described, and the arrow keys move its tooltip', async (t) => {
   if (skip) return t.skip(skip);
   if (!process.env.PXSIG_DS_SOURCE) return t.skip('PXSIG_DS_SOURCE is not set');
   const page = await open('hydrotik');
   // The drawing is in: recharts draws once the text font has loaded.
   await page.locator('svg.recharts-surface').nth(1).waitFor({ timeout: 10_000 });
-  for (const [name, summary] of [
-    ['Changed Entries per Run', 'Changed entries per run, 3 runs: 3 to 12.'],
-    ['Changed by Run', 'Changed by run, 3 runs: 3 to 12.'],
-  ]) {
-    const d = await described(page, 'img', name);
+  for (const [name, summary] of CHARTS) {
+    const d = await described(page, 'application', name);
+    assert.equal(d.tag, 'svg', "the name and description are on recharts' SVG, the tab stop");
     assert.equal(d.description, summary);
     hidden(d.box);
-    assert.equal(d.focusable, 0, "recharts' SVG is not a tab stop");
-    assert.equal(d.application, 0, 'no role="application" inside');
   }
-  assert.equal(
-    await page.locator('svg[tabindex], svg[role]').count(),
-    0,
-    'no SVG role or tab stop'
+  assert.equal(await page.getByRole('img').count(), 0, 'no image wraps the tab stop');
+  // One tab stop per chart: Before, the two charts' SVGs, After.
+  await page.getByRole('button', { name: 'Before' }).focus();
+  const stops = [];
+  for (let i = 0; i < 3; i++) {
+    await page.keyboard.press('Tab');
+    stops.push(
+      await page.evaluate(() => {
+        const a = document.activeElement;
+        return a?.getAttribute('aria-label') ?? a?.textContent ?? null;
+      })
+    );
+  }
+  assert.deepEqual(stops, [CHARTS[0][0], CHARTS[1][0], 'After']);
+  // Inside a chart, only its SVG is focusable.
+  const focusables = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-chart]')].map(
+      (c) => c.querySelectorAll('[tabindex]:not([tabindex="-1"]), a[href], button').length
+    )
   );
-  await noTabStop(page);
+  assert.deepEqual(focusables, [1, 1]);
+  // The arrow keys move the tooltip from point to point: the line's values are 3, 12 and 7.
+  const line = page.getByRole('application', { name: CHARTS[0][0] });
+  const tip = page.locator('[data-chart]').first().locator('.recharts-tooltip-wrapper');
+  const shows = (v) => tip.getByText(v, { exact: true }).waitFor({ timeout: 5_000 });
+  await line.focus();
+  await page.keyboard.press('ArrowRight');
+  await shows('12');
+  await page.keyboard.press('ArrowRight');
+  await shows('7');
+  await page.keyboard.press('ArrowLeft');
+  await shows('12');
   await page.close();
 });
