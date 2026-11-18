@@ -18,6 +18,7 @@ import { afterCheck } from '../lib/rejections.mjs';
 import { engineDiff, refreshPackets } from '../lib/rejections/packet.mjs';
 import { buildRow, stampRenders, summarize } from '../lib/rows.mjs';
 import { writeJson } from '../lib/files.mjs';
+import { FONTS_USED, fontsOf, NEW_TEXT_FALLBACK } from '../lib/fonts-used.mjs';
 import { annotateRow, byId, envLine, envSummary } from '../lib/env.mjs';
 import { driftLine, driftSummary, warnAt } from '../lib/drift.mjs';
 import { PXSIG_VERSION } from '../lib/workspace.mjs';
@@ -66,7 +67,7 @@ export async function report(S, sel, prep, run, cmp, { t0, retryMs, react = null
     rel,
   } = S;
   const { modes, selected, affectedIds, only, affected } = sel;
-  const { current, envCfg, envRefused, fence, sbIndex, lock } = prep;
+  const { current, envCfg, envRefused, strictEnv, fence, sbIndex, lock } = prep;
   const { render, wallMs, reloads } = run;
   const { rustRes, rows, rc } = cmp;
   // --- 5. a11y: new violations against the a11y baseline ------------------------------------------
@@ -133,7 +134,7 @@ export async function report(S, sel, prep, run, cmp, { t0, retryMs, react = null
       }
       const row = annotateRow(
         buildRow(e, rows.get(e.id), render.get(e.id), a11yBase, manifest, null),
-        { current, envs, ignore: envCfg.ignore }
+        { current, envs, ignore: envCfg.ignore, fonts: fontsOf(P, e, render.get(e.id)) }
       );
       // Render counts: when, and the counts of the row this one replaces.
       return stampRenders(row, prevRows.get(e.id), checkedAt);
@@ -188,6 +189,15 @@ export async function report(S, sel, prep, run, cmp, { t0, retryMs, react = null
       exit: 2,
       count: envRefused.count,
       what: 'baselines from a different environment (--strict-env)',
+    });
+  // A font swap is known only once rendered: --strict-env fails it here (fonts-used.mjs).
+  const swapped = strictEnv ? checked.filter((r) => r.envDiff?.includes(FONTS_USED)).length : 0;
+  if (swapped)
+    found.push({
+      gate: 'env',
+      exit: 2,
+      count: swapped,
+      what: 'renders drawn in other fonts than their baselines (--strict-env)',
     });
   // `enf` is null only under --update, which exited above.
   const gated = outcome(/** @type {NonNullable<typeof enf>} */ (enf), found);
@@ -260,6 +270,15 @@ export async function report(S, sel, prep, run, cmp, { t0, retryMs, react = null
 
   const envMsg = envLine(summary, summary.checked);
   if (envMsg) console.log(`[check] ${envMsg}`);
+  const fallbacks = checked.filter((r) => r.envFontsUsed?.newText).length;
+  if (fallbacks)
+    console.log(
+      `[check] env: ${fallbacks} of ${summary.checked} entries drew new text in a system fallback font (${NEW_TEXT_FALLBACK}): information, not a different environment`
+    );
+  if (swapped)
+    console.log(
+      `[check] env: ${swapped} renders drew their text in other fonts than their baselines; --strict-env fails the run (exit 2)`
+    );
   const driftMsg = driftLine(summary.drift);
   if (driftMsg) console.log(`[check] ${driftMsg}`);
   console.log(
