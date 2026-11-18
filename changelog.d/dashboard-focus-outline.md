@@ -6,6 +6,7 @@
   They now draw a 1px outline in the focus colour, which forced-colors mode also paints. The
   reference dashboard's focus colour is the design system's own (`focusColor`, between the border
   colour and the focus ring), as on its components: 3.8:1 dark and 3.3:1 light on a card.
-- **The inspector's image stage shows its keyboard focus.** Its focus ring was an inset shadow that
-  the images covered, so focusing the stage showed nothing. It now draws the same 1px line above
-  the images, on keyboard focus only.
+- **The inspector's image stage and its swipe handle show their keyboard focus over the images.**
+  The stage's focus ring was an inset shadow the images covered, so focusing it showed nothing, and
+  the swipe handle had the browser's default ring. Both now draw two 1px lines above the images, on
+  keyboard focus only: the focus colour, and the page background inside it.

@@ -13,6 +13,13 @@ export const focusOutline = {
   outlineOffset: v.space['0_5'],
 };
 export const insetFocusOutline = { outline: `1px solid ${v.color.focus}`, outlineOffset: '-1px' };
+// Over an image (the inspector's stage and its swipe handle), whose colours are anyone's: the 1px
+// focus line with a 1px line of the page background inside it, so the indicator reads over light
+// and dark pixels alike.
+export const twoToneFocus = {
+  ...insetFocusOutline,
+  boxShadow: `inset 0 0 0 2px ${v.color.background}`,
+};
 
 globalStyle('html, body, #root', { blockSize: '100%', margin: 0 });
 globalStyle('body', {

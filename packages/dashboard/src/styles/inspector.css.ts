@@ -1,7 +1,7 @@
 /** The inspector: its dialog, stage, side panel, help and the Storybook panel embed. */
 import { globalStyle, style } from '@vanilla-extract/css';
 import { tokens as v } from '../ui/tokens';
-import { checker, insetFocusOutline } from './base.css';
+import { checker, insetFocusOutline, twoToneFocus } from './base.css';
 
 // --- inspector ---------------------------------------------------------------
 export const inspector = style({
@@ -236,14 +236,14 @@ export const insStage = style({
   selectors: {
     '&[data-grabbing]': { cursor: 'grabbing' },
     // The viewports (positioned) cover the whole stage and paint over anything the stage draws
-    // itself, its box-shadow or its own outline: the focus line is a layer above them.
+    // itself, its box-shadow or its own outline: the focus lines are a layer above them.
     '&:focus-visible::after': {
       content: '""',
       position: 'absolute',
       inset: 0,
       zIndex: 1,
       pointerEvents: 'none',
-      ...insetFocusOutline,
+      ...twoToneFocus,
     },
   },
 });
@@ -315,6 +315,9 @@ export const swipeHandle = style({
     inlineSize: '2px',
     backgroundColor: v.color.accent,
   },
+  // Over the images, like the stage's: the focus line and the background line inside it, in place
+  // of the browser's default ring.
+  selectors: { '&:focus-visible': twoToneFocus },
 });
 export const insHelp = style({
   display: 'flex',
