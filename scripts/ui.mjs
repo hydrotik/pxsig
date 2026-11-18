@@ -12,11 +12,15 @@
  *                                         when PXSIG_DS_SOURCE is set, else plain)
  *   node scripts/ui.mjs lock              record the contract in src/ui/contract-lock.json, after a
  *                                         change, its CONTRACT_VERSION bump and its changes entry;
- *                                         with PXSIG_DS_SOURCE set, `types` too
+ *                                         with a design-system source configured, `types` too
  *   node scripts/ui.mjs types [--check]   regenerate the reference adapter's design-system
  *                                         declarations (adapters/hydrotik/design-system.d.ts) from
- *                                         the built checkout PXSIG_DS_SOURCE names; --check fails
- *                                         when the committed file differs instead of writing it
+ *                                         the pinned checkout ds:fetch makes (target/design-system,
+ *                                         fetched when missing or stale), built; --check fails
+ *                                         when the committed file differs instead of writing it.
+ *                                         PXSIG_DS_SOURCE / pxsig.dsSource is only where the pin is
+ *                                         fetched from, never read as the checkout itself: a
+ *                                         checkout at another commit would declare another API
  *
  * Exit: 0 ok · 1 problems (a required component missing, a malformed conformance file).
  */
@@ -47,6 +51,7 @@ import {
 } from '../packages/dashboard/ui-tools.mjs';
 import { resolveAdapter } from '../packages/dashboard/build-config.mjs';
 import { generate, typesFile } from './lib/hydrotik-types.mjs';
+import { dsSource, ensureDesignSystem, isCurrent, readPin } from './ds-fetch.mjs';
 
 const [cmd, ...args] = process.argv.slice(2);
 const repo = fileURLToPath(new URL('..', import.meta.url));
@@ -65,16 +70,33 @@ const flag = (n) => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 
+/** A design-system source is configured, or the pinned checkout is already in place. */
+const hasDesignSystem = () => !!dsSource({ repo }) || isCurrent(repo, readPin(repo));
+
 /**
  * Regenerate (or, with check, compare) the reference adapter's declarations. Returns whether the
  * committed file is current.
  * @param {{ check?: boolean }} [opts]
  */
 async function types({ check = false } = {}) {
-  const source = process.env.PXSIG_DS_SOURCE;
-  if (!source) throw new Error('[ui] types needs PXSIG_DS_SOURCE: a built design-system checkout');
+  if (!hasDesignSystem())
+    throw new Error(
+      '[ui] types needs the design system at the pin: set git config pxsig.dsSource (or PXSIG_DS_SOURCE), then pnpm ds:fetch'
+    );
+  const source = ensureDesignSystem({ repo });
+  const built = path.relative(repo, source).split(path.sep).join('/');
   const scratch = path.join(repo, 'node_modules', '.cache', 'pxsig-ds-types');
-  const text = await generate(source, { scratch });
+  let text;
+  try {
+    text = await generate(source, { scratch });
+  } catch (e) {
+    const m = /** @type {Error} */ (e).message;
+    throw new Error(
+      /build the design system first/.test(m)
+        ? `${m}: run \`pnpm turbo run build --filter=@hydrotik/design-system\` in ${built}`
+        : m
+    );
+  }
   const current = existsSync(typesFile) && readFileSync(typesFile, 'utf8') === text;
   const rel = path.relative(repo, typesFile).split(path.sep).join('/');
   if (check)
@@ -114,8 +136,11 @@ try {
       '[ui] ok · imports, manifest, feature catalogue, build prompt and reference adapter agree'
     );
   } else if (cmd === 'lock') {
-    if (process.env.PXSIG_DS_SOURCE) await types();
-    else console.log('[ui] types: skipped (set PXSIG_DS_SOURCE to refresh design-system.d.ts)');
+    if (hasDesignSystem()) await types();
+    else
+      console.log(
+        '[ui] types: skipped (no design-system source: git config pxsig.dsSource or PXSIG_DS_SOURCE)'
+      );
     const now = contractShape();
     const lock = readLock();
     if (lock) {
