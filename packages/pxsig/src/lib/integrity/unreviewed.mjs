@@ -65,13 +65,19 @@ export const byPerson = (l) =>
 
 /**
  * The line whose state the bytes `hash` carry: the last line that logged them, and for a record
- * repair the line that logged the bytes it replaced (a repair keeps the entry's state).
+ * repair the line that logged the bytes it replaced (a repair keeps the entry's state). The undo
+ * of a record repair puts back the bytes an earlier line logged, so that line's state comes back
+ * too; the undo of any other batch is the line that wrote the bytes, as before.
  * @param {ApprovalLine[]} lines
  * @param {string} hash
  * @returns {ApprovalLine | undefined}
  */
 function wroteBy(lines, hash) {
-  let wrote = lines.filter((l) => l.after === hash).pop();
+  const repairs = new Set(lines.filter((l) => l.kind === 'record-repair').map((l) => l.batch));
+  /** @param {ApprovalLine} l */
+  const undoesRepair = (l) => !!l.undo && repairs.has(String(l.batch).replace(/-undo$/, ''));
+  const logged = lines.filter((l) => l.after === hash);
+  let wrote = logged.filter((l) => !undoesRepair(l)).pop() ?? logged.pop();
   /** @type {Set<ApprovalLine>} */
   const seen = new Set();
   while (wrote?.kind === 'record-repair' && wrote.before && !seen.has(wrote)) {

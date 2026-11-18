@@ -26,7 +26,8 @@
   eligible entries with why each qualifies and the others with every condition each fails; `--yes`
   (a person at a terminal, from a list printed in the last 24 hours) or the dashboard's confirm
   (the dashboard link; each entry's image is shown first) writes them. It approves no change: the
-  image, masks, thresholds and config stay as they are, the entry stays unreviewed, and the safe
+  image, masks, thresholds and config stay as they are, the entry stays unreviewed (also after
+  `pxsig approve undo` of the repair), and the safe
   repairs never run it. Each write is snapshotted (`pxsig approve undo <batch>`) and logged with
   the new kind `record-repair`, with the file's and the record's sha256 before and after;
   `pxsig approve verify` fails such a line whose record does not match its image

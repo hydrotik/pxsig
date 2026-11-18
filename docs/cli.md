@@ -585,7 +585,8 @@ its own kind, with the file's sha256 before and after (as every line) and the re
 }
 ```
 
-A record repair is not a review: the entry stays unreviewed as it was (`by: migrate`), and the
+A record repair is not a review: the entry stays unreviewed as it was (`by: migrate`, also after
+`approve undo` of the repair's batch), and the
 entries that are not eligible go through review one at a time. `pxsig approve verify` accepts the
 line, and fails an entry whose last line is a record repair while its record does not match its
 image.
