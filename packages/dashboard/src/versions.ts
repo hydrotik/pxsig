@@ -23,7 +23,7 @@ export function versionsText(data: Data): string {
 const short = (sha: string) => sha.slice(0, 7);
 
 /**
- * "build 1a2b3c4 modified · design system 5d6e7f8 · adapter hydrotik · built 2026-11-18 17:18
+ * "build 1a2b3c4 modified 9f8e7d6 · design system 5d6e7f8 · adapter hydrotik · built 2026-11-18 17:18
  * UTC": which build of the dashboard this page is (`data.build`), so two builds of one version are
  * told apart. A release build names no commit; the pxsig version it was built for is named when it
  * is not the server's. Null when the build records nothing.
@@ -31,9 +31,14 @@ const short = (sha: string) => sha.slice(0, 7);
 export function buildText(data: Data): string | null {
   const b = data.build;
   if (!b || (!b.pxsig && !b.commit)) return null;
-  const head = b.commit
-    ? t(b.dirty ? 'app.build.modified' : 'app.build.commit', { commit: short(b.commit) })
-    : t('app.build.release');
+  // A modified build names its changes' fingerprint too: two modified builds of one commit differ.
+  const head = !b.commit
+    ? t('app.build.release')
+    : !b.dirty
+      ? t('app.build.commit', { commit: short(b.commit) })
+      : b.changes
+        ? t('app.build.modifiedChanges', { commit: short(b.commit), changes: short(b.changes) })
+        : t('app.build.modified', { commit: short(b.commit) });
   const version =
     b.pxsig && b.pxsig !== data.versions.pxsig
       ? t('app.build.version', { version: b.pxsig })

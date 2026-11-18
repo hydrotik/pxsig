@@ -375,8 +375,8 @@ export interface Data {
   versions: { pxsig: string | null; engine: string | null; contract: string | null };
   /**
    * Which build of the dashboard this page is (the server's lib/build-identity.mjs): the pxsig
-   * version it was built for, pxsig's commit and whether that checkout had uncommitted changes
-   * (null for a release build), the design system's commit, the adapter's name and when it was
+   * version it was built for, pxsig's commit, whether that checkout had uncommitted changes and
+   * their fingerprint (null for a release build), the design system's commit, the adapter's name and when it was
    * built. Null or absent when the build records none.
    */
   build?: BuildIdentity | null;
@@ -426,6 +426,8 @@ export interface BuildIdentity {
   pxsig: string | null;
   commit: string | null;
   dirty: boolean | null;
+  /** The fingerprint (sha256) of those uncommitted changes; null when clean or not recorded. */
+  changes?: string | null;
   designSystem: { commit: string; dirty: boolean } | null;
   adapter: string | null;
   builtAt: string | null;

@@ -58,7 +58,7 @@ test('serve: a PXSIG_DASHBOARD_DIR build from another commit or other changes is
   assert.deepEqual([r.source, r.dir], ['prebuilt', prebuilt]);
   assert.equal(
     r.note,
-    `dashboard: the build in ${dir} (PXSIG_DASHBOARD_DIR) is from commit bbbbbbb (the checkout is at aaaaaaa): run \`pxsig dashboard build --out ${shellWord(dir)}\`. Serving the prebuilt dashboard.`
+    `dashboard: the build in ${dir} (PXSIG_DASHBOARD_DIR) is from commit bbbbbbb (the checkout is at aaaaaaa, with other dashboard sources): run \`pxsig dashboard build --out ${shellWord(dir)}\`. Serving the prebuilt dashboard.`
   );
   assert.equal(choose({ commit: B, dirty: false }).source, 'env', 'the same commit is served');
   assert.match(
@@ -76,7 +76,7 @@ test("serve: a project's dashboard.ui build from another commit is passed over; 
   assert.equal(r.source, 'prebuilt');
   assert.equal(
     r.note,
-    'dashboard: the build for dashboard.ui (plain) in pxsig.config.json is from commit bbbbbbb (the checkout is at aaaaaaa): run `pxsig dashboard build` in .. Serving the prebuilt dashboard.'
+    'dashboard: the build for dashboard.ui (plain) in pxsig.config.json is from commit bbbbbbb (the checkout is at aaaaaaa, with other dashboard sources): run `pxsig dashboard build` in .. Serving the prebuilt dashboard.'
   );
   build(out, { commit: null, dirty: null });
   assert.equal(
@@ -92,7 +92,7 @@ test('serve: a stale prebuilt dashboard is still served, with a note naming its 
   assert.deepEqual([r.source, r.dir], ['prebuilt', prebuilt]);
   assert.equal(
     r.note,
-    'dashboard: the prebuilt dashboard is from commit bbbbbbb (the checkout is at aaaaaaa): run `pnpm build:dashboard` in the pxsig checkout.'
+    'dashboard: the prebuilt dashboard is from commit bbbbbbb (the checkout is at aaaaaaa, with other dashboard sources): run `pnpm build:dashboard` in the pxsig checkout.'
   );
   // After another note: one line each (serve prints each with its prefix).
   const p = adapterProject();
@@ -128,7 +128,7 @@ test('doctor: dashboard-stale for a build from another commit, and for a stale p
       code: 'dashboard-stale',
       severity: 'warn',
       reason:
-        'the dashboard build in ./mine (PXSIG_DASHBOARD_DIR) is from commit bbbbbbb (the checkout is at aaaaaaa): `pxsig serve` serves the prebuilt dashboard instead. To serve it, run `pxsig dashboard build --out ./mine`',
+        'the dashboard build in ./mine (PXSIG_DASHBOARD_DIR) is from commit bbbbbbb (the checkout is at aaaaaaa, with other dashboard sources): `pxsig serve` serves the prebuilt dashboard instead. To serve it, run `pxsig dashboard build --out ./mine`',
     },
   ]);
   assert.deepEqual(
@@ -141,7 +141,7 @@ test('doctor: dashboard-stale for a build from another commit, and for a stale p
       code: 'dashboard-stale',
       severity: 'warn',
       reason:
-        'the prebuilt dashboard is from commit aaaaaaa (the checkout is at bbbbbbb): `pxsig serve` serves it as it is. To rebuild it, run `pnpm build:dashboard` in the pxsig checkout',
+        'the prebuilt dashboard is from commit aaaaaaa (the checkout is at bbbbbbb, with other dashboard sources): `pxsig serve` serves it as it is. To rebuild it, run `pnpm build:dashboard` in the pxsig checkout',
     },
   ]);
   assert.deepEqual(at({}, AT_A), [], 'no build asked for, the prebuilt one current');

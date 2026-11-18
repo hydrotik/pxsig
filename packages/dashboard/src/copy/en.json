@@ -11,6 +11,7 @@
     "build": {
       "commit": "build {commit}",
       "modified": "build {commit} modified",
+      "modifiedChanges": "build {commit} modified {changes}",
       "release": "release build",
       "version": "for pxsig {version}",
       "designSystem": "design system {commit}",

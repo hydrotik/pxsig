@@ -57,17 +57,51 @@ function checkout() {
   return { root, pkg: join(root, 'packages', 'pxsig'), head: git(root, 'rev-parse', 'HEAD') };
 }
 
-test("pxsigSource: the checkout's commit; dirty only for changes under the paths that feed the build", () => {
+/** The state without its `sameFeeds` function, for deepEqual. */
+const state = (/** @type {string} */ pkg) => {
+  const st = pxsigSource(pkg);
+  if (!st) return st;
+  const { sameFeeds, ...rest } = st;
+  assert.equal(typeof sameFeeds, 'function');
+  return rest;
+};
+
+test("pxsigSource: the checkout's commit; dirty, with a fingerprint, only for changes under the paths that feed the build", () => {
   const c = checkout();
-  assert.deepEqual(pxsigSource(c.pkg), { commit: c.head, dirty: false });
+  assert.deepEqual(state(c.pkg), { commit: c.head, dirty: false, changes: null });
   put(c.root, 'README.md', 'changed');
   put(c.root, 'packages/dashboard/test/a.test.mjs', 'changed');
-  assert.deepEqual(pxsigSource(c.pkg), { commit: c.head, dirty: false }, 'tests and docs: clean');
-  put(c.root, 'packages/dashboard/src/a.ts', 'changed');
-  assert.deepEqual(pxsigSource(c.pkg), { commit: c.head, dirty: true }, 'an edited source');
+  assert.deepEqual(state(c.pkg), { commit: c.head, dirty: false, changes: null }, 'tests and docs');
+  put(c.root, 'packages/dashboard/src/a.ts', 'one');
+  const one = state(c.pkg);
+  assert.equal(one?.dirty, true, 'an edited source');
+  assert.match(String(one?.changes), /^[0-9a-f]{64}$/);
+  assert.deepEqual(state(c.pkg), one, 'the same changes: the same fingerprint');
+  put(c.root, 'packages/dashboard/src/a.ts', 'two');
+  const two = state(c.pkg);
+  assert.notEqual(two?.changes, one?.changes, 'other changes: another fingerprint');
+  git(c.root, 'add', 'packages/dashboard/src/a.ts');
+  assert.equal(state(c.pkg)?.changes, two?.changes, 'staged or not: the same changes');
+  git(c.root, 'reset', '-q');
   git(c.root, 'checkout', '-q', '--', 'packages/dashboard/src/a.ts');
-  put(c.root, 'packages/dashboard/src/new.ts');
-  assert.deepEqual(pxsigSource(c.pkg), { commit: c.head, dirty: true }, 'a new, untracked source');
+  put(c.root, 'packages/dashboard/src/new.ts', 'a');
+  const untracked = state(c.pkg);
+  assert.equal(untracked?.dirty, true, 'a new, untracked source');
+  put(c.root, 'packages/dashboard/src/new.ts', 'b');
+  assert.notEqual(state(c.pkg)?.changes, untracked?.changes, "an untracked file's contents count");
+});
+
+test('pxsigSource: sameFeeds, whether the paths that feed the build are the same at another commit', () => {
+  const c = checkout();
+  put(c.root, 'README.md', 'docs only');
+  git(c.root, '-c', 'commit.gpgsign=false', 'commit', '-qam', 'docs');
+  const docs = /** @type {NonNullable<ReturnType<typeof pxsigSource>>} */ (pxsigSource(c.pkg));
+  assert.equal(docs.sameFeeds?.(c.head), true, 'a docs-only commit: the same sources');
+  put(c.root, 'packages/dashboard/src/a.ts', 'source');
+  git(c.root, '-c', 'commit.gpgsign=false', 'commit', '-qam', 'source');
+  const src = /** @type {NonNullable<ReturnType<typeof pxsigSource>>} */ (pxsigSource(c.pkg));
+  assert.equal(src.sameFeeds?.(c.head), false, 'a source commit since');
+  assert.equal(src.sameFeeds?.(B), false, 'an unknown commit');
 });
 
 test('pxsigSource: null outside a git checkout, for an installed package, or in a checkout that is not pxsig', () => {
@@ -81,8 +115,15 @@ test('pxsigSource: null outside a git checkout, for an installed package, or in 
   const other = join(c.root, 'vendor', 'pxsig');
   mkdirSync(other, { recursive: true });
   assert.equal(pxsigSource(other), null, "another repository's folder");
-  assert.deepEqual(sourceFields(null), { commit: null, dirty: null });
-  assert.deepEqual(sourceFields({ commit: A, dirty: true }), { commit: A, dirty: true });
+  assert.deepEqual(sourceFields(null), { commit: null, dirty: null, changes: null });
+  assert.deepEqual(
+    sourceFields({ commit: A, dirty: true, changes: 'f'.repeat(64), sameFeeds: () => true }),
+    {
+      commit: A,
+      dirty: true,
+      changes: 'f'.repeat(64),
+    }
+  );
 });
 
 test('buildIdentity: the same fields from either stamp, with no path; null without one', () => {
@@ -94,6 +135,7 @@ test('buildIdentity: the same fields from either stamp, with no path; null witho
       pxsig: '0.7.7',
       commit: A,
       dirty: true,
+      changes: 'c'.repeat(64),
       designSystem: { commit: B, dirty: false, lockSha256: 'f'.repeat(64) },
       builtAt: '2026-11-18T17:18:44.273Z',
       bundled: [],
@@ -103,6 +145,7 @@ test('buildIdentity: the same fields from either stamp, with no path; null witho
     pxsig: '0.7.7',
     commit: A,
     dirty: true,
+    changes: 'c'.repeat(64),
     designSystem: { commit: B, dirty: false },
     adapter: 'hydrotik',
     builtAt: '2026-11-18T17:18:44.273Z',
@@ -111,7 +154,7 @@ test('buildIdentity: the same fields from either stamp, with no path; null witho
   writeFileSync(
     join(own, 'pxsig-build.json'),
     JSON.stringify({
-      adapter: join(own, 'pxsig-ui', 'index.ts'),
+      adapter: './pxsig-ui/index.ts',
       adapterName: 'pxsig-ui',
       pxsig: '0.7.7',
       commit: null,
@@ -125,6 +168,7 @@ test('buildIdentity: the same fields from either stamp, with no path; null witho
     pxsig: '0.7.7',
     commit: null,
     dirty: null,
+    changes: null,
     designSystem: null,
     adapter: 'pxsig-ui',
     builtAt: '2026-11-18T12:00:00.000Z',
@@ -136,6 +180,7 @@ test('buildIdentity: the same fields from either stamp, with no path; null witho
     pxsig: '0.7.6',
     commit: null,
     dirty: null,
+    changes: null,
     designSystem: null,
     adapter: null,
     builtAt: null,
@@ -143,27 +188,50 @@ test('buildIdentity: the same fields from either stamp, with no path; null witho
   assert.equal(buildIdentity(tempDir('none')), null);
 });
 
-test('sourceMismatch: another commit, or a different dirty state, is out of date; no commit or no checkout never is', () => {
+test('sourceMismatch: other dashboard sources since its commit, or other uncommitted changes, are out of date; no commit or no checkout never is', () => {
   const dir = tempDir('stamp');
-  const stamp = (/** @type {Record<string, unknown>} */ s) =>
-    writeFileSync(join(dir, 'BUILD.json'), JSON.stringify({ pxsig: '0.7.7', ...s }));
+  const stamp = (/** @type {Record<string, unknown>} */ x) =>
+    writeFileSync(join(dir, 'BUILD.json'), JSON.stringify({ pxsig: '0.7.7', ...x }));
+  const F1 = '1'.repeat(64);
+  const F2 = '2'.repeat(64);
   stamp({ commit: A, dirty: false });
   assert.equal(sourceMismatch(dir, { commit: A, dirty: false }), null);
   assert.equal(
     sourceMismatch(dir, { commit: B, dirty: false }),
-    'is from commit aaaaaaa (the checkout is at bbbbbbb)'
+    'is from commit aaaaaaa (the checkout is at bbbbbbb, with other dashboard sources)',
+    'no sameFeeds: only the same commit is current'
   );
+  const since = (/** @type {boolean} */ same) => ({
+    commit: B,
+    dirty: false,
+    sameFeeds: () => same,
+  });
+  assert.equal(sourceMismatch(dir, since(true)), null, 'later commits touched no dashboard source');
+  assert.match(String(sourceMismatch(dir, since(false))), /^is from commit aaaaaaa/);
   assert.equal(
-    sourceMismatch(dir, { commit: A, dirty: true }),
+    sourceMismatch(dir, { commit: A, dirty: true, changes: F1 }),
     "was built before the checkout's uncommitted changes"
   );
   assert.equal(sourceMismatch(dir, null), null, 'installed: nothing to compare');
-  stamp({ commit: A, dirty: true });
+  stamp({ commit: A, dirty: true, changes: F1 });
   assert.equal(
-    sourceMismatch(dir, { commit: A, dirty: false }),
+    sourceMismatch(dir, { commit: A, dirty: false, changes: null }),
     'was built with uncommitted changes (the checkout has none now)'
   );
-  assert.equal(sourceMismatch(dir, { commit: A, dirty: true }), null);
+  assert.equal(
+    sourceMismatch(dir, { commit: A, dirty: true, changes: F1 }),
+    null,
+    'the same changes'
+  );
+  assert.equal(
+    sourceMismatch(dir, { commit: A, dirty: true, changes: F2 }),
+    "was built with other uncommitted changes than the checkout's"
+  );
+  assert.equal(
+    sourceMismatch(dir, { commit: B, dirty: true, changes: F1, sameFeeds: () => true }),
+    null,
+    'the same sources at both commits, the same changes'
+  );
   stamp({ commit: null, dirty: null });
   assert.equal(sourceMismatch(dir, { commit: B, dirty: true }), null, 'a release build');
 });
@@ -176,7 +244,7 @@ test("the dashboard data (GET /__pxsig/data) carries the served build's identity
   writeFileSync(
     join(dash, 'pxsig-build.json'),
     JSON.stringify({
-      adapter: join(dash, 'ui', 'index.ts'),
+      adapter: './ui/index.ts',
       adapterName: 'ui',
       pxsig: '0.7.7',
       commit: A,
@@ -192,6 +260,7 @@ test("the dashboard data (GET /__pxsig/data) carries the served build's identity
       pxsig: '0.7.7',
       commit: A,
       dirty: false,
+      changes: null,
       designSystem: null,
       adapter: 'ui',
       builtAt: '1970-01-01T00:00:00.000Z',
