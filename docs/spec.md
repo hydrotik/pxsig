@@ -591,3 +591,14 @@ changes" in the changelog (changelog.d/README.md).
 A change to what the gate decides (a new rule, or a changed default) changes no format: the record,
 the container and the manifest are read the same way. It is a behaviour change, listed under
 "Behaviour changes" with its "To update:" line, as the color rule was in 0.7.7.
+
+**Not a public format: what the engine and the CLI exchange.** The rows the engine hands the CLI
+(the `pxsig` binary's batch output and its serve protocol), and anything else the two pass each
+other, are an internal protocol between components that ship together in one release: the CLI and
+`@pxsig/cli-<platform>-<arch>` always carry the same version. A key can become required there
+without a new version of any format above; what holds the two together is the version check, not
+the rules of this section. An engine older than the CLI (a stale `PXSIG_BIN`, a platform package
+left behind) is the `engine-old` setup problem ([integrity.md](integrity.md#setup-problems)), and
+the CLI refuses a compared row an engine without the color rule wrote (no `color` key) instead of
+recording its verdict ([The color rule](#the-color-rule)). What the CLI writes from those rows
+(section 7) is the public format.
