@@ -15,7 +15,15 @@ const here = dirname(fileURLToPath(import.meta.url));
 /** @param {7 | 8} major */
 export const fixtureModules = (major) =>
   join(here, 'react-compiler', `babel${major}`, 'node_modules');
-/** Both fixture packages are installed (`pnpm install` at the repository root). */
+/**
+ * The command that installs both fixture packages (a workspace of their own, so the repository
+ * root's `pnpm install` does not): `pnpm bootstrap` runs it, and so does ci.yml's node job.
+ */
+export const FIXTURE_INSTALL =
+  'pnpm --dir packages/pxsig/test/react-compiler install --frozen-lockfile --ignore-scripts';
+/** The skip reason when they are missing, naming that command. */
+export const NO_COMPILER = `the React Compiler test fixtures are not installed (${FIXTURE_INSTALL})`;
+/** Both fixture packages are installed (`FIXTURE_INSTALL`). */
 export const hasCompiler = [7, 8].every((m) =>
   existsSync(
     join(fixtureModules(/** @type {7 | 8} */ (m)), 'babel-plugin-react-compiler', 'package.json')

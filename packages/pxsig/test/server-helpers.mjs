@@ -7,6 +7,7 @@ import { createServer } from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readToken } from '../src/lib/guard.mjs';
+import { errorCode } from '../src/lib/retry.mjs';
 import { hasRust, rustBin } from './fixture.mjs';
 import { startServer } from './server-proc.mjs';
 export { freePort } from './server-proc.mjs';
@@ -166,11 +167,24 @@ export async function serve(f, { storybook, bin = rustBin, args = [] } = {}) {
     // The server answers JSON (docs/server.md).
     return { status: r.status, body: /** @type {PostAnswer} */ (await r.json()) };
   };
+  // A status request that fails says why (the socket error, whether the server is still running)
+  // and what the server logged, not only undici's "fetch failed".
+  const unreachable = (/** @type {unknown} */ e) => {
+    const { proc } = server;
+    const state =
+      proc.exitCode === null && proc.signalCode === null
+        ? 'still running'
+        : `exited (${proc.exitCode ?? proc.signalCode})`;
+    throw new Error(
+      `GET /__pxsig/status failed (${errorCode(e) || String(e)}); the server is ${state}:\n${log()}`,
+      { cause: e }
+    );
+  };
   const idle = async () => {
     for (let i = 0; i < 600; i++) {
       // GET /__pxsig/status answers JSON (docs/server.md).
       const s = /** @type {{ running?: unknown, queued?: unknown, repairing?: unknown }} */ (
-        await (await fetch(`${base}/__pxsig/status`)).json()
+        await (await fetch(`${base}/__pxsig/status`).catch((e) => unreachable(e))).json()
       );
       if (!s.running && !s.queued && !s.repairing) return;
       await new Promise((r) => setTimeout(r, 100));

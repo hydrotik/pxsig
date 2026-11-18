@@ -12,6 +12,9 @@
   "pnpm": {
     "overrides": {
       "@joshwooding/vite-plugin-react-docgen-typescript>glob": "^14.0.3"
+    },
+    "patchedDependencies": {
+      "picomatch@4.0.7": "patches/picomatch@4.0.7.patch"
     }
   }
 }

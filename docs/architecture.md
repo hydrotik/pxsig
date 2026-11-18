@@ -41,13 +41,14 @@ entry points and hand-written declarations for the exports that need them; the d
 on the same `src/types.d.ts` shapes pxsig's own JSDoc uses. `dashboard/` and `docs/ui/` are copies
 of `packages/dashboard` and the repository's `docs/ui/`, made at pack time
 (`scripts/sync-dashboard-source.mjs`). `test/exports.test.mjs` resolves `pxsig/workspace`,
-`pxsig/psig` and `pxsig/dashboard` as a consumer would, and checks the TypeScript entries in the
+`pxsig/psig`, `pxsig/spawn` and `pxsig/dashboard` as a consumer would, and checks the TypeScript entries in the
 manifest.
 
 | Export                                                             | Runs                                                                                        | Types                                                        |
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | `pxsig/workspace`                                                  | `src/public/workspace.mjs`: re-exports the five resolver names from `src/lib/workspace.mjs` | `src/public/workspace.d.mts`                                 |
 | `pxsig/psig`                                                       | `src/lib/psig.mjs`: reads `.psig` baselines                                                 | `src/public/psig.d.mts`                                      |
+| `pxsig/spawn`                                                      | `src/public/spawn.mjs`: re-exports `spawnSync` from `src/lib/spawn.mjs`                     | `src/public/spawn.d.mts`                                     |
 | `pxsig/dashboard`                                                  | `src/public/dashboard.mjs`, which throws: the export is types only                          | `dashboard/src/ui/contract.ts` (the dashboard's UI contract) |
 | `pxsig/diff-viewer`                                                | `dashboard/src/diff-viewer/index.ts`, TypeScript source for a bundler                       | the same file                                                |
 | `pxsig/ui/catalog/hydrotik.json`, `….schema.json`, `….source.json` | JSON files under `docs/ui/catalog/`                                                         | none                                                         |

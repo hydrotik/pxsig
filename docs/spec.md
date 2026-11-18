@@ -552,3 +552,42 @@ code, gate or JUnit result. `at` is when the check that rendered the entry ran; 
 mount counts of the row this one replaced (absent on a first measurement), for "since the last
 check in this store": information, never compared. A dashboard check with `renders: true`
 (Measure renders, [server.md](server.md#writing)) counts renders also when `react.renders` is off.
+
+## 8. Versioning
+
+Each format carries its own version. `scripts/spec-versions.test.mjs` pins every number and list in
+this section to the code and to the sections above, so none of them changes without that test
+changing in the same commit.
+
+| Format                     | Where its version is                                                   | Version                                                                                |
+| -------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Signature record (spec v1) | `version` (section 1; `SPEC_VERSION`, `record.rs`)                     | 1                                                                                      |
+| `.psig` container          | bytes 4..6 and `container` (section 5; `CONTAINER_VERSION`, `psig.rs`) | 1                                                                                      |
+| Manifest                   | `version` (section 6)                                                  | 2                                                                                      |
+| Exit codes                 | the closed list in [Exit codes](#exit-codes)                           | 0, 1, 2, 3                                                                             |
+| Verdict states             | the closed list in [Verdicts](#verdicts)                               | `pass`, `drift`, `changed`, `flaky`, `new`, `error`, `approved`, `rejected`, `skipped` |
+
+**Additive, at the same version.** A change a reader of that version handles by the rules it
+already has:
+
+- a new optional key in a JSON object (the record, a `.psig` header, a manifest entry, a run output
+  row, a `v` 1 record such as `env`, `masks` or `textDiff`). Readers ignore keys they do not know,
+  and a `.psig` writer keeps them (section 5, reading rule 4 and the writing rules);
+- a new `.psig` section, which a reader skips by name (reading rule 4);
+- a new gate key in what the CLI sends the engine, which an engine that does not know it ignores
+  (the project config is not one of these formats: each release's CLI validates its own).
+
+Each one is documented where it is defined, with the release that added it ("0.7.7 and later").
+
+**A new version.** Anything a reader of the current version could misread: removing or renaming a
+key or section, changing a value's type, unit or meaning, making an optional key required, or a
+new value of a key a reader must understand (`encryption`, `channels`, `encoding`). A reader
+refuses a version it does not know (the record's `version`, reading rule 1).
+
+**Exit codes and verdict states** have no version number of their own: callers branch on them,
+so adding, removing or changing the meaning of one is a breaking change, listed under "Breaking
+changes" in the changelog (changelog.d/README.md).
+
+A change to what the gate decides (a new rule, or a changed default) changes no format: the record,
+the container and the manifest are read the same way. It is a behaviour change, listed under
+"Behaviour changes" with its "To update:" line, as the color rule was in 0.7.7.

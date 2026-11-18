@@ -16,15 +16,19 @@ import { fileURLToPath } from 'node:url';
 import { analyse } from '../src/lib/react/index.mjs';
 import { reactFindings } from '../src/lib/react/doctor.mjs';
 import { hasRust, testEnv, testHome } from './fixture.mjs';
-import { BASE, hasCompiler, projectAt, reactProject, write } from './react-helpers.mjs';
+import {
+  BASE,
+  hasCompiler,
+  NO_COMPILER,
+  projectAt,
+  reactProject,
+  write,
+} from './react-helpers.mjs';
 import { skipUnless } from './strict.mjs';
 
 /** @import { ReactRun } from '../src/types/react.js' */
 
-const skip = skipUnless(
-  hasRust && hasCompiler,
-  'the engine or the React Compiler test fixtures are missing'
-);
+const skip = skipUnless(hasRust, 'Rust binary not built') || skipUnless(hasCompiler, NO_COMPILER);
 const cli = fileURLToPath(new URL('../bin/pxsig.mjs', import.meta.url));
 
 /**

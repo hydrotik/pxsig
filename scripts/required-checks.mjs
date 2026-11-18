@@ -22,6 +22,7 @@ export const REQUIRED = [
   'Clean repository',
   ...OSES.map((os) => `Rust (${os})`),
   ...OSES.map((os) => `Node (${os})`),
+  ...OSES.map((os) => `Dashboard (${os})`),
   ...OSES.map((os) => `Examples (end to end) (${os})`),
   'Older pxsig on this store',
 ];

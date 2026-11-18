@@ -84,7 +84,7 @@ export function summaryMarkdown(report) {
       '',
       '### Retried',
       '',
-      'The page load failed with a Windows socket error (ERR_NO_BUFFER_SPACE) and was retried once.',
+      'The page load, or a request the page made, failed with a Windows socket error (ERR_NO_BUFFER_SPACE), and the screen was taken again once.',
       '',
       ...retried.map((x) => `- \`${x.feature}\` #${x.index + 1} (${x.theme})`)
     );
