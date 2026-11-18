@@ -31,6 +31,7 @@ import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scenarioServer } from '../packages/pxsig/src/dashboard-check/server.mjs';
+import { sampleSignatures } from '../packages/pxsig/src/dashboard-check/signatures.mjs';
 import { FIRST_CHANGE, LABEL, showcaseData } from './lib/showcase-data.mjs';
 
 const repo = fileURLToPath(new URL('..', import.meta.url));
@@ -58,6 +59,10 @@ const VIEW = { width: 1560, height: 1000 };
 const browser = await chromium.launch();
 try {
   const images = await sampleImages();
+  // The signatures and heatmap the engine writes for this change (square, as in a real store).
+  const sigs = sampleSignatures(images);
+  if (!sigs)
+    log('no pxsig engine: the diff stands in for the signature images (cargo build --release)');
   const server = await scenarioServer({
     dir: dist,
     scenario: 'showcase',
@@ -65,7 +70,7 @@ try {
     fixtures: /** @type {import('../packages/pxsig/src/types/t4.js').DashboardFixtures} */ (
       /** @type {unknown} */ (fixtures(images.pixels))
     ),
-    images,
+    images: { ...images, sigs },
     posts: [],
   });
   const url = `${server.base}/report/`;

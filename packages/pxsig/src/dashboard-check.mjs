@@ -46,6 +46,7 @@ import { compareScreens, readEarlier } from './dashboard-check/compare.mjs';
 import { rustBinary } from './lib/workspace/peers.mjs';
 import { galleryHtml, summaryMarkdown } from './dashboard-check/gallery.mjs';
 import { sampleImages, scenarioServer } from './dashboard-check/server.mjs';
+import { sampleSignatures } from './dashboard-check/signatures.mjs';
 import { checkTopBar, TOP_BAR_SCENARIOS } from './dashboard-check/top-bar.mjs';
 
 export { FIXED_TIME, VIEWPORT } from './dashboard-check/capture.mjs';
@@ -259,7 +260,9 @@ export async function dashboardCheck(
     }
   }
   const axe = axeScript({ root: cwd, workspaceRoot: cwd });
-  const images = sampleImages();
+  const sample = sampleImages();
+  // The engine's signatures of the sample, as a check writes them (null without the engine).
+  const images = { ...sample, sigs: sampleSignatures(sample) };
   /** @type {CheckPost[]} */
   const posts = [];
   /** @type {Map<string, Promise<ScenarioServer>>} */
