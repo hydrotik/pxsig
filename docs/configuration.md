@@ -307,7 +307,12 @@ an 8-character digest and shown as "a system fallback font". When the render dre
 baseline's did not, or not one it did, the row is a `mismatch` with `fonts.used` in `envDiff` and
 the faces in `envFontsUsed` (`fonts.used: +Arial, −a system fallback font`); its text is not
 compared (`textDiff.state` `env-differs`), and `--strict-env` fails the run after rendering (exit
-2): a font swap is known only once rendered. Glyph counts are not compared. A baseline without
+2): a font swap is known only once rendered. One exception, narrowly: when the row's text record
+shows a copy change (`textDiff.counts.copy` or `added`) and the only difference is system fallbacks
+added (no face removed, no named face added), the new text brought them (a character the page's
+fonts lack): the row stays a copy change in its environment, `envFontsUsed` carries `newText: true`,
+the `env` line notes `+ a system fallback font for new text` as information, and `--strict-env`
+does not fail it. Glyph counts are not compared. A baseline without
 `fonts` (written before pxsig recorded them), and a Firefox or WebKit render (not recorded),
 compare as unknown and say nothing; the next approval records them. `env.ignore: ["fonts.used"]`
 leaves it out.

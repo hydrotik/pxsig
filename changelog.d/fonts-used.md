@@ -10,7 +10,11 @@
   (`envFontsUsed`, `envLine`) name them, e.g. `fonts.used: +Arial, −a system fallback font`. The
   row's text is not compared (`textDiff.state` `env-differs`), so a swap is never labelled a copy
   change, and `--strict-env` fails the run after rendering (exit 2). Before, such a render read as
-  a pixel change in the same environment. Firefox and WebKit renders record no fonts. `env.ignore:
+  a pixel change in the same environment. One exception: when the text record shows a copy change
+  and the only difference is system fallbacks added (new text in a character the page's fonts
+  lack), the row stays a copy change, the `env` line notes `+ a system fallback font for new text`,
+  and `--strict-env` does not fail it; a face removed, or a named face added, is still a swap.
+  Firefox and WebKit renders record no fonts. `env.ignore:
   ["fonts.used"]` leaves the comparison out.
   To update: nothing to change; baselines record fonts on their next approval, and until then they
   compare as unknown and nothing is said.

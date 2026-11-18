@@ -44,6 +44,10 @@ export function annotateFonts(row, { render, baseline }) {
   if (!row || row.skipped) return row;
   const diff = compareFonts(baseline, render);
   if (!diff) return row;
+  // New text in a character the page's fonts lack draws in a system fallback: when the text record
+  // shows a copy change (or added text) and the only difference is fallbacks added, the copy change
+  // wins and the fallback is information. A face removed, or a named face added, is a swap.
+  if (newTextFallback(row, diff)) return { ...row, envFontsUsed: { ...diff, newText: true } };
   return {
     ...row,
     envMatch: 'mismatch',
@@ -54,6 +58,20 @@ export function annotateFonts(row, { render, baseline }) {
       : {}),
   };
 }
+
+/**
+ * Is this difference only system fallbacks added, on a row whose text gained copy?
+ * @param {CheckRow} row
+ * @param {FontsUsedDiff} diff
+ */
+function newTextFallback(row, diff) {
+  const t = row.textDiff;
+  const copy = t?.state === 'compared' && ((t.counts?.copy ?? 0) > 0 || (t.counts?.added ?? 0) > 0);
+  return copy && !diff.removed.length && diff.added.every((f) => f.family == null);
+}
+
+/** The note on such a row (the env line, `pxsig entry`, MCP): information, not a mismatch. */
+export const NEW_TEXT_FALLBACK = '+ a system fallback font for new text';
 
 /**
  * A face as a person reads it: its family, or "a system fallback font" (no name is kept).

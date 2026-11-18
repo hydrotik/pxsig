@@ -101,6 +101,72 @@ test('comparing: other faces are a mismatch (fonts.used); same faces, or an unkn
   assert.equal(ignored.envMatch, 'same', 'env.ignore leaves it out');
 });
 
+test('new text in a system fallback: the copy change wins, narrowly', () => {
+  /** @type {UsedFonts} */
+  const base = { v: 1, used: [{ family: 'Inter', glyphs: 9, web: true }], elements: 1 };
+  const fallback = { digest: '0a1b2c3d', glyphs: 1, web: false };
+  const env = /** @type {any} */ ({ id: 'e1', v: 1 });
+  const opts = { current: { chromium: env }, envs: { e1: env } };
+  const counts = { runs: 1, copy: 0, moved: 0, rewrapped: 0, restyled: 0, added: 0, removed: 0 };
+  /** @param {Partial<typeof counts>} c @returns {CheckRow} */
+  const row = (c) => ({
+    id: 'a--b',
+    baselineEnv: 'e1',
+    textDiff: /** @type {any} */ ({
+      v: 1,
+      state: 'compared',
+      kind: c.copy || c.added ? 'copy' : null,
+      kinds: c.copy ? ['copy'] : [],
+      counts: { ...counts, ...c },
+      changes: [],
+      changeCount: 0,
+    }),
+  });
+  const render = (/** @type {object[]} */ ...extra) =>
+    /** @type {UsedFonts} */ ({ ...base, used: [...base.used, ...extra] });
+  // A copy change and a fallback added: still a copy change, the fallback a note.
+  const copy = annotateRow(row({ copy: 1 }), {
+    ...opts,
+    fonts: { render: render(fallback), baseline: base },
+  });
+  assert.equal(copy.envMatch, 'same');
+  assert.equal(copy.envDiff, undefined);
+  assert.equal(copy.textDiff?.state, 'compared');
+  assert.deepEqual(copy.envFontsUsed, {
+    added: [{ digest: '0a1b2c3d', web: false }],
+    removed: [],
+    newText: true,
+  });
+  // Added text (a new run) counts as new text too.
+  assert.equal(
+    annotateRow(row({ added: 1 }), { ...opts, fonts: { render: render(fallback), baseline: base } })
+      .envMatch,
+    'same'
+  );
+  // The same fallback with no copy change: a swap.
+  const none = annotateRow(row({}), {
+    ...opts,
+    fonts: { render: render(fallback), baseline: base },
+  });
+  assert.equal(none.envMatch, 'mismatch');
+  assert.deepEqual(none.envDiff, ['fonts.used']);
+  assert.equal(none.envFontsUsed?.newText, undefined);
+  // A copy change and a face removed: a swap.
+  const removed = annotateRow(row({ copy: 1 }), {
+    ...opts,
+    fonts: { render: { ...base, used: [fallback] }, baseline: base },
+  });
+  assert.equal(removed.envMatch, 'mismatch');
+  assert.equal(removed.textDiff?.state, 'env-differs');
+  // A copy change and a named face added: a swap.
+  const named = annotateRow(row({ copy: 1 }), {
+    ...opts,
+    fonts: { render: render({ family: 'Arial', glyphs: 1, web: false }), baseline: base },
+  });
+  assert.equal(named.envMatch, 'mismatch');
+  assert.deepEqual(named.envFontsUsed?.added, [{ family: 'Arial', web: false }]);
+});
+
 test('Firefox and WebKit record no fonts, and an older record is removed', async (t) => {
   const png = join(tempDir('fonts-engine', t), 'a--b.png');
   writeFileSync(fontsFile(png), '{"v":1,"used":[],"elements":0}');
@@ -275,6 +341,20 @@ test(
         strict.out,
         /1 renders drew their text in other fonts than their baselines; --strict-env fails the run \(exit 2\)/
       );
+      // Back on the baseline's face, with new text in a character the test font lacks (→): the OS
+      // draws it in a fallback. The copy change wins: no mismatch, a note, --strict-env passes it.
+      html.face = undefined;
+      html.body = '<p style="margin:0">Card 12 · of 9 →</p>';
+      r = await check(['--strict-env']);
+      assert.notEqual(r.status, 2, r.out);
+      assert.equal(row().envMatch, 'same', r.out);
+      assert.equal(row().envFontsUsed?.newText, true, JSON.stringify(row().envFontsUsed));
+      assert.equal(row().textDiff?.state, 'compared');
+      assert.match(
+        r.out,
+        /1 of 1 entries drew new text in a system fallback font \(\+ a system fallback font for new text\)/
+      );
+      assert.doesNotMatch(r.out, /fonts\.used/);
       // A baseline written before fonts were recorded: unknown, silently.
       rmSync(join(P.store.latest, `${id}.fonts.json`));
       baseline();

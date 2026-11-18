@@ -28,4 +28,6 @@ export interface UsedFonts {
 export interface FontsUsedDiff {
   added: UsedFace[];
   removed: UsedFace[];
+  /** Only system fallbacks added, for text the row's copy change brought: information, no mismatch. */
+  newText?: true;
 }
