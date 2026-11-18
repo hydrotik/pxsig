@@ -124,16 +124,11 @@ async function applied({ f, P, id, p }) {
     await S.stop();
   }
   assert.equal(r.status, 0, `${out(r)}\n${S.log()}`);
-  // The server's lock goes when its process ends; it can go between a check and a read, so read it
-  // once (null when it is gone).
+  // The server's lock goes when its process ends: removed, or left behind and stale (its token is
+  // no longer held, even when Windows has already given its pid to another process).
   for (let i = 0; i < 100; i++) {
-    const pid = readLock(P)?.pid;
-    if (!pid) break;
-    try {
-      process.kill(pid, 0);
-    } catch {
-      break;
-    }
+    const held = readLock(P);
+    if (!held || held.stale) break;
     await new Promise((ok) => setTimeout(ok, 50));
   }
   const line = readLog(P).find((l) => l.id === id);

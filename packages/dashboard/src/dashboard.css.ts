@@ -23,7 +23,6 @@ export {
   mono,
   micro,
   lede,
-  h2,
 } from './styles/base.css';
 export {
   cards,
@@ -36,7 +35,6 @@ export {
   groupBand,
   groupHead,
   thumb,
-  thumbMask,
   cardBody,
   cardId,
   cardStats,

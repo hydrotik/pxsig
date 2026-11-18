@@ -21,13 +21,12 @@ export function themeMode(theme) {
 }
 
 /**
- * Text and border colours for the panel, with neutral fallbacks for a theme that lacks them.
+ * Text, border and background colours for the panel, with neutral fallbacks for a theme that lacks them.
  * @param {PanelTheme | null | undefined} theme
  */
 export function panelColors(theme) {
   return {
     text: theme?.color?.defaultText ?? theme?.textColor ?? 'inherit',
-    muted: theme?.barTextColor ?? theme?.textMutedColor ?? 'inherit',
     border: theme?.appBorderColor ?? 'rgba(128,128,128,.4)',
     background: theme?.background?.content ?? theme?.appContentBg ?? 'transparent',
   };

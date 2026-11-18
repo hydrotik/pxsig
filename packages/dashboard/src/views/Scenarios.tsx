@@ -114,6 +114,7 @@ export function Scenarios({
         className={s.scenarioLayout}
         style={{ gridTemplateColumns: 'minmax(min(100%, 18rem), 22rem) minmax(0, 1fr)' }}
       >
+        {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a list of toggle buttons laid out as a column; a fieldset's own box and legend would change the screen */}
         <div className={s.scenarioList} role="group" aria-label={t('diagnostics.scenario.list')}>
           {rep.scenarios.map((x) => {
             const ratio =

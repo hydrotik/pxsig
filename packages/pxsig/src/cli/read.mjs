@@ -375,6 +375,15 @@ export function readCommands(cli) {
                 : 'clean',
             ],
             ['Review', e.review?.state ?? 'none'],
+            // Only when the environments differ: what differs (fonts.used names the faces).
+            ...(e.envLine
+              ? [
+                  /** @type {[string, { text: string, color: string }]} */ ([
+                    'Environment',
+                    { text: e.envLine, color: 'yellow' },
+                  ]),
+                ]
+              : []),
             ['Checked', e.checkedAt ?? '—'],
             ['Dashboard', { text: inspectUrl(id), url: inspectUrl(id) }],
           ],

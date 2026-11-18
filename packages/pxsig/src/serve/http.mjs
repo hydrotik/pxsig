@@ -4,6 +4,7 @@
  */
 import { createReadStream, statSync } from 'node:fs';
 import { extname, sep } from 'node:path';
+import { compressible, encodeBody, encodeFile, varyEncoding } from '../lib/encode.mjs';
 /** @import { IncomingMessage, ServerResponse } from 'node:http' */
 /** @import { HttpError, RequestBody } from '../types/t5.js' */
 
@@ -48,12 +49,15 @@ export const cors = (allowedOrigins, req, res) => {
  * @param {unknown} body
  */
 export const json = (res, status, body) => {
+  const text = JSON.stringify(body);
+  // gzipped when the request takes it (lib/encode.mjs); never kept.
+  const gz = encodeBody(res.req, res, text, TYPES['.json']);
   res.writeHead(status, {
     'content-type': TYPES['.json'],
     'cache-control': 'no-store',
     'x-content-type-options': 'nosniff',
   });
-  res.end(JSON.stringify(body));
+  res.end(gz ?? text);
 };
 /**
  * The request's JSON body (`{}` when empty); a body that does not parse rejects with status 400.
@@ -78,21 +82,56 @@ export const readBody = (req) =>
     });
   });
 /**
+ * A file, revalidated on every use (`no-cache`): a request whose If-None-Match names its ETag, or
+ * (without one) whose If-Modified-Since is not older than it, gets 304 and no body, with the same
+ * headers a 200 has bar the length. The ETag is weak: its size and modification time, no hashing.
  * @param {IncomingMessage} req
  * @param {ServerResponse} res
  * @param {string} file
  */
 export const sendFile = (req, res, file) => {
   const st = statSync(file);
-  res.writeHead(200, {
-    'content-type': TYPES[extname(file)] ?? 'application/octet-stream',
-    'content-length': st.size,
+  const type = TYPES[extname(file)];
+  const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}"`;
+  const headers = {
     'cache-control': 'no-cache',
+    etag,
     'last-modified': st.mtime.toUTCString(),
     'x-content-type-options': 'nosniff',
+  };
+  if (notModified(req, etag, st.mtime)) {
+    // A 304 says the same Vary its 200 would.
+    if (compressible(type)) varyEncoding(res);
+    res.writeHead(304, headers);
+    return res.end();
+  }
+  // gzipped when the request takes it, kept per path and mtime (lib/encode.mjs).
+  const gz = encodeFile(req, res, file, st, type);
+  res.writeHead(200, {
+    'content-type': type ?? 'application/octet-stream',
+    'content-length': gz ? gz.length : st.size,
+    ...headers,
   });
   if (req.method === 'HEAD') return res.end();
+  if (gz) return res.end(gz);
   createReadStream(file).pipe(res);
+};
+/**
+ * Whether a GET or HEAD's validators match the file (RFC 9110 §13.1: If-None-Match, when sent,
+ * decides alone; If-Modified-Since is compared in whole seconds, as Last-Modified is written).
+ * @param {IncomingMessage} req
+ * @param {string} etag
+ * @param {Date} mtime
+ */
+export const notModified = (req, etag, mtime) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return false;
+  const inm = req.headers['if-none-match'];
+  if (inm != null) {
+    const bare = (/** @type {string} */ t) => t.trim().replace(/^W\//, '');
+    return inm.trim() === '*' || inm.split(',').some((t) => bare(t) === bare(etag));
+  }
+  const ims = Date.parse(req.headers['if-modified-since'] ?? '');
+  return Number.isFinite(ims) && Math.floor(mtime.getTime() / 1000) * 1000 <= ims;
 };
 /**
  * @param {string} root

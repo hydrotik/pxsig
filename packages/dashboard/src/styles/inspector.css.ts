@@ -1,7 +1,7 @@
 /** The inspector: its dialog, stage, side panel, help and the Storybook panel embed. */
 import { globalStyle, style } from '@vanilla-extract/css';
 import { tokens as v } from '../ui/tokens';
-import { checker } from './base.css';
+import { checker, insetFocusOutline, twoToneFocus } from './base.css';
 
 // --- inspector ---------------------------------------------------------------
 export const inspector = style({
@@ -192,12 +192,8 @@ export const helpRow = style({
   paddingInline: v.space['2'],
   borderRadius: v.radius.md,
   fontSize: v.fontSize.sm,
-  outline: 'none',
   selectors: {
     '&[data-active]': { backgroundColor: `color-mix(in srgb, ${v.color.accent} 10%, transparent)` },
-    '&:focus-visible': {
-      boxShadow: `0 0 0 ${v.line.emphasis} color-mix(in srgb, ${v.color.focus} 50%, transparent)`,
-    },
   },
 });
 globalStyle(`${helpRow} dt`, { color: v.color.textMuted });
@@ -224,6 +220,8 @@ export const insStageWrap = style({
   flexDirection: 'column',
 });
 export const insStage = style({
+  // The containing block of the focus line below.
+  position: 'relative',
   flex: 1,
   minBlockSize: 0,
   display: 'grid',
@@ -237,7 +235,16 @@ export const insStage = style({
   outline: 'none',
   selectors: {
     '&[data-grabbing]': { cursor: 'grabbing' },
-    '&:focus-visible': { boxShadow: `inset 0 0 0 2px ${v.color.focus}` },
+    // The viewports (positioned) cover the whole stage and paint over anything the stage draws
+    // itself, its box-shadow or its own outline: the focus lines are a layer above them.
+    '&:focus-visible::after': {
+      content: '""',
+      position: 'absolute',
+      inset: 0,
+      zIndex: 1,
+      pointerEvents: 'none',
+      ...twoToneFocus,
+    },
   },
 });
 export const vp = style({
@@ -308,6 +315,9 @@ export const swipeHandle = style({
     inlineSize: '2px',
     backgroundColor: v.color.accent,
   },
+  // Over the images, like the stage's: the text-coloured and background lines (base.css.ts
+  // twoToneFocus), in place of the browser's default ring.
+  selectors: { '&:focus-visible': twoToneFocus },
 });
 export const insHelp = style({
   display: 'flex',
@@ -410,9 +420,7 @@ export const region = style({
       borderColor: v.color.accent,
       backgroundColor: `color-mix(in srgb, ${v.color.accent} 10%, transparent)`,
     },
-    '&:focus-visible': {
-      boxShadow: `0 0 0 3px color-mix(in srgb, ${v.color.focus} 50%, transparent)`,
-    },
+    '&:focus-visible': insetFocusOutline,
   },
 });
 // Columns of whole pixels, so the square images are whole pixels tall: a third of the side's width

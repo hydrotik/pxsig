@@ -22,6 +22,7 @@
  */
 import { FIXED_TIME } from '../../packages/pxsig/src/dashboard-check/capture.mjs';
 import { fixGateReport } from './gate-report.mjs';
+import { serverFetch } from './server.mjs';
 
 /** @import { ScrubRule } from './types.js' */
 
@@ -241,33 +242,46 @@ function leftovers(v, at, done, route, problems) {
 
 /**
  * Route the scrubbed answers of `context` through `sc`, collecting its problems. A request that
- * gets no answer (the server reset it: ECONNRESET) is aborted, so the page sees it fail as it
+ * gets no answer (the server dropped it) is aborted, so the page sees it fail as it
  * would, and passed to `failed`: never an answer the scrub let through, never an unhandled
  * rejection that ends the run as "screens to review" (scripts/lib/crash.mjs).
  * @param {Awaited<ReturnType<typeof import('../../packages/pxsig/src/dashboard-check/capture.mjs').screenContext>>} context
  * @param {ReturnType<typeof scrubber>} sc
  * @param {string[]} problems
  * @param {(m: string) => void} failed
+ * @param {typeof serverFetch} [fetchFrom] how an answer is fetched (tests stand one in)
  */
-export async function scrubRoutes(context, sc, problems, failed) {
+export async function scrubRoutes(context, sc, problems, failed, fetchFrom = serverFetch) {
   await context.route(
     (u) => routeOf(u.href) != null,
     async (route) => {
       const req = route.request();
       const at = `${req.method()} /__pxsig/${routeOf(req.url())}`;
       try {
-        const res = await route.fetch();
+        // On a connection of its own (server.mjs `serverFetch`), as the harness's own requests:
+        // Playwright's route.fetch keeps sockets alive in this process, whose event loop stalls.
+        const { 'accept-encoding': _e, ...headers } = req.headers();
+        const res = await fetchFrom(req.url(), { method: req.method(), headers });
+        const text = await res.text();
+        const {
+          'content-length': _l,
+          'transfer-encoding': _t,
+          ...kept
+        } = Object.fromEntries(res.headers);
+        const answer = { status: res.status, headers: kept };
         /** @type {unknown} */
         let body;
         try {
-          body = await res.json();
+          body = JSON.parse(text);
         } catch {
-          return await route.fulfill({ response: res });
+          return await route.fulfill({ ...answer, body: text });
         }
         problems.push(...sc.scrub(/** @type {string} */ (routeOf(req.url())), body));
-        await route.fulfill({ response: res, json: body });
+        await route.fulfill({ ...answer, json: body });
       } catch (e) {
-        failed(`${at}: ${String(/** @type {Error} */ (e).message ?? e).split('\n')[0]}`);
+        const err = /** @type {Error & { cause?: Error }} */ (e);
+        const why = [err.message ?? e, err.cause?.message].filter(Boolean).join(': ');
+        failed(`${at}: ${String(why).split('\n')[0]}`);
         await route.abort('failed').catch(() => {});
       }
     }

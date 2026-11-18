@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
-import { buildDirFor, chooseDashboard, STAMP } from '../src/lib/dashboard-dir.mjs';
+import { buildDirFor, chooseDashboard, shellWord, STAMP } from '../src/lib/dashboard-dir.mjs';
 import { fixture, hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 import { startServer } from './server-proc.mjs';
 import { skipUnless } from './strict.mjs';
@@ -149,12 +149,55 @@ test('a build from another pxsig version is stale', () => {
   );
 });
 
-test('a build without a stamp is judged by its index.html', () => {
+test('a build that records no pxsig version is stale', () => {
   const p = project('a', './pxsig-ui');
   touch(join(p.dir, 'pxsig-ui', 'index.tsx'), Date.now() - 60_000);
   touch(join(p.dir, 'pxsig-ui'), Date.now() - 60_000);
-  const out = built(p, { stamp: false });
-  assert.equal(choose([p]).dir, out);
+  built(p, { stamp: false });
+  const r = choose([p]);
+  assert.equal(r.dir, prebuilt);
+  assert.equal(
+    r.note,
+    `dashboard: the build for dashboard.ui (./pxsig-ui) in ${join('a', 'pxsig.config.json')} records no pxsig version (this is 9.9.9): run \`pxsig dashboard build\` in a. Serving the prebuilt dashboard.`
+  );
+});
+
+/**
+ * A folder with a built dashboard in it, recording `pxsig` in `file` (or nothing).
+ * @param {string} name
+ * @param {{ file?: string, pxsig?: string }} [o]
+ */
+function envBuild(name, { file = STAMP, pxsig } = {}) {
+  const dir = join(root, name);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'index.html'), '<!doctype html>');
+  writeFileSync(join(dir, file), JSON.stringify(pxsig ? { pxsig } : { adapter: 'x' }));
+  return dir;
+}
+
+test('PXSIG_DASHBOARD_DIR: a build for this version, by its stamp or its BUILD.json, is served', () => {
+  for (const file of [STAMP, 'BUILD.json']) {
+    const dir = envBuild(`mine-${file}`, { file, pxsig: VERSION });
+    const r = choose([project('a')], { PXSIG_DASHBOARD_DIR: dir });
+    assert.deepEqual([r.source, r.dir], ['env', dir], file);
+  }
+});
+
+test('PXSIG_DASHBOARD_DIR: another version, or none, serves the prebuilt one and says what to run', () => {
+  const old = envBuild('old', { file: 'BUILD.json', pxsig: '0.0.1' });
+  const r = choose([project('a')], { PXSIG_DASHBOARD_DIR: old });
+  assert.deepEqual([r.source, r.dir], ['prebuilt', prebuilt]);
+  assert.equal(
+    r.note,
+    `dashboard: the build in ${old} (PXSIG_DASHBOARD_DIR) is from pxsig 0.0.1 (this is 9.9.9): run \`pxsig dashboard build --out ${shellWord(old)}\`. Serving the prebuilt dashboard.`
+  );
+  const none = envBuild('my build');
+  const n = choose([project('a')], { PXSIG_DASHBOARD_DIR: none });
+  assert.equal(n.dir, prebuilt);
+  assert.equal(
+    n.note,
+    `dashboard: the build in ${none} (PXSIG_DASHBOARD_DIR) records no pxsig version (this is 9.9.9): run \`pxsig dashboard build --out ${shellWord(none)}\`. Serving the prebuilt dashboard.`
+  );
 });
 
 test('projects naming different adapters: the prebuilt dashboard and why', () => {
@@ -195,11 +238,13 @@ const PXSIG = JSON.parse(readFileSync(new URL('../package.json', import.meta.url
 /**
  * @param {string} repo
  * @param {(io: { log: string, get: (p: string) => Promise<Response> }) => Promise<void>} run
+ * @param {NodeJS.ProcessEnv} [extra] more of the server's environment
  */
-async function serving(repo, run) {
+async function serving(repo, run, extra = {}) {
   /** @type {NodeJS.ProcessEnv} */
   const env = { ...testEnv(testHome), PXSIG_BIN: rustBin, PXSIG_WORKSPACE: '' };
   delete env.PXSIG_DASHBOARD_DIR;
+  Object.assign(env, extra);
   const S = await startServer({ cwd: repo, env });
   const { port } = S;
   try {
@@ -256,5 +301,30 @@ test(
       assert.match(log, /\[serve\] dashboard: built with the UI adapter \.\/pxsig-ui/);
       assert.match(await (await get('/report/')).text(), /<title>rebuilt<\/title>/);
     });
+  }
+);
+
+test(
+  'serve: a PXSIG_DASHBOARD_DIR build from another pxsig version is not served; the line says what to run',
+  { skip: skipUnless(hasRust, 'Rust binary not built') },
+  async () => {
+    const f = fixture();
+    const dash = join(f.repo, 'old-dash');
+    mkdirSync(dash);
+    writeFileSync(join(dash, 'index.html'), '<!doctype html><title>old build</title>');
+    writeFileSync(join(dash, STAMP), JSON.stringify({ pxsig: '0.0.1', builtAt: Date.now() }));
+    await serving(
+      f.repo,
+      async ({ log, get }) => {
+        assert.ok(
+          log.includes(
+            `[serve] dashboard: the build in old-dash (PXSIG_DASHBOARD_DIR) is from pxsig 0.0.1 (this is ${PXSIG}): run \`pxsig dashboard build --out old-dash\`. Serving the prebuilt dashboard.`
+          ),
+          log
+        );
+        assert.doesNotMatch(await (await get('/report/')).text(), /<title>old build<\/title>/);
+      },
+      { PXSIG_DASHBOARD_DIR: 'old-dash' }
+    );
   }
 );

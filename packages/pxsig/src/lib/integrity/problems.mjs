@@ -8,6 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { iso } from './context.mjs';
 import { driftProblems } from '../drift.mjs';
+import { dashboardProblems } from './dashboard.mjs';
 /** @import { EnvSummary, Project, StoryIndex, TornLine } from '../../types.js' */
 /** @import { IntegrityReport, IntegrityRow, LedgerSetup } from '../../types/t3.js' */
 /** @import { IntegrityContext } from './context.mjs' */
@@ -79,7 +80,7 @@ export function envProblems(report, ctx) {
       code: 'env-mismatch',
       severity,
       count: n,
-      reason: `${n} entries were rendered in a different environment than their baseline${fields}: a change there can be the machine, not the code. Render where the baselines were made (the pinned container), or re-take them there (\`pxsig check --full --update --kind environment\`); \`--strict-env\` refuses such a run instead`,
+      reason: `${n} entries were rendered in a different environment than their baseline${fields}: a change there can be the machine, not the code. Render where the baselines were made (the pinned container), or re-take them there (\`pxsig check --full --update --kind environment\`); \`--strict-env\` refuses such a run instead (a font swap, \`fonts.used\`, once rendered)`,
     },
   ];
 }
@@ -342,5 +343,7 @@ export function setupProblems(index, ctx, entries = 1) {
       severity: ctx.integrity?.severity?.['project-empty'] ?? 'warn',
       reason: `project "${ctx.project?.name ?? ctx.config.name}" has no stories: none in its story index under ${ctx.srcRoot || '.'}, none in its manifest. A package registered as a project that is not one (a dashboard adapter, a package without stories) has none: an adapter belongs to a project's dashboard.ui, not to pxsig.workspace.json's projects (docs/ui/build-adapter.md). For a project whose stories are elsewhere, srcRoot names their folder`,
     });
+  // A dashboard build serve would pass over (another pxsig version): its own module, dashboard.mjs.
+  if (ctx) out.push(...dashboardProblems(ctx));
   return out;
 }

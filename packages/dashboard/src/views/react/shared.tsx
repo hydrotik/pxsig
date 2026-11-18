@@ -34,7 +34,8 @@ export const PartChoice = ({
   />
 );
 
-const when = (iso: string) => new Date(iso).toLocaleString();
+/** A report's time, in the viewer's locale. */
+export const when = (iso: string) => new Date(iso).toLocaleString();
 
 /** "From the check at … · base main (4883bcd)": where the results come from and what they compare with. */
 export function fromLabel(r: ReactReport, source: ReactData['source']) {

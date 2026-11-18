@@ -89,7 +89,9 @@ the workspace, else `~/…` under the home folder.
 A project can rebuild the dashboard on its own design system (`dashboard.ui`, `pxsig dashboard
 build`: [ui/build-adapter.md](ui/build-adapter.md)). The server then serves that build while it is
 current (newer than the adapter's files, same pxsig version); otherwise it serves the prebuilt one
-and prints the command that rebuilds it. `PXSIG_DASHBOARD_DIR` names a dashboard folder outright.
+and prints the command that rebuilds it. `PXSIG_DASHBOARD_DIR` names a dashboard folder outright;
+a build there from another pxsig version (or one that records none) is not served either: the
+prebuilt one is, with the `pxsig dashboard build --out` command.
 
 ## HTTP API
 
@@ -227,6 +229,13 @@ clears the mark. `summary.changed` counts only real changes waiting for a decisi
 - **Page headers.** Dashboard pages carry a `Content-Security-Policy` (scripts, data and fonts
   from the server only, `object-src 'none'`, `frame-ancestors` as above) and every response
   `X-Content-Type-Options: nosniff`.
+- **Compression.** The dashboard's own files (its script, styles and page) and the JSON answers
+  of 1 KiB or more are sent gzipped when the request's `Accept-Encoding` allows it, with
+  `Vary: Accept-Encoding`. A project's store files (`/p/<project>/…`: renders, diffs, their pages,
+  baseline headers, rejection packets) are always sent as they are, so their Content-Length is the
+  file's size (the inspector shows it), and images, fonts and the event stream are never
+  compressed. A file's gzipped bytes are kept by path and modification time (32 MiB at most); JSON
+  answers are compressed per request and never kept. The `dashboard check` server does the same.
 - **What this is not.** The link and the tokens are a guard, not authentication: a process running
   as you can read the token file. They stop an agent or a script from approving by posting to the
   server or reading the page, and a web page from posting to it at all; who approved what is in the

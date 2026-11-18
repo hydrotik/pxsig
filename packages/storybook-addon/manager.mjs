@@ -32,6 +32,7 @@ import {
 import { AddonPanel } from 'storybook/internal/components';
 import { useTheme } from 'storybook/theming';
 import { buttonStyle, dashboardUrl, panelColors, themeMode } from './panel-style.mjs';
+import { coalesce, createStore, postCheck, sameList } from './panel-store.mjs';
 import { acceptsServer, DEFAULT_SERVER } from './server-pick.mjs';
 import {
   headerText,
@@ -105,24 +106,27 @@ const codesText = (/** @type {Record<string, number> | undefined} */ codes) =>
     .map(([c, n]) => `${n} ${c}`)
     .join(', ');
 
-// One shared connection: the panel subscribes to the same events the status updater uses.
-const bus = new EventTarget();
+// One shared connection: the panel reads the same store the status updater writes (panel-store.mjs:
+// an update that changes nothing re-renders nothing).
 /** @type {PanelState} */
-let state = { up: false, running: false, stories: {}, integrity: {}, integritySummary: null };
-const emit = () => bus.dispatchEvent(new Event('change'));
+const initial = { up: false, running: false, stories: {}, integrity: {}, integritySummary: null };
+const store = createStore(initial);
 
 addons.register(ADDON, () => {
+  /** The status list last given to the status store (its JSON). */
+  /** @type {string | null} */
+  let shown = null;
   const refresh = async () => {
     try {
       const s = await status();
-      state = {
-        ...state,
+      store.update({
         up: true,
         running: s.running,
         stories: s.stories,
         integrity: s.integrity ?? {},
         integritySummary: s.integritySummary ?? null,
-      };
+      });
+      const state = store.get();
       /** @type {Record<string, { status: StatusLevel, title: string, description: string }>} */
       const update = {};
       for (const [id, st] of Object.entries(s.stories)) {
@@ -143,42 +147,42 @@ addons.register(ADDON, () => {
           description: `${codesText(ig.codes)}${update[id] ? `\n${update[id].description}` : ''}`,
         };
       }
+      /** @type {Parameters<typeof statusStore.set>[0]} */
+      const list = Object.entries(update).map(([storyId, u]) => ({
+        storyId,
+        typeId: ADDON,
+        value: /** @type {const} */ (`status-value:${u.status}`),
+        title: u.title,
+        description: u.description,
+      }));
+      const { same, key } = sameList(list, shown);
+      if (same) return;
+      shown = key;
       // Replace, not merge: a story the server no longer reports loses its dot.
       statusStore.unset();
-      statusStore.set(
-        Object.entries(update).map(([storyId, u]) => ({
-          storyId,
-          typeId: ADDON,
-          value: `status-value:${u.status}`,
-          title: u.title,
-          description: u.description,
-        }))
-      );
+      statusStore.set(list);
     } catch {
-      state = { ...state, up: false };
+      store.update({ up: false });
     }
-    emit();
   };
+  // The server sends hello, data, review and integrity together: one fetch for the lot.
+  const scheduleRefresh = coalesce(refresh);
   /** @type {EventSource | null} */
   let es = null;
   const connect = () => {
     try {
       es = new EventSource(`${SERVER}/__pxsig/events`);
-      es.addEventListener('hello', refresh);
-      es.addEventListener('data', refresh);
-      es.addEventListener('review', refresh);
-      es.addEventListener('integrity', refresh);
+      for (const name of ['hello', 'data', 'review', 'integrity'])
+        es.addEventListener(name, scheduleRefresh);
       es.addEventListener('check', (/** @type {MessageEvent<string>} */ e) => {
         // The server's `check` event (docs/server.md).
         const d = /** @type {CheckEvent} */ (JSON.parse(e.data));
-        state = { ...state, running: d.state === 'running', last: d };
-        emit();
+        store.update({ running: d.state === 'running', last: d });
       });
       es.onerror = () => {
         // The handler of the source just opened: es is that source.
         /** @type {EventSource} */ (es).close();
-        state = { ...state, up: false };
-        emit();
+        store.update({ up: false });
         setTimeout(connect, 5000);
       };
     } catch {
@@ -186,7 +190,7 @@ addons.register(ADDON, () => {
     }
   };
   if (MODE === 'live') {
-    void refresh();
+    scheduleRefresh();
     connect();
   }
 
@@ -219,23 +223,30 @@ function Panel() {
    */
   const btn = (label, onClick, disabled) =>
     h('button', { type: 'button', onClick, disabled, style: buttonStyle(theme, disabled) }, label);
-  const [, force] = React.useReducer((/** @type {number} */ n) => n + 1, 0);
-  React.useEffect(() => {
-    bus.addEventListener('change', force);
-    return () => bus.removeEventListener('change', force);
-  }, []);
-  const post = (/** @type {{ story?: string, all?: boolean }} */ body) =>
-    fetch(`${SERVER}/__pxsig/check`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    }).catch(() => {});
+  const state = React.useSyncExternalStore(store.subscribe, store.get);
+  // Why the last Check story / Check all did not start (null: it did, or none was asked for).
+  const [failed, setFailed] = React.useState(/** @type {string | null} */ (null));
+  const post = (/** @type {{ story?: string, all?: boolean }} */ body) => {
+    setFailed(null);
+    void postCheck(SERVER, body).then(setFailed);
+  };
   const st = state.stories[storyId];
   const ig = state.integrity[storyId];
+  /** A live region (role status: polite) laid out like the row's other items. */
+  /** @type {React.CSSProperties} */
+  const live = { display: 'inline-flex', gap: 8, alignItems: 'center' };
   if (!state.up)
     return h(
       'div',
-      { style: { padding: 16, fontSize: 13, lineHeight: 1.6, color: colors.text } },
+      {
+        style: {
+          padding: 16,
+          fontSize: 13,
+          lineHeight: 1.6,
+          color: colors.text,
+          background: colors.background,
+        },
+      },
       h('strong', null, 'The pxsig server is not running.'),
       h('div', null, 'Start it from the repo root, then this panel connects on its own:'),
       h('code', { style: { display: 'block', marginTop: 8 } }, 'npx pxsig serve --watch')
@@ -249,6 +260,8 @@ function Panel() {
         height: '100%',
         minHeight: 0,
         color: colors.text,
+        // Its own background: the text colour holds its contrast wherever the panel is drawn.
+        background: colors.background,
       },
     },
     h(
@@ -263,14 +276,19 @@ function Panel() {
           fontSize: 12,
         },
       },
-      h('strong', null, st ? `pxsig: ${st.status}` : 'pxsig: no result yet'),
-      st
-        ? h(
-            'span',
-            { style: { opacity: 0.7 } },
-            st.entries.map((e) => `${e.mode} ${e.state}`).join(' · ')
-          )
-        : null,
+      // The status line is read out when it changes (and, below, what a check is doing).
+      h(
+        'span',
+        { role: 'status', style: live },
+        h('strong', null, st ? `pxsig: ${st.status}` : 'pxsig: no result yet'),
+        st
+          ? h(
+              'span',
+              { style: { opacity: 0.7 } },
+              st.entries.map((e) => `${e.mode} ${e.state}`).join(' · ')
+            )
+          : null
+      ),
       ig && ig.status !== 'ok'
         ? h(
             'span',
@@ -293,7 +311,12 @@ function Panel() {
           )
         : null,
       h('span', { style: { flex: 1 } }),
-      state.running ? h('span', { style: { opacity: 0.7 } }, 'Checking…') : null,
+      h(
+        'span',
+        { role: 'status', style: live },
+        state.running ? h('span', { style: { opacity: 0.7 } }, 'Checking…') : null,
+        failed ? h('span', null, failed) : null
+      ),
       btn('Check story', () => post({ story: storyId }), state.running),
       btn('Check all', () => post({ all: true }), state.running),
       btn('Open dashboard', () =>
@@ -307,7 +330,8 @@ function Panel() {
             },
             mode
           ),
-          '_blank'
+          '_blank',
+          'noopener'
         )
       )
     ),
@@ -340,7 +364,14 @@ function SnapshotPanel() {
     h(
       'div',
       {
-        style: { padding: 16, fontSize: 13, lineHeight: 1.6, color: colors.text, overflow: 'auto' },
+        style: {
+          padding: 16,
+          fontSize: 13,
+          lineHeight: 1.6,
+          color: colors.text,
+          background: colors.background,
+          overflow: 'auto',
+        },
       },
       ...children
     );

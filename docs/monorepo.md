@@ -148,9 +148,15 @@ to exactly that value (see [cli.md](cli.md#pxsig-approve)).
 **One writer per store.** Commands that write a store take `<store>/reports/.lock` (pid, start
 time, host, command): `check --full`, `approve undo` and `verify --adopt`, `migrate --apply`,
 `doctor --repair --apply`, and the server for every project it serves. A second writer is refused
-with the holder's name, or, for a full check against a served project, queued on the server. A
-lock whose process has exited (or whose pid now belongs to a newer process) is stale and taken
-over; a lock from another host is never judged stale. The holder stamps a heartbeat into the lock
+with the holder's name, or, for a full check against a served project, queued on the server. The
+lock records a random `token`, and its holder keeps `<store>/reports/.lock-<token>` open while it
+holds the lock (another process proves it with an exclusive open, which Windows and macOS refuse while
+the holder has the file open; on Linux the file is found among the holder's open files; the file
+stays readable). A lock whose holder no longer has that file open, or whose process has exited,
+is stale and taken over, even when its pid now belongs to another process; a stale lock is replaced
+through a claim only one taker can make, so takers racing for it never both win. A lock from an
+older pxsig (no token) is judged by its pid and start time; a lock from another host is never
+judged stale. The holder stamps a heartbeat into the lock
 every 5 seconds and, before each batch of writes, checks the lock is still its own (a random
 `nonce`); if not, it stops with "lock taken over by …: nothing more was written". A quiet
 heartbeat alone never frees a lock whose process is alive (a laptop that slept, a long render):

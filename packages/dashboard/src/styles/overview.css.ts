@@ -1,7 +1,7 @@
 /** The Overview: story cards, their groups and thumbnails, and the scenario list. */
 import { globalStyle, style } from '@vanilla-extract/css';
 import { tokens as v } from '../ui/tokens';
-import { checker } from './base.css';
+import { checker, focusOutline } from './base.css';
 
 // --- story cards ------------------------------------------------------------
 export const cards = style({
@@ -115,7 +115,6 @@ globalStyle(`${thumb} img`, {
   blockSize: '100%',
   objectFit: 'contain',
 });
-export const thumbMask = style({ mixBlendMode: 'normal', opacity: 0.85 });
 export const cardBody = style({
   display: 'flex',
   flexDirection: 'column',
@@ -166,8 +165,6 @@ export const scenarioItem = style({
       borderColor: v.color.accent,
       backgroundColor: `color-mix(in srgb, ${v.color.accent} 8%, transparent)`,
     },
-    '&:focus-visible': {
-      boxShadow: `0 0 0 3px color-mix(in srgb, ${v.color.focus} 50%, transparent)`,
-    },
+    '&:focus-visible': focusOutline,
   },
 });

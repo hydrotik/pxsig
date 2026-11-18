@@ -3,7 +3,7 @@
  * docs/platforms.md ("Programs pxsig starts"); anything else is refused, so the list stays true.
  *
  *   node (this pxsig), the engine binary, git                every OS
- *   ps (a lock's start time)                                 macOS, Linux
+ *   ps (a tokenless lock's start time)                       macOS, Linux
  *   osascript, open (open the dashboard)                     macOS
  *   xdg-open (open the dashboard)                            Linux
  *   pbcopy (the dashboard link, `serve --link --copy`)       macOS

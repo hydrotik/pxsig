@@ -346,11 +346,19 @@ export async function dashboardCheck(
     // The top bar over widths, on the adapter's build (dashboard-check/top-bar.mjs).
     if (sweep && features.some((f) => f.id === 'shell.top-bar')) {
       const known = Object.keys(fixtures.SCENARIOS);
-      topBar = await checkTopBar(browser, {
-        ...sweep,
-        scenarios: (sweep.scenarios ?? TOP_BAR_SCENARIOS).filter((x) => known.includes(x)),
-        urlFor: async (x) => `${(await serverFor(build, x)).base}/report/?theme=dark#overview`,
-      });
+      const scenarios = (sweep.scenarios ?? TOP_BAR_SCENARIOS).filter((x) => known.includes(x));
+      const urlFor = async (/** @type {string} */ x) =>
+        `${(await serverFor(build, x)).base}/report/?theme=dark#overview`;
+      // One sweep per scenario, side by side: each has its own page and shares nothing, and the
+      // findings keep the scenarios' order.
+      const each = await Promise.all(
+        scenarios.map((x) => checkTopBar(browser, { ...sweep, scenarios: [x], urlFor }))
+      );
+      topBar = {
+        ...(await checkTopBar(browser, { ...sweep, scenarios: [], urlFor })),
+        scenarios,
+        findings: each.flatMap((r) => r.findings),
+      };
     }
   } finally {
     for (const s of servers.values()) (await s).close();

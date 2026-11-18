@@ -18,7 +18,7 @@ import { CHROMIUM_ARGS } from '../src/lib/capture/browser.mjs';
 import { readText } from '../src/lib/text/config.mjs';
 import { tempDir } from './fixture.mjs';
 import { needs } from './server-helpers.mjs';
-import { renderOn, standIn } from './text-helpers.mjs';
+import { howDiffer, renderOn, standIn } from './text-helpers.mjs';
 /** @import { Page } from 'playwright' */
 /** @import { TextRecord } from '../src/types/text.js' */
 
@@ -218,10 +218,15 @@ test(
   { skip: needs },
   async (t) => {
     const pw = await import('playwright');
-    const sb = await standIn({
-      'text--story':
-        '<p>1 <b>new</b> · of 9 analysed</p><div style="border:1px solid #888">Card</div>',
-    });
+    // In the test font (test-font.mjs): the bytes never hang on the OS's font matching.
+    const sb = await standIn(
+      {
+        'text--story':
+          '<p>1 <b>new</b> · of 9 analysed</p><div style="border:1px solid #888">Card</div>',
+      },
+      '',
+      { font: true }
+    );
     // Two renders are compared byte for byte, so both must take one raster path: pxsig's own text
     // switches, and no GPU process. On a macOS runner Chromium can rasterise through the GPU
     // process and fall back to software when that process is lost, which redraws text with other
@@ -237,13 +242,15 @@ test(
     const off = tempDir('text-off', t);
     const [r] = await renderOn(browser, sb.url, entries, on, { text: true });
     await renderOn(browser, sb.url, entries, off, { text: false });
-    assert.deepEqual(readdirSync(on).sort(), ['text--story.boxes.json', 'text--story.png']);
-    assert.deepEqual(readdirSync(off), ['text--story.png']);
-    assert.equal(
-      sha(join(on, 'text--story.png')),
-      sha(join(off, 'text--story.png')),
-      'reading changes no pixel'
-    );
+    // Beside every Chromium render, its fonts (capture/fonts.mjs); the text record only with text on.
+    assert.deepEqual(readdirSync(on).sort(), [
+      'text--story.boxes.json',
+      'text--story.fonts.json',
+      'text--story.png',
+    ]);
+    assert.deepEqual(readdirSync(off).sort(), ['text--story.fonts.json', 'text--story.png']);
+    const differ = howDiffer(join(on, 'text--story.png'), join(off, 'text--story.png'));
+    assert.ok(!differ, `reading changes no pixel: ${differ}`);
     const rec = JSON.parse(readFileSync(join(on, 'text--story.boxes.json'), 'utf8'));
     assert.deepEqual(
       rec.runs.map((/** @type {{ s: string }} */ x) => x.s),

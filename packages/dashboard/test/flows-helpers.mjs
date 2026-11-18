@@ -100,6 +100,7 @@ export function setupFlows() {
  * the sample PNGs under /p/demo/, as the screens server does, so the inspector draws its stage; a
  * function picks them per path (a `sampleImages()` result, or null for a 404).
  * `routes(page)` adds the caller's own routes before the page loads; they take precedence.
+ * `width`: the viewport's width in CSS px (1280 by default; the height is 900).
  */
 export async function open(
   d,
@@ -111,9 +112,10 @@ export async function open(
     approving,
     images = false,
     routes = null,
+    width = 1280,
   } = {}
 ) {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  const page = await browser.newPage({ viewport: { width, height: 900 } });
   if (init) await page.addInitScript(init);
   const posts = [];
   const errors = [];

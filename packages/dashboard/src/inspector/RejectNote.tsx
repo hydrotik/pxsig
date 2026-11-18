@@ -6,6 +6,7 @@
  * `rejections.note.ask: false` (pxsig.config.json) Reject decides at once, with no reason.
  */
 import React from 'react';
+import { useStableCallback } from '../parts/useStableCallback';
 import { Button, TextField } from '@ui';
 import type { Data, Row } from '../data';
 import { t } from '../copy';
@@ -47,21 +48,24 @@ export function useRejectNote({
   // Held with the entry it is for: after a move to another entry the row is closed.
   const [held, setHeld] = React.useState<[string, Asking] | null>(null);
   const asking = held && held[0] === row?.id ? held[1] : null;
-  const setAsking = (a: Asking | null) => setHeld(a && row ? [row.id, a] : null);
-  const decide: Act = (action, a11y = a11yMode, o) => {
+  // Stable (useStableCallback): the memoised review buttons and notes take them.
+  const setAsking = useStableCallback((a: Asking | null) => setHeld(a && row ? [row.id, a] : null));
+  const decide: Act = useStableCallback((action, a11y = a11yMode, o) => {
     if (action === 'reject' && ask && !o) {
       setAsking({ a11y, value: '', edit: false });
       return Promise.resolve();
     }
     setAsking(null);
     return act(action, a11y, o);
-  };
-  const edit = (a11y: boolean, value: string) => setAsking({ a11y, value, edit: true });
-  const submit = (value: string) => {
+  });
+  const edit = useStableCallback((a11y: boolean, value: string) =>
+    setAsking({ a11y, value, edit: true })
+  );
+  const submit = useStableCallback((value: string) => {
     if (!asking) return;
     setAsking(null);
     void act('reject', asking.a11y, { note: value, stay: asking.edit });
-  };
+  });
   return { asking, setAsking, decide, edit, submit };
 }
 

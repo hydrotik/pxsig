@@ -101,6 +101,8 @@ export interface RenderResult {
   renders?: import('./react.js').RenderCounts | null;
   /** The text record this render wrote beside its PNG (`text` on); never in check.json. */
   text?: import('./text.js').TextCapture;
+  /** The fonts this render drew its text in (Chromium; lib/capture/fonts.mjs); never in check.json. */
+  fonts?: import('./fonts.js').UsedFonts | null;
 }
 
 /** One row of check.json: the engine's result, the render and the review state of an entry. */
@@ -143,6 +145,8 @@ export interface CheckRow {
   envMatch?: EnvMatch;
   envDiff?: string[];
   envFonts?: string[];
+  /** With `envDiff` `fonts.used`: the faces the render drew that its baseline's did not, and back. */
+  envFontsUsed?: import('./fonts.js').FontsUsedDiff;
   /**
    * On a passing row: whether any pixel of the render is not the baseline image's (the engine,
    * 0.7.7 and later). null when a rule failed the entry or the baseline holds no image.
@@ -265,6 +269,8 @@ export interface LockBody {
   nonce: string;
   generation: number;
   heartbeatAt: string;
+  /** Names `<store>/reports/.lock-<token>`, which the holder keeps open (lib/lock/token.mjs). */
+  token?: string;
 }
 
 /**

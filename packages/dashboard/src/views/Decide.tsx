@@ -14,10 +14,7 @@ export function Decide() {
   const [state, setState] = React.useState<{ state: DecideState; detail?: string }>({
     state: 'waiting',
   });
-  React.useEffect(() => {
-    document.title = t('app.decide.title');
-    return runDecideWindow((next, detail) => setState({ state: next, detail }));
-  }, []);
+  React.useEffect(() => runDecideWindow((next, detail) => setState({ state: next, detail })), []);
   const text = {
     waiting: t('app.decide.waiting'),
     working: t('app.decide.working'),
@@ -27,7 +24,10 @@ export function Decide() {
   }[state.state];
   return (
     <main className={s.page}>
+      {/* React 19 puts it in <head>, in place of the page's own title, while this window shows. */}
+      <title>{t('app.decide.title')}</title>
       <h1 className={s.srOnly}>{t('app.decide.title')}</h1>
+      {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a status message, not the result of a form's calculation (what <output> is for) */}
       <div className={s.empty} role="status">
         {text}
       </div>

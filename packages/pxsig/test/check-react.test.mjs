@@ -20,11 +20,11 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { hasRust, rustBin, tempDir, testEnv, testHome } from './fixture.mjs';
 import { dependsOnReact } from '../src/lib/react/peers.mjs';
-import { BASE, hasCompiler, reactProject } from './react-helpers.mjs';
+import { BASE, hasCompiler, NO_COMPILER, reactProject } from './react-helpers.mjs';
 import { needs, src } from './server-helpers.mjs';
 import { skipUnless } from './strict.mjs';
 
-const skip = needs || skipUnless(hasCompiler, 'the React Compiler test fixtures are missing');
+const skip = needs || skipUnless(hasCompiler, NO_COMPILER);
 const IDS = ['button--primary', 'button--small'];
 
 /**
@@ -323,10 +323,7 @@ test("a project depends on React when its package.json or the workspace root's n
 test(
   'pxsig react --sarif: the compiler alerts, and an empty file when nothing was analysed',
   {
-    skip: skipUnless(
-      hasRust && hasCompiler,
-      'the engine or the React Compiler fixtures are missing'
-    ),
+    skip: skipUnless(hasRust, 'Rust binary not built') || skipUnless(hasCompiler, NO_COMPILER),
   },
   (t) => {
     const cli = fileURLToPath(new URL('../bin/pxsig.mjs', import.meta.url));
