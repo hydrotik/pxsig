@@ -29,6 +29,10 @@
       "types": "./src/public/psig.d.mts",
       "default": "./src/lib/psig.mjs"
     },
+    "./spawn": {
+      "types": "./src/public/spawn.d.mts",
+      "default": "./src/public/spawn.mjs"
+    },
     "./dashboard": {
       "types": "./dashboard/src/ui/contract.ts",
       "default": "./src/public/dashboard.mjs"

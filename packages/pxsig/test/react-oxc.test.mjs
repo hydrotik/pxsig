@@ -20,7 +20,7 @@ import { analyse } from '../src/lib/react/index.mjs';
 import { reactSarifLog } from '../src/lib/sarif-react.mjs';
 import { tools } from '../src/tools/index.mjs';
 import { hasRust, rustBin, testEnv, testHome } from './fixture.mjs';
-import { hasCompiler, projectAt, reactProject } from './react-helpers.mjs';
+import { hasCompiler, NO_COMPILER, projectAt, reactProject } from './react-helpers.mjs';
 import { skipOn, skipUnless } from './strict.mjs';
 
 /** @import { ReactRun, ReactToolResult } from '../src/types/react.js' */
@@ -30,7 +30,7 @@ const skip = skipUnless(
   built && 'version' in built,
   'the engine is missing, or built without the react-oxc feature'
 );
-const skipBoth = skip || skipUnless(hasCompiler, 'the React Compiler test fixtures are missing');
+const skipBoth = skip || skipUnless(hasCompiler, NO_COMPILER);
 const cli = fileURLToPath(new URL('../bin/pxsig.mjs', import.meta.url));
 const OXC = { react: { compiler: 'oxc' } };
 
