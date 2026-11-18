@@ -238,7 +238,6 @@ async function main() {
     if (runLiveScreens)
       checked.report.screens.push(
         ...(await runLive({
-          browser,
           dashboard: build,
           axe: axeScript({ root: repo, workspaceRoot: repo }),
           out: join(tmp, 'live'),
