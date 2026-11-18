@@ -102,6 +102,13 @@ export const REACT: Feature[] = [
         ],
         wait: { role: 'complementary', name: 'Button' },
       },
+      // A design system's report: long file paths, many functions (the column widths).
+      {
+        scenario: 'real-shaped',
+        hash: '#react',
+        actions: [{ click: { role: 'button', name: 'All analysed (11)' } }],
+        wait: { text: 'AreaChartTooltipContent', exact: true },
+      },
     ],
   },
   {
@@ -186,6 +193,13 @@ export const REACT: Feature[] = [
           { click: { role: 'heading', name: 'ui-datagrid--many-rows', exact: true } },
         ],
         wait: { role: 'complementary', name: 'ui-datagrid--many-rows' },
+      },
+      // A design system's store: long entry ids, 26 entries measured (the column widths).
+      {
+        scenario: 'real-shaped',
+        hash: '#react-renders',
+        actions: [{ click: { role: 'button', name: 'All measured (26)' } }],
+        wait: { text: 'components-chart--area-chart-stacked@light', exact: true },
       },
     ],
   },
