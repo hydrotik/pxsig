@@ -3,8 +3,14 @@
  * renders-harness.mjs): the page's mount, the Review section, opening the inspector, the next
  * entry (J), fit (F) and closing. Each step's count of components rendered has a ceiling, so the
  * counts can only go down; lower a ceiling when a change brings its step under it.
- * PXSIG_RENDERS_REPORT=1 prints each step's counts and top renderers. The ceilings hold for the
- * default (plain) adapter only: another adapter (PXSIG_FLOWS_ADAPTER) is measured, not held.
+ * Each step's counts are printed; PXSIG_RENDERS_REPORT=1 adds the top renderers. The ceilings hold
+ * for the default (plain) adapter only: another adapter (PXSIG_FLOWS_ADAPTER) is measured, not held.
+ *
+ * The page is 1920 CSS px wide, so every section link fits in the top bar with any machine's
+ * fonts. At 1280 px a wider fallback font (Linux's, where the plain adapter's system font is
+ * another) moves links into the More menu, and the mount renders 120 components instead of 83:
+ * the bar's fit re-renders the list and the menu's links mount. From 1600 px the counts are the
+ * same with every font tried (the system font, Verdana, Courier New, Times New Roman).
  * Skips when no Chromium is available.
  */
 import assert from 'node:assert/strict';
@@ -14,6 +20,9 @@ import { HOOK, measure, measureMount } from './renders-harness.mjs';
 import { demo } from './renders-demo.mjs';
 
 setupFlows();
+
+/** Wide enough for every section link with any font (above). */
+const WIDTH = 1920;
 
 /**
  * Components rendered per step, at most (plain adapter). Measured: mount 83, review 593, open 274,
@@ -33,7 +42,12 @@ const approving = { allowed: true, folder: 'demo', command: 'pxsig serve --link'
 
 test('renders per step stay under their ceilings', async (t) => {
   if (skip) return t.skip(skip);
-  const { page, errors } = await open(demo(), { approving, images: true, init: HOOK });
+  const { page, errors } = await open(demo(), {
+    approving,
+    images: true,
+    init: HOOK,
+    width: WIDTH,
+  });
   try {
     const steps = {};
     steps.mount = await measureMount(page);
@@ -52,19 +66,23 @@ test('renders per step stay under their ceilings', async (t) => {
       await page.keyboard.press('Escape');
       await page.getByRole('dialog').waitFor({ state: 'detached' });
     });
-    if (process.env.PXSIG_RENDERS_REPORT === '1')
-      for (const [name, s] of Object.entries(steps))
-        t.diagnostic(
-          `${name}: ${s.commits} commits, ${s.rendered} rendered, ${s.mounted} mounted; ` +
-            s.top.map(([n, c]) => `${n} ${c}`).join(', ')
-        );
+    // Every step's counts, before any assertion: a failure on one machine shows them all.
+    for (const [name, s] of Object.entries(steps))
+      t.diagnostic(
+        `${name}: ${s.commits} commits, ${s.rendered} rendered, ${s.mounted} mounted` +
+          (process.env.PXSIG_RENDERS_REPORT === '1'
+            ? `; ${s.top.map(([n, c]) => `${n} ${c}`).join(', ')}`
+            : '')
+      );
     assert.deepEqual(errors, []);
     if (process.env.PXSIG_FLOWS_ADAPTER) return;
-    for (const [name, s] of Object.entries(steps))
-      assert.ok(
-        s.rendered <= CEILINGS[name],
-        `${name}: ${s.rendered} components rendered, above the ceiling of ${CEILINGS[name]}`
+    const over = Object.entries(steps)
+      .filter(([name, s]) => s.rendered > CEILINGS[name])
+      .map(
+        ([name, s]) =>
+          `${name}: ${s.rendered} components rendered, above the ceiling of ${CEILINGS[name]}`
       );
+    assert.deepEqual(over, []);
   } finally {
     await page.close();
   }
