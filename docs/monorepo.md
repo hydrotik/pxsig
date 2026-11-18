@@ -150,8 +150,9 @@ time, host, command): `check --full`, `approve undo` and `verify --adopt`, `migr
 `doctor --repair --apply`, and the server for every project it serves. A second writer is refused
 with the holder's name, or, for a full check against a served project, queued on the server. The
 lock records a random `token`, and its holder keeps `<store>/reports/.lock-<token>` open while it
-holds the lock (with an exclusive open on Windows and macOS; on Linux the file is found among the
-holder's open files). A lock whose holder no longer has that file open, or whose process has exited,
+holds the lock (another process proves it with an exclusive open, which Windows and macOS refuse while
+the holder has the file open; on Linux the file is found among the holder's open files; the file
+stays readable). A lock whose holder no longer has that file open, or whose process has exited,
 is stale and taken over, even when its pid now belongs to another process; a stale lock is replaced
 through a claim only one taker can make, so takers racing for it never both win. A lock from an
 older pxsig (no token) is judged by its pid and start time; a lock from another host is never

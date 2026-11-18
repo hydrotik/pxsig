@@ -10,8 +10,9 @@
  * reuses them within seconds) no longer makes a lock look live. Nothing is started and nothing
  * listens: the proof is a file handle, checked with node:fs alone.
  *
- *   Windows   the holder opens the file with exclusive sharing (libuv's UV_FS_O_EXLOCK, share mode
- *             0); a probe that opens it the same way gets EBUSY while the holder has it.
+ *   Windows   the holder opens the file normally (any process may still read it); a probe opens it
+ *             with exclusive sharing (libuv's UV_FS_O_EXLOCK, share mode 0), which Windows refuses
+ *             with a sharing violation (EBUSY) while any handle on it is open.
  *   macOS     the holder opens it with O_EXLOCK (an flock taken at open); a probe opening it with
  *             O_EXLOCK | O_NONBLOCK gets EAGAIN while the holder has it.
  *   Linux     no open-time lock exists in node:fs; the probe looks for the file among the holder pid's
@@ -21,6 +22,11 @@
  * started never keeps a crashed holder's lock alive. When the probe cannot tell (another user's
  * process on Linux, a platform with neither mechanism), it answers null and the caller judges the
  * lock by its pid as before.
+ *
+ * A process never probes its own tokens: it knows them (`mine`), so a holder and a reader in one
+ * process (the server and a command it runs in process) never open the file at all. A probe that
+ * finds the file busy because some other program has it open at that moment (a virus scanner, a
+ * backup) answers "held": a spurious "held" is retried, a lock is never broken by it.
  */
 import { closeSync, constants, openSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -29,6 +35,9 @@ import { join } from 'node:path';
 const WIN_EXLOCK = 0x10000000;
 /** O_EXLOCK on macOS (sys/fcntl.h); node:fs does not export it. */
 const DARWIN_EXLOCK = 0x20;
+
+/** The tokens this process holds now. */
+const mine = new Set();
 
 /** @param {string} dir @param {string} token */
 export const tokenPath = (dir, token) => join(dir, `.lock-${token}`);
@@ -46,12 +55,8 @@ const code = (e) => /** @type {NodeJS.ErrnoException} */ (e).code;
 export function holdToken(dir, token, platform = process.platform) {
   const file = tokenPath(dir, token);
   const create = constants.O_RDWR | constants.O_CREAT | constants.O_EXCL;
-  const lock =
-    platform === 'win32'
-      ? WIN_EXLOCK
-      : platform === 'darwin'
-        ? DARWIN_EXLOCK | constants.O_NONBLOCK
-        : 0;
+  // Windows needs no flag: the probe's exclusive open is refused while this handle is open.
+  const lock = platform === 'darwin' ? DARWIN_EXLOCK | constants.O_NONBLOCK : 0;
   /** @type {number | null} */
   let fd;
   try {
@@ -62,6 +67,7 @@ export function holdToken(dir, token, platform = process.platform) {
     if (!lock || !['ENOTSUP', 'EOPNOTSUPP', 'EINVAL'].includes(code(e) ?? '')) throw e;
     fd = openSync(file, create, 0o600);
   }
+  mine.add(token);
   return {
     file,
     release() {
@@ -72,7 +78,12 @@ export function holdToken(dir, token, platform = process.platform) {
         // already closed
       }
       fd = null;
-      rmSync(file, { force: true });
+      mine.delete(token);
+      try {
+        rmSync(file, { force: true });
+      } catch {
+        // a probe has it open this instant (Windows): a closed token file proves nothing, left as is
+      }
     },
   };
 }
@@ -92,6 +103,7 @@ export function tokenHeld(
   pid,
   { platform = process.platform, procRoot = '/proc' } = {}
 ) {
+  if (pid === process.pid && mine.has(token)) return true; // ours: never opened from here
   const file = tokenPath(dir, token);
   if (platform === 'win32' || platform === 'darwin') {
     const flags =
