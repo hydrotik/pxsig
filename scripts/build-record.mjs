@@ -9,6 +9,9 @@
  *   adapter       the UI adapter's name (build-config.mjs chooses it the same way as the build)
  *   pxsig         the pxsig version the bundle is for (packages/pxsig/package.json): `pxsig serve`
  *                 serves a build in PXSIG_DASHBOARD_DIR only for that version (lib/dashboard-dir.mjs)
+ *   commit        the full sha of this checkout, and `dirty`, whether it had uncommitted changes
+ *                 under the paths that feed the build (lib/build-identity.mjs FEEDS); both null
+ *                 outside a git checkout. Serve and doctor compare them with the checkout's
  *   designSystem  for PXSIG_DS_SOURCE when it is the top of a git checkout: its commit, whether
  *                 the working tree had changes, and its pnpm-lock.yaml's sha256; otherwise null
  *   lockSha256    this repository's pnpm-lock.yaml sha256
@@ -24,6 +27,7 @@ import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolveAdapter } from '../packages/dashboard/build-config.mjs';
+import { pxsigSource, sourceFields } from '../packages/pxsig/src/lib/build-identity.mjs';
 import { dashboardPackages } from './bundle-sbom.mjs';
 
 const repo = fileURLToPath(new URL('..', import.meta.url));
@@ -66,6 +70,7 @@ export function gitState(dir) {
  * @param {string} [o.lockFile]         this repository's pnpm-lock.yaml
  * @param {string} [o.sourceDateEpoch]  SOURCE_DATE_EPOCH (seconds)
  * @param {string} [o.base]             the folder the build ran in (module paths are relative to it)
+ * @param {{ commit: string, dirty: boolean } | null} [o.source]  this checkout's state (pxsigSource)
  */
 export function buildRecord({
   outDir,
@@ -74,12 +79,14 @@ export function buildRecord({
   lockFile = join(repo, 'pnpm-lock.yaml'),
   sourceDateEpoch,
   base,
+  source = pxsigSource(),
 }) {
   const ds = dsSource && existsSync(dsSource) ? gitState(dsSource) : null;
   const when = sourceDateEpoch ? new Date(Number(sourceDateEpoch) * 1000) : new Date();
   return {
     adapter,
     pxsig: PXSIG,
+    ...sourceFields(source),
     designSystem:
       ds && dsSource ? { ...ds, lockSha256: sha256File(join(dsSource, 'pnpm-lock.yaml')) } : null,
     lockSha256: sha256File(lockFile),
@@ -120,6 +127,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     const ds = record.designSystem;
     console.log(
       `[build-record] BUILD.json: adapter ${record.adapter}, ${record.bundled.length} bundled packages` +
+        (record.commit
+          ? `, pxsig ${record.commit}${record.dirty ? ' (with uncommitted changes)' : ''}`
+          : `, pxsig ${record.pxsig} (no checkout)`) +
         (ds ? `, design system ${ds.commit}${ds.dirty ? ' (with uncommitted changes)' : ''}` : '')
     );
   } catch (e) {

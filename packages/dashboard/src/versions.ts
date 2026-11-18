@@ -18,3 +18,45 @@ export function versionsText(data: Data): string {
     .filter(Boolean)
     .join(' · ');
 }
+
+/** A commit as the page shows it: its first 7 characters. */
+const short = (sha: string) => sha.slice(0, 7);
+
+/**
+ * "build 1a2b3c4 modified · design system 5d6e7f8 · adapter hydrotik · built 2026-11-18 17:18
+ * UTC": which build of the dashboard this page is (`data.build`), so two builds of one version are
+ * told apart. A release build names no commit; the pxsig version it was built for is named when it
+ * is not the server's. Null when the build records nothing.
+ */
+export function buildText(data: Data): string | null {
+  const b = data.build;
+  if (!b || (!b.pxsig && !b.commit)) return null;
+  const head = b.commit
+    ? t(b.dirty ? 'app.build.modified' : 'app.build.commit', { commit: short(b.commit) })
+    : t('app.build.release');
+  const version =
+    b.pxsig && b.pxsig !== data.versions.pxsig
+      ? t('app.build.version', { version: b.pxsig })
+      : null;
+  const ds = b.designSystem;
+  // ISO 8601 in UTC: the date and the minute, the same in every time zone.
+  const at = b.builtAt ? `${b.builtAt.slice(0, 10)} ${b.builtAt.slice(11, 16)}` : null;
+  return [
+    version ? `${head} ${version}` : head,
+    ds
+      ? t(ds.dirty ? 'app.build.designSystemModified' : 'app.build.designSystem', {
+          commit: short(ds.commit),
+        })
+      : null,
+    b.adapter ? t('app.build.adapter', { name: b.adapter }) : null,
+    at ? t('app.build.builtAt', { date: at }) : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/** The top bar's tooltip: the versions, then the build. */
+export function identityText(data: Data): string {
+  const build = buildText(data);
+  return build ? `${versionsText(data)} · ${build}` : versionsText(data);
+}

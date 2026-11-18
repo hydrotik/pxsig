@@ -24,6 +24,7 @@
  * `gaps` problem and `build` refuses, with the migration notes; a newer one is a note.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { pxsigSource, sourceFields } from './lib/build-identity.mjs';
 import { buildDirFor, buildFiles, shellWord, STAMP } from './lib/dashboard-dir.mjs';
 import { PXSIG_VERSION } from './lib/workspace.mjs';
 import { herePath } from './lib/machine.mjs';
@@ -196,11 +197,20 @@ export async function build(
       }),
     outDir
   );
-  // What serve compares: this pxsig's version and when the build ran (against the adapter's edits).
-  writeFileSync(
-    join(outDir, STAMP),
-    `${JSON.stringify({ adapter: ui.file, pxsig: PXSIG_VERSION, contract: contract.current, adapterContract: contract.adapter, builtAt: Date.now(), files: buildFiles(outDir) }, null, 2)}\n`
-  );
+  // What serve compares: this pxsig's version, its checkout's commit and changes (none from an
+  // installed package: lib/build-identity.mjs) and when the build ran (against the adapter's
+  // edits). `adapter` is the adapter's file, for dashboard check; `adapterName` is what the page shows.
+  const stamp = {
+    adapter: ui.file,
+    adapterName: ui.name,
+    pxsig: PXSIG_VERSION,
+    ...sourceFields(pxsigSource()),
+    contract: contract.current,
+    adapterContract: contract.adapter,
+    builtAt: Date.now(),
+    files: buildFiles(outDir),
+  };
+  writeFileSync(join(outDir, STAMP), `${JSON.stringify(stamp, null, 2)}\n`);
   return { outDir, adapter: ui.name, fromConfig: ui.from === 'pxsig.config.json dashboard.ui' };
 }
 

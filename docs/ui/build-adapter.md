@@ -56,7 +56,9 @@ command to run; it never builds by itself. `PXSIG_DASHBOARD_DIR` overrides both,
 by the same pxsig version (`pxsig dashboard build --out <folder>`). A dashboard supports only the
 pxsig version that built it: after upgrading pxsig, run `pxsig dashboard build` again. A build from
 another version, or one that records none, is not served, and `pxsig doctor` reports it
-(`dashboard-stale`).
+(`dashboard-stale`). Run from a git checkout of pxsig, a build that records a commit is also out of
+date when that commit, or its uncommitted changes, are not the checkout's, with the same note and
+finding; a build from an installed pxsig records none and is compared by version only.
 
 ## An adapter is not a project
 
@@ -84,7 +86,11 @@ How the dashboard finds and loads it:
    `pxsig.workspace.json`. A path to a folder loads its `index.tsx` (or `index.ts`, `index.jsx`,
    `index.js`); `conformance.json` and `vite.mjs` are read from the same folder. Vite and the
    other build tools resolve from the project's `node_modules` or a parent's. The build goes to
-   `node_modules/.cache/pxsig/dashboard` in the project's folder, with a `pxsig-build.json` stamp.
+   `node_modules/.cache/pxsig/dashboard` in the project's folder, with a `pxsig-build.json` stamp:
+   the pxsig version, the adapter's name, the build time and, when pxsig runs from a git checkout
+   of its source, that checkout's commit (`commit`) and whether it had uncommitted changes under the
+   paths that feed the build (`dirty`). From an installed pxsig both are null: the build is the
+   release its version names. The dashboard shows them on hover of "pxsig" and at the end of Help.
 2. `pxsig serve` reads `dashboard.ui` from each project it serves and serves the build in the
    folder of the first one (in the order of `projects`) that names an adapter, while that build is
    current. When projects name different adapters, it serves the prebuilt dashboard and prints a

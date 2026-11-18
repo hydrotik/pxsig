@@ -373,6 +373,13 @@ export interface Data {
   scope: string;
   /** What drew the page: pxsig, its engine and the UI contract (null when unknown). */
   versions: { pxsig: string | null; engine: string | null; contract: string | null };
+  /**
+   * Which build of the dashboard this page is (the server's lib/build-identity.mjs): the pxsig
+   * version it was built for, pxsig's commit and whether that checkout had uncommitted changes
+   * (null for a release build), the design system's commit, the adapter's name and when it was
+   * built. Null or absent when the build records none.
+   */
+  build?: BuildIdentity | null;
   /** The project's store, relative to the workspace root (for copyable paths). */
   store?: string;
   check: CheckReport | null;
@@ -412,4 +419,14 @@ declare global {
   interface Window {
     PXSIG?: Data;
   }
+}
+
+/** A dashboard build's identity, as `data.build` carries it. */
+export interface BuildIdentity {
+  pxsig: string | null;
+  commit: string | null;
+  dirty: boolean | null;
+  designSystem: { commit: string; dirty: boolean } | null;
+  adapter: string | null;
+  builtAt: string | null;
 }
