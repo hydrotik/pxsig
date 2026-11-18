@@ -110,7 +110,7 @@
       - listitem:
         - link "Diff page (HTML) (opens in a new tab)":
           - /url: /p/demo/diffs/latest/ui-activity-row--default.diff.html
-        - text: missing
+        - text: 0.0 KB
         - 'button "Copy path: Diff page (HTML)"': Copy path
       - listitem:
         - link "Open in Storybook (opens in a new tab)":
