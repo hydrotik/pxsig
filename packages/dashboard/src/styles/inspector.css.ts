@@ -220,6 +220,8 @@ export const insStageWrap = style({
   flexDirection: 'column',
 });
 export const insStage = style({
+  // The containing block of the focus line below.
+  position: 'relative',
   flex: 1,
   minBlockSize: 0,
   display: 'grid',
@@ -233,7 +235,16 @@ export const insStage = style({
   outline: 'none',
   selectors: {
     '&[data-grabbing]': { cursor: 'grabbing' },
-    '&:focus-visible': { boxShadow: `inset 0 0 0 2px ${v.color.focus}` },
+    // The viewports (positioned) cover the whole stage and paint over anything the stage draws
+    // itself, its box-shadow or its own outline: the focus line is a layer above them.
+    '&:focus-visible::after': {
+      content: '""',
+      position: 'absolute',
+      inset: 0,
+      zIndex: 1,
+      pointerEvents: 'none',
+      ...insetFocusOutline,
+    },
   },
 });
 export const vp = style({
