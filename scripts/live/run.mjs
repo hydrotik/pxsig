@@ -42,7 +42,7 @@ import { readToken } from '../../packages/pxsig/src/lib/guard.mjs';
 import { rustBinary } from '../../packages/pxsig/src/lib/workspace/peers.mjs';
 import { copyTree } from '../lib/copy-tree.mjs';
 import { FEATURES, STEPS } from './flows.mjs';
-import { assertSafeUrl, DEAD_URL, idle, startLiveServer } from './server.mjs';
+import { assertSafeUrl, DEAD_URL, fetch, idle, startLiveServer } from './server.mjs';
 import { CHANGE, LIVE_BASE, liveDir, pristineDir, REACT_CHANGE, repo } from './stage.mjs';
 import { scrubber, scrubRoutes } from './volatile.mjs';
 
