@@ -53,6 +53,7 @@ import { traceCache } from './traces.mjs';
  * @property {ReactState} react the React analysis (serve/react.mjs)
  * @property {AbortController | null} cancel stops the running check (`check/cancel`)
  * @property {boolean} measure the next check run counts React renders (Measure renders)
+ * @property {import('./check-compare.mjs').Compare | null} compare what the next check run compares with
  */
 
 /**
@@ -88,6 +89,7 @@ export function openState(srv, ref) {
     react: reactState(),
     cancel: null,
     measure: false,
+    compare: null,
   };
   S.reload = () => {
     try {

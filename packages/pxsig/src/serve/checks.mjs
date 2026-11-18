@@ -19,12 +19,15 @@ import { scheduleIntegrity } from './integrity.mjs';
 import { needLock } from './projects.mjs';
 import { rejectionsAfterCheck } from './rejections.mjs';
 import { updateCheckRows } from './report-rows.mjs';
+import { compareKeys, startCompare } from './check-compare.mjs';
+import { historyExtra } from '../check/react.mjs';
 /**
  * @import { A11yBaseline, A11yReviewFile, CheckReport, Enqueued, RequestBody, ReviewFile, SetupError
  * } from '../types/t5.js'
  */
 /** @import { ServeContext } from '../types/serve.js' */
 /** @import { ProjectState } from './projects.mjs' */
+/** @import { Compare } from './check-compare.mjs' */
 
 /**
  * @param {ProjectState} S
@@ -38,6 +41,9 @@ export async function runChecks(srv, S) {
   // Measure renders asked for this run; a check queued after it waits for the next run.
   const renders = S.measure;
   S.measure = false;
+  // What this run compares with (`since` / `changed`), likewise.
+  const compare = S.compare;
+  S.compare = null;
   const cancel = new AbortController();
   S.cancel = cancel;
   const { P } = S;
@@ -72,6 +78,8 @@ export async function runChecks(srv, S) {
           ),
           { setup: true }
         );
+      // A compared check: the analysis (and `affected`) run while the entries render.
+      const comparing = compare ? startCompare(srv, S, compare) : null;
       srv.pool ??= browserPool(P);
       const concurrency = Math.min(8, entries.length);
       const envCfg = envConfig(P.config);
@@ -138,6 +146,8 @@ export async function runChecks(srv, S) {
           pad: manifest.trim.pad ?? 16,
           tolerance: manifest.trim.tolerance ?? 8,
         });
+      const compared = comparing ? await comparing : null;
+      const extra = compared ? historyExtra(compared.run, results) : null;
       const res = await srv.rust('check', {
         manifest: S.runPath,
         pngDir: P.store.latest,
@@ -149,6 +159,7 @@ export async function runChecks(srv, S) {
         history: join(P.store.reports, 'history.ndjson'),
         // Each render's environment: text records are compared only within one.
         env: envPlan(entries, current),
+        ...(extra ? { historyExtra: extra } : {}),
       });
       for (const g of res.summary.identicalRenders ?? [])
         console.error(
@@ -196,7 +207,14 @@ export async function runChecks(srv, S) {
             totalMs: performance.now() - t0,
           }
         : null;
-      updateCheckRows(S, (r) => fresh.get(r.id), fresh, timing, envs);
+      // A compared run sets `affected` and `react`; a full one without a ref clears them, as a
+      // full check without --since writes none; a partial one leaves the last compared run's.
+      const keys = compared
+        ? compareKeys(compared)
+        : full
+          ? { affected: null, react: undefined }
+          : null;
+      updateCheckRows(S, (r) => fresh.get(r.id), fresh, timing, envs, keys);
       // Open rejections outlive the decisions cleared above: a pass closes one, else it gains the check.
       rejectionsAfterCheck(srv, S, fresh.values());
       const failed = [...fresh.values()].filter((r) => !r.pass).length;
@@ -247,9 +265,10 @@ export async function runChecks(srv, S) {
  * @param {ServeContext} srv
  * @param {ProjectState} S
  * @param {RequestBody} body `{ ids?, story?, stories?, all?, via? }`
+ * @param {Compare | null} [compare] `since` / `changed`, checked (serve/check-compare.mjs)
  * @returns {Promise<Enqueued>}
  */
-export async function enqueue(srv, S, body) {
+export async function enqueue(srv, S, body, compare = null) {
   needLock(srv, S);
   // Select against the manifest on disk: entries added since the server started (or since the
   // last check) would otherwise be dropped as unknown. A running check keeps the one it started with.
@@ -291,6 +310,8 @@ export async function enqueue(srv, S, body) {
   queued.forEach((id) => S.queued.add(id));
   // Measure renders: the run that takes these counts React renders.
   if (body.renders === true && queued.length) S.measure = true;
+  // A compared check: the run that takes these compares with the latest ref (or files) asked for.
+  if (compare && queued.length) S.compare = compare;
   void runChecks(srv, S);
   if (registered.added.length) scheduleIntegrity(srv, S, 'registered', 0);
   return { queued, registered: registered.added, skipped: registered.skipped };
