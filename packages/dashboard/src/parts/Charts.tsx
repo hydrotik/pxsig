@@ -7,12 +7,15 @@ import * as s from '../dashboard.css';
 
 export type { SeriesDef };
 
+/** The default value format. Declared once: a default parameter that is a function stops the React Compiler. */
+const plain = (v: number) => String(v);
+
 /** Horizontal grouped bars: one row per category, one bar per series. */
 export function HBars({
   data,
   series,
   category,
-  format = (v: number) => String(v),
+  format = plain,
   max,
   height = 16,
 }: {
@@ -42,7 +45,7 @@ export function Lines({
   data,
   series,
   x,
-  format = (v: number) => String(v),
+  format = plain,
   height = 16,
 }: {
   data: Record<string, unknown>[];

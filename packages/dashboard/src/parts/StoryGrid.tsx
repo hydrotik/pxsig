@@ -18,7 +18,8 @@ import { codeCopy, t } from '../copy';
 import { useFailure } from './Failure';
 import * as s from '../dashboard.css';
 
-export function StoryCard({
+/** One entry. Memoised: a search or a filter keeps the cards still listed as they are. */
+export const StoryCard = React.memo(function StoryCard({
   data,
   row,
   scenario,
@@ -27,7 +28,7 @@ export function StoryCard({
   data: Data;
   row: Row;
   scenario: { tag: string; name: string } | null;
-  onOpen: () => void;
+  onOpen: (row: Row) => void;
 }) {
   const p = pathsFor(data, row.id, scenario);
   const m = row.metrics;
@@ -52,18 +53,20 @@ export function StoryCard({
   const activity = useCheckActivity();
   const [queued, setQueued] = React.useState(false);
   const failure = useFailure();
-  const { clear } = failure;
-  React.useEffect(() => {
+  // Fresh data for the entry: a re-check queued or refused before is over.
+  const [rowWas, setRowWas] = React.useState(row);
+  if (rowWas !== row) {
+    setRowWas(row);
     setQueued(false);
-    clear();
-  }, [row, clear]);
+    failure.clear();
+  }
   const checking = queued || !!activity.running?.includes(row.id);
   const Card = offerRecheck ? 'div' : 'button';
   return (
     <Card
       {...(offerRecheck
         ? { role: 'group', 'aria-label': row.id }
-        : { type: 'button' as const, onClick: onOpen, disabled: !openable })}
+        : { type: 'button' as const, onClick: () => onOpen(row), disabled: !openable })}
       className={offerRecheck ? `${s.storyCard} ${s.storyCardStatic}` : s.storyCard}
       data-status={status}
     >
@@ -144,7 +147,7 @@ export function StoryCard({
       </div>
     </Card>
   );
-}
+});
 
 /** "Changed 3 · New 1": a group's entries counted by status, problems first. */
 const ORDER = [
@@ -175,11 +178,22 @@ export function StoryGrid({
   grouped?: boolean;
 }) {
   const [shown, setShown] = React.useState(page);
-  React.useEffect(() => setShown(page), [rows, page]);
+  // Another list (a filter, fresh data) starts again at one page.
+  const [listWas, setListWas] = React.useState({ rows, page });
+  if (listWas.rows !== rows || listWas.page !== page) {
+    setListWas({ rows, page });
+    setShown(page);
+  }
+  // The list a card opens with, read on the click: one callback for every card, every render.
+  const listRef = React.useRef(rows);
+  React.useLayoutEffect(() => {
+    listRef.current = rows;
+  });
+  const openCard = React.useCallback((r: Row) => onOpen(r, listRef.current), [onOpen]);
   if (!rows.length) return <div className={s.empty}>{t('review.none')}</div>;
   const visible = rows.slice(0, shown);
   const card = (r: Row) => (
-    <StoryCard key={r.id} data={data} row={r} scenario={scenario} onOpen={() => onOpen(r, rows)} />
+    <StoryCard key={r.id} data={data} row={r} scenario={scenario} onOpen={openCard} />
   );
   // Grouped: one section per component, in the order the list first reaches it.
   const groups = new Map<string, Row[]>();

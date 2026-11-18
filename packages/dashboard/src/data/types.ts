@@ -347,8 +347,8 @@ export interface IntegrityLedger {
     componentsBySeverity: Record<'error' | 'warn' | 'info', number>;
     bySeverity: Record<'error' | 'warn' | 'info', number>;
     byCode: Record<string, number>;
-    /** Baselines no person approved: the queue, the growth past it. Older servers omit it. */
-    unreviewed?: {
+    /** Baselines no person approved: the queue, the growth past it. */
+    unreviewed: {
       count: number;
       queue: number;
       new: number;

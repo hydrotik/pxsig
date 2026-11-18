@@ -115,9 +115,8 @@ export function Compiler({
       await analyseReact();
     } catch (e) {
       failure.report(e);
-    } finally {
-      setAsking(false);
     }
+    setAsking(false);
   };
   const busy = !!running || asking;
   const sm = report?.summary;

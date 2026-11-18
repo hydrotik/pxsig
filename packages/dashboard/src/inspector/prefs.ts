@@ -27,8 +27,8 @@ const loadPrefs = (): Prefs => {
 
 /** The view settings: from what was saved, and saved again on every change. */
 export function useInspectorPrefs() {
-  // oxlint-disable-next-line react/use-memo -- loadPrefs reads the saved settings once
-  const prefs = React.useMemo(loadPrefs, []);
+  // Read once: the saved settings as the inspector opened.
+  const [prefs] = React.useState(loadPrefs);
   const [mode, setModeState] = React.useState<Mode>(prefs.mode ?? 'side');
   const [split, setSplit] = React.useState<number>(prefs.split ?? 50);
   const [onion, setOnion] = React.useState<number>(prefs.onion ?? 50);

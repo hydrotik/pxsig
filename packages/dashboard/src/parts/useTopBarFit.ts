@@ -176,7 +176,7 @@ export function useTopBarFit(
           k.links = Math.max(k.links ?? 0, k.floor);
           k.doubt = 0;
         }
-        frame ||= requestAnimationFrame(run);
+        if (!frame) frame = requestAnimationFrame(run);
       } else k.doubt = 0;
       if (same(next, now)) return;
       now = next;
@@ -186,7 +186,7 @@ export function useTopBarFit(
     applyBar(parts.bar, now);
     run();
     const later = () => {
-      frame ||= requestAnimationFrame(run);
+      if (!frame) frame = requestAnimationFrame(run);
     };
     const sizes = new ResizeObserver(later);
     for (const el of [parts.bar, parts.list, parts.end, brand.current]) if (el) sizes.observe(el);

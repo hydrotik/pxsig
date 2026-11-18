@@ -198,7 +198,7 @@ export function Dialog({ open, onOpenChange, initialFocus, className, children }
         onOpenChange(false);
       }}
     >
-      <DialogTitleId.Provider value={titleId}>{children}</DialogTitleId.Provider>
+      <DialogTitleId value={titleId}>{children}</DialogTitleId>
     </dialog>
   );
 }

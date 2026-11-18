@@ -45,7 +45,7 @@ const packetLine = (why: string) =>
     }
   );
 
-export function RejectedNote({
+export const RejectedNote = React.memo(function RejectedNote({
   data,
   id,
   a11y,
@@ -63,8 +63,8 @@ export function RejectedNote({
   review: ReviewEntry | A11yDecision | undefined;
   busy: boolean;
   canReview: boolean;
-  onEdit: (note: string) => void;
-  onDismiss: () => void;
+  onEdit: (a11y: boolean, note: string) => void;
+  onDismiss: (kind: 'visual' | 'a11y') => void;
   /** Dismiss reason closed this entry's rejection: said once the data no longer has it. */
   dismissed?: boolean;
 }) {
@@ -107,7 +107,7 @@ export function RejectedNote({
             size="sm"
             emphasis="ghost"
             disabled={busy}
-            onClick={onDismiss}
+            onClick={() => onDismiss(a11y ? 'a11y' : 'visual')}
             title={t('inspector.rejection.dismissTitle')}
           >
             {t('inspector.rejection.dismiss')}
@@ -133,7 +133,7 @@ export function RejectedNote({
       )}
       <CopyValue value={`pxsig check ${id}`} />
       {canReview ? (
-        <Button size="sm" emphasis="ghost" disabled={busy} onClick={() => onEdit(note ?? '')}>
+        <Button size="sm" emphasis="ghost" disabled={busy} onClick={() => onEdit(a11y, note ?? '')}>
           {t('inspector.rejection.edit')}
         </Button>
       ) : null}
@@ -141,4 +141,4 @@ export function RejectedNote({
       {extra}
     </div>
   );
-}
+});
