@@ -158,7 +158,7 @@ test('a build that records no pxsig version is stale', () => {
   assert.equal(r.dir, prebuilt);
   assert.equal(
     r.note,
-    'dashboard: the build for dashboard.ui (./pxsig-ui) in a/pxsig.config.json records no pxsig version (this is 9.9.9): run `pxsig dashboard build` in a. Serving the prebuilt dashboard.'
+    `dashboard: the build for dashboard.ui (./pxsig-ui) in ${join('a', 'pxsig.config.json')} records no pxsig version (this is 9.9.9): run \`pxsig dashboard build\` in a. Serving the prebuilt dashboard.`
   );
 });
 
