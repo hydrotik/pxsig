@@ -148,7 +148,7 @@ export const SHELL: Feature[] = [
     ],
     copy: ['coverage.banner', 'coverage.headline'],
     components: ['Alert', 'AlertTitle', 'AlertDescription', 'Button'],
-    files: ['views/Integrity', 'views/coverage-findings'],
+    files: ['views/Integrity', 'views/coverage-findings', 'views/RepairLinkNote'],
     screens: [
       { scenario: 'first-approval', hash: '#stories', wait: { text: 'Needs a first approval' } },
     ],

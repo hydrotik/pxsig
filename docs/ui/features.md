@@ -67,7 +67,7 @@ Components: `Alert`, `AlertTitle`, `AlertDescription`, `Button`
 
 Copy: `coverage.banner`, `coverage.headline`
 
-Files: `src/views/Integrity`, `src/views/coverage-findings`
+Files: `src/views/Integrity`, `src/views/coverage-findings`, `src/views/RepairLinkNote`
 
 ### React progress strip
 

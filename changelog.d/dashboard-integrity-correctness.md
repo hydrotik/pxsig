@@ -23,6 +23,9 @@
   entries", including for a missing render or a legacy baseline, which never offered it. A register
   step blocked without a running Storybook, and the repairs a person runs at a terminal (a torn
   approval log, pruning orphans), never show it.
+  On a read-only page (opened without the dashboard link), the button is hidden and the block
+  names the step instead, as the inspector does for approving: the folder, the
+  `pxsig serve --link` command to copy, and the link's timing.
 - **"View components" shows only when entries have findings** (or wait for a first approval); for
   setup findings alone, Coverage had nothing to show about them.
 - **Setup findings show a title instead of their code**, for `store-conflict`, `line-endings`,

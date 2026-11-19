@@ -36,6 +36,7 @@ import {
   repairEntries,
 } from './coverage-findings';
 import { StaleHeatmap } from '../parts/StaleHeatmap';
+import { RepairLinkNote, useReadOnly } from './RepairLinkNote';
 import * as s from '../dashboard.css';
 
 type Severity = 'error' | 'warn' | 'info';
@@ -96,6 +97,8 @@ export function CoverageDetails({
   const L = data.integrity;
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
+  // Read only: a note names the step to repair instead of the button.
+  const locked = useReadOnly();
   const shown = coverageShown(data);
   const firsts = L?.summary.byCode.unbaselined ?? 0;
   const clean = !L || (!shown && !firsts);
@@ -171,16 +174,19 @@ export function CoverageDetails({
               {t('coverage.banner.approveNew', { count: toApprove })}
             </Button>
           ) : null}
-          {served && (repairable || busy) ? (
+          {served && !locked && (repairable || busy) ? (
             <Button size="sm" onClick={run} disabled={busy}>
               {busy
                 ? t('coverage.banner.repairing')
                 : t('coverage.banner.repair', { count: repairable })}
             </Button>
           ) : null}
-          {repairable ? <span className={s.muted}>{t('coverage.banner.repairNote')}</span> : null}
+          {repairable && !(served && locked) ? (
+            <span className={s.muted}>{t('coverage.banner.repairNote')}</span>
+          ) : null}
         </span>
       ) : null}
+      {served && locked && repairable ? <RepairLinkNote approving={locked} /> : null}
       {msg ? <span className={s.mono}>{msg}</span> : null}
     </div>
   );
