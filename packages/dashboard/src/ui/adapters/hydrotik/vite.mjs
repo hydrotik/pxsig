@@ -60,6 +60,8 @@ export default function hydrotik() {
     alias: {
       '@hydrotik/design-system/chart': path.join(ds, 'src/chart.ts'),
       '@hydrotik/design-system/fonts': path.join(ds, 'src/fonts.ts'),
+      // Before `/styles`: an alias also matches the names under it.
+      '@hydrotik/design-system/styles/scoped': path.join(ds, 'src/styles-scoped.ts'),
       '@hydrotik/design-system/styles': path.join(ds, 'src/styles.ts'),
       '@hydrotik/design-system': path.join(ds, 'src'),
       '@hydrotik/tokens': path.join(need('@hydrotik/tokens'), 'src'),
@@ -69,8 +71,8 @@ export default function hydrotik() {
       '@vanilla-extract/recipes': path.join(dsModules, '@vanilla-extract/recipes'),
       recharts: path.join(dsModules, 'recharts'),
     },
-    // Every class the design system's stylesheets define starts `ds-`: reset.css.ts gives
-    // those elements the design system's reset and body type, and leaves the dashboard's own alone.
+    // Every class the design system's stylesheets define starts `ds-`: base.css.ts gives those
+    // elements the design system's base stylesheet, and leaves the dashboard's own alone.
     classPrefixes: { [ds]: 'ds-' },
     optimizeDepsExclude: [
       '@vanilla-extract/css',
