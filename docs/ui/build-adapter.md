@@ -138,8 +138,9 @@ anywhere in the workspace.
    `{ alias: { name: path }, allow: [folders], optimizeDepsExclude: [names], classPrefixes: { folder: prefix } }`.
    `classPrefixes` starts every class the vanilla-extract stylesheets in that folder define with
    the prefix, so a rule can select the design system's elements and nothing else: the reference
-   adapter gives them its design system's reset and body type that way (`reset.css.ts`), because
-   the dashboard does not load that design system's global stylesheet.
+   adapter gives them its design system's base stylesheet that way (`base.css.ts`, the design
+   system's own scoped copy of its global stylesheet), because the dashboard does not load that
+   global stylesheet.
 
 Run `pxsig dashboard gaps` at any point: it lists what is missing, partial and bespoke, and the
 dashboard files each one affects.
@@ -352,7 +353,7 @@ literal colour does not switch with it.
 | `fontSize`                                  | `3xs`, `2xs`, `xs`, `sm`, `lg`                                                                                                      | micro labels to section titles                                                                                       |
 | `fontWeight`, `lineHeight`, `letterSpacing` | `semibold`, `relaxed`, `caps`                                                                                                       | headings, running text, tracked caps                                                                                 |
 | `line`                                      | `emphasis`                                                                                                                          | the verdict edge on a card (2px in the reference)                                                                    |
-| `motion`                                    | `fast`                                                                                                                              | hover colour changes (120ms in the reference)                                                                        |
+| `motion`                                    | `fast`                                                                                                                              | hover colour changes (100ms in the reference)                                                                        |
 
 Mapping questions: Which of your variables switch with the theme? Which of your surfaces is a
 card and which a page? Is your accent accessible on both backgrounds?
@@ -543,11 +544,13 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 ### `StatGroup`
 
 - **Purpose**: a row of key figures; some are buttons that filter or navigate.
-- **Props**: `label`, `items` (`label`, `value`, `unit`, `tone`, `onSelect`, `active`, `icon`),
-  `layout` (`cards` default, `strip`: one band inside a card), `className`.
+- **Props**: `label`, `items` (`label`, `value`, `unit`, `tone`, `onSelect`, `active`, `icon`,
+  `affordance` since 1.8.0), `layout` (`cards` default, `strip`: one band inside a card),
+  `className`.
 - **Behaviour**: items wrap; a `tone` colours the value, never the tile's border, edge or
   background (R4); the label is a micro label in capitals (R3); an item with `onSelect` is a button
-  (`active` is pressed); `icon` sits in its corner.
+  (`active` is pressed); `icon` sits in its corner. A stat card that draws its own corner arrow
+  draws it from `affordance` (`filter`: down-left, `link`: up-right) instead of `icon`.
 - **Accessibility**: a region named by `label`; selectable items are buttons with `aria-pressed`
   when they filter. A value that a unit follows arrives ending in a space that is read, not drawn,
   so a tile's name keeps them apart ("Findings 1 new · of 1"): render `value` as given.
@@ -1142,6 +1145,6 @@ render (the message says whether the story or the adapter side failed, and what 
 malformed `parity` entry.
 
 Draw the difference away in the adapter rather than listing it: the reference adapter gives the
-design system's components their reset and body type, scoped to those components (`reset.css.ts`),
-so its pairs match. This repository runs the command on the reference adapter in pxsig's container
+design system's components its base stylesheet, scoped to those components (`base.css.ts`), so its
+pairs match. This repository runs the command on the reference adapter in pxsig's container
 (`node scripts/parity-check.mjs --storybook <built Storybook> --container`, the screens workflow).

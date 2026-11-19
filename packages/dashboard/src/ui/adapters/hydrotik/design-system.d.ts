@@ -116,11 +116,15 @@ declare module 'pxsig:hydrotik-design-system' {
   type Orientation = 'horizontal' | 'vertical';
   type TransitionStatus = 'starting' | 'ending' | 'idle' | undefined;
   interface AlertProps extends React$1.HTMLAttributes<HTMLDivElement> {
-    variant?: 'default' | 'destructive';
+    variant?: 'default' | 'destructive' | 'warning' | 'success' | 'info';
     icon?: React$1.ReactNode;
+    live?: boolean;
   }
   const Alert: React$1.ForwardRefExoticComponent<AlertProps & React$1.RefAttributes<HTMLDivElement>>;
-  const AlertTitle: React$1.ForwardRefExoticComponent<React$1.HTMLAttributes<HTMLHeadingElement> & React$1.RefAttributes<HTMLHeadingElement>>;
+  interface AlertTitleProps extends React$1.HTMLAttributes<HTMLHeadingElement> {
+    as?: 'h5' | 'div';
+  }
+  const AlertTitle: React$1.ForwardRefExoticComponent<AlertTitleProps & React$1.RefAttributes<HTMLHeadingElement>>;
   const AlertDescription: React$1.ForwardRefExoticComponent<React$1.HTMLAttributes<HTMLParagraphElement> & React$1.RefAttributes<HTMLParagraphElement>>;
   interface ButtonProps extends React$1.ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link';
@@ -1194,6 +1198,7 @@ declare module 'pxsig:hydrotik-design-system' {
   }
   const SelectItem: React$1.ForwardRefExoticComponent<SelectItemProps & React$1.RefAttributes<HTMLDivElement>>;
   type Direction$1 = 'ltr' | 'rtl';
+  type SliderLayout = 'stacked' | 'inline';
   interface SliderProps extends Omit<React$1.ComponentPropsWithoutRef<typeof SliderRoot>, 'className' | 'render' | 'value' | 'defaultValue' | 'onValueChange' | 'onValueCommitted' | 'minStepsBetweenValues' | 'thumbAlignment'> {
     className?: string;
     value?: number[];
@@ -1209,6 +1214,8 @@ declare module 'pxsig:hydrotik-design-system' {
     showValue?: boolean;
     formatValue?: (value: number[]) => React$1.ReactNode;
     rangeLabels?: [React$1.ReactNode, React$1.ReactNode];
+    layout?: SliderLayout;
+    size?: ControlSize;
   }
   const Slider$1: React$1.ForwardRefExoticComponent<SliderProps & React$1.RefAttributes<HTMLSpanElement>>;
   interface SwitchProps extends Omit<React$1.ComponentPropsWithoutRef<typeof SwitchRoot>, 'className' | 'render' | 'nativeButton' | 'onCheckedChange'> {
@@ -1827,10 +1834,11 @@ declare module 'pxsig:hydrotik-design-system' {
     size?: ControlSize;
   }
   const SearchBar: React$1.ForwardRefExoticComponent<SearchBarProps & React$1.RefAttributes<HTMLInputElement>>;
+  type StatAffordance = 'filter' | 'link';
   type StatCardType = 'filter' | 'view' | 'link';
   type StatErrorTone = 'error';
   type StatAccent = 'info' | StateTone | StatErrorTone | 'chart1' | 'chart2' | 'chart3' | 'chart4' | 'chart5';
-  type StatTone = StateTone | StatErrorTone;
+  type StatTone = 'info' | StateTone | StatErrorTone;
   interface StatCard {
     id?: string;
     label: React$1.ReactNode;
@@ -1844,6 +1852,7 @@ declare module 'pxsig:hydrotik-design-system' {
     href?: string;
     accent?: StatAccent;
     icon?: React$1.ReactNode;
+    affordance?: StatAffordance;
   }
   type StatPanelVariant = 'cards' | 'strip';
   interface StatPanelProps extends React$1.HTMLAttributes<HTMLDivElement> {
@@ -1891,6 +1900,7 @@ declare module 'pxsig:hydrotik-design-system' {
   type AsidePosition = 'left' | 'right';
   interface ContentLayoutProps extends React$1.HTMLAttributes<HTMLDivElement> {
     height?: string;
+    transparent?: boolean;
   }
   const ContentLayout: React$1.ForwardRefExoticComponent<ContentLayoutProps & React$1.RefAttributes<HTMLDivElement>>;
   interface ContentLayoutMainProps extends React$1.HTMLAttributes<HTMLElement> {
@@ -1903,7 +1913,9 @@ declare module 'pxsig:hydrotik-design-system' {
     open?: boolean;
     defaultOpen?: boolean;
     onOpenChange?: (open: boolean) => void;
-    mode?: 'push' | 'overlay';
+    mode?: 'push' | 'overlay' | 'auto';
+    overlayBelow?: SidePanelOverlayBelow;
+    focusOnOpen?: boolean;
     unmountOnClose?: boolean;
     disableDismiss?: boolean;
     disableScrim?: boolean;
@@ -1916,7 +1928,12 @@ declare module 'pxsig:hydrotik-design-system' {
     defaultExpanded?: boolean;
     onExpandedChange?: (expanded: boolean) => void;
     expandedWidth?: number;
+    resizeLabel?: string;
+    expandLabel?: string;
+    collapseLabel?: string;
+    closeLabel?: string;
   }
+  type SidePanelOverlayBelow = 'sm' | 'md' | 'lg';
   const SidePanel: React$1.ForwardRefExoticComponent<SidePanelProps & React$1.RefAttributes<HTMLElement>>;
   interface SidePanelHeaderProps extends Omit<React$1.HTMLAttributes<HTMLDivElement>, 'title'> {
     title: React$1.ReactNode;
@@ -1942,6 +1959,7 @@ declare module 'pxsig:hydrotik-design-system' {
     count?: number;
     countTone?: CountBadgeTone;
     countLabel?: string;
+    keep?: boolean;
   }
   const NavItemLink: React$1.ForwardRefExoticComponent<NavItemLinkProps & React$1.RefAttributes<HTMLLIElement>>;
   interface NavItemsProps extends React$1.HTMLAttributes<HTMLUListElement> {
@@ -3434,6 +3452,13 @@ declare module 'pxsig:hydrotik-design-system' {
       '5': `var(--${string})`;
       '6': `var(--${string})`;
     };
+    sequential: {
+      step1: `var(--${string})`;
+      step2: `var(--${string})`;
+      step3: `var(--${string})`;
+      step4: `var(--${string})`;
+      step5: `var(--${string})`;
+    };
   };
   const colorways: readonly ['air', 'lime'];
   type ColorwayName = 'default' | (typeof colorways)[number];
@@ -3441,7 +3466,6 @@ declare module 'pxsig:hydrotik-design-system' {
   type TypefaceName = 'default' | (typeof typefaces)[number];
   const densities: readonly ['compact'];
   type DensityName = 'default' | (typeof densities)[number];
-  const themeClasses: Record<'dark' | 'light', string>;
   type ThemeName = 'dark' | 'light';
   type BrandName = 'default';
   const presets: {
@@ -3466,6 +3490,8 @@ declare module 'pxsig:hydrotik-design-system' {
     setDensity: (density: DensityName) => void;
   }
   interface ThemeProviderProps {
+    theme?: ThemeName;
+    onThemeChange?: (theme: ThemeName) => void;
     defaultTheme?: ThemeName;
     defaultBrand?: BrandName;
     preset?: PresetName;
@@ -3475,7 +3501,7 @@ declare module 'pxsig:hydrotik-design-system' {
     storageKey?: string | null;
     children: React.ReactNode;
   }
-  function ThemeProvider({ defaultTheme, defaultBrand, preset, defaultColorway, defaultTypeface, defaultDensity, storageKey, children }: ThemeProviderProps): import("react").JSX.Element;
+  function ThemeProvider({ theme: themeProp, onThemeChange, defaultTheme, defaultBrand, preset, defaultColorway, defaultTypeface, defaultDensity, storageKey, children }: ThemeProviderProps): import("react").JSX.Element;
   function useTheme(): ThemeContextValue;
   const hydrotik_design_system$Icons: {
     readonly ArrowDownLeft: typeof ArrowDownLeft;
@@ -3491,7 +3517,7 @@ declare module 'pxsig:hydrotik-design-system' {
     readonly Sun: typeof Sun;
     readonly TriangleAlert: typeof TriangleAlert;
   };
-  export { Alert as hydrotik_design_system$Alert, AlertDescription as hydrotik_design_system$AlertDescription, AlertTitle as hydrotik_design_system$AlertTitle, AppShell as hydrotik_design_system$AppShell, AppShellContent as hydrotik_design_system$AppShellContent, Badge as hydrotik_design_system$Badge, Button as hydrotik_design_system$Button, Card as hydrotik_design_system$Card, CardContent as hydrotik_design_system$CardContent, CardDescription as hydrotik_design_system$CardDescription, CardHeader as hydrotik_design_system$CardHeader, CardTitle as hydrotik_design_system$CardTitle, ContentLayout as hydrotik_design_system$ContentLayout, ContentLayoutMain as hydrotik_design_system$ContentLayoutMain, CopyValue as hydrotik_design_system$CopyValue, DataGrid as hydrotik_design_system$DataGrid, Dialog$1 as hydrotik_design_system$Dialog, DialogContent as hydrotik_design_system$DialogContent, DialogDescription as hydrotik_design_system$DialogDescription, DialogTitle as hydrotik_design_system$DialogTitle, hydrotik_design_system$Icons, Input as hydrotik_design_system$Input, Kbd as hydrotik_design_system$Kbd, Link as hydrotik_design_system$Link, NavItemLink as hydrotik_design_system$NavItemLink, NavItems as hydrotik_design_system$NavItems, Navbar as hydrotik_design_system$Navbar, Progress$1 as hydrotik_design_system$Progress, SearchBar as hydrotik_design_system$SearchBar, Select$1 as hydrotik_design_system$Select, SelectContent as hydrotik_design_system$SelectContent, SelectItem as hydrotik_design_system$SelectItem, SelectTrigger as hydrotik_design_system$SelectTrigger, SelectValue as hydrotik_design_system$SelectValue, SidePanel as hydrotik_design_system$SidePanel, SidePanelBody as hydrotik_design_system$SidePanelBody, SidePanelCloseButton as hydrotik_design_system$SidePanelCloseButton, SidePanelHeader as hydrotik_design_system$SidePanelHeader, Slider$1 as hydrotik_design_system$Slider, StatPanel as hydrotik_design_system$StatPanel, StaticList as hydrotik_design_system$StaticList, StaticListItem as hydrotik_design_system$StaticListItem, StatusBadge as hydrotik_design_system$StatusBadge, Switch$1 as hydrotik_design_system$Switch, ToggleGroup$1 as hydrotik_design_system$ToggleGroup, ToggleGroupItem as hydrotik_design_system$ToggleGroupItem, Toolbar as hydrotik_design_system$Toolbar, ToolbarFormField as hydrotik_design_system$ToolbarFormField, ToolbarLeft as hydrotik_design_system$ToolbarLeft, ToolbarRight as hydrotik_design_system$ToolbarRight, ToolbarSummary as hydrotik_design_system$ToolbarSummary, Tooltip$1 as hydrotik_design_system$Tooltip, TooltipContent as hydrotik_design_system$TooltipContent, TooltipProvider as hydrotik_design_system$TooltipProvider, TooltipTrigger as hydrotik_design_system$TooltipTrigger, ChartContainer as hydrotik_design_system_chart$ChartContainer, ChartLegend as hydrotik_design_system_chart$ChartLegend, ChartLegendContent as hydrotik_design_system_chart$ChartLegendContent, ChartTooltip as hydrotik_design_system_chart$ChartTooltip, ChartTooltipContent as hydrotik_design_system_chart$ChartTooltipContent, focusColor as hydrotik_design_system_styles$focusColor, focusOutline as hydrotik_design_system_styles$focusOutline, ThemeProvider as hydrotik_theme_provider$ThemeProvider, useTheme as hydrotik_theme_provider$useTheme, themeClasses as hydrotik_tokens$themeClasses, vars as hydrotik_tokens$vars, Bar as recharts$Bar, BarChart as recharts$BarChart, CartesianGrid as recharts$CartesianGrid, Line as recharts$Line, LineChart as recharts$LineChart, XAxis as recharts$XAxis, YAxis as recharts$YAxis };
+  export { Alert as hydrotik_design_system$Alert, AlertDescription as hydrotik_design_system$AlertDescription, AlertTitle as hydrotik_design_system$AlertTitle, AppShell as hydrotik_design_system$AppShell, AppShellContent as hydrotik_design_system$AppShellContent, Badge as hydrotik_design_system$Badge, Button as hydrotik_design_system$Button, Card as hydrotik_design_system$Card, CardContent as hydrotik_design_system$CardContent, CardDescription as hydrotik_design_system$CardDescription, CardHeader as hydrotik_design_system$CardHeader, CardTitle as hydrotik_design_system$CardTitle, ContentLayout as hydrotik_design_system$ContentLayout, ContentLayoutMain as hydrotik_design_system$ContentLayoutMain, CopyValue as hydrotik_design_system$CopyValue, DataGrid as hydrotik_design_system$DataGrid, Dialog$1 as hydrotik_design_system$Dialog, DialogContent as hydrotik_design_system$DialogContent, DialogDescription as hydrotik_design_system$DialogDescription, DialogTitle as hydrotik_design_system$DialogTitle, hydrotik_design_system$Icons, Input as hydrotik_design_system$Input, Kbd as hydrotik_design_system$Kbd, Link as hydrotik_design_system$Link, NavItemLink as hydrotik_design_system$NavItemLink, NavItems as hydrotik_design_system$NavItems, Navbar as hydrotik_design_system$Navbar, Progress$1 as hydrotik_design_system$Progress, SearchBar as hydrotik_design_system$SearchBar, Select$1 as hydrotik_design_system$Select, SelectContent as hydrotik_design_system$SelectContent, SelectItem as hydrotik_design_system$SelectItem, SelectTrigger as hydrotik_design_system$SelectTrigger, SelectValue as hydrotik_design_system$SelectValue, SidePanel as hydrotik_design_system$SidePanel, SidePanelBody as hydrotik_design_system$SidePanelBody, SidePanelCloseButton as hydrotik_design_system$SidePanelCloseButton, SidePanelHeader as hydrotik_design_system$SidePanelHeader, Slider$1 as hydrotik_design_system$Slider, StatPanel as hydrotik_design_system$StatPanel, StaticList as hydrotik_design_system$StaticList, StaticListItem as hydrotik_design_system$StaticListItem, StatusBadge as hydrotik_design_system$StatusBadge, Switch$1 as hydrotik_design_system$Switch, ToggleGroup$1 as hydrotik_design_system$ToggleGroup, ToggleGroupItem as hydrotik_design_system$ToggleGroupItem, Toolbar as hydrotik_design_system$Toolbar, ToolbarFormField as hydrotik_design_system$ToolbarFormField, ToolbarLeft as hydrotik_design_system$ToolbarLeft, ToolbarRight as hydrotik_design_system$ToolbarRight, ToolbarSummary as hydrotik_design_system$ToolbarSummary, Tooltip$1 as hydrotik_design_system$Tooltip, TooltipContent as hydrotik_design_system$TooltipContent, TooltipProvider as hydrotik_design_system$TooltipProvider, TooltipTrigger as hydrotik_design_system$TooltipTrigger, ChartContainer as hydrotik_design_system_chart$ChartContainer, ChartLegend as hydrotik_design_system_chart$ChartLegend, ChartLegendContent as hydrotik_design_system_chart$ChartLegendContent, ChartTooltip as hydrotik_design_system_chart$ChartTooltip, ChartTooltipContent as hydrotik_design_system_chart$ChartTooltipContent, focusColor as hydrotik_design_system_styles$focusColor, focusOutline as hydrotik_design_system_styles$focusOutline, ThemeProvider as hydrotik_theme_provider$ThemeProvider, useTheme as hydrotik_theme_provider$useTheme, vars as hydrotik_tokens$vars, Bar as recharts$Bar, BarChart as recharts$BarChart, CartesianGrid as recharts$CartesianGrid, Line as recharts$Line, LineChart as recharts$LineChart, XAxis as recharts$XAxis, YAxis as recharts$YAxis };
 }
 declare module '@hydrotik/design-system' {
   export { hydrotik_design_system$Alert as Alert, hydrotik_design_system$AlertDescription as AlertDescription, hydrotik_design_system$AlertTitle as AlertTitle, hydrotik_design_system$AppShell as AppShell, hydrotik_design_system$AppShellContent as AppShellContent, hydrotik_design_system$Badge as Badge, hydrotik_design_system$Button as Button, hydrotik_design_system$Card as Card, hydrotik_design_system$CardContent as CardContent, hydrotik_design_system$CardDescription as CardDescription, hydrotik_design_system$CardHeader as CardHeader, hydrotik_design_system$CardTitle as CardTitle, hydrotik_design_system$ContentLayout as ContentLayout, hydrotik_design_system$ContentLayoutMain as ContentLayoutMain, hydrotik_design_system$CopyValue as CopyValue, hydrotik_design_system$DataGrid as DataGrid, hydrotik_design_system$Dialog as Dialog, hydrotik_design_system$DialogContent as DialogContent, hydrotik_design_system$DialogDescription as DialogDescription, hydrotik_design_system$DialogTitle as DialogTitle, hydrotik_design_system$Icons as Icons, hydrotik_design_system$Input as Input, hydrotik_design_system$Kbd as Kbd, hydrotik_design_system$Link as Link, hydrotik_design_system$NavItemLink as NavItemLink, hydrotik_design_system$NavItems as NavItems, hydrotik_design_system$Navbar as Navbar, hydrotik_design_system$Progress as Progress, hydrotik_design_system$SearchBar as SearchBar, hydrotik_design_system$Select as Select, hydrotik_design_system$SelectContent as SelectContent, hydrotik_design_system$SelectItem as SelectItem, hydrotik_design_system$SelectTrigger as SelectTrigger, hydrotik_design_system$SelectValue as SelectValue, hydrotik_design_system$SidePanel as SidePanel, hydrotik_design_system$SidePanelBody as SidePanelBody, hydrotik_design_system$SidePanelCloseButton as SidePanelCloseButton, hydrotik_design_system$SidePanelHeader as SidePanelHeader, hydrotik_design_system$Slider as Slider, hydrotik_design_system$StatPanel as StatPanel, hydrotik_design_system$StaticList as StaticList, hydrotik_design_system$StaticListItem as StaticListItem, hydrotik_design_system$StatusBadge as StatusBadge, hydrotik_design_system$Switch as Switch, hydrotik_design_system$ToggleGroup as ToggleGroup, hydrotik_design_system$ToggleGroupItem as ToggleGroupItem, hydrotik_design_system$Toolbar as Toolbar, hydrotik_design_system$ToolbarFormField as ToolbarFormField, hydrotik_design_system$ToolbarLeft as ToolbarLeft, hydrotik_design_system$ToolbarRight as ToolbarRight, hydrotik_design_system$ToolbarSummary as ToolbarSummary, hydrotik_design_system$Tooltip as Tooltip, hydrotik_design_system$TooltipContent as TooltipContent, hydrotik_design_system$TooltipProvider as TooltipProvider, hydrotik_design_system$TooltipTrigger as TooltipTrigger } from 'pxsig:hydrotik-design-system';
@@ -3507,7 +3533,7 @@ declare module '@hydrotik/theme-provider' {
   export { hydrotik_theme_provider$ThemeProvider as ThemeProvider, hydrotik_theme_provider$useTheme as useTheme } from 'pxsig:hydrotik-design-system';
 }
 declare module '@hydrotik/tokens' {
-  export { hydrotik_tokens$themeClasses as themeClasses, hydrotik_tokens$vars as vars } from 'pxsig:hydrotik-design-system';
+  export { hydrotik_tokens$vars as vars } from 'pxsig:hydrotik-design-system';
 }
 declare module 'recharts' {
   export { recharts$Bar as Bar, recharts$BarChart as BarChart, recharts$CartesianGrid as CartesianGrid, recharts$Line as Line, recharts$LineChart as LineChart, recharts$XAxis as XAxis, recharts$YAxis as YAxis } from 'pxsig:hydrotik-design-system';

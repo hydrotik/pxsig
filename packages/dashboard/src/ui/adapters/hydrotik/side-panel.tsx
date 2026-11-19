@@ -1,15 +1,13 @@
 /**
- * The reference adapter's side panel (contract 1.3.0): hydrotik's SidePanel pushed in on the right
- * of a ContentLayout, which its panel needs around the main area, and overlaid on the main area
- * when the layout is too narrow for both (side-panel.css.ts). Neither a resize handle nor an
- * expand button: the design system names both in fixed English, and the dashboard's copy lives in
- * en.json. The close button is the design system's, named from the contract. index.tsx passes the
- * design-system parts in (as slider.tsx), so every part the adapter uses is named in that one file.
+ * The reference adapter's side panel (contract 1.3.0): hydrotik's SidePanel on the right of a
+ * ContentLayout, in its `auto` mode: pushed in beside the main area while the layout is at least
+ * its `lg` step wide, overlaid on it below that. Focus moves into it on open and back on close
+ * (`focusOnOpen`). Neither a resize handle nor an expand button. The close button is the design
+ * system's, named from the contract. index.tsx passes the design-system parts in (as
+ * text-field.tsx), so every part the adapter uses is named in that one file.
  */
-import React from 'react';
 import type * as DS from '@hydrotik/design-system';
 import type * as C from '../../contract';
-import * as sp from './side-panel.css';
 
 /** The design-system parts the mapping uses. */
 export interface PanelParts {
@@ -31,27 +29,19 @@ export const sidePanel = (P: PanelParts) => {
     className,
     children,
   }: C.SidePanelProps) {
-    const ref = React.useRef<HTMLElement>(null);
-    // Pushed in, the design system leaves focus where it was: the contract moves it into the
-    // panel (the panel is focusable and named by its heading), and back on close.
-    React.useEffect(() => {
-      if (!open) return;
-      const back = document.activeElement as HTMLElement | null;
-      ref.current?.focus();
-      return () => back?.focus?.();
-    }, [open]);
     return (
       <P.Panel
-        ref={ref}
         position="right"
-        mode="push"
+        mode="auto"
+        overlayBelow="lg"
+        focusOnOpen
         open={open}
         onOpenChange={onOpenChange}
         resizable={false}
         defaultWidth={20}
         minWidth={20}
         maxWidth={20}
-        className={className ? `${sp.panel} ${className}` : sp.panel}
+        className={className}
       >
         <P.Header title={title} headingLevel={headingLevel} showClose={false}>
           <P.Close aria-label={closeLabel} title={closeLabel} />
@@ -62,13 +52,9 @@ export const sidePanel = (P: PanelParts) => {
   }
   return {
     // In the page's flow: as tall as its content (the layout fills its parent by default), on the
-    // surface it sits on (its own background is the page's).
+    // surface it sits on.
     SidePanelLayout: ({ className, children }: C.SidePanelLayoutProps) => (
-      <P.Layout
-        height="auto"
-        className={className ? `${sp.layout} ${className}` : sp.layout}
-        style={{ backgroundColor: 'transparent' }}
-      >
+      <P.Layout height="auto" transparent className={className}>
         {children}
       </P.Layout>
     ),

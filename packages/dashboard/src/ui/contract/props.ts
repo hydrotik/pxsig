@@ -139,6 +139,12 @@ export interface StatItem {
   active?: boolean;
   /** A glyph in the item's corner saying what selecting it does. Decorative. */
   icon?: React.ReactNode;
+  /**
+   * What selecting the item does, by where the result appears (since 1.8.0): `filter` filters the
+   * current view, `link` goes somewhere else. An adapter whose stat card draws its own corner arrow
+   * draws it from this, in place of `icon`; any other adapter keeps drawing `icon`.
+   */
+  affordance?: 'filter' | 'link';
 }
 /** A row of key figures. */
 export interface StatGroupProps extends WithClass {

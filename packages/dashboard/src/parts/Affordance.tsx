@@ -10,6 +10,15 @@ export type AffordanceKind = 'filter' | 'navigate';
 
 const ICON = { filter: 'arrow-down-left', navigate: 'arrow-up-right' } as const;
 
+/**
+ * A selectable stat item's corner: the glyph (`icon`) and what it says (`affordance`), for an
+ * adapter whose stat card draws its own arrow.
+ */
+export const statAffordance = (kind: AffordanceKind) => ({
+  icon: <Affordance kind={kind} />,
+  affordance: kind === 'filter' ? ('filter' as const) : ('link' as const),
+});
+
 export function Affordance({ kind }: { kind: AffordanceKind }) {
   return (
     <span className={s.affordance} data-kind={kind} aria-hidden="true">

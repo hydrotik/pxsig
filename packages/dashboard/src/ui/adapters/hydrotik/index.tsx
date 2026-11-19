@@ -15,8 +15,8 @@ import {
   ChartTooltipContent,
 } from '@hydrotik/design-system/chart';
 import { focusColor } from '@hydrotik/design-system/styles';
-import { ThemeProvider, useTheme } from '@hydrotik/theme-provider';
-import { themeClasses, vars } from '@hydrotik/tokens';
+import { ThemeProvider } from '@hydrotik/theme-provider';
+import { vars } from '@hydrotik/tokens';
 import {
   Bar,
   BarChart as RBarChart,
@@ -74,44 +74,20 @@ export const tokens: C.TokenMap = {
   'lineHeight.relaxed': vars.font.lineHeight.relaxed,
   'letterSpacing.caps': vars.font.letterSpacing.caps,
   'line.emphasis': vars.ring.width,
-  // The design system's fastest duration is 100ms; the dashboard's hover fades have always been 120ms.
-  'motion.fast': '120ms',
+  'motion.fast': vars.motion.duration.fast,
 };
 
 // --- shell ---------------------------------------------------------------------------------------
 
-/** Keeps the design system's theme in step with the contract runtime's mode. */
-function SyncMode({ mode }: { mode: C.ThemeMode }) {
-  const { theme, setTheme } = useTheme();
-  React.useEffect(() => {
-    if (theme !== mode) setTheme(mode);
-  }, [mode, theme, setTheme]);
-  return null;
-}
-
 /**
- * The theme's class on <html> at once, where the design system's ThemeScript puts it before a page
- * draws. ThemeProvider adds it in an effect, after its children's first render: until then the
- * body's font (a theme variable) is the browser's own, so a chart's wait for the text font
- * (ChartContainer) found it loaded, and recharts measured its labels in the fallback.
+ * The design system's theme provider, controlled by the runtime's mode (contract rule 7): it puts
+ * the theme on <html> before its children first render and follows `mode`, never storage.
  */
-function themeOnRoot(mode: C.ThemeMode) {
-  if (typeof document === 'undefined') return;
-  const root = document.documentElement;
-  root.classList.remove(...Object.values(themeClasses));
-  root.classList.add(themeClasses[mode]);
-  root.setAttribute('data-theme', mode);
-}
-
-export function UiProvider({ mode, children }: C.UiProviderProps) {
-  React.useState(() => themeOnRoot(mode));
-  return (
-    <ThemeProvider defaultTheme={mode} storageKey="pxsig-dashboard-theme">
-      <SyncMode mode={mode} />
-      <DS.TooltipProvider>{children}</DS.TooltipProvider>
-    </ThemeProvider>
-  );
-}
+export const UiProvider = ({ mode, children }: C.UiProviderProps) => (
+  <ThemeProvider theme={mode} storageKey="pxsig-dashboard-theme">
+    <DS.TooltipProvider>{children}</DS.TooltipProvider>
+  </ThemeProvider>
+);
 
 export const AppShell = ({ children }: C.AppShellProps) => <DS.AppShell>{children}</DS.AppShell>;
 
@@ -131,7 +107,7 @@ const navItemProps = ({ href, active, count, countTone, countLabel }: C.NavLinkP
   href,
   active,
   count,
-  // `attention` is drawn as primary digits on a neutral pill (tones.css.ts).
+  // `info` asks for action: the design system's attention count.
   countTone:
     countTone === undefined
       ? undefined
@@ -147,28 +123,18 @@ export const NavLink = (p: C.NavLinkProps) => (
 );
 
 /**
- * A link that stays in the bar (`keep`): the design system's NavItems moves only items of the
- * NavItemLink type into its More menu, and keeps any other element in place, so a kept link is a
- * NavItemLink under another component.
- */
-const KeptNavItemLink = (p: React.ComponentProps<typeof DS.NavItemLink>) => (
-  <DS.NavItemLink {...p} />
-);
-
-/**
  * The design system's NavItems finds its links by element type (to measure them and move the ones
- * that do not fit into its More menu), so each contract NavLink becomes a NavItemLink here, or a
- * KeptNavItemLink when it is kept. `moreLabel` names the More trigger and its menu.
+ * that do not fit into its More menu), so each contract NavLink becomes a NavItemLink here; a kept
+ * one never moves (`keep`). `moreLabel` names the More trigger and its menu.
  */
 export const NavList = ({ moreLabel, children }: C.NavListProps) => (
   <DS.NavItems moreLabel={moreLabel}>
     {React.Children.map(children, (c) => {
       if (!React.isValidElement<C.NavLinkProps>(c) || c.type !== NavLink) return c;
-      const Item = c.props.keep ? KeptNavItemLink : DS.NavItemLink;
       return (
-        <Item key={c.key ?? undefined} {...navItemProps(c.props)}>
+        <DS.NavItemLink key={c.key ?? undefined} {...navItemProps(c.props)} keep={c.props.keep}>
           {c.props.children}
-        </Item>
+        </DS.NavItemLink>
       );
     })}
   </DS.NavItems>
@@ -366,6 +332,7 @@ const panel = sidePanel({
 export const SidePanelLayout = panel.SidePanelLayout;
 export const SidePanelMain = panel.SidePanelMain;
 export const SidePanel = panel.SidePanel;
+
 export const Slider = oneLineSlider(DS.Slider);
 
 export const Switch = ({ checked, onCheckedChange, label, disabled }: C.SwitchProps) => (
@@ -470,18 +437,15 @@ export const KeyValueItem = ({ label, children }: C.KeyValueItemProps) => (
   <DS.StaticListItem label={label}>{children}</DS.StaticListItem>
 );
 
-export const Alert = ({ tone, label, children }: C.AlertProps) => (
-  <DS.Alert
-    variant={tone === 'danger' ? 'destructive' : 'default'}
-    aria-label={label}
-    style={{ boxSizing: 'border-box' }}
-  >
+// A block that stays on the page, not an announcement: no live role, named by its title.
+export const Alert = ({ tone, children }: C.AlertProps) => (
+  <DS.Alert variant={tone === 'danger' ? 'destructive' : 'default'} live={false}>
     {children}
   </DS.Alert>
 );
-// The design system's title is an h5; an alert's title is not a heading (the contract), so its role is removed.
+// An alert's title is not a heading (the contract).
 export const AlertTitle = ({ children }: C.AlertTitleProps) => (
-  <DS.AlertTitle role="none">{children}</DS.AlertTitle>
+  <DS.AlertTitle as="div">{children}</DS.AlertTitle>
 );
 export const AlertDescription = ({ children }: C.AlertDescriptionProps) => (
   <DS.AlertDescription>{children}</DS.AlertDescription>

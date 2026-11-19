@@ -6,7 +6,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, StatGroup } from '@ui';
 import { t } from '../../copy';
 import { type Data, useReactActivity } from '../../data';
-import { Affordance } from '../../parts/Affordance';
+import { statAffordance } from '../../parts/Affordance';
 import * as s from '../../dashboard.css';
 import { when } from './shared';
 
@@ -38,7 +38,7 @@ export function ReactCard({ data, openReact }: { data: Data; openReact: OpenReac
       : t('overview.react.noBase', { date: when(report.generatedAt) })
     : '';
   const stale = status.stale ? t('overview.react.stale', { count: status.stale.files }) : '';
-  const nav = <Affordance kind="navigate" />;
+  const nav = statAffordance('navigate');
   return (
     <div aria-busy={!!activity.running || status.compiler === 'running' || undefined}>
       <Card>
@@ -70,7 +70,7 @@ export function ReactCard({ data, openReact }: { data: Data; openReact: OpenReac
                     away ??
                     (reasons ? t('overview.react.newReason', { count: reasons }) : undefined),
                   tone: sm?.newBailouts ? 'warning' : undefined,
-                  ...(sm ? { onSelect: () => openReact('compiler', false), icon: nav } : {}),
+                  ...(sm ? { onSelect: () => openReact('compiler', false), ...nav } : {}),
                 },
                 {
                   label: t('overview.react.findings'),
@@ -79,7 +79,7 @@ export function ReactCard({ data, openReact }: { data: Data; openReact: OpenReac
                     away ??
                     (sm ? t('overview.react.findingsOf', { count: sm.findings }) : undefined),
                   tone: sm?.newFindings ? 'warning' : undefined,
-                  ...(sm ? { onSelect: () => openReact('compiler', false), icon: nav } : {}),
+                  ...(sm ? { onSelect: () => openReact('compiler', false), ...nav } : {}),
                 },
                 {
                   label: t('overview.react.compiled'),
@@ -87,7 +87,7 @@ export function ReactCard({ data, openReact }: { data: Data; openReact: OpenReac
                   unit:
                     away ??
                     (sm ? t('overview.react.compiledOf', { count: sm.functions }) : undefined),
-                  ...(sm ? { onSelect: () => openReact('compiler', true), icon: nav } : {}),
+                  ...(sm ? { onSelect: () => openReact('compiler', true), ...nav } : {}),
                 },
                 {
                   label: t('overview.react.still'),
@@ -97,7 +97,7 @@ export function ReactCard({ data, openReact }: { data: Data; openReact: OpenReac
                     : t('overview.react.notMeasured'),
                   tone: still ? 'warning' : undefined,
                   ...(measured.length
-                    ? { onSelect: () => openReact('renders', !still), icon: nav }
+                    ? { onSelect: () => openReact('renders', !still), ...nav }
                     : {}),
                 },
               ]}
