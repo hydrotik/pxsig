@@ -138,9 +138,8 @@ anywhere in the workspace.
    `{ alias: { name: path }, allow: [folders], optimizeDepsExclude: [names], classPrefixes: { folder: prefix } }`.
    `classPrefixes` starts every class the vanilla-extract stylesheets in that folder define with
    the prefix, so a rule can select the design system's elements and nothing else: the reference
-   adapter gives them its design system's base stylesheet that way (`base.css.ts`, the design
-   system's own scoped copy of its global stylesheet), because the dashboard does not load that
-   global stylesheet.
+   adapter gives them its design system's reset and body type that way (`reset.css.ts`), because
+   the dashboard does not load that design system's global stylesheet.
 
 Run `pxsig dashboard gaps` at any point: it lists what is missing, partial and bespoke, and the
 dashboard files each one affects.
@@ -1145,6 +1144,6 @@ render (the message says whether the story or the adapter side failed, and what 
 malformed `parity` entry.
 
 Draw the difference away in the adapter rather than listing it: the reference adapter gives the
-design system's components its base stylesheet, scoped to those components (`base.css.ts`), so its
-pairs match. This repository runs the command on the reference adapter in pxsig's container
+design system's components their reset and body type, scoped to those components (`reset.css.ts`),
+so its pairs match. This repository runs the command on the reference adapter in pxsig's container
 (`node scripts/parity-check.mjs --storybook <built Storybook> --container`, the screens workflow).

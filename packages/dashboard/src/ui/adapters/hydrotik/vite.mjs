@@ -71,8 +71,8 @@ export default function hydrotik() {
       '@vanilla-extract/recipes': path.join(dsModules, '@vanilla-extract/recipes'),
       recharts: path.join(dsModules, 'recharts'),
     },
-    // Every class the design system's stylesheets define starts `ds-`: base.css.ts gives those
-    // elements the design system's base stylesheet, and leaves the dashboard's own alone.
+    // Every class the design system's stylesheets define starts `ds-`: reset.css.ts gives
+    // those elements the design system's reset and body type, and leaves the dashboard's own alone.
     classPrefixes: { [ds]: 'ds-' },
     optimizeDepsExclude: [
       '@vanilla-extract/css',
