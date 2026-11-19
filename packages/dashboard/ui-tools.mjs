@@ -74,6 +74,7 @@ import {
   srcDir,
   uiDir,
 } from './ui-tools/paths.mjs';
+import { adapterCssProblems } from './ui-tools/adapter-css.mjs';
 import { uiReachProblem } from './ui-tools/imports.mjs';
 
 export {
@@ -144,7 +145,9 @@ function copyExists(messages, key) {
  *     ../ui/tokens (ui-tools/imports.mjs).
  *  2. The generated manifest and feature catalogue match the code.
  *  3. Every contract component has a section in docs/ui/build-adapter.md, and the reference
- *     adapter declares it (full or bespoke) and exports it; it maps every token and icon.
+ *     adapter declares it (full or bespoke) and exports it; it maps every token and icon, and
+ *     maps props only: no styles of its own, inline styles for layout glue only
+ *     (ui-tools/adapter-css.mjs).
  *  4. Every feature names real components, files and copy keys; each component it lists is imported
  *     by one of its files; every view and every contract component belongs to a feature.
  *  5. CONTRACT_VERSION, src/ui/contract-lock.json and docs/ui/contract-changes.md agree: a contract
@@ -217,6 +220,8 @@ export async function checkAll() {
       problems.push(
         `reference adapter: ${r.name} is ${r.status}; it must be full or bespoke (and listed in conformance.json)`
       );
+  // It maps props only: no styles of its own over the design system's (ui-tools/adapter-css.mjs).
+  for (const p of adapterCssProblems(refDir, repoRoot)) problems.push(`reference adapter: ${p}`);
   const declared = readConformance(refDir)?.components ?? {};
   for (const n of names)
     if (!declared[n]) problems.push(`reference adapter: conformance.json has no entry for ${n}`);
