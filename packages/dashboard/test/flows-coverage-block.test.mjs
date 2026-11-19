@@ -163,36 +163,53 @@ test('errors: the headline counts errors and warnings, then each error code; the
   }
 });
 
-test('read only (no dashboard link): no repair button; the note names the step, as the inspector does for approving', async (t) => {
+test('the repair where it would run: link and lock, the button; no link, the link note; no lock, the store note', async (t) => {
   if (skip) return t.skip(skip);
   const never = { code: 'never-checked', severity: 'error', reason: 'no verdict' };
-  const d = data({ rows: [], entries: [entry('ui-button--a', [never])] });
-  d.repair = { entries: 1, steps: [{ action: 'recheck', count: 1 }] };
   const command = 'pnpm exec pxsig serve --link';
-  for (const allowed of [false, true]) {
+  const STATES = [
+    { name: 'link and lock', allowed: true, storeHeld: true, wait: 'button' },
+    { name: 'no link', allowed: false, storeHeld: true, wait: /repairs need the dashboard link/ },
+    { name: 'no lock', allowed: true, storeHeld: false, wait: /held by another pxsig process/ },
+    // Without the lock the link does not help: the store note, not the link's.
+    { name: 'neither', allowed: false, storeHeld: false, wait: /held by another pxsig process/ },
+  ];
+  for (const st of STATES) {
+    const d = data({ rows: [], entries: [entry('ui-button--a', [never])] });
+    d.repair = { entries: 1, steps: [{ action: 'recheck', count: 1 }] };
+    d.storeHeld = st.storeHeld;
     const { page, errors } = await open(d, {
       hash: '#help',
-      approving: { allowed, folder: 'demo', command },
+      approving: { allowed: st.allowed, folder: 'demo', command },
     });
     try {
       await coverage(page).waitFor();
       // The status answer arrives after the data: wait for what it decides.
-      await (
-        allowed ? repairButton(page) : page.getByText(/repairs need the dashboard link/)
-      ).waitFor();
+      await (st.wait === 'button' ? repairButton(page) : page.getByText(st.wait)).waitFor();
       const text = await coverage(page).innerText();
-      if (allowed) {
-        assert.equal(await repairButton(page).innerText(), 'Run safe repairs · 1 entry');
-        assert.doesNotMatch(text, /repairs need the dashboard link/);
+      if (st.wait === 'button') {
+        assert.equal(await repairButton(page).innerText(), 'Run safe repairs · 1 entry', st.name);
+        assert.doesNotMatch(text, /Read only/, st.name);
+        assert.match(text, /Safe repairs register new stories/, st.name);
       } else {
-        assert.equal(await repairButton(page).count(), 0, 'read only: no button');
+        assert.equal(await repairButton(page).count(), 0, `${st.name}: no button`);
+        assert.doesNotMatch(text, /Safe repairs register new stories/, st.name);
+      }
+      if (st.name === 'no link') {
         assert.match(
           text,
           /Read only: repairs need the dashboard link\. In a terminal, in the demo folder \(where pxsig serve runs\):/
         );
         assert.match(text, /pnpm exec pxsig serve --link/);
         assert.match(text, /5 minutes to access the link; it works once\./);
-        assert.doesNotMatch(text, /Safe repairs register new stories/);
+      }
+      if (!st.storeHeld) {
+        assert.match(
+          text,
+          /Read only: the store is held by another pxsig process\. Repairs run there\./,
+          st.name
+        );
+        assert.doesNotMatch(text, /repairs need the dashboard link/, st.name);
       }
       assert.deepEqual(errors, []);
     } finally {

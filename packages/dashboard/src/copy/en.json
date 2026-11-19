@@ -356,6 +356,7 @@
         "other": "Run safe repairs · {count} entries"
       },
       "repairing": "Repairing…",
+      "storeHeld": "Read only: the store is held by another pxsig process. Repairs run there.",
       "readOnly": "Read only: repairs need the dashboard link. In a terminal, in the {folder} folder (where pxsig serve runs):",
       "repairNote": "Safe repairs register new stories and render them, re-check entries without a usable verdict, and restore baseline images that pass the gate. They do not approve changes or write signatures.",
       "nothing": "No issues can be repaired automatically.",

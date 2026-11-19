@@ -98,7 +98,7 @@ export function CoverageDetails({
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
   // Read only: a note names the step to repair instead of the button.
-  const locked = useReadOnly();
+  const locked = useReadOnly(data);
   const shown = coverageShown(data);
   const firsts = L?.summary.byCode.unbaselined ?? 0;
   const clean = !L || (!shown && !firsts);
@@ -186,7 +186,7 @@ export function CoverageDetails({
           ) : null}
         </span>
       ) : null}
-      {served && locked && repairable ? <RepairLinkNote approving={locked} /> : null}
+      {served && locked && repairable ? <RepairLinkNote why={locked} /> : null}
       {msg ? <span className={s.mono}>{msg}</span> : null}
     </div>
   );

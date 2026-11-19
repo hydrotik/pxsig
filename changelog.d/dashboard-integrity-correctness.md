@@ -14,6 +14,8 @@
 - **The server sends the dashboard's repair plan.** `GET /__pxsig/data` and the `integrity` event
   carry `repair: { entries, steps: [{ action, count }] }`: the steps the dashboard's safe repair
   would run (not blocked, not a person's), recomputed from each ledger.
+  `GET /__pxsig/data` also carries `storeHeld`: whether this server holds the store lock (a
+  boolean, nothing about the process that holds it).
 
 ### Fixed
 
@@ -26,6 +28,9 @@
   On a read-only page (opened without the dashboard link), the button is hidden and the block
   names the step instead, as the inspector does for approving: the folder, the
   `pxsig serve --link` command to copy, and the link's timing.
+  On a server that does not hold the store lock (another pxsig process holds it, and the repair
+  would be refused), the button is hidden and the block says so: "Read only: the store is held by
+  another pxsig process. Repairs run there."
 - **"View components" shows only when entries have findings** (or wait for a first approval); for
   setup findings alone, Coverage had nothing to show about them.
 - **Setup findings show a title instead of their code**, for `store-conflict`, `line-endings`,

@@ -202,6 +202,8 @@ export function data({ rows, entries, summary = {} }) {
     },
     /** The safe repair's plan summary (the server's repairSummary of this ledger): none to run. */
     repair: { entries: 0, steps: /** @type {{ action: string, count: number }[]} */ ([]) },
+    /** This server holds the store lock (a second server beside another process does not). */
+    storeHeld: true,
   };
 }
 

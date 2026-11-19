@@ -202,11 +202,13 @@ const table = [
       methods: 'GET',
       stage: 'open',
       project: 'query',
-      // `repair`: the dashboard plan's summary, from the server's current ledger (its button).
+      // `repair`: the dashboard plan's summary, from the server's current ledger (its button);
+      // `storeHeld`: whether this server holds the store lock (without it, writes are refused).
       run: ({ res, S }) =>
         json(res, 200, {
           ...buildData(S.P, { live: liveOf(S) }),
           repair: S.integrity ? repairSummary(S.integrity) : null,
+          storeHeld: !!S.lock,
         }),
     },
   ],
