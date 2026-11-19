@@ -52,7 +52,7 @@ Files: `src/parts/TopBar`, `src/main`
 
 ### Coverage banner
 
-`shell.coverage-banner` · Shown on every section while the coverage ledger has errors, or entries wait for a first approval: the headline, setup problems, a link to Coverage and the safe repair. On the Overview the errors card carries the errors instead, so they are not shown twice.
+`shell.coverage-banner` · Shown on every section while the coverage ledger has an error, a setup warning or a safe repair to run, or entries wait for a first approval: the headline (integrity and setup findings by severity, never changed entries), setup problems, a link to Coverage when entries have findings, and the safe repair, offered only when its plan has steps. On the Overview the errors card carries them instead, so they are not shown twice.
 
 States:
 
@@ -67,7 +67,7 @@ Components: `Alert`, `AlertTitle`, `AlertDescription`, `Button`
 
 Copy: `coverage.banner`, `coverage.headline`
 
-Files: `src/views/Integrity`
+Files: `src/views/Integrity`, `src/views/coverage-findings`
 
 ### React progress strip
 
@@ -142,7 +142,7 @@ Files: `src/views/Overview`
 
 ### Errors
 
-`overview.errors` · The coverage banner's details and the safe repair first (only while there is something to repair or approve), then the render errors of the last check and coverage errors (components, setup), one row each, opening the render errors list or Coverage on that component. Shown only while there are errors.
+`overview.errors` · The coverage banner's details and the safe repair first (only while there is something to repair or approve), then the render errors of the last check and coverage errors (components, setup), one row each, opening the render errors list or Coverage on that component. Shown only while there are render errors, or while the coverage banner would show.
 
 States:
 
@@ -157,7 +157,7 @@ Components: `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`,
 
 Copy: `overview.errors`, `coverage.banner`, `coverage.headline`
 
-Files: `src/views/Overview`, `src/views/Integrity`
+Files: `src/views/Overview`, `src/views/Integrity`, `src/views/coverage-findings`
 
 ### Changed Entries per Run
 

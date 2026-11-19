@@ -232,7 +232,7 @@
       "id": "shell.coverage-banner",
       "section": "shell",
       "title": "Coverage banner",
-      "purpose": "Shown on every section while the coverage ledger has errors, or entries wait for a first approval: the headline, setup problems, a link to Coverage and the safe repair. On the Overview the errors card carries the errors instead, so they are not shown twice.",
+      "purpose": "Shown on every section while the coverage ledger has an error, a setup warning or a safe repair to run, or entries wait for a first approval: the headline (integrity and setup findings by severity, never changed entries), setup problems, a link to Coverage when entries have findings, and the safe repair, offered only when its plan has steps. On the Overview the errors card carries them instead, so they are not shown twice.",
       "states": {
         "static": "No repair button: a static report cannot write."
       },
@@ -333,7 +333,7 @@
       "id": "overview.errors",
       "section": "overview",
       "title": "Errors",
-      "purpose": "The coverage banner's details and the safe repair first (only while there is something to repair or approve), then the render errors of the last check and coverage errors (components, setup), one row each, opening the render errors list or Coverage on that component. Shown only while there are errors.",
+      "purpose": "The coverage banner's details and the safe repair first (only while there is something to repair or approve), then the render errors of the last check and coverage errors (components, setup), one row each, opening the render errors list or Coverage on that component. Shown only while there are render errors, or while the coverage banner would show.",
       "states": {
         "static": "No repair button: a static report cannot write."
       },

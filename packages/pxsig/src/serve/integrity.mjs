@@ -3,11 +3,26 @@
  * after a check), its runs debounced, and each story's worst status for the addon.
  */
 import { loadStoryIndex, oneLine, reconcile, writeLedger } from '../lib/integrity.mjs';
+import { repairSummary } from '../lib/repair.mjs';
 import { pruneStaleRows } from './report-rows.mjs';
 import { REUSE } from './traces.mjs';
 /** @import { StoryIntegrity } from '../types/t5.js' */
 /** @import { ServeContext } from '../types/serve.js' */
 /** @import { ProjectState } from './projects.mjs' */
+/** @import { Ledger } from '../types/t3.js' */
+
+/**
+ * The `integrity` event: the ledger's summary and setup findings, and the dashboard plan's summary
+ * (recomputed from this ledger, so the repair button follows every change).
+ * @param {string} project
+ * @param {Ledger} ledger
+ */
+export const integrityEvent = (project, ledger) => ({
+  project,
+  summary: ledger.summary,
+  setup: ledger.setup,
+  repair: repairSummary(ledger),
+});
 
 /**
  * @param {ServeContext} srv
@@ -38,7 +53,7 @@ export async function runIntegrity(srv, S, why) {
     }
     if (before !== ledger.summary.headline)
       console.log(`[serve] ${S.name}: ${oneLine(ledger)} (${why}, ${ledger.elapsedMs} ms)`);
-    srv.broadcast('integrity', { project: S.name, summary: ledger.summary, setup: ledger.setup });
+    srv.broadcast('integrity', integrityEvent(S.name, ledger));
   } catch (e) {
     // reconcile throws Errors (no readable manifest, an engine error).
     console.error(`[serve] ${S.name}: integrity failed: ${/** @type {Error} */ (e).message}`);
