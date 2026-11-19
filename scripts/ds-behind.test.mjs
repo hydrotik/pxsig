@@ -126,6 +126,37 @@ test('the files the adapter uses: named and star exports followed to their folde
   assert.deepEqual(unresolved, ['@hydrotik/design-system:Gone']);
 });
 
+test('the files the adapter uses: an entry split into barrels is followed through them', (t) => {
+  const root = tmp(t, 'barrels');
+  write(root, {
+    ...LAYOUT,
+    'packages/ds/src/index.ts':
+      "export * from './exports/core';\nexport * from './exports/data';\n",
+    'packages/ds/src/exports/core.ts': "export { Badge, BadgeDot } from '../components/Badge';\n",
+    'packages/ds/src/exports/data.ts':
+      "export * from '../components/Card';\nexport const local = 1;\n",
+  });
+  const imports = new Map([
+    [
+      '@hydrotik/design-system',
+      new Map([
+        ['Badge', new Set()],
+        ['Card', new Set()],
+      ]),
+    ],
+  ]);
+  const { paths, unresolved } = usedPaths(root, imports);
+  assert.deepEqual(paths, [
+    'packages/ds/package.json',
+    'packages/ds/src/components/Badge/',
+    'packages/ds/src/components/Card/',
+    'packages/ds/src/index.ts',
+    'packages/ds/src/internal/',
+    'packages/tokens/',
+  ]);
+  assert.deepEqual(unresolved, []);
+});
+
 test('behind: commits and days since the pin, and the adapter files that changed', (t) => {
   const { source, repo, pin } = setup(t);
   const dir = dsDir(repo);

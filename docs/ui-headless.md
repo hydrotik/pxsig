@@ -178,8 +178,9 @@ Starts after the Navbar dashboard (in review) is merged, since it reshapes the s
   sequential scale in five steps, for stale entries by component. 43 components, 17 required.
 - **Diff viewer:** besides the parts the plan names, `Pane` (one view; side by side has two),
   `Frame` (the moved and scaled image box) and `SwipeHandle`.
-- **Tokens:** the reference adapter maps `motion.fast` to a literal 120ms (the design system's
-  fastest duration is 100ms) so nothing renders differently.
+- **Tokens:** the reference adapter mapped `motion.fast` to a literal 120ms (the design system's
+  fastest duration is 100ms) so nothing rendered differently; since 0.7.7 it is the design
+  system's own `motion.duration.fast`.
 - **Serving a rebuilt dashboard:** `PXSIG_DASHBOARD_DIR`; `pxsig serve` and `pxsig report` are
   otherwise unchanged.
 

@@ -1,6 +1,6 @@
 {
   "adapter": "hydrotik",
-  "contract": "1.7.0",
+  "contract": "1.8.0",
   "designSystem": "@hydrotik/design-system (built from source: PXSIG_DS_SOURCE)",
   "topBar": {
     "root": true,
@@ -15,8 +15,8 @@
   },
   "components": {
     "UiProvider": {
-      "status": "bespoke",
-      "note": "ThemeProvider kept in step with the runtime's mode, plus TooltipProvider"
+      "status": "full",
+      "note": "ThemeProvider controlled by the runtime's mode (theme), plus TooltipProvider"
     },
     "AppShell": {
       "status": "full",
@@ -32,11 +32,11 @@
     },
     "NavList": {
       "status": "full",
-      "note": "NavItems; contract NavLinks become NavItemLinks so its More menu finds them"
+      "note": "NavItems; contract NavLinks become NavItemLinks so its More menu finds them, keep as NavItemLink keep"
     },
     "NavLink": {
       "status": "full",
-      "note": "NavItemLink; count tone info → attention, drawn as primary digits on a neutral pill"
+      "note": "NavItemLink; count tone info → attention (the design system's accent count), neutral → neutral"
     },
     "NavEnd": {
       "status": "bespoke",
@@ -91,7 +91,7 @@
     },
     "StatGroup": {
       "status": "full",
-      "note": "StatPanel; selectable items are filter cards; a tone colours the value, no accent edge"
+      "note": "StatPanel; selectable items are filter cards; a tone colours the value (StatPanel tone, info included), no accent edge"
     },
     "DataTable": {
       "status": "full",
@@ -99,7 +99,7 @@
     },
     "SidePanelLayout": {
       "status": "full",
-      "note": "ContentLayout, as tall as its content"
+      "note": "ContentLayout, as tall as its content, transparent"
     },
     "SidePanelMain": {
       "status": "full",
@@ -107,7 +107,7 @@
     },
     "SidePanel": {
       "status": "full",
-      "note": "SidePanel pushed in on the right, 20rem; no resize handle or expand button (their names are fixed English in the design system); focus moves into it on open"
+      "note": "SidePanel on the right in auto mode (pushed in, overlaid below the layout's lg step), 20rem; no resize handle or expand button; focus moves into it on open (focusOnOpen)"
     },
     "StatusBadge": {
       "status": "full",
@@ -115,7 +115,7 @@
     },
     "Badge": {
       "status": "full",
-      "note": "Badge in its neutral variants (secondary, outline), the text in the tone's colour",
+      "note": "Badge in its own variants: success, warning and destructive tinted, info default, neutral secondary (outline for that emphasis)",
       "parity": [
         {
           "story": "components-badge--live",
@@ -253,10 +253,12 @@
       "note": "StaticListItem"
     },
     "Alert": {
-      "status": "full"
+      "status": "full",
+      "note": "Alert, not live (live false), default or destructive, named by its title"
     },
     "AlertTitle": {
-      "status": "full"
+      "status": "full",
+      "note": "AlertTitle as a div: not a heading"
     },
     "AlertDescription": {
       "status": "full"

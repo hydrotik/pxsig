@@ -92,6 +92,23 @@ test('a design-system import outside the adapters fails', async () => {
   );
 });
 
+test('a style of the reference adapter’s own over the design system fails', async () => {
+  const problems = await check(({ write }) =>
+    write(
+      'src/ui/adapters/hydrotik/tones.css.ts',
+      "import { globalStyle } from '@vanilla-extract/css';\nglobalStyle('[data-tone]', { color: 'red' });\n"
+    )
+  );
+  assert.ok(
+    problems.some((p) =>
+      /reference adapter: packages\/dashboard\/src\/ui\/adapters\/hydrotik\/tones\.css\.ts: imports @vanilla-extract\/css/.test(
+        p
+      )
+    ),
+    problems.join('\n')
+  );
+});
+
 test('outside src/ui/, a relative import into src/ui/ fails, except ../ui/tokens', async () => {
   const reaching = [
     ['src/views/Help.tsx', '../ui/adapters/hydrotik'],

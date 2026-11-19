@@ -60,6 +60,8 @@ export default function hydrotik() {
     alias: {
       '@hydrotik/design-system/chart': path.join(ds, 'src/chart.ts'),
       '@hydrotik/design-system/fonts': path.join(ds, 'src/fonts.ts'),
+      // Before `/styles`: an alias also matches the names under it.
+      '@hydrotik/design-system/styles/scoped': path.join(ds, 'src/styles-scoped.ts'),
       '@hydrotik/design-system/styles': path.join(ds, 'src/styles.ts'),
       '@hydrotik/design-system': path.join(ds, 'src'),
       '@hydrotik/tokens': path.join(need('@hydrotik/tokens'), 'src'),
