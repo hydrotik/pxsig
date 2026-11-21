@@ -6,6 +6,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { appendedSince, mergeBase, newBatch, record, verify } from '../lib/approvals.mjs';
 import { takeLock } from '../lib/lock.mjs';
+import { brokenRepairs } from '../lib/approvals/record-repair.mjs';
 import { ask, emit } from '../lib/term.mjs';
 import {
   appendReadiness,
@@ -86,14 +87,20 @@ export async function verifyCommand(cx) {
   // Strict by default (docs/migrating.md): a baseline with no log line fails. --no-strict reports it only.
   const strict = !flags['no-strict'];
   const enf = resolveOrExit(P, { flags }, (m, code) => fail(m, code));
-  /** @type {(VerifyResult & { suite: string })[]} */
+  /** @type {(VerifyResult & { suite: string, repairs: ReturnType<typeof brokenRepairs> })[]} */
   const results = [];
   /** @type {string[]} */
   const notCommitted = [];
   for (const s of suites) {
     const m = load(s);
     if (!m) notCommitted.push(s);
-    else results.push({ suite: s, ...verify(P, m) });
+    // A record repair's line also says its record matches its image (lib/approvals/record-repair.mjs).
+    else
+      results.push({
+        suite: s,
+        ...verify(P, m),
+        repairs: brokenRepairs(P, P.manifestPath(s || null)),
+      });
   }
   if (!results.length)
     fail(
@@ -128,6 +135,7 @@ export async function verifyCommand(cx) {
       0
     );
   const bad = sum('mismatched');
+  const repairs = results.flatMap((r) => r.repairs);
   const untracked = sum('untracked');
   const interrupted = results.flatMap((r) => r.interrupted);
   const cut = [...new Set(interrupted.map((x) => x.batch))];
@@ -159,6 +167,16 @@ export async function verifyCommand(cx) {
           },
         ]
       : []),
+    ...(repairs.length
+      ? [
+          {
+            gate: null,
+            exit: 1,
+            count: repairs.length,
+            what: 'repaired records that differ from their image',
+          },
+        ]
+      : []),
     ...(rangeBad
       ? [
           {
@@ -177,7 +195,7 @@ export async function verifyCommand(cx) {
   const last = lastLine(enf, gated);
   appendReadiness(P, enf, gated, {
     source: 'verify',
-    counts: { verify: untracked + bad + interrupted.length },
+    counts: { verify: untracked + bad + interrupted.length + repairs.length },
   });
   emit(
     format,
@@ -251,6 +269,24 @@ export async function verifyCommand(cx) {
             },
           }
         : {},
+      repairs.length
+        ? {
+            note: `${repairs.length} baselines whose last log line is a record repair hold a record that does not match their image: a record repair writes the record from the image, so the line does not describe these bytes`,
+            tone: 'bad',
+          }
+        : {},
+      repairs.length
+        ? {
+            table: {
+              cols: [
+                { key: 'id', label: 'Entry' },
+                { key: 'record', label: 'Record' },
+                { key: 'image', label: 'Image' },
+              ],
+              rows: repairs,
+            },
+          }
+        : {},
       untracked
         ? {
             note: failUntracked
@@ -272,7 +308,7 @@ export async function verifyCommand(cx) {
             ]),
           }
         : {},
-      !bad && !interrupted.length && !untracked && !rangeBad
+      !bad && !interrupted.length && !untracked && !rangeBad && !repairs.length
         ? {
             note: logged ? 'Every baseline matches its approval.' : 'No baselines to verify.',
             tone: logged ? 'ok' : undefined,
@@ -283,6 +319,7 @@ export async function verifyCommand(cx) {
     {
       strict,
       suites: results.map(({ untrackedIds: _untrackedIds, ...r }) => r),
+      repairs,
       notCommitted,
       range,
       ...(results.length === 1

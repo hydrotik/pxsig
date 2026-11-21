@@ -17,8 +17,10 @@ import { SetupError, runManifest } from '../workspace.mjs';
 import { shortPath, toPosix } from '../paths.mjs';
 import { appendLine } from '../files.mjs';
 /** @import { ManifestEntry, Project } from '../../types.js' */
-/** @import { EngineVerdict, LegacyManifest, MigrateManifest, MigratePlan, MigrateVerify } from '../../types/t6.js' */
+/** @import { EngineVerdict, LegacyManifest, MigrateManifest, MigrateVerify } from '../../types/t6.js' */
+/** @import { PairedPlan } from './migrate-pairs.mjs' */
 import { ensureGitattributes, readJson, STORE_GITATTRIBUTES, STORE_GITIGNORE } from './shared.mjs';
+import { dropMismatchedImages } from './migrate-pairs.mjs';
 
 // --- migration from the pre-0.2 layout -----------------------------------------------------------------
 
@@ -82,15 +84,15 @@ const pick = (e) =>
  * the Rust engine and requires identical results.
  * @param {Project} P
  * @param {{ from?: string, apply?: boolean, verify?: boolean, log?: (message: string) => void }} [opts]
- * @returns {MigratePlan}
+ * @returns {PairedPlan}
  */
 export function migrateLegacy(P, { from, apply = false, verify = true, log = () => {} } = {}) {
   // The CLI always passes `from`; without it, resolve throws as before.
   from = resolve(/** @type {string} */ (from));
   const manifests = legacyManifests(from);
   // `summary` is set below, before either return.
-  const plan = /** @type {MigratePlan} */ (
-    /** @type {Partial<MigratePlan>} */ ({
+  const plan = /** @type {PairedPlan} */ (
+    /** @type {Partial<PairedPlan>} */ ({
       from,
       to: P.store.root,
       manifests: [],
@@ -165,10 +167,13 @@ export function migrateLegacy(P, { from, apply = false, verify = true, log = () 
   for (const [src, dest] of files)
     if (existsSync(join(from, src))) plan.copies.push({ from: join(from, src), to: dest });
   const approvalsFrom = join(from, '.baselines', 'approvals.ndjson');
+  // A record and an image from different renders: the record alone (migrate-pairs.mjs).
+  plan.pairMismatch = dropMismatchedImages(P.rustBin, plan.pack);
   plan.summary = {
     manifests: plan.manifests.map((m) => `${basename(m.to)}: ${m.entries} entries`),
     baselines: plan.pack.length,
     withImage: plan.pack.filter((x) => x.image).length,
+    pairMismatch: plan.pairMismatch.length,
     copies: plan.copies.length,
     approvals: existsSync(approvalsFrom),
     problems: plan.problems.length,

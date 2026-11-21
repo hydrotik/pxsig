@@ -43,6 +43,8 @@ export const BOOLEAN_FLAGS = new Set([
   'prompt',
   'keep-id',
   'no-image',
+  'yes',
+  'dry-run',
 ]);
 
 /**

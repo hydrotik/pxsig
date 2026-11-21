@@ -29,6 +29,7 @@ import {
 import { Cmd, codeCopy, t, tx } from '../copy';
 import { Affordance } from '../parts/Affordance';
 import { StaleHeatmap } from '../parts/StaleHeatmap';
+import { RecordRepair } from '../parts/RecordRepair';
 import * as s from '../dashboard.css';
 
 type Severity = 'error' | 'warn' | 'info';
@@ -142,6 +143,7 @@ export function CoverageDetails({
           <strong>{codeCopy(x.code).title}</strong> · {x.reason}
         </span>
       ))}
+      <RecordRepair data={data} />
       {firsts ? (
         <span className={s.row}>
           {errors ? (

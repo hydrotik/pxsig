@@ -43,6 +43,14 @@ Storybook.
   reject entries and clear rejections, nothing else. This is a
   guard, not authentication: a process running as you can read that file, as it could edit the
   baselines directly. Checks and repairs need no token.
+- **A record repair approves no change, and needs a person.** `pxsig approve repair-records --yes`
+  (a person at a terminal) or the dashboard's Repair baseline records (the dashboard link) writes a
+  baseline's record again from the image already in it, only for an entry whose record and image
+  differ, whose latest render is that image pixel for pixel and passes the record under every rule
+  but colour, and that only `pxsig migrate` approved. It never writes an image, masks, thresholds or
+  config; each write is snapshotted and logged (`kind: "record-repair"`, with the record's sha256
+  before and after), and `pxsig approve verify` fails a line whose record does not match its
+  image. It is not a review: the entry stays unreviewed.
 - **Requests from another site are refused, and so are hosts that are not loopback.** A POST whose
   `Sec-Fetch-Site` is not `same-origin` is treated like a foreign `Origin`, and a request whose
   `Host` is not 127.0.0.1, localhost or [::1] is refused (DNS rebinding).
@@ -57,7 +65,7 @@ Storybook.
   `pxsig_entry`, `pxsig_rejected`, `pxsig_history`, `pxsig_a11y`, `pxsig_affected`, `pxsig_stale`, `pxsig_help`
   read; `pxsig_react` reads, or runs the React Compiler analysis (no browser, alerts only); `pxsig_check` re-renders; `pxsig_doctor` runs the safe repairs, which never change a
   baseline's signature or the log (one adds a missing image to a `.psig` only when it passes that
-  signature's gate); `pxsig_review` marks rejections only, and refuses even those without `confirm: true`. Every
+  signature's gate), and never repair a baseline record; `pxsig_review` marks rejections only, and refuses even those without `confirm: true`. Every
   approval is logged with hashes and the pxsig version, and can be undone. The approval log is not
   signed, and holds no personal data (since 0.7.6 `approvals.identity` is no longer read):
   the commit that adds a line and the pull request say who approved (`pxsig approve log --trace`

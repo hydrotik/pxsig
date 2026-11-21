@@ -31,6 +31,9 @@ export const FIXED_MS = 1000;
 export const FIXED_COMMIT = '0000000';
 const ISO = /\b\d{4}-\d\d-\d\dT\d\d:\d\d(:\d\d(\.\d+)?)?(Z|[+-]\d\d:?\d\d)?\b/;
 const HASH = /^[0-9a-f]{7,40}$/;
+/** A batch name's time (lib/approvals/core.mjs `newBatch`), and the one it becomes. */
+const BATCH = /^\d{4}-\d\d-\d\dT\d\d-\d\d-\d\d-\d{3}Z/;
+const FIXED_BATCH = FIXED_TIME.replace(/[:.]/g, '-');
 const LOOPBACK = /\b(?:127\.0\.0\.1|localhost|\[::1\]):(\d+)/g;
 
 /** The integrity ledger's volatile fields (GET integrity, and `integrity` in GET data). */
@@ -94,6 +97,10 @@ export const RULES = {
   integrity: ledger(''),
   // The report's versions and machine class (live/gate-report.mjs); its text and link follow.
   'gate-report': [{ path: 'facts', kind: 'report' }],
+  // Repair baseline records: when the plan was made, and the batch the repair logged (its name
+  // starts with the time).
+  'record-repair-plan': [{ path: 'plan.createdAt', kind: 'time' }],
+  'record-repair': [{ path: 'batch', kind: 'batch' }],
 };
 
 /** Routes scrubbed on their own path only: `gate-report/self-check` holds nothing volatile. */
@@ -170,7 +177,11 @@ export function scrubber() {
           continue;
         }
         if (rule.kind === 'report') problems.push(...fixGateReport(parent, `${route}: ${at}`));
-        else if (rule.kind === 'text') {
+        else if (rule.kind === 'batch') {
+          if (typeof v !== 'string' || !BATCH.test(v))
+            problems.push(`${route}: ${at} is not a batch`);
+          else parent[key] = v.replace(BATCH, FIXED_BATCH);
+        } else if (rule.kind === 'text') {
           if (typeof v !== 'string') problems.push(`${route}: ${at} is not text`);
           else parent[key] = v.replace(new RegExp(ISO.source, 'g'), FIXED_TIME);
         } else if (rule.kind === 'ms') {
@@ -261,7 +272,9 @@ export async function scrubRoutes(context, sc, problems, failed, fetchFrom = ser
         // On a connection of its own (server.mjs `serverFetch`), as the harness's own requests:
         // Playwright's route.fetch keeps sockets alive in this process, whose event loop stalls.
         const { 'accept-encoding': _e, ...headers } = req.headers();
-        const res = await fetchFrom(req.url(), { method: req.method(), headers });
+        // A POST's body goes with it (a decision such as record-repair names its items there).
+        const sent = req.postDataBuffer() ?? undefined;
+        const res = await fetchFrom(req.url(), { method: req.method(), headers, body: sent });
         const text = await res.text();
         const {
           'content-length': _l,
