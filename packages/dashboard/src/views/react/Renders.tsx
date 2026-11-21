@@ -255,6 +255,8 @@ export function Renders({
                       search
                       paginate={false}
                       onRowClick={(r) => setPicked(r.id)}
+                      // The entry id takes the room; the counts and the top component get a width
+                      // that fits them (the grid adds each cell's padding), as the Overview's tables do.
                       columns={[
                         {
                           id: 'entry',
@@ -282,6 +284,7 @@ export function Renders({
                           id: 'commits',
                           header: t('diagnostics.react.renders.columns.commits'),
                           align: 'end',
+                          width: '80px',
                           cell: (r) =>
                             r.renders
                               ? r.renders.mount.commits
@@ -291,6 +294,7 @@ export function Renders({
                           id: 'rendered',
                           header: t('diagnostics.react.renders.columns.rendered'),
                           align: 'end',
+                          width: '80px',
                           cell: (r) => num(r.renders?.mount.rendered),
                         },
                         ...(production
@@ -300,6 +304,7 @@ export function Renders({
                                 id: 'time',
                                 header: t('diagnostics.react.renders.columns.time'),
                                 align: 'end' as const,
+                                width: '80px',
                                 cell: (r: Measured) =>
                                   r.renders?.ms != null
                                     ? t('diagnostics.react.renders.ms', {
@@ -311,11 +316,13 @@ export function Renders({
                         {
                           id: 'top',
                           header: t('diagnostics.react.renders.columns.top'),
+                          width: '240px',
                           cell: (r) => topOf(r.renders),
                         },
                         {
                           id: 'since',
                           header: t('diagnostics.react.renders.columns.since'),
+                          width: '104px',
                           cell: (r) => sinceLast(r.renders),
                         },
                       ]}

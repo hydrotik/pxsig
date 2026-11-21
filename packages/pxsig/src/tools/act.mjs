@@ -10,6 +10,7 @@ import { ctxOf, here, http, ID_RE, load, PROJECT, server } from './context.mjs';
 import { affected } from './staleness.mjs';
 import { doctor, summarizeIds } from './doctor.mjs';
 import { checkReact } from './react.mjs';
+import { relPath } from '../lib/paths.mjs';
 import { checkedRejections } from './rejected.mjs';
 import { NO_MASK_FIX } from '../lib/assistants.mjs';
 import { NOTE_MAX, readRejections, sanitizeNote } from '../lib/rejections.mjs';
@@ -17,6 +18,7 @@ import { NOTE_MAX, readRejections, sanitizeNote } from '../lib/rejections.mjs';
 /** @import { Readable } from 'node:stream' */
 /** @import { LockError } from '../lib/lock.mjs' */
 /** @import { LockState } from '../types.js' */
+/** @import { CheckReact } from '../types/react.js' */
 /** @import { CheckArgs, CheckToolResult, DoctorArgs, ReviewArgs, ServerCheckReply, ServerStatusReply } from '../types/t6.js' */
 
 // A const array: each tool keeps its literal name, so types/t6.d.ts can name a tool's result.
@@ -81,12 +83,18 @@ export const actTools = /** @type {const} */ ([
         return r.length ? { ...out, rejections: r } : out;
       };
       if (srv.up) {
-        reacting = checkReact(C, { since, changed_files });
+        // The server compares with the ref (or files) itself, as the check without it does, and
+        // writes check.json's `react`: the answer reads it back once the queue drains.
+        const compare = since
+          ? { since }
+          : changed_files?.length
+            ? { changed: changed_files.map((f) => relPath(C.root, join(C.root, f))) }
+            : {};
         // Registering a new story reads its parameters in a browser first: allow for that.
         /** @type {ServerCheckReply} */
         const res = await http(C, '/__pxsig/check', {
           method: 'POST',
-          body: { project: C.P.name, ids: [...sel], stories, all, via: 'mcp' },
+          body: { project: C.P.name, ids: [...sel], stories, all, via: 'mcp', ...compare },
           timeout: 120_000,
         });
         const queued = new Set(res.queued ?? []);
@@ -115,6 +123,11 @@ export const actTools = /** @type {const} */ ([
               note: 'still running; call pxsig_status later',
             });
         }
+        if (since || changed_files?.length)
+          reacting = Promise.resolve(
+            /** @type {{ react?: CheckReact }} */ (/** @type {unknown} */ (load(C).check)).react ??
+              null
+          );
         return withReact(
           withRejections({ ...summarizeIds(C, queued, 'server', t0), ...extra }, queued)
         );
