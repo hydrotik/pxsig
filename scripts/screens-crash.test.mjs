@@ -78,7 +78,7 @@ test("a report's stamp is its generatedAt, or null", () => {
 
 /**
  * One routed request through scrubRoutes, with a fake context and route.
- * @param {{ fetch: (url: string, init: object) => Promise<Response>, abort?: () => Promise<void>, method?: string, post?: Buffer }} o
+ * @param {{ fetch: (url: string, init?: object) => Promise<Response>, abort?: () => Promise<void>, method?: string, post?: Buffer }} o
  */
 async function routeOnce({ fetch, abort = async () => {}, method = 'GET', post }) {
   /** @type {{ handler?: (route: FakeRoute) => Promise<void>, match?: (u: URL) => boolean }} */
