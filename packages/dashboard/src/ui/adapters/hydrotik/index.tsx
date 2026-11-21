@@ -470,13 +470,9 @@ export const KeyValueItem = ({ label, children }: C.KeyValueItemProps) => (
   <DS.StaticListItem label={label}>{children}</DS.StaticListItem>
 );
 
-// The contract's alert is a named region, never role="alert" (the design system's default).
-// TODO: pass the design system's `live={false}` once it has it, instead of overriding the role.
 export const Alert = ({ tone, label, children }: C.AlertProps) => (
   <DS.Alert
     variant={tone === 'danger' ? 'destructive' : 'default'}
-    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- the design system renders the div; the contract asks for a named region
-    role="region"
     aria-label={label}
     style={{ boxSizing: 'border-box' }}
   >

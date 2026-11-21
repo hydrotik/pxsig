@@ -36,5 +36,3 @@
 - **Setup findings show a title instead of their code**, for `store-conflict`, `line-endings`,
   `log-torn`, `verify-unlogged`, `reports-not-ignored`, `approvals-identity`,
   `log-legacy-personal`, `path-portability`, `dashboard-stale` and `version-required`.
-- **The reference dashboard's coverage block is a named region, not `role="alert"`**, as the UI
-  contract asks: a screen reader no longer reads the whole block out each time it renders.
