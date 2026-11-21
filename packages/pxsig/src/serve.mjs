@@ -74,7 +74,7 @@ async function main(argv) {
     });
     // oxlint-disable-next-line react-hooks/rules-of-hooks -- not a React hook: it selects the dashboard folder to serve.
     useDashboard(dash.dir);
-    if (dash.note) console.log(`[serve] ${dash.note}`);
+    for (const line of dash.note?.split('\n') ?? []) console.log(`[serve] ${line}`);
   }
 
   /** @type {ReturnType<typeof createPxsigServer>} */

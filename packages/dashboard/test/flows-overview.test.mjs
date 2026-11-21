@@ -40,10 +40,11 @@ test('the top bar: the title is the scope (the project label, else the project),
       const m = await modesBeside(page);
       assert.equal(m.inTitle, false);
       assert.match(m.next, /^(Live|Offline)$/, 'the connection badge comes right after');
-      // Versions unknown (null): the contract the page was built against still shows.
+      // Versions unknown (null): the contract the page was built against still shows, then the
+      // fixtures' fixed build (fixtures/scenarios.mjs BUILD), its version unlike the server's.
       assert.match(
         await h1.locator('span[title]').first().getAttribute('title'),
-        /^UI contract \d+\.\d+\.\d+$/
+        /^UI contract \d+\.\d+\.\d+ · build 0123456 for pxsig 0\.0\.0 · design system fedcba9 · adapter hydrotik · built 2026-01-01 00:00 UTC$/
       );
       assert.deepEqual(errors, []);
     } finally {
@@ -67,7 +68,7 @@ test('the top bar: the title is the scope (the project label, else the project),
       // The plain example adapter has no Tooltip: the fallback puts the text in the native title.
       assert.equal(
         await h1.locator('span[title]').first().getAttribute('title'),
-        'pxsig 9.8.7 · engine 9.8.6 · UI contract 1.1.0'
+        'pxsig 9.8.7 · engine 9.8.6 · UI contract 1.1.0 · build 0123456 for pxsig 0.0.0 · design system fedcba9 · adapter hydrotik · built 2026-01-01 00:00 UTC'
       );
       assert.deepEqual(errors, []);
     } finally {

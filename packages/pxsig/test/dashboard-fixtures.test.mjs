@@ -15,12 +15,13 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { SCENARIOS } from '../../dashboard/fixtures/scenarios.mjs';
-import { fixture, rustBin } from './fixture.mjs';
+import { BUILD, SCENARIOS } from '../../dashboard/fixtures/scenarios.mjs';
+import { pxsigSource, sourceFields } from '../src/lib/build-identity.mjs';
+import { fixture, rustBin, tempDir } from './fixture.mjs';
 import { fakeStorybook, needs, serve, src } from './server-helpers.mjs';
 
 /**
@@ -173,7 +174,20 @@ async function liveData() {
     const [code] = await once(child, 'close');
     // 1: the stand-in's renders differ from the fixture's baselines; any other code is a failure.
     assert.ok(code === 0 || code === 1, `pxsig check: ${code}\n${log}`);
-    const S = await serve(f);
+    // A dashboard build of this checkout, with its stamp, so the server sends `build` whether or
+    // not the dashboard is built here (CI's Node job does not build it).
+    const dash = tempDir('dash');
+    mkdirSync(join(dash, 'assets'));
+    writeFileSync(join(dash, 'index.html'), '<!doctype html>');
+    const { version } = JSON.parse(
+      readFileSync(new URL('../package.json', import.meta.url), 'utf8')
+    );
+    const source = sourceFields(pxsigSource());
+    writeFileSync(
+      join(dash, 'BUILD.json'),
+      JSON.stringify({ ...BUILD, ...source, pxsig: version })
+    );
+    const S = await serve({ ...f, env: { ...f.env, PXSIG_DASHBOARD_DIR: dash } });
     try {
       const get = async (/** @type {string} */ what) => {
         const res = await fetch(`${S.base}/__pxsig/${what}`);
@@ -216,9 +230,11 @@ test(
   { skip: needs },
   async () => {
     const answers = await liveData();
+    const own = pxsigSource()?.commit;
     for (const d of answers) {
       assert.ok(d.check, 'a check report');
       assert.ok(d.integrity, 'an integrity ledger');
+      assert.equal(/** @type {{ commit?: string }} */ (d.build)?.commit, own, 'its build');
     }
     const live = blank();
     for (const d of answers) shapeOf(d, '', live);
