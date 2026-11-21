@@ -4,11 +4,13 @@
  * live.record-repair flow. The latest render becomes the baseline image (the render itself is not
  * touched, so nothing reads as re-rendered), packed with a record captured from another render (that
  * render with one pixel changed: within the gate), and one `pxsig migrate` line logged for the new
- * bytes. The scratch store only.
+ * bytes as an earlier pxsig's migrate wrote it: first in the log (migrate ran before any decision)
+ * and stamped with a version before the review ratchet, so the entry reads as unreviewed but not
+ * new. The scratch store only.
  */
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -18,7 +20,7 @@ import {
   sha256,
   stamp,
 } from '../../packages/pxsig/src/lib/approvals.mjs';
-import { appendLine } from '../../packages/pxsig/src/lib/files.mjs';
+import { writeAtomic } from '../../packages/pxsig/src/lib/files.mjs';
 import { readHeader } from '../../packages/pxsig/src/lib/psig.mjs';
 import { openProject } from '../../packages/pxsig/src/lib/workspace.mjs';
 import { repo } from './stage.mjs';
@@ -30,6 +32,8 @@ const { PNG } =
   );
 /** When the staged migrate line says it was written (a fixed time: the scrub fixes it anyway). */
 const AT = '2026-10-25T10:00:00.000Z';
+/** The pxsig the staged migrate line says wrote it: the release before the review ratchet (0.7.7). */
+const MIGRATED_BY = '0.7.6';
 
 /**
  * Make `id`'s baseline a record and an image from two renders, logged by migrate only.
@@ -87,18 +91,26 @@ export function stagePair(dir, id, env = process.env) {
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
-  appendLine(
-    P.store.approvals,
-    stamp({
-      at: AT,
-      id,
-      via: 'migrate',
-      batch: migrateBatch(AT),
-      ref: decisionRef(),
-      kind: null,
-      gitHead: null,
-      before: null,
-      after: sha256(p.sig),
-    })
-  );
+  // Migrate ran before any decision: its line goes first, ahead of what the flow logged so far.
+  const line = JSON.stringify({
+    ...stamp(
+      {
+        at: AT,
+        id,
+        via: 'migrate',
+        batch: migrateBatch(AT),
+        ref: decisionRef(),
+        kind: null,
+        gitHead: null,
+        before: null,
+        after: sha256(p.sig),
+      },
+      // No assistant's marker: the earlier migrate ran in a person's terminal.
+      {}
+    ),
+    pxsig: MIGRATED_BY,
+  });
+  const log = P.store.approvals;
+  const rest = existsSync(log) ? readFileSync(log, 'utf8') : '';
+  writeAtomic(log, `${line}\n${rest}`);
 }
