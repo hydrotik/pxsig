@@ -54,7 +54,12 @@ export const REACT: Feature[] = [
       'KeyValueItem',
       'CopyValue',
     ],
-    files: [...REACT_FILES, 'views/react/Compiler', 'views/react/CompilerPanel'],
+    files: [
+      ...REACT_FILES,
+      'views/react/Compiler',
+      'views/react/CompilerPanel',
+      'views/react/file-column',
+    ],
     screens: [
       { scenario: 'react', hash: '#react', wait: { role: 'heading', name: 'React Compiler' } },
       {
