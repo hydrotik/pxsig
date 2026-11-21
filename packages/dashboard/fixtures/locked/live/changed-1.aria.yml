@@ -95,4 +95,4 @@
   - text: Still rendering — Not measured
   - heading "Changed Entries per Run" [level=3]
   - paragraph: 7 runs.
-  - application: 1 2 3 4 5 6 7 0 6 12
+  - application "Changed Entries per Run": 1 2 3 4 5 6 7 0 6 12
