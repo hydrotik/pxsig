@@ -1,0 +1,184 @@
+- navigation "Report sections":
+  - heading "pxsig • demo" [level=1]
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: "#overview"
+    - listitem:
+      - link "Review Stories":
+        - /url: "#stories"
+    - listitem:
+      - link "Coverage":
+        - /url: "#integrity"
+    - listitem:
+      - link "Accessibility":
+        - /url: "#a11y"
+    - listitem:
+      - link "Runs":
+        - /url: "#history"
+    - listitem:
+      - link "Diagnostics":
+        - /url: "#diagnostics"
+    - listitem:
+      - link "Help":
+        - /url: "#help"
+  - text: dark · light Live · last check 10/24/2026, 10:00:00 AM Can approve
+  - button "Light theme"
+  - text: Approved
+- main:
+  - heading "Diagnostics" [level=2]
+  - alert "Coverage":
+    - text: No coverage issues.
+    - strong: log-legacy-personal
+    - text: · 212 lines of approvals.ndjson and 2 of a11y-decisions.ndjson, written before 0.7.6, carry a reason or a git email. New lines carry neither; old lines stay (the log is append-only, and git history keeps them either way)
+    - strong: Different render environment
+    - text: "· 26 entries were rendered in a different environment than their baseline (browser.version, fonts.probe): a change there can be the machine, not the code. Render where the baselines were made (the pinned container), or re-take them there (`pxsig check --full --update --kind environment`); `--strict-env` refuses such a run instead (a font swap, `fonts.used`, once rendered)"
+    - strong: Many passing entries differ
+    - text: "· 19 of 26 passing entries (73%) pass while their render differs from the baseline, at or over 5 entries or 10%. A change the gate does not see, such as a color change in a small area, passes this way, and their baselines stay as they were. `pxsig list drift` (or the dashboard's Stories, \"Passing, but differs from the baseline\") lists them. An intended change gets new baselines from a person (`pxsig check --full --update --only <ids>`); one the gate should have failed means the gate is too loose for this project (`pxsig config` names the layer that sets it)"
+    - button "View components"
+    - button "Run safe repairs"
+    - text: Safe repairs register new stories and render them, re-check entries without a usable verdict, and restore baseline images that pass the gate. They do not approve changes or write signatures.
+  - group "React part":
+    - radio "Compiler" [checked]
+    - radio "Renders"
+  - text: From the check at 10/24/2026, 10:00:00 AM · base main (4883bcd)
+  - button "Analyse"
+  - heading "React Compiler (babel-plugin-react-compiler 1.0.0)" [level=3]
+  - paragraph: 5 files · 11 functions · compiled 6 · skipped 5 · opted out 0 · fixed 0 · 2.1 s (3 cached)
+  - button "Alerts (5)"
+  - button "All analysed (11)"
+  - textbox "Search all columns":
+    - /placeholder: Search all columns…
+  - button "Columns":
+    - img
+    - text: Columns
+  - grid "Data grid":
+    - rowgroup:
+      - row "Function File Before Now Rule Line Entries":
+        - columnheader "Function":
+          - button "Function"
+          - separator "Resize Function column"
+        - columnheader "File":
+          - text: File
+          - separator "Resize File column"
+        - columnheader "Before":
+          - text: Before
+          - separator "Resize Before column"
+        - columnheader "Now":
+          - text: Now
+          - separator "Resize Now column"
+        - columnheader "Rule":
+          - text: Rule
+          - separator "Resize Rule column"
+        - columnheader "Line":
+          - text: Line
+          - separator "Resize Line column"
+        - columnheader "Entries":
+          - text: Entries
+          - separator "Resize Entries column"
+    - rowgroup:
+      - row "AreaChart Newly skipped packages/ui/src/components/Chart/AreaChart.tsx Compiled Skipped refs 18 8":
+        - gridcell "AreaChart Newly skipped":
+          - strong: AreaChart
+          - text: Newly skipped
+        - gridcell "packages/ui/src/components/Chart/AreaChart.tsx"
+        - gridcell "Compiled"
+        - gridcell "Skipped"
+        - gridcell "refs"
+        - gridcell "18"
+        - gridcell "8"
+      - row "DataGridRow Newly skipped packages/ui/src/components/DataGrid/parts/Body.tsx Compiled Skipped refs 18 8":
+        - gridcell "DataGridRow Newly skipped":
+          - strong: DataGridRow
+          - text: Newly skipped
+        - gridcell "packages/ui/src/components/DataGrid/parts/Body.tsx"
+        - gridcell "Compiled"
+        - gridcell "Skipped"
+        - gridcell "refs"
+        - gridcell "18"
+        - gridcell "8"
+      - row "NavigationBar Newly skipped packages/ui/src/components/NavigationBar/NavigationBar.tsx Compiled Skipped refs 18 4":
+        - gridcell "NavigationBar Newly skipped":
+          - strong: NavigationBar
+          - text: Newly skipped
+        - gridcell "packages/ui/src/components/NavigationBar/NavigationBar.tsx"
+        - gridcell "Compiled"
+        - gridcell "Skipped"
+        - gridcell "refs"
+        - gridcell "18"
+        - gridcell "4"
+      - row "SegmentedRatingBar Newly skipped packages/ui/src/components/SegmentedRatingBar/SegmentedRatingBar.tsx Compiled Skipped refs 18 4":
+        - gridcell "SegmentedRatingBar Newly skipped":
+          - strong: SegmentedRatingBar
+          - text: Newly skipped
+        - gridcell "packages/ui/src/components/SegmentedRatingBar/SegmentedRatingBar.tsx"
+        - gridcell "Compiled"
+        - gridcell "Skipped"
+        - gridcell "refs"
+        - gridcell "18"
+        - gridcell "4"
+      - row "useColumnAutosize Newly skipped packages/ui/src/components/DataGrid/hooks/useColumnAutosize.ts Compiled Skipped refs 18 8":
+        - gridcell "useColumnAutosize Newly skipped":
+          - strong: useColumnAutosize
+          - text: Newly skipped
+        - gridcell "packages/ui/src/components/DataGrid/hooks/useColumnAutosize.ts"
+        - gridcell "Compiled"
+        - gridcell "Skipped"
+        - gridcell "refs"
+        - gridcell "18"
+        - gridcell "8"
+      - row "AreaChartTooltipContent packages/ui/src/components/Chart/AreaChart.tsx Compiled Compiled 8":
+        - gridcell "AreaChartTooltipContent":
+          - strong: AreaChartTooltipContent
+        - gridcell "packages/ui/src/components/Chart/AreaChart.tsx"
+        - gridcell "Compiled"
+        - gridcell "Compiled"
+        - gridcell
+        - gridcell
+        - gridcell "8"
+      - row "DataGridCell packages/ui/src/components/DataGrid/parts/Body.tsx Compiled Compiled 8":
+        - gridcell "DataGridCell":
+          - strong: DataGridCell
+        - gridcell "packages/ui/src/components/DataGrid/parts/Body.tsx"
+        - gridcell "Compiled"
+        - gridcell "Compiled"
+        - gridcell
+        - gridcell
+        - gridcell "8"
+      - row "DefaultCellEditor packages/ui/src/components/DataGrid/parts/Body.tsx Compiled Compiled 8":
+        - gridcell "DefaultCellEditor":
+          - strong: DefaultCellEditor
+        - gridcell "packages/ui/src/components/DataGrid/parts/Body.tsx"
+        - gridcell "Compiled"
+        - gridcell "Compiled"
+        - gridcell
+        - gridcell
+        - gridcell "8"
+      - row "KeptNavItemLink packages/ui/src/components/NavigationBar/NavigationBar.tsx Compiled Compiled 4":
+        - gridcell "KeptNavItemLink":
+          - strong: KeptNavItemLink
+        - gridcell "packages/ui/src/components/NavigationBar/NavigationBar.tsx"
+        - gridcell "Compiled"
+        - gridcell "Compiled"
+        - gridcell
+        - gridcell
+        - gridcell "4"
+      - row "MoreMenu packages/ui/src/components/NavigationBar/NavigationBar.tsx Compiled Compiled 4":
+        - gridcell "MoreMenu":
+          - strong: MoreMenu
+        - gridcell "packages/ui/src/components/NavigationBar/NavigationBar.tsx"
+        - gridcell "Compiled"
+        - gridcell "Compiled"
+        - gridcell
+        - gridcell
+        - gridcell "4"
+      - row "useStackedSeries packages/ui/src/components/Chart/AreaChart.tsx Compiled Compiled 8":
+        - gridcell "useStackedSeries":
+          - strong: useStackedSeries
+        - gridcell "packages/ui/src/components/Chart/AreaChart.tsx"
+        - gridcell "Compiled"
+        - gridcell "Compiled"
+        - gridcell
+        - gridcell
+        - gridcell "8"
+  - status
