@@ -114,7 +114,8 @@ export function pxsigSource(pkg = PKG) {
   try {
     const top = git(pkg, 'rev-parse', '--show-toplevel');
     const own = join(top, 'packages', 'pxsig');
-    if (!existsSync(own) || realpathSync(own) !== realpathSync(pkg)) return null;
+    // The OS's own real path: on Windows git names the long path, a temp folder may be an 8.3 one.
+    if (!existsSync(own) || realpathSync.native(own) !== realpathSync.native(pkg)) return null;
     const commit = git(top, 'rev-parse', 'HEAD');
     const changes = fingerprint((...a) => git(top, ...a), top);
     return {
