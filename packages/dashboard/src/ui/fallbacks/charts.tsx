@@ -4,51 +4,75 @@ import { heatStep } from '../contract';
 import { tokens as v } from '../tokens';
 import { border, type Cell, type F } from './base';
 
-/** Without a chart library: the series as a table, so the numbers are still there. */
-export const Chart: F<'Chart'> = ({ data, series, x, format = String, className }) => (
-  <div className={className} style={{ overflowX: 'auto' }}>
-    <table style={{ borderCollapse: 'collapse', fontSize: v.fontSize.sm }}>
-      <thead>
-        <tr>
-          {/* The corner over the row headers: a cell, since a header with no text names nothing. */}
-          {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- an empty data cell, not a control: it labels nothing and needs no label */}
-          <td style={{ paddingInline: v.space['2'] }} />
-          {series.map((s) => (
-            <th
-              key={s.key}
-              scope="col"
-              style={{ textAlign: 'end', paddingInline: v.space['2'], color: v.color.textMuted }}
-            >
-              {s.label}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {data.map((d, i) => (
-          <tr key={i}>
-            <th
-              scope="row"
-              style={{ textAlign: 'start', paddingInline: v.space['2'], fontWeight: 'normal' }}
-            >
-              {String(d[x])}
-            </th>
+/**
+ * Without a chart library: the series as a table, so the numbers are still there. The table is
+ * named by `label` and described by `summary`, text with the `hidden` attribute, read once as the description
+ * (contract 1.8.0).
+ */
+export const Chart: F<'Chart'> = ({
+  data,
+  series,
+  x,
+  format = String,
+  className,
+  label,
+  summary,
+}) => {
+  const id = React.useId();
+  return (
+    <div className={className} style={{ overflowX: 'auto' }}>
+      {summary ? (
+        <span id={id} hidden>
+          {summary}
+        </span>
+      ) : null}
+      <table
+        aria-label={label}
+        aria-describedby={summary ? id : undefined}
+        style={{ borderCollapse: 'collapse', fontSize: v.fontSize.sm }}
+      >
+        <thead>
+          <tr>
+            {/* The corner over the row headers: a cell, since a header with no text names nothing. */}
+            {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- an empty data cell, not a control: it labels nothing and needs no label */}
+            <td style={{ paddingInline: v.space['2'] }} />
             {series.map((s) => (
-              <td
+              <th
                 key={s.key}
-                style={{ textAlign: 'end', paddingInline: v.space['2'], fontFamily: v.font.mono }}
+                scope="col"
+                style={{ textAlign: 'end', paddingInline: v.space['2'], color: v.color.textMuted }}
               >
-                {typeof d[s.key] === 'number'
-                  ? format(d[s.key] as number)
-                  : String((d[s.key] as Cell) ?? '')}
-              </td>
+                {s.label}
+              </th>
             ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-);
+        </thead>
+        <tbody>
+          {data.map((d, i) => (
+            <tr key={i}>
+              <th
+                scope="row"
+                style={{ textAlign: 'start', paddingInline: v.space['2'], fontWeight: 'normal' }}
+              >
+                {String(d[x])}
+              </th>
+              {series.map((s) => (
+                <td
+                  key={s.key}
+                  style={{ textAlign: 'end', paddingInline: v.space['2'], fontFamily: v.font.mono }}
+                >
+                  {typeof d[s.key] === 'number'
+                    ? format(d[s.key] as number)
+                    : String((d[s.key] as Cell) ?? '')}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
 /** The accent over the surface (the charts' blue in the reference adapter), one mix per step of the scale (step 0 is the plain surface). */
 const HEAT_MIX = [0, 14, 29, 44, 66, 86];

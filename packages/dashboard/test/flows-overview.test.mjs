@@ -179,6 +179,25 @@ test('the Overview shows no errors card without errors; one column on a narrow p
   }
 });
 
+test('the Overview chart is named by its card title and described by a summary of its data (contract 1.8.0)', async (t) => {
+  if (skip) return t.skip(skip);
+  const d = spread(data({ rows: [row('ui-button--ok')], entries: [entry('ui-button--ok')] }));
+  d.history = history(3); // changed entries 0, 1, 2
+  const { page, errors } = await open(d);
+  try {
+    // The example adapter has no Chart of its own: the fallback table takes label and summary.
+    const chart = page.getByRole('table', { name: 'Changed Entries per Run', exact: true });
+    await chart.waitFor();
+    const description = await chart.evaluate(
+      (el) => document.getElementById(el.getAttribute('aria-describedby') ?? '')?.textContent
+    );
+    assert.equal(description, 'Changed entries per run, 3 runs: 0 to 2.');
+    assert.deepEqual(errors, []);
+  } finally {
+    await page.close();
+  }
+});
+
 test('stale heatmap tiles name their component and count, worst share first, and open Coverage filtered to it', async (t) => {
   if (skip) return t.skip(skip);
   const d = spread(

@@ -1,6 +1,6 @@
 {
   "adapter": "hydrotik",
-  "contract": "1.7.0",
+  "contract": "1.8.0",
   "designSystem": "@hydrotik/design-system (built from source: PXSIG_DS_SOURCE)",
   "topBar": {
     "root": true,
@@ -275,7 +275,7 @@
     },
     "Chart": {
       "status": "full",
-      "note": "the design system's Chart on recharts, chart tokens 1–4; solid points with no outline"
+      "note": "the design system's Chart on recharts, chart tokens 1–4; solid points with no outline; its SVG is the one tab stop (recharts' keyboard layer, role application: the arrow keys move the tooltip), named by label and described by summary (hidden text, read once)"
     },
     "Heatmap": {
       "status": "bespoke",
