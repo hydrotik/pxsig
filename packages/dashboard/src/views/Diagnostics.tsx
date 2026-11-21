@@ -19,10 +19,11 @@ import { VERDICT } from '../parts/StatusOf';
 import { Scenarios } from './Scenarios';
 import { Calibration } from './Calibration';
 import { Performance } from './Performance';
-import { ReactView, type ReactPart } from './react/ReactView';
+import { ReactView } from './react/ReactView';
+import type { DiagnosticsFocus, DiagnosticsSection } from '../diagnostics-focus';
 import * as s from '../dashboard.css';
 
-type Section = 'react' | 'scenarios' | 'calibration' | 'performance';
+type Section = DiagnosticsSection;
 
 /**
  * The sections there is data for (the tab is hidden when there are none): React first (a normal
@@ -104,12 +105,12 @@ export function Diagnostics({
 }: {
   data: Data;
   onOpen: (row: Row, list: Row[], scenario?: { tag: string; name: string } | null) => void;
-  /** Opened on React (an old `#react` / `#react-renders` link): the part to show. */
-  focus?: { part: ReactPart; all?: boolean; fn?: string; at: number } | null;
+  /** Opened on a part (an old `#react-renders`, `#calibration`… link, the Overview's React card). */
+  focus?: DiagnosticsFocus | null;
 }) {
   const sections = diagnosticsOf(data);
-  // Opened on React (App keys this view by the focus, so a new one starts here again).
-  const [picked, setPicked] = React.useState<Section | null>(focus ? 'react' : null);
+  // Opened on a part (App keys this view by the focus, so a new one starts here again).
+  const [picked, setPicked] = React.useState<Section | null>(focus?.section ?? null);
   const section = picked && sections.includes(picked) ? picked : sections[0];
   if (!section) return null;
   return (

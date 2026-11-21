@@ -36,6 +36,7 @@ import { useApproving } from '../../link';
 import * as s from '../../dashboard.css';
 import { useFailure } from '../../parts/Failure';
 import { CompilerPanel } from './CompilerPanel';
+import { useFileColumn } from './file-column';
 import {
   ALERT_ORDER,
   ChangeBadge,
@@ -101,6 +102,7 @@ export function Compiler({
   const showAll = noBase || (all ?? !alerts.length);
   const shown = showAll ? fns : alerts;
   const [picked, setPicked] = React.useState<string | null>(initialFn ?? null);
+  const [fileWrap, fileWidth] = useFileColumn();
   const selected = shown.find((f) => f.id === picked) ?? null;
   const entriesOf = (path: string) => report?.files.find((x) => x.path === path);
   const ref = report?.base?.since ?? 'main';
@@ -238,79 +240,97 @@ export function Compiler({
                     </ToolbarStart>
                   </Toolbar>
                   {shown.length ? (
-                    <DataTable
-                      rows={shown}
-                      rowId={(f) => f.id}
-                      search
-                      paginate={false}
-                      onRowClick={(f) => setPicked(f.id)}
-                      columns={[
-                        {
-                          id: 'function',
-                          field: 'name',
-                          header: t('diagnostics.react.compiler.columns.function'),
-                          cell: (f) => (
-                            <span className={s.cellLines}>
-                              <strong>
-                                {f.name}
-                                {f.id === picked ? (
-                                  <span className={s.srOnly}>
-                                    {t('diagnostics.react.side.selected')}
-                                  </span>
-                                ) : null}
-                              </strong>
-                              <ChangeBadge change={f.change} />
-                            </span>
-                          ),
-                        },
-                        {
-                          id: 'file',
-                          header: t('diagnostics.react.compiler.columns.file'),
-                          cell: (f) => <span className={s.mono}>{pathOf(f)}</span>,
-                        },
-                        {
-                          id: 'before',
-                          header: t('diagnostics.react.compiler.columns.before'),
-                          cell: (f) => outcomeLabel(f.base?.outcome),
-                        },
-                        {
-                          id: 'now',
-                          header: t('diagnostics.react.compiler.columns.now'),
-                          cell: (f) => outcomeLabel(f.head?.outcome),
-                        },
-                        {
-                          id: 'rule',
-                          header: t('diagnostics.react.compiler.columns.rule'),
-                          cell: (f) => {
-                            const r = rulesOf(f);
-                            return (
+                    <div ref={fileWrap} className={s.fileTable}>
+                      <DataTable
+                        rows={shown}
+                        rowId={(f) => f.id}
+                        search
+                        paginate={false}
+                        onRowClick={(f) => setPicked(f.id)}
+                        // The file path takes the room; the function, the outcomes, the rule and the
+                        // numbers get a width that fits them (the grid adds each cell's padding).
+                        columns={[
+                          {
+                            id: 'function',
+                            field: 'name',
+                            header: t('diagnostics.react.compiler.columns.function'),
+                            width: '240px',
+                            cell: (f) => (
                               <span className={s.cellLines}>
-                                <span className={s.mono}>{r.rule}</span>
-                                {r.others.length ? (
-                                  <span className={s.muted}>
-                                    {t('diagnostics.react.compiler.otherRules', {
-                                      rules: r.others.join(', '),
-                                    })}
-                                  </span>
+                                <strong>
+                                  {f.name}
+                                  {f.id === picked ? (
+                                    <span className={s.srOnly}>
+                                      {t('diagnostics.react.side.selected')}
+                                    </span>
+                                  ) : null}
+                                </strong>
+                                <ChangeBadge change={f.change} />
+                              </span>
+                            ),
+                          },
+                          {
+                            id: 'file',
+                            header: t('diagnostics.react.compiler.columns.file'),
+                            ...(fileWidth ? { width: fileWidth } : {}),
+                            cell: (f) => (
+                              <span className={s.fileCell} title={pathOf(f)} data-file-cell>
+                                {pathOf(f)}
+                                {f === shown[0] ? (
+                                  <span className={s.fileProbe} data-file-probe aria-hidden />
                                 ) : null}
                               </span>
-                            );
+                            ),
                           },
-                        },
-                        {
-                          id: 'line',
-                          header: t('diagnostics.react.compiler.columns.line'),
-                          align: 'end',
-                          cell: (f) => rulesOf(f).line ?? '',
-                        },
-                        {
-                          id: 'entries',
-                          header: t('diagnostics.react.compiler.columns.entries'),
-                          align: 'end',
-                          cell: (f) => entriesOf(pathOf(f))?.entries ?? '',
-                        },
-                      ]}
-                    />
+                          {
+                            id: 'before',
+                            header: t('diagnostics.react.compiler.columns.before'),
+                            width: '96px',
+                            cell: (f) => outcomeLabel(f.base?.outcome),
+                          },
+                          {
+                            id: 'now',
+                            header: t('diagnostics.react.compiler.columns.now'),
+                            width: '96px',
+                            cell: (f) => outcomeLabel(f.head?.outcome),
+                          },
+                          {
+                            id: 'rule',
+                            header: t('diagnostics.react.compiler.columns.rule'),
+                            width: '216px',
+                            cell: (f) => {
+                              const r = rulesOf(f);
+                              return (
+                                <span className={s.cellLines}>
+                                  <span className={s.mono}>{r.rule}</span>
+                                  {r.others.length ? (
+                                    <span className={s.muted}>
+                                      {t('diagnostics.react.compiler.otherRules', {
+                                        rules: r.others.join(', '),
+                                      })}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              );
+                            },
+                          },
+                          {
+                            id: 'line',
+                            header: t('diagnostics.react.compiler.columns.line'),
+                            align: 'end',
+                            width: '56px',
+                            cell: (f) => rulesOf(f).line ?? '',
+                          },
+                          {
+                            id: 'entries',
+                            header: t('diagnostics.react.compiler.columns.entries'),
+                            align: 'end',
+                            width: '64px',
+                            cell: (f) => entriesOf(pathOf(f))?.entries ?? '',
+                          },
+                        ]}
+                      />
+                    </div>
                   ) : (
                     <div className={s.empty}>
                       {t(

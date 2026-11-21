@@ -2,6 +2,7 @@
  * check/select.mjs — stage 1: the entries this run checks (`--modes`, `--only`, `--since` /
  * `--changed` through `pxsig affected`), and the `--only` names the manifest does not have yet.
  */
+import { refFault } from '../lib/git-ref.mjs';
 /** @import { CheckSetup, Die } from './setup.mjs' */
 /** @import { AffectedResult } from '../types/t4.js' */
 
@@ -23,6 +24,9 @@ export function select(S) {
   /** @type {Set<string> | null} */
   let affectedIds = null;
   if (str('since') || str('changed')) {
+    // The ref's rule is the server's too (POST /__pxsig/check, lib/git-ref.mjs).
+    const fault = str('changed') ? null : refFault(P.workspaceRoot, str('since'));
+    if (fault) die(fault);
     // Whichever flag the condition just found set.
     const how = /** @type {string[]} */ (
       str('changed') ? ['--files', str('changed')] : ['--since', str('since')]

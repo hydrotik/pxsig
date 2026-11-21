@@ -72,7 +72,8 @@ export interface EngineCheck {
 export interface EngineMethods {
   ping: { params: Record<string, never>; result: EnginePing };
   affected: {
-    params: { manifest: string; root: string; files: string[] };
+    /** `files`, or `since`: a ref checked first (lib/git-ref.mjs). */
+    params: { manifest: string; root: string } & ({ files: string[] } | { since: string });
     result: EngineAffected;
   };
   capture: {
@@ -108,6 +109,8 @@ export interface EngineMethods {
       history: string;
       /** Each render's environment (lib/text/env-plan.mjs): text is compared only within one. */
       env?: { envs: Record<string, unknown>; byId: Record<string, string> };
+      /** Keys added to the history line (a compared check's `react` counts). */
+      historyExtra?: Record<string, unknown>;
     };
     result: EngineCheck;
   };

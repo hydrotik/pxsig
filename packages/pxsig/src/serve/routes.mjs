@@ -31,6 +31,8 @@ import { approving, LINK_EXPIRED } from '../lib/dashboard-link.mjs';
 import { buildData } from '../report.mjs';
 import { a11yPrune, a11yReview } from './a11y.mjs';
 import { enqueue } from './checks.mjs';
+import { compareOf } from './check-compare.mjs';
+/** @import { Compare } from './check-compare.mjs' */
 import { gateReportRoutes } from './gate-report.mjs';
 import { json, readBody } from './http.mjs';
 import { runIntegrity, storyIntegrity } from './integrity.mjs';
@@ -276,8 +278,9 @@ const table = [
       },
     },
   ],
-  // POST /__pxsig/check {ids?|story?|stories?|all?, renders?}: queue renders + engine checks, answer
-  // 202; `renders: true` (Measure renders, the link only) counts React renders in that run
+  // POST /__pxsig/check {ids?|story?|stories?|all?, renders?, since?|changed?, react?}: queue renders +
+  // engine checks, answer 202; `renders: true` (Measure renders, the link only) counts React renders
+  // in that run; `since` / `changed` compare as `pxsig check --since` does (400 when not valid)
   [
     'check',
     {
@@ -292,8 +295,20 @@ const table = [
         // Without a project, a check is split across the projects that own the ids / stories.
         const targets =
           body.project || srv.states.size === 1 ? [stateFor(srv, body)] : [...srv.states.values()];
+        // `since` / `changed` (lib/git-ref.mjs): refused before anything is queued.
+        const compares = targets.map((S) => compareOf(body, S));
+        const bad = compares.find((c) => 'error' in c);
+        if (bad && 'error' in bad) return json(res, 400, { error: bad.error });
         const results = [];
-        for (const S of targets) results.push(await enqueue(srv, S, body));
+        for (const [i, S] of targets.entries())
+          results.push(
+            await enqueue(
+              srv,
+              S,
+              body,
+              /** @type {{ compare: Compare | null }} */ (compares[i]).compare
+            )
+          );
         const queued = results.flatMap((r) => r.queued);
         const skipped = results.flatMap((r) => r.skipped);
         // Split across projects, a name only one project knows is not skipped by the others.
