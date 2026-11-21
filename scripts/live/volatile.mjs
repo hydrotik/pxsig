@@ -272,7 +272,9 @@ export async function scrubRoutes(context, sc, problems, failed, fetchFrom = ser
         // On a connection of its own (server.mjs `serverFetch`), as the harness's own requests:
         // Playwright's route.fetch keeps sockets alive in this process, whose event loop stalls.
         const { 'accept-encoding': _e, ...headers } = req.headers();
-        const res = await fetchFrom(req.url(), { method: req.method(), headers });
+        // A POST's body goes with it (a decision such as record-repair names its items there).
+        const sent = req.postDataBuffer() ?? undefined;
+        const res = await fetchFrom(req.url(), { method: req.method(), headers, body: sent });
         const text = await res.text();
         const {
           'content-length': _l,

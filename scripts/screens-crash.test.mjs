@@ -11,7 +11,7 @@ import { asMain, CRASH, checkExit, reportStamp } from './lib/crash.mjs';
 import { scrubber, scrubRoutes } from './live/volatile.mjs';
 /**
  * The fake route: the part of Playwright's Route that scrubRoutes uses.
- * @typedef {{ request(): { url(): string, method(): string, headers(): Record<string, string> }, fulfill(o: unknown): Promise<void>, abort(code?: string): Promise<void> }} FakeRoute
+ * @typedef {{ request(): { url(): string, method(): string, headers(): Record<string, string>, postDataBuffer(): Buffer | null }, fulfill(o: unknown): Promise<void>, abort(code?: string): Promise<void> }} FakeRoute
  * @typedef {Parameters<typeof scrubRoutes>[0]} Context
  */
 
@@ -78,9 +78,9 @@ test("a report's stamp is its generatedAt, or null", () => {
 
 /**
  * One routed request through scrubRoutes, with a fake context and route.
- * @param {{ fetch: () => Promise<Response>, abort?: () => Promise<void> }} o
+ * @param {{ fetch: (url: string, init: object) => Promise<Response>, abort?: () => Promise<void>, method?: string, post?: Buffer }} o
  */
-async function routeOnce({ fetch, abort = async () => {} }) {
+async function routeOnce({ fetch, abort = async () => {}, method = 'GET', post }) {
   /** @type {{ handler?: (route: FakeRoute) => Promise<void>, match?: (u: URL) => boolean }} */
   const got = {};
   const calls = /** @type {{ fulfilled: unknown[], aborted: (string | undefined)[] }} */ ({
@@ -111,7 +111,12 @@ async function routeOnce({ fetch, abort = async () => {} }) {
   assert.ok(match(new URL(url)));
   assert.ok(!match(new URL('http://127.0.0.1:52600/__pxsig/events')));
   await handler({
-    request: () => ({ url: () => url, method: () => 'GET', headers: () => ({}) }),
+    request: () => ({
+      url: () => url,
+      method: () => method,
+      headers: () => ({}),
+      postDataBuffer: () => post ?? null,
+    }),
     fulfill: async (/** @type {unknown} */ o) => void calls.fulfilled.push(o),
     abort: async (/** @type {string | undefined} */ code) => {
       calls.aborted.push(code);
@@ -154,6 +159,22 @@ test('an answer is scrubbed and fulfilled, with nothing recorded as failed', asy
     headers: { 'content-type': 'application/json' },
     json: { dashboard: 'http://127.0.0.1:1/report/' },
   });
+});
+
+test('a POST goes to the server with its body', async () => {
+  /** @type {unknown[]} */
+  const sent = [];
+  const post = Buffer.from(JSON.stringify({ items: [{ id: 'a--b', file: 'f'.repeat(64) }] }));
+  const r = await routeOnce({
+    method: 'POST',
+    post,
+    fetch: async (_url, init) => {
+      sent.push(init);
+      return new Response('{}', { headers: { 'content-type': 'application/json' } });
+    },
+  });
+  assert.deepEqual(r.failed, []);
+  assert.deepEqual(sent, [{ method: 'POST', headers: {}, body: post }]);
 });
 
 test('the workflow fails a crash as an error and reviews only a 1 with its check.json', () => {

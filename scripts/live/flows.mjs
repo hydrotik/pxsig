@@ -264,7 +264,7 @@ export const STEPS = [
     n: 1,
     // A fresh page on Overview (live.report left a preview open), after the pair is staged.
     actions: [
-      { pair: 'components-button--primary@light' },
+      { pair: 'components-button--primary' },
       { link: '#overview' },
       { click: { role: 'button', name: 'Repair baseline records', exact: true } },
     ],
