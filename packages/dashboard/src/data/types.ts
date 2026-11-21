@@ -360,6 +360,12 @@ export interface IntegrityLedger {
   entries: IntegrityEntry[];
 }
 
+/** The server's summary of the dashboard's repair plan (lib/repair/summary.mjs). */
+export interface RepairSummary {
+  entries: number;
+  steps: { action: string; count: number }[];
+}
+
 export interface Data {
   generatedAt: string;
   /** The project this data belongs to (one server can serve several). */
@@ -402,6 +408,10 @@ export interface Data {
   paths: { diffRoot: string; renders: string; baselines: string; rejected: string };
   sigs: Record<string, string>;
   integrity?: IntegrityLedger | null;
+  /** The safe repair the dashboard would run (served only): its runnable steps, entries counted once. */
+  repair?: RepairSummary | null;
+  /** Whether this server holds the store's lock (served only): without it, writes are refused. */
+  storeHeld?: boolean;
   /** The React analysis (always when served; in a static report only with results to show). */
   react?: ReactData;
   /** Set when the data was inlined into a static report. */

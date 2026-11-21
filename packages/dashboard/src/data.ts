@@ -41,6 +41,7 @@ export type {
   IntegrityEntry,
   IntegrityComponent,
   IntegrityLedger,
+  RepairSummary,
   Data,
 } from './data/types';
 export type {

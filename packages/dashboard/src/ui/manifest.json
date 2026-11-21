@@ -437,6 +437,7 @@
         "inspector/Inspector",
         "inspector/RejectedNote",
         "inspector/SessionSummary",
+        "views/RepairLinkNote",
         "views/react/CompilerPanel"
       ]
     },

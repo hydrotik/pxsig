@@ -23,6 +23,7 @@
  */
 export { guardWrite, logRepair } from './repair/core.mjs';
 export { ACTIONS, planRepairs } from './repair/plan.mjs';
+export { DASHBOARD_PLAN, repairSummary } from './repair/summary.mjs';
 export {
   entriesOfStory,
   registerNamed,

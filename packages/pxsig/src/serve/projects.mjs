@@ -180,6 +180,8 @@ export function needLock(srv, S) {
       console.error(`[serve] ${S.name}: ${e.message}`);
       S.lock = null;
       S.lockWait = e.message;
+      // The page offers writes only while the lock is held: it reloads and stops offering them.
+      srv.broadcast('data', { project: S.name });
       setTimeout(() => takeLock(srv, S), 2000).unref();
     }
   }
