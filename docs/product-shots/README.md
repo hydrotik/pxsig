@@ -28,8 +28,9 @@ compares is rendered by the script, before and after a change. It shoots the lig
 1560×1000 CSS px and 2x, crops the Overview to its content and the inspector to its dialog,
 compresses the PNGs with `oxipng` or `zopflipng` when one is installed, and records the version
 in `shots.json`. The data is mocked; the dashboard is the real build. Every minor or major release
-re-shoots them on its release branch ([releasing.md](../releasing.md#product-shots)); the release
-fails when `shots.json` names another minor. `--serve` keeps the mock dashboard running for shots
+re-shoots them on its release branch, and so does a patch when any of the dashboard's screen
+baselines changed since the version `shots.json` names ([releasing.md](../releasing.md#product-shots));
+`scripts/check-shots.mjs` fails the release otherwise. `--serve` keeps the mock dashboard running for shots
 by hand.
 
 `scripts/product-shots.mjs` shoots a real run instead: the `examples/single-package` project checked,
