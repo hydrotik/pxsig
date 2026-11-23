@@ -277,3 +277,4 @@
   - term: pxsig doctor --repair
   - definition: Plan the safe repairs; add --apply to run them
   - paragraph: "This page: UI contract 1.9.0."
+  - paragraph: Dashboard build 0123456 for pxsig 0.0.0 · design system fedcba9 · adapter hydrotik · built 2026-01-01 00:00 UTC.

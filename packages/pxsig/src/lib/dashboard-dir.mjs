@@ -11,9 +11,14 @@
  *      from another version, or one that records none, is out of date. Serve never builds by
  *      itself: a build needs the project's Vite and can fail or take a while, and the prebuilt
  *      dashboard always works.
+ * Run from a git checkout of pxsig, a build that records a commit (lib/build-identity.mjs) is also
+ * out of date when that commit, or its uncommitted changes, are not the checkout's; a prebuilt
+ * dashboard that is out of date that way is still served, with a note naming `pnpm
+ * build:dashboard`. A build that records no commit (a release) is compared by version only.
  */
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
+import { pxsigSource, sourceMismatch } from './build-identity.mjs';
 import { readJson } from './files.mjs';
 
 /**
@@ -65,6 +70,19 @@ export function versionMismatch(dir, version) {
     ? `is from pxsig ${v} (this is ${version})`
     : `records no pxsig version (this is ${version})`;
 }
+
+/**
+ * Why the build in `dir` is out of date: another pxsig version (versionMismatch), else, run from a
+ * checkout, another commit or other uncommitted changes (sourceMismatch); null when it is current.
+ * @param {string} dir
+ * @param {string} version
+ * @param {import('./build-identity.mjs').SourceState | null} checkout
+ */
+export const staleReason = (dir, version, checkout) =>
+  versionMismatch(dir, version) ?? sourceMismatch(dir, checkout);
+
+/** The prebuilt dashboard's own rebuild, in a checkout of pxsig. */
+export const PREBUILT_FIX = 'run `pnpm build:dashboard` in the pxsig checkout';
 
 /**
  * The files of a build, as the stamp lists them: every file under `dir` but the stamp, as
@@ -125,9 +143,24 @@ export function uiOf(project) {
  * @param {string} [o.root]       the workspace root, for relative paths in notes
  * @param {(name: string) => string | null} [o.builtinDir]  a built-in adapter's folder, for staleness
  * @param {Record<string, string | undefined>} [o.env]
+ * @param {import('./build-identity.mjs').SourceState | null} [o.checkout]  pxsig's checkout (pxsigSource), null when installed
  * @returns {{ dir: string, source: 'env' | 'adapter' | 'prebuilt', note: string | null }}
  */
-export function chooseDashboard({
+export function chooseDashboard(o) {
+  const checkout = o.checkout === undefined ? pxsigSource() : o.checkout;
+  const got = pick({ ...o, checkout });
+  const off = got.source === 'prebuilt' ? sourceMismatch(o.prebuilt, checkout) : null;
+  if (!off) return got;
+  const note = `dashboard: the prebuilt dashboard ${off}: ${PREBUILT_FIX}.`;
+  return { ...got, note: got.note ? `${got.note}\n${note}` : note };
+}
+
+/**
+ * chooseDashboard without the prebuilt dashboard's own check.
+ * @param {Parameters<typeof chooseDashboard>[0] & { checkout: import('./build-identity.mjs').SourceState | null }} o
+ * @returns {ReturnType<typeof chooseDashboard>}
+ */
+function pick({
   projects,
   prebuilt,
   version,
@@ -135,11 +168,12 @@ export function chooseDashboard({
   root = process.cwd(),
   builtinDir = () => null,
   env = process.env,
+  checkout,
 }) {
   if (env.PXSIG_DASHBOARD_DIR) {
     const dir = resolve(env.PXSIG_DASHBOARD_DIR);
     // A folder with no build is served as named: the server's answer says it is not built.
-    const off = existsSync(join(dir, 'index.html')) ? versionMismatch(dir, version) : null;
+    const off = existsSync(join(dir, 'index.html')) ? staleReason(dir, version, checkout) : null;
     if (off)
       return {
         dir: prebuilt,
@@ -178,7 +212,7 @@ export function chooseDashboard({
       source: 'prebuilt',
       note: `dashboard: ${where} has no build yet: ${command}. Serving the prebuilt dashboard.`,
     };
-  const off = versionMismatch(out, version);
+  const off = staleReason(out, version, checkout);
   if (off)
     return {
       dir: prebuilt,

@@ -274,6 +274,15 @@ test('BUILD.json records the design-system commit, a dirty tree, the lock hashes
     );
     assert.equal(r.bundled.length, 6);
     assert.equal(buildRecord({ outDir: dash, adapter: 'plain', base }).designSystem, null);
+    // pxsig's own source: this checkout's commit by default; null outside one (a release).
+    assert.ok(r.commit === null || /^[0-9a-f]{40}$/.test(r.commit), String(r.commit));
+    assert.equal(typeof r.dirty, r.commit === null ? 'object' : 'boolean');
+    const at = (/** @type {{ commit: string, dirty: boolean } | null} */ source) => {
+      const { commit, dirty } = buildRecord({ outDir: dash, adapter: 'plain', base, source });
+      return { commit, dirty };
+    };
+    assert.deepEqual(at({ commit: head, dirty: true }), { commit: head, dirty: true });
+    assert.deepEqual(at(null), { commit: null, dirty: null });
     const text = format(r);
     assert.deepEqual(JSON.parse(text), r);
     assert.match(text, /\n {4}\{"name":"@scope\/ui","version":"1\.9\.0","license":"MIT"\},\n/);
