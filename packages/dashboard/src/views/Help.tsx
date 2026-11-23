@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Icon } from '@ui';
-import { versionsText } from '../versions';
+import { buildText, versionsText } from '../versions';
 import type { Data } from '../data';
 import { Schematic, type Layout } from '../parts/Schematic';
 import { t, codeCopy, type CopyKey } from '../copy';
@@ -195,6 +195,7 @@ function colorRule(g: Record<string, unknown>): string {
 export function Help({ data }: { data: Data }) {
   const m = data.check?.manifest;
   const g = m?.gate ?? {};
+  const build = buildText(data);
   return (
     <div className={s.stack}>
       <p className={s.lede}>{t('help.intro')}</p>
@@ -359,6 +360,7 @@ export function Help({ data }: { data: Data }) {
         items={COMMANDS.map(([c, label]) => ({ term: c, meaning: t(label), at: [] }))}
       />
       <p className={s.lede}>{t('help.versions', { versions: versionsText(data) })}</p>
+      {build ? <p className={s.lede}>{t('help.build', { build })}</p> : null}
     </div>
   );
 }

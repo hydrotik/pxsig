@@ -7,7 +7,7 @@ export const SHELL: Feature[] = [
     section: 'shell',
     title: 'Top bar',
     purpose:
-      "The report's title (its label, else the project name) with the versions on hover, the section links with their counts, and the controls pinned at the end: start review, project, modes, connection with whether this page can approve (Read only / Can approve, the command for a dashboard link on hover), last check, theme, review status.",
+      "The report's title (its label, else the project name) with the versions and the dashboard build on hover, the section links with their counts, and the controls pinned at the end: start review, project, modes, connection with whether this page can approve (Read only / Can approve, the command for a dashboard link on hover), last check, theme, review status.",
     states: {
       loading: 'The page shows a loading line until the first data arrives.',
       error: 'The page shows the load error instead of the dashboard.',

@@ -10,7 +10,7 @@ well renders every feature; see [build-adapter.md](build-adapter.md).
 
 ### Top bar
 
-`shell.top-bar` · The report's title (its label, else the project name) with the versions on hover, the section links with their counts, and the controls pinned at the end: start review, project, modes, connection with whether this page can approve (Read only / Can approve, the command for a dashboard link on hover), last check, theme, review status.
+`shell.top-bar` · The report's title (its label, else the project name) with the versions and the dashboard build on hover, the section links with their counts, and the controls pinned at the end: start review, project, modes, connection with whether this page can approve (Read only / Can approve, the command for a dashboard link on hover), last check, theme, review status.
 
 States:
 
@@ -393,7 +393,7 @@ Files: `src/views/Diagnostics`, `src/views/react/ReactView`, `src/views/react/sh
 
 ### Help
 
-`help.reference` · First, how approving works: the dashboard link, its timing, and the connection and approval badges. Then what each section, card icon, status, React alert, text label, coverage code, inspector region and key means, beside a drawing of where it appears, and which pxsig, engine and UI contract versions drew the page.
+`help.reference` · First, how approving works: the dashboard link, its timing, and the connection and approval badges. Then what each section, card icon, status, React alert, text label, coverage code, inspector region and key means, beside a drawing of where it appears, which pxsig, engine and UI contract versions drew the page, and which build of the dashboard it is (the pxsig commit, the design-system commit, the adapter and when it was built).
 
 Interactions:
 
