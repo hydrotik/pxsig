@@ -612,6 +612,38 @@
       "a11y": false
     },
     {
+      "id": "shell--coverage-banner-2@dark",
+      "story": "shell--coverage-banner-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--coverage-banner-2@dark.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "shell--coverage-banner-2@light",
+      "story": "shell--coverage-banner-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/shell/shell--coverage-banner-2@light.psig",
+      "importPath": "src/ui/features/shell.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
       "id": "overview--counts-1@dark",
       "story": "overview--counts-1",
       "mode": "dark",
@@ -761,6 +793,38 @@
       "mode": "light",
       "state": null,
       "sig": ".pxsig/baselines/overview/overview--errors-1@light.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--errors-2@dark",
+      "story": "overview--errors-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--errors-2@dark.psig",
+      "importPath": "src/ui/features/overview.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "overview--errors-2@light",
+      "story": "overview--errors-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/overview/overview--errors-2@light.psig",
       "importPath": "src/ui/features/overview.ts",
       "globals": "",
       "colorScheme": "light",
@@ -1412,6 +1476,38 @@
       "a11y": false
     },
     {
+      "id": "diagnostics--react-compiler-9@dark",
+      "story": "diagnostics--react-compiler-9",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-9@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-compiler-9@light",
+      "story": "diagnostics--react-compiler-9",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-compiler-9@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
       "id": "diagnostics--react-renders-1@dark",
       "story": "diagnostics--react-renders-1",
       "mode": "dark",
@@ -1566,6 +1662,38 @@
       "colorScheme": "light",
       "viewport": [
         900,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-renders-6@dark",
+      "story": "diagnostics--react-renders-6",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-renders-6@dark.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--react-renders-6@light",
+      "story": "diagnostics--react-renders-6",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--react-renders-6@light.psig",
+      "importPath": "src/ui/features/react.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
         900
       ],
       "browser": "chromium",

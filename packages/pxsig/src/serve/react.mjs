@@ -15,7 +15,7 @@ import { configWarning, reactConfig } from '../lib/react/config.mjs';
 import { missingPeers } from '../lib/react/data.mjs';
 import { json } from './http.mjs';
 /** @import { AddressInfo } from 'node:net' */
-/** @import { ReactLive, ReactReport } from '../types/react.js' */
+/** @import { ReactLive, ReactReport, ReactRun } from '../types/react.js' */
 /** @import { Route, RouteContext, ServeContext } from '../types/serve.js' */
 /** @import { ProjectState } from './projects.mjs' */
 
@@ -25,7 +25,8 @@ const TICK = 250;
 /**
  * One project's analysis state (ProjectState `react`).
  * @typedef {object} ReactState
- * @property {{ trigger: string, ctl: AbortController, done: number, total: number, cached: number } | null} run
+ * @property {{ trigger: string, ctl: AbortController, done: Promise<void>, files: number, total: number, cached: number } | null} run
+ *   the run going: `done` settles once it has been recorded; `files` of `total` analysed
  * @property {string | null} again a trigger that came while a run was going: one more run after it
  * @property {string | null} error the last run failed: why
  * @property {boolean} skipped the last run was skipped
@@ -111,7 +112,43 @@ export function startReact(srv, S, trigger) {
     R.again = trigger;
     return { queued: true };
   }
-  const run = { trigger, ctl: new AbortController(), done: 0, total: 0, cached: 0 };
+  void runAnalysis(srv, S, trigger);
+  return { started: true };
+}
+
+/**
+ * A check's analysis (POST /__pxsig/check with `since` or `changed`): after the run going, if any,
+ * compared with what the check names, as the check without a server does (check/react.mjs). Its
+ * result is the check's `react`; a switched-off or uninstalled analysis says why, as there.
+ * @param {ServeContext} srv
+ * @param {ProjectState} S
+ * @param {{ since: string } | { files: string[] }} sel
+ * @returns {Promise<ReactRun>}
+ */
+export async function checkAnalysis(srv, S, sel) {
+  while (S.react.run) await S.react.run.done;
+  return runAnalysis(srv, S, 'check', sel);
+}
+
+/**
+ * One analysis, with its `react` events and what `data.react` says after it.
+ * @param {ServeContext} srv
+ * @param {ProjectState} S
+ * @param {'startup' | 'watch' | 'analyse' | 'check'} trigger
+ * @param {{ since: string } | { files: string[] }} [sel] default: compared with `main`
+ * @returns {Promise<ReactRun>}
+ */
+function runAnalysis(srv, S, trigger, sel) {
+  const R = S.react;
+  /** @type {NonNullable<ReactState['run']>} */
+  const run = {
+    trigger,
+    ctl: new AbortController(),
+    done: Promise.resolve(),
+    total: 0,
+    files: 0,
+    cached: 0,
+  };
   R.run = run;
   // The edits this run covers; an edit while it runs keeps the results out of date.
   const covered = R.edits;
@@ -125,26 +162,28 @@ export function startReact(srv, S, trigger) {
       project: S.name,
       state: 'running',
       trigger,
-      files: { done: run.done, total: run.total },
+      files: { done: run.files, total: run.total },
       cached: run.cached,
     });
   };
   tell(true);
-  void analyse(S.P, {
+  /** @type {Promise<ReactRun>} */
+  const result = analyse(S.P, {
     manifest: /** @type {string} */ (S.runPath),
     // Two workers: the browsers of a check may be rendering beside it.
     workers: 2,
     signal: run.ctl.signal,
+    ...sel,
     onProgress(p) {
-      Object.assign(run, p);
+      Object.assign(run, { files: p.done, total: p.total, cached: p.cached });
       tell(p.done === p.total);
     },
-  })
-    .catch((/** @type {Error} */ e) => ({
-      ran: /** @type {const} */ (false),
-      why: /** @type {const} */ ('failed'),
-      text: `react: analysis failed (${e.message}): nothing compared`,
-    }))
+  }).catch((/** @type {Error} */ e) => ({
+    ran: /** @type {const} */ (false),
+    why: /** @type {const} */ ('failed'),
+    text: `react: analysis failed (${e.message}): nothing compared`,
+  }));
+  run.done = result
     .then((r) => {
       if (r.ran) {
         Object.assign(R, {
@@ -182,7 +221,7 @@ export function startReact(srv, S, trigger) {
       R.again = null;
       if (again) startReact(srv, S, /** @type {'startup' | 'watch' | 'analyse'} */ (again));
     });
-  return { started: true };
+  return result;
 }
 
 /**

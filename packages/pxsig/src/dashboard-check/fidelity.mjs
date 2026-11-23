@@ -6,22 +6,17 @@
  *   one-line  the top bar's links and controls, a toolbar's controls, or a row of actions (two or
  *             more controls side by side in one flex row) take more than one line
  *   size      the controls on one line of a toolbar or a row of actions differ in height; a
- *             table's controls differ in height, or are taller than the page's small size (its
- *             smallest control outside the tables: the dashboard draws its toolbars, the top bar's
- *             buttons and a card's actions at `sm`, the size of a table's actions)
+ *             table's controls differ in height, or are taller than the page's small size (below)
  *   casing    a column header, heading, top-bar link, button, badge or field label is drawn in
  *             another case than its text (`text-transform`), or its text is the copy's in another
- *             case; stat labels are the contract's own micro labels and are not measured, and a
- *             badge may be drawn in capitals (`uppercase`: micro caps), its text still the copy's
- *   tone      a stat card, badge or status badge shows its tone as a border, an edge or a wash
- *             (a border, background or ::before / ::after in a tone colour): the contract shows it
- *             as the colour of the value, the text or the glyph (a badge: or its own tone,
- *             `pxsig-ui-tone-<tone>`), and a badge's text under AA (4.5:1)
+ *             case; stat labels are not measured, and a badge may be micro caps (`uppercase`)
+ *   tone      a stat card, badge or status badge has a border, background or ::before / ::after
+ *             in a tone colour, but a stat card's start edge in its value's tone and a badge's own
+ *             tone (`pxsig-ui-tone-<tone>`); and a badge's text under AA
  *
- * The rules read roles and the box model, and the `pxsig-ui-<name>` classes the dashboard adds to
- * a contract component's root (src/ui/index.ts); never an adapter's own class names. An element
- * opts out with `data-layout-allow="<reason>"`, as for the layout rules. While a modal `<dialog>`
- * is open, only what is inside it is measured.
+ * The rules read roles, the box model and the `pxsig-ui-<name>` classes the dashboard adds to a
+ * contract component's root (src/ui/index.ts), not an adapter's classes. An element opts out with
+ * `data-layout-allow="<reason>"`. While a modal `<dialog>` is open, only what is in it is measured.
  *
  * `inspectFidelity` runs in the page (`page.evaluate`), so it is self-contained.
  */
@@ -29,7 +24,7 @@
 
 /**
  * Every fidelity finding on the page as it is. `copy`: every string of the dashboard's copy
- * (src/copy/en.json), placeholders as `{name}`. Self-contained: runs in the page.
+ * (src/copy/en.json), placeholders as `{name}`.
  * @param {{ max: number, copy: string[] }} opts
  * @returns {FidelityFinding[]}
  */
@@ -146,7 +141,7 @@ export function inspectFidelity({ max, copy }) {
     if (own.length > 1) oneLine(`toolbar ${ri + 1}${label ? ` "${label}"` : ''}`, own);
   });
   // A row of actions: two or more controls, each a child of one flex row (or the only control of
-  // a child), and none in a table, a toolbar or the top bar (measured above or below).
+  // a child), none in a table, a toolbar or the top bar.
   /** @type {Map<Element, Element[]>} */
   const rows = new Map();
   for (const el of controlsIn(document.body)) {
@@ -221,8 +216,8 @@ export function inspectFidelity({ max, copy }) {
   });
 
   // --- casing ----------------------------------------------------------------------------------
-  // Each copy string as a pattern, its placeholders matching anything; one with no words of its own
-  // ("{name}") would match every text, so it is left out.
+  // Each copy string as a pattern, placeholders matching anything; one with no words of its own
+  // ("{name}") is left out.
   const holes = copy
     .map((s) => s.split(/\{[^}]+\}/))
     .filter((parts) => parts.join('').replace(/[^a-z]/gi, '').length >= 2)
@@ -251,7 +246,7 @@ export function inspectFidelity({ max, copy }) {
       if (!badge && inner && el.contains(inner)) continue;
       for (let e = n.parentElement; e && !cased; e = e === el ? null : e.parentElement) {
         const tt = getComputedStyle(e).textTransform;
-        // A badge may be micro caps: capitals drawn from the copy's text, which stays its own.
+        // A badge may be micro caps, the copy's text drawn in capitals.
         if (tt !== 'none' && visible(e) && !(badge && tt === 'uppercase')) cased = e;
       }
     }
@@ -371,6 +366,13 @@ export function inspectFidelity({ max, copy }) {
       // A selected filter tile shows that it is selected, not a tone.
       if (el.closest('[aria-pressed="true"], [aria-current], [aria-selected="true"]')) continue;
       const back = backdrop(el);
+      // A stat card's start edge (a border, or a pseudo up to 4px wide) in its value's tone (R4).
+      const vt =
+        kind === 'stat card'
+          ? [el, ...el.querySelectorAll('*')].map((e) => toneOf(getComputedStyle(e).color, back))
+          : [];
+      const edge = new Set(vt.filter(Boolean)).size === 1 ? vt.find(Boolean) : 0;
+      const start = getComputedStyle(el).direction === 'rtl' ? 'right' : 'left';
       /** @type {string[]} */
       const how = [];
       for (const pseudo of [null, '::before', '::after']) {
@@ -378,12 +380,13 @@ export function inspectFidelity({ max, copy }) {
         if (pseudo && (cs.content === 'none' || cs.content === 'normal')) continue;
         const at = pseudo ?? '';
         const bg = toneOf(cs.backgroundColor, back);
-        if (bg) how.push(`a ${bg} background${at}`);
+        if (bg && !(pseudo && parseFloat(cs.width) <= 4 && bg === edge))
+          how.push(`a ${bg} background${at}`);
         for (const k of SIDES) {
           const w = parseFloat(cs.getPropertyValue(`border-${k}-width`)) || 0;
           if (w <= 0 || cs.getPropertyValue(`border-${k}-style`) === 'none') continue;
           const t = toneOf(cs.getPropertyValue(`border-${k}-color`), back);
-          if (t) how.push(`a ${t} ${k} border${at}`);
+          if (t && !(k === start && t === edge)) how.push(`a ${t} ${k} border${at}`);
         }
         const shadow = cs.boxShadow;
         if (shadow && shadow !== 'none') {
@@ -396,7 +399,7 @@ export function inspectFidelity({ max, copy }) {
       const item = kind === 'stat card' ? el : root;
       out.push({
         rule: 'tone',
-        text: `${kind} ${name(item).slice(0, 48)} shows its tone as ${[...new Set(how)].join(', ')}: the contract shows a tone as the colour of its ${kind === 'stat card' ? 'value' : kind === 'badge' ? `text, or a badge's own tone (${own})` : 'glyph'}`,
+        text: `${kind} ${name(item).slice(0, 48)} shows its tone as ${[...new Set(how)].join(', ')}: the contract shows a tone as the colour of its ${kind === 'stat card' ? 'value (and a start edge)' : kind === 'badge' ? `text, or a badge's own tone (${own})` : 'glyph'}`,
       });
       if (kind !== 'stat card') break;
     }
