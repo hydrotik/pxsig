@@ -33,6 +33,7 @@ import {
   coverageFindings,
   coverageShown,
   errorCodes,
+  headlineCounts,
   repairEntries,
 } from './coverage-findings';
 import { StaleHeatmap } from '../parts/StaleHeatmap';
@@ -63,12 +64,12 @@ export function IntegrityStatus({ code, severity }: { code: string; severity: Se
 }
 
 /**
- * The block's headline: its integrity and setup findings by severity (never review work: changed,
- * new and accessibility entries are the review queues'), then each error code's entry count.
+ * The block's headline: the findings it lists by severity (headlineCounts; never review work, never
+ * entry warnings), then each error code's entry count.
  */
 export function coverageHeadline(L: NonNullable<Data['integrity']>): string {
-  const f = coverageFindings(L);
-  if (!f.error && !f.warn) return t('coverage.headline.clean');
+  const f = headlineCounts(L);
+  if (!f.error && !f.warn && !f.entryWarnings) return t('coverage.headline.clean');
   return [
     f.error ? t('coverage.headline.errors', { count: f.error }) : t('coverage.headline.noErrors'),
     ...(f.warn ? [t('coverage.headline.warnings', { count: f.warn })] : []),
@@ -117,6 +118,7 @@ export function CoverageDetails({
   // The server's plan for this ledger: no step, no button (nothing it could do).
   const repairable = repairEntries(data);
   const viewAll = concernsComponents(L);
+  const warned = headlineCounts(L).entryWarnings;
   const approve = served && toApprove && startReview;
   const working = (b: boolean) => (setBusy(b), onBusy?.(b));
   const run = async () => {
@@ -165,6 +167,9 @@ export function CoverageDetails({
               {t('coverage.banner.viewComponents')}
             </Button>
           ) : null}
+          {warned ? (
+            <span className={s.muted}>{t('coverage.banner.entryWarnings', { count: warned })}</span>
+          ) : null}
           {approve ? (
             <Button
               size="sm"
@@ -193,11 +198,11 @@ export function CoverageDetails({
 }
 
 /**
- * The banner at the top of every tab while there is an error, a setup warning or a safe repair to
- * run (coverage-findings.ts), or while registered entries wait for their first approval (a warning, counted on its own so it does not vanish once the
- * errors are repaired). It carries the one-click safe repair (register new stories and render
- * them, re-check, restore baseline images that pass the gate) and, for the new entries, the
- * review queue that approves them. It never approves, never writes a signature and never prunes.
+ * The banner on every tab while there is an error, a setup warning or a safe repair to run
+ * (coverage-findings.ts), or while entries wait for their first approval (counted on its own so it
+ * stays once the errors are repaired). It carries the one-click safe repair (its note says what it
+ * does) and the queue that approves the new entries. It never approves, never writes a signature
+ * and never prunes.
  * `errorsShownElsewhere`: the page shows the findings itself (the Overview's errors card), so the
  * banner stays away while there are any.
  */

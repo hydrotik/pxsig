@@ -82,6 +82,7 @@ test('setup warnings: the headline counts them by severity, never the changed en
       'two setup warnings; the info one is not counted'
     );
     assert.doesNotMatch(text, /components? with warnings/);
+    assert.doesNotMatch(text, /with warnings/, 'no entries with warnings: no line');
     assert.match(text, /Older log lines with reasons · 4 lines/, 'the info finding is titled');
     assert.equal(await repairButton(page).count(), 0, 'nothing a repair could do');
     assert.equal(await page.getByRole('button', { name: 'View components' }).count(), 0);
@@ -113,8 +114,12 @@ test('a plan with steps: "Run safe repairs · N entries", also for warnings (a m
   });
   try {
     await coverage(page).waitFor();
-    assert.match(await coverage(page).innerText(), /^No errors · 2 warnings/);
+    // Entry warnings are not listed: not in the headline, their own line beside the button.
+    const text = await coverage(page).innerText();
+    assert.match(text, /^No errors\n/);
+    assert.doesNotMatch(text, /\d warnings?\b/);
     await page.getByRole('button', { name: 'View components' }).waitFor();
+    await page.getByText('2 entries with warnings', { exact: true }).waitFor();
     await repairButton(page).click();
     await page.getByText('No issues can be repaired automatically.').waitFor();
     assert.equal(await repairButton(page).innerText(), 'Run safe repairs · 2 entries');
@@ -128,7 +133,7 @@ test('a plan with steps: "Run safe repairs · N entries", also for warnings (a m
   }
 });
 
-test('errors: the headline counts errors and warnings, then each error code; the plan names one entry', async (t) => {
+test('errors: the headline counts errors, then each error code; the entry warning is its own line; the plan names one entry', async (t) => {
   if (skip) return t.skip(skip);
   const stale = { code: 'stale', severity: 'warn', reason: 'edited after the verdict' };
   const d = spread(
@@ -146,7 +151,9 @@ test('errors: the headline counts errors and warnings, then each error code; the
   const { page, errors } = await open(d, { hash: '#help' });
   try {
     await coverage(page).waitFor();
-    assert.match(await coverage(page).innerText(), /^1 error · 1 warning · Never checked: 1/);
+    const text = await coverage(page).innerText();
+    assert.match(text, /^1 error · Never checked: 1\n/);
+    assert.match(text, /\b1 entry with warnings\b/, 'singular');
     assert.equal(await repairButton(page).innerText(), 'Run safe repairs · 1 entry');
     // With the same ledger and no plan (a static scan blocks the step): no button.
     d.repair = { entries: 0, steps: [] };

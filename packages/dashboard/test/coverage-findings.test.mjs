@@ -14,6 +14,7 @@ import {
   coverageFindings,
   coverageShown,
   errorCodes,
+  headlineCounts,
   repairEntries,
 } from '../src/views/coverage-findings.ts';
 
@@ -62,6 +63,25 @@ test('counts by severity: entries at their worst finding, setup findings; review
     ['never-checked', 1],
     ['render-error', 1],
   ]);
+});
+
+test('the headline counts the findings the block lists; entry warnings are their own count', () => {
+  // Three setup findings listed, one of them info: 2 warnings. One entry warning, one entry error.
+  const L = ledger(
+    [e(issue('stale', 'warn')), e(issue('never-checked', 'error')), e(issue('changed', 'warn'))],
+    [
+      issue('env-mismatch', 'warn'),
+      issue('drift-high', 'warn'),
+      issue('log-legacy-personal', 'info'),
+    ]
+  );
+  assert.deepEqual(headlineCounts(L), { error: 1, warn: 2, entryWarnings: 1 });
+  // Entry warnings alone: none listed, so none in the headline.
+  const stale = ledger([e(issue('stale', 'warn')), e(issue('missing-render', 'warn'))]);
+  assert.deepEqual(headlineCounts(stale), { error: 0, warn: 0, entryWarnings: 2 });
+  // No entry warnings: 0 (no line).
+  const setup = ledger([], [issue('env-mismatch', 'warn')]);
+  assert.deepEqual(headlineCounts(setup), { error: 0, warn: 1, entryWarnings: 0 });
 });
 
 test('info findings alone, or changed entries alone, never show the block', () => {

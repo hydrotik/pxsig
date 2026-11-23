@@ -362,6 +362,10 @@
     "banner": {
       "label": "Coverage",
       "viewComponents": "View components",
+      "entryWarnings": {
+        "one": "{count} entry with warnings",
+        "other": "{count} entries with warnings"
+      },
       "repair": {
         "one": "Run safe repairs · {count} entry",
         "other": "Run safe repairs · {count} entries"

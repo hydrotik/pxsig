@@ -34,6 +34,16 @@ export function coverageFindings(L: IntegrityLedger): Findings {
   return { entries, setup, error: entries.error + setup.error, warn: entries.warn + setup.warn };
 }
 
+/**
+ * The headline's counts: the findings the block lists, by severity (setup findings, and entry errors
+ * by code). Entry warnings are not listed: `entryWarnings` is their own line beside "View
+ * components". Info findings are never counted.
+ */
+export function headlineCounts(L: IntegrityLedger): Record<Counted | 'entryWarnings', number> {
+  const f = coverageFindings(L);
+  return { error: f.error, warn: f.setup.warn, entryWarnings: f.entries.warn };
+}
+
 /** Each error code that is not review work, with how many entries have it: the headline's detail. */
 export function errorCodes(L: IntegrityLedger): [code: string, entries: number][] {
   const n = new Map<string, number>();
