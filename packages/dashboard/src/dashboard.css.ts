@@ -112,4 +112,4 @@ export {
   labelStack,
   labelHidden,
 } from './styles/inspector.css';
-export { runBar } from './styles/react.css';
+export { runBar, fileCell, fileProbe, fileTable } from './styles/react.css';
