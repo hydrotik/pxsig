@@ -34,10 +34,11 @@
     - button "Dismiss"
     - status: "React: 1 newly skipped"
   - alert "Coverage":
-    - text: No errors · 7 warnings
+    - text: No errors · 1 warning
     - strong: Baselines without an approval line
     - text: "· 9 baselines have no approval log line (components-badge--neutral, components-badge--success, components-badge--danger, …): `pxsig approve verify` fails on them (strict by default since 0.4.0). For baselines from before pxsig kept a log, a person runs `pxsig approve verify --adopt` once; `--no-strict` only reports them"
     - button "View components"
+    - text: 6 entries with warnings
   - group "React part":
     - radio "Compiler" [checked]
     - radio "Renders"
