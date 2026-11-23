@@ -1,6 +1,7 @@
 /**
  * How the reference adapter shows a tone (R4 in the UI contract): in the colour of a stat's value
- * or a count's digits, never as a wash, a border, a fill or an edge. A badge in `success`,
+ * or a count's digits, never as a wash, a border or a fill. A stat card in `success`, `warning`
+ * or `danger` also has the StatPanel's accent edge in that tone (tones.tsx). A badge in `success`,
  * `warning` or `danger` is the design system's own tinted variant (R4 allows either for badges);
  * a `neutral` or `info` badge is its neutral variant with the text in the tone's role (`info` is
  * the primary colour, `neutral` the text colour). The design system's accent fill for counts is

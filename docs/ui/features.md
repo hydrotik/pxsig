@@ -363,7 +363,7 @@ Components: `Toolbar`, `ToolbarStart`, `ToolbarEnd`, `ToolbarSummary`, `Segmente
 
 Copy: `diagnostics.tabs.react`, `diagnostics.react`
 
-Files: `src/views/Diagnostics`, `src/views/react/ReactView`, `src/views/react/shared`, `src/views/react/Compiler`, `src/views/react/CompilerPanel`
+Files: `src/views/Diagnostics`, `src/views/react/ReactView`, `src/views/react/shared`, `src/views/react/Compiler`, `src/views/react/CompilerPanel`, `src/views/react/file-column`
 
 ### React renders
 

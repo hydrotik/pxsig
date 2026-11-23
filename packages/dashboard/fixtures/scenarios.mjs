@@ -24,6 +24,7 @@
 import { REACT_EVENTS, REACT_SCENARIOS } from './react.mjs';
 import { MASK_SCENARIOS } from './masks.mjs';
 import { TEXT_SCENARIOS } from './text.mjs';
+import { REAL_SHAPED_SCENARIOS } from './real-shaped.mjs';
 
 export { gateFacts, selfCheckOf } from './gate-report.mjs';
 
@@ -462,6 +463,7 @@ export const SCENARIOS = {
   ...REACT_SCENARIOS,
   ...TEXT_SCENARIOS,
   ...MASK_SCENARIOS,
+  ...REAL_SHAPED_SCENARIOS,
   'long-label'() {
     // A workspace label too long for the bar: capped at 24ch, its full name in its title.
     return { ...SCENARIOS.changed(), scope: 'Acme Design System · Marketing Site Components' };

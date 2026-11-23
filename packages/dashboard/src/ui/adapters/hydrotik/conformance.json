@@ -1,6 +1,6 @@
 {
   "adapter": "hydrotik",
-  "contract": "1.7.0",
+  "contract": "1.8.0",
   "designSystem": "@hydrotik/design-system (built from source: PXSIG_DS_SOURCE)",
   "topBar": {
     "root": true,
@@ -91,7 +91,7 @@
     },
     "StatGroup": {
       "status": "full",
-      "note": "StatPanel; selectable items are filter cards; a tone colours the value, no accent edge"
+      "note": "StatPanel; selectable items are filter cards; a tone colours the value and, for success, warning and danger, the accent edge"
     },
     "DataTable": {
       "status": "full",

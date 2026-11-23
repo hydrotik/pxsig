@@ -218,7 +218,7 @@ test('tone: shown as a border, an edge or a wash fails; as the text colour passe
     `<section class="pxsig-ui-StatGroup" style="display:flex"><div ${attrs} style="padding:12px;border:1px solid #c8c8c8;${style}">Changed <b style="color:#b3261e">2</b></div></section>`;
   assert.deepEqual(await findings(tile(''), 'tone'), []);
   assert.deepEqual(await findings(tile('border-top:2px solid #b3261e'), 'tone'), [
-    'stat card <div "Changed 2"> shows its tone as a danger top border: the contract shows a tone as the colour of its value',
+    'stat card <div "Changed 2"> shows its tone as a danger top border: the contract shows a tone as the colour of its value (and a start edge)',
   ]);
   const [edge] = await findings(
     `<style>.edge::before{content:"";display:block;block-size:2px;background:#8a5a00}</style>${tile('', 'class="edge"')}`,

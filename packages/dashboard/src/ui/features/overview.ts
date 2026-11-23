@@ -80,6 +80,12 @@ export const OVERVIEW: Feature[] = [
         hash: '#overview',
         wait: { role: 'heading', name: 'Errors', exact: true },
       },
+      // A real project's setup warnings: several, each a long sentence, and a render error.
+      {
+        scenario: 'real-shaped',
+        hash: '#overview',
+        wait: { role: 'heading', name: 'Errors', exact: true },
+      },
     ],
   },
   {
