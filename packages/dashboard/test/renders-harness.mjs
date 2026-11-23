@@ -8,6 +8,16 @@
  * page stops committing, and returns that step's counts.
  */
 
+/**
+ * The event stream the render tests' page gets: none. The mocked server answers a stream with a
+ * body that ends (flows-helpers.mjs), so a `hello` in it sets the page live and the end that
+ * follows sets it offline again at once. Whether React takes those two in one commit (no render)
+ * or in two (App and its placeholder twice: 4 more renders, one more commit) depends on whether a
+ * frame falls between the two events, so the mount's count would vary from run to run. Without a
+ * `hello` the page stays offline throughout: the state it ended in either way.
+ */
+export const EVENTS = '';
+
 /** Runs in the page before React loads. */
 export function HOOK() {
   const PERFORMED_WORK = 1;

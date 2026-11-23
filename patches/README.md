@@ -19,6 +19,14 @@ pnpm-lock.yaml, so `pnpm install --frozen-lockfile` applies it.
   - A single branch with a bare `*` and a nested extglob (`+(@(a)*)`) is emitted as a literal,
     unless a `/` outside the nested extglob fixes where each repetition ends.
   - Globs without a repeated extglob (`+(` or `*(`) are unaffected.
+- **Not covered:** two forms still backtrack on long failing inputs, with or without the patch:
+  - a single branch made of nested quantified extglobs, e.g. `+(*(a)?(a))`;
+  - several branches where one ends in a bare `*`, e.g. `+(a*|b)`.
+
+  Both are outside the advisory and no upstream change fixes them yet. Rewriting them would change
+  matches that picomatch's own tests pin (`*(f*(o))`, `*(a*|b)`), so they are left for upstream. No
+  glob in this repository or in the tools that load picomatch here uses either form.
+
 - **Copies:** each example under `examples/` installs from its own lockfile and is tested from a
   copy outside this repository. Each therefore keeps an identical copy at
   `examples/<name>/patches/picomatch@4.0.7.patch`, and `scripts/picomatch-redos.test.mjs` checks
