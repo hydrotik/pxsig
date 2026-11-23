@@ -200,13 +200,14 @@ R4.
 | Table (`DataTable`)                     | **R2** A cell's actions are the small size (`sm`, the dashboard passes it), the same height as a toolbar's controls, and one height in the table. **R3** Column headers in the case of `header`.                                                                                                                                                                                                              |
 | Headings and labels                     | **R3** `CardTitle`, `DialogTitle`, column headers, `NavLink`, `Button`, `Badge`, `StatusBadge` and field labels are drawn in the case of the text passed: no `text-transform` (badges excepted, below), no re-casing. The words come from pxsig's copy.                                                                                                                                                       |
 | Top bar counts (`NavLink` `count`)      | **R4** `countTone` colours the count's digits (`info`: the accent; `neutral`: the text colour); its pill stays neutral.                                                                                                                                                                                                                                                                                       |
-| Stat cards (`StatGroup`)                | **R3** An item's label is a micro label in capitals: a casing the contract sets, the same in every adapter. **R4** A tone colours the item's value; its border, edge, background and label stay neutral.                                                                                                                                                                                                      |
+| Stat cards (`StatGroup`)                | **R3** An item's label is a micro label in capitals: a casing the contract sets, the same in every adapter. **R4** A tone colours the item's value; its label, background and borders stay neutral. Since 1.8.0, it may also draw a start edge in that tone's own colour only, the value still in it.                                                                                                         |
 | Badges (`Badge`)                        | **R3** May be drawn in tracked micro caps (`text-transform: uppercase`), the contract's second casing; the text passed stays as it is. **R4** Either a tone colours the text, the wash (`subtle`), border (`outline`) and fill (`solid`) staying neutral; or, as your design system draws its badges, it colours the wash, border and dot, in that tone's own colour only, with the text at AA (4.5:1) on it. |
 | Status badges (`StatusBadge`)           | **R3** May be drawn in micro caps, as a `Badge`. **R4** A tone colours the glyph; the label stays in the text colour, with no wash or border.                                                                                                                                                                                                                                                                 |
 
 R4 is how the plain adapter (`adapters/plain/`) draws tones: compare yours with it. The reference
-adapter (`adapters/hydrotik/`) takes the badge exception: its `success`, `warning` and `danger`
-badges are its design system's tinted variants.
+adapter (`adapters/hydrotik/`) takes both exceptions: its `success`, `warning` and `danger`
+badges are its design system's tinted variants, and its stat cards in those tones have its design
+system's 2px accent edge beside the coloured value.
 
 ## Top bar
 
@@ -311,8 +312,8 @@ differ from this list, they win.
   are capitals, and badges may be micro caps, by the contract (R3).
 - **One way to show a tone.** The value, the text, the count or the glyph takes the tone's colour;
   borders, edges and washes stay neutral (R4). A badge may instead take its tone's colour in its
-  wash, border and dot, as your design system draws it. The adapter chooses the colours, not where
-  they go.
+  wash, border and dot, as your design system draws it, and a stat card may add a start edge in
+  its value's tone. The adapter chooses the colours, not where they go.
 - **`className` on the root element**, so the dashboard's own layout holds.
 - **The runtime's theme mode**, with colours from variables that follow it (rule 7,
   [Tokens](#tokens)).
@@ -545,9 +546,12 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Purpose**: a row of key figures; some are buttons that filter or navigate.
 - **Props**: `label`, `items` (`label`, `value`, `unit`, `tone`, `onSelect`, `active`, `icon`),
   `layout` (`cards` default, `strip`: one band inside a card), `className`.
-- **Behaviour**: items wrap; a `tone` colours the value, never the tile's border, edge or
-  background (R4); the label is a micro label in capitals (R3); an item with `onSelect` is a button
-  (`active` is pressed); `icon` sits in its corner.
+- **Behaviour**: items wrap; a `tone` colours the value, never the label, the tile's background
+  or its borders (R4); since 1.8.0 the tile may also have a start edge (a border on its
+  inline-start side, or a `::before` / `::after` at most 4px wide) in the tone's own colour, as
+  the reference adapter draws its design system's accent edge; the label is a micro label in
+  capitals (R3); an item with `onSelect` is a button (`active` is pressed); `icon` sits in its
+  corner.
 - **Accessibility**: a region named by `label`; selectable items are buttons with `aria-pressed`
   when they filter. A value that a unit follows arrives ending in a space that is read, not drawn,
   so a tile's name keeps them apart ("Findings 1 new · of 1"): render `value` as given.
@@ -993,8 +997,10 @@ draw them with your own segmented control and buttons.
        `::after`) or shadow in a tone colour (`--pxsig-color-success`, `warning`, `danger`, and
        `accent` for `info`), drawn or mixed with `color-mix()`. A badge may have them in the tone
        it was given (the dashboard adds `pxsig-ui-tone-<tone>` to its `className`), never in
-       another; and a badge's text is under 4.5:1 (AA) on its background. A selected (pressed)
-       tile is not measured.
+       another; a stat card may have a start edge (a border on its inline-start side, or a
+       `::before` / `::after` at most 4px wide) in the one tone its value is drawn in, never in
+       another or beside a neutral value; and a badge's text is under 4.5:1 (AA) on its
+       background. A selected (pressed) tile is not measured.
 
      The dashboard adds `pxsig-ui-<Name>` to the `className` of `TopNav`, `StatGroup`, `Badge` and
      `StatusBadge`, so the rules find those regions in any adapter: keep `className` on the root
