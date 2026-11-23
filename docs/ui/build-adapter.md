@@ -916,8 +916,8 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Purpose**: bar or line chart (Runs, Diagnostics).
 - **Props**: `kind` (`bar`: horizontal grouped bars, one row per `x` category; `line`: lines over an
   ordered `x`), `data`, `series` (`key`, `label`), `x`, `format`, `max`, `height` (CSS),
-  `label` (the accessible name: the card's title; since 1.8.0), `summary` (the data in one line of
-  text, "Changed entries per run, 14 runs: 3 to 12."; since 1.8.0), `className`.
+  `label` (the accessible name: the card's title; since 1.9.0), `summary` (the data in one line of
+  text, "Changed entries per run, 14 runs: 3 to 12."; since 1.9.0), `className`.
 - **Behaviour**: series take your categorical colours in order; a legend when there is more than one
   series; a tooltip on hover; `format` formats the value axis and tooltip.
 - **Accessibility**: the numbers must be reachable without the picture: a tooltip alone is not

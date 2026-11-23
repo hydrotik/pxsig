@@ -1,5 +1,5 @@
 /**
- * Chart `label` and `summary` (UI contract 1.8.0). The contract: both are optional props, recorded
+ * Chart `label` and `summary` (UI contract 1.9.0). The contract: both are optional props, recorded
  * by the lock, the changes entry and every shipped adapter's conformance.json. In a real browser
  * (test/harness/chart, built with the dashboard's own Vite setup, once per adapter): each chart is
  * in the accessibility tree by its label, described by its summary, hidden text that is read once.
@@ -23,23 +23,23 @@ const repo = path.resolve(dashboard, '..', '..');
 const harness = path.join(here, 'harness', 'chart');
 const require = createRequire(path.join(dashboard, '../pxsig/package.json'));
 
-test('the contract: Chart takes an optional label and summary, in 1.8.0', () => {
+test('the contract: Chart takes an optional label and summary, in 1.9.0', () => {
   const props = readFileSync(path.join(dashboard, 'src/ui/contract/props.ts'), 'utf8');
   const chart = props.slice(props.indexOf('export interface ChartProps'));
   const body = chart.slice(0, chart.indexOf('\n}\n'));
   assert.match(body, /\n {2}label\?: string;/);
   assert.match(body, /\n {2}summary\?: string;/);
   const now = contractShape();
-  assert.equal(now.version, '1.8.0');
-  assert.equal(readLock().version, '1.8.0');
+  assert.equal(now.version, '1.9.0');
+  assert.equal(readLock().version, '1.9.0');
   assert.equal(readLock().components.Chart.hash, now.components.Chart.hash);
-  assert.match(readChanges()['1.8.0'], /`Chart` `label` and `summary`/);
+  assert.match(readChanges()['1.9.0'], /`Chart` `label` and `summary`/);
   for (const file of [
     'packages/dashboard/src/ui/adapters/hydrotik/conformance.json',
     'packages/dashboard/src/ui/adapters/plain/conformance.json',
     'examples/custom-ui/pxsig-ui/conformance.json',
   ])
-    assert.equal(JSON.parse(readFileSync(path.join(repo, file), 'utf8')).contract, '1.8.0', file);
+    assert.equal(JSON.parse(readFileSync(path.join(repo, file), 'utf8')).contract, '1.9.0', file);
 });
 
 let browser = null;

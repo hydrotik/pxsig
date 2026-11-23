@@ -7,7 +7,7 @@ import { border, type Cell, type F } from './base';
 /**
  * Without a chart library: the series as a table, so the numbers are still there. The table is
  * named by `label` and described by `summary`, text with the `hidden` attribute, read once as the description
- * (contract 1.8.0).
+ * (contract 1.9.0).
  */
 export const Chart: F<'Chart'> = ({
   data,

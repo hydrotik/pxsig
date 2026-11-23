@@ -1,5 +1,5 @@
 /**
- * The reference adapter's chart accessibility (contract 1.8.0). The chart is interactive: recharts
+ * The reference adapter's chart accessibility (contract 1.9.0). The chart is interactive: recharts
  * 3's keyboard layer (`accessibilityLayer`, on by default) makes its SVG the chart's one tab stop,
  * `role="application"` so a screen reader passes the arrow keys through, and the arrow keys move
  * the tooltip from point to point. That SVG takes the name and the description: `aria-label` from

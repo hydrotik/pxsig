@@ -1,7 +1,7 @@
 /**
  * A page for the chart tests (test/ui-chart.test.mjs): `@ui`'s Chart, built with whichever adapter
  * the test picks, between two buttons, once as a line and once as bars, each named by `label` and
- * summarised by `summary` (UI contract 1.8.0). It also puts the dashboard's summaries
+ * summarised by `summary` (UI contract 1.9.0). It also puts the dashboard's summaries
  * (src/parts/chart-summary.ts) of a few data shapes on `window.harness.summaries`.
  */
 import { createRoot } from 'react-dom/client';

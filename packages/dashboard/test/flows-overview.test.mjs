@@ -179,7 +179,7 @@ test('the Overview shows no errors card without errors; one column on a narrow p
   }
 });
 
-test('the Overview chart is named by its card title and described by a summary of its data (contract 1.8.0)', async (t) => {
+test('the Overview chart is named by its card title and described by a summary of its data (contract 1.9.0)', async (t) => {
   if (skip) return t.skip(skip);
   const d = spread(data({ rows: [row('ui-button--ok')], entries: [entry('ui-button--ok')] }));
   d.history = history(3); // changed entries 0, 1, 2

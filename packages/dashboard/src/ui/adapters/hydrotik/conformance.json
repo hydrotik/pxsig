@@ -1,6 +1,6 @@
 {
   "adapter": "hydrotik",
-  "contract": "1.8.0",
+  "contract": "1.9.0",
   "designSystem": "@hydrotik/design-system (built from source: PXSIG_DS_SOURCE)",
   "topBar": {
     "root": true,

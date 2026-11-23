@@ -435,12 +435,12 @@ export interface ChartProps extends WithClass {
   /** A CSS block size. */
   height: string;
   /**
-   * The chart's accessible name (since 1.8.0): the title of the card it sits in. An adapter written
-   * for 1.7.0 leaves the chart unnamed.
+   * The chart's accessible name (since 1.9.0): the title of the card it sits in. An adapter written
+   * for 1.8.0 or earlier leaves the chart unnamed.
    */
   label?: string;
   /**
-   * The data in one line of text, from the same data as the chart (since 1.8.0): "Changed entries
+   * The data in one line of text, from the same data as the chart (since 1.9.0): "Changed entries
    * per run, 14 runs: 3 to 12." Read by assistive technology, never drawn: tie it to the chart
    * (`aria-describedby` on text with the `hidden` attribute, so it is read once, as the description). A chart is not a tab stop unless it is
    * interactive; the dashboard's are (the arrow keys move the tooltip), so the chart is one tab

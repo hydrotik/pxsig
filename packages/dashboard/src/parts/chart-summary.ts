@@ -1,5 +1,5 @@
 /**
- * A chart's text summary (UI contract 1.8.0), from the same data, series and format as the chart.
+ * A chart's text summary (UI contract 1.9.0), from the same data, series and format as the chart.
  * Lines: each series' lowest and highest value ("3 to 12"), or the value alone when they are the
  * same, named by its series when there are several. Bars: each bar's value, by its category ("CLI
  * process 3 ms, Server request 120 ms"), and by series when there are several. A chart with no
