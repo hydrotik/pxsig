@@ -37,6 +37,7 @@ import { axeScript, axeVersion, launchBrowser } from './lib/capture.mjs';
 /** @import { Flags } from './types.js' */
 /** @import { CheckPost, DashboardBuildConfig, DashboardCheckReport, DashboardFixtures, DashboardUiTools, ScenarioServer, Screen, ScreenCatalogue, ScreenFeature, ScreenResult, UiAdapter } from './types/t4.js' */
 import { buildDirFor, STAMP } from './lib/dashboard-dir.mjs';
+import { stampedAdapter } from './lib/stamp-adapter.mjs';
 import { PXSIG_VERSION } from './lib/workspace.mjs';
 import { readJson } from './lib/files.mjs';
 import { shortPath } from './lib/paths.mjs';
@@ -177,12 +178,7 @@ export async function dashboardCheck(
   /** @type {UiAdapter | null} */
   let ui = null;
   try {
-    const spec =
-      typeof flags.ui === 'string'
-        ? flags.ui
-        : stamp?.adapter && existsSync(stamp.adapter)
-          ? stamp.adapter
-          : undefined;
+    const spec = typeof flags.ui === 'string' ? flags.ui : stampedAdapter(stamp?.adapter, cwd);
     const { from } = /** @type {DashboardBuildConfig} */ (
       await load(src, 'build-config.mjs')
     ).adapterSpec({ adapter: spec, cwd });

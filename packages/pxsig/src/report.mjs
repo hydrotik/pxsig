@@ -38,6 +38,7 @@ import { reactData } from './lib/react/data.mjs';
 import { readRejections, withoutNotes } from './lib/rejections.mjs';
 import { rejectionOptions } from './lib/rejections/packet.mjs';
 import { rejectionPrompt } from './lib/rejections/prompt.mjs';
+import { buildIdentity } from './lib/build-identity.mjs';
 /** @import { Manifest, Project } from './types.js' */
 /** @import { CheckReport } from './types/t5.js' */
 /** @import { ReactLive } from './types/react.js' */
@@ -171,6 +172,8 @@ export function buildData(P, { base = `/p/${encodeURIComponent(P.name)}/`, live 
       engine: engineVersion(P.rustBin),
       contract: uiContractVersion(),
     },
+    /** Which build of the dashboard this is (lib/build-identity.mjs): no path. */
+    build: buildIdentity(dashboardDir),
     store: relative(P.workspaceRoot, P.store.root),
     check,
     ...(react ? { react } : {}),

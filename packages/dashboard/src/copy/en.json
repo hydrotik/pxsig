@@ -8,6 +8,17 @@
       "engine": "engine {version}",
       "contract": "UI contract {version}"
     },
+    "build": {
+      "commit": "build {commit}",
+      "modified": "build {commit} modified",
+      "modifiedChanges": "build {commit} modified {changes}",
+      "release": "release build",
+      "version": "for pxsig {version}",
+      "designSystem": "design system {commit}",
+      "designSystemModified": "design system {commit} modified",
+      "adapter": "adapter {name}",
+      "builtAt": "built {date} UTC"
+    },
     "loading": "Loading…",
     "loadError": "Report data failed to load: {error}",
     "connection": {
@@ -1020,6 +1031,7 @@
       "description": "Run from the repository root."
     },
     "versions": "This page: {versions}.",
+    "build": "Dashboard {build}.",
     "intro": "Reference for this dashboard. Each section covers one part of the screen. Point at a row, or move to it with Tab, to see where it appears in the drawing beside it.",
     "approving": {
       "title": "Approving From the Dashboard",
