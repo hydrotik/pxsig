@@ -16,7 +16,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { setupFlows, skip, open } from './flows-helpers.mjs';
-import { HOOK, measure, measureMount } from './renders-harness.mjs';
+import { EVENTS, HOOK, measure, measureMount } from './renders-harness.mjs';
 import { demo } from './renders-demo.mjs';
 
 setupFlows();
@@ -44,6 +44,7 @@ test('renders per step stay under their ceilings', async (t) => {
   if (skip) return t.skip(skip);
   const { page, errors } = await open(demo(), {
     approving,
+    events: EVENTS,
     images: true,
     init: HOOK,
     width: WIDTH,

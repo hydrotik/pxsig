@@ -27,6 +27,7 @@ import {
   YAxis,
 } from 'recharts';
 import type * as C from '../../contract';
+import { alertParts } from './alert';
 import { type ChartA11y, withChartSummary } from './chart-a11y';
 import { oneLineSlider } from './slider';
 import { sidePanel } from './side-panel';
@@ -471,22 +472,14 @@ export const KeyValueItem = ({ label, children }: C.KeyValueItemProps) => (
   <DS.StaticListItem label={label}>{children}</DS.StaticListItem>
 );
 
-export const Alert = ({ tone, label, children }: C.AlertProps) => (
-  <DS.Alert
-    variant={tone === 'danger' ? 'destructive' : 'default'}
-    aria-label={label}
-    style={{ boxSizing: 'border-box' }}
-  >
-    {children}
-  </DS.Alert>
-);
-// The design system's title is an h5; an alert's title is not a heading (the contract), so its role is removed.
-export const AlertTitle = ({ children }: C.AlertTitleProps) => (
-  <DS.AlertTitle role="none">{children}</DS.AlertTitle>
-);
-export const AlertDescription = ({ children }: C.AlertDescriptionProps) => (
-  <DS.AlertDescription>{children}</DS.AlertDescription>
-);
+const alert = alertParts({
+  Alert: DS.Alert,
+  Title: DS.AlertTitle,
+  Description: DS.AlertDescription,
+});
+export const Alert = alert.Alert;
+export const AlertTitle = alert.AlertTitle;
+export const AlertDescription = alert.AlertDescription;
 
 export const SearchField = ({ id, value, onValueChange, placeholder }: C.SearchFieldProps) => (
   <DS.SearchBar id={id} value={value} onValueChange={onValueChange} placeholder={placeholder} />

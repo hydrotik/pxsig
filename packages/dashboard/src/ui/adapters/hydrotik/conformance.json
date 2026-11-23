@@ -91,7 +91,7 @@
     },
     "StatGroup": {
       "status": "full",
-      "note": "StatPanel; selectable items are filter cards; a tone colours the value, no accent edge"
+      "note": "StatPanel; selectable items are filter cards; a tone colours the value and, for success, warning and danger, the accent edge"
     },
     "DataTable": {
       "status": "full",

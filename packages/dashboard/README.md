@@ -65,7 +65,7 @@ PXSIG_UI_ADAPTER="$PWD/examples/custom-ui/pxsig-ui" pnpm --filter @pxsig/dashboa
 ## Sample data and screens
 
 `fixtures/scenarios.mjs` holds the sample report data (named scenarios: `clean`, `changed`,
-`first-approval`, `errors`, `a11y`, `flaky`, `stale`, `empty`, `several-projects`, and the server
+`first-approval`, `errors`, `a11y`, `flaky`, `stale`, `empty`, `several-projects`, `real-shaped` (a design system's long ids and setup warnings), and the server
 states `loading`, `load-error`, `offline`, `static`). The browser tests (`test/flows.test.mjs`) and
 `pxsig dashboard check` both use it. Each feature in `src/ui/features.ts` lists the screens the
 check renders; `node scripts/ui.mjs docs` writes them to `fixtures/screens.json`, which ships in

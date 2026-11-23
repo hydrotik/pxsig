@@ -8,7 +8,7 @@
  */
 import { test } from 'node:test';
 import { setupFlows, skip, open } from './flows-helpers.mjs';
-import { HOOK, measure, measureMount } from './renders-harness.mjs';
+import { EVENTS, HOOK, measure, measureMount } from './renders-harness.mjs';
 import { demo } from './renders-demo.mjs';
 
 setupFlows();
@@ -23,7 +23,12 @@ for (const n of sizes.length ? sizes : [0])
   test(`a store of ${n} entries, per step`, async (t) => {
     if (!n) return t.skip('PXSIG_RENDERS_LARGE is not set');
     if (skip) return t.skip(skip);
-    const { page, errors } = await open(demo(n), { approving, images: true, init: HOOK });
+    const { page, errors } = await open(demo(n), {
+      approving,
+      events: EVENTS,
+      images: true,
+      init: HOOK,
+    });
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Performance.enable');
     const busy = async () =>

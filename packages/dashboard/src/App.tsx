@@ -16,6 +16,7 @@ import type { InspectTarget } from './inspector/Inspector';
 import { Accessibility, Help, History, Inspector, Stories } from './lazy';
 import { Overview } from './views/Overview';
 import { Diagnostics, diagnosticsOf } from './views/Diagnostics';
+import { type DiagnosticsFocus, focusOfHash } from './diagnostics-focus';
 import { type CoverageFocus, Integrity, IntegrityBanner } from './views/Integrity';
 import { t, type CopyKey } from './copy';
 import { type Section, TopBar } from './parts/TopBar';
@@ -168,18 +169,10 @@ function Dashboard({ data, live }: { data: Data; live: ReturnType<typeof useData
   // A link to Diagnostics on a project without research data lands on the overview.
   if (tab === 'diagnostics' && !diagnosticsOf(data).length) setTab('overview');
   const [target, setTarget] = React.useState<InspectTarget | null>(null);
-  // Diagnostics opened on React: an old link (#react, #react-renders) names the part.
-  const [reactFocus, setReactFocus] = React.useState<ReactFocus | null>(() => {
-    const v = readHash().get('tab');
-    return v === 'react' || v === 'react-renders'
-      ? {
-          part: v === 'react' ? 'compiler' : 'renders',
-          all: undefined,
-          fn: undefined,
-          at: Date.now(),
-        }
-      : null;
-  });
+  // Diagnostics opened on a part: an old link (#react, #react-renders, #calibration…) names it.
+  const [reactFocus, setReactFocus] = React.useState<DiagnosticsFocus | null>(() =>
+    focusOfHash(readHash().get('tab'))
+  );
 
   React.useEffect(() => {
     try {
@@ -196,12 +189,19 @@ function Dashboard({ data, live }: { data: Data; live: ReturnType<typeof useData
   const headingFocus = React.useRef(false);
   React.useEffect(() => {
     const onHash = () => {
-      const next = asTab(readHash().get('tab'));
+      const v = readHash().get('tab');
+      const next = asTab(v);
+      // An old link entered on an open page names its part too, as on a load.
+      const focus = focusOfHash(v);
       // Chosen in the bar (or its More menu), not Back / Forward: the heading takes focus.
       headingFocus.current = !!next && chosen.current === next;
       chosen.current = null;
       // In a transition: a section loaded on first use replaces the one on screen once it is in.
-      if (next) React.startTransition(() => setTab(next));
+      if (next)
+        React.startTransition(() => {
+          if (focus) setReactFocus(focus);
+          setTab(next);
+        });
     };
     // A section link in the bar, clicked or entered: the hashchange it causes follows.
     const onClick = (e: MouseEvent) => {
@@ -268,7 +268,7 @@ function Dashboard({ data, live }: { data: Data; live: ReturnType<typeof useData
   // Diagnostics › React on a part (the strip, the Overview's React card).
   const openReact = React.useCallback(
     (part: 'compiler' | 'renders', all?: boolean, fn?: string) => (
-      setReactFocus({ part, all, fn, at: Date.now() }),
+      setReactFocus({ section: 'react', part, all, fn, at: Date.now() }),
       setTab('diagnostics')
     ),
     []
@@ -338,13 +338,6 @@ function deepLinkOf(data: Data, h: URLSearchParams): InspectTarget | null {
   return { row, scenario: null, list: rows.filter((r) => !r.skipped) };
 }
 
-interface ReactFocus {
-  part: 'compiler' | 'renders';
-  all: boolean | undefined;
-  fn: string | undefined;
-  at: number;
-}
-
 /**
  * The bar and the section on screen. Memoised: an inspector move (the target) renders the
  * inspector only, not the page behind it.
@@ -371,7 +364,7 @@ const Page = React.memo(function Page({
   filter: string;
   setFilter: (f: string) => void;
   coverageFocus: CoverageFocus | null;
-  reactFocus: ReactFocus | null;
+  reactFocus: DiagnosticsFocus | null;
   mainRef: React.RefObject<HTMLElement | null>;
   go: (t: string, f?: string) => void;
   open: (row: Row, list: Row[], scenario?: InspectTarget['scenario']) => void;

@@ -22,6 +22,18 @@ section, `node scripts/ui.mjs lock` records the new contract.
 
 ## 1.8.0
 
+Minor: a region rule allows more.
+
+- **A `StatGroup` item may show its tone as a start edge too.** Region rule R4, for stat cards: the
+  tone colours the item's value (as before), and an adapter may also draw a start edge (a border on
+  the inline-start side, or a `::before` / `::after` at most 4px wide) in that tone's own colour.
+  The label, the background and the other borders stay neutral, and an edge needs the value in the
+  same tone: `pxsig dashboard check` reads an item's tone from its value's colour, so an edge in
+  another tone's colour, an edge beside a neutral value, or a wash still breaks R4. pxsig's own
+  dashboard (the reference adapter) draws its design system's 2px accent edge for `success`,
+  `warning` and `danger` again, as it did before 0.7.7. An adapter written for 1.7.0 or earlier
+  keeps working: a stat card whose tone colours only its value still passes.
+
 Minor: two optional props.
 
 - **`Chart` `label` and `summary`**: the chart's accessible name (the title of its card) and its

@@ -249,6 +249,13 @@
           "wait": {
             "text": "Needs a first approval"
           }
+        },
+        {
+          "scenario": "real-shaped",
+          "hash": "#react",
+          "wait": {
+            "text": "Many passing entries differ"
+          }
         }
       ]
     },
@@ -349,6 +356,15 @@
       "screens": [
         {
           "scenario": "errors",
+          "hash": "#overview",
+          "wait": {
+            "role": "heading",
+            "name": "Errors",
+            "exact": true
+          }
+        },
+        {
+          "scenario": "real-shaped",
           "hash": "#overview",
           "wait": {
             "role": "heading",
@@ -817,6 +833,22 @@
             "role": "complementary",
             "name": "Button"
           }
+        },
+        {
+          "scenario": "real-shaped",
+          "hash": "#react",
+          "actions": [
+            {
+              "click": {
+                "role": "button",
+                "name": "All analysed (11)"
+              }
+            }
+          ],
+          "wait": {
+            "text": "AreaChartTooltipContent",
+            "exact": true
+          }
         }
       ]
     },
@@ -929,6 +961,22 @@
           "wait": {
             "role": "complementary",
             "name": "ui-datagrid--many-rows"
+          }
+        },
+        {
+          "scenario": "real-shaped",
+          "hash": "#react-renders",
+          "actions": [
+            {
+              "click": {
+                "role": "button",
+                "name": "All measured (26)"
+              }
+            }
+          ],
+          "wait": {
+            "text": "components-chart--area-chart-stacked@light",
+            "exact": true
           }
         }
       ]

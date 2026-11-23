@@ -2,8 +2,9 @@
  * The reference adapter's Badge and StatGroup, which show a tone as R4 in the UI contract allows:
  * a badge as the design system draws it (`success`, `warning` and `danger` in its tinted variants:
  * a wash, a border and a dot in the tone's colour; `neutral` and `info` in its neutral ones, the
- * text in the tone's colour), and a stat card with no accent edge, its value in the tone's colour
- * (tones.css.ts). index.tsx passes the design-system components in, so every part the adapter
+ * text in the tone's colour), and a stat card with its value in the tone's colour (tones.css.ts)
+ * and, for `success`, `warning` and `danger`, the StatPanel's accent: a 2px start edge in that
+ * tone's colour (R4 allows it for stat cards since 1.8.0). index.tsx passes the design-system components in, so every part the adapter
  * uses is named in that one file.
  */
 import React from 'react';
@@ -47,6 +48,13 @@ const VALUE_TONE: Partial<Record<C.Tone, 'success' | 'warning' | 'destructive'>>
   danger: 'destructive',
 };
 
+/** Tone → the StatPanel's accent edge; `info` and `neutral` have none, as in 0.7.6. */
+const ACCENT: Partial<Record<C.Tone, 'success' | 'warning' | 'error'>> = {
+  success: 'success',
+  warning: 'warning',
+  danger: 'error',
+};
+
 export const toneStatGroup = (Panel: typeof DS.StatPanel) =>
   function StatGroup({ label, items, layout, className }: C.StatGroupProps) {
     return (
@@ -59,6 +67,7 @@ export const toneStatGroup = (Panel: typeof DS.StatPanel) =>
           value: it.tone === 'info' ? <span className={t.infoValue}>{it.value}</span> : it.value,
           ...(it.unit !== undefined ? { unit: it.unit } : {}),
           ...(it.tone && VALUE_TONE[it.tone] ? { tone: VALUE_TONE[it.tone] } : {}),
+          ...(it.tone && ACCENT[it.tone] ? { accent: ACCENT[it.tone] } : {}),
           ...(it.onSelect
             ? {
                 type: 'filter' as const,

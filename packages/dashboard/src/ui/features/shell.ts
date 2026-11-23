@@ -151,6 +151,8 @@ export const SHELL: Feature[] = [
     files: ['views/Integrity'],
     screens: [
       { scenario: 'first-approval', hash: '#stories', wait: { text: 'Needs a first approval' } },
+      // On Diagnostics, with a real project's setup warnings: several long sentences.
+      { scenario: 'real-shaped', hash: '#react', wait: { text: 'Many passing entries differ' } },
     ],
   },
 ];

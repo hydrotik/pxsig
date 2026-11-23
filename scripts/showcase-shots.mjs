@@ -19,7 +19,7 @@
  *      overview.png    the Overview, cropped to its content
  *      inspector.png   the review's first change, side by side, cropped to the dialog
  *    and compresses each losslessly with oxipng or zopflipng when one is on the PATH (--raw: no).
- *    shots.json records the version shot, which a minor or major release checks
+ *    shots.json records the version shot, which every release checks
  *    (scripts/check-shots.mjs, docs/releasing.md "Product shots").
  *
  * Needs the built dashboard (`pnpm build:dashboard`) and Playwright's Chromium. No Rust binary,
@@ -84,7 +84,7 @@ try {
   } finally {
     server.close();
   }
-  // What a minor or major release checks (scripts/check-shots.mjs): the version these shots show.
+  // What every release checks (scripts/check-shots.mjs): the version these shots show.
   const { version } = /** @type {{ version: string }} */ (
     JSON.parse(readFileSync(join(repo, 'packages', 'pxsig', 'package.json'), 'utf8'))
   );
