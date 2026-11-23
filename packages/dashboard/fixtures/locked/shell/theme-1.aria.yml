@@ -276,4 +276,4 @@
   - definition: List coverage issues per component
   - term: pxsig doctor --repair
   - definition: Plan the safe repairs; add --apply to run them
-  - paragraph: "This page: UI contract 1.8.0."
+  - paragraph: "This page: UI contract 1.9.0."
