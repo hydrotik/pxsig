@@ -32,10 +32,10 @@
   - text: Render 100 ms 1 page Engine 1 ms 0 cached Retries 0 ms Scope All entries
   - heading "Changed Entries per Run" [level=3]
   - paragraph: 4 runs.
-  - application: 1 2 3 4 0 0.5 1 1.5 2
+  - application "Changed Entries per Run": 1 2 3 4 0 0.5 1 1.5 2
   - heading "Engine Time per Run" [level=3]
   - paragraph: Milliseconds.
-  - application: 1 2 3 4 0 ms 10 ms 20 ms 30 ms 40 ms
+  - application "Engine Time per Run": 1 2 3 4 0 ms 10 ms 20 ms 30 ms 40 ms
   - heading "Runs" [level=3]
   - grid "Data grid":
     - rowgroup:
