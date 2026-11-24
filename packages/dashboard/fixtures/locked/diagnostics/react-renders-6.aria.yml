@@ -27,7 +27,7 @@
   - text: Approved
 - main:
   - heading "Diagnostics" [level=2]
-  - alert "Coverage":
+  - region "Coverage":
     - text: No errors · 2 warnings
     - strong: Older log lines with reasons
     - text: · 212 lines of approvals.ndjson and 2 of a11y-decisions.ndjson, written before 0.7.6, carry a reason or a git email. New lines carry neither; old lines stay (the log is append-only, and git history keeps them either way)
