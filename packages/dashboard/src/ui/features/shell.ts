@@ -140,7 +140,7 @@ export const SHELL: Feature[] = [
     section: 'shell',
     title: 'Coverage banner',
     purpose:
-      'Shown on every section while the coverage ledger has errors, or entries wait for a first approval: the headline, setup problems, a link to Coverage and the safe repair. On the Overview the errors card carries the errors instead, so they are not shown twice.',
+      'Shown on every section while the coverage ledger has an error, a setup warning or a safe repair to run, or entries wait for a first approval: the headline (integrity and setup findings by severity, never changed entries), setup problems, a link to Coverage when entries have findings, and the safe repair, offered only when its plan has steps. On the Overview the errors card carries them instead, so they are not shown twice.',
     states: { static: 'No repair button: a static report cannot write.' },
     interactions: [
       { action: 'View the components with problems' },
@@ -148,7 +148,7 @@ export const SHELL: Feature[] = [
     ],
     copy: ['coverage.banner', 'coverage.headline'],
     components: ['Alert', 'AlertTitle', 'AlertDescription', 'Button'],
-    files: ['views/Integrity'],
+    files: ['views/Integrity', 'views/coverage-findings', 'views/RepairLinkNote'],
     screens: [
       { scenario: 'first-approval', hash: '#stories', wait: { text: 'Needs a first approval' } },
       // On Diagnostics, with a real project's setup warnings: several long sentences.

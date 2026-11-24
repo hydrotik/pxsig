@@ -17,6 +17,7 @@ import { notKept } from '../lib/decisions.mjs';
 import { readJson } from '../lib/files.mjs';
 import { drifts } from '../lib/drift.mjs';
 import { filterLedger } from '../lib/integrity.mjs';
+import { repairSummary } from '../lib/repair.mjs';
 import { withoutNotes } from '../lib/rejections.mjs';
 import {
   authorize,
@@ -204,7 +205,14 @@ const table = [
       methods: 'GET',
       stage: 'open',
       project: 'query',
-      run: ({ res, S }) => json(res, 200, buildData(S.P, { live: liveOf(S) })),
+      // `repair`: the dashboard plan's summary, from the server's current ledger (its button);
+      // `storeHeld`: whether this server holds the store lock (without it, writes are refused).
+      run: ({ res, S }) =>
+        json(res, 200, {
+          ...buildData(S.P, { live: liveOf(S) }),
+          repair: S.integrity ? repairSummary(S.integrity) : null,
+          storeHeld: !!S.lock,
+        }),
     },
   ],
   // GET /__pxsig/integrity?project= (also /api/integrity): the ledger; story, component, status, fresh

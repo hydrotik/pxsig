@@ -28,8 +28,17 @@ import {
 } from '../data';
 import { Cmd, codeCopy, t, tx } from '../copy';
 import { Affordance } from '../parts/Affordance';
+import {
+  concernsComponents,
+  coverageFindings,
+  coverageShown,
+  errorCodes,
+  headlineCounts,
+  repairEntries,
+} from './coverage-findings';
 import { StaleHeatmap } from '../parts/StaleHeatmap';
 import { RecordRepair } from '../parts/RecordRepair';
+import { RepairLinkNote, useReadOnly } from './RepairLinkNote';
 import * as s from '../dashboard.css';
 
 type Severity = 'error' | 'warn' | 'info';
@@ -55,34 +64,21 @@ export function IntegrityStatus({ code, severity }: { code: string; severity: Se
   );
 }
 
-/** The ledger's headline, from its counts (the server's own headline is English-only). */
+/**
+ * The block's headline: the findings it lists by severity (headlineCounts; never review work, never
+ * entry warnings), then each error code's entry count.
+ */
 export function coverageHeadline(L: NonNullable<Data['integrity']>): string {
-  const sm = L.summary;
-  if (sm.componentsBySeverity.error) {
-    const codes = Object.entries(sm.byCode)
-      .filter(([code]) =>
-        L.entries.some((x) => x.issues.some((i) => i.code === code && i.severity === 'error'))
-      )
-      .map(([code]) =>
-        t('coverage.headline.code', {
-          title: codeCopy(code).title,
-          count: L.entries.filter((x) =>
-            x.issues.some((i) => i.code === code && i.severity === 'error')
-          ).length,
-        })
-      );
-    return [t('coverage.headline.error', { count: sm.componentsBySeverity.error }), ...codes].join(
-      ' · '
-    );
-  }
-  return sm.componentsBySeverity.warn
-    ? t('coverage.headline.warn', { count: sm.componentsBySeverity.warn })
-    : t('coverage.headline.clean');
+  const f = headlineCounts(L);
+  if (!f.error && !f.warn && !f.entryWarnings) return t('coverage.headline.clean');
+  return [
+    f.error ? t('coverage.headline.errors', { count: f.error }) : t('coverage.headline.noErrors'),
+    ...(f.warn ? [t('coverage.headline.warnings', { count: f.warn })] : []),
+    ...errorCodes(L).map(([code, count]) =>
+      t('coverage.headline.code', { title: codeCopy(code).title, count })
+    ),
+  ].join(' · ');
 }
-
-/** Whether the ledger has error-severity problems (components or setup): what the banner leads with. */
-export const coverageHasErrors = (L: Data['integrity']) =>
-  !!L && (L.summary.status === 'attention' || L.setup.length > 0);
 
 /**
  * The banner's body: setup problems, the entries waiting for a first approval, orphaned baselines,
@@ -103,9 +99,11 @@ export function CoverageDetails({
   const L = data.integrity;
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
-  const errors = coverageHasErrors(L);
+  // Read only: a note names the step to repair instead of the button.
+  const locked = useReadOnly(data);
+  const shown = coverageShown(data);
   const firsts = L?.summary.byCode.unbaselined ?? 0;
-  const clean = !L || (!errors && !firsts);
+  const clean = !L || (!shown && !firsts);
   // The server pushes the repaired ledger, so the banner closes on its own once nothing is left
   // to repair (the result used to hold it open until a reload). The result belongs to the ledger
   // it was shown with, so it goes when the ledger turns clean or turns bad again.
@@ -118,8 +116,10 @@ export function CoverageDetails({
   const orphans = L.summary.byCode.orphaned ?? 0;
   // New entries already rendered can be approved now; the rest need a render first (the repair).
   const toApprove = reviewQueue(data, 'new').filter((r) => !data.review[r.id]).length;
-  const repairable =
-    errors || L.entries.some((x) => x.files && x.issues.some((i) => i.code === 'missing-render'));
+  const repairable = repairEntries(data);
+  const viewAll = concernsComponents(L);
+  const warned = headlineCounts(L).entryWarnings;
+  const approve = served && toApprove && startReview;
   const working = (b: boolean) => (setBusy(b), onBusy?.(b));
   const run = async () => {
     working(true);
@@ -146,7 +146,7 @@ export function CoverageDetails({
       <RecordRepair data={data} />
       {firsts ? (
         <span className={s.row}>
-          {errors ? (
+          {shown ? (
             <Badge tone="warning">{t('coverage.banner.firstApproval', { count: firsts })}</Badge>
           ) : null}
           <span className={s.muted}>{t('coverage.banner.firstApprovalNote')}</span>
@@ -160,39 +160,52 @@ export function CoverageDetails({
           })}
         </span>
       ) : null}
-      <span className={s.row}>
-        <Button size="sm" emphasis="outline" onClick={() => go('integrity')}>
-          {t('coverage.banner.viewComponents')}
-        </Button>
-        {served && toApprove && startReview ? (
-          <Button
-            size="sm"
-            emphasis={repairable ? 'outline' : 'solid'}
-            onClick={() => startReview('new')}
-          >
-            {t('coverage.banner.approveNew', { count: toApprove })}
-          </Button>
-        ) : null}
-        {served && (repairable || busy) ? (
-          <Button size="sm" onClick={run} disabled={busy}>
-            {busy ? t('coverage.banner.repairing') : t('coverage.banner.repair')}
-          </Button>
-        ) : null}
-        {repairable ? <span className={s.muted}>{t('coverage.banner.repairNote')}</span> : null}
-      </span>
+      {/* No row when it would hold nothing (setup findings alone, nothing to repair). */}
+      {viewAll || approve || repairable || busy ? (
+        <span className={s.row}>
+          {viewAll ? (
+            <Button size="sm" emphasis="outline" onClick={() => go('integrity')}>
+              {t('coverage.banner.viewComponents')}
+            </Button>
+          ) : null}
+          {warned ? (
+            <span className={s.muted}>{t('coverage.banner.entryWarnings', { count: warned })}</span>
+          ) : null}
+          {approve ? (
+            <Button
+              size="sm"
+              emphasis={repairable ? 'outline' : 'solid'}
+              onClick={() => startReview('new')}
+            >
+              {t('coverage.banner.approveNew', { count: toApprove })}
+            </Button>
+          ) : null}
+          {served && !locked && (repairable || busy) ? (
+            <Button size="sm" onClick={run} disabled={busy}>
+              {busy
+                ? t('coverage.banner.repairing')
+                : t('coverage.banner.repair', { count: repairable })}
+            </Button>
+          ) : null}
+          {repairable && !(served && locked) ? (
+            <span className={s.muted}>{t('coverage.banner.repairNote')}</span>
+          ) : null}
+        </span>
+      ) : null}
+      {served && locked && repairable ? <RepairLinkNote why={locked} /> : null}
       {msg ? <span className={s.mono}>{msg}</span> : null}
     </div>
   );
 }
 
 /**
- * The banner at the top of every tab while anything is error-severity, or while registered entries
- * wait for their first approval (a warning, counted on its own so it does not vanish once the
- * errors are repaired). It carries the one-click safe repair (register new stories and render
- * them, re-check, restore baseline images that pass the gate) and, for the new entries, the
- * review queue that approves them. It never approves, never writes a signature and never prunes.
- * `errorsShownElsewhere`: the page shows the errors itself (the Overview's errors card), so the
- * banner stays away while there are errors.
+ * The banner on every tab while there is an error, a setup warning or a safe repair to run
+ * (coverage-findings.ts), or while entries wait for their first approval (counted on its own so it
+ * stays once the errors are repaired). It carries the one-click safe repair (its note says what it
+ * does) and the queue that approves the new entries. It never approves, never writes a signature
+ * and never prunes.
+ * `errorsShownElsewhere`: the page shows the findings itself (the Overview's errors card), so the
+ * banner stays away while there are any.
  */
 export function IntegrityBanner({
   data,
@@ -208,20 +221,16 @@ export function IntegrityBanner({
   const L = data.integrity;
   const [busy, setBusy] = React.useState(false);
   const firsts = L?.summary.byCode.unbaselined ?? 0;
-  const errors = coverageHasErrors(L);
-  const clean = !L || (!errors && !firsts);
-  if (!L || (clean && !busy) || (errors && errorsShownElsewhere)) return null;
+  const shown = coverageShown(data);
+  const clean = !L || (!shown && !firsts);
+  if (!L || (clean && !busy) || (shown && errorsShownElsewhere)) return null;
   return (
     <Alert
-      tone={
-        errors && (L.summary.status === 'attention' || L.setup.some((x) => x.severity === 'error'))
-          ? 'danger'
-          : 'neutral'
-      }
+      tone={coverageFindings(L).error ? 'danger' : 'neutral'}
       label={t('coverage.banner.label')}
     >
       <AlertTitle>
-        {errors ? coverageHeadline(L) : t('coverage.banner.firstApproval', { count: firsts })}
+        {shown ? coverageHeadline(L) : t('coverage.banner.firstApproval', { count: firsts })}
       </AlertTitle>
       <AlertDescription>
         <CoverageDetails data={data} go={go} startReview={startReview} onBusy={setBusy} />

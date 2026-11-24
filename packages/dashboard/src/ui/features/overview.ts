@@ -57,7 +57,7 @@ export const OVERVIEW: Feature[] = [
     section: 'overview',
     title: 'Errors',
     purpose:
-      "The coverage banner's details and the safe repair first (only while there is something to repair or approve), then the render errors of the last check and coverage errors (components, setup), one row each, opening the render errors list or Coverage on that component. Shown only while there are errors.",
+      "The coverage banner's details and the safe repair first (only while there is something to repair or approve), then the render errors of the last check and coverage errors (components, setup), one row each, opening the render errors list or Coverage on that component. Shown only while there are render errors, or while the coverage banner would show.",
     states: { static: 'No repair button: a static report cannot write.' },
     interactions: [
       { action: 'Open the render errors, or Coverage on a component, from a row' },
@@ -73,7 +73,7 @@ export const OVERVIEW: Feature[] = [
       'DataTable',
       'Button',
     ],
-    files: ['views/Overview', 'views/Integrity'],
+    files: ['views/Overview', 'views/Integrity', 'views/coverage-findings'],
     screens: [
       {
         scenario: 'errors',

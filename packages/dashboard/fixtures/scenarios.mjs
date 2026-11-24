@@ -216,6 +216,10 @@ export function data({ rows, entries, summary = {} }) {
       ],
       entries,
     },
+    /** The safe repair's plan summary (the server's repairSummary of this ledger): none to run. */
+    repair: { entries: 0, steps: /** @type {{ action: string, count: number }[]} */ ([]) },
+    /** This server holds the store lock (a second server beside another process does not). */
+    storeHeld: true,
   };
 }
 
@@ -412,6 +416,8 @@ export const SCENARIOS = {
       })
     );
     d.history = history(3);
+    // The never-checked entry is re-checked by the safe repair.
+    d.repair = { entries: 1, steps: [{ action: 'recheck', count: 1 }] };
     // A baseline no person approved (a migration wrote it): the Coverage tile and the entry's detail.
     const ok = d.integrity.entries.find((x) => x.id === 'ui-button--ok');
     if (ok) Object.assign(ok, { unreviewed: { queue: 1, by: 'migrate' } });

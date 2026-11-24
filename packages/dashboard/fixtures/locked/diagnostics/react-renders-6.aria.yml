@@ -28,16 +28,13 @@
 - main:
   - heading "Diagnostics" [level=2]
   - alert "Coverage":
-    - text: No coverage issues.
-    - strong: log-legacy-personal
+    - text: No errors · 2 warnings
+    - strong: Older log lines with reasons
     - text: · 212 lines of approvals.ndjson and 2 of a11y-decisions.ndjson, written before 0.7.6, carry a reason or a git email. New lines carry neither; old lines stay (the log is append-only, and git history keeps them either way)
     - strong: Different render environment
     - text: "· 26 entries were rendered in a different environment than their baseline (browser.version, fonts.probe): a change there can be the machine, not the code. Render where the baselines were made (the pinned container), or re-take them there (`pxsig check --full --update --kind environment`); `--strict-env` refuses such a run instead (a font swap, `fonts.used`, once rendered)"
     - strong: Many passing entries differ
     - text: "· 19 of 26 passing entries (73%) pass while their render differs from the baseline, at or over 5 entries or 10%. A change the gate does not see, such as a color change in a small area, passes this way, and their baselines stay as they were. `pxsig list drift` (or the dashboard's Stories, \"Passing, but differs from the baseline\") lists them. An intended change gets new baselines from a person (`pxsig check --full --update --only <ids>`); one the gate should have failed means the gate is too loose for this project (`pxsig config` names the layer that sets it)"
-    - button "View components"
-    - button "Run safe repairs"
-    - text: Safe repairs register new stories and render them, re-check entries without a usable verdict, and restore baseline images that pass the gate. They do not approve changes or write signatures.
   - group "React part":
     - radio "Compiler"
     - radio "Renders" [checked]
