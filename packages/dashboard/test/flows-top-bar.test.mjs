@@ -11,7 +11,7 @@
  *   - More as a menu button from the keyboard, named by NavList's `moreLabel` where the adapter's
  *     conformance.json says it takes it (`topBar.moreLabel`);
  *   - an open More closing when the bar widens until it is empty, and staying closed after;
- *   - each count in its tone's colour: its digits, or for an info count the pill they sit on.
+ *   - each count's digits in its tone's colour.
  *
  * Skips when no Chromium is available (PXSIG_CHROMIUM names an executable).
  */
@@ -276,7 +276,7 @@ for (const a of ADAPTERS) {
       }
     });
 
-    test('a count takes its tone: info the accent (digits or fill), neutral a grey', async (t) => {
+    test("a count's digits take its tone: info the accent, neutral a grey", async (t) => {
       if (why()) return t.skip(why());
       const { page, errors } = await open('changed', 1440);
       try {
@@ -293,20 +293,7 @@ for (const a of ADAPTERS) {
             const k = c.startsWith('color(') ? 255 : 1;
             return v.length === 3 && Math.max(...v) * k - Math.min(...v) * k < 24;
           };
-          // An info count is the accent: its digits, or the pill they sit on (the design system's
-          // filled attention count, with digits in the colour on the accent).
-          const fill = (el) => {
-            for (let e = el; e && e !== nav; e = e.parentElement) {
-              const b = getComputedStyle(e).backgroundColor;
-              if (b && b !== 'transparent' && !/rgba\(.*,\s*0\)$/.test(b)) return b;
-            }
-            return null;
-          };
-          const want = {
-            info: (el) => getComputedStyle(el).color === accent || fill(el) === accent,
-            neutral: (el) =>
-              getComputedStyle(el).color !== accent && grey(getComputedStyle(el).color),
-          };
+          const want = { info: (c) => c === accent, neutral: (c) => c !== accent && grey(c) };
           return Object.entries({ '#stories': 'info', '#history': 'neutral' }).map(
             ([href, tone]) => {
               const walk = document.createTreeWalker(
@@ -316,7 +303,7 @@ for (const a of ADAPTERS) {
               let digits = null;
               for (let n = walk.nextNode(); n && !digits; n = walk.nextNode())
                 if (/^\d+\+?$/.test(n.textContent?.trim() ?? '')) digits = n.parentElement;
-              return { href, tone, ok: !!digits && want[tone](digits) };
+              return { href, tone, ok: !!digits && want[tone](getComputedStyle(digits).color) };
             }
           );
         });

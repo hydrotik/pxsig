@@ -69,7 +69,7 @@ node scripts/changelog.mjs release X.Y.Z        # merge Unreleased and every fra
 ```
 
 Then write the release's summary paragraph under its new heading, set the versions (above), re-shoot
-the product shots for a minor or major release (below), commit
+the product shots when the release needs them (below), commit
 the latest nightly `bench-results` as `scripts/bench/baseline.json` ([benchmark.md](benchmark.md#refreshing-the-baseline)), and
 merge the branch before pushing the tag. `release` keeps the headings in a fixed order (Breaking
 changes, then Behaviour changes), with the entries already under Unreleased ahead of the fragments.
@@ -83,8 +83,10 @@ an "Upgrading to X.Y" section of [migrating.md](migrating.md).
 
 ## Product shots
 
-A minor or major release (`X.Y.0`) ships new README screenshots of its own dashboard. On the release
-branch, after setting the versions:
+A release ships README screenshots of its own dashboard. A minor or major release (`X.Y.0`)
+re-shoots them, and so does a patch whose dashboard looks different: any of pxsig's own screen
+baselines (`packages/dashboard/.pxsig/baselines/**/*.psig`) added, changed or removed since the
+version the shots were taken at. On the release branch, after setting the versions:
 
 ```bash
 pnpm build:dashboard              # the release's dashboard: the pinned design system
@@ -94,8 +96,13 @@ node scripts/showcase-shots.mjs   # docs/product-shots/*.png + shots.json
 The script serves that build with mock data (a design system in the middle of a review), shoots the
 Overview and the review's first change in the light theme, crops them and records the version in
 `docs/product-shots/shots.json`. Review the images in the branch's diff like any other change.
-The workflow's verify job runs `node scripts/check-shots.mjs --tag vX.Y.0` and fails the release
-when the shots are from another minor. A patch or a prerelease keeps the last shots.
+The workflow's verify job runs `node scripts/check-shots.mjs --tag vX.Y.Z` (with the full history,
+`fetch-depth: 0`) and fails the release when `shots.json` or a shot it lists is missing, when a
+minor or major release's shots are from another minor, when no tag `v<shots.json version>` exists,
+or when a screen baseline differs between that tag and the tagged commit; it names the screens.
+Run it on the release branch before tagging. A prerelease keeps the last shots. The locked
+structure snapshots (`packages/dashboard/fixtures/locked`) do not count: they record roles, names
+and boxes, and a change to them that a shot could show also moves a pixel baseline.
 `node scripts/showcase-shots.mjs --serve` keeps the mock dashboard running for shots by hand.
 
 ## pxsig's own baselines
@@ -354,7 +361,10 @@ runs from disk). Every file is unminified unless `PXSIG_DASHBOARD_MINIFY=1` is s
 them unminified so reviewers can read what runs (packages/dashboard/README.md).
 
 Every build writes `dashboard/BUILD.json` (`scripts/build-record.mjs`), which ships in the
-package: the adapter, the design-system commit with whether its checkout had changes and its
+package: the adapter, the pxsig version, this checkout's commit (`commit`) with whether it had
+uncommitted changes under the paths that feed the build (`dirty`) and their sha256 (`changes`; all
+null outside a git checkout),
+the design-system commit with whether its checkout had changes and its
 `pnpm-lock.yaml` sha256, this repository's lockfile sha256, the Node version, the build time
 (`SOURCE_DATE_EPOCH` when set) and the third-party packages compiled into the bundle with their
 versions and licences. Either way the job checks it (`scripts/check-dashboard-build.mjs`): it must

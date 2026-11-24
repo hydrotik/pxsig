@@ -56,7 +56,10 @@ command to run; it never builds by itself. `PXSIG_DASHBOARD_DIR` overrides both,
 by the same pxsig version (`pxsig dashboard build --out <folder>`). A dashboard supports only the
 pxsig version that built it: after upgrading pxsig, run `pxsig dashboard build` again. A build from
 another version, or one that records none, is not served, and `pxsig doctor` reports it
-(`dashboard-stale`).
+(`dashboard-stale`). Run from a git checkout of pxsig, a build that records a commit is also out of
+date when the paths that feed the build differ between that commit and the checkout's HEAD, or its
+uncommitted changes (by fingerprint) are not the checkout's, with the same note and finding; a
+commit that changes none of them leaves the build current; a build from an installed pxsig records none and is compared by version only.
 
 ## An adapter is not a project
 
@@ -84,7 +87,13 @@ How the dashboard finds and loads it:
    `pxsig.workspace.json`. A path to a folder loads its `index.tsx` (or `index.ts`, `index.jsx`,
    `index.js`); `conformance.json` and `vite.mjs` are read from the same folder. Vite and the
    other build tools resolve from the project's `node_modules` or a parent's. The build goes to
-   `node_modules/.cache/pxsig/dashboard` in the project's folder, with a `pxsig-build.json` stamp.
+   `node_modules/.cache/pxsig/dashboard` in the project's folder, with a `pxsig-build.json` stamp:
+   the pxsig version, the adapter (`adapter`: its file relative to the project folder, or a built-in
+   adapter's name; never an absolute path) and its name, the build time and, when pxsig runs from a
+   git checkout of its source, that checkout's commit (`commit`), whether it had uncommitted changes
+   under the paths that feed the build (`dirty`) and their sha256 (`changes`). From an installed
+   pxsig these are null: the build is the
+   release its version names. The dashboard shows them on hover of "pxsig" and at the end of Help.
 2. `pxsig serve` reads `dashboard.ui` from each project it serves and serves the build in the
    folder of the first one (in the order of `projects`) that names an adapter, while that build is
    current. When projects name different adapters, it serves the prebuilt dashboard and prints a
@@ -200,13 +209,14 @@ R4.
 | Table (`DataTable`)                     | **R2** A cell's actions are the small size (`sm`, the dashboard passes it), the same height as a toolbar's controls, and one height in the table. **R3** Column headers in the case of `header`.                                                                                                                                                                                                              |
 | Headings and labels                     | **R3** `CardTitle`, `DialogTitle`, column headers, `NavLink`, `Button`, `Badge`, `StatusBadge` and field labels are drawn in the case of the text passed: no `text-transform` (badges excepted, below), no re-casing. The words come from pxsig's copy.                                                                                                                                                       |
 | Top bar counts (`NavLink` `count`)      | **R4** `countTone` colours the count's digits (`info`: the accent; `neutral`: the text colour); its pill stays neutral.                                                                                                                                                                                                                                                                                       |
-| Stat cards (`StatGroup`)                | **R3** An item's label is a micro label in capitals: a casing the contract sets, the same in every adapter. **R4** A tone colours the item's value; its border, edge, background and label stay neutral.                                                                                                                                                                                                      |
+| Stat cards (`StatGroup`)                | **R3** An item's label is a micro label in capitals: a casing the contract sets, the same in every adapter. **R4** A tone colours the item's value; its label, background and borders stay neutral. Since 1.8.0, it may also draw a start edge in that tone's own colour only, the value still in it.                                                                                                         |
 | Badges (`Badge`)                        | **R3** May be drawn in tracked micro caps (`text-transform: uppercase`), the contract's second casing; the text passed stays as it is. **R4** Either a tone colours the text, the wash (`subtle`), border (`outline`) and fill (`solid`) staying neutral; or, as your design system draws its badges, it colours the wash, border and dot, in that tone's own colour only, with the text at AA (4.5:1) on it. |
 | Status badges (`StatusBadge`)           | **R3** May be drawn in micro caps, as a `Badge`. **R4** A tone colours the glyph; the label stays in the text colour, with no wash or border.                                                                                                                                                                                                                                                                 |
 
 R4 is how the plain adapter (`adapters/plain/`) draws tones: compare yours with it. The reference
-adapter (`adapters/hydrotik/`) takes the badge exception: its `success`, `warning` and `danger`
-badges are its design system's tinted variants.
+adapter (`adapters/hydrotik/`) takes both exceptions: its `success`, `warning` and `danger`
+badges are its design system's tinted variants, and its stat cards in those tones have its design
+system's 2px accent edge beside the coloured value.
 
 ## Top bar
 
@@ -311,8 +321,8 @@ differ from this list, they win.
   are capitals, and badges may be micro caps, by the contract (R3).
 - **One way to show a tone.** The value, the text, the count or the glyph takes the tone's colour;
   borders, edges and washes stay neutral (R4). A badge may instead take its tone's colour in its
-  wash, border and dot, as your design system draws it. The adapter chooses the colours, not where
-  they go.
+  wash, border and dot, as your design system draws it, and a stat card may add a start edge in
+  its value's tone. The adapter chooses the colours, not where they go.
 - **`className` on the root element**, so the dashboard's own layout holds.
 - **The runtime's theme mode**, with colours from variables that follow it (rule 7,
   [Tokens](#tokens)).
@@ -544,12 +554,15 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 
 - **Purpose**: a row of key figures; some are buttons that filter or navigate.
 - **Props**: `label`, `items` (`label`, `value`, `unit`, `tone`, `onSelect`, `active`, `icon`,
-  `affordance` since 1.8.0), `layout` (`cards` default, `strip`: one band inside a card),
+  `affordance` since 1.10.0), `layout` (`cards` default, `strip`: one band inside a card),
   `className`.
-- **Behaviour**: items wrap; a `tone` colours the value, never the tile's border, edge or
-  background (R4); the label is a micro label in capitals (R3); an item with `onSelect` is a button
-  (`active` is pressed); `icon` sits in its corner. A stat card that draws its own corner arrow
-  draws it from `affordance` (`filter`: down-left, `link`: up-right) instead of `icon`.
+- **Behaviour**: items wrap; a `tone` colours the value, never the label, the tile's background
+  or its borders (R4); since 1.8.0 the tile may also have a start edge (a border on its
+  inline-start side, or a `::before` / `::after` at most 4px wide) in the tone's own colour, as
+  the reference adapter draws its design system's accent edge; the label is a micro label in
+  capitals (R3); an item with `onSelect` is a button (`active` is pressed); `icon` sits in its
+  corner. A stat card that draws its own corner arrow draws it from `affordance` (`filter`:
+  down-left, `link`: up-right) instead of `icon`.
 - **Accessibility**: a region named by `label`; selectable items are buttons with `aria-pressed`
   when they filter. A value that a unit follows arrives ending in a space that is read, not drawn,
   so a tile's name keeps them apart ("Findings 1 new · of 1"): render `value` as given.
@@ -914,11 +927,21 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Purpose**: bar or line chart (Runs, Diagnostics).
 - **Props**: `kind` (`bar`: horizontal grouped bars, one row per `x` category; `line`: lines over an
   ordered `x`), `data`, `series` (`key`, `label`), `x`, `format`, `max`, `height` (CSS),
-  `className`.
+  `label` (the accessible name: the card's title; since 1.9.0), `summary` (the data in one line of
+  text, "Changed entries per run, 14 runs: 3 to 12."; since 1.9.0), `className`.
 - **Behaviour**: series take your categorical colours in order; a legend when there is more than one
   series; a tooltip on hover; `format` formats the value axis and tooltip.
 - **Accessibility**: the numbers must be reachable without the picture: a tooltip alone is not
-  enough. Give the chart an accessible summary, or a data table on demand.
+  enough. A chart is not a tab stop unless it is interactive, and the dashboard's are: the arrow
+  keys move the tooltip from point to point. So the chart is one tab stop that has the name
+  (`label`) and the description (`summary`, text with the `hidden` attribute tied by `aria-describedby`, so it is read once, as
+  the description, and not again as text),
+  with nothing else in it focusable or unnamed. On recharts 3, keep its keyboard layer
+  (`accessibilityLayer`, on by default: the SVG is the tab stop, `role="application"` so a screen
+  reader passes the arrow keys through) and pass `aria-label` and `aria-describedby` to the chart,
+  which recharts puts on that SVG. Do not wrap it in `role="img"`: an image's children are
+  presentational, so the tab stop cannot sit inside one. The summary is never drawn, so it moves
+  no screen.
 - **Mapping questions**: Do you have a chart component, and on which library? Which tokens are your
   categorical colours?
 - **Points**: mark each point solid, in the series colour with no outline, small enough that the
@@ -995,8 +1018,10 @@ draw them with your own segmented control and buttons.
        `::after`) or shadow in a tone colour (`--pxsig-color-success`, `warning`, `danger`, and
        `accent` for `info`), drawn or mixed with `color-mix()`. A badge may have them in the tone
        it was given (the dashboard adds `pxsig-ui-tone-<tone>` to its `className`), never in
-       another; and a badge's text is under 4.5:1 (AA) on its background. A selected (pressed)
-       tile is not measured.
+       another; a stat card may have a start edge (a border on its inline-start side, or a
+       `::before` / `::after` at most 4px wide) in the one tone its value is drawn in, never in
+       another or beside a neutral value; and a badge's text is under 4.5:1 (AA) on its
+       background. A selected (pressed) tile is not measured.
 
      The dashboard adds `pxsig-ui-<Name>` to the `className` of `TopNav`, `StatGroup`, `Badge` and
      `StatusBadge`, so the rules find those regions in any adapter: keep `className` on the root

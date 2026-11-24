@@ -75,6 +75,7 @@ import {
   uiDir,
 } from './ui-tools/paths.mjs';
 import { adapterCssProblems } from './ui-tools/adapter-css.mjs';
+import { dsReachProblems } from './ui-tools/ds-reach.mjs';
 import { uiReachProblem } from './ui-tools/imports.mjs';
 
 export {
@@ -147,7 +148,9 @@ function copyExists(messages, key) {
  *  3. Every contract component has a section in docs/ui/build-adapter.md, and the reference
  *     adapter declares it (full or bespoke) and exports it; it maps every token and icon, and
  *     maps props only: no styles of its own, inline styles for layout glue only
- *     (ui-tools/adapter-css.mjs).
+ *     (ui-tools/adapter-css.mjs); and no dashboard style changes a design-system element but
+ *     the ones listed, each with what it waits on, in ui-tools/ds-reach-pending.json
+ *     (ui-tools/ds-reach.mjs).
  *  4. Every feature names real components, files and copy keys; each component it lists is imported
  *     by one of its files; every view and every contract component belongs to a feature.
  *  5. CONTRACT_VERSION, src/ui/contract-lock.json and docs/ui/contract-changes.md agree: a contract
@@ -222,6 +225,12 @@ export async function checkAll() {
       );
   // It maps props only: no styles of its own over the design system's (ui-tools/adapter-css.mjs).
   for (const p of adapterCssProblems(refDir, repoRoot)) problems.push(`reference adapter: ${p}`);
+  // Nor does any dashboard style that reaches a design-system element (ui-tools/ds-reach.mjs).
+  const pending = /** @type {Record<string, string>} */ (
+    JSON.parse(readFileSync(path.join(dashboardDir, 'ui-tools/ds-reach-pending.json'), 'utf8'))
+  );
+  for (const p of dsReachProblems(srcDir, new Set(names), pending))
+    problems.push(`dashboard: ${p}`);
   const declared = readConformance(refDir)?.components ?? {};
   for (const n of names)
     if (!declared[n]) problems.push(`reference adapter: conformance.json has no entry for ${n}`);

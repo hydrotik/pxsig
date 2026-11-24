@@ -1,11 +1,16 @@
 /**
  * check/via-server.mjs — when the pxsig server holds the store, the check runs in its queue: post
  * the selection, wait for the queue to drain, report the rows the server wrote and exit with the
- * check's code. Also `gitHead`, the commit a run checked.
+ * check's code. `--since` / `--changed` go with it, so the server compares the React Compiler's
+ * view of those files with the merge base, as the check here would (check.json's `react`). Also
+ * `gitHead`, the commit a run checked.
  */
 import { spawnSync } from '../lib/spawn.mjs';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
+import { relPath } from '../lib/paths.mjs';
+import { reactConfig } from '../lib/react/config.mjs';
+import { reactLines, reactSarif } from './react.mjs';
 import {
   appendReadiness,
   checkCounts,
@@ -17,6 +22,44 @@ import {
 /** @import { CheckSetup, Die } from './setup.mjs' */
 /** @import { Project } from '../types.js' */
 /** @import { CheckReport, QueuedCheck, ServerStatus } from '../types/t4.js' */
+/** @import { CheckReact, ReactRun } from '../types/react.js' */
+
+/**
+ * What the check compares with, for the server: `{ since }` or `{ changed }` (workspace-relative),
+ * and `react: false` when React is off here (`--no-react`, PXSIG_REACT=off); empty without either flag.
+ * @param {CheckSetup} S
+ * @returns {{ since?: string, changed?: string[], react?: false }}
+ */
+export function comparedWith(S) {
+  const { P, flags, str } = S;
+  const since = str('since');
+  const changed = str('changed');
+  if (!since && !changed) return {};
+  const off = reactConfig(P, { flags }).off ? { react: /** @type {const} */ (false) } : {};
+  if (!changed) return { since: /** @type {string} */ (since), ...off };
+  const files = changed
+    .split(',')
+    .map((f) => f.trim())
+    .filter(Boolean)
+    .map((f) => (isAbsolute(f) ? relPath(P.workspaceRoot, f) : f));
+  return { changed: files, ...off };
+}
+
+/**
+ * check.json's `react` as the run that wrote it: what reactLines and reactSarif read.
+ * @param {CheckReact | undefined} block
+ * @returns {ReactRun | null}
+ */
+const runOf = (block) =>
+  !block
+    ? null
+    : 'skipped' in block
+      ? {
+          ran: false,
+          why: block.skipped,
+          text: 'react: analysis failed (in the server): nothing compared',
+        }
+      : /** @type {ReactRun} */ (/** @type {unknown} */ ({ ran: true, report: block }));
 
 /**
  * The commit this run checked (for `ci status --from-report`), or null outside git.
@@ -47,7 +90,7 @@ export async function viaServer(S, url, ids, stories = []) {
     await fetch(`${url}/__pxsig/check`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ project: P.name, ids, stories, via: 'check' }),
+      body: JSON.stringify({ project: P.name, ids, stories, via: 'check', ...comparedWith(S) }),
     }).catch(
       // fetch rejects with an Error (a TypeError) when the server does not answer.
       (/** @type {Error} */ e) => ({ ok: false, statusText: e.message })
@@ -92,6 +135,15 @@ export async function viaServer(S, url, ids, stories = []) {
   );
   for (const r of failed.slice(0, 20))
     console.log(`  CHANGED ${r.id.padEnd(60)} ${r.error ?? (r.reasons ?? []).join('; ')}`);
+  // The React lines and `--react-sarif`, as the check here prints and writes them.
+  // Only when this run compared: an earlier run's block stays in check.json until the next one.
+  const react =
+    S.str('since') || S.str('changed')
+      ? runOf(/** @type {CheckReact | undefined} */ (report.react))
+      : null;
+  for (const l of reactLines(react, rows, P)) console.log(l);
+  const sarif = S.str('react-sarif');
+  if (sarif) console.log(reactSarif(sarif, react, rows, S.manifest.stories));
   // `enf` is null only under --update, which never hands the run to a server.
   const gated = outcome(/** @type {NonNullable<typeof enf>} */ (enf), checkFindings(rows));
   appendReadiness(P, /** @type {NonNullable<typeof enf>} */ (enf), gated, {

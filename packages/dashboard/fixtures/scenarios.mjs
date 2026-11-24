@@ -24,6 +24,7 @@
 import { REACT_EVENTS, REACT_SCENARIOS } from './react.mjs';
 import { MASK_SCENARIOS } from './masks.mjs';
 import { TEXT_SCENARIOS } from './text.mjs';
+import { REAL_SHAPED_SCENARIOS } from './real-shaped.mjs';
 
 export { gateFacts, selfCheckOf } from './gate-report.mjs';
 
@@ -105,6 +106,20 @@ export const rejection = (id, note, checks = []) => ({
 });
 
 /**
+ * The build identity every fixture page shows (data.build): fixed and fake, so no build, commit
+ * or date ever moves a screen.
+ */
+export const BUILD = {
+  pxsig: '0.0.0',
+  commit: '0123456789abcdef0123456789abcdef01234567',
+  dirty: false,
+  changes: null,
+  designSystem: { commit: 'fedcba9876543210fedcba9876543210fedcba98', dirty: false },
+  adapter: 'hydrotik',
+  builtAt: '2026-01-01T00:00:00.000Z',
+};
+
+/**
  * The served data for these rows and ledger entries.
  * @param {{ rows: FixtureRow[], entries: ReturnType<typeof entry>[], summary?: Record<string, number> }} o
  */
@@ -121,6 +136,7 @@ export function data({ rows, entries, summary = {} }) {
     scope: 'demo',
     // As a served page gets them; null: unknown, so the page names only the UI contract.
     versions: { pxsig: null, engine: null, contract: null },
+    build: BUILD,
     store: '.pxsig',
     check: {
       generatedAt: AT,
@@ -456,6 +472,7 @@ export const SCENARIOS = {
   ...REACT_SCENARIOS,
   ...TEXT_SCENARIOS,
   ...MASK_SCENARIOS,
+  ...REAL_SHAPED_SCENARIOS,
   'long-label'() {
     // A workspace label too long for the bar: capped at 24ch, its full name in its title.
     return { ...SCENARIOS.changed(), scope: 'Acme Design System · Marketing Site Components' };

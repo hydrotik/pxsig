@@ -8,6 +8,17 @@
       "engine": "engine {version}",
       "contract": "UI contract {version}"
     },
+    "build": {
+      "commit": "build {commit}",
+      "modified": "build {commit} modified",
+      "modifiedChanges": "build {commit} modified {changes}",
+      "release": "release build",
+      "version": "for pxsig {version}",
+      "designSystem": "design system {commit}",
+      "designSystemModified": "design system {commit} modified",
+      "adapter": "adapter {name}",
+      "builtAt": "built {date} UTC"
+    },
     "loading": "Loading…",
     "loadError": "Report data failed to load: {error}",
     "connection": {
@@ -608,12 +619,22 @@
         "one": "{count} run.",
         "other": "{count} runs."
       },
-      "series": "Changed"
+      "series": "Changed",
+      "summary": {
+        "one": "Changed entries per run, {count} run: {data}.",
+        "other": "Changed entries per run, {count} runs: {data}."
+      },
+      "noData": "Changed entries per run: no data."
     },
     "engine": {
       "title": "Engine Time per Run",
       "description": "Milliseconds.",
-      "series": "Engine (ms)"
+      "series": "Engine (ms)",
+      "summary": {
+        "one": "Engine time per run, {count} run: {data}.",
+        "other": "Engine time per run, {count} runs: {data}."
+      },
+      "noData": "Engine time per run: no data."
     },
     "table": {
       "title": "Runs",
@@ -641,7 +662,12 @@
       "whole": "Whole-image signature",
       "shipped": "Signature and detail channel",
       "detected": "{detected}/{changed} detected",
-      "falsePositives": "False positives"
+      "falsePositives": "False positives",
+      "summary": {
+        "one": "Detection rate by suite, {count} suite: {data}.",
+        "other": "Detection rate by suite, {count} suites: {data}."
+      },
+      "noData": "Detection rate by suite: no data."
     },
     "scenario": {
       "empty": "No scenario data. Run {command}.",
@@ -699,7 +725,12 @@
       "rule": "Rule",
       "detected": "Detected",
       "detailOnly": "Detail only",
-      "detailKb": "Detail per record (KB)"
+      "detailKb": "Detail per record (KB)",
+      "gridSummary": {
+        "one": "Detection rate by signature grid, {count} grid: {data}.",
+        "other": "Detection rate by signature grid, {count} grids: {data}."
+      },
+      "gridNoData": "Detection rate by signature grid: no data."
     },
     "performance": {
       "empty": "No benchmark data. Run {command}.",
@@ -745,7 +776,11 @@
       "perCallDescription": "Median over {count} entries. The CLI starts a process per compare; {command} keeps one engine running.",
       "perCallSeries": "ms per compare",
       "cli": "CLI process",
-      "server": "Server request"
+      "server": "Server request",
+      "renderSummary": "Render time per story by page count: {data}.",
+      "perCallSummary": "Time per compare: {data}.",
+      "renderNoData": "Render time per story by page count: no data.",
+      "perCallNoData": "Time per compare: no data."
     },
     "react": {
       "parts": "React part",
@@ -1020,6 +1055,7 @@
       "description": "Run from the repository root."
     },
     "versions": "This page: {versions}.",
+    "build": "Dashboard {build}.",
     "intro": "Reference for this dashboard. Each section covers one part of the screen. Point at a row, or move to it with Tab, to see where it appears in the drawing beside it.",
     "approving": {
       "title": "Approving From the Dashboard",
@@ -1796,6 +1832,14 @@
       "previousPage": "Previous page",
       "nextPage": "Next page",
       "page": "Page {page} of {pages}"
+    },
+    "chart": {
+      "range": "{min} to {max}",
+      "seriesRange": "{series}: {range}",
+      "value": "{name} {value}",
+      "categoryValues": "{category}: {values}",
+      "separator": "; ",
+      "listSeparator": ", "
     }
   }
 }

@@ -2,9 +2,10 @@
  * The reference adapter's Badge and StatGroup: each contract tone onto the design system's own
  * variant, as it draws it. A badge: `success`, `warning` and `danger` its tinted variants, `info`
  * its `default` (the primary wash), `neutral` its `secondary` (or `outline` for that emphasis). A
- * stat card: the tone colours its value (StatPanel's `tone`), and StatPanel draws the corner arrow
- * (`affordance`). index.tsx passes the design-system components in, so every part the adapter uses
- * is named in that one file.
+ * stat card: the tone colours its value (StatPanel's `tone`), and for `success`, `warning` and
+ * `danger` StatPanel's accent draws a 2px start edge in that tone's colour (R4 allows it for stat
+ * cards since 1.8.0); StatPanel draws the corner arrow (`affordance`). index.tsx passes the
+ * design-system components in, so every part the adapter uses is named in that one file.
  */
 import type * as DS from '@hydrotik/design-system';
 import type * as C from '../../contract';
@@ -55,6 +56,13 @@ const VALUE_TONE: Partial<Record<C.Tone, 'info' | 'success' | 'warning' | 'destr
   danger: 'destructive',
 };
 
+/** Tone → the StatPanel's accent edge; `info` and `neutral` have none, as in 0.7.6. */
+const ACCENT: Partial<Record<C.Tone, 'success' | 'warning' | 'error'>> = {
+  success: 'success',
+  warning: 'warning',
+  danger: 'error',
+};
+
 export const toneStatGroup = (Panel: typeof DS.StatPanel) =>
   function StatGroup({ label, items, layout, className }: C.StatGroupProps) {
     return (
@@ -67,6 +75,7 @@ export const toneStatGroup = (Panel: typeof DS.StatPanel) =>
           value: it.value,
           ...(it.unit !== undefined ? { unit: it.unit } : {}),
           ...(it.tone && VALUE_TONE[it.tone] ? { tone: VALUE_TONE[it.tone] } : {}),
+          ...(it.tone && ACCENT[it.tone] ? { accent: ACCENT[it.tone] } : {}),
           ...(it.onSelect
             ? {
                 type: 'filter' as const,

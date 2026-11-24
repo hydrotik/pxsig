@@ -53,6 +53,8 @@ import { traceCache } from './traces.mjs';
  * @property {ReactState} react the React analysis (serve/react.mjs)
  * @property {AbortController | null} cancel stops the running check (`check/cancel`)
  * @property {boolean} measure the next check run counts React renders (Measure renders)
+ * @property {Map<string, { compare: import('./check-compare.mjs').Compare | null, ids: Set<string> }>} batches
+ *   the queued checks by what they compare with, in the order queued (serve/check-compare.mjs)
  */
 
 /**
@@ -88,6 +90,7 @@ export function openState(srv, ref) {
     react: reactState(),
     cancel: null,
     measure: false,
+    batches: new Map(),
   };
   S.reload = () => {
     try {

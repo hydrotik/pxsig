@@ -57,6 +57,8 @@ export const EXCEPTIONS = {
     "the slider on one line, until the design system's inline Slider marks its label and value disabled with its track",
   'heatmap.css.ts':
     "the heatmap's tiles, until the design system's Heatmap tile text keeps its label and figure apart for the tile's accessible name",
+  'tones.css.ts':
+    'the top-bar count that asks for action, a neutral wash with digits in the primary colour (pxsig\'s own look), until the pinned design system has CountBadge\'s emphasis="subtle" for the adapter to select by prop',
 };
 
 /** A specifier that is the design system's own (an entry of its packages). */

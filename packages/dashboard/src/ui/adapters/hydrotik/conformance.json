@@ -1,6 +1,6 @@
 {
   "adapter": "hydrotik",
-  "contract": "1.8.0",
+  "contract": "1.10.0",
   "designSystem": "@hydrotik/design-system (built from source: PXSIG_DS_SOURCE)",
   "topBar": {
     "root": true,
@@ -36,7 +36,7 @@
     },
     "NavLink": {
       "status": "full",
-      "note": "NavItemLink; count tone info → attention (the design system's accent count), neutral → neutral"
+      "note": "NavItemLink; count tone info → attention, drawn as primary digits on a neutral pill (tones.css.ts, until the design system's subtle count), neutral → neutral"
     },
     "NavEnd": {
       "status": "bespoke",
@@ -91,7 +91,7 @@
     },
     "StatGroup": {
       "status": "full",
-      "note": "StatPanel; selectable items are filter cards; a tone colours the value (StatPanel tone, info included), no accent edge"
+      "note": "StatPanel; selectable items are filter cards that draw their own corner arrow (affordance); a tone colours the value (StatPanel tone, info included) and, for success, warning and danger, the accent edge"
     },
     "DataTable": {
       "status": "full",
@@ -254,7 +254,7 @@
     },
     "Alert": {
       "status": "full",
-      "note": "Alert, not live (live false), default or destructive, named by its title"
+      "note": "Alert, not live (live false): a region named by the contract's label; default or destructive"
     },
     "AlertTitle": {
       "status": "full",
@@ -277,7 +277,7 @@
     },
     "Chart": {
       "status": "full",
-      "note": "the design system's Chart on recharts, chart tokens 1–4; solid points with no outline"
+      "note": "the design system's Chart on recharts, chart tokens 1–4; solid points with no outline; its SVG is the one tab stop (recharts' keyboard layer, role application: the arrow keys move the tooltip), named by label and described by summary (hidden text, read once)"
     },
     "Heatmap": {
       "status": "bespoke",

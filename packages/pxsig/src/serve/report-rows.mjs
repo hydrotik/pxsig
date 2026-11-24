@@ -19,9 +19,17 @@ import { driftSummary, warnAt } from '../lib/drift.mjs';
  * @param {Map<string, CheckRow>} [fresh]
  * @param {CheckTiming | null} [timing]
  * @param {Record<string, EnvRecord> | null} [envs]
+ * @param {Record<string, unknown> | null} [keys] top-level keys a compared check sets (`affected`, `react`)
  * @returns {Written} the report as written, and the ids of the rows it dropped
  */
-export function updateCheckRows(S, mut, fresh = new Map(), timing = null, envs = null) {
+export function updateCheckRows(
+  S,
+  mut,
+  fresh = new Map(),
+  timing = null,
+  envs = null,
+  keys = null
+) {
   // check.json is this server's (or a CLI check's) own file.
   const check = /** @type {CheckReport | null} */ (readJson(S.checkPath, null)) ?? {
     generatedAt: new Date().toISOString(),
@@ -31,6 +39,7 @@ export function updateCheckRows(S, mut, fresh = new Map(), timing = null, envs =
   };
   // Every environment a row names (lib/env.mjs), by id: the fresh rows' and their baselines'.
   if (envs) check.envs = { ...check.envs, ...envs };
+  if (keys) Object.assign(check, keys);
   const seen = new Set(check.rows.map((r) => r.id));
   check.rows = check.rows.map((r) => mut(r) ?? r);
   // Entries added after the last full check have no row yet: append them, or their verdicts are

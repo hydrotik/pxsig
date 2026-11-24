@@ -40,10 +40,11 @@ test('the top bar: the title is the scope (the project label, else the project),
       const m = await modesBeside(page);
       assert.equal(m.inTitle, false);
       assert.match(m.next, /^(Live|Offline)$/, 'the connection badge comes right after');
-      // Versions unknown (null): the contract the page was built against still shows.
+      // Versions unknown (null): the contract the page was built against still shows, then the
+      // fixtures' fixed build (fixtures/scenarios.mjs BUILD), its version unlike the server's.
       assert.match(
         await h1.locator('span[title]').first().getAttribute('title'),
-        /^UI contract \d+\.\d+\.\d+$/
+        /^UI contract \d+\.\d+\.\d+ · build 0123456 for pxsig 0\.0\.0 · design system fedcba9 · adapter hydrotik · built 2026-01-01 00:00 UTC$/
       );
       assert.deepEqual(errors, []);
     } finally {
@@ -67,7 +68,7 @@ test('the top bar: the title is the scope (the project label, else the project),
       // The plain example adapter has no Tooltip: the fallback puts the text in the native title.
       assert.equal(
         await h1.locator('span[title]').first().getAttribute('title'),
-        'pxsig 9.8.7 · engine 9.8.6 · UI contract 1.1.0'
+        'pxsig 9.8.7 · engine 9.8.6 · UI contract 1.1.0 · build 0123456 for pxsig 0.0.0 · design system fedcba9 · adapter hydrotik · built 2026-01-01 00:00 UTC'
       );
       assert.deepEqual(errors, []);
     } finally {
@@ -174,6 +175,25 @@ test('the Overview shows no errors card without errors; one column on a narrow p
       Math.abs(items.x - runs.x) < 1 && runs.y > items.y,
       'one column: the right column follows the left'
     );
+  } finally {
+    await page.close();
+  }
+});
+
+test('the Overview chart is named by its card title and described by a summary of its data (contract 1.9.0)', async (t) => {
+  if (skip) return t.skip(skip);
+  const d = spread(data({ rows: [row('ui-button--ok')], entries: [entry('ui-button--ok')] }));
+  d.history = history(3); // changed entries 0, 1, 2
+  const { page, errors } = await open(d);
+  try {
+    // The example adapter has no Chart of its own: the fallback table takes label and summary.
+    const chart = page.getByRole('table', { name: 'Changed Entries per Run', exact: true });
+    await chart.waitFor();
+    const description = await chart.evaluate(
+      (el) => document.getElementById(el.getAttribute('aria-describedby') ?? '')?.textContent
+    );
+    assert.equal(description, 'Changed entries per run, 3 runs: 0 to 2.');
+    assert.deepEqual(errors, []);
   } finally {
     await page.close();
   }
