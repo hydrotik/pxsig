@@ -361,7 +361,10 @@ runs from disk). Every file is unminified unless `PXSIG_DASHBOARD_MINIFY=1` is s
 them unminified so reviewers can read what runs (packages/dashboard/README.md).
 
 Every build writes `dashboard/BUILD.json` (`scripts/build-record.mjs`), which ships in the
-package: the adapter, the design-system commit with whether its checkout had changes and its
+package: the adapter, the pxsig version, this checkout's commit (`commit`) with whether it had
+uncommitted changes under the paths that feed the build (`dirty`) and their sha256 (`changes`; all
+null outside a git checkout),
+the design-system commit with whether its checkout had changes and its
 `pnpm-lock.yaml` sha256, this repository's lockfile sha256, the Node version, the build time
 (`SOURCE_DATE_EPOCH` when set) and the third-party packages compiled into the bundle with their
 versions and licences. Either way the job checks it (`scripts/check-dashboard-build.mjs`): it must

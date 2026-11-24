@@ -56,7 +56,10 @@ command to run; it never builds by itself. `PXSIG_DASHBOARD_DIR` overrides both,
 by the same pxsig version (`pxsig dashboard build --out <folder>`). A dashboard supports only the
 pxsig version that built it: after upgrading pxsig, run `pxsig dashboard build` again. A build from
 another version, or one that records none, is not served, and `pxsig doctor` reports it
-(`dashboard-stale`).
+(`dashboard-stale`). Run from a git checkout of pxsig, a build that records a commit is also out of
+date when the paths that feed the build differ between that commit and the checkout's HEAD, or its
+uncommitted changes (by fingerprint) are not the checkout's, with the same note and finding; a
+commit that changes none of them leaves the build current; a build from an installed pxsig records none and is compared by version only.
 
 ## An adapter is not a project
 
@@ -84,7 +87,13 @@ How the dashboard finds and loads it:
    `pxsig.workspace.json`. A path to a folder loads its `index.tsx` (or `index.ts`, `index.jsx`,
    `index.js`); `conformance.json` and `vite.mjs` are read from the same folder. Vite and the
    other build tools resolve from the project's `node_modules` or a parent's. The build goes to
-   `node_modules/.cache/pxsig/dashboard` in the project's folder, with a `pxsig-build.json` stamp.
+   `node_modules/.cache/pxsig/dashboard` in the project's folder, with a `pxsig-build.json` stamp:
+   the pxsig version, the adapter (`adapter`: its file relative to the project folder, or a built-in
+   adapter's name; never an absolute path) and its name, the build time and, when pxsig runs from a
+   git checkout of its source, that checkout's commit (`commit`), whether it had uncommitted changes
+   under the paths that feed the build (`dirty`) and their sha256 (`changes`). From an installed
+   pxsig these are null: the build is the
+   release its version names. The dashboard shows them on hover of "pxsig" and at the end of Help.
 2. `pxsig serve` reads `dashboard.ui` from each project it serves and serves the build in the
    folder of the first one (in the order of `projects`) that names an adapter, while that build is
    current. When projects name different adapters, it serves the prebuilt dashboard and prints a
@@ -916,11 +925,21 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 - **Purpose**: bar or line chart (Runs, Diagnostics).
 - **Props**: `kind` (`bar`: horizontal grouped bars, one row per `x` category; `line`: lines over an
   ordered `x`), `data`, `series` (`key`, `label`), `x`, `format`, `max`, `height` (CSS),
-  `className`.
+  `label` (the accessible name: the card's title; since 1.9.0), `summary` (the data in one line of
+  text, "Changed entries per run, 14 runs: 3 to 12."; since 1.9.0), `className`.
 - **Behaviour**: series take your categorical colours in order; a legend when there is more than one
   series; a tooltip on hover; `format` formats the value axis and tooltip.
 - **Accessibility**: the numbers must be reachable without the picture: a tooltip alone is not
-  enough. Give the chart an accessible summary, or a data table on demand.
+  enough. A chart is not a tab stop unless it is interactive, and the dashboard's are: the arrow
+  keys move the tooltip from point to point. So the chart is one tab stop that has the name
+  (`label`) and the description (`summary`, text with the `hidden` attribute tied by `aria-describedby`, so it is read once, as
+  the description, and not again as text),
+  with nothing else in it focusable or unnamed. On recharts 3, keep its keyboard layer
+  (`accessibilityLayer`, on by default: the SVG is the tab stop, `role="application"` so a screen
+  reader passes the arrow keys through) and pass `aria-label` and `aria-describedby` to the chart,
+  which recharts puts on that SVG. Do not wrap it in `role="img"`: an image's children are
+  presentational, so the tab stop cannot sit inside one. The summary is never drawn, so it moves
+  no screen.
 - **Mapping questions**: Do you have a chart component, and on which library? Which tokens are your
   categorical colours?
 - **Points**: mark each point solid, in the series colour with no outline, small enough that the

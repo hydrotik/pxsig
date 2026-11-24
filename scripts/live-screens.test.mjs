@@ -87,6 +87,14 @@ test('the scrub rewrites what varies, and keeps the order of a displayed time', 
     history: [{ at, summary: { elapsedMs: 4 } }],
     storybook: { baseUrl: 'http://127.0.0.1:52601' },
     react: { report: { base: { since: 'main', commit: 'd3bdd51' } } },
+    build: {
+      pxsig: '0.7.7',
+      commit: '3ae2540ba239b5a8fc272fbf7b3a5b7f5a238664',
+      dirty: false,
+      designSystem: { commit: '4142f335fa19cd218c85c932a48bb70d6cde4345', dirty: false },
+      adapter: 'hydrotik',
+      builtAt: at,
+    },
     integrity: null,
   });
   const a = data('2026-11-04T02:40:38.573Z');
@@ -100,6 +108,13 @@ test('the scrub rewrites what varies, and keeps the order of a displayed time', 
   assert.equal(a.storybook.baseUrl, 'http://127.0.0.1:1');
   // The staged base's commit hashes the example's files: a dependency bump must not show.
   assert.equal(a.react.report.base.commit, FIXED_COMMIT);
+  // The served build's identity: every build of the checkout reads the same.
+  assert.deepEqual(
+    [a.build.commit, a.build.designSystem.commit, a.build.builtAt],
+    [FIXED_COMMIT, FIXED_COMMIT, '2026-10-25T12:00:00.000Z']
+  );
+  const release = { ...data('2026-11-04T02:40:38.573Z'), build: { pxsig: '0.7.7', commit: null } };
+  assert.deepEqual(sc.scrub('data', release), [], 'a release build: nothing to rewrite');
 });
 
 test('the scrub is strict: a missing field and a leftover time, port, duration or commit fail', () => {

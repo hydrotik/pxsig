@@ -71,4 +71,4 @@
   - text: No stale entries
   - heading "Changed Entries per Run" [level=3]
   - paragraph: 3 runs.
-  - application: 1 2 3 0 1 2
+  - application "Changed Entries per Run": 1 2 3 0 1 2

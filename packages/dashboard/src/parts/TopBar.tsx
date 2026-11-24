@@ -20,7 +20,7 @@ import {
 } from '@ui';
 import { type Data, type Queue, served, switchProject, useProjects } from '../data';
 import { t } from '../copy';
-import { versionsText } from '../versions';
+import { identityText } from '../versions';
 import { Connection } from './Connection';
 import { DETAILS } from './top-bar-fit';
 import { useTopBarFit } from './useTopBarFit';
@@ -124,8 +124,8 @@ export function TopBar({
       className={b.navbar}
       brand={
         <h1 ref={brand} className={b.brand}>
-          {/* The versions on hover; the Help section shows them as text. */}
-          <Tooltip content={versionsText(data)}>
+          {/* The versions and the build on hover; the Help section shows them as text. */}
+          <Tooltip content={identityText(data)}>
             <span>{mark}</span>
           </Tooltip>
           {label ? (

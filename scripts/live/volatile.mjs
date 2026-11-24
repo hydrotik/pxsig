@@ -83,6 +83,11 @@ export const RULES = {
     { path: 'react.report.generatedAt', kind: 'time', optional: true },
     { path: 'react.report.summary.ms', kind: 'ms', optional: true },
     { path: 'react.report.base.commit', kind: 'commit', optional: true },
+    // The served dashboard build (lib/build-identity.mjs): the checkout's commit, the design
+    // system's, when it was built; none for a release build.
+    { path: 'build.commit', kind: 'commit', optional: true },
+    { path: 'build.designSystem.commit', kind: 'commit', optional: true },
+    { path: 'build.builtAt', kind: 'time', optional: true },
     { path: 'check.rows[].renders.at', kind: 'time', optional: true },
     { path: 'check.rows[].renders.prev.at', kind: 'time', optional: true },
     ...ledger('integrity.', true),

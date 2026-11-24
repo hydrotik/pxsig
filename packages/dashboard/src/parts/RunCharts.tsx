@@ -32,6 +32,11 @@ export function ChangedPerRun({ runs, height }: { runs: HistoryRun[]; height?: n
           x="run"
           series={[{ key: 'failed', label: t('runs.changed.series') }]}
           height={height}
+          label={t('runs.changed.title')}
+          summary={{
+            summary: (v) => t('runs.changed.summary', v),
+            noData: t('runs.changed.noData'),
+          }}
         />
       </CardContent>
     </Card>
