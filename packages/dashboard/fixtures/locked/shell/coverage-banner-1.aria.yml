@@ -26,7 +26,7 @@
   - text: Review required
 - main:
   - heading "Review Stories" [level=2]
-  - alert "Coverage":
+  - region "Coverage":
     - text: "Needs a first approval: 2 entries Registered entries without a baseline. Nothing is approved automatically."
     - button "View components"
     - button "Approve 2 new entries"
