@@ -3172,6 +3172,70 @@
       "a11y": false
     },
     {
+      "id": "live--record-repair-1@dark",
+      "story": "live--record-repair-1",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--record-repair-1@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--record-repair-1@light",
+      "story": "live--record-repair-1",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--record-repair-1@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--record-repair-2@dark",
+      "story": "live--record-repair-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--record-repair-2@dark.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "live--record-repair-2@light",
+      "story": "live--record-repair-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/live/live--record-repair-2@light.psig",
+      "importPath": "../../scripts/live/flows.mjs",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
       "id": "live--offline-1@dark",
       "story": "live--offline-1",
       "mode": "dark",

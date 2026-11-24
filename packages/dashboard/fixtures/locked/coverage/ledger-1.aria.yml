@@ -26,10 +26,11 @@
   - text: Approved
 - main:
   - heading "Coverage" [level=2]
-  - region "Coverage":
-    - text: "1 component with errors · Never checked: 1"
+  - alert "Coverage":
+    - text: "1 error · Never checked: 1"
     - button "View components"
-    - button "Run safe repairs"
+    - text: 1 entry with warnings
+    - button "Run safe repairs · 1 entry"
     - text: Safe repairs register new stories and render them, re-check entries without a usable verdict, and restore baseline images that pass the gate. They do not approve changes or write signatures.
   - text: Components 2 1 with errors Errors 1 Warnings 1 Not registered 0
   - button "Never checked 1"

@@ -24,7 +24,8 @@ import { masksLarge } from '../inspector/masks';
 import { statAffordance } from '../parts/Affordance';
 import { ChangedPerRun } from '../parts/RunCharts';
 import { StaleHeatmap } from '../parts/StaleHeatmap';
-import { CoverageDetails, coverageHasErrors, coverageHeadline } from './Integrity';
+import { coverageShown } from './coverage-findings';
+import { CoverageDetails, coverageHeadline } from './Integrity';
 import { type OpenReact, ReactCard } from './react/OverviewCard';
 import * as s from '../dashboard.css';
 
@@ -75,7 +76,7 @@ function ErrorsCard({
   startReview: (kind: Queue) => void;
 }) {
   const L = data.integrity;
-  const coverage = coverageHasErrors(L);
+  const coverage = coverageShown(data);
   if (!renderErrors.length && !coverage) return null;
   const rows: ErrorRow[] = [
     ...renderErrors.map((r) => ({

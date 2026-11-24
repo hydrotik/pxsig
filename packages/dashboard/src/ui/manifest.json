@@ -74,6 +74,7 @@
         "inspector/side/PixelSection",
         "inspector/side/ReactSection",
         "parts/ReactStrip",
+        "parts/RecordRepair",
         "parts/StaleHeatmap",
         "parts/StoryGrid",
         "parts/TopBar",
@@ -284,6 +285,7 @@
         "inspector/side/ReactSection",
         "parts/Connection",
         "parts/MaskBadges",
+        "parts/RecordRepair",
         "parts/StoryGrid",
         "parts/TopBar",
         "views/Accessibility",
@@ -437,6 +439,7 @@
         "inspector/Inspector",
         "inspector/RejectedNote",
         "inspector/SessionSummary",
+        "views/RepairLinkNote",
         "views/react/CompilerPanel"
       ]
     },

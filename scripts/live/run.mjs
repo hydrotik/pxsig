@@ -11,7 +11,7 @@
  * approving them does, in this scratch store only), `pxsig check --full` again (9 pass, 3 new).
  *
  * Approvals here are clicks on the page of a server this run started, in that scratch store, with a
- * link minted from that server's own CLI token (as `pxsig serve --link` does). Nothing in
+ * link minted from its own CLI token (as `pxsig serve --link` does). Nothing in
  * packages/dashboard/.pxsig is approved or written by a flow. Ports 6006 and 6070 are refused.
  *
  * The engine: the checkout's when PXSIG_LIVE_BIN names a build of it (the screens workflow builds
@@ -44,6 +44,7 @@ import { copyTree } from '../lib/copy-tree.mjs';
 import { FEATURES, STEPS } from './flows.mjs';
 import { assertSafeUrl, DEAD_URL, fetch, idle, startLiveServer } from './server.mjs';
 import { CHANGE, pristineDir, REACT_CHANGE, repo } from './stage.mjs';
+import { stagePair } from './pair.mjs';
 import { sideBySide, themeWorkspace } from './themes.mjs';
 import { scrubber, scrubRoutes } from './volatile.mjs';
 
@@ -168,8 +169,8 @@ async function runOnce({ browser, ws, dashboard, axe, out, log, want, text }) {
     await p.clock.setFixedTime(new Date(FIXED_TIME));
     return p;
   };
-  // Idle, then the data as it now stands, through the scrub: a displayed time's rank counts every
-  // value the server reached, whether or not the page happened to fetch it.
+  // Idle, then the data through the scrub: a displayed time's rank counts every value the server
+  // reached, whether or not the page fetched it.
   const observe = async () => {
     await idle(url);
     const r = await fetch(`${url}/__pxsig/data`, { signal: AbortSignal.timeout(10_000) });
@@ -187,7 +188,6 @@ async function runOnce({ browser, ws, dashboard, axe, out, log, want, text }) {
   /** @param {LiveAction} a */
   const act = async (a) => {
     if (a.link) {
-      // A link minted by this server from its CLI token, as `pxsig serve --link` does.
       const token = readToken(dir, url);
       if (!token) throw new Error('no CLI token for the live server');
       const r = await fetch(`${url}/__pxsig/ticket`, {
@@ -216,7 +216,8 @@ async function runOnce({ browser, ws, dashboard, axe, out, log, want, text }) {
     } else if (a.react) {
       const f = join(dir, REACT_CHANGE.file);
       writeFileSync(f, readFileSync(f, 'utf8').replace(REACT_CHANGE.from, REACT_CHANGE.to));
-    } else if (a.stop) await ((down = true), S.stop());
+    } else if (a.pair) stagePair(dir, a.pair, shEnv);
+    else if (a.stop) await ((down = true), S.stop());
     if (!a.busy && S.proc.exitCode === null && S.proc.signalCode === null) await observe();
   };
   /** @type {ScreenResult[]} */

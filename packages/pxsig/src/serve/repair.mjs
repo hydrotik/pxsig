@@ -3,8 +3,9 @@
  * plan applied, its re-checks going through the server's own queue.
  */
 import { reconcile, writeLedger } from '../lib/integrity.mjs';
-import { applyRepairs, defaultHooks, planRepairs } from '../lib/repair.mjs';
+import { applyRepairs, DASHBOARD_PLAN, defaultHooks, planRepairs } from '../lib/repair.mjs';
 import { enqueue } from './checks.mjs';
+import { integrityEvent } from './integrity.mjs';
 import { httpError } from './http.mjs';
 import { needLock } from './projects.mjs';
 /** @import { ServeContext } from '../types/serve.js' */
@@ -19,11 +20,10 @@ import { needLock } from './projects.mjs';
 export async function repair(srv, S, { apply = false, only: onlySteps, stale = false } = {}) {
   const ledger = await reconcile(S.ctx, { affected: S.affected });
   const plan = planRepairs(ledger, {
+    ...DASHBOARD_PLAN,
     only: Array.isArray(onlySteps)
       ? onlySteps.filter((/** @type {unknown} */ a) => a !== 'prune')
       : undefined,
-    prune: false,
-    server: { up: true },
     stale,
   });
   if (!apply) return { plan };
@@ -52,11 +52,7 @@ export async function repair(srv, S, { apply = false, only: onlySteps, stale = f
     const res = await S.repairing;
     S.integrity = res.ledger;
     writeLedger(S.ctx, res.ledger);
-    srv.broadcast('integrity', {
-      project: S.name,
-      summary: res.ledger.summary,
-      setup: res.ledger.setup,
-    });
+    srv.broadcast('integrity', integrityEvent(S.name, res.ledger));
     srv.broadcast('data', { project: S.name });
     console.log(
       `[serve] ${S.name}: repair: ${res.steps.map((s) => `${s.action} → ${s.result}`).join(' · ') || 'nothing to do'}`

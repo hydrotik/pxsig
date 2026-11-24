@@ -5,7 +5,7 @@
  * GET takes `?project=`, POST a `project` field; either may be left out when the workspace has one
  * project, or when the id / story names its project unambiguously (the Storybook addon sends only
  * ids). Writes are same-origin, or (checks and repairs only) a project's Storybook. Decisions
- * (approve, approve-story, reject, unreview, a11y-*, rejection-dismiss) also need the dashboard link's cookie (a page
+ * (approve, approve-story, reject, unreview, a11y-*, rejection-dismiss, record-repair) also need the dashboard link's cookie (a page
  * opened with the link this server prints) or the CLI's token (`x-pxsig-token`, `pxsig approve
  * apply`): an agent or a script posting to the server, or reading the page, is refused with 403
  * (lib/guard.mjs). A decision's `via` in the log is what it carried (`dashboard` or `cli`); a
@@ -17,6 +17,7 @@ import { notKept } from '../lib/decisions.mjs';
 import { readJson } from '../lib/files.mjs';
 import { drifts } from '../lib/drift.mjs';
 import { filterLedger } from '../lib/integrity.mjs';
+import { repairSummary } from '../lib/repair.mjs';
 import { withoutNotes } from '../lib/rejections.mjs';
 import {
   authorize,
@@ -39,6 +40,7 @@ import { runIntegrity, storyIntegrity } from './integrity.mjs';
 import { projectsList, stateFor } from './projects.mjs';
 import { linked, liveOf, reactRoutes } from './react.mjs';
 import { rejectionRoutes } from './rejections.mjs';
+import { recordRepairRoutes } from './record-repair.mjs';
 import { repair } from './repair.mjs';
 import { approveStory, review } from './review.mjs';
 /** @import { IncomingMessage, ServerResponse } from 'node:http' */
@@ -203,7 +205,14 @@ const table = [
       methods: 'GET',
       stage: 'open',
       project: 'query',
-      run: ({ res, S }) => json(res, 200, buildData(S.P, { live: liveOf(S) })),
+      // `repair`: the dashboard plan's summary, from the server's current ledger (its button);
+      // `storeHeld`: whether this server holds the store lock (without it, writes are refused).
+      run: ({ res, S }) =>
+        json(res, 200, {
+          ...buildData(S.P, { live: liveOf(S) }),
+          repair: S.integrity ? repairSummary(S.integrity) : null,
+          storeHeld: !!S.lock,
+        }),
     },
   ],
   // GET /__pxsig/integrity?project= (also /api/integrity): the ledger; story, component, status, fresh
@@ -388,6 +397,8 @@ const table = [
   ...rejectionRoutes,
   // gate-report, gate-report/self-check (serve/gate-report.mjs)
   ...gateReportRoutes,
+  // record-repair-plan, record-repair (serve/record-repair.mjs)
+  ...recordRepairRoutes,
 ];
 /** The routes by action: `create.mjs` copies them into `srv.routes`. */
 export const routes = new Map(table);

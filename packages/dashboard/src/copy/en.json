@@ -347,13 +347,14 @@
   },
   "coverage": {
     "headline": {
-      "error": {
-        "one": "{count} component with errors",
-        "other": "{count} components with errors"
+      "errors": {
+        "one": "{count} error",
+        "other": "{count} errors"
       },
-      "warn": {
-        "one": "No errors. {count} component with warnings.",
-        "other": "No errors. {count} components with warnings."
+      "noErrors": "No errors",
+      "warnings": {
+        "one": "{count} warning",
+        "other": "{count} warnings"
       },
       "clean": "No coverage issues.",
       "code": "{title}: {count}"
@@ -361,8 +362,17 @@
     "banner": {
       "label": "Coverage",
       "viewComponents": "View components",
-      "repair": "Run safe repairs",
+      "entryWarnings": {
+        "one": "{count} entry with warnings",
+        "other": "{count} entries with warnings"
+      },
+      "repair": {
+        "one": "Run safe repairs · {count} entry",
+        "other": "Run safe repairs · {count} entries"
+      },
       "repairing": "Repairing…",
+      "storeHeld": "Read only: the store is held by another pxsig process. Repairs run there.",
+      "readOnly": "Read only: repairs need the dashboard link. In a terminal, in the {folder} folder (where pxsig serve runs):",
       "repairNote": "Safe repairs register new stories and render them, re-check entries without a usable verdict, and restore baseline images that pass the gate. They do not approve changes or write signatures.",
       "nothing": "No issues can be repaired automatically.",
       "failed": "Repair failed: {error}",
@@ -379,6 +389,29 @@
         "one": "{count} orphaned baseline. To move it to the store's trash/ folder, run {command} in a terminal.",
         "other": "{count} orphaned baselines. To move them to the store's trash/ folder, run {command} in a terminal."
       }
+    },
+    "recordRepair": {
+      "title": "Repair Baseline Records",
+      "list": "Repair baseline records",
+      "listing": "Listing…",
+      "note": "Lists the baselines whose record and image differ, and which may have their record written again from their own image. Nothing is written before a confirm.",
+      "needsLink": "Needs the dashboard link: open the link pxsig serve printed.",
+      "summary": "{count} records differ from their image · {eligible} eligible · {others} not eligible",
+      "imageAlt": "Baseline image of {id}",
+      "qualifies": "Record and image differ · the latest render is this image · passes without the colour rule · approved only by pxsig migrate",
+      "notEligible": {
+        "one": "{count} not eligible",
+        "other": "{count} not eligible"
+      },
+      "reviewOthers": "Review each in the inspector, or list the reasons with pxsig approve repair-records.",
+      "confirm": {
+        "one": "Repair {count} record",
+        "other": "Repair {count} records"
+      },
+      "repairing": "Repairing…",
+      "cancel": "Cancel",
+      "done": "Repaired {count} · not written {skipped} · batch {batch}",
+      "failed": "Repair failed: {error}"
     },
     "stats": {
       "label": "Coverage summary",
@@ -566,6 +599,50 @@
       "review-order": {
         "title": "Review order unreadable",
         "help": "approvals.reviewOrder names a file that is missing or not JSON: the review queue is ordered by component name."
+      },
+      "store-conflict": {
+        "title": "Store files conflicted",
+        "help": "A merge or rebase left conflicted files in the store. Resolve them before checking or approving again."
+      },
+      "line-endings": {
+        "title": "Line endings not fixed",
+        "help": "Store records were checked out with CRLF line endings, or git does not treat .psig files as binary. The store's .gitattributes fixes both."
+      },
+      "log-torn": {
+        "title": "Approval log lines cut short",
+        "help": "A crash cut approval-log lines short. They are left out of every reading; a person removes them at a terminal."
+      },
+      "verify-unlogged": {
+        "title": "Baselines without an approval line",
+        "help": "Baselines with no line in the approval log: approve verify fails on them. Baselines from before the log are adopted once at a terminal."
+      },
+      "reports-not-ignored": {
+        "title": "Reports folder not ignored",
+        "help": "The store's reports/ folder is not git-ignored, so decision reasons, rejection notes and rejection packets are not kept."
+      },
+      "approvals-identity": {
+        "title": "Unused identity setting",
+        "help": "approvals.identity is no longer read: log lines carry a decision reference, never a name. The key can be removed."
+      },
+      "log-legacy-personal": {
+        "title": "Older log lines with reasons",
+        "help": "Approval-log lines written before 0.7.6 carry a reason or a git email. New lines carry neither; the log is append-only, so old lines stay."
+      },
+      "path-portability": {
+        "title": "Baseline paths not portable",
+        "help": "Baseline paths that Windows cannot check out, or that differ only in case."
+      },
+      "dashboard-stale": {
+        "title": "Dashboard build out of date",
+        "help": "The prebuilt dashboard is from another pxsig version, and the server serves it instead. Rebuilding it fixes this."
+      },
+      "version-required": {
+        "title": "Version outside the workspace range",
+        "help": "A package in the workspace uses a pxsig version outside the workspace's requires range."
+      },
+      "baseline-pair-mismatch": {
+        "title": "Record and image differ",
+        "help": "Baselines whose record and image come from different renders: the gate reads the record, the inspector shows the image. Repair baseline records writes the eligible records again from their own images; the others are reviewed one entry at a time."
       }
     }
   },

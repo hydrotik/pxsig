@@ -1,0 +1,97 @@
+- navigation "Report sections":
+  - heading "pxsig • example-single" [level=1]
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: "#overview"
+    - listitem:
+      - link "Review Stories, 2 to review":
+        - /url: "#stories"
+        - text: Review Stories
+    - listitem:
+      - link "Coverage":
+        - /url: "#integrity"
+    - listitem:
+      - link "Accessibility":
+        - /url: "#a11y"
+    - listitem:
+      - link "Runs, 8 runs":
+        - /url: "#history"
+        - text: Runs
+    - listitem:
+      - link "Diagnostics":
+        - /url: "#diagnostics"
+    - listitem:
+      - link "Help":
+        - /url: "#help"
+  - button "Review 2 changes"
+  - text: Live · last check 10/25/2026, 11:07:00 AM Can approve
+  - button "Light theme"
+- main:
+  - heading "Overview" [level=2]
+  - text: Checked 12 light · dark Passed 10
+  - button "Changed 2"
+  - button "Flaky 0"
+  - button "New a11y 0 of 0 violations"
+  - text: Duration 1.0 s 1.0 s rendering
+  - heading "Open Items" [level=3]
+  - grid "Data grid":
+    - rowgroup:
+      - row "Item Count Action":
+        - columnheader "Item":
+          - button "Item"
+          - separator "Resize Item column"
+        - columnheader "Count":
+          - button "Count"
+          - separator "Resize Count column"
+        - columnheader "Action":
+          - text: Action
+          - separator "Resize Action column"
+    - rowgroup:
+      - row "Changed, awaiting review light 1 · dark 1 2 Start review":
+        - gridcell "Changed, awaiting review light 1 · dark 1"
+        - gridcell "2"
+        - gridcell "Start review":
+          - button "Start review"
+      - row "New, no baseline 0":
+        - gridcell "New, no baseline"
+        - gridcell "0"
+        - gridcell
+      - row "Rejected, awaiting a fix 0":
+        - gridcell "Rejected, awaiting a fix"
+        - gridcell "0"
+        - gridcell
+      - row "Render errors 0":
+        - gridcell "Render errors"
+        - gridcell "0"
+        - gridcell
+      - row "Components with coverage errors 0":
+        - gridcell "Components with coverage errors"
+        - gridcell "0"
+        - gridcell
+      - row "Entries with new a11y violations 0":
+        - gridcell "Entries with new a11y violations"
+        - gridcell "0"
+        - gridcell
+      - row "Flaky 0":
+        - gridcell "Flaky"
+        - gridcell "0"
+        - gridcell
+  - status
+  - heading "Stale Entries by Component" [level=3]
+  - text: No stale entries
+  - heading "Errors" [level=3]
+  - paragraph: No errors · 1 warning
+  - strong: Baselines without an approval line
+  - text: "· 8 baselines have no approval log line (components-badge--neutral, components-badge--success, components-badge--danger, …): `pxsig approve verify` fails on them (strict by default since 0.4.0). For baselines from before pxsig kept a log, a person runs `pxsig approve verify --adopt` once; `--no-strict` only reports them"
+  - button "Repair baseline records" [disabled]
+  - text: Lists the baselines whose record and image differ, and which may have their record written again from their own image. Nothing is written before a confirm. Repaired 1 · not written 0 · batch 2026-10-25T12-00-00-000Z-dashboard
+  - heading "React" [level=3]
+  - paragraph: Alerts only, not blocking. From the analysis at 10/25/2026, 12:00:00 PM · base main (0000000) · 1 file changed since
+  - button "Newly skipped 1"
+  - button "Findings 0 new · of 0"
+  - button "Compiled 0 of 1 analysed"
+  - text: Still rendering — Not measured
+  - heading "Changed Entries per Run" [level=3]
+  - paragraph: 8 runs.
+  - application "Changed Entries per Run": 1 2 3 4 5 6 7 8 0 6 12
