@@ -37,6 +37,7 @@ import {
   repairEntries,
 } from './coverage-findings';
 import { StaleHeatmap } from '../parts/StaleHeatmap';
+import { RecordRepair } from '../parts/RecordRepair';
 import { RepairLinkNote, useReadOnly } from './RepairLinkNote';
 import * as s from '../dashboard.css';
 
@@ -115,7 +116,6 @@ export function CoverageDetails({
   const orphans = L.summary.byCode.orphaned ?? 0;
   // New entries already rendered can be approved now; the rest need a render first (the repair).
   const toApprove = reviewQueue(data, 'new').filter((r) => !data.review[r.id]).length;
-  // The server's plan for this ledger: no step, no button (nothing it could do).
   const repairable = repairEntries(data);
   const viewAll = concernsComponents(L);
   const warned = headlineCounts(L).entryWarnings;
@@ -143,6 +143,7 @@ export function CoverageDetails({
           <strong>{codeCopy(x.code).title}</strong> · {x.reason}
         </span>
       ))}
+      <RecordRepair data={data} />
       {firsts ? (
         <span className={s.row}>
           {shown ? (

@@ -5,6 +5,7 @@
     "approve apply",
     "approve undo",
     "approve verify --adopt",
+    "approve repair-records --yes",
     "a11y --prune",
     "doctor --repair --apply --prune",
     "doctor --repair --only log-torn --apply",
@@ -708,7 +709,7 @@
     },
     "approve": {
       "summary": "The guarded way to accept many changes at once: plan, then a person applies. Every approval is logged.",
-      "usage": ["pxsig approve plan|apply|log|undo|verify"],
+      "usage": ["pxsig approve plan|apply|log|undo|verify|repair-records"],
       "subcommands": {
         "plan": {
           "summary": "Classify each selected change as colour or shape, block shape changes and stale verdicts, pin every render's hash, write approval-plan.json. Safe for anyone.",
@@ -880,6 +881,37 @@
             {
               "cmd": "pxsig approve verify --all-suites --since origin/main",
               "shows": "The CI step: every suite, and the log only appended to in this pull request"
+            }
+          ]
+        },
+        "repair-records": {
+          "summary": "Baselines whose record and image come from different renders: lists which may have their record written again from their own image and why, and which may not and why. --yes writes the eligible ones (a person at a terminal); it approves no change.",
+          "usage": ["pxsig approve repair-records [--dry-run | --yes]"],
+          "flags": [
+            {
+              "name": "dry-run",
+              "meaning": "List and keep the list as the plan, write no baseline (the default). Anyone may run it, assistants included."
+            },
+            {
+              "name": "yes",
+              "meaning": "Write the listed entries that are still eligible with the bytes they had when listed (a list from the last 24 h). A person at a terminal; takes the store lock."
+            }
+          ],
+          "effects": ["writes-store", "writes-baselines (--yes)", "needs-a-person (--yes)"],
+          "exits": {
+            "0": "Listed, or every listed entry written",
+            "1": "A listed entry was not written (no longer eligible, changed since it was listed, or refused), or no list to apply",
+            "2": "Usage or setup error (the engine is not built or too old), or the store lock is held",
+            "3": "--yes without a person at a terminal"
+          },
+          "examples": [
+            {
+              "cmd": "pxsig approve repair-records",
+              "shows": "Which mismatched records may be written again from their images, and why"
+            },
+            {
+              "cmd": "pxsig approve repair-records --yes",
+              "shows": "Write them, one logged batch that approves no change"
             }
           ]
         }

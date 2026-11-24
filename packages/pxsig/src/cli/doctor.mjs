@@ -11,6 +11,7 @@ import { preflightReport } from './preflight.mjs';
 import { textSuffix } from '../lib/text/say.mjs';
 import { maskLine, maskTable } from '../lib/capture/doctor.mjs';
 import { driftCell } from '../lib/drift.mjs';
+import { pairBlocks } from '../lib/integrity/pairs.mjs';
 import {
   appendReadiness,
   describeEnforcement,
@@ -267,6 +268,7 @@ export function doctorParts(cli) {
           tone: x.severity === 'error' ? 'bad' : 'warn',
         })
       ),
+      ...pairBlocks(r.setup),
       ...[...r.react, ...r.text]
         .filter((x) => x.severity === 'warn')
         .map((x) => ({ note: `${x.code} — ${x.text}`, tone: 'warn' })),

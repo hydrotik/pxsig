@@ -70,6 +70,11 @@ export function History({ data }: { data: Data }) {
               x="run"
               format={(v) => `${v} ms`}
               series={[{ key: 'engine', label: t('runs.engine.series') }]}
+              label={t('runs.engine.title')}
+              summary={{
+                summary: (v) => t('runs.engine.summary', v),
+                noData: t('runs.engine.noData'),
+              }}
             />
           </CardContent>
         </Card>

@@ -10,6 +10,8 @@
 //! - `report` — Markdown (PR comment) / JUnit from a check result;
 //! - `pack` / `cat` / `attach` — build `.psig` baselines from spec v1 records, print a header
 //!   (git's textconv), add a baseline image without touching the signature;
+//! - `pairs` / `rerecord` — check each baseline's record against its own image, and write a
+//!   record again from its image (`cmd_pairs.rs`);
 //! - `react-plan` / `react-diff` — React analysis: what to compile, then base vs now per function;
 //! - `serve` — the engine as a stdio JSON-RPC daemon;
 //! - `detail-sweep` — raw material for calibrating the detail channel.
@@ -19,6 +21,7 @@
 mod affected;
 mod batch;
 mod cmd_check;
+mod cmd_pairs;
 mod cmd_store;
 mod gate;
 mod io;
@@ -228,6 +231,35 @@ enum Cmd {
         #[arg(long)]
         json: bool,
     },
+    /// Each `.psig` baseline's record against its own image: the image captured at the record's
+    /// grid, and whether it has the record's sha256 (`match`). JSON on stdout.
+    /// `--manifest` reads its `.psig` entries; `--plan [{ id, sig, image? }]` reads those records
+    /// (a `.psig` or a spec v1 `.pxsig.json`), each against `image` when given.
+    Pairs {
+        #[arg(long, conflicts_with = "plan")]
+        manifest: Option<PathBuf>,
+        #[arg(long)]
+        plan: Option<PathBuf>,
+        #[arg(long, env = "PXSIG_ROOT")]
+        root: Option<PathBuf>,
+        /// Only these entries: `a,b` or `@file`.
+        #[arg(long)]
+        only: Option<String>,
+        /// Also hash each entry's `<png-dir>/<id>.png` pixel for pixel (`latestPixels`).
+        #[arg(long)]
+        png_dir: Option<PathBuf>,
+    },
+    /// Write records again from their own baseline images (`--plan [{ id, expect }]`, `expect`
+    /// the file's sha256 when planned). The image, masks, header keys and sections stay as they
+    /// were; a changed file, one without an image or one whose record matches is refused.
+    Rerecord {
+        #[arg(long)]
+        manifest: PathBuf,
+        #[arg(long, env = "PXSIG_ROOT")]
+        root: Option<PathBuf>,
+        #[arg(long)]
+        plan: PathBuf,
+    },
     /// React analysis, step 1: the changed module files to compile, each side's hash and cache hit.
     ReactPlan {
         #[arg(long)]
@@ -411,6 +443,24 @@ fn run(cmd: Cmd) -> anyhow::Result<u8> {
             json,
         } => cmd_pack(sig, out, image, entry, plan, json),
         Cmd::Attach { psig, png, json } => cmd_attach(&psig, &png, json),
+        Cmd::Pairs {
+            manifest,
+            plan,
+            root,
+            only,
+            png_dir,
+        } => cmd_pairs::cmd_pairs(cmd_pairs::PairsArgs {
+            manifest: manifest.as_deref(),
+            plan: plan.as_deref(),
+            root,
+            only: only.as_deref(),
+            png_dir: png_dir.as_deref(),
+        }),
+        Cmd::Rerecord {
+            manifest,
+            root,
+            plan,
+        } => cmd_pairs::cmd_rerecord(&manifest, root, &plan),
         Cmd::ReactPlan {
             manifest,
             root,

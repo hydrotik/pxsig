@@ -390,6 +390,29 @@
         "other": "{count} orphaned baselines. To move them to the store's trash/ folder, run {command} in a terminal."
       }
     },
+    "recordRepair": {
+      "title": "Repair Baseline Records",
+      "list": "Repair baseline records",
+      "listing": "Listing…",
+      "note": "Lists the baselines whose record and image differ, and which may have their record written again from their own image. Nothing is written before a confirm.",
+      "needsLink": "Needs the dashboard link: open the link pxsig serve printed.",
+      "summary": "{count} records differ from their image · {eligible} eligible · {others} not eligible",
+      "imageAlt": "Baseline image of {id}",
+      "qualifies": "Record and image differ · the latest render is this image · passes without the colour rule · approved only by pxsig migrate",
+      "notEligible": {
+        "one": "{count} not eligible",
+        "other": "{count} not eligible"
+      },
+      "reviewOthers": "Review each in the inspector, or list the reasons with pxsig approve repair-records.",
+      "confirm": {
+        "one": "Repair {count} record",
+        "other": "Repair {count} records"
+      },
+      "repairing": "Repairing…",
+      "cancel": "Cancel",
+      "done": "Repaired {count} · not written {skipped} · batch {batch}",
+      "failed": "Repair failed: {error}"
+    },
     "stats": {
       "label": "Coverage summary",
       "components": "Components",
@@ -616,6 +639,10 @@
       "version-required": {
         "title": "Version outside the workspace range",
         "help": "A package in the workspace uses a pxsig version outside the workspace's requires range."
+      },
+      "baseline-pair-mismatch": {
+        "title": "Record and image differ",
+        "help": "Baselines whose record and image come from different renders: the gate reads the record, the inspector shows the image. Repair baseline records writes the eligible records again from their own images; the others are reviewed one entry at a time."
       }
     }
   },
@@ -669,12 +696,22 @@
         "one": "{count} run.",
         "other": "{count} runs."
       },
-      "series": "Changed"
+      "series": "Changed",
+      "summary": {
+        "one": "Changed entries per run, {count} run: {data}.",
+        "other": "Changed entries per run, {count} runs: {data}."
+      },
+      "noData": "Changed entries per run: no data."
     },
     "engine": {
       "title": "Engine Time per Run",
       "description": "Milliseconds.",
-      "series": "Engine (ms)"
+      "series": "Engine (ms)",
+      "summary": {
+        "one": "Engine time per run, {count} run: {data}.",
+        "other": "Engine time per run, {count} runs: {data}."
+      },
+      "noData": "Engine time per run: no data."
     },
     "table": {
       "title": "Runs",
@@ -702,7 +739,12 @@
       "whole": "Whole-image signature",
       "shipped": "Signature and detail channel",
       "detected": "{detected}/{changed} detected",
-      "falsePositives": "False positives"
+      "falsePositives": "False positives",
+      "summary": {
+        "one": "Detection rate by suite, {count} suite: {data}.",
+        "other": "Detection rate by suite, {count} suites: {data}."
+      },
+      "noData": "Detection rate by suite: no data."
     },
     "scenario": {
       "empty": "No scenario data. Run {command}.",
@@ -760,7 +802,12 @@
       "rule": "Rule",
       "detected": "Detected",
       "detailOnly": "Detail only",
-      "detailKb": "Detail per record (KB)"
+      "detailKb": "Detail per record (KB)",
+      "gridSummary": {
+        "one": "Detection rate by signature grid, {count} grid: {data}.",
+        "other": "Detection rate by signature grid, {count} grids: {data}."
+      },
+      "gridNoData": "Detection rate by signature grid: no data."
     },
     "performance": {
       "empty": "No benchmark data. Run {command}.",
@@ -806,7 +853,11 @@
       "perCallDescription": "Median over {count} entries. The CLI starts a process per compare; {command} keeps one engine running.",
       "perCallSeries": "ms per compare",
       "cli": "CLI process",
-      "server": "Server request"
+      "server": "Server request",
+      "renderSummary": "Render time per story by page count: {data}.",
+      "perCallSummary": "Time per compare: {data}.",
+      "renderNoData": "Render time per story by page count: no data.",
+      "perCallNoData": "Time per compare: no data."
     },
     "react": {
       "parts": "React part",
@@ -1858,6 +1909,14 @@
       "previousPage": "Previous page",
       "nextPage": "Next page",
       "page": "Page {page} of {pages}"
+    },
+    "chart": {
+      "range": "{min} to {max}",
+      "seriesRange": "{series}: {range}",
+      "value": "{name} {value}",
+      "categoryValues": "{category}: {values}",
+      "separator": "; ",
+      "listSeparator": ", "
     }
   }
 }

@@ -28,6 +28,7 @@ import {
 } from 'recharts';
 import type * as C from '../../contract';
 import { alertParts } from './alert';
+import { type ChartA11y, withChartSummary } from './chart-a11y';
 import { oneLineSlider } from './slider';
 import { sidePanel } from './side-panel';
 import { textField } from './text-field';
@@ -521,7 +522,7 @@ const plain = (v: number) => String(v);
 
 const SERIES = [vars.color.chart1, vars.color.chart2, vars.color.chart3, vars.color.chart4];
 
-export function Chart({
+function ChartDrawing({
   kind,
   data,
   series,
@@ -530,14 +531,21 @@ export function Chart({
   max,
   height,
   className,
-}: C.ChartProps) {
+  a11y,
+}: C.ChartProps & { a11y: ChartA11y }) {
   const config = Object.fromEntries(
     series.map((sd, i) => [sd.key, { label: sd.label, color: SERIES[i % SERIES.length] }])
   );
   return (
     <ChartContainer config={config} className={className} style={{ blockSize: height }}>
       {kind === 'bar' ? (
-        <RBarChart data={data} layout="vertical" margin={{ left: 8, right: 24 }} barGap={2}>
+        <RBarChart
+          data={data}
+          layout="vertical"
+          margin={{ left: 8, right: 24 }}
+          barGap={2}
+          {...a11y}
+        >
           <CartesianGrid horizontal={false} />
           <XAxis
             type="number"
@@ -559,7 +567,7 @@ export function Chart({
           ))}
         </RBarChart>
       ) : (
-        <RLineChart data={data} margin={{ left: 8, right: 24, top: 8 }}>
+        <RLineChart data={data} margin={{ left: 8, right: 24, top: 8 }} {...a11y}>
           <CartesianGrid vertical={false} />
           <XAxis dataKey={x} tickLine={false} axisLine={false} />
           <YAxis tickFormatter={format} tickLine={false} axisLine={false} width={48} />
@@ -583,3 +591,6 @@ export function Chart({
     </ChartContainer>
   );
 }
+
+/** The chart's SVG, its one tab stop, named by label and described by summary (chart-a11y.tsx). */
+export const Chart = withChartSummary(ChartDrawing);

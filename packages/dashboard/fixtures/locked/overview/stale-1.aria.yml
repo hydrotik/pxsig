@@ -84,4 +84,4 @@
   - text: Share stale 1–20% 81–100%
   - heading "Changed Entries per Run" [level=3]
   - paragraph: 2 runs.
-  - application: 1 2 0 0.5 1
+  - application "Changed Entries per Run": 1 2 0 0.5 1
