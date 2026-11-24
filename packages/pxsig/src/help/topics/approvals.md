@@ -7,8 +7,14 @@ A baseline changes only when a person accepts it.
   or shape, blocks shape changes and stale verdicts, and pins every render's hash. `pxsig approve
   apply` is then run by a person at a terminal, who types `APPROVE <n> ENTRIES`.
 - **First baselines:** `pxsig approve plan --new --first-baselines`, then `apply`.
+- **Records from another render:** `pxsig approve repair-records` lists the baselines whose record
+  and image come from different renders (`baseline-pair-mismatch` in `pxsig doctor`) and which may
+  have their record written again from their own image; `--yes`, a person at a terminal, writes
+  those. It approves no change: the line's `kind` is `record-repair`, and the others are reviewed
+  one entry at a time.
 
 Commands that need a person (`approve apply`, `approve undo`, `approve verify --adopt`,
+`approve repair-records --yes`,
 `check --full --update`, `a11y --prune`, `doctor --repair --apply --prune`, `doctor --repair --only
 log-torn --apply`, `serve --link`) are refused (exit 3) when output is piped, in CI, or under an assistant's
 marker; the message says which (`pxsig help agents`).

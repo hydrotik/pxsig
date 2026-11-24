@@ -338,7 +338,7 @@ export interface IntegrityLedger {
     };
     report: { generatedAt?: string; rows?: number; missing?: boolean };
   };
-  setup: { code: string; severity: string; reason: string }[];
+  setup: { code: string; severity: string; reason: string; count?: number }[];
   summary: {
     status: 'clean' | 'warnings' | 'attention';
     headline: string;

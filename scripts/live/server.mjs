@@ -68,10 +68,10 @@ export async function startLiveServer({ dir, base, dashboard, env }) {
  * dropping a request. On a fresh connection, a failure is the server's. Rejects as fetch does
  * (`TypeError('fetch failed')` with the cause), so a dropped request is told apart the same way.
  * @param {string} url
- * @param {{ method?: string, headers?: Record<string, string>, signal?: AbortSignal }} [init]
+ * @param {{ method?: string, headers?: Record<string, string>, signal?: AbortSignal, body?: Buffer }} [init]
  * @returns {Promise<Response>}
  */
-export function serverFetch(url, { method = 'GET', headers = {}, signal } = {}) {
+export function serverFetch(url, { method = 'GET', headers = {}, signal, body } = {}) {
   return new Promise((ok, fail) => {
     const lost = (/** @type {Error} */ e) =>
       fail(e.name === 'AbortError' ? e : new TypeError('fetch failed', { cause: e }));
@@ -92,7 +92,7 @@ export function serverFetch(url, { method = 'GET', headers = {}, signal } = {}) 
       });
     });
     req.on('error', lost);
-    req.end();
+    req.end(body);
   });
 }
 
