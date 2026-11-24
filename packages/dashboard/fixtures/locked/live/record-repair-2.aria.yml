@@ -81,14 +81,11 @@
   - heading "Stale Entries by Component" [level=3]
   - text: No stale entries
   - heading "Errors" [level=3]
-  - paragraph: No errors. 1 component with warnings.
-  - strong: verify-unlogged
+  - paragraph: No errors · 1 warning
+  - strong: Baselines without an approval line
   - text: "· 8 baselines have no approval log line (components-badge--neutral, components-badge--success, components-badge--danger, …): `pxsig approve verify` fails on them (strict by default since 0.4.0). For baselines from before pxsig kept a log, a person runs `pxsig approve verify --adopt` once; `--no-strict` only reports them"
   - button "Repair baseline records" [disabled]
   - text: Lists the baselines whose record and image differ, and which may have their record written again from their own image. Nothing is written before a confirm. Repaired 1 · not written 0 · batch 2026-10-25T12-00-00-000Z-dashboard
-  - button "View components"
-  - button "Run safe repairs"
-  - text: Safe repairs register new stories and render them, re-check entries without a usable verdict, and restore baseline images that pass the gate. They do not approve changes or write signatures.
   - heading "React" [level=3]
   - paragraph: Alerts only, not blocking. From the analysis at 10/25/2026, 12:00:00 PM · base main (0000000) · 1 file changed since
   - button "Newly skipped 1"

@@ -84,7 +84,7 @@
   - heading "Errors" [level=3]
   - paragraph: No errors · 1 warning
   - strong: Baselines without an approval line
-  - text: "· 9 baselines have no approval log line (components-badge--neutral, components-badge--success, components-badge--danger, …): `pxsig approve verify` fails on them (strict by default since 0.4.0). For baselines from before pxsig kept a log, a person runs `pxsig approve verify --adopt` once; `--no-strict` only reports them"
+  - text: "· 8 baselines have no approval log line (components-badge--neutral, components-badge--success, components-badge--danger, …): `pxsig approve verify` fails on them (strict by default since 0.4.0). For baselines from before pxsig kept a log, a person runs `pxsig approve verify --adopt` once; `--no-strict` only reports them"
   - heading "React" [level=3]
   - paragraph: Alerts only, not blocking. From the analysis at 10/25/2026, 12:00:00 PM · base main (0000000) · 1 file changed since
   - button "Newly skipped 1"

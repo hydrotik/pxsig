@@ -81,8 +81,8 @@
   - heading "Stale Entries by Component" [level=3]
   - text: No stale entries
   - heading "Errors" [level=3]
-  - paragraph: No errors. 1 component with warnings.
-  - strong: verify-unlogged
+  - paragraph: 1 error · 1 warning
+  - strong: Baselines without an approval line
   - text: "· 8 baselines have no approval log line (components-badge--neutral, components-badge--success, components-badge--danger, …): `pxsig approve verify` fails on them (strict by default since 0.4.0). For baselines from before pxsig kept a log, a person runs `pxsig approve verify --adopt` once; `--no-strict` only reports them"
   - strong: Record and image differ
   - text: "· 1 baselines hold a record and an image from different renders (components-button--primary): the gate reads the record, the inspector shows the image. `pxsig approve repair-records` lists the entries whose record can be written again from their own image (a person at a terminal confirms with --yes; the dashboard has the same action); review each of the others in the dashboard and approve or reject it"
@@ -93,9 +93,6 @@
     - text: components-button--primary Record and image differ · the latest render is this image · passes without the colour rule · approved only by pxsig migrate
     - button "Repair 1 record"
     - button "Cancel"
-  - button "View components"
-  - button "Run safe repairs"
-  - text: Safe repairs register new stories and render them, re-check entries without a usable verdict, and restore baseline images that pass the gate. They do not approve changes or write signatures.
   - heading "React" [level=3]
   - paragraph: Alerts only, not blocking. From the analysis at 10/25/2026, 12:00:00 PM · base main (0000000) · 1 file changed since
   - button "Newly skipped 1"
