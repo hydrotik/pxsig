@@ -1092,10 +1092,14 @@ declare module 'pxsig:hydrotik-design-system' {
   }
   const Badge: React$1.ForwardRefExoticComponent<BadgeProps & React$1.RefAttributes<HTMLSpanElement>>;
   type CountBadgeTone = 'neutral' | 'attention';
+  type CountBadgeEmphasis = 'solid' | 'subtle';
   const Card: React$1.ForwardRefExoticComponent<React$1.HTMLAttributes<HTMLDivElement> & React$1.RefAttributes<HTMLDivElement>>;
   const CardHeader: React$1.ForwardRefExoticComponent<React$1.HTMLAttributes<HTMLDivElement> & React$1.RefAttributes<HTMLDivElement>>;
   const CardTitle: React$1.ForwardRefExoticComponent<React$1.HTMLAttributes<HTMLHeadingElement> & React$1.RefAttributes<HTMLHeadingElement>>;
-  const CardDescription: React$1.ForwardRefExoticComponent<React$1.HTMLAttributes<HTMLParagraphElement> & React$1.RefAttributes<HTMLParagraphElement>>;
+  interface CardDescriptionProps extends React$1.HTMLAttributes<HTMLParagraphElement> {
+    mono?: boolean;
+  }
+  const CardDescription: React$1.ForwardRefExoticComponent<CardDescriptionProps & React$1.RefAttributes<HTMLParagraphElement>>;
   const CardContent: React$1.ForwardRefExoticComponent<React$1.HTMLAttributes<HTMLDivElement> & React$1.RefAttributes<HTMLDivElement>>;
   interface DialogProps {
     open?: boolean;
@@ -1112,16 +1116,20 @@ declare module 'pxsig:hydrotik-design-system' {
     className?: string | undefined;
     showCloseButton?: boolean;
     forceMount?: true | undefined;
+    size?: 'default' | 'full' | undefined;
+    padding?: 'default' | 'none' | undefined;
   }
   const DialogContent: React$1.ForwardRefExoticComponent<DialogContentProps & React$1.RefAttributes<HTMLDivElement>>;
   interface DialogTitleProps extends Omit<React$1.ComponentPropsWithoutRef<typeof DialogTitle$1>, 'className' | 'render'> {
     className?: string | undefined;
     asChild?: boolean;
+    variant?: 'default' | 'code' | undefined;
   }
   const DialogTitle: React$1.ForwardRefExoticComponent<DialogTitleProps & React$1.RefAttributes<HTMLHeadingElement>>;
   interface DialogDescriptionProps extends Omit<React$1.ComponentPropsWithoutRef<typeof DialogDescription$1>, 'className' | 'render'> {
     className?: string | undefined;
     asChild?: boolean;
+    variant?: 'default' | 'micro' | undefined;
   }
   const DialogDescription: React$1.ForwardRefExoticComponent<DialogDescriptionProps & React$1.RefAttributes<HTMLParagraphElement>>;
   interface InputProps extends React$1.InputHTMLAttributes<HTMLInputElement> {
@@ -1876,6 +1884,8 @@ declare module 'pxsig:hydrotik-design-system' {
   const AppShellContent: React$1.ForwardRefExoticComponent<AppShellContentProps & React$1.RefAttributes<HTMLDivElement>>;
   interface ToolbarProps extends React$1.HTMLAttributes<HTMLDivElement> {
     size?: ControlSize;
+    variant?: 'default' | 'bar';
+    align?: 'end' | 'center';
   }
   const Toolbar: React$1.ForwardRefExoticComponent<ToolbarProps & React$1.RefAttributes<HTMLDivElement>>;
   const ToolbarLeft: React$1.ForwardRefExoticComponent<React$1.HTMLAttributes<HTMLDivElement> & React$1.RefAttributes<HTMLDivElement>>;
@@ -1958,6 +1968,7 @@ declare module 'pxsig:hydrotik-design-system' {
     active?: boolean;
     count?: number;
     countTone?: CountBadgeTone;
+    countEmphasis?: CountBadgeEmphasis;
     countLabel?: string;
     keep?: boolean;
   }
@@ -3458,6 +3469,9 @@ declare module 'pxsig:hydrotik-design-system' {
       step3: `var(--${string})`;
       step4: `var(--${string})`;
       step5: `var(--${string})`;
+    };
+    count: {
+      subtleText: `var(--${string})`;
     };
   };
   const colorways: readonly ['air', 'lime'];
