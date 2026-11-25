@@ -205,7 +205,19 @@
           },
           "props": {
             "value": "pxsig check"
-          }
+          },
+          "expect": [
+            {
+              "element": "root/1 <button>",
+              "property": "row-gap",
+              "reason": "hydrotik's base rule `button:has(> svg)` (inline-flex, gap space.2), which the dashboard does not load until the scoped base lands; the button holds one icon, so the gap has no effect. Remove with the scoped base."
+            },
+            {
+              "element": "root/1 <button>",
+              "property": "column-gap",
+              "reason": "hydrotik's base rule `button:has(> svg)` (inline-flex, gap space.2), which the dashboard does not load until the scoped base lands; the button holds one icon, so the gap has no effect. Remove with the scoped base."
+            }
+          ]
         }
       ]
     },
