@@ -164,14 +164,15 @@ function GateReportDialog({ row, onClose }: { row: Row; onClose: () => void }) {
     <Dialog
       open
       onOpenChange={(o) => !o && onClose()}
+      flush
       className={s.reportDialog}
       initialFocus={titleRef}
     >
       <div className={s.reportBody} data-own-keys>
-        <DialogTitle ref={titleRef} tabIndex={-1} className={s.insTitle}>
+        <DialogTitle ref={titleRef} tabIndex={-1} mono className={s.dialogTitleFocusTarget}>
           {t('inspector.report.title')}
         </DialogTitle>
-        <DialogDescription className={`${s.small} ${s.muted}`} style={{ margin: 0 }}>
+        <DialogDescription className={s.reportDescription}>
           {t('inspector.report.description')}
         </DialogDescription>
         <output className={s.small} aria-busy={!check || undefined}>

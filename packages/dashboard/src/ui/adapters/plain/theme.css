@@ -229,6 +229,51 @@
   color: var(--plain-text);
   padding: 0;
 }
+/* The inspector: the viewport less a small margin, a column whose regions scroll. */
+.plain-dialog[data-layout='full'] {
+  inline-size: calc(100% - 1rem);
+  max-inline-size: none;
+  block-size: calc(100% - 1rem);
+  max-block-size: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* The content owns its spacing: a header rule or progress bar runs edge to edge. */
+.plain-dialog[data-flush] {
+  padding: 0;
+  gap: 0;
+}
+/* A title that is an identifier: mono, one line, cut. */
+.plain-dialog h2[data-mono] {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.875rem;
+  line-height: 1.125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plain-dialog-desc {
+  margin: 0;
+  color: var(--plain-muted);
+}
+/* One line of micro caps under a code title. */
+.plain-dialog-desc[data-micro] {
+  min-inline-size: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.5625rem;
+  line-height: 1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plain-card p[data-mono] {
+  font-family: ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
 .plain-dialog::backdrop {
   background: rgb(0 0 0 / 0.4);
 }

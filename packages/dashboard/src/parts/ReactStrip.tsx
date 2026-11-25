@@ -81,7 +81,7 @@ export function ReactStrip({
       <div key="react" className={s.runBar}>
         <strong>{t('app.react.analysing')}</strong>
         <Progress
-          className={s.grow}
+          className={s.progressGrow}
           value={react.running.total ? (react.running.done / react.running.total) * 100 : 0}
           label={t('app.react.progressLabel')}
         />
@@ -137,7 +137,7 @@ export function ReactStrip({
       <div key="measure" className={s.runBar}>
         <strong>{t('app.react.measuring')}</strong>
         <Progress
-          className={s.grow}
+          className={s.progressGrow}
           value={check.progress?.total ? (check.progress.done / check.progress.total) * 100 : 0}
           label={t('app.react.measureLabel')}
         />

@@ -120,6 +120,8 @@ export interface CardTitleProps {
   children: React.ReactNode;
 }
 export interface CardDescriptionProps extends WithClass {
+  /** A description that is a value (a change, an id): mono, tabular figures (since 1.11.0). */
+  mono?: boolean;
   children: React.ReactNode;
 }
 export interface CardContentProps {
@@ -239,16 +241,24 @@ export interface DialogProps extends WithClass {
   onOpenChange: (open: boolean) => void;
   /** The element focused on open (instead of the first control), without showing a focus ring. */
   initialFocus?: React.RefObject<HTMLElement | null>;
+  /** `full`: the viewport less a small margin, a column whose regions scroll (since 1.11.0). */
+  layout?: 'card' | 'full';
+  /** No padding or gap: the content owns its spacing, edge to edge (since 1.11.0). */
+  flush?: boolean;
   children: React.ReactNode;
 }
 /** The dialog's accessible name. Focusable by script when `tabIndex={-1}`. */
 export interface DialogTitleProps extends WithClass {
   tabIndex?: number;
   ref?: React.Ref<HTMLHeadingElement>;
+  /** An identifier as the name: mono, one line, cut with an ellipsis (since 1.11.0). */
+  mono?: boolean;
   children: React.ReactNode;
 }
 export interface DialogDescriptionProps extends WithClass {
   style?: React.CSSProperties;
+  /** One line of micro caps (mono, tracked, muted), cut with an ellipsis (since 1.11.0). */
+  micro?: boolean;
   children: React.ReactNode;
 }
 /** One number on a range, with its label and value shown. */
@@ -290,6 +300,11 @@ export interface SegmentedChoiceProps {
 /** A row of controls sharing one size and one line. */
 export interface ToolbarProps extends WithClass {
   size?: Size;
+  /**
+   * A band heading its region edge to edge: inset padding, a rule under it, the page background,
+   * its groups' items centred (since 1.11.0). Only for a row without labelled fields.
+   */
+  bar?: boolean;
   children: React.ReactNode;
 }
 export interface ToolbarStartProps {

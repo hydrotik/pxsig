@@ -34,10 +34,10 @@ export function SessionSummary({
     .filter(Boolean)
     .join('\n\n');
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()} className={s.summaryDialog}>
+    <Dialog open onOpenChange={(o) => !o && onClose()} flush className={s.summaryDialog}>
       {progress}
       <div className={s.summary}>
-        <DialogTitle className={s.insTitle}>{t('inspector.session.complete')}</DialogTitle>
+        <DialogTitle mono>{t('inspector.session.complete')}</DialogTitle>
         <KeyValueList labelWidth="30%">
           <KeyValueItem
             label={t(a11yMode ? 'inspector.session.accepted' : 'inspector.session.approved', {

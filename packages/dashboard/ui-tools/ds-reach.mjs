@@ -10,6 +10,9 @@
  *               class that a contract component carries.
  *   F (focus)   a `:focus` / `:focus-visible` rule draws one of the shared focus lines
  *               (FOCUS_FRAGMENTS, styles/base.css.ts) and nothing else.
+ * The theme layer (styles/theme-layer.css.ts) is where such a rule may live: its exports pass R, and
+ * its global and focus rules pass G and F, each declared in styles/theme-layer.json
+ * (ui-tools/theme-layer.mjs, rule L).
  * Each finding has a stable id. Findings that predate the check are listed in ds-reach-pending.json,
  * each with what it waits on; a finding not listed fails, and so does a listed one that is gone, so
  * the list only shrinks. Plain data and functions over source text: the check needs no build.
@@ -40,6 +43,9 @@ export const OWN_ATTRS = new Set([
   'data-top-bar',
   'data-volatile',
 ]);
+
+/** The theme layer's stylesheet, under src/ (its declarations: ui-tools/theme-layer.mjs). */
+export const LAYER_FILE = 'styles/theme-layer.css.ts';
 
 /** The shared focus lines a focus rule may draw (styles/base.css.ts). */
 export const FOCUS_FRAGMENTS = new Set(['focusOutline', 'insetFocusOutline', 'twoToneFocus']);
@@ -96,27 +102,35 @@ export const uncomment = (/** @type {string} */ text) =>
  * style, so it cannot be read), plus every globalStyle and focus rule, from each `.css.ts` file.
  */
 export function readSheets(/** @type {string} */ src) {
-  /** @type {Map<string, { file: string, keys: string[] | null, body: string }>} */
+  /** @type {Map<string, { file: string, keys: string[] | null, body: string, layer: boolean }>} */
   const classes = new Map();
   /** @type {{ file: string, selector: string }[]} */
   const globals = [];
   /** @type {{ file: string, where: string, body: string }[]} */
   const focus = [];
   for (const file of walk(src, /\.css\.ts$/, ['ui'])) {
+    const layer = file === LAYER_FILE;
     const text = uncomment(readFileSync(path.join(src, file), 'utf8'));
     for (const m of text.matchAll(/export const (\w+)\s*=\s*(\w+)\(/g)) {
       const at = (m.index ?? 0) + m[0].length - 1;
       const body = balanced(text, at).trim();
       const literal = m[2] === 'style' && body.startsWith('{');
-      classes.set(m[1], { file, keys: literal ? objectKeys(body.slice(1, -1)) : null, body });
+      classes.set(m[1], {
+        file,
+        keys: literal ? objectKeys(body.slice(1, -1)) : null,
+        body,
+        layer,
+      });
     }
     for (const m of text.matchAll(/globalStyle\(\s*/g)) {
       const args = balanced(text, (m.index ?? 0) + m[0].length - 1);
       const sel = /^\s*(`[^`]*`|'[^']*'|"[^"]*"|[\w.]+)/.exec(args)?.[1] ?? args;
+      if (layer) continue;
       globals.push({ file, selector: sel.replace(/^[`'"]|[`'"]$/g, '') });
       if (/:focus/.test(sel)) focus.push({ file, where: sel, body: args.slice(sel.length) });
     }
     for (const m of text.matchAll(/['"]([^'"\n]*:focus[^'"\n]*)['"]\s*:\s*/g)) {
+      if (layer) break;
       const start = (m.index ?? 0) + m[0].length;
       const body =
         text[start] === '{'
@@ -215,9 +229,11 @@ export function dsReachFindings(/** @type {string} */ src, /** @type {Set<string
           const c = classes.get(x);
           const bad = !c
             ? ['(not found)']
-            : c.keys === null
-              ? ['(not a plain style)']
-              : c.keys.filter((k) => !GLUE.has(k));
+            : c.layer
+              ? []
+              : c.keys === null
+                ? ['(not a plain style)']
+                : c.keys.filter((k) => !GLUE.has(k));
           if (bad.length)
             found.set(
               `R:${file}:${name}:${x}`,

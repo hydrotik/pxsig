@@ -76,6 +76,7 @@ import {
 } from './ui-tools/paths.mjs';
 import { adapterCssProblems } from './ui-tools/adapter-css.mjs';
 import { dsReachProblems } from './ui-tools/ds-reach.mjs';
+import { themeLayerProblems } from './ui-tools/theme-layer.mjs';
 import { uiReachProblem } from './ui-tools/imports.mjs';
 
 export {
@@ -149,7 +150,8 @@ function copyExists(messages, key) {
  *     adapter declares it (full or bespoke) and exports it; it maps every token and icon, and
  *     maps props only: no styles of its own, inline styles for layout glue only
  *     (ui-tools/adapter-css.mjs); and no dashboard style changes a design-system element but
- *     the ones listed, each with what it waits on, in ui-tools/ds-reach-pending.json
+ *     the theme layer's, each declared in src/styles/theme-layer.json (ui-tools/theme-layer.mjs),
+ *     and the ones listed, each with what it waits on, in ui-tools/ds-reach-pending.json
  *     (ui-tools/ds-reach.mjs).
  *  4. Every feature names real components, files and copy keys; each component it lists is imported
  *     by one of its files; every view and every contract component belongs to a feature.
@@ -231,6 +233,9 @@ export async function checkAll() {
   );
   for (const p of dsReachProblems(srcDir, new Set(names), pending))
     problems.push(`dashboard: ${p}`);
+  // But the theme layer's, each declared in styles/theme-layer.json (ui-tools/theme-layer.mjs).
+  for (const p of themeLayerProblems(srcDir, path.join(dashboardDir, '.pxsig', 'baselines')))
+    problems.push(`theme layer: ${p}`);
   const declared = readConformance(refDir)?.components ?? {};
   for (const n of names)
     if (!declared[n]) problems.push(`reference adapter: conformance.json has no entry for ${n}`);

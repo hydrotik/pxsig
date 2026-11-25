@@ -168,7 +168,7 @@ export function Scenarios({
           <Card>
             <CardHeader>
               <CardTitle>{sc.title}</CardTitle>
-              <CardDescription className={s.mono}>{sc.change}</CardDescription>
+              <CardDescription mono>{sc.change}</CardDescription>
             </CardHeader>
             <CardContent>
               <StatGroup

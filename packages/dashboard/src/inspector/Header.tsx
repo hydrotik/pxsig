@@ -80,16 +80,35 @@ export function Header({
             ) : null}
           </span>
         </div>
-        <Title ref={titleRef} tabIndex={-1} className={s.insTitle} title={row.id}>
-          {row.id}
-        </Title>
-        <Desc
-          className={`${s.micro} ${s.clip} ${s.insDesc}`}
-          style={{ margin: 0 }}
-          title={desc || undefined}
-        >
-          {desc || '\u00a0'}
-        </Desc>
+        {/* Embedded (no dialog): the dashboard's own heading and line, drawn as the dialog's are. */}
+        {embedded ? (
+          <h2 ref={titleRef} tabIndex={-1} className={s.insTitle} title={row.id}>
+            {row.id}
+          </h2>
+        ) : (
+          <Title
+            ref={titleRef}
+            tabIndex={-1}
+            mono
+            className={s.dialogTitleFocusTarget}
+            title={row.id}
+          >
+            {row.id}
+          </Title>
+        )}
+        {embedded ? (
+          <p
+            className={`${s.micro} ${s.clip} ${s.insDesc}`}
+            style={{ margin: 0 }}
+            title={desc || undefined}
+          >
+            {desc || '\u00a0'}
+          </p>
+        ) : (
+          <Desc micro title={desc || undefined}>
+            {desc || '\u00a0'}
+          </Desc>
+        )}
       </div>
       <div className={s.insActions}>
         {storyNav}

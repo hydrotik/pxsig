@@ -357,12 +357,19 @@ const row: React.CSSProperties = {
   gap: v.space['2'],
 };
 // `data-size`: the size its controls take, for an adapter's stylesheet to apply to its own.
-const Toolbar: F<'Toolbar'> = ({ size, className, children }) => (
+// `bar`: inset padding, a rule under it, the page background (its groups stay bottom-aligned).
+const barStyle: React.CSSProperties = {
+  paddingBlock: v.space['2'],
+  paddingInline: v.space['4'],
+  borderBlockEnd: border,
+  backgroundColor: v.color.background,
+};
+const Toolbar: F<'Toolbar'> = ({ size, bar, className, children }) => (
   <div
     role="toolbar"
     data-size={size}
     className={className}
-    style={{ ...row, justifyContent: 'space-between' }}
+    style={{ ...row, justifyContent: 'space-between', ...(bar ? barStyle : {}) }}
   >
     {children}
   </div>
