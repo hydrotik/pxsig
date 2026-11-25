@@ -5,7 +5,7 @@
   - heading "Report to pxsig" [level=2]
   - paragraph: "A gate report for an issue on hydrotik/pxsig: the text in the shape of the issue form, and one image. The story ID is replaced with entry-1; no paths or user names."
   - status: "Re-rendered on this machine: still fails the gate."
-  - alert "Public": Public This goes in a public GitHub issue on hydrotik/pxsig. Anyone can see it, and it can't be fully removed. Copy it only if the images show nothing confidential.
+  - region "Public": Public This goes in a public GitHub issue on hydrotik/pxsig. Anyone can see it, and it can't be fully removed. Copy it only if the images show nothing confidential.
   - switch "Full capture instead of the changed regions"
   - text: Full capture
   - switch "Keep the story ID instead of entry-1"

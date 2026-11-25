@@ -27,7 +27,7 @@ import {
   served,
 } from '../data';
 import { Cmd, codeCopy, t, tx } from '../copy';
-import { Affordance } from '../parts/Affordance';
+import { statAffordance } from '../parts/Affordance';
 import {
   concernsComponents,
   coverageFindings,
@@ -357,7 +357,7 @@ export function Integrity({
                   tone: c === 'unbaselined' ? ('warning' as const) : ('danger' as const),
                   active: code === c,
                   onSelect: () => (setOnly(null), setCode(code === c ? null : c)),
-                  icon: <Affordance kind="filter" />,
+                  ...statAffordance('filter'),
                 }
               : { label: codeCopy(c).title, value: 0 }
           ),
@@ -375,7 +375,7 @@ export function Integrity({
                     : {}),
                   active: queued,
                   onSelect: () => (setOnly(null), setCode(queued ? null : 'unreviewed')),
-                  icon: <Affordance kind="filter" />,
+                  ...statAffordance('filter'),
                 },
               ]
             : []),

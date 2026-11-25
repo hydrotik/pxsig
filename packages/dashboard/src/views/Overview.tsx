@@ -21,7 +21,7 @@ import {
 } from '../data';
 import { Cmd, codeCopy, t, tx, type CopyKey } from '../copy';
 import { masksLarge } from '../inspector/masks';
-import { Affordance } from '../parts/Affordance';
+import { statAffordance } from '../parts/Affordance';
 import { ChangedPerRun } from '../parts/RunCharts';
 import { StaleHeatmap } from '../parts/StaleHeatmap';
 import { coverageShown } from './coverage-findings';
@@ -341,14 +341,14 @@ export function Overview({
               value: changed.length,
               tone: changed.length ? 'danger' : undefined,
               onSelect: () => review('changed'),
-              icon: <Affordance kind="navigate" />,
+              ...statAffordance('navigate'),
             },
             {
               label: t('overview.cards.flaky'),
               value: sm.flaky,
               tone: sm.flaky ? 'warning' : undefined,
               onSelect: () => go('stories', 'flaky'),
-              icon: <Affordance kind="navigate" />,
+              ...statAffordance('navigate'),
             },
             {
               label: t('overview.cards.a11y'),
@@ -356,7 +356,7 @@ export function Overview({
               unit: t('overview.cards.a11yOf', { count: sm.a11yViolations }),
               tone: sm.a11yNew ? 'danger' : undefined,
               onSelect: () => (served ? startReview('a11y') : go('a11y')),
-              icon: <Affordance kind="navigate" />,
+              ...statAffordance('navigate'),
             },
             // Wall clock for the whole check; rendering in the browser is nearly all of it.
             {

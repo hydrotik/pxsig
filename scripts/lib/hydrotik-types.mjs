@@ -27,6 +27,7 @@ const MODULES = {
   '@hydrotik/design-system/chart': ['@hydrotik/design-system', 'dist/chart.d.mts'],
   '@hydrotik/design-system/fonts': ['@hydrotik/design-system', 'dist/fonts.d.mts'],
   '@hydrotik/design-system/styles': ['@hydrotik/design-system', 'dist/styles.d.mts'],
+  '@hydrotik/design-system/styles/scoped': ['@hydrotik/design-system', 'dist/styles-scoped.d.mts'],
   '@hydrotik/theme-provider': ['@hydrotik/theme-provider', 'dist/index.d.mts'],
   '@hydrotik/tokens': ['@hydrotik/tokens', 'dist/index.d.mts'],
 };

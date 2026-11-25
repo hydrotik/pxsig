@@ -362,7 +362,7 @@ literal colour does not switch with it.
 | `fontSize`                                  | `3xs`, `2xs`, `xs`, `sm`, `lg`                                                                                                      | micro labels to section titles                                                                                       |
 | `fontWeight`, `lineHeight`, `letterSpacing` | `semibold`, `relaxed`, `caps`                                                                                                       | headings, running text, tracked caps                                                                                 |
 | `line`                                      | `emphasis`                                                                                                                          | the verdict edge on a card (2px in the reference)                                                                    |
-| `motion`                                    | `fast`                                                                                                                              | hover colour changes (120ms in the reference)                                                                        |
+| `motion`                                    | `fast`                                                                                                                              | hover colour changes (100ms in the reference)                                                                        |
 
 Mapping questions: Which of your variables switch with the theme? Which of your surfaces is a
 card and which a page? Is your accent accessible on both backgrounds?
@@ -553,14 +553,16 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 ### `StatGroup`
 
 - **Purpose**: a row of key figures; some are buttons that filter or navigate.
-- **Props**: `label`, `items` (`label`, `value`, `unit`, `tone`, `onSelect`, `active`, `icon`),
-  `layout` (`cards` default, `strip`: one band inside a card), `className`.
+- **Props**: `label`, `items` (`label`, `value`, `unit`, `tone`, `onSelect`, `active`, `icon`,
+  `affordance` since 1.10.0), `layout` (`cards` default, `strip`: one band inside a card),
+  `className`.
 - **Behaviour**: items wrap; a `tone` colours the value, never the label, the tile's background
   or its borders (R4); since 1.8.0 the tile may also have a start edge (a border on its
   inline-start side, or a `::before` / `::after` at most 4px wide) in the tone's own colour, as
   the reference adapter draws its design system's accent edge; the label is a micro label in
   capitals (R3); an item with `onSelect` is a button (`active` is pressed); `icon` sits in its
-  corner.
+  corner. A stat card that draws its own corner arrow draws it from `affordance` (`filter`:
+  down-left, `link`: up-right) instead of `icon`.
 - **Accessibility**: a region named by `label`; selectable items are buttons with `aria-pressed`
   when they filter. A value that a unit follows arrives ending in a space that is read, not drawn,
   so a tile's name keeps them apart ("Findings 1 new · of 1"): render `value` as given.

@@ -1,23 +1,30 @@
 /**
- * The reference adapter's Badge and StatGroup, which show a tone as R4 in the UI contract allows:
- * a badge as the design system draws it (`success`, `warning` and `danger` in its tinted variants:
- * a wash, a border and a dot in the tone's colour; `neutral` and `info` in its neutral ones, the
- * text in the tone's colour), and a stat card with its value in the tone's colour (tones.css.ts)
- * and, for `success`, `warning` and `danger`, the StatPanel's accent: a 2px start edge in that
- * tone's colour (R4 allows it for stat cards since 1.8.0). index.tsx passes the design-system components in, so every part the adapter
- * uses is named in that one file.
+ * The reference adapter's Badge and StatGroup: each contract tone onto the design system's own
+ * variant, as it draws it. A badge: `success`, `warning` and `danger` its tinted variants, `info`
+ * its `default` (the primary wash), `neutral` its `secondary` (or `outline` for that emphasis). A
+ * stat card: the tone colours its value (StatPanel's `tone`), and for `success`, `warning` and
+ * `danger` StatPanel's accent draws a 2px start edge in that tone's colour (R4 allows it for stat
+ * cards since 1.8.0); StatPanel draws the corner arrow (`affordance`). index.tsx passes the
+ * design-system components in, so every part the adapter uses is named in that one file.
  */
-import React from 'react';
 import type * as DS from '@hydrotik/design-system';
 import type * as C from '../../contract';
-import * as t from './tones.css';
 
-/** A tone the design system has a tinted variant for; it has one look, whatever the emphasis. */
-const BADGE_VARIANT: Partial<Record<C.Tone, 'success' | 'warning' | 'destructive'>> = {
-  success: 'success',
-  warning: 'warning',
-  danger: 'destructive',
-};
+type BadgeVariant = 'default' | 'secondary' | 'outline' | 'success' | 'warning' | 'destructive';
+
+/** Tone (and emphasis, for `neutral`) → the design system's badge variant. */
+export const badgeVariant = (tone: C.Tone, emphasis: C.BadgeProps['emphasis']): BadgeVariant =>
+  tone === 'success'
+    ? 'success'
+    : tone === 'warning'
+      ? 'warning'
+      : tone === 'danger'
+        ? 'destructive'
+        : tone === 'info'
+          ? 'default'
+          : emphasis === 'outline'
+            ? 'outline'
+            : 'secondary';
 
 export const toneBadge = (Base: typeof DS.Badge) =>
   function Badge({
@@ -30,19 +37,20 @@ export const toneBadge = (Base: typeof DS.Badge) =>
   }: C.BadgeProps) {
     return (
       <Base
-        variant={BADGE_VARIANT[tone] ?? (emphasis === 'outline' ? 'outline' : 'secondary')}
+        variant={badgeVariant(tone, emphasis)}
         data-tone={tone}
         pulse={pulse}
         title={title}
-        className={[t.badge, className].filter(Boolean).join(' ')}
+        className={className}
       >
         {children}
       </Base>
     );
   };
 
-/** Tone → the StatPanel's value tone; `info` has none there (`infoValue` colours it). */
-const VALUE_TONE: Partial<Record<C.Tone, 'success' | 'warning' | 'destructive'>> = {
+/** Tone → the StatPanel's value tone; `neutral` is none. */
+const VALUE_TONE: Partial<Record<C.Tone, 'info' | 'success' | 'warning' | 'destructive'>> = {
+  info: 'info',
   success: 'success',
   warning: 'warning',
   danger: 'destructive',
@@ -64,7 +72,7 @@ export const toneStatGroup = (Panel: typeof DS.StatPanel) =>
         aria-label={label}
         cards={items.map((it) => ({
           label: it.label,
-          value: it.tone === 'info' ? <span className={t.infoValue}>{it.value}</span> : it.value,
+          value: it.value,
           ...(it.unit !== undefined ? { unit: it.unit } : {}),
           ...(it.tone && VALUE_TONE[it.tone] ? { tone: VALUE_TONE[it.tone] } : {}),
           ...(it.tone && ACCENT[it.tone] ? { accent: ACCENT[it.tone] } : {}),
@@ -73,7 +81,8 @@ export const toneStatGroup = (Panel: typeof DS.StatPanel) =>
                 type: 'filter' as const,
                 onSelect: it.onSelect,
                 ...(it.active !== undefined ? { active: it.active } : {}),
-                icon: it.icon,
+                // The design system draws the corner arrow itself.
+                ...(it.affordance ? { affordance: it.affordance } : { icon: it.icon }),
               }
             : {}),
         }))}

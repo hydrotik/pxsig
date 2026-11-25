@@ -7,8 +7,8 @@
  * The files the adapter uses: there is no committed list of paths (the design system's own
  * docs/llm/pxsig-uses.json names exports, not files), so they are derived from the adapter's
  * imports (scripts/lib/hydrotik-types.mjs `adapterImports`): each name imported from
- * `@hydrotik/design-system[/chart|/styles|/fonts]` is followed through that entry file's
- * `export … from` lines to its folder, and the design system's `src/internal/` (shared helpers), its
+ * `@hydrotik/design-system[/chart|/styles|/styles/scoped|/fonts]` is followed through that entry
+ * file's `export … from` lines, and those of any barrel they lead to, to its folder, and the design system's `src/internal/` (shared helpers), its
  * package.json and the whole `@hydrotik/tokens` and `@hydrotik/theme-provider` packages are always
  * included. A name no entry line accounts for is listed as unresolved. Only the adapter's direct
  * imports are followed: a component's own imports of other components are not.
@@ -32,6 +32,7 @@ const ENTRIES = {
   '@hydrotik/design-system': 'src/index.ts',
   '@hydrotik/design-system/chart': 'src/chart.ts',
   '@hydrotik/design-system/styles': 'src/styles.ts',
+  '@hydrotik/design-system/styles/scoped': 'src/styles-scoped.ts',
   '@hydrotik/design-system/fonts': 'src/fonts.ts',
 };
 
@@ -49,13 +50,69 @@ function target(root, from, spec) {
   return null;
 }
 
-/** The text of a module (a file, or a folder's index). @param {string} abs */
+/** The file of a module: itself, with an extension, or a folder's index. @param {string} abs */
+function moduleFile(abs) {
+  if (existsSync(abs) && statSync(abs).isDirectory())
+    return ['index.ts', 'index.tsx'].map((f) => path.join(abs, f)).find(existsSync) ?? null;
+  return (
+    [abs, `${abs}.ts`, `${abs}.tsx`].find((c) => existsSync(c) && statSync(c).isFile()) ?? null
+  );
+}
+
+/** The text of a module. @param {string} abs */
 function moduleText(abs) {
-  const file =
-    existsSync(abs) && statSync(abs).isDirectory()
-      ? ['index.ts', 'index.tsx'].map((f) => path.join(abs, f)).find(existsSync)
-      : abs;
-  return file && existsSync(file) ? readFileSync(file, 'utf8') : '';
+  const file = moduleFile(abs);
+  return file ? readFileSync(file, 'utf8') : '';
+}
+
+/**
+ * The relative specifier a module's export of `name` comes from: its `export { name } from` line,
+ * else the first `export * from` module that mentions it. `null`: no line accounts for it.
+ * @param {string} text @param {string} file @param {string} name
+ */
+function exportVia(text, file, name) {
+  const named = [
+    ...text.matchAll(/export\s*(?:type\s*)?\{([^}]*)\}\s*from\s*['"](\.[^'"]+)['"]/g),
+  ].find((m) =>
+    m[1]
+      .split(',')
+      .map(
+        (x) =>
+          x
+            .trim()
+            .split(/\s+as\s+/)
+            .pop() ?? ''
+      )
+      .includes(name)
+  )?.[2];
+  if (named) return named;
+  const stars = [...text.matchAll(/export\s*\*\s*from\s*['"](\.[^'"]+)['"]/g)].map((m) => m[1]);
+  return (
+    stars.find((s) =>
+      new RegExp(`\\b${name}\\b`).test(moduleText(path.resolve(path.dirname(file), s)))
+    ) ?? null
+  );
+}
+
+/**
+ * Where `name` is defined, from an entry file: its export lines followed through every barrel
+ * (a module that itself only re-exports it) to the folder or file that is not one.
+ * @param {string} root @param {string} entry @param {string} name
+ */
+function definedIn(root, entry, name) {
+  let file = entry;
+  let found = null;
+  for (let depth = 0; depth < 8; depth++) {
+    const via = exportVia(readFileSync(file, 'utf8'), file, name);
+    if (!via) break;
+    const t = target(root, file, via);
+    if (!t) break;
+    found = t;
+    const next = moduleFile(path.join(root, t));
+    if (!next || statSync(path.join(root, t)).isDirectory()) break;
+    file = next;
+  }
+  return found;
 }
 
 /**
@@ -82,30 +139,9 @@ export function usedPaths(root, imports = adapterImports()) {
     if (!entryRel) continue;
     const entry = path.join(ds, entryRel);
     paths.add(rel(entry));
-    const text = existsSync(entry) ? readFileSync(entry, 'utf8') : '';
-    /** @type {[string[], string][]} */
-    const named = [
-      ...text.matchAll(/export\s*(?:type\s*)?\{([^}]*)\}\s*from\s*['"](\.[^'"]+)['"]/g),
-    ].map((m) => [
-      m[1].split(',').map(
-        (x) =>
-          x
-            .trim()
-            .split(/\s+as\s+/)
-            .pop() ?? ''
-      ),
-      m[2],
-    ]);
-    const stars = [...text.matchAll(/export\s*\*\s*from\s*['"](\.[^'"]+)['"]/g)].map((m) => m[1]);
     for (const name of names.keys()) {
       if (spec === '@hydrotik/design-system' && name === 'Icons') continue; // lucide-react
-      const hit = named.find(([list]) => list.includes(name))?.[1];
-      const via =
-        hit ??
-        stars.find((s) =>
-          new RegExp(`\\b${name}\\b`).test(moduleText(path.resolve(path.dirname(entry), s)))
-        );
-      const t = via ? target(root, entry, via) : null;
+      const t = existsSync(entry) ? definedIn(root, entry, name) : null;
       if (!t) unresolved.push(`${spec}:${name}`);
       else paths.add(statSync(path.join(root, t)).isDirectory() ? `${t}/` : t);
     }

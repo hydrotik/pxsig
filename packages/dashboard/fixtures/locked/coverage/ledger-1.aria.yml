@@ -26,7 +26,7 @@
   - text: Approved
 - main:
   - heading "Coverage" [level=2]
-  - alert "Coverage":
+  - region "Coverage":
     - text: "1 error · Never checked: 1"
     - button "View components"
     - text: 1 entry with warnings

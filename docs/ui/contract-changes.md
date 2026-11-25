@@ -20,6 +20,16 @@ icon without a default. A major version's section starts with its migration note
 a version bump of the right size, or without a section here, fails. After the bump and the
 section, `node scripts/ui.mjs lock` records the new contract.
 
+## 1.10.0
+
+Minor: one optional prop.
+
+- **`StatGroup` item `affordance`** (`filter` | `link`): what selecting the item does, by where the
+  result appears: `filter` filters the current view, `link` goes somewhere else. A design system
+  whose stat card draws its own corner arrow draws it from `affordance`, in place of the item's
+  `icon`. The dashboard passes both. An adapter written for 1.9.0 or earlier keeps working: it
+  draws `icon`, as before.
+
 ## 1.9.0
 
 Minor: two optional props.
