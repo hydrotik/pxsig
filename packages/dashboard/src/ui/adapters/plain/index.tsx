@@ -122,8 +122,10 @@ export const Card = ({ children }: C.CardProps) => (
 );
 export const CardHeader = ({ children }: C.CardHeaderProps) => <header>{children}</header>;
 export const CardTitle = ({ children }: C.CardTitleProps) => <h3>{children}</h3>;
-export const CardDescription = ({ className, children }: C.CardDescriptionProps) => (
-  <p className={className}>{children}</p>
+export const CardDescription = ({ mono, className, children }: C.CardDescriptionProps) => (
+  <p className={className} data-mono={mono ? '' : undefined}>
+    {children}
+  </p>
 );
 export const CardContent = ({ children }: C.CardContentProps) => <div>{children}</div>;
 
@@ -174,7 +176,15 @@ export const Badge = ({
 );
 
 /** A native modal dialog: Esc closes it through onOpenChange(false). */
-export function Dialog({ open, onOpenChange, initialFocus, className, children }: C.DialogProps) {
+export function Dialog({
+  open,
+  onOpenChange,
+  initialFocus,
+  layout,
+  flush,
+  className,
+  children,
+}: C.DialogProps) {
   const ref = React.useRef<HTMLDialogElement>(null);
   React.useEffect(() => {
     const d = ref.current;
@@ -191,6 +201,8 @@ export function Dialog({ open, onOpenChange, initialFocus, className, children }
       ref={ref}
       aria-labelledby={titleId}
       className={['plain-dialog', className].filter(Boolean).join(' ')}
+      data-layout={layout === 'full' ? 'full' : undefined}
+      data-flush={flush ? '' : undefined}
       onCancel={(e) => {
         // Esc closes the top dialog only: a dialog's cancel reaches the dialogs around it in React.
         if (e.target !== e.currentTarget) return;
@@ -203,16 +215,31 @@ export function Dialog({ open, onOpenChange, initialFocus, className, children }
   );
 }
 const DialogTitleId = React.createContext<string | undefined>(undefined);
-export function DialogTitle({ ref, tabIndex, className, children }: C.DialogTitleProps) {
+export function DialogTitle({ ref, tabIndex, mono, className, children }: C.DialogTitleProps) {
   const id = React.useContext(DialogTitleId);
   return (
-    <h2 ref={ref} id={id} tabIndex={tabIndex} className={className}>
+    <h2
+      ref={ref}
+      id={id}
+      tabIndex={tabIndex}
+      className={className}
+      data-mono={mono ? '' : undefined}
+    >
       {children}
     </h2>
   );
 }
-export const DialogDescription = ({ className, style, children }: C.DialogDescriptionProps) => (
-  <p className={className} style={style}>
+export const DialogDescription = ({
+  micro,
+  className,
+  style,
+  children,
+}: C.DialogDescriptionProps) => (
+  <p
+    className={['plain-dialog-desc', className].filter(Boolean).join(' ')}
+    style={style}
+    data-micro={micro ? '' : undefined}
+  >
     {children}
   </p>
 );

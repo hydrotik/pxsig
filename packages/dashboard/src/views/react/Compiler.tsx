@@ -158,7 +158,7 @@ export function Compiler({
       {running ? (
         <div className={s.runBar}>
           <Progress
-            className={s.grow}
+            className={s.progressGrow}
             value={running.total ? (running.done / running.total) * 100 : 0}
             label={t('diagnostics.react.compiler.progressLabel')}
           />

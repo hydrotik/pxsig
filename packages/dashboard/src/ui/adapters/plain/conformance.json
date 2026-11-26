@@ -1,6 +1,6 @@
 {
   "adapter": "plain",
-  "contract": "1.9.0",
+  "contract": "1.11.0",
   "designSystem": "none: semantic HTML and theme.css",
   "topBar": {
     "root": true,
@@ -29,14 +29,17 @@
     "Card": { "status": "full" },
     "CardHeader": { "status": "full" },
     "CardTitle": { "status": "full" },
-    "CardDescription": { "status": "full" },
+    "CardDescription": { "status": "full", "note": "mono in theme.css" },
     "CardContent": { "status": "full" },
     "StatusBadge": { "status": "full", "note": "text glyphs" },
     "Badge": { "status": "full" },
     "Icon": { "status": "bespoke", "note": "Unicode glyphs instead of an icon set" },
-    "Dialog": { "status": "full", "note": "native <dialog> with showModal" },
-    "DialogTitle": { "status": "full" },
-    "DialogDescription": { "status": "full" },
+    "Dialog": {
+      "status": "full",
+      "note": "native <dialog> with showModal; layout and flush in theme.css"
+    },
+    "DialogTitle": { "status": "full", "note": "mono in theme.css" },
+    "DialogDescription": { "status": "full", "note": "micro in theme.css" },
     "Select": { "status": "full", "note": "native <select>" },
     "Kbd": { "status": "full", "note": "native <kbd>" },
     "TextField": { "status": "full", "note": "native <label> and text <input>" },

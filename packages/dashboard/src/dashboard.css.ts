@@ -4,7 +4,8 @@
  * the parts no component covers: the image stage, story thumbnails, the pixel readout. It reads the
  * neutral `--pxsig-*` tokens (./ui/tokens.ts) only, never a design system's variables.
  *
- * The styles live in styles/: base, overview and inspector, re-exported here in that order.
+ * The styles live in styles/: base, the theme layer, overview and inspector, re-exported here in
+ * that order.
  * vanilla-extract emits CSS in module order, and later parts read earlier ones.
  */
 export {
@@ -25,8 +26,13 @@ export {
   lede,
 } from './styles/base.css';
 export {
-  cards,
+  dialogTitleFocusTarget,
+  reportDescription,
   storyCard,
+  progressGrow,
+} from './styles/theme-layer.css';
+export {
+  cards,
   storyCardStatic,
   affordance,
   statCards,
@@ -43,7 +49,6 @@ export {
   scenarioItem,
 } from './styles/overview.css';
 export {
-  inspector,
   insHead,
   insTitle,
   insDesc,
@@ -70,7 +75,6 @@ export {
   helpRow,
   helpDrawing,
   schematic,
-  insToolbar,
   insMain,
   insStageWrap,
   insStage,
@@ -99,7 +103,6 @@ export {
   a11yRule,
   maskMeta,
   maskList,
-  grow,
   fileLink,
   fileLabel,
   sliderCtl,

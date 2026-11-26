@@ -535,10 +535,11 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 ### `CardDescription`
 
 - **Purpose**: a line of muted text under the title.
-- **Props**: `className`, `children` (text, sometimes with `<code>`).
-- **Behaviour**: muted, wraps.
+- **Props**: `mono` (since 1.11.0), `className`, `children` (text, sometimes with `<code>`).
+- **Behaviour**: muted, wraps. `mono`: the description is a value (a change, an id), in the mono
+  face with tabular figures.
 - **Accessibility**: plain text.
-- **Mapping questions**: Does your description take a class (the dashboard sets monospace on one)?
+- **Mapping questions**: Does your description have a mono or code variant?
 - **Acceptance**: a scenario's change description shows in monospace. Required.
 
 ### `CardContent`
@@ -676,30 +677,38 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 ### `Dialog`
 
 - **Purpose**: a modal dialog: the inspector (full screen) and the review summary.
-- **Props**: `open`, `onOpenChange(open)`, `initialFocus` (a ref), `className`, `children`.
+- **Props**: `open`, `onOpenChange(open)`, `initialFocus` (a ref), `layout` and `flush` (since
+  1.11.0), `className`, `children`.
 - **Behaviour**: modal; Esc and the backdrop call `onOpenChange(false)`; no close button of its own
   (the dashboard renders Close). On open, focus `initialFocus` instead of the first control, without
-  a focus ring.
+  a focus ring. `layout="full"` (the inspector): the viewport less `0.5rem` each side, no max size,
+  a flex column that does not scroll itself (its regions do). `flush`: no padding and no gap, so
+  the content's own header rule or progress bar runs edge to edge.
 - **Accessibility**: `role="dialog"`, `aria-modal`, named by its `DialogTitle`; focus is trapped and
   returns on close.
-- **Mapping questions**: Can your dialog hide its close button? Can it be sized to the viewport by a
-  class? How do you choose the element focused on open?
+- **Mapping questions**: Can your dialog hide its close button? Does it have a full-screen size and a
+  no-padding variant? How do you choose the element focused on open?
 - **Acceptance**: opening an entry focuses its title; Esc closes it; Tab never leaves it. Required.
 
 ### `DialogTitle`
 
 - **Purpose**: the dialog's accessible name.
-- **Props**: `ref`, `tabIndex` (the inspector passes `-1` to focus it), `className`, `children`.
-- **Behaviour**, **Accessibility**: a heading that names the dialog (`aria-labelledby`).
-- **Mapping questions**: Does your title forward `ref`?
+- **Props**: `ref`, `tabIndex` (the inspector passes `-1` to focus it), `mono` (since 1.11.0),
+  `className`, `children`.
+- **Behaviour**, **Accessibility**: a heading that names the dialog (`aria-labelledby`). `mono`: the
+  name is an identifier (a story id): the mono face at `fontSize.sm` on an 18px line, one line, cut
+  with an ellipsis, so the header keeps one height.
+- **Mapping questions**: Does your title forward `ref`? Does it have a code or mono variant?
 - **Acceptance**: a screen reader announces the entry id on open. Required.
 
 ### `DialogDescription`
 
 - **Purpose**: the dialog's description (the entry's reasons).
-- **Props**: `className`, `style`, `children`.
-- **Behaviour**, **Accessibility**: as your design system's dialog description.
-- **Mapping questions**: none.
+- **Props**: `micro` (since 1.11.0), `className`, `style`, `children`.
+- **Behaviour**, **Accessibility**: as your design system's dialog description. `micro`: one line
+  of micro caps (mono, `fontSize.3xs`, `letterSpacing.caps`, uppercase, the muted colour, a 16px
+  line), cut with an ellipsis.
+- **Mapping questions**: Does your description have a micro-label or caption variant?
 - **Acceptance**: the reasons show under the id. Required.
 
 ### `Slider`
@@ -754,12 +763,16 @@ accessibility, the questions to answer when mapping, and the acceptance check.
 ### `Toolbar`
 
 - **Purpose**: a row of controls sharing one size and one line.
-- **Props**: `size`, `className`, `children` (`ToolbarStart`, `ToolbarEnd`).
+- **Props**: `size`, `bar` (since 1.11.0), `className`, `children` (`ToolbarStart`, `ToolbarEnd`).
 - **Behaviour**: one line at 1280 CSS px (R1), wrapping only on narrower widths; passes `size` to
   the controls inside, so they share one height (R2). The fallback sets `data-size` on its root for
-  a stylesheet that sizes your controls from it.
+  a stylesheet that sizes your controls from it. `bar` (the inspector's toolbar): a band heading
+  its region edge to edge, padding `space.2` / `space.4`, a 1px rule under it in `color.border`,
+  the page background, the items of its groups centred; the dashboard passes it only on a row
+  without `ToolbarField` labels.
 - **Accessibility**: `role="toolbar"` if your design system adds it.
-- **Mapping questions**: Does your toolbar propagate a size to its controls?
+- **Mapping questions**: Does your toolbar propagate a size to its controls? Does it have a bar or
+  band variant?
 - **Acceptance**: the Stories filters, their labels and the count line up. Optional.
 
 ### `ToolbarStart`

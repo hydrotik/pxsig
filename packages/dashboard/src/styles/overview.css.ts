@@ -2,32 +2,14 @@
 import { globalStyle, style } from '@vanilla-extract/css';
 import { tokens as v } from '../ui/tokens';
 import { checker, focusOutline } from './base.css';
+// The story card itself is declared in the theme layer (L3, its focus halo).
+import { storyCard } from './theme-layer.css';
 
 // --- story cards ------------------------------------------------------------
 export const cards = style({
   display: 'grid',
   gap: v.space['3'],
   gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 15rem), 1fr))',
-});
-export const storyCard = style({
-  all: 'unset',
-  position: 'relative',
-  boxSizing: 'border-box',
-  display: 'flex',
-  flexDirection: 'column',
-  minInlineSize: 0,
-  border: `1px solid ${v.color.border}`,
-  borderRadius: v.radius.lg,
-  backgroundColor: v.color.surface,
-  overflow: 'hidden',
-  cursor: 'pointer',
-  selectors: {
-    '&:hover': { borderColor: v.color.accent },
-    '&:focus-visible': {
-      borderColor: v.color.focus,
-      boxShadow: `0 0 0 3px color-mix(in srgb, ${v.color.focus} 50%, transparent)`,
-    },
-  },
 });
 // A card that is not itself a control (it holds one: the re-check of a render error).
 export const storyCardStatic = style({

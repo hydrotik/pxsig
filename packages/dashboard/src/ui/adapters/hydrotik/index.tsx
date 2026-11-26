@@ -33,8 +33,6 @@ import { oneLineSlider } from './slider';
 import { sidePanel } from './side-panel';
 import { textField } from './text-field';
 import { toneBadge, toneStatGroup } from './tones';
-// After the design system's styles, as before: the top-bar count's quiet look (tones.css.ts).
-import './tones.css';
 export { Heatmap } from './heatmap';
 
 export const name = 'hydrotik';
@@ -77,7 +75,7 @@ export const tokens: C.TokenMap = {
   'fontWeight.semibold': vars.font.weight.semibold,
   'lineHeight.relaxed': vars.font.lineHeight.relaxed,
   'letterSpacing.caps': vars.font.letterSpacing.caps,
-  'line.emphasis': vars.ring.width,
+  'line.emphasis': vars.stroke.accent,
   'motion.fast': vars.motion.duration.fast,
 };
 
@@ -111,14 +109,15 @@ const navItemProps = ({ href, active, count, countTone, countLabel }: C.NavLinkP
   href,
   active,
   count,
-  // `info` asks for action: the design system's attention count, drawn as primary digits on a
-  // neutral pill (tones.css.ts).
+  // `info` asks for action: the design system's attention count, subtle (primary digits on the
+  // neutral count's wash), in the bar and in More.
   countTone:
     countTone === undefined
       ? undefined
       : countTone === 'info'
         ? ('attention' as const)
         : ('neutral' as const),
+  countEmphasis: countTone === 'info' ? ('subtle' as const) : undefined,
   // A count over 99 shows as "99+": the name says so too, so it contains what is on screen.
   countLabel: count !== undefined && count > 99 ? `99+, ${countLabel ?? count}` : countLabel,
 });
@@ -210,8 +209,10 @@ export const CardHeader = ({ children }: C.CardHeaderProps) => (
 export const CardTitle = ({ children }: C.CardTitleProps) => (
   <DS.CardTitle>{children}</DS.CardTitle>
 );
-export const CardDescription = ({ className, children }: C.CardDescriptionProps) => (
-  <DS.CardDescription className={className}>{children}</DS.CardDescription>
+export const CardDescription = ({ mono, className, children }: C.CardDescriptionProps) => (
+  <DS.CardDescription mono={mono} className={className}>
+    {children}
+  </DS.CardDescription>
 );
 export const CardContent = ({ children }: C.CardContentProps) => (
   <DS.CardContent>{children}</DS.CardContent>
@@ -300,10 +301,20 @@ export function Icon({ name, size = ICON_SIZE, className }: C.IconProps) {
 
 // --- controls ------------------------------------------------------------------------------------
 
-export function Dialog({ open, onOpenChange, initialFocus, className, children }: C.DialogProps) {
+export function Dialog({
+  open,
+  onOpenChange,
+  initialFocus,
+  layout,
+  flush,
+  className,
+  children,
+}: C.DialogProps) {
   return (
     <DS.Dialog open={open} onOpenChange={onOpenChange}>
       <DS.DialogContent
+        size={layout === 'full' ? 'full' : undefined}
+        padding={flush ? 'none' : undefined}
         className={className}
         showCloseButton={false}
         aria-describedby={undefined}
@@ -321,10 +332,12 @@ export function Dialog({ open, onOpenChange, initialFocus, className, children }
     </DS.Dialog>
   );
 }
-export const DialogTitle = ({ ref, ...p }: C.DialogTitleProps) => (
-  <DS.DialogTitle ref={ref} {...p} />
+export const DialogTitle = ({ ref, mono, ...p }: C.DialogTitleProps) => (
+  <DS.DialogTitle ref={ref} variant={mono ? 'code' : undefined} {...p} />
 );
-export const DialogDescription = (p: C.DialogDescriptionProps) => <DS.DialogDescription {...p} />;
+export const DialogDescription = ({ micro, ...p }: C.DialogDescriptionProps) => (
+  <DS.DialogDescription variant={micro ? 'micro' : undefined} {...p} />
+);
 
 const panel = sidePanel({
   Layout: DS.ContentLayout,
@@ -374,8 +387,13 @@ export const SegmentedChoice = ({
   </DS.ToggleGroup>
 );
 
-export const Toolbar = ({ size, className, children }: C.ToolbarProps) => (
-  <DS.Toolbar size={size} className={className}>
+export const Toolbar = ({ size, bar, className, children }: C.ToolbarProps) => (
+  <DS.Toolbar
+    size={size}
+    variant={bar ? 'bar' : undefined}
+    align={bar ? 'center' : undefined}
+    className={className}
+  >
     {children}
   </DS.Toolbar>
 );

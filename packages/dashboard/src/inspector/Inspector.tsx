@@ -378,7 +378,7 @@ export function Inspector({
     <div className={s.sessionBar}>
       <strong>{t(`inspector.session.${session}`)}</strong>
       <Progress
-        className={s.grow}
+        className={s.progressGrow}
         value={Math.round((decided / (list.length || 1)) * 100)}
         label={t('inspector.session.label')}
       />
@@ -458,7 +458,7 @@ export function Inspector({
         {readOnlyNote}
         {rejectedNote}
         {actionNote}
-        <Toolbar size="sm" className={s.insToolbar}>
+        <Toolbar size="sm" bar>
           <ToolbarStart>
             {embedded ? <StatusOf status={statusOf(row, data.review)} /> : null}
             {/* The diff viewer's mode group and zoom controls, rendered with the contract's components. */}
@@ -543,12 +543,7 @@ export function Inspector({
 
   if (embedded) return <div className={s.embed}>{body}</div>;
   return (
-    <Dialog
-      open
-      onOpenChange={(o) => !o && onClose()}
-      className={s.inspector}
-      initialFocus={titleRef}
-    >
+    <Dialog open onOpenChange={(o) => !o && onClose()} layout="full" flush initialFocus={titleRef}>
       {body}
     </Dialog>
   );

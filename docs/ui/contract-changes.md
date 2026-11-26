@@ -20,6 +20,34 @@ icon without a default. A major version's section starts with its migration note
 a version bump of the right size, or without a section here, fails. After the bump and the
 section, `node scripts/ui.mjs lock` records the new contract.
 
+## 1.11.0
+
+Minor: optional props for pxsig's own looks, so an adapter selects its design system's variants
+instead of the dashboard restyling the component.
+
+- **`Dialog` `layout`** (`card` | `full`): `full` fills the viewport less a small margin (`0.5rem`
+  each side), a flex column whose regions scroll on their own, with no max size. The inspector passes it. **`Dialog` `flush`**: no padding and no gap,
+  so the content owns its spacing (a header rule or a progress bar runs edge to edge). The
+  inspector, the review summary and the gate report pass it.
+- **`DialogTitle` `mono`**: the title is an identifier (a story id): the mono face at
+  `fontSize.sm` on an 18px line, one line, cut with an ellipsis. The inspector, the review summary
+  and the gate report pass it.
+- **`DialogDescription` `micro`**: one line of micro caps under a mono title (mono,
+  `fontSize.3xs`, `letterSpacing.caps`, uppercase, the muted colour, a 16px line), cut with an
+  ellipsis. The inspector's header passes it.
+- **`Toolbar` `bar`**: a band heading its region edge to edge: padding `space.2` / `space.4`, a
+  1px rule under it in `color.border`, the page background, and the items of its start and end
+  groups centred on one line. Only for a row without labelled fields (`ToolbarField` labels keep
+  the row bottom-aligned). The inspector's toolbar passes it.
+- **`CardDescription` `mono`**: a description that is a value (a change, an id): the mono face with
+  tabular figures. The Scenarios cards pass it.
+
+The dashboard no longer sets these looks with its own classes on the components. An adapter
+written for 1.10.0 or earlier keeps working: it ignores the props and draws its design system's
+defaults (the inspector at its dialog's card size and padding, the titles in its dialog's type).
+To keep pxsig's look, implement the six props; the plain adapter and `examples/custom-ui` do it in
+their own stylesheet.
+
 ## 1.10.0
 
 Minor: one optional prop.

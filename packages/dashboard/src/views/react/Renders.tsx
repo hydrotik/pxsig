@@ -185,7 +185,7 @@ export function Renders({
       {progress ? (
         <div className={s.runBar}>
           <Progress
-            className={s.grow}
+            className={s.progressGrow}
             value={progress.total ? (progress.done / progress.total) * 100 : 0}
             label={t('diagnostics.react.renders.progressLabel')}
           />

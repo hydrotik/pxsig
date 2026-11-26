@@ -48,14 +48,6 @@ export const page = style({
   isolation: 'isolate',
 });
 
-// The overflow menu holds the section links as menu items; they read as items, not underlined
-// links. The top bar's own styles are styles/top-bar.css.ts.
-globalStyle('[role="menuitem"]:is(a)', { textDecoration: 'none', color: 'inherit' });
-globalStyle('[role="menuitem"]:is(a)[aria-current="page"]', {
-  fontWeight: v.fontWeight.semibold,
-  color: v.color.accent,
-});
-
 export const stack = style({
   display: 'flex',
   flexDirection: 'column',

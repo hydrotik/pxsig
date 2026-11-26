@@ -4,18 +4,7 @@ import { tokens as v } from '../ui/tokens';
 import { checker, insetFocusOutline, twoToneFocus } from './base.css';
 
 // --- inspector ---------------------------------------------------------------
-export const inspector = style({
-  // Full-screen dialog: overrides DialogContent's centred card size.
-  inlineSize: 'calc(100% - 1rem) !important',
-  maxInlineSize: 'none !important',
-  blockSize: 'calc(100% - 1rem) !important',
-  maxBlockSize: 'none !important',
-  padding: '0 !important',
-  display: 'flex !important',
-  flexDirection: 'column',
-  gap: '0 !important',
-  overflow: 'hidden',
-});
+// The dialog fills the window (Dialog `layout="full" flush`); its regions lay out below.
 // One height and one place for the actions from entry to entry: Approve moves on to the next
 // entry, so a bar that reflowed with each entry's id, badge or counter moved the button out from
 // under the pointer. Whatever varies sits in the first column, one line each, cut with an
@@ -120,7 +109,7 @@ export const noteRow = style({
   backgroundColor: `color-mix(in srgb, ${v.color.danger} 8%, transparent)`,
 });
 export const noteField = style({ flex: '1 1 20rem', minInlineSize: 0 });
-export const summaryDialog = style({ inlineSize: 'min(100%, 40rem)', padding: 0, gap: 0 });
+export const summaryDialog = style({ inlineSize: 'min(100%, 40rem)' });
 // No wider than the dialog: a design system's Dialog may lay its content out in a grid, where an
 // item is as wide as its widest unbreakable line (a long `pxsig check …` command) unless it may shrink.
 export const summary = style({
@@ -131,7 +120,7 @@ export const summary = style({
   minInlineSize: 0,
 });
 // Report to pxsig (inspector/GateReport.tsx): a dialog over the inspector, as wide as its preview.
-export const reportDialog = style({ inlineSize: 'min(100%, 56rem)', padding: 0, gap: 0 });
+export const reportDialog = style({ inlineSize: 'min(100%, 56rem)' });
 export const reportBody = style({
   display: 'flex',
   flexDirection: 'column',
@@ -205,12 +194,6 @@ export const helpDrawing = style({
   insetBlockStart: v.space['4'],
 });
 export const schematic = style({ display: 'block', inlineSize: '100%', blockSize: 'auto' });
-export const insToolbar = style({
-  paddingBlock: v.space['2'],
-  paddingInline: v.space['4'],
-  borderBlockEnd: `1px solid ${v.color.border}`,
-  backgroundColor: v.color.background,
-});
 export const insMain = style({ flex: 1, minBlockSize: 0, display: 'flex', flexWrap: 'wrap' });
 export const insStageWrap = style({
   flex: '999 1 30rem',
@@ -466,13 +449,6 @@ export const a11yRule = style({ flex: '1 1 9rem', minInlineSize: 0, overflowWrap
 export const maskMeta = style({ flexBasis: '100%' });
 // The masks apart from one another, each one's lines close (side/MasksSection.tsx).
 export const maskList = style({ gap: v.space['3'] });
-export const grow = style({
-  flex: 1,
-  minInlineSize: 0,
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-});
 // A file's link (side/FilesSection.tsx): its label, not the link, is cut short, so the link's
 // external icon is never clipped (a clipped icon reads off its capitals).
 export const fileLink = style({ flex: 1, minInlineSize: 0 });
@@ -516,7 +492,6 @@ export const embed = style({
 });
 // Toolbar groups centre their items, so status badges, toggle groups, buttons and
 // switches share one midline.
-globalStyle(`${insToolbar} > *`, { alignItems: 'center' });
 
 // --- decisions ------------------------------------------------------------------
 // Reject and Approve, each in a box: while its request runs the box is aria-busy and shows the

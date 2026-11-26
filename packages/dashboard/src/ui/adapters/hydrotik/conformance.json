@@ -1,6 +1,6 @@
 {
   "adapter": "hydrotik",
-  "contract": "1.10.0",
+  "contract": "1.11.0",
   "designSystem": "@hydrotik/design-system (built from source: PXSIG_DS_SOURCE)",
   "topBar": {
     "root": true,
@@ -36,7 +36,7 @@
     },
     "NavLink": {
       "status": "full",
-      "note": "NavItemLink; count tone info → attention, drawn as primary digits on a neutral pill (tones.css.ts, until the design system's subtle count), neutral → neutral"
+      "note": "NavItemLink; count tone info → attention with countEmphasis subtle (primary digits on the neutral count's wash, in the bar and in More), neutral → neutral"
     },
     "NavEnd": {
       "status": "bespoke",
@@ -84,7 +84,8 @@
       "status": "full"
     },
     "CardDescription": {
-      "status": "full"
+      "status": "full",
+      "note": "CardDescription; mono → its mono"
     },
     "CardContent": {
       "status": "full"
@@ -158,13 +159,15 @@
     },
     "Dialog": {
       "status": "full",
-      "note": "Dialog + DialogContent, no close button"
+      "note": "Dialog + DialogContent, no close button; layout full → size full, flush → padding none"
     },
     "DialogTitle": {
-      "status": "full"
+      "status": "full",
+      "note": "DialogTitle; mono → variant code"
     },
     "DialogDescription": {
-      "status": "full"
+      "status": "full",
+      "note": "DialogDescription; micro → variant micro"
     },
     "Slider": {
       "status": "full",
@@ -178,7 +181,8 @@
       "note": "ToggleGroup type single"
     },
     "Toolbar": {
-      "status": "full"
+      "status": "full",
+      "note": "Toolbar; bar → variant bar, align center"
     },
     "ToolbarStart": {
       "status": "full",

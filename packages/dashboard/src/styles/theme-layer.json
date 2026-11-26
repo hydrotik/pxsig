@@ -1,0 +1,118 @@
+{
+  "$comment": "The theme layer's declarations: one entry per export of theme-layer.css.ts, checked by `pnpm ui:check` (ui-tools/theme-layer.mjs, rule L). Crops are the owner's before/after images (kept outside the repository), by set and item; baselines are committed entries that show the look.",
+  "version": 1,
+  "entries": [
+    {
+      "id": "L1",
+      "name": "dialog-title-focus-target",
+      "export": "dialogTitleFocusTarget",
+      "target": {
+        "component": "DialogTitle",
+        "where": ["inspector/Header.tsx", "inspector/GateReport.tsx"]
+      },
+      "properties": ["outline"],
+      "changes": "No focus line on the title that receives the dialog's initial focus (the inspector's and the gate report's); the title's type is the design system's DialogTitle variant=\"code\".",
+      "reason": "pxsig's focus model: the title is focused by script (tabIndex -1, initialFocus) as the dialog's starting point, so the dialog's keys work at once. It is not a control.",
+      "decision": 91,
+      "crops": ["2026-11-21-drift/N1-inspector", "2026-11-21-drift/N1-report"],
+      "baselines": [
+        "inspector/inspector--header-1@dark",
+        "inspector/inspector--header-1@light",
+        "inspector/inspector--report-1@dark",
+        "inspector/inspector--report-1@light"
+      ],
+      "a11y": "The title is not in the tab order and not operable, so WCAG 2.4.7 asks no indicator of it; the first Tab moves to a control, which draws the design system's focus line. Screen readers are unaffected: the title names the dialog and focus lands on it."
+    },
+    {
+      "id": "L2",
+      "name": "report-description-size",
+      "export": "reportDescription",
+      "target": { "component": "DialogDescription", "where": ["inspector/GateReport.tsx"] },
+      "properties": ["fontSize"],
+      "changes": "The gate report's description at fontSize.sm (14px) instead of the design system's 13px; colour, line and measure unchanged.",
+      "reason": "Matches the report body's own running text (the check line and notes are pxsig's 14px text).",
+      "decision": 91,
+      "crops": ["2026-11-21-drift/N3"],
+      "baselines": ["inspector/inspector--report-1@dark", "inspector/inspector--report-1@light"],
+      "a11y": "Larger text, same colour."
+    },
+    {
+      "id": "L3",
+      "name": "story-card",
+      "export": "storyCard",
+      "target": {
+        "component": "story card (the dashboard's own button or div, not a contract component)",
+        "where": ["parts/StoryGrid.tsx", "parts/RecordRepair.tsx"]
+      },
+      "properties": [
+        "all",
+        "position",
+        "boxSizing",
+        "display",
+        "flexDirection",
+        "minInlineSize",
+        "border",
+        "borderRadius",
+        "backgroundColor",
+        "overflow",
+        "cursor",
+        "&:hover.borderColor",
+        "&:focus-visible.borderColor",
+        "&:focus-visible.boxShadow",
+        "&:focus-visible.outline",
+        "&:focus-visible.outlineOffset"
+      ],
+      "changes": "The story card: 1px border, radius.lg, surface, accent border on hover; on keyboard focus the border in the focus colour with a 3px halo at 50% of it, and a transparent 1px outline that only forced-colors mode paints. Its status edges (overview.css.ts) are line.emphasis wide.",
+      "reason": "An exception to decision 35 (every focus line is the shared focus line): the halo is pxsig's own look on its own card. The outline keeps a focused card visible in forced-colors mode, where the halo and border colour are dropped.",
+      "decision": 91,
+      "seeAlso": [94],
+      "crops": ["2026-11-21-drift/N8"],
+      "baselines": ["review/review--cards-1@dark", "review/review--cards-1@light"],
+      "noBaseline": "No screen focuses a card: the baselines show the card at rest, the crop N8 its focus.",
+      "a11y": "The 3:1 indicator is the 1px border in the focus colour; the halo is decoration. Forced-colors mode paints the outline."
+    },
+    {
+      "id": "L4",
+      "name": "more-menu-current",
+      "export": "moreMenuCurrent",
+      "target": { "component": "NavList (its More menu)", "where": ["styles/theme-layer.css.ts"] },
+      "properties": ["fontWeight", "color"],
+      "changes": "The More menu's current section in semibold and the accent colour, beside the design system's medium weight and 2px primary start edge.",
+      "reason": "pxsig's own look for the current section, kept by the owner as it was.",
+      "decision": 96,
+      "crops": ["2026-11-21-drift/L4"],
+      "baselines": [],
+      "noBaseline": "No screen opens More while the current section is in it (the More screen is on Overview, which stays in the bar); the crop L4 shows it at 800px on Runs.",
+      "a11y": "The weight and colour add to the design system's marker, which stays; aria-current marks the item for assistive technology."
+    },
+    {
+      "id": "L5",
+      "name": "progress-one-line",
+      "export": "progressGrow",
+      "target": {
+        "component": "Progress",
+        "where": [
+          "inspector/Inspector.tsx",
+          "parts/ReactStrip.tsx",
+          "views/react/Compiler.tsx",
+          "views/react/Renders.tsx"
+        ]
+      },
+      "properties": ["flex", "minInlineSize", "overflow", "textOverflow", "whiteSpace"],
+      "changes": "A progress bar in a flex row takes the free width, its label on one line, cut with an ellipsis; no change to the look at the fixtures' widths.",
+      "reason": "The progress rows (review session, React analysis) keep one line at every width, kept by the owner as it was.",
+      "decision": 95,
+      "crops": [],
+      "noCrop": "Kept as it was with no look change at any fixture width, so no before/after crop was made; the baselines show it.",
+      "baselines": [
+        "inspector/inspector--session-1@dark",
+        "inspector/inspector--session-1@light",
+        "shell/shell--react-strip-1@dark",
+        "shell/shell--react-strip-1@light",
+        "diagnostics/diagnostics--react-compiler-3@dark",
+        "diagnostics/diagnostics--react-renders-3@dark"
+      ],
+      "a11y": "The label is cut visually only; the progress bar's accessible name is the whole label."
+    }
+  ]
+}
