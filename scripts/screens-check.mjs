@@ -4,8 +4,13 @@
  * dashboard check` renders, each in both themes) checked against packages/dashboard/.pxsig, the
  * store of the `pxsig` project (packages/dashboard/pxsig.config.json).
  *
- *   node scripts/screens-check.mjs [--build <dir>] [--only <feature,…>] [--update-locks] [--no-live] [--repeat <n>]
+ *   node scripts/screens-check.mjs [--project pxsig|plain] [--fixtures-only] [--build <dir>] [--only <feature,…>] [--update-locks] [--no-live] [--repeat <n>]
  *   pnpm screens:check …   (the same, in pxsig's container: scripts/screens-container.mjs)
+ *
+ * --project plain checks the plain adapter's build against its own store, packages/dashboard/plain
+ * (lib/screens-project.mjs: fixture screens only, its own locks, fidelity findings fail too, and an
+ * advisory comparison of its structure with the reference's locks). The rest of this says pxsig's.
+ * Each run also writes its findings by kind to the store's reports/findings.md (lib/screens-findings.mjs).
  *
  * --build is the dashboard to check: the reference build (`pnpm build:dashboard`, the design
  * system pinned in design-system.json), by default packages/pxsig/dist/dashboard.
@@ -69,6 +74,8 @@ import {
   structureFile,
 } from './lib/screen-locks.mjs';
 import { FEATURES as LIVE } from './live/flows.mjs';
+import { projectHints, projectOfArgs } from './lib/screens-project.mjs';
+import { ariaVsReference, runFindings, writeFindings } from './lib/screens-findings.mjs';
 import { liveCatalogue, runLive } from './live/run.mjs';
 import {
   engineVersion,
@@ -147,10 +154,12 @@ async function main() {
   };
   /** @type {(m: string) => never} */
   const die = (m) => (console.error(`[screens] ${m}`), process.exit(2));
-  const projectDir = join(repo, 'packages', 'dashboard');
+  const proj = projectOfArgs(repo, args);
+  // The catalogue and the features are the dashboard's, whichever store is checked.
+  const dashboard = join(repo, 'packages', 'dashboard');
   /** @type {Project} */
-  const P = openProject({ cwd: projectDir });
-  const build = resolve(flag('build') ?? join(repo, 'packages/pxsig/dist/dashboard'));
+  const P = openProject({ cwd: proj.dir });
+  const build = resolve(flag('build') ?? proj.build);
   // --only splits into the fixture features (dashboardCheck's) and the live ones.
   const named =
     flag('only')
@@ -162,28 +171,28 @@ async function main() {
   const liveOnly = named ? named.filter((x) => liveIds.has(x)) : null;
   const only = named?.filter((x) => !liveIds.has(x)).join(',') || (named ? null : undefined);
   const runFixtures = only !== null;
-  const runLiveScreens = !noLive && (!liveOnly || liveOnly.length > 0);
+  const runLiveScreens = !noLive && !proj.fixturesOnly && (!liveOnly || liveOnly.length > 0);
   const repeat = Number(flag('repeat') ?? 2);
 
   // The entries: every screen in both themes, baselines grouped by section.
   const catalogue = /** @type {ScreenCatalogue} */ (
-    JSON.parse(readFileSync(join(projectDir, 'fixtures', 'screens.json'), 'utf8'))
+    JSON.parse(readFileSync(join(dashboard, 'fixtures', 'screens.json'), 'utf8'))
   );
   const rel = (/** @type {string} */ p) => relative(P.workspaceRoot, p).split('\\').join('/');
   // Each feature is defined in one file of src/ui/features/: its screens' importPath.
-  const featuresDir = join(projectDir, 'src', 'ui', 'features');
+  const featuresDir = join(dashboard, 'src', 'ui', 'features');
   /** @type {Map<string, string>} */
   const defined = new Map();
   for (const f of readdirSync(featuresDir).filter((n) => n.endsWith('.ts')))
     for (const m of readFileSync(join(featuresDir, f), 'utf8').matchAll(/\bid: '([a-z0-9.-]+)'/g))
       defined.set(m[1], rel(join(featuresDir, f)));
   const entries = screenEntries(
-    { features: [...catalogue.features, ...liveCatalogue().features] },
+    { features: [...catalogue.features, ...(proj.fixturesOnly ? [] : liveCatalogue().features)] },
     (id, section) => rel(join(P.store.baselines, section, `${id}.psig`)),
     (feature) =>
       liveIds.has(feature)
         ? rel(join(repo, 'scripts', 'live', 'flows.mjs'))
-        : (defined.get(feature) ?? rel(join(projectDir, 'src', 'ui', 'features.ts')))
+        : (defined.get(feature) ?? rel(join(dashboard, 'src', 'ui', 'features.ts')))
   );
   const manifestPath = P.manifestPath();
   mkdirSync(P.store.root, { recursive: true });
@@ -200,7 +209,7 @@ async function main() {
     lock = await takeLock(P, { holder: 'screens-check' });
   } catch (e) {
     // takeLock throws when another writer (a `pxsig serve`) holds the store.
-    die(`${/** @type {Error} */ (e).message}: stop pxsig serve in packages/dashboard first`);
+    die(`${/** @type {Error} */ (e).message}: stop pxsig serve in ${proj.rel} first`);
   }
 
   // Render with the browser the environment is probed in, so the two cannot disagree.
@@ -230,7 +239,16 @@ async function main() {
     const opts = { browser, log, aria: true, anchors: true, text };
     if (runFixtures) checked = await dashboardCheck(flags, repo, opts);
     if (runFixtures && repeat > 1)
-      repeated = await fixtureRepeat({ P, first: checked, flags, opts, idOf, log });
+      repeated = await fixtureRepeat({
+        P,
+        first: checked,
+        flags,
+        opts,
+        idOf,
+        log,
+        allowFile: proj.unstable,
+        screens: join(dashboard, 'fixtures', 'screens.json'),
+      });
     if (runLiveScreens)
       checked.report.screens.push(
         ...(await runLive({
@@ -286,24 +304,32 @@ async function main() {
       writeFileSync(file, `${x.aria.trimEnd()}\n`);
     }
   // Strict: an accessibility or layout finding on any screen fails, as `dashboard check --strict`.
-  const findings = screenFindings(checked.report.screens, idOf, checked.report.topBar);
+  const findings = screenFindings(checked.report.screens, idOf, checked.report.topBar, proj);
   const aligned = alignmentNotes(checked.report.screens, idOf, P.store.reports);
   const lockArgs = {
     screens: checked.report.screens,
     update: args.includes('--update-locks'),
     // A stale lock file shows only when both kinds of screen ran in full.
-    complete: !named && !noLive && checked.report.screens.every((x) => x.rendered),
+    complete:
+      !named && (proj.fixturesOnly || !noLive) && checked.report.screens.every((x) => x.rendered),
   };
-  const structure = checkStructure({ ...lockArgs, dir: join(projectDir, 'fixtures', 'locked') });
-  const geometry = checkGeometry({
-    ...lockArgs,
-    file: join(projectDir, 'fixtures', 'locked', 'geometry.json'),
-  });
+  const structure = checkStructure({ ...lockArgs, dir: proj.locks });
+  const geometry = checkGeometry({ ...lockArgs, file: proj.geometry });
   mkdirSync(structureDir, { recursive: true });
   writeFileSync(
     join(structureDir, 'geometry.json'),
     `${JSON.stringify(geometry.geometry, null, 2)}\n`
   );
+  // Advisory: this run's structure against the reference's locks (never fails).
+  const reports = P.store.reports;
+  const aria = proj.ariaReference
+    ? ariaVsReference({
+        current: structureDir,
+        reference: proj.ariaReference,
+        reports,
+        project: P.name,
+      })
+    : null;
 
   // The engine's verdicts and the reports, as `pxsig check` writes them (lib/screens-engine.mjs).
   const renderWallMs = checked.report.screens.reduce((n, x) => n + (x.ms ?? 0), 0);
@@ -322,6 +348,21 @@ async function main() {
   });
 
   const failed = out.filter((r) => !r.skipped && (r.error || !r.pass));
+  const gated = ['axe', 'layout', 'alignment', 'top-bar', 'unstable', 'structure', 'geometry'];
+  writeFindings({
+    reports,
+    project: P.name,
+    rows: out,
+    gated: proj.fidelity ? [...gated, 'fidelity'] : gated,
+    findings: runFindings({
+      screens: checked.report.screens,
+      idOf,
+      topBar: checked.report.topBar,
+      unstable: repeated?.problems,
+      structure: structure.problems,
+      geometry: geometry.problems,
+    }),
+  });
   for (const f of structure.written) console.log(`[screens] locked structure written: ${f}`);
   for (const f of structure.removed) console.log(`[screens] locked structure removed: ${f}`);
   if (geometry.written) console.log('[screens] locked geometry written: geometry.json');
@@ -330,22 +371,17 @@ async function main() {
   for (const f of findings) console.log(`  finding ${f}`.slice(0, 400));
   for (const p of [...(repeated?.problems ?? []), ...(repeated?.notes ?? [])])
     console.log(`  ${p}`);
-  for (const l of aligned) console.log(l);
+  for (const l of [...aligned, ...(aria ? [aria] : [])]) console.log(l);
+  const hints = projectHints(proj, repo);
   const locksFailed = structure.problems.length + geometry.problems.length;
-  if (locksFailed)
-    console.log(
-      '[screens] a structure or geometry change made on purpose: pnpm screens:check --update-locks, and commit packages/dashboard/fixtures/locked'
-    );
+  if (locksFailed) console.log(hints.locks);
   const live = out.filter((r) => !r.skipped && r.id.startsWith('live--')).length;
   console.log(
     `[screens] ${out.length - out.filter((r) => r.skipped).length} screens checked (${live} live) · ${summary.passed} match · ${failed.length} to review (changed, new or not rendered)`
   );
   for (const r of failed.slice(0, 20))
     console.log(`  ${r.id}: ${r.error ? `error: ${r.error}` : r.new ? 'new' : 'changed'}`);
-  if (failed.length)
-    console.log(
-      '[screens] review them: cd packages/dashboard && node ../pxsig/bin/pxsig.mjs serve (approve with serve --link)'
-    );
+  if (failed.length) console.log(hints.review);
   process.exit(
     failed.length || locksFailed || findings.length || repeated?.problems.length ? 1 : 0
   );

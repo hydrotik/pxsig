@@ -185,3 +185,15 @@ test('findings: a rendered screen with an axe or layout finding is one line; oth
     ['a: axe label (2); layout edge: x', 'top-bar: changed at 390px: the bar takes 2 lines']
   );
 });
+
+test('a fidelity finding is a screen finding only where the project gates it', () => {
+  const s = [{ rendered: true, axe: [], layout: [], fidelity: [{ rule: 'R1', text: 'wraps' }] }];
+  assert.deepEqual(
+    screenFindings(s, () => 'a@dark'),
+    []
+  );
+  assert.deepEqual(
+    screenFindings(s, () => 'a@dark', null, { fidelity: true }),
+    ['a@dark: fidelity R1: wraps']
+  );
+});
