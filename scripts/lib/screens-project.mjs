@@ -6,7 +6,8 @@
  *   pxsig   the reference build (the design system's adapter), store packages/dashboard/.pxsig: the
  *           fixture screens and the live ones, locks in packages/dashboard/fixtures/locked/
  *   plain   the plain adapter's build (`PXSIG_UI_ADAPTER=plain`), store
- *           packages/dashboard/plain/.pxsig: the fixture screens only, locks in
+ *           packages/dashboard/plain/.pxsig: the fixture screens only (advisory in CI for now,
+ *           .github/workflows/screens.yml), locks in
  *           packages/dashboard/plain/locked/ (with its geometry.json and unstable.json), never in
  *           fixtures/, which ships in the npm package
  *
@@ -27,7 +28,8 @@ import { join, relative } from 'node:path';
  * @property {string} geometry      the locked geometry file
  * @property {string} unstable      the allow-list of unstable screens (lib/screens-repeat.mjs)
  * @property {boolean} fixturesOnly no live screens: none rendered, none in the manifest
- * @property {boolean} fidelity     a fidelity finding fails the check, as an axe one does
+ * @property {boolean} fidelity     a fidelity finding fails the check, as an axe one does (both
+ *   projects; `pxsig dashboard check` fails on one too)
  * @property {string | null} ariaReference another project's locks, compared with this run's
  *   structure in an advisory report (lib/screens-findings.mjs), never failing
  * @property {string} rel           `dir` relative to the repository, for messages
@@ -51,7 +53,7 @@ export function screensProject(repo, name = 'pxsig', { fixturesOnly = false } = 
       geometry: join(dashboard, 'fixtures', 'locked', 'geometry.json'),
       unstable: join(dashboard, 'fixtures', 'unstable.json'),
       fixturesOnly,
-      fidelity: false,
+      fidelity: true,
       ariaReference: null,
     },
     plain: {

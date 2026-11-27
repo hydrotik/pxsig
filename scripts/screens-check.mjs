@@ -8,8 +8,8 @@
  *   pnpm screens:check …   (the same, in pxsig's container: scripts/screens-container.mjs)
  *
  * --project plain checks the plain adapter's build against its own store, packages/dashboard/plain
- * (lib/screens-project.mjs: fixture screens only, its own locks, fidelity findings fail too, and an
- * advisory comparison of its structure with the reference's locks). The rest of this says pxsig's.
+ * (lib/screens-project.mjs: fixture screens only, its own locks, and an advisory comparison of its
+ * structure with the reference's locks). The rest of this says pxsig's.
  * Each run also writes its findings by kind to the store's reports/findings.md (lib/screens-findings.mjs).
  *
  * --build is the dashboard to check: the reference build (`pnpm build:dashboard`, the design
@@ -37,8 +37,8 @@
  * `--repeat <n>` runs the flows n times (default 2) and fails a step whose runs differ; with
  * n > 1 each fixture screen renders twice, and one whose renders differ fails
  * (lib/screens-repeat.mjs).
- * Every rendered screen must also have no accessibility (axe) or layout finding, as `pxsig dashboard
- * check --strict` requires, and the top bar no `top-bar` finding.
+ * Every rendered screen must also have no accessibility (axe), layout, alignment or fidelity
+ * finding, as `pxsig dashboard check --strict` requires, and the top bar no `top-bar` finding.
  *
  * Exit: 0 every screen matches its baseline and its locks, with no finding · 1 a screen changed, is
  * new, did not render, changed structure or geometry, or has a finding · 2 setup or a crash.

@@ -18,7 +18,8 @@ test('the reference project is unchanged: packages/dashboard, its locks in fixtu
   assert.equal(p.geometry, '/r/packages/dashboard/fixtures/locked/geometry.json');
   assert.equal(p.unstable, '/r/packages/dashboard/fixtures/unstable.json');
   assert.equal(p.fixturesOnly, false);
-  assert.equal(p.fidelity, false);
+  // A fidelity finding fails the reference run too, as it fails `pxsig dashboard check`.
+  assert.equal(p.fidelity, true);
   assert.equal(p.ariaReference, null);
   const h = projectHints(p, repo);
   assert.equal(
