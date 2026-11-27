@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * The reference adapter maps props only (ui-tools.mjs `checkAll`, part 3): the design system is
  * the canon, so the adapter draws nothing of its own over it. It may not
@@ -53,8 +54,6 @@ export const GLUE = new Set([
 export const EXCEPTIONS = {
   'reset.css.ts':
     "the design system's reset and body type for its own elements, until its scoped base stylesheet can replace it without restyling the dashboard's markup inside them",
-  'slider.css.ts':
-    "the slider on one line, until the design system's inline Slider marks its label and value disabled with its track",
   'heatmap.css.ts':
     "the heatmap's tiles, until the design system's Heatmap tile text keeps its label and figure apart for the tile's accessible name",
 };

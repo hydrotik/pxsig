@@ -3,7 +3,7 @@
  * integrity block, the report's Public notice) on hydrotik's Alert. The block stays on the page and
  * is not an announcement: hydrotik's non-live Alert (`live={false}`), a region named by the
  * contract's `label`. Its title is not a heading (`as="div"`). index.tsx passes the design-system
- * parts in (as slider.tsx), so every part the adapter uses is named in that one file.
+ * parts in (as side-panel.tsx), so every part the adapter uses is named in that one file.
  */
 import type * as DS from '@hydrotik/design-system';
 import type * as C from '../../contract';
