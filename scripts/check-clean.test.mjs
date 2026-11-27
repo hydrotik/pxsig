@@ -94,3 +94,23 @@ test("pxsig's own baselines: the screens store keeps what a project commits, not
   ])
     assert.ok(fileProblem(f, 1000), f);
 });
+
+test("the plain adapter's store keeps the same, and its locks are ordinary files", () => {
+  for (const f of [
+    'packages/dashboard/plain/.pxsig/manifest.json',
+    'packages/dashboard/plain/.pxsig/approvals.ndjson',
+    'packages/dashboard/plain/.pxsig/baselines/inspector/inspector--header-1@dark.psig',
+    'packages/dashboard/plain/locked/inspector/header-1.aria.yml',
+    'packages/dashboard/plain/locked/geometry.json',
+    'packages/dashboard/plain/locked/unstable.json',
+    'packages/dashboard/plain/pxsig.config.json',
+  ])
+    assert.equal(fileProblem(f, 100 * 1024), null, f);
+  for (const f of [
+    'packages/dashboard/plain/.pxsig/renders/latest/inspector--header-1@dark.png',
+    'packages/dashboard/plain/.pxsig/reports/findings.json',
+    'packages/dashboard/plain/.pxsig/baselines/notes.md',
+    'packages/dashboard/other/.pxsig/manifest.json',
+  ])
+    assert.ok(fileProblem(f, 1000), f);
+});

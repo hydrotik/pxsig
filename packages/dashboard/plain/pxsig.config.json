@@ -1,0 +1,24 @@
+{
+  "$schema": "../../pxsig/schema/project.json",
+  "version": 1,
+  "name": "pxsig-plain",
+  "label": "plain adapter",
+  "srcRoot": "../src",
+  "trim": false,
+  "a11y": false,
+  "text": true,
+  "rejections": {
+    "structure": "locked"
+  },
+  "modes": {
+    "dark": {
+      "globals": "",
+      "colorScheme": "dark"
+    },
+    "light": {
+      "globals": "",
+      "colorScheme": "light"
+    }
+  },
+  "defaultMode": "dark"
+}

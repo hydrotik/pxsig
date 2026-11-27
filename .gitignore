@@ -25,6 +25,13 @@ packages/dashboard/.pxsig/*
 !packages/dashboard/.pxsig/approvals.ndjson
 !packages/dashboard/.pxsig/baselines/
 !packages/dashboard/.pxsig/baselines/**/*.psig
+# …and the plain adapter's (scripts/lib/screens-project.mjs: `--project plain`)
+!packages/dashboard/plain/.pxsig/
+packages/dashboard/plain/.pxsig/*
+!packages/dashboard/plain/.pxsig/manifest.json
+!packages/dashboard/plain/.pxsig/approvals.ndjson
+!packages/dashboard/plain/.pxsig/baselines/
+!packages/dashboard/plain/.pxsig/baselines/**/*.psig
 pxsig-diff/
 .baselines/
 .renders/
