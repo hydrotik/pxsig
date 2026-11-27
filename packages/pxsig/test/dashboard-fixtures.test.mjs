@@ -57,7 +57,6 @@ const MAPS = new Set([
 const NOT_IN_SCENARIOS = new Set([
   'versions', // the top bar's tooltip and Help: "unknown" without it
   'gateCalibration', // a calibration run's output: none in a sample
-  'scenarioSuites', // the same
   'calibrationSuites', // the same
   'approvals', // approvals.byStory: off unless set
   'source', // `dashboard-screens` only for pxsig's own screens
@@ -74,6 +73,9 @@ const MASKS_RS = '../../../crates/pxsig-cli/src/batch/masks.rs';
  * @type {Record<string, [file: string, sets: RegExp]>}
  */
 const ONLY_SOME_RUNS = {
+  // A research run's scenario suites (tools/scenarios.mjs writes reports/scenarios-<suite>.json):
+  // the fixture project has none, so the server sends an empty map.
+  'scenarioSuites.*': ['report.mjs', /scenarioSuites: suites\(P, 'scenarios'\),/],
   // A failing entry whose retry render passes.
   'check.rows[].flaky': ['check/render.mjs', /\brow\.flaky = true;/],
   // React render counts: with `react.renders` on, or a Measure renders run.

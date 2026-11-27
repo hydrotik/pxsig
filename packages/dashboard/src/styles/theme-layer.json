@@ -67,8 +67,12 @@
       "decision": 91,
       "seeAlso": [94],
       "crops": ["2026-11-21-drift/N8"],
-      "baselines": ["review/review--cards-1@dark", "review/review--cards-1@light"],
-      "noBaseline": "No screen focuses a card: the baselines show the card at rest, the crop N8 its focus.",
+      "baselines": [
+        "review/review--cards-1@dark",
+        "review/review--cards-1@light",
+        "review/review--cards-3@dark",
+        "review/review--cards-3@light"
+      ],
       "a11y": "The 3:1 indicator is the 1px border in the focus colour; the halo is decoration. Forced-colors mode paints the outline."
     },
     {

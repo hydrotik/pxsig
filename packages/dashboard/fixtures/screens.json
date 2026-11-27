@@ -510,6 +510,44 @@
             "role": "region",
             "name": "Button"
           }
+        },
+        {
+          "scenario": "changed",
+          "hash": "#stories",
+          "actions": [
+            {
+              "click": {
+                "role": "heading",
+                "name": "Button",
+                "within": {
+                  "role": "region",
+                  "name": "Button"
+                }
+              }
+            },
+            {
+              "press": "Tab"
+            },
+            {
+              "press": "Tab"
+            },
+            {
+              "press": "Tab"
+            },
+            {
+              "press": "Tab"
+            },
+            {
+              "press": "Tab"
+            },
+            {
+              "press": "Tab"
+            }
+          ],
+          "wait": {
+            "role": "region",
+            "name": "Button"
+          }
         }
       ]
     },
@@ -654,6 +692,14 @@
           "wait": {
             "role": "heading",
             "name": "Batch Check by Thread Count"
+          }
+        },
+        {
+          "scenario": "scenario-suite",
+          "hash": "#diagnostics",
+          "wait": {
+            "text": "Button radius 4px to 6px",
+            "exact": true
           }
         }
       ]

@@ -50,6 +50,19 @@ export const REVIEW: Feature[] = [
     screens: [
       { scenario: 'changed', hash: '#stories', wait: { role: 'region', name: 'Button' } },
       { scenario: 'flaky', hash: '#stories', wait: { role: 'region', name: 'Button' } },
+      // Keyboard focus on the first card (theme layer L3). A click on the group's heading focuses
+      // the main region; Tab then passes the five review filters to the first card.
+      {
+        scenario: 'changed',
+        hash: '#stories',
+        actions: [
+          {
+            click: { role: 'heading', name: 'Button', within: { role: 'region', name: 'Button' } },
+          },
+          ...Array.from({ length: 6 }, () => ({ press: 'Tab' })),
+        ],
+        wait: { role: 'region', name: 'Button' },
+      },
     ],
   },
   {
@@ -204,6 +217,12 @@ export const REVIEW: Feature[] = [
         scenario: 'clean',
         hash: '#diagnostics',
         wait: { role: 'heading', name: 'Batch Check by Thread Count' },
+      },
+      // A scenario suite: Diagnostics opens on Scenarios, the chosen scenario's change in mono.
+      {
+        scenario: 'scenario-suite',
+        hash: '#diagnostics',
+        wait: { text: 'Button radius 4px to 6px', exact: true },
       },
     ],
   },
