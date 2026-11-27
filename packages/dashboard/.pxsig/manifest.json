@@ -1028,6 +1028,38 @@
       "a11y": false
     },
     {
+      "id": "review--cards-3@dark",
+      "story": "review--cards-3",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/review/review--cards-3@dark.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "review--cards-3@light",
+      "story": "review--cards-3",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/review/review--cards-3@light.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
       "id": "coverage--ledger-1@dark",
       "story": "coverage--ledger-1",
       "mode": "dark",
@@ -1177,6 +1209,38 @@
       "mode": "light",
       "state": null,
       "sig": ".pxsig/baselines/diagnostics/diagnostics--research-1@light.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "light",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--research-2@dark",
+      "story": "diagnostics--research-2",
+      "mode": "dark",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--research-2@dark.psig",
+      "importPath": "src/ui/features/review.ts",
+      "globals": "",
+      "colorScheme": "dark",
+      "viewport": [
+        1280,
+        900
+      ],
+      "browser": "chromium",
+      "a11y": false
+    },
+    {
+      "id": "diagnostics--research-2@light",
+      "story": "diagnostics--research-2",
+      "mode": "light",
+      "state": null,
+      "sig": ".pxsig/baselines/diagnostics/diagnostics--research-2@light.psig",
       "importPath": "src/ui/features/review.ts",
       "globals": "",
       "colorScheme": "light",
