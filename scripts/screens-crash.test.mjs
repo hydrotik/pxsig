@@ -202,5 +202,11 @@ test("the plain job: no secret, its own build and store, exit handling as the re
   assert.match(job, /\[ "\$code" -le 1 \] && \[ ! -f "\$store\/check\.json" \]/);
   assert.match(job, /\[ "\$code" -le 1 \] \|\| \{ echo "::error::/);
   assert.match(job, /name: pxsig-screens-plain\n/);
-  assert.match(job, /if: steps\.check\.outputs\.code == '1'\n\s+name: Screens to review/);
+  // Advisory for now: a 1 is a warning in the summary, never a failed job; an error still fails.
+  const verdict = job.slice(job.indexOf('name: Plain screens verdict'));
+  assert.match(job, /if: steps\.check\.outputs\.code == '1'\n\s+name: Plain screens verdict/);
+  assert.match(verdict, /::warning::/);
+  assert.match(verdict, /exit 0\n/);
+  assert.doesNotMatch(verdict, /exit 1/);
+  assert.doesNotMatch(job, /continue-on-error/);
 });

@@ -1117,8 +1117,10 @@ draw them with your own segmented control and buttons.
 
 The plain adapter, the shape to start from, is checked this way in pxsig itself on every change:
 its screens in both themes, strict (axe, layout, alignment, fidelity, the top bar) and rendered
-twice, against baselines committed in pxsig's repository. A pull request that changes how plain
-draws a screen shows it, so an adapter copied from plain starts from a look that was reviewed.
+twice. For now the check reports its findings without failing: plain still has alignment findings
+to fix, and its baselines are not committed yet. Once they are, a pull request that changes how
+plain draws a screen fails until the change is reviewed, so an adapter copied from plain starts
+from a look that was reviewed.
 
 ## Source parity
 

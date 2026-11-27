@@ -143,8 +143,9 @@ at 800, 640 and 390 CSS px, is compared with the screens at that width), and its
 change that moves it everywhere at once fails as well. `--update-locks` rewrites it too. Boxes
 depend on fonts: take them from the container (`pnpm screens:check`, or CI's `reports/structure/`).
 
-**No findings.** Every screen must also have no accessibility (axe) or layout finding, as `pxsig
-dashboard check --strict` requires; the run lists each one.
+**No findings.** Every screen must also have no accessibility (axe), layout, alignment or fidelity
+finding, as `pxsig dashboard check --strict` requires; the run lists each one, and writes them by
+kind to the store's `reports/findings.md` and `findings.json`.
 
 **Rendered twice.** Every fixture screen renders twice in the same run
 (`scripts/lib/screens-repeat.mjs`): the same build, container and browser binary, but pass 2 in a
@@ -250,8 +251,7 @@ of its own: `packages/dashboard/plain/`, project `pxsig-plain`, store
 fixture screens in both themes, 168 entries, under the same ids as the reference store, so an
 entry of one names the same screen as the entry of the other; no live screens (they test the
 server and the reviewer's flows, which do not change with the adapter). The run is as strict as the
-reference one: rendered twice, axe, layout, alignment and the top-bar sweep, and fidelity findings
-fail it too. Source parity stays reference-only. Its locks are its own, outside `fixtures/` (which
+reference one: rendered twice, axe, layout, alignment, fidelity and the top-bar sweep. Source parity stays reference-only. Its locks are its own, outside `fixtures/` (which
 ships in the npm package): `packages/dashboard/plain/locked/` holds its structure files, its
 `geometry.json` and its `unstable.json`, with `--update-locks` as above. Each run also writes, to
 `reports/aria-vs-reference.md`, where plain's structure differs from the reference's locks; that
@@ -266,10 +266,13 @@ PXSIG_LIVE_BIN="$PWD/target/linux/release/pxsig" pnpm screens:check --project pl
 `PXSIG_DASHBOARD_OUT` is resolved from `packages/dashboard`, hence `$PWD`; the plain build has its
 own folder so it never replaces the reference build, which is the dashboard every review runs on.
 CI runs this as the `Dashboard screens (plain)` job of `screens.yml`. It needs no design-system
-secret, so it also runs on pull requests from forks and Dependabot, and it fails on a changed, new
-or unrendered screen, a lock change or a finding, as the reference job does. Its job summary lists
-the findings by kind (`reports/findings.md`), apart from the entries that only have no baseline
-yet. To review, download its `pxsig-screens-plain` artifact into the plain store and serve from the
+secret, so it also runs on pull requests from forks and Dependabot. **For now it is advisory**: it
+runs the same check, but its verdict (a changed, new or unrendered screen, a lock change or a
+finding) goes to the job summary as a warning and never fails the workflow, because plain still has
+alignment findings to fix and no baselines yet. Once those findings are fixed and the first
+baselines approved, the job fails as the reference job does and becomes a required check. Its job
+summary lists the findings by kind (`reports/findings.md`), apart from the entries that only have
+no baseline yet. To review, download its `pxsig-screens-plain` artifact into the plain store and serve from the
 plain folder:
 
 ```bash
