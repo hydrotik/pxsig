@@ -204,22 +204,29 @@ export function checkGeometry({ screens, file, update = false, complete = false 
 }
 
 /**
- * Each rendered screen's accessibility, layout and alignment findings, one line per screen that
- * has any, then each finding of the top-bar sweep (`topBar`, dashboard-check/top-bar.mjs).
- * @template {{ rendered: boolean, axe: { id: string, count: number }[], layout: { rule: string, text: string }[], alignment?: { rule: string, text: string }[] }} S
+ * Each rendered screen's accessibility, layout and alignment findings (and, with `fidelity`, its
+ * fidelity findings, dashboard-check/fidelity.mjs), one line per screen that has any, then each
+ * finding of the top-bar sweep (`topBar`, dashboard-check/top-bar.mjs).
+ * @template {{ rendered: boolean, axe: { id: string, count: number }[], layout: { rule: string, text: string }[], alignment?: { rule: string, text: string }[], fidelity?: { rule: string, text: string }[] }} S
  * @param {S[]} screens
  * @param {(s: S) => string} idOf
  * @param {{ findings: { rule: string, text: string }[] } | null} [topBar]
+ * @param {{ fidelity?: boolean }} [o]
  */
-export const screenFindings = (screens, idOf, topBar = null) => [
+export const screenFindings = (screens, idOf, topBar = null, { fidelity = false } = {}) => [
   ...screens
-    .filter((x) => x.rendered && (x.axe.length || x.layout.length || x.alignment?.length))
+    .map((x) => ({ x, fid: fidelity ? (x.fidelity ?? []) : [] }))
+    .filter(
+      ({ x, fid }) =>
+        x.rendered && (x.axe.length || x.layout.length || x.alignment?.length || fid.length)
+    )
     .map(
-      (x) =>
+      ({ x, fid }) =>
         `${idOf(x)}: ${[
           ...x.axe.map((v) => `axe ${v.id} (${v.count})`),
           ...x.layout.map((l) => `layout ${l.rule}: ${l.text}`),
           ...(x.alignment ?? []).map((l) => `alignment ${l.rule}: ${l.text}`),
+          ...fid.map((l) => `fidelity ${l.rule}: ${l.text}`),
         ].join('; ')}`
     ),
   ...(topBar?.findings ?? []).map((f) => `${f.rule}: ${f.text}`),

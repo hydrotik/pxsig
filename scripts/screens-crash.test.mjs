@@ -186,3 +186,27 @@ test('the workflow fails a crash as an error and reviews only a 1 with its check
   assert.match(step, /\[ "\$code" -le 1 \] \|\| \{ echo "::error::/);
   assert.match(yml, /if: steps\.check\.outputs\.code == '1'\n\s+name: Screens to review/);
 });
+
+test("the plain job: no secret, its own build and store, exit handling as the reference job's", () => {
+  const yml = readFileSync(new URL('../.github/workflows/screens.yml', import.meta.url), 'utf8');
+  const job = yml.slice(yml.indexOf('  screens-plain:'));
+  assert.match(job, /name: Dashboard screens \(plain\)\n/);
+  assert.doesNotMatch(job, /secrets\.|PXSIG_DS_SOURCE|steps\.has\.outputs/);
+  assert.match(job, /PXSIG_UI_ADAPTER=plain PXSIG_DASHBOARD_OUT="\$PWD\/target\/dashboard-plain"/);
+  assert.match(job, /check-dashboard-build\.mjs target\/dashboard-plain --adapter plain/);
+  assert.match(
+    job,
+    /screens-container\.mjs --project plain --build target\/dashboard-plain --no-live/
+  );
+  assert.match(job, /rm -f "\$store\/check\.json"/);
+  assert.match(job, /\[ "\$code" -le 1 \] && \[ ! -f "\$store\/check\.json" \]/);
+  assert.match(job, /\[ "\$code" -le 1 \] \|\| \{ echo "::error::/);
+  assert.match(job, /name: pxsig-screens-plain\n/);
+  // Advisory for now: a 1 is a warning in the summary, never a failed job; an error still fails.
+  const verdict = job.slice(job.indexOf('name: Plain screens verdict'));
+  assert.match(job, /if: steps\.check\.outputs\.code == '1'\n\s+name: Plain screens verdict/);
+  assert.match(verdict, /::warning::/);
+  assert.match(verdict, /exit 0\n/);
+  assert.doesNotMatch(verdict, /exit 1/);
+  assert.doesNotMatch(job, /continue-on-error/);
+});

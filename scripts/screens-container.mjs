@@ -3,16 +3,18 @@
  * screens-container.mjs — runs scripts/screens-check.mjs in pxsig's container, the image pinned in
  * docker/screens-image.json, so pxsig's own baselines are rendered the same way on every machine.
  *
- *   pnpm screens:check [--build <dir>] [--only <feature,…>] [--no-live] [--repeat <n>]
+ *   pnpm screens:check [--project pxsig|plain] [--build <dir>] [--only <feature,…>] [--no-live] [--repeat <n>]
  *
  * The checkout is mounted at its own path (pnpm's links stay valid) and the check runs as the
- * calling user, so what it writes in packages/dashboard/.pxsig belongs to them. The image's engine
+ * calling user, so what it writes in the project's store (packages/dashboard/.pxsig, or with
+ * `--project plain` packages/dashboard/plain/.pxsig, lib/screens-project.mjs) belongs to them. The image's engine
  * and Playwright are used (PXSIG_BIN, PXSIG_PLAYWRIGHT), the checkout's pxsig sources and
  * dependencies (`pnpm install` first). Needs Docker. Exit: screens-check's (0 or 1 only with the
  * check.json that run wrote), or 2: Docker failed, the check crashed, or this script did.
  *
  * The live screens' workspace is staged here, on the host, first (scripts/live/stage.mjs: the
- * container has no pnpm), unless `--no-live` or an `--only` that names no live feature.
+ * container has no pnpm), unless `--no-live`, a fixtures-only project or an `--only` that names no
+ * live feature.
  *
  * PXSIG_LIVE_BIN: a Linux build of this checkout's engine, inside the checkout (the container sees
  * it at the same path). Every screen's verdict is made by it, and the live screens run on it (the
@@ -24,6 +26,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { asMain, checkExit, reportStamp } from './lib/crash.mjs';
+import { projectOfArgs } from './lib/screens-project.mjs';
 import { FEATURES } from './live/flows.mjs';
 import { stageLive } from './live/stage.mjs';
 
@@ -32,7 +35,8 @@ import { stageLive } from './live/stage.mjs';
  * @param {string[]} args
  */
 export function wantsLive(args) {
-  if (args.includes('--no-live')) return false;
+  const repo = fileURLToPath(new URL('..', import.meta.url));
+  if (args.includes('--no-live') || projectOfArgs(repo, args).fixturesOnly) return false;
   const i = args.indexOf('--only');
   if (i < 0) return true;
   const named = (args[i + 1] ?? '').split(',').map((x) => x.trim());
@@ -100,7 +104,12 @@ if (asMain(import.meta.url, 'screens')) {
       process.exit(2);
     });
   // The run's report, to tell its verdict from a crash that left none (lib/crash.mjs).
-  const report = join(repo, 'packages', 'dashboard', '.pxsig', 'reports', 'check.json');
+  const report = join(
+    projectOfArgs(repo, process.argv.slice(2)).dir,
+    '.pxsig',
+    'reports',
+    'check.json'
+  );
   const before = reportStamp(report);
   const r = spawnSync(
     'docker',

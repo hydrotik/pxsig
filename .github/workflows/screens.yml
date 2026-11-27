@@ -5,6 +5,16 @@
 # that changed, is new or did not render fails the run until its baseline is approved and committed. The renders are uploaded as the
 # `pxsig-screens` artifact, which the review starts from. Each fixture screen renders twice in the
 # run, and one whose two renders differ (unstable) fails it too (scripts/lib/screens-repeat.mjs).
+#
+# "Dashboard screens (plain)" does the same for the plain adapter, the default build when nothing
+# names an adapter: its fixture screens (no live ones), each rendered twice, with the same strict
+# findings, against its own store packages/dashboard/plain/.pxsig and its own locks in
+# packages/dashboard/plain/locked/ (scripts/lib/screens-project.mjs). It needs no design system, so
+# it runs on every pull request, forks and Dependabot included. Its renders are the
+# `pxsig-screens-plain` artifact; its findings by kind (reports/findings.md) and an advisory
+# comparison of its structure with the reference's locks go to the job summary. It is advisory for
+# now ("Plain screens verdict" below): it becomes a failing, required check once plain's alignment
+# findings are fixed and its first baselines are approved.
 name: screens
 
 on:
@@ -189,3 +199,78 @@ jobs:
         run: |
           echo "::error::screens changed, are new, did not render or rendered differently twice: review the pxsig-screens artifact and commit the approved baselines (docs/releasing.md, \"pxsig's own baselines\")"
           exit 1
+
+  screens-plain:
+    name: Dashboard screens (plain)
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+      # The plain adapter needs no design system and no secret. Its own folder, so it never replaces
+      # the reference build (packages/pxsig/dist/dashboard), the dashboard the review runs on.
+      - name: Build the dashboard on the plain adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          PXSIG_UI_ADAPTER=plain PXSIG_DASHBOARD_OUT="$PWD/target/dashboard-plain" pnpm build:dashboard
+          node scripts/check-dashboard-build.mjs target/dashboard-plain --adapter plain
+      # The verdicts are this commit's engine's (docs/releasing.md, "Live screens"), as in the
+      # reference job.
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable branch, 2026-10-26
+        with:
+          toolchain: 1.99.0 # rust-toolchain.toml
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Build the engine
+        run: cargo build --release --locked
+      - id: check
+        name: Check the plain screens in pxsig's container
+        shell: bash
+        run: |
+          set -uo pipefail
+          docker pull -q "$(node -p "require('./docker/screens-image.json').image")"
+          # Exit handling as the reference job's: 1 is screens to review only with the check.json
+          # this run wrote; anything above 1 is an error.
+          code=0
+          store=packages/dashboard/plain/.pxsig/reports
+          rm -f "$store/check.json"
+          PXSIG_LIVE_BIN="$PWD/target/release/pxsig" node scripts/screens-container.mjs --project plain --build target/dashboard-plain --no-live || code=$?
+          if [ "$code" -le 1 ] && [ ! -f "$store/check.json" ]; then
+            echo "::error::the screens check exited $code but wrote no check.json: the harness failed (an error, not screens to review)"
+            code=2
+          fi
+          for f in findings.md aria-vs-reference.md summary.md fixture-repeat/summary.md; do
+            if [ -f "$store/$f" ]; then cat "$store/$f" >> "$GITHUB_STEP_SUMMARY"; echo >> "$GITHUB_STEP_SUMMARY"; fi
+          done
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          [ "$code" -le 1 ] || { echo "::error::the plain screens check failed (exit $code): an error (setup, Docker or the harness, see the log above), not screens to review"; exit 1; }
+      # The review: download this artifact into packages/dashboard/plain/.pxsig, run `pxsig serve`
+      # in packages/dashboard/plain and approve through `pxsig serve --link` (docs/releasing.md).
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pxsig-screens-plain
+          path: |
+            packages/dashboard/plain/.pxsig/
+            !packages/dashboard/plain/.pxsig/baselines/
+            !packages/dashboard/plain/.pxsig/approvals.ndjson
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 14
+      # Advisory for now: the verdict goes to the job summary as a warning and the job passes. Once
+      # plain's alignment findings are fixed and its first baselines approved, this step exits 1 on a
+      # 1, as the reference job's "Screens to review" does, and the job becomes a required check.
+      # An error (exit above 1) fails at the check step either way.
+      - if: steps.check.outputs.code == '1'
+        name: Plain screens verdict
+        shell: bash
+        run: |
+          msg="plain adapter screens changed, are new, did not render, rendered differently twice or have findings: see the job summary and the pxsig-screens-plain artifact (docs/releasing.md, \"pxsig's own baselines\"). Advisory for now: the job does not fail."
+          echo "::warning::$msg"
+          { echo; echo "**Verdict (advisory):** $msg"; } >> "$GITHUB_STEP_SUMMARY"
+          exit 0

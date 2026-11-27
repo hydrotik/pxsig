@@ -143,8 +143,9 @@ at 800, 640 and 390 CSS px, is compared with the screens at that width), and its
 change that moves it everywhere at once fails as well. `--update-locks` rewrites it too. Boxes
 depend on fonts: take them from the container (`pnpm screens:check`, or CI's `reports/structure/`).
 
-**No findings.** Every screen must also have no accessibility (axe) or layout finding, as `pxsig
-dashboard check --strict` requires; the run lists each one.
+**No findings.** Every screen must also have no accessibility (axe), layout, alignment or fidelity
+finding, as `pxsig dashboard check --strict` requires; the run lists each one, and writes them by
+kind to the store's `reports/findings.md` and `findings.json`.
 
 **Rendered twice.** Every fixture screen renders twice in the same run
 (`scripts/lib/screens-repeat.mjs`): the same build, container and browser binary, but pass 2 in a
@@ -226,7 +227,8 @@ PXSIG_LIVE_BIN="$PWD/target/linux/release/pxsig" pnpm screens:check
 **Where it runs.** The `screens` workflow (`.github/workflows/screens.yml`) builds the dashboard on
 the design system at the commit `design-system.json` pins (fetched with the `PXSIG_DS_SOURCE`
 secret by `scripts/ds-fetch.mjs`, as `pnpm ds:fetch` does in a worktree) and checks it on every pull request and push to `main`; a pull request
-without the secret (a fork, Dependabot) is not checked. The release's Dashboard job checks the
+without the secret (a fork, Dependabot) is not checked there (the plain adapter's job is, "Plain
+adapter" below). The release's Dashboard job checks the
 dashboard it ships, built or attached, the same way (its fixture screens, `--no-live` for now) and
 stops the release on any difference.
 
@@ -241,7 +243,47 @@ cd packages/dashboard && node ../pxsig/bin/pxsig.mjs serve   # approving needs s
 The approved `.psig` files and `approvals.ndjson` go into the same pull request. The store commits
 only `manifest.json`, `approvals.ndjson` and `baselines/<section>/<id>.psig` (`.gitignore`,
 `scripts/check-clean.mjs`). A new image changes `docker/screens-image.json` in a pull request that
-re-approves the screens it moves.
+re-approves the screens it moves (in both stores, below).
+
+**Plain adapter.** The plain adapter, the default build when nothing names an adapter, has a store
+of its own: `packages/dashboard/plain/`, project `pxsig-plain`, store
+`packages/dashboard/plain/.pxsig/` (`scripts/lib/screens-project.mjs`). It holds the same 84
+fixture screens in both themes, 168 entries, under the same ids as the reference store, so an
+entry of one names the same screen as the entry of the other; no live screens (they test the
+server and the reviewer's flows, which do not change with the adapter). The run is as strict as the
+reference one: rendered twice, axe, layout, alignment, fidelity and the top-bar sweep. Source parity stays reference-only. Its locks are its own, outside `fixtures/` (which
+ships in the npm package): `packages/dashboard/plain/locked/` holds its structure files, its
+`geometry.json` and its `unstable.json`, with `--update-locks` as above. Each run also writes, to
+`reports/aria-vs-reference.md`, where plain's structure differs from the reference's locks; that
+comparison is advisory and never fails.
+
+```sh
+PXSIG_UI_ADAPTER=plain PXSIG_DASHBOARD_OUT="$PWD/target/dashboard-plain" pnpm build:dashboard
+node scripts/check-dashboard-build.mjs target/dashboard-plain --adapter plain
+PXSIG_LIVE_BIN="$PWD/target/linux/release/pxsig" pnpm screens:check --project plain --build target/dashboard-plain --no-live
+```
+
+`PXSIG_DASHBOARD_OUT` is resolved from `packages/dashboard`, hence `$PWD`; the plain build has its
+own folder so it never replaces the reference build, which is the dashboard every review runs on.
+CI runs this as the `Dashboard screens (plain)` job of `screens.yml`. It needs no design-system
+secret, so it also runs on pull requests from forks and Dependabot. **For now it is advisory**: it
+runs the same check, but its verdict (a changed, new or unrendered screen, a lock change or a
+finding) goes to the job summary as a warning and never fails the workflow, because plain still has
+alignment findings to fix and no baselines yet. Once those findings are fixed and the first
+baselines approved, the job fails as the reference job does and becomes a required check. Its job
+summary lists the findings by kind (`reports/findings.md`), apart from the entries that only have
+no baseline yet. To review, download its `pxsig-screens-plain` artifact into the plain store and serve from the
+plain folder:
+
+```bash
+gh run download <run id> -R hydrotik/pxsig -n pxsig-screens-plain -D packages/dashboard/plain/.pxsig
+cd packages/dashboard/plain && node ../../pxsig/bin/pxsig.mjs serve   # read-only
+```
+
+The approvals are the owner's, from the same folder in Terminal:
+`node ../../pxsig/bin/pxsig.mjs serve --link --open`. The approved `.psig` files and
+`approvals.ndjson` go into the same pull request, and the plain store commits the same three kinds
+of file as the reference one.
 
 ## What the workflow does
 

@@ -189,14 +189,22 @@ export function repeatMarkdown(v, screens) {
  * reports/fixture-repeat/, writes unstable.json and summary.md there, and returns the verdict.
  * `flags` and `opts` are pass 1's `dashboardCheck` arguments; pass 2 runs it with its own browser,
  * output folder and the catalogue reversed.
- * @param {{ P: Project, first: Checked, flags: CheckFlags, opts: CheckOpts & { browser: NonNullable<CheckOpts['browser']> }, idOf: (x: ScreenResult) => string, log: (m: string) => void }} o
+ * `allowFile`: the project's allow-list (default `<project>/fixtures/unstable.json`); `screens`: the
+ * catalogue (default `<project>/fixtures/screens.json`).
+ * @param {{ P: Project, first: Checked, flags: CheckFlags, opts: CheckOpts & { browser: NonNullable<CheckOpts['browser']> }, idOf: (x: ScreenResult) => string, log: (m: string) => void, allowFile?: string, screens?: string }} o
  */
-export async function fixtureRepeat({ P, first, flags, opts, idOf, log }) {
+export async function fixtureRepeat({
+  P,
+  first,
+  flags,
+  opts,
+  idOf,
+  log,
+  allowFile = join(P.root, 'fixtures', 'unstable.json'),
+  screens = join(P.root, 'fixtures', 'screens.json'),
+}) {
   const keep = join(P.store.reports, 'fixture-repeat');
-  const allowFile = join(P.root, 'fixtures', 'unstable.json');
-  const catalogue = /** @type {ScreenCatalogue} */ (
-    JSON.parse(readFileSync(join(P.root, 'fixtures', 'screens.json'), 'utf8'))
-  );
+  const catalogue = /** @type {ScreenCatalogue} */ (JSON.parse(readFileSync(screens, 'utf8')));
   const ids = new Set(
     catalogue.features.flatMap((f) =>
       f.screens.flatMap((_, index) =>

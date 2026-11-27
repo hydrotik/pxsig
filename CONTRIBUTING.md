@@ -200,7 +200,11 @@ contract component needs its section in `docs/ui/build-adapter.md`, an entry in 
 adapter's `conformance.json` and a feature in `src/ui/features.ts` that renders it; a new feature
 needs its entry in `features.ts`. The plain adapter (`src/ui/adapters/plain/`) and the example's
 copy (`examples/custom-ui/pxsig-ui/`) stay identical but for their contract import;
-`test/build-config.test.mjs` checks it.
+`test/build-config.test.mjs` checks it. The plain adapter has baselines of its own
+(`packages/dashboard/plain/`, the `Dashboard screens (plain)` job; docs/releasing.md, "pxsig's own
+baselines"; advisory until its first baselines are approved): a change to `adapters/plain/`, to its
+example copy, or to the dashboard as a whole is reviewed in that store too, and one confined to `adapters/hydrotik/` or a pin bump moves only the
+reference store.
 
 Any change to the contract (a component, a prop, a token, an icon) also bumps `CONTRACT_VERSION`
 in `contract.ts`, minor or major ([docs/ui/contract-changes.md](docs/ui/contract-changes.md) says
