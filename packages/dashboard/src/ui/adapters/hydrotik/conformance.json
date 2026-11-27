@@ -171,7 +171,7 @@
     },
     "Slider": {
       "status": "full",
-      "note": "Slider with one thumb, on one line: label, track, value"
+      "note": "Slider with one thumb, layout inline: label, track and value on one line"
     },
     "Switch": {
       "status": "full"

@@ -29,7 +29,6 @@ import {
 import type * as C from '../../contract';
 import { alertParts } from './alert';
 import { type ChartA11y, withChartSummary } from './chart-a11y';
-import { oneLineSlider } from './slider';
 import { sidePanel } from './side-panel';
 import { textField } from './text-field';
 import { toneBadge, toneStatGroup } from './tones';
@@ -351,7 +350,28 @@ export const SidePanelLayout = panel.SidePanelLayout;
 export const SidePanelMain = panel.SidePanelMain;
 export const SidePanel = panel.SidePanel;
 
-export const Slider = oneLineSlider(DS.Slider);
+// The design system's inline Slider: label, track and value on one line at the toolbar's sm control
+// height; the row, its label and value dim with the track when it is disabled.
+export const Slider = ({
+  value,
+  onValueChange,
+  min,
+  step,
+  formatValue,
+  ...rest
+}: C.SliderProps) => (
+  <DS.Slider
+    {...rest}
+    layout="inline"
+    size="sm"
+    showValue
+    value={[value]}
+    {...(min !== undefined ? { min } : {})}
+    {...(step !== undefined ? { step } : {})}
+    {...(formatValue ? { formatValue: ([v]: number[]) => formatValue(v) } : {})}
+    onValueChange={([v]: number[]) => onValueChange(v)}
+  />
+);
 
 export const Switch = ({ checked, onCheckedChange, label, disabled }: C.SwitchProps) => (
   <DS.Switch

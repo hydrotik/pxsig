@@ -1,7 +1,7 @@
 /**
  * The reference adapter's TextField (contract 1.5.0): hydrotik's Input with its own visible label,
  * stretched to its container. Enter calls `onSubmit`, except while an input method is composing.
- * index.tsx passes DS.Input in (as slider.tsx), so every design-system part the adapter uses is
+ * index.tsx passes DS.Input in (as side-panel.tsx), so every design-system part the adapter uses is
  * named in that one file.
  */
 import type * as DS from '@hydrotik/design-system';
