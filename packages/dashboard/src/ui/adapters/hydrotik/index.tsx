@@ -5,7 +5,7 @@
  */
 import React from 'react';
 import '@hydrotik/design-system/fonts';
-import './reset.css';
+import './base.css';
 import * as DS from '@hydrotik/design-system';
 import {
   ChartContainer,
