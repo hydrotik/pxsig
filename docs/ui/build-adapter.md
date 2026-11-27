@@ -1115,6 +1115,11 @@ draw them with your own segmented control and buttons.
 5. Run `tsc --noEmit` in your project: the contract's types catch prop-shape changes at compile time.
 6. Update `conformance.json` with what you found.
 
+The plain adapter, the shape to start from, is checked this way in pxsig itself on every change:
+its screens in both themes, strict (axe, layout, alignment, fidelity, the top bar) and rendered
+twice, against baselines committed in pxsig's repository. A pull request that changes how plain
+draws a screen shows it, so an adapter copied from plain starts from a look that was reviewed.
+
 ## Source parity
 
 A screen can match its own baseline and still not match the design system: nothing compares the
