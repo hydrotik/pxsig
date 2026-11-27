@@ -1,6 +1,5 @@
 {
   "R:parts/TopBar.tsx:NavEnd:navEnd": "the top bar's end items are pxsig's own markup in the adapter's bespoke NavEnd; waits on the design system's navbar end items",
-  "G:styles/base.css.ts:[data-control]": "border-box sizing for controls; waits on the design system's scoped base stylesheet replacing the adapter's reset",
   "G:styles/overview.css.ts:${statCards} button, ${statCards} a": "the corner arrow pxsig draws in a stat card's icon slot; goes when no stat card passes `icon` (the design system draws the arrow from `affordance`)",
   "G:styles/overview.css.ts:${statCards} span:has(> ${affordance})": "the corner arrow pxsig draws in a stat card's icon slot; goes when no stat card passes `icon` (the design system draws the arrow from `affordance`)",
   "G:styles/overview.css.ts:${statCards} :is(button, a) > span:has(${affordance})": "the corner arrow pxsig draws in a stat card's icon slot; goes when no stat card passes `icon` (the design system draws the arrow from `affordance`)",

@@ -30,9 +30,6 @@ globalStyle('body', {
   color: v.color.text,
   fontFamily: v.font.sans,
 });
-// A control's height includes its border (CONTROLS.md); ToggleGroup's root relies on a page-wide
-// border-box reset this page does not have, and grows by its 2px border without one.
-globalStyle('[data-control]', { boxSizing: 'border-box' });
 
 export const page = style({
   display: 'flex',
