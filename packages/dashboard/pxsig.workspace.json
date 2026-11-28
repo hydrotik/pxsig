@@ -1,7 +1,6 @@
 {
   "$schema": "../pxsig/schema/workspace.json",
   "version": 1,
-  "label": "pxsig dashboard",
   "projects": {
     "pxsig": ".",
     "pxsig-plain": "plain"
