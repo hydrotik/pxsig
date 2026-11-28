@@ -52,8 +52,6 @@ export const GLUE = new Set([
 
 /** The reference adapter's own stylesheets, each until the design system ships what it draws. */
 export const EXCEPTIONS = {
-  'reset.css.ts':
-    "the design system's reset and body type for its own elements, until its scoped base stylesheet can replace it without restyling the dashboard's markup inside them",
   'heatmap.css.ts':
     "the heatmap's tiles, until the design system's Heatmap tile text keeps its label and figure apart for the tile's accessible name",
 };
