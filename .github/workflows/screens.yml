@@ -12,9 +12,9 @@
 # packages/dashboard/plain/locked/ (scripts/lib/screens-project.mjs). It needs no design system, so
 # it runs on every pull request, forks and Dependabot included. Its renders are the
 # `pxsig-screens-plain` artifact; its findings by kind (reports/findings.md) and an advisory
-# comparison of its structure with the reference's locks go to the job summary. It is advisory for
-# now ("Plain screens verdict" below): it becomes a failing, required check once plain's alignment
-# findings are fixed and its first baselines are approved.
+# comparison of its structure with the reference's locks go to the job summary. A plain screen to
+# review fails the run as a reference one does ("Plain screens to review" below); it is a required
+# check (scripts/required-checks.mjs).
 name: screens
 
 on:
@@ -262,15 +262,9 @@ jobs:
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 14
-      # Advisory for now: the verdict goes to the job summary as a warning and the job passes. Once
-      # plain's alignment findings are fixed and its first baselines approved, this step exits 1 on a
-      # 1, as the reference job's "Screens to review" does, and the job becomes a required check.
-      # An error (exit above 1) fails at the check step either way.
       - if: steps.check.outputs.code == '1'
-        name: Plain screens verdict
+        name: Plain screens to review
         shell: bash
         run: |
-          msg="plain adapter screens changed, are new, did not render, rendered differently twice or have findings: see the job summary and the pxsig-screens-plain artifact (docs/releasing.md, \"pxsig's own baselines\"). Advisory for now: the job does not fail."
-          echo "::warning::$msg"
-          { echo; echo "**Verdict (advisory):** $msg"; } >> "$GITHUB_STEP_SUMMARY"
-          exit 0
+          echo "::error::plain adapter screens changed, are new, did not render, rendered differently twice or have findings: review the pxsig-screens-plain artifact and commit the approved baselines (docs/releasing.md, \"pxsig's own baselines\")"
+          exit 1
