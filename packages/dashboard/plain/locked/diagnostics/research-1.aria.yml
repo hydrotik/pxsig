@@ -1,0 +1,96 @@
+- navigation "Report sections":
+    - heading "pxsig • demo" [level=1]
+    - list:
+        - listitem:
+            - link "Overview":
+                - /url: '#overview'
+        - listitem:
+            - link "Review Stories":
+                - /url: '#stories'
+        - listitem:
+            - link "Coverage":
+                - /url: '#integrity'
+        - listitem:
+            - link "Accessibility":
+                - /url: '#a11y'
+        - listitem:
+            - link "Runs, 4 runs":
+                - /url: '#history'
+                - text: Runs 4
+        - listitem:
+            - link "Diagnostics":
+                - /url: '#diagnostics'
+        - listitem:
+            - link "Help":
+                - /url: '#help'
+    - text: dark · light Live Can approve Last check 10/24/2026, 10:00:00 AM
+    - button "Light theme"
+    - text: Approved
+- main:
+    - heading "Diagnostics" [level=2]
+    - text: Results from the research tools in tools/. Not part of a normal check. 4 entries · 8 CPUs (sample cpu) · Median of 3 runs · 10/24/2026, 10:00:00 AM
+    - region "Engine": Baseline capture 30 ms 25 ms in engine Per compare, CLI → server 1.0 ms → 2.0 ms 0.5× Peak memory, batch check 12 MB Binary size 5 MB Last full check 200 ms 4 entries
+    - heading "Render Time per Story by Page Count" [level=3]
+    - paragraph: 4 stories per run.
+    - table "Render Time per Story by Page Count":
+        - rowgroup:
+            - row "ms per story":
+                - cell
+                - columnheader "ms per story"
+        - rowgroup:
+            - row "1 page 100 ms":
+                - rowheader "1 page"
+                - cell "100 ms"
+            - row "4 pages 40 ms":
+                - rowheader "4 pages"
+                - cell "40 ms"
+    - table:
+        - rowgroup:
+            - row "Pages Wall time ms per story vs 1 page Errors Reloads":
+                - columnheader "Pages":
+                    - button "Pages"
+                - columnheader "Wall time":
+                    - button "Wall time"
+                - columnheader "ms per story":
+                    - button "ms per story"
+                - columnheader "vs 1 page":
+                    - button "vs 1 page"
+                - columnheader "Errors":
+                    - button "Errors"
+                - columnheader "Reloads":
+                    - button "Reloads"
+        - rowgroup:
+            - row "1 400 ms 100 1.0× 0 0":
+                - cell "1"
+                - cell "400 ms"
+                - cell "100"
+                - cell "1.0×"
+                - cell "0"
+                - cell "0"
+            - row "4 160 ms 40 2.5× 0 0":
+                - cell "4"
+                - cell "160 ms"
+                - cell "40"
+                - cell "2.5×"
+                - cell "0"
+                - cell "0"
+    - heading "Batch Check by Thread Count" [level=3]
+    - paragraph: 'Same renders and verdicts at each thread count. Wall: the whole process. Engine: time reported by the engine.'
+    - text: No batch-check timings.
+    - 'heading "Single Compare: CLI Process vs Server" [level=3]'
+    - paragraph:
+        - text: Median over 10 entries. The CLI starts a process per compare;
+        - code: pxsig serve
+        - text: keeps one engine running.
+    - 'table "Single Compare: CLI Process vs Server"':
+        - rowgroup:
+            - row "ms per compare":
+                - cell
+                - columnheader "ms per compare"
+        - rowgroup:
+            - row "CLI process 1 ms":
+                - rowheader "CLI process"
+                - cell "1 ms"
+            - row "Server request 2 ms":
+                - rowheader "Server request"
+                - cell "2 ms"

@@ -1,0 +1,117 @@
+- navigation "Report sections":
+    - heading "pxsig • demo" [level=1]
+    - list:
+        - listitem:
+            - link "Overview":
+                - /url: '#overview'
+        - listitem:
+            - link "Review Stories":
+                - /url: '#stories'
+        - listitem:
+            - link "Coverage":
+                - /url: '#integrity'
+        - listitem:
+            - link "Accessibility":
+                - /url: '#a11y'
+        - listitem:
+            - link "Runs, 4 runs":
+                - /url: '#history'
+                - text: Runs 4
+        - listitem:
+            - link "Diagnostics":
+                - /url: '#diagnostics'
+        - listitem:
+            - link "Help":
+                - /url: '#help'
+    - text: dark · light Live Can approve Last check 10/24/2026, 10:00:00 AM
+    - button "Light theme"
+    - text: Approved
+- main:
+    - heading "Runs" [level=2]
+    - heading "Last Check Timing" [level=3]
+    - region "Last Check Timing": Render 100 ms 1 page Engine 1 ms 0 cached Retries 0 ms Scope All entries
+    - heading "Changed Entries per Run" [level=3]
+    - paragraph: 4 runs.
+    - table "Changed Entries per Run":
+        - rowgroup:
+            - row "Changed":
+                - cell
+                - columnheader "Changed"
+        - rowgroup:
+            - row "1 0":
+                - rowheader "1"
+                - cell "0"
+            - row "2 1":
+                - rowheader "2"
+                - cell "1"
+            - row "3 2":
+                - rowheader "3"
+                - cell "2"
+            - row "4 0":
+                - rowheader "4"
+                - cell "0"
+    - heading "Engine Time per Run" [level=3]
+    - paragraph: Milliseconds.
+    - table "Engine Time per Run":
+        - rowgroup:
+            - row "Engine (ms)":
+                - cell
+                - columnheader "Engine (ms)"
+        - rowgroup:
+            - row "1 40 ms":
+                - rowheader "1"
+                - cell "40 ms"
+            - row "2 40 ms":
+                - rowheader "2"
+                - cell "40 ms"
+            - row "3 40 ms":
+                - rowheader "3"
+                - cell "40 ms"
+            - row "4 40 ms":
+                - rowheader "4"
+                - cell "40 ms"
+    - heading "Runs" [level=3]
+    - table:
+        - rowgroup:
+            - row "Finished Entries Changed Cached Engine Changed entries":
+                - columnheader "Finished":
+                    - button "Finished"
+                - columnheader "Entries":
+                    - button "Entries"
+                - columnheader "Changed":
+                    - button "Changed"
+                - columnheader "Cached":
+                    - button "Cached"
+                - columnheader "Engine":
+                    - button "Engine"
+                - columnheader "Changed entries":
+                    - button "Changed entries"
+        - rowgroup:
+            - row "10/23/2026, 10:00:00 AM 4 0 0 40 ms":
+                - cell "10/23/2026, 10:00:00 AM"
+                - cell "4"
+                - cell "0"
+                - cell "0"
+                - cell "40 ms"
+                - cell
+            - row "10/22/2026, 10:00:00 AM 4 2 0 40 ms":
+                - cell "10/22/2026, 10:00:00 AM"
+                - cell "4"
+                - cell "2"
+                - cell "0"
+                - cell "40 ms"
+                - cell
+            - row "10/21/2026, 10:00:00 AM 4 1 0 40 ms":
+                - cell "10/21/2026, 10:00:00 AM"
+                - cell "4"
+                - cell "1"
+                - cell "0"
+                - cell "40 ms"
+                - cell
+            - row "10/20/2026, 10:00:00 AM 4 0 0 40 ms":
+                - cell "10/20/2026, 10:00:00 AM"
+                - cell "4"
+                - cell "0"
+                - cell "0"
+                - cell "40 ms"
+                - cell

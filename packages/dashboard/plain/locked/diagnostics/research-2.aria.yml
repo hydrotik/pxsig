@@ -1,0 +1,77 @@
+- navigation "Report sections":
+    - heading "pxsig • demo" [level=1]
+    - list:
+        - listitem:
+            - link "Overview":
+                - /url: '#overview'
+        - listitem:
+            - link "Review Stories":
+                - /url: '#stories'
+        - listitem:
+            - link "Coverage":
+                - /url: '#integrity'
+        - listitem:
+            - link "Accessibility":
+                - /url: '#a11y'
+        - listitem:
+            - link "Runs, 4 runs":
+                - /url: '#history'
+                - text: Runs 4
+        - listitem:
+            - link "Diagnostics":
+                - /url: '#diagnostics'
+        - listitem:
+            - link "Help":
+                - /url: '#help'
+    - text: dark · light Live Can approve Last check 10/24/2026, 10:00:00 AM
+    - button "Light theme"
+    - text: Approved
+- main:
+    - heading "Diagnostics" [level=2]
+    - toolbar:
+        - group "Diagnostics section":
+            - button "Scenarios" [pressed]
+            - button "Performance"
+    - text: Results from the research tools in tools/. Not part of a normal check.
+    - heading "Detection Rate by Suite" [level=3]
+    - paragraph: Share of changed renders that failed the gate, per suite. Noise scenarios report false positives.
+    - table "Detection Rate by Suite":
+        - rowgroup:
+            - row "Whole-image signature Signature and detail channel":
+                - cell
+                - columnheader "Whole-image signature"
+                - columnheader "Signature and detail channel"
+        - rowgroup:
+            - row "Buttons 100% 100%":
+                - rowheader "Buttons"
+                - cell "100%"
+                - cell "100%"
+    - term: Buttons
+    - definition: 2/2 detected
+    - term: False positives
+    - definition: '0'
+    - strong: Buttons
+    - text: '3 stories matching ui-button-- · Gate: grid 64, ≥ 3 cells over 24, detail channel on'
+    - group "Scenarios":
+        - button "Button radius changed Regression 2/2 detected · whole-image 2 100% 100" [pressed]:
+            - strong: Button radius changed
+            - text: Regression 2/2 detected · whole-image 2 100%
+            - progressbar "2/2 detected · whole-image 2"
+        - button "Imperceptible opacity Noise 3/3 pass 100% 100":
+            - strong: Imperceptible opacity
+            - text: Noise 3/3 pass 100%
+            - progressbar "3/3 pass"
+    - heading "Button radius changed" [level=3]
+    - paragraph: Button radius 4px to 6px
+    - region "Scenario result": Changed 2/3 Detected 2/2 Whole-image only 2/2 Render 900 ms Engine 14 ms
+    - toolbar:
+        - text: Filter renders
+        - combobox "Filter renders":
+            - option "Changed renders" [selected]
+            - option "Changed, not detected"
+            - option "Detected by detail channel only"
+            - option "Failed"
+            - option "All renders"
+        - text: Sorted by SSIM, lowest first.
+    - button "ui-button--primary Changed dark SSIM 0.86 Cells 9"
+    - button "ui-button--secondary Changed dark SSIM 0.86 Cells 9"

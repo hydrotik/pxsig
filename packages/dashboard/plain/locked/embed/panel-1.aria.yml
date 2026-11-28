@@ -1,0 +1,23 @@
+- main:
+    - heading "pxsig • ui-button--primary" [level=1]
+    - toolbar:
+        - text: Changed
+        - group "Compare mode":
+            - button "Side by side" [pressed]: Side
+            - button "Swipe"
+            - button "Onion skin": Onion
+            - button "Pixel diff": Diff
+            - button "Signature cells": Cells
+        - button "Zoom out (−)": −
+        - text: 1200%
+        - button "Zoom in (+)": +
+        - button "Fit"
+        - button "1:1"
+        - switch "Show details"
+        - text: Details
+        - group "Mode":
+            - button "dark" [pressed]
+            - button "light"
+        - button "Reject"
+        - button "Approve"
+    - group "Image comparison. Drag to pan, scroll to zoom.": Baseline render Latest render

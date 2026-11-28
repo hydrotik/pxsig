@@ -1,0 +1,70 @@
+- navigation "Report sections":
+    - heading "pxsig • demo" [level=1]
+    - list:
+        - listitem:
+            - link "Overview":
+                - /url: '#overview'
+        - listitem:
+            - link "Review Stories, 2 to review":
+                - /url: '#stories'
+                - text: Review Stories 2
+        - listitem:
+            - link "Coverage":
+                - /url: '#integrity'
+        - listitem:
+            - link "Accessibility":
+                - /url: '#a11y'
+        - listitem:
+            - link "Runs":
+                - /url: '#history'
+        - listitem:
+            - link "Help":
+                - /url: '#help'
+    - button "Approve 2 new entries"
+    - text: dark · light Live Can approve Last check 10/24/2026, 10:00:00 AM
+    - button "Light theme"
+    - text: Review required
+- main:
+    - heading "Review Stories" [level=2]
+    - region "Coverage":
+        - strong: 'Needs a first approval: 2 entries'
+        - text: Registered entries without a baseline. Nothing is approved automatically.
+        - button "View components"
+        - button "Approve 2 new entries"
+    - toolbar:
+        - text: Story
+        - searchbox "Filter by story ID"
+        - text: Result
+        - combobox "Result":
+            - option "All results" [selected]
+            - option "Needs review"
+            - option "Changed"
+            - option "New (no baseline)"
+            - option "Render error"
+            - option "Blocked by masks"
+            - option "Flaky"
+            - option "Approved"
+            - option "Rejected"
+            - option "Not run (unaffected by changes)"
+            - option "Passing, but differs from the baseline"
+            - option "Masks over 25% of the capture"
+        - text: Mode
+        - combobox "Mode":
+            - option "All modes" [selected]
+            - option "dark"
+            - option "light"
+        - text: Sort
+        - combobox "Sort":
+            - option "Largest change first" [selected]
+            - option "Story ID"
+            - option "Slowest render"
+        - text: Group
+        - combobox "Group":
+            - option "By component" [selected]
+            - option "None"
+        - text: 3 of 3
+    - region "Button":
+        - heading "Button New 2 · Pass 1" [level=3]
+        - button "ui-button--ok Pass dark SSIM 1 Cells 0"
+        - button "ui-button--new New dark No baseline. Approve the first render."
+        - button "ui-button--new New light No baseline. Approve the first render."
