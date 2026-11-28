@@ -145,6 +145,8 @@ function DataTableFallback<T>({
     textAlign: align === 'end' ? 'end' : 'start',
     paddingBlock: v.space['1_5'],
     paddingInline: v.space['2'],
+    // A whole line (18px), so a header row and a row of text are whole pixels tall.
+    lineHeight: '1.125rem',
     borderBlockEnd: border,
   });
   return (
@@ -158,7 +160,16 @@ function DataTableFallback<T>({
           style={{ ...control, maxInlineSize: '20rem' }}
         />
       ) : null}
-      <table style={{ borderCollapse: 'collapse', inlineSize: '100%', fontSize: v.fontSize.sm }}>
+      {/* Separate borders, no spacing: each cell owns its whole bottom rule. Collapsed borders give
+          every row half of each rule, so the header row (no rule above it) is a half pixel tall. */}
+      <table
+        style={{
+          borderCollapse: 'separate',
+          borderSpacing: 0,
+          inlineSize: '100%',
+          fontSize: v.fontSize.sm,
+        }}
+      >
         <thead>
           <tr>
             {columns.map((c) => (
