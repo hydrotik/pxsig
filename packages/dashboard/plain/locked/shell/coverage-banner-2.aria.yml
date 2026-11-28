@@ -1,0 +1,111 @@
+- navigation "Report sections":
+  - heading "pxsig • demo" [level=1]
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: "#overview"
+    - listitem:
+      - link "Review Stories":
+        - /url: "#stories"
+    - listitem:
+      - link "Coverage":
+        - /url: "#integrity"
+    - listitem:
+      - link "Accessibility":
+        - /url: "#a11y"
+    - listitem:
+      - link "Runs":
+        - /url: "#history"
+    - listitem:
+      - link "Diagnostics":
+        - /url: "#diagnostics"
+    - listitem:
+      - link "Help":
+        - /url: "#help"
+  - text: dark · light Live Can approve Last check 10/24/2026, 10:00:00 AM
+  - button "Light theme"
+  - text: Approved
+- main:
+  - heading "Diagnostics" [level=2]
+  - region "Coverage":
+    - strong: No errors · 2 warnings
+    - strong: Older log lines with reasons
+    - text: · 212 lines of approvals.ndjson and 2 of a11y-decisions.ndjson, written before 0.7.6, carry a reason or a git email. New lines carry neither; old lines stay (the log is append-only, and git history keeps them either way)
+    - strong: Different render environment
+    - text: "· 26 entries were rendered in a different environment than their baseline (browser.version, fonts.probe): a change there can be the machine, not the code. Render where the baselines were made (the pinned container), or re-take them there (`pxsig check --full --update --kind environment`); `--strict-env` refuses such a run instead (a font swap, `fonts.used`, once rendered)"
+    - strong: Many passing entries differ
+    - text: "· 19 of 26 passing entries (73%) pass while their render differs from the baseline, at or over 5 entries or 10%. A change the gate does not see, such as a color change in a small area, passes this way, and their baselines stay as they were. `pxsig list drift` (or the dashboard's Stories, \"Passing, but differs from the baseline\") lists them. An intended change gets new baselines from a person (`pxsig check --full --update --only <ids>`); one the gate should have failed means the gate is too loose for this project (`pxsig config` names the layer that sets it)"
+  - toolbar:
+    - group "React part":
+      - button "Compiler" [pressed]
+      - button "Renders"
+    - text: From the check at 10/24/2026, 10:00:00 AM · base main (4883bcd)
+    - button "Analyse"
+  - heading "React Compiler (babel-plugin-react-compiler 1.0.0)" [level=3]
+  - paragraph: 5 files · 11 functions · compiled 6 · skipped 5 · opted out 0 · fixed 0 · 2.1 s (3 cached)
+  - toolbar:
+    - button "Alerts (5)"
+    - button "All analysed (11)"
+  - searchbox "Search"
+  - table:
+    - rowgroup:
+      - row "Function File Before Now Rule Line Entries":
+        - columnheader "Function":
+          - button "Function"
+        - columnheader "File"
+        - columnheader "Before"
+        - columnheader "Now"
+        - columnheader "Rule"
+        - columnheader "Line"
+        - columnheader "Entries"
+    - rowgroup:
+      - row "AreaChart Newly skipped packages/ui/src/components/Chart/AreaChart.tsx Compiled Skipped refs 18 8":
+        - cell "AreaChart Newly skipped":
+          - strong: AreaChart
+          - text: Newly skipped
+        - cell "packages/ui/src/components/Chart/AreaChart.tsx"
+        - cell "Compiled"
+        - cell "Skipped"
+        - cell "refs"
+        - cell "18"
+        - cell "8"
+      - row "DataGridRow Newly skipped packages/ui/src/components/DataGrid/parts/Body.tsx Compiled Skipped refs 18 8":
+        - cell "DataGridRow Newly skipped":
+          - strong: DataGridRow
+          - text: Newly skipped
+        - cell "packages/ui/src/components/DataGrid/parts/Body.tsx"
+        - cell "Compiled"
+        - cell "Skipped"
+        - cell "refs"
+        - cell "18"
+        - cell "8"
+      - row "NavigationBar Newly skipped packages/ui/src/components/NavigationBar/NavigationBar.tsx Compiled Skipped refs 18 4":
+        - cell "NavigationBar Newly skipped":
+          - strong: NavigationBar
+          - text: Newly skipped
+        - cell "packages/ui/src/components/NavigationBar/NavigationBar.tsx"
+        - cell "Compiled"
+        - cell "Skipped"
+        - cell "refs"
+        - cell "18"
+        - cell "4"
+      - row "SegmentedRatingBar Newly skipped packages/ui/src/components/SegmentedRatingBar/SegmentedRatingBar.tsx Compiled Skipped refs 18 4":
+        - cell "SegmentedRatingBar Newly skipped":
+          - strong: SegmentedRatingBar
+          - text: Newly skipped
+        - cell "packages/ui/src/components/SegmentedRatingBar/SegmentedRatingBar.tsx"
+        - cell "Compiled"
+        - cell "Skipped"
+        - cell "refs"
+        - cell "18"
+        - cell "4"
+      - row "useColumnAutosize Newly skipped packages/ui/src/components/DataGrid/hooks/useColumnAutosize.ts Compiled Skipped refs 18 8":
+        - cell "useColumnAutosize Newly skipped":
+          - strong: useColumnAutosize
+          - text: Newly skipped
+        - cell "packages/ui/src/components/DataGrid/hooks/useColumnAutosize.ts"
+        - cell "Compiled"
+        - cell "Skipped"
+        - cell "refs"
+        - cell "18"
+        - cell "8"

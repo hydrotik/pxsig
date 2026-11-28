@@ -6,7 +6,7 @@
  *   pxsig   the reference build (the design system's adapter), store packages/dashboard/.pxsig: the
  *           fixture screens and the live ones, locks in packages/dashboard/fixtures/locked/
  *   plain   the plain adapter's build (`PXSIG_UI_ADAPTER=plain`), store
- *           packages/dashboard/plain/.pxsig: the fixture screens only (advisory in CI for now,
+ *           packages/dashboard/plain/.pxsig: the fixture screens only (a required check in CI,
  *           .github/workflows/screens.yml), locks in
  *           packages/dashboard/plain/locked/ (with its geometry.json and unstable.json), never in
  *           fixtures/, which ships in the npm package

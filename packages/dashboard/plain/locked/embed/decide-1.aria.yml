@@ -1,0 +1,3 @@
+- main:
+  - 'heading "pxsig: recording a decision" [level=1]'
+  - status: This window records decisions from the Storybook panel and closes. Opened on its own, it has nothing to do.

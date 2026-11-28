@@ -1,0 +1,90 @@
+- navigation "Report sections":
+  - heading "pxsig • demo" [level=1]
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: "#overview"
+    - listitem:
+      - link "Review Stories, 2 to review":
+        - /url: "#stories"
+        - text: Review Stories 2
+    - listitem:
+      - link "Coverage":
+        - /url: "#integrity"
+    - listitem:
+      - button "More sections" [expanded]: More
+    - listitem:
+      - link "Help":
+        - /url: "#help"
+  - button "Review 2 changes"
+  - text: Live · last check 10/24/2026, 10:00:00 AM Can approve
+  - button "Light theme"
+  - menu "More sections":
+    - menuitem "Accessibility"
+    - menuitem "Runs, 3 runs": Runs 3
+- main:
+  - heading "Overview" [level=2]
+  - region "Latest check":
+    - text: Checked 3 dark · light Passed 1
+    - button "Changed 2"
+    - button "Flaky 0"
+    - button "New a11y 0 of 0 violations"
+    - text: Duration 200 ms 100 ms rendering
+  - heading "Open Items" [level=3]
+  - table:
+    - rowgroup:
+      - row "Item Count Action":
+        - columnheader "Item":
+          - button "Item"
+        - columnheader "Count":
+          - button "Count"
+        - columnheader "Action"
+    - rowgroup:
+      - row "Changed, awaiting review dark 1 · light 1 2 Start review":
+        - cell "Changed, awaiting review dark 1 · light 1"
+        - cell "2"
+        - cell "Start review":
+          - button "Start review"
+      - row "New, no baseline 0":
+        - cell "New, no baseline"
+        - cell "0"
+        - cell
+      - row "Rejected, awaiting a fix 0":
+        - cell "Rejected, awaiting a fix"
+        - cell "0"
+        - cell
+      - row "Render errors 0":
+        - cell "Render errors"
+        - cell "0"
+        - cell
+      - row "Components with coverage errors 0":
+        - cell "Components with coverage errors"
+        - cell "0"
+        - cell
+      - row "Entries with new a11y violations 0":
+        - cell "Entries with new a11y violations"
+        - cell "0"
+        - cell
+      - row "Flaky 0":
+        - cell "Flaky"
+        - cell "0"
+        - cell
+  - heading "Stale Entries by Component" [level=3]
+  - text: No stale entries
+  - heading "Changed Entries per Run" [level=3]
+  - paragraph: 3 runs.
+  - table "Changed Entries per Run":
+    - rowgroup:
+      - row "Changed":
+        - cell
+        - columnheader "Changed"
+    - rowgroup:
+      - row "1 0":
+        - rowheader "1"
+        - cell "0"
+      - row "2 1":
+        - rowheader "2"
+        - cell "1"
+      - row "3 2":
+        - rowheader "3"
+        - cell "2"

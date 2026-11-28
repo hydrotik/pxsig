@@ -1,0 +1,245 @@
+- navigation "Report sections":
+  - heading "pxsig • demo" [level=1]
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: "#overview"
+    - listitem:
+      - link "Review Stories":
+        - /url: "#stories"
+    - listitem:
+      - link "Coverage":
+        - /url: "#integrity"
+    - listitem:
+      - link "Accessibility":
+        - /url: "#a11y"
+    - listitem:
+      - link "Runs":
+        - /url: "#history"
+    - listitem:
+      - link "Diagnostics":
+        - /url: "#diagnostics"
+    - listitem:
+      - link "Help":
+        - /url: "#help"
+  - text: dark · light Live Can approve Last check 10/24/2026, 10:00:00 AM
+  - button "Light theme"
+  - text: Approved
+- main:
+  - heading "Diagnostics" [level=2]
+  - region "Coverage":
+    - strong: No errors · 2 warnings
+    - strong: Older log lines with reasons
+    - text: · 212 lines of approvals.ndjson and 2 of a11y-decisions.ndjson, written before 0.7.6, carry a reason or a git email. New lines carry neither; old lines stay (the log is append-only, and git history keeps them either way)
+    - strong: Different render environment
+    - text: "· 26 entries were rendered in a different environment than their baseline (browser.version, fonts.probe): a change there can be the machine, not the code. Render where the baselines were made (the pinned container), or re-take them there (`pxsig check --full --update --kind environment`); `--strict-env` refuses such a run instead (a font swap, `fonts.used`, once rendered)"
+    - strong: Many passing entries differ
+    - text: "· 19 of 26 passing entries (73%) pass while their render differs from the baseline, at or over 5 entries or 10%. A change the gate does not see, such as a color change in a small area, passes this way, and their baselines stay as they were. `pxsig list drift` (or the dashboard's Stories, \"Passing, but differs from the baseline\") lists them. An intended change gets new baselines from a person (`pxsig check --full --update --only <ids>`); one the gate should have failed means the gate is too loose for this project (`pxsig config` names the layer that sets it)"
+  - toolbar:
+    - group "React part":
+      - button "Compiler"
+      - button "Renders" [pressed]
+    - text: Scope
+    - combobox "Scope":
+      - option "All entries · 26" [selected]
+    - button "Measure renders"
+  - text: "Runs a visual check: renders 26 entries and replaces their visual results."
+  - heading "Renders per Entry" [level=3]
+  - paragraph: 26 entries measured · development build · React 19.3.1 · 6 still rendering
+  - toolbar:
+    - button "Alerts (6)"
+    - button "All measured (26)"
+  - searchbox "Search"
+  - table:
+    - rowgroup:
+      - row "Entry Commits Rendered Time Top component Since last":
+        - columnheader "Entry":
+          - button "Entry"
+        - columnheader "Commits"
+        - columnheader "Rendered"
+        - columnheader "Time"
+        - columnheader "Top component"
+        - columnheader "Since last"
+    - rowgroup:
+      - row "components-commandpalette--grouped-results-with-shortcuts@light Still rendering 15 555 93.1 ms ResponsiveContainerWithTooltipLayer ×277 · compiled 0":
+        - cell "components-commandpalette--grouped-results-with-shortcuts@light Still rendering"
+        - cell "15"
+        - cell "555"
+        - cell "93.1 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×277 · compiled"
+        - cell "0"
+      - row "components-datagrid--master-detail-expanded@light Still rendering 14 56 56.1 ms ResponsiveContainerWithTooltipLayer ×28 · not compiled 0":
+        - cell "components-datagrid--master-detail-expanded@light Still rendering"
+        - cell "14"
+        - cell "56"
+        - cell "56.1 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×28 · not compiled"
+        - cell "0"
+      - row "components-chart--bar-chart-grouped-negative-values@light Still rendering 13 884 19.1 ms ResponsiveContainerWithTooltipLayer ×442 · compiled 0":
+        - cell "components-chart--bar-chart-grouped-negative-values@light Still rendering"
+        - cell "13"
+        - cell "884"
+        - cell "19.1 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×442 · compiled"
+        - cell "0"
+      - row "components-segmentedratingbar--numeric-mode-large-total Still rendering 3 207 74.6 ms ResponsiveContainerWithTooltipLayer ×103 · compiled new":
+        - cell "components-segmentedratingbar--numeric-mode-large-total Still rendering"
+        - cell "3"
+        - cell "207"
+        - cell "74.6 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×103 · compiled"
+        - cell "new"
+      - row "components-datagrid--column-autosize-and-pinning Still rendering 2 72 37.6 ms ResponsiveContainerWithTooltipLayer ×36 · compiled new":
+        - cell "components-datagrid--column-autosize-and-pinning Still rendering"
+        - cell "2"
+        - cell "72"
+        - cell "37.6 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×36 · compiled"
+        - cell "new"
+      - row "components-chart--area-chart-stacked Still rendering 1 3 0.6 ms ResponsiveContainerWithTooltipLayer ×1 · not compiled new":
+        - cell "components-chart--area-chart-stacked Still rendering"
+        - cell "1"
+        - cell "3"
+        - cell "0.6 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×1 · not compiled"
+        - cell "new"
+      - row "components-datagrid--tree-data-with-aggregates@light 23 1,725 48.7 ms ResponsiveContainerWithTooltipLayer ×862 · compiled 0":
+        - cell "components-datagrid--tree-data-with-aggregates@light"
+        - cell "23"
+        - cell "1,725"
+        - cell "48.7 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×862 · compiled"
+        - cell "0"
+      - row "components-chart--area-chart-gradient-fill@light 22 924 11.7 ms ResponsiveContainerWithTooltipLayer ×462 · not compiled 0":
+        - cell "components-chart--area-chart-gradient-fill@light"
+        - cell "22"
+        - cell "924"
+        - cell "11.7 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×462 · not compiled"
+        - cell "0"
+      - row "components-navigationbar--kept-item-overflow-menu 21 357 59.8 ms ResponsiveContainerWithTooltipLayer ×178 · compiled new":
+        - cell "components-navigationbar--kept-item-overflow-menu"
+        - cell "21"
+        - cell "357"
+        - cell "59.8 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×178 · compiled"
+        - cell "new"
+      - row "components-chart--line-chart-with-reference-band 20 1,620 22.8 ms ResponsiveContainerWithTooltipLayer ×810 · not compiled new":
+        - cell "components-chart--line-chart-with-reference-band"
+        - cell "20"
+        - cell "1,620"
+        - cell "22.8 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×810 · not compiled"
+        - cell "new"
+      - row "components-navigationbar--more-menu-with-long-labels@light 19 1,064 70.9 ms ResponsiveContainerWithTooltipLayer ×532 · compiled 0":
+        - cell "components-navigationbar--more-menu-with-long-labels@light"
+        - cell "19"
+        - cell "1,064"
+        - cell "70.9 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×532 · compiled"
+        - cell "0"
+      - row "components-datagrid--virtualised-100-k-rows@light 18 414 33.9 ms ResponsiveContainerWithTooltipLayer ×207 · not compiled 0":
+        - cell "components-datagrid--virtualised-100-k-rows@light"
+        - cell "18"
+        - cell "414"
+        - cell "33.9 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×207 · not compiled"
+        - cell "0"
+      - row "components-segmentedratingbar--boolean-array-sources 17 1,615 82.0 ms ResponsiveContainerWithTooltipLayer ×807 · compiled new":
+        - cell "components-segmentedratingbar--boolean-array-sources"
+        - cell "17"
+        - cell "1,615"
+        - cell "82.0 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×807 · compiled"
+        - cell "new"
+      - row "components-datagrid--tree-data-with-aggregates 16 992 45.0 ms ResponsiveContainerWithTooltipLayer ×496 · not compiled new":
+        - cell "components-datagrid--tree-data-with-aggregates"
+        - cell "16"
+        - cell "992"
+        - cell "45.0 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×496 · not compiled"
+        - cell "new"
+      - row "components-chart--area-chart-gradient-fill 15 435 8.0 ms ResponsiveContainerWithTooltipLayer ×217 · compiled new":
+        - cell "components-chart--area-chart-gradient-fill"
+        - cell "15"
+        - cell "435"
+        - cell "8.0 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×217 · compiled"
+        - cell "new"
+      - row "components-navigationbar--more-menu-with-long-labels 12 516 67.2 ms ResponsiveContainerWithTooltipLayer ×258 · not compiled new":
+        - cell "components-navigationbar--more-menu-with-long-labels"
+        - cell "12"
+        - cell "516"
+        - cell "67.2 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×258 · not compiled"
+        - cell "new"
+      - row "components-datagrid--virtualised-100-k-rows 11 110 30.2 ms ResponsiveContainerWithTooltipLayer ×55 · compiled new":
+        - cell "components-datagrid--virtualised-100-k-rows"
+        - cell "11"
+        - cell "110"
+        - cell "30.2 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×55 · compiled"
+        - cell "new"
+      - row "components-segmentedratingbar--numeric-mode-large-total@light 10 820 78.3 ms ResponsiveContainerWithTooltipLayer ×410 · not compiled 0":
+        - cell "components-segmentedratingbar--numeric-mode-large-total@light"
+        - cell "10"
+        - cell "820"
+        - cell "78.3 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×410 · not compiled"
+        - cell "0"
+      - row "components-datagrid--column-autosize-and-pinning@light 9 441 41.3 ms ResponsiveContainerWithTooltipLayer ×220 · compiled 0":
+        - cell "components-datagrid--column-autosize-and-pinning@light"
+        - cell "9"
+        - cell "441"
+        - cell "41.3 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×220 · compiled"
+        - cell "0"
+      - row "components-chart--area-chart-stacked@light 8 128 4.3 ms ResponsiveContainerWithTooltipLayer ×64 · compiled 0":
+        - cell "components-chart--area-chart-stacked@light"
+        - cell "8"
+        - cell "128"
+        - cell "4.3 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×64 · compiled"
+        - cell "0"
+      - row "components-commandpalette--grouped-results-with-shortcuts 8 192 89.4 ms ResponsiveContainerWithTooltipLayer ×96 · not compiled new":
+        - cell "components-commandpalette--grouped-results-with-shortcuts"
+        - cell "8"
+        - cell "192"
+        - cell "89.4 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×96 · not compiled"
+        - cell "new"
+      - row "components-datagrid--master-detail-expanded 7 616 52.4 ms ResponsiveContainerWithTooltipLayer ×308 · compiled new":
+        - cell "components-datagrid--master-detail-expanded"
+        - cell "7"
+        - cell "616"
+        - cell "52.4 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×308 · compiled"
+        - cell "new"
+      - row "components-chart--bar-chart-grouped-negative-values 6 330 15.4 ms ResponsiveContainerWithTooltipLayer ×165 · compiled new":
+        - cell "components-chart--bar-chart-grouped-negative-values"
+        - cell "6"
+        - cell "330"
+        - cell "15.4 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×165 · compiled"
+        - cell "new"
+      - row "components-navigationbar--kept-item-overflow-menu@light 5 150 63.5 ms ResponsiveContainerWithTooltipLayer ×75 · compiled 0":
+        - cell "components-navigationbar--kept-item-overflow-menu@light"
+        - cell "5"
+        - cell "150"
+        - cell "63.5 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×75 · compiled"
+        - cell "0"
+      - row "components-chart--line-chart-with-reference-band@light 4 376 26.5 ms ResponsiveContainerWithTooltipLayer ×188 · compiled 0":
+        - cell "components-chart--line-chart-with-reference-band@light"
+        - cell "4"
+        - cell "376"
+        - cell "26.5 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×188 · compiled"
+        - cell "0"
+      - row "components-segmentedratingbar--boolean-array-sources@light 1 11 85.7 ms ResponsiveContainerWithTooltipLayer ×5 · compiled 0":
+        - cell "components-segmentedratingbar--boolean-array-sources@light"
+        - cell "1"
+        - cell "11"
+        - cell "85.7 ms"
+        - cell "ResponsiveContainerWithTooltipLayer ×5 · compiled"
+        - cell "0"

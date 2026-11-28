@@ -266,24 +266,26 @@ PXSIG_LIVE_BIN="$PWD/target/linux/release/pxsig" pnpm screens:check --project pl
 `PXSIG_DASHBOARD_OUT` is resolved from `packages/dashboard`, hence `$PWD`; the plain build has its
 own folder so it never replaces the reference build, which is the dashboard every review runs on.
 CI runs this as the `Dashboard screens (plain)` job of `screens.yml`. It needs no design-system
-secret, so it also runs on pull requests from forks and Dependabot. **For now it is advisory**: it
-runs the same check, but its verdict (a changed, new or unrendered screen, a lock change or a
-finding) goes to the job summary as a warning and never fails the workflow, because plain still has
-alignment findings to fix and no baselines yet. Once those findings are fixed and the first
-baselines approved, the job fails as the reference job does and becomes a required check. Its job
-summary lists the findings by kind (`reports/findings.md`), apart from the entries that only have
-no baseline yet. To review, download its `pxsig-screens-plain` artifact into the plain store and serve from the
-plain folder:
+secret, so it also runs on pull requests from forks and Dependabot. It fails as the reference job
+does: a changed, new or unrendered screen, a lock change or a finding fails the run until the
+approved baselines are committed, and it is a required check on `main`. Its job summary lists the
+findings by kind (`reports/findings.md`), apart from the entries that only have no baseline yet.
+
+`packages/dashboard/pxsig.workspace.json` lists both stores (`pxsig` and `pxsig-plain`), so neither
+is reported as a package nothing checks; `--project pxsig-plain` serves the plain one alone. To
+review, download its `pxsig-screens-plain` artifact into the plain store and serve from the plain
+folder:
 
 ```bash
 gh run download <run id> -R hydrotik/pxsig -n pxsig-screens-plain -D packages/dashboard/plain/.pxsig
-cd packages/dashboard/plain && node ../../pxsig/bin/pxsig.mjs serve   # read-only
+cd packages/dashboard/plain && node ../../pxsig/bin/pxsig.mjs serve --project pxsig-plain   # read-only
 ```
 
 The approvals are the owner's, from the same folder in Terminal:
-`node ../../pxsig/bin/pxsig.mjs serve --link --open`. The approved `.psig` files and
-`approvals.ndjson` go into the same pull request, and the plain store commits the same three kinds
-of file as the reference one.
+`node ../../pxsig/bin/pxsig.mjs serve --link --open`. The approved `.psig` files,
+`approvals.ndjson` and `manifest.json` go into the same pull request, as for the reference store,
+and `node ../../pxsig/bin/pxsig.mjs approve verify --since origin/main` from the plain folder checks
+that every baseline matches its approval.
 
 ## What the workflow does
 
