@@ -26,6 +26,7 @@ const isOxfmtIgnored = (file) => {
     /(^|\/)packages\/dashboard\/fixtures\/screens\.json$/.test(p) ||
     // Written by `pnpm screens:check --update-locks` and compared byte for byte (screen-locks.mjs).
     p.includes('packages/dashboard/fixtures/locked/') ||
+    p.includes('packages/dashboard/plain/locked/') ||
     p.endsWith('docs/ui/features.md') ||
     p.endsWith('src/ui/adapters/hydrotik/design-system.d.ts') ||
     p.includes('docs/ui/catalog/') ||

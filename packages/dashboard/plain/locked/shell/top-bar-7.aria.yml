@@ -1,100 +1,100 @@
 - navigation "Report sections":
-    - heading "pxsig • Demo workspace" [level=1]
-    - list:
-        - listitem:
-            - link "Overview":
-                - /url: '#overview'
-        - listitem:
-            - link "Review Stories":
-                - /url: '#stories'
-        - listitem:
-            - link "Coverage":
-                - /url: '#integrity'
-        - listitem:
-            - link "Accessibility":
-                - /url: '#a11y'
-        - listitem:
-            - link "Runs, 4 runs":
-                - /url: '#history'
-                - text: Runs 4
-        - listitem:
-            - link "Diagnostics":
-                - /url: '#diagnostics'
-        - listitem:
-            - link "Help":
-                - /url: '#help'
-    - combobox "Project":
-        - option "Demo · 4 entries" [selected]
-        - option "Docs · 12 entries"
-    - text: dark · light Live · last check 10/24/2026, 10:00:00 AM Can approve
-    - button "Light theme"
-    - text: Approved
+  - heading "pxsig • Demo workspace" [level=1]
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: "#overview"
+    - listitem:
+      - link "Review Stories":
+        - /url: "#stories"
+    - listitem:
+      - link "Coverage":
+        - /url: "#integrity"
+    - listitem:
+      - link "Accessibility":
+        - /url: "#a11y"
+    - listitem:
+      - link "Runs, 4 runs":
+        - /url: "#history"
+        - text: Runs 4
+    - listitem:
+      - link "Diagnostics":
+        - /url: "#diagnostics"
+    - listitem:
+      - link "Help":
+        - /url: "#help"
+  - combobox "Project":
+    - option "Demo · 4 entries" [selected]
+    - option "Docs · 12 entries"
+  - text: dark · light Live · last check 10/24/2026, 10:00:00 AM Can approve
+  - button "Light theme"
+  - text: Approved
 - main:
-    - heading "Overview" [level=2]
-    - region "Latest check":
-        - text: Checked 4 dark · light Passed 4
-        - button "Changed 0"
-        - button "Flaky 0"
-        - button "New a11y 0 of 0 violations"
-        - text: Duration 200 ms 100 ms rendering
-    - heading "Open Items" [level=3]
-    - text: No open items.
-    - table:
-        - rowgroup:
-            - row "Item Count Action":
-                - columnheader "Item":
-                    - button "Item"
-                - columnheader "Count":
-                    - button "Count"
-                - columnheader "Action"
-        - rowgroup:
-            - row "Changed, awaiting review 0":
-                - cell "Changed, awaiting review"
-                - cell "0"
-                - cell
-            - row "New, no baseline 0":
-                - cell "New, no baseline"
-                - cell "0"
-                - cell
-            - row "Rejected, awaiting a fix 0":
-                - cell "Rejected, awaiting a fix"
-                - cell "0"
-                - cell
-            - row "Render errors 0":
-                - cell "Render errors"
-                - cell "0"
-                - cell
-            - row "Components with coverage errors 0":
-                - cell "Components with coverage errors"
-                - cell "0"
-                - cell
-            - row "Entries with new a11y violations 0":
-                - cell "Entries with new a11y violations"
-                - cell "0"
-                - cell
-            - row "Flaky 0":
-                - cell "Flaky"
-                - cell "0"
-                - cell
-    - heading "Stale Entries by Component" [level=3]
-    - text: No stale entries
-    - heading "Changed Entries per Run" [level=3]
-    - paragraph: 4 runs.
-    - table "Changed Entries per Run":
-        - rowgroup:
-            - row "Changed":
-                - cell
-                - columnheader "Changed"
-        - rowgroup:
-            - row "1 0":
-                - rowheader "1"
-                - cell "0"
-            - row "2 1":
-                - rowheader "2"
-                - cell "1"
-            - row "3 2":
-                - rowheader "3"
-                - cell "2"
-            - row "4 0":
-                - rowheader "4"
-                - cell "0"
+  - heading "Overview" [level=2]
+  - region "Latest check":
+    - text: Checked 4 dark · light Passed 4
+    - button "Changed 0"
+    - button "Flaky 0"
+    - button "New a11y 0 of 0 violations"
+    - text: Duration 200 ms 100 ms rendering
+  - heading "Open Items" [level=3]
+  - text: No open items.
+  - table:
+    - rowgroup:
+      - row "Item Count Action":
+        - columnheader "Item":
+          - button "Item"
+        - columnheader "Count":
+          - button "Count"
+        - columnheader "Action"
+    - rowgroup:
+      - row "Changed, awaiting review 0":
+        - cell "Changed, awaiting review"
+        - cell "0"
+        - cell
+      - row "New, no baseline 0":
+        - cell "New, no baseline"
+        - cell "0"
+        - cell
+      - row "Rejected, awaiting a fix 0":
+        - cell "Rejected, awaiting a fix"
+        - cell "0"
+        - cell
+      - row "Render errors 0":
+        - cell "Render errors"
+        - cell "0"
+        - cell
+      - row "Components with coverage errors 0":
+        - cell "Components with coverage errors"
+        - cell "0"
+        - cell
+      - row "Entries with new a11y violations 0":
+        - cell "Entries with new a11y violations"
+        - cell "0"
+        - cell
+      - row "Flaky 0":
+        - cell "Flaky"
+        - cell "0"
+        - cell
+  - heading "Stale Entries by Component" [level=3]
+  - text: No stale entries
+  - heading "Changed Entries per Run" [level=3]
+  - paragraph: 4 runs.
+  - table "Changed Entries per Run":
+    - rowgroup:
+      - row "Changed":
+        - cell
+        - columnheader "Changed"
+    - rowgroup:
+      - row "1 0":
+        - rowheader "1"
+        - cell "0"
+      - row "2 1":
+        - rowheader "2"
+        - cell "1"
+      - row "3 2":
+        - rowheader "3"
+        - cell "2"
+      - row "4 0":
+        - rowheader "4"
+        - cell "0"

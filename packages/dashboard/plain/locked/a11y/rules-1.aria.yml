@@ -1,63 +1,63 @@
 - navigation "Report sections":
-    - heading "pxsig • demo" [level=1]
-    - list:
-        - listitem:
-            - link "Overview":
-                - /url: '#overview'
-        - listitem:
-            - link "Review Stories":
-                - /url: '#stories'
-        - listitem:
-            - link "Coverage":
-                - /url: '#integrity'
-        - listitem:
-            - link "Accessibility, 2 new entries":
-                - /url: '#a11y'
-                - text: Accessibility 2
-        - listitem:
-            - link "Runs":
-                - /url: '#history'
-        - listitem:
-            - link "Help":
-                - /url: '#help'
-    - button "Review 2 accessibility entries"
-    - text: dark · light Live Can approve Last check 10/24/2026, 10:00:00 AM
-    - button "Light theme"
-    - text: Approved
+  - heading "pxsig • demo" [level=1]
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: "#overview"
+    - listitem:
+      - link "Review Stories":
+        - /url: "#stories"
+    - listitem:
+      - link "Coverage":
+        - /url: "#integrity"
+    - listitem:
+      - link "Accessibility, 2 new entries":
+        - /url: "#a11y"
+        - text: Accessibility 2
+    - listitem:
+      - link "Runs":
+        - /url: "#history"
+    - listitem:
+      - link "Help":
+        - /url: "#help"
+  - button "Review 2 accessibility entries"
+  - text: dark · light Live Can approve Last check 10/24/2026, 10:00:00 AM
+  - button "Light theme"
+  - text: Approved
 - main:
-    - heading "Accessibility" [level=2]
-    - region "Accessibility": Entries scanned 2 Violations 2 New, not accepted 2 Rules 1
-    - text: New violations are not on their entry's accepted list. Accept or reject them in an accessibility review, or from the Accessibility panel of an entry in the inspector.
-    - button "Review 2 accessibility entries"
-    - heading "Rules" [level=3]
-    - paragraph:
-        - text: axe-core results per rule. New counts entries where the rule is not on the entry's accepted list (
-        - code: a11y.json
-        - text: ); Accepted counts those where it is. Open a rule to see its entries and unaccept one in the inspector.
-    - table:
-        - rowgroup:
-            - row "Status Rule Impact Description Entries Nodes Accepted New":
-                - columnheader "Status"
-                - columnheader "Rule":
-                    - button "Rule"
-                - columnheader "Impact":
-                    - button "Impact"
-                - columnheader "Description":
-                    - button "Description"
-                - columnheader "Entries":
-                    - button "Entries"
-                - columnheader "Nodes":
-                    - button "Nodes"
-                - columnheader "Accepted"
-                - columnheader "New":
-                    - button "New"
-        - rowgroup:
-            - row "2 new color-contrast serious Elements must meet minimum color contrast ratio thresholds 2 4 0 2":
-                - cell "2 new"
-                - cell "color-contrast"
-                - cell "serious"
-                - cell "Elements must meet minimum color contrast ratio thresholds"
-                - cell "2"
-                - cell "4"
-                - cell "0"
-                - cell "2"
+  - heading "Accessibility" [level=2]
+  - region "Accessibility": Entries scanned 2 Violations 2 New, not accepted 2 Rules 1
+  - text: New violations are not on their entry's accepted list. Accept or reject them in an accessibility review, or from the Accessibility panel of an entry in the inspector.
+  - button "Review 2 accessibility entries"
+  - heading "Rules" [level=3]
+  - paragraph:
+    - text: axe-core results per rule. New counts entries where the rule is not on the entry's accepted list (
+    - code: a11y.json
+    - text: ); Accepted counts those where it is. Open a rule to see its entries and unaccept one in the inspector.
+  - table:
+    - rowgroup:
+      - row "Status Rule Impact Description Entries Nodes Accepted New":
+        - columnheader "Status"
+        - columnheader "Rule":
+          - button "Rule"
+        - columnheader "Impact":
+          - button "Impact"
+        - columnheader "Description":
+          - button "Description"
+        - columnheader "Entries":
+          - button "Entries"
+        - columnheader "Nodes":
+          - button "Nodes"
+        - columnheader "Accepted"
+        - columnheader "New":
+          - button "New"
+    - rowgroup:
+      - row "2 new color-contrast serious Elements must meet minimum color contrast ratio thresholds 2 4 0 2":
+        - cell "2 new"
+        - cell "color-contrast"
+        - cell "serious"
+        - cell "Elements must meet minimum color contrast ratio thresholds"
+        - cell "2"
+        - cell "4"
+        - cell "0"
+        - cell "2"
